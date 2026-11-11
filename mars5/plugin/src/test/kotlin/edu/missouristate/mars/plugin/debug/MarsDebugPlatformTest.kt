@@ -150,6 +150,7 @@ import javax.swing.Icon
 import javax.swing.JButton
 import javax.swing.JComboBox
 import javax.swing.JComponent
+import javax.swing.JEditorPane
 import javax.swing.JList
 import javax.swing.JPanel
 import javax.swing.JTextField
@@ -4284,8 +4285,9 @@ class MarsDebugPlatformTest {
                     occupied.await()
                     withContext(Dispatchers.EDT) {
                         repeat(17) { write("3f800000") }
-                        val labels = UIUtil.findComponentsOfType(view.component, JBLabel::class.java).map { it.text }
-                        assertTrue(runMessages.getMessage("debug.register.edit.unavailable") in labels, labels.toString())
+                        val messages = UIUtil.findComponentsOfType(view.component, JEditorPane::class.java)
+                            .map { it.document.getText(0, it.document.length).trim() }
+                        assertTrue(runMessages.getMessage("debug.register.edit.unavailable") in messages, messages.toString())
                         debug.session.resume()
                     }
                 } finally {

@@ -85,12 +85,12 @@ internal val toolsMessages = DynamicBundle(MarsToolsWindowFactory::class.java, "
 internal fun scrollableToolPanel(
     owner: Disposable,
     body: JComponent,
-    nestedScrollPanes: Map<JComponent, JComponent>,
+    focusTargets: Map<JComponent, JComponent>,
 ) = ScrollPaneFactory.createScrollPane(body, true).also {
     UIUtil.uiTraverser(body).filter(JComponent::class.java).forEach { control ->
         control.whenFocusGained(owner) {
             // Scroll the tool panel even when the focused control handles scrolling internally.
-            val target = nestedScrollPanes.getOrDefault(control, control)
+            val target = focusTargets.getOrDefault(control, control)
             body.scrollRectToVisible(SwingUtilities.convertRectangle(target.parent, target.bounds, body))
         }
     }

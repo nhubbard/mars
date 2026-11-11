@@ -48,6 +48,8 @@ import java.awt.event.MouseEvent
 import javax.swing.JButton
 import javax.swing.JComboBox
 import javax.swing.JComponent
+import javax.swing.JEditorPane
+import javax.swing.JLabel
 import javax.swing.JList
 import javax.swing.JPanel
 import javax.swing.JProgressBar
@@ -128,7 +130,8 @@ class InstructionCounterPlatformTest {
             UIUtil.findComponentsOfType(floating, JComboBox::class.java).sortedBy { it.itemCount }
         }
         fun floatField(columns: Int) = UIUtil.findComponentsOfType(floating, JBTextField::class.java).single { it.columns == columns }
-        fun floatLabels() = UIUtil.findComponentsOfType(floating, JBLabel::class.java).map { it.text }
+        fun floatLabels() = UIUtil.findComponentsOfType(floating, JBLabel::class.java).map { it.text } +
+            UIUtil.findComponentsOfType(floating, JEditorPane::class.java).map { it.document.getText(0, it.document.length).trim() }
         val cacheSelector = withContext(Dispatchers.EDT) {
             UIUtil.findComponentsOfType(cache, JComboBox::class.java).single { it.itemCount == 0 }
         }
@@ -328,12 +331,27 @@ class InstructionCounterPlatformTest {
                 assertTrue(floatLabels().any { it.startsWith("Enter a floating-point value") })
                 assertEquals("0x00000001", floatField(12).text)
                 val floatScroll = assertInstanceOf(JScrollPane::class.java, floating)
-                floatScroll.setSize(JBUI.scale(380), JBUI.scale(180))
+                floatScroll.setSize(JBUI.scale(295), JBUI.scale(180))
                 floatScroll.doLayout()
                 val floatViewport = floatScroll.viewport
                 floatViewport.doLayout()
-                val floatBody = floatViewport.view
+                val floatBody = assertInstanceOf(JComponent::class.java, floatViewport.view)
                 floatBody.doLayout()
+                assertTrue(floatBody.width <= floatViewport.width) {
+                    "Floating-point panel width ${floatBody.width} exceeds viewport width ${floatViewport.width}; " +
+                        floatBody.components.joinToString { "${it.javaClass.simpleName}=${it.preferredSize.width}" }
+                }
+                val fractionField = floatField(23)
+                fractionField.parent.doLayout()
+                val fractionLabel = UIUtil.findComponentsOfType(floating, JLabel::class.java).single { it.labelFor === fractionField }
+                val labelBounds = SwingUtilities.convertRectangle(fractionLabel.parent, fractionLabel.bounds, floatBody)
+                val fieldBounds = SwingUtilities.convertRectangle(fractionField.parent, fractionField.bounds, floatBody)
+                assertTrue(labelBounds.maxY <= fieldBounds.y)
+                assertTrue(labelBounds.x >= 0 && labelBounds.maxX <= floatViewport.width)
+                assertTrue(fieldBounds.x >= 0 && fieldBounds.maxX <= floatViewport.width)
+                val fractionMetrics = fractionField.getFontMetrics(fractionField.font)
+                assertTrue(fractionMetrics.stringWidth(fractionField.text) + fractionMetrics.charWidth('0') <=
+                    fractionField.width - fractionField.insets.left - fractionField.insets.right)
                 val floatReset = button("Reset", floating)
                 val floatResetBounds = SwingUtilities.convertRectangle(floatReset.parent, floatReset.bounds, floatBody)
                 assertTrue(floatResetBounds.height > 0)
@@ -342,6 +360,8 @@ class InstructionCounterPlatformTest {
                 assertTrue(floatViewport.viewRect.contains(floatResetBounds))
                 floatReset.doClick()
                 assertEquals("0x00000000", floatField(12).text)
+                assertEquals(0, fractionField.caretPosition)
+                assertEquals(0, fractionField.scrollOffset)
                 val unrelated = RunContentDescriptor(null, null, JPanel(), "Unrelated").apply {
                     isActivateToolWindowWhenAdded = false
                 }

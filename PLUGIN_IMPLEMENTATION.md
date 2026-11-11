@@ -1996,12 +1996,27 @@ The panel scrolls to the focused field or button. At 150% IDE zoom in
 High Contrast, packaged macOS and Ubuntu ARM64 replays entered `-1.5`
 with the keyboard, confirmed `0xbfc00000`, and used Tab from **Exponent
 bits** through **Fraction bits** to **Reset**. Both controls came fully
-into view. Pressing Space on **Reset** restored `0x00000000`. In the
-narrow macOS dock, revealing **Fraction bits** still scrolls horizontally
-and clips the field labels to its left. Both hosts passed 2,022 Jupiter
-tests and both coverage gates. The screenshots and logs are under
+into view. Pressing Space on **Reset** restored `0x00000000`. The initial
+focus fix still scrolled horizontally and clipped labels on macOS.
+Both hosts passed 2,022 Jupiter tests and both coverage gates. The
+screenshots and logs are under
 `mars5/.gradle/release-host-checks/floating-point-focus` and
 `mars5/.gradle/release-host-checks/linux-arm64-floating-point-focus`.
+
+The compact layout places labels above the fields and wraps the
+interpretation and status messages. The fraction field and its label
+share a focus scroll target, so approaching the field from either
+direction reveals both. The field sizes its columns by the widths of
+`0` and `1`, reserves room for the caret, and shows the leading digit
+after a value changes. The native fixture checks
+that the panel fits a 295-pixel viewport and continues to exercise
+conversion, register selection, and paused-register edit feedback.
+Clean packaged replays on macOS and Ubuntu ARM64 at 150% in High Contrast
+verified the full interpretation for `-1.5`, the label and all 23 fraction
+digits on Tab and Shift+Tab, and Reset by Space. Both passed 2,022
+Jupiter tests and both coverage gates. The logs and screenshots are under
+`mars5/.gradle/release-host-checks/floating-point-width` and
+`mars5/.gradle/release-host-checks/linux-arm64-floating-point-field-fit`.
 
 ## Digital Lab Sim
 
