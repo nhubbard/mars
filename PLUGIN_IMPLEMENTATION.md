@@ -1686,9 +1686,14 @@ The evaluator accepts a contiguous signed assembler word such as
 invalid on its own. Ordinary unary operations still apply to values that
 can be evaluated independently, so `-0xffffffff` evaluates to `0x00000001`.
 The debugger fixture also covers overflow, a separated sign, and a grouped
-magnitude. In the packaged macOS IDE, the debugger stopped after executing
-`li $t0, -0x080000000`, and the native Evaluate dialog displayed `0x80000000`
-for that expression.
+magnitude. Packaged macOS and Ubuntu ARM64 replays stopped after executing
+`li $t0, -0x080000000`. On each host, IntelliJ's Evaluate dialog displayed
+`0x80000000`, and the replay resumed execution and exited the IDE. All 2,023
+Jupiter tests and both coverage gates passed on the same source on both hosts.
+The Ubuntu replay released the idle Kotlin compiler daemon before IDE startup
+to fit the verification VM's memory. The logs and screenshots are under
+`mars5/.gradle/release-host-checks/signed-debugger-word` and
+`mars5/.gradle/release-host-checks/linux-arm64-signed-debugger-word-replay`.
 
 Scalar evaluation operates on the paused frame's snapshot. Explicit `byte(address)`,
 `half(address)`, and `word(address)` reads run on the simulator worker that owns the
