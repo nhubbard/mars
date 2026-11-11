@@ -2093,6 +2093,20 @@ The **Display** uses the IDE console editor and font settings. The panel
 offers fixed, uniform, and normal delay modes and a **Display after delay**
 toggle. Try the echo program in `examples/mmio-terminal/echo.asm`.
 
+The native Run fixture opens the shipped echo program as a MIPS file and
+checks its parsed source, startup banner, echoed key, display clear, and
+successful exit with delay slots enabled and disabled. The shipped MarsBot
+and Scavenger Hunt Run fixtures check their source files for PSI errors
+before execution. The native Debug fixture covers both the interactive sort
+program and its included macro file.
+
+The clean packaged macOS replay opened an unchanged copy of the shipped echo
+program, started it with the device connected, and sent native `M`, `~`, and
+`q` keystrokes through the Keyboard field. The Display echoed the key and
+returned to the banner after clearing. Run exited with status 0. All 2,025
+Jupiter tests and both coverage gates passed. The screenshot and replay log
+are under `mars5/.gradle/release-host-checks/shipped-mmio-terminal`.
+
 The tool scrolls to the focused control when the dock is too short. A
 Jupiter fixture verifies that focus reveals a text field outside the
 viewport and that the connected tool reveals **Resize and Reset**. In

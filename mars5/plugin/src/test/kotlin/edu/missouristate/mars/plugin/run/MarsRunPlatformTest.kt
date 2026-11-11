@@ -59,8 +59,10 @@ import com.intellij.openapi.util.Key
 import com.intellij.openapi.vfs.encoding.EncodingManager
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
+import com.intellij.psi.PsiErrorElement
 import com.intellij.psi.PsiFileFactory
 import com.intellij.psi.PsiManager
+import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.testFramework.LightVirtualFile
 import com.intellij.testFramework.TestActionEvent
 import com.intellij.testFramework.common.timeoutRunBlocking
@@ -1184,6 +1186,58 @@ class MarsRunPlatformTest {
         }
     }
 
+    @ParameterizedTest
+    @ValueSource(booleans = [false, true])
+    fun `native Run echoes clears and exits the shipped MMIO terminal example`(delayed: Boolean) = timeoutRunBlocking<Unit> {
+        val disposable = Disposer.newDisposable()
+        val recording = Recording()
+        val process = CompletableDeferred<MarsProcessHandler>()
+        try {
+            withContext(Dispatchers.EDT) {
+                val config = type.createTemplateConfiguration(project)
+                config.options.sourcePath = exampleSource("mmio-terminal/echo.asm").virtualFile.path
+                config.options.connectKeyboardDisplay = true
+                config.options.delayedBranchingMode = if (delayed) ProjectOptionOverride.ENABLED else ProjectOptionOverride.DISABLED
+                val environment = ExecutionEnvironmentBuilder.create(executor, config).build()
+                project.messageBus.connect(disposable).subscribe(ExecutionManager.EXECUTION_TOPIC, object : ExecutionListener {
+                    override fun processStarting(executorId: String, env: ExecutionEnvironment, handler: ProcessHandler) {
+                        if (env === environment) {
+                            handler.addProcessListener(recording)
+                            process.complete(handler as MarsProcessHandler)
+                        }
+                    }
+                })
+                environment.runner.execute(environment)
+            }
+            val handler = process.await()
+            try {
+                val terminal = handler.keyboardDisplay
+                val banner = "MARS MMIO terminal\nType here to echo.  ~ clears, q exits.\n> "
+                suspend fun assertDisplay(expected: String) {
+                    pollAssertionsAsync(5.seconds, 10.milliseconds) {
+                        assertEquals(expected, terminal.snapshot().display.text)
+                    }
+                }
+                assertDisplay(banner)
+                assertTrue(terminal.snapshot().connected)
+                terminal.sendKey('M')
+                assertDisplay(banner + "M")
+                terminal.sendKey('~')
+                assertDisplay(banner)
+                terminal.sendKey('q')
+                assertEquals(0, recording.exit.await(), recording.stderr.toString())
+                assertEquals(banner, terminal.snapshot().display.text)
+                assertFalse(terminal.snapshot().connected)
+            } finally {
+                withContext(NonCancellable + Dispatchers.EDT) {
+                    if (!handler.isProcessTerminated) handler.destroyProcess()
+                }
+            }
+        } finally {
+            Disposer.dispose(disposable)
+        }
+    }
+
     @Test
     fun `native Run draws the MarsBot sample with the panel closed`() = timeoutRunBlocking<Unit> {
         val disposable = Disposer.newDisposable()
@@ -1191,9 +1245,7 @@ class MarsRunPlatformTest {
         val process = CompletableDeferred<MarsProcessHandler>()
         try {
             withContext(Dispatchers.EDT) {
-                val source = requireNotNull(javaClass.getResourceAsStream("/marsbot/square.asm"))
-                    .bufferedReader().use { it.readText() }
-                val file = fixture.addFileToProject("square.asm", source).virtualFile
+                val file = exampleSource("marsbot/square.asm").virtualFile
                 val config = type.createTemplateConfiguration(project)
                 config.options.sourcePath = file.path
                 config.options.connectMarsBot = true
@@ -1231,9 +1283,7 @@ class MarsRunPlatformTest {
         val process = CompletableDeferred<MarsProcessHandler>()
         try {
             withContext(Dispatchers.EDT) {
-                val source = requireNotNull(javaClass.getResourceAsStream("/scavenger-hunt/round.asm"))
-                    .bufferedReader().use { it.readText() }
-                val file = fixture.addFileToProject("round.asm", source).virtualFile
+                val file = exampleSource("scavenger-hunt/round.asm").virtualFile
                 val config = type.createTemplateConfiguration(project)
                 config.options.sourcePath = file.path
                 config.options.connectScavengerHunt = true
@@ -2025,6 +2075,15 @@ class MarsRunPlatformTest {
             stream.write(0xc3)
         }
         assertEquals("é💡�", text.toString())
+    }
+
+    private fun exampleSource(path: String) = fixture.addFileToProject(
+        path.substringAfterLast('/'),
+        requireNotNull(javaClass.getResourceAsStream("/$path")).bufferedReader().use { it.readText() },
+    ).also { file ->
+        assertSame(MipsFileType, file.fileType)
+        val errors = PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java)
+        assertTrue(errors.isEmpty()) { "$path: ${errors.joinToString { it.errorDescription + " at " + it.textRange }}" }
     }
 
     private fun unrelatedProfile() = object : RunProfile {
