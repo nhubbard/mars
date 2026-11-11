@@ -2912,7 +2912,7 @@ integration boundaries in the release build.
 The remaining release checks include the native host matrix, packaged UI
 checks for keyboard, hover, scaling, and high contrast, and final
 feature-by-feature acceptance. The packaged macOS install and archive
-replacement are recorded below.
+replacement on macOS and Ubuntu ARM64 are recorded below.
 
 ### Packaged MIDI playback and Stop on macOS
 
@@ -3065,7 +3065,7 @@ The local `mars-plugin-metadata-playback` scenario unpacks the generated ZIP
 into a clean IntelliJ test instance, runs a MIPS program, and opens the
 installed plugin's details.
 
-### macOS archive replacement
+### Archive replacement on macOS and Ubuntu ARM64
 
 The local `mars-plugin-upgrade-playback` scenario installed a ZIP from
 `04e9bc8f` with the test version `0.9.0` in IntelliJ IDEA
@@ -3079,9 +3079,19 @@ assembly sources, and the enabled breakpoint with condition `$a0 != 0`.
 Debug stopped on the breakpoint. After Resume, the native console printed
 `Hello from MARS!` and the process exited successfully. The sources, project
 assembly settings, and shared Run configuration were byte-identical across
-the two launches. This check covers replacing the ZIP on the same IDE build
-on macOS. Marketplace delivery and the remaining host matrix require separate
-qualification.
+the two launches.
+
+The same two clean launches passed on Ubuntu 24.04 ARM64 under Xvfb and
+Openbox with IntelliJ IDEA `IU-263.7307.200`. The baseline ZIP ran the
+starter and saved the conditional breakpoint. The replacement ZIP reopened
+the project, paused at the restored breakpoint, and printed
+`Hello from MARS!` after Resume. SHA-256 hashes matched for both assembly
+files, the shared Run configuration, and the project assembly settings.
+The two IDE logs and the project hashes are under
+`mars5/.gradle/release-host-checks/linux-arm64-upgrade`.
+
+Both hosts exercised ZIP replacement on the same IDE build. Marketplace
+delivery and the remaining host matrix require separate qualification.
 
 ### Reviewed API use in the 263 target
 
