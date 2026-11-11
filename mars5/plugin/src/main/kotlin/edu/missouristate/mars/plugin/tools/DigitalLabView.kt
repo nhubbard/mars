@@ -2,8 +2,10 @@ package edu.missouristate.mars.plugin.tools
 
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.EDT
+import com.intellij.openapi.observable.util.whenFocusGained
 import com.intellij.openapi.project.Project
 import com.intellij.ui.JBColor
+import com.intellij.ui.ScrollPaneFactory
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.dsl.builder.AlignX
 import com.intellij.ui.dsl.builder.panel
@@ -12,6 +14,7 @@ import com.intellij.util.ui.launchOnShow
 import java.awt.Dimension
 import java.awt.Graphics
 import java.awt.GridLayout
+import java.awt.Rectangle
 import javax.swing.JButton
 import javax.swing.JPanel
 import javax.swing.JToggleButton
@@ -38,7 +41,7 @@ internal class DigitalLabView(project: Project) : Disposable {
         }
     }
 
-    val component = panel {
+    val component = ScrollPaneFactory.createScrollPane(panel {
         row(toolsMessages.getMessage("counter.selector")) { cell(selector.component).align(AlignX.FILL).resizableColumn() }
         row {
             cell(toggle)
@@ -53,9 +56,14 @@ internal class DigitalLabView(project: Project) : Disposable {
         row { cell(keypad) }
         row(toolsMessages.getMessage("digitalLab.timer")) { cell(timer) }
         row { comment(toolsMessages.getMessage("digitalLab.help"), maxLineLength = 42) }
-    }
+    }, true)
 
     init {
+        for (control in listOf(selector.component, toggle, reset) + keys) {
+            control.whenFocusGained(this) {
+                control.scrollRectToVisible(Rectangle(0, 0, control.width, control.height))
+            }
+        }
         toggle.addActionListener {
             val device = selected!!
             device.setConnected(!device.snapshot().connected)

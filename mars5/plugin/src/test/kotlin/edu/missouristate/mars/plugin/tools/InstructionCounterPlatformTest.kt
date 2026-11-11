@@ -51,6 +51,7 @@ import javax.swing.JComponent
 import javax.swing.JList
 import javax.swing.JPanel
 import javax.swing.JProgressBar
+import javax.swing.JScrollPane
 import javax.swing.JSpinner
 import javax.swing.JToggleButton
 import javax.swing.KeyStroke
@@ -62,6 +63,7 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertSame
@@ -688,12 +690,21 @@ class InstructionCounterPlatformTest {
                 assertEquals(background, image.getRGB(JBUI.scale(20), JBUI.scale(33)))
                 assertEquals("Right display (0x3f)", right.accessibleContext.accessibleName)
                 val key = UIUtil.findComponentsOfType(lab, JToggleButton::class.java).single { it.text == "A" }
-                lab.setSize(JBUI.scale(365), JBUI.scale(520))
-                lab.doLayout()
+                val scroll = assertInstanceOf(JScrollPane::class.java, lab)
+                scroll.setSize(JBUI.scale(210), JBUI.scale(200))
+                scroll.doLayout()
+                val viewport = scroll.viewport
+                viewport.doLayout()
+                val body = viewport.view
+                body.doLayout()
                 key.parent.doLayout()
                 val lastKey = UIUtil.findComponentsOfType(lab, JToggleButton::class.java).single { it.text == "F" }
-                val bounds = SwingUtilities.convertRectangle(lastKey.parent, lastKey.bounds, lab)
-                assertTrue(bounds.width > 0 && bounds.x + bounds.width <= lab.width)
+                val bounds = SwingUtilities.convertRectangle(lastKey.parent, lastKey.bounds, body)
+                assertTrue(bounds.width > 0 && bounds.height > 0)
+                assertFalse(viewport.viewRect.contains(bounds))
+                val focus = FocusEvent(lastKey, FocusEvent.FOCUS_GAINED)
+                lastKey.focusListeners.forEach { it.focusGained(focus) }
+                assertTrue(viewport.viewRect.contains(bounds))
                 key.doClick()
                 assertEquals(10, labProcess.digitalLab.snapshot().key)
                 assertTrue(key.isSelected)

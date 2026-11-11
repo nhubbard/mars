@@ -1886,6 +1886,11 @@ Digital Lab Sim from launch** in its run configuration. That setting keeps the
 device active even when the tool window is closed. The final display remains
 visible while the execution tab is open.
 
+The tool window scrolls when its controls exceed the available space. Tab
+brings the focused control into view, including the last row of the keypad
+at 150% IDE zoom. The narrow-viewport Jupiter fixture and the packaged
+macOS High Contrast replay both exercise this behavior.
+
 The two seven-segment displays use the bytes at MMIO base + `0x10` and `0x11`.
 Each shows its current byte in hexadecimal below the diagram and in its
 accessible name. Lit segments are filled and unlit segments are outlined.
