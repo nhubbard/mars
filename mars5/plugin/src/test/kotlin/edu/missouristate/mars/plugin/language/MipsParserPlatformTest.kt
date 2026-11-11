@@ -1281,6 +1281,20 @@ class MipsParserPlatformTest {
     }
 
     @Test
+    fun `malformed offsets retain their address and base register in PSI`() = timeoutRunBlocking<Unit> {
+        readAction {
+            val source = "lw \$t0, -0x(\$sp)\nlw \$t1, 0x, (\$fp)\nnext: nop\n"
+            val file = PsiFileFactory.getInstance(project.get()).createFileFromText("address-editing.mars", MipsFileType, source)
+            assertEquals(source, file.text)
+            val addresses = descendants(file.node, "ADDRESS_EXPR").toList()
+            assertEquals(listOf("-0x(\$sp)", "0x, (\$fp)"), addresses.map { it.text })
+            assertEquals(listOf("\$sp", "\$fp"), addresses.flatMap { descendants(it, "REGISTER").map { it.text }.toList() })
+            assertEquals(listOf("-0x", "0x"), PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java).map { it.text })
+            assertEquals("next:", descendants(file.node, "LABEL").single().text)
+        }
+    }
+
+    @Test
     fun `punctuation in percent formals survives parsing and macro substitution`(@TempDir directory: Path) =
         timeoutRunBlocking<Unit> {
             val formal = "%value!@?.part"

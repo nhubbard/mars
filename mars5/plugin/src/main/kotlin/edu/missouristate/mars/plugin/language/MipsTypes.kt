@@ -32,6 +32,7 @@ object MipsTypes {
         "INCLUDE_LINE" to MipsSyntaxTypes.INCLUDE_LINE,
         "INSTRUCTION" to MipsSyntaxTypes.INSTRUCTION,
         "INVOCATION_TOKEN" to MipsSyntaxTypes.INVOCATION_TOKEN,
+        "INVALID_OPERAND_EXPR" to MipsSyntaxTypes.INVALID_OPERAND_EXPR,
         "LABEL" to MipsSyntaxTypes.LABEL,
         "LITERAL_EXPR" to MipsSyntaxTypes.LITERAL_EXPR,
         "MACRO_DEFINITION" to MipsSyntaxTypes.MACRO_DEFINITION,

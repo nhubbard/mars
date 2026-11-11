@@ -37,7 +37,7 @@ internal object DebuggerExpressionParsing : ParserUserState
 private val signs = setOf(PLUS, MINUS)
 private val identifiers = setOf(WORD, DOLLAR_WORD)
 private val addressLabels = identifiers + setOf(MNEMONIC, PARAMETER)
-private val addressOffsets = setOf(NUMBER, CHARACTER, WORD, MNEMONIC, DOLLAR_WORD, PARAMETER)
+private val addressOffsets = setOf(NUMBER, CHARACTER, WORD, MNEMONIC, DOLLAR_WORD, PARAMETER, BAD_CHARACTER)
 private val addressBases = setOf(REGISTER, WORD, DOLLAR_WORD, PARAMETER)
 private val registerAliases = identifiers + PARAMETER
 private val spacing = setOf(WHITE_SPACE)
@@ -129,6 +129,9 @@ internal fun recoverBadIncludeToken(runtime: SyntaxGeneratedParserRuntime, level
 @Suppress("UNUSED_PARAMETER")
 internal fun recoverBadOperandToken(runtime: SyntaxGeneratedParserRuntime, level: Int): Boolean =
     runtime.syntaxBuilder.recoverBadToken("syntax.operand.invalid.token")
+
+internal fun recoverInvalidOperandExpression(runtime: SyntaxGeneratedParserRuntime, level: Int): Boolean =
+    runtime.parserUserState !== DebuggerExpressionParsing && recoverBadOperandToken(runtime, level)
 
 private fun SyntaxTreeBuilder.recoverBadToken(messageKey: String): Boolean {
     val signed = tokenType in signs && lookAhead(1) == BAD_CHARACTER &&

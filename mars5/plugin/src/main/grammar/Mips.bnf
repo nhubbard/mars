@@ -1,7 +1,7 @@
 {
   generate=[psi="no" parser-api="syntax"]
   parserClass="edu.missouristate.mars.plugin.language.parser.MipsParser"
-  parserImports=["edu.missouristate.mars.plugin.language.syntax.continueOperand" "edu.missouristate.mars.plugin.language.syntax.startsSignedNumber" "edu.missouristate.mars.plugin.language.syntax.isShortEquivalence" "edu.missouristate.mars.plugin.language.syntax.isIncludeLine" "edu.missouristate.mars.plugin.language.syntax.recoverBadIncludeToken" "edu.missouristate.mars.plugin.language.syntax.recoverBadOperandToken" "edu.missouristate.mars.plugin.language.syntax.recoverInvalidMacroName" "edu.missouristate.mars.plugin.language.syntax.recoverInvalidMacroFormal" "edu.missouristate.mars.plugin.language.syntax.recoverMalformedMacroEnd" "edu.missouristate.mars.plugin.language.syntax.recoverCharacterLiteral" "edu.missouristate.mars.plugin.language.syntax.recoverStatement" "edu.missouristate.mars.plugin.language.syntax.parseCompleteMacroOperands"]
+  parserImports=["edu.missouristate.mars.plugin.language.syntax.continueOperand" "edu.missouristate.mars.plugin.language.syntax.startsSignedNumber" "edu.missouristate.mars.plugin.language.syntax.isShortEquivalence" "edu.missouristate.mars.plugin.language.syntax.isIncludeLine" "edu.missouristate.mars.plugin.language.syntax.recoverBadIncludeToken" "edu.missouristate.mars.plugin.language.syntax.recoverBadOperandToken" "edu.missouristate.mars.plugin.language.syntax.recoverInvalidOperandExpression" "edu.missouristate.mars.plugin.language.syntax.recoverInvalidMacroName" "edu.missouristate.mars.plugin.language.syntax.recoverInvalidMacroFormal" "edu.missouristate.mars.plugin.language.syntax.recoverMalformedMacroEnd" "edu.missouristate.mars.plugin.language.syntax.recoverCharacterLiteral" "edu.missouristate.mars.plugin.language.syntax.recoverStatement" "edu.missouristate.mars.plugin.language.syntax.parseCompleteMacroOperands"]
   syntaxElementTypeHolderClass="edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes"
   extends(".*_expr")=expr
   tokens=[
@@ -114,11 +114,11 @@ operand_fragment ::= &(fixed_operand_token* substitutable_operand_token) assembl
 private fixed_operand_token ::= !substitutable_operand_token assembly_token
 private substitutable_operand_token ::= WORD | DOLLAR_WORD | PARAMETER
 operand_list ::= operand+
-operand ::= <<recoverBadOperandToken>> | expr repetition?
+operand ::= expr repetition?
 repetition ::= COLON expr {pin=1}
 // The debugger lexer alone emits comparison and bitwise tokens.
 debugger_expression ::= expr <<eof>> {extraRoot=true}
-expr ::= bit_or_expr | bit_xor_expr | bit_and_expr | equality_expr | relational_expr | shift_expr | add_expr | unary_expr | address_expr | group_expr | literal_expr | reference_expr
+expr ::= bit_or_expr | bit_xor_expr | bit_and_expr | equality_expr | relational_expr | shift_expr | add_expr | invalid_operand_expr | unary_expr | address_expr | group_expr | literal_expr | reference_expr
 bit_or_expr ::= expr BIT_OR expr {pin=2}
 bit_xor_expr ::= expr BIT_XOR expr {pin=2}
 bit_and_expr ::= expr BIT_AND expr {pin=2}
@@ -129,6 +129,7 @@ add_expr ::= expr (<<continueOperand>> (PLUS | MINUS)) expr {pin=2}
 unary_expr ::= (PLUS | MINUS | BIT_NOT) expr
 address_expr ::= expr <<continueOperand>> LEFT_PAREN nested_expression RIGHT_PAREN {pin=2}
 group_expr ::= LEFT_PAREN nested_expression RIGHT_PAREN
+invalid_operand_expr ::= <<recoverInvalidOperandExpression>>
 literal_expr ::= NUMBER | quoted_operand | CHARACTER | unfinished_character
 // The assembler decides whether an unfinished quote is an error in the active context.
 private quoted_operand ::= STRING | UNCLOSED_STRING
