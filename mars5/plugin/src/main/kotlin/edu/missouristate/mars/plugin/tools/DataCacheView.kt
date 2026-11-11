@@ -12,8 +12,8 @@ import com.intellij.ui.dsl.builder.Align
 import com.intellij.ui.dsl.builder.AlignX
 import com.intellij.ui.dsl.builder.LabelPosition
 import com.intellij.ui.dsl.builder.RightGap
+import com.intellij.ui.dsl.builder.RowLayout
 import com.intellij.ui.dsl.builder.TopGap
-import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.dsl.listCellRenderer.textListCellRenderer
 import com.intellij.ui.table.JBTable
 import com.intellij.util.ui.JBDimension
@@ -63,7 +63,7 @@ internal class DataCacheView(project: Project) : Disposable {
     private val logScroll = JBScrollPane(log)
     private var previous: DataCacheSimulator.Snapshot? = null
 
-    val component = scrollableToolPanel(this, panel {
+    val component = scrollableToolPanel(this, marsToolPanel {
         marsExecutionRow(selector.component)
         row { cell(placement).label(toolsMessages.getMessage("cache.placement"), LabelPosition.TOP) }
         row(toolsMessages.getMessage("cache.blocks")) { cell(blocks) }
@@ -81,7 +81,7 @@ internal class DataCacheView(project: Project) : Disposable {
             label(toolsMessages.getMessage("cache.rate")).gap(RightGap.SMALL).component.labelFor = rate
             cell(percentage).gap(RightGap.SMALL)
             cell(rate).resizableColumn()
-        }
+        }.layout(RowLayout.INDEPENDENT)
         row {
             cell(tableScroll).align(Align.FILL).resizableColumn()
         }.resizableRow()

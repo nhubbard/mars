@@ -9,7 +9,7 @@ import com.intellij.ui.components.JBPanel
 import com.intellij.ui.components.JBTextField
 import com.intellij.ui.dsl.builder.Align
 import com.intellij.ui.dsl.builder.LabelPosition
-import com.intellij.ui.dsl.builder.panel
+import com.intellij.ui.dsl.builder.columns
 import com.intellij.ui.scale.JBUIScale
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.launchOnShow
@@ -39,14 +39,15 @@ internal class MarsBotView(project: Project) : Disposable {
     private val ports = JBLabel()
     private val board = MarsBotBoard()
 
-    private val controls = panel {
+    private val controls = marsToolPanel {
         marsExecutionRow(selector.component)
         row {
             cell(toggle)
             cell(reset)
         }
         row {
-            clock = intTextField(instructionRange).label(toolsMessages.getMessage("marsBot.clock"), LabelPosition.TOP).component
+            clock = intTextField(instructionRange).columns(8)
+                .label(toolsMessages.getMessage("marsBot.clock"), LabelPosition.TOP).component
         }
         row {
             applyClock = button(toolsMessages.getMessage("marsBot.clock.apply")) { updateClock() }.component

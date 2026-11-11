@@ -30,7 +30,6 @@ import com.intellij.ui.components.JBCheckBox
 import com.intellij.ui.components.JBTextArea
 import com.intellij.ui.components.JBTextField
 import com.intellij.ui.content.ContentFactory
-import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.table.JBTable
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
@@ -105,14 +104,16 @@ class InstructionCounterPlatformTest {
         val project = projectFixture.get()
         withContext(Dispatchers.EDT) {
             val selector = MarsToolExecutionSelector(project) {}.component
-            val body = panel { marsExecutionRow(selector) }
+            val body = marsToolPanel { marsExecutionRow(selector) }
             val label = UIUtil.findComponentsOfType(body, JLabel::class.java).single { it.labelFor === selector }
             for (width in listOf(180, 640)) {
                 body.setSize(JBUI.size(width, 120))
                 body.doLayout()
                 assertTrue(label.y + label.height <= selector.y)
-                assertTrue(selector.x + selector.width <= body.width)
-                assertTrue(selector.width in JBUI.scale(112)..JBUI.scale(240))
+                assertTrue(label.y >= body.insets.top)
+                assertTrue(selector.x >= body.insets.left)
+                assertTrue(selector.x + selector.width <= body.width - body.insets.right)
+                assertTrue(selector.width in JBUI.scale(112)..JBUI.scale(220))
             }
         }
     }
@@ -444,6 +445,9 @@ class InstructionCounterPlatformTest {
                 assertTrue(floatResetBounds.maxY > floatViewport.viewRect.maxY)
                 floatReset.focusListeners.forEach { it.focusGained(FocusEvent(floatReset, FocusEvent.FOCUS_GAINED)) }
                 assertTrue(floatViewport.viewRect.contains(floatResetBounds))
+                layoutDock(floating, 610, 460)
+                fractionField.parent.doLayout()
+                assertEquals(fractionField.preferredSize.width, fractionField.width)
                 floatReset.doClick()
                 assertEquals("0x00000000", floatField(12).text)
                 assertEquals(0, fractionField.caretPosition)
@@ -603,11 +607,15 @@ class InstructionCounterPlatformTest {
                 }
             }
             withContext(Dispatchers.EDT) {
-                val wideCacheDock = layoutDock(cache, 610, 460)
                 val hitRate = UIUtil.findComponentsOfType(cache, JProgressBar::class.java).single()
                 val percent = UIUtil.findComponentsOfType(cache, JBLabel::class.java).single { it.text == "50%" }
-                assertTrue(percent.x + percent.width <= hitRate.x)
-                assertTrue(hitRate.width in 1..wideCacheDock.viewport.extentSize.width / 2)
+                for (width in listOf(280, 610)) {
+                    val dock = layoutDock(cache, width, 460)
+                    assertEquals(percent.preferredSize.width, percent.width)
+                    assertTrue(percent.x + percent.width <= hitRate.x)
+                    assertTrue(hitRate.width in 1..hitRate.preferredSize.width)
+                    assertTrue(hitRate.x + hitRate.width <= dock.viewport.extentSize.width)
+                }
                 val blockTable = UIUtil.findComponentsOfType(cache, JBTable::class.java).single()
                 val tag = blockTable.prepareRenderer(blockTable.getCellRenderer(0, 2), 0, 2)
                 assertTrue(tag.preferredSize.width <= blockTable.getCellRect(0, 2, false).width)

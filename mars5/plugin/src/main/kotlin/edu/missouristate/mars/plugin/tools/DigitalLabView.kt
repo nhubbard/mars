@@ -40,7 +40,7 @@ internal class DigitalLabView(project: Project) : Disposable {
         }
     }
 
-    val component = ScrollPaneFactory.createScrollPane(panel {
+    val component = ScrollPaneFactory.createScrollPane(marsToolPanel {
         marsExecutionRow(selector.component)
         row {
             cell(toggle)

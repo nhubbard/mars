@@ -33,7 +33,7 @@ internal fun xRayPanelContent(
             val controlWidth = Modifier.widthIn(max = 270.dp).fillMaxWidth()
             val controlSpacing = Arrangement.spacedBy(6.dp)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Column(controlWidth, verticalArrangement = controlSpacing) {
+                Column(Modifier.widthIn(max = 220.dp).fillMaxWidth(), verticalArrangement = controlSpacing) {
                     val executions = view.executions
                     val executionLabels = remember(executions) { executions.map(MarsToolRunContent::label) }
                     XRayChoice("counter.selector", executionLabels, executions.indexOf(view.execution),

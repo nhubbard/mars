@@ -30,6 +30,7 @@ import java.awt.event.FocusEvent
 import java.awt.event.KeyEvent
 import javax.swing.JButton
 import javax.swing.JComboBox
+import javax.swing.JLabel
 import javax.swing.JPanel
 import javax.swing.JScrollPane
 import javax.swing.JSpinner
@@ -173,6 +174,13 @@ class KeyboardDisplayPlatformTest {
                 assertTrue(body.width <= viewport.width) {
                     "Terminal content width ${body.width} exceeds viewport width ${viewport.width}"
                 }
+                val fieldLabels = UIUtil.findComponentsOfType(view.component, JLabel::class.java)
+                for (field in fields) {
+                    val label = fieldLabels.single { it.labelFor === field }
+                    assertTrue(label.y + label.height <= field.y)
+                    assertTrue(field.x + field.width <= viewport.width)
+                }
+                assertTrue(columns.x + columns.width <= rows.x)
                 val display = SwingUtilities.convertRectangle(editor.component.parent, editor.component.bounds, body)
                 assertTrue(viewport.viewRect.contains(display.x, display.y))
                 val resize = button("Resize and Reset")

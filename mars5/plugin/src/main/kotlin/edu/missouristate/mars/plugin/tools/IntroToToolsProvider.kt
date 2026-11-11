@@ -6,7 +6,6 @@ import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTextArea
 import com.intellij.ui.dsl.builder.Align
-import com.intellij.ui.dsl.builder.panel
 import com.intellij.util.ui.JBDimension
 import com.intellij.util.ui.launchOnShow
 import java.util.concurrent.atomic.AtomicLong
@@ -43,7 +42,7 @@ internal class IntroToToolsProvider : MarsToolProvider {
             }
             render()
         }
-        val component = panel {
+        val component = marsToolPanel {
             marsExecutionRow(selector)
             row { cell(steps) }
             row {

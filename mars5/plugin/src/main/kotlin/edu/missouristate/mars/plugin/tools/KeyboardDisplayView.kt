@@ -14,7 +14,8 @@ import com.intellij.ui.components.JBTextField
 import com.intellij.ui.dsl.builder.Align
 import com.intellij.ui.dsl.builder.AlignX
 import com.intellij.ui.dsl.builder.LabelPosition
-import com.intellij.ui.dsl.builder.panel
+import com.intellij.ui.dsl.builder.TopGap
+import com.intellij.ui.dsl.builder.columns
 import com.intellij.ui.dsl.listCellRenderer.textListCellRenderer
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.launchOnShow
@@ -66,7 +67,7 @@ internal class KeyboardDisplayView(project: Project) : Disposable {
     private var displayed: MmioTerminalDisplay? = null
     private var updatingOptions = false
 
-    private val controls = panel {
+    private val controls = marsToolPanel {
         marsExecutionRow(selector.component)
         row {
             cell(toggle)
@@ -79,13 +80,15 @@ internal class KeyboardDisplayView(project: Project) : Disposable {
             cell(keyboard).label(toolsMessages.getMessage("keyboardDisplay.input"), LabelPosition.TOP)
                 .align(AlignX.FILL).resizableColumn()
         }
-        row(toolsMessages.getMessage("keyboardDisplay.delay.mode")) { cell(delayMode) }
+        row(toolsMessages.getMessage("keyboardDisplay.delay.mode")) { cell(delayMode) }.topGap(TopGap.SMALL)
         row(toolsMessages.getMessage("keyboardDisplay.delay.instructions")) { cell(instructions) }
         row { cell(delayedOutput) }
         row {
-            columns = intTextField(columnRange).label(toolsMessages.getMessage("keyboardDisplay.columns")).component
-            rows = intTextField(rowRange).label(toolsMessages.getMessage("keyboardDisplay.rows")).component
-        }
+            columns = intTextField(columnRange).columns(4)
+                .label(toolsMessages.getMessage("keyboardDisplay.columns"), LabelPosition.TOP).component
+            rows = intTextField(rowRange).columns(4)
+                .label(toolsMessages.getMessage("keyboardDisplay.rows"), LabelPosition.TOP).component
+        }.topGap(TopGap.SMALL)
         row {
             resize = button(toolsMessages.getMessage("keyboardDisplay.resize")) { resizeDisplay() }.component
         }

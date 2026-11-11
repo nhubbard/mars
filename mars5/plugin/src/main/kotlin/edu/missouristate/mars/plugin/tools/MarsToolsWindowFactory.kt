@@ -11,6 +11,7 @@ import com.intellij.openapi.observable.util.whenFocusGained
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.ComboBox
+import com.intellij.openapi.ui.DialogPanel
 import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowFactory
 import com.intellij.ui.ScrollPaneFactory
@@ -104,6 +105,10 @@ internal class MarsToolWindowUnloadListener(private val toolWindow: ToolWindow) 
 
 internal val toolsMessages = DynamicBundle(MarsToolsWindowFactory::class.java, "messages.MarsBundle")
 
+internal fun marsToolPanel(init: Panel.() -> Unit): DialogPanel = panel(init).apply {
+    border = JBUI.Borders.empty(8, 10)
+}
+
 internal fun Panel.marsExecutionRow(selector: JComponent) {
     row {
         cell(selector).label(toolsMessages.getMessage("counter.selector"), LabelPosition.TOP)
@@ -165,7 +170,7 @@ internal fun marsToolExecutions(project: Project): List<MarsToolRunContent> =
 internal class MarsToolExecutionSelector(private val project: Project, private val selectionChanged: () -> Unit) {
     private val selector = ComboBox<MarsToolRunContent>().apply {
         renderer = textListCellRenderer(toolsMessages.getMessage("counter.empty"), MarsToolRunContent::label)
-        setMinimumAndPreferredWidth(JBUI.scale(240))
+        setMinimumAndPreferredWidth(JBUI.scale(220))
         isUsePreferredSizeAsMinimum = false
         minimumSize = JBUI.size(112, 0)
         addActionListener { selectionChanged() }
@@ -200,7 +205,7 @@ private class InstructionCountsView(
     } else emptyList()
     private val emptySnapshot = InstructionCountsSnapshot(false, List(categories.size) { 0L })
 
-    val component = panel {
+    val component = marsToolPanel {
         marsExecutionRow(selector.component)
         row {
             cell(toggle)

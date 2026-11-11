@@ -67,7 +67,7 @@ internal class FloatingPointView(private val project: Project) : Disposable {
                 .align(AlignX.FILL).resizableColumn()
         }
     }
-    private val controls = panel {
+    private val controls = marsToolPanel {
         marsExecutionRow(selector.component)
         row { cell(register).label(toolsMessages.getMessage("float.register"), LabelPosition.TOP) }
         row { access = text("", maxLineLength = floatingPointTextColumns).component }
@@ -77,7 +77,7 @@ internal class FloatingPointView(private val project: Project) : Disposable {
             cell(sign).label(toolsMessages.getMessage("float.sign"), LabelPosition.TOP)
             cell(exponent).label(toolsMessages.getMessage("float.exponent"), LabelPosition.TOP)
         }
-        row { cell(fractionControl).align(AlignX.FILL).resizableColumn() }
+        row { cell(fractionControl).resizableColumn() }
         row(toolsMessages.getMessage("float.classification")) { cell(classification) }
         row { label(toolsMessages.getMessage("float.interpretation")) }
         row { formula = text("", maxLineLength = floatingPointTextColumns).component }

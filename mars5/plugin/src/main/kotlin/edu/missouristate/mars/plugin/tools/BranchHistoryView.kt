@@ -12,7 +12,6 @@ import com.intellij.ui.dsl.builder.Align
 import com.intellij.ui.dsl.builder.AlignX
 import com.intellij.ui.dsl.builder.LabelPosition
 import com.intellij.ui.dsl.builder.TopGap
-import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.table.JBTable
 import com.intellij.util.ui.JBDimension
 import com.intellij.util.ui.launchOnShow
@@ -49,7 +48,7 @@ internal class BranchHistoryView(project: Project) : Disposable {
     private val logScroll = JBScrollPane(log).apply { minimumSize = JBDimension(0, 84) }
     private var previous: BranchHistoryTable.Snapshot? = null
 
-    val component = scrollableToolPanel(this, panel {
+    val component = scrollableToolPanel(this, marsToolPanel {
         marsExecutionRow(selector.component)
         row(toolsMessages.getMessage("branchHistory.size")) { cell(size) }
         row(toolsMessages.getMessage("branchHistory.bits")) { cell(history) }

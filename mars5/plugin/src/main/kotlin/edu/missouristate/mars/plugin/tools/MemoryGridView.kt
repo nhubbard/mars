@@ -12,7 +12,6 @@ import com.intellij.ui.components.JBLabel
 import com.intellij.ui.dsl.builder.Align
 import com.intellij.ui.dsl.builder.LabelPosition
 import com.intellij.ui.dsl.builder.TopGap
-import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.dsl.listCellRenderer.textListCellRenderer
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
@@ -71,7 +70,7 @@ internal class MemoryGridView(
     private var selected: MemoryGridDisplay? = null
     private val reference = if (mode == Mode.REFERENCES) ReferenceControls() else null
 
-    val component = ScrollPaneFactory.createScrollPane(panel {
+    val component = ScrollPaneFactory.createScrollPane(marsToolPanel {
         marsExecutionRow(selector.component)
         row { cell(base).label(toolsMessages.getMessage("bitmap.base"), LabelPosition.TOP) }
         row(toolsMessages.getMessage("bitmap.width")) { cell(width) }
