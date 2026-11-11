@@ -2566,13 +2566,26 @@ integration boundaries in the release build.
 | R01–R06, I01–I08 | `MarsRunPlatformTest`, `MarsSyscallDialogsPlatformTest`, `MarsMidiPlatformTest`, and core `SyscallContractTest` cover the run lifecycle, launch settings, console and file I/O, exit handling, and syscall contracts. Physical MIDI device behavior is a host check. |
 | D01–D12, V01–V07 | `MarsDebugPlatformTest` drives native XDebugger breakpoints, stepping, expressions, reverse execution, watchpoints, variables, and the debugger's memory, symbols, and disassembly views. `DebuggerCallStackTest` exercises frame and exception history. |
 | S01–S07, W03 | `MarsBuildPlatformTest`, `MarsRunPlatformTest`, `MarsDebugPlatformTest`, `MipsEditorPlatformTest`, and the three Venus preference import fixtures cover project defaults, run overrides, display settings, theme defaults, migration, and native Run/Debug controls. |
-| E11, W01–W02 | File and editing actions use IntelliJ's standard actions and keymaps. `MarsNewFilePlatformTest` verifies the MIPS-specific file creation path. Packaged keyboard, clipboard, and print checks are open. |
+| E11, W01–W02 | File and editing actions use IntelliJ's standard actions and keymaps. `MarsNewFilePlatformTest` verifies the MIPS-specific file creation path. The packaged Linux replay below verifies clipboard actions and saving. |
 | H01 | `MarsReferencePlatformTest` checks the offline catalog, inert archived help, packaged notices, search, and About. `MipsDocumentationPlatformTest` exercises Quick Documentation in the editor and completion popup. |
 
 The remaining release checks include the native host matrix, packaged UI
 checks for keyboard, hover, scaling, and high contrast, and the final
 source/resource inventory review. The packaged macOS install and archive
 replacement are recorded below.
+
+### Packaged Bitmap Display and file actions
+
+The Ubuntu ARM64 replay passed all 2,015 tests and both coverage gates.
+It chose High Contrast in IntelliJ's theme switcher, ran the bitmap sample,
+and moved the selected pixel with Right and Down. For all three positions,
+the visible details matched the accessible description, including the
+selected pixel's address and RGB value. The screenshot and saved theme ID
+confirm the theme. The same replay copied and pasted an instruction in
+an assembly editor, cut the original instruction, and saved the file.
+The saved text contained the moved instruction with the formatter's
+indentation. The screenshot, log, and saved source are under
+`mars5/.gradle/release-host-checks/linux-arm64-high-contrast`.
 
 ## IntelliJ plugin release preflight
 
