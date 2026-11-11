@@ -88,7 +88,8 @@ internal class MarsExpressionEvaluator(
         val leaf = file.findElementAt(offset) ?: return null
         val operands = expandedOperandsAt(file, document, leaf.textOffset)
         if (operands.isNotEmpty()) {
-            val expression = operands.singleOrNull()?.let(::expandedExpression) ?: return null
+            val expression = operands.groupBy { it.written() }.values
+                .map { it.singleOrNull()?.let(::expandedExpression) }.distinct().singleOrNull() ?: return null
             return ExpressionInfo(leaf.textRange, expression, leaf.text)
         }
         val parent = leaf.parent
@@ -106,7 +107,7 @@ internal class MarsExpressionEvaluator(
         val line = document.getLineNumber(offset)
         val location = sources.location(file.viewProvider.virtualFile, line) ?: return emptyList()
         val site = SourceToken(location, offset - document.getLineStartOffset(line) + 1)
-        return expandedOperands.filter { it.written() == site || it.argument() == site }
+        return expandedOperands.filter { it.written() == site || site in it.arguments() }
     }
 
     private fun expandedExpression(operand: SourceOperand): String? {

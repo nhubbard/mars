@@ -373,6 +373,9 @@ public class Tokenizer {
       if (origin != null) {
         token.setDiagnosticOrigin(origin.diagnostic());
         token.setExpansionSource(origin.written());
+        if (origin.diagnostic() != origin.written()) {
+          token.setArgumentOrigin(origin.diagnostic());
+        }
         if (token.equivalenceSource() == null) {
           token.setEquivalenceSource(origin.diagnostic().equivalenceSource());
         }

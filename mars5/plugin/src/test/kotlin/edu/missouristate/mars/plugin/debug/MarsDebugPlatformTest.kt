@@ -1390,10 +1390,25 @@ class MarsDebugPlatformTest {
                 mtc0 ${'$'}t0, EPC
                 lw ${'$'}t3, ADDRESS
                 lw ${'$'}t3, 0 LP ${'$'}sp)
+                forward(${'$'}t1)
+                mixed(${'$'}14)
                 nop
             """.trimIndent()).virtualFile
-            val library = fixture.addFileToProject("setup.inc", ".macro set (%reg, %value)\nli %reg, %value\n.end_macro").virtualFile
-            addBreakpoint(library, 1)
+            val library = fixture.addFileToProject("setup.inc", """
+                .macro set (%reg, %value)
+                li %reg, %value
+                .end_macro
+                .macro repeat (%item)
+                addu %item, %item, ${'$'}zero
+                .end_macro
+                .macro forward (%passed)
+                repeat(%passed)
+                .end_macro
+                .macro mixed (%bank)
+                mtc0 %bank, %bank
+                .end_macro
+            """.trimIndent()).virtualFile
+            for (line in listOf(1, 4, 10)) addBreakpoint(library, line)
             for (line in 14..17) addBreakpoint(source, line)
             source to library
         }
@@ -1442,6 +1457,15 @@ class MarsDebugPlatformTest {
             withContext(Dispatchers.EDT) { debug.session.resume() }
             debug.assertPausedAt(source, 17)
             hint(source, "LP", null)
+            withContext(Dispatchers.EDT) { debug.session.resume() }
+            debug.assertPausedAt(library, 4)
+            hint(library, "%item", "0x12345678")
+            hint(library, "%passed", "0x12345678")
+            hint(source, "\$t1", "0x12345678")
+            withContext(Dispatchers.EDT) { debug.session.resume() }
+            debug.assertPausedAt(library, 10)
+            hint(library, "%bank", "0xfffffff9")
+            hint(source, "\$14", null)
             withContext(Dispatchers.EDT) { debug.session.resume() }
             assertEquals(0, debug.exit.await())
         }

@@ -290,8 +290,8 @@ final class Parser {
     for (int i = 1; i < tokens.size(); i++) {
       var token = tokens.get(i);
       var written = token.writtenOrigin();
-      boolean fromArgument = token.getDiagnosticOrigin() != written.getDiagnosticOrigin();
-      if (!fromArgument && token.equivalenceSource() == null && token.getValue().equals(written.getValue())) {
+      var arguments = token.argumentSites();
+      if (arguments.isEmpty() && token.equivalenceSource() == null && token.getValue().equals(written.getValue())) {
         continue;
       }
       if (operands == null) {
@@ -299,7 +299,7 @@ final class Parser {
       }
       var site = new SourceToken(location, written.getOriginalStartPos());
       boolean systemRegister = i == 2 && (instruction instanceof InstrMfc0 || instruction instanceof InstrMtc0);
-      operands.add(new SourceOperand(site, fromArgument ? token.diagnosticSite() : null,
+      operands.add(new SourceOperand(site, arguments,
           token.getValue(), token.getType(), systemRegister));
     }
     return operands == null ? List.of() : operands;

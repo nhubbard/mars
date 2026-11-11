@@ -4,6 +4,8 @@ import edu.missouristate.mars.*;
 import edu.missouristate.mars.api.AssemblySymbolMap.SourceToken;
 import edu.missouristate.mars.api.InstructionSourceMap.Location;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 
 /*
 Copyright (c) 2003-2008,  Pete Sanderson and Kenneth Vollmar
@@ -139,6 +141,7 @@ public class Token {
     copy.originalStartPos = originalStartPos;
     copy.diagnosticOrigin = diagnosticOrigin;
     copy.expansionSource = expansionSource;
+    copy.argumentOrigin = argumentOrigin;
     copy.equivalenceSource = equivalenceSource;
     return copy;
   }
@@ -212,10 +215,12 @@ public class Token {
   }
 
   SourceToken diagnosticSite() {
-    var written = getDiagnosticOrigin();
-    var location = new Location(
-        Path.of(written.getOriginalProgram().getFilename()), written.getOriginalSourceLine());
-    return new SourceToken(location, written.getOriginalStartPos());
+    return getDiagnosticOrigin().physicalSite();
+  }
+
+  private SourceToken physicalSite() {
+    var location = new Location(Path.of(getOriginalProgram().getFilename()), getOriginalSourceLine());
+    return new SourceToken(location, getOriginalStartPos());
   }
 
   void setDiagnosticOrigin(Token origin) {
@@ -225,6 +230,7 @@ public class Token {
   }
 
   private Token expansionSource;
+  private Token argumentOrigin;
 
   Token writtenOrigin() {
     return expansionSource == null ? this : expansionSource;
@@ -232,6 +238,21 @@ public class Token {
 
   void setExpansionSource(Token source) {
     expansionSource = source;
+  }
+
+  void setArgumentOrigin(Token argument) {
+    argumentOrigin = argument;
+  }
+
+  List<SourceToken> argumentSites() {
+    if (argumentOrigin == null) {
+      return List.of();
+    }
+    var sites = new ArrayList<SourceToken>();
+    for (Token argument = argumentOrigin; argument != null; argument = argument.argumentOrigin) {
+      sites.add(argument.writtenOrigin().physicalSite());
+    }
+    return sites;
   }
 
   SourceToken equivalenceSource() {

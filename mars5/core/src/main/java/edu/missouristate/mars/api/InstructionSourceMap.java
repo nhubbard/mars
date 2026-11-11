@@ -18,9 +18,13 @@ public record InstructionSourceMap(
 
   public static final InstructionSourceMap EMPTY = new InstructionSourceMap(Map.of(), Map.of());
 
-  /** An expanded operand and the written token and optional macro argument that supplied it. */
+  /** An expanded operand, its written token, and the macro arguments from inner to outer call. */
   public record SourceOperand(
-      SourceToken written, SourceToken argument, String value, TokenTypes type, boolean coprocessor0) {}
+      SourceToken written, List<SourceToken> arguments, String value, TokenTypes type, boolean coprocessor0) {
+    public SourceOperand {
+      arguments = List.copyOf(arguments);
+    }
+  }
 
   public InstructionSourceMap(Map<Integer, Origin> origins, Map<Location, List<Integer>> breakpoints) {
     this(origins, breakpoints, Set.of());

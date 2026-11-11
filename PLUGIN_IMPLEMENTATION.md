@@ -1750,14 +1750,19 @@ value. The Coprocessor 0 operand of `mfc0` or `mtc0` reads that bank. A source
 label named `pc` displays its assembled address. Quick Evaluate uses committed
 editor PSI and leaves comments, string literals, and unresolved names alone.
 For the paused instruction, it also uses the assembler's recorded operands
-to show single values supplied by `.eqv` or a macro argument. A macro formal
-in an included file uses the active invocation, and the written argument at
-that call site shows the same value. These bindings come from the loaded
-image and require matching source text. A substitution that supplies multiple
-operand tokens has no automatic hint.
+to show values supplied by `.eqv` or a macro argument. A macro formal in an
+included file uses the active invocation, and the written arguments at each
+level of a nested call show the same value. These bindings come from the
+loaded image and require matching source text. Repeated uses of one argument
+show a hint when they agree on a single expression. Quick Evaluate suppresses
+the hint when a source token expands into an operand sequence or binds to
+different values, such as a CPU register and a Coprocessor 0 register.
 The packaged macOS replay paused in a macro and showed `0x00000007` for its
 `.eqv` argument `TARGET` at the call site. The log and screenshots are under
 `mars5/.gradle/release-host-checks/expanded-quick-evaluate`.
+The nested-macro replay showed the same value on the forwarded argument in
+the outer macro body and on the repeated argument at the top-level call.
+Its evidence is under `mars5/.gradle/release-host-checks/nested-quick-evaluate`.
 
 The packaged macOS replay invoked the editor action on `$0x8` at a breakpoint
 and verified the native popup displayed `0x00000007`. The log and screenshots
