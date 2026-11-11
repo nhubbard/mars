@@ -1,5 +1,6 @@
 package edu.missouristate.mars.plugin.language
 
+import com.intellij.codeInsight.TargetElementUtil
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.command.WriteCommandAction
@@ -42,6 +43,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -497,6 +499,12 @@ class MipsSymbolRenamePlatformTest {
         IndexingTestUtil.suspendUntilIndexesAreReady(project)
         withContext(Dispatchers.EDT) {
             val target = externals(file).single()
+            val flags = TargetElementUtil.REFERENCED_ELEMENT_ACCEPTED or TargetElementUtil.ELEMENT_NAME_ACCEPTED
+            val targets = target.nameIdentifier!!.textRange.let { it.startOffset until it.endOffset }
+                .map { TargetElementUtil.getInstance().findTargetElement(fixture.editor, flags, it) }
+            assertEquals(List(3) { target }, targets)
+            val sizeOffset = entry.indexOf(", 4") + 2
+            assertNull(TargetElementUtil.getInstance().findTargetElement(fixture.editor, flags, sizeOffset))
             fixture.highlightAfterMipsRefresh()
             val found = ReferencesSearch.search(target, GlobalSearchScope.projectScope(project)).findAll()
             assertEquals(setOf(plain.virtualFile, include.virtualFile), found.map { it.element.containingFile.virtualFile }.toSet())
@@ -509,7 +517,7 @@ class MipsSymbolRenamePlatformTest {
                 source.text.substring(range.startOffset, range.endOffset)
             })
             assertEquals("", conflicts(target, "signed_slot", references))
-            RenameProcessor(project, target, "signed_slot", false, false).run()
+            RenameProcessor(project, checkNotNull(targets.last()), "signed_slot", false, false).run()
             assertEquals(entry.replace(".extern -42", ".extern signed_slot"), file.text)
             assertEquals(".extern signed_slot, 8\n", plain.text)
             assertEquals(".extern signed_slot, 16\n", include.text)

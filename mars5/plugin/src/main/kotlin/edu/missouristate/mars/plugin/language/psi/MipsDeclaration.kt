@@ -50,10 +50,14 @@ internal class MipsDeclaration(node: ASTNode, val kind: SymbolKind) : ASTWrapper
             MipsTypes.psi("WORD"), MipsTypes.psi("MNEMONIC"), MipsTypes.psi("DIRECTIVE"),
             MipsTypes.psi("DOLLAR_WORD"), MipsTypes.psi("REGISTER"), MipsTypes.psi("SET"),
         )
+
+        fun enclosingSignedName(element: PsiElement): PsiElement? =
+            element.parent.takeIf { it.elementType == EXTERNAL_SIGNED_NAME }
+
         // An indexed offset may outlive the PSI it described. Verify the current identifier.
         fun findAt(file: PsiFile?, offset: Int, name: String): MipsDeclaration? {
             val leaf = file?.findElementAt(offset) ?: return null
-            val identifier = if (leaf.parent.elementType == EXTERNAL_SIGNED_NAME) leaf.parent else leaf
+            val identifier = enclosingSignedName(leaf) ?: leaf
             val declaration = identifier.parent as? MipsDeclaration
             return declaration?.takeIf { it.nameIdentifier === identifier && it.textOffset == offset && it.name == name }
         }

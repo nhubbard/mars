@@ -101,6 +101,7 @@
     <breadcrumbsInfoProvider implementation="edu.missouristate.mars.plugin.language.MipsBreadcrumbsProvider"/>
     <lang.foldingBuilder language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsFoldingBuilder"/>
     <lang.findUsagesProvider language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsFindUsagesProvider"/>
+    <targetElementEvaluator language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsTargetElementEvaluator"/>
     <referencesSearch implementation="edu.missouristate.mars.plugin.language.MipsAssembledReferencesSearcher"/>
     <referencesSearch implementation="edu.missouristate.mars.plugin.language.MipsMacroFormalReferencesSearcher"/>
     <renamePsiElementProcessor implementation="edu.missouristate.mars.plugin.language.MipsMacroFormalRenameProcessor"/>
