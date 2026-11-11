@@ -2553,6 +2553,22 @@ runner uploads its Jupiter results, plugin coverage report, and Plugin
 Verifier report. Packaged UI interaction and archive replacement are
 separate release checks.
 
+The local Ubuntu 24.04 ARM64 run at `aee75d21` used Temurin 25 and passed all
+2,014 Jupiter tests (684 plugin tests), the authored and generated-parser
+coverage gates, and the standalone CLI help smoke check. Plugin Verifier
+reported the ZIP compatible with IntelliJ IDEA `IU-263.7307.200` and found
+no internal API usage. The test and verifier reports are under
+`mars5/.gradle/release-host-checks/linux-arm64/qualified-results`.
+This run exercised IntelliJ's platform test fixtures. The Linux packaged
+IDE replay and the GitHub Actions host matrix are tracked separately.
+
+The clean macOS launch at `d08048ef` also passed all 2,014 tests and both
+coverage gates. The replay opened the 2,021-file project with the packaged
+ZIP installed and verified completion, Go to Declaration, the Symbols
+tab in Search Everywhere, a source breakpoint, Step Into, and Step Over.
+Both navigation commands opened the expected included file. The replay log
+and trace are under `mars5/.gradle/indexing-baseline/symbol-assertions`.
+
 Run the same checks as CI from `mars5`.
 
 ```sh
