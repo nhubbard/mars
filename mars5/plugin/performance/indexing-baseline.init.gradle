@@ -1,0 +1,42 @@
+import groovy.xml.MarkupBuilder
+
+gradle.beforeProject { project ->
+    if (project.path == ':plugin') {
+        project.tasks.matching { it.name == 'runIde' }.configureEach {
+            def root = project.rootProject.file('.gradle/indexing-baseline')
+            def scenario = new File(root, 'indexing.ijperf')
+            def completion = new File(root, 'completion')
+            jvmArgs "-Dtestscript.filename=${scenario}"
+            jvmArgs "-Dcompletion.command.report.dir=${completion}"
+            jvmArgs '-Didea.diagnostic.opentelemetry.file=indexing-baseline-trace.json'
+
+            def archive = project.tasks.named('buildPlugin')
+            dependsOn archive
+            doFirst {
+                if (!scenario.isFile()) {
+                    throw new GradleException('Generate the indexing project with prepare_indexing_baseline.py first.')
+                }
+                project.delete(completion)
+                def plugins = sandboxPluginsDirectory.get().asFile
+                project.delete(new File(plugins, archive.get().archiveBaseName.get()))
+                project.copy {
+                    from(project.zipTree(archive.get().archiveFile.get().asFile))
+                    into(plugins)
+                }
+                def options = sandboxConfigDirectory.dir('options').get().asFile
+                options.mkdirs()
+                new File(options, 'trusted-paths.xml').withWriter('UTF-8') { writer ->
+                    new MarkupBuilder(writer).application {
+                        component(name: 'Trusted.Paths') {
+                            option(name: 'TRUSTED_PROJECT_PATHS') {
+                                map {
+                                    entry(key: new File(root, 'indexing-project').path, value: 'true')
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

@@ -2445,6 +2445,50 @@ Cross-host and high-contrast presentation remain release qualification work.
 The packaged macOS install, archive replacement, and binary verifier evidence
 are recorded below.
 
+## IntelliJ indexing and completion baseline
+
+The indexing scenario generates one assembly root, 20 include groups, and
+2,000 source parts. Each part defines an equivalence and a macro, then emits
+an instruction through the macro under its own label. This exercises IntelliJ's
+file indexes and MARS's include-ordered source analysis together.
+
+From `mars5`, generate the project and open the packaged plugin in a clean
+IntelliJ instance.
+
+```sh
+python3 plugin/performance/prepare_indexing_baseline.py
+./gradlew -I plugin/performance/indexing-baseline.init.gradle clean cleanSandbox runIde \
+  --args="$PWD/.gradle/indexing-baseline/indexing-project"
+```
+
+The playback waits for smart mode, opens the root source, waits for editor
+analysis, and invokes basic completion on the branch operand. It checks that
+the completion list includes `bench_target_1999`, defined in the last included
+source. The completion report is written under `.gradle/indexing-baseline/completion`.
+The run's IDE log directory contains the native `indexing-diagnostic` reports
+and `indexing-baseline-trace.json`.
+
+The first clean run used IntelliJ IDEA `IU-263.7307.200` with a 2 GiB IDE
+heap on an Apple M5 Pro (18 cores, 64 GB RAM, macOS 27.2). IntelliJ reported
+all 2,021 MIPS files (12,022 lines, 373,850 bytes) indexed. The standalone
+CLI also assembled the same entry and its include graph successfully.
+
+| Measurement | Time |
+| --- | ---: |
+| Project-open file scan | 1.055 s |
+| Indexing pass | 1.563 s |
+| Sum of the two indexing report durations | 2.617 s |
+| First code analysis for the entry file | 1.516 s |
+| Completion to first item shown | 232 ms |
+| Completion to the full 11-item result | 289 ms |
+
+The scan and indexing numbers use IntelliJ's reported wall times with pauses.
+The analysis and completion numbers come from the `firstCodeAnalysis` and
+`completion` spans. Completion ran after editor analysis. These are
+single-run measurements for this corpus and host. The smart-mode playback
+settling delay and application startup are outside the scan and indexing
+durations.
+
 ## IntelliJ plugin release preflight
 
 Run the same checks as CI from `mars5`.
