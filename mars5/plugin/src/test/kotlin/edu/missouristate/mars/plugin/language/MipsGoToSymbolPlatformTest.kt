@@ -256,14 +256,14 @@ class MipsGoToSymbolPlatformTest {
         readAction {
             val names = mutableSetOf<String>()
             contributor.processNames(names::add, scope, null)
-            assertTrue(names.containsAll(setOf("renamed", "generated", "literal")))
-            for ((name, origin) in listOf("renamed" to "STORAGE", "generated" to "RESERVE")) {
+            assertTrue(names.containsAll(setOf("renamed", "generated", "literal", "\$t0")))
+            for ((name, origin) in listOf("renamed" to "STORAGE", "generated" to "RESERVE", "\$t0" to "REGISTER")) {
                 val result = assertInstanceOf(OpenFileDescriptor::class.java, items(name, scope).single())
                 assertEquals(body.virtualFile, result.file)
                 assertEquals(source.indexOf(origin), result.offset)
             }
             assertEquals(SymbolKind.EXTERNAL, (items("literal", scope).single() as MipsDeclaration).kind)
-            for (missing in listOf("STORAGE", "REGISTER", "obsolete", "\$t0", "\$slot", "\$broken")) {
+            for (missing in listOf("STORAGE", "REGISTER", "obsolete", "\$slot", "\$broken")) {
                 assertTrue(items(missing, scope).isEmpty(), missing)
             }
         }

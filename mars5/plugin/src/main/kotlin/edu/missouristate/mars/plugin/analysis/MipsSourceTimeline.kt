@@ -155,7 +155,7 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
                 if (event.site !is MipsDeclaration || event.offset in cursor.locations.replacedExternals) {
                     cursor.locations.expandedExternals[event.site] = event
                 }
-                if (macro == null) externalStorage.putIfAbsent(event.name, event.site)
+                if (macro == null && event.canUseAsLabel) externalStorage.putIfAbsent(event.name, event.site)
             }
             is MipsSourceEvent.UnterminatedInclude -> firstIncompleteInclude = minOf(firstIncompleteInclude, index)
             is MipsSourceEvent.Include -> {

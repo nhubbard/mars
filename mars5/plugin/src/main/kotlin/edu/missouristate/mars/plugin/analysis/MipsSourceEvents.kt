@@ -174,7 +174,7 @@ internal sealed interface MipsSourceEvent {
 
     data class BoundExternal(val replaced: Boolean, val reservation: External?)
 
-    data class External(val site: PsiElement, val name: String) : Effective {
+    data class External(val site: PsiElement, val name: String, val canUseAsLabel: Boolean) : Effective {
         override val offset = site.textOffset
     }
 }
@@ -353,7 +353,6 @@ private fun externalReservation(site: PsiElement, tokens: TokenList, operation: 
     val size = tokens[operation + 2]
     if (!TokenTypes.isIntegerTokenType(size.type) || Binary.stringToInt(size.value) < 0) return null
     val name = tokens[operation + 1]
-    if (name.type != TokenTypes.IDENTIFIER && name.type != TokenTypes.OPERATOR) return null
     if (inMacro && Macro.tokenIsMacroParameter(name.value, true)) return null
-    return MipsSourceEvent.External(site, name.value)
+    return MipsSourceEvent.External(site, name.value, name.type == TokenTypes.IDENTIFIER || name.type == TokenTypes.OPERATOR)
 }

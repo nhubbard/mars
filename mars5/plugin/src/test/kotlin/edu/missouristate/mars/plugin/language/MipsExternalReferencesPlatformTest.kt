@@ -217,6 +217,40 @@ class MipsExternalReferencesPlatformTest {
     }
 
     @Test
+    fun `equivalence expansions expose external names with the assembler spelling`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val source = """
+                .eqv PUNCT )
+                .eqv CHARACTER 'A'
+                .eqv QUOTED "slot name"
+                .eqv RESERVE .extern
+                .extern PUNCT 4
+                RESERVE CHARACTER 4
+                .extern QUOTED 4
+                .extern ordinary 4
+                .text
+                nop
+            """.trimIndent()
+            val names = listOf(")", "65", "\"slot name\"", "ordinary")
+            val entry = directory.resolve("expanded-extern.mars").also { it.writeText(source) }
+            val context = project.get().service<MarsSessionService>().context
+            context.assemble(listOf(entry), null, true, false)
+            val base = context.memory.externBaseAddress
+            assertEquals(names.indices.map { base + 4 * it }, names.map(context.symbolTable::getAddress))
+
+            configure(source)
+            readAction {
+                val file = fixture.file as MipsFile
+                val timeline = project.get().service<MarsAnalysisService>().editorTimeline(file)
+                val expansions = timeline.expandedExternalsIn(file).values.toList()
+                assertEquals(names.dropLast(1), expansions.map { it.name })
+                assertEquals(listOf("PUNCT 4", "RESERVE CHARACTER", "QUOTED 4").map(source::indexOf),
+                    expansions.map { it.offset })
+                assertEquals(setOf("ordinary"), timeline.externalStorage.keys)
+            }
+        }
+
+    @Test
     fun `completion includes only valid external aliases outside macro bodies`() = timeoutRunBlocking<Unit> {
         configure("""
             .eqv RESERVE .extern

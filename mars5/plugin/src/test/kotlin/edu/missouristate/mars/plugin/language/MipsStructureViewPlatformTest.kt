@@ -253,19 +253,17 @@ class MipsStructureViewPlatformTest {
             val model = builder.createStructureViewModel(fixture.editor)
             try {
                 val nodes = model.root.children.map { it as StructureViewTreeElement }
-                assertEquals(listOf("foreign", "renamed", "generated", "literal", "emit"), nodes.map(::name))
+                assertEquals(listOf("foreign", "renamed", "generated", "literal", "\$t0", "emit"), nodes.map(::name))
                 assertEquals("local", nodes.last().children.single().presentation.presentableText)
-                for ((node, origin) in listOf(nodes[1] to "STORAGE", nodes[2] to "RESERVE generated", nodes[3] to "literal")) {
+                for ((node, origin) in nodes.subList(1, 5).zip(listOf("STORAGE", "RESERVE generated", "literal", "REGISTER"))) {
                     assertNotNull(node.presentation.getIcon(false))
                     assertTrue(node.canNavigateToSource())
                     node.navigate(true)
                     assertEquals(source.indexOf(origin), fixture.editor.caretModel.offset)
                     assertSame(node.value, model.currentEditorElement)
                 }
-                for (hidden in listOf("REGISTER", "obsolete")) {
-                    fixture.editor.caretModel.moveToOffset(source.indexOf(hidden))
-                    assertNull(model.currentEditorElement)
-                }
+                fixture.editor.caretModel.moveToOffset(source.indexOf("obsolete"))
+                assertNull(model.currentEditorElement)
             } finally {
                 Disposer.dispose(model)
             }
