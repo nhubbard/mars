@@ -3124,6 +3124,17 @@ debugger, MMIO terminal, MarsBot, and Scavenger Hunt samples as well as the
 instruction lab and PNG decoder. From the repository root, the archive
 command is `git archive -o <archive-path> HEAD mars5 examples`.
 
+The Ubuntu 24.04 ARM64 build at `97c82076` passed 2,048 Jupiter tests,
+including 716 plugin tests and both plugin coverage gates. A clean launch
+of the packaged ZIP opened the PNG decoder's `.mars` and `.inc` files with
+the MARS icon and matched all 262,144 Bitmap Display cells against ImageIO.
+Plugin Verifier reported compatibility with `IU-263.7307.200` and zero
+internal API findings. Standalone CLI help, benchmark compilation, and all
+six smoke tests passed, including execution of all 543 catalog forms.
+The bundled Air plugin logged a credential-store error under Xvfb, and
+the IDE replay completed. The reports, screenshot, and ZIP checksum are
+under `mars5/.gradle/release-host-checks/linux-arm64-shared-labels`.
+
 The Apple Silicon macOS build at `b5cef8f0` passed 2,043 Jupiter tests,
 including 712 plugin tests and both plugin coverage gates. The build and
 plugin structure and configuration checks passed. Plugin Verifier reused
