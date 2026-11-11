@@ -1467,9 +1467,26 @@ Test sources and generated build output are excluded from this production invent
 | --- | --- |
 | [kotlin/edu/missouristate/mars/plugin/MarsSessionService.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/MarsSessionService.kt) | C01 |
 
+### Engine and launcher files added during Phase 3
+
+| Source | Mapping ID |
+| --- | --- |
+| [AssembledInstruction.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/api/AssembledInstruction.java) | C03, D01 |
+| [AssemblySourceSnapshot.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/api/AssemblySourceSnapshot.java) | B01, B04 |
+| [AssemblySymbolMap.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/api/AssemblySymbolMap.java) | C03, V06 |
+| [InstructionSourceMap.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/api/InstructionSourceMap.java) | C03, D01, D02 |
+| [AssemblySymbolUses.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/assembler/AssemblySymbolUses.java) | C03, E07, E08 |
+| [AssemblyImage.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/core/AssemblyImage.java) | B04, R05 |
+| [MemoryDumpSnapshot.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/mips/dump/MemoryDumpSnapshot.java) | B05 |
+| [MemoryAddressRange.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/mips/hardware/MemoryAddressRange.java) | B05, C09, D12 |
+| [CliMachineReport.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/cli/src/main/java/edu/missouristate/mars/cli/CliMachineReport.java) | B06 |
+| [CliMemoryDump.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/cli/src/main/java/edu/missouristate/mars/cli/CliMemoryDump.java) | B05, B06 |
+| [DatapathDiagram.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/datapath/src/main/java/edu/missouristate/mars/datapath/DatapathDiagram.java) | T12 |
+
 ## 15. Resource inventory
 
-All 89 packaged resources have an owner. Instruction catalogs and defaults remain core inputs.
+The baseline inventory and the resources added during Phase 3 have an owner.
+Instruction catalogs and defaults remain core inputs.
 Help, licenses and diagrams move to explicit plugin resources as needed; no desktop jar dependency is permitted.
 Images are implementation assets, not separate parity features. Replacing an icon does not retire its action.
 No resource is discarded without checking its consumers and preserving the relevant content or capability.
@@ -1565,6 +1582,24 @@ No resource is discarded without checking its consumers and preserving the relev
 | [shared/datapath/images/register.png](/Users/nhubbard/IdeaProjects/mars-original/mars5/shared/datapath/images/register.png) | T12: preserve datapath content in Kotlin tool |
 | [RegisterDatapath.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/datapath/src/main/java/edu/missouristate/mars/datapath/RegisterDatapath.java) | T12 compiled register diagram |
 | [plugin/META-INF/plugin.xml](/Users/nhubbard/IdeaProjects/mars-original/mars5/plugin/src/main/resources/META-INF/plugin.xml) | C01: extend native registrations |
+
+### IntelliJ resources added during Phase 3
+
+| Resource | Mapping ID | Role |
+| --- | --- | --- |
+| [META-INF/mars-java.xml](/Users/nhubbard/IdeaProjects/mars-original/mars5/plugin/src/main/resources/META-INF/mars-java.xml) | B08 | Register the optional Java compiler bridge |
+| [META-INF/pluginIcon.svg](/Users/nhubbard/IdeaProjects/mars-original/mars5/plugin/src/main/resources/META-INF/pluginIcon.svg) | H01 | Identify the packaged plugin in IntelliJ |
+| [colors/MipsDarcula.xml](/Users/nhubbard/IdeaProjects/mars-original/mars5/plugin/src/main/resources/colors/MipsDarcula.xml) | S06 | Supply the dark MIPS syntax palette |
+| [colors/MipsDefault.xml](/Users/nhubbard/IdeaProjects/mars-original/mars5/plugin/src/main/resources/colors/MipsDefault.xml) | S06 | Supply the light MIPS syntax palette |
+| [fileTemplates/includes/MIPS Starter.asm.ft](</Users/nhubbard/IdeaProjects/mars-original/mars5/plugin/src/main/resources/fileTemplates/includes/MIPS Starter.asm.ft>) | B07, W01 | Share the assembly starter template |
+| [fileTemplates/internal/MIPS Assembly.asm.ft](</Users/nhubbard/IdeaProjects/mars-original/mars5/plugin/src/main/resources/fileTemplates/internal/MIPS Assembly.asm.ft>) | B07, W01 | Create a `.asm` source |
+| [fileTemplates/internal/MIPS Source.s.ft](</Users/nhubbard/IdeaProjects/mars-original/mars5/plugin/src/main/resources/fileTemplates/internal/MIPS Source.s.ft>) | B07, W01 | Create a `.s` source |
+| [inspectionDescriptions/MipsMacroArity.html](/Users/nhubbard/IdeaProjects/mars-original/mars5/plugin/src/main/resources/inspectionDescriptions/MipsMacroArity.html) | E05 | Describe the macro arity inspection |
+| [inspectionDescriptions/MipsMacroParameter.html](/Users/nhubbard/IdeaProjects/mars-original/mars5/plugin/src/main/resources/inspectionDescriptions/MipsMacroParameter.html) | E05 | Describe the macro parameter inspection |
+| [liveTemplates/MarsMips.xml](/Users/nhubbard/IdeaProjects/mars-original/mars5/plugin/src/main/resources/liveTemplates/MarsMips.xml) | E09 | Register native MIPS live templates |
+| [messages/MarsBundle.properties](/Users/nhubbard/IdeaProjects/mars-original/mars5/plugin/src/main/resources/messages/MarsBundle.properties) | V08, H01 | Supply plugin UI strings |
+| [messages/MarsReference.properties](/Users/nhubbard/IdeaProjects/mars-original/mars5/plugin/src/main/resources/messages/MarsReference.properties) | H01 | Supply offline reference topics |
+| [messages/MarsSyscalls.properties](/Users/nhubbard/IdeaProjects/mars-original/mars5/plugin/src/main/resources/messages/MarsSyscalls.properties) | E06, H01 | Supply syscall guidance shared by editor and reference |
 
 [ParserDefinition]: https://github.com/JetBrains/intellij-community/blob/c91871ae2864649d952825cff72569e3db0e7ac6/platform/core-api/src/com/intellij/lang/ParserDefinition.java#L20
 [SyntaxHighlighterFactory]: https://github.com/JetBrains/intellij-community/blob/c91871ae2864649d952825cff72569e3db0e7ac6/platform/editor-ui-api/src/com/intellij/openapi/fileTypes/SyntaxHighlighterFactory.java#L18
