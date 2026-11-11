@@ -1681,6 +1681,14 @@ the decoded floating-point value, and return `0x00000001` or `0x00000000`.
 Bitwise operators require integer operands and return a 32-bit word. Shifts use
 the low five bits of the count, as MIPS variable shifts do. The `>>` operator
 preserves the sign bit and `>>>` fills from the left with zeros.
+The evaluator accepts a contiguous signed assembler word such as
+`-0x080000000` even when its zero-padded unsigned magnitude would be
+invalid on its own. Ordinary unary operations still apply to values that
+can be evaluated independently, so `-0xffffffff` evaluates to `0x00000001`.
+The debugger fixture also covers overflow, a separated sign, and a grouped
+magnitude. In the packaged macOS IDE, the debugger stopped after executing
+`li $t0, -0x080000000`, and the native Evaluate dialog displayed `0x80000000`
+for that expression.
 
 Scalar evaluation operates on the paused frame's snapshot. Explicit `byte(address)`,
 `half(address)`, and `word(address)` reads run on the simulator worker that owns the

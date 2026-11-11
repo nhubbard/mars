@@ -118,12 +118,12 @@ internal class MarsExpressionEvaluator(
         groupType -> evaluateNode(node.getChildren(expressionParts).single())
         unaryType -> {
             val (operator, operand) = node.getChildren(expressionParts)
-            evaluateNode(operand)?.let { value ->
-                when (operator.elementType) {
-                    minusType -> value.map(Scalar::negated)
-                    bitNotType -> value.map { (it as? Word)?.let { word -> Word(word.bits.inv()) } }
-                    else -> value
-                }
+            val value = evaluateNode(operand)
+            when {
+                value == null -> signedWord(operator, operand)
+                operator.elementType == minusType -> value.map(Scalar::negated)
+                operator.elementType == bitNotType -> value.map { (it as? Word)?.let { word -> Word(word.bits.inv()) } }
+                else -> value
             }
         }
         in binaryTypes -> {
@@ -135,6 +135,16 @@ internal class MarsExpressionEvaluator(
         }
         // The remaining operand form is the parser's address expression, such as word(buffer+4).
         else -> memoryExpression(node)
+    }
+
+    private fun signedWord(operator: ASTNode, operand: ASTNode): Immediate? {
+        if (operator.elementType != minusType || operand.elementType != literalType ||
+            operator.startOffset + operator.textLength != operand.startOffset) return null
+        // A zero-padded hexadecimal magnitude can exceed the assembler's unsigned spelling
+        // rules while the complete signed word still fits.
+        val spelling = operator.text + operand.text
+        if (!TokenTypes.isIntegerTokenType(TokenTypes.matchTokenType(spelling))) return null
+        return Immediate(Word(Binary.stringToInt(spelling)))
     }
 
     private fun memoryExpression(node: ASTNode): Evaluation? {

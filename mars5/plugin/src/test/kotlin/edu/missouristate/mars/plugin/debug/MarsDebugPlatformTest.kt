@@ -1565,6 +1565,9 @@ class MarsDebugPlatformTest {
                     "word(buffer + (1 != 1))" to "0x11223344",
                     "~byte(buffer) & 0xff" to "0x000000bb",
                     "word(buffer) >>> 24" to "0x00000011",
+                    "-0x080000000" to "0x80000000",
+                    "-0X00080000000 + 1" to "0x80000001",
+                    "-0xffffffff" to "0x00000001",
                 )
                 for ((expression, value) in expected) assertEquals(value, evaluate(debug.session, frame, expression), expression)
                 for (expression in listOf("word(buffer+1)", "half(buffer+1)", "word(1.5)", "word(0)",
@@ -1573,7 +1576,8 @@ class MarsDebugPlatformTest {
                         evaluate(debug.session, frame, expression), expression)
                 }
                 for (expression in listOf("word(unknown)", "byte(buffer) & 0.5", "~(byte(buffer) + 0.5)",
-                    "word(buffer + (byte(buffer) & 0.5))")) {
+                    "word(buffer + (byte(buffer) & 0.5))", "0x080000000", "- 0x080000000",
+                    "-0x080000001", "~0x080000000", "-(0x080000000)")) {
                     assertEquals("Enter a valid MIPS debugger expression using registers, labels, numbers, memory reads, arithmetic, comparisons, or bitwise operators.",
                         evaluate(debug.session, frame, expression), expression)
                 }
