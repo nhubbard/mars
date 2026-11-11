@@ -1918,6 +1918,12 @@ both focused tables exposed 240 pixels of rows and Down Arrow selected a
 visible row. The before and after screenshots and replay logs are under
 `mars5/.gradle/release-host-checks/table-tools-high-zoom`.
 
+Ubuntu ARM64 passed the same 150% High Contrast replay, with 240 pixels of
+rows visible in each focused table and the first row selected by Down Arrow.
+Both hosts passed all 2,019 Jupiter tests and both coverage gates. Linux startup
+notifications cover the lower rows in the screenshots. The focused rows and
+replay measurements are under `mars5/.gradle/release-host-checks/linux-arm64-table-tools-high-zoom`.
+
 ## Floating Point Representation
 
 The Floating Point Representation tab provides an independent binary32
