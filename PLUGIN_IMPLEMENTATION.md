@@ -800,8 +800,9 @@ when resolving its indexed paths. There is no parallel reference or refactoring 
 MARS paths retain literal filename characters such as spaces and, on filesystems that allow them,
 question marks. Relative paths use the source directory. Absolute paths use their own filesystem
 root, including drive and share roots on Windows. The index normalizes Windows separators and
-folds case in candidate keys while keeping the written path and its source offsets. IntelliJ resolves
-each candidate with the target directory's case rules. Editor diagnostics and unsaved assembly
+folds case in candidate keys while keeping the written path and its source offsets. The MARS graph
+checks each candidate with the target directory's case rules, including candidates IntelliJ's generic
+fallback would resolve on its own. Editor diagnostics and unsaved assembly
 capture share the assembler's path resolution. The PSI cache stores path text by offset.
 A reference to a missing file resolves after the target is created, even without an edit to the source.
 
@@ -1856,6 +1857,14 @@ see its address and access count. Tab to the grid and use the arrow keys, or
 click a cell, to keep its details below the grid as execution continues.
 The outlined cell and the grid's accessible description identify the same
 address and count. The address is the first word in that cell's range.
+
+A clean packaged IntelliJ 2026.3 replay on macOS used High Contrast and
+ran a program that accessed two adjacent words. Hovering over the second
+cell displayed `0x10010004 · 2 accesses`. Clicking it focused the grid and
+kept that count visible. The Left key selected `0x10010000 · 1 accesses`.
+The selection label and accessible description agreed after both moves.
+The screenshots, saved theme, and replay log are under
+`mars5/.gradle/release-host-checks/memory-reference-hover`.
 
 ## Data Cache Simulator
 

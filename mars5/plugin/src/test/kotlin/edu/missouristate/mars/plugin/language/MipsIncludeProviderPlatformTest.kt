@@ -9,6 +9,7 @@ import com.intellij.openapi.util.SystemInfoRt
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
 import com.intellij.psi.PsiDocumentManager
+import com.intellij.psi.PsiManager
 import com.intellij.psi.impl.include.FileIncludeInfo
 import com.intellij.psi.impl.include.FileIncludeManager
 import com.intellij.testFramework.IndexingTestUtil
@@ -17,7 +18,9 @@ import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.util.indexing.FileContentImpl
 import edu.missouristate.mars.assembler.Tokenizer
+import edu.missouristate.mars.plugin.analysis.mipsAssemblyRoots
 import edu.missouristate.mars.plugin.language.index.MipsIncludeProvider
+import edu.missouristate.mars.plugin.language.index.resolveIndexedMipsInclude
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -165,8 +168,12 @@ class MipsIncludeProviderPlatformTest {
             val manager = FileIncludeManager.getManager(project.get())
             val caseSensitive = target.parent.isCaseSensitive
             assertEquals(setOf(target), manager.getIncludedFiles(exact, true).toSet())
-            assertEquals(if (caseSensitive) emptySet() else setOf(target), manager.getIncludedFiles(alternate, true).toSet())
-            assertEquals(if (caseSensitive) setOf(exact) else setOf(exact, alternate), manager.getIncludingFiles(target, true).toSet())
+            val alternateSource = PsiManager.getInstance(project.get()).findFile(alternate)!!
+            val include = FileIncludeInfo("mixedcase.s", alternateSource.text.indexOf('"'))
+            val resolved = resolveIndexedMipsInclude(include, alternateSource)?.virtualFile
+            assertEquals(if (caseSensitive) null else target, resolved)
+            val roots = mipsAssemblyRoots(project.get(), target).toSet()
+            assertEquals(if (caseSensitive) setOf(exact) else setOf(exact, alternate), roots)
         }
     }
 
