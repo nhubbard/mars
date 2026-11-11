@@ -1911,6 +1911,13 @@ access log and restarts the random sequence. The table shows each block's tag
 and last result. The optional log retains the most recent 128 accesses while
 the totals include all observations.
 
+Data Cache and Branch History scroll focused controls and table or log panes
+into view when the tool dock is short. At 150% IDE zoom in macOS High Contrast,
+the packaged baseline showed zero rows even with table focus. After the fix,
+both focused tables exposed 240 pixels of rows and Down Arrow selected a
+visible row. The before and after screenshots and replay logs are under
+`mars5/.gradle/release-host-checks/table-tools-high-zoom`.
+
 ## Floating Point Representation
 
 The Floating Point Representation tab provides an independent binary32

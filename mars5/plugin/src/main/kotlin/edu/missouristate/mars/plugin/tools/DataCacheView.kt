@@ -51,9 +51,11 @@ internal class DataCacheView(project: Project) : Disposable {
     private val blockModel = CacheBlockTableModel()
     private val table = JBTable(blockModel).apply { preferredScrollableViewportSize = JBDimension(300, 160) }
     private val log = JBTextArea(5, 35).apply { isEditable = false }
+    private val tableScroll = JBScrollPane(table).apply { minimumSize = JBDimension(0, 84) }
+    private val logScroll = JBScrollPane(log)
     private var previous: DataCacheSimulator.Snapshot? = null
 
-    val component = panel {
+    val component = scrollableToolPanel(this, panel {
         row(toolsMessages.getMessage("counter.selector")) { cell(selector.component).align(AlignX.FILL).resizableColumn() }
         row(toolsMessages.getMessage("cache.placement")) { cell(placement) }
         row(toolsMessages.getMessage("cache.blocks")) { cell(blocks) }
@@ -71,14 +73,14 @@ internal class DataCacheView(project: Project) : Disposable {
             cell(percentage)
         }
         row {
-            cell(JBScrollPane(table).apply { minimumSize = JBDimension(0, 84) }).align(Align.FILL).resizableColumn()
+            cell(tableScroll).align(Align.FILL).resizableColumn()
         }.resizableRow()
         collapsibleGroup(toolsMessages.getMessage("cache.log"), indent = false) {
             row { cell(logging) }
-            row { cell(JBScrollPane(log)).align(AlignX.FILL).resizableColumn() }
+            row { cell(logScroll).align(AlignX.FILL).resizableColumn() }
         }.expanded = false
-        row { comment(toolsMessages.getMessage("cache.scope")) }
-    }
+        row { comment(toolsMessages.getMessage("cache.scope"), maxLineLength = 42) }
+    }, mapOf(table to tableScroll, log to logScroll))
 
     init {
         placement.addActionListener { updateWays() }

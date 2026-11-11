@@ -4,11 +4,13 @@ import com.intellij.DynamicBundle
 import com.intellij.execution.ui.RunContentManager
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.EDT
+import com.intellij.openapi.observable.util.whenFocusGained
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowFactory
+import com.intellij.ui.ScrollPaneFactory
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.content.Content
 import com.intellij.ui.content.ContentFactory
@@ -16,9 +18,11 @@ import com.intellij.ui.dsl.builder.AlignX
 import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.dsl.listCellRenderer.textListCellRenderer
 import com.intellij.util.ui.launchOnShow
+import com.intellij.util.ui.UIUtil
 import edu.missouristate.mars.plugin.run.MarsProcessHandler
 import edu.missouristate.mars.plugin.tools.MemoryGridDisplay.Mode
 import edu.missouristate.mars.plugin.tools.xray.XRayView
+import java.awt.Rectangle
 import javax.swing.DefaultComboBoxModel
 import javax.swing.JButton
 import javax.swing.JComponent
@@ -76,6 +80,20 @@ internal class MarsToolsWindowFactory : ToolWindowFactory, DumbAware {
 }
 
 internal val toolsMessages = DynamicBundle(MarsToolsWindowFactory::class.java, "messages.MarsBundle")
+
+internal fun scrollableToolPanel(
+    owner: Disposable,
+    body: JComponent,
+    nestedScrollPanes: Map<JComponent, JComponent>,
+) = ScrollPaneFactory.createScrollPane(body, true).also {
+    UIUtil.uiTraverser(body).filter(JComponent::class.java).forEach { control ->
+        control.whenFocusGained(owner) {
+            // Reveal the inner viewport in the tool panel without changing its own scroll position.
+            val target = nestedScrollPanes.getOrDefault(control, control)
+            target.scrollRectToVisible(Rectangle(0, 0, target.width, target.height))
+        }
+    }
+}
 
 internal class MarsToolExecutionSelector(private val project: Project, private val selectionChanged: () -> Unit) {
     private data class Execution(val id: Long, val name: String, val process: MarsProcessHandler)

@@ -12,6 +12,7 @@ import com.intellij.ui.dsl.builder.Align
 import com.intellij.ui.dsl.builder.AlignX
 import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.table.JBTable
+import com.intellij.util.ui.JBDimension
 import com.intellij.util.ui.launchOnShow
 import edu.missouristate.mars.ProgramStatement
 import edu.missouristate.mars.mips.instructions.InstructionDefaults
@@ -33,12 +34,14 @@ internal class BranchHistoryView(project: Project) : Disposable {
     private val toggle = JButton()
     private val reset = JButton(toolsMessages.getMessage("counter.reset"))
     private val tableModel = HistoryTableModel()
-    private val table = JBTable(tableModel)
+    private val table = JBTable(tableModel).apply { preferredScrollableViewportSize = JBDimension(360, 160) }
     private val latest = JBLabel()
     private val log = JBTextArea(5, 32).apply { isEditable = false }
+    private val tableScroll = JBScrollPane(table).apply { minimumSize = JBDimension(0, 84) }
+    private val logScroll = JBScrollPane(log)
     private var previous: BranchHistoryTable.Snapshot? = null
 
-    val component = panel {
+    val component = scrollableToolPanel(this, panel {
         row(toolsMessages.getMessage("counter.selector")) { cell(selector.component).align(AlignX.FILL).resizableColumn() }
         row(toolsMessages.getMessage("branchHistory.size")) { cell(size) }
         row(toolsMessages.getMessage("branchHistory.bits")) { cell(history) }
@@ -51,11 +54,11 @@ internal class BranchHistoryView(project: Project) : Disposable {
             cell(reset)
         }
         row(toolsMessages.getMessage("branchHistory.latest.label")) { cell(latest) }
-        row { cell(JBScrollPane(table)).align(Align.FILL).resizableColumn() }.resizableRow()
+        row { cell(tableScroll).align(Align.FILL).resizableColumn() }.resizableRow()
         row { label(toolsMessages.getMessage("branchHistory.log")).component.labelFor = log }
-        row { cell(JBScrollPane(log)).align(AlignX.FILL).resizableColumn() }
-        row { comment(toolsMessages.getMessage("branchHistory.reverse")) }
-    }
+        row { cell(logScroll).align(AlignX.FILL).resizableColumn() }
+        row { comment(toolsMessages.getMessage("branchHistory.reverse"), maxLineLength = 42) }
+    }, mapOf(table to tableScroll, log to logScroll))
 
     init {
         apply.addActionListener {

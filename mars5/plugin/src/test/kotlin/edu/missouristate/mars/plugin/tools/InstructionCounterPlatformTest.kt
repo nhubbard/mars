@@ -249,6 +249,29 @@ class InstructionCounterPlatformTest {
                 assertFalse(button("Play animation", xray).isEnabled)
                 assertFalse(button("Apply and Reset", cache).isEnabled)
                 assertEquals(0, UIUtil.findComponentsOfType(cache, JBTable::class.java).single().rowCount)
+                for (panel in listOf(branches, cache)) {
+                    val scroll = assertInstanceOf(JScrollPane::class.java, panel)
+                    scroll.setSize(JBUI.scale(320), JBUI.scale(200))
+                    scroll.doLayout()
+                    val viewport = scroll.viewport
+                    viewport.doLayout()
+                    val body = viewport.view
+                    body.doLayout()
+                    val table = UIUtil.findComponentsOfType(panel, JBTable::class.java).single()
+                    val inner = SwingUtilities.getAncestorOfClass(JScrollPane::class.java, table)
+                    val tableBounds = SwingUtilities.convertRectangle(inner.parent, inner.bounds, body)
+                    assertTrue(tableBounds.height >= JBUI.scale(84))
+                    assertTrue(tableBounds.maxY > viewport.viewRect.maxY)
+                    table.focusListeners.forEach { it.focusGained(FocusEvent(table, FocusEvent.FOCUS_GAINED)) }
+                    assertTrue(viewport.viewRect.y <= tableBounds.y)
+                    assertTrue(viewport.viewRect.maxY >= tableBounds.maxY)
+
+                    val apply = button("Apply and Reset", panel)
+                    val applyBounds = SwingUtilities.convertRectangle(apply.parent, apply.bounds, body)
+                    apply.focusListeners.forEach { it.focusGained(FocusEvent(apply, FocusEvent.FOCUS_GAINED)) }
+                    assertTrue(viewport.viewRect.y <= applyBounds.y)
+                    assertTrue(viewport.viewRect.maxY >= applyBounds.maxY)
+                }
                 assertEquals("Static data", baseLabel())
                 for (panel in listOf(bitmap, references)) {
                     val scroll = assertInstanceOf(JScrollPane::class.java, panel)
