@@ -1059,9 +1059,10 @@ outside the scope. A written label or external reservation replaced by an
 expansion and a macro renamed by an expansion are filtered out under their old
 names. Generated equivalences follow the assembler's first-definition lookup order.
 
-Plain-text includes contribute their written and expanded declarations through the same
-entry timelines. Only files reached from MARS include roots are examined. Results use
-the original file and offset and honor the requested search scope and file ID filter.
+Plain-text project sources, exception handlers, and includes contribute their written
+and expanded declarations through the same entry timelines. Search reads the current
+configured paths alongside the indexed roots. Results use the original file and offset
+and honor the requested search scope and file ID filter.
 The same declaration reached through several entries appears once. Different effective
 names at a shared location remain searchable when entries supply different substitutions.
 
@@ -1075,6 +1076,10 @@ and the authored plugin code covered all 591 lines and 360 branch outcomes.
 IntelliJ loaded MARS MIPS and opened the smoke project. All six JARs in the
 distribution ZIP matched the launched plugin by SHA-256. Visual verification
 remains open because the window controls could not attach to the temporary IDE.
+
+A later packaged IntelliJ 2026.3 replay selected an equivalence from the Symbols
+popup, opened its extensionless project source, and ran the saved ordered
+project configuration to a successful exit.
 
 ## Captured source assembly
 

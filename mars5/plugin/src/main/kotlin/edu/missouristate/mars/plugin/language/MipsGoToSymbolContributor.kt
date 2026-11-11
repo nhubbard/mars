@@ -9,6 +9,7 @@ import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
 import com.intellij.psi.SyntaxTraverser
@@ -22,8 +23,10 @@ import com.intellij.util.indexing.IdFilter
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.analysis.MipsSourceTimeline
 import edu.missouristate.mars.plugin.analysis.SymbolKind
+import edu.missouristate.mars.plugin.analysis.assemblySourceSyntax
 import edu.missouristate.mars.plugin.analysis.mipsAssemblyRoots
 import edu.missouristate.mars.plugin.analysis.mipsSourceTimeline
+import edu.missouristate.mars.plugin.build.MarsAssemblySettings
 import edu.missouristate.mars.plugin.language.index.MipsDeclarationIndex
 import edu.missouristate.mars.plugin.language.index.MipsDeclarationIndex.Companion.EXPANSION_SEED
 import edu.missouristate.mars.plugin.language.index.MipsDeclarationSite
@@ -80,10 +83,18 @@ internal class MipsGoToSymbolContributor : ChooseByNameContributorEx {
         val seeds = FileBasedIndex.getInstance().getContainingFiles(
             MipsDeclarationIndex.NAME, EXPANSION_SEED, GlobalSearchScope.allScope(project),
         )
-        val roots = seeds.asSequence().flatMap { seed ->
+        val indexedRoots = seeds.asSequence().flatMap { seed ->
             ProgressManager.checkCanceled()
             mipsAssemblyRoots(psi.findFile(seed) as MipsFile).ifEmpty { listOf(seed) }
-        }.distinct()
+        }
+        val settings = project.service<MarsAssemblySettings>()
+        val files = VirtualFileManager.getInstance()
+        val configuredRoots = (listOfNotNull(settings.exceptionHandler) + settings.projectSources)
+            .asSequence().mapNotNull(files::findFileByNioPath)
+        val roots = (indexedRoots + configuredRoots).distinct()
+            .onEach { ProgressManager.checkCanceled() }
+            .mapNotNull(psi::findFile)
+            .mapNotNull(::assemblySourceSyntax)
         fun inScope(file: MipsFile): Boolean {
             val source = file.originalFile.viewProvider.virtualFile
             return scope.contains(source) && filter?.containsFileId(FileBasedIndex.getFileId(source)) != false
@@ -92,7 +103,7 @@ internal class MipsGoToSymbolContributor : ChooseByNameContributorEx {
             val typedFiles = HashSet<MipsFile>()
             val unindexedSymbols = HashSet<ContextualSymbol>()
             for (root in roots) {
-                val timeline = mipsSourceTimeline(psi.findFile(root) as MipsFile)
+                val timeline = mipsSourceTimeline(root)
                 for (file in timeline.sourceFiles()) {
                     ProgressManager.checkCanceled()
                     if (typedFiles.add(file) && inScope(file)) yieldAll(analysis.editorTimeline(file).expandedSymbolsIn(file))

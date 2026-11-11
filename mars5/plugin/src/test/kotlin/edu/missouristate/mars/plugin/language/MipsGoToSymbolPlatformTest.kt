@@ -6,6 +6,7 @@ import com.intellij.navigation.NavigationItem
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.command.WriteCommandAction
+import com.intellij.openapi.components.service
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
@@ -20,6 +21,7 @@ import com.intellij.util.indexing.FileBasedIndex
 import com.intellij.util.indexing.FindSymbolParameters
 import com.intellij.util.indexing.IdFilter
 import edu.missouristate.mars.plugin.analysis.SymbolKind
+import edu.missouristate.mars.plugin.build.MarsAssemblySettings
 import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -366,6 +368,55 @@ class MipsGoToSymbolPlatformTest {
             assertTrue(items("sharedLabel", bodyScope).isEmpty())
             val updated = assertInstanceOf(OpenFileDescriptor::class.java, items("updatedLabel", bodyScope).single())
             assertEquals(source.indexOf("sharedLabel") + 1, updated.offset)
+        }
+    }
+
+    @Test
+    fun `search follows configured text sources and their preprocessing context`() = timeoutRunBlocking<Unit> {
+        val current = project.get()
+        val entryText = ".eqv LABEL expandedLabel\nentryLabel: nop\n.include \"included.s\"\n"
+        val (entry, included, handler) = withContext(Dispatchers.EDT) {
+            Triple(
+                fixture.addFileToProject("entry", entryText).virtualFile,
+                fixture.addFileToProject("included.s", "LABEL: nop\n").virtualFile,
+                fixture.addFileToProject("handler.txt", "handlerLabel: nop\n").virtualFile,
+            )
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(current)
+        val scope = GlobalSearchScope.projectScope(current)
+        val settings = current.service<MarsAssemblySettings>()
+        readAction {
+            assertTrue(items("entryLabel", scope).isEmpty())
+            assertTrue(items("expandedLabel", scope).isEmpty())
+            assertTrue(items("handlerLabel", scope).isEmpty())
+        }
+        withContext(Dispatchers.EDT) {
+            settings.changeSources(listOf(entry.path, "${entry.path}-missing"))
+            settings.changeExceptionHandler(handler.path)
+        }
+        readAction {
+            val names = mutableSetOf<String>()
+            contributor.processNames(names::add, scope, null)
+            assertTrue(names.containsAll(setOf("entryLabel", "expandedLabel", "handlerLabel")))
+            for ((name, file, offset) in listOf(
+                Triple("entryLabel", entry, entryText.indexOf("entryLabel")),
+                Triple("expandedLabel", included, 0),
+                Triple("handlerLabel", handler, 0),
+            )) {
+                val descriptor = assertInstanceOf(OpenFileDescriptor::class.java, items(name, scope).single())
+                assertEquals(file, descriptor.file)
+                assertEquals(offset, descriptor.offset)
+            }
+            assertTrue(items("LABEL", GlobalSearchScope.fileScope(current, included)).isEmpty())
+        }
+        withContext(Dispatchers.EDT) {
+            settings.changeSources(emptyList())
+            settings.changeExceptionHandler("")
+        }
+        readAction {
+            assertTrue(items("entryLabel", scope).isEmpty())
+            assertTrue(items("expandedLabel", scope).isEmpty())
+            assertTrue(items("handlerLabel", scope).isEmpty())
         }
     }
 
