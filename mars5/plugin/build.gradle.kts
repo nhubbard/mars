@@ -100,10 +100,6 @@ val distributionNotices = listOf(
   thirdPartyNotices,
 )
 tasks.processResources {
-  from(rootProject.layout.projectDirectory.dir("shared/datapath")) {
-    include("images/*.png")
-    into("datapath")
-  }
   from(rootProject.layout.projectDirectory.dir("desktop/src/main/resources/help")) {
     include("Acknowledgements.html", "MarsHelpHistory.html")
     into("mars-reference")

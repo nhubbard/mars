@@ -14,7 +14,10 @@ class XRayDiagramTest {
         val sizes = listOf(1000 to 574, 800 to 480, 800 to 498, 800 to 457)
         for ((unit, size) in XRayUnit.entries.zip(sizes)) {
             val diagram = XRayDiagram.load(unit)
-            assertEquals(size, diagram.image.width to diagram.image.height, unit.name)
+            val schematic = xRaySchematics.getValue(unit)
+            assertEquals(size, schematic.size.width to schematic.size.height, unit.name)
+            assertTrue(diagram.wireSegments.isNotEmpty())
+            assertTrue(diagram.wireSegments.none { it.label() })
             val signals = diagram.signals(0x012a4020, null)
             assertEquals(listOf(101, 62, 81, 24)[unit.ordinal], signals.size, unit.name)
             assertEquals(0, signals.first().startsAt)

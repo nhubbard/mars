@@ -1,5 +1,6 @@
 package edu.missouristate.mars.plugin.tools.xray
 
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.EDT
@@ -19,19 +20,10 @@ import edu.missouristate.mars.plugin.tools.MarsToolExecutionSelector
 import edu.missouristate.mars.plugin.tools.scrollableToolPanel
 import edu.missouristate.mars.plugin.tools.toolsMessages
 import edu.missouristate.mars.util.Binary
-import java.awt.BasicStroke
 import java.awt.BorderLayout
 import java.awt.Color
-import java.awt.Font
-import java.awt.Graphics
-import java.awt.Graphics2D
-import java.awt.Rectangle
-import java.awt.event.MouseAdapter
-import java.awt.event.MouseEvent
-import java.awt.image.BufferedImage
 import javax.swing.DefaultComboBoxModel
 import javax.swing.JButton
-import javax.swing.JPanel
 import javax.swing.Timer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -64,7 +56,14 @@ internal class XRayView(project: Project) : Disposable {
         preferredSize = JBUI.size(240, 112)
         getAccessibleContext().accessibleName = toolsMessages.getMessage("xray.description")
     }
-    private val canvas = XRayCanvas { unit.selectedItem = it }
+    private val schematicFrame = mutableStateOf(XRaySchematicFrame(XRayUnit.DATAPATH))
+    private val schematicPosition = mutableIntStateOf(0)
+    private val schematic = JewelComposePanel(
+        content = xRaySchematicContent(schematicFrame, schematicPosition) { unit.selectedItem = it },
+    ).apply {
+        preferredSize = JBUI.size(280, 200)
+        accessibleContext.accessibleName = toolsMessages.getMessage("xray.schematic")
+    }
     private val playback = XRayPlayback()
     private var steps = emptyList<StepEvent>()
     private var diagrams = emptyMap<XRayUnit, XRayDiagram>()
@@ -93,7 +92,7 @@ internal class XRayView(project: Project) : Disposable {
             cell(reset)
         }
         row(toolsMessages.getMessage("xray.speed")) { cell(speed) }
-        row { cell(canvas).align(Align.FILL).resizableColumn() }.resizableRow()
+        row { cell(schematic).align(Align.FILL).resizableColumn() }.resizableRow()
         row { cell(description).align(AlignX.FILL).resizableColumn() }
         row { comment(toolsMessages.getMessage("xray.help", XRayTrace.capacity)).resizableColumn() }
     }
@@ -181,7 +180,7 @@ internal class XRayView(project: Project) : Disposable {
         val signals = selectedInstruction?.let {
             diagrams.getValue(selectedUnit).signals(it.word, it.format)
         }.orEmpty()
-        canvas.showDiagram(selectedUnit, diagram?.image, selectedInstruction, signals)
+        schematicFrame.value = XRaySchematicFrame(selectedUnit, diagram?.wireSegments.orEmpty(), signals, selectedInstruction)
         playback.show(signals.maxOfOrNull(XRaySignal::endsAt) ?: 0)
         history.isEnabled = steps.isNotEmpty()
         play.isEnabled = signals.isNotEmpty()
@@ -201,7 +200,7 @@ internal class XRayView(project: Project) : Disposable {
 
     private fun showPosition() {
         play.text = toolsMessages.getMessage(if (playback.playing) "xray.pause" else "xray.play")
-        canvas.position = playback.position
+        schematicPosition.intValue = playback.position
     }
 
     override fun dispose() {
@@ -213,84 +212,5 @@ internal class XRayView(project: Project) : Disposable {
 
     private companion object {
         val inactiveSignal = Color(100, 100, 100)
-    }
-}
-
-internal class XRayCanvas(private val openUnit: (XRayUnit) -> Unit) : JPanel() {
-    private var unit = XRayUnit.DATAPATH
-    private var image: BufferedImage? = null
-    private var instruction: XRayInstruction? = null
-    private var signals = emptyList<XRaySignal>()
-    var position = 0
-        set(value) {
-            if (field == value) return
-            field = value
-            repaint()
-        }
-
-    init {
-        preferredSize = JBUI.size(280, 200)
-        getAccessibleContext().accessibleName = toolsMessages.getMessage("xray.diagram")
-        addMouseListener(object : MouseAdapter() {
-            override fun mouseClicked(event: MouseEvent) {
-                if (unit != XRayUnit.DATAPATH) return
-                val picture = image ?: return
-                val frame = viewport(picture)
-                if (!frame.contains(event.point)) return
-                val x = (event.x - frame.x) * picture.width / frame.width
-                val y = (event.y - frame.y) * picture.height / frame.height
-                hotspots.entries.firstOrNull { it.value.contains(x, y) }?.key?.let(openUnit)
-            }
-        })
-    }
-
-    fun showDiagram(unit: XRayUnit, image: BufferedImage?, instruction: XRayInstruction?, signals: List<XRaySignal>) {
-        this.unit = unit
-        this.image = image
-        this.instruction = instruction
-        this.signals = signals
-        repaint()
-    }
-
-    private fun viewport(picture: BufferedImage): Rectangle {
-        val scale = minOf(width.toDouble() / picture.width, height.toDouble() / picture.height)
-        val drawWidth = (picture.width * scale).toInt()
-        val drawHeight = (picture.height * scale).toInt()
-        return Rectangle((width - drawWidth) / 2, (height - drawHeight) / 2, drawWidth, drawHeight)
-    }
-
-    override fun paintComponent(graphics: Graphics) {
-        super.paintComponent(graphics)
-        val picture = image ?: return
-        val frame = viewport(picture)
-        val g = graphics.create() as Graphics2D
-        try {
-            g.translate(frame.x, frame.y)
-            g.scale(frame.width.toDouble() / picture.width, frame.height.toDouble() / picture.height)
-            g.drawImage(picture, 0, 0, null)
-            g.stroke = BasicStroke(3f)
-            g.font = font.deriveFont(Font.BOLD, 14f)
-            for (signal in signals) {
-                val at = signal.positionAt(position) ?: continue
-                g.color = signal.color
-                when {
-                    signal.isLabel -> if (position < signal.endsAt) {
-                        g.drawString(instruction!!.signalLabel(signal.name), signal.axis, at)
-                    }
-                    signal.horizontal -> g.drawLine(signal.start, signal.axis, at, signal.axis)
-                    else -> g.drawLine(signal.axis, signal.start, signal.axis, at)
-                }
-            }
-        } finally {
-            g.dispose()
-        }
-    }
-
-    private companion object {
-        val hotspots = mapOf(
-            XRayUnit.REGISTERS to Rectangle(425, 294, 97, 134),
-            XRayUnit.CONTROL to Rectangle(355, 179, 62, 104),
-            XRayUnit.ALU_CONTROL to Rectangle(561, 454, 64, 68),
-        )
     }
 }

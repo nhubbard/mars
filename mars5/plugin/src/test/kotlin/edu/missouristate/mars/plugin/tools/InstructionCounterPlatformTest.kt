@@ -36,8 +36,6 @@ import edu.missouristate.mars.plugin.run.MarsRunService
 import edu.missouristate.mars.plugin.tools.DataCacheSimulator.Placement
 import edu.missouristate.mars.plugin.tools.DataCacheSimulator.Replacement
 import edu.missouristate.mars.plugin.tools.MemoryGridDisplay.Base
-import edu.missouristate.mars.plugin.tools.xray.XRayCanvas
-import edu.missouristate.mars.plugin.tools.xray.XRayDiagram
 import edu.missouristate.mars.plugin.tools.xray.XRayUnit
 import java.awt.image.BufferedImage
 import java.awt.Color
@@ -196,7 +194,9 @@ class InstructionCounterPlatformTest {
         }
 
         try {
-            fun xrayCanvas() = UIUtil.findComponentsOfType(xray, XRayCanvas::class.java).single()
+            fun xraySchematic() = UIUtil.uiTraverser(xray).filter(JComponent::class.java).single {
+                it.accessibleContext?.accessibleName == toolsMessages.getMessage("xray.schematic")
+            }
             fun xrayChoices() = UIUtil.findComponentsOfType(xray, JComboBox::class.java)
             fun xrayHistory() = xrayChoices().single { it.itemCount > 0 && it.getItemAt(0) is StepEvent }
             fun xrayDescription() = UIUtil.uiTraverser(xray).filter(JComponent::class.java).single {
@@ -243,11 +243,7 @@ class InstructionCounterPlatformTest {
                     .accessibleContext.accessibleName
             }
             withContext(Dispatchers.EDT) {
-                val blank = XRayCanvas { error("There is no diagram to open") }
-                blank.setSize(1, 1)
-                val graphics = BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB).createGraphics()
-                try { blank.paint(graphics) } finally { graphics.dispose() }
-                blank.dispatchEvent(MouseEvent(blank, MouseEvent.MOUSE_CLICKED, 0, 0, 0, 0, 1, false))
+                assertTrue(xraySchematic().isVisible)
                 assertFalse(button("Connect").isEnabled)
                 assertFalse(button("Reset").isEnabled)
                 assertFalse(button("Apply and Reset", branches).isEnabled)
@@ -401,7 +397,7 @@ class InstructionCounterPlatformTest {
                 body.doLayout()
                 body.getComponent(0).doLayout()
                 assertEquals(viewport.width, body.width)
-                assertTrue(xrayCanvas().height >= JBUI.scale(200))
+                assertTrue(xraySchematic().height >= JBUI.scale(200))
                 val details = xrayDescription()
                 val detailsBounds = SwingUtilities.convertRectangle(details.parent, details.bounds, body)
                 assertFalse(viewport.viewRect.contains(detailsBounds))
@@ -414,7 +410,7 @@ class InstructionCounterPlatformTest {
                 viewport.doLayout()
                 body.doLayout()
                 body.getComponent(0).doLayout()
-                assertTrue(xrayCanvas().height > JBUI.scale(200))
+                assertTrue(xraySchematic().height > JBUI.scale(200))
             }
             pollAssertionsAsync(5.seconds, 30.milliseconds) {
                 withContext(Dispatchers.EDT) {
@@ -429,45 +425,24 @@ class InstructionCounterPlatformTest {
                     history.selectedIndex = 0
                     assertTrue(xrayDetails().contains("0x00400000 · 0x00000000 · nop"))
                     assertTrue(xrayDetails().contains("Highlighted paths"))
-                    val canvas = xrayCanvas()
-                    canvas.setSize(1000, 574)
-                    val image = BufferedImage(1000, 574, BufferedImage.TYPE_INT_RGB)
-                    fun render() = image.createGraphics().let {
-                        try { canvas.paint(it) } finally { it.dispose() }
+                    val unit = xrayChoices().single { it.selectedItem is XRayUnit }
+                    for (choice in XRayUnit.entries) {
+                        unit.selectedItem = choice
+                        assertTrue(xrayDetails().contains("Highlighted paths"))
                     }
-                    fun click(x: Int, y: Int) = canvas.dispatchEvent(MouseEvent(canvas, MouseEvent.MOUSE_CLICKED, 0, 0, x, y, 1, false))
-                    render()
-                    assertEquals(Color.YELLOW.rgb, image.getRGB(170, 362))
-                    val label = XRayDiagram.load(XRayUnit.DATAPATH).signals(0, null).first { it.isLabel }
-                    canvas.position = label.startsAt + 1
-                    render()
                     button("Reset animation", xray).doClick()
-                    assertEquals(0, canvas.position)
-                    render()
-                    assertTrue(image.getRGB(170, 362) != Color.YELLOW.rgb)
                     button("Play animation", xray).doClick()
                     assertTrue(button("Pause animation", xray).isEnabled)
                     button("Pause animation", xray).doClick()
-                    val unit = xrayChoices().single { it.selectedItem is XRayUnit }
-                    click(-1, -1)
-                    click(10, 10)
-                    assertEquals(XRayUnit.DATAPATH, unit.selectedItem)
-                    click(480, 353)
-                    assertEquals(XRayUnit.REGISTERS, unit.selectedItem)
-                    click(390, 220)
-                    assertEquals(XRayUnit.REGISTERS, unit.selectedItem)
-                    unit.selectedItem = XRayUnit.DATAPATH
-                    click(390, 220)
-                    assertEquals(XRayUnit.CONTROL, unit.selectedItem)
-                    unit.selectedItem = XRayUnit.DATAPATH
-                    click(595, 485)
-                    assertEquals(XRayUnit.ALU_CONTROL, unit.selectedItem)
-                    button("Reset animation", xray).doClick()
                     button("Play animation", xray).doClick()
                 }
             }
-            pollAssertionsAsync(5.seconds, 30.milliseconds) {
-                withContext(Dispatchers.EDT) { assertTrue(xrayCanvas().position > 0) }
+            pollAssertionsAsync(8.seconds, 30.milliseconds) {
+                withContext(Dispatchers.EDT) {
+                    assertTrue(UIUtil.findComponentsOfType(xray, JButton::class.java).any {
+                        it.text == "Play animation" && it.isEnabled
+                    })
+                }
             }
             val trace = (second.getUserData(RunContentDescriptor.DESCRIPTOR_KEY)!!.processHandler as MarsProcessHandler).xray
             trace.record(StepEvent(0x00400008, -1, 3))

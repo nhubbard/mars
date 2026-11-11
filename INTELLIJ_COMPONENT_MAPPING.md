@@ -725,8 +725,10 @@ Jetpack Compose. Use the bundled IntelliJ 2026.3 Jewel modules and the public
 applies `SwingBridgeTheme` so the display follows the IDE theme. The pinned
 reference is `~/IdeaProjects/intellij-community/platform/jewel`, including
 the README and the bridge's `JewelComposePanelWrapper.kt` implementation.
-Keep the shared datapath data, capture and rewind behavior, and deterministic
-animation clock. Verify readable diagrams in narrow docks, keyboard navigation
+Draw the blocks, gates, wires, junctions, labels, and animated signals for all
+four schematics in Compose. Package the old artwork with Venus only. Keep the
+shared datapath data, capture and rewind behavior, and deterministic animation
+clock. Verify readable diagrams in narrow docks, keyboard navigation
 between functional units, accessible signal text, High Contrast at 150% zoom,
 and disposal when the tool closes. Cover the presentation with Jupiter tests
 and verify the packaged plugin with Plugin Verifier and a clean IDE replay.

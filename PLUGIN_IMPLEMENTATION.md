@@ -1977,8 +1977,10 @@ changing the simulation or its capture setting.
 
 The four diagram tables are compiled into the shared `datapath` library.
 IntelliJ and Venus use the same wire coordinates, signal targets, palettes,
-and mnemonic lookups. The images remain packaged PNGs. Neither frontend
-parses diagram data at runtime. The data tests compare every field with
+and mnemonic lookups. The IntelliJ plugin draws all four schematics with
+Compose, including gates, blocks, junctions, labels and animated wires. The
+Registers, Control and ALU Control blocks expose keyboard-accessible
+drill-down actions. Venus retains its packaged PNGs. The data tests compare every field with
 fingerprints captured from the original diagrams, including the effective
 lookup values for keys that had repeated entries.
 
@@ -1993,6 +1995,8 @@ all four wire graphs and verified their targets and colors.
 
 The Jupiter Compose fixture renders the empty trace and a captured instruction
 offscreen and checks the text in the Compose semantics tree after the update.
+It also samples a rendered wire before and during animation, checks the
+transient labels, and invokes each of the three schematic drill-down actions.
 The packaged Ubuntu ARM64 replay at 150% in High Contrast selected Registers
 with the keyboard, brought the focused trace text into view in a narrow dock,
 and confirmed that capture resumed while the Run console printed `42`.

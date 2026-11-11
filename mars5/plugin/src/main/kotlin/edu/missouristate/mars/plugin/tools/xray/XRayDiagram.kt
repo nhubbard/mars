@@ -7,16 +7,14 @@ import edu.missouristate.mars.datapath.DatapathDiagram.Wire
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat.I_BRANCH_FORMAT
 import java.awt.Color
-import java.awt.image.BufferedImage
 import java.util.PriorityQueue
-import javax.imageio.ImageIO
 import kotlin.math.abs
 
-internal enum class XRayUnit(val kind: Kind, val image: String) {
-    DATAPATH(Kind.MAIN, "datapath"),
-    REGISTERS(Kind.REGISTERS, "register"),
-    CONTROL(Kind.CONTROL, "control"),
-    ALU_CONTROL(Kind.ALU_CONTROL, "ALUcontrol"),
+internal enum class XRayUnit(val kind: Kind) {
+    DATAPATH(Kind.MAIN),
+    REGISTERS(Kind.REGISTERS),
+    CONTROL(Kind.CONTROL),
+    ALU_CONTROL(Kind.ALU_CONTROL),
 }
 
 /** Pixel coordinates and time are in diagram units. The renderer chooses their scale and playback speed. */
@@ -34,8 +32,10 @@ internal data class XRaySignal(
 }
 
 internal class XRayDiagram private constructor(
-    private val unit: XRayUnit, val image: BufferedImage, private val wires: List<Wire>,
+    private val unit: XRayUnit, private val wires: List<Wire>,
 ) {
+    val wireSegments = wires.filterNot(Wire::label)
+
     private data class Arrival(val index: Int, val time: Int)
 
     private val colors = Palette.values().take(wires.first().colors().size).associateWith { palette ->
@@ -83,9 +83,6 @@ internal class XRayDiagram private constructor(
     }
 
     companion object {
-        fun load(unit: XRayUnit): XRayDiagram {
-            val image = XRayDiagram::class.java.getResourceAsStream("/datapath/images/${unit.image}.png").use { ImageIO.read(it) }
-            return XRayDiagram(unit, image, DatapathDiagram.forKind(unit.kind).wires())
-        }
+        fun load(unit: XRayUnit) = XRayDiagram(unit, DatapathDiagram.forKind(unit.kind).wires())
     }
 }
