@@ -13,6 +13,7 @@ import com.intellij.openapi.actionSystem.impl.SimpleDataContext
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.components.service
 import com.intellij.openapi.fileEditor.FileEditorManager
+import com.intellij.openapi.fileTypes.FileTypeManager
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
 import com.intellij.psi.PsiDirectory
@@ -29,6 +30,8 @@ import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertInstanceOf
+import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -48,8 +51,10 @@ class MarsNewFilePlatformTest {
         "routine, MIPS Source, routine.s",
         "lib/module.s, MIPS Assembly, lib/module.s",
         "explicit.asm, MIPS Source, explicit.asm",
+        "marsEntry, MARS Assembly, marsEntry.mars",
+        "explicit.mars, MIPS Source, explicit.mars",
     )
-    fun `native New action creates opens and assembles both source types`(name: String, kind: String, expected: String) =
+    fun `native New action creates opens and assembles each source type`(name: String, kind: String, expected: String) =
         timeoutRunBlocking<Unit> {
             val file = withContext(Dispatchers.EDT) {
                 val directory = fixture.addFileToProject("src/existing.asm", "nop\n").containingDirectory
@@ -72,6 +77,26 @@ class MarsNewFilePlatformTest {
             assertTrue(project.service<MarsBuildService>().assemble(file.toNioPath()))
             assertTrue(project.service<MarsAssemblySettings>().projectSources.isEmpty())
         }
+
+    @Test
+    fun `include files use the MARS parser and file icon and can be created with the native New action`() = timeoutRunBlocking<Unit> {
+        val entry = withContext(Dispatchers.EDT) {
+            val directory = fixture.addFileToProject("src/main.mars", ".include \"library.inc\"\nnop\n").containingDirectory
+            val view = DirectoryView(directory)
+            action.actionPerformed(event(context(view, "library.inc", "MIPS Assembly")))
+            val include = assertInstanceOf(MipsFile::class.java, view.selected)
+            assertEquals("library.inc", include.name)
+            assertEquals(directory.virtualFile.findChild("library.inc"), include.virtualFile)
+            for (suffix in listOf("asm", "s", "inc", "mars")) {
+                val type = FileTypeManager.getInstance().getFileTypeByFileName("source.$suffix")
+                assertSame(MipsFileType, type)
+                assertSame(MipsFileType.icon, type.icon)
+            }
+            assertNotNull(MipsFileType::class.java.getResource("/icons/marsMips.svg"))
+            directory.virtualFile.findChild("main.mars")!!.toNioPath()
+        }
+        assertTrue(project.service<MarsBuildService>().assemble(entry))
+    }
 
     @Test
     fun `native action is unavailable without a directory and protects existing files`() = timeoutRunBlocking<Unit> {

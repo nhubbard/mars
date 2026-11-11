@@ -39,6 +39,8 @@
     <newProjectWizard.generator implementation="edu.missouristate.mars.plugin.project.MarsNewProjectWizard"/>
     <internalFileTemplate name="MIPS Assembly"/>
     <internalFileTemplate name="MIPS Source"/>
+    <internalFileTemplate name="MARS Assembly"/>
+    <internalFileTemplate name="MIPS Include"/>
     <projectTaskRunner implementation="edu.missouristate.mars.plugin.build.MarsProjectTaskRunner"/>
     <stepsBeforeRunProvider implementation="edu.missouristate.mars.plugin.run.MarsBeforeLaunchTaskProvider"/>
     <projectConfigurable id="mars.assembly" groupId="build" nonDefaultProject="true"
@@ -46,7 +48,7 @@
                          instance="edu.missouristate.mars.plugin.build.MarsAssemblyConfigurable"/>
     <toolWindow id="MARS Tools" anchor="right" factoryClass="edu.missouristate.mars.plugin.tools.MarsToolsWindowFactory"
                 icon="AllIcons.Toolwindows.ToolWindowServices" doNotActivateOnStart="true"/>
-    <fileType name="MARS MIPS" language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsFileType" fieldName="INSTANCE" extensions="asm;s"/>
+    <fileType name="MARS MIPS" language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsFileType" fieldName="INSTANCE" extensions="asm;s;inc;mars"/>
     <lang.syntaxHighlighterFactory language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsSyntaxHighlighterFactory"/>
     <annotator language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsInstructionHighlighter"/>
     <annotator language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsIncludeCycleAnnotator"/>

@@ -987,11 +987,12 @@ class MarsBuildPlatformTest {
         val (main, helper, last) = withContext(Dispatchers.EDT) {
             val main = fixture.addFileToProject("project/main.asm", ".text\n.globl entry\nentry: nop\n") as MipsFile
             val last = fixture.addFileToProject("project/zulu.s", ".eqv NUMBER 11\n.include \"shared/defs.s\"\n.text\nzulu: nop\n") as MipsFile
-            val helper = fixture.addFileToProject("project/Alpha.ASM", ".globl helper\nhelper: nop\n") as MipsFile
+            val helper = fixture.addFileToProject("project/Alpha.MARS", ".globl helper\nhelper: nop\n") as MipsFile
             fixture.addFileToProject("project/shared/defs.s", "addiu \$t2, \$zero, NUMBER\n")
             fixture.addFileToProject("project/shared/value.inc", ".eqv OTHER_NUMBER 7\n")
             fixture.addFileToProject("project/shared/ignored.s", "invalid instruction\n")
             fixture.addFileToProject("project/notes.txt", "not assembly\n")
+            fixture.addFileToProject("project/include-only.inc", "not a top-level assembly source\n")
             fixture.addFileToProject("project/LICENSE", "not assembly\n")
             edit(helper.virtualFile, ".eqv NUMBER 7\n.include \"shared/value.inc\"\n.include \"shared/defs.s\"\n.globl helper\nhelper: addiu \$t0, \$zero, NUMBER\nprivateHelper: nop\njal entry\n")
             PsiDocumentManager.getInstance(project).commitAllDocuments()

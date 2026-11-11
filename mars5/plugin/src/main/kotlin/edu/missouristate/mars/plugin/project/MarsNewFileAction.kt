@@ -11,6 +11,8 @@ import edu.missouristate.mars.plugin.language.MipsFileType
 
 private const val ASSEMBLY_TEMPLATE = "MIPS Assembly"
 private const val SOURCE_TEMPLATE = "MIPS Source"
+private const val MARS_TEMPLATE = "MARS Assembly"
+private const val INCLUDE_TEMPLATE = "MIPS Include"
 private val messages = DynamicBundle(MarsNewFileAction::class.java, "messages.MarsBundle")
 
 internal class MarsNewFileAction : CreateFileFromTemplateAction(), DumbAware {
@@ -21,6 +23,8 @@ internal class MarsNewFileAction : CreateFileFromTemplateAction(), DumbAware {
         builder.setTitle(messages.getMessage("project.file.title"))
             .addKind(messages.getMessage("project.file.asm"), MipsFileType.icon, ASSEMBLY_TEMPLATE)
             .addKind(messages.getMessage("project.file.s"), MipsFileType.icon, SOURCE_TEMPLATE)
+            .addKind(messages.getMessage("project.file.mars"), MipsFileType.icon, MARS_TEMPLATE)
+            .addKind(messages.getMessage("project.file.inc"), MipsFileType.icon, INCLUDE_TEMPLATE)
     }
 
     override fun createFile(name: String, templateName: String, dir: PsiDirectory): PsiFile? {
@@ -28,6 +32,8 @@ internal class MarsNewFileAction : CreateFileFromTemplateAction(), DumbAware {
         val template = when (name.substringAfterLast('.', "")) {
             "asm" -> ASSEMBLY_TEMPLATE
             "s" -> SOURCE_TEMPLATE
+            "mars" -> MARS_TEMPLATE
+            "inc" -> INCLUDE_TEMPLATE
             else -> templateName
         }
         return super.createFile(name, template, dir)

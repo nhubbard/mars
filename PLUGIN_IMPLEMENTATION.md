@@ -2405,12 +2405,14 @@ callbacks run on the simulator worker and should return promptly.
 Choose **Build → Assemble MIPS Directory** with the entry file active, or
 enable **Assemble other MIPS files in the source directory** in a MIPS
 Run configuration. The entry file is assembled first. Other top-level
-`.asm` and `.s` files follow in filename order, using unsaved editor text.
+`.asm`, `.s`, and `.mars` files follow in filename order, using unsaved editor text.
 The include prepass can still read files in subdirectories or files with
 other extensions. Put include-only fragments in a subdirectory or give
-them an extension such as `.inc` to keep them out of the top-level list.
+them the `.inc` extension to keep them out of the top-level list and retain
+MARS highlighting, navigation, and completion. Use `.mars` for a distinct
+file association when another IntelliJ plugin also handles assembly files.
 The directory filter follows the Java core's extension rule. A file named
-`.local.S` is a sibling source, and a file named exactly `.asm` or `.s`
+`.local.S` is a sibling source, and a file named exactly `.asm`, `.s`, or `.mars`
 enters the build when named explicitly, for example in an `.include`.
 
 Run and Debug use the same capture as the Build action. Breakpoints and
