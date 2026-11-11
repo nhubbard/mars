@@ -177,6 +177,8 @@ private class MipsBlock(
             timelines.value == null -> readOnly
             left.elementType in protectedSpacing || right.elementType in protectedSpacing -> readOnly
             line?.verbatimOperandRanges.orEmpty().any { it.startOffset < left.textRange.endOffset && right.startOffset < it.endOffset } -> readOnly
+            right.elementType == externalName -> oneSpace
+            left.elementType == externalName -> if (after == comma) noSpaces else oneSpace
             // A space can turn a sign into a separate token, or prevent an exponent from joining.
             before in signs -> readOnly
             after in signs -> if (gap.isEmpty() && before != comma) readOnly else oneSpace
@@ -196,6 +198,7 @@ private class MipsBlock(
         val statement = MipsTypes.psi("STATEMENT")
         val macro = MipsTypes.psi("MACRO_DEFINITION")
         val replacement = MipsTypes.psi("REPLACEMENT")
+        val externalName = MipsTypes.psi("EXTERNAL_NAME")
         val address = MipsTypes.psi("ADDRESS_EXPR")
         val repetition = MipsTypes.psi("REPETITION")
         val comment = MipsTypes.psi("COMMENT")

@@ -102,6 +102,39 @@ class MipsFormattingPlatformTest {
     }
 
     @Test
+    fun `reformat separates punctuation names from the extern directive and size`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val source = """
+                .extern)4
+                .extern  :  4
+                .extern (4
+                .extern+  ,4
+                .extern -7,4
+                .extern next 4
+                .data
+                .word next
+            """.trimIndent()
+            val expected = """
+                .extern ) 4
+                .extern : 4
+                .extern ( 4
+                .extern +, 4
+                .extern -7, 4
+                .extern next 4
+                .data
+                .word next
+            """.trimIndent()
+            val formatted = withContext(Dispatchers.EDT) {
+                fixture.configureByText("extern-spacing.mars", source)
+                val first = reformat()
+                assertEquals(first, reformat())
+                first
+            }
+            assertEquals(expected, formatted)
+            assertEquals(assemble(directory.resolve("before.mars"), source), assemble(directory.resolve("after.mars"), formatted))
+        }
+
+    @Test
     fun `reformat preserves written whitespace inside a string opened by an equivalence`(@TempDir directory: Path) =
         timeoutRunBlocking<Unit> {
             val source = """
