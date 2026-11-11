@@ -3506,6 +3506,8 @@ class MarsDebugPlatformTest {
                             usedKey == MarsMachineHighlight.REGISTER.colorKey
                         }.map { it.name }.toSet()
                         assertEquals(names.toSet(), highlighted)
+                        assertEquals(names.toSet(), nodes.filter { " (written) = " in it.text.toString() }.map { it.name }.toSet())
+                        assertTrue(nodes.none { it.rawValue?.contains("written") == true })
                     }
                 }
             }

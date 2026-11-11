@@ -1690,6 +1690,15 @@ after execution advances. It checks the program counter, multiply result,
 exception PC, floating-point condition flags, and paired floating-point
 values against the machine state at each suspension.
 
+With **Highlight MARS Register Writes** enabled, Variables marks the most
+recent writing instruction's destinations in each register bank with
+`(written)` as well as the configured color. The marker is part of the
+displayed label, so copying the value still returns the original value.
+Backstep restores the earlier markers. The packaged Ubuntu ARM64 replay
+marked `$t0`, stepped over a write to `$t1`, and verified that the marker
+moved while `$t0` retained `42`. Its log and screenshot are under
+`mars5/.gradle/release-host-checks/linux-arm64-register-write-marker`.
+
 ### Editing registers
 
 **Set Value** is available on the writable general-purpose registers and on
@@ -2837,8 +2846,8 @@ the whole panel. IntelliJ's wrapping help text and a viewport-width panel
 keep the diagram and trace in the dock. The replay switched to Registers by
 keyboard, brought the full trace pane into view on focus, and resumed capture
 until Run printed `42`. The final layout passed 2,034 Jupiter tests, both
-coverage gates, and Plugin Verifier on macOS. Ubuntu screenshots and the
-packaged replay log are under
+coverage gates, and Plugin Verifier on macOS and Ubuntu ARM64. Ubuntu
+screenshots and the packaged replay log are under
 `mars5/.gradle/release-host-checks/linux-arm64-xray-high-contrast`.
 
 ## IntelliJ indexing and completion baseline

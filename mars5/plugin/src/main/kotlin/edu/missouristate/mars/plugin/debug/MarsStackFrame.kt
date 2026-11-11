@@ -145,6 +145,8 @@ internal class RegisterValue(
             return
         }
         node.setPresentation(null, object : XValuePresentation() {
+            override fun getSeparator() = " (${runMessages.getMessage("debug.registers.written")})${super.getSeparator()}"
+
             override fun renderValue(renderer: XValueTextRenderer) = renderer.renderValue(value, MarsMachineHighlight.REGISTER.colorKey)
         }, false)
     }
