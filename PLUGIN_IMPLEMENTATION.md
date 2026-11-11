@@ -2527,6 +2527,12 @@ records the included source reopening during stepping.
 
 ## IntelliJ plugin release preflight
 
+The GitHub Actions build runs the same Java 25 test, CLI smoke, and plugin
+verification checks on Linux, Apple Silicon macOS, and x64 Windows. Each
+runner uploads its Jupiter results, plugin coverage report, and Plugin
+Verifier report. Packaged UI interaction and archive replacement are
+separate release checks.
+
 Run the same checks as CI from `mars5`.
 
 ```sh

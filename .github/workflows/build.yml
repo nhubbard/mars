@@ -2,7 +2,17 @@ name: Build
 on: [push, pull_request]
 jobs:
   verify:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            gradle: ./gradlew
+          - os: macos-26
+            gradle: ./gradlew
+          - os: windows-2025
+            gradle: '.\gradlew.bat'
     defaults:
       run:
         working-directory: mars5
@@ -12,7 +22,17 @@ jobs:
         with:
           distribution: temurin
           java-version: '25'
-      - run: ./gradlew build :core:benchmarkClasses --no-daemon
+      - name: Build and test MARS
+        run: ${{ matrix.gradle }} build :core:benchmarkClasses --no-daemon
       - run: java -jar cli/build/libs/cli-1.0-SNAPSHOT.jar --help
       - name: Verify IntelliJ plugin
-        run: ./gradlew :plugin:verifyPluginStructure :plugin:verifyPluginProjectConfiguration :plugin:verifyPlugin --no-daemon
+        run: ${{ matrix.gradle }} :plugin:verifyPluginStructure :plugin:verifyPluginProjectConfiguration :plugin:verifyPlugin --no-daemon
+      - name: Save release qualification reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: mars-qualification-${{ matrix.os }}
+          path: |
+            mars5/*/build/test-results/test/TEST-*.xml
+            mars5/plugin/build/reports/jacoco/test/jacocoTestReport.xml
+            mars5/plugin/build/reports/pluginVerifier/
