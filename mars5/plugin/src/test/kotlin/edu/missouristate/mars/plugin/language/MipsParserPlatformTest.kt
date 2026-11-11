@@ -1708,6 +1708,40 @@ class MipsParserPlatformTest {
     }
 
     @Test
+    fun `PNG decoder parses and preserves machine code and origins with MARS and include suffixes`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val originals = listOf("viewer.asm", "png.s", "deflate.s").associateWith { name ->
+                checkNotNull(javaClass.getResourceAsStream("/smoke/png-decoder/src/main/mips/$name"))
+                    .bufferedReader().use { it.readText() }
+            }
+            val renamed = linkedMapOf(
+                "viewer.mars" to originals.getValue("viewer.asm")
+                    .replace("\"png.s\"", "\"png.inc\"")
+                    .replace("\"deflate.s\"", "\"deflate.inc\""),
+                "png.inc" to originals.getValue("png.s"),
+                "deflate.inc" to originals.getValue("deflate.s"),
+            )
+            readAction {
+                for ((name, text) in originals + renamed) {
+                    val file = assertParses(text, name)
+                    assertTrue(descendants(file.node, "INSTRUCTION").any(), name)
+                }
+            }
+            for ((name, text) in originals + renamed) directory.resolve(name).writeText(text)
+            val context = project.get().service<MarsSessionService>().context
+            val originalProgram = context.assemble(listOf(directory.resolve("viewer.asm")), null, true, false)
+            val expected = originalProgram.machineList.map { it.address to it.binaryStatement }
+            assertTrue(expected.size > 500, "The full decoder and both included libraries must assemble")
+            val renamedProgram = context.assemble(listOf(directory.resolve("viewer.mars")), null, true, false)
+            assertEquals(expected, renamedProgram.machineList.map { it.address to it.binaryStatement })
+            val origins = renamedProgram.sourceMap().origins().values.map { it.location() }
+            assertEquals(renamed.keys, origins.map { it.file().fileName.toString() }.toSet())
+            for (name in renamed.keys) {
+                assertTrue(origins.count { it.file().fileName.toString() == name } > 30, name)
+            }
+        }
+
+    @Test
     fun `unsigned address pseudo examples select their advertised expansion`(@TempDir directory: Path) =
         timeoutRunBlocking<Unit> {
             val catalog = InstructionSet().also { it.populate() }.instructionList
@@ -1769,8 +1803,9 @@ class MipsParserPlatformTest {
         readAction { for (text in cases) assertParses(text) }
     }
 
-    private fun assertParses(source: String): MipsFile {
-        val file = PsiFileFactory.getInstance(project.get()).createFileFromText("example.asm", MipsFileType, source)
+    private fun assertParses(source: String, name: String = "example.asm"): MipsFile {
+        val fileType = FileTypeManager.getInstance().getFileTypeByFileName(name)
+        val file = PsiFileFactory.getInstance(project.get()).createFileFromText(name, fileType, source)
         val mips = assertInstanceOf(MipsFile::class.java, file)
         assertSame(MipsFileType, file.fileType)
         assertEquals(source, file.text)

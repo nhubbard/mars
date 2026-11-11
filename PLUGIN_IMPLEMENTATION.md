@@ -2808,6 +2808,10 @@ directory.
 The binary workbench fixture parses both authored assembly files through the
 native parser and assembles the entry through the project session. It verifies
 that the resulting source map retains the included library's instruction origins.
+The PNG decoder fixture parses the viewer and both libraries under their
+original names and as a `.mars` entry with two `.inc` libraries. It compares
+the emitted machine words and checks that the renamed source map retains
+instruction origins in all three files.
 The example fixture copy includes authored assembly files and excludes generated
 catalog cases and Gradle state.
 
