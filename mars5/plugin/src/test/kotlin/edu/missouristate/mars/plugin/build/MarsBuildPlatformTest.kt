@@ -427,7 +427,7 @@ class MarsBuildPlatformTest {
         val (main, alpha, zulu) = withContext(Dispatchers.EDT) {
             val main = fixture.addFileToProject("app/main.asm", "la \$t0, fromAlpha\nla \$t1, fromZulu\n") as MipsFile
             val alpha = fixture.addFileToProject("lib-a/alpha.s", ".eqv NUMBER 7\n.include \"shared.s\"\n.globl fromAlpha\nfromAlpha: nop\n") as MipsFile
-            val zulu = fixture.addFileToProject("lib-z/zulu.s", ".eqv NUMBER 9\n.include \"../lib-a/shared.s\"\n.globl fromZulu\nfromZulu: nop\n") as MipsFile
+            val zulu = fixture.addFileToProject("lib-z/zulu", ".eqv NUMBER 9\n.include \"../lib-a/shared.s\"\n.globl fromZulu\nfromZulu: nop\n")
             fixture.addFileToProject("lib-a/shared.s", "li \$t4, NUMBER\n")
             Triple(main, alpha, zulu)
         }
@@ -451,13 +451,13 @@ class MarsBuildPlatformTest {
                 assertFalse(noProject.presentation.isEnabled)
                 action.actionPerformed(noProject)
 
-                val notes = fixture.addFileToProject("notes.txt", "ordinary text").virtualFile
+                val binary = fixture.addFileToProject("image.png", "").virtualFile
                 ApplicationManager.getApplication().replaceService(FileChooserFactory::class.java, object : FileChooserFactoryImpl() {
                     override fun createPathChooser(descriptor: FileChooserDescriptor, project: Project?, parent: Component?) =
                         PathChooserDialog { _, callback ->
                             assertTrue(descriptor.isChooseMultiple)
                             callback.consume(listOf(main.virtualFile, zulu.virtualFile, alpha.virtualFile, alpha.virtualFile,
-                                notes, main.virtualFile.parent, LightVirtualFile("light.s", MipsFileType, "nop")))
+                                binary, main.virtualFile.parent, LightVirtualFile("light.s", MipsFileType, "nop")))
                         }
                 }, lifetime)
                 val page = MarsAssemblyConfigurable(project)
@@ -1191,7 +1191,18 @@ class MarsBuildPlatformTest {
         }
         readAction { assertEquals("first-values.s", target("COUNT")?.containingFile?.name) }
         assertFalse(assemble(plain))
-        readAction { assertEquals("first-values.s", target("COUNT")?.containingFile?.name) }
+        readAction {
+            assertEquals("second-values.s", target("COUNT")?.containingFile?.name)
+            assertEquals(plain, target("%value")?.containingFile?.virtualFile)
+        }
+        val ignored = withContext(Dispatchers.EDT) {
+            fixture.tempDirFixture.createFile("entry.txt~", entry("second-values.s"))
+        }
+        assertFalse(assemble(ignored))
+        readAction {
+            assertNull(PsiManager.getInstance(project).findFile(ignored))
+            assertEquals("first-values.s", target("COUNT")?.containingFile?.name)
+        }
     }
 
     @Test

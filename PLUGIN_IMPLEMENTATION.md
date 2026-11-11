@@ -2069,8 +2069,10 @@ supplies the entry and assembly order for Run and Debug, so the individual
 file and directory options are inactive in that mode. The source list is
 shared in the project settings and uses IntelliJ path variables for
 portability. IntelliJ refreshes editor diagnostics and symbol resolution
-when the list changes. Project builds use unsaved source text and the
-project's exception handler.
+when the list changes. The chooser accepts local text files, including
+extensionless files. MIPS files included by a plain-text entry use that
+entry's macro and `.eqv` definitions for editor analysis. Project builds
+use unsaved source text and the project's exception handler.
 
 The MIPS Build menu actions submit full assembly tasks through IntelliJ's
 `ProjectTaskManager`. The MARS runner handles its own tasks and uses the

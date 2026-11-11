@@ -16,6 +16,7 @@ import com.intellij.openapi.options.ConfigurationException
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.DialogPanel
 import com.intellij.openapi.util.SimpleModificationTracker
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.ui.CollectionListModel
 import com.intellij.ui.ToolbarDecorator
 import com.intellij.ui.components.JBList
@@ -32,13 +33,14 @@ import edu.missouristate.mars.ApplicationInfo
 import edu.missouristate.mars.plugin.analysis.MipsAssemblyContextListener
 import edu.missouristate.mars.plugin.MarsExecutionOptions
 import edu.missouristate.mars.plugin.MarsMemoryLayout
-import edu.missouristate.mars.plugin.language.MipsFileType
 import edu.missouristate.mars.plugin.projectFilePath
 import com.intellij.util.xmlb.annotations.XCollection
 import java.nio.file.Path
 import javax.swing.JCheckBox
 
 private const val MAX_BACKSTEP_LIMIT = 100_000
+
+private fun VirtualFile.isProjectAssemblySource() = isLocalSource() && !fileType.isBinary
 
 @Service(Service.Level.PROJECT)
 @State(name = "MarsAssemblySettings", storages = [Storage("mars.xml")])
@@ -202,11 +204,11 @@ internal class MarsAssemblyConfigurable(private val project: Project) :
         }
         val sourceChooser = FileChooserDescriptorFactory.createMultipleFilesNoJarsDescriptor()
             .withTitle(messages.getMessage("build.settings.sources.browse"))
-            .withExtensionFilter(MipsFileType)
+            .withFileFilter(VirtualFile::isProjectAssemblySource)
             .withEnvironmentRestricted(true)
         val sources = ToolbarDecorator.createDecorator(files, rows).setAddAction {
             FileChooser.chooseFiles(sourceChooser, project, files, null) { selected ->
-                val localSources = selected.filter { it.isLocalSource() && it.fileType == MipsFileType }
+                val localSources = selected.filter(VirtualFile::isProjectAssemblySource)
                 val combined = (rows.items + localSources.map { it.path }).distinct()
                 rows.replaceAll(combined)
                 files.selectedIndex = combined.lastIndex

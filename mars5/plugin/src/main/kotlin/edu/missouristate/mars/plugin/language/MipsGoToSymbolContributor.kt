@@ -97,7 +97,7 @@ internal class MipsGoToSymbolContributor : ChooseByNameContributorEx {
                     ProgressManager.checkCanceled()
                     if (typedFiles.add(file) && inScope(file)) yieldAll(analysis.editorTimeline(file).expandedSymbolsIn(file))
                 }
-                for (file in timeline.unindexedIncludeFiles()) {
+                for (file in timeline.unindexedSourceFiles()) {
                     ProgressManager.checkCanceled()
                     if (inScope(file)) yieldAll(timeline.unindexedSymbolsIn(file).filter(unindexedSymbols::add))
                 }

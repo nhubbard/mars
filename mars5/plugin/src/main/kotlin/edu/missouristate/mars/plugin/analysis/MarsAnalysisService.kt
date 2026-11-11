@@ -775,7 +775,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         if (file.viewProvider.virtualFile.toNioPath() == root) return mipsSourceTimeline(file)
         // The capture includes this root and is invalidated on VFS structure changes.
         val entry = VirtualFileManager.getInstance().findFileByNioPath(root)!!
-        val entryPsi = PsiManager.getInstance(project).findFile(entry) as? MipsFile ?: return null
+        val entryPsi = assemblySourceSyntax(PsiManager.getInstance(project).findFile(entry)) ?: return null
         return mipsSourceTimeline(entryPsi)
     }
 

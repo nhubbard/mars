@@ -52,7 +52,7 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
     enter(entry)
     var macro: Begin? = null
     var firstIncompleteInclude = Int.MAX_VALUE
-    var unindexedIncludes = false
+    var unindexedSources = entry.originalFile !is MipsFile
     var inData = false
     var dataList = Directives.WORD
     val replacement: (String) -> String? = { equivalences[it]?.definition?.replacement }
@@ -87,7 +87,7 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
             is MipsSourceEvent.LabelDeclaration -> {
                 val expanded = physical.bind(macro != null, replacement)
                 if (expanded == null) {
-                    if (cursor.locations.isUnindexedInclude) {
+                    if (cursor.locations.isUnindexedSource) {
                         physical.declaration.name?.let { addLabel(it, physical.declaration, generated = false) }
                     }
                     continue
@@ -159,16 +159,15 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
             }
             is MipsSourceEvent.UnterminatedInclude -> firstIncompleteInclude = minOf(firstIncompleteInclude, index)
             is MipsSourceEvent.Include -> {
-                val included = resolveMipsInclude(event.literal, event.path) as? PsiFile
-                if (included == null || included.fileType.isBinary || !visited.add(included.virtualFile.includeIdentity())) {
+                val included = (resolveMipsInclude(event.literal, event.path) as? PsiFile)
+                    ?.takeIf { visited.add(it.virtualFile.includeIdentity()) }
+                val syntax = assemblySourceSyntax(included)
+                if (syntax == null) {
                     firstIncompleteInclude = minOf(firstIncompleteInclude, index)
                     continue
                 }
-                val syntax = if (included is MipsFile) included else {
-                    unindexedIncludes = true
-                    includedSourceSyntax(included)
-                }
-                dependencies.add(included)
+                if (syntax.originalFile !is MipsFile) unindexedSources = true
+                dependencies.add(syntax.originalFile)
                 enter(syntax)
             }
         }
@@ -181,7 +180,7 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
     }
     CachedValueProvider.Result.create(
         MipsSourceTimeline(files, equivalences, integerDataPrefixes, externalStorage, unindexedLabels, macroBoundaries,
-            macroNames, closedMacros, firstIncompleteInclude, unindexedIncludes),
+            macroNames, closedMacros, firstIncompleteInclude, unindexedSources),
         dependencies,
     )
 }
@@ -196,7 +195,7 @@ internal class MipsSourceTimeline(
     val macroNames: Set<String>,
     private val closedMacros: Map<String, Map<Int, TreeMap<Int, Begin>>>,
     private val firstIncompleteInclude: Int,
-    val hasUnindexedIncludes: Boolean,
+    val hasUnindexedSources: Boolean,
 ) {
     val hasIncompleteIncludes: Boolean get() = firstIncompleteInclude != Int.MAX_VALUE
     val hasQuotedEquivalence: Boolean by lazy { equivalences.values.any { '"' in it.definition.replacement } }
@@ -241,7 +240,7 @@ internal class MipsSourceTimeline(
     fun includes(file: MipsFile): Boolean = file.viewProvider.virtualFile in files
 
     // Index callers need the physical MARS PSI files, not the contextual parse copies.
-    fun sourceFiles(): Sequence<MipsFile> = files.values.asSequence().filterNot(SourceFileEvents::isUnindexedInclude)
+    fun sourceFiles(): Sequence<MipsFile> = files.values.asSequence().filterNot(SourceFileEvents::isUnindexedSource)
         .map(SourceFileEvents::file)
 
     val indexedSourceScope: GlobalSearchScope by lazy {
@@ -252,7 +251,7 @@ internal class MipsSourceTimeline(
 
     fun sourceFileOrder(file: VirtualFile): Int = files.getValue(file).order
 
-    fun unindexedIncludeFiles(): Sequence<MipsFile> = files.values.asSequence().filter(SourceFileEvents::isUnindexedInclude)
+    fun unindexedSourceFiles(): Sequence<MipsFile> = files.values.asSequence().filter(SourceFileEvents::isUnindexedSource)
         .map(SourceFileEvents::file)
 
     fun replacesLabel(file: MipsFile, offset: Int): Boolean = offset in files.getValue(file.viewProvider.virtualFile).replacedLabels
@@ -383,7 +382,7 @@ internal data class MacroBoundaryProblem(val offset: Int, val kind: Kind) {
 }
 
 internal class SourceFileEvents(val file: MipsFile, val order: Int) {
-    val isUnindexedInclude = file.originalFile !is MipsFile
+    val isUnindexedSource = file.originalFile !is MipsFile
     val sites = ArrayList<SourceEventSite>()
     val generatedMacroParts = HashMap<Int, MacroPart>()
     val replacedLabels = HashSet<Int>()
@@ -414,10 +413,14 @@ internal fun resolveMipsInclude(literal: MipsStringLiteral, path: String) = Mips
 
 private fun VirtualFile.includeIdentity() = mipsIncludeDirectoryPath() to name
 
-private fun includedSourceSyntax(source: PsiFile): MipsFile = CachedValuesManager.getCachedValue(source) {
-    val file = PsiFileFactory.getInstance(source.project)
-        .createFileFromText(source.name, MipsFileType, source.viewProvider.contents.toString()) as MipsFile
-    // FileReferenceSet resolves relative paths against the original physical file.
-    file.setOriginalFile(source)
-    CachedValueProvider.Result.create(file, source)
+internal fun assemblySourceSyntax(source: PsiFile?): MipsFile? {
+    if (source == null || source.fileType.isBinary) return null
+    if (source is MipsFile) return source
+    return CachedValuesManager.getCachedValue(source) {
+        val file = PsiFileFactory.getInstance(source.project)
+            .createFileFromText(source.name, MipsFileType, source.viewProvider.contents.toString()) as MipsFile
+        // FileReferenceSet resolves relative paths against the original physical file.
+        file.setOriginalFile(source)
+        CachedValueProvider.Result.create(file, source)
+    }
 }
