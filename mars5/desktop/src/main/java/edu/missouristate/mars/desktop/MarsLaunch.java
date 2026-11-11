@@ -152,8 +152,8 @@ public class MarsLaunch {
       countInstructions = false;
       selfModifyingCode = false;
       instructionCount = 0;
-      assembleErrorExitCode = 0;
-      simulateErrorExitCode = 0;
+      assembleErrorExitCode = 1;
+      simulateErrorExitCode = 1;
       registerDisplayList = new ArrayList<>();
       memoryDisplayList = new ArrayList<>();
       filenameList = new ArrayList<>();
@@ -315,6 +315,11 @@ public class MarsLaunch {
         continue;
       }
       if (args[i].equalsIgnoreCase("mc")) {
+        if (i + 1 == args.length) {
+          out.println("Memory configuration option requires a configuration name.");
+          argsOK = false;
+          continue;
+        }
         String configName = args[++i];
         MemoryConfiguration config = MemoryConfigurations.getConfigurationByName(configName);
         if (config == null) {
@@ -407,15 +412,10 @@ public class MarsLaunch {
         if (session.context().registerFile.getUserRegister(args[i]) == null
             && session.context().coprocessor1.getRegister(args[i]) == null) {
           out.println("Invalid Register Name: " + args[i]);
+          argsOK = false;
         } else {
           registerDisplayList.add(args[i]);
         }
-        continue;
-      }
-      // check for register name w/o $.  added 14-July-2008 DPS
-      if (session.context().registerFile.getUserRegister("$" + args[i]) != null
-          || session.context().coprocessor1.getRegister("$" + args[i]) != null) {
-        registerDisplayList.add("$" + args[i]);
         continue;
       }
       if (new File(args[i]).exists()) { // is it a file name?
@@ -428,6 +428,12 @@ public class MarsLaunch {
         maxSteps = Integer.decode(args[i]); // if we got here, it has to be OK
         continue;
       } catch (NumberFormatException ignored) {
+      }
+      // A numeric register needs the $ prefix to distinguish it from a step limit.
+      if (session.context().registerFile.getUserRegister("$" + args[i]) != null
+          || session.context().coprocessor1.getRegister("$" + args[i]) != null) {
+        registerDisplayList.add("$" + args[i]);
+        continue;
       }
       // Check for integer address range (m-n)
       try {
@@ -445,6 +451,13 @@ public class MarsLaunch {
       out.println("Invalid Command Argument: " + args[i]);
       argsOK = false;
     }
+    if (argsOK && filenameList.isEmpty()) {
+      out.println("No assembly source files specified.");
+      argsOK = false;
+    }
+    if (!argsOK) {
+      session.setExitCode(2);
+    }
     return argsOK;
   }
 
@@ -454,9 +467,6 @@ public class MarsLaunch {
 
   private boolean runCommand() {
     boolean programRan = false;
-    if (filenameList.isEmpty()) {
-      return false;
-    }
     try {
       session
           .getSettings()
@@ -516,7 +526,7 @@ public class MarsLaunch {
         boolean done = countInstructions
             ? code.simulate(maxSteps, completed -> instructionCount = completed)
             : code.simulate(maxSteps);
-        session.setExitCode(code.getExitCode());
+        session.setExitCode(done ? code.getExitCode() : 3);
         if (!done) {
           out.println("\nProgram terminated when maximum step limit " + maxSteps + " reached.");
         }
@@ -791,5 +801,7 @@ public class MarsLaunch {
     out.println("unless the global statement label 'main' is defined in one of the files.");
     out.println("Exception handler not automatically assembled.  Add it to the file list.");
     out.println("Options used here do not affect MARS Settings menu values and vice versa.");
+    out.println("Exit status defaults: 1 for assembly or simulation errors, 2 for invalid");
+    out.println("arguments, and 3 when execution reaches the step limit.");
   }
 }

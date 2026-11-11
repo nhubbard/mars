@@ -111,22 +111,33 @@ class LauncherParityTest {
     Path pseudo = source("pseudo.s", "li $v0,999\nsyscall\n");
     assertDiagnostics(List.of("np", "ae19", pseudo.toString()), 19, "li");
     assertDiagnostics(List.of("se23", pseudo.toString()), 23, "syscall");
+    assertDiagnostics(List.of("np", "ae0", pseudo.toString()), 0, "li");
+    assertDiagnostics(List.of("se0", pseudo.toString()), 0, "syscall");
   }
 
   @Test
-  void standaloneAutomationHasDistinctDefaultErrorStatuses() throws Exception {
+  void bothLaunchersReportDefaultFailureStatuses() throws Exception {
     Path assembly = source("assembly-error.s", "bogus\n");
     Path simulation = source("simulation-error.s", "li $v0,999\nsyscall\n");
     for (Path file : List.of(assembly, simulation)) {
       var standalone = launch("cli", "", "nc", "me", file.toString());
       var desktop = launch("desktop", "", "nc", "me", file.toString());
       assertEquals(1, standalone.status());
-      assertEquals(0, desktop.status());
+      assertEquals(1, desktop.status());
       assertTrue(standalone.err().startsWith("Error"));
       assertTrue(desktop.err().startsWith("Error"));
     }
-    assertEquals(2, launch("cli", "", "nc", "--unknown-option").status());
-    assertEquals(0, launch("desktop", "", "nc", "--unknown-option").status());
+    for (String launcher : List.of("cli", "desktop")) {
+      for (List<String> arguments : List.of(
+          List.of("nc", "me", "--unknown-option"),
+          List.of("nc", "me", "mc"),
+          List.of("nc", "me", "$notARegister", simulation.toString()),
+          List.of("nc", "me"))) {
+        var failure = launch(launcher, "", arguments);
+        assertEquals(2, failure.status(), launcher + " " + arguments);
+        assertFalse(failure.err().isBlank(), launcher + " " + arguments);
+      }
+    }
   }
 
   @Test
@@ -238,17 +249,22 @@ class LauncherParityTest {
   }
 
   @Test
-  void compactTextLoopCountsEveryStepAndDocumentsTheLauncherExitStatuses() throws Exception {
+  void compactTextLoopCountsEveryStepAndReportsTheStepLimitStatus() throws Exception {
     Path file = source("loop.s", "loop: beq $zero,$zero,loop\n");
-    var arguments = List.of("nc", "ic", "mc", "CompactTextAtZero", "32", file.toString());
-    var standalone = launch("cli", "", arguments);
-    var desktop = launch("desktop", "", arguments);
-    assertEquals(3, standalone.status());
-    assertEquals(0, desktop.status());
-    assertEquals("32", standalone.out().strip());
-    assertTrue(desktop.out().lines().anyMatch("32"::equals));
-    assertTrue(standalone.err().contains("step limit"));
-    assertTrue(desktop.out().contains("step limit 32"));
+    for (String limit : List.of("3", "32")) {
+      var arguments = List.of("nc", "ic", "mc", "CompactTextAtZero", limit, file.toString());
+      var standalone = launch("cli", "", arguments);
+      var desktop = launch("desktop", "", arguments);
+      assertEquals(3, standalone.status());
+      assertEquals(3, desktop.status());
+      assertEquals(limit, standalone.out().strip());
+      assertTrue(desktop.out().lines().anyMatch(limit::equals));
+      assertTrue(standalone.err().contains("step limit"));
+      assertTrue(desktop.out().contains("step limit " + limit));
+    }
+
+    Path exitsAtLimit = source("exits-at-limit.s", "li $a0,17\nli $v0,17\nsyscall\n");
+    assertProgramResult(List.of("nc", "3", exitsAtLimit.toString()), "", 17, "");
   }
 
   private void assertProgramResult(List<String> arguments, String input, int status, String output)
