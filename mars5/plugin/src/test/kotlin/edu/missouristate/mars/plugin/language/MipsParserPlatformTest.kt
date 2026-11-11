@@ -757,21 +757,29 @@ class MipsParserPlatformTest {
         val labels = tokens.flatMap { row -> row.filter { it.type == TokenTypes.IDENTIFIER }.map { it.value } }.toSortedSet()
         val header = listOf(".text") + labels.map { "$it:" }
         val examples = instructions.map { it.exampleFormat }
+        val separator = ",\t,,"
         val commaHeavy = tokens.map { row ->
             val fields = listOf(row.first().value.uppercase()) + row.drop(1).map { it.value }
-            fields.joinToString(",\t,,", prefix = "\t,,", postfix = ",, # assembler ignores repeated separators")
+            fields.joinToString(separator, prefix = "\t,,", postfix = ",, # assembler ignores repeated separators")
         }
         val aliasDefinitions = tokens.mapIndexed { index, row -> ".eqv OP_$index ${row.first().value}" }
         val aliasCalls = tokens.mapIndexed { index, row ->
-            row.drop(1).joinToString(",\t,,", prefix = "OP_$index,\t,,") { it.value }
+            row.drop(1).joinToString(separator, prefix = "OP_$index$separator") { it.value }
         }
         val punctuation = setOf(TokenTypes.LEFT_PAREN, TokenTypes.RIGHT_PAREN, TokenTypes.PLUS, TokenTypes.MINUS)
         val operandAliases = tokens.flatMap { row -> row.drop(1).filter { it.type !in punctuation }.map { it.value } }
             .distinct().mapIndexed { index, spelling -> spelling to "OPERAND_$index" }.toMap()
         val operandDefinitions = operandAliases.map { (spelling, alias) -> ".eqv $alias $spelling" }
         val aliasedOperands = tokens.map { row ->
-            row.drop(1).joinToString(",\t,,", prefix = "${row.first().value},\t,,") {
+            row.drop(1).joinToString(separator, prefix = row.first().value + separator) {
                 operandAliases[it.value] ?: it.value
+            }
+        }
+        val mixedOperands = (1 until tokens.maxOf { it.size }).map { aliasPosition ->
+            tokens.map { row ->
+                row.mapIndexed { index, token ->
+                    if (index == aliasPosition) operandAliases[token.value] ?: token.value else token.value
+                }.joinToString(separator)
             }
         }
         val macroOperandCalls = tokens.mapIndexed { index, row ->
@@ -780,7 +788,7 @@ class MipsParserPlatformTest {
         val macroOperandDefinitions = listOf("%", "\$").map { sigil ->
             tokens.flatMapIndexed { index, row ->
                 val parameters = ArrayList<String>()
-                val body = row.drop(1).joinToString(",\t,,", prefix = "${row.first().value},\t,,") { token ->
+                val body = row.drop(1).joinToString(separator, prefix = row.first().value + separator) { token ->
                     if (token.type in punctuation) token.value
                     else "${sigil}arg${parameters.size}".also(parameters::add)
                 }
@@ -815,6 +823,10 @@ class MipsParserPlatformTest {
             assertEquals(canonicalWords, assemble("aliased", aliasDefinitions + header, aliasCalls), "Aliases with delay slots $delayed")
             assertEquals(canonicalWords, assemble("operand-aliases", operandDefinitions + header, aliasedOperands),
                 "Operand aliases with delay slots $delayed")
+            for ((index, mixed) in mixedOperands.withIndex()) {
+                assertEquals(canonicalWords, assemble("mixed-operands", operandDefinitions + header, mixed),
+                    "Alias at token ${index + 1} with delay slots $delayed")
+            }
             for (definitions in macroOperandDefinitions) {
                 assertEquals(canonicalWords, assemble("operand-formals", definitions + header, macroOperandCalls),
                     "Operand formals with delay slots $delayed")
@@ -835,21 +847,48 @@ class MipsParserPlatformTest {
                 return operations
             }
             val names = instructions.map { it.name }
-            checkOperations(header, examples, "INSTRUCTION", names)
-            val written = checkOperations(header, commaHeavy, "INSTRUCTION", names)
-            val aliases = checkOperations(operandDefinitions + header, aliasedOperands, "INSTRUCTION", names)
+            val written = checkOperations(header, examples, "INSTRUCTION", names)
             checkOperations(aliasDefinitions + header, aliasCalls, "OPERATION_CANDIDATE", instructions.indices.map { "OP_$it" })
             checkOperations(macroDefinitions + header, macroCalls, "OPERATION_CANDIDATE", tokens.map { "emit_${it.size}" })
 
-            fun checkOperandCounts(rewritten: List<ASTNode>) {
-                for ((canonical, alternate) in written.zip(rewritten)) {
-                    assertEquals(descendants(canonical, "OPERAND").count(), descendants(alternate, "OPERAND").count(),
-                        "${canonical.text} / ${alternate.text}")
+            val tokenizer = Tokenizer()
+            fun operandFieldRanges(instruction: ASTNode, fields: List<TextRange>): List<IntRange> {
+                return descendants(instruction, "OPERAND").toList().map { operand ->
+                    val start = operand.startOffset - instruction.startOffset
+                    val end = start + operand.textLength
+                    val first = fields.indexOfFirst { it.startOffset == start }
+                    val last = fields.indexOfFirst { it.endOffset == end }
+                    assertTrue(first >= 0 && last >= first, "Operand '${operand.text}' cuts a field in '${instruction.text}'")
+                    first..last
                 }
             }
-            checkOperandCounts(aliases)
+            val expectedRanges = written.map { instruction ->
+                val physicalTokens = tokenizer.tokenizeLine(null, 1, instruction.text, false)
+                val fields = List(physicalTokens.size()) { index ->
+                    TextRange(physicalTokens[index].startPos - 1, physicalTokens[index].endPos - 1)
+                }
+                operandFieldRanges(instruction, fields)
+            }
+            fun checkOperandBoundaries(rewritten: List<ASTNode>) {
+                for ((index, instruction) in rewritten.withIndex()) {
+                    // Use the authored fields. Before substitution, the core may split a
+                    // signed immediate following an alias into a sign and a magnitude.
+                    var offset = 0
+                    val fields = instruction.text.split(separator).map { field ->
+                        TextRange.from(offset, field.length).also { offset = it.endOffset + separator.length }
+                    }
+                    assertEquals(tokens[index].size, fields.size, instruction.text)
+                    assertEquals(expectedRanges[index], operandFieldRanges(instruction, fields),
+                        "${written[index].text} / ${instruction.text}")
+                }
+            }
+            checkOperandBoundaries(checkOperations(header, commaHeavy, "INSTRUCTION", names))
+            checkOperandBoundaries(checkOperations(operandDefinitions + header, aliasedOperands, "INSTRUCTION", names))
+            for (mixed in mixedOperands) {
+                checkOperandBoundaries(checkOperations(operandDefinitions + header, mixed, "INSTRUCTION", names))
+            }
             for (definitions in macroOperandDefinitions) {
-                checkOperandCounts(checkOperations(header, definitions + macroOperandCalls, "INSTRUCTION", names))
+                checkOperandBoundaries(checkOperations(header, definitions + macroOperandCalls, "INSTRUCTION", names))
             }
         }
     }
@@ -950,6 +989,46 @@ class MipsParserPlatformTest {
             assertEquals(listOf("\$t0", "nop", "+4"), descendants(signed.node, "OPERAND").map { it.text }.toList())
         }
     }
+
+    @Test
+    fun `adjacent plus in a macro label offset stays with the address operand`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val source = """
+                .macro load (%out, %label, %reg)
+                    la %out,%label+4
+                    lw %out,%label,+4(%reg)
+                labeled: lw %out,%label+4(%reg)
+                    lw %out,+4(%reg)
+                    addiu %out,%reg,+4
+                .end_macro
+                .data
+                values: .word 0, 7
+                .text
+                load(${'$'}t0, values, ${'$'}sp)
+            """.trimIndent()
+            val context = project.get().service<MarsSessionService>().context
+            fun assemble(text: String): List<Int> {
+                val entry = directory.resolve("adjacent-offset.asm").also { it.writeText(text) }
+                return context.assemble(listOf(entry), null, true, false).machineList.map { it.binaryStatement }
+            }
+            val spaced = source.replace("%label+4", "%label + 4").replace("%label,+4", "%label, + 4")
+            assertEquals(assemble(spaced), assemble(source))
+            readAction {
+                val root = assertParses(source).node
+                assertEquals(
+                    listOf(
+                        listOf("%out", "%label+4"),
+                        listOf("%out", "%label,+4(%reg)"),
+                        listOf("%out", "%label+4(%reg)"),
+                        listOf("%out", "+4(%reg)"),
+                        listOf("%out", "%reg", "+4"),
+                    ),
+                    descendants(root, "INSTRUCTION").toList().map { instruction ->
+                        descendants(instruction, "OPERAND").map { it.text }.toList()
+                    },
+                )
+            }
+        }
 
     @Test
     fun `named floating point values use numeric PSI and preserve assembler output`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {

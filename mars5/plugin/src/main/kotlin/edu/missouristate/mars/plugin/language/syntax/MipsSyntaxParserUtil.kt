@@ -13,6 +13,7 @@ import com.intellij.util.text.CharSequenceSubSequence
 import edu.missouristate.mars.ErrorList
 import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.assembler.Tokenizer
+import edu.missouristate.mars.mips.instructions.InstructionDefaults
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.BAD_CHARACTER
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.CHARACTER
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.COLON
@@ -29,6 +30,7 @@ import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.PLUS
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.REGISTER
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.UNCLOSED_CHARACTER
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.WORD
+import java.util.TreeSet
 
 internal object DebuggerExpressionParsing : ParserUserState
 
@@ -41,6 +43,11 @@ private val registerAliases = identifiers + PARAMETER
 private val spacing = setOf(WHITE_SPACE)
 private val separators = spacing + COMMA
 private val syntaxMessages = DynamicBundle(MipsScanner::class.java, "messages.MarsBundle")
+private val labelOffsetMnemonics by lazy {
+    InstructionDefaults.get().instructionList.asSequence()
+        .filter { it.tokenList.size() > 3 && it.tokenList[3].type == TokenTypes.PLUS }
+        .mapTo(TreeSet(String.CASE_INSENSITIVE_ORDER)) { it.name }
+}
 
 /** Keep structured macro operands only when the complete grammar succeeds without recovery. */
 internal fun parseCompleteMacroOperands(runtime: SyntaxGeneratedParserRuntime, level: Int, parser: Parser): Boolean {
@@ -64,15 +71,12 @@ internal fun continueOperand(runtime: SyntaxGeneratedParserRuntime, level: Int):
         if (previous != COMMA) return previous != REGISTER
         return builder.lookAhead(1) in addressBases && builder.previousToken(separators) in addressOffsets
     }
-    if (previous == COMMA) {
-        // Label+offset forms accept commas around the plus and a macro formal can supply the label.
-        // A mnemonic can name a label, but a plus joined to digits after it is still a signed literal.
-        val label = builder.previousToken(separators)
-        return builder.tokenType == PLUS && label in addressLabels && !builder.signAttachesToNumber(label)
-    }
-    if (builder.tokenType !in signs) return true
-
-    return !builder.signAttachesToNumber(previous)
+    val left = if (previous == COMMA) builder.previousToken(separators) else previous
+    // The assembler accepts commas around the plus in a label offset.
+    if (previous == COMMA && (builder.tokenType != PLUS || left !in addressLabels)) return false
+    if (builder.tokenType !in signs || !builder.signAttachesToNumber(left)) return true
+    // A macro formal in the label position can change a physical signed number to label + offset.
+    return builder.tokenType == PLUS && left == PARAMETER && builder.isAfterFormalLabel()
 }
 
 /** Keep a signed number together in raw macro and equivalence tokens. */
@@ -202,7 +206,18 @@ private fun SyntaxTreeBuilder.signAttachesToNumber(previous: SyntaxElementType?)
 private fun SyntaxTreeBuilder.isAfterRegisterAlias(): Boolean {
     val operand = previousTokenIndex(-1, separators)
     if (rawLookup(operand) !in registerAliases) return false
-    val operation = previousTokenIndex(operand - 1, separators)
+    return isInstructionHead(previousTokenIndex(operand - 1, separators))
+}
+
+private fun SyntaxTreeBuilder.isAfterFormalLabel(): Boolean {
+    val label = previousTokenIndex(-1, separators)
+    val firstOperand = previousTokenIndex(label - 1, separators)
+    val operation = previousTokenIndex(firstOperand - 1, separators)
+    if (!isInstructionHead(operation)) return false
+    return text.subSequence(rawTokenTypeStart(operation), rawTokenTypeStart(operation + 1)).toString() in labelOffsetMnemonics
+}
+
+private fun SyntaxTreeBuilder.isInstructionHead(operation: Int): Boolean {
     if (rawLookup(operation) != MNEMONIC) return false
     val prefix = rawLookup(previousTokenIndex(operation - 1, separators))
     return prefix.endsLine() || prefix == COLON

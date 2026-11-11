@@ -65,6 +65,20 @@ tests and both coverage gates. The logs and screenshots are under
 `mars5/.gradle/release-host-checks/macro-label-offset` and
 `mars5/.gradle/release-host-checks/linux-arm64-macro-offset`.
 
+The catalog fixture also checks exact operand boundaries after replacing
+one operand field at a time. It uses the written field ranges because a
+signed immediate can merge into one assembler token after substitution.
+In a macro body, compact forms such as `la %out,%label+4` and
+`lw %out,%label,+4(%base)` retain the label and offset in one operand.
+The parser derives the eligible mnemonics from the instruction catalog.
+The regression test also checks a separate signed immediate in
+`addiu %out,%reg,+4` and the standalone address `+4(%base)` in a load.
+Clean macOS and Ubuntu ARM64 launches confirmed the two-operand PSI
+and printed `74` through the packaged Run action. Both passed 2,021
+Jupiter tests and both coverage gates. The logs and screenshots are under
+`mars5/.gradle/release-host-checks/operand-boundaries` and
+`mars5/.gradle/release-host-checks/linux-arm64-operand-boundaries`.
+
 In a written macro body, instructions and ordinary directives retain raw operand tokens when
 the structured operand grammar would report an error. MARS validates those operands on
 expansion. IntelliJ still preserves structured operands wherever the full parse succeeds and
