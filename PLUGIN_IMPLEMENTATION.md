@@ -1866,6 +1866,13 @@ The selection label and accessible description agreed after both moves.
 The screenshots, saved theme, and replay log are under
 `mars5/.gradle/release-host-checks/memory-reference-hover`.
 
+The same packaged replay on Ubuntu ARM64 passed all 2,018 Jupiter tests
+and both coverage gates. The visible hover tooltip, click selection, and
+Left key selection matched the macOS results. The replay also verified
+the case-sensitive MARS include graph on that host. The results and
+screenshots are under
+`mars5/.gradle/release-host-checks/linux-arm64-reference-hover-qualified`.
+
 ## Data Cache Simulator
 
 The **Data Cache Simulator** tab in **MARS Tools** tracks data and stack
