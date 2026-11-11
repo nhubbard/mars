@@ -1212,6 +1212,13 @@ operands. IntelliJ's syntax pass reports the literal in the editor, and Build
 also reports any error at an alias use. The source indexes rebuild with the
 revised token boundaries.
 
+Permanent Jupiter checks compare 63,749 character spellings with the assembler,
+including BMP characters that can occur directly on a source line, every octal
+byte escape, and the named escapes. They check the decoded value and the boundary
+before a following operand. The native parser fixture also assembles all 256
+octal byte spellings both directly and through a macro, verifies the 512 stored
+words, and checks that PSI retains every original literal.
+
 ## Macro substitution positions
 
 Macro expansion uses the token spans from the equivalence-processed body and

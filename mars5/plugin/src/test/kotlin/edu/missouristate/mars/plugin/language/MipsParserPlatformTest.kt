@@ -1011,6 +1011,25 @@ class MipsParserPlatformTest {
     }
 
     @Test
+    fun `every octal byte character parses and assembles directly and through a macro`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val literals = (0..255).map { "'\\${it.toString(8).padStart(3, '0')}'" }
+            val source = ".data\n.word ${literals.joinToString(", ")}\n" +
+                ".macro emit (%value)\n.word %value\n.end_macro\n" +
+                literals.joinToString("\n", postfix = "\n.text\nnop\n") { "emit($it)" }
+            assertAssembles(directory, source, 0)
+            val memory = project.get().service<MarsSessionService>().context.memory
+            for (index in 0 until 512) {
+                assertEquals(index % 256, memory.getWordNoNotify(memory.dataBaseAddress + index * 4), "word $index")
+            }
+            readAction {
+                val file = assertParses(source)
+                assertEquals(literals, descendants(file.node, "LITERAL_EXPR").map { it.text }.toList())
+                assertEquals(literals + literals, descendants(file.node, "CHARACTER").map { it.text }.toList())
+            }
+        }
+
+    @Test
     fun `unfinished characters retain later operands replacement tokens and macro arguments`() = timeoutRunBlocking<Unit> {
         readAction {
             val source = ".byte 'A, 'B', 7 # keep\n.eqv BROKEN 'C, 8\nemit('D, 9)\nnext: nop\n"

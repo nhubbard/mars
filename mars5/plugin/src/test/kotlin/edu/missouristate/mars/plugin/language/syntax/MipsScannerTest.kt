@@ -78,6 +78,39 @@ class MipsScannerTest {
     }
 
     @Test
+    fun `single characters and all byte escapes agree with the assembler before another operand`() {
+        val cases = buildList {
+            for (character in Char.MIN_VALUE..Char.MAX_VALUE) {
+                if (!character.isSurrogate() && character !in "\r\n'\\") add("'$character'" to character.code)
+            }
+            for (value in 0..255) add("'\\${value.toString(8).padStart(3, '0')}'" to value)
+            for ((escape, value) in mapOf(
+                '\'' to '\'', '"' to '"', '\\' to '\\', 'n' to '\n', 't' to '\t',
+                'b' to '\b', 'r' to '\r', 'f' to '\u000c', '0' to '\u0000',
+            )) add("'\\$escape'" to value.code)
+        }
+        val tokenizer = Tokenizer()
+        for ((literal, value) in cases) {
+            val source = "$literal,7"
+            val errors = ErrorList()
+            val assembly = tokenizer.tokenizeLine(1, source, errors, false)
+            val editor = MipsScanner.scan(source)
+            val description = literal.map(Char::code).toString()
+            assertEquals(0, errors.errorCount(), description)
+            assertEquals(2, assembly.size(), description)
+            assertTrue(TokenTypes.isIntegerTokenType(assembly[0].type), description)
+            assertEquals(value.toString(), assembly[0].value, description)
+            assertEquals(literal.length + 1, assembly[0].endPos, description)
+            assertEquals(listOf(
+                MipsToken(MipsTokenKind.CHARACTER, 0, literal.length),
+                MipsToken(MipsTokenKind.COMMA, literal.length, literal.length + 1),
+                MipsToken(MipsTokenKind.NUMBER, literal.length + 1, source.length),
+            ), editor, description)
+        }
+        assertEquals(63_749, cases.size)
+    }
+
+    @Test
     fun `unfinished character literals leave delimiters and later values available`() {
         val source = "'A, 'B', 7 # still a comment"
         val tokens = MipsScanner.scan(source)
