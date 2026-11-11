@@ -4,6 +4,7 @@ import javax.xml.XMLConstants
 import org.gradle.language.jvm.tasks.ProcessResources
 import javax.xml.parsers.DocumentBuilderFactory
 import org.gradle.testing.jacoco.plugins.JacocoTaskExtension
+import org.jetbrains.kotlin.gradle.dsl.JvmDefaultMode
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 import org.jetbrains.intellij.platform.gradle.tasks.BuildPluginTask
 import org.jetbrains.intellij.platform.gradle.tasks.ComposedJarTask
@@ -85,7 +86,11 @@ intellijPlatform {
 
 kotlin {
   jvmToolchain(25)
-  compilerOptions { allWarningsAsErrors.set(true) }
+  compilerOptions {
+    allWarningsAsErrors.set(true)
+    // The pinned IntelliJ interfaces already supply JVM defaults.
+    jvmDefault.set(JvmDefaultMode.NO_COMPATIBILITY)
+  }
 }
 
 tasks.test {
