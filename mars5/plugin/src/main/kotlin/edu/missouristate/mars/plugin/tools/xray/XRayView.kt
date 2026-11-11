@@ -152,6 +152,8 @@ internal class XRayView(private val project: Project) : Disposable {
 
     override fun dispose() {
         refreshJob.cancel()
+        // Unmount the Compose host so its Swing parent cannot retain the disposed tool window.
+        component.removeAll()
     }
 
     enum class Rate(val ticks: Int) { SLOW(3), NORMAL(6), FAST(12) }

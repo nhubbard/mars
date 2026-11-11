@@ -3317,8 +3317,14 @@ in the native console. The code-style error did not recur in that replay.
 With X-Ray open, IntelliJ removed the tool window and retained the old
 loader. The reference analysis followed a Compose panel's parent chain to
 the tool window's localized stripe-title supplier, which captured the
-plugin classloader. The X-Ray reload and cross-host lifecycle checks
-remain open. The replays and reference reports are under
+plugin classloader. Disposing X-Ray now removes its Compose host from its
+Swing parent. With the tool still visible at disable, a second trace
+reached the X-Ray rendering callback through the detached Compose host.
+A separate macOS replay hid MARS Tools and returned focus to the editor
+before disabling. IntelliJ collected the old loader, re-enabled MARS,
+reopened X-Ray, and ran the assembly file in the native console. Reload
+directly from a visible X-Ray tool and cross-host checks remain open.
+The replays and reference reports are under
 `mars5/.gradle/release-host-checks/dynamic-reload`.
 
 ### Reviewed API use in the 263 target

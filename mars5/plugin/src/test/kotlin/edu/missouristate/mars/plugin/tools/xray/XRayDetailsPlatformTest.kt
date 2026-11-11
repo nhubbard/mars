@@ -13,6 +13,8 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.unit.dp
 import com.intellij.openapi.application.EDT
+import com.intellij.openapi.util.Disposer
+import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import edu.missouristate.mars.api.StepEvent
@@ -28,18 +30,35 @@ import org.jetbrains.skia.Surface
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotEquals
+import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 
 @TestApplication
 class XRayDetailsPlatformTest {
+    private val project = codeInsightProjectFixture()
+
     companion object {
         @JvmStatic
         @BeforeAll
         fun initializeSkia() {
             // Skia starts a JVM-wide reference cleaner when it first creates a native surface.
             Surface.makeRasterN32Premul(1, 1).close()
+        }
+    }
+
+    @Test
+    fun `disposing X-Ray detaches its Compose host from the tool window`() = timeoutRunBlocking<Unit> {
+        val current = project.get()
+        withContext(Dispatchers.EDT) {
+            val view = XRayView(current)
+            val host = view.component.components.single()
+            assertSame(view.component, host.parent)
+            Disposer.dispose(view)
+            assertNull(host.parent)
+            assertEquals(0, view.component.componentCount)
         }
     }
 
