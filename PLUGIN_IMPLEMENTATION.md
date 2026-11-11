@@ -2274,6 +2274,13 @@ at this dock width in these replays. The screenshots and reports are under
 The scoreboard sizes its columns for the current font, complete coordinate
 values, and column headings. It scrolls horizontally inside the tool when
 space is limited. Left and Right Arrow bring the selected column into view.
+The packaged macOS and Ubuntu ARM64 replays at 150% zoom in High Contrast
+verified the complete coordinate `(293, 255)`, all five headings, and
+horizontal scrolling to the **Finish** column with Right Arrow. Both
+passed all 2,033 Jupiter tests, both coverage gates, and Plugin Verifier
+for IntelliJ 2026.3. The logs and screenshots are under
+`mars5/.gradle/release-host-checks/scavenger-columns` and
+`mars5/.gradle/release-host-checks/linux-arm64-scavenger-columns`.
 
 **Reset** starts a fresh round at the next instruction boundary without
 a store to the device's ports. Debug backstep restores the previous round
