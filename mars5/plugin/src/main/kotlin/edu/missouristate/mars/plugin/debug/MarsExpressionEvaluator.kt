@@ -1,16 +1,23 @@
 package edu.missouristate.mars.plugin.debug
 
 import com.intellij.lang.ASTNode
+import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.application.runReadActionBlocking
+import com.intellij.openapi.editor.Document
 import com.intellij.openapi.project.Project
 import com.intellij.platform.syntax.psi.PsiSyntaxBuilderFactory
 import com.intellij.platform.syntax.psi.createSyntaxGeneratedParserRuntime
 import com.intellij.psi.PsiFileFactory
+import com.intellij.psi.PsiDocumentManager
+import com.intellij.psi.PsiElement
 import com.intellij.psi.SyntaxTraverser
 import com.intellij.psi.TokenType
 import com.intellij.psi.tree.TokenSet
+import com.intellij.psi.util.elementType
+import com.intellij.util.concurrency.AppExecutorUtil
 import com.intellij.xdebugger.XSourcePosition
+import com.intellij.xdebugger.evaluation.ExpressionInfo
 import com.intellij.xdebugger.evaluation.XDebuggerEvaluator
 import edu.missouristate.mars.api.AssemblySymbolMap.Definition
 import edu.missouristate.mars.assembler.RegisterNames
@@ -21,11 +28,15 @@ import edu.missouristate.mars.mips.hardware.Coprocessor1State.CONDITION_FLAG_MAS
 import edu.missouristate.mars.mips.hardware.IntegerRegisterFile.HI_REGISTER
 import edu.missouristate.mars.mips.hardware.IntegerRegisterFile.LO_REGISTER
 import edu.missouristate.mars.mips.hardware.MemoryState
+import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.MipsFileType
 import edu.missouristate.mars.plugin.language.MipsLanguage
 import edu.missouristate.mars.plugin.language.MipsLexer
 import edu.missouristate.mars.plugin.language.MipsSyntaxDefinition
 import edu.missouristate.mars.plugin.language.MipsTypes
+import edu.missouristate.mars.plugin.language.coprocessor0Operand
+import edu.missouristate.mars.plugin.language.operationHead
+import edu.missouristate.mars.plugin.language.operationOnLine
 import edu.missouristate.mars.plugin.language.syntax.DebuggerExpressionParsing
 import edu.missouristate.mars.plugin.run.runMessages
 import edu.missouristate.mars.util.Binary
@@ -59,6 +70,45 @@ internal class MarsExpressionEvaluator(
     }
 
     override fun isCodeFragmentEvaluationSupported() = false
+
+    override fun getExpressionInfoAtOffsetAsync(project: Project, document: Document, offset: Int, sideEffectsAllowed: Boolean) =
+        ReadAction.nonBlocking<ExpressionInfo?> { expressionAt(project, document, offset) }
+            .withDocumentsCommitted(project)
+            .expireWith(project)
+            .submit(AppExecutorUtil.getAppExecutorService())
+
+    private fun expressionAt(project: Project, document: Document, offset: Int): ExpressionInfo? {
+        val file = PsiDocumentManager.getInstance(project).getPsiFile(document) as? MipsFile ?: return null
+        val leaf = file.findElementAt(offset) ?: return null
+        val parent = leaf.parent
+        return when (parent.elementType) {
+            literalType -> literalHint(parent)
+            unaryType -> parent.lastChild.takeIf { it.elementType == literalType }?.let(::literalHint)
+            referenceType -> if (leaf.elementType == registerType) registerHint(leaf) else symbolHint(leaf)
+            labelType -> if (leaf == parent.firstChild) symbolHint(leaf) else null
+            else -> null
+        }
+    }
+
+    private fun literalHint(literal: PsiElement): ExpressionInfo? {
+        val expression = literal.parent.takeIf { it.elementType == unaryType } ?: literal
+        return if (evaluateSource(expression.text) is Immediate) ExpressionInfo(expression.textRange) else null
+    }
+
+    private fun registerHint(leaf: PsiElement): ExpressionInfo? {
+        val name = leaf.text
+        val systemOffset = operationOnLine(leaf)?.operationHead?.let(::coprocessor0Operand)
+        val expression = if (systemOffset == leaf.textOffset) {
+            val register = RegisterNames.integer(name) ?: return null
+            "cp0.\$${register.number}"
+        } else name
+        return if (resolveReference(expression) != null) ExpressionInfo(leaf.textRange, expression, name) else null
+    }
+
+    private fun symbolHint(leaf: PsiElement): ExpressionInfo? = symbol(leaf.text)?.let {
+        // A source label named pc or hi still means its address, even though Evaluate reserves those names.
+        ExpressionInfo(leaf.textRange, Binary.intToHexString(it.address()), leaf.text)
+    }
 
     override fun evaluate(expression: String, callback: XEvaluationCallback, expressionPosition: XSourcePosition?) {
         val source = expression.trim()
@@ -138,7 +188,9 @@ internal class MarsExpressionEvaluator(
     private fun resolveReference(name: String): Scalar? =
         registers[name]
             ?: RegisterNames.integer(name)?.let { registers.getValue(it.name) }
-            ?: (localSymbols[name] ?: globalSymbols[name])?.let { Word(it.address()) }
+            ?: symbol(name)?.let { Word(it.address()) }
+
+    private fun symbol(name: String): Definition? = localSymbols[name] ?: globalSymbols[name]
 
     private fun signedWord(operator: ASTNode, operand: ASTNode): Immediate? {
         if (operator.elementType != minusType || operand.elementType != literalType ||
@@ -213,6 +265,8 @@ internal class MarsExpressionEvaluator(
         val literalType = MipsTypes.psi("LITERAL_EXPR")
         val characterType = MipsTypes.psi("CHARACTER")
         val referenceType = MipsTypes.psi("REFERENCE_EXPR")
+        val registerType = MipsTypes.psi("REGISTER")
+        val labelType = MipsTypes.psi("LABEL")
         val groupType = MipsTypes.psi("GROUP_EXPR")
         val unaryType = MipsTypes.psi("UNARY_EXPR")
         val minusType = MipsTypes.psi("MINUS")

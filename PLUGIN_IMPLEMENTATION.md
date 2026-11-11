@@ -1742,6 +1742,17 @@ The packaged macOS replay used the native Evaluate dialog to evaluate
 `0x00000007`. The log and screenshot are under
 `mars5/.gradle/release-host-checks/alternate-register-evaluate`.
 Local labels use the active instruction's assembly entry, then global labels.
+
+While paused, place the caret on a register, literal, or assembled label in a
+MIPS editor and invoke IntelliJ's **Quick Evaluate Expression** action. The IDE
+highlights the source token or signed literal and displays the selected frame's
+value. The Coprocessor 0 operand of `mfc0` or `mtc0` reads that bank. A source
+label named `pc` displays its assembled address. Quick Evaluate uses committed
+editor PSI and leaves comments, string literals, and unresolved names alone.
+The packaged macOS replay invoked the editor action on `$0x8` at a breakpoint
+and verified the native popup displayed `0x00000007`. The log and screenshots
+are under `mars5/.gradle/release-host-checks/quick-evaluate`.
+
 The generated parser has an expression entry point for the debugger. It accepts
 one complete expression with numeric and character literals, parentheses, unary
 and binary `+` and `-`, comparisons, and bitwise operators. From tightest to loosest,

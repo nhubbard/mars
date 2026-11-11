@@ -46,6 +46,7 @@ import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.Key
+import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.wm.RegisterToolWindowTask
@@ -166,6 +167,7 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.withContext
 import org.jdom.Element
+import org.jetbrains.concurrency.await
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -1297,6 +1299,69 @@ class MarsDebugPlatformTest {
                         evaluate(debug.session, second, expression), expression)
                 }
                 assertEquals("0xfffffffe", evaluate(debug.session, second, "\$t0"))
+                debug.session.resume()
+            }
+            assertEquals(0, debug.exit.await())
+        }
+    }
+
+    @Test
+    fun `Quick Evaluate supplies native expression ranges and reads the right register bank`() = timeoutRunBlocking<Unit> {
+        val (source, unrelated, unfinished) = withContext(Dispatchers.EDT) {
+            val source = fixture.addFileToProject("quick-evaluate.mars", """
+                .data
+                pc: .word 42
+                message: .asciiz "text"
+                .text
+                addiu ${'$'}0x8, ${'$'}zero, -2
+                mtc0 ${'$'}0x8, ${'$'}14
+                la ${'$'}t1, pc
+                ori ${'$'}t2, ${'$'}zero, 'A'
+                addiu ${'$'}t0, ${'$'}zero, 7
+                stop: nop # ignored
+            """.trimIndent()).virtualFile
+            addBreakpoint(source, 9)
+            Triple(source, fixture.addFileToProject("outside.txt", "42").virtualFile,
+                fixture.addFileToProject("unfinished.mars", "j absent\nmtc0 \$t0, \$2\nmtc0 \$t0, \$f1\n.word \$t0\n.word -(1)").virtualFile)
+        }
+        withDebug(source) { debug ->
+            debug.assertPausedAt(source, 9)
+            withContext(Dispatchers.EDT) {
+                val frame = requireNotNull(debug.session.currentStackFrame)
+                val evaluator = requireNotNull(frame.evaluator)
+                val documents = FileDocumentManager.getInstance()
+                val document = requireNotNull(documents.getDocument(source))
+                suspend fun assertHint(start: Int, length: Int, expected: String, cursor: Int = start) {
+                    val info = requireNotNull(evaluator.getExpressionInfoAtOffsetAsync(project, document, cursor, false).await())
+                    val range = TextRange(start, start + length)
+                    assertEquals(range, info.textRange)
+                    val text = range.substring(document.text)
+                    assertEquals(text, info.displayText ?: text)
+                    assertEquals(expected, evaluate(debug.session, frame, info.expressionText ?: text))
+                }
+                val hexRegister = document.text.indexOf("\$0x8")
+                assertHint(hexRegister, 4, "0x00000007")
+                assertHint(document.text.lastIndexOf("\$0x8"), 4, "0x00000007")
+                assertHint(document.text.indexOf("\$14"), 3, "0xfffffffe")
+                val signed = document.text.indexOf("-2")
+                assertHint(signed, 2, "0xfffffffe")
+                assertHint(signed, 2, "0xfffffffe", signed + 1)
+                assertHint(document.text.indexOf("42"), 2, "0x0000002a")
+                assertHint(document.text.indexOf("'A'"), 3, "0x00000041")
+                assertHint(document.text.indexOf("pc"), 2, "0x10010000")
+                assertHint(document.text.lastIndexOf("pc"), 2, "0x10010000")
+                for (word in listOf(":", "addiu", "\"text\"", "ignored")) {
+                    assertNull(evaluator.getExpressionInfoAtOffsetAsync(project, document, document.text.indexOf(word), true).await(), word)
+                }
+                assertNull(evaluator.getExpressionInfoAtOffsetAsync(project, document, document.textLength, false).await())
+                val textDocument = requireNotNull(documents.getDocument(unrelated))
+                assertNull(evaluator.getExpressionInfoAtOffsetAsync(project, textDocument, 0, false).await())
+                val draft = requireNotNull(documents.getDocument(unfinished))
+                for (word in listOf("absent", "\$2", "\$f1", "-")) {
+                    assertNull(evaluator.getExpressionInfoAtOffsetAsync(project, draft, draft.text.indexOf(word), false).await(), word)
+                }
+                val draftRegister = requireNotNull(evaluator.getExpressionInfoAtOffsetAsync(project, draft, draft.text.lastIndexOf("\$t0"), false).await())
+                assertEquals("0x00000007", evaluate(debug.session, frame, requireNotNull(draftRegister.expressionText)))
                 debug.session.resume()
             }
             assertEquals(0, debug.exit.await())

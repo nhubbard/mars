@@ -25,7 +25,6 @@ import edu.missouristate.mars.mips.instructions.InstructionDefaults
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.analysis.MipsSourceTimeline
 import edu.missouristate.mars.plugin.analysis.discardTrailingComment
-import edu.missouristate.mars.plugin.analysis.macroLineTokens
 import edu.missouristate.mars.plugin.analysis.sourceLine
 import edu.missouristate.mars.plugin.analysis.sourceLineStart
 
@@ -65,9 +64,6 @@ private val mnemonicType = MipsTypes.psi("MNEMONIC")
 private val aliasTypes = TokenSet.create(MipsTypes.psi("WORD"), MipsTypes.psi("DOLLAR_WORD"))
 private val usageTypes = TokenSet.orSet(aliasTypes, TokenSet.create(registerType))
 private val registerTokens = setOf(TokenTypes.REGISTER_NAME, TokenTypes.REGISTER_NUMBER, TokenTypes.FP_REGISTER_NAME)
-private val coprocessor0Transfers by lazy {
-    InstructionDefaults.get().instructionList.filter { it.hasCoprocessor0Register }.map { it.name }.toSet()
-}
 
 private enum class Bank { INTEGER, COPROCESSOR_0, FLOATING }
 private data class RegisterId(val bank: Bank, val number: Int)
@@ -144,13 +140,6 @@ private fun projectedRegisters(
         val register = registers.singleOrNull() ?: return@mapNotNull null
         file.findElementAt(start + offset)!!.textRange to register
     }
-}
-
-private fun coprocessor0Operand(head: PsiElement): Int? {
-    if (head.text.lowercase() !in coprocessor0Transfers) return null
-    val tokens = macroLineTokens(head)
-    if (tokens.size() <= COPROCESSOR0_REGISTER_INDEX) return null
-    return head.textOffset + tokens[COPROCESSOR0_REGISTER_INDEX].startPos - 1
 }
 
 private fun registerId(text: String, systemOperand: Boolean): RegisterId? {

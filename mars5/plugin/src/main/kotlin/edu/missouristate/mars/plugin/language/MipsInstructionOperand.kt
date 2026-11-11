@@ -15,6 +15,7 @@ import edu.missouristate.mars.mips.instructions.InstructionDefaults
 import edu.missouristate.mars.mips.instructions.basic.InstrMfc0
 import edu.missouristate.mars.mips.instructions.basic.InstrMtc0
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
+import edu.missouristate.mars.plugin.analysis.macroLineTokens
 
 private val instructionType = MipsTypes.psi("INSTRUCTION")
 private val statementType = MipsTypes.psi("STATEMENT")
@@ -33,6 +34,17 @@ internal fun operationOnLine(first: PsiElement?): PsiElement? =
 // The assembler tokenizes this operand like a GPR, although it addresses a separate bank.
 internal const val COPROCESSOR0_REGISTER_INDEX = 2
 internal val Instruction.hasCoprocessor0Register: Boolean get() = this is InstrMfc0 || this is InstrMtc0
+
+private val coprocessor0Transfers by lazy {
+    InstructionDefaults.get().instructionList.filter { it.hasCoprocessor0Register }.map { it.name }.toSet()
+}
+
+internal fun coprocessor0Operand(head: PsiElement): Int? {
+    if (head.text.lowercase() !in coprocessor0Transfers) return null
+    val tokens = macroLineTokens(head)
+    if (tokens.size() <= COPROCESSOR0_REGISTER_INDEX) return null
+    return head.textOffset + tokens[COPROCESSOR0_REGISTER_INDEX].startPos - 1
+}
 
 internal fun enabledInstructionFormats(name: String, allowPseudo: Boolean): List<Instruction> {
     val formats = InstructionDefaults.get().matchOperator(name)
