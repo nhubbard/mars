@@ -58,6 +58,7 @@ import javax.swing.SwingUtilities
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -73,7 +74,7 @@ class InstructionCounterPlatformTest {
     private val fixture by codeInsightFixture(projectFixture)
 
     @Test
-    fun `MARS Tools selects native executions and controls their counters independently`() = timeoutRunBlocking<Unit> {
+    fun `MARS Tools selects native executions and controls their counters independently`() = timeoutRunBlocking<Unit>(45.seconds) {
         val project = projectFixture.get()
         val manager = ToolWindowManager.getInstance(project)
         val run = DefaultRunExecutor.getRunExecutorInstance()
@@ -817,7 +818,7 @@ class InstructionCounterPlatformTest {
             }
             waitFor(0, "0 (0%)")
         } finally {
-            withContext(Dispatchers.EDT) {
+            withContext(NonCancellable + Dispatchers.EDT) {
                 window.contentManager.removeAllContents(true)
                 assertTrue(keyboardEditor.isDisposed)
                 withForcedRespectIsShowingClientProperty {

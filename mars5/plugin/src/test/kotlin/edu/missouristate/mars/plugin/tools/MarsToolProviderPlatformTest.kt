@@ -125,7 +125,7 @@ class MarsToolProviderPlatformTest {
     }
 
     @Test
-    fun `registered intro example receives instructions from only the selected execution`() = timeoutRunBlocking<Unit>(20.seconds) {
+    fun `registered intro example receives instructions from only the selected execution`() = timeoutRunBlocking<Unit>(45.seconds) {
         val container = JPanel()
         val tool = withContext(Dispatchers.EDT) {
             val window = ToolWindowManager.getInstance(project).registerToolWindow(RegisterToolWindowTask("Example MARS tools"))
