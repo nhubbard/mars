@@ -7,7 +7,6 @@ import com.intellij.openapi.project.Project
 import com.intellij.ui.JBColor
 import com.intellij.ui.ScrollPaneFactory
 import com.intellij.ui.components.JBLabel
-import com.intellij.ui.dsl.builder.AlignX
 import com.intellij.ui.dsl.builder.panel
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.launchOnShow
@@ -42,7 +41,7 @@ internal class DigitalLabView(project: Project) : Disposable {
     }
 
     val component = ScrollPaneFactory.createScrollPane(panel {
-        row(toolsMessages.getMessage("counter.selector")) { cell(selector.component).align(AlignX.FILL).resizableColumn() }
+        marsExecutionRow(selector.component)
         row {
             cell(toggle)
             cell(reset)

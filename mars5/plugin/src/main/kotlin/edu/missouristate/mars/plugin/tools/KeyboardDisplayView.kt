@@ -67,10 +67,7 @@ internal class KeyboardDisplayView(project: Project) : Disposable {
     private var updatingOptions = false
 
     private val controls = panel {
-        row {
-            cell(selector.component).label(toolsMessages.getMessage("counter.selector"), LabelPosition.TOP)
-                .align(AlignX.FILL).resizableColumn()
-        }
+        marsExecutionRow(selector.component)
         row {
             cell(toggle)
             cell(reset)

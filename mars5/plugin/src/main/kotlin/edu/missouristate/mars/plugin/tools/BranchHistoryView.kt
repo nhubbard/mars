@@ -42,7 +42,7 @@ internal class BranchHistoryView(project: Project) : Disposable {
     private var previous: BranchHistoryTable.Snapshot? = null
 
     val component = scrollableToolPanel(this, panel {
-        row(toolsMessages.getMessage("counter.selector")) { cell(selector.component).align(AlignX.FILL).resizableColumn() }
+        marsExecutionRow(selector.component)
         row(toolsMessages.getMessage("branchHistory.size")) { cell(size) }
         row(toolsMessages.getMessage("branchHistory.bits")) { cell(history) }
         row {

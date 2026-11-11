@@ -10,6 +10,7 @@ import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTextArea
 import com.intellij.ui.dsl.builder.Align
 import com.intellij.ui.dsl.builder.AlignX
+import com.intellij.ui.dsl.builder.LabelPosition
 import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.dsl.listCellRenderer.textListCellRenderer
 import com.intellij.ui.table.JBTable
@@ -44,6 +45,7 @@ internal class DataCacheView(project: Project) : Disposable {
     private val reset = JButton(toolsMessages.getMessage("counter.reset"))
     private val logging = JBCheckBox(toolsMessages.getMessage("cache.logging"))
     private val summary = JBLabel()
+    private val traffic = JBLabel()
     private val percentage = JBLabel()
     private val rate = JProgressBar(0, 100).apply {
         accessibleContext.accessibleName = toolsMessages.getMessage("cache.rate")
@@ -56,18 +58,19 @@ internal class DataCacheView(project: Project) : Disposable {
     private var previous: DataCacheSimulator.Snapshot? = null
 
     val component = scrollableToolPanel(this, panel {
-        row(toolsMessages.getMessage("counter.selector")) { cell(selector.component).align(AlignX.FILL).resizableColumn() }
-        row(toolsMessages.getMessage("cache.placement")) { cell(placement) }
+        marsExecutionRow(selector.component)
+        row { cell(placement).label(toolsMessages.getMessage("cache.placement"), LabelPosition.TOP) }
         row(toolsMessages.getMessage("cache.blocks")) { cell(blocks) }
         row(toolsMessages.getMessage("cache.words")) { cell(words) }
         row(toolsMessages.getMessage("cache.ways")) { cell(ways) }
-        row(toolsMessages.getMessage("cache.replacement")) { cell(replacement) }
+        row { cell(replacement).label(toolsMessages.getMessage("cache.replacement"), LabelPosition.TOP) }
+        row { cell(apply) }
         row {
-            cell(apply)
             cell(toggle)
             cell(reset)
         }
         row { cell(summary) }
+        row { cell(traffic) }
         row(toolsMessages.getMessage("cache.rate")) {
             cell(rate).align(AlignX.FILL).resizableColumn()
             cell(percentage)
@@ -79,7 +82,7 @@ internal class DataCacheView(project: Project) : Disposable {
             row { cell(logging) }
             row { cell(logScroll).align(AlignX.FILL).resizableColumn() }
         }.expanded = false
-        row { comment(toolsMessages.getMessage("cache.scope"), maxLineLength = 42) }
+        row { comment(toolsMessages.getMessage("cache.scope"), maxLineLength = 30) }
     }, mapOf(table to tableScroll, log to logScroll))
 
     init {
@@ -158,8 +161,10 @@ internal class DataCacheView(project: Project) : Disposable {
         if (snapshot === previous) return
         previous = snapshot
         summary.text = snapshot?.let {
-            toolsMessages.getMessage("cache.summary", it.options.bytes.toString(), it.accesses.toString(),
-                it.hits.toString(), it.misses.toString())
+            toolsMessages.getMessage("cache.summary", it.options.bytes.toString(), it.accesses.toString())
+        }.orEmpty()
+        traffic.text = snapshot?.let {
+            toolsMessages.getMessage("cache.traffic", it.hits.toString(), it.misses.toString())
         }.orEmpty()
         rate.value = snapshot?.hitRate ?: 0
         percentage.text = toolsMessages.getMessage("cache.percent", rate.value.toString())

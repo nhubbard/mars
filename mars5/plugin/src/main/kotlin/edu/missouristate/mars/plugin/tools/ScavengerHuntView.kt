@@ -8,8 +8,6 @@ import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBPanel
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.dsl.builder.Align
-import com.intellij.ui.dsl.builder.AlignX
-import com.intellij.ui.dsl.builder.LabelPosition
 import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.table.JBTable
 import com.intellij.util.ui.JBDimension
@@ -55,10 +53,7 @@ internal class ScavengerHuntView(project: Project) : Disposable {
     private val tableScroll = JBScrollPane(table).apply { minimumSize = JBDimension(0, 84) }
 
     val component = scrollableToolPanel(this, panel {
-        row {
-            cell(selector.component).label(toolsMessages.getMessage("counter.selector"), LabelPosition.TOP)
-                .align(AlignX.FILL).resizableColumn()
-        }
+        marsExecutionRow(selector.component)
         row {
             cell(toggle)
             cell(reset)

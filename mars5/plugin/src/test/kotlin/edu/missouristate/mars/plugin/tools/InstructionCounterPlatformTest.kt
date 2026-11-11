@@ -30,6 +30,7 @@ import com.intellij.ui.components.JBCheckBox
 import com.intellij.ui.components.JBTextArea
 import com.intellij.ui.components.JBTextField
 import com.intellij.ui.content.ContentFactory
+import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.table.JBTable
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
@@ -97,6 +98,23 @@ class InstructionCounterPlatformTest {
     }
     private val projectFixture = codeInsightProjectFixture()
     private val fixture by codeInsightFixture(projectFixture)
+
+    @Test
+    fun `tool execution selectors keep their labels above them and fit narrow docks`() = timeoutRunBlocking<Unit> {
+        val project = projectFixture.get()
+        withContext(Dispatchers.EDT) {
+            val selector = MarsToolExecutionSelector(project) {}.component
+            val body = panel { marsExecutionRow(selector) }
+            val label = UIUtil.findComponentsOfType(body, JLabel::class.java).single { it.labelFor === selector }
+            for (width in listOf(180, 640)) {
+                body.setSize(JBUI.size(width, 120))
+                body.doLayout()
+                assertTrue(label.y + label.height <= selector.y)
+                assertTrue(selector.x + selector.width <= body.width)
+                assertTrue(selector.width in JBUI.scale(112)..JBUI.scale(240))
+            }
+        }
+    }
 
     @OptIn(ExperimentalComposeUiApi::class, ExperimentalJewelApi::class)
     @Test
@@ -561,7 +579,8 @@ class InstructionCounterPlatformTest {
             pollAssertionsAsync(5.seconds, 30.milliseconds) {
                 withContext(Dispatchers.EDT) {
                     val status = UIUtil.findComponentsOfType(cache, JBLabel::class.java).map { it.text }
-                    assertTrue("128 bytes   |   Accesses 2   |   Hits 1   |   Misses 1" in status, status.toString())
+                    assertTrue("128 bytes   |   Accesses 2" in status, status.toString())
+                    assertTrue("Hits 1   |   Misses 1" in status, status.toString())
                     assertTrue("50%" in status)
                     assertEquals(50, UIUtil.findComponentsOfType(cache, JProgressBar::class.java).single().value)
                 }
@@ -680,7 +699,7 @@ class InstructionCounterPlatformTest {
             }
             waitFor(0, "0 (0%)")
             withContext(Dispatchers.EDT) {
-                assertInspection("Focus the grid or click a cell to see its address and access count.")
+                assertInspection("Focus or click to inspect a cell.")
             }
 
             val branchRun = launch(run, 3, "beq \$zero, \$zero, next\nnext: bne \$zero, \$zero, next\n")

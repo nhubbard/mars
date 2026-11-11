@@ -18,10 +18,13 @@ import com.intellij.ui.components.JBLabel
 import com.intellij.ui.content.Content
 import com.intellij.ui.content.ContentFactory
 import com.intellij.ui.dsl.builder.AlignX
+import com.intellij.ui.dsl.builder.LabelPosition
+import com.intellij.ui.dsl.builder.Panel
 import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.dsl.listCellRenderer.textListCellRenderer
 import com.intellij.util.ui.launchOnShow
 import com.intellij.util.ui.UIUtil
+import com.intellij.util.ui.JBUI
 import edu.missouristate.mars.plugin.run.MarsProcessHandler
 import edu.missouristate.mars.plugin.tools.MemoryGridDisplay.Mode
 import edu.missouristate.mars.plugin.tools.xray.XRayView
@@ -99,6 +102,13 @@ internal class MarsToolWindowUnloadListener(private val toolWindow: ToolWindow) 
 
 internal val toolsMessages = DynamicBundle(MarsToolsWindowFactory::class.java, "messages.MarsBundle")
 
+internal fun Panel.marsExecutionRow(selector: JComponent) {
+    row {
+        cell(selector).label(toolsMessages.getMessage("counter.selector"), LabelPosition.TOP)
+            .align(AlignX.LEFT).resizableColumn()
+    }
+}
+
 internal fun scrollableToolPanel(
     owner: Disposable,
     body: JComponent,
@@ -136,6 +146,9 @@ internal fun marsToolExecutions(project: Project): List<MarsToolRunContent> =
 internal class MarsToolExecutionSelector(private val project: Project, private val selectionChanged: () -> Unit) {
     private val selector = ComboBox<MarsToolRunContent>().apply {
         renderer = textListCellRenderer(toolsMessages.getMessage("counter.empty"), MarsToolRunContent::label)
+        setMinimumAndPreferredWidth(JBUI.scale(240))
+        isUsePreferredSizeAsMinimum = false
+        minimumSize = JBUI.size(112, 0)
         addActionListener { selectionChanged() }
     }
     val component: JComponent get() = selector
@@ -169,9 +182,7 @@ private class InstructionCountsView(
     private val emptySnapshot = InstructionCountsSnapshot(false, List(categories.size) { 0L })
 
     val component = panel {
-        row(toolsMessages.getMessage("counter.selector")) {
-            cell(selector.component).align(AlignX.FILL).resizableColumn()
-        }
+        marsExecutionRow(selector.component)
         row {
             cell(toggle)
             cell(reset)

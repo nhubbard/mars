@@ -10,7 +10,7 @@ import com.intellij.ui.ScrollPaneFactory
 import com.intellij.ui.components.JBCheckBox
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.dsl.builder.Align
-import com.intellij.ui.dsl.builder.AlignX
+import com.intellij.ui.dsl.builder.LabelPosition
 import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.dsl.listCellRenderer.textListCellRenderer
 import com.intellij.util.ui.JBUI
@@ -71,8 +71,8 @@ internal class MemoryGridView(
     private val reference = if (mode == Mode.REFERENCES) ReferenceControls() else null
 
     val component = ScrollPaneFactory.createScrollPane(panel {
-        row(toolsMessages.getMessage("counter.selector")) { cell(selector.component).align(AlignX.FILL).resizableColumn() }
-        row(toolsMessages.getMessage("bitmap.base")) { cell(base) }
+        marsExecutionRow(selector.component)
+        row { cell(base).label(toolsMessages.getMessage("bitmap.base"), LabelPosition.TOP) }
         row(toolsMessages.getMessage("bitmap.width")) { cell(width) }
         row(toolsMessages.getMessage("bitmap.height")) { cell(height) }
         row(toolsMessages.getMessage("bitmap.unitWidth")) { cell(unitWidth) }
@@ -86,14 +86,14 @@ internal class MemoryGridView(
                 cell(controls.grid)
             }
         }
+        row { cell(apply) }
         row {
-            cell(apply)
             cell(toggle)
             cell(reset)
         }
         row { cell(canvas).align(Align.FILL).resizableColumn() }.resizableRow()
         row { cell(inspection) }
-        row { comment(toolsMessages.getMessage(mode.helpKey), maxLineLength = 42) }
+        row { comment(toolsMessages.getMessage(mode.helpKey), maxLineLength = 30) }
     }, true)
 
     init {

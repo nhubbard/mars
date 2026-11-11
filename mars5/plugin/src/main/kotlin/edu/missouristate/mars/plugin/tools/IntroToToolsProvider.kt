@@ -6,7 +6,6 @@ import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTextArea
 import com.intellij.ui.dsl.builder.Align
-import com.intellij.ui.dsl.builder.AlignX
 import com.intellij.ui.dsl.builder.panel
 import com.intellij.util.ui.JBDimension
 import com.intellij.util.ui.launchOnShow
@@ -45,9 +44,7 @@ internal class IntroToToolsProvider : MarsToolProvider {
             render()
         }
         val component = panel {
-            row(toolsMessages.getMessage("counter.selector")) {
-                cell(selector).align(AlignX.FILL).resizableColumn()
-            }
+            marsExecutionRow(selector)
             row { cell(steps) }
             row {
                 cell(JBScrollPane(instructions).apply { preferredSize = JBDimension(310, 300) })

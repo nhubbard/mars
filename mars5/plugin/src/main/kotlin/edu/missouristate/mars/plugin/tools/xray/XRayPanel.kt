@@ -4,14 +4,14 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -29,41 +29,51 @@ internal fun xRayPanelContent(
     view: XRayView, schematic: @Composable () -> Unit, details: @Composable () -> Unit,
 ): @Composable () -> Unit = {
     VerticallyScrollableContainer(modifier = Modifier.fillMaxSize()) {
-        Column(Modifier.fillMaxWidth().padding(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            val executions = view.executions
-            val executionLabels = remember(executions) { executions.map(MarsToolRunContent::label) }
-            XRayChoice("counter.selector", executionLabels, executions.indexOf(view.execution),
-                "counter.empty", executions.isNotEmpty()) {
-                view.selectExecution(executions[it])
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                XRayButton(if (view.connected) "counter.disconnect" else "counter.connect", view.execution != null, view::toggleCapture)
-                XRayButton("xray.clear", view.steps.isNotEmpty(), view::clearTrace)
-            }
-
-            val steps = view.steps
-            val current = steps.indexOf(view.step)
-            val stepLabels = remember(steps) { steps.map { it.xRayLabel() } }
-            XRayChoice("xray.instruction", stepLabels, current, "xray.timeline.empty", steps.isNotEmpty()) {
-                view.selectStep(steps[it])
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                XRayButton("xray.timeline.previous", current > 0) { view.selectStep(steps[current - 1]) }
-                XRayButton("xray.timeline.next", current + 1 < steps.size) { view.selectStep(steps[current + 1]) }
-                Text(toolsMessages.getMessage("xray.timeline.position", current + 1, steps.size))
-            }
-
-            XRayChoice("xray.diagram", XRayUnit.entries.map { toolsMessages.getMessage("xray.unit.${it.name}") },
-                view.unit.ordinal, "xray.diagram", true) {
-                view.selectUnit(XRayUnit.entries[it])
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                XRayButton(if (view.playing) "xray.pause" else "xray.play", view.canPlay, view::togglePlayback)
-                XRayButton("xray.reset", view.canPlay, view::resetPlayback)
-            }
-            XRayChoice("xray.speed", Rate.entries.map { toolsMessages.getMessage("xray.rate.${it.name}") },
-                view.rate.ordinal, "xray.speed", view.canPlay) {
-                view.selectRate(Rate.entries[it])
+        Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            val controlWidth = Modifier.widthIn(max = 270.dp).fillMaxWidth()
+            val controlSpacing = Arrangement.spacedBy(6.dp)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(controlWidth, verticalArrangement = controlSpacing) {
+                    val executions = view.executions
+                    val executionLabels = remember(executions) { executions.map(MarsToolRunContent::label) }
+                    XRayChoice("counter.selector", executionLabels, executions.indexOf(view.execution),
+                        "counter.empty", executions.isNotEmpty()) {
+                        view.selectExecution(executions[it])
+                    }
+                    FlowRow(horizontalArrangement = controlSpacing, verticalArrangement = controlSpacing) {
+                        XRayButton(if (view.connected) "counter.disconnect" else "counter.connect", view.execution != null, view::toggleCapture)
+                        XRayButton("xray.clear", view.steps.isNotEmpty(), view::clearTrace)
+                    }
+                }
+                Column(controlWidth, verticalArrangement = controlSpacing) {
+                    val steps = view.steps
+                    val current = steps.indexOf(view.step)
+                    val stepLabels = remember(steps) { steps.map { it.xRayLabel() } }
+                    XRayChoice("xray.instruction", stepLabels, current, "xray.timeline.empty", steps.isNotEmpty()) {
+                        view.selectStep(steps[it])
+                    }
+                    FlowRow(horizontalArrangement = controlSpacing, verticalArrangement = controlSpacing) {
+                        XRayButton("xray.timeline.previous", current > 0) { view.selectStep(steps[current - 1]) }
+                        XRayButton("xray.timeline.next", current + 1 < steps.size) { view.selectStep(steps[current + 1]) }
+                        Text(toolsMessages.getMessage("xray.timeline.position", current + 1, steps.size))
+                    }
+                }
+                Column(controlWidth, verticalArrangement = controlSpacing) {
+                    XRayChoice("xray.diagram", XRayUnit.entries.map { toolsMessages.getMessage("xray.unit.${it.name}") },
+                        view.unit.ordinal, "xray.diagram", true) {
+                        view.selectUnit(XRayUnit.entries[it])
+                    }
+                    FlowRow(horizontalArrangement = controlSpacing, verticalArrangement = controlSpacing) {
+                        XRayButton(if (view.playing) "xray.pause" else "xray.play", view.canPlay, view::togglePlayback)
+                        XRayButton("xray.reset", view.canPlay, view::resetPlayback)
+                    }
+                }
+                Column(Modifier.widthIn(max = 128.dp).fillMaxWidth()) {
+                    XRayChoice("xray.speed", Rate.entries.map { toolsMessages.getMessage("xray.rate.${it.name}") },
+                        view.rate.ordinal, "xray.speed", view.canPlay) {
+                        view.selectRate(Rate.entries[it])
+                    }
+                }
             }
 
             BoxWithConstraints(Modifier.fillMaxWidth()) {

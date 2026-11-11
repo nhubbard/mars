@@ -68,10 +68,7 @@ internal class FloatingPointView(private val project: Project) : Disposable {
         }
     }
     private val controls = panel {
-        row {
-            cell(selector.component).label(toolsMessages.getMessage("counter.selector"), LabelPosition.TOP)
-                .align(AlignX.FILL).resizableColumn()
-        }
+        marsExecutionRow(selector.component)
         row { cell(register).label(toolsMessages.getMessage("float.register"), LabelPosition.TOP) }
         row { access = text("", maxLineLength = floatingPointTextColumns).component }
         row { cell(decimal).label(toolsMessages.getMessage("float.decimal"), LabelPosition.TOP) }

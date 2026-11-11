@@ -134,8 +134,8 @@ private fun SchematicNodeLabel(node: XRayNode, factor: Float, openUnit: (XRayUni
                 onClickLabel = toolsMessages.getMessage("xray.diagram.open", node.label)) { openUnit(target) }
     }
     Box(modifier, contentAlignment = Alignment.Center) {
-        Text(node.label, fontSize = (17 * factor).sp, lineHeight = (19 * factor).sp,
-            textAlign = TextAlign.Center, fontWeight = FontWeight.SemiBold)
+        Text(node.label, fontSize = (15 * factor).sp, lineHeight = (18 * factor).sp,
+            textAlign = TextAlign.Center, fontWeight = FontWeight.SemiBold, softWrap = false)
     }
 }
 
