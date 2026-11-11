@@ -4,18 +4,18 @@ MARS 5 combines an independent Java assembler/simulator with a Kotlin IntelliJ p
 the deprecated global runtime and compatibility module. The independent core and CLI run without
 Venus, and the standalone desktop application now uses the same session-owned core.
 
-The IntelliJ plugin starter is Kotlin. Core, CLI, and desktop remain Java for now. All new plugin
-code and tests use Kotlin. The next work follows [the detailed IntelliJ component mapping](INTELLIJ_COMPONENT_MAPPING.md),
-which covers full MARS feature parity, native language/build/Run/Debug integration, all educational
-tools, and near-full branch coverage using Jupiter tests. See also [the current plan](MODERNIZATION_PLAN.md)
-and [the Phase 2.5 completion record](PHASE_2_5_PLAN.md).
+The Kotlin IntelliJ plugin provides MARS assembly editing, build diagnostics, native Run and Debug,
+and educational tools. The core, CLI, and desktop application are Java. See the
+[IntelliJ component mapping](INTELLIJ_COMPONENT_MAPPING.md) for scope and release gates,
+the [plugin implementation notes](PLUGIN_IMPLEMENTATION.md) for usage and verification,
+and the [modernization plan](MODERNIZATION_PLAN.md) for the broader project.
 
 | Module | Responsibility |
 | --- | --- |
 | `mars5/core` | Independent assembler, simulator, hardware, undo, and frontend contracts |
 | `mars5/cli` | Standalone command-line launcher |
 | `mars5/desktop` | Existing Venus editor and tools with explicit session ownership |
-| `mars5/plugin` | Kotlin IntelliJ plugin; lazy project-scoped core lifecycle |
+| `mars5/plugin` | Kotlin IntelliJ plugin for editing, assembling, running, and debugging MIPS |
 
 Build with JDK 25 and the Gradle wrapper:
 
@@ -30,8 +30,23 @@ java -jar desktop/build/libs/desktop-1.0-SNAPSHOT.jar
 The plugin targets IntelliJ IDEA 2026.3 (build 263) using Kotlin 2.4.21 and IntelliJ Platform
 Gradle Plugin 2.20.0. It uses the IDE's Kotlin runtime. Its ZIP is produced in
 `mars5/plugin/build/distributions`. To use an installed IDE instead of downloading the pinned SDK,
-pass `-PlocalIdePath="/path/to/IntelliJ IDEA.app"`. Language support, consoles, and debugging
-are future milestones; the starter currently establishes project session ownership and disposal.
+pass `-PlocalIdePath="/path/to/IntelliJ IDEA.app"`.
+
+## Try MARS in IntelliJ
+
+1. Build the ZIP with `./gradlew :plugin:buildPlugin` from `mars5`. In IntelliJ 2026.3, open
+   **Settings → Plugins** and choose **Install Plugin from Disk** from the gear menu.
+2. Open [the debug-sort example directory](examples/debug-sort) as a project. Open
+   `sort-and-search.asm`, right-click in the editor, and run it. The included `console.s`
+   supplies its print macros. Enter `7` in the Run console to see the sorted values and
+   the first match at index `4`.
+3. Set a breakpoint on `search_probe`, start the same program in Debug, and enter `7` again.
+   Use **Step Over** to follow the search, and inspect registers and memory in the Debug tool window.
+   Open **View → Tool Windows → MARS Tools** to inspect the selected execution.
+
+For a clean development launch from `mars5`, run `./gradlew clean cleanSandbox runIde`.
+
+## Command-line usage
 
 The CLI supports ordered sources, project-directory assembly, and program arguments after `--`.
 Run options include memory layouts, branch delay slots, self-modifying code, and step limits.
