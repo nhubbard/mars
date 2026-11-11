@@ -68,6 +68,15 @@ tests and both coverage gates. The logs and screenshots are under
 The catalog fixture also checks exact operand boundaries after replacing
 one operand field at a time. It uses the written field ranges because a
 signed immediate can merge into one assembler token after substitution.
+It also rewrites byte-sized nonnegative immediates in the instruction catalog
+as signed hexadecimal, octal, and escaped character literals. For each
+spelling, the fixture compares machine words and source origins in both
+delay-slot modes and checks that IntelliJ preserves the same operand boundaries.
+The packaged macOS replay opened a program with all three spellings, checked
+its editor operands, and ran it in IntelliJ. The Run console printed `73`.
+All 2,023 Jupiter tests and both coverage gates passed. The log and screenshot
+are under `mars5/.gradle/release-host-checks/immediate-spellings`.
+
 In a macro body, compact forms such as `la %out,%label+4` and
 `lw %out,%label,+4(%base)` retain the label and offset in one operand.
 The parser derives the eligible mnemonics from the instruction catalog.

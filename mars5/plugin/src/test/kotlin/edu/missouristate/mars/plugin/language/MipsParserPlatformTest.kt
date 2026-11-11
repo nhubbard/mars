@@ -26,6 +26,7 @@ import edu.missouristate.mars.mips.instructions.InstructionSet
 import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.analysis.MacroBoundaryProblem.Kind
 import edu.missouristate.mars.plugin.analysis.mipsSourceTimeline
+import edu.missouristate.mars.util.Binary
 import java.nio.file.Path
 import kotlin.io.path.writeText
 import org.junit.jupiter.api.Assertions.*
@@ -762,6 +763,21 @@ class MipsParserPlatformTest {
             val fields = listOf(row.first().value.uppercase()) + row.drop(1).map { it.value }
             fields.joinToString(separator, prefix = "\t,,", postfix = ",, # assembler ignores repeated separators")
         }
+        val immediateSpellings: Map<String, (Int) -> String> = linkedMapOf(
+            "signed-hex" to { "+0x${it.toString(16)}" },
+            "octal" to { "0${it.toString(8)}" },
+            "escaped-character" to { "'\\${it.toString(8).padStart(3, '0')}'" },
+        )
+        val rewrittenImmediates = immediateSpellings.mapValues { (_, spell) ->
+            tokens.map { row ->
+                row.joinToString(separator) { token ->
+                    if (TokenTypes.isIntegerTokenType(token.type)) {
+                        val value = Binary.stringToInt(token.value)
+                        if (value in 0..255) spell(value) else token.value
+                    } else token.value
+                }
+            }
+        }
         val aliasDefinitions = tokens.mapIndexed { index, row -> ".eqv OP_$index ${row.first().value}" }
         val aliasCalls = tokens.mapIndexed { index, row ->
             row.drop(1).joinToString(separator, prefix = "OP_$index$separator") { it.value }
@@ -820,6 +836,9 @@ class MipsParserPlatformTest {
             context.settings.setDelayedBranchingEnabled(delayed)
             val canonicalWords = assemble("canonical", header, examples)
             assertEquals(canonicalWords, assemble("comma-heavy", header, commaHeavy), "Separators with delay slots $delayed")
+            for ((spelling, lines) in rewrittenImmediates) {
+                assertEquals(canonicalWords, assemble(spelling, header, lines), "$spelling immediates with delay slots $delayed")
+            }
             assertEquals(canonicalWords, assemble("aliased", aliasDefinitions + header, aliasCalls), "Aliases with delay slots $delayed")
             assertEquals(canonicalWords, assemble("operand-aliases", operandDefinitions + header, aliasedOperands),
                 "Operand aliases with delay slots $delayed")
@@ -883,6 +902,9 @@ class MipsParserPlatformTest {
                 }
             }
             checkOperandBoundaries(checkOperations(header, commaHeavy, "INSTRUCTION", names))
+            for (lines in rewrittenImmediates.values) {
+                checkOperandBoundaries(checkOperations(header, lines, "INSTRUCTION", names))
+            }
             checkOperandBoundaries(checkOperations(operandDefinitions + header, aliasedOperands, "INSTRUCTION", names))
             for (mixed in mixedOperands) {
                 checkOperandBoundaries(checkOperations(operandDefinitions + header, mixed, "INSTRUCTION", names))
