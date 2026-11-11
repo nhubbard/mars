@@ -10,6 +10,8 @@ import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTextArea
 import com.intellij.ui.dsl.builder.Align
 import com.intellij.ui.dsl.builder.AlignX
+import com.intellij.ui.dsl.builder.LabelPosition
+import com.intellij.ui.dsl.builder.TopGap
 import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.table.JBTable
 import com.intellij.util.ui.JBDimension
@@ -34,8 +36,13 @@ internal class BranchHistoryView(project: Project) : Disposable {
     private val toggle = JButton()
     private val reset = JButton(toolsMessages.getMessage("counter.reset"))
     private val tableModel = HistoryTableModel()
-    private val table = JBTable(tableModel).apply { preferredScrollableViewportSize = JBDimension(360, 160) }
-    private val latest = JBLabel()
+    private val table = JBTable(tableModel).apply {
+        preferredScrollableViewportSize = JBDimension(360, 160)
+        val notTaken = prediction(false)
+        fitToolColumns("", "$notTaken, $notTaken", notTaken, "", "", "100%",
+            toolsMessages.getMessage("branchHistory.result.incorrect"))
+    }
+    private val latest = JBLabel().apply { minimumSize = JBDimension(0, 0) }
     private val log = JBTextArea(5, 32).apply { isEditable = false }
     private val tableScroll = JBScrollPane(table).apply { minimumSize = JBDimension(0, 84) }
     private val logScroll = JBScrollPane(log)
@@ -45,15 +52,16 @@ internal class BranchHistoryView(project: Project) : Disposable {
         marsExecutionRow(selector.component)
         row(toolsMessages.getMessage("branchHistory.size")) { cell(size) }
         row(toolsMessages.getMessage("branchHistory.bits")) { cell(history) }
-        row {
-            cell(initialTaken)
-            cell(apply)
-        }
+        row { cell(initialTaken) }
+        row { cell(apply) }
         row {
             cell(toggle)
             cell(reset)
         }
-        row(toolsMessages.getMessage("branchHistory.latest.label")) { cell(latest) }
+        row {
+            cell(latest).label(toolsMessages.getMessage("branchHistory.latest.label"), LabelPosition.TOP)
+                .align(AlignX.FILL).resizableColumn()
+        }.topGap(TopGap.SMALL)
         row { cell(tableScroll).align(Align.FILL).resizableColumn() }.resizableRow()
         row { label(toolsMessages.getMessage("branchHistory.log")).component.labelFor = log }
         row { cell(logScroll).align(AlignX.FILL).resizableColumn() }
@@ -113,6 +121,7 @@ internal class BranchHistoryView(project: Project) : Disposable {
             val assembly = ProgramStatement(it.instruction, it.pc, InstructionDefaults.get()).printableBasicAssemblyStatement.trimEnd()
             toolsMessages.getMessage("branchHistory.latest", Binary.intToHexString(it.pc), assembly, it.index.toString())
         } ?: toolsMessages.getMessage("branchHistory.latest.empty")
+        latest.toolTipText = latest.text
         tableModel.update(snapshot?.rows.orEmpty(), decision)
         log.text = snapshot?.recent.orEmpty().joinToString("\n") {
             toolsMessages.getMessage(

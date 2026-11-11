@@ -65,6 +65,7 @@ import javax.swing.JPanel
 import javax.swing.JProgressBar
 import javax.swing.JScrollPane
 import javax.swing.JSpinner
+import javax.swing.JTable
 import javax.swing.JToggleButton
 import javax.swing.KeyStroke
 import javax.swing.SwingUtilities
@@ -312,6 +313,14 @@ class InstructionCounterPlatformTest {
                 return combo.renderer.getListCellRendererComponent(JList(), Base.STATIC_DATA, 2, false, false)
                     .accessibleContext.accessibleName
             }
+            fun layoutDock(panel: JComponent, width: Int, height: Int): JScrollPane {
+                val scroll = assertInstanceOf(JScrollPane::class.java, panel)
+                scroll.setSize(JBUI.size(width, height))
+                scroll.doLayout()
+                scroll.viewport.doLayout()
+                scroll.viewport.view.doLayout()
+                return scroll
+            }
             withContext(Dispatchers.EDT) {
                 assertTrue("No MIPS executions" in xrayText())
                 assertTrue("No captured instructions" in xrayText())
@@ -321,15 +330,21 @@ class InstructionCounterPlatformTest {
                 assertFalse(button("Apply and Clear", bitmap).isEnabled)
                 assertFalse(button("Apply and Reset", cache).isEnabled)
                 assertEquals(0, UIUtil.findComponentsOfType(cache, JBTable::class.java).single().rowCount)
+                val memoryDock = layoutDock(references, 280, 460)
+                val gridChoice = UIUtil.findComponentsOfType(references, JBCheckBox::class.java).single()
+                val gridBounds = SwingUtilities.convertRectangle(gridChoice.parent, gridChoice.bounds, memoryDock.viewport.view)
+                assertTrue(gridBounds.maxX <= memoryDock.viewport.viewRect.maxX)
+                assertEquals(gridChoice.preferredSize.width, gridChoice.width)
+                val threshold = UIUtil.findComponentsOfType(references, JSpinner::class.java).single()
+                val thresholdLabel = UIUtil.findComponentsOfType(references, JLabel::class.java).single { it.labelFor === threshold }
+                assertTrue(thresholdLabel.y + thresholdLabel.height <= threshold.y)
+
                 for (panel in listOf(branches, cache)) {
-                    val scroll = assertInstanceOf(JScrollPane::class.java, panel)
-                    scroll.setSize(JBUI.scale(320), JBUI.scale(200))
-                    scroll.doLayout()
+                    val scroll = layoutDock(panel, 280, 200)
                     val viewport = scroll.viewport
-                    viewport.doLayout()
                     val body = viewport.view
-                    body.doLayout()
                     val table = UIUtil.findComponentsOfType(panel, JBTable::class.java).single()
+                    assertEquals(JTable.AUTO_RESIZE_OFF, table.autoResizeMode)
                     val inner = SwingUtilities.getAncestorOfClass(JScrollPane::class.java, table)
                     val tableBounds = SwingUtilities.convertRectangle(inner.parent, inner.bounds, body)
                     assertTrue(tableBounds.height >= JBUI.scale(84))
@@ -340,6 +355,7 @@ class InstructionCounterPlatformTest {
 
                     val apply = button("Apply and Reset", panel)
                     val applyBounds = SwingUtilities.convertRectangle(apply.parent, apply.bounds, body)
+                    assertTrue(applyBounds.maxX <= viewport.viewRect.maxX)
                     apply.focusListeners.forEach { it.focusGained(FocusEvent(apply, FocusEvent.FOCUS_GAINED)) }
                     assertTrue(viewport.viewRect.y <= applyBounds.y)
                     assertTrue(viewport.viewRect.maxY >= applyBounds.maxY)
@@ -586,6 +602,11 @@ class InstructionCounterPlatformTest {
                 }
             }
             withContext(Dispatchers.EDT) {
+                val wideCacheDock = layoutDock(cache, 610, 460)
+                val hitRate = UIUtil.findComponentsOfType(cache, JProgressBar::class.java).single()
+                val percent = UIUtil.findComponentsOfType(cache, JBLabel::class.java).single { it.text == "50%" }
+                assertTrue(percent.x + percent.width <= hitRate.x)
+                assertTrue(hitRate.width in 1..wideCacheDock.viewport.extentSize.width / 2)
                 val combos = UIUtil.findComponentsOfType(cache, JComboBox::class.java)
                 val placement = combos.single { it.selectedItem is Placement }
                 val replacement = combos.single { it.selectedItem is Replacement }

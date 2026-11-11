@@ -60,7 +60,7 @@ internal fun xRayPanelContent(
                 }
                 Column(controlWidth, verticalArrangement = controlSpacing) {
                     XRayChoice("xray.diagram", XRayUnit.entries.map { toolsMessages.getMessage("xray.unit.${it.name}") },
-                        view.unit.ordinal, "xray.diagram", true) {
+                        view.unit.ordinal, "xray.diagram", true, Modifier.widthIn(max = 184.dp)) {
                         view.selectUnit(XRayUnit.entries[it])
                     }
                     FlowRow(horizontalArrangement = controlSpacing, verticalArrangement = controlSpacing) {
@@ -93,10 +93,11 @@ internal fun xRayPanelContent(
 @Composable
 private fun XRayChoice(
     key: String, options: List<String>, index: Int, empty: String, enabled: Boolean,
+    modifier: Modifier = Modifier,
     onSelection: (Int) -> Unit,
 ) {
     val label = toolsMessages.getMessage(key)
-    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(3.dp)) {
         Text(label)
         ListComboBox(
             items = options.ifEmpty { listOf(toolsMessages.getMessage(empty)) },

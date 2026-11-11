@@ -22,6 +22,7 @@ import com.intellij.ui.dsl.builder.LabelPosition
 import com.intellij.ui.dsl.builder.Panel
 import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.dsl.listCellRenderer.textListCellRenderer
+import com.intellij.ui.table.JBTable
 import com.intellij.util.ui.launchOnShow
 import com.intellij.util.ui.UIUtil
 import com.intellij.util.ui.JBUI
@@ -32,6 +33,7 @@ import javax.swing.DefaultComboBoxModel
 import javax.swing.JButton
 import javax.swing.JComponent
 import javax.swing.JProgressBar
+import javax.swing.JTable
 import javax.swing.SwingUtilities
 import javax.swing.table.AbstractTableModel
 import kotlinx.coroutines.Dispatchers
@@ -130,6 +132,22 @@ internal fun AbstractTableModel.publishRowRefresh(previousRowCount: Int) {
     } else {
         fireTableDataChanged()
     }
+}
+
+internal fun JBTable.fitToolColumns(vararg samples: String) {
+    // Keep readable columns in a narrow dock by letting the table's scroll pane scroll horizontally.
+    autoResizeMode = JTable.AUTO_RESIZE_OFF
+    fun resizeColumns() {
+        val metrics = getFontMetrics(font)
+        val headerMetrics = tableHeader.getFontMetrics(tableHeader.font)
+        for ((index, sample) in samples.withIndex()) {
+            val column = columnModel.getColumn(index)
+            val width = maxOf(metrics.stringWidth(sample), headerMetrics.stringWidth(column.headerValue.toString()))
+            column.preferredWidth = width + JBUI.scale(16)
+        }
+    }
+    resizeColumns()
+    addPropertyChangeListener("font") { resizeColumns() }
 }
 
 internal data class MarsToolRunContent(val id: Long, val name: String, val process: MarsProcessHandler) {

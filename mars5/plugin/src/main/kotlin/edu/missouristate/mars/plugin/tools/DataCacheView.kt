@@ -11,6 +11,8 @@ import com.intellij.ui.components.JBTextArea
 import com.intellij.ui.dsl.builder.Align
 import com.intellij.ui.dsl.builder.AlignX
 import com.intellij.ui.dsl.builder.LabelPosition
+import com.intellij.ui.dsl.builder.RightGap
+import com.intellij.ui.dsl.builder.TopGap
 import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.dsl.listCellRenderer.textListCellRenderer
 import com.intellij.ui.table.JBTable
@@ -51,7 +53,10 @@ internal class DataCacheView(project: Project) : Disposable {
         accessibleContext.accessibleName = toolsMessages.getMessage("cache.rate")
     }
     private val blockModel = CacheBlockTableModel()
-    private val table = JBTable(blockModel).apply { preferredScrollableViewportSize = JBDimension(300, 160) }
+    private val table = JBTable(blockModel).apply {
+        preferredScrollableViewportSize = JBDimension(300, 160)
+        fitToolColumns("", "", Binary.intToHexString(-1), "", toolsMessages.getMessage("cache.empty"))
+    }
     private val log = JBTextArea(5, 35).apply { isEditable = false }
     private val tableScroll = JBScrollPane(table).apply { minimumSize = JBDimension(0, 84) }
     private val logScroll = JBScrollPane(log)
@@ -69,11 +74,12 @@ internal class DataCacheView(project: Project) : Disposable {
             cell(toggle)
             cell(reset)
         }
-        row { cell(summary) }
+        row { cell(summary) }.topGap(TopGap.SMALL)
         row { cell(traffic) }
-        row(toolsMessages.getMessage("cache.rate")) {
-            cell(rate).align(AlignX.FILL).resizableColumn()
-            cell(percentage)
+        row {
+            label(toolsMessages.getMessage("cache.rate")).gap(RightGap.SMALL).component.labelFor = rate
+            cell(percentage).gap(RightGap.SMALL)
+            cell(rate).resizableColumn()
         }
         row {
             cell(tableScroll).align(Align.FILL).resizableColumn()

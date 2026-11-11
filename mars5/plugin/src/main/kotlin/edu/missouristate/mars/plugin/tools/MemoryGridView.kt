@@ -11,6 +11,7 @@ import com.intellij.ui.components.JBCheckBox
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.dsl.builder.Align
 import com.intellij.ui.dsl.builder.LabelPosition
+import com.intellij.ui.dsl.builder.TopGap
 import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.dsl.listCellRenderer.textListCellRenderer
 import com.intellij.util.ui.JBUI
@@ -79,12 +80,13 @@ internal class MemoryGridView(
         row(toolsMessages.getMessage("bitmap.unitHeight")) { cell(unitHeight) }
         reference?.let { controls ->
             row(toolsMessages.getMessage("references.words")) { cell(controls.words) }
-            row(toolsMessages.getMessage("references.threshold")) { cell(controls.threshold) }
+            row { cell(controls.threshold).label(toolsMessages.getMessage("references.threshold"), LabelPosition.TOP) }
+                .topGap(TopGap.SMALL)
             row {
                 cell(controls.color)
                 cell(controls.applyColor)
-                cell(controls.grid)
             }
+            row { cell(controls.grid) }
         }
         row { cell(apply) }
         row {
