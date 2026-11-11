@@ -7,6 +7,7 @@ import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.util.elementType
 import edu.missouristate.mars.assembler.TokenList
 import edu.missouristate.mars.assembler.TokenTypes
+import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.Instruction
 import edu.missouristate.mars.mips.instructions.InstructionDefaults
 import edu.missouristate.mars.mips.instructions.basic.InstrMfc0
@@ -31,19 +32,24 @@ internal fun operationOnLine(first: PsiElement?): PsiElement? =
 internal const val COPROCESSOR0_REGISTER_INDEX = 2
 internal val Instruction.hasCoprocessor0Register: Boolean get() = this is InstrMfc0 || this is InstrMtc0
 
+internal fun enabledInstructionFormats(name: String, allowPseudo: Boolean): List<Instruction> {
+    val formats = InstructionDefaults.get().matchOperator(name)
+    return if (allowPseudo) formats else formats.filterIsInstance<BasicInstruction>()
+}
+
 internal class MipsInstructionOperand(val index: Int, val formats: List<Instruction>) {
     val acceptsLabel: Boolean get() = formats.any { it.tokenList[index].type == TokenTypes.IDENTIFIER }
 
     companion object {
         private val addressPunctuation = setOf(TokenTypes.LEFT_PAREN, TokenTypes.RIGHT_PAREN)
 
-        fun at(position: PsiElement, sourceFile: MipsFile): MipsInstructionOperand? {
+        fun at(position: PsiElement, sourceFile: MipsFile, allowPseudo: Boolean = true): MipsInstructionOperand? {
             val instruction = operationOwner(position) ?: return null
             val prefix = instruction.node.chars.subSequence(0, position.textOffset - instruction.textOffset).toString()
             val tokens = sourceFile.project.service<MarsAnalysisService>()
                 .editorInstructionTokens(sourceFile, instruction.operationHead, prefix) ?: return null
             val index = tokens.size()
-            val formats = InstructionDefaults.get().matchOperator(tokens[0].value).filter {
+            val formats = enabledInstructionFormats(tokens[0].value, allowPseudo).filter {
                 index < it.tokenList.size() && matchesAddressShape(tokens, it.tokenList)
             }
             return MipsInstructionOperand(index, formats)

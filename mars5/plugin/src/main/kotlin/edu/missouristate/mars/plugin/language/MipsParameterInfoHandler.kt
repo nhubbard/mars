@@ -14,9 +14,9 @@ import com.intellij.util.text.CharArrayUtil
 import edu.missouristate.mars.assembler.Macro
 import edu.missouristate.mars.assembler.TokenList
 import edu.missouristate.mars.assembler.TokenTypes
-import edu.missouristate.mars.mips.instructions.InstructionDefaults
 import edu.missouristate.mars.plugin.analysis.MacroInvocation
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
+import edu.missouristate.mars.plugin.build.MarsAssemblySettings
 
 internal data class MipsParameterRow(val text: String, val ranges: List<TextRange>)
 
@@ -60,21 +60,24 @@ internal class MipsParameterInfoHandler : ParameterInfoHandler<PsiElement, MipsP
             return Hint(rows, invocation.argument).takeIf { rows.isNotEmpty() }
         }
         val instruction = analysis.editorInstructionTokens(file, head, prefix, allowIncompleteOperand = true)
-        if (instruction != null) return instructionHint(instruction, context.offset == head.textRange.endOffset)
+        if (instruction != null) {
+            val allowPseudo = file.project.service<MarsAssemblySettings>().executionOptions.allowPseudoInstructions
+            return instructionHint(instruction, context.offset == head.textRange.endOffset, allowPseudo)
+        }
         return analysis.macroInvocation(file, head, prefix)?.let(::macroHint)
     }
 
-    private fun instructionHint(tokens: TokenList, atHeadEnd: Boolean): Hint {
+    private fun instructionHint(tokens: TokenList, atHeadEnd: Boolean, allowPseudo: Boolean): Hint? {
         val count = tokens.size()
         val last = tokens[count - 1]
         val next = count == 1 || last.endPos - 1 < tokens.processedLine.length ||
             last.type in operandPrefixes || atHeadEnd
-        val rows = InstructionDefaults.get().matchOperator(tokens[0].value).distinctBy { it.exampleFormat }.map { instruction ->
+        val rows = enabledInstructionFormats(tokens[0].value, allowPseudo).distinctBy { it.exampleFormat }.map { instruction ->
             val format = instruction.tokenList
             val ranges = (1 until format.size()).map { TextRange(format[it].startPos - 1, format[it].endPos - 1) }
             MipsParameterRow(instruction.exampleFormat, ranges)
         }
-        return Hint(rows, if (next) count - 1 else count - 2)
+        return Hint(rows, if (next) count - 1 else count - 2).takeIf { rows.isNotEmpty() }
     }
 
     private fun macroHint(invocation: MacroInvocation): Hint? {

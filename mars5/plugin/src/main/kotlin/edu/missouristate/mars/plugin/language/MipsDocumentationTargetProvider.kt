@@ -23,6 +23,7 @@ import com.intellij.psi.tree.TokenSet
 import com.intellij.psi.util.PsiUtilCore
 import edu.missouristate.mars.assembler.Directives
 import edu.missouristate.mars.assembler.TokenTypes
+import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.InstructionDefaults
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import java.util.TreeMap
@@ -136,6 +137,7 @@ internal class MipsDocumentationTargetProvider : DocumentationTargetProvider, Lo
 internal class MipsCatalogEntry(
     val name: String,
     val completionTail: String,
+    val basicCompletionTail: String?,
     private val forms: List<Pair<String, String>>,
 ) : DocumentationTarget {
     override fun createPointer(): Pointer<MipsCatalogEntry> = Pointer.hardPointer(this)
@@ -161,12 +163,14 @@ internal object MipsDocumentationCatalog {
         TreeMap<String, MipsCatalogEntry>(String.CASE_INSENSITIVE_ORDER).apply {
             for ((name, instructions) in InstructionDefaults.get().instructionList.groupBy { it.name }) {
                 val forms = instructions.map { it.exampleFormat to it.description }.distinct()
-                put(name, MipsCatalogEntry(name, forms.first().first.removePrefix(name), forms))
+                val basic = instructions.firstOrNull { it is BasicInstruction }
+                put(name, MipsCatalogEntry(name, forms.first().first.removePrefix(name), basic?.exampleFormat?.removePrefix(name), forms))
             }
             for (directive in Directives.getDirectiveList()) {
                 val name = directive.name
                 val description = directive.description
-                put(name, MipsCatalogEntry(name, "  $description", listOf(name to description)))
+                val tail = "  $description"
+                put(name, MipsCatalogEntry(name, tail, tail, listOf(name to description)))
             }
         }
     }

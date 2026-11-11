@@ -14,6 +14,7 @@ import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import edu.missouristate.mars.assembler.Directives
+import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.InstructionDefaults
 import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
@@ -34,15 +35,28 @@ class MipsCompletionPlatformTest {
     private val project = codeInsightProjectFixture()
     private val fixture by codeInsightFixture(project)
 
-    @Test
-    fun `statement heads offer every catalog instruction and directive once`() = timeoutRunBlocking<Unit> {
+    @ParameterizedTest
+    @ValueSource(booleans = [true, false])
+    fun `statement heads offer enabled catalog instructions and directives once`(allowPseudo: Boolean) = timeoutRunBlocking<Unit> {
         IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
-        val names = (InstructionDefaults.get().instructionList.map { it.name } + Directives.getDirectiveList().map { it.name }).toSet()
+        val instructions = InstructionDefaults.get().instructionList
+        val directives = Directives.getDirectiveList().map { it.name }
+        val names = (instructions.map { it.name } + directives).toSet()
+        val enabled = (instructions.filter { allowPseudo || it is BasicInstruction }.map { it.name } + directives).toSet()
         withContext(Dispatchers.EDT) {
+            project.get().service<MarsAssemblySettings>().changeAssemblerOptions(allowPseudo, warningsAreErrors = false)
             fixture.configureByText("completion.asm", "  <caret>")
-            val matches = fixture.completeBasic().orEmpty().map { it.lookupString }.filter { it in names }
-            assertEquals(names, matches.toSet())
-            assertEquals(names.size, matches.size)
+            val matches = fixture.completeBasic().orEmpty().filter { it.lookupString in names }
+            assertEquals(enabled, matches.map { it.lookupString }.toSet())
+            assertEquals(enabled.size, matches.size)
+            val division = matches.single { it.lookupString == "div" }
+            val presentation = LookupElementPresentation().also(division::renderElement)
+            assertEquals(" \$t1,\$t2", presentation.tailText)
+
+            fixture.configureByText("completion.asm", "div \$t0, \$t1, <caret>\n")
+            assertEquals(allowPseudo, fixture.completeBasic().orEmpty().any { it.lookupString == "\$t2" })
+            fixture.configureByText("completion.asm", ".eqv DIVIDE div\nDIVIDE \$t0, \$t1, <caret>\n")
+            assertEquals(allowPseudo, fixture.completeBasic().orEmpty().any { it.lookupString == "\$t2" })
         }
     }
 

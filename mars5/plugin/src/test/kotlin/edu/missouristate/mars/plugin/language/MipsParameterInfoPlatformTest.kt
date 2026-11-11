@@ -15,6 +15,7 @@ import com.intellij.testFramework.utils.parameterInfo.MockCreateParameterInfoCon
 import com.intellij.testFramework.utils.parameterInfo.MockUpdateParameterInfoContext
 import edu.missouristate.mars.mips.instructions.InstructionDefaults
 import edu.missouristate.mars.plugin.MarsSessionService
+import edu.missouristate.mars.plugin.build.MarsAssemblySettings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -43,6 +44,17 @@ class MipsParameterInfoPlatformTest {
             assertTrue("div \$t1,\$t2,<b>\$t3</b>" in rows, hint)
             assertTrue("div \$t1,\$t2,<b>-100</b>" in rows, hint)
             assertTrue("div \$t1,\$t2" in rows, hint)
+        }
+    }
+
+    @Test
+    fun `parameter info shows only supported forms when pseudo instructions are disabled`() = timeoutRunBlocking<Unit> {
+        withContext(Dispatchers.EDT) {
+            project.get().service<MarsAssemblySettings>().changeAssemblerOptions(false, warningsAreErrors = false)
+            assertEquals("div \$t1,<b>\$t2</b>", info("div \$t0, <caret>"))
+            assertEquals("div \$t1,<b>\$t2</b>", info(".eqv DIVIDE div\nDIVIDE \$t0, <caret>"))
+            assertNull(info("li <caret>"))
+            assertEquals("emit (<b>%arg</b>)", info(".macro emit (%arg)\nnop\n.end_macro\nemit(<caret>)"))
         }
     }
 

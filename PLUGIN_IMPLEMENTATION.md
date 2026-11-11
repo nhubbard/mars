@@ -320,6 +320,16 @@ instruction and directive catalogs. Suggestions include each mnemonic once, with
 operand list, and directives with their catalog descriptions. Matching is case-insensitive.
 Tab replaces the full mnemonic, including dots, while IntelliJ owns the lookup and insertion.
 
+Disabling **Allow pseudo-instructions** limits mnemonic completion, operand
+completion, and Parameter Info to basic instruction forms. For example, `div`
+keeps its two-register form, and the editor offers no third-register operand.
+The same rule applies when an `.eqv` alias supplies the mnemonic. The reference
+catalog still documents every form, and macros keep their own hints.
+In the packaged macOS IDE, completion offered `addiu` and excluded `abs`.
+Selecting `addiu` produced a runnable program that printed `42`. All 2,030
+Jupiter tests and both coverage gates passed. The log and screenshots are under
+`mars5/.gradle/release-host-checks/pseudo-instruction-assistance`.
+
 The contributor uses no indexes and caches only catalog text. It creates new lookup elements
 per request because IntelliJ attaches editor and project state to them. Native Jupiter fixtures
 exercise suggestions and insertion after labels and inside macros, and verify that the catalog

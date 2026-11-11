@@ -28,8 +28,10 @@ class MipsCompletionContributor : CompletionContributor(), DumbAware {
                 val file = parameters.originalFile as MipsFile
                 val prefix = prefix(parameters)
                 val lookup = result.withPrefixMatcher(prefix)
-                val items = MipsDocumentationCatalog.entries.map { entry ->
-                    LookupElementBuilder.create(entry, entry.name).withTailText(entry.completionTail, true)
+                val allowPseudo = file.project.service<MarsAssemblySettings>().executionOptions.allowPseudoInstructions
+                val items = MipsDocumentationCatalog.entries.mapNotNull { entry ->
+                    val tail = if (allowPseudo) entry.completionTail else entry.basicCompletionTail
+                    tail?.let { LookupElementBuilder.create(entry, entry.name).withTailText(it, true) }
                 }
                 lookup.caseInsensitive().addAllElements(items)
                 val macros = file.project.service<MarsAnalysisService>().macroCompletionSignatures(file, position.textOffset, prefix)
@@ -42,11 +44,11 @@ class MipsCompletionContributor : CompletionContributor(), DumbAware {
             override fun addCompletions(parameters: CompletionParameters, context: ProcessingContext, result: CompletionResultSet) {
                 val position = parameters.position
                 val root = parameters.originalFile as MipsFile
-                val operand = MipsInstructionOperand.at(position, root) ?: return
+                val options = root.project.service<MarsAssemblySettings>().executionOptions
+                val operand = MipsInstructionOperand.at(position, root, options.allowPseudoInstructions) ?: return
                 val prefix = prefix(parameters)
                 val lookup = result.withPrefixMatcher(prefix)
-                val bareMachine = root.project.service<MarsAssemblySettings>().bareMachine
-                lookup.addAllElements(registerCandidates(operand.formats, operand.index, bareMachine).map(LookupElementBuilder::create))
+                lookup.addAllElements(registerCandidates(operand.formats, operand.index, options.bareMachine).map(LookupElementBuilder::create))
                 if (operand.acceptsLabel) {
                     val names = root.project.service<MarsAnalysisService>().labelCompletionNames(root, position, prefix)
                     lookup.addAllElements(names.map(LookupElementBuilder::create))
