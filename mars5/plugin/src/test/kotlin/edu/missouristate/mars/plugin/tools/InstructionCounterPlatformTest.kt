@@ -61,6 +61,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -654,8 +655,10 @@ class InstructionCounterPlatformTest {
                 withContext(Dispatchers.EDT) {
                     assertTrue(labPanels().any { it.toolTipText == "Right display (0x3f)" })
                     assertTrue(labPanels().any { it.toolTipText == "Left display (0x06)" })
-                    assertTrue(UIUtil.findComponentsOfType(lab, JBLabel::class.java)
-                        .any { it.text == "28 instructions until next interrupt" })
+                    val labels = UIUtil.findComponentsOfType(lab, JBLabel::class.java).map { it.text }
+                    assertTrue(labels.containsAll(listOf(
+                        "Left display (0x06)", "Right display (0x3f)", "28 instructions until next interrupt",
+                    )))
                 }
             }
             withContext(Dispatchers.EDT) {
@@ -664,7 +667,11 @@ class InstructionCounterPlatformTest {
                 val image = BufferedImage(right.width, right.height, BufferedImage.TYPE_INT_RGB)
                 val graphics = image.createGraphics()
                 try { right.paint(graphics) } finally { graphics.dispose() }
-                assertTrue(image.getRGB(JBUI.scale(20), JBUI.scale(7)) != image.getRGB(JBUI.scale(20), JBUI.scale(33)))
+                val background = image.getRGB(JBUI.scale(20), JBUI.scale(26))
+                assertNotEquals(background, image.getRGB(JBUI.scale(20), JBUI.scale(7)))
+                assertNotEquals(background, image.getRGB(JBUI.scale(20), JBUI.scale(31)))
+                assertEquals(background, image.getRGB(JBUI.scale(20), JBUI.scale(33)))
+                assertEquals("Right display (0x3f)", right.accessibleContext.accessibleName)
                 val key = UIUtil.findComponentsOfType(lab, JToggleButton::class.java).single { it.text == "A" }
                 lab.setSize(JBUI.scale(365), JBUI.scale(520))
                 lab.doLayout()
@@ -678,6 +685,7 @@ class InstructionCounterPlatformTest {
                 button("Reset", lab).doClick()
                 assertFalse(key.isSelected)
                 assertEquals("Right display (0x00)", right.toolTipText)
+                assertTrue(UIUtil.findComponentsOfType(lab, JBLabel::class.java).any { it.text == "Right display (0x00)" })
                 button("Disconnect", lab).doClick()
                 assertFalse(key.isEnabled)
                 button("Connect", lab).doClick()

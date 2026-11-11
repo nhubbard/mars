@@ -46,8 +46,8 @@ internal class DigitalLabView(project: Project) : Disposable {
         }
         row { label(toolsMessages.getMessage("digitalLab.display")) }
         row {
-            cell(left)
-            cell(right)
+            cell(left.component)
+            cell(right.component)
         }
         row { label(toolsMessages.getMessage("digitalLab.keypad")) }
         row { cell(keypad) }
@@ -117,7 +117,12 @@ internal class DigitalLabView(project: Project) : Disposable {
 }
 
 private class SevenSegment(private val messageKey: String) : JPanel() {
+    private val valueLabel = JBLabel()
     private var bits = -1
+    val component = panel {
+        row { cell(this@SevenSegment) }
+        row { cell(valueLabel) }
+    }
 
     init {
         preferredSize = Dimension(JBUI.scale(46), JBUI.scale(73))
@@ -128,17 +133,28 @@ private class SevenSegment(private val messageKey: String) : JPanel() {
         if (bits == value) return
         bits = value
         val hex = value.toString(16).padStart(2, '0')
-        getAccessibleContext().accessibleName = toolsMessages.getMessage(messageKey, hex)
-        toolTipText = getAccessibleContext().accessibleName
+        val description = toolsMessages.getMessage(messageKey, hex)
+        valueLabel.text = description
+        getAccessibleContext().accessibleName = description
+        toolTipText = description
         repaint()
     }
 
     override fun paintComponent(graphics: Graphics) {
         super.paintComponent(graphics)
         for ((index, shape) in segments.withIndex()) {
-            graphics.color = if (bits and (1 shl index) != 0) JBColor.RED else JBColor.border()
-            graphics.fillRoundRect(JBUI.scale(shape[0]), JBUI.scale(shape[1]),
-                JBUI.scale(shape[2]), JBUI.scale(shape[3]), JBUI.scale(3), JBUI.scale(3))
+            val x = JBUI.scale(shape[0])
+            val y = JBUI.scale(shape[1])
+            val width = JBUI.scale(shape[2])
+            val height = JBUI.scale(shape[3])
+            val arc = JBUI.scale(3)
+            if (bits and (1 shl index) != 0) {
+                graphics.color = JBColor.RED
+                graphics.fillRoundRect(x, y, width, height, arc, arc)
+            } else {
+                graphics.color = JBColor.foreground()
+                graphics.drawRoundRect(x, y, width - 1, height - 1, arc, arc)
+            }
         }
     }
 

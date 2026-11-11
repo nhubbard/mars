@@ -1876,6 +1876,8 @@ device active even when the tool window is closed. The final display remains
 visible while the execution tab is open.
 
 The two seven-segment displays use the bytes at MMIO base + `0x10` and `0x11`.
+Each shows its current byte in hexadecimal below the diagram and in its
+accessible name. Lit segments are filled and unlit segments are outlined.
 The keypad scans the row written at `0x12` and places its row and column code at
 `0x14`. Click to latch a key and click again to release it. The counter at
 `0x13` schedules an interrupt every 30 completed instructions while enabled.
