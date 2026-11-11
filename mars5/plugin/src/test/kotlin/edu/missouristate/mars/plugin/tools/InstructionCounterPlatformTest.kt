@@ -390,7 +390,7 @@ class InstructionCounterPlatformTest {
             waitFor(2, "2 (100%)")
             withContext(Dispatchers.EDT) {
                 val scroll = assertInstanceOf(JScrollPane::class.java, xray)
-                scroll.setSize(JBUI.scale(340), JBUI.scale(280))
+                scroll.setSize(JBUI.scale(300), JBUI.scale(280))
                 scroll.doLayout()
                 val viewport = scroll.viewport
                 viewport.doLayout()

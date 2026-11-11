@@ -57,7 +57,7 @@ internal class XRayView(project: Project) : Disposable {
     private val clear = JButton(toolsMessages.getMessage("xray.clear"))
     private val play = JButton()
     private val reset = JButton(toolsMessages.getMessage("xray.reset"))
-    private val description = JBTextArea(4, 24).apply {
+    private val description = JBTextArea(4, 20).apply {
         isEditable = false
         lineWrap = true
         wrapStyleWord = true
@@ -225,7 +225,7 @@ internal class XRayCanvas(private val openUnit: (XRayUnit) -> Unit) : JPanel() {
         }
 
     init {
-        preferredSize = JBUI.size(300, 200)
+        preferredSize = JBUI.size(280, 200)
         getAccessibleContext().accessibleName = toolsMessages.getMessage("xray.diagram")
         addMouseListener(object : MouseAdapter() {
             override fun mouseClicked(event: MouseEvent) {
