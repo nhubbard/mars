@@ -43,6 +43,12 @@ declarations and references, macro definitions and invocations, and equivalence 
 Zero-offset loads retain separate register and base operands when the comma is omitted.
 Numeric, character, and label offsets still group with their base register when commas appear
 before the opening parenthesis.
+When the first operand of a written instruction is an equivalence alias or macro formal,
+the parser also keeps it separate from a following zero-offset address. The assembler-backed
+fixture covers labeled loads, optional commas, and both macro formal spellings. The packaged
+macOS replay navigated from the destination alias to its definition in an included file and
+printed the loaded value `37`, matching the standalone CLI. Evidence is under
+`mars5/.gradle/release-host-checks/aliased-load-destination`.
 
 In a written macro body, instructions and ordinary directives retain raw operand tokens when
 the structured operand grammar would report an error. MARS validates those operands on

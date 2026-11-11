@@ -817,7 +817,7 @@ class MipsParserPlatformTest {
 
     @Test
     fun `address operands follow the assembler with or without commas`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
-        val header = ".eqv BASE \$sp\n.data\ntarget: .word 0\n.text\n"
+        val header = ".eqv BASE \$sp\n.eqv DEST \$t0\n.eqv OFFSET + 4\n.data\ntarget: .word 0\nnop: .word 0\n.text\n"
         val canonical = """
             lw ${'$'}t0,(${'$'}sp)
             lwc1 ${'$'}f0,(${'$'}sp)
@@ -825,6 +825,10 @@ class MipsParserPlatformTest {
             lw ${'$'}t0,target(${'$'}sp)
             lw ${'$'}t0,'D'(${'$'}sp)
             lw ${'$'}t0,8(${'$'}sp)
+            lw ${'$'}t0,(${'$'}sp)
+            lw ${'$'}t0,(${'$'}sp)
+            lw ${'$'}t0,(${'$'}sp)
+            lw ${'$'}t0,nop+ 4(${'$'}sp)
         """.trimIndent()
         val alternate = """
             lw ${'$'}t0(${'$'}sp)
@@ -833,6 +837,10 @@ class MipsParserPlatformTest {
             lw ${'$'}t0,target,(${'$'}sp)
             lw ${'$'}t0,'D',(${'$'}sp)
             lw ${'$'}t0,8,,(,BASE,)
+            lw DEST (${'$'}sp)
+            lw DEST,(${'$'}sp)
+            read: lw DEST,,,(${'$'}sp)
+            lw ${'$'}t0,nop OFFSET(${'$'}sp)
         """.trimIndent()
         val context = project.get().service<MarsSessionService>().context
         fun assemble(text: String): List<Int> {
@@ -847,11 +855,21 @@ class MipsParserPlatformTest {
                 listOf(
                     listOf("\$t0", "(\$sp)"), listOf("\$f0", "(\$sp)"), listOf("\$t0", "4,,(\$sp)"),
                     listOf("\$t0", "target,(\$sp)"), listOf("\$t0", "'D',(\$sp)"), listOf("\$t0", "8,,(,BASE,)"),
+                    listOf("DEST", "(\$sp)"), listOf("DEST", "(\$sp)"),
+                    listOf("DEST", "(\$sp)"), listOf("\$t0", "nop", "OFFSET(\$sp)"),
                 ),
                 instructions.map { descendants(it, "OPERAND").map { operand -> operand.text }.toList() },
             )
-            assertEquals(listOf("4,,(\$sp)", "target,(\$sp)", "'D',(\$sp)", "8,,(,BASE,)"),
+            assertEquals(listOf("4,,(\$sp)", "target,(\$sp)", "'D',(\$sp)", "8,,(,BASE,)", "OFFSET(\$sp)"),
                 descendants(root, "ADDRESS_EXPR").map { it.text }.toList())
+        }
+        for (formal in listOf("%dest", "\$dest")) {
+            val source = ".macro load ($formal)\nlw $formal (\$sp)\n.end_macro\nload(\$t0)\n"
+            assertAssembles(directory, source, 0x8fa80000.toInt())
+            readAction {
+                val instruction = descendants(assertParses(source).node, "INSTRUCTION").single()
+                assertEquals(listOf(formal, "(\$sp)"), descendants(instruction, "OPERAND").map { it.text }.toList())
+            }
         }
     }
 

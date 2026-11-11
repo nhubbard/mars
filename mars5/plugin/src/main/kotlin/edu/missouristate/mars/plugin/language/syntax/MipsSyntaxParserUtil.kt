@@ -15,6 +15,7 @@ import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.assembler.Tokenizer
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.BAD_CHARACTER
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.CHARACTER
+import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.COLON
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.COMMA
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.DOLLAR_WORD
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.INVALID_CHARACTER
@@ -36,6 +37,7 @@ private val identifiers = setOf(WORD, DOLLAR_WORD)
 private val addressLabels = identifiers + MNEMONIC
 private val addressOffsets = setOf(NUMBER, CHARACTER, WORD, MNEMONIC, DOLLAR_WORD, PARAMETER)
 private val addressBases = setOf(REGISTER, WORD, DOLLAR_WORD, PARAMETER)
+private val registerAliases = identifiers + PARAMETER
 private val spacing = setOf(WHITE_SPACE)
 private val separators = spacing + COMMA
 private val syntaxMessages = DynamicBundle(MipsScanner::class.java, "messages.MarsBundle")
@@ -58,6 +60,7 @@ internal fun continueOperand(runtime: SyntaxGeneratedParserRuntime, level: Int):
     if (builder.tokenType == LEFT_PAREN) {
         // The assembler discards commas in an offset(base) operand. A register before
         // the opening parenthesis is a separate operand even without a comma.
+        if (builder.isAfterRegisterAlias()) return false
         if (previous != COMMA) return previous != REGISTER
         return builder.lookAhead(1) in addressBases && builder.previousToken(separators) in addressOffsets
     }
@@ -195,9 +198,22 @@ internal fun recoverStatement(runtime: SyntaxGeneratedParserRuntime, level: Int)
 private fun SyntaxTreeBuilder.signAttachesToNumber(previous: SyntaxElementType?): Boolean =
     text.getOrNull(currentOffset + 1)?.isDigit() == true && previous !in identifiers
 
-private fun SyntaxTreeBuilder.previousToken(ignored: Set<SyntaxElementType>): SyntaxElementType? {
-    var step = -1
+/** MARS address forms begin with a register, which may be written as an alias or macro formal. */
+private fun SyntaxTreeBuilder.isAfterRegisterAlias(): Boolean {
+    val operand = previousTokenIndex(-1, separators)
+    if (rawLookup(operand) !in registerAliases) return false
+    val operation = previousTokenIndex(operand - 1, separators)
+    if (rawLookup(operation) != MNEMONIC) return false
+    val prefix = rawLookup(previousTokenIndex(operation - 1, separators))
+    return prefix.endsLine() || prefix == COLON
+}
+
+private fun SyntaxTreeBuilder.previousToken(ignored: Set<SyntaxElementType>): SyntaxElementType? =
+    rawLookup(previousTokenIndex(-1, ignored))
+
+private fun SyntaxTreeBuilder.previousTokenIndex(from: Int, ignored: Set<SyntaxElementType>): Int {
+    var step = from
     var type = rawLookup(step)
     while (type in ignored) type = rawLookup(--step)
-    return type
+    return step
 }
