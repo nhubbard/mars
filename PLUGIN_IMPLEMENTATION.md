@@ -2024,6 +2024,17 @@ screenshots and logs are under
 `mars5/.gradle/release-host-checks/keyboard-display-width` and
 `mars5/.gradle/release-host-checks/linux-arm64-terminal-width`.
 
+An instrumented Ubuntu ARM64 replay on `c5aead1f` traced the missed
+activation to event delivery. The scripted Space sent key-down and
+key-typed events to the focused **Connect** button, leaving it armed
+without a key-up event. A native Robot press and release reached the
+button, activated it, and focused **Keyboard**. A typed `M` appeared
+at the left edge of the display. Space on **Resize and Reset** then
+changed the display to 12 × 4 and cleared the echoed character.
+The clean build passed the full Jupiter suite and both coverage gates.
+The event trace and screenshots are under
+`mars5/.gradle/release-host-checks/linux-arm64-terminal-keyboard`.
+
 The Kotlin device implements the receiver control and data words at MMIO
 base + `0x00` and `0x04` and the transmitter control and data words at
 `0x08` and `0x0c`. It applies host input at instruction boundaries and
