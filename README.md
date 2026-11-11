@@ -14,6 +14,7 @@ and the [modernization plan](MODERNIZATION_PLAN.md) for the broader project.
 | --- | --- |
 | `mars5/core` | Independent assembler, simulator, hardware, undo, and frontend contracts |
 | `mars5/cli` | Standalone command-line launcher |
+| `mars5/datapath` | Compiled MIPS X-Ray diagram tables shared by both frontends |
 | `mars5/desktop` | Existing Venus editor and tools with explicit session ownership |
 | `mars5/plugin` | Kotlin IntelliJ plugin for editing, assembling, running, and debugging MIPS |
 

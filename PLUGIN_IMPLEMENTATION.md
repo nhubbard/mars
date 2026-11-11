@@ -2545,6 +2545,12 @@ includes assembly and execution of the preceding 2,000 emitted instructions.
 The playback closes the navigation target before debugging, and the IDE log
 records the included source reopening during stepping.
 
+The same replay in the two-vCPU Ubuntu ARM64 VM measured 1.249 s for
+completion, 1.225 s to load the Symbols result list, and 2.274 s from
+Debug launch to the breakpoint. Step Into took 127 ms and Step Over took
+101 ms. These are single observations from the Linux trace, with the IDE
+displayed through Xvfb.
+
 ## M7 parity evidence
 
 The [component mapping](INTELLIJ_COMPONENT_MAPPING.md#123-final-parity-checklist)

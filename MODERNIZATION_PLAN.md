@@ -7,7 +7,8 @@
 **Current status (2026-11-10)**
 
 Phase 2.5 is complete and Phase 3 is in M7, parity and release qualification.
-The implemented modules are `mars5/core`, `mars5/cli`, `mars5/desktop`, and `mars5/plugin`.
+The implemented modules are `mars5/core`, `mars5/cli`, `mars5/datapath`,
+`mars5/desktop`, and `mars5/plugin`.
 The compatibility runtime has been deleted. Core is independent of both desktop and IntelliJ;
 all frontends use explicit session ownership. The plugin is Kotlin; core, CLI, and desktop are
 currently Java. All modules target JDK 25 with Gradle 9.9.
@@ -68,8 +69,9 @@ are historical design notes where they differ from this status and the checked-i
 mars5/
 ├── core/       independent Java engine; language migration deferred
 ├── cli/        standalone Java launcher
-├── desktop/    existing Venus frontend; depends only on core
-├── plugin/     Kotlin IntelliJ plugin; depends only on core
+├── datapath/   compiled diagram tables shared by the desktop and plugin
+├── desktop/    existing Venus frontend; uses core and datapath
+├── plugin/     Kotlin IntelliJ plugin; uses core and datapath
 ├── build.gradle.kts
 └── settings.gradle.kts
 ```
