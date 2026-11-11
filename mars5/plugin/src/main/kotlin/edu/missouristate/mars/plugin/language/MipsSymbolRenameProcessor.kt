@@ -266,7 +266,7 @@ private fun verifyRename(target: MipsDeclaration, newName: String, usages: Set<S
     val expectedUses = before.symbolUses().mapKeys { shifted(it.key) }.mapValues { (_, bindings) ->
         bindings.mapTo(HashSet()) {
             val name = if (subject.address && subject.matches(it.definition(), it.name())) newName else it.name()
-            SymbolUse(shifted(it.definition()), name, it.equivalenceSource()?.let(::shifted))
+            SymbolUse(shifted(it.definition()), name, it.address(), it.equivalenceSource()?.let(::shifted))
         }
     }
     val expectedLocals = before.locals().mapValues { (entry, definitions) ->

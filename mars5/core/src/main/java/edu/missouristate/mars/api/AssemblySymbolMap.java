@@ -68,10 +68,10 @@ public record AssemblySymbolMap(
   public record EquivalenceOccurrence(
       SourceToken site, SourceToken spelling, SourceToken definition, String name, boolean declaration) {}
 
-  /** A label binding and, for an expanded .eqv, the written replacement that supplied it. */
-  public record SymbolUse(SourceToken definition, String name, SourceToken equivalenceSource) {
-    public SymbolUse(SourceToken definition, String name) {
-      this(definition, name, null);
+  /** A label binding with its final address and optional written .eqv replacement. */
+  public record SymbolUse(SourceToken definition, String name, int address, SourceToken equivalenceSource) {
+    public SymbolUse(SourceToken definition, String name, int address) {
+      this(definition, name, address, null);
     }
   }
 

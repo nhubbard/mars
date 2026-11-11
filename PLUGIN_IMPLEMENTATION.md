@@ -1751,14 +1751,20 @@ label named `pc` displays its assembled address. Quick Evaluate uses committed
 editor PSI and leaves comments, string literals, and unresolved names alone.
 Label hints use the loaded image's definition or reference at the editor
 location. The same local label spelling in two assembly units can therefore
-show different addresses while paused in one unit. Quick Evaluate skips label
-hints when an included label has several possible addresses or the editor
-text differs from the loaded image. Expressions typed into Evaluate and
-Watches use the selected frame's assembly unit.
+show different addresses while paused in one unit. When two units include
+the same label declaration, each unit's reference displays the address
+recorded for that use. Quick Evaluate skips hints at shared source sites
+that resolve to several addresses, and when the editor text differs from
+the loaded image. Expressions typed into Evaluate and Watches use the
+selected frame's assembly unit.
 The packaged macOS replay paused in `sibling.s` and showed `0x10010000` for
 `localValue` in `main.mars` and `0x10010004` for the same spelling in
 `sibling.s`. The screenshots are under
 `mars5/.gradle/release-host-checks/source-label-quick-evaluate`.
+In the shared-include replay, both units included `shared.inc`. The native
+popup showed `0x10010004` for the `shared` reference in `main.mars` and
+`0x10010010` for the reference in `sibling.s`. The screenshots are under
+`mars5/.gradle/release-host-checks/shared-label-quick-evaluate`.
 For the paused instruction, it also uses the assembler's recorded operands
 to show values supplied by `.eqv` or a macro argument. A macro formal in an
 included file uses the active invocation, and the written arguments at each

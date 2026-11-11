@@ -85,7 +85,7 @@ public final class Assembler {
         equivalences.put(entry, program.getTokenizer().equivalenceOccurrences());
       }
       symbolMap = new AssemblySymbolMap(
-          locals, definitions(context.symbols(), checkCancellation), first.macroCalls, symbolUses.bindings(), macros,
+          locals, definitions(context.symbols(), checkCancellation), first.macroCalls, symbolUses.bindings(checkCancellation), macros,
           equivalences);
       sourceMap = result.sourceMap();
       return result.instructions();

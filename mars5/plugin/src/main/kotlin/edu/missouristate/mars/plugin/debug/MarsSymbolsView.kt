@@ -67,7 +67,7 @@ internal class LoadedSymbols(private val symbols: AssemblySymbolMap, val sources
             addressesAt(site, spelling)
         } else {
             if (bindings.any { it.name() != spelling }) return null
-            bindings.flatMap { addressesAt(it.definition(), spelling) }
+            bindings.map { it.address() }
         }
         return addresses.distinct().singleOrNull()
     }

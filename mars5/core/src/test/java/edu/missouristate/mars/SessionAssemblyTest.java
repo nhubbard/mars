@@ -596,7 +596,8 @@ class SessionAssemblyTest {
           "nextCell", new Definition(session.memory.externBaseAddress + 8, Kind.EXTERNAL,
               new Origin(new Location(other, 4), null), false, 9)));
       assertThat(map.symbolUses().get(new SourceToken(new Location(other, 3), 9)))
-          .containsExactly(new SymbolUse(new SourceToken(new Location(main, 5), 9), "storage"));
+          .containsExactly(new SymbolUse(new SourceToken(new Location(main, 5), 9), "storage",
+              session.memory.externBaseAddress));
       assertThat(map.locals().get(main)).containsExactlyInAnyOrderEntriesOf(Map.of(
           "word", new Definition(session.memory.dataBaseAddress + 4, Kind.DATA, new Origin(new Location(main, 4), null), false, 1),
           "privateLabel", new Definition(text + 4, Kind.TEXT, local, false, 3),
@@ -669,7 +670,9 @@ class SessionAssemblyTest {
               new MacroDefinition(new SourceToken(new Location(macros, 2), 8), "inner", List.of("%label")),
               new MacroDefinition(new SourceToken(new Location(macros, 5), 8), "branch", List.of("%label"))),
           other, List.of()));
-      var target = new SymbolUse(new SourceToken(new Location(other, 2), 1), "target");
+      var symbols = result.program().symbolMap();
+      var target = new SymbolUse(new SourceToken(new Location(other, 2), 1), "target",
+          symbols.globals().get("target").address());
       var alias = new SourceToken(new Location(main, 2), 6);
       var base = new SourceToken(new Location(macros, 1), 6);
       var invocation = new SourceToken(new Location(main, 7), 3);
@@ -678,11 +681,13 @@ class SessionAssemblyTest {
           new EquivalenceOccurrence(base, base, base, "BASE", true),
           new EquivalenceOccurrence(invocation, invocation, alias, "TARGET", false),
           new EquivalenceOccurrence(invocation, new SourceToken(new Location(main, 2), 13), base, "BASE", false));
-      var aliasedTarget = new SymbolUse(target.definition(), target.name(),
+      var aliasedTarget = new SymbolUse(target.definition(), target.name(), target.address(),
           new SourceToken(new Location(macros, 1), 11));
-      var local = new SymbolUse(new SourceToken(new Location(main, 8), 1), "local");
-      var future = new SymbolUse(new SourceToken(new Location(main, 12), 1), "future");
-      var uses = result.program().symbolMap().symbolUses();
+      var local = new SymbolUse(new SourceToken(new Location(main, 8), 1), "local",
+          symbols.locals().get(main).get("local").address());
+      var future = new SymbolUse(new SourceToken(new Location(main, 12), 1), "future",
+          symbols.locals().get(main).get("future").address());
+      var uses = symbols.symbolUses();
       assertThat(uses).containsExactlyInAnyOrderEntriesOf(Map.of(
           new SourceToken(new Location(main, 4), 14), Set.of(target),
           new SourceToken(new Location(main, 6), 9), Set.of(target),
@@ -695,6 +700,20 @@ class SessionAssemblyTest {
           new SourceToken(new Location(other, 3), 8), Set.of(target)));
       assertThatThrownBy(() -> uses.get(new SourceToken(new Location(main, 4), 14)).clear())
           .isInstanceOf(UnsupportedOperationException.class);
+    }
+  }
+
+  @Test
+  void symbolUseKeepsFinalAddressAfterDataAlignment() throws Exception {
+    var file = source("aligned-binding.s", ".data\n.byte 1\naligned: .word aligned\n.text\nnop\n");
+    try (var session = session("Default")) {
+      var result = new SessionAssembler(session).assembleSnapshot(
+          new AssemblySourceSnapshot(List.of(file), Map.of(file, Files.readString(file))),
+          null, true, false);
+      assertThat(result.errors()).isEmpty();
+      var uses = result.program().symbolMap().symbolUses();
+      assertThat(uses.get(new SourceToken(new Location(file, 3), 16))).containsExactly(
+          new SymbolUse(new SourceToken(new Location(file, 3), 1), "aligned", session.memory.dataBaseAddress + 4));
     }
   }
 

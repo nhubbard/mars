@@ -1482,6 +1482,7 @@ class MarsDebugPlatformTest {
                 .text
                 la ${'$'}t1, localValue
                 la ${'$'}t2, OFFSET
+                la ${'$'}t3, shared
                 jal sibling
                 nop
                 li ${'$'}v0, 10
@@ -1494,6 +1495,7 @@ class MarsDebugPlatformTest {
                 .text
                 .globl sibling
                 sibling: lw ${'$'}t0, localValue
+                la ${'$'}t3, shared
                 jr ${'$'}ra
                 nop
             """.trimIndent()).virtualFile
@@ -1518,6 +1520,13 @@ class MarsDebugPlatformTest {
                     }
                 }
                 assertEquals("0x1001000c", evaluate(debug.session, frame, "localValue"))
+                for ((file, address) in listOf(main to "0x10010004", sibling to "0x10010010")) {
+                    val document = requireNotNull(documents.getDocument(file))
+                    val offset = document.text.lastIndexOf("shared")
+                    val info = requireNotNull(evaluator.getExpressionInfoAtOffsetAsync(project, document, offset, false).await())
+                    assertEquals(TextRange(offset, offset + "shared".length), info.textRange)
+                    assertEquals(address, evaluate(debug.session, frame, requireNotNull(info.expressionText)))
+                }
                 val sharedDocument = requireNotNull(documents.getDocument(include))
                 assertNull(evaluator.getExpressionInfoAtOffsetAsync(project, sharedDocument, 0, false).await())
                 val sharedUse = sharedDocument.text.lastIndexOf("shared")
