@@ -179,7 +179,7 @@ private class MipsBlock(
             line?.verbatimOperandRanges.orEmpty().any { it.startOffset < left.textRange.endOffset && right.startOffset < it.endOffset } -> readOnly
             // A space can turn a sign into a separate token, or prevent an exponent from joining.
             before in signs -> readOnly
-            after in signs -> if (gap.length == 0) readOnly else oneSpace
+            after in signs -> if (gap.isEmpty() && before != comma) readOnly else oneSpace
             after in closingPunctuation || before == leftParen -> noSpaces
             after == leftParen && expandedParenthesis == OperandParenthesis.ADDRESS -> noSpaces
             after == leftParen && expandedParenthesis == OperandParenthesis.GROUP -> oneSpace

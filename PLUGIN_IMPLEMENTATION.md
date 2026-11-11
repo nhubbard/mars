@@ -79,6 +79,18 @@ Jupiter tests and both coverage gates. The logs and screenshots are under
 `mars5/.gradle/release-host-checks/operand-boundaries` and
 `mars5/.gradle/release-host-checks/linux-arm64-operand-boundaries`.
 
+Reformat Code adds a space after a comma before a signed field, including
+the comma in `lw %out, %label, +4(%base)`. A compact `%label+4` retains
+its spelling. The formatter fixture checks a second pass for idempotence
+and compares machine words and data bytes before and after formatting.
+Clean packaged IntelliJ launches on macOS and Ubuntu ARM64 used
+**Reformat Code**, saved the file, checked the two operands in each
+macro body, and ran the program. Both consoles printed `74`, matching
+the standalone CLI. Both hosts passed 2,022 Jupiter tests and both
+coverage gates. The logs and screenshots are under
+`mars5/.gradle/release-host-checks/compact-offset-format` and
+`mars5/.gradle/release-host-checks/linux-arm64-compact-offset-format`.
+
 In a written macro body, instructions and ordinary directives retain raw operand tokens when
 the structured operand grammar would report an error. MARS validates those operands on
 expansion. IntelliJ still preserves structured operands wherever the full parse succeeds and

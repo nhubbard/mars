@@ -712,6 +712,44 @@ class MipsFormattingPlatformTest {
     }
 
     @Test
+    fun `formatting compact macro offsets keeps signed fields and normalizes commas`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val source = """
+                .macro compact (%out,%label,%base)
+                la %out,%label+4
+                lw %out,%label,+4( %base )
+                lw %out,-4( %base )
+                addiu %out,%base,+4
+                .end_macro
+                .data
+                values: .word -1,+2
+                .text
+                compact(${'$'}t0,values,${'$'}sp)
+            """.trimIndent()
+            val formatted = withContext(Dispatchers.EDT) {
+                fixture.configureByText("compact-offsets.asm", source)
+                val result = reformat()
+                assertEquals(result, reformat())
+                result
+            }
+            val expected = """
+                .macro compact (%out, %label, %base)
+                    la %out, %label+4
+                    lw %out, %label, +4(%base)
+                    lw %out, -4(%base)
+                    addiu %out, %base, +4
+                .end_macro
+                .data
+                values: .word -1, +2
+                .text
+                    compact(${'$'}t0, values, ${'$'}sp)
+            """.trimIndent()
+            assertEquals(assemble(directory.resolve("compact-before.asm"), source),
+                assemble(directory.resolve("compact-after.asm"), formatted))
+            assertEquals(expected, formatted)
+        }
+
+    @Test
     fun `formatting preserves unjoined signs and can recover around broken syntax`() = timeoutRunBlocking<Unit> {
         withContext(Dispatchers.EDT) {
             val source = """
