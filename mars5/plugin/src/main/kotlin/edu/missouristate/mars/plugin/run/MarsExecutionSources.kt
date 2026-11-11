@@ -55,6 +55,8 @@ internal class MarsExecutionSources(private val capture: CapturedAssemblySources
         if (column == null) return OpenFileDescriptor(project, file, line, 0)
         // Assembler columns count source characters. IntelliJ logical columns expand tabs.
         val document = FileDocumentManager.getInstance().getDocument(file)!!
+        // A preview may not contain the line, but the descriptor can still carry its number.
+        if (line >= document.lineCount) return OpenFileDescriptor(project, file, line, 0)
         return OpenFileDescriptor(project, file, document.getLineStartOffset(line) + column - 1)
     }
 

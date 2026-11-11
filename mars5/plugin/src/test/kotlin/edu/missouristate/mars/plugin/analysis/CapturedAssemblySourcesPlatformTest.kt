@@ -1,16 +1,20 @@
 package edu.missouristate.mars.plugin.analysis
 
 import com.intellij.openapi.application.EDT
+import com.intellij.openapi.application.readAction
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.util.SystemInfoRt
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
+import com.intellij.openapi.vfs.limits.FileSizeLimit
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
+import edu.missouristate.mars.api.InstructionSourceMap.Location
 import edu.missouristate.mars.plugin.MarsSessionService
+import edu.missouristate.mars.plugin.run.MarsExecutionSources
 import java.nio.file.Files
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -63,6 +67,56 @@ class CapturedAssemblySourcesPlatformTest {
         assertTrue(program.simulate(5))
         assertEquals(42, context.registerFile.getValue(8))
         assertEquals(17, context.registerFile.getValue(16))
+    }
+
+    @Test
+    fun `assembly follows includes and source locations beyond the IntelliJ file preview`() = timeoutRunBlocking<Unit> {
+        val comment = "#" + " ".repeat(16_382)
+        val diskLine = "$comment\r\n"
+        val commentCount = FileSizeLimit.getContentLoadLimit("inc") / (diskLine.length * Char.SIZE_BYTES) + 1
+        val (entry, large) = withContext(Dispatchers.EDT) {
+            val source = fixture.addFileToProject("entry.mars", ".include \"large.inc\"\n").virtualFile
+            fixture.addFileToProject("tail.s", "nop\n")
+            val path = source.toNioPath().resolveSibling("large.inc")
+            Files.newOutputStream(path).use { output ->
+                output.write(byteArrayOf(0xff.toByte(), 0xfe.toByte()))
+                output.bufferedWriter(Charsets.UTF_16LE).use { writer ->
+                    repeat(commentCount) { writer.write(diskLine) }
+                    writer.write(".include \"tail.s\"\r\n\taddiu \$t0, \$zero, 7\r\n")
+                }
+            }
+            source.toNioPath() to checkNotNull(VirtualFileManager.getInstance().refreshAndFindFileByNioPath(path))
+        }
+        val largePath = large.toNioPath()
+        val instructionLine = commentCount + 2
+        val documents = FileDocumentManager.getInstance()
+        val preview = readAction { checkNotNull(documents.getDocument(large)) }
+        assertTrue(documents.isPartialPreviewOfALargeFile(preview))
+        assertTrue(preview.lineCount < instructionLine)
+
+        val capture = captureAssemblySources(listOf(entry), null)
+        assertTrue(capture.snapshot.texts().getValue(largePath).endsWith("\taddiu \$t0, \$zero, 7\n"))
+        assertTrue(largePath.resolveSibling("tail.s") in capture.snapshot.texts())
+        val component = MarsSessionService.createMarsComponent()
+        component.context().use { session ->
+            val result = capture.assembleIn(component)
+            assertTrue(result.succeeded(), result.errors().toString())
+            val statements = session.program.machineList
+            assertEquals(listOf(0, 0x24080007), statements.map { it.binaryStatement })
+            val location = Location(largePath, instructionLine)
+            assertEquals(location, result.program().sourceMap().origins()[statements.last().address]?.location())
+            val descriptor = readAction {
+                MarsExecutionSources(capture).hyperlink(project.get(), location, 2).descriptor
+            }
+            assertEquals(large, descriptor?.file)
+            assertEquals(instructionLine - 1, descriptor?.line)
+        }
+        val unavailable = readAction {
+            collectAssemblySources(listOf(entry), null) { dependency ->
+                if (dependency == large) Files.delete(largePath)
+            }
+        }
+        assertFalse(largePath in unavailable.snapshot.texts())
     }
 
     @Test

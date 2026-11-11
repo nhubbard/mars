@@ -7,6 +7,8 @@ import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Key
+import com.intellij.openapi.util.text.StringUtil
+import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.PsiManager
@@ -28,6 +30,7 @@ import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.references.findMipsIncludeFile
 import edu.missouristate.mars.plugin.language.references.mipsIncludeDirectoryPath
 import edu.missouristate.mars.util.FilenameFinder
+import java.io.IOException
 import java.nio.file.InvalidPathException
 import java.nio.file.Path
 import java.util.Map.copyOf as copyOfMap
@@ -134,9 +137,18 @@ internal fun collectAssemblySources(
         val document = documents.getDocument(file)
         onDependency(document ?: file)
         if (document == null) return null
+        val text = if (documents.isPartialPreviewOfALargeFile(document)) {
+            onDependency(file)
+            try {
+                StringUtil.convertLineSeparators(VfsUtilCore.loadText(file))
+            } catch (_: IOException) {
+                // The assembler will report the unavailable source at the entry or include site.
+                return null
+            }
+        } else document.text
         // Directory aliases share an include location. A file symlink keeps its own name and directory.
         val identity = path.fileSystem.getPath(file.mipsIncludeDirectoryPath()!!).resolve(file.name)
-        return SourceDocument(document.text, document.modificationStamp, identity).also { captured[path] = it }
+        return SourceDocument(text, document.modificationStamp, identity).also { captured[path] = it }
     }
 
     for (root in (listOfNotNull(handler) + ordered).distinct()) {
