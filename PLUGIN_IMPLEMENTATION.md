@@ -334,12 +334,19 @@ and handles whitespace, optional commas and signed offsets. Candidate formats mu
 with the address punctuation already typed. Completion offers canonical integer names and
 numbers, floating-point registers, or the implemented CP0 register numbers for the second
 operand of `mfc0` and `mtc0`. The spelling lists come from the Java register banks.
+When the project enables **Bare machine**, the editor offers the 32 numeric
+integer register spellings, matching the assembler. Floating-point and
+Coprocessor 0 operand completion still use their respective register banks.
 
 The include-ordered source cache supplies visible equivalences for operation candidates.
 Label navigation and completion count tokens in the expanded prefix, including operands
 supplied by an alias. Go to Declaration on the alias itself follows its equivalence definition.
 Native fixtures cover basic and pseudo formats, omitted and symbolic address offsets,
 CP0 and CP1 transfers, aliased instructions, non-register operands, and register insertion.
+The packaged macOS replay opened the numeric-register popup, verified all 32
+candidates, inserted `$0` through IntelliJ's lookup action, and ran the source.
+The Run console printed `42`. All 2,028 Jupiter tests and both coverage gates
+passed. Evidence is under `mars5/.gradle/release-host-checks/bare-machine-completion`.
 
 ## Register usage highlighting
 

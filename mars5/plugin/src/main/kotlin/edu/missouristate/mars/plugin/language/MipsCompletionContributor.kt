@@ -17,6 +17,7 @@ import edu.missouristate.mars.assembler.RegisterNames
 import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.mips.instructions.Instruction
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
+import edu.missouristate.mars.plugin.build.MarsAssemblySettings
 import edu.missouristate.mars.plugin.language.psi.macroParameterUseContexts
 
 class MipsCompletionContributor : CompletionContributor(), DumbAware {
@@ -44,7 +45,8 @@ class MipsCompletionContributor : CompletionContributor(), DumbAware {
                 val operand = MipsInstructionOperand.at(position, root) ?: return
                 val prefix = prefix(parameters)
                 val lookup = result.withPrefixMatcher(prefix)
-                lookup.addAllElements(registerCandidates(operand.formats, operand.index).map(LookupElementBuilder::create))
+                val bareMachine = root.project.service<MarsAssemblySettings>().bareMachine
+                lookup.addAllElements(registerCandidates(operand.formats, operand.index, bareMachine).map(LookupElementBuilder::create))
                 if (operand.acceptsLabel) {
                     val names = root.project.service<MarsAnalysisService>().labelCompletionNames(root, position, prefix)
                     lookup.addAllElements(names.map(LookupElementBuilder::create))
@@ -85,27 +87,32 @@ class MipsCompletionContributor : CompletionContributor(), DumbAware {
             .withElementType(TokenSet.create(MipsTypes.psi("PARAMETER"), MipsTypes.psi("DOLLAR_WORD"), MipsTypes.psi("WORD")))
             .withParent(psiElement().withElementType(macroParameterUseContexts))
 
+        val integerRegisters by lazy { RegisterNames.integerSpellings() }
         val registerSpellings by lazy {
-            val integer = RegisterNames.integerSpellings()
             mapOf(
-                TokenTypes.REGISTER_NAME to integer,
-                TokenTypes.REGISTER_NUMBER to integer,
+                TokenTypes.REGISTER_NAME to integerRegisters,
+                TokenTypes.REGISTER_NUMBER to integerRegisters,
                 TokenTypes.FP_REGISTER_NAME to RegisterNames.floatingSpellings(),
             )
         }
         val systemRegisters by lazy { RegisterNames.coprocessor0Spellings() }
+        val integerRegisterTypes = setOf(TokenTypes.REGISTER_NAME, TokenTypes.REGISTER_NUMBER)
+        val numberedIntegerRegisters by lazy {
+            integerRegisters.filter { TokenTypes.matchTokenType(it) == TokenTypes.REGISTER_NUMBER }
+        }
 
         fun prefix(parameters: CompletionParameters): String {
             val position = parameters.position
             return position.text.substring(0, parameters.offset - position.textOffset)
         }
 
-        fun registerCandidates(formats: List<Instruction>, index: Int): Set<String> = buildSet {
+        fun registerCandidates(formats: List<Instruction>, index: Int, bareMachine: Boolean): Set<String> = buildSet {
             for (instruction in formats) {
                 if (index == COPROCESSOR0_REGISTER_INDEX && instruction.hasCoprocessor0Register) {
                     addAll(systemRegisters)
                 } else {
-                    addAll(registerSpellings[instruction.tokenList[index].type].orEmpty())
+                    val type = instruction.tokenList[index].type
+                    addAll(if (bareMachine && type in integerRegisterTypes) numberedIntegerRegisters else registerSpellings[type].orEmpty())
                 }
             }
         }

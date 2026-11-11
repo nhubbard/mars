@@ -17,12 +17,15 @@ import edu.missouristate.mars.assembler.Directives
 import edu.missouristate.mars.mips.instructions.InstructionDefaults
 import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
+import edu.missouristate.mars.plugin.build.MarsAssemblySettings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import java.nio.file.Path
 import kotlin.io.path.writeText
 
@@ -262,18 +265,25 @@ class MipsCompletionPlatformTest {
         }
     }
 
-    @Test
-    fun `register completion follows the operand format and register bank`() = timeoutRunBlocking<Unit> {
+    @ParameterizedTest
+    @ValueSource(booleans = [false, true])
+    fun `register completion follows the operand format register bank and bare-machine mode`(bareMachine: Boolean) = timeoutRunBlocking<Unit> {
         IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
         withContext(Dispatchers.EDT) {
+            project.get().service<MarsAssemblySettings>().changeBareMachine(bareMachine)
             fun registers(source: String): Set<String> {
                 fixture.configureByText("registers.asm", "$source\n")
                 return fixture.completeBasic().orEmpty().map { it.lookupString }.filter { it.startsWith('$') }.toSet()
             }
 
             val integer = registers("entry: ADD <caret>")
-            assertEquals(64, integer.size)
-            assertTrue(integer.containsAll(listOf("\$t0", "\$zero", "\$0", "\$31")))
+            val numbers = (0..31).map { "\$$it" }.toSet()
+            if (bareMachine) {
+                assertEquals(numbers, integer)
+            } else {
+                assertEquals(64, integer.size)
+                assertTrue(integer.containsAll(numbers + setOf("\$t0", "\$zero")))
+            }
             assertEquals(integer, registers("lw \$t0, 4(<caret>)"))
             assertEquals(integer, registers("lw \$t0,, -4(<caret>"))
             assertEquals(integer, registers("lw \$t0, (<caret>)"))
