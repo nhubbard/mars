@@ -160,7 +160,7 @@ internal fun collectAssemblySources(
             }
             val include = tokenizer.findIncludePath(lines.next()) ?: continue
             try {
-                val request = path.resolveSibling(include)
+                val request = Path.of(Tokenizer.resolveIncludePath(path.toString(), include))
                 val target = files.findMipsIncludeFile(request) ?: continue
                 val resolved = target.toNioPath().toAbsolutePath().normalize()
                 resolvedIncludes[request] = resolved

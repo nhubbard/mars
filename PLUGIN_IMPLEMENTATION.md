@@ -797,10 +797,17 @@ completion, usage search, file and directory rename, and move handling through `
 and the registered element manipulator. The shared include provider uses those same references
 when resolving its indexed paths. There is no parallel reference or refactoring engine.
 
-MARS paths retain spaces and question marks as literal filename characters. Relative paths use the
-source directory. Absolute paths use the filesystem root, including when a native move rewrites a
-reference. The PSI cache stores path text by offset; it does not cache resolved targets. A reference
-to a missing file resolves after the target is created, even without an edit to the source.
+MARS paths retain literal filename characters such as spaces and, on filesystems that allow them,
+question marks. Relative paths use the source directory. Absolute paths use their own filesystem
+root, including drive and share roots on Windows. Windows separators and case-insensitive reverse
+lookup are handled without rewriting the path or its source offsets. Editor diagnostics and unsaved
+assembly capture share the assembler's path resolution. The PSI cache stores path text by offset.
+A reference to a missing file resolves after the target is created, even without an edit to the source.
+
+The packaged macOS replay used Go to Declaration on an absolute include with spaces and Unicode
+and a relative include with repeated separators. Both opened the expected file. Jupiter also checks
+the written reference ranges and index keys for Windows spellings. Native Windows qualification is
+tracked in the host matrix.
 
 Include navigation and document capture require a directory at each dot segment.
 They follow directory symlinks before applying a parent segment and stay at the

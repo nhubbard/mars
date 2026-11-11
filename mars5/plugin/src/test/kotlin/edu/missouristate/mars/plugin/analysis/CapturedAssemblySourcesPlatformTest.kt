@@ -3,6 +3,7 @@ package edu.missouristate.mars.plugin.analysis
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.fileEditor.FileDocumentManager
+import com.intellij.openapi.util.SystemInfoRt
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
@@ -25,7 +26,8 @@ class CapturedAssemblySourcesPlatformTest {
 
     @Test
     fun `captures uncommitted entry and transitive include documents before assembly`() = timeoutRunBlocking<Unit> {
-        val mainText = ".include \"./parts/outer.txt\"\nli \$t0, VALUE\n"
+        val include = if (SystemInfoRt.isWindows) "/parts/outer.txt" else "./parts/outer.txt"
+        val mainText = ".include \"$include\"\nli \$t0, VALUE\n"
         val innerText = ".eqv VALUE 42\n"
         val (main, outer, inner, handler) = withContext(Dispatchers.EDT) {
             val leaf = fixture.addFileToProject("parts/with spaces#é.txt", ".eqv VALUE 1\n").virtualFile

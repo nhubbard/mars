@@ -175,11 +175,7 @@ public class Tokenizer {
       }
       // This line is replaced by the include, so the assembly pass will not check its tokens.
       reportLexicalErrors(program, lineNumber, line, candidates);
-      // Handle either absolute or relative pathname for .include file.
-      if (!new File(filename).isAbsolute()) {
-        File parent = new File(program.getFilename()).getAbsoluteFile().getParentFile();
-        filename = new File(parent, filename).getPath();
-      }
+      filename = resolveIncludePath(program.getFilename(), filename);
       MIPSprogram incl = program.createRelatedProgram();
       try {
         incl.readIncludedSource(filename, checkCancellation);
@@ -207,6 +203,16 @@ public class Tokenizer {
       pending.push(new IncludeFrame(incl));
     }
     return result;
+  }
+
+  /** Resolves a literal include against its source using the assembler's filesystem semantics. */
+  public static String resolveIncludePath(String source, String path) {
+    if (new File(path).isAbsolute()) {
+      return path;
+    }
+    // On Windows, File resolves a single leading separator against this parent.
+    File parent = new File(source).getAbsoluteFile().getParentFile();
+    return new File(parent, path).getPath();
   }
 
   /**
