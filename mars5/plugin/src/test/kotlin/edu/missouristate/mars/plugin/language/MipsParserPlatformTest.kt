@@ -472,6 +472,7 @@ class MipsParserPlatformTest {
         val cases = listOf(
             ".eqv OPEN (\nlw \$t0,0 OPEN \$sp)" to "\$t0,0 OPEN \$sp)",
             ".eqv CLOSE )\nlw \$t0,0(\$sp CLOSE" to "\$t0,0(\$sp CLOSE",
+            ".eqv BASE \$sp)\nlw \$t0,(BASE" to "\$t0,(BASE",
             ".macro read (%close)\nlw \$t0,0(\$sp %close\n.end_macro\nread())" to "\$t0,0(\$sp %close",
             ".macro read (\$close)\nlw \$t0,0(\$sp \$close\n.end_macro\nread())" to "\$t0,0(\$sp \$close",
         )
@@ -1356,6 +1357,24 @@ class MipsParserPlatformTest {
             assertEquals(listOf("\$sp", "\$fp"), addresses.flatMap { descendants(it, "REGISTER").map { it.text }.toList() })
             assertEquals(listOf("-0x", "0x"), PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java).map { it.text })
             assertEquals("next:", descendants(file.node, "LABEL").single().text)
+        }
+    }
+
+    @Test
+    fun `unfinished parenthesized operands retain their base and subsequent operands`() = timeoutRunBlocking<Unit> {
+        val source = "lw \$t0, (\$sp, 7\nsw \$t0, 4(\$fp, 8\nlw \$t1, (\nsw \$t1, 4(\n" +
+            "lw \$t1, ()\nsw \$t1, 4()\nnext: nop\n"
+        readAction {
+            val file = PsiFileFactory.getInstance(project.get()).createFileFromText("parenthesis-editing.mars", MipsFileType, source)
+            assertEquals(source, file.text)
+            assertEquals(listOf("(\$sp", "(", "()"), descendants(file.node, "GROUP_EXPR").map { it.text }.toList())
+            assertEquals(listOf("4(\$fp", "4(", "4()"), descendants(file.node, "ADDRESS_EXPR").map { it.text }.toList())
+            val instructions = descendants(file.node, "INSTRUCTION").toList()
+            assertEquals(listOf("\$t0", "(\$sp", "7"), descendants(instructions[0], "OPERAND").map { it.text }.toList())
+            assertEquals(listOf("\$t0", "4(\$fp", "8"), descendants(instructions[1], "OPERAND").map { it.text }.toList())
+            assertTrue(PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java).isNotEmpty())
+            assertEquals("next:", descendants(file.node, "LABEL").single().text)
+            assertEquals("nop", instructions.last().text)
         }
     }
 

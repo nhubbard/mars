@@ -49,8 +49,8 @@ private val labelOffsetMnemonics by lazy {
         .mapTo(TreeSet(String.CASE_INSENSITIVE_ORDER)) { it.name }
 }
 
-/** Keep structured macro operands only when the complete grammar succeeds without recovery. */
-internal fun parseCompleteMacroOperands(runtime: SyntaxGeneratedParserRuntime, level: Int, parser: Parser): Boolean {
+/** Prefer raw substitution tokens when a complete structured operand list needs recovery. */
+internal fun parseCompleteOperands(runtime: SyntaxGeneratedParserRuntime, level: Int, parser: Parser): Boolean {
     val start = runtime.enter_section_(level, Modifiers._NONE_)
     val complete = runtime.parseWithProtectedLastPos(level + 1, parser) && !runtime.syntaxBuilder.hasErrorsAfter(start)
     runtime.exit_section_(level, start, complete, false, null)

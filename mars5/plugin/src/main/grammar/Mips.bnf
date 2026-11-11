@@ -1,7 +1,7 @@
 {
   generate=[psi="no" parser-api="syntax"]
   parserClass="edu.missouristate.mars.plugin.language.parser.MipsParser"
-  parserImports=["edu.missouristate.mars.plugin.language.syntax.continueOperand" "edu.missouristate.mars.plugin.language.syntax.startsSignedNumber" "edu.missouristate.mars.plugin.language.syntax.isShortEquivalence" "edu.missouristate.mars.plugin.language.syntax.isIncludeLine" "edu.missouristate.mars.plugin.language.syntax.recoverBadIncludeToken" "edu.missouristate.mars.plugin.language.syntax.recoverBadOperandToken" "edu.missouristate.mars.plugin.language.syntax.recoverInvalidOperandExpression" "edu.missouristate.mars.plugin.language.syntax.recoverInvalidMacroName" "edu.missouristate.mars.plugin.language.syntax.recoverInvalidMacroFormal" "edu.missouristate.mars.plugin.language.syntax.recoverMalformedMacroEnd" "edu.missouristate.mars.plugin.language.syntax.recoverCharacterLiteral" "edu.missouristate.mars.plugin.language.syntax.recoverStatement" "edu.missouristate.mars.plugin.language.syntax.parseCompleteMacroOperands"]
+  parserImports=["edu.missouristate.mars.plugin.language.syntax.continueOperand" "edu.missouristate.mars.plugin.language.syntax.startsSignedNumber" "edu.missouristate.mars.plugin.language.syntax.isShortEquivalence" "edu.missouristate.mars.plugin.language.syntax.isIncludeLine" "edu.missouristate.mars.plugin.language.syntax.recoverBadIncludeToken" "edu.missouristate.mars.plugin.language.syntax.recoverBadOperandToken" "edu.missouristate.mars.plugin.language.syntax.recoverInvalidOperandExpression" "edu.missouristate.mars.plugin.language.syntax.recoverInvalidMacroName" "edu.missouristate.mars.plugin.language.syntax.recoverInvalidMacroFormal" "edu.missouristate.mars.plugin.language.syntax.recoverMalformedMacroEnd" "edu.missouristate.mars.plugin.language.syntax.recoverCharacterLiteral" "edu.missouristate.mars.plugin.language.syntax.recoverStatement" "edu.missouristate.mars.plugin.language.syntax.parseCompleteOperands"]
   syntaxElementTypeHolderClass="edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes"
   extends(".*_expr")=expr
   tokens=[
@@ -97,7 +97,7 @@ instruction ::= operation operand_line?
 // MARS stores a macro's operand tokens and validates them when the macro expands.
 macro_instruction ::= operation macro_operand_line? {elementType=instruction}
 macro_directive_statement ::= (DIRECTIVE | INCLUDE) macro_operand_line? {elementType=directive_statement}
-private macro_operand_line ::= <<parseCompleteMacroOperands complete_operand_list>> | macro_operand_fragment
+private macro_operand_line ::= <<parseCompleteOperands complete_operand_list>> | macro_operand_fragment
 macro_operand_fragment ::= assembly_token+ {elementType=operand_fragment}
 operation ::= MNEMONIC
 // Macro resolution, equivalence expansion, and the active segment determine the meaning of this line.
@@ -107,7 +107,7 @@ invocation_token ::= assembly_token
 data_continuation ::= !BAD_CHARACTER operand_line
 // A body line without a written operation is also deferred until expansion.
 macro_data_continuation ::= !BAD_CHARACTER macro_operand_line {elementType=data_continuation}
-private operand_line ::= complete_operand_list | operand_fragment | operand_list
+private operand_line ::= <<parseCompleteOperands complete_operand_list>> | operand_fragment | operand_list
 private complete_operand_list ::= operand_list &(NEWLINE | <<eof>>)
 // Substitution can introduce syntax that balances the row only after expansion.
 operand_fragment ::= &(fixed_operand_token* substitutable_operand_token) assembly_token+
@@ -127,8 +127,10 @@ relational_expr ::= expr RELATION expr {pin=2}
 shift_expr ::= expr SHIFT expr {pin=2}
 add_expr ::= expr (<<continueOperand>> (PLUS | MINUS)) expr {pin=2}
 unary_expr ::= (PLUS | MINUS | BIT_NOT) expr
-address_expr ::= expr <<continueOperand>> LEFT_PAREN nested_expression RIGHT_PAREN {pin=2}
-group_expr ::= LEFT_PAREN nested_expression RIGHT_PAREN
+// Pin the postfix suffix separately so a missing close retains the address in PSI.
+address_expr ::= expr <<continueOperand>> parenthesized_operand
+group_expr ::= LEFT_PAREN nested_expression RIGHT_PAREN {pin=1}
+private parenthesized_operand ::= LEFT_PAREN nested_expression RIGHT_PAREN {pin=1}
 invalid_operand_expr ::= <<recoverInvalidOperandExpression>>
 literal_expr ::= NUMBER | quoted_operand | CHARACTER | unfinished_character
 // The assembler decides whether an unfinished quote is an error in the active context.
