@@ -3045,6 +3045,10 @@ verification, and instruction lab checks on Linux, Apple Silicon macOS, and
 x64 Windows. Each runner uploads its Jupiter results, plugin coverage report,
 Java core coverage report, Plugin Verifier report, and the instruction lab's
 catalog execution and PNG decoder test reports.
+After the build, verifier, and smoke checks pass, each runner also uploads
+the installable ZIP and its `SHA256SUMS` in a
+`mars-plugin-<runner>-<commit>` artifact. Use the ZIP from that artifact
+for the packaged UI checks and record its checksum with the results.
 Packaged UI interaction and archive replacement are separate release checks.
 
 ### Java core coverage baseline

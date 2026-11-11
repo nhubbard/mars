@@ -34,6 +34,24 @@ jobs:
         run: ${{ matrix.gradle }} :plugin:verifyPluginStructure :plugin:verifyPluginProjectConfiguration :plugin:verifyPlugin --no-daemon
       - name: Exercise the MARS instruction catalog and workbench
         run: ${{ matrix.gradle }} -p ../examples/smoke check --no-daemon
+      - name: Record the verified plugin ZIP checksum
+        shell: pwsh
+        run: |
+          $archives = @(Get-ChildItem plugin/build/distributions -Filter '*.zip' -File)
+          if ($archives.Count -ne 1) {
+            throw "Expected one verified plugin ZIP, found $($archives.Count)."
+          }
+          $archive = $archives[0]
+          $checksum = (Get-FileHash -LiteralPath $archive.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$checksum  $($archive.Name)" | Set-Content -Encoding ascii (Join-Path $archive.DirectoryName 'SHA256SUMS')
+      - name: Save the verified IntelliJ plugin
+        uses: actions/upload-artifact@v4
+        with:
+          name: mars-plugin-${{ matrix.os }}-${{ github.sha }}
+          if-no-files-found: error
+          path: |
+            mars5/plugin/build/distributions/*.zip
+            mars5/plugin/build/distributions/SHA256SUMS
       - name: Save release qualification reports
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
