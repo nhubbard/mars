@@ -2759,6 +2759,12 @@ directory.
 | E09 formatting and editor actions | Formatter tests compare machine words and data before and after formatting. Separate native fixtures cover comments, paired delimiters, folding, smart enter, live templates, and per-file EditorConfig indentation. |
 | E10 code insight | Native gutter, register-usage, inlay and quick-fix fixtures exercise rendered output, alias contexts, edits and stale data. The include quick fix uses IntelliJ's command and preview APIs. |
 
+The binary workbench fixture parses both authored assembly files through the
+native parser and assembles the entry through the project session. It verifies
+that the resulting source map retains the included library's instruction origins.
+The example fixture copy includes authored assembly files and excludes generated
+catalog cases and Gradle state.
+
 These checks establish the implemented editor behavior against the pinned IntelliJ
 platform. Cross-host keyboard and hover interaction and the full feature-by-feature
 release checklist remain part of release qualification. See the release preflight

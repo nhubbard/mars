@@ -1688,6 +1688,24 @@ class MipsParserPlatformTest {
     }
 
     @Test
+    fun `binary workbench and its included library parse and assemble`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+        val sources = listOf("workbench.asm", "bit_algorithms.s").associateWith { name ->
+            checkNotNull(javaClass.getResourceAsStream("/smoke/instruction-lab/src/main/mips/$name"))
+                .bufferedReader().use { it.readText() }
+        }
+        readAction {
+            val workbench = assertParses(sources.getValue("workbench.asm"))
+            assertEquals(3, descendants(workbench.node, "MACRO_DEFINITION").count())
+            assertParses(sources.getValue("bit_algorithms.s"))
+        }
+        sources.forEach { (name, source) -> directory.resolve(name).writeText(source) }
+        val program = project.get().service<MarsSessionService>().context
+            .assemble(listOf(directory.resolve("workbench.asm")), null, true, false)
+        assertTrue(program.instructionCount() > 0)
+        assertTrue(program.sourceMap().origins().values.any { it.location().file().fileName.toString() == "bit_algorithms.s" })
+    }
+
+    @Test
     fun `all grammar alternatives include SPIM macros optional commas and continued data`() = timeoutRunBlocking<Unit> {
         val cases = listOf(
             ".macro empty\n.end_macro\n",

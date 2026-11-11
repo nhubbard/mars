@@ -216,7 +216,6 @@ tasks.named("compileKotlin") { dependsOn(generateMipsParser) }
 
 sourceSets.named("test") {
   resources.srcDir(project(":core").file("src/test/resources"))
-  resources.srcDir(rootProject.file("../examples"))
 }
 
 // Keep generated code in the raw report. Only the exact reviewed defensive outcomes are exempt.
@@ -274,6 +273,10 @@ val verifyGeneratedParserCoverage = tasks.register("verifyGeneratedParserCoverag
 tasks.check { dependsOn(verifyGeneratedParserCoverage) }
 
 tasks.named<ProcessResources>("processTestResources") {
+  from(rootProject.file("../examples")) {
+    include("**/*.asm", "**/*.s")
+    exclude("**/build/**", "**/.gradle/**")
+  }
   doLast {
     val programs = project(":core").file("src/test/resources/testPrograms")
     destinationDir.resolve("mars-programs.list").writeText(
