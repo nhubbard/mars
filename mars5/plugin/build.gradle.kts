@@ -228,7 +228,9 @@ val verifyGeneratedParserCoverage = tasks.register("verifyGeneratedParserCoverag
   inputs.files(ledger, source, report)
   doLast {
     val records = ledger.asFile.readLines()
-    val hash = MessageDigest.getInstance("SHA-256").digest(source.get().asFile.readBytes())
+    // Grammar-Kit writes native line endings. The branch ledger is shared by all hosts.
+    val sourceText = source.get().asFile.readText().replace("\r\n", "\n")
+    val hash = MessageDigest.getInstance("SHA-256").digest(sourceText.toByteArray(Charsets.UTF_8))
       .joinToString("") { "%02x".format(it) }
     check(records.first() == "# sha256\t$hash") { "Generated parser changed: review its defensive branch ledger" }
     val allowances = records.filterNot { it.startsWith("#") }.associate { line ->
@@ -245,7 +247,7 @@ val verifyGeneratedParserCoverage = tasks.register("verifyGeneratedParserCoverag
     }.newDocumentBuilder()
     val xml = parser.parse(report.get().asFile)
     val sources = xml.getElementsByTagName("sourcefile")
-    val code = source.get().asFile.readLines()
+    val code = sourceText.lines()
     var verified = false
     for (i in 0 until sources.length) {
       val element = sources.item(i)

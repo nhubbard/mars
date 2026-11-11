@@ -93,6 +93,7 @@ Authored runtime code retains 100% line and branch gates. Raw JaCoCo reports inc
 code as well. The generated parser contains mechanically unreachable lookahead/pinning outcomes and
 platform recursion/progress guards. Their exact source lines, maximum missed outcomes, and reasons
 are recorded in `plugin/coverage/generated-parser-branches.tsv` with a source checksum.
+The checksum uses LF line endings so Grammar-Kit's Windows CRLF output uses the same ledger.
 The verification task fails on uncovered generated lines, a changed generator output, or any
 unreviewed missed branch. Grammar alternatives and error recovery remain tested; the generated
 package is not removed from the raw report. This is the narrow defensive-branch policy from the plan.
