@@ -33,6 +33,17 @@ class MipsExternalReferencesPlatformTest {
     private val fixture by codeInsightFixture(project)
 
     @Test
+    fun `extern names with register and directive tokens receive declaration highlighting`() = timeoutRunBlocking<Unit> {
+        val names = listOf("\$t0", ".word", ".set")
+        val source = names.joinToString("\n", postfix = "\n") { ".extern $it, 4" }
+        configure(source)
+        withContext(Dispatchers.EDT) {
+            val highlights = fixture.doHighlighting().filter { it.forcedTextAttributesKey == labelColor }
+            assertEquals(names, highlights.map { source.substring(it.startOffset, it.endOffset) })
+        }
+    }
+
+    @Test
     fun `first valid external storage wins in expanded include order`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
         val source = ".eqv DEFINE .eqv\nDEFINE SIZE 4\n.data\n.word sha<caret>red\n.include \"parts.s\"\n.extern shared 12\n.extern next 4\n.extern ) 4\n"
         val included = ".extern shared SIZE\n"
