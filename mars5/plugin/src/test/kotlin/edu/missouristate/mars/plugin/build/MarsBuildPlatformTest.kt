@@ -70,15 +70,18 @@ import com.intellij.ui.ToolbarDecorator
 import com.intellij.util.ui.UIUtil
 import com.intellij.util.xmlb.XmlSerializer
 import edu.missouristate.mars.ApplicationInfo
+import edu.missouristate.mars.ProcessingException
 import edu.missouristate.mars.api.AssemblyError
 import edu.missouristate.mars.api.AssemblySourceSnapshot
 import edu.missouristate.mars.api.AssemblySymbolMap
 import edu.missouristate.mars.api.AssemblySymbolMap.Definition
+import edu.missouristate.mars.api.InstructionSourceMap.Location
 import edu.missouristate.mars.plugin.MarsExecutionOptions
 import edu.missouristate.mars.plugin.MarsMemoryLayout
 import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.analysis.assembleIn
+import edu.missouristate.mars.plugin.analysis.assemblySourceSyntax
 import edu.missouristate.mars.plugin.analysis.captureAssemblySources
 import edu.missouristate.mars.plugin.analysis.captureBuildSources
 import edu.missouristate.mars.plugin.analysis.collectBackgroundAssemblySources
@@ -87,6 +90,7 @@ import edu.missouristate.mars.plugin.language.MipsAssemblyAnnotator
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.MipsFileType
 import java.awt.Component
+import java.nio.charset.Charset
 import java.nio.file.Files
 import java.util.HexFormat
 import javax.swing.JCheckBox
@@ -110,6 +114,8 @@ import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.jdom.Element
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.CsvSource
 
 @TestApplication
 class MarsBuildPlatformTest {
@@ -1603,39 +1609,64 @@ class MarsBuildPlatformTest {
         readAction { assertEquals("%entry", target(entry)?.text) }
     }
 
-    @Test
-    fun `marked Unicode files assemble with the same image and source map from disk and IntelliJ documents`() =
+    @ParameterizedTest
+    @CsvSource(
+        "efbbbf, UTF-8, fffe, UTF-16LE, s",
+        "feff, UTF-16BE, efbbbf, UTF-8, inc",
+        "0000feff, UTF-32BE, fffe0000, UTF-32LE, txt",
+    )
+    fun `marked Unicode files assemble with the same image and source map from disk and IntelliJ documents`(
+        entryBom: String, entryEncoding: String, includeBom: String, includeEncoding: String, includeExtension: String,
+    ) =
         timeoutRunBlocking<Unit> {
-            val entryText = "\r\n.include \"pièce.s\"\r\n.text\r\nentrée: addiu \$t0, \$zero, LIMIT"
-            val includeText = ".eqv LIMIT 7\r.data\rtexte: .asciiz \"é\uFEFF\""
-            val (entry, include) = withContext(Dispatchers.EDT) {
-                val source = fixture.tempDirFixture.createFile("entrée.asm")
-                val part = fixture.tempDirFixture.createFile("pièce.s")
-                val hex = HexFormat.of()
+            val includeName = "pièce.$includeExtension"
+            val entryText = "\r\n.include \"$includeName\"\r\n.text\r\nentrée: assign(\$t0)"
+            val includeText = ".eqv LIMIT 7\r.data\rtexte: .asciiz \"é\uFEFF\"\n" +
+                ".macro assign (%reg)\r\n\taddiu %reg, \$zero, LIMIT\r.end_macro"
+            val normalizedEntry = entryText.replace("\r\n", "\n")
+            val normalizedInclude = includeText.replace("\r\n", "\n").replace('\r', '\n')
+            val hex = HexFormat.of()
+            val entryBytes = hex.parseHex(entryBom) + entryText.toByteArray(Charset.forName(entryEncoding))
+            val includeBytes = hex.parseHex(includeBom) + includeText.toByteArray(Charset.forName(includeEncoding))
+            val (entryFile, includeFile) = withContext(Dispatchers.EDT) {
+                val source = fixture.tempDirFixture.createFile("entrée.mars")
+                val part = fixture.tempDirFixture.createFile(includeName)
                 WriteCommandAction.runWriteCommandAction(project) {
-                    source.setBinaryContent(hex.parseHex("efbbbf") + entryText.toByteArray(Charsets.UTF_8))
-                    part.setBinaryContent(hex.parseHex("fffe") + includeText.toByteArray(Charsets.UTF_16LE))
+                    source.setBinaryContent(entryBytes)
+                    part.setBinaryContent(includeBytes)
                 }
-                fixture.configureFromExistingVirtualFile(source)
-                source.toNioPath() to part.toNioPath()
+                // The fixture's caret-markup loader rewrites the file. Open the original bytes.
+                FileEditorManager.getInstance(project).openFile(source, FileEditorOpenRequest.withFocus(false))
+                source to part
             }
+            val entry = entryFile.toNioPath()
+            val include = includeFile.toNioPath()
             IndexingTestUtil.suspendUntilIndexesAreReady(project)
             readAction {
-                val file = fixture.file as MipsFile
-                assertEquals(entryText.replace("\r\n", "\n"), file.text)
+                val file = PsiManager.getInstance(project).findFile(entryFile) as MipsFile
+                assertEquals(normalizedEntry, file.text)
                 assertTrue(PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java).isEmpty())
-                assertEquals(include, file.findReferenceAt(file.text.indexOf("pièce.s"))
-                    ?.resolve()?.containingFile?.virtualFile?.toNioPath())
+                val includedFile = file.findReferenceAt(file.text.indexOf(includeName))?.resolve()?.containingFile
+                assertEquals(include, includedFile?.virtualFile?.toNioPath())
+                val includedSyntax = checkNotNull(assemblySourceSyntax(includedFile))
+                assertEquals(normalizedInclude, includedSyntax.text)
+                assertTrue(PsiTreeUtil.findChildrenOfType(includedSyntax, PsiErrorElement::class.java).isEmpty())
             }
+            assertTrue(Files.readAllBytes(entry).contentEquals(entryBytes), "Opening the entry must preserve its bytes")
+            assertTrue(Files.readAllBytes(include).contentEquals(includeBytes), "Resolving the include must preserve its bytes")
 
             val capture = captureAssemblySources(listOf(entry), null)
             assertEquals(
-                mapOf(entry to entryText.replace("\r\n", "\n"), include to includeText.replace('\r', '\n')),
+                mapOf(entry to normalizedEntry, include to normalizedInclude),
                 capture.snapshot.texts(),
             )
             val component = MarsSessionService.createMarsComponent()
             MarsSessionService.createMarsComponent().context().use { disk ->
-                val expected = disk.assemble(listOf(entry))
+                val expected = try {
+                    disk.assemble(listOf(entry))
+                } catch (failure: ProcessingException) {
+                    throw AssertionError(failure.errors().generateErrorReport(), failure)
+                }
                 component.context().use { ide ->
                     val result = capture.assembleIn(component)
                     assertTrue(result.succeeded(), result.errors().toString())
@@ -1644,6 +1675,9 @@ class MarsBuildPlatformTest {
                     assertEquals(expectedWords, ide.program.machineList.map { it.binaryStatement })
                     assertEquals(expected.sourceMap(), result.program().sourceMap())
                     assertEquals(expected.symbolMap(), result.program().symbolMap())
+                    val origin = result.program().sourceMap().origins().values.single()
+                    assertEquals(Location(include, 5), origin.location())
+                    assertEquals(Location(entry, 4), origin.caller().location())
                     val base = ide.memory.dataBaseAddress
                     assertEquals(listOf(0xe9, 0xff, 0), (0..2).map { ide.memory.getByte(base + it) })
                 }
