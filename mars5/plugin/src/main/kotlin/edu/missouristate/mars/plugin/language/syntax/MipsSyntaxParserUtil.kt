@@ -34,7 +34,7 @@ internal object DebuggerExpressionParsing : ParserUserState
 
 private val signs = setOf(PLUS, MINUS)
 private val identifiers = setOf(WORD, DOLLAR_WORD)
-private val addressLabels = identifiers + MNEMONIC
+private val addressLabels = identifiers + setOf(MNEMONIC, PARAMETER)
 private val addressOffsets = setOf(NUMBER, CHARACTER, WORD, MNEMONIC, DOLLAR_WORD, PARAMETER)
 private val addressBases = setOf(REGISTER, WORD, DOLLAR_WORD, PARAMETER)
 private val registerAliases = identifiers + PARAMETER
@@ -65,8 +65,8 @@ internal fun continueOperand(runtime: SyntaxGeneratedParserRuntime, level: Int):
         return builder.lookAhead(1) in addressBases && builder.previousToken(separators) in addressOffsets
     }
     if (previous == COMMA) {
-        // Label+offset forms accept commas around the plus. A mnemonic can name a label,
-        // but a plus joined to digits after a mnemonic is still a signed literal.
+        // Label+offset forms accept commas around the plus and a macro formal can supply the label.
+        // A mnemonic can name a label, but a plus joined to digits after it is still a signed literal.
         val label = builder.previousToken(separators)
         return builder.tokenType == PLUS && label in addressLabels && !builder.signAttachesToNumber(label)
     }

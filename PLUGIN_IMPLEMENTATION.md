@@ -53,6 +53,18 @@ Ubuntu ARM64 passed the same packaged navigation and Run checks, all 2,019
 Jupiter tests, and both coverage gates. Linux evidence is under
 `mars5/.gradle/release-host-checks/linux-arm64-aliased-load-destination`.
 
+A macro formal can supply the label in a comma-separated label-plus-offset
+operand, including an offset followed by a base register. The catalog
+fixture now exercises all 543 forms with their operands supplied by
+equivalences, percent formals, and SPIM dollar formals. It checks operand
+counts in PSI and compares the assembled words and source origins in both
+delay-slot modes. Clean packaged IntelliJ launches on macOS and Ubuntu
+ARM64 inspected the two operands in each sample macro and printed `74`
+in Run, matching the standalone CLI. Both hosts passed all 2,020 Jupiter
+tests and both coverage gates. The logs and screenshots are under
+`mars5/.gradle/release-host-checks/macro-label-offset` and
+`mars5/.gradle/release-host-checks/linux-arm64-macro-offset`.
+
 In a written macro body, instructions and ordinary directives retain raw operand tokens when
 the structured operand grammar would report an error. MARS validates those operands on
 expansion. IntelliJ still preserves structured operands wherever the full parse succeeds and

@@ -765,6 +765,28 @@ class MipsParserPlatformTest {
         val aliasCalls = tokens.mapIndexed { index, row ->
             row.drop(1).joinToString(",\t,,", prefix = "OP_$index,\t,,") { it.value }
         }
+        val punctuation = setOf(TokenTypes.LEFT_PAREN, TokenTypes.RIGHT_PAREN, TokenTypes.PLUS, TokenTypes.MINUS)
+        val operandAliases = tokens.flatMap { row -> row.drop(1).filter { it.type !in punctuation }.map { it.value } }
+            .distinct().mapIndexed { index, spelling -> spelling to "OPERAND_$index" }.toMap()
+        val operandDefinitions = operandAliases.map { (spelling, alias) -> ".eqv $alias $spelling" }
+        val aliasedOperands = tokens.map { row ->
+            row.drop(1).joinToString(",\t,,", prefix = "${row.first().value},\t,,") {
+                operandAliases[it.value] ?: it.value
+            }
+        }
+        val macroOperandCalls = tokens.mapIndexed { index, row ->
+            row.drop(1).filter { it.type !in punctuation }.joinToString(",", prefix = "operands_$index(", postfix = ")") { it.value }
+        }
+        val macroOperandDefinitions = listOf("%", "\$").map { sigil ->
+            tokens.flatMapIndexed { index, row ->
+                val parameters = ArrayList<String>()
+                val body = row.drop(1).joinToString(",\t,,", prefix = "${row.first().value},\t,,") { token ->
+                    if (token.type in punctuation) token.value
+                    else "${sigil}arg${parameters.size}".also(parameters::add)
+                }
+                listOf(".macro operands_$index (${parameters.joinToString(",")})", body, ".end_macro")
+            }
+        }
         val macroDefinitions = tokens.map { it.size }.toSortedSet().flatMap { arity ->
             val parameters = (1..arity).map { "%arg$it" }
             listOf(".macro emit_$arity (${parameters.joinToString(",")})", parameters.joinToString(" "), ".end_macro")
@@ -791,27 +813,44 @@ class MipsParserPlatformTest {
             val canonicalWords = assemble("canonical", header, examples)
             assertEquals(canonicalWords, assemble("comma-heavy", header, commaHeavy), "Separators with delay slots $delayed")
             assertEquals(canonicalWords, assemble("aliased", aliasDefinitions + header, aliasCalls), "Aliases with delay slots $delayed")
+            assertEquals(canonicalWords, assemble("operand-aliases", operandDefinitions + header, aliasedOperands),
+                "Operand aliases with delay slots $delayed")
+            for (definitions in macroOperandDefinitions) {
+                assertEquals(canonicalWords, assemble("operand-formals", definitions + header, macroOperandCalls),
+                    "Operand formals with delay slots $delayed")
+            }
             assertEquals(canonicalWords, assemble("macros", macroDefinitions + header, macroCalls), "Macros with delay slots $delayed")
         }
 
         readAction {
-            fun checkOperations(prefix: List<String>, lines: List<String>, kind: String, expected: List<String>) {
+            fun checkOperations(prefix: List<String>, lines: List<String>, kind: String, expected: List<String>): List<ASTNode> {
                 val file = assertParses((prefix + lines).joinToString("\n", postfix = "\n"))
                 val start = prefix.sumOf { it.length + 1 }
-                val operations = descendants(file.node, kind).toList()
-                    .filter { it.startOffset >= start }
-                    .map { it.firstChildNode.text }
+                val operations = descendants(file.node, kind).filter { it.startOffset >= start }.toList()
                 assertEquals(
                     expected.map(String::lowercase),
-                    operations.map(String::lowercase),
+                    operations.map { it.firstChildNode.text.lowercase() },
                     kind,
                 )
+                return operations
             }
             val names = instructions.map { it.name }
             checkOperations(header, examples, "INSTRUCTION", names)
-            checkOperations(header, commaHeavy, "INSTRUCTION", names)
+            val written = checkOperations(header, commaHeavy, "INSTRUCTION", names)
+            val aliases = checkOperations(operandDefinitions + header, aliasedOperands, "INSTRUCTION", names)
             checkOperations(aliasDefinitions + header, aliasCalls, "OPERATION_CANDIDATE", instructions.indices.map { "OP_$it" })
             checkOperations(macroDefinitions + header, macroCalls, "OPERATION_CANDIDATE", tokens.map { "emit_${it.size}" })
+
+            fun checkOperandCounts(rewritten: List<ASTNode>) {
+                for ((canonical, alternate) in written.zip(rewritten)) {
+                    assertEquals(descendants(canonical, "OPERAND").count(), descendants(alternate, "OPERAND").count(),
+                        "${canonical.text} / ${alternate.text}")
+                }
+            }
+            checkOperandCounts(aliases)
+            for (definitions in macroOperandDefinitions) {
+                checkOperandCounts(checkOperations(header, definitions + macroOperandCalls, "INSTRUCTION", names))
+            }
         }
     }
 
