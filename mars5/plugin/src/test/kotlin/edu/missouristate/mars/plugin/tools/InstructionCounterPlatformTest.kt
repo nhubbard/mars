@@ -859,7 +859,7 @@ class InstructionCounterPlatformTest {
                 withContext(Dispatchers.EDT) {
                     assertFalse(button("Connect", marsBot).isEnabled)
                     assertFalse(button("Reset", marsBot).isEnabled)
-                    assertEquals("Select a MIPS execution to see its robot.", robotBoard().accessibleContext.accessibleDescription)
+                    assertEquals("Select a MIPS execution.", robotBoard().accessibleContext.accessibleDescription)
                     assertFalse(robotClock().isEnabled)
                 }
             }
@@ -902,10 +902,17 @@ class InstructionCounterPlatformTest {
                 withContext(Dispatchers.EDT) { assertTrue(button("Connect", marsBot).isEnabled) }
             }
             val beforeTrail = withContext(Dispatchers.EDT) {
-                assertTrue(robotLabels().any { it.text == "MMIO starts at 0xffff8010 (hover for port addresses)" &&
+                assertTrue(robotLabels().any { it.text == "MMIO base 0xffff8010" &&
                     it.toolTipText == "Heading 0xffff8010, pen 0xffff8020, X 0xffff8030, Y 0xffff8040, move 0xffff8050" })
                 button("Connect", marsBot).doClick()
                 assertTrue(robot.snapshot().connected)
+                marsBot.setSize(JBUI.scale(295), JBUI.scale(175))
+                marsBot.doLayout()
+                val viewport = assertInstanceOf(JScrollPane::class.java, marsBot).viewport
+                viewport.doLayout()
+                assertTrue(viewport.view.width <= viewport.width) {
+                    "Live MarsBot width ${viewport.view.width} exceeds viewport width ${viewport.width}"
+                }
                 assertEquals("64", robotClock().text)
                 robotClock().text = "bad"
                 robotClock().postActionEvent()

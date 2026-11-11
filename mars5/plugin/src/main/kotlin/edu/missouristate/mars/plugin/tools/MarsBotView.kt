@@ -36,6 +36,7 @@ internal class MarsBotView(project: Project) : Disposable {
     private lateinit var clock: JBTextField
     private lateinit var applyClock: JButton
     private val status = JBLabel()
+    private val movement = JBLabel()
     private val ports = JBLabel()
     private val board = MarsBotBoard()
 
@@ -55,6 +56,7 @@ internal class MarsBotView(project: Project) : Disposable {
             applyClock = button(toolsMessages.getMessage("marsBot.clock.apply")) { updateClock() }.component
         }
         row { cell(status) }
+        row { cell(movement) }
         row { cell(ports) }
         row { cell(board).align(Align.FILL).resizableColumn() }.resizableRow()
     }
@@ -113,19 +115,23 @@ internal class MarsBotView(project: Project) : Disposable {
         applyClock.isEnabled = clock.isEnabled
 
         val world = snapshot?.world
-        val state = if (world == null) toolsMessages.getMessage("marsBot.empty")
-        else toolsMessages.getMessage(
-            "marsBot.status", world.position.x.toInt(), world.position.y.toInt(), world.heading,
-            toolsMessages.getMessage(if (world.penDown) "marsBot.pen.down" else "marsBot.pen.up"),
-            toolsMessages.getMessage(if (world.moving) "marsBot.moving" else "marsBot.stopped"),
-        )
-        status.text = state
+        status.text = world?.let {
+            toolsMessages.getMessage("marsBot.status", it.position.x.toInt(), it.position.y.toInt(), it.heading)
+        } ?: toolsMessages.getMessage("marsBot.empty")
+        movement.text = world?.let {
+            toolsMessages.getMessage(
+                "marsBot.movement",
+                toolsMessages.getMessage(if (it.penDown) "marsBot.pen.down" else "marsBot.pen.up"),
+                toolsMessages.getMessage(if (it.moving) "marsBot.moving" else "marsBot.stopped"),
+            )
+        }.orEmpty()
         ports.text = snapshot?.ports?.let { toolsMessages.getMessage("marsBot.ports", hexAddress(it.heading)) }.orEmpty()
         ports.toolTipText = snapshot?.ports?.let {
             toolsMessages.getMessage("marsBot.portDetails", hexAddress(it.heading), hexAddress(it.pen),
                 hexAddress(it.x), hexAddress(it.y), hexAddress(it.move))
         }
-        board.showWorld(world, state)
+        val description = if (movement.text.isEmpty()) status.text else "${status.text}   ${movement.text}"
+        board.showWorld(world, description)
     }
 
     private fun hexAddress(value: Int) = "0x" + value.toUInt().toString(16).padStart(8, '0')

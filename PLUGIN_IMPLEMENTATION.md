@@ -2226,6 +2226,10 @@ instruction count and clicking **Set rate** or pressing Enter. Reset clears
 the board and returns the robot to its initial position and heading.
 In a short dock, the rate field and **Set rate** scroll into view as they
 receive keyboard focus.
+The position and heading share one line. Pen and motion state appear below
+it, and the board's accessible description includes both lines. The short
+MMIO label keeps the full port list in its tooltip. This layout addresses
+the 306-pixel width observed with the Ubuntu font in a 295-pixel dock.
 
 The Kotlin model uses the legacy word ports at `0xffff8010` for heading,
 `0xffff8020` for the pen, `0xffff8030` and `0xffff8040` for coordinates,
