@@ -27,15 +27,18 @@ import com.intellij.openapi.actionSystem.ActionUiKind
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.actionSystem.ToggleAction
+import com.intellij.openapi.actionSystem.impl.SimpleDataContext
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.application.WriteAction
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.DefaultLanguageHighlighterColors
+import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.editor.ex.EditorEx
 import com.intellij.openapi.fileEditor.FileDocumentManager
@@ -49,6 +52,7 @@ import com.intellij.openapi.util.Key
 import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.openapi.vfs.limits.FileSizeLimit
 import com.intellij.openapi.wm.RegisterToolWindowTask
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
@@ -3465,12 +3469,106 @@ class MarsDebugPlatformTest {
                 assertNull(documents.getCachedDocument(file))
                 assertNull(sources.location(file, 0))
                 val snapshot = sources.position(location).file
+                assertNull(sources.originalLine(file, 0))
+                assertNull(sources.originalLine(snapshot, 0))
+                assertNull(MarsExecutionSources(capture).originalLine(snapshot, 0))
                 WriteAction.run<RuntimeException> { file.delete(this) }
                 assertSame(snapshot, sources.position(location).file)
                 assertEquals(location, sources.location(snapshot, 0))
                 assertNull(MarsExecutionSources(capture).location(snapshot, 0))
+                assertNull(sources.originalLine(snapshot, 0))
             }
         }
+
+    @Test
+    fun `large source excerpts set native breakpoints and run to the original line`() = timeoutRunBlocking<Unit> {
+        val action = ActionManager.getInstance().getAction("Mars.ToggleOriginalBreakpoint")
+        assertEquals(ActionUpdateThread.BGT, action.actionUpdateThread)
+        fun event(editor: Editor? = null, includeProject: Boolean = true): AnActionEvent {
+            val data = SimpleDataContext.builder()
+            if (includeProject) data.add(CommonDataKeys.PROJECT, project)
+            if (editor != null) data.add(CommonDataKeys.EDITOR, editor)
+            return AnActionEvent.createEvent(action, data.build(), null, ActionPlaces.EDITOR_POPUP, ActionUiKind.POPUP, null)
+        }
+        fun available(event: AnActionEvent): Boolean {
+            action.update(event)
+            return event.presentation.isEnabledAndVisible
+        }
+        val editors = EditorFactory.getInstance()
+        val documents = FileDocumentManager.getInstance()
+        val comment = "#" + " ".repeat(16_382) + "\n"
+        val count = FileSizeLimit.getContentLoadLimit("inc") / comment.length + 1
+        val (entry, include) = withContext(Dispatchers.EDT) {
+            val entry = fixture.addFileToProject("large-debug.mars", "nop\n.include \"large-debug.inc\"\nnop\n").virtualFile
+            addBreakpoint(entry, 0)
+            val path = entry.toNioPath().resolveSibling("large-debug.inc")
+            Files.newBufferedWriter(path).use { writer ->
+                repeat(count) { writer.write(comment) }
+                writer.write("addiu \$t0, \$zero, 7\n# no instruction\naddiu \$t1, \$t0, 1\nnop\n")
+            }
+            val include = checkNotNull(LocalFileSystem.getInstance().refreshAndFindFileByNioFile(path))
+            assertFalse(available(event(includeProject = false)))
+            assertFalse(available(event()))
+            val scratch = editors.createEditor(editors.createDocument("nop"), project)
+            val live = editors.createEditor(checkNotNull(documents.getDocument(entry)), project, entry, false)
+            try {
+                assertFalse(available(event(scratch)))
+                assertFalse(available(event(live)))
+                action.actionPerformed(event(live))
+            } finally {
+                editors.releaseEditor(live)
+                editors.releaseEditor(scratch)
+            }
+            entry to include
+        }
+        withDebug(entry) { debug ->
+            debug.assertPausedAt(entry, 0)
+            val process = debug.session.debugProcess as MarsDebugProcess
+            assertNull(process.originalBreakpointLine(entry, 0))
+            withContext(Dispatchers.EDT) { debug.session.stepOver(false) }
+            val first = requireNotNull(debug.nextPosition())
+            val excerpt = first.file
+            assertNotEquals(include, excerpt)
+            val targetLine = first.line + 2
+            val breakpointLine = count + 2
+            withContext(Dispatchers.EDT) {
+                val document = checkNotNull(documents.getDocument(excerpt))
+                val editor = editors.createEditor(document, project, excerpt, true)
+                try {
+                    editor.caretModel.moveToOffset(document.getLineStartOffset(first.line + 1))
+                    assertFalse(available(event(editor)))
+                    editor.caretModel.moveToOffset(document.getLineStartOffset(targetLine))
+                    assertTrue(available(event(editor)))
+                    val manager = debugger.breakpointManager
+                    action.actionPerformed(event(editor))
+                    val breakpoint = manager.findBreakpointsAtLine(breakpointType, include, breakpointLine).single()
+                    assertEquals(include.url, breakpoint.fileUrl)
+                    assertEquals(breakpointLine, breakpoint.line)
+                    assertTrue(manager.findBreakpointsAtLine(breakpointType, excerpt, targetLine).isEmpty())
+                    debug.session.resume()
+                } finally {
+                    editors.releaseEditor(editor)
+                }
+            }
+            debug.assertPausedAt(excerpt, targetLine)
+            withContext(Dispatchers.EDT) {
+                val document = checkNotNull(documents.getDocument(excerpt))
+                val editor = editors.createEditor(document, project, excerpt, true)
+                try {
+                    editor.caretModel.moveToOffset(document.getLineStartOffset(targetLine))
+                    action.actionPerformed(event(editor))
+                    assertTrue(debugger.breakpointManager.findBreakpointsAtLine(breakpointType, include, breakpointLine).isEmpty())
+                    debug.session.runToPosition(XDebuggerUtil.getInstance().createPosition(excerpt, targetLine + 1)!!, false)
+                } finally {
+                    editors.releaseEditor(editor)
+                }
+            }
+            debug.assertPausedAt(excerpt, targetLine + 1)
+            withContext(Dispatchers.EDT) { debug.session.resume() }
+            assertEquals(0, debug.exit.await())
+            assertNull(process.originalBreakpointLine(excerpt, targetLine))
+        }
+    }
 
     @Test
     fun `Debug shows the assembled include and runs to a cursor in the captured text`() = timeoutRunBlocking<Unit> {

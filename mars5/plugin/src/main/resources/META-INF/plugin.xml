@@ -174,5 +174,8 @@
     <action id="Mars.ShowExpansion" class="edu.missouristate.mars.plugin.language.MarsShowExpansionAction">
       <add-to-group group-id="EditorPopupMenu" anchor="last"/>
     </action>
+    <action id="Mars.ToggleOriginalBreakpoint" class="edu.missouristate.mars.plugin.debug.MarsToggleOriginalBreakpointAction">
+      <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+    </action>
   </actions>
 </idea-plugin>

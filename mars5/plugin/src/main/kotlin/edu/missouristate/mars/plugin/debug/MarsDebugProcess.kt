@@ -15,6 +15,7 @@ import com.intellij.openapi.editor.ex.EditorEx
 import com.intellij.openapi.editor.highlighter.EditorHighlighterFactory
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.xdebugger.XDebugProcess
 import com.intellij.xdebugger.XDebugSession
@@ -261,6 +262,12 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
         val target = sources.location(position.file, position.line)
         if (target == null) rejectCommand("debug.source.not.in.image", pause.context)
         else pause.command.complete(Command(target = target))
+    }
+
+    internal fun originalBreakpointLine(file: VirtualFile, line: Int): Pair<VirtualFile, Location>? = synchronized(bindings) {
+        val machine = boundMachine ?: return@synchronized null
+        val target = sources.originalLine(file, line) ?: return@synchronized null
+        target.takeIf { machine.program.sourceMap().breakpoints().containsKey(target.second) }
     }
 
     private fun rejectCommand(message: String, context: MarsSuspendContext) {

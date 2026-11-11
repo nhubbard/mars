@@ -80,6 +80,13 @@ internal class MarsExecutionSources(private val capture: CapturedAssemblySources
         return path?.let { Location(it, firstLine + line + 1) }
     }
 
+    fun originalLine(file: VirtualFile, line: Int): Pair<VirtualFile, Location>? {
+        if (file !is CapturedFile) return null
+        val location = location(file, line) ?: return null
+        val original = LocalFileSystem.getInstance().findFileByNioFile(location.file()) ?: return null
+        return (original to location).takeIf { matches(original, location.file(), texts.getValue(location.file())) }
+    }
+
     private fun firstLine(file: VirtualFile): Int = (file as? CapturedFile)?.firstLine ?: 0
 
     private fun pathOf(file: VirtualFile) = file.fileSystem.getNioPath(file)?.let { it.toAbsolutePath().normalize() }
