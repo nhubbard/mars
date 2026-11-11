@@ -3320,11 +3320,15 @@ the tool window's localized stripe-title supplier, which captured the
 plugin classloader. Disposing X-Ray now removes its Compose host from its
 Swing parent. With the tool still visible at disable, a second trace
 reached the X-Ray rendering callback through the detached Compose host.
-A separate macOS replay hid MARS Tools and returned focus to the editor
-before disabling. IntelliJ collected the old loader, re-enabled MARS,
-reopened X-Ray, and ran the assembly file in the native console. Reload
-directly from a visible X-Ray tool and cross-host checks remain open.
-The replays and reference reports are under
+A macOS replay first confirmed that hiding MARS Tools before disabling
+allowed IntelliJ to collect the old loader. The X-Ray view now subscribes
+to IntelliJ's pre-unload callback for its lifetime and hides the visible
+tool window when MARS unloads, allowing IntelliJ to transfer focus.
+A clean packaged macOS replay disabled MARS directly with X-Ray visible,
+kept the editor tab open, collected the old loader, and re-enabled MARS
+in the same process. The reopened X-Ray displayed the new execution's
+six-step trace while the Run console printed `reload smoke ready`.
+Cross-host lifecycle checks remain open. The replays and reference reports are under
 `mars5/.gradle/release-host-checks/dynamic-reload`.
 
 ### Reviewed API use in the 263 target

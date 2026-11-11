@@ -2,7 +2,10 @@ package edu.missouristate.mars.plugin.tools
 
 import com.intellij.DynamicBundle
 import com.intellij.execution.ui.RunContentManager
+import com.intellij.ide.plugins.DynamicPluginListener
+import com.intellij.ide.plugins.IdeaPluginDescriptor
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.observable.util.whenFocusGained
 import com.intellij.openapi.project.DumbAware
@@ -64,7 +67,12 @@ internal class MarsToolsWindowFactory : ToolWindowFactory, DumbAware {
         addView(Mode.REFERENCES.nameKey, MemoryGridView::component) {
             MemoryGridView(project, Mode.REFERENCES, MarsProcessHandler::memoryReferences)
         }
-        addView("xray.name", XRayView::component) { XRayView(project) }
+        addView("xray.name", XRayView::component) {
+            XRayView(project).also { view ->
+                ApplicationManager.getApplication().messageBus.connect(view)
+                    .subscribe(DynamicPluginListener.TOPIC, MarsToolWindowUnloadListener(toolWindow))
+            }
+        }
         addView("cache.name", DataCacheView::component) { DataCacheView(project) }
         addView("float.name", FloatingPointView::component) { FloatingPointView(project) }
         addView("digitalLab.name", DigitalLabView::component) { DigitalLabView(project) }
@@ -77,6 +85,15 @@ internal class MarsToolsWindowFactory : ToolWindowFactory, DumbAware {
         addView("marsBot.name", MarsBotView::component) { MarsBotView(project) }
         addView("scavenger.name", ScavengerHuntView::component) { ScavengerHuntView(project) }
         MarsToolExtensions(project, manager, toolWindow.disposable)
+    }
+}
+
+internal class MarsToolWindowUnloadListener(private val toolWindow: ToolWindow) : DynamicPluginListener {
+    override fun beforePluginUnload(pluginDescriptor: IdeaPluginDescriptor, isUpdate: Boolean) {
+        if (pluginDescriptor.pluginId.idString == "edu.missouristate.mars" && toolWindow.isVisible) {
+            // Let IntelliJ hide the Compose host and return focus before its extensions are removed.
+            toolWindow.hide()
+        }
     }
 }
 

@@ -12,12 +12,16 @@ import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.unit.dp
+import com.intellij.ide.plugins.PluginManagerCore
 import com.intellij.openapi.application.EDT
+import com.intellij.openapi.extensions.PluginId
 import com.intellij.openapi.util.Disposer
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
+import com.intellij.toolWindow.ToolWindowHeadlessManagerImpl.MockToolWindow
 import edu.missouristate.mars.api.StepEvent
+import edu.missouristate.mars.plugin.tools.MarsToolWindowUnloadListener
 import edu.missouristate.mars.plugin.tools.toolsMessages
 import java.io.ByteArrayInputStream
 import javax.imageio.ImageIO
@@ -46,6 +50,34 @@ class XRayDetailsPlatformTest {
         fun initializeSkia() {
             // Skia starts a JVM-wide reference cleaner when it first creates a native surface.
             Surface.makeRasterN32Premul(1, 1).close()
+        }
+    }
+
+    @Test
+    fun `only unloading MARS hides its visible X-Ray tool window`() = timeoutRunBlocking<Unit> {
+        val current = project.get()
+        withContext(Dispatchers.EDT) {
+            var visible = true
+            var hides = 0
+            // The platform's headless fixture has no visibility or focus transitions.
+            val window = object : MockToolWindow(current) {
+                override fun isVisible() = visible
+                override fun hide(runnable: Runnable?) {
+                    visible = false
+                    hides++
+                }
+            }
+            val listener = MarsToolWindowUnloadListener(window)
+            val java = requireNotNull(PluginManagerCore.getPlugin(PluginId.getId("com.intellij.java")))
+            val mars = requireNotNull(PluginManagerCore.getPlugin(PluginId.getId("edu.missouristate.mars")))
+            listener.beforePluginUnload(java, false)
+            assertTrue(visible)
+            assertEquals(0, hides)
+            listener.beforePluginUnload(mars, false)
+            assertFalse(visible)
+            assertEquals(1, hides)
+            listener.beforePluginUnload(mars, false)
+            assertEquals(1, hides)
         }
     }
 
