@@ -866,6 +866,9 @@ class InstructionCounterPlatformTest {
             withContext(Dispatchers.EDT) {
                 marsBot.setSize(JBUI.scale(330), JBUI.scale(460))
                 marsBot.doLayout()
+                val viewport = assertInstanceOf(JScrollPane::class.java, marsBot).viewport
+                viewport.doLayout()
+                viewport.view.doLayout()
                 val setRate = button("Set rate", marsBot)
                 val bounds = SwingUtilities.convertRectangle(setRate.parent, setRate.bounds, marsBot)
                 assertTrue(bounds.width > 0 && bounds.x + bounds.width <= marsBot.width)

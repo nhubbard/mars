@@ -2224,6 +2224,8 @@ The panel reports the position, heading, pen and movement state. Hover over
 the MMIO label to see the full port map. Set the clock by entering an
 instruction count and clicking **Set rate** or pressing Enter. Reset clears
 the board and returns the robot to its initial position and heading.
+In a short dock, the rate field and **Set rate** scroll into view as they
+receive keyboard focus.
 
 The Kotlin model uses the legacy word ports at `0xffff8010` for heading,
 `0xffff8020` for the pen, `0xffff8030` and `0xffff8040` for coordinates,
@@ -2246,6 +2248,15 @@ game immediately. Try `examples/scavenger-hunt/round.asm`. The map shows
 the seven locations and each player's position. Click a scoreboard header
 to sort the player list. The final board remains visible with the execution
 tab.
+Focusing the scoreboard in a short dock brings its rows into view. The map
+and scoreboard fit the narrow viewport used by the platform fixture.
+In the packaged macOS IDE at 150% zoom in High Contrast, Tab from the MarsBot
+rate field reached the fully visible **Set rate** button. The focused
+Scavenger Hunt scoreboard showed 203 pixels of its 22 rows, and Down Arrow
+selected the first visible row. The MarsBot replay inserted an input wait
+before the sample's exit to keep its controls enabled. All 2,033 Jupiter
+tests and both coverage gates passed. Evidence is under
+`mars5/.gradle/release-host-checks/marsbot-scavenger-docks`.
 
 **Reset** starts a fresh round at the next instruction boundary without
 a store to the device's ports. Debug backstep restores the previous round

@@ -9,6 +9,7 @@ import com.intellij.ui.components.JBPanel
 import com.intellij.ui.components.JBTextField
 import com.intellij.ui.dsl.builder.Align
 import com.intellij.ui.dsl.builder.AlignX
+import com.intellij.ui.dsl.builder.LabelPosition
 import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.scale.JBUIScale
 import com.intellij.util.ui.JBUI
@@ -38,22 +39,26 @@ internal class MarsBotView(project: Project) : Disposable {
     private val ports = JBLabel()
     private val board = MarsBotBoard()
 
-    val component = panel {
-        row(toolsMessages.getMessage("counter.selector")) {
-            cell(selector.component).align(AlignX.FILL).resizableColumn()
+    private val controls = panel {
+        row {
+            cell(selector.component).label(toolsMessages.getMessage("counter.selector"), LabelPosition.TOP)
+                .align(AlignX.FILL).resizableColumn()
         }
         row {
             cell(toggle)
             cell(reset)
         }
         row {
-            clock = intTextField(instructionRange).label(toolsMessages.getMessage("marsBot.clock")).component
+            clock = intTextField(instructionRange).label(toolsMessages.getMessage("marsBot.clock"), LabelPosition.TOP).component
+        }
+        row {
             applyClock = button(toolsMessages.getMessage("marsBot.clock.apply")) { updateClock() }.component
         }
         row { cell(status) }
         row { cell(ports) }
         row { cell(board).align(Align.FILL).resizableColumn() }.resizableRow()
     }
+    val component = scrollableToolPanel(this, controls, emptyMap())
 
     init {
         toggle.addActionListener {
@@ -67,7 +72,7 @@ internal class MarsBotView(project: Project) : Disposable {
         }
         clock.text = defaultInstructionsPerTick.toString()
         clock.addActionListener { updateClock() }
-        component.registerValidators(this)
+        controls.registerValidators(this)
         refresh()
     }
 

@@ -9,6 +9,7 @@ import com.intellij.ui.components.JBPanel
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.dsl.builder.Align
 import com.intellij.ui.dsl.builder.AlignX
+import com.intellij.ui.dsl.builder.LabelPosition
 import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.table.JBTable
 import com.intellij.util.ui.JBDimension
@@ -40,15 +41,17 @@ internal class ScavengerHuntView(project: Project) : Disposable {
     private val board = ScavengerHuntBoard()
     private val scoreboard = ScavengerScoreboard()
     private val table = JBTable(scoreboard).apply {
-        preferredScrollableViewportSize = JBDimension(280, 135)
+        preferredScrollableViewportSize = JBDimension(240, 135)
         autoCreateRowSorter = true
         accessibleContext.accessibleName = toolsMessages.getMessage("scavenger.scoreboard")
         emptyText.text = toolsMessages.getMessage("scavenger.waiting")
     }
+    private val tableScroll = JBScrollPane(table).apply { minimumSize = JBDimension(0, 84) }
 
-    val component = panel {
-        row(toolsMessages.getMessage("counter.selector")) {
-            cell(selector.component).align(AlignX.FILL).resizableColumn()
+    val component = scrollableToolPanel(this, panel {
+        row {
+            cell(selector.component).label(toolsMessages.getMessage("counter.selector"), LabelPosition.TOP)
+                .align(AlignX.FILL).resizableColumn()
         }
         row {
             cell(toggle)
@@ -58,10 +61,10 @@ internal class ScavengerHuntView(project: Project) : Disposable {
         row { cell(diagnostic) }
         row { cell(board).align(Align.FILL).resizableColumn() }.resizableRow()
         row {
-            cell(JBScrollPane(table).apply { minimumSize = JBDimension(0, 84) }).align(Align.FILL).resizableColumn()
+            cell(tableScroll).align(Align.FILL).resizableColumn()
         }.resizableRow()
-        row { comment(toolsMessages.getMessage("scavenger.ports")) }
-    }
+        row { comment(toolsMessages.getMessage("scavenger.ports"), maxLineLength = 24) }
+    }, mapOf(table to tableScroll))
 
     init {
         toggle.addActionListener {
@@ -169,7 +172,7 @@ internal class ScavengerHuntBoard : JBPanel<ScavengerHuntBoard>() {
     private var round: Round? = null
 
     init {
-        withPreferredSize(280, 220)
+        withPreferredSize(250, 220)
         withMinimumHeight(80)
         getAccessibleContext().accessibleName = toolsMessages.getMessage("scavenger.board")
     }

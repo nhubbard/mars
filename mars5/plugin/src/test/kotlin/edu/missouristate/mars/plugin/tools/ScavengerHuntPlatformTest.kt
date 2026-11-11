@@ -22,9 +22,12 @@ import com.intellij.util.ui.withForcedRespectIsShowingClientProperty
 import com.intellij.util.ui.withShowingChanged
 import edu.missouristate.mars.plugin.run.MarsRunService
 import java.awt.image.BufferedImage
+import java.awt.event.FocusEvent
 import javax.swing.JButton
 import javax.swing.JComponent
 import javax.swing.JPanel
+import javax.swing.JScrollPane
+import javax.swing.SwingUtilities
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.Dispatchers
@@ -32,6 +35,7 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -40,6 +44,44 @@ import org.junit.jupiter.api.Test
 class ScavengerHuntPlatformTest {
     private val projectFixture = codeInsightProjectFixture()
     private val fixture by codeInsightFixture(projectFixture)
+
+    @Test
+    fun `short tool docks reveal the MarsBot rate and Scavenger Hunt scoreboard on focus`() = timeoutRunBlocking<Unit> {
+        withContext(Dispatchers.EDT) {
+            val project = projectFixture.get()
+            val bot = MarsBotView(project)
+            val hunt = ScavengerHuntView(project)
+            try {
+                fun reveal(panel: JComponent, control: JComponent, target: JComponent = control) {
+                    val scroll = assertInstanceOf(JScrollPane::class.java, panel)
+                    scroll.setSize(JBUI.scale(295), JBUI.scale(128))
+                    scroll.doLayout()
+                    val viewport = scroll.viewport
+                    viewport.doLayout()
+                    val body = viewport.view
+                    body.doLayout()
+                    assertTrue(body.width <= viewport.width) {
+                        "Tool width ${body.width} exceeds viewport width ${viewport.width}: " +
+                            (body as JComponent).components.joinToString { "${it.javaClass.simpleName} ${it.preferredSize.width}" }
+                    }
+                    val bounds = SwingUtilities.convertRectangle(target.parent, target.bounds, body)
+                    assertTrue(bounds.height > 0)
+                    assertFalse(viewport.viewRect.contains(bounds))
+                    control.focusListeners.forEach { it.focusGained(FocusEvent(control, FocusEvent.FOCUS_GAINED)) }
+                    assertTrue(viewport.viewRect.y <= bounds.y)
+                    assertTrue(viewport.viewRect.maxY >= minOf(bounds.maxY, bounds.minY + viewport.height))
+                }
+                val rate = UIUtil.findComponentsOfType(bot.component, JButton::class.java).single { it.text == "Set rate" }
+                val table = UIUtil.findComponentsOfType(hunt.component, JBTable::class.java).single()
+                val scoreboard = SwingUtilities.getAncestorOfClass(JScrollPane::class.java, table) as JScrollPane
+                reveal(bot.component, rate)
+                reveal(hunt.component, table, scoreboard)
+            } finally {
+                Disposer.dispose(hunt)
+                Disposer.dispose(bot)
+            }
+        }
+    }
 
     @Test
     fun `tool window shows live scores and prevents conflicting attachments`() = timeoutRunBlocking<Unit>(20.seconds) {
@@ -172,7 +214,7 @@ class ScavengerHuntPlatformTest {
                 })
                 huntButton("Reset").doClick()
                 assertFalse(huntButton("Reset").isEnabled)
-                assertTrue("Reset queued for the next instruction boundary." in labels())
+                assertTrue("Reset queued for the next instruction." in labels())
                 huntButton("Disconnect").doClick()
                 assertFalse(process.scavengerHuntSnapshot()!!.resetPending)
                 huntButton("Connect").doClick()
