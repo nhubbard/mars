@@ -2133,6 +2133,11 @@ plugin and leaves delegated Gradle and Maven builds to their own tasks.
 MIPS Run and Debug keep their own assembly step even when their launch
 configuration also requests a JVM build.
 
+In a packaged IntelliJ 2026.3 macOS run, **Build Project** reported an
+unresolved MIPS jump target in the Build window and stopped the mixed
+project build. After replacing the instruction and rebuilding, IntelliJ
+reported success and emitted the Java class in the module output.
+
 ## Instruction limit
 
 Set **Instruction limit** in a MIPS Run or Debug configuration. **0**
