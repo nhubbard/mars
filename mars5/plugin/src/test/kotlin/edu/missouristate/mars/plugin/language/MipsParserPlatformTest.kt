@@ -6,6 +6,7 @@ import com.intellij.openapi.application.readAction
 import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.DefaultLanguageHighlighterColors
 import com.intellij.openapi.fileTypes.FileTypeManager
+import com.intellij.openapi.util.TextRange
 import com.intellij.platform.syntax.element.SyntaxTokenTypes
 import com.intellij.platform.syntax.psi.PsiSyntaxBuilderFactory
 import com.intellij.psi.PsiErrorElement
@@ -18,7 +19,9 @@ import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.testFramework.junit5.fixture.projectFixture
 import edu.missouristate.mars.ProcessingException
 import edu.missouristate.mars.assembler.Directives
+import edu.missouristate.mars.assembler.Macro
 import edu.missouristate.mars.assembler.TokenTypes
+import edu.missouristate.mars.assembler.Tokenizer
 import edu.missouristate.mars.mips.instructions.InstructionSet
 import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.analysis.MacroBoundaryProblem.Kind
@@ -272,6 +275,53 @@ class MipsParserPlatformTest {
             }
         }
     }
+
+    @Test
+    fun `macro invocation spans agree with the assembler across adjacent raw arguments`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            data class Invocation(val line: String, val arity: Int, val arguments: List<TextRange>)
+
+            val tokenizer = Tokenizer()
+            val left = listOf("name", ".42name", "\$sp", "\$name", "nop", "'\\377'", "1e-2", ".42", "NaN", "%raw")
+            val right = listOf("-2", "+3", "-0x080000000", "(,7", ") 8", ":7", "'\\+77'", "\"% raw\"")
+            val invocations = buildList {
+                for (first in left) for (second in right) for (separator in listOf("", " ", ",,")) {
+                    val arguments = "1,$first$separator$second"
+                    for (line in listOf("capture $arguments", "capture($arguments)")) {
+                        val tokens = tokenizer.tokenizeLine(null, 1, line, false)
+                        val written = (1 until tokens.size()).map { tokens[it] }
+                        if (written.any { it.type == TokenTypes.ERROR }) continue
+                        val arity = written.size - if (Macro.hasCallParentheses(tokens)) 2 else 0
+                        val ranges = written.map { TextRange(it.startPos - 1, it.endPos - 1) }
+                        add(Invocation(line, arity, ranges))
+                    }
+                }
+            }
+            assertEquals(450, invocations.size)
+            val source = buildString {
+                for (arity in invocations.map { it.arity }.distinct()) {
+                    val parameters = (1..arity).joinToString(", ") { "%p$it" }
+                    appendLine(".macro capture ($parameters)")
+                    appendLine("nop")
+                    appendLine(".end_macro")
+                }
+                invocations.forEach { appendLine(it.line) }
+            }
+            val entry = directory.resolve("macro-token-spans.asm").also { it.writeText(source) }
+            val program = project.get().service<MarsSessionService>().context.assemble(listOf(entry))
+            assertEquals(List(invocations.size) { 0 }, program.machineList.map { it.binaryStatement })
+            readAction {
+                val candidates = descendants(assertParses(source).node, "OPERATION_CANDIDATE").toList()
+                assertEquals(invocations.size, candidates.size)
+                for ((invocation, candidate) in invocations.zip(candidates)) {
+                    assertEquals(invocation.line, candidate.text)
+                    val ranges = descendants(candidate, "INVOCATION_TOKEN").map {
+                        TextRange.from(it.startOffset - candidate.startOffset, it.textLength)
+                    }.toList()
+                    assertEquals(invocation.arguments, ranges, invocation.line)
+                }
+            }
+        }
 
     @Test
     fun `only the leading label is consumed before a raw macro call inside another macro`(@TempDir directory: Path) =

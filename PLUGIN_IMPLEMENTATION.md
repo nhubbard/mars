@@ -32,6 +32,11 @@ points, file associations, lexer restoration and highlighting.
 The instruction catalog fixture assembles all forms as written, with repeated separators, through
 mnemonic aliases, and through parameterized macros. It compares emitted words and source origins
 with delay slots enabled and disabled, and checks the corresponding operation nodes in IntelliJ.
+An assembler-backed macro fixture assembles 450 calls and compares the written argument ranges
+with the Java tokenizer, including adjacent signs, character escapes, quotes, repeated separators,
+and optional SPIM parentheses. A packaged IntelliJ replay navigated to two overloads in separate
+include files and confirmed their combined result in the Run console. Replay evidence is under
+`mars5/.gradle/release-host-checks/parser-token-spans`.
 Names beginning with a dot and digit, such as `.1_count`, retain their identifier role unless
 the full token is a decimal literal. An assembler-backed fixture verifies these names in label
 declarations and references, macro definitions and invocations, and equivalence definitions.
