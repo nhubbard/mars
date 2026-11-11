@@ -97,6 +97,7 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.channels.Channel
 import org.jdom.Element
@@ -1808,6 +1809,59 @@ class MarsRunPlatformTest {
             assertEquals("", recording.stderr.toString())
         } finally {
             withContext(Dispatchers.EDT) {
+                handler.destroyProcess()
+                Disposer.dispose(console)
+            }
+        }
+    }
+
+    @Test
+    fun `native Run console preserves every line of a sustained output burst`() = timeoutRunBlocking<Unit> {
+        val lineCount = 4_096
+        val recording = Recording()
+        val (handler, console) = withContext(Dispatchers.EDT) {
+            val file = fixture.addFileToProject("burst.asm", """
+                .text
+                li ${'$'}t0, 0
+                li ${'$'}t1, $lineCount
+                emit:
+                    move ${'$'}a0, ${'$'}t0
+                    li ${'$'}v0, 1
+                    syscall
+                    li ${'$'}a0, 10
+                    li ${'$'}v0, 11
+                    syscall
+                    addiu ${'$'}t0, ${'$'}t0, 1
+                    bne ${'$'}t0, ${'$'}t1, emit
+                    nop
+                li ${'$'}v0, 10
+                syscall
+            """.trimIndent()).virtualFile
+            val config = type.createTemplateConfiguration(project)
+            config.options.sourcePath = file.path
+            config.options.instructionLimit = lineCount * 10
+            val env = ExecutionEnvironmentBuilder.create(executor, config).build()
+            val result = config.getState(executor, env).execute(executor, env.runner)!!
+            val process = assertInstanceOf(MarsProcessHandler::class.java, result.processHandler)
+            val view = assertInstanceOf(ConsoleViewImpl::class.java, result.executionConsole)
+            view.component
+            process.addProcessListener(recording)
+            process.startNotify()
+            process to view
+        }
+        try {
+            assertEquals(0, recording.exit.await())
+            val expected = buildString { repeat(lineCount) { appendLine(it) } }
+            assertEquals(expected, recording.stdout.toString())
+            assertEquals("", recording.stderr.toString())
+            pollAssertionsAsync(10.seconds, 10.milliseconds) {
+                withContext(Dispatchers.EDT) {
+                    assertFalse(console.hasDeferredOutput())
+                    assertEquals(expected, console.editor!!.document.text)
+                }
+            }
+        } finally {
+            withContext(NonCancellable + Dispatchers.EDT) {
                 handler.destroyProcess()
                 Disposer.dispose(console)
             }
