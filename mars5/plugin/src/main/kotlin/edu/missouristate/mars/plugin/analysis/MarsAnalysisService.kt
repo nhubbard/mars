@@ -10,6 +10,7 @@ import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.TextRange
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
@@ -233,8 +234,15 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
             val local = ArrayList<PsiElement>()
             val outer = ArrayList<PsiElement>()
             val macro = timeline.macroAt(root, position.textOffset)
-            for (file in timeline.sourceFiles()) {
-                for (site in declarations(file)[name].orEmpty()) {
+            val candidates = ArrayList<Pair<VirtualFile, List<MipsDeclarationSite>>>()
+            FileBasedIndex.getInstance().processValues(MipsDeclarationIndex.NAME, name, null, { file, sites ->
+                candidates.add(file to sites)
+                true
+            }, timeline.indexedSourceScope)
+            // Scope and PSI checks can consult other indices. Run them after the native callback.
+            for ((source, sites) in candidates.sortedBy { timeline.sourceFileOrder(it.first) }) {
+                val file = timeline.sourceFile(source)
+                for (site in sites) {
                     ProgressManager.checkCanceled()
                     if (!site.isLiteralLabel(file, timeline)) continue
                     val owner = timeline.macroAt(file, site.offset)

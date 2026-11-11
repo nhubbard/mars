@@ -7,6 +7,7 @@ import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiFileFactory
+import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import edu.missouristate.mars.ErrorList
@@ -43,7 +44,7 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
     val integerDataPrefixes = BitSet()
     val pending = ArrayDeque<SourceCursor>()
     fun enter(file: MipsFile) {
-        val locations = SourceFileEvents(file)
+        val locations = SourceFileEvents(file, files.size)
         files[file.viewProvider.virtualFile] = locations
         pending.addLast(SourceCursor(locations, mipsSourceEvents(file).iterator()))
     }
@@ -243,6 +244,14 @@ internal class MipsSourceTimeline(
     fun sourceFiles(): Sequence<MipsFile> = files.values.asSequence().filterNot(SourceFileEvents::isUnindexedInclude)
         .map(SourceFileEvents::file)
 
+    val indexedSourceScope: GlobalSearchScope by lazy {
+        GlobalSearchScope.filesScope(files.values.first().file.project, sourceFiles().map { it.viewProvider.virtualFile }.toList())
+    }
+
+    fun sourceFile(file: VirtualFile): MipsFile = files.getValue(file).file
+
+    fun sourceFileOrder(file: VirtualFile): Int = files.getValue(file).order
+
     fun unindexedIncludeFiles(): Sequence<MipsFile> = files.values.asSequence().filter(SourceFileEvents::isUnindexedInclude)
         .map(SourceFileEvents::file)
 
@@ -373,7 +382,7 @@ internal data class MacroBoundaryProblem(val offset: Int, val kind: Kind) {
     enum class Kind { MISSING_NAME, INVALID_NAME, NESTED_BEGIN, TRAILING_TEXT, UNMATCHED_END, MISSING_END }
 }
 
-internal class SourceFileEvents(val file: MipsFile) {
+internal class SourceFileEvents(val file: MipsFile, val order: Int) {
     val isUnindexedInclude = file.originalFile !is MipsFile
     val sites = ArrayList<SourceEventSite>()
     val generatedMacroParts = HashMap<Int, MacroPart>()

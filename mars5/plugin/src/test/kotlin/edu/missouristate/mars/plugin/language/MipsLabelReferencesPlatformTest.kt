@@ -119,6 +119,28 @@ class MipsLabelReferencesPlatformTest {
     }
 
     @Test
+    fun `indexed label candidates keep include order and reflect unsaved edits`() = timeoutRunBlocking<Unit> {
+        val current = project.get()
+        val first = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("a.s", "target: nop\n")
+            fixture.addFileToProject("outside.s", "target: nop\n")
+            fixture.addFileToProject("z.s", "target: nop\n")
+        }
+        configure(".include \"z.s\"\n.include \"a.s\"\nb tar<caret>get\n")
+        suspend fun targets() = readAction {
+            (referenceAtCaret() as PsiPolyVariantReference).multiResolve(false).map { it.element?.containingFile?.name }
+        }
+        assertEquals(listOf("z.s", "a.s"), targets())
+        withContext(Dispatchers.EDT) {
+            val document = FileDocumentManager.getInstance().getDocument(first.virtualFile)!!
+            WriteCommandAction.runWriteCommandAction(current) { document.replaceString(0, "target".length, "changed") }
+            PsiDocumentManager.getInstance(current).commitDocument(document)
+            assertTrue(FileDocumentManager.getInstance().isDocumentUnsaved(document))
+        }
+        assertEquals(listOf("a.s"), targets())
+    }
+
+    @Test
     fun `label binding follows assembler operand formats`() = timeoutRunBlocking<Unit> {
         configure("nop: nop\nlw \$t0, n<caret>op+4(\$sp)\n")
         readAction { assertEquals(0, referenceAtCaret()?.resolve()?.textOffset) }

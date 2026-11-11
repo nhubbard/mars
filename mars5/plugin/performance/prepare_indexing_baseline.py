@@ -62,6 +62,9 @@ bench_target_{index}: bench_emit_{index}($t0)
 %goto {caret}
 %doComplete BASIC
 %assertCompletionCommand CONTAINS bench_target_1999
+%action EditorEscape
+%action GotoDeclaration
+%delay 1000
 %exitApp
 """)
     print(project)

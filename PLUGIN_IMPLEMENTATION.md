@@ -373,8 +373,9 @@ installed ZIP in a clean IntelliJ 2026.3 instance and captures the syscall and A
 ## Go to Declaration for instruction labels
 
 Native polyvariant PSI references bind directly written label operands using the same
-instruction formats and indexed include scope as completion. The resolver rechecks the
-indexed name and offset against current PSI. Macro-local labels take precedence, including
+instruction formats and indexed include scope as completion. For an exact name, the resolver
+queries IntelliJ's declaration index once within that scope, orders the matching files by
+include order, and rechecks the indexed name and offset against current PSI. Macro-local labels take precedence, including
 labels introduced by a nested include inside the macro. Duplicate candidates remain separate
 navigation targets. References are soft while build-context binding is still in progress.
 
@@ -2464,7 +2465,9 @@ python3 plugin/performance/prepare_indexing_baseline.py
 The playback waits for smart mode, opens the root source, waits for editor
 analysis, and invokes basic completion on the branch operand. It checks that
 the completion list includes `bench_target_1999`, defined in the last included
-source. The completion report is written under `.gradle/indexing-baseline/completion`.
+source. It then invokes Go to Declaration on the same branch operand. The IDE log
+records the file opened by navigation. The completion report is written under
+`.gradle/indexing-baseline/completion`.
 The run's IDE log directory contains the native `indexing-diagnostic` reports
 and `indexing-baseline-trace.json`.
 
