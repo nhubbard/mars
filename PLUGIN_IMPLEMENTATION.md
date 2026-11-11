@@ -1882,6 +1882,12 @@ the same focus behavior in Bitmap Display and Memory Reference Visualization.
 The packaged replay and screenshots are under
 `mars5/.gradle/release-host-checks/memory-reference-high-zoom`.
 
+Ubuntu ARM64 passed the same 150% High Contrast replay, all 2,018 Jupiter
+tests, and both coverage gates. The hover screenshot shows the second cell's
+count. Startup notifications cover the readout in the final screenshot, so
+the replay log records the matching accessible and visible label checks.
+Evidence is under `mars5/.gradle/release-host-checks/linux-arm64-reference-high-zoom`.
+
 ## Data Cache Simulator
 
 The **Data Cache Simulator** tab in **MARS Tools** tracks data and stack
