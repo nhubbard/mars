@@ -2694,6 +2694,12 @@ highlighting pass to schedule its expected refresh and keeps the second
 pass strict. Reports are under
 `mars5/.gradle/release-host-checks/linux-x64-inlays-rerun`.
 
+The emulated Linux x64 run at `68c49444` passed all 2,018 Jupiter tests,
+both coverage gates, the CLI help check, and all three plugin verification
+tasks. It includes the MARS include-graph test on a case-sensitive filesystem.
+The build log, exact commit, and reports are under
+`mars5/.gradle/release-host-checks/linux-x64-include-graph`.
+
 For B06 launcher parity, the macOS and both Linux runs passed all 23
 `LauncherParityTest` cases. These launch the standalone and Venus
 distribution JARs with the same sources and compare project assembly,
