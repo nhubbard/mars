@@ -1830,6 +1830,14 @@ A fresh IntelliJ 2026.3 installation opened all four packaged diagrams and
 animated a captured `addu` instruction. A separate Venus archive check built
 all four wire graphs and verified their targets and colors.
 
+## Bitmap Display
+
+In **MARS Tools → Bitmap Display**, select an execution and connect, or enable
+**Capture Bitmap Display from launch** in its Run configuration. Hover over
+a pixel, click it, or focus the bitmap and use the arrow keys. The inspection
+shows the pixel's column and row, memory address, and captured RGB value in
+both the visible readout and the bitmap's accessible description.
+
 ## Memory Reference Visualization
 
 In **MARS Tools → Memory Reference Visualization**, hover over a grid cell to

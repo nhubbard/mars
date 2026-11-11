@@ -62,6 +62,7 @@ import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotEquals
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -194,18 +195,18 @@ class InstructionCounterPlatformTest {
             fun xrayHistory() = xrayChoices().single { it.itemCount > 0 && it.getItemAt(0) is StepEvent }
             fun xrayDetails() = UIUtil.findComponentsOfType(xray, JBTextArea::class.java).single().text
             fun canvas(panel: JComponent) = UIUtil.findComponentsOfType(panel, MemoryGridCanvas::class.java).single()
-            fun referenceKey(key: Int) {
-                val grid = canvas(references)
+            fun gridKey(key: Int, panel: JComponent = references) {
+                val grid = canvas(panel)
                 grid.getActionForKeyStroke(KeyStroke.getKeyStroke(key, 0)).actionPerformed(ActionEvent(grid, 0, ""))
             }
-            fun focusReferences() {
-                val grid = canvas(references)
+            fun focusGrid(panel: JComponent = references) {
+                val grid = canvas(panel)
                 val event = FocusEvent(grid, FocusEvent.FOCUS_GAINED)
                 grid.focusListeners.forEach { it.focusGained(event) }
             }
-            fun assertInspection(text: String) {
-                assertEquals(text, canvas(references).accessibleContext.accessibleDescription)
-                assertTrue(UIUtil.findComponentsOfType(references, JBLabel::class.java).any { it.text == text })
+            fun assertInspection(text: String, panel: JComponent = references) {
+                assertEquals(text, canvas(panel).accessibleContext.accessibleDescription)
+                assertTrue(UIUtil.findComponentsOfType(panel, JBLabel::class.java).any { it.text == text })
             }
             fun tooltip(panel: JComponent, x: Int, y: Int): String? {
                 val grid = canvas(panel)
@@ -247,11 +248,12 @@ class InstructionCounterPlatformTest {
                 assertEquals(0, UIUtil.findComponentsOfType(cache, JBTable::class.java).single().rowCount)
                 assertEquals("Static data", baseLabel())
                 assertEquals(null, tooltip(references, 10, 10))
-                assertFalse(canvas(bitmap).isFocusable)
+                assertTrue(canvas(bitmap).isFocusable)
+                assertNull(tooltip(bitmap, 1, 128))
                 assertTrue(canvas(references).isFocusable)
-                referenceKey(KeyEvent.VK_RIGHT)
+                gridKey(KeyEvent.VK_RIGHT)
                 assertInspection("This cell has no mapped address.")
-                focusReferences()
+                focusGrid()
                 assertFalse(floatRegister.isEnabled)
                 fun enter(columns: Int, text: String) = floatField(columns).apply {
                     this.text = text
@@ -512,7 +514,12 @@ class InstructionCounterPlatformTest {
                 }
             }
             withContext(Dispatchers.EDT) {
-                assertEquals(null, tooltip(bitmap, 10, 128))
+                assertEquals(null, tooltip(bitmap, 1, 127))
+                assertEquals("(1, 0) · 0x10010004 · #0000ff", tooltip(bitmap, 1, 128))
+                focusGrid(bitmap)
+                assertInspection("(0, 0) · 0x10010000 · #ff0000", bitmap)
+                gridKey(KeyEvent.VK_RIGHT, bitmap)
+                assertInspection("(1, 0) · 0x10010004 · #0000ff", bitmap)
                 assertEquals(null, tooltip(references, -1, 10))
                 UIUtil.findComponentsOfType(references, JSpinner::class.java).single().value = 1
                 UIUtil.findComponentsOfType(references, ColorPanel::class.java).single().selectedColor = Color.MAGENTA
@@ -527,19 +534,19 @@ class InstructionCounterPlatformTest {
                 val withGrid = renderBitmap(references)
                 assertTrue(withGrid.getRGB(0, 10) != withGrid.getRGB(10, 10))
                 boundaries.doClick()
-                focusReferences()
+                focusGrid()
                 assertInspection("0x10010000 · 1 accesses")
-                referenceKey(KeyEvent.VK_LEFT)
-                referenceKey(KeyEvent.VK_UP)
+                gridKey(KeyEvent.VK_LEFT)
+                gridKey(KeyEvent.VK_UP)
                 assertInspection("0x10010000 · 1 accesses")
-                referenceKey(KeyEvent.VK_RIGHT)
+                gridKey(KeyEvent.VK_RIGHT)
                 assertInspection("0x10010004 · 1 accesses")
                 assertEquals(Color.WHITE.rgb, renderBitmap(references).getRGB(32, 10))
                 UIUtil.findComponentsOfType(references, JComboBox::class.java).single { it.itemCount == 12 }.selectedItem = 2
                 button("Apply and Clear", references).doClick()
                 assertEquals("0x10010008 · 0 accesses", tooltip(references, 33, 10))
                 assertInspection("0x10010008 · 0 accesses")
-                referenceKey(KeyEvent.VK_DOWN)
+                gridKey(KeyEvent.VK_DOWN)
                 assertInspection("0x10010088 · 0 accesses")
                 val grid = canvas(references)
                 fun clickReference(x: Int) = grid.dispatchEvent(MouseEvent(grid, MouseEvent.MOUSE_CLICKED, 0, 0, x, 10, 1, false))
@@ -551,9 +558,13 @@ class InstructionCounterPlatformTest {
                 button("Disconnect", bitmap).doClick()
                 button("Apply and Clear", bitmap).doClick()
                 assertEquals(0xff000000.toInt(), renderBitmap().getRGB(0, 128))
+                assertInspection("(1, 0) · 0x10040004 · #000000", bitmap)
                 button("Connect", bitmap).doClick()
                 button("Reset", bitmap).doClick()
                 assertEquals(Base.HEAP, baseChoice().selectedItem)
+                baseChoice().selectedItem = Base.MMIO
+                button("Apply and Clear", bitmap).doClick()
+                assertNull(tooltip(bitmap, 0, 160))
                 assertTrue(checkNotNull(bitmapRun.manager).removeContent(bitmapRun, true))
             }
             waitFor(0, "0 (0%)")

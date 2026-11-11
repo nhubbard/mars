@@ -59,9 +59,8 @@ internal class MemoryGridView(
     private val toggle = JButton()
     private val reset = JButton(toolsMessages.getMessage("counter.reset"))
     private val blank = Frame(mode.defaults(), null)
-    private val canvas = MemoryGridCanvas(
-        blank, mode.nameKey, if (mode == Mode.REFERENCES) ::describeCell else null, ::updateInspection,
-    )
+    private val inspection = JBLabel(toolsMessages.getMessage(mode.inspectionHintKey))
+    private val canvas = MemoryGridCanvas(blank, mode.nameKey, inspection.text, ::describeCell) { inspection.text = it }
     private var selected: MemoryGridDisplay? = null
     private val reference = if (mode == Mode.REFERENCES) ReferenceControls() else null
 
@@ -87,7 +86,7 @@ internal class MemoryGridView(
             cell(reset)
         }
         row { cell(canvas).align(Align.FILL).resizableColumn() }.resizableRow()
-        reference?.let { row { cell(it.inspection) } }
+        row { cell(inspection) }
         row { comment(toolsMessages.getMessage(mode.helpKey)) }
     }
 
@@ -168,12 +167,16 @@ internal class MemoryGridView(
         selected?.releaseView()
     }
 
-    private fun describeCell(index: Int): String? = selected?.referenceCell(index)?.let {
-        toolsMessages.getMessage("references.cell", Binary.intToHexString(it.address), it.count.toString())
-    }
-
-    private fun updateInspection(text: String) {
-        reference!!.inspection.text = text
+    private fun describeCell(index: Int): String? = when (mode) {
+        Mode.REFERENCES -> selected?.referenceCell(index)?.let {
+            toolsMessages.getMessage("references.cell", Binary.intToHexString(it.address), it.count.toString())
+        }
+        Mode.BITMAP -> selected?.bitmapCell(index)?.let {
+            toolsMessages.getMessage(
+                "bitmap.cell", it.column.toString(), it.row.toString(),
+                Binary.intToHexString(it.address), it.rgb.toString(16).padStart(6, '0'),
+            )
+        }
     }
 
     private inner class ReferenceControls {
@@ -184,7 +187,6 @@ internal class MemoryGridView(
         val color = ColorPanel()
         val applyColor = JButton(toolsMessages.getMessage("references.applyColor"))
         val grid = JBCheckBox(toolsMessages.getMessage("references.grid"))
-        val inspection = JBLabel(toolsMessages.getMessage("references.inspect.hint"))
         val controls = listOf(words, threshold, color, applyColor, grid)
 
         init {
@@ -205,7 +207,7 @@ internal class MemoryGridView(
 }
 
 internal class MemoryGridCanvas(
-    private var frame: Frame, nameKey: String, private val cellDetails: ((Int) -> String?)?,
+    private var frame: Frame, nameKey: String, private val inspectionHint: String, private val cellDetails: (Int) -> String?,
     private val inspectionChanged: (String) -> Unit,
 ) : JPanel() {
     private var showGrid = false
@@ -213,27 +215,25 @@ internal class MemoryGridCanvas(
 
     init {
         getAccessibleContext().accessibleName = toolsMessages.getMessage(nameKey)
-        isFocusable = cellDetails != null
-        if (cellDetails != null) {
-            toolTipText = ""
-            getAccessibleContext().accessibleDescription = toolsMessages.getMessage("references.inspect.hint")
-            addFocusListener(object : FocusAdapter() {
-                override fun focusGained(event: FocusEvent) {
-                    if (inspected == null) inspect(Point())
-                }
-            })
-            addMouseListener(object : MouseAdapter() {
-                override fun mouseClicked(event: MouseEvent) {
-                    val cell = cellAt(event.point) ?: return
-                    requestFocusInWindow()
-                    inspect(cell)
-                }
-            })
-            bindArrow(KeyEvent.VK_LEFT, -1, 0)
-            bindArrow(KeyEvent.VK_RIGHT, 1, 0)
-            bindArrow(KeyEvent.VK_UP, 0, -1)
-            bindArrow(KeyEvent.VK_DOWN, 0, 1)
-        }
+        isFocusable = true
+        toolTipText = ""
+        getAccessibleContext().accessibleDescription = inspectionHint
+        addFocusListener(object : FocusAdapter() {
+            override fun focusGained(event: FocusEvent) {
+                if (inspected == null) inspect(Point())
+            }
+        })
+        addMouseListener(object : MouseAdapter() {
+            override fun mouseClicked(event: MouseEvent) {
+                val cell = cellAt(event.point) ?: return
+                requestFocusInWindow()
+                inspect(cell)
+            }
+        })
+        bindArrow(KeyEvent.VK_LEFT, -1, 0)
+        bindArrow(KeyEvent.VK_RIGHT, 1, 0)
+        bindArrow(KeyEvent.VK_UP, 0, -1)
+        bindArrow(KeyEvent.VK_DOWN, 0, 1)
     }
 
     private fun bindArrow(key: Int, dx: Int, dy: Int) {
@@ -247,7 +247,7 @@ internal class MemoryGridCanvas(
         val column = cell.x.coerceIn(0, frame.options.columns - 1)
         val row = cell.y.coerceIn(0, frame.options.rows - 1)
         inspected = Point(column, row)
-        showInspection(cellDetails!!(row * frame.options.columns + column)
+        showInspection(cellDetails(row * frame.options.columns + column)
             ?: toolsMessages.getMessage("references.inspect.unmapped"))
         repaint()
     }
@@ -255,7 +255,7 @@ internal class MemoryGridCanvas(
     fun clearInspection() {
         if (inspected == null) return
         inspected = null
-        showInspection(toolsMessages.getMessage("references.inspect.hint"))
+        showInspection(inspectionHint)
         repaint()
     }
 
@@ -277,9 +277,8 @@ internal class MemoryGridCanvas(
     }
 
     override fun getToolTipText(event: MouseEvent): String? {
-        val details = cellDetails ?: return null
         val cell = cellAt(event.point) ?: return null
-        return details(cell.y * frame.options.columns + cell.x)
+        return cellDetails(cell.y * frame.options.columns + cell.x)
     }
 
     private fun cellAt(point: Point): Point? {

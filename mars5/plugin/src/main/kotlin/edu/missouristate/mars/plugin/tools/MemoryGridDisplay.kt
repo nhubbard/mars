@@ -11,9 +11,9 @@ import java.util.function.Consumer
 
 /** Per-execution memory grid. Repaints consume snapshots and never read simulator memory. */
 internal class MemoryGridDisplay(private val captureAtLaunch: Boolean = false, mode: Mode = Mode.BITMAP) {
-    enum class Mode(val nameKey: String, val helpKey: String) {
-        BITMAP("bitmap.name", "bitmap.help"),
-        REFERENCES("references.name", "references.help");
+    enum class Mode(val nameKey: String, val helpKey: String, val inspectionHintKey: String) {
+        BITMAP("bitmap.name", "bitmap.help", "bitmap.inspect.hint"),
+        REFERENCES("references.name", "references.help", "references.inspect.hint");
 
         fun defaults() = if (this == REFERENCES) Options(256, 256, 16, 16) else Options()
     }
@@ -45,6 +45,7 @@ internal class MemoryGridDisplay(private val captureAtLaunch: Boolean = false, m
     data class Frame(val options: Options, val image: BufferedImage?)
     data class Snapshot(val connected: Boolean, val addresses: Map<Base, Int>, val frame: Frame)
     data class ReferenceCell(val address: Int, val count: Long)
+    data class BitmapCell(val column: Int, val row: Int, val address: Int, val rgb: Int)
 
     private val tracksReferences = mode == Mode.REFERENCES
     private var connected = captureAtLaunch
@@ -115,10 +116,21 @@ internal class MemoryGridDisplay(private val captureAtLaunch: Boolean = false, m
 
     @Synchronized
     fun referenceCell(index: Int): ReferenceCell? {
+        val address = cellAddress(index) ?: return null
+        return ReferenceCell(address, counts?.get(index) ?: 0)
+    }
+
+    @Synchronized
+    fun bitmapCell(index: Int): BitmapCell? {
+        val address = cellAddress(index) ?: return null
+        return BitmapCell(index % options.columns, index / options.columns, address, pixels?.get(index) ?: 0)
+    }
+
+    private fun cellAddress(index: Int): Int? {
         val base = addresses[options.base] ?: return null
         val address = Integer.toUnsignedLong(base) + index.toLong() * options.wordsPerCell * 4
         if (address > addressLimit(base)) return null
-        return ReferenceCell(address.toInt(), counts?.get(index) ?: 0)
+        return address.toInt()
     }
 
     @Synchronized
