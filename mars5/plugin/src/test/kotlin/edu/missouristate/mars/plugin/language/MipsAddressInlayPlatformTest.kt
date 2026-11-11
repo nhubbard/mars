@@ -25,6 +25,7 @@ import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiFile
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.common.timeoutRunBlocking
+import com.intellij.testFramework.fixtures.EditorTestFixture
 import com.intellij.testFramework.junit5.TestApplication
 import edu.missouristate.mars.plugin.MarsMemoryLayout
 import edu.missouristate.mars.plugin.build.MarsAssemblySettings
@@ -184,7 +185,10 @@ class MipsAddressInlayPlatformTest {
 
     private suspend fun assertHints(expected: List<String>, providerId: String = MIPS_ADDRESS_HINTS_ID) {
         awaitEditorRefreshes()
-        withContext(Dispatchers.EDT) { fixture.doHighlighting() }
+        withContext(Dispatchers.EDT) {
+            // The first pass publishes the assembly snapshot and requests one inlay recompute.
+            EditorTestFixture(project, fixture.editor, fixture.file.virtualFile).doHighlighting(true, false)
+        }
         awaitEditorRefreshes()
         withContext(Dispatchers.EDT) {
             fixture.doHighlighting()
