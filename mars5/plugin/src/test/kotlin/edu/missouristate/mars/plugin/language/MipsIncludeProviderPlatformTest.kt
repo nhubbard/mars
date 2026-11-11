@@ -66,7 +66,7 @@ class MipsIncludeProviderPlatformTest {
         provider.registerFileTypesUsedForIndexing { types.add(it) }
         assertEquals(listOf(MipsFileType), types)
         assertEquals("mars", provider.id)
-        assertEquals(9, provider.version)
+        assertEquals(10, provider.version)
         val empty = LightVirtualFile("empty.asm", MipsFileType, "")
         assertTrue(provider.getIncludeInfos(FileContentImpl.createByText(empty, "", null)).isEmpty())
     }
@@ -79,7 +79,7 @@ class MipsIncludeProviderPlatformTest {
         val content = FileContentImpl.createByText(file, source, null)
         val windows = MipsIncludeProvider(windowsPaths = true)
         val unix = MipsIncludeProvider(windowsPaths = false)
-        assertEquals(path, unix.getIncludeInfos(content).single().fileName)
+        assertEquals("""parts\child.s""", unix.getIncludeInfos(content).single().fileName)
         val info = windows.getIncludeInfos(content).single()
         assertEquals(path, info.path)
         assertEquals(source.indexOf('"'), info.offset)
@@ -87,7 +87,7 @@ class MipsIncludeProviderPlatformTest {
         val target = withContext(Dispatchers.EDT) { fixture.addFileToProject("Parts/Child.s", "nop\n") }
         readAction {
             assertEquals("child.s", windows.getIncludeName(target, target.name))
-            assertEquals("Child.s", unix.getIncludeName(target, target.name))
+            assertEquals("child.s", unix.getIncludeName(target, target.name))
         }
     }
 
@@ -149,6 +149,24 @@ class MipsIncludeProviderPlatformTest {
             val manager = FileIncludeManager.getManager(project.get())
             assertEquals(setOf(files.second), manager.getIncludedFiles(files.first, true).toSet())
             assertEquals(setOf(files.first), manager.getIncludingFiles(files.second, true).toSet())
+        }
+    }
+
+    @Test
+    fun `shared include index agrees with the target directory case sensitivity in both directions`() = timeoutRunBlocking<Unit> {
+        val (target, exact, alternate) = withContext(Dispatchers.EDT) {
+            val target = fixture.addFileToProject("MixedCase.s", "target: nop\n").virtualFile
+            val exact = fixture.addFileToProject("exact.asm", ".include \"MixedCase.s\"\n").virtualFile
+            val alternate = fixture.addFileToProject("alternate.asm", ".include \"mixedcase.s\"\n").virtualFile
+            Triple(target, exact, alternate)
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
+        readAction {
+            val manager = FileIncludeManager.getManager(project.get())
+            val caseSensitive = target.parent.isCaseSensitive
+            assertEquals(setOf(target), manager.getIncludedFiles(exact, true).toSet())
+            assertEquals(if (caseSensitive) emptySet() else setOf(target), manager.getIncludedFiles(alternate, true).toSet())
+            assertEquals(if (caseSensitive) setOf(exact) else setOf(exact, alternate), manager.getIncludingFiles(target, true).toSet())
         }
     }
 

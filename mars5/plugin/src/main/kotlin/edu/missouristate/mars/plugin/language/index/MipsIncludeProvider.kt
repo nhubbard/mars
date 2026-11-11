@@ -22,7 +22,7 @@ class MipsIncludeProvider internal constructor(private val windowsPaths: Boolean
     constructor() : this(SystemInfoRt.isWindows)
 
     override fun getId(): String = "mars"
-    override fun getVersion(): Int = 9
+    override fun getVersion(): Int = 10
     override fun acceptFile(indexedFile: IndexedFile): Boolean = indexedFile.fileType == MipsFileType
     override fun registerFileTypesUsedForIndexing(fileTypeSink: Consumer<in FileType>) = fileTypeSink.consume(MipsFileType)
 
@@ -39,7 +39,8 @@ class MipsIncludeProvider internal constructor(private val windowsPaths: Boolean
 
     override fun getIncludeName(file: PsiFile, originalName: String): String = includeKey(originalName)
 
-    private fun includeKey(name: String): String = if (windowsPaths) name.lowercase() else name
+    // The native reverse index uses exact keys and resolves candidates against the actual directory.
+    private fun includeKey(name: String): String = name.lowercase()
 
     override fun resolveIncludedFile(info: FileIncludeInfo, context: PsiFile): PsiFileSystemItem? =
         resolveIndexedMipsInclude(info, context)

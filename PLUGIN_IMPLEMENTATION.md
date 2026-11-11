@@ -799,9 +799,10 @@ when resolving its indexed paths. There is no parallel reference or refactoring 
 
 MARS paths retain literal filename characters such as spaces and, on filesystems that allow them,
 question marks. Relative paths use the source directory. Absolute paths use their own filesystem
-root, including drive and share roots on Windows. Windows separators and case-insensitive reverse
-lookup are handled without rewriting the path or its source offsets. Editor diagnostics and unsaved
-assembly capture share the assembler's path resolution. The PSI cache stores path text by offset.
+root, including drive and share roots on Windows. The index normalizes Windows separators and
+folds case in candidate keys while keeping the written path and its source offsets. IntelliJ resolves
+each candidate with the target directory's case rules. Editor diagnostics and unsaved assembly
+capture share the assembler's path resolution. The PSI cache stores path text by offset.
 A reference to a missing file resolves after the target is created, even without an edit to the source.
 
 The packaged macOS replay used Go to Declaration on an absolute include with spaces and Unicode
@@ -2661,6 +2662,13 @@ The verifier found no internal API usage. Reports are under
 `mars5/.gradle/release-host-checks/linux-arm64/x64-retry-results`.
 Native x64 runner evidence remains part of the GitHub Actions matrix.
 
+The subsequent emulated Linux x64 run at `a4275f06` passed all 2,017
+Jupiter tests, both coverage gates, the CLI help check, and all three
+plugin verification tasks. The IntelliJ inlay fixture permits the first
+highlighting pass to schedule its expected refresh and keeps the second
+pass strict. Reports are under
+`mars5/.gradle/release-host-checks/linux-x64-inlays-rerun`.
+
 For B06 launcher parity, the macOS and both Linux runs passed all 23
 `LauncherParityTest` cases. These launch the standalone and Venus
 distribution JARs with the same sources and compare project assembly,
@@ -2687,7 +2695,8 @@ findings for Kotlin-generated `ToolWindowFactory` default-method forwarders
 and 81 experimental API findings. The latter include build progress, queued
 editor refreshes, documentation, navigation, and project setup. Moving the
 wizard's starter-file opening to `NavigationService` reduced the experimental
-findings to 73. The report is generated in
+findings to 73. Resolving includes with the target directory's case rules
+added one public experimental API use. The report is generated in
 `mars5/plugin/build/reports/pluginVerifier`.
 
 CI fails for internal API usage, binary compatibility problems, and misuse
@@ -2740,3 +2749,4 @@ qualification.
 | --- | --- |
 | `DebouncedUpdates` and `UpdateQueue` | `MipsFoldingRefresh`, `MipsAssemblyInlayRefresh` and `MarsOpenAssembly` use the platform's recommended coroutine queue for distinct batches. It owns the delay and cancellation in the project service scope. `MipsEditorPlatformTest` exercises folding after assembly context and disk changes, `MipsAddressInlayPlatformTest` checks hint updates, and `MarsBuildPlatformTest` checks assembly on open. |
 | `runAfterOpened` | The project wizard uses the platform's post-commit hook so it receives the actual opened project, which may differ when IntelliJ attaches a project to a workspace. The callback uses the public `NavigationService` to open and focus the generated starter. `MarsNewProjectWizardTest` checks selection and Run or Debug for both starter layouts. |
+| `VirtualFile.isCaseSensitive` | Include references use the actual target directory's rules, including case-insensitive volumes on macOS and case-sensitive volumes on Linux. The include provider fixture checks both directions of the native include graph. |
