@@ -164,20 +164,25 @@ class KeyboardDisplayPlatformTest {
                 assertFalse(type('X'))
                 button("Connect").doClick()
                 val scroll = assertInstanceOf(JScrollPane::class.java, view.component)
-                scroll.setSize(JBUI.scale(380), JBUI.scale(175))
+                scroll.setSize(JBUI.scale(295), JBUI.scale(175))
                 scroll.doLayout()
                 val viewport = scroll.viewport
                 viewport.doLayout()
                 val body = viewport.view
                 body.doLayout()
+                assertTrue(body.width <= viewport.width) {
+                    "Terminal content width ${body.width} exceeds viewport width ${viewport.width}"
+                }
+                val display = SwingUtilities.convertRectangle(editor.component.parent, editor.component.bounds, body)
+                assertTrue(viewport.viewRect.contains(display.x, display.y))
                 val resize = button("Resize and Reset")
                 resize.parent.doLayout()
                 val bounds = SwingUtilities.convertRectangle(resize.parent, resize.bounds, body)
                 assertTrue(bounds.height > 0)
                 assertFalse(viewport.viewRect.contains(bounds))
                 resize.focusListeners.forEach { it.focusGained(FocusEvent(resize, FocusEvent.FOCUS_GAINED)) }
-                assertTrue(viewport.viewRect.y <= bounds.y && viewport.viewRect.maxY >= bounds.maxY) {
-                    "Resize bounds ${bounds} must be vertically visible in ${viewport.viewRect}"
+                assertTrue(viewport.viewRect.contains(bounds)) {
+                    "Resize bounds $bounds must be visible in ${viewport.viewRect}"
                 }
                 assertTrue(type('M'))
                 val delay = UIUtil.findComponentsOfType(view.component, JComboBox::class.java).single { it.itemCount == 3 }

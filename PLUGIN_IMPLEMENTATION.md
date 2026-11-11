@@ -2007,9 +2007,22 @@ are under `mars5/.gradle/release-host-checks/keyboard-display-layout`.
 The Ubuntu ARM64 build for `810a0276` passed all 2,020 Jupiter tests
 and both coverage gates. In the packaged replay, **Connect** still showed
 its disconnected state after the scripted Space press. The replay stopped
-before sending a key, so the focus handoff and echo still need a Linux
-packaged check. The log and failure screenshot are under
+before sending a key. The log and failure screenshot are under
 `mars5/.gradle/release-host-checks/linux-arm64-terminal-focus`.
+
+The compact layout places the execution and keyboard labels above their
+fields, gives **Resize and Reset** its own row, and wraps the help text
+more tightly. A Jupiter fixture checks that the connected panel fits a
+295-pixel viewport at the default scale and reveals the entire resize
+button. Clean packaged replays at 150% in High Contrast verified that
+**Keyboard** and **Resize and Reset** receive focus without horizontal
+scrolling, and that the echoed `M` is visible at the display's left edge.
+The macOS replay activated **Connect** with Space. On Ubuntu ARM64 the
+script used a native mouse click after Space left the button disconnected.
+Both builds passed all 2,020 Jupiter tests and both coverage gates. The
+screenshots and logs are under
+`mars5/.gradle/release-host-checks/keyboard-display-width` and
+`mars5/.gradle/release-host-checks/linux-arm64-terminal-width`.
 
 The Kotlin device implements the receiver control and data words at MMIO
 base + `0x00` and `0x04` and the transmitter control and data words at
