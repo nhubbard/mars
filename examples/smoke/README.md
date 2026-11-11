@@ -2,7 +2,7 @@
 
 The smoke Gradle root links to the MARS checkout as a composite build and uses
 its Java 25 core directly. IntelliJ can import the root with the wrapper and
-expose the `instruction-lab` subproject. The existing playback scripts and
+expose the `instruction-lab` and `png-decoder` subprojects. The existing playback scripts and
 fixture projects can still be launched independently from `mars5`.
 
 The Gradle files in this directory are also the templates for the sibling
@@ -59,3 +59,29 @@ Expected breakpoint, trap, and overflow cases count only when execution
 reaches the probe and reports the expected exception cause. The catalog
 check covers instruction forms.
 The interactive workbench exercises a subset of the syscall services.
+
+## PNG decoder and Bitmap Display
+
+Open [viewer.asm](png-decoder/src/main/mips/viewer.asm) and choose MARS Run.
+Use the **Default** memory layout and leave the instruction limit at **0**
+(unlimited). The Run configuration defaults to the source file's directory,
+which contains [torture.png](png-decoder/src/main/mips/torture.png). To try
+another PNG, pass its filename as the first program argument.
+
+1. Open **MARS Tools → Bitmap Display** and select the waiting execution.
+2. Set the base address to **Heap (0x10040000)**, the display width and height
+   to **1024**, and both unit dimensions to **2**. Click **Apply and Clear**.
+3. Click **Connect** if capture is off, then press Enter in the Run console.
+   The program validates and decodes the PNG before writing the bitmap.
+   The supplied image writes all 262,144 cells, covering the whole display.
+
+This is an assembly-only decoder for non-interlaced 8-bit RGB PNGs up to
+512 × 512 and 1 MiB. It checks chunk CRCs and the zlib Adler-32 checksum,
+combines consecutive IDAT chunks, handles stored, fixed-Huffman and
+dynamic-Huffman DEFLATE blocks, and reverses all five PNG row filters.
+Smaller images appear in the upper-left corner. A breakpoint at
+`blit_rgb` stops just before the display writes begin.
+
+Run `./gradlew :png-decoder:test` to compare every output pixel of the
+included image against ImageIO. The tests also cover split IDAT chunks,
+fixed and stored blocks, both delayed-branch settings, and invalid inputs.
