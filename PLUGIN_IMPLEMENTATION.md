@@ -3007,7 +3007,15 @@ MIDI hardware remain unverified.
 
 ### Packaged Bitmap Display and file actions
 
-The Ubuntu ARM64 replay passed all 2,015 tests and both coverage gates.
+The packaged Ubuntu ARM64 PNG replay at `b5cef8f0` opened `viewer.mars` and `deflate.inc`
+in IntelliJ IDEA `IU-263.7307.200` and verified the MARS file associations
+and icon. It ran the assembly-only decoder with the instruction limit
+disabled and compared all 262,144 Bitmap Display cells with ImageIO's
+reference decode. The replay used the same heap address and display settings
+as the [PNG decoder instructions](examples/smoke/README.md#png-decoder-and-bitmap-display).
+The log and screenshot are under `mars5/.gradle/release-host-checks/linux-arm64-complete-source`.
+
+An earlier Ubuntu ARM64 replay passed all 2,015 tests and both coverage gates.
 It chose High Contrast in IntelliJ's theme switcher, ran the bitmap sample,
 and moved the selected pixel with Right and Down. For all three positions,
 the visible details matched the accessible description, including the
@@ -3050,6 +3058,30 @@ produce the XML and package-level HTML report in
 `core/build/reports/jacoco/test`.
 
 ### Host qualification
+
+For a release replay from a Git archive, export both `mars5` and `examples`
+from the same revision. The plugin test resource task reads the assembly
+examples from the sibling `examples` directory. It needs the shipped
+debugger, MMIO terminal, MarsBot, and Scavenger Hunt samples as well as the
+instruction lab and PNG decoder. From the repository root, the archive
+command is `git archive -o <archive-path> HEAD mars5 examples`.
+
+The Apple Silicon macOS build at `b5cef8f0` passed 2,043 Jupiter tests,
+including 712 plugin tests and both plugin coverage gates. The build and
+plugin structure and configuration checks passed. Plugin Verifier reused
+the report for the unchanged ZIP and found it compatible with
+`IU-263.7307.200`. The Java 25 standalone CLI help check and the smoke
+build also passed, covering all 543 catalog forms and the PNG decoder.
+
+The native Ubuntu 24.04 ARM64 build at `b5cef8f0` passed the same 2,043
+Jupiter tests and both plugin coverage gates before opening the packaged ZIP
+with `clean cleanSandbox runIde`. The PNG replay ran to completion and exited
+the IDE. Plugin Verifier reported compatibility with `IU-263.7307.200` and
+found no internal API usage. The standalone CLI help, benchmark compilation,
+543 catalog forms, and all six smoke tests passed on the same build. The IDE
+logged a credential-store error from the bundled Air plugin in the container.
+Reports, the ZIP checksum, and logs are under
+`mars5/.gradle/release-host-checks/linux-arm64-complete-source`.
 
 The local Ubuntu 24.04 ARM64 run at `aee75d21` used Temurin 25 and passed all
 2,014 Jupiter tests (684 plugin tests), the authored and generated-parser
