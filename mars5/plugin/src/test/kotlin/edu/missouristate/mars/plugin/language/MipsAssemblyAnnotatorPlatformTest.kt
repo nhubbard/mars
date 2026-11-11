@@ -742,6 +742,11 @@ class MipsAssemblyAnnotatorPlatformTest {
         val input = collect()!!
         assertEquals(listOf(main.toNioPath()), input.capture.sources.snapshot.entries())
         val original = analyze(input)
+        withContext(Dispatchers.EDT) {
+            DumbModeTestUtils.runInDumbModeSynchronously(project) {
+                assertTrue(annotator.acceptResult(part, original).isEmpty())
+            }
+        }
         assertEquals(TextRange(2, 9), current(original).single().second)
         val unknownPosition = AssemblyError(input.capture.source, 99, 0, "unknown position", false)
         val incomplete = original.outcome.copy(diagnostics = mapOf(input.capture.source to (original.diagnostics + unknownPosition)))

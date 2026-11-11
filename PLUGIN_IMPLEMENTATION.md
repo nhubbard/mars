@@ -3328,8 +3328,24 @@ A clean packaged macOS replay disabled MARS directly with X-Ray visible,
 kept the editor tab open, collected the old loader, and re-enabled MARS
 in the same process. The reopened X-Ray displayed the new execution's
 six-step trace while the Run console printed `reload smoke ready`.
-Cross-host lifecycle checks remain open. The replays and reference reports are under
+The Ubuntu 24.04 ARM64 replay also collected the old loader, re-enabled
+MARS, reopened X-Ray, and ran the program. The first attempt stalled in
+guest file I/O during re-enable. A retry with the checkout and project on
+the guest filesystem completed and exposed an index race in the external
+assembly annotator. IntelliJ can start indexing between collecting and
+applying a diagnostic result. The annotator now skips applying that result
+during indexing, and IntelliJ restarts highlighting when its indexes are
+ready. The regression test reproduced the exception before the guard and
+verified that the same valid result can be applied after indexing.
+
+Clean packaged replays of the fix passed on macOS and Ubuntu ARM64.
+The Ubuntu run passed Plugin Verifier, the standalone CLI help check,
+all 543 instruction catalog forms, and all six smoke tests. Skiko fell
+back from OpenGL under Xvfb and the replay completed. Native Windows
+and Linux x64 lifecycle checks remain open. The replays and reference reports are under
 `mars5/.gradle/release-host-checks/dynamic-reload`.
+Ubuntu reports are under
+`mars5/.gradle/release-host-checks/linux-arm64-live-reload`.
 
 ### Reviewed API use in the 263 target
 

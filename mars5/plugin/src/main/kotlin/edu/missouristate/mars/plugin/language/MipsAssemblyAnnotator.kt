@@ -5,6 +5,7 @@ import com.intellij.lang.annotation.ExternalAnnotator
 import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.Document
+import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiFile
 import edu.missouristate.mars.api.AssemblyError
@@ -48,6 +49,8 @@ internal class MipsAssemblyAnnotator : ExternalAnnotator<MipsAssemblyAnnotator.I
     }
 
     internal fun acceptResult(file: MipsFile, result: Result): List<Pair<AssemblyError, TextRange>> {
+        // Indexing can start between collecting the source and applying the completed result.
+        if (DumbService.isDumb(file.project)) return emptyList()
         val diagnostics = validatedDiagnostics(file, result) ?: return emptyList()
         result.symbols?.let { file.project.service<MarsAnalysisService>().publishBackgroundSymbols(it) }
         file.publishAssemblyHints(result.hints)
