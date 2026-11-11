@@ -359,14 +359,8 @@ public final class Coprocessor1State {
    * @return The number of the register represented by the string.
    */
   public int getRegisterNumber(String n) {
-    int j = -1;
-    for (Register register : registers) {
-      if (register.getName().equals(n)) {
-        j = register.getNumber();
-        break;
-      }
-    }
-    return j;
+    var register = getRegister(n);
+    return register == null ? -1 : register.getNumber();
   }
 
   /**
@@ -386,7 +380,7 @@ public final class Coprocessor1State {
    */
   public Register getRegister(String rName) {
     Register reg = null;
-    if (rName.charAt(0) == '$' && rName.length() > 1 && rName.charAt(1) == 'f') {
+    if (rName != null && rName.length() > 2 && rName.startsWith("$f")) {
       try {
         // check for register number 0-31.
         reg = registers[Binary.stringToInt(rName.substring(2))]; // KENV 1/6/05

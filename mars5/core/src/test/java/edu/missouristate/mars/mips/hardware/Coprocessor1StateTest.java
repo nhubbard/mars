@@ -132,6 +132,13 @@ class Coprocessor1StateTest {
     assertThat(state.getIntFromRegister(-1)).isZero();
     assertThat(state.getFloatFromRegister(32)).isZero();
     assertThat(state.getRegisterNumber("$missing")).isEqualTo(-1);
+    assertThat(state.getRegisterNumber(null)).isEqualTo(-1);
+    assertThat(state.getRegisterNumber("")).isEqualTo(-1);
+    assertThat(state.getRegisterNumber("$f")).isEqualTo(-1);
+    assertThat(state.getRegisterNumber("$f32")).isEqualTo(-1);
+    assertThat(state.getRegisterNumber("$f010")).isEqualTo(8);
+    assertThat(state.getRegisterNumber("$f0x1f")).isEqualTo(31);
+    assertThat(state.getRegister("$f")).isNull();
     assertThat(state.getRegister("$f32")).isNull();
     assertThat(state.setConditionFlag(-1)).isZero();
     assertThat(state.clearConditionFlag(8)).isZero();

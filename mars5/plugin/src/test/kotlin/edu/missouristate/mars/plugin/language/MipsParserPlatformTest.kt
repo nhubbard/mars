@@ -20,11 +20,13 @@ import com.intellij.testFramework.junit5.fixture.projectFixture
 import edu.missouristate.mars.ProcessingException
 import edu.missouristate.mars.assembler.Directives
 import edu.missouristate.mars.assembler.Macro
+import edu.missouristate.mars.assembler.RegisterNames
 import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.assembler.Tokenizer
 import edu.missouristate.mars.mips.hardware.MemoryConfigurations
 import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.ExtendedInstruction
+import edu.missouristate.mars.mips.instructions.InstructionDefaults
 import edu.missouristate.mars.mips.instructions.InstructionSet
 import edu.missouristate.mars.plugin.MarsExecutionOptions
 import edu.missouristate.mars.plugin.MarsMemoryLayout
@@ -940,6 +942,69 @@ class MipsParserPlatformTest {
             }
         }
     }
+
+    @Test
+    fun `bare machine forms retain numeric register operands in every MARS file type`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val instructions = InstructionDefaults.get().instructionList.filterIsInstance<BasicInstruction>()
+            val integerRegisters = setOf(TokenTypes.REGISTER_NAME, TokenTypes.REGISTER_NUMBER)
+            val operands = instructions.map { instruction ->
+                val tokens = instruction.tokenList
+                (1 until tokens.size()).map { tokens[it] }
+            }
+            val labels = operands.flatten().filter { it.type == TokenTypes.IDENTIFIER }.map { it.value }.toSortedSet()
+            val registerTokens = operands.map { row -> row.filter { it.type in integerRegisters || it.type == TokenTypes.FP_REGISTER_NAME } }
+            val context = project.get().service<MarsSessionService>().context
+            fun assemble(name: String, source: String): List<Int> {
+                val path = directory.resolve(name).also { it.writeText(source) }
+                val program = try {
+                    context.assemble(listOf(path), null, false, false)
+                } catch (failure: ProcessingException) {
+                    throw AssertionError("$name\n${failure.errors().generateErrorReport()}", failure)
+                }
+                return program.machineList.map { it.binaryStatement }
+            }
+            fun source(lines: List<String>) = (listOf(".text") + labels.map { "$it:" } + lines).joinToString("\n", postfix = "\n")
+
+            MarsExecutionOptions(allowPseudoInstructions = false).applyForAssembly(context)
+            val canonical = assemble("canonical.asm", source(instructions.map { it.exampleFormat }))
+            assertEquals(instructions.size, canonical.size)
+            MarsExecutionOptions(allowPseudoInstructions = false, bareMachine = true).applyForAssembly(context)
+
+            val spellings = listOf<(Int) -> String>(
+                { it.toString() }, { "0" + it.toString(8) }, { "0x" + it.toString(16) },
+            )
+            for ((variant, spelling) in spellings.withIndex()) {
+                val registers = registerTokens.map { row ->
+                    row.map { token ->
+                        if (token.type == TokenTypes.FP_REGISTER_NAME) {
+                            "\$f" + spelling(RegisterNames.floating(token.value).number)
+                        } else {
+                            "\$" + spelling(RegisterNames.integer(token.value).number)
+                        }
+                    }
+                }
+                val lines = instructions.mapIndexed { index, instruction ->
+                    StringBuilder(instruction.exampleFormat).apply {
+                        for ((token, name) in registerTokens[index].zip(registers[index]).asReversed()) {
+                            replace(token.startPos - 1, token.endPos - 1, name)
+                        }
+                    }.toString()
+                }
+                val source = source(lines)
+                for (suffix in listOf("asm", "s", "inc", "mars")) {
+                    val name = "bare-$variant.$suffix"
+                    assertEquals(canonical, assemble(name, source), name)
+                    readAction {
+                        val parsed = descendants(assertParses(source, name).node, "INSTRUCTION").toList()
+                        assertEquals(lines, parsed.map { it.text }, name)
+                        assertEquals(registers, parsed.map { instruction ->
+                            descendants(instruction, "REGISTER").map { it.text }.toList()
+                        }, name)
+                    }
+                }
+            }
+        }
 
     @Test
     fun `address operands follow the assembler with or without commas`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
