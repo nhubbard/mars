@@ -75,6 +75,11 @@ bench_target_{index}: bench_emit_{index}($t0)
 %action EditorEscape
 %action GotoDeclaration
 %delay 1000
+%assertCurrentFile part-1999.s
+%action CloseContent
+%searchEverywhere -tab symbol -selectFirst|bench_target_1999
+%delay 600
+%assertCurrentFile part-1999.s
 %action CloseContent
 %breakpointToggle src/entry.asm, {branch_line}
 %debugRunConfiguration CorpusDebug, 60

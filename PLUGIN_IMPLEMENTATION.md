@@ -2494,8 +2494,9 @@ python3 plugin/performance/prepare_indexing_baseline.py
 The playback waits for smart mode, opens the root source, waits for editor
 analysis, and invokes basic completion on the branch operand. It checks that
 the completion list includes `bench_target_1999`, defined in the last included
-source. It then invokes Go to Declaration on the same branch operand. The IDE log
-records the file opened by navigation. The completion report is written under
+source. It then invokes Go to Declaration on the branch operand and searches for
+the same label in the native Symbols popup. Both navigation paths must open
+`part-1999.s`. The completion report is written under
 `.gradle/indexing-baseline/completion`.
 The run's IDE log directory contains the native `indexing-diagnostic` reports
 and `indexing-baseline-trace.json`.
@@ -2520,6 +2521,13 @@ The analysis and completion numbers come from the `firstCodeAnalysis` and
 single-run measurements for this corpus and host. The smart-mode playback
 settling delay and application startup are outside the scan and indexing
 durations.
+
+A later packaged run on the same host indexed all 2,021 MIPS files again.
+IntelliJ reported 1.267 s for scanning and 2.346 s for indexing, with the
+x64 Linux fixture suite running concurrently in a local VM. The first
+editor analysis took 1.795 s, and the completion span took 364 ms. The
+Symbols result list loaded in 621 ms and selecting its first result opened
+`part-1999.s`. These are single-run observations for this corpus.
 
 The same scenario opens the `CorpusDebug` run configuration and stops at
 the jump in the entry file. **Step Into** follows the jump to the last
