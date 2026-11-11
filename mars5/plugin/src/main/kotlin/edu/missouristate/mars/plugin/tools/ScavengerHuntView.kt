@@ -19,12 +19,14 @@ import edu.missouristate.mars.plugin.run.MarsProcessHandler
 import edu.missouristate.mars.plugin.tools.ScavengerHuntGame.Companion.administratorId
 import edu.missouristate.mars.plugin.tools.ScavengerHuntGame.Companion.boardHeight
 import edu.missouristate.mars.plugin.tools.ScavengerHuntGame.Companion.boardWidth
+import edu.missouristate.mars.plugin.tools.ScavengerHuntGame.Companion.locationCount
 import edu.missouristate.mars.plugin.tools.ScavengerHuntGame.Round
 import java.awt.Color
 import java.awt.Graphics
 import java.awt.Graphics2D
 import java.awt.RenderingHints
 import javax.swing.JButton
+import javax.swing.JTable
 import javax.swing.table.AbstractTableModel
 import kotlin.math.roundToInt
 import kotlinx.coroutines.Dispatchers
@@ -42,6 +44,9 @@ internal class ScavengerHuntView(project: Project) : Disposable {
     private val scoreboard = ScavengerScoreboard()
     private val table = JBTable(scoreboard).apply {
         preferredScrollableViewportSize = JBDimension(240, 135)
+        autoResizeMode = JTable.AUTO_RESIZE_OFF
+        sizeScoreboardColumns()
+        addPropertyChangeListener("font") { sizeScoreboardColumns() }
         autoCreateRowSorter = true
         accessibleContext.accessibleName = toolsMessages.getMessage("scavenger.scoreboard")
         emptyText.text = toolsMessages.getMessage("scavenger.waiting")
@@ -130,6 +135,23 @@ internal class ScavengerHuntView(project: Project) : Disposable {
     override fun dispose() {
         refreshJob.cancel()
         select(null)
+    }
+}
+
+private fun JBTable.sizeScoreboardColumns() {
+    val samples = listOf(
+        "",
+        toolsMessages.getMessage("scavenger.point", boardWidth, boardHeight),
+        "",
+        toolsMessages.getMessage("scavenger.visits", locationCount, locationCount),
+        Long.MAX_VALUE.toString(),
+    )
+    val metrics = getFontMetrics(font)
+    for ((index, sample) in samples.withIndex()) {
+        val column = columnModel.getColumn(index)
+        val width = maxOf(metrics.stringWidth(sample), metrics.stringWidth(column.headerValue.toString())) + JBUI.scale(16)
+        column.preferredWidth = width
+        column.width = width
     }
 }
 

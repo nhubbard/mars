@@ -22,6 +22,7 @@ import com.intellij.util.ui.withForcedRespectIsShowingClientProperty
 import com.intellij.util.ui.withShowingChanged
 import edu.missouristate.mars.plugin.run.MarsRunService
 import java.awt.image.BufferedImage
+import java.awt.event.ActionEvent
 import java.awt.event.FocusEvent
 import javax.swing.JButton
 import javax.swing.JComponent
@@ -203,6 +204,29 @@ class ScavengerHuntPlatformTest {
             withContext(Dispatchers.EDT) {
                 val scoreboard = table()
                 assertEquals("Finish", scoreboard.getColumnName(4))
+                scoreboard.font = scoreboard.font.deriveFont(24f)
+                val outer = assertInstanceOf(JScrollPane::class.java, hunt.component)
+                outer.setSize(JBUI.scale(295), JBUI.scale(350))
+                outer.doLayout()
+                outer.viewport.doLayout()
+                outer.viewport.view.doLayout()
+                val scroll = SwingUtilities.getAncestorOfClass(JScrollPane::class.java, scoreboard) as JScrollPane
+                scroll.setSize(JBUI.scale(205), JBUI.scale(115))
+                scroll.doLayout()
+                scroll.viewport.doLayout()
+                scoreboard.doLayout()
+                val position = scoreboard.getCellRect(0, 1, false)
+                val renderedPosition = scoreboard.prepareRenderer(scoreboard.getCellRenderer(0, 1), 0, 1)
+                assertTrue(position.width >= renderedPosition.preferredSize.width)
+                assertTrue(scroll.horizontalScrollBar.isVisible)
+                scoreboard.changeSelection(0, 0, false, false)
+                scoreboard.actionMap.get("selectNextColumn").actionPerformed(
+                    ActionEvent(scoreboard, ActionEvent.ACTION_PERFORMED, "selectNextColumn"),
+                )
+                assertEquals(1, scoreboard.selectedColumn)
+                assertTrue(scroll.viewport.viewRect.contains(position)) {
+                    "Position cell $position outside ${scroll.viewport.viewRect}"
+                }
                 scoreboard.rowSorter.toggleSortOrder(2)
                 assertEquals(0, scoreboard.getValueAt(0, 0))
                 scoreboard.rowSorter.toggleSortOrder(2)

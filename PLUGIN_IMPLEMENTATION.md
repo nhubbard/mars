@@ -2266,10 +2266,14 @@ After the MarsBot status labels were split, clean macOS and Ubuntu ARM64
 replays of `a15f5b41` repeated both keyboard checks at 150% zoom in High
 Contrast. Both passed 2,033 Jupiter tests and both coverage gates. Ubuntu
 Plugin Verifier reported compatibility with `IU-263.7307.200`. The
-Scavenger Hunt scoreboard still truncates coordinates and some column
-headings at this dock width. The screenshots and reports are under
+Scavenger Hunt scoreboard truncated coordinates and some column headings
+at this dock width in these replays. The screenshots and reports are under
 `mars5/.gradle/release-host-checks/marsbot-font-fit` and
 `mars5/.gradle/release-host-checks/linux-arm64-marsbot-font-fit`.
+
+The scoreboard sizes its columns for the current font, complete coordinate
+values, and column headings. It scrolls horizontally inside the tool when
+space is limited. Left and Right Arrow bring the selected column into view.
 
 **Reset** starts a fresh round at the next instruction boundary without
 a store to the device's ports. Debug backstep restores the previous round
