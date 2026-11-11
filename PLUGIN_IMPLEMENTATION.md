@@ -175,8 +175,8 @@ be in the same file. The signature, its inline comment, and the terminator stay
 visible. The initial fast pass and indexing-mode pass use the current file's
 written directives. Unsaved changes in MARS documents and explicit assembly
 entry selection can add or remove folds in other open MARS editors through
-IntelliJ's folding refresh API. Platform tests also cover creating, rewriting,
-and deleting an unopened include on disk.
+IntelliJ's folding refresh API. Platform tests cover creating, rewriting,
+and deleting an unopened include on disk outside the project roots.
 
 ## EditorConfig indentation
 

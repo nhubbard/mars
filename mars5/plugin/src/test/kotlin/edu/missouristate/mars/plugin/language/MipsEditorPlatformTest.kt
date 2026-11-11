@@ -732,6 +732,8 @@ class MipsEditorPlatformTest {
                 VfsUtil.markDirtyAndRefresh(false, true, true, file.parent)
             }
             assertFold(false)
+            // Load the directory before writing so discovery happens through a VFS refresh event.
+            readAction { assertEquals(listOf(file), file.parent.children.toList()) }
             changeOnDisk { alias.writeText(definitions) }
             assertFold(true)
             changeOnDisk { alias.writeText(definitions.replace(".end_macro", "nop")) }
