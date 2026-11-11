@@ -2772,10 +2772,12 @@ and font style to the written register. It also checked the saved scheme.
 ## New MIPS files and projects
 
 In an existing project, select a directory in the Project view and choose
-**New → MIPS File**. The native template popup offers `.asm` and `.s`. An
-explicit `.asm` or `.s` suffix in the name takes precedence over the selected
-kind. The starter contains `.text` and `nop`, so it assembles without
-introducing global symbols. IntelliJ opens the new file in the editor and
+**New → MIPS File**. The native template popup offers `.asm`, `.s`, `.mars`,
+and `.inc`. A supported suffix typed in the name takes precedence over the
+selected kind. The assembly templates contain `.text` and `nop`, so they
+assemble without introducing global symbols. The `.inc` template starts
+with a comment and can be included from any assembly source.
+IntelliJ opens the new file in the editor and
 handles name conflicts and nested paths. The project's ordered assembly sources
 are configured separately in MARS Assembly settings.
 
@@ -2812,6 +2814,10 @@ The PNG decoder fixture parses the viewer and both libraries under their
 original names and as a `.mars` entry with two `.inc` libraries. It compares
 the emitted machine words and checks that the renamed source map retains
 instruction origins in all three files.
+The parser also checks a `.mars` entry with a Unicode-named `.inc` library,
+non-ASCII labels and macro names, a SPIM formal, and an Arabic-Indic integer.
+The fixture compares the assembled instruction, data values, and macro
+expansion locations with the original source.
 The example fixture copy includes authored assembly files and excludes generated
 catalog cases and Gradle state.
 

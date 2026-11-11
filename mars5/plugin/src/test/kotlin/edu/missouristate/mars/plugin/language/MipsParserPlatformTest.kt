@@ -1288,6 +1288,50 @@ class MipsParserPlatformTest {
     }
 
     @Test
+    fun `Unicode include paths symbols and decimal digits preserve syntax and expansion origins`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val library = """
+                .eqv 定数 ٧
+                .macro 印字 (${'$'}量)
+                  ADDIU ${'$'}t0, ${'$'}zero, ${'$'}量
+                .end_macro
+            """.trimIndent()
+            val source = """
+                .include "常用.inc"
+                .data
+                .數據: .word 定数
+                .word .數據
+                .text
+                入口: 印字(定数)
+                j 入口
+            """.trimIndent()
+            val entry = directory.resolve("入口.mars").also { it.writeText(source) }
+            val include = directory.resolve("常用.inc").also { it.writeText(library) }
+            val context = project.get().service<MarsSessionService>().context
+            val program = context.assemble(listOf(entry), null, true, false)
+            val expanded = program.machineList.first()
+            assertEquals(0x24080007, expanded.binaryStatement)
+            val origin = program.sourceMap().origins().getValue(expanded.address)
+            assertEquals(include.toRealPath(), origin.location().file().toRealPath())
+            assertEquals(3, origin.location().line())
+            assertEquals(entry.toRealPath(), origin.caller().location().file().toRealPath())
+            assertEquals(6, origin.caller().location().line())
+            val base = context.memory.dataBaseAddress
+            assertEquals(7, context.memory.getWordNoNotify(base))
+            assertEquals(base, context.memory.getWordNoNotify(base + 4))
+
+            readAction {
+                val libraryRoot = assertParses(library, include.fileName.toString()).node
+                assertEquals("٧", descendants(libraryRoot, "REPLACEMENT").single().text)
+                assertEquals("\$量", descendants(libraryRoot, "MACRO_PARAMETER").single().text)
+                val root = assertParses(source, entry.fileName.toString()).node
+                assertEquals(".include \"常用.inc\"", descendants(root, "INCLUDE_LINE").single().text)
+                assertEquals(listOf(".數據:", "入口:"), descendants(root, "LABEL").map { it.text }.toList())
+                assertEquals("印字(定数)", descendants(root, "OPERATION_CANDIDATE").single().text)
+            }
+        }
+
+    @Test
     fun `character literals may contain delimiters and assembler escapes`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
         val literals = listOf("','", "'#'", "':'", "'('", "')'", "'+'", "'-'", "'\"'", "' '",
             "'\\''", "'\\\\'", "'\\n'", "'\\0'", "'\\+77'", "'\\-00'", "'\\١٢٣'", "'\\377'", "'é'")
