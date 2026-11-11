@@ -52,6 +52,9 @@ class MipsDeclarationIndexPlatformTest {
             .1_private: .word 1
             ${'$'}gcc: .word 2
             .extern reserved 4
+            .extern ${'$'}t0, 4
+            .extern .half, 2
+            .extern .set, 4
             .eqv UNDEFINED
             replaced: @ .include "ignored.s"
             .eqv REMOVED 7 .include "ignored.s"
@@ -82,6 +85,9 @@ class MipsDeclarationIndexPlatformTest {
             assertEquals(listOf(MipsDeclarationSite(SymbolKind.LABEL, source.indexOf(".1_private"), -1)), sites(".1_private"))
             assertEquals(1, sites("\$gcc").size)
             assertEquals(listOf(MipsDeclarationSite(SymbolKind.EXTERNAL, source.indexOf("reserved"), -1)), sites("reserved"))
+            for (name in listOf("\$t0", ".half", ".set")) {
+                assertEquals(listOf(MipsDeclarationSite(SymbolKind.EXTERNAL, source.indexOf(name), -1)), sites(name))
+            }
             for (absent in listOf("ghost", "fake", "ignored", "\$v0", "%x", "replaced", "REMOVED", "UNDEFINED", "NaN", "Infinity")) {
                 assertTrue(sites(absent).isEmpty(), absent)
             }
@@ -125,7 +131,7 @@ class MipsDeclarationIndexPlatformTest {
             assertTrue(index.getContainingFiles(MipsDeclarationIndex.NAME, "ignored", scope).isEmpty())
             val extension = MipsDeclarationIndex()
             assertSame(MipsDeclarationIndex.NAME, extension.name)
-            assertEquals(27, extension.version)
+            assertEquals(28, extension.version)
             assertTrue(extension.dependsOnFileContent())
             assertTrue(extension.inputFilter.acceptInput(file.virtualFile))
             assertTrue(extension.keyDescriptor.isEqual("key", "key"))

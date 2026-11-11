@@ -86,7 +86,8 @@ segment_switch ::= SEGMENT segment_address_symbol? assembly_token* {elementType=
 segment_address_symbol ::= WORD | DOLLAR_WORD
 // Retain the same operand node when renaming a macro formal between SPIM and percent spellings.
 external_statement ::= EXTERN external_name? raw_operand* {elementType=directive_statement}
-external_name ::= WORD | DOLLAR_WORD | MNEMONIC | PARAMETER
+// The assembler reserves the spelling even if the lexer classifies it as a register or directive.
+external_name ::= name | PARAMETER
 private raw_operand ::= reference_expr | assembly_token
 // Directive-specific semantic checks use the canonical Java assembler catalog.
 directive_statement ::= (DIRECTIVE | INCLUDE) operand_line? {pin=1}

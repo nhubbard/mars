@@ -31,6 +31,7 @@ import edu.missouristate.mars.plugin.MarsMemoryLayout
 import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.analysis.MacroBoundaryProblem.Kind
 import edu.missouristate.mars.plugin.analysis.mipsSourceTimeline
+import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
 import edu.missouristate.mars.util.Binary
 import java.nio.file.Path
 import kotlin.io.path.writeText
@@ -1583,6 +1584,29 @@ class MipsParserPlatformTest {
                 }.toSet()
                 assertEquals(Directives.getDirectiveList().map { it.name }.toSet(), parsed)
             }
+        }
+    }
+
+    @Test
+    fun `extern recognizes names spelled like registers and directives`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+        val names = listOf("\$t0", ".word", ".set")
+        val source = names.joinToString("\n", postfix = "\n.text\nmain: nop\n") { ".extern $it, 4" }
+        val entry = directory.resolve("extern.mars").also { it.writeText(source) }
+        val context = project.get().service<MarsSessionService>().context
+        context.assemble(listOf(entry), null, true, false)
+        val base = context.memory.externBaseAddress
+        assertEquals(listOf(base, base + 4, base + 8), names.map(context.symbolTable::getAddress))
+
+        readAction {
+            val file = assertParses(source, entry.fileName.toString())
+            val declarations = PsiTreeUtil.findChildrenOfType(file, MipsDeclaration::class.java)
+                .filter { it.node.elementType == MipsTypes.psi("EXTERNAL_NAME") }
+            assertEquals(names, declarations.map { it.name })
+            assertEquals(names.map { source.indexOf(it) }, declarations.map { it.textOffset })
+            for (declaration in declarations) {
+                assertSame(declaration, MipsDeclaration.findAt(file, declaration.textOffset, declaration.name!!))
+            }
+            assertEquals("nop", descendants(file.node, "INSTRUCTION").single().text)
         }
     }
 
