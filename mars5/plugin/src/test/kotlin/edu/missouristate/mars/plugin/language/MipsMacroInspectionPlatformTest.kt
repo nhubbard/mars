@@ -650,7 +650,7 @@ class MipsMacroInspectionPlatformTest {
     private val invalidNameMessage = "Invalid MARS macro name"
     private val unterminatedIncludeMessage = "Unterminated .include path"
 
-    private fun errors(): List<Pair<String, String>> = fixture.doHighlighting()
+    private suspend fun errors(): List<Pair<String, String>> = fixture.highlightAfterMipsRefresh()
         .filter { it.severity == HighlightSeverity.ERROR }
         .sortedBy { it.startOffset }
         .map { fixture.file.text.substring(it.startOffset, it.endOffset) to it.description.orEmpty() }
@@ -692,7 +692,7 @@ class MipsMacroInspectionPlatformTest {
 
     private data class Warning(val offset: Int, val token: String, val message: String)
 
-    private fun warnings(): List<Warning> = fixture.doHighlighting()
+    private suspend fun warnings(): List<Warning> = fixture.highlightAfterMipsRefresh()
         .filter { it.severity == HighlightSeverity.WARNING }
         .mapNotNull { info ->
             val message = info.description ?: return@mapNotNull null

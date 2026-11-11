@@ -42,10 +42,12 @@ class MipsIncludeQuickFixPlatformTest {
         }
         IndexingTestUtil.suspendUntilIndexesAreReady(current)
         withContext(Dispatchers.EDT) {
+            fixture.awaitMipsRefresh()
             val fix = requireNotNull(fixture.getAvailableIntention(closeQuote))
             fixture.checkPreviewAndLaunchAction(fix)
             fixture.checkResult(repaired)
             assertEquals(target, fixture.file.findReferenceAt(repaired.indexOf(path) + 2)?.resolve()?.containingFile?.virtualFile)
+            fixture.awaitMipsRefresh()
             assertNull(fixture.getAvailableIntention(closeQuote))
 
             val undo = UndoManager.getInstance(current)
@@ -67,8 +69,10 @@ class MipsIncludeQuickFixPlatformTest {
                 ".include \"directory\\<caret>\nnop\n" to ".include \"directory\\\"\nnop\n",
             )) {
                 fixture.configureByText("entry.asm", written)
+                fixture.awaitMipsRefresh()
                 fixture.launchAction(closeQuote)
                 fixture.checkResult(closed)
+                fixture.awaitMipsRefresh()
                 assertNull(fixture.getAvailableIntention(closeQuote))
             }
         }
@@ -89,6 +93,7 @@ class MipsIncludeQuickFixPlatformTest {
         }
         IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
         withContext(Dispatchers.EDT) {
+            fixture.awaitMipsRefresh()
             val fix = fixture.availableIntentions.single { it.text.contains(name) && it.text.startsWith("Create file") }
             fixture.launchAction(fix)
             val created = fixture.tempDirFixture.getFile("actual/$name")
@@ -96,7 +101,7 @@ class MipsIncludeQuickFixPlatformTest {
             assertNull(fixture.tempDirFixture.getFile("local/$name"))
             fixture.configureFromExistingVirtualFile(entry)
             fixture.checkResult(text)
-            assertTrue(fixture.doHighlighting().none { it.description?.startsWith("Error reading include file") == true })
+            assertTrue(fixture.highlightAfterMipsRefresh().none { it.description?.startsWith("Error reading include file") == true })
         }
     }
 
@@ -109,13 +114,14 @@ class MipsIncludeQuickFixPlatformTest {
             val entry = fixture.addFileToProject("entry.asm", source).virtualFile
             fixture.configureFromExistingVirtualFile(entry)
             fixture.editor.caretModel.moveToOffset(source.indexOf("new.s"))
+            fixture.awaitMipsRefresh()
             val fix = fixture.availableIntentions.single { it.text == "Create file $path" }
             fixture.launchAction(fix)
             assertEquals("", fixture.tempDirFixture.getFile(path)?.contentsToByteArray()?.decodeToString())
             assertEquals("# existing sibling\n", fixture.tempDirFixture.getFile("new.s")?.contentsToByteArray()?.decodeToString())
             fixture.configureFromExistingVirtualFile(entry)
             fixture.checkResult(source)
-            assertTrue(fixture.doHighlighting().none { it.description?.startsWith("Error reading include file") == true })
+            assertTrue(fixture.highlightAfterMipsRefresh().none { it.description?.startsWith("Error reading include file") == true })
         }
     }
 
@@ -126,12 +132,14 @@ class MipsIncludeQuickFixPlatformTest {
             fixture.tempDirFixture.findOrCreateDir("directory")
             for (path in listOf("missing/../new.s", "existing.s/nested/new.s", "directory", "bad\u0000name.s")) {
                 fixture.configureByText("entry.asm", ".include \"<caret>$path\"\n")
+                fixture.awaitMipsRefresh()
                 assertTrue(fixture.availableIntentions.none { it.text.startsWith("Create file") })
             }
             val readOnly = fixture.tempDirFixture.findOrCreateDir("read-only")
             WriteAction.run<IOException> { readOnly.isWritable = false }
             try {
                 fixture.configureByText("entry.asm", ".include \"read-only/<caret>new.s\"\n")
+                fixture.awaitMipsRefresh()
                 assertTrue(fixture.availableIntentions.none { it.text.startsWith("Create file") })
             } finally {
                 WriteAction.run<IOException> { readOnly.isWritable = true }
@@ -150,6 +158,7 @@ class MipsIncludeQuickFixPlatformTest {
                 ".include \"pa<caret>rt.s\"",
             )) {
                 fixture.configureByText("entry.asm", "$line\ntail: nop\n")
+                fixture.awaitMipsRefresh()
                 assertNull(fixture.getAvailableIntention(closeQuote))
             }
         }

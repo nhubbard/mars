@@ -25,6 +25,7 @@ import com.intellij.testFramework.DumbModeTestUtils
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.LightVirtualFile
 import com.intellij.testFramework.common.timeoutRunBlocking
+import com.intellij.testFramework.fixtures.CodeInsightTestFixture
 import com.intellij.testFramework.junit5.TestApplication
 import edu.missouristate.mars.api.AssemblyError
 import edu.missouristate.mars.api.AssemblySymbolMap
@@ -166,12 +167,10 @@ class MipsAssemblyAnnotatorPlatformTest {
             file.findReferenceAt(operand)?.resolve()?.let { it.text to it.containingFile.name }
         }
         suspend fun names() = readAction { analysis.labelCompletionNames(file, file.findElementAt(operand)!!, "gen") }
-        suspend fun highlight() = withContext(Dispatchers.EDT) { fixture.doHighlighting() }
-
         assertNull(target())
         val captured = readAction { annotator.collectInformation(file)!! }
         val older = withContext(Dispatchers.Default) { annotator.doAnnotate(captured) }
-        highlight()
+        fixture.highlightAfterMipsRefresh()
         assertEquals("%entry" to "defs.s", target())
         assertEquals(setOf("generated", "generatedOther"), names())
         withContext(Dispatchers.EDT) {
@@ -184,7 +183,7 @@ class MipsAssemblyAnnotatorPlatformTest {
         }
 
         withContext(Dispatchers.EDT) { edit(entry, source.substring(0, operand) + "gen\n") }
-        highlight()
+        fixture.highlightAfterMipsRefresh()
         assertNull(target())
         withContext(Dispatchers.EDT) {
             fixture.editor.caretModel.moveToOffset(operand + 3)
@@ -196,7 +195,7 @@ class MipsAssemblyAnnotatorPlatformTest {
         val replacement = source.replace("generated", "genFreshX")
         withContext(Dispatchers.EDT) { edit(entry, replacement) }
         assertTrue(names().isEmpty())
-        highlight()
+        fixture.highlightAfterMipsRefresh()
         assertEquals(setOf("genFreshX", "genFreshXOther"), names())
         readAction { assertTrue(annotator.acceptResult(file, older).isEmpty()) }
         assertEquals(setOf("genFreshX", "genFreshXOther"), names())
@@ -219,7 +218,7 @@ class MipsAssemblyAnnotatorPlatformTest {
             GotoDeclarationAction.findTargetElement(project, fixture.editor, 3)
                 ?.let { it.containingFile.virtualFile to it.textOffset }
         }
-        withContext(Dispatchers.EDT) { fixture.doHighlighting() }
+        withContext(Dispatchers.EDT) { fixture.highlightAfterMipsRefresh() }
         assertEquals(first, target()?.first)
         withContext(Dispatchers.EDT) { edit(second, selectedSource) }
         assertNull(target())
@@ -229,7 +228,7 @@ class MipsAssemblyAnnotatorPlatformTest {
         val leading = "# moved\n"
         withContext(Dispatchers.EDT) { edit(second, leading + selectedSource) }
         assertEquals(second to leading.length, target())
-        withContext(Dispatchers.EDT) { fixture.doHighlighting() }
+        withContext(Dispatchers.EDT) { fixture.highlightAfterMipsRefresh() }
         assertEquals(second to leading.length, target())
         withContext(Dispatchers.EDT) { edit(second, selectedSource.replace("target:", "other:")) }
         assertNull(target())
@@ -248,7 +247,7 @@ class MipsAssemblyAnnotatorPlatformTest {
         val session = project.service<MarsSessionService>().context
         val program = session.assemble(listOf(include.toNioPath()))
         withContext(Dispatchers.EDT) {
-            val highlights = fixture.doHighlighting()
+            val highlights = fixture.highlightAfterMipsRefresh()
             val undefined = highlights.single { it.description?.contains("missing") == true }
             assertEquals(HighlightSeverity.ERROR, undefined.severity)
             assertEquals("missing", source.substring(undefined.startOffset, undefined.endOffset))
@@ -256,11 +255,11 @@ class MipsAssemblyAnnotatorPlatformTest {
             assertEquals(HighlightSeverity.WARNING, warning.severity)
             assertEquals(".set", source.substring(warning.startOffset, warning.endOffset))
             edit(main, ".include \"included.s\"\nj known\n")
-            assertTrue(fixture.doHighlighting().none {
+            assertTrue(fixture.highlightAfterMipsRefresh().none {
                 it.description?.contains("missing") == true || it.description?.contains("ignores the .set directive") == true
             })
             edit(include, "known: nop\nj missing\n")
-            assertTrue(fixture.doHighlighting().none { it.description?.contains("missing") == true })
+            assertTrue(fixture.highlightAfterMipsRefresh().none { it.description?.contains("missing") == true })
         }
         assertSame(program, session.program)
     }
@@ -279,7 +278,7 @@ class MipsAssemblyAnnotatorPlatformTest {
         val program = project.service<MarsSessionService>().context.assemble(listOf(entry.toNioPath()))
         assertEquals(listOf(0), program.machineList.map { it.binaryStatement })
         withContext(Dispatchers.EDT) {
-            fun errors() = fixture.doHighlighting().filter { it.severity == HighlightSeverity.ERROR }
+            suspend fun errors() = fixture.highlightAfterMipsRefresh().filter { it.severity == HighlightSeverity.ERROR }
             assertTrue(errors().isEmpty())
             edit(segment, ".ktext\n")
             assertTrue(errors().isNotEmpty())
@@ -312,7 +311,7 @@ class MipsAssemblyAnnotatorPlatformTest {
         val program = project.service<MarsSessionService>().context.assemble(listOf(entry.toNioPath()))
         assertEquals(listOf(0), program.machineList.map { it.binaryStatement })
         withContext(Dispatchers.EDT) {
-            fun errors() = fixture.doHighlighting().filter { it.severity == HighlightSeverity.ERROR }
+            suspend fun errors() = fixture.highlightAfterMipsRefresh().filter { it.severity == HighlightSeverity.ERROR }
             assertTrue(PsiTreeUtil.hasErrorElements(fixture.file))
             assertTrue(errors().isEmpty())
             edit(opening, "# no macro opening\n")
@@ -342,7 +341,7 @@ class MipsAssemblyAnnotatorPlatformTest {
         val program = project.service<MarsSessionService>().context.assemble(listOf(entry.toNioPath()))
         assertEquals(listOf(0), program.machineList.map { it.binaryStatement })
         withContext(Dispatchers.EDT) {
-            fun errors() = fixture.doHighlighting().filter { it.severity == HighlightSeverity.ERROR }
+            suspend fun errors() = fixture.highlightAfterMipsRefresh().filter { it.severity == HighlightSeverity.ERROR }
             assertTrue(errors().isEmpty())
             for (include in listOf(".include \"missing.s\"", ".include \"unfinished")) {
                 val first = ".word )\n.word @\n"
@@ -376,7 +375,7 @@ class MipsAssemblyAnnotatorPlatformTest {
         val shared = fixture.file as MipsFile
         suspend fun selected() = readAction { analysis.selectedAssembly(shared)?.entry }
         suspend fun hasErrors() = withContext(Dispatchers.EDT) {
-            fixture.doHighlighting().any { it.severity == HighlightSeverity.ERROR }
+            fixture.highlightAfterMipsRefresh().any { it.severity == HighlightSeverity.ERROR }
         }
 
         assertTrue(build.assemble(macro.toNioPath()))
@@ -427,7 +426,7 @@ class MipsAssemblyAnnotatorPlatformTest {
             assertEquals("outer", analysis.editorTimeline(leaf).macroAt(leaf, 0)?.name)
         }
         withContext(Dispatchers.EDT) {
-            fun hasErrors() = fixture.doHighlighting().any { it.severity == HighlightSeverity.ERROR }
+            suspend fun hasErrors() = fixture.highlightAfterMipsRefresh().any { it.severity == HighlightSeverity.ERROR }
             assertTrue(!hasErrors())
             edit(bridge.virtualFile, "# moved\n" + bridgeText.replace(".macro outer\n", ""))
             assertTrue(hasErrors())
@@ -484,7 +483,7 @@ class MipsAssemblyAnnotatorPlatformTest {
         val program = project.service<MarsSessionService>().context.assemble(listOf(main.toNioPath()))
         assertEquals(listOf(0), program.machineList.map { it.binaryStatement })
         withContext(Dispatchers.EDT) {
-            fun errors() = fixture.doHighlighting().filter { it.severity == HighlightSeverity.ERROR }
+            suspend fun errors() = fixture.highlightAfterMipsRefresh().filter { it.severity == HighlightSeverity.ERROR }
             assertTrue(errors().isEmpty())
             val malformed = source.replace("CLOSE\nnop", ".macro 123\n.end_macro extra\nCLOSE\nnop")
             edit(main, malformed)
@@ -539,7 +538,7 @@ class MipsAssemblyAnnotatorPlatformTest {
         }
         IndexingTestUtil.suspendUntilIndexesAreReady(project)
         withContext(Dispatchers.EDT) {
-            fun errors() = fixture.doHighlighting().filter { it.severity == HighlightSeverity.ERROR }
+            suspend fun errors() = fixture.highlightAfterMipsRefresh().filter { it.severity == HighlightSeverity.ERROR }
             assertTrue(errors().isEmpty())
             edit(main, source.replace(".text\nselect(.data)", ".data\nselect(.text)"))
             val error = errors().single()
@@ -560,18 +559,18 @@ class MipsAssemblyAnnotatorPlatformTest {
         }
         IndexingTestUtil.suspendUntilIndexesAreReady(project)
         withContext(Dispatchers.EDT) {
-            val error = fixture.doHighlighting().single { it.severity == HighlightSeverity.ERROR }
+            val error = fixture.highlightAfterMipsRefresh().single { it.severity == HighlightSeverity.ERROR }
             assertEquals("Unterminated string literal", error.description)
             assertEquals(unfinished, source.substring(error.startOffset, error.endOffset))
             edit(main, source.replace(unfinished, "$unfinished\""))
-            assertTrue(fixture.doHighlighting().none { it.severity == HighlightSeverity.ERROR })
+            assertTrue(fixture.highlightAfterMipsRefresh().none { it.severity == HighlightSeverity.ERROR })
 
             val deferred = ".macro later\n.asciiz $unfinished\n.end_macro\n.data\n.text\nnext: nop\n"
             edit(main, deferred)
-            assertTrue(fixture.doHighlighting().none { it.severity == HighlightSeverity.ERROR })
+            assertTrue(fixture.highlightAfterMipsRefresh().none { it.severity == HighlightSeverity.ERROR })
             val invoked = deferred.replace(".data\n", ".data\nlater\n")
             edit(main, invoked)
-            val expanded = fixture.doHighlighting().single { it.severity == HighlightSeverity.ERROR }
+            val expanded = fixture.highlightAfterMipsRefresh().single { it.severity == HighlightSeverity.ERROR }
             assertEquals("Unterminated string literal", expanded.description)
             assertEquals(unfinished, invoked.substring(expanded.startOffset, expanded.endOffset))
         }
@@ -589,12 +588,12 @@ class MipsAssemblyAnnotatorPlatformTest {
         }
         IndexingTestUtil.suspendUntilIndexesAreReady(project)
         withContext(Dispatchers.EDT) {
-            val error = fixture.doHighlighting().single { it.severity == HighlightSeverity.ERROR }
+            val error = fixture.highlightAfterMipsRefresh().single { it.severity == HighlightSeverity.ERROR }
             assertEquals("Circular .eqv expansion FIRST -> SECOND -> FIRST", error.description)
             assertEquals(source.indexOf("FIRST"), error.startOffset)
             assertEquals("FIRST", source.substring(error.startOffset, error.endOffset))
             edit(parent, "${definitions.replace("SECOND FIRST + 1", "SECOND 7")}.include \"part.s\"\n")
-            assertTrue(fixture.doHighlighting().none { it.severity == HighlightSeverity.ERROR })
+            assertTrue(fixture.highlightAfterMipsRefresh().none { it.severity == HighlightSeverity.ERROR })
         }
     }
 
@@ -612,11 +611,11 @@ class MipsAssemblyAnnotatorPlatformTest {
         val diagnostics = readAction { annotator.acceptResult(fixture.file as MipsFile, assembled) }
         assertEquals(listOf(source.indexOf("'ab'"), source.lastIndexOf("BROKEN")), diagnostics.map { it.second.startOffset })
         withContext(Dispatchers.EDT) {
-            val error = fixture.doHighlighting().single { it.severity == HighlightSeverity.ERROR }
+            val error = fixture.highlightAfterMipsRefresh().single { it.severity == HighlightSeverity.ERROR }
             assertEquals(source.indexOf("'ab'"), error.startOffset)
             assertEquals("Invalid MARS character literal", error.description)
             edit(file, source.replace("'ab'", "'a'"))
-            assertTrue(fixture.doHighlighting().none { it.severity == HighlightSeverity.ERROR })
+            assertTrue(fixture.highlightAfterMipsRefresh().none { it.severity == HighlightSeverity.ERROR })
         }
     }
 
@@ -642,7 +641,7 @@ class MipsAssemblyAnnotatorPlatformTest {
                 val (error, range) = readAction { annotator.acceptResult(file, result).single() }
                 assertEquals("Unterminated .include path", error.message())
                 assertEquals(unfinished, range.substring(source))
-                val highlight = fixture.doHighlighting().single { it.severity == HighlightSeverity.ERROR }
+                val highlight = fixture.highlightAfterMipsRefresh().single { it.severity == HighlightSeverity.ERROR }
                 assertEquals(error.message(), highlight.description)
                 assertEquals(range, TextRange(highlight.startOffset, highlight.endOffset))
                 assertEquals(MipsTypes.psi("OPERATION"), file.findElementAt(source.lastIndexOf("nop"))?.parent?.elementType)
@@ -651,7 +650,7 @@ class MipsAssemblyAnnotatorPlatformTest {
             edit(main, completed)
             val captured = readAction { requireNotNull(annotator.collectInformation(file)).capture.sources }
             assertEquals(setOf(entryPath, includePath), captured.revisions.keys)
-            assertTrue(fixture.doHighlighting().none { it.severity == HighlightSeverity.ERROR })
+            assertTrue(fixture.highlightAfterMipsRefresh().none { it.severity == HighlightSeverity.ERROR })
             assertEquals(include, file.findReferenceAt(completed.indexOf("part.s"))?.resolve()?.containingFile?.virtualFile)
         }
     }
@@ -678,7 +677,7 @@ class MipsAssemblyAnnotatorPlatformTest {
         IndexingTestUtil.suspendUntilIndexesAreReady(project)
         readAction { assertNull(annotator.collectInformation(file)) }
         withContext(Dispatchers.EDT) {
-            val errors = fixture.doHighlighting().filter { it.description == "Unterminated .include path" }
+            val errors = fixture.highlightAfterMipsRefresh().filter { it.description == "Unterminated .include path" }
             assertTrue(errors.all { it.severity == HighlightSeverity.ERROR })
             assertEquals(
                 listOf("\"unfinished path", "\"replacement path", "\"hidden path"),
@@ -707,7 +706,7 @@ class MipsAssemblyAnnotatorPlatformTest {
         IndexingTestUtil.suspendUntilIndexesAreReady(project)
         withContext(Dispatchers.EDT) {
             assertNull(annotator.collectInformation(fixture.file))
-            fun pathErrors() = fixture.doHighlighting().filter { it.description?.startsWith("Error reading include file") == true }
+            suspend fun pathErrors() = fixture.highlightAfterMipsRefresh().filter { it.description?.startsWith("Error reading include file") == true }
                 .map { fixture.file.text.substring(it.startOffset, it.endOffset) }.toSet()
             assertEquals(setOf("\"missing.s\"", "\"directory\""), pathErrors())
             fixture.addFileToProject("missing.s", "nop\n")
@@ -803,35 +802,34 @@ class MipsAssemblyAnnotatorPlatformTest {
             withContext(Dispatchers.EDT) {
                 fixture.configureFromExistingVirtualFile(file)
                 assertNull(annotator.collectInformation(fixture.file))
-                val errors = fixture.doHighlighting().filter { it.severity == HighlightSeverity.ERROR }
-                val error = errors.single { it.description == "Recursive .include cycle through $target" }
-                assertEquals(if (file == first) 2 else 1, errors.size)
-                assertEquals("\"$target\"", fixture.file.text.substring(error.startOffset, error.endOffset))
             }
+            val errors = fixture.highlightAfterMipsRefresh().filter { it.severity == HighlightSeverity.ERROR }
+            val error = errors.single { it.description == "Recursive .include cycle through $target" }
+            assertEquals(if (file == first) 2 else 1, errors.size)
+            readAction { assertEquals("\"$target\"", fixture.file.text.substring(error.startOffset, error.endOffset)) }
         }
 
         withContext(Dispatchers.EDT) {
             fixture.configureFromExistingVirtualFile(first)
             edit(third, "nop\n")
         }
-        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        val afterCycleBreak = fixture.highlightAfterMipsRefresh().filter { it.severity == HighlightSeverity.ERROR }
+        assertTrue(afterCycleBreak.single().description.startsWith("Error reading include file"))
         withContext(Dispatchers.EDT) {
-            val errors = fixture.doHighlighting().filter { it.severity == HighlightSeverity.ERROR }
-            assertTrue(errors.single().description.startsWith("Error reading include file"))
             edit(third, ".include \"a.asm\"\n")
         }
-        IndexingTestUtil.suspendUntilIndexesAreReady(project)
-        withContext(Dispatchers.EDT) {
-            val errors = fixture.doHighlighting().filter { it.severity == HighlightSeverity.ERROR }
-            assertEquals(setOf("Recursive .include cycle through b.s", "Error reading include file missing.s"), errors.map { it.description }.toSet())
-        }
+        val restoredCycle = fixture.highlightAfterMipsRefresh().filter { it.severity == HighlightSeverity.ERROR }
+        assertEquals(setOf("Recursive .include cycle through b.s", "Error reading include file missing.s"),
+            restoredCycle.map { it.description }.toSet())
 
         project.service<MarsBuildService>().assemble(first.toNioPath())
         withContext(Dispatchers.EDT) {
+            val documents = FileDocumentManager.getInstance()
+            documents.saveDocument(documents.getDocument(third)!!)
             fixture.configureFromExistingVirtualFile(third)
-            val errors = fixture.doHighlighting().filter { it.severity == HighlightSeverity.ERROR }
-            assertTrue(errors.single().description.startsWith("Recursive include of file"))
         }
+        val selectedErrors = fixture.highlightAfterMipsRefresh().filter { it.severity == HighlightSeverity.ERROR }
+        assertTrue(selectedErrors.single().description.startsWith("Recursive include of file"))
     }
 
     @Test
@@ -854,4 +852,15 @@ class MipsAssemblyAnnotatorPlatformTest {
         WriteCommandAction.runWriteCommandAction(project) { document.setText(text) }
         PsiDocumentManager.getInstance(project).commitAllDocuments()
     }
+}
+
+internal suspend fun CodeInsightTestFixture.awaitMipsRefresh() {
+    IndexingTestUtil.suspendUntilIndexesAreReady(project)
+    // The forced fixture pass disallows daemon restarts while highlighting is in progress.
+    withContext(Dispatchers.IO) { project.service<MipsFoldingRefresh>().waitForRefresh() }
+}
+
+internal suspend fun CodeInsightTestFixture.highlightAfterMipsRefresh() = withContext(Dispatchers.EDT) {
+    awaitMipsRefresh()
+    doHighlighting()
 }

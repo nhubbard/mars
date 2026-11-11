@@ -220,7 +220,7 @@ class MipsFindUsagesPlatformTest {
         withContext(Dispatchers.EDT) {
             for (file in entryFiles) {
                 fixture.configureFromExistingVirtualFile(file.virtualFile)
-                fixture.doHighlighting()
+                fixture.highlightAfterMipsRefresh()
             }
         }
         val leftFile = entryFiles.first()
@@ -255,7 +255,7 @@ class MipsFindUsagesPlatformTest {
             }
             PsiDocumentManager.getInstance(current).commitDocument(document)
             assertEquals(setOf(included), realizedUsageLocations(inner))
-            fixture.doHighlighting()
+            fixture.highlightAfterMipsRefresh()
         }
         val movedDirectAlias = "left.asm" to left.replace("outer(inner)", "outer(alternative)").indexOf("CALL(5)")
         assertEquals(setOf(literal, alias, movedDirectAlias, included), realizedUsageLocations(inner))
@@ -297,7 +297,7 @@ class MipsFindUsagesPlatformTest {
         val alias = "entry.asm" to source.lastIndexOf("DEST")
         val data = "operands.txt" to body.indexOf("DEST")
         assertEquals(setOf(direct), realizedUsageLocations(target))
-        withContext(Dispatchers.EDT) { fixture.doHighlighting() }
+        withContext(Dispatchers.EDT) { fixture.highlightAfterMipsRefresh() }
         assertEquals(setOf(direct, forwarded, alias, data), realizedUsageLocations(target))
         readAction {
             val caller = fixture.file.findElementAt(forwarded.second)!!
@@ -315,7 +315,7 @@ class MipsFindUsagesPlatformTest {
         val changedForwarded = "entry.asm" to forwarded.second - 1
         val changedAlias = "entry.asm" to alias.second - 1
         assertEquals(setOf(changedDirect), realizedUsageLocations(target))
-        withContext(Dispatchers.EDT) { fixture.doHighlighting() }
+        withContext(Dispatchers.EDT) { fixture.highlightAfterMipsRefresh() }
         assertEquals(setOf(changedDirect, changedForwarded), realizedUsageLocations(target))
         assertEquals(setOf(changedAlias, data), realizedUsageLocations(other))
     }
