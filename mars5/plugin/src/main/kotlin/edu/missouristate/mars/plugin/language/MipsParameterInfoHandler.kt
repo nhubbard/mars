@@ -12,8 +12,11 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.util.PsiUtilCore
 import com.intellij.util.text.CharArrayUtil
 import edu.missouristate.mars.assembler.Macro
+import edu.missouristate.mars.assembler.RegisterNames
 import edu.missouristate.mars.assembler.TokenList
 import edu.missouristate.mars.assembler.TokenTypes
+import edu.missouristate.mars.mips.instructions.Instruction
+import edu.missouristate.mars.plugin.MarsExecutionOptions
 import edu.missouristate.mars.plugin.analysis.MacroInvocation
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.build.MarsAssemblySettings
@@ -61,23 +64,42 @@ internal class MipsParameterInfoHandler : ParameterInfoHandler<PsiElement, MipsP
         }
         val instruction = analysis.editorInstructionTokens(file, head, prefix, allowIncompleteOperand = true)
         if (instruction != null) {
-            val allowPseudo = file.project.service<MarsAssemblySettings>().executionOptions.allowPseudoInstructions
-            return instructionHint(instruction, context.offset == head.textRange.endOffset, allowPseudo)
+            val options = file.project.service<MarsAssemblySettings>().executionOptions
+            return instructionHint(instruction, context.offset == head.textRange.endOffset, options)
         }
         return analysis.macroInvocation(file, head, prefix)?.let(::macroHint)
     }
 
-    private fun instructionHint(tokens: TokenList, atHeadEnd: Boolean, allowPseudo: Boolean): Hint? {
+    private fun instructionHint(tokens: TokenList, atHeadEnd: Boolean, options: MarsExecutionOptions): Hint? {
         val count = tokens.size()
         val last = tokens[count - 1]
         val next = count == 1 || last.endPos - 1 < tokens.processedLine.length ||
             last.type in operandPrefixes || atHeadEnd
-        val rows = enabledInstructionFormats(tokens[0].value, allowPseudo).distinctBy { it.exampleFormat }.map { instruction ->
-            val format = instruction.tokenList
-            val ranges = (1 until format.size()).map { TextRange(format[it].startPos - 1, format[it].endPos - 1) }
-            MipsParameterRow(instruction.exampleFormat, ranges)
-        }
+        val rows = enabledInstructionFormats(tokens[0].value, options.allowPseudoInstructions)
+            .map { instructionRow(it, options.bareMachine) }.distinct()
         return Hint(rows, if (next) count - 1 else count - 2).takeIf { rows.isNotEmpty() }
+    }
+
+    private fun instructionRow(instruction: Instruction, bareMachine: Boolean): MipsParameterRow {
+        val example = instruction.exampleFormat
+        val format = instruction.tokenList
+        val text = StringBuilder(example.length)
+        var previousEnd = 0
+        val ranges = (1 until format.size()).map { index ->
+            val token = format[index]
+            val start = token.startPos - 1
+            val end = token.endPos - 1
+            text.append(example, previousEnd, start)
+            val renderedStart = text.length
+            if (bareMachine && token.type == TokenTypes.REGISTER_NAME) {
+                text.append('$').append(RegisterNames.integer(token.value).number)
+            } else {
+                text.append(example, start, end)
+            }
+            previousEnd = end
+            TextRange(renderedStart, text.length)
+        }
+        return MipsParameterRow(text.append(example, previousEnd, example.length).toString(), ranges)
     }
 
     private fun macroHint(invocation: MacroInvocation): Hint? {

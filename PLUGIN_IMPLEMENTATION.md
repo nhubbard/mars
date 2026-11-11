@@ -406,6 +406,16 @@ its old instruction forms.
 Jupiter fixtures invoke the registered editor action and inspect the rendered popup for
 overloaded instructions, missing operands, aliases that supply address punctuation, and
 positions outside instruction operands. An update fixture covers unsaved include edits.
+In bare-machine projects, Parameter Info renders general-purpose registers as
+numbers and highlights the corresponding ranges in the rendered example. Its
+fixtures check numeric memory bases, mnemonic aliases, and the combination
+of bare-machine mode with pseudo-instructions disabled. Floating-point
+registers, Coprocessor 0 operands, and macro formals retain their catalog or
+source spelling.
+The packaged macOS replay opened Parameter Info on `addu`, verified the
+numeric example and the full second-operand range, and ran the sample to
+produce `42`. All 2,031 Jupiter tests and both coverage gates passed. The
+log and screenshot are under `mars5/.gradle/release-host-checks/bare-machine-parameter-info`.
 
 ## Quick Documentation
 

@@ -59,6 +59,32 @@ class MipsParameterInfoPlatformTest {
     }
 
     @Test
+    fun `bare-machine parameter info renders numeric registers and preserves operand highlights`() = timeoutRunBlocking<Unit> {
+        withContext(Dispatchers.EDT) {
+            val settings = project.get().service<MarsAssemblySettings>()
+            settings.changeBareMachine(true)
+            fun rows(source: String) = info(source).orEmpty().split("\n-\n")
+            assertEquals(
+                setOf("add <b>\$9</b>,\$10,\$11", "add <b>\$9</b>,\$10,-100", "add <b>\$9</b>,\$10,100000"),
+                rows("add <caret>").toSet(),
+            )
+            assertTrue("add \$9,\$10,<b>\$11</b>" in rows("add \$8, \$0, <caret>"))
+            val memory = info("lw \$8, -4(<caret>)").orEmpty().split("\n-\n")
+            assertTrue("lw \$9,-100(<b>\$10</b>)" in memory)
+            assertEquals("sll \$9,<b>\$10</b>,10", info(".eqv SHIFT sll \$8\nSHIFT <caret>"))
+            assertEquals("add.s \$f0,<b>\$f1</b>,\$f3", info("add.s \$f0, <caret>"))
+            assertEquals("mtc0 \$9,<b>\$8</b>", info("mtc0 \$8, <caret>"))
+            assertEquals("emit (<b>\$arg</b>)", info(".macro emit (\$arg)\nnop\n.end_macro\nemit(<caret>)"))
+
+            settings.changeAssemblerOptions(false, warningsAreErrors = false)
+            assertEquals("div \$9,<b>\$10</b>", info("div \$8, <caret>"))
+            assertNull(info("li <caret>"))
+            settings.changeBareMachine(false)
+            assertEquals("add \$t1,\$t2,<b>\$t3</b>", info("add \$t0, \$zero, <caret>"))
+        }
+    }
+
+    @Test
     fun `current token follows separators and incomplete memory addresses`() = timeoutRunBlocking<Unit> {
         withContext(Dispatchers.EDT) {
             assertEquals("sll <b>\$t1</b>,\$t2,10", info("sll<caret>"))
