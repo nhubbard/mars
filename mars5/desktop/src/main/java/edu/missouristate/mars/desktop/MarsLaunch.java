@@ -384,7 +384,7 @@ public class MarsLaunch {
         }
         continue;
       }
-      if (new File(args[i]).exists()) { // is it a file name?
+      if (new File(args[i]).isFile()) {
         filenameList.add(args[i]);
         continue;
       }
@@ -438,33 +438,18 @@ public class MarsLaunch {
       session
           .getSettings()
           .setBooleanSettingNonPersistent(Settings.SELF_MODIFYING_CODE_ENABLED, selfModifyingCode);
-      File mainFile =
-          new File(filenameList.getFirst()).getAbsoluteFile(); // First file is "main" file
-      ArrayList<String> filesToAssemble;
+      var filesToAssemble = new ArrayList<String>(filenameList.size());
+      for (String filename : filenameList) {
+        filesToAssemble.add(new File(filename).getAbsolutePath());
+      }
+      File mainFile = new File(filesToAssemble.getFirst());
       if (assembleProject) {
-        filesToAssemble =
-            FilenameFinder.getFilenameList(mainFile.getParent(), ApplicationInfo.fileExtensions);
-        if (filenameList.size() > 1) {
-          // Using "p" project option PLUS listing more than one filename on command line.
-          // Add the additional files, avoiding duplicates.
-          filenameList.removeFirst(); // first one has already been processed
-          ArrayList<String> moreFilesToAssemble =
-              FilenameFinder.getFilenameList(filenameList, FilenameFinder.MATCH_ALL_EXTENSIONS);
-          // Remove any duplicates then merge the two lists.
-          for (int index2 = 0; index2 < moreFilesToAssemble.size(); index2++) {
-            for (String s : filesToAssemble) {
-              if (s.equals(moreFilesToAssemble.get(index2))) {
-                moreFilesToAssemble.remove(index2);
-                index2--; // adjust for left shift in moreFilesToAssemble...
-                break; // break out of inner loop...
-              }
-            }
-          }
-          filesToAssemble.addAll(moreFilesToAssemble);
-        }
-      } else {
-        filesToAssemble =
-            FilenameFinder.getFilenameList(filenameList, FilenameFinder.MATCH_ALL_EXTENSIONS);
+        var projectFiles = new LinkedHashSet<String>();
+        projectFiles.add(mainFile.getAbsolutePath());
+        projectFiles.addAll(
+            FilenameFinder.getFilenameList(mainFile.getParent(), ApplicationInfo.fileExtensions));
+        projectFiles.addAll(filesToAssemble);
+        filesToAssemble = new ArrayList<>(projectFiles);
       }
       if (session.debug()) {
         out.println("--------  TOKENIZING BEGINS  -----------");

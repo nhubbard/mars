@@ -117,6 +117,50 @@ class LauncherParityTest {
   }
 
   @Test
+  void explicitExtensionlessSourcesRunWithoutDirectoryDiscovery() throws Exception {
+    Path entry = source("entry", """
+        jal helper
+        move $a0,$t0
+        li $v0,1
+        syscall
+        li $v0,10
+        syscall
+        """);
+    Path helper = source(".asm", """
+        .globl helper
+        helper: li $t0,42
+        jr $ra
+        """);
+    assertProgramResult(List.of("nc", entry.toString(), helper.toString()), "", 0, "42");
+  }
+
+  @Test
+  void projectModeKeepsExtensionlessEntryAndExplicitSourcesAlongsideSiblings() throws Exception {
+    Path entry = source("entry", """
+        jal helper
+        jal sibling
+        addu $a0,$t0,$t1
+        li $v0,1
+        syscall
+        li $v0,10
+        syscall
+        """);
+    Path helper = source(".s", """
+        .globl helper
+        helper: li $t0,42
+        jr $ra
+        """);
+    Path sibling = source(".local.S", """
+        .globl sibling
+        sibling: li $t1,7
+        jr $ra
+        """);
+    source("unselected", "not assembly\n");
+    assertProgramResult(List.of("nc", "p", entry.toString(), helper.toString()), "", 0, "49");
+    assertProgramResult(List.of("nc", "p", entry.toString(), helper.toString(), sibling.toString()), "", 0, "49");
+  }
+
+  @Test
   void entrySelectionAndBranchDelaySlotsChangeExecutionInBothLaunchers() throws Exception {
     Path file =
         source(
