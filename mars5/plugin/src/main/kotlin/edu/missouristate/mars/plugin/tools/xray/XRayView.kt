@@ -1,12 +1,11 @@
 package edu.missouristate.mars.plugin.tools.xray
 
+import androidx.compose.runtime.mutableStateOf
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ui.componentsList.components.ScrollablePanel
 import com.intellij.openapi.ui.ComboBox
-import com.intellij.ui.components.JBScrollPane
-import com.intellij.ui.components.JBTextArea
 import com.intellij.ui.dsl.builder.Align
 import com.intellij.ui.dsl.builder.AlignX
 import com.intellij.ui.dsl.builder.LabelPosition
@@ -37,6 +36,7 @@ import javax.swing.Timer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import org.jetbrains.jewel.bridge.JewelComposePanel
 
 internal class XRayView(project: Project) : Disposable {
     private val selector = MarsToolExecutionSelector(project) { refreshTrace(resetSelection = true) }
@@ -59,13 +59,11 @@ internal class XRayView(project: Project) : Disposable {
     private val clear = JButton(toolsMessages.getMessage("xray.clear"))
     private val play = JButton()
     private val reset = JButton(toolsMessages.getMessage("xray.reset"))
-    private val description = JBTextArea(4, 20).apply {
-        isEditable = false
-        lineWrap = true
-        wrapStyleWord = true
+    private val descriptionText = mutableStateOf(toolsMessages.getMessage("xray.noSteps"))
+    private val description = JewelComposePanel(content = xRayDetailsContent(descriptionText)).apply {
+        preferredSize = JBUI.size(240, 112)
         getAccessibleContext().accessibleName = toolsMessages.getMessage("xray.description")
     }
-    private val descriptionScroll = JBScrollPane(description)
     private val canvas = XRayCanvas { unit.selectedItem = it }
     private val playback = XRayPlayback()
     private var steps = emptyList<StepEvent>()
@@ -96,14 +94,14 @@ internal class XRayView(project: Project) : Disposable {
         }
         row(toolsMessages.getMessage("xray.speed")) { cell(speed) }
         row { cell(canvas).align(Align.FILL).resizableColumn() }.resizableRow()
-        row { cell(descriptionScroll).align(AlignX.FILL).resizableColumn() }
+        row { cell(description).align(AlignX.FILL).resizableColumn() }
         row { comment(toolsMessages.getMessage("xray.help", XRayTrace.capacity)).resizableColumn() }
     }
     private val scrollBody = object : ScrollablePanel(BorderLayout()) {
         // Fill tall docks while preserving the diagram's preferred height in short docks.
         override fun getScrollableTracksViewportHeight() = parent.height > preferredSize.height
     }.apply { add(controls, BorderLayout.CENTER) }
-    val component = scrollableToolPanel(this, scrollBody, mapOf(description to descriptionScroll))
+    val component = scrollableToolPanel(this, scrollBody, emptyMap())
 
     init {
         capture.addActionListener {
@@ -189,7 +187,7 @@ internal class XRayView(project: Project) : Disposable {
         play.isEnabled = signals.isNotEmpty()
         reset.isEnabled = play.isEnabled
         speed.isEnabled = play.isEnabled
-        description.text = selectedInstruction?.let {
+        descriptionText.value = selectedInstruction?.let {
             val paths = signals.asSequence()
                 .filter { signal -> !signal.isLabel && signal.color != inactiveSignal }
                 .map { signal -> signal.name.trimStart('*').replace('_', ' ') }
@@ -197,7 +195,7 @@ internal class XRayView(project: Project) : Disposable {
                 .joinToString(", ")
             "${it.describe()}\n${toolsMessages.getMessage("xray.paths", paths)}"
         } ?: toolsMessages.getMessage("xray.noSteps")
-        description.caretPosition = 0
+        description.accessibleContext.accessibleDescription = descriptionText.value
         showPosition()
     }
 

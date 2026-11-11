@@ -22,6 +22,11 @@ jobs:
         with:
           distribution: temurin
           java-version: '25'
+      - name: Install Compose graphics libraries
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libegl1 libgl1
       - name: Build and test MARS
         run: ${{ matrix.gradle }} build :core:benchmarkClasses --no-daemon
       - run: java -jar cli/build/libs/cli-1.0-SNAPSHOT.jar --help

@@ -199,7 +199,10 @@ class InstructionCounterPlatformTest {
             fun xrayCanvas() = UIUtil.findComponentsOfType(xray, XRayCanvas::class.java).single()
             fun xrayChoices() = UIUtil.findComponentsOfType(xray, JComboBox::class.java)
             fun xrayHistory() = xrayChoices().single { it.itemCount > 0 && it.getItemAt(0) is StepEvent }
-            fun xrayDetails() = UIUtil.findComponentsOfType(xray, JBTextArea::class.java).single().text
+            fun xrayDescription() = UIUtil.uiTraverser(xray).filter(JComponent::class.java).single {
+                it.accessibleContext?.accessibleName == toolsMessages.getMessage("xray.description")
+            }
+            fun xrayDetails() = xrayDescription().accessibleContext.accessibleDescription
             fun canvas(panel: JComponent) = UIUtil.findComponentsOfType(panel, MemoryGridCanvas::class.java).single()
             fun gridKey(key: Int, panel: JComponent = references) {
                 val grid = canvas(panel)
@@ -399,9 +402,8 @@ class InstructionCounterPlatformTest {
                 body.getComponent(0).doLayout()
                 assertEquals(viewport.width, body.width)
                 assertTrue(xrayCanvas().height >= JBUI.scale(200))
-                val details = UIUtil.findComponentsOfType(xray, JBTextArea::class.java).single()
-                val detailsScroll = SwingUtilities.getAncestorOfClass(JScrollPane::class.java, details)
-                val detailsBounds = SwingUtilities.convertRectangle(detailsScroll.parent, detailsScroll.bounds, body)
+                val details = xrayDescription()
+                val detailsBounds = SwingUtilities.convertRectangle(details.parent, details.bounds, body)
                 assertFalse(viewport.viewRect.contains(detailsBounds))
                 body.scrollRectToVisible(detailsBounds)
                 assertTrue(viewport.viewRect.contains(detailsBounds)) {

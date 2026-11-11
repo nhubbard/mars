@@ -14,6 +14,7 @@ import org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask.FailureLeve
 
 plugins {
   kotlin("jvm") version "2.4.21"
+  kotlin("plugin.compose") version "2.4.21"
   jacoco
   id("org.jetbrains.intellij.platform") version "2.20.0"
   id("org.jetbrains.intellij.platform.grammarkit") version "2.20.0"
@@ -40,6 +41,11 @@ dependencies {
     }
     bundledModule("intellij.platform.buildView")
     bundledModule("intellij.platform.debugger")
+    bundledPlugin("com.intellij.modules.compose")
+    bundledModule("intellij.platform.jewel.ideLafBridge")
+    bundledModule("intellij.platform.jewel.ui")
+    bundledModule("intellij.libraries.compose.foundation.desktop")
+    bundledModule("intellij.libraries.compose.runtime.desktop")
     bundledPlugin("com.intellij.java")
     testBundledPlugin("org.editorconfig.editorconfigjetbrains")
     testBundledModule("intellij.platform.debugger.impl.ui")
@@ -200,6 +206,8 @@ val parserGenerator = sourceSets.create("parserGenerator") {
   compileClasspath += configurations["intellijPlatformGrammarKit"] + configurations["intellijPlatformClasspath"]
   runtimeClasspath += compileClasspath
 }
+// The Compose compiler checks its runtime even when compiling the standalone grammar generator.
+configurations[parserGenerator.compileOnlyConfigurationName].extendsFrom(configurations["intellijPlatformDependencies"])
 val generateMipsParser = tasks.named<GenerateParserTask>("generateParser") {
   sourceFile.set(layout.projectDirectory.file("src/main/grammar/Mips.bnf"))
   targetRootOutputDir.set(layout.buildDirectory.dir("generated/sources/mips/kotlin"))

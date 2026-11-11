@@ -18,8 +18,13 @@
   <depends>com.intellij.modules.platform</depends>
   <depends optional="true" config-file="mars-java.xml">com.intellij.java</depends>
   <dependencies>
+    <plugin id="com.intellij.modules.compose"/>
+    <module name="intellij.libraries.compose.foundation.desktop"/>
+    <module name="intellij.libraries.compose.runtime.desktop"/>
     <module name="intellij.platform.buildView"/>
     <module name="intellij.platform.debugger"/>
+    <module name="intellij.platform.jewel.ideLafBridge"/>
+    <module name="intellij.platform.jewel.ui"/>
     <module name="intellij.platform.syntax"/>
     <module name="intellij.platform.syntax.psi"/>
     <module name="intellij.platform.syntax.util"/>
