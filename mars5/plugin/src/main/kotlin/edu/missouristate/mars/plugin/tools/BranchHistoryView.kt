@@ -22,6 +22,7 @@ import edu.missouristate.mars.plugin.tools.BranchHistoryTable.Observation
 import edu.missouristate.mars.plugin.tools.BranchHistoryTable.Options
 import edu.missouristate.mars.util.Binary
 import javax.swing.JButton
+import javax.swing.ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
 import javax.swing.table.AbstractTableModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -45,7 +46,7 @@ internal class BranchHistoryView(project: Project) : Disposable {
     private val latest = JBLabel().apply { minimumSize = JBDimension(0, 0) }
     private val log = JBTextArea(5, 32).apply { isEditable = false }
     private val tableScroll = JBScrollPane(table).apply { minimumSize = JBDimension(0, 84) }
-    private val logScroll = JBScrollPane(log)
+    private val logScroll = JBScrollPane(log).apply { minimumSize = JBDimension(0, 84) }
     private var previous: BranchHistoryTable.Snapshot? = null
 
     val component = scrollableToolPanel(this, panel {
@@ -65,8 +66,10 @@ internal class BranchHistoryView(project: Project) : Disposable {
         row { cell(tableScroll).align(Align.FILL).resizableColumn() }.resizableRow()
         row { label(toolsMessages.getMessage("branchHistory.log")).component.labelFor = log }
         row { cell(logScroll).align(AlignX.FILL).resizableColumn() }
-        row { comment(toolsMessages.getMessage("branchHistory.reverse"), maxLineLength = 42) }
-    }, mapOf(table to tableScroll, log to logScroll))
+        row { comment(toolsMessages.getMessage("branchHistory.reverse"), maxLineLength = 30) }
+    }, mapOf(table to tableScroll, log to logScroll)).apply {
+        horizontalScrollBarPolicy = HORIZONTAL_SCROLLBAR_NEVER
+    }
 
     init {
         apply.addActionListener {

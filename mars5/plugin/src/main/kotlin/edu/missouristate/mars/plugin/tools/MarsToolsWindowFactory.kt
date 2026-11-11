@@ -144,6 +144,7 @@ internal fun JBTable.fitToolColumns(vararg samples: String) {
             val column = columnModel.getColumn(index)
             val width = maxOf(metrics.stringWidth(sample), headerMetrics.stringWidth(column.headerValue.toString()))
             column.preferredWidth = width + JBUI.scale(16)
+            column.width = column.preferredWidth
         }
     }
     resizeColumns()

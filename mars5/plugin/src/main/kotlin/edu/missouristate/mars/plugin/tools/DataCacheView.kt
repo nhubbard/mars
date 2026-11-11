@@ -26,6 +26,7 @@ import edu.missouristate.mars.util.Binary
 import javax.swing.DefaultComboBoxModel
 import javax.swing.JButton
 import javax.swing.JProgressBar
+import javax.swing.ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
 import javax.swing.table.AbstractTableModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -55,7 +56,7 @@ internal class DataCacheView(project: Project) : Disposable {
     private val blockModel = CacheBlockTableModel()
     private val table = JBTable(blockModel).apply {
         preferredScrollableViewportSize = JBDimension(300, 160)
-        fitToolColumns("", "", Binary.intToHexString(-1), "", toolsMessages.getMessage("cache.empty"))
+        fitToolColumns("", "", Binary.intToHexString(0), "", toolsMessages.getMessage("cache.empty"))
     }
     private val log = JBTextArea(5, 35).apply { isEditable = false }
     private val tableScroll = JBScrollPane(table).apply { minimumSize = JBDimension(0, 84) }
@@ -89,7 +90,9 @@ internal class DataCacheView(project: Project) : Disposable {
             row { cell(logScroll).align(AlignX.FILL).resizableColumn() }
         }.expanded = false
         row { comment(toolsMessages.getMessage("cache.scope"), maxLineLength = 30) }
-    }, mapOf(table to tableScroll, log to logScroll))
+    }, mapOf(table to tableScroll, log to logScroll)).apply {
+        horizontalScrollBarPolicy = HORIZONTAL_SCROLLBAR_NEVER
+    }
 
     init {
         placement.addActionListener { updateWays() }

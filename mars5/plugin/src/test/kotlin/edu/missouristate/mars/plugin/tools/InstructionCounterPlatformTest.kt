@@ -341,6 +341,7 @@ class InstructionCounterPlatformTest {
 
                 for (panel in listOf(branches, cache)) {
                     val scroll = layoutDock(panel, 280, 200)
+                    assertFalse(scroll.horizontalScrollBar.isVisible)
                     val viewport = scroll.viewport
                     val body = viewport.view
                     val table = UIUtil.findComponentsOfType(panel, JBTable::class.java).single()
@@ -607,6 +608,9 @@ class InstructionCounterPlatformTest {
                 val percent = UIUtil.findComponentsOfType(cache, JBLabel::class.java).single { it.text == "50%" }
                 assertTrue(percent.x + percent.width <= hitRate.x)
                 assertTrue(hitRate.width in 1..wideCacheDock.viewport.extentSize.width / 2)
+                val blockTable = UIUtil.findComponentsOfType(cache, JBTable::class.java).single()
+                val tag = blockTable.prepareRenderer(blockTable.getCellRenderer(0, 2), 0, 2)
+                assertTrue(tag.preferredSize.width <= blockTable.getCellRect(0, 2, false).width)
                 val combos = UIUtil.findComponentsOfType(cache, JComboBox::class.java)
                 val placement = combos.single { it.selectedItem is Placement }
                 val replacement = combos.single { it.selectedItem is Replacement }
