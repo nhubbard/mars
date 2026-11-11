@@ -386,6 +386,27 @@ class MipsCompletionPlatformTest {
         }
 
     @Test
+    fun `completion follows malformed operands in instruction aliases`() = timeoutRunBlocking<Unit> {
+        IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
+        withContext(Dispatchers.EDT) {
+            val labels = "\ntarget: nop\ntarget2: nop\n"
+            fun candidates(source: String): Set<String> {
+                fixture.configureByText("incomplete-alias.mars", source)
+                return fixture.completeBasic().orEmpty().map { it.lookupString }.toSet()
+            }
+            val branch = ".eqv BR beq\nBR \$t0, 0x, tar<caret>" + labels
+            assertEquals(setOf("target", "target2"), candidates(branch))
+            fixture.lookup.setCurrentItem(fixture.lookup.items.single { it.lookupString == "target" })
+            fixture.finishLookup(Lookup.REPLACE_SELECT_CHAR)
+            assertEquals(branch.replace("tar<caret>", "target"), fixture.file.text)
+            assertEquals(setOf("target", "target2"), candidates(".eqv REG \$t0\nbeq REG, 0x, tar<caret>" + labels))
+            assertEquals(setOf("\$8", "\$12", "\$13", "\$14"), candidates(".eqv TRANSFER mtc0\nTRANSFER 0x, \$<caret>\n"))
+            assertTrue(candidates(".eqv BR beq\n.eqv FIRST SECOND\n.eqv SECOND FIRST\nBR FIRST, \$t0, tar<caret>" + labels)
+                .none { it.startsWith("target") })
+        }
+    }
+
+    @Test
     fun `register insertion replaces the complete token and preserves the address punctuation`() = timeoutRunBlocking<Unit> {
         IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
         withContext(Dispatchers.EDT) {
