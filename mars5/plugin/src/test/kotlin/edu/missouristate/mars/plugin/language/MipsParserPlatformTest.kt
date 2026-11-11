@@ -1258,6 +1258,29 @@ class MipsParserPlatformTest {
     }
 
     @Test
+    fun `malformed signed operands retain the assembler token boundaries`() = timeoutRunBlocking<Unit> {
+        readAction {
+            val source = ".data\n.word -0xG, 7\n.eqv VALUE 1,+0x, 8\n.eqv -0xG\n.text\n" +
+                "emit(1, -1e, target)\nemit(label-0xG, target)\nemit(1, - 0xG, target)\ntarget: nop\n"
+            val file = PsiFileFactory.getInstance(project.get()).createFileFromText("signed-editing.mars", MipsFileType, source)
+            val tokenizer = Tokenizer()
+            val badSpellings = source.lineSequence().flatMap { line ->
+                val tokens = tokenizer.tokenizeLine(null, 1, line, false)
+                (0 until tokens.size()).asSequence().map(tokens::get).filter { it.type == TokenTypes.ERROR }
+                    .map { line.substring(it.startPos - 1, it.endPos - 1) }
+            }.toList()
+            assertEquals(listOf("-0xG", "+0x", "-0xG", "-1e", "0xG", "0xG"), badSpellings)
+            assertEquals(badSpellings, PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java).map { it.text })
+            assertEquals(listOf("-0xG", "7"), descendants(file.node, "OPERAND").map { it.text }.toList())
+            assertEquals(listOf("1", "+0x", "8"), descendants(file.node, "REPLACEMENT").map { it.text }.toList())
+            assertEquals(listOf("(", "1", "-1e", "target", ")", "(", "label", "-", "0xG", "target", ")",
+                "(", "1", "-", "0xG", "target", ")"),
+                descendants(file.node, "INVOCATION_TOKEN").map { it.text }.toList())
+            assertEquals("target:", descendants(file.node, "LABEL").single().text)
+        }
+    }
+
+    @Test
     fun `punctuation in percent formals survives parsing and macro substitution`(@TempDir directory: Path) =
         timeoutRunBlocking<Unit> {
             val formal = "%value!@?.part"

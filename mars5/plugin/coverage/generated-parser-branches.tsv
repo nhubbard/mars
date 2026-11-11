@@ -1,4 +1,4 @@
-# sha256	65e10096274d8015acca9c52a05dadc0bb7087276875547c3e384a071046dce1
+# sha256	49c05a8052c02329f81bce0b313505552dc6bad2cc727fa33f0327a0a1dab1a0
 # Exact generated defensive outcomes reviewed against lookahead, pinning, optional rules and progress guards.
 # line	maximum missed branches	source	reason
 54	1	if (!runtime_.recursion_guard_(level_, "assembly_token")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
@@ -109,9 +109,9 @@
 857	1	if (!runtime_.recursion_guard_(level_, "name")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
 877	1	if (!runtime_.recursion_guard_(level_, "non_macro_body")) return false	Generated recursion limit guard. Deep-input safety belongs to the platform runtime.
 895	1	if (!runtime_.recursion_guard_(level_, "operand")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-906	1	if (!runtime_.recursion_guard_(level_, "operand_0")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-910	1	result_ = result_ && operand_0_1(runtime_, level_ + 1)	Generated short-circuit after guaranteed predictive token consumption or an always-successful optional helper.
-917	1	if (!runtime_.recursion_guard_(level_, "operand_0_1")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+906	1	if (!runtime_.recursion_guard_(level_, "operand_1")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+910	1	result_ = result_ && operand_1_1(runtime_, level_ + 1)	Generated short-circuit after guaranteed predictive token consumption or an always-successful optional helper.
+917	1	if (!runtime_.recursion_guard_(level_, "operand_1_1")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
 925	1	if (!runtime_.recursion_guard_(level_, "operand_fragment")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
 929	1	result_ = result_ && operand_fragment_1(runtime_, level_ + 1)	Positive lookahead guarantees a nonempty assembly-token sequence before the fragment parser runs.
 936	1	if (!runtime_.recursion_guard_(level_, "operand_fragment_0")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
@@ -150,6 +150,7 @@
 1164	1	if (!runtime_.recursion_guard_(level_, "short_equivalence")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
 1169	1	result_ = result_ && isShortEquivalence(runtime_, level_ + 1)	Predictive EQV lookahead guarantees consumption before the assembler token-count check.
 1170	1	result_ = result_ && short_equivalence_2(runtime_, level_ + 1)	The optional raw operand always succeeds after its generated recursion guard.
+1171	1	result_ = result_ && short_equivalence_3(runtime_, level_ + 1)	Defensive line-end check; the short-form predicate permits at most one assembler operand, including a recovered signed token.
 1178	1	if (!runtime_.recursion_guard_(level_, "short_equivalence_2")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
 1185	1	if (!runtime_.recursion_guard_(level_, "short_equivalence_3")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
 1196	1	if (!runtime_.recursion_guard_(level_, "signed_number")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.

@@ -131,8 +131,11 @@ internal fun recoverBadOperandToken(runtime: SyntaxGeneratedParserRuntime, level
     runtime.syntaxBuilder.recoverBadToken("syntax.operand.invalid.token")
 
 private fun SyntaxTreeBuilder.recoverBadToken(messageKey: String): Boolean {
-    if (tokenType != BAD_CHARACTER) return false
+    val signed = tokenType in signs && lookAhead(1) == BAD_CHARACTER &&
+        signAttachesToNumber(previousToken(separators))
+    if (!signed && tokenType != BAD_CHARACTER) return false
     val marker = mark()
+    if (signed) advanceLexer()
     advanceLexer()
     marker.error(syntaxMessages.getMessage(messageKey))
     return true
