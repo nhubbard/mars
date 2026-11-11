@@ -1,5 +1,14 @@
 package edu.missouristate.mars.plugin.tools
 
+import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.ImageComposeScene
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.PointerButton
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsNode
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
 import com.intellij.execution.Executor
 import com.intellij.execution.executors.DefaultDebugExecutor
 import com.intellij.execution.executors.DefaultRunExecutor
@@ -37,6 +46,8 @@ import edu.missouristate.mars.plugin.tools.DataCacheSimulator.Placement
 import edu.missouristate.mars.plugin.tools.DataCacheSimulator.Replacement
 import edu.missouristate.mars.plugin.tools.MemoryGridDisplay.Base
 import edu.missouristate.mars.plugin.tools.xray.XRayUnit
+import edu.missouristate.mars.plugin.tools.xray.XRayView
+import edu.missouristate.mars.plugin.tools.xray.xRayLabel
 import java.awt.image.BufferedImage
 import java.awt.Color
 import java.awt.event.ActionEvent
@@ -68,13 +79,26 @@ import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.jetbrains.jewel.bridge.theme.SwingBridgeTheme
+import org.jetbrains.jewel.foundation.ExperimentalJewelApi
+import org.jetbrains.skia.Surface
+import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 
 @TestApplication
 class InstructionCounterPlatformTest {
+    companion object {
+        @JvmStatic
+        @BeforeAll
+        fun initializeSkia() {
+            // The native reference cleaner is shared for the lifetime of the test JVM.
+            Surface.makeRasterN32Premul(1, 1).close()
+        }
+    }
     private val projectFixture = codeInsightProjectFixture()
     private val fixture by codeInsightFixture(projectFixture)
 
+    @OptIn(ExperimentalComposeUiApi::class, ExperimentalJewelApi::class)
     @Test
     fun `MARS Tools selects native executions and controls their counters independently`() = timeoutRunBlocking<Unit>(45.seconds) {
         val project = projectFixture.get()
@@ -119,7 +143,44 @@ class InstructionCounterPlatformTest {
             contents.map { it.component } to editor
         }
         val (panel, statistics, branches, bitmap, references) = panels
-        val xray = panels[5]
+        val xray = withContext(Dispatchers.EDT) {
+            assertEquals("MIPS X-Ray", panels[5].accessibleContext.accessibleName)
+            XRayView(project).also { view ->
+                withForcedRespectIsShowingClientProperty {
+                    UIUtil.dispatchAllInvocationEvents()
+                    withShowingChanged { container.add(view.component) }
+                    UIUtil.dispatchAllInvocationEvents()
+                }
+            }
+        }
+        val xrayScene = withContext(Dispatchers.EDT) {
+            ImageComposeScene(320, 880).apply { setContent { SwingBridgeTheme(content = xray.content) } }
+        }
+        var xrayTime = 0L
+        fun renderXRay(): List<SemanticsNode> {
+            xrayScene.render(xrayTime.also { xrayTime += 16_000_000 }).close()
+            return xrayScene.semanticsOwners.flatMap { it.rootSemanticsNode.flatten() }
+        }
+        fun xrayText() = renderXRay().map { it.labelText() }
+        fun clickXRay(label: String) {
+            val node = renderXRay().first {
+                it.config.getOrNull(SemanticsActions.OnClick) != null &&
+                    label in (it.flatten().map { child -> child.labelText() } +
+                        it.config.getOrNull(SemanticsProperties.ContentDescription).orEmpty())
+            }
+            assertTrue(node.config[SemanticsActions.OnClick].action!!.invoke())
+        }
+        fun chooseXRay(label: String, value: String) {
+            fun tap(point: Offset) {
+                xrayScene.sendPointerEvent(PointerEventType.Press, point, button = PointerButton.Primary)
+                xrayScene.sendPointerEvent(PointerEventType.Release, point, button = PointerButton.Primary)
+            }
+            val control = renderXRay().first { label in it.config.getOrNull(SemanticsProperties.ContentDescription).orEmpty() }
+            tap(control.boundsInWindow.center)
+            val option = renderXRay().last { it.labelText() == value }
+            tap(option.boundsInWindow.center)
+            renderXRay()
+        }
         val cache = panels[6]
         val floating = panels[7]
         val lab = panels[8]
@@ -194,15 +255,6 @@ class InstructionCounterPlatformTest {
         }
 
         try {
-            fun xraySchematic() = UIUtil.uiTraverser(xray).filter(JComponent::class.java).single {
-                it.accessibleContext?.accessibleName == toolsMessages.getMessage("xray.schematic")
-            }
-            fun xrayChoices() = UIUtil.findComponentsOfType(xray, JComboBox::class.java)
-            fun xrayHistory() = xrayChoices().single { it.itemCount > 0 && it.getItemAt(0) is StepEvent }
-            fun xrayDescription() = UIUtil.uiTraverser(xray).filter(JComponent::class.java).single {
-                it.accessibleContext?.accessibleName == toolsMessages.getMessage("xray.description")
-            }
-            fun xrayDetails() = xrayDescription().accessibleContext.accessibleDescription
             fun canvas(panel: JComponent) = UIUtil.findComponentsOfType(panel, MemoryGridCanvas::class.java).single()
             fun gridKey(key: Int, panel: JComponent = references) {
                 val grid = canvas(panel)
@@ -243,12 +295,12 @@ class InstructionCounterPlatformTest {
                     .accessibleContext.accessibleName
             }
             withContext(Dispatchers.EDT) {
-                assertTrue(xraySchematic().isVisible)
+                assertTrue("No MIPS executions" in xrayText())
+                assertTrue("No captured instructions" in xrayText())
                 assertFalse(button("Connect").isEnabled)
                 assertFalse(button("Reset").isEnabled)
                 assertFalse(button("Apply and Reset", branches).isEnabled)
                 assertFalse(button("Apply and Clear", bitmap).isEnabled)
-                assertFalse(button("Play animation", xray).isEnabled)
                 assertFalse(button("Apply and Reset", cache).isEnabled)
                 assertEquals(0, UIUtil.findComponentsOfType(cache, JBTable::class.java).single().rowCount)
                 for (panel in listOf(branches, cache)) {
@@ -387,122 +439,90 @@ class InstructionCounterPlatformTest {
                 selector.selectedIndex = 0
             }
             waitFor(2, "2 (100%)")
-            withContext(Dispatchers.EDT) {
-                val scroll = assertInstanceOf(JScrollPane::class.java, xray)
-                scroll.setSize(JBUI.scale(300), JBUI.scale(280))
-                scroll.doLayout()
-                val viewport = scroll.viewport
-                viewport.doLayout()
-                val body = viewport.view as JPanel
-                body.doLayout()
-                body.getComponent(0).doLayout()
-                assertEquals(viewport.width, body.width)
-                assertTrue(xraySchematic().height >= JBUI.scale(200))
-                val details = xrayDescription()
-                val detailsBounds = SwingUtilities.convertRectangle(details.parent, details.bounds, body)
-                assertFalse(viewport.viewRect.contains(detailsBounds))
-                body.scrollRectToVisible(detailsBounds)
-                assertTrue(viewport.viewRect.contains(detailsBounds)) {
-                    "Trace bounds $detailsBounds are outside the viewport ${viewport.viewRect}"
-                }
-                scroll.setSize(JBUI.scale(300), JBUI.scale(900))
-                scroll.doLayout()
-                viewport.doLayout()
-                body.doLayout()
-                body.getComponent(0).doLayout()
-                assertTrue(xraySchematic().height > JBUI.scale(200))
-            }
             pollAssertionsAsync(5.seconds, 30.milliseconds) {
                 withContext(Dispatchers.EDT) {
-                    val executions = xrayChoices().filter { it.itemCount == 2 && it.getItemAt(0) !is StepEvent }
-                    assertEquals(1, executions.size)
-                    val execution = executions.single()
-                    execution.selectedIndex = 0
-                    val histories = xrayChoices().filter { it.itemCount == 2 && it.getItemAt(0) is StepEvent }
-                    assertEquals(1, histories.size)
-                    val history = histories.single()
-                    assertEquals(2L, (history.selectedItem as StepEvent).stepCount())
-                    history.selectedIndex = 0
-                    assertTrue(xrayDetails().contains("0x00400000 · 0x00000000 · nop"))
-                    assertTrue(xrayDetails().contains("Highlighted paths"))
-                    val unit = xrayChoices().single { it.selectedItem is XRayUnit }
+                    assertEquals(2, xray.executions.size)
+                    xray.selectExecution(xray.executions[1])
+                    chooseXRay("Execution", xray.executions[0].label)
+                    assertEquals(2L, xray.step?.stepCount())
+                    assertTrue("2 of 2" in xrayText())
+                    clickXRay("Previous step")
+                    assertEquals(1L, xray.step?.stepCount())
+                    assertTrue("1 of 2" in xrayText())
+                    clickXRay("Next step")
+                    assertEquals(2L, xray.step?.stepCount())
+                    chooseXRay("Instruction", xray.steps.first().xRayLabel())
+                    assertEquals(1L, xray.step?.stepCount())
+                    clickXRay("Next step")
+                    clickXRay("Previous step")
+                    chooseXRay("Diagram", "Registers")
+                    assertEquals(XRayUnit.REGISTERS, xray.unit)
                     for (choice in XRayUnit.entries) {
-                        unit.selectedItem = choice
-                        assertTrue(xrayDetails().contains("Highlighted paths"))
+                        xray.selectUnit(choice)
+                        assertTrue(xray.canPlay)
                     }
-                    button("Reset animation", xray).doClick()
-                    button("Play animation", xray).doClick()
-                    assertTrue(button("Pause animation", xray).isEnabled)
-                    button("Pause animation", xray).doClick()
-                    button("Play animation", xray).doClick()
+                    chooseXRay("Playback speed", "2×")
+                    assertEquals(XRayView.Rate.FAST, xray.rate)
+                    clickXRay("Reset animation")
+                    clickXRay("Play animation")
+                    assertTrue(xray.playing)
+                    clickXRay("Pause animation")
+                    assertFalse(xray.playing)
+                    clickXRay("Play animation")
                 }
             }
             pollAssertionsAsync(8.seconds, 30.milliseconds) {
-                withContext(Dispatchers.EDT) {
-                    assertTrue(UIUtil.findComponentsOfType(xray, JButton::class.java).any {
-                        it.text == "Play animation" && it.isEnabled
-                    })
-                }
+                withContext(Dispatchers.EDT) { assertFalse(xray.playing) }
             }
             val trace = (second.getUserData(RunContentDescriptor.DESCRIPTOR_KEY)!!.processHandler as MarsProcessHandler).xray
             trace.record(StepEvent(0x00400008, -1, 3))
             pollAssertionsAsync(5.seconds, 30.milliseconds) {
                 withContext(Dispatchers.EDT) {
-                    @Suppress("UNCHECKED_CAST")
-                    val history = xrayHistory() as JComboBox<StepEvent>
-                    assertEquals(3, history.itemCount)
-                    assertEquals(1L, history.selectedItem.let { (it as StepEvent).stepCount() })
-                    history.selectedIndex = 0
-                    val unknown = history.renderer.getListCellRendererComponent(JList(), history.getItemAt(2), 2, false, false)
-                    assertTrue(unknown.accessibleContext.accessibleName.contains("Unknown instruction"))
+                    assertEquals(3, xray.steps.size)
+                    assertEquals(1L, xray.step?.stepCount())
+                    assertTrue(xray.steps.last().xRayLabel().contains("Unknown instruction"))
                 }
             }
             trace.rewind(0)
             pollAssertionsAsync(5.seconds, 30.milliseconds) {
-                withContext(Dispatchers.EDT) { assertFalse(button("Reset animation", xray).isEnabled) }
+                withContext(Dispatchers.EDT) { assertFalse(xray.canPlay) }
             }
             withContext(Dispatchers.EDT) {
                 withForcedRespectIsShowingClientProperty {
-                    withShowingChanged { container.remove(xray) }
+                    withShowingChanged { container.remove(xray.component) }
                     UIUtil.dispatchAllInvocationEvents()
-                }
-            }
-            withContext(Dispatchers.EDT) {
-                withForcedRespectIsShowingClientProperty {
-                    withShowingChanged { container.add(xray) }
+                    withShowingChanged { container.add(xray.component) }
                     UIUtil.dispatchAllInvocationEvents()
                 }
             }
             trace.record(StepEvent(0x00400000, 0, 1))
             pollAssertionsAsync(5.seconds, 30.milliseconds) {
-                withContext(Dispatchers.EDT) { assertTrue(button("Play animation", xray).isEnabled) }
+                withContext(Dispatchers.EDT) { assertTrue(xray.canPlay) }
             }
             withContext(Dispatchers.EDT) {
-                val execution = xrayChoices().single { it.itemCount == 2 && it.getItemAt(0) !is StepEvent }
-                button("Disconnect", xray).doClick()
+                clickXRay("Disconnect")
                 assertFalse(trace.connected)
-                assertTrue(button("Play animation", xray).isEnabled)
+                assertTrue(xray.canPlay)
                 trace.record(StepEvent(0x00400004, 0, 2))
                 assertEquals(1, trace.snapshot().size)
 
-                execution.selectedIndex = 1
-                assertTrue(button("Disconnect", xray).isEnabled)
-                assertTrue(xrayDetails().contains("addiu"))
-                execution.selectedIndex = 0
-                assertTrue(button("Connect", xray).isEnabled)
-                assertEquals(1, xrayHistory().itemCount)
-                button("Clear trace", xray).doClick()
-                assertFalse(button("Clear trace", xray).isEnabled)
-                assertFalse(button("Play animation", xray).isEnabled)
+                xray.selectExecution(xray.executions[1])
+                assertTrue(xray.connected)
+                assertTrue(xray.step!!.xRayLabel().contains("addiu"))
+                xray.selectExecution(xray.executions[0])
+                assertFalse(xray.connected)
+                assertEquals(1, xray.steps.size)
+                clickXRay("Clear trace")
+                assertFalse(xray.canPlay)
                 assertFalse(trace.connected)
-                button("Connect", xray).doClick()
+                clickXRay("Connect")
                 assertTrue(trace.connected)
                 trace.record(StepEvent(0x00400008, 0, 3))
             }
             pollAssertionsAsync(5.seconds, 30.milliseconds) {
                 withContext(Dispatchers.EDT) {
-                    assertTrue(button("Clear trace", xray).isEnabled)
-                    assertEquals(3L, (xrayHistory().selectedItem as StepEvent).stepCount())
+                    assertTrue(xray.canPlay)
+                    assertEquals(3L, xray.step?.stepCount())
                 }
             }
             withContext(Dispatchers.EDT) {
@@ -964,6 +984,8 @@ class InstructionCounterPlatformTest {
             waitFor(0, "0 (0%)")
         } finally {
             withContext(NonCancellable + Dispatchers.EDT) {
+                xrayScene.close()
+                xray.dispose()
                 window.contentManager.removeAllContents(true)
                 assertTrue(keyboardEditor.isDisposed)
                 withForcedRespectIsShowingClientProperty {
@@ -973,7 +995,8 @@ class InstructionCounterPlatformTest {
                         container.remove(branches)
                         container.remove(bitmap)
                         container.remove(references)
-                        container.remove(xray)
+                        container.remove(xray.component)
+                        container.remove(panels[5])
                         container.remove(cache)
                         container.remove(floating)
                         container.remove(lab)
@@ -986,4 +1009,10 @@ class InstructionCounterPlatformTest {
             }
         }
     }
+
+    private fun SemanticsNode.flatten(): List<SemanticsNode> = listOf(this) + children.flatMap { it.flatten() }
+
+    private fun SemanticsNode.labelText(): String =
+        config.getOrNull(SemanticsProperties.Text).orEmpty().joinToString("") { it.text }
+
 }

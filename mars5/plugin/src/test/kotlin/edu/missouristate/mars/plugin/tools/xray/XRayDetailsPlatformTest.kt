@@ -2,12 +2,16 @@ package edu.missouristate.mars.plugin.tools.xray
 
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.ImageComposeScene
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.unit.dp
 import com.intellij.openapi.application.EDT
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
@@ -65,6 +69,25 @@ class XRayDetailsPlatformTest {
 
     private fun SemanticsNode.text(): List<String> =
         config.getOrNull(SemanticsProperties.Text).orEmpty().map { it.text } + children.flatMap { it.text() }
+
+    @OptIn(ExperimentalComposeUiApi::class, ExperimentalJewelApi::class)
+    @Test
+    fun `the schematic can be measured at zero width before the tool window opens`() = timeoutRunBlocking<Unit>(20.seconds) {
+        withContext(Dispatchers.EDT) {
+            val frame = mutableStateOf(XRaySchematicFrame(XRayUnit.DATAPATH))
+            val schematic = xRaySchematicContent(frame, mutableIntStateOf(0)) { error("The hidden schematic cannot be activated") }
+            val scene = ImageComposeScene(320, 200)
+            try {
+                scene.setContent {
+                    SwingBridgeTheme { Box(Modifier.size(0.dp, 200.dp)) { schematic() } }
+                }
+                scene.render(0).close()
+                assertTrue(scene.semanticsOwners.flatMap { it.rootSemanticsNode.text() }.isEmpty())
+            } finally {
+                scene.close()
+            }
+        }
+    }
 
     @OptIn(ExperimentalComposeUiApi::class, ExperimentalJewelApi::class)
     @Test

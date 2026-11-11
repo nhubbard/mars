@@ -105,25 +105,28 @@ internal fun AbstractTableModel.publishRowRefresh(previousRowCount: Int) {
     }
 }
 
-internal class MarsToolExecutionSelector(private val project: Project, private val selectionChanged: () -> Unit) {
-    private data class Execution(val id: Long, val name: String, val process: MarsProcessHandler)
+internal data class MarsToolRunContent(val id: Long, val name: String, val process: MarsProcessHandler) {
+    val label get() = toolsMessages.getMessage("counter.execution", name, id.toString())
+}
 
-    private val selector = ComboBox<Execution>().apply {
-        renderer = textListCellRenderer(toolsMessages.getMessage("counter.empty")) {
-            toolsMessages.getMessage("counter.execution", it.name, it.id.toString())
+internal fun marsToolExecutions(project: Project): List<MarsToolRunContent> =
+    RunContentManager.getInstance(project).allDescriptors.mapNotNull { descriptor ->
+        (descriptor.processHandler as? MarsProcessHandler)?.let {
+            MarsToolRunContent(descriptor.executionId, descriptor.displayName, it)
         }
+    }.sortedByDescending(MarsToolRunContent::id)
+
+internal class MarsToolExecutionSelector(private val project: Project, private val selectionChanged: () -> Unit) {
+    private val selector = ComboBox<MarsToolRunContent>().apply {
+        renderer = textListCellRenderer(toolsMessages.getMessage("counter.empty"), MarsToolRunContent::label)
         addActionListener { selectionChanged() }
     }
     val component: JComponent get() = selector
-    val process: MarsProcessHandler? get() = (selector.selectedItem as Execution?)?.process
-    private var executions = emptyList<Execution>()
+    val process: MarsProcessHandler? get() = (selector.selectedItem as MarsToolRunContent?)?.process
+    private var executions = emptyList<MarsToolRunContent>()
 
     fun refresh() {
-        val available = RunContentManager.getInstance(project).allDescriptors.mapNotNull { descriptor ->
-            (descriptor.processHandler as? MarsProcessHandler)?.let {
-                Execution(descriptor.executionId, descriptor.displayName, it)
-            }
-        }.sortedByDescending(Execution::id)
+        val available = marsToolExecutions(project)
         if (available != executions) {
             val selected = selector.selectedItem
             executions = available

@@ -66,6 +66,8 @@ internal fun xRaySchematicContent(
     }
     BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         val factor = minOf(maxWidth.value / schematic.size.width, maxHeight.value / schematic.size.height)
+        // Tool-window animation can measure the Compose host at zero width before opening it.
+        if (factor <= 0f) return@BoxWithConstraints
         Box(Modifier.size((schematic.size.width * factor).dp, (schematic.size.height * factor).dp)) {
             Canvas(Modifier.matchParentSize()) {
                 val zoom = size.width / schematic.size.width

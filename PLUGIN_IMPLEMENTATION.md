@@ -1968,9 +1968,11 @@ for review while the program continues. **Connect** resumes capture and removes
 any steps reversed by the debugger while capture was disconnected.
 
 Select a captured instruction to inspect its encoding and animate its datapath.
-The instruction and highlighted paths use IntelliJ's bundled Jewel and Compose
-components. The pane follows the IDE theme, supports text selection and
-scrolling, and exposes the complete readout as accessible text.
+Use **Previous step** and **Next step** to move through the captured trace
+or select an instruction directly. The execution picker, timeline, capture and
+playback controls, schematics, and signal readout use IntelliJ's bundled Jewel
+and Compose. The panel follows the IDE theme. The signal readout supports text
+selection and scrolling and exposes the complete text to accessibility tools.
 **Reset animation** returns the selected diagram to its first frame.
 **Clear trace** removes the selected execution's recorded instructions without
 changing the simulation or its capture setting.
@@ -1993,14 +1995,20 @@ A fresh IntelliJ 2026.3 installation opened all four packaged diagrams and
 animated a captured `addu` instruction. A separate Venus archive check built
 all four wire graphs and verified their targets and colors.
 
-The Jupiter Compose fixture renders the empty trace and a captured instruction
-offscreen and checks the text in the Compose semantics tree after the update.
-It also samples a rendered wire before and during animation, checks the
-transient labels, and invokes each of the three schematic drill-down actions.
+The Jupiter Compose fixtures render the empty trace and a captured instruction
+offscreen, exercise the timeline and capture and playback controls, and check
+the text in the Compose semantics tree. They sample a rendered wire before and
+during animation, check transient labels, and invoke the three schematic
+drill-down actions.
 The packaged Ubuntu ARM64 replay at 150% in High Contrast selected Registers
 with the keyboard, brought the focused trace text into view in a narrow dock,
 and confirmed that capture resumed while the Run console printed `42`.
 The replay log is under `mars5/.gradle/release-host-checks/linux-arm64-xray-jewel`.
+The all-Jewel panel replay clicked Disconnect and Connect at 150% in
+High Contrast and verified that capture paused and resumed while the program
+ran. A second replay selected Registers with the keyboard and captured
+the resulting diagram and signal readout. The logs and screenshots are under
+`mars5/.gradle/release-host-checks/linux-arm64-xray-panel`.
 On minimal Ubuntu test hosts, install `libegl1` and `libgl1` for the IDE's
 bundled Skiko renderer. The Linux build workflow installs them before testing.
 
