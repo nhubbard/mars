@@ -23,6 +23,7 @@ import edu.missouristate.mars.assembler.Macro
 import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.assembler.Tokenizer
 import edu.missouristate.mars.mips.hardware.MemoryConfigurations
+import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.ExtendedInstruction
 import edu.missouristate.mars.mips.instructions.InstructionSet
 import edu.missouristate.mars.plugin.MarsExecutionOptions
@@ -1707,19 +1708,26 @@ class MipsParserPlatformTest {
     }
 
     @Test
-    fun `unsigned address offsets exercise the pseudo forms masked by their catalog examples`(@TempDir directory: Path) =
+    fun `unsigned address pseudo examples select their advertised expansion`(@TempDir directory: Path) =
         timeoutRunBlocking<Unit> {
             val catalog = InstructionSet().also { it.populate() }.instructionList
-            val examples = catalog.filterIsInstance<ExtendedInstruction>().map { it.exampleFormat }
-                .filter { it.endsWith(",100(\$t2)") && !it.startsWith("la ") }
+            val basicNames = catalog.filterIsInstance<BasicInstruction>().map { it.name }.toSet()
+            val examples = catalog.filterIsInstance<ExtendedInstruction>().filter {
+                it.name in basicNames && it.tokenList.size() == 6 &&
+                    it.tokenList[2].type == TokenTypes.INTEGER_16U && it.tokenList[3].type == TokenTypes.LEFT_PAREN
+            }
             assertEquals(14, examples.size)
             val offsets = linkedMapOf("32767" to listOf<String>(), "32768" to listOf("ori", "addu"),
                 "65535" to listOf("ori", "addu"), "65536" to listOf("lui", "addu"),
                 "0x8000" to listOf("ori", "addu"), "0100000" to listOf("ori", "addu"),
                 "+32768" to listOf("ori", "addu"))
-            val cases = examples.flatMap { example -> offsets.map { (offset, prefix) ->
-                example.replace(",100(", ",$offset(") to (prefix + example.substringBefore(' '))
-            } }
+            val cases = examples.flatMap { form ->
+                val example = form.exampleFormat
+                val offsetToken = form.tokenList[2]
+                listOf(example to listOf("ori", "addu", form.name)) + offsets.map { (offset, prefix) ->
+                    example.replaceRange(offsetToken.startPos - 1, offsetToken.endPos - 1, offset) to (prefix + form.name)
+                }
+            }
             val source = cases.joinToString("\n", prefix = ".text\n", postfix = "\n") { it.first }
             val entry = directory.resolve("address-offsets.asm").also { it.writeText(source) }
             val program = project.get().service<MarsSessionService>().context.assemble(listOf(entry), null, true, false)

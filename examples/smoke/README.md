@@ -52,10 +52,10 @@ The generated programs under `build/instruction-catalog/sources` can be
 opened individually for debugging. Each header specifies its memory layout.
 The probes assume delayed branching is off.
 
-A few catalog examples use alternate operand values so they can exercise the
-intended encoding. For example, the unsigned 16-bit offset probe uses
-`32768` to select the pseudo-instruction, since the example's `100` also
-fits the signed 16-bit basic instruction. Expected breakpoint, trap, and
-overflow cases count only when execution reaches the probe and reports the
-expected exception cause. The catalog check covers instruction forms.
+A few catalog probes use alternate operand values to fit the simulated
+memory map and meet doubleword alignment. The catalog's unsigned
+load and store offset examples use `32768` to select the pseudo form.
+Expected breakpoint, trap, and overflow cases count only when execution
+reaches the probe and reports the expected exception cause. The catalog
+check covers instruction forms.
 The interactive workbench exercises a subset of the syscall services.

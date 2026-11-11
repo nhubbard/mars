@@ -215,7 +215,7 @@ public class HelpHelpAction extends GuiAction {
           + " $t2</td></tr><tr><td><tt>-100</tt></td><td>signed 16-bit"
           + " integer</td></tr><tr><td><tt>100</tt></td><td>unsigned 16-bit"
           + " integer</td></tr><tr><td><tt>100000</tt></td><td>signed 32-bit"
-          + " integer</td></tr><tr><td><tt>100($t2)</tt></td><td>zero-extended unsigned 16-bit"
+          + " integer</td></tr><tr><td><tt>32768($t2)</tt></td><td>zero-extended unsigned 16-bit"
           + " integer added to contents of $t2</td></tr><tr><td><tt>100000($t2)</tt></td><td>signed"
           + " 32-bit integer added to contents of"
           + " $t2</td></tr><tr><td><tt>label</tt></td><td>32-bit address of"

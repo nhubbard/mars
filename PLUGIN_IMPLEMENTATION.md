@@ -80,15 +80,16 @@ its editor operands, and ran it in IntelliJ. The Run console printed `73`.
 All 2,023 Jupiter tests and both coverage gates passed. The log and screenshot
 are under `mars5/.gradle/release-host-checks/immediate-spellings`.
 
-Fourteen load and store catalog examples spell the offset as `100(base)`,
-which selects a basic instruction. The regression fixture checks the signed
-limit at `32767`, the unsigned pseudo form from `32768` through `65535`, and
-the larger pseudo form starting at `65536`. It verifies IntelliJ's operand
-boundaries, the assembler's emitted operations, and the source line of each
-word. The packaged Ubuntu ARM64 replay opened and ran two large-offset loads
-and printed `73`. All 2,035 Jupiter tests, both coverage gates, and Plugin
-Verifier passed on macOS and Ubuntu ARM64. The packaged replay is under
-`mars5/.gradle/release-host-checks/linux-arm64-unsigned-address-parser`.
+Fourteen load and store catalog examples now spell the offset as `32768(base)`
+so the example selects the unsigned pseudo form. An offset such as `100(base)`
+selects the basic instruction. The regression fixture assembles every corrected
+example as written and checks the signed limit at `32767`, the unsigned range
+from `32768` through `65535`, and the larger pseudo form starting at `65536`.
+It verifies IntelliJ's operand boundaries, the assembler's emitted operations,
+and the source line of each word. Packaged IntelliJ on Ubuntu ARM64 displayed
+`lw $t1,32768($t2)` in Parameter Info and printed `73` when running two
+large-offset loads. The packaged replay is under
+`mars5/.gradle/release-host-checks/linux-arm64-catalog-address-example`.
 
 In a macro body, compact forms such as `la %out,%label+4` and
 `lw %out,%label,+4(%base)` retain the label and offset in one operand.

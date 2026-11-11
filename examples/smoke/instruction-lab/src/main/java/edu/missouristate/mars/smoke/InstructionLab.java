@@ -194,10 +194,6 @@ public final class InstructionLab {
             if (memory && assembly.endsWith(",100000")) {
                 assembly = assembly.replace(",100000", ",0x10010000");
             }
-            // A signed 16-bit load/store wins at 100. The unsigned pseudo form needs bit 15 set.
-            if (memory && assembly.endsWith(",100($t2)")) {
-                assembly = assembly.replace(",100($t2)", ",32768($t2)");
-            }
             if (DOUBLE_MEMORY.contains(name) && assembly.endsWith(",-100")) {
                 assembly = assembly.replace(",-100", ",-104");
             }
