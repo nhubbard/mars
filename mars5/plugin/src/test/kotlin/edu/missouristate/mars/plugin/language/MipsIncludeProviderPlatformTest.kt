@@ -5,6 +5,7 @@ import com.intellij.openapi.application.readAction
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.fileTypes.FileType
 import com.intellij.openapi.fileTypes.PlainTextFileType
+import com.intellij.openapi.util.SystemInfoRt
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
 import com.intellij.psi.PsiDocumentManager
@@ -65,9 +66,29 @@ class MipsIncludeProviderPlatformTest {
         provider.registerFileTypesUsedForIndexing { types.add(it) }
         assertEquals(listOf(MipsFileType), types)
         assertEquals("mars", provider.id)
-        assertEquals(8, provider.version)
+        assertEquals(9, provider.version)
         val empty = LightVirtualFile("empty.asm", MipsFileType, "")
         assertTrue(provider.getIncludeInfos(FileContentImpl.createByText(empty, "", null)).isEmpty())
+    }
+
+    @Test
+    fun `Windows include keys match directory separators and case without rewriting source paths`() = timeoutRunBlocking<Unit> {
+        val path = """Parts\CHILD.s"""
+        val source = ".include \"$path\""
+        val file = LightVirtualFile("entry.s", MipsFileType, source)
+        val content = FileContentImpl.createByText(file, source, null)
+        val windows = MipsIncludeProvider(windowsPaths = true)
+        val unix = MipsIncludeProvider(windowsPaths = false)
+        assertEquals(path, unix.getIncludeInfos(content).single().fileName)
+        val info = windows.getIncludeInfos(content).single()
+        assertEquals(path, info.path)
+        assertEquals(source.indexOf('"'), info.offset)
+        assertEquals("child.s", info.fileName)
+        val target = withContext(Dispatchers.EDT) { fixture.addFileToProject("Parts/Child.s", "nop\n") }
+        readAction {
+            assertEquals("child.s", windows.getIncludeName(target, target.name))
+            assertEquals("Child.s", unix.getIncludeName(target, target.name))
+        }
     }
 
     @Test
@@ -97,8 +118,9 @@ class MipsIncludeProviderPlatformTest {
     @Test
     fun `shared include index resolves both graph directions and terminates recursive traversal`() = timeoutRunBlocking<Unit> {
         val files = withContext(Dispatchers.EDT) {
+            val child = if (SystemInfoRt.isWindows) """parts\CHILD.asm""" else "parts/child.asm"
             listOf(
-                fixture.addFileToProject("main.asm", ".include \"parts/child.asm\"\n").virtualFile,
+                fixture.addFileToProject("main.asm", ".include \"$child\"\n").virtualFile,
                 fixture.addFileToProject("parts/child.asm", ".include \"../leaf.s\"\n").virtualFile,
                 fixture.addFileToProject("leaf.s", ".include \"main.asm\"\n").virtualFile,
             )

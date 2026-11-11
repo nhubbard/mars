@@ -7,6 +7,7 @@ import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.editor.ex.EditorEx
+import com.intellij.openapi.util.SystemInfoRt
 import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.vfs.VFileProperty
 import com.intellij.openapi.vfs.VirtualFile
@@ -129,10 +130,11 @@ class MipsFileReferencesPlatformTest {
     @Test
     fun `native file references preserve raw spaces question marks unicode and repeated separators`() = timeoutRunBlocking<Unit> {
         val files = withContext(Dispatchers.EDT) {
-            val raw = fixture.addFileToProject(" target?é.asm ", "target: nop\n")
+            val filename = if (SystemInfoRt.isWindows) " target #é.asm" else " target?é.asm "
+            val raw = fixture.addFileToProject(filename, "target: nop\n")
             val child = fixture.addFileToProject("parts/child.s", "child: nop\n")
             val source = fixture.addFileToProject(
-                "main.asm", ".include \" target?é.asm \"\n.include \"./parts//child.s\"\n.include \"${child.virtualFile.path}\"\n",
+                "main.asm", ".include \"$filename\"\n.include \"./parts//child.s\"\n.include \"${child.virtualFile.path}\"\n",
             )
             Triple(raw, child, source)
         }
@@ -147,12 +149,49 @@ class MipsFileReferencesPlatformTest {
                     set.allReferences.joinToString { "${it.canonicalText} -> ${it.resolve()?.virtualFile?.path}" }
             }
             assertEquals(setOf(files.third.virtualFile), FileIncludeManager.getManager(project.get()).getIncludingFiles(files.first.virtualFile, true).toSet())
-            for (literal in strings) {
+            for ((index, literal) in strings.withIndex()) {
                 val path = literal.text.substring(1, literal.textLength - 1)
                 val references = MipsFileReferenceSet(path, literal)
                 assertEquals(path, references.pathString)
-                assertEquals(path.startsWith('/'), references.isAbsolutePathReference)
+                assertEquals(index == 2, references.isAbsolutePathReference)
             }
+        }
+    }
+
+    @Test
+    fun `Windows include paths preserve written ranges for relative drive and UNC paths`() = timeoutRunBlocking<Unit> {
+        data class Include(val path: String, val absolute: Boolean, val segments: List<String>)
+
+        val includes = listOf(
+            Include(""".\parts\child.s""", false, listOf(".", "parts", "child.s")),
+            Include("""\parts\child.s""", false, listOf("parts", "child.s")),
+            Include("C:relative.s", false, listOf("C:relative.s")),
+            Include("""C:\parts\child.s""", true, listOf("parts", "child.s")),
+            Include("C:/parts//child.s", true, listOf("parts", "child.s")),
+            Include("C:/", true, listOf("C:/")),
+            Include("""\\server""", true, listOf("""\\server""")),
+            Include("""\\server\share""", true, listOf("""\\server\share""")),
+            Include("""\\server\share\parts\child.s""", true, listOf("parts", "child.s")),
+            Include("""\\server\\share\\parts\child.s""", true, listOf("parts", "child.s")),
+        )
+        val (child, source) = withContext(Dispatchers.EDT) {
+            val child = fixture.addFileToProject("parts/child.s", "child: nop\n")
+            val text = includes.joinToString("\n") { ".include \"${it.path}\"" }
+            child to fixture.addFileToProject("main.asm", text)
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
+        readAction {
+            val literals = PsiTreeUtil.findChildrenOfType(source, MipsStringLiteral::class.java).toList()
+            assertEquals(includes.size, literals.size)
+            val sets = includes.zip(literals) { include, literal ->
+                MipsFileReferenceSet(include.path, literal, windowsPaths = true).also { set ->
+                    assertEquals(include.path, set.pathString)
+                    assertEquals(include.absolute, set.isAbsolutePathReference, include.path)
+                    assertEquals(include.segments, set.allReferences.map { it.rangeInElement.substring(literal.text) }, include.path)
+                }
+            }
+            assertEquals(child, sets.first().allReferences.last().resolve())
+            if (!SystemInfoRt.isWindows) assertTrue(sets[3].defaultContexts.isEmpty())
         }
     }
 
@@ -418,7 +457,8 @@ class MipsFileReferencesPlatformTest {
     @Test
     fun `native reference sets support empty and root path boundaries`() = timeoutRunBlocking<Unit> {
         readAction {
-            for (path in listOf("", "/", "//")) {
+            val rootPaths = if (SystemInfoRt.isWindows) listOf("C:/", "//") else listOf("/", "//")
+            for (path in listOf("") + rootPaths) {
                 val file = PsiFileFactory.getInstance(project.get()).createFileFromText("root.asm", MipsFileType, ".include \"$path\"\n")
                 val literal = PsiTreeUtil.findChildOfType(file, MipsStringLiteral::class.java)!!
                 val references = MipsFileReferenceSet(path, literal)

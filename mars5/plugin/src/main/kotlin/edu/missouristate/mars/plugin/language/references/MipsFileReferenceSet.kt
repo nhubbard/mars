@@ -1,26 +1,38 @@
 package edu.missouristate.mars.plugin.language.references
 
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.SystemInfoRt
 import com.intellij.openapi.util.TextRange
+import com.intellij.openapi.util.io.OSAgnosticPathUtil
+import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
-import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.psi.PsiElementResolveResult
 import com.intellij.psi.PsiFileSystemItem
 import com.intellij.psi.ResolveResult
 import com.intellij.psi.impl.source.resolve.reference.impl.providers.FileReference
 import com.intellij.psi.impl.source.resolve.reference.impl.providers.FileReferenceHelper
 import com.intellij.psi.impl.source.resolve.reference.impl.providers.FileReferenceSet
+import com.intellij.util.text.CharArrayUtil
 import edu.missouristate.mars.plugin.language.psi.MipsStringLiteral
 
 /** MARS paths are literal filesystem paths. Spaces and question marks are not URL syntax. */
-class MipsFileReferenceSet(path: String, literal: MipsStringLiteral) : FileReferenceSet(path, literal, 1, null, true, true) {
+class MipsFileReferenceSet internal constructor(
+    path: String,
+    literal: MipsStringLiteral,
+    private val windowsPaths: Boolean = SystemInfoRt.isWindows,
+) : FileReferenceSet(path, literal, 1, null, true, true, null, false) {
+    init {
+        reparse()
+    }
+
     override fun getPathString(): String = element.text.substring(1, element.textLength - 1)
-    override fun isAbsolutePathReference(): Boolean = pathString.startsWith('/')
+    override fun isAbsolutePathReference(): Boolean = absoluteRoot(referencePath(pathString)).isNotEmpty()
 
     override fun computeDefaultContexts(): Collection<PsiFileSystemItem> {
-        if (!isAbsolutePathReference) return parentDirectoryContext
-        val file = element.containingFile.originalFile.viewProvider.virtualFile
-        return listOfNotNull(element.manager.findDirectory(VfsUtilCore.getRootFile(file)))
+        val root = absoluteRoot(referencePath(pathString))
+        if (root.isEmpty()) return parentDirectoryContext
+        val directory = LocalFileSystem.getInstance().findFileByPath(root)?.let(element.manager::findDirectory)
+        return listOfNotNull(directory)
     }
 
     override fun getNewAbsolutePath(root: PsiFileSystemItem, relativePath: String): String =
@@ -28,9 +40,11 @@ class MipsFileReferenceSet(path: String, literal: MipsStringLiteral) : FileRefer
 
     override fun reparse(str: String, startInElement: Int): List<FileReference> {
         val references = ArrayList<FileReference>()
-        var start = 0
+        val path = referencePath(str)
+        val root = absoluteRoot(path)
+        var start = root.length
         while (start < str.length) {
-            val separator = str.indexOf('/', start)
+            val separator = path.indexOf('/', start)
             val end = if (separator < 0) str.length else separator
             if (end > start) {
                 references.add(createFileReference(
@@ -39,10 +53,25 @@ class MipsFileReferenceSet(path: String, literal: MipsStringLiteral) : FileRefer
             }
             start = end + 1
         }
-        if (references.isEmpty() && str.startsWith('/')) {
+        if (references.isEmpty() && root.isNotEmpty()) {
             references.add(createFileReference(TextRange.from(startInElement, str.length), 0, "/"))
         }
         return references
+    }
+
+    // Each replacement has the same length, so references still point into the written literal.
+    private fun referencePath(path: String): String = if (windowsPaths) path.replace('\\', '/') else path
+
+    private fun absoluteRoot(path: String): String {
+        if (!windowsPaths) return if (path.startsWith('/')) "/" else ""
+        if (OSAgnosticPathUtil.isAbsoluteDosPath(path)) return path.substring(0, 3)
+        if (!path.startsWith("//")) return ""
+        // The server and share belong to the filesystem root rather than to individual references.
+        val serverEnd = path.indexOf('/', 2)
+        if (serverEnd < 0) return path
+        val shareStart = CharArrayUtil.shiftForward(path, serverEnd, "/")
+        val shareEnd = path.indexOf('/', shareStart)
+        return if (shareEnd < 0) path else path.substring(0, shareEnd)
     }
 
     override fun createFileReference(range: TextRange, index: Int, text: String): FileReference =
@@ -57,7 +86,7 @@ class MipsFileReferenceSet(path: String, literal: MipsStringLiteral) : FileRefer
                     val directory = context.virtualFile.resolveMipsDotSegment(text)?.let(context.manager::findDirectory)
                     if (directory != null) result.add(PsiElementResolveResult(directory))
                 } else {
-                    super.innerResolveInContext(text, context, result, caseSensitive)
+                    super.innerResolveInContext(text, context, result, context.virtualFile.isCaseSensitive)
                 }
             }
 
