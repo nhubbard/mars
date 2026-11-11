@@ -2286,6 +2286,14 @@ Live score updates reapply the active sort and retain the selected player
 and column. If the player moves to another row, the scoreboard reveals the
 selected cell. Starting a new round or switching executions clears the
 selection.
+At 150% zoom in High Contrast, the packaged macOS and Ubuntu ARM64 replays
+sorted the running game by energy and selected player 0's Position cell.
+A move spent one energy and took the player from the first row to the last.
+The selected cell stayed visible with position `(257, 255)`. Reset cleared
+the selection and restored the player's energy to 20. Both hosts passed all
+2,033 Jupiter tests, both coverage gates, and Plugin Verifier. The logs and
+screenshots are under `mars5/.gradle/release-host-checks/scavenger-live-selection`
+and `mars5/.gradle/release-host-checks/linux-arm64-scavenger-live-selection`.
 
 **Reset** starts a fresh round at the next instruction boundary without
 a store to the device's ports. Debug backstep restores the previous round
