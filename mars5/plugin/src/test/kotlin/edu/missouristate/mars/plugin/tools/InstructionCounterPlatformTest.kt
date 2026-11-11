@@ -394,16 +394,25 @@ class InstructionCounterPlatformTest {
                 scroll.doLayout()
                 val viewport = scroll.viewport
                 viewport.doLayout()
-                val body = viewport.view
+                val body = viewport.view as JPanel
                 body.doLayout()
+                body.getComponent(0).doLayout()
                 assertEquals(viewport.width, body.width)
                 assertTrue(xrayCanvas().height >= JBUI.scale(200))
                 val details = UIUtil.findComponentsOfType(xray, JBTextArea::class.java).single()
                 val detailsScroll = SwingUtilities.getAncestorOfClass(JScrollPane::class.java, details)
                 val detailsBounds = SwingUtilities.convertRectangle(detailsScroll.parent, detailsScroll.bounds, body)
                 assertFalse(viewport.viewRect.contains(detailsBounds))
-                scroll.verticalScrollBar.value = scroll.verticalScrollBar.maximum
-                assertTrue(viewport.viewRect.contains(detailsBounds))
+                body.scrollRectToVisible(detailsBounds)
+                assertTrue(viewport.viewRect.contains(detailsBounds)) {
+                    "Trace bounds $detailsBounds are outside the viewport ${viewport.viewRect}"
+                }
+                scroll.setSize(JBUI.scale(300), JBUI.scale(900))
+                scroll.doLayout()
+                viewport.doLayout()
+                body.doLayout()
+                body.getComponent(0).doLayout()
+                assertTrue(xrayCanvas().height > JBUI.scale(200))
             }
             pollAssertionsAsync(5.seconds, 30.milliseconds) {
                 withContext(Dispatchers.EDT) {

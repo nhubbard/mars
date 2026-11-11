@@ -2831,6 +2831,16 @@ input. All 2,033 Jupiter tests, both coverage gates, and Plugin Verifier passed.
 The screenshots and IDE log are under
 `mars5/.gradle/release-host-checks/xray-high-contrast`.
 
+The packaged Ubuntu ARM64 replay at 150% in High Contrast reproduced an
+additional narrow-dock issue. The help label set a fixed minimum width for
+the whole panel. IntelliJ's wrapping help text and a viewport-width panel
+keep the diagram and trace in the dock. The replay switched to Registers by
+keyboard, brought the full trace pane into view on focus, and resumed capture
+until Run printed `42`. The final layout passed 2,034 Jupiter tests, both
+coverage gates, and Plugin Verifier on macOS. Ubuntu screenshots and the
+packaged replay log are under
+`mars5/.gradle/release-host-checks/linux-arm64-xray-high-contrast`.
+
 ## IntelliJ indexing and completion baseline
 
 The indexing scenario generates one assembly root, 20 include groups, and

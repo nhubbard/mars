@@ -3,6 +3,7 @@ package edu.missouristate.mars.plugin.tools.xray
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.roots.ui.componentsList.components.ScrollablePanel
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTextArea
@@ -20,6 +21,7 @@ import edu.missouristate.mars.plugin.tools.scrollableToolPanel
 import edu.missouristate.mars.plugin.tools.toolsMessages
 import edu.missouristate.mars.util.Binary
 import java.awt.BasicStroke
+import java.awt.BorderLayout
 import java.awt.Color
 import java.awt.Font
 import java.awt.Graphics
@@ -95,9 +97,13 @@ internal class XRayView(project: Project) : Disposable {
         row(toolsMessages.getMessage("xray.speed")) { cell(speed) }
         row { cell(canvas).align(Align.FILL).resizableColumn() }.resizableRow()
         row { cell(descriptionScroll).align(AlignX.FILL).resizableColumn() }
-        row { comment(toolsMessages.getMessage("xray.help", XRayTrace.capacity), maxLineLength = 38) }
+        row { comment(toolsMessages.getMessage("xray.help", XRayTrace.capacity)).resizableColumn() }
     }
-    val component = scrollableToolPanel(this, controls, mapOf(description to descriptionScroll))
+    private val scrollBody = object : ScrollablePanel(BorderLayout()) {
+        // Fill tall docks while preserving the diagram's preferred height in short docks.
+        override fun getScrollableTracksViewportHeight() = parent.height > preferredSize.height
+    }.apply { add(controls, BorderLayout.CENTER) }
+    val component = scrollableToolPanel(this, scrollBody, mapOf(description to descriptionScroll))
 
     init {
         capture.addActionListener {
