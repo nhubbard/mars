@@ -1888,8 +1888,10 @@ visible while the execution tab is open.
 
 The tool window scrolls when its controls exceed the available space. Tab
 brings the focused control into view, including the last row of the keypad
-at 150% IDE zoom. The narrow-viewport Jupiter fixture and the packaged
-macOS High Contrast replay both exercise this behavior.
+at 150% IDE zoom. The narrow-viewport Jupiter fixture passed on macOS and
+Ubuntu ARM64, and both packaged High Contrast replays completed at that
+zoom. The macOS screenshot shows the focused F key. Startup notifications
+overlap part of the keypad in the Linux screenshot.
 
 The two seven-segment displays use the bytes at MMIO base + `0x10` and `0x11`.
 Each shows its current byte in hexadecimal below the diagram and in its
@@ -2576,8 +2578,8 @@ integration boundaries in the release build.
 | H01 | `MarsReferencePlatformTest` checks the offline catalog, inert archived help, packaged notices, search, and About. `MipsDocumentationPlatformTest` exercises Quick Documentation in the editor and completion popup. |
 
 The remaining release checks include the native host matrix, packaged UI
-checks for keyboard, hover, scaling, and high contrast, and the final
-source/resource inventory review. The packaged macOS install and archive
+checks for keyboard, hover, scaling, and high contrast, and final
+feature-by-feature acceptance. The packaged macOS install and archive
 replacement are recorded below.
 
 ### Packaged Bitmap Display and file actions
