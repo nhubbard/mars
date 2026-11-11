@@ -2,11 +2,14 @@ package edu.missouristate.mars.plugin.language
 
 import edu.missouristate.mars.plugin.debug.MarsMachineHighlight
 
+import com.intellij.application.options.CodeStyle
 import com.intellij.codeInsight.folding.CodeFoldingManager
 import com.intellij.codeInsight.highlighting.BraceMatchingUtil
+import com.intellij.ide.plugins.PluginManagerCore
 import com.intellij.lang.LanguageBraceMatching
 import com.intellij.lang.LanguageCommenters
 import com.intellij.lang.annotation.HighlightSeverity
+import com.intellij.lang.java.JavaLanguage
 import com.intellij.openapi.actionSystem.IdeActions
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.readAction
@@ -17,8 +20,10 @@ import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.editor.HighlighterColors
 import com.intellij.openapi.editor.colors.EditorColorsManager
 import com.intellij.openapi.editor.colors.TextAttributesKey
+import com.intellij.openapi.extensions.PluginId
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.FileEditorOpenRequest
+import com.intellij.openapi.fileEditor.TextEditor
 import com.intellij.openapi.fileTypes.PlainTextFileType
 import com.intellij.openapi.options.colors.ColorSettingsPages
 import com.intellij.openapi.vfs.LocalFileSystem
@@ -27,6 +32,7 @@ import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsigh
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.TokenType
+import com.intellij.psi.codeStyle.CodeStyleSettingsManager
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.DumbModeTestUtils
 import com.intellij.testFramework.EditorTestUtil
@@ -56,6 +62,57 @@ import kotlin.io.path.writeText
 class MipsEditorPlatformTest {
     private val project = codeInsightProjectFixture()
     private val fixture by codeInsightFixture(project)
+
+    @Test
+    fun `open MARS editors release and recover language settings during plugin reload`() = timeoutRunBlocking<Unit> {
+        withContext(Dispatchers.EDT) {
+            val current = project.get()
+            val style = CodeStyle.createTestSettings()
+            style.setRightMargin(null, 120)
+            style.setRightMargin(MipsLanguage, 81)
+            style.setRightMargin(JavaLanguage.INSTANCE, 93)
+            val previous = CodeStyleSettingsManager.getInstance(current).temporarySettings
+            CodeStyle.setTemporarySettings(current, style)
+            try {
+                val source = fixture.addFileToProject("lifecycle.mars", ".text\nnop\n")
+                fixture.configureFromExistingVirtualFile(source.virtualFile)
+                val editor = fixture.editor
+                editor.settings.setLanguageSupplier { MipsLanguage }
+                editor.caretModel.moveToOffset(6)
+                val javaFile = fixture.addFileToProject("Lifecycle.java", "class Lifecycle {}")
+                val manager = FileEditorManager.getInstance(current)
+                manager.openFile(javaFile.virtualFile, FileEditorOpenRequest.withFocus(false))
+                val javaEditor = manager.getEditors(javaFile.virtualFile).filterIsInstance<TextEditor>().single().editor
+                javaEditor.settings.setLanguageSupplier { JavaLanguage.INSTANCE }
+                val factory = EditorFactory.getInstance()
+                val unbacked = factory.createEditor(factory.createDocument("Scratch"), current)
+                try {
+                    val listener = MipsEditorLanguageLifecycle()
+                    val java = requireNotNull(PluginManagerCore.getPlugin(PluginId.getId("com.intellij.java")))
+                    listener.beforePluginUnload(java, false)
+                    listener.pluginLoaded(java)
+                    assertEquals(81, editor.settings.getRightMargin(current))
+
+                    val mars = requireNotNull(PluginManagerCore.getPlugin(PluginId.getId("edu.missouristate.mars")))
+                    listener.beforePluginUnload(mars, false)
+                    assertEquals(120, editor.settings.getRightMargin(current))
+                    assertEquals(93, javaEditor.settings.getRightMargin(current))
+                    assertFalse(editor.isDisposed)
+                    assertEquals(6, editor.caretModel.offset)
+                    assertEquals(".text\nnop\n", editor.document.text)
+
+                    listener.pluginLoaded(mars)
+                    assertEquals(81, editor.settings.getRightMargin(current))
+                    assertEquals(93, javaEditor.settings.getRightMargin(current))
+                } finally {
+                    factory.releaseEditor(unbacked)
+                }
+            } finally {
+                CodeStyle.dropTemporarySettings(current)
+                previous?.let { CodeStyle.setTemporarySettings(current, it) }
+            }
+        }
+    }
 
     @Test
     fun `assembly editors highlight mnemonics only in instruction positions`() = timeoutRunBlocking<Unit> {

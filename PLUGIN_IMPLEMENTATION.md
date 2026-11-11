@@ -3302,10 +3302,23 @@ The packaged replay verified the compiler task's registration and distinct
 classloader. Disabling MARS removed the file type, Assemble action and tools
 without reproducing the editor error.
 
-IntelliJ still reported a reference to the old main classloader after
-disable. The replay stopped at that check, before re-enable or the X-Ray
-tool-window cycle. The L6 unload/reload and leak checks remain open. The
-baseline and module-isolation logs are under
+IntelliJ's reference analysis found two independent paths to the main
+classloader. The macOS input method kept the focused editor, whose settings
+still held the old MARS language. The file-type search cache also kept the
+MARS SVG icon through an icon loader tied to the plugin. MARS now clears
+the editor language supplier before disable, restores it on enable, and
+loads the SVG by its resource URL. The macOS replay kept the editor tab
+open, observed collection of the old loader, and re-enabled MARS in the
+same process. IntelliJ logged a code-style cache error during re-enable in
+that replay. A separate editor-only replay restored the editor PSI and
+compiler task, then ran the assembly file and printed `reload smoke ready`
+in the native console. The code-style error did not recur in that replay.
+
+With X-Ray open, IntelliJ removed the tool window and retained the old
+loader. The reference analysis followed a Compose panel's parent chain to
+the tool window's localized stripe-title supplier, which captured the
+plugin classloader. The X-Ray reload and cross-host lifecycle checks
+remain open. The replays and reference reports are under
 `mars5/.gradle/release-host-checks/dynamic-reload`.
 
 ### Reviewed API use in the 263 target

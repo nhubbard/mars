@@ -93,6 +93,7 @@ class MarsNewFilePlatformTest {
                 assertSame(MipsFileType.icon, type.icon)
             }
             assertNotNull(MipsFileType::class.java.getResource("/icons/marsMips.svg"))
+            assertNotNull(MipsFileType.icon)
             directory.virtualFile.findChild("main.mars")!!.toNioPath()
         }
         assertTrue(project.service<MarsBuildService>().assemble(entry))

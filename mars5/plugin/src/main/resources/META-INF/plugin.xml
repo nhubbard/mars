@@ -123,6 +123,10 @@
     <syntax.elementTypeConverter language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsElementTypeConverterFactory"/>
     <notificationGroup id="MARS Memory Export" displayType="BALLOON" bundle="messages.MarsBundle" key="export.title"/>
   </extensions>
+  <applicationListeners>
+    <listener class="edu.missouristate.mars.plugin.language.MipsEditorLanguageLifecycle"
+              topic="com.intellij.ide.plugins.DynamicPluginListener"/>
+  </applicationListeners>
   <projectListeners>
     <listener class="edu.missouristate.mars.plugin.build.MarsOpenAssemblyListener"
               topic="com.intellij.openapi.fileEditor.FileEditorManagerListener"/>
