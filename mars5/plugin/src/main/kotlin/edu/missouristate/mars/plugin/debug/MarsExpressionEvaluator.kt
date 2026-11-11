@@ -20,6 +20,8 @@ import com.intellij.xdebugger.XSourcePosition
 import com.intellij.xdebugger.evaluation.ExpressionInfo
 import com.intellij.xdebugger.evaluation.XDebuggerEvaluator
 import edu.missouristate.mars.api.AssemblySymbolMap.Definition
+import edu.missouristate.mars.api.AssemblySymbolMap.SourceToken
+import edu.missouristate.mars.api.InstructionSourceMap.SourceOperand
 import edu.missouristate.mars.assembler.RegisterNames
 import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.assembler.Tokenizer
@@ -38,6 +40,7 @@ import edu.missouristate.mars.plugin.language.coprocessor0Operand
 import edu.missouristate.mars.plugin.language.operationHead
 import edu.missouristate.mars.plugin.language.operationOnLine
 import edu.missouristate.mars.plugin.language.syntax.DebuggerExpressionParsing
+import edu.missouristate.mars.plugin.run.MarsExecutionSources
 import edu.missouristate.mars.plugin.run.runMessages
 import edu.missouristate.mars.util.Binary
 import kotlinx.coroutines.channels.SendChannel
@@ -48,8 +51,11 @@ internal class MarsExpressionEvaluator(
     machine: MarsContext,
     private val localSymbols: Map<String, Definition>,
     private val globalSymbols: Map<String, Definition>,
+    private val sources: MarsExecutionSources,
     private val watchRequests: SendChannel<WatchMemoryRequest>,
 ) : XDebuggerEvaluator() {
+    private val expandedOperands = machine.memory.sourceStatement(machine.registerFile.programCounterRegister.valueNoNotify)
+        ?.sourceOperands.orEmpty()
     private val registers = buildMap<String, Scalar> {
         val cpu = machine.registerFile
         for (register in cpu.registers) {
@@ -80,12 +86,36 @@ internal class MarsExpressionEvaluator(
     private fun expressionAt(project: Project, document: Document, offset: Int): ExpressionInfo? {
         val file = PsiDocumentManager.getInstance(project).getPsiFile(document) as? MipsFile ?: return null
         val leaf = file.findElementAt(offset) ?: return null
+        val operands = expandedOperandsAt(file, document, leaf.textOffset)
+        if (operands.isNotEmpty()) {
+            val expression = operands.singleOrNull()?.let(::expandedExpression) ?: return null
+            return ExpressionInfo(leaf.textRange, expression, leaf.text)
+        }
         val parent = leaf.parent
         return when (parent.elementType) {
             literalType -> literalHint(parent)
             unaryType -> parent.lastChild.takeIf { it.elementType == literalType }?.let(::literalHint)
             referenceType -> if (leaf.elementType == registerType) registerHint(leaf) else symbolHint(leaf)
             labelType -> if (leaf == parent.firstChild) symbolHint(leaf) else null
+            else -> null
+        }
+    }
+
+    private fun expandedOperandsAt(file: MipsFile, document: Document, offset: Int): List<SourceOperand> {
+        if (expandedOperands.isEmpty()) return emptyList()
+        val line = document.getLineNumber(offset)
+        val location = sources.location(file.viewProvider.virtualFile, line) ?: return emptyList()
+        val site = SourceToken(location, offset - document.getLineStartOffset(line) + 1)
+        return expandedOperands.filter { it.written() == site || it.argument() == site }
+    }
+
+    private fun expandedExpression(operand: SourceOperand): String? {
+        val value = operand.value()
+        val type = operand.type()
+        return when {
+            type in registerTypes -> registerExpression(value, operand.coprocessor0())
+            type == TokenTypes.IDENTIFIER -> symbolAddress(value)
+            TokenTypes.isIntegerTokenType(type) -> Binary.intToHexString(Binary.stringToInt(value))
             else -> null
         }
     }
@@ -98,17 +128,24 @@ internal class MarsExpressionEvaluator(
     private fun registerHint(leaf: PsiElement): ExpressionInfo? {
         val name = leaf.text
         val systemOffset = operationOnLine(leaf)?.operationHead?.let(::coprocessor0Operand)
-        val expression = if (systemOffset == leaf.textOffset) {
+        val expression = registerExpression(name, systemOffset == leaf.textOffset) ?: return null
+        return ExpressionInfo(leaf.textRange, expression, name)
+    }
+
+    private fun registerExpression(name: String, coprocessor0: Boolean): String? {
+        val expression = if (coprocessor0) {
             val register = RegisterNames.integer(name) ?: return null
             "cp0.\$${register.number}"
         } else name
-        return if (resolveReference(expression) != null) ExpressionInfo(leaf.textRange, expression, name) else null
+        return expression.takeIf { resolveReference(it) != null }
     }
 
-    private fun symbolHint(leaf: PsiElement): ExpressionInfo? = symbol(leaf.text)?.let {
+    private fun symbolHint(leaf: PsiElement): ExpressionInfo? = symbolAddress(leaf.text)?.let {
         // A source label named pc or hi still means its address, even though Evaluate reserves those names.
-        ExpressionInfo(leaf.textRange, Binary.intToHexString(it.address()), leaf.text)
+        ExpressionInfo(leaf.textRange, it, leaf.text)
     }
+
+    private fun symbolAddress(name: String): String? = symbol(name)?.let { Binary.intToHexString(it.address()) }
 
     override fun evaluate(expression: String, callback: XEvaluationCallback, expressionPosition: XSourcePosition?) {
         val source = expression.trim()
@@ -266,6 +303,7 @@ internal class MarsExpressionEvaluator(
         val characterType = MipsTypes.psi("CHARACTER")
         val referenceType = MipsTypes.psi("REFERENCE_EXPR")
         val registerType = MipsTypes.psi("REGISTER")
+        val registerTypes = setOf(TokenTypes.REGISTER_NAME, TokenTypes.REGISTER_NUMBER, TokenTypes.FP_REGISTER_NAME)
         val labelType = MipsTypes.psi("LABEL")
         val groupType = MipsTypes.psi("GROUP_EXPR")
         val unaryType = MipsTypes.psi("UNARY_EXPR")

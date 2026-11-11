@@ -1,6 +1,7 @@
 package edu.missouristate.mars;
 
 import edu.missouristate.mars.api.InstructionSourceMap.Origin;
+import edu.missouristate.mars.api.InstructionSourceMap.SourceOperand;
 import edu.missouristate.mars.assembler.*;
 import edu.missouristate.mars.core.AssemblyContext;
 import edu.missouristate.mars.core.SimulationSettings;
@@ -57,6 +58,7 @@ public class ProgramStatement {
   private final Instruction instruction;
   private final int textAddress;
   private final Origin instructionOrigin;
+  private final List<SourceOperand> sourceOperands;
   private int sourceLine;
   private int binaryStatement;
   private final boolean altered;
@@ -99,6 +101,20 @@ public class ProgramStatement {
       int textAddress,
       int sourceLine,
       Origin instructionOrigin) {
+    this(sourceMIPSprogram, source, origTokenList, strippedTokenList, inst, textAddress, sourceLine,
+        instructionOrigin, List.of());
+  }
+
+  public ProgramStatement(
+      MIPSprogram sourceMIPSprogram,
+      String source,
+      TokenList origTokenList,
+      TokenList strippedTokenList,
+      Instruction inst,
+      int textAddress,
+      int sourceLine,
+      Origin instructionOrigin,
+      List<SourceOperand> sourceOperands) {
     this.sourceMIPSprogram = sourceMIPSprogram;
     this.detachedSourceFile = "";
     this.displaySettings =
@@ -112,6 +128,7 @@ public class ProgramStatement {
     this.textAddress = textAddress;
     this.sourceLine = sourceLine;
     this.instructionOrigin = instructionOrigin;
+    this.sourceOperands = List.copyOf(sourceOperands);
     this.basicAssemblyStatement = null;
     this.basicStatementList = new BasicStatementList();
     this.machineStatement = null;
@@ -148,6 +165,7 @@ public class ProgramStatement {
     this.sourceMIPSprogram = null;
     this.detachedSourceFile = "";
     this.instructionOrigin = null;
+    this.sourceOperands = List.of();
     this.binaryStatement = binaryStatement;
     this.textAddress = textAddress;
     this.originalTokenList = this.strippedTokenList = null;
@@ -203,6 +221,7 @@ public class ProgramStatement {
     private final int address, line, binary, numOperands;
     private final int[] operands;
     private final Origin origin;
+    private final List<SourceOperand> sourceOperands;
     private final List<BasicStatementList.ListElement> display;
 
     private Image(ProgramStatement statement) {
@@ -218,6 +237,7 @@ public class ProgramStatement {
       numOperands = statement.numOperands;
       operands = statement.operands.clone();
       origin = statement.instructionOrigin;
+      sourceOperands = statement.sourceOperands;
       display = List.copyOf(statement.basicStatementList.list);
     }
 
@@ -247,6 +267,7 @@ public class ProgramStatement {
     numOperands = image.numOperands;
     operands = image.operands.clone();
     instructionOrigin = image.origin;
+    sourceOperands = image.sourceOperands;
     originalTokenList = strippedTokenList = null;
     basicStatementList = new BasicStatementList();
     basicStatementList.list.addAll(image.display);
@@ -691,6 +712,10 @@ public class ProgramStatement {
    */
   public TokenList getStrippedTokenList() {
     return strippedTokenList;
+  }
+
+  public List<SourceOperand> getSourceOperands() {
+    return sourceOperands;
   }
 
   /**

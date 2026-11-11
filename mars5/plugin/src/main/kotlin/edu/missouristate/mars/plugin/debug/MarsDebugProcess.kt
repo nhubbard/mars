@@ -495,7 +495,7 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
         val machineEdits = machineEditRequests()
         val number = ++suspensionNumber
         val frame = MarsStackFrame(
-            sourcePosition(origin), machine, session.project, localSymbols, symbols.globals(), watchRequests, machineEdits,
+            sourcePosition(origin), machine, session.project, localSymbols, symbols.globals(), sources, watchRequests, machineEdits,
         ) {
             val current = session.suspendContext
             current is MarsSuspendContext && current.machineEdits === machineEdits
@@ -606,7 +606,7 @@ private class StepOver(private val source: SourceStep?) : SimulatorListener {
     }
 }
 
-private fun MemoryState.sourceStatement(pc: Int): ProgramStatement? {
+internal fun MemoryState.sourceStatement(pc: Int): ProgramStatement? {
     // Data-segment execution and rewritten instructions have no assembled source position.
     if (!MemoryState.wordAligned(pc) || !(inTextSegment(pc) || inKernelTextSegment(pc))) return null
     return getStatementNoNotify(pc)

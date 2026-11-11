@@ -1368,6 +1368,85 @@ class MarsDebugPlatformTest {
         }
     }
 
+    @Test
+    fun `Quick Evaluate follows operands in the loaded macro expansion`() = timeoutRunBlocking<Unit> {
+        val (source, library) = withContext(Dispatchers.EDT) {
+            val source = fixture.addFileToProject("expanded.mars", """
+                .eqv TARGET ${'$'}t0
+                .eqv LIMIT -7
+                .eqv ADDRESS 0(${'$'}sp)
+                .eqv PTR pc
+                .eqv LP (
+                .eqv EPC ${'$'}14
+                .include "setup.inc"
+                .data
+                pc: .word 42
+                .text
+                addiu ${'$'}t0, ${'$'}zero, 17
+                addiu ${'$'}t1, ${'$'}zero, 23
+                set(TARGET, LIMIT)
+                set(${'$'}t1, 0x12345678)
+                la ${'$'}t2, PTR
+                mtc0 ${'$'}t0, EPC
+                lw ${'$'}t3, ADDRESS
+                lw ${'$'}t3, 0 LP ${'$'}sp)
+                nop
+            """.trimIndent()).virtualFile
+            val library = fixture.addFileToProject("setup.inc", ".macro set (%reg, %value)\nli %reg, %value\n.end_macro").virtualFile
+            addBreakpoint(library, 1)
+            for (line in 14..17) addBreakpoint(source, line)
+            source to library
+        }
+        withDebug(source) { debug ->
+            suspend fun hint(file: VirtualFile, text: String, expected: String?) = withContext(Dispatchers.EDT) {
+                val frame = requireNotNull(debug.session.currentStackFrame)
+                val document = requireNotNull(FileDocumentManager.getInstance().getDocument(file))
+                val offset = document.text.lastIndexOf(text)
+                val info = requireNotNull(frame.evaluator).getExpressionInfoAtOffsetAsync(project, document, offset, false).await()
+                if (expected == null) {
+                    assertNull(info, text)
+                } else {
+                    val expression = requireNotNull(info)
+                    assertEquals(TextRange(offset, offset + text.length), expression.textRange)
+                    assertEquals(text, expression.displayText)
+                    assertEquals(expected, evaluate(debug.session, frame, requireNotNull(expression.expressionText)))
+                }
+            }
+            debug.assertPausedAt(library, 1)
+            hint(library, "%reg", "0x00000011")
+            hint(library, "%value", "0xfffffff9")
+            hint(source, "TARGET", "0x00000011")
+            hint(source, "LIMIT", "0xfffffff9")
+            withContext(Dispatchers.EDT) {
+                val document = requireNotNull(FileDocumentManager.getInstance().getDocument(source))
+                val before = document.text
+                WriteCommandAction.runWriteCommandAction(project) { document.insertString(document.textLength, "\n# edited") }
+                hint(source, "LIMIT", null)
+                WriteCommandAction.runWriteCommandAction(project) { document.setText(before) }
+                debug.session.resume()
+            }
+            debug.assertPausedAt(library, 1)
+            hint(library, "%reg", "0x00000017")
+            hint(library, "%value", "0x12345678")
+            hint(source, "TARGET", null)
+            hint(source, "0x12345678", "0x12345678")
+            withContext(Dispatchers.EDT) { debug.session.resume() }
+            debug.assertPausedAt(source, 14)
+            hint(source, "PTR", "0x10010000")
+            withContext(Dispatchers.EDT) { debug.session.resume() }
+            debug.assertPausedAt(source, 15)
+            hint(source, "EPC", "0x00000000")
+            withContext(Dispatchers.EDT) { debug.session.resume() }
+            debug.assertPausedAt(source, 16)
+            hint(source, "ADDRESS", null)
+            withContext(Dispatchers.EDT) { debug.session.resume() }
+            debug.assertPausedAt(source, 17)
+            hint(source, "LP", null)
+            withContext(Dispatchers.EDT) { debug.session.resume() }
+            assertEquals(0, debug.exit.await())
+        }
+    }
+
     private suspend fun evaluate(session: XDebugSession, frame: XStackFrame, expression: String): String {
         val tree = XDebuggerTree(
             project, session.debugProcess.editorsProvider, frame.sourcePosition, XDebuggerActions.VARIABLES_TREE_POPUP_GROUP, null,

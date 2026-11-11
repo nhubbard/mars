@@ -1,5 +1,7 @@
 package edu.missouristate.mars.api;
 
+import edu.missouristate.mars.api.AssemblySymbolMap.SourceToken;
+import edu.missouristate.mars.assembler.TokenTypes;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
@@ -15,6 +17,10 @@ public record InstructionSourceMap(
     Map<Integer, Origin> origins, Map<Location, List<Integer>> breakpoints, Set<Integer> pseudoAddresses) {
 
   public static final InstructionSourceMap EMPTY = new InstructionSourceMap(Map.of(), Map.of());
+
+  /** An expanded operand and the written token and optional macro argument that supplied it. */
+  public record SourceOperand(
+      SourceToken written, SourceToken argument, String value, TokenTypes type, boolean coprocessor0) {}
 
   public InstructionSourceMap(Map<Integer, Origin> origins, Map<Location, List<Integer>> breakpoints) {
     this(origins, breakpoints, Set.of());

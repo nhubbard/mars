@@ -22,6 +22,7 @@ import edu.missouristate.mars.plugin.debug.RegisterBank.CPU
 import edu.missouristate.mars.plugin.debug.RegisterBank.FPU_DOUBLE
 import edu.missouristate.mars.plugin.debug.RegisterBank.FPU_FLAGS
 import edu.missouristate.mars.plugin.debug.RegisterBank.FPU_SINGLE
+import edu.missouristate.mars.plugin.run.MarsExecutionSources
 import edu.missouristate.mars.plugin.run.runMessages
 import edu.missouristate.mars.simulator.BackStepper.RegisterWrite
 import edu.missouristate.mars.simulator.BackStepper.RegisterWriteBank
@@ -35,6 +36,7 @@ internal class MarsStackFrame(
     private val project: Project,
     private val localSymbols: Map<String, Definition>,
     private val globalSymbols: Map<String, Definition>,
+    private val sources: MarsExecutionSources,
     private val watchRequests: SendChannel<WatchMemoryRequest>,
     private val machineEdits: SendChannel<MachineEditRequest>,
     private val isCurrent: () -> Boolean,
@@ -50,7 +52,7 @@ internal class MarsStackFrame(
     }
 
     private fun capture(machine: MarsContext): Snapshot {
-        val evaluator = MarsExpressionEvaluator(project, machine, localSymbols, globalSymbols, watchRequests)
+        val evaluator = MarsExpressionEvaluator(project, machine, localSymbols, globalSymbols, sources, watchRequests)
         return Snapshot(evaluator, registerGroups(machine))
     }
 

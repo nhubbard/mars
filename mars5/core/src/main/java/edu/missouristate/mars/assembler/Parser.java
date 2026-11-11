@@ -6,11 +6,15 @@ import edu.missouristate.mars.api.AssemblySymbolMap.MacroCall;
 import edu.missouristate.mars.api.AssemblySymbolMap.SourceToken;
 import edu.missouristate.mars.api.InstructionSourceMap.Location;
 import edu.missouristate.mars.api.InstructionSourceMap.Origin;
+import edu.missouristate.mars.api.InstructionSourceMap.SourceOperand;
 import edu.missouristate.mars.mips.instructions.ExtendedInstruction;
 import edu.missouristate.mars.mips.instructions.Instruction;
+import edu.missouristate.mars.mips.instructions.basic.InstrMfc0;
+import edu.missouristate.mars.mips.instructions.basic.InstrMtc0;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 /*
@@ -248,6 +252,7 @@ final class Parser {
       }
       if (OperandFormat.tokenOperandMatch(
           tokens, inst, pass.errors, pass.context.bareMachineEnabled())) {
+        var instructionOrigin = origin(physicalLine, caller);
         programStatement =
             new ProgramStatement(
                 pass.fileCurrentlyBeingAssembled,
@@ -257,7 +262,8 @@ final class Parser {
                 inst,
                 pass.textAddress.get(),
                 sourceLineNumber,
-                origin(physicalLine, caller));
+                instructionOrigin,
+                sourceOperands(tokens, inst, instructionOrigin.location()));
         // instruction length is 4 for all basic instruction, varies for extended instruction
         // Modified to permit use of compact expansion if address fits
         // in 15 bits. DPS 4-Aug-2009
@@ -276,6 +282,27 @@ final class Parser {
       }
     }
     return null;
+  }
+
+  private static List<SourceOperand> sourceOperands(
+      TokenList tokens, Instruction instruction, Location location) {
+    ArrayList<SourceOperand> operands = null;
+    for (int i = 1; i < tokens.size(); i++) {
+      var token = tokens.get(i);
+      var written = token.writtenOrigin();
+      boolean fromArgument = token.getDiagnosticOrigin() != written.getDiagnosticOrigin();
+      if (!fromArgument && token.equivalenceSource() == null && token.getValue().equals(written.getValue())) {
+        continue;
+      }
+      if (operands == null) {
+        operands = new ArrayList<>();
+      }
+      var site = new SourceToken(location, written.getOriginalStartPos());
+      boolean systemRegister = i == 2 && (instruction instanceof InstrMfc0 || instruction instanceof InstrMtc0);
+      operands.add(new SourceOperand(site, fromArgument ? token.diagnosticSite() : null,
+          token.getValue(), token.getType(), systemRegister));
+    }
+    return operands == null ? List.of() : operands;
   }
 
   static Origin origin(SourceLine line, Origin caller) {
