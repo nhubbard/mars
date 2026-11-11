@@ -260,71 +260,47 @@ public class MarsLaunch {
   // Returns true if command args parse OK, false otherwise.
 
   private boolean parseCommandArgs(String[] args) {
-    String noCopyrightSwitch = "nc";
-    String displayMessagesToErrSwitch = "me";
-    boolean argsOK = true;
-    boolean inProgramArgumentList = false;
-    programArgumentList = null;
-    if (args.length == 0) {
-      return true; // should not get here...
-    }
-    // If the option to display MARS messages to standard erro is used,
-    // it must be processed before any others (since messages may be
-    // generated during option parsing).
-    processDisplayMessagesToErrSwitch(args, displayMessagesToErrSwitch);
-    displayCopyright(args, noCopyrightSwitch); // ..or not..
     if (args.length == 1 && args[0].equals("h")) {
+      displayCopyright();
       displayHelp();
       return false;
     }
+    boolean showCopyright = true;
+    // Delay argument diagnostics until the output stream is known.
+    var diagnostics = new ArrayList<String>();
     for (int i = 0; i < args.length; i++) {
-      // We have seen "pa" switch, so all remaining args are program args
-      // that will become "argc" and "argv" for the MIPS program.
-      if (inProgramArgumentList) {
-        if (programArgumentList == null) {
-          programArgumentList = new ArrayList<>();
-        }
-        programArgumentList.add(args[i]);
-        continue;
-      }
-      // Once we hit "pa", all remaining command args are assumed
-      // to be program arguments.
       if (args[i].equalsIgnoreCase("pa")) {
-        inProgramArgumentList = true;
+        programArgumentList = new ArrayList<>(Arrays.asList(args).subList(i + 1, args.length));
+        break;
+      }
+      if (args[i].equalsIgnoreCase("me")) {
+        out = System.err;
         continue;
       }
-      // messages-to-standard-error switch already processed, so ignore.
-      if (args[i].toLowerCase().equals(displayMessagesToErrSwitch)) {
-        continue;
-      }
-      // no-copyright switch already processed, so ignore.
-      if (args[i].toLowerCase().equals(noCopyrightSwitch)) {
+      if (args[i].equalsIgnoreCase("nc")) {
+        showCopyright = false;
         continue;
       }
       if (args[i].equalsIgnoreCase("dump")) {
-        if (args.length <= (i + 3)) {
-          out.println("Dump command line argument requires a segment, format and file name.");
-          argsOK = false;
-        } else {
-          if (dumpTriples == null) {
-            dumpTriples = new ArrayList<>();
-          }
-          dumpTriples.add(new String[] {args[++i], args[++i], args[++i]});
-          // simulate = false;
+        if (args.length <= i + 3) {
+          diagnostics.add("Dump command line argument requires a segment, format and file name.");
+          break;
         }
+        if (dumpTriples == null) {
+          dumpTriples = new ArrayList<>();
+        }
+        dumpTriples.add(new String[] {args[++i], args[++i], args[++i]});
         continue;
       }
       if (args[i].equalsIgnoreCase("mc")) {
         if (i + 1 == args.length) {
-          out.println("Memory configuration option requires a configuration name.");
-          argsOK = false;
+          diagnostics.add("Memory configuration option requires a configuration name.");
           continue;
         }
         String configName = args[++i];
         MemoryConfiguration config = MemoryConfigurations.getConfigurationByName(configName);
         if (config == null) {
-          out.println("Invalid memory configuration: " + configName);
-          argsOK = false;
+          diagnostics.add("Invalid memory configuration: " + configName);
         } else {
           session.setMemoryConfiguration(config);
         }
@@ -411,8 +387,7 @@ public class MarsLaunch {
       if (args[i].indexOf("$") == 0) {
         if (session.context().registerFile.getUserRegister(args[i]) == null
             && session.context().coprocessor1.getRegister(args[i]) == null) {
-          out.println("Invalid Register Name: " + args[i]);
-          argsOK = false;
+          diagnostics.add("Invalid Register Name: " + args[i]);
         } else {
           registerDisplayList.add(args[i]);
         }
@@ -438,27 +413,29 @@ public class MarsLaunch {
       // Check for integer address range (m-n)
       try {
         String[] memoryRange = checkMemoryAddressRange(args[i]);
-        memoryDisplayList.add(memoryRange[0]); // low end of range
-        memoryDisplayList.add(memoryRange[1]); // high end of range
-        continue;
+        if (memoryRange != null) {
+          memoryDisplayList.add(memoryRange[0]); // low end of range
+          memoryDisplayList.add(memoryRange[1]); // high end of range
+          continue;
+        }
       } catch (NumberFormatException nfe) {
-        out.println("Invalid/unaligned address or invalid range: " + args[i]);
-        argsOK = false;
+        diagnostics.add("Invalid/unaligned address or invalid range: " + args[i]);
         continue;
-      } catch (NullPointerException npe) {
-        // Do nothing.  next statement will handle it
       }
-      out.println("Invalid Command Argument: " + args[i]);
-      argsOK = false;
+      diagnostics.add("Invalid Command Argument: " + args[i]);
     }
-    if (argsOK && filenameList.isEmpty()) {
-      out.println("No assembly source files specified.");
-      argsOK = false;
+    if (showCopyright) {
+      displayCopyright();
     }
-    if (!argsOK) {
+    if (diagnostics.isEmpty() && filenameList.isEmpty()) {
+      diagnostics.add("No assembly source files specified.");
+    }
+    if (!diagnostics.isEmpty()) {
+      diagnostics.forEach(out::println);
       session.setExitCode(2);
+      return false;
     }
-    return argsOK;
+    return true;
   }
 
   //////////////////////////////////////////////////////////////////////
@@ -691,30 +668,7 @@ public class MarsLaunch {
     }
   }
 
-  ///////////////////////////////////////////////////////////////////////
-  //  If option to display MARS messages to standard err (System.err) is
-  //  present, it must be processed before all others.  Since messages may
-  //  be output as early as during the command parse.
-  private void processDisplayMessagesToErrSwitch(String[] args, String displayMessagesToErrSwitch) {
-    for (String arg : args) {
-      if (arg.toLowerCase().equals(displayMessagesToErrSwitch)) {
-        out = System.err;
-        return;
-      }
-    }
-  }
-
-  ///////////////////////////////////////////////////////////////////////
-  //  Decide whether copyright should be displayed, and display
-  //  if so.
-
-  private void displayCopyright(String[] args, String noCopyrightSwitch) {
-    boolean print = true;
-    for (String arg : args) {
-      if (arg.toLowerCase().equals(noCopyrightSwitch)) {
-        return;
-      }
-    }
+  private void displayCopyright() {
     out.println(
         "MARS "
             + ApplicationInfo.version

@@ -35,6 +35,44 @@ class LauncherParityTest {
     assertProgramResult(List.of("nc", file.toString()), "", 0, "");
   }
 
+  @Test
+  void programArgumentsThatLookLikeOutputFlagsStayProgramArguments() throws Exception {
+    Path file = source("flags.s", """
+        move $s0,$a1
+        lw $a0,0($s0)
+        li $v0,4
+        syscall
+        lw $a0,4($s0)
+        li $v0,4
+        syscall
+        li $v0,10
+        syscall
+        """);
+    assertProgramResult(List.of("nc", file.toString(), "pa", "me", "nc"), "", 0, "menc");
+
+    var desktop = launch("desktop", "", "ic", file.toString(), "pa", "ME", "NC");
+    assertEquals(0, desktop.status(), desktop.err());
+    assertEquals("", desktop.err());
+    assertTrue(desktop.out().contains("Copyright"));
+    assertTrue(desktop.out().contains("MENC"));
+    assertTrue(desktop.out().lines().anyMatch("9"::equals));
+  }
+
+  @Test
+  void dumpFilenamesThatLookLikeOutputFlagsStayFilenames() throws Exception {
+    Path file = source("dump-flags.s", "nop\n");
+    var desktop = launch("desktop", "", "ad",
+        "dump", ".text", "HexText", "me",
+        "dump", ".text", "HexText", "nc", file.toString());
+    assertEquals(0, desktop.status(), desktop.err());
+    assertEquals("", desktop.err());
+    assertTrue(desktop.out().contains("Copyright"));
+    assertTrue(desktop.out().contains("ASSEMBLY BEGINS"));
+    for (String name : List.of("me", "nc")) {
+      assertEquals(List.of("00000000"), Files.readAllLines(directory.resolve(name)));
+    }
+  }
+
   @ParameterizedTest
   @ValueSource(strings = {"d", "ad", "da", "a"})
   void traceAndAssembleOnlyModesReachTheSamePhases(String flag) throws Exception {
@@ -129,7 +167,7 @@ class LauncherParityTest {
     }
     for (String launcher : List.of("cli", "desktop")) {
       for (List<String> arguments : List.of(
-          List.of("nc", "me", "--unknown-option"),
+          List.of("--unknown-option", "nc", "me"),
           List.of("nc", "me", "mc"),
           List.of("nc", "me", "$notARegister", simulation.toString()),
           List.of("nc", "me"))) {
