@@ -718,6 +718,19 @@ explicitly owns a headless device. Headless device state and visible renderer li
 | T14 | `ScreenMagnifier` and its package-private capture/settings/scribbler classes | Exclude from plugin by user decision | Record the exclusion in the release ledger. |
 | T15 | `MarsTool`, `MarsToolProvider`, `AbstractMarsToolAndApplication`, `ToolLoader`, `ToolAction` | Retire desktop loading/window framework in plugin; implement Kotlin `MarsToolProvider` extension point and lazy content registry | Unique provider IDs, ordering, error reporting, lazy creation, session binding, unload/disposal, registration test and third-party example. |
 
+**T12 follow-up — Declarative MIPS X-Ray display.** Improve the diagram,
+instruction timeline, playback controls, and signal details with Jewel and
+Jetpack Compose. Use the bundled IntelliJ 2026.3 Jewel modules and the public
+`JewelComposePanel` bridge inside the existing MARS Tools tab. The bridge
+applies `SwingBridgeTheme` so the display follows the IDE theme. The pinned
+reference is `~/IdeaProjects/intellij-community/platform/jewel`, including
+the README and the bridge's `JewelComposePanelWrapper.kt` implementation.
+Keep the shared datapath data, capture and rewind behavior, and deterministic
+animation clock. Verify readable diagrams in narrow docks, keyboard navigation
+between functional units, accessible signal text, High Contrast at 150% zoom,
+and disposal when the tool closes. Cover the presentation with Jupiter tests
+and verify the packaged plugin with Plugin Verifier and a clean IDE replay.
+
 Source behavior needs characterization before it becomes a parity oracle.
 For example, `DigitalLabSim.addAsObserver()` currently registers the first display address and the text range,
 while its handler contains cases for additional MMIO registers. Its counter also advances in that access callback.
