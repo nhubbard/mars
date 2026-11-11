@@ -1471,6 +1471,71 @@ class MarsDebugPlatformTest {
         }
     }
 
+    @Test
+    fun `Quick Evaluate uses the assembled label binding in the editor source`() = timeoutRunBlocking<Unit> {
+        val (main, sibling, include) = withContext(Dispatchers.EDT) {
+            val main = fixture.addFileToProject("bindings/main.mars", """
+                .data
+                localValue: .word 41
+                .include "shared.inc"
+                .eqv OFFSET localValue + 4
+                .text
+                la ${'$'}t1, localValue
+                la ${'$'}t2, OFFSET
+                jal sibling
+                nop
+                li ${'$'}v0, 10
+                syscall
+            """.trimIndent()).virtualFile
+            val sibling = fixture.addFileToProject("bindings/sibling.s", """
+                .data
+                localValue: .word 23
+                .include "shared.inc"
+                .text
+                .globl sibling
+                sibling: lw ${'$'}t0, localValue
+                jr ${'$'}ra
+                nop
+            """.trimIndent()).virtualFile
+            val include = fixture.addFileToProject("bindings/shared.inc", "shared: .word 7\n.word shared").virtualFile
+            addBreakpoint(sibling, 5)
+            Triple(main, sibling, include)
+        }
+        withDebug(main, { assembleDirectory = true }) { debug ->
+            debug.assertPausedAt(sibling, 5)
+            withContext(Dispatchers.EDT) {
+                val frame = requireNotNull(debug.session.currentStackFrame)
+                val evaluator = requireNotNull(frame.evaluator)
+                val documents = FileDocumentManager.getInstance()
+                for ((file, address) in listOf(main to "0x10010000", sibling to "0x1001000c")) {
+                    val document = requireNotNull(documents.getDocument(file))
+                    val name = "localValue"
+                    for (offset in listOf(document.text.indexOf(name), document.text.lastIndexOf(name))) {
+                        val info = requireNotNull(evaluator.getExpressionInfoAtOffsetAsync(project, document, offset, false).await())
+                        assertEquals(TextRange(offset, offset + name.length), info.textRange)
+                        assertEquals(name, info.displayText)
+                        assertEquals(address, evaluate(debug.session, frame, requireNotNull(info.expressionText)))
+                    }
+                }
+                assertEquals("0x1001000c", evaluate(debug.session, frame, "localValue"))
+                val sharedDocument = requireNotNull(documents.getDocument(include))
+                assertNull(evaluator.getExpressionInfoAtOffsetAsync(project, sharedDocument, 0, false).await())
+                val sharedUse = sharedDocument.text.lastIndexOf("shared")
+                assertNull(evaluator.getExpressionInfoAtOffsetAsync(project, sharedDocument, sharedUse, false).await())
+
+                val mainDocument = requireNotNull(documents.getDocument(main))
+                val original = mainDocument.text
+                val offset = original.lastIndexOf("localValue")
+                assertNull(evaluator.getExpressionInfoAtOffsetAsync(project, mainDocument, original.lastIndexOf("OFFSET"), false).await())
+                WriteCommandAction.runWriteCommandAction(project) { mainDocument.insertString(mainDocument.textLength, "\n# edited") }
+                assertNull(evaluator.getExpressionInfoAtOffsetAsync(project, mainDocument, offset, false).await())
+                WriteCommandAction.runWriteCommandAction(project) { mainDocument.setText(original) }
+                debug.session.resume()
+            }
+            assertEquals(0, debug.exit.await())
+        }
+    }
+
     private suspend fun evaluate(session: XDebugSession, frame: XStackFrame, expression: String): String {
         val tree = XDebuggerTree(
             project, session.debugProcess.editorsProvider, frame.sourcePosition, XDebuggerActions.VARIABLES_TREE_POPUP_GROUP, null,

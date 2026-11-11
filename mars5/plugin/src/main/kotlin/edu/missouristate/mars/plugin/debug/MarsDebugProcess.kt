@@ -495,7 +495,7 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
         val machineEdits = machineEditRequests()
         val number = ++suspensionNumber
         val frame = MarsStackFrame(
-            sourcePosition(origin), machine, session.project, localSymbols, symbols.globals(), sources, watchRequests, machineEdits,
+            sourcePosition(origin), machine, session.project, localSymbols, symbols.globals(), loadedSymbols.value!!, watchRequests, machineEdits,
         ) {
             val current = session.suspendContext
             current is MarsSuspendContext && current.machineEdits === machineEdits

@@ -25,6 +25,7 @@ import com.intellij.util.ui.UIUtil
 import com.intellij.xdebugger.XDebugSession
 import com.intellij.xdebugger.XDebugSessionListener
 import edu.missouristate.mars.api.AssemblySymbolMap
+import edu.missouristate.mars.api.AssemblySymbolMap.SourceToken
 import edu.missouristate.mars.api.AssemblySymbolMap.Definition
 import edu.missouristate.mars.plugin.run.MarsExecutionSources
 import edu.missouristate.mars.plugin.run.runMessages
@@ -49,13 +50,30 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
-internal class LoadedSymbols(symbols: AssemblySymbolMap, val sources: MarsExecutionSources) {
+internal class LoadedSymbols(private val symbols: AssemblySymbolMap, val sources: MarsExecutionSources) {
     val rows = buildList {
         for ((name, definition) in symbols.globals()) add(AssembledSymbol(name, definition, null))
         for ((unit, definitions) in symbols.locals()) {
             for ((name, definition) in definitions) add(AssembledSymbol(name, definition, unit))
         }
     }
+
+    private val definitionsBySite = rows.groupBy { it.location to it.definition.column() }
+        .mapValues { (_, rows) -> rows.groupBy(AssembledSymbol::name) { it.definition.address() } }
+
+    fun addressAt(site: SourceToken, spelling: String): Int? {
+        val bindings = symbols.symbolUses()[site]
+        val addresses = if (bindings == null) {
+            addressesAt(site, spelling)
+        } else {
+            if (bindings.any { it.name() != spelling }) return null
+            bindings.flatMap { addressesAt(it.definition(), spelling) }
+        }
+        return addresses.distinct().singleOrNull()
+    }
+
+    private fun addressesAt(site: SourceToken, spelling: String) =
+        definitionsBySite.getOrDefault(site.location() to site.column(), emptyMap()).getOrDefault(spelling, emptyList())
 }
 
 internal data class AssembledSymbol(val name: String, val definition: Definition, val unit: Path?) {

@@ -40,7 +40,6 @@ import edu.missouristate.mars.plugin.language.coprocessor0Operand
 import edu.missouristate.mars.plugin.language.operationHead
 import edu.missouristate.mars.plugin.language.operationOnLine
 import edu.missouristate.mars.plugin.language.syntax.DebuggerExpressionParsing
-import edu.missouristate.mars.plugin.run.MarsExecutionSources
 import edu.missouristate.mars.plugin.run.runMessages
 import edu.missouristate.mars.util.Binary
 import kotlinx.coroutines.channels.SendChannel
@@ -51,7 +50,7 @@ internal class MarsExpressionEvaluator(
     machine: MarsContext,
     private val localSymbols: Map<String, Definition>,
     private val globalSymbols: Map<String, Definition>,
-    private val sources: MarsExecutionSources,
+    private val loadedSymbols: LoadedSymbols,
     private val watchRequests: SendChannel<WatchMemoryRequest>,
 ) : XDebuggerEvaluator() {
     private val expandedOperands = machine.memory.sourceStatement(machine.registerFile.programCounterRegister.valueNoNotify)
@@ -96,18 +95,22 @@ internal class MarsExpressionEvaluator(
         return when (parent.elementType) {
             literalType -> literalHint(parent)
             unaryType -> parent.lastChild.takeIf { it.elementType == literalType }?.let(::literalHint)
-            referenceType -> if (leaf.elementType == registerType) registerHint(leaf) else symbolHint(leaf)
-            labelType -> if (leaf == parent.firstChild) symbolHint(leaf) else null
+            referenceType -> if (leaf.elementType == registerType) registerHint(leaf) else symbolHint(file, document, leaf)
+            labelType -> if (leaf == parent.firstChild) symbolHint(file, document, leaf) else null
             else -> null
         }
     }
 
     private fun expandedOperandsAt(file: MipsFile, document: Document, offset: Int): List<SourceOperand> {
         if (expandedOperands.isEmpty()) return emptyList()
-        val line = document.getLineNumber(offset)
-        val location = sources.location(file.viewProvider.virtualFile, line) ?: return emptyList()
-        val site = SourceToken(location, offset - document.getLineStartOffset(line) + 1)
+        val site = sourceSite(file, document, offset) ?: return emptyList()
         return expandedOperands.filter { it.written() == site || site in it.arguments() }
+    }
+
+    private fun sourceSite(file: MipsFile, document: Document, offset: Int): SourceToken? {
+        val line = document.getLineNumber(offset)
+        val location = loadedSymbols.sources.location(file.viewProvider.virtualFile, line) ?: return null
+        return SourceToken(location, offset - document.getLineStartOffset(line) + 1)
     }
 
     private fun expandedExpression(operand: SourceOperand): String? {
@@ -115,7 +118,7 @@ internal class MarsExpressionEvaluator(
         val type = operand.type()
         return when {
             type in registerTypes -> registerExpression(value, operand.coprocessor0())
-            type == TokenTypes.IDENTIFIER -> symbolAddress(value)
+            type == TokenTypes.IDENTIFIER -> addressExpression(symbolAddress(value))
             TokenTypes.isIntegerTokenType(type) -> Binary.intToHexString(Binary.stringToInt(value))
             else -> null
         }
@@ -141,12 +144,13 @@ internal class MarsExpressionEvaluator(
         return expression.takeIf { resolveReference(it) != null }
     }
 
-    private fun symbolHint(leaf: PsiElement): ExpressionInfo? = symbolAddress(leaf.text)?.let {
-        // A source label named pc or hi still means its address, even though Evaluate reserves those names.
-        ExpressionInfo(leaf.textRange, it, leaf.text)
+    private fun symbolHint(file: MipsFile, document: Document, leaf: PsiElement): ExpressionInfo? {
+        val site = sourceSite(file, document, leaf.textOffset) ?: return null
+        val expression = addressExpression(loadedSymbols.addressAt(site, leaf.text)) ?: return null
+        return ExpressionInfo(leaf.textRange, expression, leaf.text)
     }
 
-    private fun symbolAddress(name: String): String? = symbol(name)?.let { Binary.intToHexString(it.address()) }
+    private fun addressExpression(address: Int?): String? = address?.let(Binary::intToHexString)
 
     override fun evaluate(expression: String, callback: XEvaluationCallback, expressionPosition: XSourcePosition?) {
         val source = expression.trim()
@@ -226,9 +230,9 @@ internal class MarsExpressionEvaluator(
     private fun resolveReference(name: String): Scalar? =
         registers[name]
             ?: RegisterNames.integer(name)?.let { registers.getValue(it.name) }
-            ?: symbol(name)?.let { Word(it.address()) }
+            ?: symbolAddress(name)?.let(::Word)
 
-    private fun symbol(name: String): Definition? = localSymbols[name] ?: globalSymbols[name]
+    private fun symbolAddress(name: String): Int? = (localSymbols[name] ?: globalSymbols[name])?.address()
 
     private fun signedWord(operator: ASTNode, operand: ASTNode): Immediate? {
         if (operator.elementType != minusType || operand.elementType != literalType ||
