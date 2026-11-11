@@ -27,6 +27,8 @@ jobs:
       - run: java -jar cli/build/libs/cli-1.0-SNAPSHOT.jar --help
       - name: Verify IntelliJ plugin
         run: ${{ matrix.gradle }} :plugin:verifyPluginStructure :plugin:verifyPluginProjectConfiguration :plugin:verifyPlugin --no-daemon
+      - name: Exercise the MARS instruction catalog and workbench
+        run: ${{ matrix.gradle }} -p ../examples/smoke check --no-daemon
       - name: Save release qualification reports
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
@@ -36,3 +38,6 @@ jobs:
             mars5/*/build/test-results/test/TEST-*.xml
             mars5/plugin/build/reports/jacoco/test/jacocoTestReport.xml
             mars5/plugin/build/reports/pluginVerifier/
+            examples/smoke/instruction-lab/build/test-results/test/TEST-*.xml
+            examples/smoke/instruction-lab/build/instruction-catalog/coverage.tsv
+            examples/smoke/instruction-lab/build/instruction-catalog/failures.txt

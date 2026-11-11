@@ -2991,11 +2991,11 @@ under `mars5/.gradle/release-host-checks/linux-arm64-print`.
 
 ## IntelliJ plugin release preflight
 
-The GitHub Actions build runs the same Java 25 test, CLI smoke, and plugin
-verification checks on Linux, Apple Silicon macOS, and x64 Windows. Each
-runner uploads its Jupiter results, plugin coverage report, and Plugin
-Verifier report. Packaged UI interaction and archive replacement are
-separate release checks.
+The GitHub Actions build runs the same Java 25 test, CLI smoke, plugin
+verification, and instruction lab checks on Linux, Apple Silicon macOS, and
+x64 Windows. Each runner uploads its Jupiter results, plugin coverage report,
+Plugin Verifier report, and the instruction lab's catalog execution reports.
+Packaged UI interaction and archive replacement are separate release checks.
 
 The local Ubuntu 24.04 ARM64 run at `aee75d21` used Temurin 25 and passed all
 2,014 Jupiter tests (684 plugin tests), the authored and generated-parser
