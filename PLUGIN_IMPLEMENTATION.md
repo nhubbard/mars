@@ -72,6 +72,9 @@ It also rewrites byte-sized nonnegative immediates in the instruction catalog
 as signed hexadecimal, octal, and escaped character literals. For each
 spelling, the fixture compares machine words and source origins in both
 delay-slot modes and checks that IntelliJ preserves the same operand boundaries.
+The catalog runs in the default, Compact Data at Zero, and Compact Text at
+Zero layouts. It assembles independent batches within compact text memory
+and checks that each starts at the selected layout's text base.
 The packaged macOS replay opened a program with all three spellings, checked
 its editor operands, and ran it in IntelliJ. The Run console printed `73`.
 All 2,023 Jupiter tests and both coverage gates passed. The log and screenshot
@@ -2433,6 +2436,13 @@ that is already running or paused keeps the layout captured at launch.
 The compact layouts use the exception vector at `0x00004180`. Debugger
 memory shortcuts and memory exports use the selected layout's addresses.
 Scavenger Hunt uses its original fixed addresses and requires **Default**.
+
+In the packaged macOS IDE, **Compact, text at address 0** assembled a
+single-instruction `la` followed by `lw`. The debugger stopped at
+`pc = 0x00000008`. IntelliJ's Evaluate dialog confirmed the data label at
+`0x00002000` and the value `42` in both memory and the destination register.
+All 2,027 Jupiter tests and both coverage gates passed. The log and screenshot
+are under `mars5/.gradle/release-host-checks/compact-text-debug`.
 
 ## Assemble when opened
 

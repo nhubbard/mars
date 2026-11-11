@@ -22,7 +22,10 @@ import edu.missouristate.mars.assembler.Directives
 import edu.missouristate.mars.assembler.Macro
 import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.assembler.Tokenizer
+import edu.missouristate.mars.mips.hardware.MemoryConfigurations
 import edu.missouristate.mars.mips.instructions.InstructionSet
+import edu.missouristate.mars.plugin.MarsExecutionOptions
+import edu.missouristate.mars.plugin.MarsMemoryLayout
 import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.analysis.MacroBoundaryProblem.Kind
 import edu.missouristate.mars.plugin.analysis.mipsSourceTimeline
@@ -33,6 +36,8 @@ import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 
 @TestApplication
 class MipsParserPlatformTest {
@@ -747,8 +752,13 @@ class MipsParserPlatformTest {
         }
     }
 
-    @Test
-    fun `all instruction formats agree with the assembler across separators and aliases`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+    @ParameterizedTest
+    @ValueSource(strings = ["Default", "CompactDataAtZero", "CompactTextAtZero"])
+    fun `all instruction formats agree with the assembler across separators and aliases`(
+        layoutId: String, @TempDir directory: Path,
+    ) = timeoutRunBlocking<Unit> {
+        val layout = MarsMemoryLayout.entries.single { it.identifier == layoutId }
+        val memory = MemoryConfigurations.createConfiguration(layoutId)
         val instructions = InstructionSet().also { it.populate() }.instructionList
         assertTrue(instructions.size > 155, "The basic and pseudo-instruction catalogs must both be populated")
         val tokens = instructions.map { instruction ->
@@ -819,21 +829,31 @@ class MipsParserPlatformTest {
             row.joinToString(",", prefix = "emit_${row.size}(", postfix = ")") { it.value }
         }
         val context = project.get().service<MarsSessionService>().context
+        // Compact text has a 4 KiB segment. The catalog's independent examples
+        // can share their label definitions across smaller assembly batches.
+        val batchSize = 128
         fun assemble(name: String, prefix: List<String>, lines: List<String>): List<Pair<Int, Int>> {
-            val source = (prefix + lines).joinToString("\n", postfix = "\n")
-            val entry = directory.resolve("$name.asm").also { it.writeText(source) }
-            val program = context.assemble(listOf(entry), null, true, false)
-            val origins = program.sourceMap().origins()
-            val words = program.machineList.map { statement ->
-                val origin = origins.getValue(statement.address)
-                val invocation = (origin.caller() ?: origin).location().line() - prefix.size
-                statement.binaryStatement to invocation
+            val words = lines.chunked(batchSize).flatMapIndexed { batch, examples ->
+                val source = (prefix + examples).joinToString("\n", postfix = "\n")
+                val entry = directory.resolve("$name-$batch.asm").also { it.writeText(source) }
+                val program = try {
+                    context.assemble(listOf(entry), null, true, false)
+                } catch (failure: ProcessingException) {
+                    throw AssertionError("$layoutId, $name batch $batch\n${failure.errors().generateErrorReport()}", failure)
+                }
+                val origins = program.sourceMap().origins()
+                assertEquals(memory.textBaseAddress, program.machineList.first().address, name)
+                program.machineList.map { statement ->
+                    val origin = origins.getValue(statement.address)
+                    val invocation = (origin.caller() ?: origin).location().line() - prefix.size
+                    statement.binaryStatement to (batch * batchSize + invocation)
+                }
             }
             assertEquals((1..lines.size).toSet(), words.map { it.second }.toSet(), name)
             return words
         }
         for (delayed in listOf(false, true)) {
-            context.settings.setDelayedBranchingEnabled(delayed)
+            MarsExecutionOptions(delayedBranching = delayed, memoryLayout = layout).applyForAssembly(context)
             val canonicalWords = assemble("canonical", header, examples)
             assertEquals(canonicalWords, assemble("comma-heavy", header, commaHeavy), "Separators with delay slots $delayed")
             for ((spelling, lines) in rewrittenImmediates) {
