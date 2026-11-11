@@ -2785,7 +2785,7 @@ same controls and process handlers as Run and Debug.
 | T09 Keyboard and Display Simulator | `KeyboardDisplayDevice`, `KeyboardDisplayView`, `MmioTerminalDisplay` | `KeyboardDisplayDeviceTest` covers ready bits, input, delay modes, interrupts, addressing, geometry and rewind. `KeyboardDisplayPlatformTest` drives the real input field and console editor. `MarsDebugPlatformTest` covers attachment before the first instruction and rewind. |
 | T10 MarsBot | `MarsBotWorld`, `MarsBotDevice`, `MarsBotView` | `MarsBotDeviceTest` covers deterministic ticks, port maps, bounds, pen trails, simultaneous sessions and rewind. `InstructionCounterPlatformTest` checks the native board and controls. `MarsDebugPlatformTest` verifies that position and trail rewind together. |
 | T11 Memory Reference Visualization | `MemoryGridDisplay`, `MemoryGridView` | `MemoryReferenceDisplayTest` covers CPU-only counting, word grouping and recoloring. `InstructionCounterPlatformTest` checks configuration, tooltip, scaling, keyboard and mouse selection, and matching visible and accessible details. |
-| T12 MIPS X-Ray | `xray.XRayDiagram`, `xray.XRayTrace`, `xray.XRayView` | `XRayDiagramTest` checks bundled geometry, signal routing and palettes. `XRayTraceTest` covers capture, rewind, clear, encoding and the animation clock. `InstructionCounterPlatformTest` checks the live tool, diagram hit targets, textual paths, animation controls and execution isolation. |
+| T12 MIPS X-Ray | `xray.XRayDiagram`, `xray.XRayTrace`, `xray.XRayView` | `XRayDiagramTest` checks bundled geometry, signal routing and palettes. `XRayTraceTest` covers capture, rewind, clear, encoding and the animation clock. `InstructionCounterPlatformTest` checks the live tool, diagram hit targets, textual paths, animation controls, execution isolation, and the diagram and trace layout in a narrow dock. |
 | T13 Scavenger Hunt | `ScavengerHuntGame`, `ScavengerHuntDevice`, `ScavengerHuntView` | `ScavengerHuntGameTest` and `ScavengerHuntDeviceTest` cover authentication, energy, tasks, moves, per-player registers, reset and rewind. `ScavengerHuntPlatformTest` checks the scoreboard and attachment conflicts. `MarsDebugPlatformTest` verifies that reset and memory rewind together. |
 | T14 Screen Magnifier | Excluded by user decision | No IntelliJ implementation or test requirement. The desktop tool remains part of the reference application. |
 | T15 Tool registration and lifecycle | `MarsToolProvider`, `MarsToolExtensions`, `MarsToolsWindowFactory` | `MarsToolProviderPlatformTest` verifies provider registration, ordering, ID validation, failure reporting, cancellation retry and dynamic removal. `InstructionCounterPlatformTest` checks the built-in tabs and the terminal editor's lifetime. |
@@ -2814,6 +2814,16 @@ reference keyboard inspection. The saved scenarios are
 Cross-host and high-contrast presentation remain release qualification work.
 The packaged macOS install, archive replacement, and binary verifier evidence
 are recorded below.
+
+At 150% zoom in High Contrast, the packaged macOS MIPS X-Ray replay used the
+default right dock with Run open below it. The scrollable layout retained the
+diagram's height and brought the trace text into view on focus. Space, Down,
+and Enter selected Registers from the labeled Diagram selector. The trace
+text retained the captured instruction and its highlighted paths, and capture
+could disconnect, clear, and resume while the guest program was waiting for
+input. All 2,033 Jupiter tests, both coverage gates, and Plugin Verifier passed.
+The screenshots and IDE log are under
+`mars5/.gradle/release-host-checks/xray-high-contrast`.
 
 ## IntelliJ indexing and completion baseline
 

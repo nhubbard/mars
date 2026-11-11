@@ -388,6 +388,23 @@ class InstructionCounterPlatformTest {
                 selector.selectedIndex = 0
             }
             waitFor(2, "2 (100%)")
+            withContext(Dispatchers.EDT) {
+                val scroll = assertInstanceOf(JScrollPane::class.java, xray)
+                scroll.setSize(JBUI.scale(340), JBUI.scale(280))
+                scroll.doLayout()
+                val viewport = scroll.viewport
+                viewport.doLayout()
+                val body = viewport.view
+                body.doLayout()
+                assertEquals(viewport.width, body.width)
+                assertTrue(xrayCanvas().height >= JBUI.scale(200))
+                val details = UIUtil.findComponentsOfType(xray, JBTextArea::class.java).single()
+                val detailsScroll = SwingUtilities.getAncestorOfClass(JScrollPane::class.java, details)
+                val detailsBounds = SwingUtilities.convertRectangle(detailsScroll.parent, detailsScroll.bounds, body)
+                assertFalse(viewport.viewRect.contains(detailsBounds))
+                scroll.verticalScrollBar.value = scroll.verticalScrollBar.maximum
+                assertTrue(viewport.viewRect.contains(detailsBounds))
+            }
             pollAssertionsAsync(5.seconds, 30.milliseconds) {
                 withContext(Dispatchers.EDT) {
                     val executions = xrayChoices().filter { it.itemCount == 2 && it.getItemAt(0) !is StepEvent }

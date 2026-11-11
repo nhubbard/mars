@@ -8,6 +8,7 @@ import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTextArea
 import com.intellij.ui.dsl.builder.Align
 import com.intellij.ui.dsl.builder.AlignX
+import com.intellij.ui.dsl.builder.LabelPosition
 import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.dsl.listCellRenderer.textListCellRenderer
 import com.intellij.util.ui.JBUI
@@ -15,6 +16,7 @@ import com.intellij.util.ui.launchOnShow
 import edu.missouristate.mars.api.StepEvent
 import edu.missouristate.mars.mips.instructions.InstructionDefaults
 import edu.missouristate.mars.plugin.tools.MarsToolExecutionSelector
+import edu.missouristate.mars.plugin.tools.scrollableToolPanel
 import edu.missouristate.mars.plugin.tools.toolsMessages
 import edu.missouristate.mars.util.Binary
 import java.awt.BasicStroke
@@ -61,6 +63,7 @@ internal class XRayView(project: Project) : Disposable {
         wrapStyleWord = true
         getAccessibleContext().accessibleName = toolsMessages.getMessage("xray.description")
     }
+    private val descriptionScroll = JBScrollPane(description)
     private val canvas = XRayCanvas { unit.selectedItem = it }
     private val playback = XRayPlayback()
     private var steps = emptyList<StepEvent>()
@@ -71,23 +74,30 @@ internal class XRayView(project: Project) : Disposable {
         if (playback.advance((speed.selectedItem as Rate).ticks)) showPosition()
     }
 
-    val component = panel {
-        row(toolsMessages.getMessage("counter.selector")) { cell(selector.component).align(AlignX.FILL).resizableColumn() }
+    private val controls = panel {
+        row {
+            cell(selector.component).label(toolsMessages.getMessage("counter.selector"), LabelPosition.TOP)
+                .align(AlignX.FILL).resizableColumn()
+        }
         row {
             cell(capture)
             cell(clear)
         }
-        row(toolsMessages.getMessage("xray.instruction")) { cell(history).align(AlignX.FILL) }
+        row {
+            cell(history).label(toolsMessages.getMessage("xray.instruction"), LabelPosition.TOP)
+                .align(AlignX.FILL).resizableColumn()
+        }
         row(toolsMessages.getMessage("xray.diagram")) { cell(unit) }
         row {
             cell(play)
             cell(reset)
-            cell(speed)
         }
+        row(toolsMessages.getMessage("xray.speed")) { cell(speed) }
         row { cell(canvas).align(Align.FILL).resizableColumn() }.resizableRow()
-        row { cell(JBScrollPane(description)).align(AlignX.FILL).resizableColumn() }
-        row { comment(toolsMessages.getMessage("xray.help", XRayTrace.capacity)) }
+        row { cell(descriptionScroll).align(AlignX.FILL).resizableColumn() }
+        row { comment(toolsMessages.getMessage("xray.help", XRayTrace.capacity), maxLineLength = 38) }
     }
+    val component = scrollableToolPanel(this, controls, mapOf(description to descriptionScroll))
 
     init {
         capture.addActionListener {
@@ -215,7 +225,7 @@ internal class XRayCanvas(private val openUnit: (XRayUnit) -> Unit) : JPanel() {
         }
 
     init {
-        preferredSize = JBUI.size(400, 260)
+        preferredSize = JBUI.size(300, 200)
         getAccessibleContext().accessibleName = toolsMessages.getMessage("xray.diagram")
         addMouseListener(object : MouseAdapter() {
             override fun mouseClicked(event: MouseEvent) {
