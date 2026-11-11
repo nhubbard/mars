@@ -4,7 +4,9 @@
 **Scope:** Full modernization from legacy Swing/batch-script monolith to a Gradle multi-module project with a clean core library and an IntelliJ IDE plugin.  
 **Codebase baseline:** 217 Java files, ~60,400 LOC, no tests, no build tool, Java 5–8 era code.
 
-**Current status (2026-11-08): Phase 2.5 complete; Kotlin plugin bootstrap integrated.**
+**Current status (2026-11-10)**
+
+Phase 2.5 is complete and Phase 3 is in M7, parity and release qualification.
 The implemented modules are `mars5/core`, `mars5/cli`, `mars5/desktop`, and `mars5/plugin`.
 The compatibility runtime has been deleted. Core is independent of both desktop and IntelliJ;
 all frontends use explicit session ownership. The plugin is Kotlin; core, CLI, and desktop are
@@ -15,12 +17,13 @@ IntelliJ plugin production and test code is Kotlin. A Java exception inside the 
 evidence that the required integration cannot be implemented in Kotlin. The previously proposed
 Kotlin engine rewrite is deferred and is not a prerequisite for plugin implementation.
 
-The next implementation work follows [the detailed component mapping](INTELLIJ_COMPONENT_MAPPING.md).
-It covers every current MARS component, full feature parity, native editing/build/Run/Debug/tool
-integration, explicit ownership and near-full branch coverage with Jupiter-only tests.
-The first Kotlin unified-analysis slice implements independent file facts, typed reference sentinels,
-query-time joins, explicit incomplete states, immutable scoped snapshots and cancellable background
-publication. Follow component mapping section 2.5 for the indexing contract and remaining adapters.
+The plugin provides native MIPS editing, assembly, Run, Debug, and educational tools.
+The [component mapping](INTELLIJ_COMPONENT_MAPPING.md) defines the parity and release gates.
+The [implementation notes](PLUGIN_IMPLEMENTATION.md) record verification and open checks, and the
+[README](README.md) walks through installing the ZIP and debugging the sample program.
+The unified analysis uses independent file facts, typed reference sentinels, query-time joins,
+explicit incomplete states, immutable scoped snapshots, and cancellable background publication.
+Component mapping section 2.5 defines the indexing contract.
 
 No existing user feature is deferred in that mapping. IntelliJ IDEA 2026.3 is the platform baseline;
 older-release compatibility layers are outside the current target.
@@ -1266,13 +1269,12 @@ Once all plugin features are feature-complete and verified:
 3. Update `mars-cli` to not reference any Venus classes (it should already be clean after Phase 2).
 4. The `mars-plugin` module no longer contains Venus code — only the IntelliJ plugin code.
 
-**Phase 3 exit criteria:**
-- Plugin installs in IntelliJ IDEA 2025.1+ without errors.
-- Can open a `.s` file and get syntax highlighting, completion, and error squiggles.
-- Can run a MIPS program via a Run Configuration; stdout appears in the Run tool window.
-- Can debug a MIPS program with line breakpoints, step, and the Registers/Memory tool windows.
-- Plugin verifier passes: `./gradlew runPluginVerifier`.
-- Venus code is deleted.
+**Current Phase 3 exit criteria**
+
+Complete the M7 acceptance checklist in the [component mapping](INTELLIJ_COMPONENT_MAPPING.md#12-risks-decisions-and-parity-acceptance)
+for IntelliJ IDEA 2026.3. From `mars5`, verify the release ZIP with
+`./gradlew :plugin:verifyPluginStructure :plugin:verifyPluginProjectConfiguration :plugin:verifyPlugin`.
+The standalone Venus application serves as the parity reference during qualification.
 
 ---
 
@@ -1288,8 +1290,8 @@ Once all plugin features are feature-complete and verified:
 | 2 | Assembler integration tests | Assemble known programs, diff binary |
 | 2 | Simulator integration tests | Run programs, assert register/memory state |
 | 2 | Performance benchmark | JMH |
-| 3 | Plugin UI tests | IntelliJ Platform test framework (`LightPlatformCodeInsightTestCase`) |
-| 3 | Plugin verifier | `runPluginVerifier` Gradle task |
+| 3 | Plugin UI tests | IntelliJ Platform Jupiter fixtures and packaged IDE playback |
+| 3 | Plugin verifier | `:plugin:verifyPlugin` Gradle task |
 
 A curated set of MIPS test programs should be collected (e.g., sorting algorithms, recursive Fibonacci, floating-point math, all syscall types) and kept in `mars-core/src/test/resources/mips/programs/`. These are the canonical regression suite.
 
