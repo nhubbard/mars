@@ -1363,13 +1363,26 @@ class MipsParserPlatformTest {
     }
 
     @Test
-    fun `all prefixes of representative extensions remain parseable without losing text`() = timeoutRunBlocking<Unit> {
+    fun `every truncation preserves source and recovers the next instruction`() = timeoutRunBlocking<Unit> {
         readAction {
-            val source = ".macro m (%x)\nlocal: lw \$t0,label+4(\$sp) #note\n.asciiz \"hello\"\n.end_macro\n.data\n.word 1:4\n.text\nm(5)\n"
-            for (end in 0..source.length) {
-                val text = source.take(end)
-                val file = PsiFileFactory.getInstance(project.get()).createFileFromText("prefix.asm", MipsFileType, text)
-                assertEquals(text, file.node.text)
+            val factory = PsiFileFactory.getInstance(project.get())
+            val sources = listOf(
+                ".macro m (%x)\nlocal: lw \$t0,label+4(\$sp) #note\n.asciiz \"hello\"\n.end_macro\n.data\n.word 1:4\n.text\nm(5)\n",
+                ".eqv MIN -0x080000000\n.macro pair(\$dst, %value)\nli \$dst, %value\n.end_macro\npair(\$t1, MIN)\n",
+                ": .include \"folder/part.s\" +\n.extern shared,4\n.kdata\n.word shared\n -3:2\n.set ignored )\n",
+            )
+            for (source in sources) {
+                for (end in 0..source.length) {
+                    val prefix = source.take(end)
+                    val eof = factory.createFileFromText("prefix.asm", MipsFileType, prefix)
+                    assertEquals(prefix, eof.node.text)
+
+                    val text = "$prefix\nrecovery_anchor: nop\n"
+                    val file = factory.createFileFromText("prefix.asm", MipsFileType, text)
+                    assertEquals(text, file.node.text)
+                    assertEquals("recovery_anchor:", descendants(file.node, "LABEL").last().text, text)
+                    assertEquals("nop", descendants(file.node, "INSTRUCTION").last().text, text)
+                }
             }
         }
     }
