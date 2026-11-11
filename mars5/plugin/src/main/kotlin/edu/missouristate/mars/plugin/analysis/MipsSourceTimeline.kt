@@ -152,7 +152,7 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
             }
             is MipsSourceEvent.Equivalence -> equivalences.putIfAbsent(event.name, IndexedEquivalence(index, event))
             is MipsSourceEvent.External -> {
-                if (event.site !is MipsDeclaration || event.offset in cursor.locations.replacedExternals) {
+                if (event.site !is MipsDeclaration || event.site.name == null || event.offset in cursor.locations.replacedExternals) {
                     cursor.locations.expandedExternals[event.site] = event
                 }
                 if (macro == null && event.canUseAsLabel) externalStorage.putIfAbsent(event.name, event.site)

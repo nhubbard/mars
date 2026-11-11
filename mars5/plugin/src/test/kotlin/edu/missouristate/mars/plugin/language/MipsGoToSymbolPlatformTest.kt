@@ -270,6 +270,33 @@ class MipsGoToSymbolPlatformTest {
     }
 
     @Test
+    fun `percent external names resolve according to the effective macro scope`() = timeoutRunBlocking<Unit> {
+        val (literal, macroBody) = withContext(Dispatchers.EDT) {
+            val literal = fixture.addFileToProject("literal.mars", ".extern %storage, 4\n")
+            val body = fixture.addFileToProject("reserve.inc", ".extern %slot, 4\n")
+            fixture.addFileToProject("reserve.mars", """
+                .macro reserve (%slot)
+                .include "reserve.inc"
+                .end_macro
+                reserve(generated)
+            """.trimIndent())
+            literal to body
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
+        readAction {
+            val scope = GlobalSearchScope.projectScope(project.get())
+            val names = mutableSetOf<String>()
+            contributor.processNames(names::add, scope, null)
+            assertTrue("%storage" in names)
+            assertTrue("%slot" !in names)
+            val item = assertInstanceOf(OpenFileDescriptor::class.java, items("%storage", scope).single())
+            assertEquals(literal.virtualFile, item.file)
+            assertEquals(literal.text.indexOf("%storage"), item.offset)
+            assertTrue(items("%slot", GlobalSearchScope.fileScope(project.get(), macroBody.virtualFile)).isEmpty())
+        }
+    }
+
+    @Test
     fun `symbol search recovers a local alias in a rootless include cycle`() = timeoutRunBlocking<Unit> {
         val file = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("cycle-b.s", ".include \"cycle-a.asm\"\n")

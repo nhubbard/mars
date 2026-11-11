@@ -99,6 +99,7 @@ class MipsExternalReferencesPlatformTest {
         val memory = context.memory
         assertEquals(memory.externBaseAddress, context.symbolTable.getAddress("payload"))
         assertEquals(memory.externBaseAddress + 4, context.symbolTable.getAddress("second"))
+        assertEquals(memory.externBaseAddress + 12, context.symbolTable.getAddress("%unaddressable"))
         assertEquals(memory.externBaseAddress, memory.getWordNoNotify(memory.dataBaseAddress))
         assertEquals(memory.externBaseAddress + 4, memory.getWordNoNotify(memory.dataBaseAddress + 4))
 
@@ -117,7 +118,9 @@ class MipsExternalReferencesPlatformTest {
             assertTrue(timeline.replacesExternal(file, slot))
             assertTrue(timeline.replacesExternal(file, other))
             assertTrue(timeline.replacesExternal(file, alias))
-            assertTrue(timeline.expandedExternalsIn(file).isEmpty())
+            val literal = timeline.expandedExternalsIn(file).values.single()
+            assertEquals("%unaddressable", literal.name)
+            assertEquals(source.indexOf("%unaddressable"), literal.offset)
             assertEquals(setOf("\$standalone"), timeline.externalStorage.keys)
         }
         withContext(Dispatchers.EDT) {

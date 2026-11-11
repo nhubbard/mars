@@ -26,7 +26,7 @@ data class MipsDeclarationSite(val kind: SymbolKind, val offset: Int, val macroO
 /** Index only this file's syntax. Never resolve names or query another index while producing facts. */
 class MipsDeclarationIndex : FileBasedIndexExtension<String, List<MipsDeclarationSite>>() {
     override fun getName() = NAME
-    override fun getVersion(): Int = 29
+    override fun getVersion(): Int = 30
     override fun dependsOnFileContent(): Boolean = true
     override fun getInputFilter() = DefaultFileTypeSpecificInputFilter(MipsFileType)
     override fun getKeyDescriptor() = EnumeratorStringDescriptor.INSTANCE
@@ -40,6 +40,8 @@ class MipsDeclarationIndex : FileBasedIndexExtension<String, List<MipsDeclaratio
                 if (element.node.elementType in expansionSeeds) declarations.getOrPut(EXPANSION_SEED, ::ArrayList)
                 if (element is MipsDeclaration) {
                     val name = element.name
+                    // A percent token in .extern can be literal storage outside a macro.
+                    if (name == null && element.kind == SymbolKind.EXTERNAL) declarations.getOrPut(EXPANSION_SEED, ::ArrayList)
                     if (name != null) {
                         val scopeStart = if (element.kind == SymbolKind.MACRO) element.parent else element
                         val macro = PsiTreeUtil.findFirstParent(scopeStart, true) {
