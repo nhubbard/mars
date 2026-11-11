@@ -13,6 +13,7 @@ import com.intellij.psi.tree.TokenSet
 import com.intellij.xdebugger.XSourcePosition
 import com.intellij.xdebugger.evaluation.XDebuggerEvaluator
 import edu.missouristate.mars.api.AssemblySymbolMap.Definition
+import edu.missouristate.mars.assembler.RegisterNames
 import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.assembler.Tokenizer
 import edu.missouristate.mars.core.MarsContext
@@ -41,9 +42,7 @@ internal class MarsExpressionEvaluator(
     private val registers = buildMap<String, Scalar> {
         val cpu = machine.registerFile
         for (register in cpu.registers) {
-            val value = Word(register.valueNoNotify)
-            put(register.name, value)
-            put("\$${register.number}", value)
+            put(register.name, Word(register.valueNoNotify))
         }
         put("pc", Word(cpu.programCounterRegister.valueNoNotify))
         put("hi", Word(cpu.getValueNoNotify(HI_REGISTER)))
@@ -113,8 +112,7 @@ internal class MarsExpressionEvaluator(
                 else -> null
             }
         }
-        referenceType -> (registers[node.text] ?: (localSymbols[node.text] ?: globalSymbols[node.text])?.let { Word(it.address()) })
-            ?.let(::Immediate)
+        referenceType -> resolveReference(node.text)?.let(::Immediate)
         groupType -> evaluateNode(node.getChildren(expressionParts).single())
         unaryType -> {
             val (operator, operand) = node.getChildren(expressionParts)
@@ -136,6 +134,11 @@ internal class MarsExpressionEvaluator(
         // The remaining operand form is the parser's address expression, such as word(buffer+4).
         else -> memoryExpression(node)
     }
+
+    private fun resolveReference(name: String): Scalar? =
+        registers[name]
+            ?: RegisterNames.integer(name)?.let { registers.getValue(it.name) }
+            ?: (localSymbols[name] ?: globalSymbols[name])?.let { Word(it.address()) }
 
     private fun signedWord(operator: ASTNode, operand: ASTNode): Immediate? {
         if (operator.elementType != minusType || operand.elementType != literalType ||

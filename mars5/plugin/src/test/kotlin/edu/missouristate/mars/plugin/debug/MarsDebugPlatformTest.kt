@@ -1187,7 +1187,7 @@ class MarsDebugPlatformTest {
     fun `native Variables tree renders coherent CPU and coprocessor values from each suspension`() = timeoutRunBlocking<Unit> {
         val source = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("registers.s", """
-                initial: addiu ${'$'}t0, ${'$'}zero, -2
+                ${'$'}入口: addiu ${'$'}0x8, ${'$'}zero, -2
                 addiu ${'$'}t1, ${'$'}zero, 3
                 mult ${'$'}t0, ${'$'}t1
                 lui ${'$'}t2, 0x3ff8
@@ -1227,17 +1227,20 @@ class MarsDebugPlatformTest {
                 assertEquals("1.9375 (0x3ff80000)", current["\$f1"])
                 assertEquals("1.5 (0x3ff8000000000000)", current["\$f0/\$f1"])
                 assertFalse(requireNotNull(second.evaluator).isCodeFragmentEvaluationSupported)
-                assertEquals("0x00000000", evaluate(debug.session, first, "\$t0"))
+                assertEquals("0x00000000", evaluate(debug.session, first, "\$0x8"))
                 val expressions = mapOf(
                     "\$t0" to "0xfffffffe",
                     "\$8" to "0xfffffffe",
+                    "\$0x8" to "0xfffffffe",
+                    "\$010" to "0xfffffffe",
+                    "\$٨" to "0xfffffffe",
                     "pc" to "0x00400020",
                     "hi" to "0xffffffff",
                     "lo" to "0xfffffffa",
                     "cp0.\$14" to "0x00001234",
                     "FCC" to "0x00000001",
                     "\$f1" to "1.9375 (0x3ff80000)",
-                    "initial" to "0x00400000",
+                    "\$入口" to "0x00400000",
                     "stop" to "0x00400020",
                     " 'A' " to "0x00000041",
                     "(+0x10 - (2 + 3))" to "0x0000000b",
@@ -1289,7 +1292,7 @@ class MarsDebugPlatformTest {
                     "\$t0(\$t1)", "1 + unknown", "unknown + 1", "-unknown", "syscall", "\$t0 = 3",
                     "1 <", "1 ==", "!= 1", "1 ! 2", "1 < = 2", "1,==1", "(1,)", "1 # == 2", "1:2",
                     "1 |", "1 ^", "1 &", "1 >>", "~", "1 && 1", "1 <<= 2", "1 & 2.5", "2.5 | 1", "~2.5",
-                    "'ab'", "'\\400'", "'\\q'", "0xGG")) {
+                    "'ab'", "'\\400'", "'\\q'", "0xGG", "\$32", "\$f32")) {
                     assertEquals("Enter a valid MIPS debugger expression using registers, labels, numbers, memory reads, arithmetic, comparisons, or bitwise operators.",
                         evaluate(debug.session, second, expression), expression)
                 }

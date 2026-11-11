@@ -1735,6 +1735,12 @@ modifier retained across resume or step cannot change a later suspension.
 Evaluate Expression and Watches use the selected frame's captured registers and
 assembled symbols. Expressions accept CPU register names and numbers, `pc`, `hi`,
 `lo`, Coprocessor 0 numbers such as `cp0.$14`, floating-point registers, and `FCC`.
+CPU register numbers use the assembler's spellings. `$8`, `$0x8`, `$010`, and
+`$٨` all read the same captured register as `$t0`.
+The packaged macOS replay used the native Evaluate dialog to evaluate
+`$0x8 + $010 + $٨ - 14` after writing 7 to register 8. It displayed
+`0x00000007`. The log and screenshot are under
+`mars5/.gradle/release-host-checks/alternate-register-evaluate`.
 Local labels use the active instruction's assembly entry, then global labels.
 The generated parser has an expression entry point for the debugger. It accepts
 one complete expression with numeric and character literals, parentheses, unary
