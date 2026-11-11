@@ -1,4 +1,4 @@
-"""Generate a deterministic MARS project for IntelliJ's indexing playback."""
+"""Generate a deterministic MARS project for IntelliJ performance playback."""
 
 from pathlib import Path
 
@@ -53,8 +53,18 @@ bench_target_{index}: bench_emit_{index}($t0)
   </component>
 </module>
 """)
+    write(project / ".idea" / "runConfigurations" / "CorpusDebug.xml", """\
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="CorpusDebug" type="MarsMipsRun" marsExecutionDefaults="1">
+    <option name="sourcePath" value="$PROJECT_DIR$/src/entry.asm" />
+    <option name="instructionLimit" value="4096" />
+    <method v="2" />
+  </configuration>
+</component>
+""")
 
     caret = entry.index("bench_target_1999") + len("bench_target_199")
+    branch_line = entry.count("\n", 0, caret) + 1
     write(root / "indexing.ijperf", f"""\
 %waitForSmart
 %openFile -file src/entry.asm -timeout 60
@@ -65,6 +75,13 @@ bench_target_{index}: bench_emit_{index}($t0)
 %action EditorEscape
 %action GotoDeclaration
 %delay 1000
+%action CloseContent
+%breakpointToggle src/entry.asm, {branch_line}
+%debugRunConfiguration CorpusDebug, 60
+%debugStep INTO
+%debugStep OVER
+%stopDebugProcess
+%waitForNoDebugSessions
 %exitApp
 """)
     print(project)

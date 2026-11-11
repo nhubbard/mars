@@ -2492,6 +2492,22 @@ single-run measurements for this corpus and host. The smart-mode playback
 settling delay and application startup are outside the scan and indexing
 durations.
 
+The same scenario opens the `CorpusDebug` run configuration and stops at
+the jump in the entry file. **Step Into** follows the jump to the last
+included part, and **Step Over** executes the instruction emitted by its
+macro. The `debugRunConfiguration` span measures launch through the first
+breakpoint, including assembly and execution up to that breakpoint.
+The `debugStep_into` and `debugStep_over` spans each end when IntelliJ
+reports that the debugger has paused again.
+
+On the same host, the first complete debugger replay measured 839 ms
+from launch request to the first breakpoint, 50 ms for Step Into, and
+45 ms for Step Over. These are native debugger/UI round trips, including
+session notifications. They are single observations. The launch measurement
+includes assembly and execution of the preceding 2,000 emitted instructions.
+The playback closes the navigation target before debugging, and the IDE log
+records the included source reopening during stepping.
+
 ## IntelliJ plugin release preflight
 
 Run the same checks as CI from `mars5`.

@@ -9,6 +9,7 @@ gradle.beforeProject { project ->
             jvmArgs "-Dtestscript.filename=${scenario}"
             jvmArgs "-Dcompletion.command.report.dir=${completion}"
             jvmArgs '-Didea.diagnostic.opentelemetry.file=indexing-baseline-trace.json'
+            jvmArgs '-Dperformance.plugin.playback.runner.useDirectActionCall=true'
 
             def archive = project.tasks.named('buildPlugin')
             dependsOn archive
