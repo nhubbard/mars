@@ -2587,6 +2587,12 @@ The saved text contained the moved instruction with the formatter's
 indentation. The screenshot, log, and saved source are under
 `mars5/.gradle/release-host-checks/linux-arm64-high-contrast`.
 
+The clean macOS replay passed the same 2,015 tests and coverage gates.
+It selected High Contrast through IntelliJ's theme switcher and verified
+the same three Bitmap Display positions using the arrow keys. Its
+screenshot and saved theme ID are under
+`mars5/.gradle/release-host-checks/bitmap-high-contrast`.
+
 ## IntelliJ plugin release preflight
 
 The GitHub Actions build runs the same Java 25 test, CLI smoke, and plugin
