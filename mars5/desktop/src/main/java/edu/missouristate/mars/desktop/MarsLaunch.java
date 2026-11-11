@@ -187,24 +187,27 @@ public class MarsLaunch {
 
     for (String[] triple : dumpTriples) {
       File file = new File(triple[2]);
-      Integer[] segInfo = MemoryDump.getSegmentBounds(triple[0], session.context().memory);
-      // If not segment name, see if it is address range instead.  DPS 14-July-2008
-      if (segInfo == null) {
+      Integer[] bounds = MemoryDump.getSegmentBounds(triple[0], session.memory);
+      int firstAddress;
+      int lastAddress;
+      if (bounds != null) {
+        firstAddress = bounds[0];
+        lastAddress = bounds[1] - MemoryState.WORD_LENGTH_BYTES;
+      } else {
         try {
           String[] memoryRange = checkMemoryAddressRange(triple[0]);
-          segInfo = new Integer[2];
-          segInfo[0] = Binary.stringToInt(memoryRange[0]); // low end of range
-          segInfo[1] = Binary.stringToInt(memoryRange[1]); // high end of range
-        } catch (NumberFormatException | NullPointerException nfe) {
-          segInfo = null;
+          if (memoryRange == null) {
+            throw new NumberFormatException();
+          }
+          firstAddress = Binary.stringToInt(memoryRange[0]);
+          lastAddress = Binary.stringToInt(memoryRange[1]);
+        } catch (NumberFormatException e) {
+          out.println(
+              "Error while attempting to save dump, segment/address-range "
+                  + triple[0]
+                  + " is invalid!");
+          continue;
         }
-      }
-      if (segInfo == null) {
-        out.println(
-            "Error while attempting to save dump, segment/address-range "
-                + triple[0]
-                + " is invalid!");
-        continue;
       }
       DumpFormat format = DumpFormatLoader.findByCommandDescriptor(triple[1]);
       if (format == null) {
@@ -212,14 +215,12 @@ public class MarsLaunch {
         continue;
       }
       try {
-        int highAddress =
-            session.memory.getAddressOfFirstNull(segInfo[0], segInfo[1])
-                - MemoryState.WORD_LENGTH_BYTES;
-        if (highAddress < segInfo[0]) {
+        var snapshot = format.capture(session.context(), firstAddress, lastAddress, () -> {});
+        if (snapshot.size() == 0) {
           out.println("This segment has not been written to, there is nothing to dump.");
           continue;
         }
-        format.dumpMemoryRange(file, segInfo[0], highAddress, session.context());
+        format.write(file, snapshot);
       } catch (FileNotFoundException e) {
         out.println("Error while attempting to save dump, file " + file + " was not found!");
       } catch (AddressErrorException e) {

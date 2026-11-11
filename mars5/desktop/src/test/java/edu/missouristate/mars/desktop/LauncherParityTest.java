@@ -178,7 +178,7 @@ class LauncherParityTest {
 
   @ParameterizedTest
   @ValueSource(booleans = {true, false})
-  void repeatedDumpsMatchAcrossAllFormatsAndDocumentTheExplicitRangeBoundary(boolean assembleOnly)
+  void repeatedDumpsMatchAcrossAllFormatsAndIncludeExplicitRangeEndpoints(boolean assembleOnly)
       throws Exception {
     Path file =
         source(
@@ -213,6 +213,10 @@ class LauncherParityTest {
               "0x10010000-0x10010004",
               "HexText",
               dump(launcher, "range").toString(),
+              "dump",
+              "0x10010004-0x10010004",
+              "HexText",
+              dump(launcher, "single-word").toString(),
               file.toString()));
       var result = launch(launcher, "", arguments);
       assertEquals(0, result.status(), result.err());
@@ -227,8 +231,10 @@ class LauncherParityTest {
     assertArrayEquals(
         Files.readAllBytes(dump("desktop", "data")), Files.readAllBytes(dump("cli", "data")));
     String first = assembleOnly ? "0000000b" : "0000002a";
-    assertEquals(List.of(first, "00000016"), Files.readAllLines(dump("cli", "range")));
-    assertEquals(List.of(first), Files.readAllLines(dump("desktop", "range")));
+    for (String launcher : List.of("cli", "desktop")) {
+      assertEquals(List.of(first, "00000016"), Files.readAllLines(dump(launcher, "range")));
+      assertEquals(List.of("00000016"), Files.readAllLines(dump(launcher, "single-word")));
+    }
   }
 
   @Test
