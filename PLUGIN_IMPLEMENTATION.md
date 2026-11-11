@@ -2545,6 +2545,29 @@ includes assembly and execution of the preceding 2,000 emitted instructions.
 The playback closes the navigation target before debugging, and the IDE log
 records the included source reopening during stepping.
 
+## M7 parity evidence
+
+The [component mapping](INTELLIJ_COMPONENT_MAPPING.md#123-final-parity-checklist)
+defines the release acceptance checklist. The M5 and M6 ledgers above cover
+the editor and tool milestones. The following fixtures exercise the remaining
+integration boundaries in the release build.
+
+| Mapping | Evidence in the release build |
+| --- | --- |
+| C01–C13 | `CoreSessionIntegrationTest`, `BasicInstructionSemanticsTest`, `InstructionEncodingTest`, `PseudoExpansionTest`, `RuntimeServicesTest`, and `SessionBackStepperTest` exercise the independent engine, encoding, memory, interrupt, event, and history contracts. `verifyCoreIsolation` checks the core distribution boundary. |
+| E01–E03, E05 | `MipsEditorPlatformTest`, `MipsParserPlatformTest`, the native declaration/reference index fixtures, and `MipsAssemblyAnnotatorPlatformTest` exercise editor behavior, catalog syntax, references, and assembler diagnostics against captured text. |
+| B01–B05, B07–B08 | `CapturedAssemblySourcesPlatformTest`, `MarsBuildPlatformTest`, `MarsMemoryExportPlatformTest`, `MarsNewProjectWizardTest`, and `MarsCompilerPlatformTest` cover source capture, build reuse, navigation from diagnostics, dump formats, project creation, and optional Java compiler integration. B06 launcher evidence is below. |
+| R01–R06, I01–I08 | `MarsRunPlatformTest`, `MarsSyscallDialogsPlatformTest`, `MarsMidiPlatformTest`, and core `SyscallContractTest` cover the run lifecycle, launch settings, console and file I/O, exit handling, and syscall contracts. Physical MIDI device behavior is a host check. |
+| D01–D12, V01–V07 | `MarsDebugPlatformTest` drives native XDebugger breakpoints, stepping, expressions, reverse execution, watchpoints, variables, and the debugger's memory, symbols, and disassembly views. `DebuggerCallStackTest` exercises frame and exception history. |
+| S01–S07, W03 | `MarsBuildPlatformTest`, `MarsRunPlatformTest`, `MarsDebugPlatformTest`, `MipsEditorPlatformTest`, and the three Venus preference import fixtures cover project defaults, run overrides, display settings, theme defaults, migration, and native Run/Debug controls. |
+| E11, W01–W02 | File and editing actions use IntelliJ's standard actions and keymaps. `MarsNewFilePlatformTest` verifies the MIPS-specific file creation path. Packaged keyboard, clipboard, and print checks are open. |
+| H01 | `MarsReferencePlatformTest` checks the offline catalog, inert archived help, packaged notices, search, and About. `MipsDocumentationPlatformTest` exercises Quick Documentation in the editor and completion popup. |
+
+The remaining release checks include the native host matrix, packaged UI
+checks for keyboard, hover, scaling, and high contrast, and the final
+source/resource inventory review. The packaged macOS install and archive
+replacement are recorded below.
+
 ## IntelliJ plugin release preflight
 
 The GitHub Actions build runs the same Java 25 test, CLI smoke, and plugin
