@@ -2004,6 +2004,13 @@ revealing the keyboard field also scrolled horizontally, putting the
 left edge of the output beyond the viewport. The log and screenshots
 are under `mars5/.gradle/release-host-checks/keyboard-display-layout`.
 
+The Ubuntu ARM64 build for `810a0276` passed all 2,020 Jupiter tests
+and both coverage gates. In the packaged replay, **Connect** still showed
+its disconnected state after the scripted Space press. The replay stopped
+before sending a key, so the focus handoff and echo still need a Linux
+packaged check. The log and failure screenshot are under
+`mars5/.gradle/release-host-checks/linux-arm64-terminal-focus`.
+
 The Kotlin device implements the receiver control and data words at MMIO
 base + `0x00` and `0x04` and the transmitter control and data words at
 `0x08` and `0x0c`. It applies host input at instruction boundaries and
