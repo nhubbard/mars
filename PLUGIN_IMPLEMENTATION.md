@@ -2841,7 +2841,7 @@ same controls and process handlers as Run and Debug.
 | T09 Keyboard and Display Simulator | `KeyboardDisplayDevice`, `KeyboardDisplayView`, `MmioTerminalDisplay` | `KeyboardDisplayDeviceTest` covers ready bits, input, delay modes, interrupts, addressing, geometry and rewind. `KeyboardDisplayPlatformTest` drives the real input field and console editor. `MarsDebugPlatformTest` covers attachment before the first instruction and rewind. |
 | T10 MarsBot | `MarsBotWorld`, `MarsBotDevice`, `MarsBotView` | `MarsBotDeviceTest` covers deterministic ticks, port maps, bounds, pen trails, simultaneous sessions and rewind. `InstructionCounterPlatformTest` checks the native board and controls. `MarsDebugPlatformTest` verifies that position and trail rewind together. |
 | T11 Memory Reference Visualization | `MemoryGridDisplay`, `MemoryGridView` | `MemoryReferenceDisplayTest` covers CPU-only counting, word grouping and recoloring. `InstructionCounterPlatformTest` checks configuration, tooltip, scaling, keyboard and mouse selection, and matching visible and accessible details. |
-| T12 MIPS X-Ray | `xray.XRayDiagram`, `xray.XRayTrace`, `xray.XRayView` | `XRayDiagramTest` checks bundled geometry, signal routing and palettes. `XRayTraceTest` covers capture, rewind, clear, encoding and the animation clock. `InstructionCounterPlatformTest` checks the live tool, diagram hit targets, textual paths, animation controls, execution isolation, and the diagram and trace layout in a narrow dock. |
+| T12 MIPS X-Ray | `xray.XRayDiagram`, `xray.XRayTrace`, `xray.XRayPanel`, `xray.XRaySchematicView` | `XRayDiagramTest` checks geometry, signal routing and palettes. `XRayTraceTest` covers capture, rewind, clear, encoding and the animation clock. `XRayDetailsPlatformTest` renders the Compose schematic and readout and exercises drill-down actions. `InstructionCounterPlatformTest` drives the Jewel controls and verifies execution isolation. The packaged high-contrast replays cover keyboard selection and narrow-dock rendering. |
 | T13 Scavenger Hunt | `ScavengerHuntGame`, `ScavengerHuntDevice`, `ScavengerHuntView` | `ScavengerHuntGameTest` and `ScavengerHuntDeviceTest` cover authentication, energy, tasks, moves, per-player registers, reset and rewind. `ScavengerHuntPlatformTest` checks the scoreboard and attachment conflicts. `MarsDebugPlatformTest` verifies that reset and memory rewind together. |
 | T14 Screen Magnifier | Excluded by user decision | No IntelliJ implementation or test requirement. The desktop tool remains part of the reference application. |
 | T15 Tool registration and lifecycle | `MarsToolProvider`, `MarsToolExtensions`, `MarsToolsWindowFactory` | `MarsToolProviderPlatformTest` verifies provider registration, ordering, ID validation, failure reporting, cancellation retry and dynamic removal. `InstructionCounterPlatformTest` checks the built-in tabs and the terminal editor's lifetime. |
@@ -3105,6 +3105,9 @@ standard input and program arguments, output streams, diagnostics and
 exit statuses, register and memory reports, instruction counts, and
 the bytes from all six dump formats. The standalone launcher is quiet by
 default. Both launchers support explicit quiet mode.
+The filename parity fixture also runs both archives with a `.mars` entry
+and a discovered `.MARS` sibling. The sibling reads the named `.inc`
+and an unrelated include fragment stays outside directory assembly.
 
 The subsequent macOS build passed 2,015 tests, including a Run console
 fixture that checks the exact order and contents of 4,096 lines in both

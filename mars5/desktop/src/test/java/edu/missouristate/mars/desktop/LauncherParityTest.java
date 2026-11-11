@@ -117,6 +117,33 @@ class LauncherParityTest {
   }
 
   @Test
+  void projectModeDiscoversMarsSourcesAndLoadsIncludeFilesOnDemand() throws Exception {
+    Path main =
+        source(
+            "main.mars",
+            """
+            jal increment
+            move $a0,$t0
+            li $v0,1
+            syscall
+            li $v0,10
+            syscall
+            """);
+    source("values.inc", ".eqv BASE 41\n");
+    source(
+        "math.MARS",
+        """
+        .include "values.inc"
+        .globl increment
+        increment: li $t0,BASE
+        addiu $t0,$t0,1
+        jr $ra
+        """);
+    source("unused.inc", "this fragment must not be assembled\n");
+    assertProgramResult(List.of("nc", "p", main.toString()), "", 0, "42");
+  }
+
+  @Test
   void explicitExtensionlessSourcesRunWithoutDirectoryDiscovery() throws Exception {
     Path entry = source("entry", """
         jal helper
