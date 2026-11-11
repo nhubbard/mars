@@ -1930,6 +1930,9 @@ tool clears the selection. A packaged macOS replay selected a row in each
 table, resumed a program waiting for input, and verified that the row stayed
 selected as the access and branch counts advanced from one to two. The replay
 and screenshots are under `mars5/.gradle/release-host-checks/live-table-selection`.
+The same packaged replay passed on Ubuntu ARM64, along with all 2,019 Jupiter
+tests and both coverage gates. The Linux replay and reports are under
+`mars5/.gradle/release-host-checks/linux-arm64-live-table-selection`.
 
 ## Floating Point Representation
 
