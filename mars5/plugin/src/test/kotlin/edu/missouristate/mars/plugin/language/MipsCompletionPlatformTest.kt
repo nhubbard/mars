@@ -407,6 +407,44 @@ class MipsCompletionPlatformTest {
     }
 
     @Test
+    fun `integer data completion follows includes aliases and continuation lines`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val current = project.get()
+            val setup = ".data\n.eqv WORDS .word\n.word 0\n"
+            val prefix = ".include \"setup.inc\"\n"
+            val labels = "\n.text\ntargetOne: nop\ntargetTwo: nop\n"
+            withContext(Dispatchers.EDT) { fixture.addFileToProject("setup.inc", setup) }
+            IndexingTestUtil.suspendUntilIndexesAreReady(current)
+            val completed = withContext(Dispatchers.EDT) {
+                fun candidates(line: String): Set<String> {
+                    fixture.configureByText("data-completion.mars", prefix + line + labels)
+                    return fixture.completeBasic().orEmpty().map { it.lookupString }.filter { it.startsWith("target") }.toSet()
+                }
+                val expected = setOf("targetOne", "targetTwo")
+                for (line in listOf(".word tar<caret>", ".half 1, tar<caret>", ".byte tar<caret>", "WORDS tar<caret>",
+                    "tar<caret>", "2, tar<caret>", "slot: WORDS tar<caret>")) {
+                    assertEquals(expected, candidates(line), line)
+                }
+                for (line in listOf(".float tar<caret>", ".text\n.word tar<caret>", ".float 0\n2, tar<caret>",
+                    ".extern targetExtern 4\n.globl targetExt<caret>",
+                    ".word tar<caret>:2", ".word (tar<caret>)", ".macro emit (%arg)\n.end_macro\nemit tar<caret>")) {
+                    assertTrue(candidates(line).isEmpty(), line)
+                }
+                assertEquals(expected, candidates("WORDS target<caret>.old"))
+                fixture.lookup.setCurrentItem(fixture.lookup.items.single { it.lookupString == "targetTwo" })
+                fixture.finishLookup(Lookup.REPLACE_SELECT_CHAR)
+                assertEquals(prefix + "WORDS targetTwo" + labels, fixture.file.text)
+                fixture.file.text
+            }
+            directory.resolve("setup.inc").writeText(setup)
+            val entry = directory.resolve("data-completion.mars").also { it.writeText(completed) }
+            val context = current.service<MarsSessionService>().context
+            val program = context.assemble(listOf(entry), null, true, false)
+            val memory = context.memory
+            assertEquals(program.machineList.last().address, memory.getWordNoNotify(memory.dataBaseAddress + Int.SIZE_BYTES))
+        }
+
+    @Test
     fun `register insertion replaces the complete token and preserves the address punctuation`() = timeoutRunBlocking<Unit> {
         IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
         withContext(Dispatchers.EDT) {

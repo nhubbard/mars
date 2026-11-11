@@ -18,6 +18,7 @@ import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.mips.instructions.Instruction
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.build.MarsAssemblySettings
+import edu.missouristate.mars.plugin.language.psi.DataLabelOperand
 import edu.missouristate.mars.plugin.language.psi.macroParameterUseContexts
 
 class MipsCompletionContributor : CompletionContributor(), DumbAware {
@@ -40,17 +41,23 @@ class MipsCompletionContributor : CompletionContributor(), DumbAware {
                 }
             }
         })
-        extend(CompletionType.BASIC, operandPosition, object : CompletionProvider<CompletionParameters>() {
+        extend(CompletionType.BASIC, operandOrContinuationPosition, object : CompletionProvider<CompletionParameters>() {
             override fun addCompletions(parameters: CompletionParameters, context: ProcessingContext, result: CompletionResultSet) {
                 val position = parameters.position
                 val root = parameters.originalFile as MipsFile
                 val options = root.project.service<MarsAssemblySettings>().executionOptions
-                val operand = MipsInstructionOperand.at(position, root, options.allowPseudoInstructions) ?: return
+                val operand = if (!statementHead.accepts(position)) {
+                    MipsInstructionOperand.at(position, root, options.allowPseudoInstructions)
+                } else null
+                val analysis = root.project.service<MarsAnalysisService>()
                 val prefix = prefix(parameters)
                 val lookup = result.withPrefixMatcher(prefix)
-                lookup.addAllElements(registerCandidates(operand.formats, operand.index, options.bareMachine).map(LookupElementBuilder::create))
-                if (operand.acceptsLabel) {
-                    val names = root.project.service<MarsAnalysisService>().labelCompletionNames(root, position, prefix)
+                if (operand != null) {
+                    lookup.addAllElements(registerCandidates(operand.formats, operand.index, options.bareMachine).map(LookupElementBuilder::create))
+                }
+                if (operand?.acceptsLabel == true ||
+                    operand == null && DataLabelOperand.at(position)?.isDataLabel(root, analysis, position) == true) {
+                    val names = analysis.labelCompletionNames(root, position, prefix)
                     lookup.addAllElements(names.map(LookupElementBuilder::create))
                 }
             }
@@ -72,7 +79,7 @@ class MipsCompletionContributor : CompletionContributor(), DumbAware {
 
     override fun duringCompletion(context: CompletionInitializationContext) {
         val token = context.file.findElementAt(context.startOffset) ?: return
-        if (statementHead.accepts(token) || operandPosition.accepts(token) || macroParameterPosition.accepts(token)) {
+        if (statementHead.accepts(token) || operandOrContinuationPosition.accepts(token) || macroParameterPosition.accepts(token)) {
             context.setReplacementOffset(token.textRange.endOffset)
         }
     }
@@ -82,9 +89,8 @@ class MipsCompletionContributor : CompletionContributor(), DumbAware {
         val statementHead = psiElement()
             .withElementType(TokenSet.create(MipsTypes.psi("WORD"), MipsTypes.psi("MNEMONIC"), MipsTypes.psi("DOLLAR_WORD")))
             .withParent(psiElement().withElementType(TokenSet.create(MipsTypes.psi("OPERATION"), MipsTypes.psi("OPERATION_CANDIDATE"))))
-        val operandPosition = psiElement()
+        val operandOrContinuationPosition = psiElement()
             .withElementType(TokenSet.create(MipsTypes.psi("WORD"), MipsTypes.psi("DOLLAR_WORD"), MipsTypes.psi("REGISTER")))
-            .andNot(statementHead)
         val macroParameterPosition = psiElement()
             .withElementType(TokenSet.create(MipsTypes.psi("PARAMETER"), MipsTypes.psi("DOLLAR_WORD"), MipsTypes.psi("WORD")))
             .withParent(psiElement().withElementType(macroParameterUseContexts))

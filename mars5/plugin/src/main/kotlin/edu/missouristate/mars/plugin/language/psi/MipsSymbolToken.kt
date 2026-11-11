@@ -147,16 +147,9 @@ internal class MipsSymbolToken(type: IElementType, text: CharSequence) : LeafPsi
                 analysis.isAliasedExportOperand(file, element.parent.parent.firstChild, element)
             return when {
                 exportsLabel -> LabelUse.EXPORT
-                instructionLabel || data != null && resolvesDataLabel(file, analysis) -> LabelUse.REFERENCE
+                instructionLabel || data?.isDataLabel(file, analysis, element) == true -> LabelUse.REFERENCE
                 else -> null
             }
-        }
-
-        private fun resolvesDataLabel(file: MipsFile, analysis: MarsAnalysisService): Boolean {
-            if (!analysis.hasIntegerDataList(file, element)) return false
-            if (data == DataLabelOperand.LIST) return true
-            val head = if (macroCall) element else element.parent.parent.firstChild
-            return analysis.isIntegerDataCandidate(file, head, macroCall)
         }
     }
 
@@ -176,11 +169,20 @@ internal class MipsSymbolToken(type: IElementType, text: CharSequence) : LeafPsi
     }
 }
 
-private enum class DataLabelOperand {
+internal enum class DataLabelOperand {
     EXPORT, LIST, CANDIDATE;
 
+    fun isDataLabel(file: MipsFile, analysis: MarsAnalysisService, element: PsiElement): Boolean {
+        if (this == EXPORT || !analysis.hasIntegerDataList(file, element)) return false
+        if (this == LIST) return true
+        val candidateHead = PsiUtilCore.getElementType(element.parent) == candidateType
+        val head = if (candidateHead) element else element.parent.parent.firstChild
+        return analysis.isIntegerDataCandidate(file, head, candidateHead)
+    }
+
     companion object {
-        private val candidateTypes = TokenSet.create(MipsTypes.psi("OPERATION_CANDIDATE"), MipsTypes.psi("INVOCATION_TOKEN"))
+        private val candidateType = MipsTypes.psi("OPERATION_CANDIDATE")
+        private val candidateTypes = TokenSet.create(candidateType, MipsTypes.psi("INVOCATION_TOKEN"))
         private val referenceType = MipsTypes.psi("REFERENCE_EXPR")
         private val operandType = MipsTypes.psi("OPERAND")
         private val repetitionType = MipsTypes.psi("REPETITION")
@@ -188,7 +190,7 @@ private enum class DataLabelOperand {
         private val directiveType = MipsTypes.psi("DIRECTIVE_STATEMENT")
         private val signs = TokenSet.create(MipsTypes.psi("PLUS"), MipsTypes.psi("MINUS"))
 
-        fun at(element: LeafPsiElement, context: IElementType?): DataLabelOperand? {
+        fun at(element: PsiElement, context: IElementType? = PsiUtilCore.getElementType(element.parent)): DataLabelOperand? {
             if (context in candidateTypes) return CANDIDATE
             if (context != referenceType) return null
             val operand = element.parent.parent
