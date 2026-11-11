@@ -4,6 +4,7 @@ import edu.missouristate.mars.core.MarsContext;
 import edu.missouristate.mars.mips.dump.DumpFormat;
 import edu.missouristate.mars.mips.dump.DumpFormatLoader;
 import edu.missouristate.mars.mips.hardware.AddressErrorException;
+import edu.missouristate.mars.mips.hardware.MemoryAddressRange;
 import edu.missouristate.mars.mips.hardware.MemoryState;
 import edu.missouristate.mars.util.Binary;
 import edu.missouristate.mars.util.MemoryDump;
@@ -14,12 +15,12 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.Arrays;
 
-record CliMemoryDump(String region, CliAddressRange range, DumpFormat format, Path output) {
+record CliMemoryDump(String region, MemoryAddressRange range, DumpFormat format, Path output) {
   static CliMemoryDump parse(String region, String descriptor, String filename) {
     var range =
         Arrays.asList(MemoryDump.getSegmentNames()).contains(region)
             ? null
-            : CliAddressRange.parse(region);
+            : MemoryAddressRange.parse(region);
     var format = DumpFormatLoader.findByCommandDescriptor(descriptor);
     if (format == null) {
       throw new IllegalArgumentException("Unknown memory dump format: " + descriptor);

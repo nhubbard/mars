@@ -2,6 +2,7 @@ package edu.missouristate.mars.cli;
 
 import edu.missouristate.mars.core.MarsContext;
 import edu.missouristate.mars.mips.hardware.AddressErrorException;
+import edu.missouristate.mars.mips.hardware.MemoryAddressRange;
 import edu.missouristate.mars.mips.hardware.MemoryState;
 import edu.missouristate.mars.mips.hardware.Register;
 import edu.missouristate.mars.util.Binary;
@@ -15,7 +16,7 @@ final class CliMachineReport {
   private record RegisterSelection(String label, Register register, boolean floating) {}
 
   private final ArrayList<RegisterSelection> registers = new ArrayList<>();
-  private final ArrayList<CliAddressRange> ranges = new ArrayList<>();
+  private final ArrayList<MemoryAddressRange> ranges = new ArrayList<>();
   private long instructions;
   Format format = Format.HEX;
   boolean brief;
@@ -46,7 +47,7 @@ final class CliMachineReport {
   }
 
   void addRange(String text) {
-    ranges.add(CliAddressRange.parse(text));
+    ranges.add(MemoryAddressRange.parse(text));
   }
 
   void recordInstructionCount(long completed) {
@@ -66,7 +67,7 @@ final class CliMachineReport {
       }
       out.println(registerValue(selection, session));
     }
-    for (CliAddressRange range : ranges) {
+    for (MemoryAddressRange range : ranges) {
       writeRange(range, session.memory, out);
     }
   }
@@ -90,7 +91,7 @@ final class CliMachineReport {
     };
   }
 
-  private void writeRange(CliAddressRange range, MemoryState memory, PrintStream out) {
+  private void writeRange(MemoryAddressRange range, MemoryState memory, PrintStream out) {
     long first = Integer.toUnsignedLong(range.first());
     long last = Integer.toUnsignedLong(range.last());
     int column = 0;

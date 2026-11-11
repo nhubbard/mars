@@ -6,6 +6,7 @@ import edu.missouristate.mars.api.SessionSyscallEnvironment;
 import edu.missouristate.mars.di.DaggerMarsComponent;
 import edu.missouristate.mars.mips.dump.DumpFormat;
 import edu.missouristate.mars.mips.dump.DumpFormatLoader;
+import edu.missouristate.mars.mips.hardware.MemoryAddressRange;
 import edu.missouristate.mars.simulator.ProgramArgumentList;
 import edu.missouristate.mars.util.FilenameFinder;
 import java.io.*;
@@ -110,7 +111,7 @@ public final class MarsCli {
               files.add(Path.of(arg));
             } else if (number != null) {
               maximumSteps = number;
-            } else if (CliAddressRange.hasAddressPrefix(arg)) {
+            } else if (MemoryAddressRange.hasAddressPrefix(arg)) {
               report.addRange(arg);
             } else if (arg.startsWith("-")) {
               throw new IllegalArgumentException("Unknown option: " + arg);

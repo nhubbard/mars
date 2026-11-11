@@ -110,7 +110,6 @@ public class MarsLaunch {
   private boolean countInstructions; // Whether to count and report number of instructions executed
   private boolean
       selfModifyingCode; // Whether to allow self-modifying code (e.g. write to text segment)
-  private static final String rangeSeparator = "-";
   private static final int splashDuration = 2000; // time in MS to show splash screen
   private static final int memoryWordsPerLine =
       4; // display 4 memory words, tab separated, per line
@@ -118,7 +117,7 @@ public class MarsLaunch {
   private static final int HEXADECIMAL = 1; // memory and register display format
   private static final int ASCII = 2; // memory and register display format
   private ArrayList<String> registerDisplayList;
-  private ArrayList<String> memoryDisplayList;
+  private ArrayList<MemoryAddressRange> memoryDisplayList;
   private ArrayList<String> filenameList;
   private MIPSprogram code;
   private int maxSteps;
@@ -190,13 +189,10 @@ public class MarsLaunch {
         lastAddress = bounds[1] - MemoryState.WORD_LENGTH_BYTES;
       } else {
         try {
-          String[] memoryRange = checkMemoryAddressRange(triple[0]);
-          if (memoryRange == null) {
-            throw new NumberFormatException();
-          }
-          firstAddress = Binary.stringToInt(memoryRange[0]);
-          lastAddress = Binary.stringToInt(memoryRange[1]);
-        } catch (NumberFormatException e) {
+          var range = MemoryAddressRange.parse(triple[0]);
+          firstAddress = range.first();
+          lastAddress = range.last();
+        } catch (IllegalArgumentException e) {
           out.println(
               "Error while attempting to save dump, segment/address-range "
                   + triple[0]
@@ -405,16 +401,12 @@ public class MarsLaunch {
         registerDisplayList.add("$" + args[i]);
         continue;
       }
-      // Check for integer address range (m-n)
-      try {
-        String[] memoryRange = checkMemoryAddressRange(args[i]);
-        if (memoryRange != null) {
-          memoryDisplayList.add(memoryRange[0]); // low end of range
-          memoryDisplayList.add(memoryRange[1]); // high end of range
-          continue;
+      if (MemoryAddressRange.hasAddressPrefix(args[i])) {
+        try {
+          memoryDisplayList.add(MemoryAddressRange.parse(args[i]));
+        } catch (IllegalArgumentException e) {
+          diagnostics.add(e.getMessage());
         }
-      } catch (NumberFormatException nfe) {
-        diagnostics.add("Invalid/unaligned address or invalid range: " + args[i]);
         continue;
       }
       diagnostics.add("Invalid Command Argument: " + args[i]);
@@ -523,30 +515,6 @@ public class MarsLaunch {
   }
 
   //////////////////////////////////////////////////////////////////////
-  // Check for memory address subrange.  Has to be two integers separated
-  // by "-"; no embedded spaces.  e.g. 0x00400000-0x00400010
-  // If number is not multiple of 4, will be rounded up to next higher.
-
-  private String[] checkMemoryAddressRange(String arg) throws NumberFormatException {
-    String[] memoryRange = null;
-    if (arg.indexOf(rangeSeparator) > 0 && arg.indexOf(rangeSeparator) < arg.length() - 1) {
-      // assume correct format, two numbers separated by -, no embedded spaces.
-      // If that doesn't work it is invalid.
-      memoryRange = new String[2];
-      memoryRange[0] = arg.substring(0, arg.indexOf(rangeSeparator));
-      memoryRange[1] = arg.substring(arg.indexOf(rangeSeparator) + 1);
-      // NOTE: I will use homegrown decoder, because Integer.decode will throw
-      // exception on address higher than 0x7FFFFFFF (e.g. sign bit is 1).
-      if (Binary.stringToInt(memoryRange[0]) > Binary.stringToInt(memoryRange[1])
-          || !MemoryState.wordAligned(Binary.stringToInt(memoryRange[0]))
-          || !MemoryState.wordAligned(Binary.stringToInt(memoryRange[1]))) {
-        throw new NumberFormatException();
-      }
-    }
-    return memoryRange;
-  }
-
-  //////////////////////////////////////////////////////////////////////
   // Displays any specified runtime properties. Initially just instruction count
   // DPS 19 July 2012
   private void displayMiscellaneousPostMortem() {
@@ -632,21 +600,12 @@ public class MarsLaunch {
   // Displays requested memory range or ranges
 
   private void displayMemoryPostMortem() {
-    int value;
-    // Display requested memory range contents
-    Iterator<String> memIter = memoryDisplayList.iterator();
-    int addressStart = 0, addressEnd = 0;
-    while (memIter.hasNext()) {
-      try { // This will succeed; error would have been caught during command arg parse
-        addressStart = Binary.stringToInt(memIter.next());
-        addressEnd = Binary.stringToInt(memIter.next());
-      } catch (NumberFormatException ignored) {
-      }
+    for (var range : memoryDisplayList) {
+      long first = Integer.toUnsignedLong(range.first());
+      long last = Integer.toUnsignedLong(range.last());
       int valuesDisplayed = 0;
-      for (int addr = addressStart; addr <= addressEnd; addr += MemoryState.WORD_LENGTH_BYTES) {
-        if (addr < 0 && addressEnd > 0) {
-          break; // happens only if addressEnd is 0x7ffffffc
-        }
+      for (long address = first; address <= last; address += MemoryState.WORD_LENGTH_BYTES) {
+        int addr = (int) address;
         if (valuesDisplayed % memoryWordsPerLine == 0) {
           out.print((valuesDisplayed > 0) ? "\n" : "");
           if (verbose) {
@@ -654,12 +613,13 @@ public class MarsLaunch {
           }
         }
         try {
+          int value;
           // Allow display of binary text segment (machine code) DPS 14-July-2008
           if (session.memory.inTextSegment(addr) || session.memory.inKernelTextSegment(addr)) {
             Integer iValue = session.memory.getRawWordOrNull(addr);
             value = (iValue == null) ? 0 : iValue;
           } else {
-            value = session.memory.getWord(addr);
+            value = session.memory.getWordNoNotify(addr);
           }
           out.print(formatIntForDisplay(value) + "\t");
         } catch (AddressErrorException aee) {

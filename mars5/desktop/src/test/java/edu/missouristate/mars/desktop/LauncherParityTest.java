@@ -287,6 +287,30 @@ class LauncherParityTest {
   }
 
   @Test
+  void memoryReportsUseUnsignedAddressOrderWithoutWrapping() throws Exception {
+    Path file = source("kernel-range.s", """
+        .ktext 0x80000000
+        addiu $k0,$zero,7
+        .text
+        li $v0,10
+        syscall
+        """);
+    var arguments = List.of("nc", "me", "0x7ffffffc-0x80000000", "0xfffffffc-0xfffffffc", file.toString());
+    var standalone = launch("cli", "", arguments);
+    assertEquals(0, standalone.status(), standalone.err());
+    assertEquals(List.of("Mem[0x7ffffffc]\t0x00000000\t0x241a0007", "Mem[0xfffffffc]\t0x00000000"),
+        standalone.err().lines().filter(line -> !line.isBlank()).map(String::stripTrailing).toList());
+    assertEquals(standalone, launch("desktop", "", arguments));
+    for (String launcher : List.of("cli", "desktop")) {
+      for (String range : List.of("0x80000000-0x7ffffffc", "4294967296-4294967296", "0x80000001-0x80000004")) {
+        var failure = launch(launcher, "", "nc", "me", range, file.toString());
+        assertEquals(2, failure.status(), launcher + " " + range);
+        assertTrue(failure.err().contains(range), failure.err());
+      }
+    }
+  }
+
+  @Test
   void assemblyFailuresLeaveExistingAndMissingDumpDestinationsAlone() throws Exception {
     Path file = source("partial-data.s", """
         .data

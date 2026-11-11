@@ -1,10 +1,17 @@
-package edu.missouristate.mars.cli;
-
-import edu.missouristate.mars.mips.hardware.MemoryState;
+package edu.missouristate.mars.mips.hardware;
 
 /** Inclusive, word-aligned addresses in unsigned machine order. */
-record CliAddressRange(int first, int last) {
-  static boolean hasAddressPrefix(String text) {
+public record MemoryAddressRange(int first, int last) {
+  public MemoryAddressRange {
+    if (Integer.compareUnsigned(first, last) > 0
+        || !MemoryState.wordAligned(first)
+        || !MemoryState.wordAligned(last)) {
+      throw new IllegalArgumentException("Memory range requires ordered, word-aligned endpoints");
+    }
+  }
+
+  /** Distinguishes a range operand from other arguments containing hyphens. */
+  public static boolean hasAddressPrefix(String text) {
     int separator = text.indexOf('-', 1);
     if (separator < 0) {
       return false;
@@ -17,19 +24,14 @@ record CliAddressRange(int first, int last) {
     }
   }
 
-  static CliAddressRange parse(String text) {
+  public static MemoryAddressRange parse(String text) {
     int separator = text.indexOf('-', 1);
     try {
       if (separator > 0) {
-        int first = address(text.substring(0, separator));
-        int last = address(text.substring(separator + 1));
-        if (Integer.compareUnsigned(first, last) <= 0
-            && MemoryState.wordAligned(first)
-            && MemoryState.wordAligned(last)) {
-          return new CliAddressRange(first, last);
-        }
+        return new MemoryAddressRange(address(text.substring(0, separator)),
+            address(text.substring(separator + 1)));
       }
-    } catch (NumberFormatException ignored) {
+    } catch (IllegalArgumentException ignored) {
       // Report malformed addresses together with the original range.
     }
     throw new IllegalArgumentException("Invalid or unaligned memory range: " + text);
