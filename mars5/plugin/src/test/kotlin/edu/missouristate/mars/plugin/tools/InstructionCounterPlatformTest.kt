@@ -327,7 +327,20 @@ class InstructionCounterPlatformTest {
                 enter(16, "invalid")
                 assertTrue(floatLabels().any { it.startsWith("Enter a floating-point value") })
                 assertEquals("0x00000001", floatField(12).text)
-                button("Reset", floating).doClick()
+                val floatScroll = assertInstanceOf(JScrollPane::class.java, floating)
+                floatScroll.setSize(JBUI.scale(380), JBUI.scale(180))
+                floatScroll.doLayout()
+                val floatViewport = floatScroll.viewport
+                floatViewport.doLayout()
+                val floatBody = floatViewport.view
+                floatBody.doLayout()
+                val floatReset = button("Reset", floating)
+                val floatResetBounds = SwingUtilities.convertRectangle(floatReset.parent, floatReset.bounds, floatBody)
+                assertTrue(floatResetBounds.height > 0)
+                assertTrue(floatResetBounds.maxY > floatViewport.viewRect.maxY)
+                floatReset.focusListeners.forEach { it.focusGained(FocusEvent(floatReset, FocusEvent.FOCUS_GAINED)) }
+                assertTrue(floatViewport.viewRect.contains(floatResetBounds))
+                floatReset.doClick()
                 assertEquals("0x00000000", floatField(12).text)
                 val unrelated = RunContentDescriptor(null, null, JPanel(), "Unrelated").apply {
                     isActivateToolWindowWhenAdded = false

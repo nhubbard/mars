@@ -1992,6 +1992,17 @@ the last value after execution. Editing and reset are available during a
 debugger pause through the same serialized register edits as the Variables
 view. A changed register establishes a new backstep baseline.
 
+The panel scrolls to the focused field or button. At 150% IDE zoom in
+High Contrast, packaged macOS and Ubuntu ARM64 replays entered `-1.5`
+with the keyboard, confirmed `0xbfc00000`, and used Tab from **Exponent
+bits** through **Fraction bits** to **Reset**. Both controls came fully
+into view. Pressing Space on **Reset** restored `0x00000000`. In the
+narrow macOS dock, revealing **Fraction bits** still scrolls horizontally
+and clips the field labels to its left. Both hosts passed 2,022 Jupiter
+tests and both coverage gates. The screenshots and logs are under
+`mars5/.gradle/release-host-checks/floating-point-focus` and
+`mars5/.gradle/release-host-checks/linux-arm64-floating-point-focus`.
+
 ## Digital Lab Sim
 
 Open **View → Tool Windows → MARS Tools → Digital Lab Sim** and select a Run

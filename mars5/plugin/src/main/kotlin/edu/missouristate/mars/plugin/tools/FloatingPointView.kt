@@ -8,7 +8,6 @@ import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBTextField
 import com.intellij.ui.dsl.builder.AlignX
 import com.intellij.ui.dsl.builder.panel
-import com.intellij.ui.ScrollPaneFactory
 import com.intellij.util.ui.UIUtil
 import com.intellij.util.ui.launchOnShow
 import com.intellij.xdebugger.XDebuggerManager
@@ -61,7 +60,7 @@ internal class FloatingPointView(private val project: Project) : Disposable {
         row { cell(feedback) }
         row { comment(toolsMessages.getMessage("float.help")) }
     }
-    val component = ScrollPaneFactory.createScrollPane(controls, true)
+    val component = scrollableToolPanel(this, controls, emptyMap())
 
     init {
         register.addActionListener { bindingChanged() }
