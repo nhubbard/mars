@@ -10,6 +10,9 @@ gradle.beforeProject { project ->
             jvmArgs "-Dcompletion.command.report.dir=${completion}"
             jvmArgs '-Didea.diagnostic.opentelemetry.file=indexing-baseline-trace.json'
             jvmArgs '-Dperformance.plugin.playback.runner.useDirectActionCall=true'
+            // Match the test IDE starter's policy stub on a fresh test host.
+            jvmArgs '-Djb.consents.confirmation.enabled=false'
+            jvmArgs '-Djb.privacy.policy.text=<!--999.999-->'
 
             def archive = project.tasks.named('buildPlugin')
             dependsOn archive

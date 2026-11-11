@@ -2592,6 +2592,17 @@ tab in Search Everywhere, a source breakpoint, Step Into, and Step Over.
 Both navigation commands opened the expected included file. The replay log
 and trace are under `mars5/.gradle/indexing-baseline/symbol-assertions`.
 
+The same packaged replay passed on Ubuntu 24.04 ARM64 under Xvfb and
+Openbox. It passed the 2,014-test suite and both coverage gates before
+loading the ZIP. The editor and debugger reached every assertion and
+exited normally. A fresh host needs IntelliJ's IDE starter policy stub,
+which the replay initializer supplies to the test instance. The IDE
+logged startup errors from its own action system and the bundled Air
+plugin, plus a slow-operation diagnostic from Performance Diagnostics
+while toggling the breakpoint. The replay completed through those
+diagnostics. The log, trace, and completion report are under
+`mars5/.gradle/release-host-checks/linux-arm64-ui/results`.
+
 The local Ubuntu 24.04 x64 run at `0cb1d305` used Temurin 25 under CPU
 emulation on Apple Silicon. It passed all 2,014 tests, both coverage gates,
 the standalone CLI help check, and Plugin Verifier for `IU-263.7307.200`.
@@ -2606,6 +2617,11 @@ standard input and program arguments, output streams, diagnostics and
 exit statuses, register and memory reports, instruction counts, and
 the bytes from all six dump formats. The standalone launcher is quiet by
 default. Both launchers support explicit quiet mode.
+
+The subsequent macOS build passed 2,015 tests, including a Run console
+fixture that checks the exact order and contents of 4,096 lines in both
+the process output stream and the native console. Both coverage gates
+passed.
 
 Run the same checks as CI from `mars5`.
 
