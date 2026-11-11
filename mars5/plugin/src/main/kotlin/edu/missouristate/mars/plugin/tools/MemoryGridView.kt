@@ -11,6 +11,7 @@ import com.intellij.ui.dsl.builder.Align
 import com.intellij.ui.dsl.builder.AlignX
 import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.dsl.listCellRenderer.textListCellRenderer
+import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.launchOnShow
 import edu.missouristate.mars.plugin.run.MarsProcessHandler
 import edu.missouristate.mars.plugin.tools.MemoryGridDisplay.Base
@@ -317,12 +318,17 @@ internal class MemoryGridCanvas(
     private fun drawInspection(g: Graphics2D, viewport: Rectangle, cell: Point) {
         val x = cell.x * viewport.width / frame.options.columns
         val y = cell.y * viewport.height / frame.options.rows
-        val width = (cell.x + 1) * viewport.width / frame.options.columns - x
-        val height = (cell.y + 1) * viewport.height / frame.options.rows - y
+        val cellWidth = (cell.x + 1) * viewport.width / frame.options.columns - x
+        val cellHeight = (cell.y + 1) * viewport.height / frame.options.rows - y
+        // Leave the captured color visible even when a cell maps to a single screen pixel.
+        val width = cellWidth.coerceAtLeast(JBUI.scale(7))
+        val height = cellHeight.coerceAtLeast(JBUI.scale(7))
+        val left = viewport.x + x - (width - cellWidth) / 2
+        val top = viewport.y + y - (height - cellHeight) / 2
         g.color = Color.WHITE
-        g.drawRect(viewport.x + x, viewport.y + y, width - 1, height - 1)
+        g.drawRect(left, top, width - 1, height - 1)
         g.color = Color.BLACK
-        g.drawRect(viewport.x + x + 1, viewport.y + y + 1, width - 3, height - 3)
+        g.drawRect(left + 1, top + 1, width - 3, height - 3)
     }
 
     private fun drawGrid(g: Graphics2D, viewport: Rectangle) {

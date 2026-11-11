@@ -520,6 +520,9 @@ class InstructionCounterPlatformTest {
                 assertInspection("(0, 0) · 0x10010000 · #ff0000", bitmap)
                 gridKey(KeyEvent.VK_RIGHT, bitmap)
                 assertInspection("(1, 0) · 0x10010004 · #0000ff", bitmap)
+                val selectedPixel = renderBitmap()
+                assertEquals(Color.BLUE.rgb, selectedPixel.getRGB(1, 128))
+                assertEquals(Color.WHITE.rgb, selectedPixel.getRGB(1 + JBUI.scale(7) / 2, 128))
                 assertEquals(null, tooltip(references, -1, 10))
                 UIUtil.findComponentsOfType(references, JSpinner::class.java).single().value = 1
                 UIUtil.findComponentsOfType(references, ColorPanel::class.java).single().selectedColor = Color.MAGENTA

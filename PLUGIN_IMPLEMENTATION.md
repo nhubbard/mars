@@ -1836,7 +1836,9 @@ In **MARS Tools → Bitmap Display**, select an execution and connect, or enable
 **Capture Bitmap Display from launch** in its Run configuration. Hover over
 a pixel, click it, or focus the bitmap and use the arrow keys. The inspection
 shows the pixel's column and row, memory address, and captured RGB value in
-both the visible readout and the bitmap's accessible description.
+both the visible readout and the bitmap's accessible description. The
+selection outline stays visible at small scales and leaves the selected
+pixel's color visible inside it.
 
 ## Memory Reference Visualization
 
