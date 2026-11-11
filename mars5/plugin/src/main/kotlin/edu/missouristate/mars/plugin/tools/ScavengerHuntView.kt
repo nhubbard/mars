@@ -28,6 +28,7 @@ import java.awt.RenderingHints
 import javax.swing.JButton
 import javax.swing.JTable
 import javax.swing.table.AbstractTableModel
+import javax.swing.table.TableRowSorter
 import kotlin.math.roundToInt
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -47,7 +48,7 @@ internal class ScavengerHuntView(project: Project) : Disposable {
         autoResizeMode = JTable.AUTO_RESIZE_OFF
         sizeScoreboardColumns()
         addPropertyChangeListener("font") { sizeScoreboardColumns() }
-        autoCreateRowSorter = true
+        rowSorter = TableRowSorter(scoreboard).apply { sortsOnUpdates = true }
         accessibleContext.accessibleName = toolsMessages.getMessage("scavenger.scoreboard")
         emptyText.text = toolsMessages.getMessage("scavenger.waiting")
     }
@@ -100,6 +101,7 @@ internal class ScavengerHuntView(project: Project) : Disposable {
         if (process !== selected) {
             selected?.releaseScavengerHuntView()
             selected = process
+            scoreboard.show(null)
         }
     }
 
@@ -128,7 +130,12 @@ internal class ScavengerHuntView(project: Project) : Disposable {
             toolsMessages.getMessage("scavenger.diagnostic", it.address.toUInt().toString(16), reason)
         }.orEmpty()
         diagnostic.toolTipText = diagnostic.text
+        val previousSelection = table.selectedRow
         scoreboard.show(round)
+        val selection = table.selectedRow
+        if (selection >= 0 && selection != previousSelection) {
+            table.scrollRectToVisible(table.getCellRect(selection, table.selectedColumn, false))
+        }
         board.show(round, status.text)
     }
 
@@ -159,9 +166,14 @@ internal class ScavengerScoreboard : AbstractTableModel() {
     private var round: Round? = null
 
     fun show(value: Round?) {
-        if (round === value) return
+        val previous = round
+        if (previous === value) return
         round = value
-        fireTableDataChanged()
+        if (previous != null && value != null && previous.firstInstruction == value.firstInstruction) {
+            publishRowRefresh(previous.players.size)
+        } else {
+            fireTableDataChanged()
+        }
     }
 
     override fun getColumnCount() = columns.size

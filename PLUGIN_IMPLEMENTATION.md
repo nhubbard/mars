@@ -2282,6 +2282,11 @@ for IntelliJ 2026.3. The logs and screenshots are under
 `mars5/.gradle/release-host-checks/scavenger-columns` and
 `mars5/.gradle/release-host-checks/linux-arm64-scavenger-columns`.
 
+Live score updates reapply the active sort and retain the selected player
+and column. If the player moves to another row, the scoreboard reveals the
+selected cell. Starting a new round or switching executions clears the
+selection.
+
 **Reset** starts a fresh round at the next instruction boundary without
 a store to the device's ports. Debug backstep restores the previous round
 and discards pending resets. The default player regions overlap MarsBot's

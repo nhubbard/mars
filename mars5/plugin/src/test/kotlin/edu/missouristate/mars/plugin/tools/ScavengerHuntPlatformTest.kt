@@ -97,6 +97,20 @@ class ScavengerHuntPlatformTest {
         fun labels() = UIUtil.findComponentsOfType(hunt.component, JBLabel::class.java).map { it.text }
         fun board() = UIUtil.findComponentsOfType(hunt.component, ScavengerHuntBoard::class.java).single()
         fun table() = UIUtil.findComponentsOfType(hunt.component, JBTable::class.java).single()
+        fun layoutScoreboard(): JScrollPane {
+            val outer = assertInstanceOf(JScrollPane::class.java, hunt.component)
+            outer.setSize(JBUI.scale(295), JBUI.scale(350))
+            outer.doLayout()
+            outer.viewport.doLayout()
+            outer.viewport.view.doLayout()
+            val scoreboard = table()
+            val scroll = SwingUtilities.getAncestorOfClass(JScrollPane::class.java, scoreboard) as JScrollPane
+            scroll.setSize(JBUI.scale(205), JBUI.scale(115))
+            scroll.doLayout()
+            scroll.viewport.doLayout()
+            scoreboard.doLayout()
+            return scroll
+        }
         fun paint(width: Int, height: Int) = BufferedImage(width, height, BufferedImage.TYPE_INT_RGB).also { image ->
             board().setSize(width, height)
             val graphics = image.createGraphics()
@@ -128,6 +142,8 @@ class ScavengerHuntPlatformTest {
                 li ${'$'}v0, 12
                 syscall
                 nop
+                li ${'$'}v0, 12
+                syscall
             """.trimIndent()).virtualFile
             assertFalse(huntButton("Connect").isEnabled)
             assertFalse(huntButton("Reset").isEnabled)
@@ -193,28 +209,32 @@ class ScavengerHuntPlatformTest {
                 assertTrue("0xffffe004  Authentication failed" in labels())
                 assertEquals(22, table().rowCount)
             }
+            val viewport = withContext(Dispatchers.EDT) {
+                val table = table()
+                table.rowSorter.toggleSortOrder(2)
+                table.rowSorter.toggleSortOrder(2)
+                val viewport = layoutScoreboard().viewport
+                table.changeSelection(0, 1, false, false)
+                assertEquals(0, table.getValueAt(table.selectedRow, 0))
+                assertTrue(viewport.viewRect.contains(table.getCellRect(0, 1, false)))
+                viewport
+            }
             process.processInput.write("x\n".toByteArray())
             waitFor {
                 assertTrue("Player 0   Turns remaining 0" in labels())
                 assertTrue("0xffff8410  Write outside the active player region" in labels())
                 val table = table()
+                assertEquals(21, table.selectedRow)
+                assertEquals(1, table.selectedColumn)
+                assertTrue(viewport.viewRect.contains(table.getCellRect(21, 1, false)))
                 assertEquals(listOf(0, "(257, 255)", 19, "0/7", null),
-                    (0 until table.columnCount).map { table.getValueAt(0, it) })
+                    (0 until table.columnCount).map { table.getValueAt(table.selectedRow, it) })
             }
             withContext(Dispatchers.EDT) {
                 val scoreboard = table()
                 assertEquals("Finish", scoreboard.getColumnName(4))
                 scoreboard.font = scoreboard.font.deriveFont(24f)
-                val outer = assertInstanceOf(JScrollPane::class.java, hunt.component)
-                outer.setSize(JBUI.scale(295), JBUI.scale(350))
-                outer.doLayout()
-                outer.viewport.doLayout()
-                outer.viewport.view.doLayout()
-                val scroll = SwingUtilities.getAncestorOfClass(JScrollPane::class.java, scoreboard) as JScrollPane
-                scroll.setSize(JBUI.scale(205), JBUI.scale(115))
-                scroll.doLayout()
-                scroll.viewport.doLayout()
-                scoreboard.doLayout()
+                val scroll = layoutScoreboard()
                 val position = scoreboard.getCellRect(0, 1, false)
                 val renderedPosition = scoreboard.prepareRenderer(scoreboard.getCellRenderer(0, 1), 0, 1)
                 assertTrue(position.width >= renderedPosition.preferredSize.width)
@@ -239,6 +259,16 @@ class ScavengerHuntPlatformTest {
                 huntButton("Reset").doClick()
                 assertFalse(huntButton("Reset").isEnabled)
                 assertTrue("Reset queued for the next instruction." in labels())
+            }
+            process.processInput.write("x\n".toByteArray())
+            waitFor {
+                assertTrue(huntButton("Reset").isEnabled)
+                assertEquals(22, table().rowCount)
+                assertEquals(-1, table().selectedRow)
+                assertEquals(20, table().getValueAt(table().convertRowIndexToView(0), 2))
+            }
+            withContext(Dispatchers.EDT) {
+                huntButton("Reset").doClick()
                 huntButton("Disconnect").doClick()
                 assertFalse(process.scavengerHuntSnapshot()!!.resetPending)
                 huntButton("Connect").doClick()
