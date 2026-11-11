@@ -2569,6 +2569,21 @@ tab in Search Everywhere, a source breakpoint, Step Into, and Step Over.
 Both navigation commands opened the expected included file. The replay log
 and trace are under `mars5/.gradle/indexing-baseline/symbol-assertions`.
 
+The local Ubuntu 24.04 x64 run at `0cb1d305` used Temurin 25 under CPU
+emulation on Apple Silicon. It passed all 2,014 tests, both coverage gates,
+the standalone CLI help check, and Plugin Verifier for `IU-263.7307.200`.
+The verifier found no internal API usage. Reports are under
+`mars5/.gradle/release-host-checks/linux-arm64/x64-retry-results`.
+Native x64 runner evidence remains part of the GitHub Actions matrix.
+
+For B06 launcher parity, the macOS and both Linux runs passed all 23
+`LauncherParityTest` cases. These launch the standalone and Venus
+distribution JARs with the same sources and compare project assembly,
+standard input and program arguments, output streams, diagnostics and
+exit statuses, register and memory reports, instruction counts, and
+the bytes from all six dump formats. The standalone launcher is quiet by
+default. Both launchers support explicit quiet mode.
+
 Run the same checks as CI from `mars5`.
 
 ```sh
