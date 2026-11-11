@@ -305,13 +305,13 @@ public class FilenameFinder {
    */
   // Source code from Sun Microsystems "The Java Tutorials : How To Use File Choosers"
   public static String getExtension(File file) {
-    String ext = null;
-    String s = file.getName();
-    int i = s.lastIndexOf('.');
-    if (i > 0 && i < s.length() - 1) {
-      ext = s.substring(i + 1).toLowerCase();
-    }
-    return ext;
+    return getExtension(file.getName());
+  }
+
+  /** Returns the lower-case extension of a basename, excluding a leading or trailing dot. */
+  public static String getExtension(String filename) {
+    int dot = filename.lastIndexOf('.');
+    return dot > 0 && dot < filename.length() - 1 ? filename.substring(dot + 1).toLowerCase() : null;
   }
 
   /**

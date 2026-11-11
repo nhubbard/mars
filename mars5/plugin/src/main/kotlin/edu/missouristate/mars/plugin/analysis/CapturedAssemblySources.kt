@@ -27,6 +27,7 @@ import edu.missouristate.mars.plugin.build.MarsSourceSet
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.references.findMipsIncludeFile
 import edu.missouristate.mars.plugin.language.references.mipsIncludeDirectoryPath
+import edu.missouristate.mars.util.FilenameFinder
 import java.nio.file.InvalidPathException
 import java.nio.file.Path
 import java.util.Map.copyOf as copyOfMap
@@ -112,7 +113,7 @@ private fun collectBuildSources(
 }
 
 internal fun VirtualFile.isAssemblyDirectorySource(): Boolean =
-    !isDirectory && extension?.lowercase() in ApplicationInfo.fileExtensions
+    !isDirectory && FilenameFinder.getExtension(name) in ApplicationInfo.fileExtensions
 
 /** Called with read access by Build or by IntelliJ's external highlighting pass. */
 internal fun collectAssemblySources(

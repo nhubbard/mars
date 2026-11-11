@@ -2032,6 +2032,9 @@ Run configuration. The entry file is assembled first. Other top-level
 The include prepass can still read files in subdirectories or files with
 other extensions. Put include-only fragments in a subdirectory or give
 them an extension such as `.inc` to keep them out of the top-level list.
+The directory filter follows the Java core's extension rule. A file named
+`.local.S` is a sibling source, and a file named exactly `.asm` or `.s`
+enters the build when named explicitly, for example in an `.include`.
 
 Run and Debug use the same capture as the Build action. Breakpoints and
 local symbols resolve in the source file that owns the instruction. For

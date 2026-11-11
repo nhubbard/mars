@@ -1083,6 +1083,26 @@ class MarsBuildPlatformTest {
     }
 
     @Test
+    fun `directory assembly includes dotfiles only by name or with a real assembly extension`() = timeoutRunBlocking<Unit> {
+        val (entry, include, sibling) = withContext(Dispatchers.EDT) {
+            val entry = fixture.addFileToProject("dotfiles/main.asm", ".include \".asm\"\naddiu \$t0,\$zero,VALUE\n")
+            val include = fixture.addFileToProject("dotfiles/.asm", ".eqv VALUE 7\n")
+            val sibling = fixture.addFileToProject("dotfiles/.local.S", "nop\n")
+            fixture.addFileToProject("dotfiles/.s", "not a valid instruction\n")
+            Triple(entry.virtualFile.toNioPath(), include.virtualFile.toNioPath(), sibling.virtualFile.toNioPath())
+        }
+        val capture = captureBuildSources(MarsSourceSet(entry, MarsAssemblyMode.DIRECTORY))
+        assertEquals(listOf(entry, sibling), capture.snapshot.entries())
+        assertEquals(entry, capture.rootsBySource[include])
+        val component = MarsSessionService.createMarsComponent()
+        component.context().use { session ->
+            val result = capture.assembleIn(component)
+            assertTrue(result.succeeded(), result.errors().toString())
+            assertEquals(listOf(0x24080007, 0), session.program.machineList.map { it.binaryStatement })
+        }
+    }
+
+    @Test
     fun `an included file uses earlier definitions in the selected entry even after a failed build`() = timeoutRunBlocking<Unit> {
         val source = """
             li ${'$'}t0, %value
