@@ -44,6 +44,7 @@ internal data class CapturedAssemblySources(
     val rootsBySource: Map<Path, Path>,
     val directoryStamp: Long? = null,
     val sourceSet: MarsSourceSet = MarsSourceSet(snapshot.entries(), MarsAssemblyMode.SINGLE),
+    val previewLineCounts: Map<Path, Int> = emptyMap(),
 )
 
 internal data class EditorAssemblyCapture(
@@ -127,6 +128,7 @@ internal fun collectAssemblySources(
     val files = VirtualFileManager.getInstance()
     val documents = FileDocumentManager.getInstance()
     val captured = HashMap<Path, SourceDocument>()
+    val previewLineCounts = HashMap<Path, Int>()
     val rootsBySource = (ordered + listOfNotNull(handler)).associateWithTo(HashMap()) { it }
     val resolvedIncludes = HashMap<Path, Path>()
     val tokenizer = Tokenizer()
@@ -140,7 +142,9 @@ internal fun collectAssemblySources(
         val text = if (documents.isPartialPreviewOfALargeFile(document)) {
             onDependency(file)
             try {
-                StringUtil.convertLineSeparators(VfsUtilCore.loadText(file))
+                StringUtil.convertLineSeparators(VfsUtilCore.loadText(file)).also {
+                    previewLineCounts[path] = document.lineCount
+                }
             } catch (_: IOException) {
                 // The assembler will report the unavailable source at the entry or include site.
                 return null
@@ -185,7 +189,10 @@ internal fun collectAssemblySources(
     val snapshot = AssemblySourceSnapshot(
         ordered, captured.mapValues { it.value.text }, resolvedIncludes, captured.mapValues { it.value.identity },
     )
-    return CapturedAssemblySources(snapshot, handler, copyOfMap(captured.mapValues { it.value.revision }), copyOfMap(rootsBySource))
+    return CapturedAssemblySources(
+        snapshot, handler, copyOfMap(captured.mapValues { it.value.revision }), copyOfMap(rootsBySource),
+        previewLineCounts = copyOfMap(previewLineCounts),
+    )
 }
 
 /** Highlighting can reuse capture across editors until an input document or the VFS structure changes. */

@@ -4,6 +4,7 @@ import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.fileEditor.FileDocumentManager
+import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.util.SystemInfoRt
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
@@ -20,6 +21,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertInstanceOf
+import org.junit.jupiter.api.Assertions.assertNotEquals
+import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
@@ -83,6 +88,8 @@ class CapturedAssemblySourcesPlatformTest {
                 output.bufferedWriter(Charsets.UTF_16LE).use { writer ->
                     repeat(commentCount) { writer.write(diskLine) }
                     writer.write(".include \"tail.s\"\r\n\taddiu \$t0, \$zero, 7\r\n")
+                    writer.write("#" + " ".repeat(32_768) + "\r\n")
+                    writer.write("\taddiu \$t1, \$zero, 8\r\nnop\r\n")
                 }
             }
             source.toNioPath() to checkNotNull(VirtualFileManager.getInstance().refreshAndFindFileByNioPath(path))
@@ -95,21 +102,43 @@ class CapturedAssemblySourcesPlatformTest {
         assertTrue(preview.lineCount < instructionLine)
 
         val capture = captureAssemblySources(listOf(entry), null)
-        assertTrue(capture.snapshot.texts().getValue(largePath).endsWith("\taddiu \$t0, \$zero, 7\n"))
+        assertTrue(capture.snapshot.texts().getValue(largePath).endsWith("\taddiu \$t1, \$zero, 8\nnop\n"))
         assertTrue(largePath.resolveSibling("tail.s") in capture.snapshot.texts())
         val component = MarsSessionService.createMarsComponent()
         component.context().use { session ->
             val result = capture.assembleIn(component)
             assertTrue(result.succeeded(), result.errors().toString())
             val statements = session.program.machineList
-            assertEquals(listOf(0, 0x24080007), statements.map { it.binaryStatement })
+            assertEquals(listOf(0, 0x24080007, 0x24090008, 0), statements.map { it.binaryStatement })
             val location = Location(largePath, instructionLine)
-            assertEquals(location, result.program().sourceMap().origins()[statements.last().address]?.location())
-            val descriptor = readAction {
-                MarsExecutionSources(capture).hyperlink(project.get(), location, 2).descriptor
+            assertEquals(location, result.program().sourceMap().origins()[statements[1].address]?.location())
+            readAction {
+                val sources = MarsExecutionSources(capture)
+                assertEquals(large, sources.position(Location(largePath, 1)).file)
+                assertEquals(3, sources.hyperlink(project.get(), Location(entry, 4), 2).descriptor?.line)
+                val position = sources.position(location)
+                assertNotEquals(large, position.file)
+                assertFalse(position.file.isWritable)
+                assertEquals(location, sources.location(position.file, position.line))
+                assertNull(MarsExecutionSources(capture).location(position.file, position.line))
+                val excerpt = checkNotNull(documents.getDocument(position.file))
+                val lineStart = excerpt.getLineStartOffset(position.line)
+                assertTrue(excerpt.text.startsWith("\taddiu \$t0, \$zero, 7\n", lineStart))
+                val descriptor = sources.hyperlink(project.get(), location, 2).descriptor
+                assertSame(position.file, descriptor?.file)
+                assertEquals(lineStart + 1, descriptor?.offset)
+                val frameLink = assertInstanceOf(OpenFileDescriptor::class.java, position.createNavigatable(project.get()))
+                assertSame(position.file, frameLink.file)
+                assertEquals(position.line, frameLink.line)
+
+                val nextLocation = Location(largePath, instructionLine + 2)
+                val next = sources.position(nextLocation)
+                assertEquals(nextLocation, sources.location(next.file, next.line))
+                assertSame(next.file, sources.position(Location(largePath, instructionLine + 3)).file)
+                val nextExcerpt = checkNotNull(documents.getDocument(next.file))
+                assertTrue(nextExcerpt.text.startsWith("# "))
+                assertTrue(nextExcerpt.text.startsWith("\taddiu \$t1, \$zero, 8\n", nextExcerpt.getLineStartOffset(next.line)))
             }
-            assertEquals(large, descriptor?.file)
-            assertEquals(instructionLine - 1, descriptor?.line)
         }
         val unavailable = readAction {
             collectAssemblySources(listOf(entry), null) { dependency ->
