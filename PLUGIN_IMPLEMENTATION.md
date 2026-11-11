@@ -966,8 +966,9 @@ quote removes the error and makes the path eligible for references and include t
 The same local check highlights missing files, invalid paths, and directories
 used as include operands. It resolves local paths through the build capture’s VFS
 lookup, so files excluded from the editor index can still be valid includes.
-For a missing file in an existing writable directory, **Alt+Enter** offers
-IntelliJ’s **Create file** action at the exact destination resolved by MARS.
+For a missing file, **Alt+Enter** offers IntelliJ’s **Create file** action at
+the destination resolved by MARS. It can create missing parent folders beneath
+a writable ancestor. Dot segments must already resolve before it can offer the fix.
 A clean IntelliJ 2026.3 launch verified this in a file shared by two entries. Go to
 Declaration opened the completed path, and Run printed the value from the included
 file. All 1,782 tests and both parser coverage gates passed.

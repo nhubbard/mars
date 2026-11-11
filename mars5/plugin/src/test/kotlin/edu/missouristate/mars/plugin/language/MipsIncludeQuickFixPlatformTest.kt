@@ -101,11 +101,30 @@ class MipsIncludeQuickFixPlatformTest {
     }
 
     @Test
-    fun `create include quick fix requires an existing parent directory`() = timeoutRunBlocking<Unit> {
+    fun `create include quick fix creates missing folders below the resolved ancestor`() = timeoutRunBlocking<Unit> {
+        val path = "missing/nested/new.s"
+        val source = ".include \"$path\"\nnop\n"
+        withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("new.s", "# existing sibling\n")
+            val entry = fixture.addFileToProject("entry.asm", source).virtualFile
+            fixture.configureFromExistingVirtualFile(entry)
+            fixture.editor.caretModel.moveToOffset(source.indexOf("new.s"))
+            val fix = fixture.availableIntentions.single { it.text == "Create file $path" }
+            fixture.launchAction(fix)
+            assertEquals("", fixture.tempDirFixture.getFile(path)?.contentsToByteArray()?.decodeToString())
+            assertEquals("# existing sibling\n", fixture.tempDirFixture.getFile("new.s")?.contentsToByteArray()?.decodeToString())
+            fixture.configureFromExistingVirtualFile(entry)
+            fixture.checkResult(source)
+            assertTrue(fixture.doHighlighting().none { it.description?.startsWith("Error reading include file") == true })
+        }
+    }
+
+    @Test
+    fun `create include quick fix rejects paths without a safe directory`() = timeoutRunBlocking<Unit> {
         withContext(Dispatchers.EDT) {
             fixture.tempDirFixture.createFile("existing.s", "nop\n")
             fixture.tempDirFixture.findOrCreateDir("directory")
-            for (path in listOf("missing/new.s", "existing.s/new.s", "directory", "bad\u0000name.s")) {
+            for (path in listOf("missing/../new.s", "existing.s/nested/new.s", "directory", "bad\u0000name.s")) {
                 fixture.configureByText("entry.asm", ".include \"<caret>$path\"\n")
                 assertTrue(fixture.availableIntentions.none { it.text.startsWith("Create file") })
             }

@@ -17,10 +17,10 @@ import com.intellij.psi.util.elementType
 import com.intellij.util.IncorrectOperationException
 import edu.missouristate.mars.plugin.language.psi.MipsStringLiteral
 import edu.missouristate.mars.plugin.language.psi.mipsIncludeSites
+import edu.missouristate.mars.plugin.language.references.dotSegments
 import edu.missouristate.mars.plugin.language.references.findMipsIncludeFile
 import java.nio.file.InvalidPathException
 import java.nio.file.Path
-import java.util.Objects.requireNonNullElse
 
 /** The include prepass examines the physical line before resolving symbols or choosing a build entry. */
 internal class MipsIncludePathAnnotator : Annotator, DumbAware {
@@ -55,16 +55,27 @@ internal class MipsIncludePathAnnotator : Annotator, DumbAware {
     }
 
     private fun createIncludeFix(literal: MipsStringLiteral, request: Path, files: VirtualFileManager): CreateFilePathFix? {
-        val parentPath = requireNonNullElse(request.parent, request)
-        val parent = files.findMipsIncludeFile(parentPath) ?: return null
-        val directory = literal.manager.findDirectory(parent) ?: return null
+        val missing = ArrayDeque<String>()
+        val ancestors = generateSequence(request.parent, Path::getParent)
+        val ancestor = ancestors.map { it to files.findMipsIncludeFile(it) }
+            // A missing directory before a dot segment must be resolved before creating files.
+            .takeWhile { (path, file) -> file != null || path.fileName.toString() !in dotSegments }
+            .mapNotNull { (path, file) ->
+                if (file == null) missing.addFirst(path.fileName.toString())
+                file
+            }
+            .firstOrNull()
+        val directory = ancestor?.let(literal.manager::findDirectory) ?: return null
         val name = request.fileName.toString()
         try {
-            directory.checkCreateFile(name)
+            if (missing.isEmpty()) directory.checkCreateFile(name) else directory.checkCreateSubdirectory(missing.first())
         } catch (_: IncorrectOperationException) {
             return null
         }
-        return CreateFilePathFix(literal, NewFileLocation(listOf(TargetDirectory(directory)), name))
+        // The native action accepts a relative path and creates it in one command. Including
+        // the suffix here also keeps its availability check from using the basename at the ancestor.
+        val relativePath = (missing + name).joinToString("/")
+        return CreateFilePathFix(literal, NewFileLocation(listOf(TargetDirectory(directory)), relativePath))
     }
 }
 
