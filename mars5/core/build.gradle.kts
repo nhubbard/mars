@@ -2,6 +2,7 @@ import java.util.zip.ZipFile
 
 plugins {
   id("java")
+  jacoco
 }
 
 group = "edu.missouristate"
@@ -23,6 +24,15 @@ dependencies {
 
 tasks.test {
   useJUnitPlatform()
+}
+
+jacoco { toolVersion = "0.8.16" }
+tasks.jacocoTestReport {
+  dependsOn(tasks.test)
+  reports {
+    xml.required.set(true)
+    html.required.set(true)
+  }
 }
 
 tasks.processResources {
@@ -70,4 +80,4 @@ val verifyCoreIsolation = tasks.register("verifyCoreIsolation") {
     }
   }
 }
-tasks.check { dependsOn(verifyCoreIsolation) }
+tasks.check { dependsOn(verifyCoreIsolation, tasks.jacocoTestReport) }

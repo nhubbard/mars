@@ -3035,8 +3035,21 @@ under `mars5/.gradle/release-host-checks/linux-arm64-print`.
 The GitHub Actions build runs the same Java 25 test, CLI smoke, plugin
 verification, and instruction lab checks on Linux, Apple Silicon macOS, and
 x64 Windows. Each runner uploads its Jupiter results, plugin coverage report,
-Plugin Verifier report, and the instruction lab's catalog execution reports.
+Java core coverage report, Plugin Verifier report, and the instruction lab's
+catalog execution and PNG decoder test reports.
 Packaged UI interaction and archive replacement are separate release checks.
+
+### Java core coverage baseline
+
+The Java 25 core suite passed 1,270 Jupiter tests with JaCoCo 0.8.16
+on Apple Silicon macOS.
+The raw report covers 6,793 of 8,316 lines (81.69%) and 2,496 of 3,701
+branches (67.44%) across the core module's compiled output, including
+generated Dagger classes. Run `./gradlew :core:check` from `mars5` to
+produce the XML and package-level HTML report in
+`core/build/reports/jacoco/test`.
+
+### Host qualification
 
 The local Ubuntu 24.04 ARM64 run at `aee75d21` used Temurin 25 and passed all
 2,014 Jupiter tests (684 plugin tests), the authored and generated-parser
