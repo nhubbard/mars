@@ -81,13 +81,12 @@ internal class MipsInstructionOperand(val index: Int, val formats: List<Instruct
     companion object {
         private val addressPunctuation = setOf(TokenTypes.LEFT_PAREN, TokenTypes.RIGHT_PAREN)
 
-        fun at(
-            position: PsiElement, sourceFile: MipsFile, allowPseudo: Boolean = true, allowIncompleteOperand: Boolean = false,
-        ): MipsInstructionOperand? {
+        fun at(position: PsiElement, sourceFile: MipsFile, allowPseudo: Boolean = true): MipsInstructionOperand? {
             val instruction = operationOwner(position) ?: return null
             val prefix = instruction.node.chars.subSequence(0, position.textOffset - instruction.textOffset).toString()
+            // Navigation and completion use the operand slot while the instruction is being edited.
             val tokens = sourceFile.project.service<MarsAnalysisService>()
-                .editorInstructionTokens(sourceFile, instruction.operationHead, prefix, allowIncompleteOperand) ?: return null
+                .editorInstructionTokens(sourceFile, instruction.operationHead, prefix, allowIncompleteOperand = true) ?: return null
             val index = tokens.size()
             val formats = enabledInstructionFormats(tokens[0].value, allowPseudo).filter {
                 index < it.tokenList.size() && matchesAddressShape(tokens, it.tokenList)

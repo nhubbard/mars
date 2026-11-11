@@ -45,9 +45,7 @@ class MipsCompletionContributor : CompletionContributor(), DumbAware {
                 val position = parameters.position
                 val root = parameters.originalFile as MipsFile
                 val options = root.project.service<MarsAssemblySettings>().executionOptions
-                val operand = MipsInstructionOperand.at(
-                    position, root, options.allowPseudoInstructions, allowIncompleteOperand = true,
-                ) ?: return
+                val operand = MipsInstructionOperand.at(position, root, options.allowPseudoInstructions) ?: return
                 val prefix = prefix(parameters)
                 val lookup = result.withPrefixMatcher(prefix)
                 lookup.addAllElements(registerCandidates(operand.formats, operand.index, options.bareMachine).map(LookupElementBuilder::create))

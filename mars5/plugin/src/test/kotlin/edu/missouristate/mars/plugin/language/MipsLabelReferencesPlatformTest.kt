@@ -199,6 +199,33 @@ class MipsLabelReferencesPlatformTest {
     }
 
     @Test
+    fun `label navigation and usage search survive malformed earlier operands`() = timeoutRunBlocking<Unit> {
+        withContext(Dispatchers.EDT) { fixture.addFileToProject("target.inc", "target: nop\n") }
+        configure("""
+            .include "target.inc"
+            .eqv BR beq
+            .eqv REG ${'$'}t0
+            .eqv FIRST SECOND
+            .eqv SECOND FIRST
+            BR ${'$'}t0, 0x, tar<caret>get
+            beq REG, 0x, target
+            sll REG, 0x, target
+            BR FIRST, ${'$'}t0, target
+        """.trimIndent())
+        readAction {
+            val reference = checkNotNull(referenceAtCaret())
+            val target = reference.resolve() as? MipsDeclaration
+            assertEquals("target.inc", target?.containingFile?.name)
+            assertEquals(target, GotoDeclarationAction.findTargetElement(project.get(), fixture.editor, fixture.editor.caretModel.offset))
+            val uses = fixture.findUsages(checkNotNull(target)).map { usage ->
+                val element = checkNotNull(usage.reference).element
+                fixture.editor.document.getLineNumber(element.textOffset) + 1
+            }.sorted()
+            assertEquals(listOf(6, 7), uses)
+        }
+    }
+
+    @Test
     fun `label aliases resolve to the written source before assembly`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
         val aliases = ".eqv DEFINE .eqv\nDEFINE PREFIX generated:\nDEFINE ORIGINAL renamed\n"
         val body = "PREFIX nop\nORIGINAL: nop\n"
