@@ -27,6 +27,7 @@ import javax.swing.DefaultComboBoxModel
 import javax.swing.JButton
 import javax.swing.JComponent
 import javax.swing.JProgressBar
+import javax.swing.table.AbstractTableModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -92,6 +93,15 @@ internal fun scrollableToolPanel(
             val target = nestedScrollPanes.getOrDefault(control, control)
             target.scrollRectToVisible(Rectangle(0, 0, target.width, target.height))
         }
+    }
+}
+
+internal fun AbstractTableModel.publishRowRefresh(previousRowCount: Int) {
+    // A whole-table change clears Swing selection even when the row indices are unchanged.
+    if (previousRowCount > 0 && previousRowCount == rowCount) {
+        fireTableRowsUpdated(0, rowCount - 1)
+    } else {
+        fireTableDataChanged()
     }
 }
 

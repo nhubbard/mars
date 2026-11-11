@@ -666,6 +666,45 @@ class InstructionCounterPlatformTest {
                 assertTrue(checkNotNull(branchRun.manager).removeContent(branchRun, true))
             }
             waitFor(0, "0 (0%)")
+            val liveTablesRun = launch(run, 11, """
+                .data
+                value: .word 0
+                .text
+                la ${'$'}t0, value
+                sw ${'$'}zero, 0(${'$'}t0)
+                bne ${'$'}zero, ${'$'}zero, done
+                li ${'$'}v0, 5
+                syscall
+                lw ${'$'}t1, 0(${'$'}t0)
+                beq ${'$'}zero, ${'$'}zero, done
+                done: nop
+            """.trimIndent())
+            val liveProcess = liveTablesRun.getUserData(RunContentDescriptor.DESCRIPTOR_KEY)!!.processHandler!!
+            suspend fun checkTableUpdate(accesses: String, decisions: Int, checkSelection: (JBTable) -> Unit) {
+                pollAssertionsAsync(5.seconds, 30.milliseconds) {
+                    withContext(Dispatchers.EDT) {
+                        val cacheTable = UIUtil.findComponentsOfType(cache, JBTable::class.java).single()
+                        val branchTable = UIUtil.findComponentsOfType(branches, JBTable::class.java).single()
+                        val branchLog = UIUtil.findComponentsOfType(branches, JBTextArea::class.java).single()
+                        assertTrue(cacheTable.rowCount > 1 && branchTable.rowCount > 1)
+                        assertEquals(accesses, cacheTable.getValueAt(0, 3))
+                        assertEquals(decisions, branchLog.text.lineSequence().count { it.isNotBlank() })
+                        checkSelection(cacheTable)
+                        checkSelection(branchTable)
+                    }
+                }
+            }
+            checkTableUpdate("1", 1) { it.setRowSelectionInterval(1, 1) }
+            liveProcess.processInput!!.write("0\n".toByteArray())
+            checkTableUpdate("2", 2) { assertEquals(1, it.selectedRow) }
+            withContext(Dispatchers.EDT) {
+                for (panel in listOf(branches, cache)) {
+                    button("Reset", panel).doClick()
+                    assertEquals(-1, UIUtil.findComponentsOfType(panel, JBTable::class.java).single().selectedRow)
+                }
+                assertTrue(checkNotNull(liveTablesRun.manager).removeContent(liveTablesRun, true))
+            }
+            waitFor(0, "0 (0%)")
             val floatRun = launch(run, 5, "lui \$t0, 0x3fc0\nmtc1 \$t0, \$f0\n", start = false)
             waitFor(1, "0 (0%)")
             withContext(Dispatchers.EDT) {

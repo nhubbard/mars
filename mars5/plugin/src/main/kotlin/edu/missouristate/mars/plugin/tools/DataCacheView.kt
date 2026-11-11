@@ -90,6 +90,7 @@ internal class DataCacheView(project: Project) : Disposable {
             render()
         }
         apply.addActionListener {
+            table.clearSelection()
             selector.process!!.dataCache.configure(
                 Options(blocks.selectedItem as Int, words.selectedItem as Int, placement.selectedItem as Placement,
                     ways.selectedItem as Int, replacement.selectedItem as Replacement),
@@ -102,6 +103,7 @@ internal class DataCacheView(project: Project) : Disposable {
             render()
         }
         reset.addActionListener {
+            table.clearSelection()
             selector.process!!.dataCache.reset()
             render()
         }
@@ -134,6 +136,7 @@ internal class DataCacheView(project: Project) : Disposable {
     }
 
     private fun selectionChanged() {
+        table.clearSelection()
         val snapshot = selector.process?.dataCache?.snapshot()
         val options = snapshot?.options ?: Options()
         placement.selectedItem = options.placement
@@ -174,8 +177,9 @@ internal class DataCacheView(project: Project) : Disposable {
         private var snapshot: DataCacheSimulator.Snapshot? = null
 
         fun update(snapshot: DataCacheSimulator.Snapshot?) {
+            val previousRowCount = rowCount
             this.snapshot = snapshot
-            fireTableDataChanged()
+            publishRowRefresh(previousRowCount)
         }
 
         override fun getColumnName(column: Int) = toolsMessages.getMessage("cache.column.${columns[column]}")

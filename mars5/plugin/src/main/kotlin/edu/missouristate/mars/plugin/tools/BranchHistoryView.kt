@@ -62,6 +62,7 @@ internal class BranchHistoryView(project: Project) : Disposable {
 
     init {
         apply.addActionListener {
+            table.clearSelection()
             val model = selector.process!!.branchHistory
             model.configure(Options(size.selectedItem as Int, history.selectedItem as Int, initialTaken.isSelected))
             render()
@@ -92,6 +93,7 @@ internal class BranchHistoryView(project: Project) : Disposable {
     }
 
     private fun selectionChanged() {
+        table.clearSelection()
         val options = selector.process?.branchHistory?.snapshot()?.options ?: Options()
         size.selectedItem = options.size
         history.selectedItem = options.historyBits
@@ -130,6 +132,7 @@ internal class BranchHistoryView(project: Project) : Disposable {
         private var rows = emptyList<List<String>>()
 
         fun update(entries: List<BranchHistoryTable.Row>, decision: Observation?) {
+            val previousRowCount = rowCount
             rows = entries.mapIndexed { index, row ->
                 listOf(
                     index.toString(), row.history.joinToString(", ", transform = ::prediction),
@@ -138,7 +141,7 @@ internal class BranchHistoryView(project: Project) : Disposable {
                     if (decision?.index == index) result(decision) else "",
                 )
             }
-            fireTableDataChanged()
+            publishRowRefresh(previousRowCount)
         }
 
         override fun getColumnName(column: Int) = toolsMessages.getMessage("branchHistory.column.${columns[column]}")

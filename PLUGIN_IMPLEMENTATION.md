@@ -1924,6 +1924,13 @@ Both hosts passed all 2,019 Jupiter tests and both coverage gates. Linux startup
 notifications cover the lower rows in the screenshots. The focused rows and
 replay measurements are under `mars5/.gradle/release-host-checks/linux-arm64-table-tools-high-zoom`.
 
+Both tables preserve the selected row when simulator observations update the
+current execution. Changing executions, applying a layout, or resetting the
+tool clears the selection. A packaged macOS replay selected a row in each
+table, resumed a program waiting for input, and verified that the row stayed
+selected as the access and branch counts advanced from one to two. The replay
+and screenshots are under `mars5/.gradle/release-host-checks/live-table-selection`.
+
 ## Floating Point Representation
 
 The Floating Point Representation tab provides an independent binary32
