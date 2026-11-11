@@ -1319,6 +1319,14 @@ class MarsDebugPlatformTest {
                 ori ${'$'}t2, ${'$'}zero, 'A'
                 addiu ${'$'}t0, ${'$'}zero, 7
                 stop: nop # ignored
+                .extern external, 4
+                .extern -4, 4
+                .extern 'B', 4
+                .extern "reserved", 4
+                .extern %storage, 4
+                .eqv NAME )
+                .extern NAME, 4
+                .extern -4, 8
             """.trimIndent()).virtualFile
             addBreakpoint(source, 9)
             Triple(source, fixture.addFileToProject("outside.txt", "42").virtualFile,
@@ -1350,6 +1358,20 @@ class MarsDebugPlatformTest {
                 assertHint(document.text.indexOf("'A'"), 3, "0x00000041")
                 assertHint(document.text.indexOf("pc"), 2, "0x10010000")
                 assertHint(document.text.lastIndexOf("pc"), 2, "0x10010000")
+                for ((name, address) in mapOf(
+                    "external" to "0x10000000",
+                    "-4" to "0x10000004",
+                    "'B'" to "0x10000008",
+                    "\"reserved\"" to "0x1000000c",
+                    "%storage" to "0x10000010",
+                    "NAME, 4" to "0x10000014",
+                )) {
+                    val spelling = name.substringBefore(',')
+                    val start = document.text.indexOf(name)
+                    assertHint(start, spelling.length, address)
+                    assertHint(start, spelling.length, address, start + spelling.lastIndex)
+                }
+                assertHint(document.text.lastIndexOf("-4"), 2, "0x10000004")
                 for (word in listOf(":", "addiu", "\"text\"", "ignored")) {
                     assertNull(evaluator.getExpressionInfoAtOffsetAsync(project, document, document.text.indexOf(word), true).await(), word)
                 }

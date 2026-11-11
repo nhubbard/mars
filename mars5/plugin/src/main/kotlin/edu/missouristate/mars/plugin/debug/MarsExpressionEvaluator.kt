@@ -97,6 +97,8 @@ internal class MarsExpressionEvaluator(
             unaryType -> parent.lastChild.takeIf { it.elementType == literalType }?.let(::literalHint)
             referenceType -> if (leaf.elementType == registerType) registerHint(leaf) else symbolHint(file, document, leaf)
             labelType -> if (leaf == parent.firstChild) symbolHint(file, document, leaf) else null
+            externalNameType -> symbolHint(file, document, leaf, spelling = null)
+            externalSignedNameType -> symbolHint(file, document, parent, spelling = null)
             else -> null
         }
     }
@@ -144,10 +146,10 @@ internal class MarsExpressionEvaluator(
         return expression.takeIf { resolveReference(it) != null }
     }
 
-    private fun symbolHint(file: MipsFile, document: Document, leaf: PsiElement): ExpressionInfo? {
-        val site = sourceSite(file, document, leaf.textOffset) ?: return null
-        val expression = addressExpression(loadedSymbols.addressAt(site, leaf.text)) ?: return null
-        return ExpressionInfo(leaf.textRange, expression, leaf.text)
+    private fun symbolHint(file: MipsFile, document: Document, element: PsiElement, spelling: String? = element.text): ExpressionInfo? {
+        val site = sourceSite(file, document, element.textOffset) ?: return null
+        val expression = addressExpression(loadedSymbols.addressAt(site, spelling)) ?: return null
+        return ExpressionInfo(element.textRange, expression, element.text)
     }
 
     private fun addressExpression(address: Int?): String? = address?.let(Binary::intToHexString)
@@ -310,6 +312,8 @@ internal class MarsExpressionEvaluator(
         val registerType = MipsTypes.psi("REGISTER")
         val registerTypes = setOf(TokenTypes.REGISTER_NAME, TokenTypes.REGISTER_NUMBER, TokenTypes.FP_REGISTER_NAME)
         val labelType = MipsTypes.psi("LABEL")
+        val externalNameType = MipsTypes.psi("EXTERNAL_NAME")
+        val externalSignedNameType = MipsTypes.psi("EXTERNAL_SIGNED_NAME")
         val groupType = MipsTypes.psi("GROUP_EXPR")
         val unaryType = MipsTypes.psi("UNARY_EXPR")
         val minusType = MipsTypes.psi("MINUS")

@@ -61,19 +61,18 @@ internal class LoadedSymbols(private val symbols: AssemblySymbolMap, val sources
     private val definitionsBySite = rows.groupBy { it.location to it.definition.column() }
         .mapValues { (_, rows) -> rows.groupBy(AssembledSymbol::name) { it.definition.address() } }
 
-    fun addressAt(site: SourceToken, spelling: String): Int? {
+    /** An external declaration can expand or normalize its spelling at this captured source site. */
+    fun addressAt(site: SourceToken, spelling: String?): Int? {
         val bindings = symbols.symbolUses()[site]
         val addresses = if (bindings == null) {
-            addressesAt(site, spelling)
+            val definitions = definitionsBySite.getOrDefault(site.location() to site.column(), emptyMap())
+            if (spelling == null) definitions.values.flatten() else definitions.getOrDefault(spelling, emptyList())
         } else {
-            if (bindings.any { it.name() != spelling }) return null
+            if (spelling != null && bindings.any { it.name() != spelling }) return null
             bindings.map { it.address() }
         }
         return addresses.distinct().singleOrNull()
     }
-
-    private fun addressesAt(site: SourceToken, spelling: String) =
-        definitionsBySite.getOrDefault(site.location() to site.column(), emptyMap()).getOrDefault(spelling, emptyList())
 }
 
 internal data class AssembledSymbol(val name: String, val definition: Definition, val unit: Path?) {
