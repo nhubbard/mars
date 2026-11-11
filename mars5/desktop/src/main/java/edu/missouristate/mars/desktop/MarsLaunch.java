@@ -164,12 +164,7 @@ public class MarsLaunch {
       maxSteps = -1;
       out = System.out;
       if (parseCommandArgs(args)) {
-        if (runCommand()) {
-          displayMiscellaneousPostMortem();
-          displayRegistersPostMortem();
-          displayMemoryPostMortem();
-        }
-        dumpSegments();
+        runCommand();
       }
       System.exit(session.exitCode());
     }
@@ -439,10 +434,10 @@ public class MarsLaunch {
   }
 
   //////////////////////////////////////////////////////////////////////
-  // Carry out the mars command: assemble then optionally run
-  // Returns false if no simulation (run) occurs, true otherwise.
+  // Assemble, optionally run, and write reports and dumps for the completed phases.
 
-  private boolean runCommand() {
+  private void runCommand() {
+    boolean assembled = false;
     boolean programRan = false;
     try {
       session
@@ -489,6 +484,7 @@ public class MarsLaunch {
       }
       // Added logic to check for warnings and print if any. DPS 11/28/06
       ErrorList warnings = code.assemble(MIPSprogramsToAssemble, pseudo, warningsAreErrors);
+      assembled = true;
       if (warnings != null && warnings.warningsOccurred()) {
         out.println(warnings.generateWarningReport());
       }
@@ -516,7 +512,14 @@ public class MarsLaunch {
       out.println(e.errors().generateErrorAndWarningReport());
       out.println("Processing terminated due to errors.");
     }
-    return programRan;
+    if (programRan) {
+      displayMiscellaneousPostMortem();
+      displayRegistersPostMortem();
+      displayMemoryPostMortem();
+    }
+    if (assembled) {
+      dumpSegments();
+    }
   }
 
   //////////////////////////////////////////////////////////////////////

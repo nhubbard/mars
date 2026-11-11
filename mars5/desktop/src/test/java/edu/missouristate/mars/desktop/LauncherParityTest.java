@@ -287,6 +287,50 @@ class LauncherParityTest {
   }
 
   @Test
+  void assemblyFailuresLeaveExistingAndMissingDumpDestinationsAlone() throws Exception {
+    Path file = source("partial-data.s", """
+        .data
+        .word 11
+        .text
+        addiu $t0,$zero
+        """);
+    for (String launcher : List.of("cli", "desktop")) {
+      Path existing = Files.writeString(dump(launcher, "existing"), "previous successful dump\n");
+      Path missing = dump(launcher, "missing");
+      for (int status : List.of(19, 0)) {
+        var result = launch(launcher, "", "nc", "me", "ae" + status,
+            "dump", ".data", "HexText", existing.toString(),
+            "dump", ".data", "HexText", missing.toString(), file.toString());
+        assertEquals(status, result.status(), result.err());
+        assertTrue(result.err().contains("addiu"), result.err());
+        assertEquals("previous successful dump\n", Files.readString(existing), launcher);
+        assertFalse(Files.exists(missing), launcher);
+      }
+    }
+  }
+
+  @Test
+  void simulationFailuresStillExportTheFinalMachineState() throws Exception {
+    Path file = source("simulation-dump.s", """
+        .data
+        word: .word 11
+        .text
+        li $t0,42
+        sw $t0,word
+        li $v0,999
+        syscall
+        """);
+    for (String launcher : List.of("cli", "desktop")) {
+      Path output = dump(launcher, "simulation");
+      var result = launch(launcher, "", "nc", "me", "se23",
+          "dump", "0x10010000-0x10010000", "HexText", output.toString(), file.toString());
+      assertEquals(23, result.status(), result.err());
+      assertTrue(result.err().contains("syscall"), result.err());
+      assertEquals(List.of("0000002a"), Files.readAllLines(output), launcher);
+    }
+  }
+
+  @Test
   void compactTextLoopCountsEveryStepAndReportsTheStepLimitStatus() throws Exception {
     Path file = source("loop.s", "loop: beq $zero,$zero,loop\n");
     for (String limit : List.of("3", "32")) {
