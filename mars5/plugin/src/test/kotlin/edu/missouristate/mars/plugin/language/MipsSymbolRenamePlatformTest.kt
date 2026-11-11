@@ -20,6 +20,7 @@ import com.intellij.psi.PsiFileFactory
 import com.intellij.psi.PsiPlainTextFile
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.LocalSearchScope
+import com.intellij.psi.search.searches.ReferencesSearch
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.refactoring.rename.RenameProcessor
 import com.intellij.refactoring.rename.RenamePsiElementProcessor
@@ -481,6 +482,70 @@ class MipsSymbolRenamePlatformTest {
             } finally {
                 TestDialogManager.setTestDialog(previous)
             }
+        }
+    }
+
+    @Test
+    fun `native rename edits the whole signed extern in MARS and plain text sources`() = timeoutRunBlocking<Unit> {
+        val entry = ".extern -42, 4\n.include \"repeat.txt\"\n.include \"repeat.inc\"\n.data\n.word -42\n.text\nnop\n"
+        val (file, plain, include) = withContext(Dispatchers.EDT) {
+            val plain = fixture.addFileToProject("repeat.txt", ".extern -42, 8\n")
+            val include = fixture.addFileToProject("repeat.inc", ".extern -42, 16\n")
+            val file = fixture.configureByText("entry.mars", entry)
+            Triple(file, plain, include)
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        withContext(Dispatchers.EDT) {
+            val target = externals(file).single()
+            fixture.highlightAfterMipsRefresh()
+            val found = ReferencesSearch.search(target, GlobalSearchScope.projectScope(project)).findAll()
+            assertEquals(setOf(plain.virtualFile, include.virtualFile), found.map { it.element.containingFile.virtualFile }.toSet())
+            assertTrue(found.all { it.rangeInElement.substring(it.element.text) == "-42" })
+            val references = usages(target)
+            assertEquals(setOf(plain.virtualFile, include.virtualFile), references.map { it.virtualFile }.toSet())
+            assertEquals(listOf("-42", "-42"), references.map { usage ->
+                val source = if (usage.virtualFile == plain.virtualFile) plain else include
+                val range = checkNotNull(usage.segment)
+                source.text.substring(range.startOffset, range.endOffset)
+            })
+            assertEquals("", conflicts(target, "signed_slot", references))
+            RenameProcessor(project, target, "signed_slot", false, false).run()
+            assertEquals(entry.replace(".extern -42", ".extern signed_slot"), file.text)
+            assertEquals(".extern signed_slot, 8\n", plain.text)
+            assertEquals(".extern signed_slot, 16\n", include.text)
+        }
+    }
+
+    @Test
+    fun `native rename from a numeric repeat preserves data matching a character extern`() = timeoutRunBlocking<Unit> {
+        val source = ".extern 'A', 4\n.extern 65, 8\n.extern 'A', 16\n.data\n.word 65, 'A'\n.text\nnop\n"
+        val file = withContext(Dispatchers.EDT) { fixture.configureByText("entry.mars", source) }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        withContext(Dispatchers.EDT) {
+            val target = externals(file)[1]
+            val references = usages(target)
+            assertEquals(listOf("'A'", "'A'"), references.map {
+                val range = checkNotNull(it.segment)
+                file.text.substring(range.startOffset, range.endOffset)
+            })
+            assertEquals("", conflicts(target, "character_slot", references))
+            RenameProcessor(project, target, "character_slot", false, false).run()
+            assertEquals(source.replace(".extern 'A'", ".extern character_slot")
+                .replace(".extern 65", ".extern character_slot"), file.text)
+        }
+    }
+
+    @Test
+    fun `rename refuses a signed extern assembled from a macro parameter and separate sign`() = timeoutRunBlocking<Unit> {
+        val source = ".extern -42, 4\n.macro repeat (%number)\n.extern -%number, 8\n.end_macro\nrepeat(42)\nnop\n"
+        val file = withContext(Dispatchers.EDT) { fixture.configureByText("entry.mars", source) }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        readAction {
+            val target = externals(file).first()
+            val references = usages(target)
+            assertEquals(1, references.size)
+            assertTrue(conflicts(target, "signed_slot", references).contains("indirect substitution"))
+            assertEquals(source, file.text)
         }
     }
 

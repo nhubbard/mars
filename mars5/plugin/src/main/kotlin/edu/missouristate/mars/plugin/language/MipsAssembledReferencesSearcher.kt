@@ -9,10 +9,16 @@ import com.intellij.psi.PsiReferenceBase
 import com.intellij.psi.search.PsiSearchScopeUtil
 import com.intellij.psi.search.SearchScope
 import com.intellij.psi.search.searches.ReferencesSearch.SearchParameters
+import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.util.Processor
+import com.intellij.util.text.CharArrayUtil
 import edu.missouristate.mars.api.AssemblySymbolMap.SourceToken
+import edu.missouristate.mars.assembler.Token
+import edu.missouristate.mars.assembler.TokenTypes
+import edu.missouristate.mars.assembler.Tokenizer
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.analysis.SymbolKind
+import edu.missouristate.mars.plugin.analysis.sourceLineStart
 import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
 import edu.missouristate.mars.plugin.language.syntax.MipsScanner
 
@@ -36,7 +42,25 @@ internal fun MarsAnalysisService.assembledReference(target: MipsDeclaration, sit
     val (file, offset) = sourceTokenPosition(site) ?: return null
     val leaf = file.findElementAt(offset)!!
     if (!PsiSearchScopeUtil.isInScope(scope, leaf)) return null
-    val end = if (file is MipsFile) leaf.textRange.endOffset else MipsScanner.next(file.viewProvider.contents, offset)!!.end
-    val range = TextRange(offset - leaf.textOffset, end - leaf.textOffset)
-    return PsiReferenceBase.Immediate(leaf, range, target)
+    val text = file.viewProvider.contents
+    val editorEnd = if (file is MipsFile) leaf.textRange.endOffset else MipsScanner.next(text, offset)!!.end
+    if (target.usesAssemblerSpelling()) {
+        val end = assemblerTokensStartingAt(text, offset).fold(editorEnd) { _, token ->
+            offset + token.endPos - token.startPos
+        }
+        val anchor = PsiTreeUtil.findCommonParent(leaf, file.findElementAt(end - 1)!!)!!
+        return PsiReferenceBase.Immediate(anchor, TextRange(offset, end).shiftLeft(anchor.textRange.startOffset), target)
+    }
+    return PsiReferenceBase.Immediate(leaf, TextRange(offset, editorEnd).shiftLeft(leaf.textRange.startOffset), target)
+}
+
+internal fun MipsDeclaration.usesAssemblerSpelling(): Boolean =
+    kind == SymbolKind.EXTERNAL && !TokenTypes.isValidIdentifier(nameIdentifier!!.text)
+
+/** Signed names can span PSI leaves, and a character literal's value differs from its source text. */
+internal fun assemblerTokensStartingAt(text: CharSequence, offset: Int): Sequence<Token> {
+    val start = sourceLineStart(text, offset)
+    val end = CharArrayUtil.shiftForwardUntil(text, offset, "\r\n")
+    val tokens = Tokenizer().tokenizeLine(null, 1, text.subSequence(start, end).toString(), false)
+    return (0 until tokens.size()).asSequence().map(tokens::get).filter { start + it.startPos - 1 == offset }
 }

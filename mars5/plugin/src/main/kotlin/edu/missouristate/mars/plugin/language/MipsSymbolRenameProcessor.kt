@@ -195,9 +195,10 @@ private fun verifyRename(target: MipsDeclaration, newName: String, usages: Set<S
             ?: throw symbolRenameError("symbol.rename.scope")
     }
     val references = before.referenceSpellings(subject, declaration)
-    val expected = references.mapTo(HashSet()) { it.editIn(documents, oldName.length) }
-    val sites = references + declaration
-    val edits = (expected + declaration.editIn(documents, oldName.length)).groupBy(SymbolEdit::path, SymbolEdit::range)
+    val assemblerSpelling = target.usesAssemblerSpelling()
+    val sites = (references + declaration).associateWith { it.editIn(documents, oldName, assemblerSpelling) }
+    val expected = references.mapTo(HashSet(), sites::getValue)
+    val edits = sites.values.distinct().groupBy(SymbolEdit::path, SymbolEdit::range)
     val editedFiles = edits.keys.map(sourceFiles::getValue)
     val editedPhysicalFiles = editedFiles.mapTo(HashSet()) { it.canonicalFile }
     sources.exceptionHandler?.let { handler ->
@@ -227,7 +228,7 @@ private fun verifyRename(target: MipsDeclaration, newName: String, usages: Set<S
             throw symbolRenameError("symbol.rename.scope")
         }
     }
-    val unrelated = buildSet {
+    val unrelated = if (assemblerSpelling) emptyMap() else buildSet {
         before.labelDefinitions(oldName).mapNotNullTo(this) { it.definition.writtenToken() }
         for ((site, bindings) in before.symbolUses()) {
             ProgressManager.checkCanceled()
@@ -244,11 +245,13 @@ private fun verifyRename(target: MipsDeclaration, newName: String, usages: Set<S
                 if (occurrence.name() == oldName) occurrence.spelling()?.let(::add)
             }
         }
-        removeAll(sites)
-    }.map { it.editIn(documents, oldName.length) }.groupBy(SymbolEdit::path, SymbolEdit::range)
+        removeAll(sites.keys)
+    }.map { it.editIn(documents, oldName, false) }.groupBy(SymbolEdit::path, SymbolEdit::range)
     val texts = sources.snapshot.texts().mapValues { (path, text) ->
         val ranges = edits[path].orEmpty()
-        verifySpellings(text, oldName, newName, ranges.toSet(), unrelated[path].orEmpty().toSet())
+        // The binding map selects numeric extern names. Matching all equal literals would also select data.
+        verifySpellings(text, oldName.takeUnless { assemblerSpelling }, newName,
+            if (assemblerSpelling) emptySet() else ranges.toSet(), unrelated[path].orEmpty().toSet())
         val changed = StringBuilder(text)
         for (range in ranges.sortedByDescending(TextRange::getStartOffset)) {
             changed.replace(range.startOffset, range.endOffset, newName)
@@ -258,10 +261,12 @@ private fun verifyRename(target: MipsDeclaration, newName: String, usages: Set<S
     val snapshot = sources.snapshot
     val changed = AssemblySourceSnapshot(snapshot.entries(), texts, snapshot.resolvedIncludes(), snapshot.includeIdentities())
     val (after, afterImage) = capture.assemble(sources.copy(snapshot = changed))
-    val byLine = sites.groupBy(SourceToken::location)
+    val byLine = sites.entries.groupBy { it.key.location() }
     fun shifted(site: SourceToken): SourceToken {
-        val earlier = byLine[site.location()].orEmpty().count { it.column() < site.column() }
-        return SourceToken(site.location(), site.column() + earlier * (newName.length - oldName.length))
+        val delta = byLine[site.location()].orEmpty().sumOf { (source, edit) ->
+            if (source.column() < site.column()) newName.length - edit.range.length else 0
+        }
+        return SourceToken(site.location(), site.column() + delta)
     }
     val expectedUses = before.symbolUses().mapKeys { shifted(it.key) }.mapValues { (_, bindings) ->
         bindings.mapTo(HashSet()) {
@@ -387,8 +392,17 @@ private fun writtenToken(target: MipsDeclaration, path: Path, document: Document
 
 private fun SourceToken.offsetIn(document: Document) = document.getLineStartOffset(location().line() - 1) + column() - 1
 
-private fun SourceToken.editIn(documents: Map<Path, Document>, length: Int) =
-    SymbolEdit(location().file(), TextRange.from(offsetIn(documents.getValue(location().file())), length))
+private fun SourceToken.editIn(documents: Map<Path, Document>, name: String, assemblerSpelling: Boolean): SymbolEdit {
+    val path = location().file()
+    val document = documents.getValue(path)
+    val offset = offsetIn(document)
+    val length = if (assemblerSpelling) {
+        val token = assemblerTokensStartingAt(document.charsSequence, offset).firstOrNull { it.value == name }
+            ?: throw symbolRenameError("symbol.rename.indirect")
+        token.endPos - token.startPos
+    } else name.length
+    return SymbolEdit(path, TextRange.from(offset, length))
+}
 
 private fun EditorAssemblyCapture.assemble(sources: CapturedAssemblySources) =
     MarsSessionService.createMarsComponent().let { component ->
@@ -400,7 +414,7 @@ private fun EditorAssemblyCapture.assemble(sources: CapturedAssemblySources) =
         }
     }
 
-private fun verifySpellings(text: String, oldName: String, newName: String, expected: Set<TextRange>, unrelated: Set<TextRange>) {
+private fun verifySpellings(text: String, oldName: String?, newName: String, expected: Set<TextRange>, unrelated: Set<TextRange>) {
     val found = HashSet<TextRange>()
     var offset = 0
     while (offset < text.length) {
