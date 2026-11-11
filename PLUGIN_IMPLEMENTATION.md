@@ -91,6 +91,20 @@ coverage gates. The logs and screenshots are under
 `mars5/.gradle/release-host-checks/compact-offset-format` and
 `mars5/.gradle/release-host-checks/linux-arm64-compact-offset-format`.
 
+Signed values remain separate from a preceding alias or SPIM formal when
+substitution supplies a register or numeric value. This includes
+`addiu $t0,SRC,+4`, compact `$src-4` in a macro body, and `.word N,+4`
+with its numeric continuation. The catalog's label-plus-offset forms
+still group operands such as `la $t0,values,+4`.
+Malformed data arithmetic such as `.word target+4` offers no label
+reference. The same spelling can still resolve to an equivalence that
+supplies a numeric value. Clean macOS and Ubuntu ARM64 packaged launches
+verified the signed operands, data continuation, and label-offset PSI,
+then printed `8` through Run, matching the standalone CLI. Both passed
+2,023 Jupiter tests and both coverage gates. Logs and screenshots are
+under `mars5/.gradle/release-host-checks/signed-register-alias` and
+`mars5/.gradle/release-host-checks/linux-arm64-signed-register-alias-verified`.
+
 In a written macro body, instructions and ordinary directives retain raw operand tokens when
 the structured operand grammar would report an error. MARS validates those operands on
 expansion. IntelliJ still preserves structured operands wherever the full parse succeeds and

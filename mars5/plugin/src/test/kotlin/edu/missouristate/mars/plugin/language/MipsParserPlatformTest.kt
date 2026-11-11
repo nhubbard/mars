@@ -1031,6 +1031,68 @@ class MipsParserPlatformTest {
         }
 
     @Test
+    fun `signed immediates after register aliases stay separate from the register`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val t0 = "\$t0"
+            val t1 = "\$t1"
+            val zero = "\$zero"
+            val src = "\$src"
+            val definitions = """
+                .eqv SRC $zero
+                .eqv REGS $t0, $zero
+                .eqv DEST $t1
+                .eqv N 1
+                .macro emit ($src)
+                    addiu $t0,$src-4
+                .end_macro
+                .data
+                values: .word N,+4
+                2 N,+4
+                .text
+            """.trimIndent()
+            val aliases = """
+                addiu $t0,SRC,+4
+                addiu $t0,SRC -4
+                addiu REGS,+4
+                la DEST,+4
+                la $t0,values,+4
+                emit($zero)
+            """.trimIndent()
+            val canonical = """
+                addiu $t0, $zero, +4
+                addiu $t0, $zero, -4
+                addiu $t0, $zero, +4
+                la $t1, +4
+                la $t0, values+4
+                addiu $t0, $zero, -4
+            """.trimIndent()
+            val context = project.get().service<MarsSessionService>().context
+            fun assemble(text: String): List<Int> {
+                val entry = directory.resolve("signed-register-alias.asm").also { it.writeText("$definitions\n$text\n") }
+                return context.assemble(listOf(entry), null, true, false).machineList.map { it.binaryStatement }
+            }
+            assertEquals(assemble(canonical), assemble(aliases))
+            val memory = context.memory
+            assertEquals(listOf(1, 4, 2, 1, 4), List(5) { memory.getWordNoNotify(memory.dataBaseAddress + 4 * it) })
+            readAction {
+                val root = assertParses("$definitions\n$aliases\n").node
+                assertEquals(
+                    listOf(
+                        listOf(t0, src, "-4"), listOf(t0, "SRC", "+4"), listOf(t0, "SRC", "-4"),
+                        listOf("REGS", "+4"), listOf("DEST", "+4"), listOf("\$t0", "values,+4"),
+                    ),
+                    descendants(root, "INSTRUCTION").toList().map { instruction ->
+                        descendants(instruction, "OPERAND").map { it.text }.toList()
+                    },
+                )
+                val data = descendants(root, "DIRECTIVE_STATEMENT").single { it.text.startsWith(".word") }
+                assertEquals(listOf("N", "+4"), descendants(data, "OPERAND").map { it.text }.toList())
+                val continuation = descendants(root, "DATA_CONTINUATION").single()
+                assertEquals(listOf("2", "N", "+4"), descendants(continuation, "OPERAND").map { it.text }.toList())
+            }
+        }
+
+    @Test
     fun `named floating point values use numeric PSI and preserve assembler output`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
         val source = ".data\n.double NaN, Infinity, -1.2e-5, 0x1.8p2, 0X1.EP2, .5f\n.float NaN\n.text\nnop\n"
         assertAssembles(directory, source, 0)

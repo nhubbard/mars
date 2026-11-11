@@ -74,9 +74,10 @@ internal fun continueOperand(runtime: SyntaxGeneratedParserRuntime, level: Int):
     val left = if (previous == COMMA) builder.previousToken(separators) else previous
     // The assembler accepts commas around the plus in a label offset.
     if (previous == COMMA && (builder.tokenType != PLUS || left !in addressLabels)) return false
-    if (builder.tokenType !in signs || !builder.signAttachesToNumber(left)) return true
-    // A macro formal in the label position can change a physical signed number to label + offset.
-    return builder.tokenType == PLUS && left == PARAMETER && builder.isAfterFormalLabel()
+    if (builder.tokenType !in signs || !builder.signTouchesNumber()) return true
+    // An identifier can become a register or value during substitution. An adjacent sign
+    // belongs to the following number unless a written instruction permits label + offset here.
+    return builder.tokenType == PLUS && left in registerAliases && builder.isAfterLabelOperand()
 }
 
 /** Keep a signed number together in raw macro and equivalence tokens. */
@@ -200,7 +201,9 @@ internal fun recoverStatement(runtime: SyntaxGeneratedParserRuntime, level: Int)
 
 // MARS ignores separators when deciding whether the previous token is an identifier.
 private fun SyntaxTreeBuilder.signAttachesToNumber(previous: SyntaxElementType?): Boolean =
-    text.getOrNull(currentOffset + 1)?.isDigit() == true && previous !in identifiers
+    signTouchesNumber() && previous !in identifiers
+
+private fun SyntaxTreeBuilder.signTouchesNumber(): Boolean = text.getOrNull(currentOffset + 1)?.isDigit() == true
 
 /** MARS address forms begin with a register, which may be written as an alias or macro formal. */
 private fun SyntaxTreeBuilder.isAfterRegisterAlias(): Boolean {
@@ -209,7 +212,7 @@ private fun SyntaxTreeBuilder.isAfterRegisterAlias(): Boolean {
     return isInstructionHead(previousTokenIndex(operand - 1, separators))
 }
 
-private fun SyntaxTreeBuilder.isAfterFormalLabel(): Boolean {
+private fun SyntaxTreeBuilder.isAfterLabelOperand(): Boolean {
     val label = previousTokenIndex(-1, separators)
     val firstOperand = previousTokenIndex(label - 1, separators)
     val operation = previousTokenIndex(firstOperand - 1, separators)

@@ -34,7 +34,9 @@ class MipsDataReferencesPlatformTest {
             assertEquals(SymbolKind.LABEL, target(".data\n$use\nother: .word 0\ntarget: .word 1\n"), use)
         }
         assertEquals(SymbolKind.CONSTANT, target(".data\ntarget: .word 1\n.eqv target 4\n.word tar<caret>get\n"))
+        assertEquals(SymbolKind.CONSTANT, target(".data\ntarget: .word 1\n.eqv target 4\n.word tar<caret>get,+4\n"))
         for (use in listOf(".float tar<caret>get", ".space tar<caret>get", ".extern tar<caret>get 4", ".word tar<caret>get+4",
+            ".word tar<caret>get,+4", ".word tar<caret>get-4", ".word 0\n2,tar<caret>get,+4",
             ".word tar<caret>get : 2", ".word 2 : tar<caret>get", ".word (tar<caret>get)")) {
             assertNull(target(".data\n$use\ntarget: .word 1\n"), use)
         }

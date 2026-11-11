@@ -11,6 +11,7 @@ import com.intellij.psi.PsiReference
 import com.intellij.psi.impl.source.tree.LeafPsiElement
 import com.intellij.psi.tree.IElementType
 import com.intellij.psi.tree.TokenSet
+import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.util.PsiUtilCore
 import edu.missouristate.mars.assembler.Directives
 import edu.missouristate.mars.assembler.TokenTypes
@@ -185,6 +186,7 @@ private enum class DataLabelOperand {
         private val repetitionType = MipsTypes.psi("REPETITION")
         private val continuationType = MipsTypes.psi("DATA_CONTINUATION")
         private val directiveType = MipsTypes.psi("DIRECTIVE_STATEMENT")
+        private val signs = TokenSet.create(MipsTypes.psi("PLUS"), MipsTypes.psi("MINUS"))
 
         fun at(element: LeafPsiElement, context: IElementType?): DataLabelOperand? {
             if (context in candidateTypes) return CANDIDATE
@@ -192,7 +194,7 @@ private enum class DataLabelOperand {
             val operand = element.parent.parent
             if (PsiUtilCore.getElementType(operand) != operandType || operand.node.findChildByType(repetitionType) != null) return null
             val owner = operand.parent.parent
-            return when (PsiUtilCore.getElementType(owner)) {
+            val kind = when (PsiUtilCore.getElementType(owner)) {
                 continuationType -> LIST
                 directiveType -> {
                     val directive = Directives.matchDirective(owner.firstChild.text)
@@ -204,6 +206,15 @@ private enum class DataLabelOperand {
                 }
                 else -> null
             }
+            // A real label prevents the assembler from joining the following sign to a number.
+            // An equivalence can still resolve here and supply a numeric token instead.
+            return kind?.takeUnless { it == LIST && followedBySign(operand) }
+        }
+
+        private fun followedBySign(operand: PsiElement): Boolean {
+            val next = generateSequence(operand.nextSibling) { it.nextSibling }
+                .firstOrNull { PsiUtilCore.getElementType(it) == operandType } ?: return false
+            return PsiUtilCore.getElementType(PsiTreeUtil.getDeepestFirst(next)) in signs
         }
     }
 }
