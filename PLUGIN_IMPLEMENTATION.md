@@ -2903,7 +2903,7 @@ integration boundaries in the release build.
 | C01–C13 | `CoreSessionIntegrationTest`, `BasicInstructionSemanticsTest`, `InstructionEncodingTest`, `PseudoExpansionTest`, `RuntimeServicesTest`, and `SessionBackStepperTest` exercise the independent engine, encoding, memory, interrupt, event, and history contracts. `verifyCoreIsolation` checks the core distribution boundary. |
 | E01–E03, E05 | `MipsEditorPlatformTest`, `MipsParserPlatformTest`, the native declaration/reference index fixtures, and `MipsAssemblyAnnotatorPlatformTest` exercise editor behavior, catalog syntax, references, and assembler diagnostics against captured text. |
 | B01–B05, B07–B08 | `CapturedAssemblySourcesPlatformTest`, `MarsBuildPlatformTest`, `MarsMemoryExportPlatformTest`, `MarsNewProjectWizardTest`, and `MarsCompilerPlatformTest` cover source capture, build reuse, navigation from diagnostics, dump formats, project creation, and optional Java compiler integration. B06 launcher evidence is below. |
-| R01–R06, I01–I08 | `MarsRunPlatformTest`, `MarsSyscallDialogsPlatformTest`, `MarsMidiPlatformTest`, and core `SyscallContractTest` cover the run lifecycle, launch settings, console and file I/O, exit handling, and syscall contracts. Physical MIDI device behavior is a host check. |
+| R01–R06, I01–I08 | `MarsRunPlatformTest`, `MarsSyscallDialogsPlatformTest`, `MarsMidiPlatformTest`, and core `SyscallContractTest` cover the run lifecycle, launch settings, console and file I/O, exit handling, and syscall contracts. The packaged macOS MIDI replay is below. External MIDI hardware remains a host check. |
 | D01–D12, V01–V07 | `MarsDebugPlatformTest` drives native XDebugger breakpoints, stepping, expressions, reverse execution, watchpoints, variables, and the debugger's memory, symbols, and disassembly views. `DebuggerCallStackTest` exercises frame and exception history. |
 | S01–S07, W03 | `MarsBuildPlatformTest`, `MarsRunPlatformTest`, `MarsDebugPlatformTest`, `MipsEditorPlatformTest`, and the three Venus preference import fixtures cover project defaults, run overrides, display settings, theme defaults, migration, and native Run/Debug controls. |
 | E11, W01–W02 | File and editing actions use IntelliJ's standard actions and keymaps. `MarsNewFilePlatformTest` verifies the MIPS-specific file creation path. The packaged Linux replay below verifies clipboard actions and saving. |
@@ -2913,6 +2913,21 @@ The remaining release checks include the native host matrix, packaged UI
 checks for keyboard, hover, scaling, and high contrast, and final
 feature-by-feature acceptance. The packaged macOS install and archive
 replacement are recorded below.
+
+### Packaged MIDI playback and Stop on macOS
+
+The IntelliJ 2026.3 JetBrains Runtime on this Mac exposed the Gervill
+software synthesizer and Real Time Sequencer. A direct core probe opened
+the default sequencer and completed a 180 ms tone with no provider errors.
+In a clean launch of the packaged plugin, syscall 31 returned in 2 ms
+for a 1,200 ms tone, and syscall 33 returned in 356 ms for a 180 ms tone.
+The program exited successfully and the Run console reported no playback
+errors. In a separate run, invoking Stop during a four-second syscall 33
+wait terminated Run in 106 ms. The assembly instruction following the
+syscall did not execute. The provider log, IDE log, and Run console
+screenshots are under `mars5/.gradle/release-host-checks/midi-provider-macos`.
+These checks exercised the software provider. Audible output and external
+MIDI hardware remain unverified.
 
 ### Packaged Bitmap Display and file actions
 
