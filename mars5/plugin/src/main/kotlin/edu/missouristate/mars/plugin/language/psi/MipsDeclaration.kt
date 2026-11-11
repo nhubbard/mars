@@ -9,13 +9,24 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiNameIdentifierOwner
 import com.intellij.psi.tree.TokenSet
+import com.intellij.psi.util.elementType
 import com.intellij.util.IncorrectOperationException
+import edu.missouristate.mars.assembler.Tokenizer
 import edu.missouristate.mars.plugin.analysis.SymbolKind
 import edu.missouristate.mars.plugin.language.MipsTypes
 
 internal class MipsDeclaration(node: ASTNode, val kind: SymbolKind) : ASTWrapperPsiElement(node), PsiNameIdentifierOwner {
-    override fun getNameIdentifier() = node.findChildByType(if (kind == SymbolKind.EXTERNAL) EXTERNAL_NAMES else NAMES)?.psi
-    override fun getName() = nameIdentifier?.takeUnless { it.node.elementType == PARAMETER }?.text
+    override fun getNameIdentifier() =
+        if (kind == SymbolKind.EXTERNAL) firstChild else node.findChildByType(NAMES)?.psi
+
+    override fun getName(): String? {
+        val identifier = nameIdentifier ?: return null
+        return when (identifier.elementType) {
+            PARAMETER -> null
+            CHARACTER -> Tokenizer.decodeCharacterLiteral(identifier.text).toString()
+            else -> identifier.text
+        }
+    }
     override fun getTextOffset() = nameIdentifier?.textOffset ?: super.getTextOffset()
 
     override fun getPresentation() = PresentationData(
@@ -33,17 +44,18 @@ internal class MipsDeclaration(node: ASTNode, val kind: SymbolKind) : ASTWrapper
     companion object {
         private val bundle = DynamicBundle(MipsDeclaration::class.java, "messages.MarsBundle")
         private val PARAMETER = MipsTypes.psi("PARAMETER")
+        private val CHARACTER = MipsTypes.psi("CHARACTER")
+        private val EXTERNAL_SIGNED_NAME = MipsTypes.psi("EXTERNAL_SIGNED_NAME")
         private val NAMES = TokenSet.create(
             MipsTypes.psi("WORD"), MipsTypes.psi("MNEMONIC"), MipsTypes.psi("DIRECTIVE"),
             MipsTypes.psi("DOLLAR_WORD"), MipsTypes.psi("REGISTER"), MipsTypes.psi("SET"),
         )
-        private val EXTERNAL_NAMES = TokenSet.orSet(NAMES, TokenSet.create(PARAMETER))
-
         // An indexed offset may outlive the PSI it described. Verify the current identifier.
         fun findAt(file: PsiFile?, offset: Int, name: String): MipsDeclaration? {
-            val leaf = file?.findElementAt(offset)
-            val declaration = leaf?.parent as? MipsDeclaration
-            return declaration?.takeIf { it.nameIdentifier === leaf && leaf.text == name }
+            val leaf = file?.findElementAt(offset) ?: return null
+            val identifier = if (leaf.parent.elementType == EXTERNAL_SIGNED_NAME) leaf.parent else leaf
+            val declaration = identifier.parent as? MipsDeclaration
+            return declaration?.takeIf { it.nameIdentifier === identifier && it.textOffset == offset && it.name == name }
         }
     }
 }

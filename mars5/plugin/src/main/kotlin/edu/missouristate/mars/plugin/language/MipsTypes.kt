@@ -26,6 +26,7 @@ object MipsTypes {
         "EQUIVALENCE" to MipsSyntaxTypes.EQUIVALENCE,
         "EQUALITY_EXPR" to MipsSyntaxTypes.EQUALITY_EXPR,
         "EXTERNAL_NAME" to MipsSyntaxTypes.EXTERNAL_NAME,
+        "EXTERNAL_SIGNED_NAME" to MipsSyntaxTypes.EXTERNAL_SIGNED_NAME,
         "EXPR" to MipsSyntaxTypes.EXPR,
         "GROUP_EXPR" to MipsSyntaxTypes.GROUP_EXPR,
         "INCLUDE_LINE" to MipsSyntaxTypes.INCLUDE_LINE,

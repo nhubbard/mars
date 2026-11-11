@@ -1611,6 +1611,39 @@ class MipsParserPlatformTest {
     }
 
     @Test
+    fun `extern retains the whole name token for punctuation literals and directive keywords`(
+        @TempDir directory: Path,
+    ) = timeoutRunBlocking<Unit> {
+        val spellings = listOf(")", "(", ":", "+", "-", "-4", "+8", "17", "1.2e-5", "\"slot name\"", "'A'",
+            ".data", ".macro", ".end_macro", ".eqv", ".extern", ".include")
+        val names = spellings.map { if (it == "'A'") "65" else it }
+        val prefix = ".extern ,,"
+        val lines = spellings.map { "$prefix$it,,4\n" }
+        val source = lines.joinToString("") + ".text\nmain: nop\n"
+        val entry = directory.resolve("extern.mars").also { it.writeText(source) }
+        val context = project.get().service<MarsSessionService>().context
+        context.assemble(listOf(entry), null, true, false)
+        val base = context.memory.externBaseAddress
+        assertEquals(names.indices.map { base + 4 * it }, names.map(context.symbolTable::getAddress))
+
+        readAction {
+            val file = assertParses(source, entry.fileName.toString())
+            val declarations = PsiTreeUtil.findChildrenOfType(file, MipsDeclaration::class.java)
+                .filter { it.node.elementType == MipsTypes.psi("EXTERNAL_NAME") }
+            assertEquals(spellings, declarations.map { it.nameIdentifier?.text })
+            assertEquals(names, declarations.map { it.name })
+            val offsets = lines.runningFold(0) { offset, line -> offset + line.length }.dropLast(1)
+                .map { it + prefix.length }
+            assertEquals(offsets, declarations.map { it.textOffset })
+            for (index in names.indices) {
+                assertSame(declarations[index], MipsDeclaration.findAt(file, offsets[index], names[index]))
+            }
+            assertNull(MipsDeclaration.findAt(file, offsets[5] + 1, names[5]))
+            assertEquals("nop", descendants(file.node, "INSTRUCTION").single().text)
+        }
+    }
+
+    @Test
     fun `registered native parser handles macros data directives repeats and equivalences`() = timeoutRunBlocking<Unit> {
         readAction {
             assertParses("""

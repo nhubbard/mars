@@ -64,7 +64,7 @@ internal class MipsInstructionHighlighter : Annotator, DumbAware {
     }
 
     private fun highlightSign(sign: PsiElement, holder: AnnotationHolder) {
-        if (sign.parent.elementType == addition) return
+        if (sign.parent.elementType in uncoloredSigns) return
         if (PsiUtilCore.getElementType(PsiTreeUtil.nextLeaf(sign, true)) == number) {
             holder.color(sign.textRange, DefaultLanguageHighlighterColors.NUMBER)
         }
@@ -101,7 +101,7 @@ internal class MipsInstructionHighlighter : Annotator, DumbAware {
         val contextualDeclarations = setOf(SymbolKind.LABEL, SymbolKind.EXTERNAL)
         val macroParameter = MipsTypes.psi("MACRO_PARAMETER")
         val signs = TokenSet.create(MipsTypes.psi("PLUS"), MipsTypes.psi("MINUS"))
-        val addition = MipsTypes.psi("ADD_EXPR")
+        val uncoloredSigns = TokenSet.create(MipsTypes.psi("ADD_EXPR"), MipsTypes.psi("EXTERNAL_SIGNED_NAME"))
         val number = MipsTypes.psi("NUMBER")
         val replacement = MipsTypes.psi("REPLACEMENT")
         val dollarWord = MipsTypes.psi("DOLLAR_WORD")

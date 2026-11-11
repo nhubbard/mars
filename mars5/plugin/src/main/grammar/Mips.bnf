@@ -77,7 +77,8 @@ macro_parameter ::= PARAMETER | DOLLAR_WORD | WORD
 short_equivalence ::= EQV <<isShortEquivalence>> raw_operand? &line_end {elementType=directive_statement}
 equivalence ::= EQV name replacement+ {pin=1}
 replacement ::= assembly_token
-private assembly_token ::= WORD | MNEMONIC | DIRECTIVE | REGISTER | DOLLAR_WORD | PARAMETER | NUMBER | quoted_operand | CHARACTER | COLON | LEFT_PAREN | RIGHT_PAREN | signed_number | PLUS | MINUS | MACRO | END_MACRO | EQV | INCLUDE | SET | SEGMENT | EXTERN | unfinished_character
+private assembly_token ::= signed_number | single_assembly_token | unfinished_character
+private single_assembly_token ::= WORD | MNEMONIC | DIRECTIVE | REGISTER | DOLLAR_WORD | PARAMETER | NUMBER | quoted_operand | CHARACTER | COLON | LEFT_PAREN | RIGHT_PAREN | PLUS | MINUS | MACRO | END_MACRO | EQV | INCLUDE | SET | SEGMENT | EXTERN
 private signed_number ::= <<startsSignedNumber>> (PLUS | MINUS) NUMBER
 // MARS warns and ignores .set, so its payload is a sequence of assembler tokens.
 ignored_set ::= SET assembly_token* {elementType=directive_statement}
@@ -86,8 +87,9 @@ segment_switch ::= SEGMENT segment_address_symbol? assembly_token* {elementType=
 segment_address_symbol ::= WORD | DOLLAR_WORD
 // Retain the same operand node when renaming a macro formal between SPIM and percent spellings.
 external_statement ::= EXTERN external_name? raw_operand* {elementType=directive_statement}
-// The assembler reserves the spelling even if the lexer classifies it as a register or directive.
-external_name ::= name | PARAMETER
+// MARS uses a whole assembler token as the name. A signed token spans two editor leaves.
+external_name ::= external_signed_name | single_assembly_token
+external_signed_name ::= signed_number
 private raw_operand ::= reference_expr | assembly_token
 // Directive-specific semantic checks use the canonical Java assembler catalog.
 directive_statement ::= (DIRECTIVE | INCLUDE) operand_line? {pin=1}

@@ -33,8 +33,8 @@ class MipsExternalReferencesPlatformTest {
     private val fixture by codeInsightFixture(project)
 
     @Test
-    fun `extern names with register and directive tokens receive declaration highlighting`() = timeoutRunBlocking<Unit> {
-        val names = listOf("\$t0", ".word", ".set")
+    fun `extern names receive declaration highlighting across the whole written name`() = timeoutRunBlocking<Unit> {
+        val names = listOf("\$t0", ".word", ".set", ")", "+9", "\"slot name\"", "'A'", ".include")
         val source = names.joinToString("\n", postfix = "\n") { ".extern $it, 4" }
         configure(source)
         withContext(Dispatchers.EDT) {
