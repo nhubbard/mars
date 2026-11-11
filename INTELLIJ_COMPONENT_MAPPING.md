@@ -453,7 +453,8 @@ Define a headless assembly request and result schema that can back an explicit G
 The implementation plan includes a documented Gradle `JavaExec`/CLI task example with declared inputs/outputs and reproducible options.
 Implement a `MarsBuildTask` and `MarsProjectTaskRunner` for `ProjectTaskManager` integration.
 Override the current `canRun(Project, ProjectTask, ProjectTaskContext)` signature; older overloads are deprecated. [ProjectTaskRunner]
-In mixed projects, provide an optional Java-compiler integration descriptor with a Kotlin `CompileTask` registered before compilation.
+In mixed projects, an optional IntelliJ content module registers a Kotlin `CompileTask` before compilation.
+Its own classloader keeps unloading the JVM integration from invalidating the base plugin's editor tokens.
 It assembles selected MIPS units and reports failures through the compile context. It must honor compile scope, cancellation and build generations.
 This optional dependency must not make Java support mandatory for the base MIPS plugin. [CompileTask]
 Do not intercept unrelated Java/Kotlin tasks or claim a custom task automatically participates in every Build Project invocation.
@@ -1602,7 +1603,7 @@ No resource is discarded without checking its consumers and preserving the relev
 
 | Resource | Mapping ID | Role |
 | --- | --- | --- |
-| [META-INF/mars-java.xml](/Users/nhubbard/IdeaProjects/mars-original/mars5/plugin/src/main/resources/META-INF/mars-java.xml) | B08 | Register the optional Java compiler bridge |
+| [mars.jvm.compiler.xml](/Users/nhubbard/IdeaProjects/mars-original/mars5/plugin-jvm-compiler/src/main/resources/mars.jvm.compiler.xml) | B08 | Register the optional JVM compiler bridge in its own content module |
 | [META-INF/pluginIcon.svg](/Users/nhubbard/IdeaProjects/mars-original/mars5/plugin/src/main/resources/META-INF/pluginIcon.svg) | H01 | Identify the packaged plugin in IntelliJ |
 | [colors/MipsDarcula.xml](/Users/nhubbard/IdeaProjects/mars-original/mars5/plugin/src/main/resources/colors/MipsDarcula.xml) | S06 | Supply the dark MIPS syntax palette |
 | [colors/MipsDefault.xml](/Users/nhubbard/IdeaProjects/mars-original/mars5/plugin/src/main/resources/colors/MipsDefault.xml) | S06 | Supply the light MIPS syntax palette |

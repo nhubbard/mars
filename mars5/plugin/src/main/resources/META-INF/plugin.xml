@@ -16,7 +16,9 @@
   ]]></description>
   <resource-bundle>messages.MarsBundle</resource-bundle>
   <depends>com.intellij.modules.platform</depends>
-  <depends optional="true" config-file="mars-java.xml">com.intellij.java</depends>
+  <content>
+    <module name="mars.jvm.compiler" loading="optional"/>
+  </content>
   <dependencies>
     <plugin id="com.intellij.modules.compose"/>
     <module name="intellij.libraries.compose.foundation.desktop"/>

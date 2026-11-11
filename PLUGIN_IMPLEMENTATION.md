@@ -3286,6 +3286,28 @@ The two IDE logs and the project hashes are under
 Both hosts exercised ZIP replacement on the same IDE build. Marketplace
 delivery and the remaining host matrix require separate qualification.
 
+### Live disable with a MARS editor open
+
+The packaged IntelliJ IDEA `IU-263.7307.200` replay on macOS opened a
+`.mars` file and disabled MARS using IntelliJ's plugin enabler. The old
+optional Java descriptor shared the main plugin classloader. When IntelliJ
+unloaded that descriptor, it invalidated the language's element types before
+the highlighter factory was removed. The editor then tried to read the
+invalidated `SEGMENT` type.
+
+The optional `mars.jvm.compiler` content module now owns the JVM compiler
+task. It imports the Java compiler API and the module that declares
+`compiler.task`, and delegates assembly to the main plugin's build service.
+The packaged replay verified the compiler task's registration and distinct
+classloader. Disabling MARS removed the file type, Assemble action and tools
+without reproducing the editor error.
+
+IntelliJ still reported a reference to the old main classloader after
+disable. The replay stopped at that check, before re-enable or the X-Ray
+tool-window cycle. The L6 unload/reload and leak checks remain open. The
+baseline and module-isolation logs are under
+`mars5/.gradle/release-host-checks/dynamic-reload`.
+
 ### Reviewed API use in the 263 target
 
 | API | Scope and evidence |

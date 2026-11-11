@@ -25,6 +25,7 @@ import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.util.ui.UIUtil
 import com.intellij.util.xmlb.XmlSerializer
 import com.intellij.execution.configurations.ConfigurationTypeUtil
+import edu.missouristate.mars.plugin.compiler.MarsCompilerTask
 import edu.missouristate.mars.plugin.run.MarsRunType
 import javax.swing.JCheckBox
 import kotlinx.coroutines.Dispatchers

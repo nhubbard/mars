@@ -1,0 +1,13 @@
+<idea-plugin>
+  <dependencies>
+    <!-- Plugin Verifier checks the Java plugin dependency as well as the runtime module imports. -->
+    <plugin id="com.intellij.java"/>
+    <module name="intellij.java.compiler"/>
+    <!-- The Java compiler implementation module owns the compiler.task extension point. -->
+    <module name="intellij.java.compiler.impl"/>
+    <module name="intellij.platform.buildView"/>
+  </dependencies>
+  <extensions defaultExtensionNs="com.intellij">
+    <compiler.task execute="BEFORE" implementation="edu.missouristate.mars.plugin.compiler.MarsCompilerTask"/>
+  </extensions>
+</idea-plugin>

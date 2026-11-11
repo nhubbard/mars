@@ -13,11 +13,11 @@ import org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask.FailureLeve
 import org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask.FailureLevel.OVERRIDE_ONLY_API_USAGES
 
 plugins {
-  kotlin("jvm") version "2.4.21"
-  kotlin("plugin.compose") version "2.4.21"
+  kotlin("jvm")
+  kotlin("plugin.compose")
   jacoco
-  id("org.jetbrains.intellij.platform") version "2.20.0"
-  id("org.jetbrains.intellij.platform.grammarkit") version "2.20.0"
+  id("org.jetbrains.intellij.platform")
+  id("org.jetbrains.intellij.platform.grammarkit")
 }
 
 group = "edu.missouristate"
@@ -33,6 +33,7 @@ val localIdePath = providers.gradleProperty("localIdePath")
 dependencies {
   implementation(project(":core"))
   implementation(project(":datapath"))
+  testCompileOnly(project(":plugin-jvm-compiler"))
   intellijPlatform {
     if (localIdePath.isPresent) {
       local(localIdePath.get())
@@ -46,7 +47,8 @@ dependencies {
     bundledModule("intellij.platform.jewel.ui")
     bundledModule("intellij.libraries.compose.foundation.desktop")
     bundledModule("intellij.libraries.compose.runtime.desktop")
-    bundledPlugin("com.intellij.java")
+    pluginModule(project(":plugin-jvm-compiler"))
+    testBundledPlugin("com.intellij.java")
     testBundledPlugin("org.editorconfig.editorconfigjetbrains")
     testBundledModule("intellij.platform.debugger.impl.ui")
     testBundledModule("intellij.platform.debugger.impl.shared")
@@ -135,10 +137,13 @@ val verifyPluginNotices = tasks.register("verifyPluginNotices") {
         }
       }
       val libraryPrefix = "$root/lib/"
+      check(zip.getEntry("${libraryPrefix}modules/mars.jvm.compiler.jar") != null) {
+        "The optional JVM compiler module must have its own JAR"
+      }
       val bundledJars = zip.entries().asSequence()
         .filter { it.name.startsWith(libraryPrefix) && it.name.endsWith(".jar") }
         .map { it.name.substringAfterLast('/') }
-        .toSet() - setOf(pluginJarName.get(), coreJarName.get(), datapathJarName.get())
+        .toSet() - setOf(pluginJarName.get(), coreJarName.get(), datapathJarName.get(), "mars.jvm.compiler.jar")
       val documentedJars = thirdPartyNotices.asFile.useLines { lines ->
         lines.filter { it.startsWith("JAR ") }.map { it.removePrefix("JAR ") }.toSet()
       }
@@ -153,8 +158,11 @@ tasks.named("verifyPlugin") { dependsOn(verifyPluginNotices) }
 
 jacoco { toolVersion = "0.8.16" }
 
+val compilerClasses = project(":plugin-jvm-compiler").layout.buildDirectory.dir("classes/kotlin/main")
+
 tasks.jacocoTestReport {
   dependsOn(tasks.test)
+  additionalClassDirs.from(compilerClasses)
   reports {
     xml.required.set(true)
     html.required.set(true)
@@ -171,6 +179,7 @@ tasks.test {
 
 tasks.jacocoTestCoverageVerification {
   dependsOn(tasks.test)
+  additionalClassDirs.from(compilerClasses)
   violationRules {
     rule {
       element = "PACKAGE"

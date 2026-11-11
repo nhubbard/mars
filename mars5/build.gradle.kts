@@ -2,6 +2,9 @@ plugins {
   id("java")
   id("idea")
   id("com.diffplug.spotless") version "8.11.0"
+  id("org.jetbrains.intellij.platform") version "2.20.0" apply false
+  kotlin("jvm") version "2.4.21" apply false
+  kotlin("plugin.compose") version "2.4.21" apply false
 }
 
 group = "edu.missouristate"
@@ -51,6 +54,7 @@ val verifyNoLegacyRuntime = tasks.register("verifyNoLegacyRuntime") {
     fileTree("core/src") { include("**/*.java", "**/*.kt") },
     fileTree("cli/src") { include("**/*.java", "**/*.kt") },
     fileTree("plugin/src") { include("**/*.java", "**/*.kt") },
+    fileTree("plugin-jvm-compiler/src") { include("**/*.kt") },
     fileTree("desktop/src") { include("**/*.java", "**/*.kt") }
   )
   inputs.files(sources)

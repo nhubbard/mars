@@ -1,5 +1,0 @@
-<idea-plugin>
-  <extensions defaultExtensionNs="com.intellij">
-    <compiler.task execute="BEFORE" implementation="edu.missouristate.mars.plugin.build.MarsCompilerTask"/>
-  </extensions>
-</idea-plugin>
