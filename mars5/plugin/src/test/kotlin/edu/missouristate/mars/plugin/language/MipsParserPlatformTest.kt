@@ -23,6 +23,7 @@ import edu.missouristate.mars.assembler.Macro
 import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.assembler.Tokenizer
 import edu.missouristate.mars.mips.hardware.MemoryConfigurations
+import edu.missouristate.mars.mips.instructions.ExtendedInstruction
 import edu.missouristate.mars.mips.instructions.InstructionSet
 import edu.missouristate.mars.plugin.MarsExecutionOptions
 import edu.missouristate.mars.plugin.MarsMemoryLayout
@@ -1704,6 +1705,43 @@ class MipsParserPlatformTest {
         assertTrue(program.instructionCount() > 0)
         assertTrue(program.sourceMap().origins().values.any { it.location().file().fileName.toString() == "bit_algorithms.s" })
     }
+
+    @Test
+    fun `unsigned address offsets exercise the pseudo forms masked by their catalog examples`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val catalog = InstructionSet().also { it.populate() }.instructionList
+            val examples = catalog.filterIsInstance<ExtendedInstruction>().map { it.exampleFormat }
+                .filter { it.endsWith(",100(\$t2)") && !it.startsWith("la ") }
+            assertEquals(14, examples.size)
+            val offsets = linkedMapOf("32767" to listOf<String>(), "32768" to listOf("ori", "addu"),
+                "65535" to listOf("ori", "addu"), "65536" to listOf("lui", "addu"),
+                "0x8000" to listOf("ori", "addu"), "0100000" to listOf("ori", "addu"),
+                "+32768" to listOf("ori", "addu"))
+            val cases = examples.flatMap { example -> offsets.map { (offset, prefix) ->
+                example.replace(",100(", ",$offset(") to (prefix + example.substringBefore(' '))
+            } }
+            val source = cases.joinToString("\n", prefix = ".text\n", postfix = "\n") { it.first }
+            val entry = directory.resolve("address-offsets.asm").also { it.writeText(source) }
+            val program = project.get().service<MarsSessionService>().context.assemble(listOf(entry), null, true, false)
+            val sourceMap = program.sourceMap()
+            val byLine = program.machineList.groupBy { sourceMap.origins().getValue(it.address).location().line() }
+            assertEquals((2..cases.size + 1).toSet(), byLine.keys)
+            for ((index, case) in cases.withIndex()) {
+                val (written, expansion) = case
+                val statements = byLine.getValue(index + 2)
+                assertEquals(expansion, statements.map { it.instruction.name }, written)
+                assertEquals(List(expansion.size) { expansion.size > 1 },
+                    statements.map { it.address in sourceMap.pseudoAddresses() }, written)
+            }
+            readAction {
+                val operations = descendants(assertParses(source).node, "INSTRUCTION").toList()
+                assertEquals(cases.map { it.first }, operations.map { it.text })
+                operations.forEach { operation ->
+                    assertEquals(listOf("\$t1", operation.text.substringAfter(',')),
+                        descendants(operation, "OPERAND").map { it.text }.toList(), operation.text)
+                }
+            }
+        }
 
     @Test
     fun `all grammar alternatives include SPIM macros optional commas and continued data`() = timeoutRunBlocking<Unit> {
