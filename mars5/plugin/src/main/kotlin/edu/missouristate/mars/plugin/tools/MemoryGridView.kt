@@ -2,9 +2,11 @@ package edu.missouristate.mars.plugin.tools
 
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.EDT
+import com.intellij.openapi.observable.util.whenFocusGained
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.ui.ColorPanel
+import com.intellij.ui.ScrollPaneFactory
 import com.intellij.ui.components.JBCheckBox
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.dsl.builder.Align
@@ -12,6 +14,7 @@ import com.intellij.ui.dsl.builder.AlignX
 import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.dsl.listCellRenderer.textListCellRenderer
 import com.intellij.util.ui.JBUI
+import com.intellij.util.ui.UIUtil
 import com.intellij.util.ui.launchOnShow
 import edu.missouristate.mars.plugin.run.MarsProcessHandler
 import edu.missouristate.mars.plugin.tools.MemoryGridDisplay.Base
@@ -31,10 +34,12 @@ import java.awt.event.KeyEvent
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import javax.swing.JButton
+import javax.swing.JComponent
 import javax.swing.JPanel
 import javax.swing.JSpinner
 import javax.swing.KeyStroke
 import javax.swing.SpinnerNumberModel
+import javax.swing.SwingUtilities
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -65,7 +70,7 @@ internal class MemoryGridView(
     private var selected: MemoryGridDisplay? = null
     private val reference = if (mode == Mode.REFERENCES) ReferenceControls() else null
 
-    val component = panel {
+    val component = ScrollPaneFactory.createScrollPane(panel {
         row(toolsMessages.getMessage("counter.selector")) { cell(selector.component).align(AlignX.FILL).resizableColumn() }
         row(toolsMessages.getMessage("bitmap.base")) { cell(base) }
         row(toolsMessages.getMessage("bitmap.width")) { cell(width) }
@@ -88,10 +93,19 @@ internal class MemoryGridView(
         }
         row { cell(canvas).align(Align.FILL).resizableColumn() }.resizableRow()
         row { cell(inspection) }
-        row { comment(toolsMessages.getMessage(mode.helpKey)) }
-    }
+        row { comment(toolsMessages.getMessage(mode.helpKey), maxLineLength = 42) }
+    }, true)
 
     init {
+        UIUtil.uiTraverser(component.viewport.view).filter(JComponent::class.java).forEach { control ->
+            control.whenFocusGained(this) {
+                val bounds = Rectangle(0, 0, control.width, control.height)
+                if (control === canvas) {
+                    bounds.add(SwingUtilities.convertRectangle(inspection.parent, inspection.bounds, canvas))
+                }
+                control.scrollRectToVisible(bounds)
+            }
+        }
         apply.addActionListener {
             selected!!.configure(Options(
                 width.selectedItem as Int, height.selectedItem as Int,
@@ -215,6 +229,8 @@ internal class MemoryGridCanvas(
     private var inspected: Point? = null
 
     init {
+        minimumSize = JBUI.size(128, 128)
+        preferredSize = minimumSize
         getAccessibleContext().accessibleName = toolsMessages.getMessage(nameKey)
         isFocusable = true
         toolTipText = ""

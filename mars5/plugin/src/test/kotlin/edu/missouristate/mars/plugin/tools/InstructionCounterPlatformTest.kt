@@ -250,6 +250,32 @@ class InstructionCounterPlatformTest {
                 assertFalse(button("Apply and Reset", cache).isEnabled)
                 assertEquals(0, UIUtil.findComponentsOfType(cache, JBTable::class.java).single().rowCount)
                 assertEquals("Static data", baseLabel())
+                for (panel in listOf(bitmap, references)) {
+                    val scroll = assertInstanceOf(JScrollPane::class.java, panel)
+                    scroll.setSize(JBUI.scale(240), JBUI.scale(208))
+                    scroll.doLayout()
+                    val viewport = scroll.viewport
+                    viewport.doLayout()
+                    val body = viewport.view
+                    body.doLayout()
+                    val grid = canvas(panel)
+                    val gridBounds = SwingUtilities.convertRectangle(grid.parent, grid.bounds, body)
+                    assertTrue(gridBounds.height >= JBUI.scale(128))
+                    assertTrue(gridBounds.maxY > viewport.viewRect.maxY)
+
+                    val reset = button("Reset", panel)
+                    val resetBounds = SwingUtilities.convertRectangle(reset.parent, reset.bounds, body)
+                    reset.focusListeners.forEach { it.focusGained(FocusEvent(reset, FocusEvent.FOCUS_GAINED)) }
+                    assertTrue(viewport.viewRect.contains(resetBounds))
+
+                    val details = UIUtil.findComponentsOfType(panel, JBLabel::class.java)
+                        .single { it.text == grid.accessibleContext.accessibleDescription }
+                    val detailsBounds = SwingUtilities.convertRectangle(details.parent, details.bounds, body)
+                    grid.focusListeners.forEach { it.focusGained(FocusEvent(grid, FocusEvent.FOCUS_GAINED)) }
+                    assertTrue(viewport.viewRect.y <= gridBounds.y)
+                    assertTrue(viewport.viewRect.maxY >= detailsBounds.maxY)
+                    grid.clearInspection()
+                }
                 assertEquals(null, tooltip(references, 10, 10))
                 assertTrue(canvas(bitmap).isFocusable)
                 assertNull(tooltip(bitmap, 1, 128))

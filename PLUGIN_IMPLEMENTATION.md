@@ -1873,6 +1873,15 @@ the case-sensitive MARS include graph on that host. The results and
 screenshots are under
 `mars5/.gradle/release-host-checks/linux-arm64-reference-hover-qualified`.
 
+Both memory tools keep a usable grid size when the dock is short and scroll
+focused controls into view. Focusing the grid also reveals its readout. At
+150% IDE zoom in macOS High Contrast, Tab from Reset revealed and focused the
+Memory Reference grid. Hovering, clicking, and pressing Left reported the
+expected counts after the scroll. The narrow-window Jupiter fixture covers
+the same focus behavior in Bitmap Display and Memory Reference Visualization.
+The packaged replay and screenshots are under
+`mars5/.gradle/release-host-checks/memory-reference-high-zoom`.
+
 ## Data Cache Simulator
 
 The **Data Cache Simulator** tab in **MARS Tools** tracks data and stack
