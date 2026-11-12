@@ -1,7 +1,7 @@
 package edu.missouristate.mars.plugin.tools
 
-import edu.missouristate.mars.mips.hardware.AccessNotice.READ
-import edu.missouristate.mars.mips.hardware.AccessNotice.WRITE
+import edu.missouristate.mars.mips.hardware.AccessNotice.Companion.READ
+import edu.missouristate.mars.mips.hardware.AccessNotice.Companion.WRITE
 import edu.missouristate.mars.mips.hardware.AccessOrigin
 import edu.missouristate.mars.mips.hardware.MemoryAccessNotice
 import edu.missouristate.mars.plugin.tools.DataCacheSimulator.Options

@@ -36,8 +36,8 @@ import com.intellij.util.ui.UIUtil
 import com.intellij.util.ui.withForcedRespectIsShowingClientProperty
 import com.intellij.util.ui.withShowingChanged
 import edu.missouristate.mars.api.StepEvent
-import edu.missouristate.mars.mips.hardware.AccessNotice.READ
-import edu.missouristate.mars.mips.hardware.AccessNotice.WRITE
+import edu.missouristate.mars.mips.hardware.AccessNotice.Companion.READ
+import edu.missouristate.mars.mips.hardware.AccessNotice.Companion.WRITE
 import edu.missouristate.mars.mips.hardware.AccessOrigin
 import edu.missouristate.mars.mips.hardware.MemoryAccessNotice
 import edu.missouristate.mars.plugin.run.MarsProcessHandler

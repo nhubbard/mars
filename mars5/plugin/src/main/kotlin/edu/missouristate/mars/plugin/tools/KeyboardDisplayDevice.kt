@@ -1,8 +1,8 @@
 package edu.missouristate.mars.plugin.tools
 
 import edu.missouristate.mars.core.MarsContext
-import edu.missouristate.mars.mips.hardware.AccessNotice.READ
-import edu.missouristate.mars.mips.hardware.AccessNotice.WRITE
+import edu.missouristate.mars.mips.hardware.AccessNotice.Companion.READ
+import edu.missouristate.mars.mips.hardware.AccessNotice.Companion.WRITE
 import edu.missouristate.mars.mips.hardware.AccessOrigin.EXECUTION
 import edu.missouristate.mars.mips.hardware.Coprocessor0State.STATUS
 import edu.missouristate.mars.mips.hardware.MemoryAccessNotice

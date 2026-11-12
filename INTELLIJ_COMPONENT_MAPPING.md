@@ -1109,19 +1109,19 @@ Test sources and generated build output are excluded from this production invent
 | [kotlin/edu/missouristate/mars/mips/dump/HexTextDumpFormat.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/mips/dump/HexTextDumpFormat.kt) | B05 |
 | [kotlin/edu/missouristate/mars/mips/dump/IntelHexDumpFormat.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/mips/dump/IntelHexDumpFormat.kt) | B05 |
 | [kotlin/edu/missouristate/mars/mips/dump/SegmentWindowDumpFormat.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/mips/dump/SegmentWindowDumpFormat.kt) | B05 |
-| [java/edu/missouristate/mars/mips/hardware/AccessNotice.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/mips/hardware/AccessNotice.java) | C10 |
+| [kotlin/edu/missouristate/mars/mips/hardware/AccessNotice.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/mips/hardware/AccessNotice.kt) | C10 |
 | [java/edu/missouristate/mars/mips/hardware/AccessOrigin.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/mips/hardware/AccessOrigin.java) | C10 |
-| [java/edu/missouristate/mars/mips/hardware/AddressErrorException.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/mips/hardware/AddressErrorException.java) | C09 |
+| [kotlin/edu/missouristate/mars/mips/hardware/AddressErrorException.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/mips/hardware/AddressErrorException.kt) | C09 |
 | [java/edu/missouristate/mars/mips/hardware/Coprocessor0State.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/mips/hardware/Coprocessor0State.java) | C07 |
 | [java/edu/missouristate/mars/mips/hardware/Coprocessor1State.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/mips/hardware/Coprocessor1State.java) | C08 |
 | [java/edu/missouristate/mars/mips/hardware/IntegerRegisterFile.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/mips/hardware/IntegerRegisterFile.java) | C06 |
-| [java/edu/missouristate/mars/mips/hardware/InvalidRegisterAccessException.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/mips/hardware/InvalidRegisterAccessException.java) | C06 |
-| [java/edu/missouristate/mars/mips/hardware/MemoryAccessNotice.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/mips/hardware/MemoryAccessNotice.java) | C10 |
+| [kotlin/edu/missouristate/mars/mips/hardware/InvalidRegisterAccessException.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/mips/hardware/InvalidRegisterAccessException.kt) | C06 |
+| [kotlin/edu/missouristate/mars/mips/hardware/MemoryAccessNotice.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/mips/hardware/MemoryAccessNotice.kt) | C10 |
 | [java/edu/missouristate/mars/mips/hardware/MemoryConfiguration.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/mips/hardware/MemoryConfiguration.java) | C09 |
 | [java/edu/missouristate/mars/mips/hardware/MemoryConfigurations.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/mips/hardware/MemoryConfigurations.java) | C09 |
 | [java/edu/missouristate/mars/mips/hardware/MemoryState.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/mips/hardware/MemoryState.java) | C09 |
 | [java/edu/missouristate/mars/mips/hardware/Register.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/mips/hardware/Register.java) | C06 |
-| [java/edu/missouristate/mars/mips/hardware/RegisterAccessNotice.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/mips/hardware/RegisterAccessNotice.java) | C10 |
+| [kotlin/edu/missouristate/mars/mips/hardware/RegisterAccessNotice.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/mips/hardware/RegisterAccessNotice.kt) | C10 |
 | [java/edu/missouristate/mars/mips/hardware/memory/TextMemorySegment.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/mips/hardware/memory/TextMemorySegment.java) | C09 |
 | [java/edu/missouristate/mars/mips/hardware/memory/WordMemorySegment.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/mips/hardware/memory/WordMemorySegment.java) | C09 |
 | [kotlin/edu/missouristate/mars/mips/instructions/BasicInstruction.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/mips/instructions/BasicInstruction.kt) | C04 |
@@ -1500,7 +1500,7 @@ Venus was retired after plugin qualification. These links point to the archived 
 | [AssemblySymbolUses.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/assembler/AssemblySymbolUses.java) | C03, E07, E08 |
 | [AssemblyImage.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/core/AssemblyImage.java) | B04, R05 |
 | [MemoryDumpSnapshot.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/mips/dump/MemoryDumpSnapshot.kt) | B05 |
-| [MemoryAddressRange.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/mips/hardware/MemoryAddressRange.java) | B05, C09, D12 |
+| [MemoryAddressRange.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/mips/hardware/MemoryAddressRange.kt) | B05, C09, D12 |
 | [CliMachineReport.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/cli/src/main/java/edu/missouristate/mars/cli/CliMachineReport.java) | B06 |
 | [CliMemoryDump.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/cli/src/main/java/edu/missouristate/mars/cli/CliMemoryDump.java) | B05, B06 |
 | [DatapathDiagram.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/datapath/src/main/java/edu/missouristate/mars/datapath/DatapathDiagram.java) | T12 |

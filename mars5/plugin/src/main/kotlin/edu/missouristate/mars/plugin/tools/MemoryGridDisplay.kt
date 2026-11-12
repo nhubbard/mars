@@ -1,6 +1,6 @@
 package edu.missouristate.mars.plugin.tools
 
-import edu.missouristate.mars.mips.hardware.AccessNotice.WRITE
+import edu.missouristate.mars.mips.hardware.AccessNotice.Companion.WRITE
 import edu.missouristate.mars.mips.hardware.AccessOrigin.EXECUTION
 import edu.missouristate.mars.mips.hardware.MemoryAccessNotice
 import edu.missouristate.mars.mips.hardware.MemoryState
