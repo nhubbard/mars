@@ -68,7 +68,7 @@ internal class DataCacheView(project: Project) : Disposable {
         row {
             panel { row { cell(blocks).label(toolsMessages.getMessage("cache.blocks"), LabelPosition.TOP) } }
             panel { row { cell(words).label(toolsMessages.getMessage("cache.words"), LabelPosition.TOP) } }
-        }
+        }.layout(RowLayout.INDEPENDENT)
         row(toolsMessages.getMessage("cache.ways")) { cell(ways) }
         row { cell(replacement).label(toolsMessages.getMessage("cache.replacement"), LabelPosition.TOP) }
         row { cell(apply) }
@@ -90,7 +90,7 @@ internal class DataCacheView(project: Project) : Disposable {
             row { cell(logging) }
             row { cell(logScroll).align(AlignX.FILL).resizableColumn() }
         }.expanded = false
-        row { comment(toolsMessages.getMessage("cache.scope"), maxLineLength = 30) }
+        row { comment(toolsMessages.getMessage("cache.scope")).resizableColumn() }.layout(RowLayout.INDEPENDENT)
     }, mapOf(table to tableScroll, log to logScroll))
 
     init {

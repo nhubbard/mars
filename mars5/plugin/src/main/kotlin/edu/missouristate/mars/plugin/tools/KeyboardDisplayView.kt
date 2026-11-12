@@ -14,6 +14,7 @@ import com.intellij.ui.components.JBTextField
 import com.intellij.ui.dsl.builder.Align
 import com.intellij.ui.dsl.builder.AlignX
 import com.intellij.ui.dsl.builder.LabelPosition
+import com.intellij.ui.dsl.builder.RowLayout
 import com.intellij.ui.dsl.builder.TopGap
 import com.intellij.ui.dsl.builder.columns
 import com.intellij.ui.dsl.listCellRenderer.textListCellRenderer
@@ -80,8 +81,10 @@ internal class KeyboardDisplayView(project: Project) : Disposable {
             cell(keyboard).label(toolsMessages.getMessage("keyboardDisplay.input"), LabelPosition.TOP)
                 .align(AlignX.FILL).resizableColumn()
         }
-        row(toolsMessages.getMessage("keyboardDisplay.delay.mode")) { cell(delayMode) }.topGap(TopGap.SMALL)
-        row(toolsMessages.getMessage("keyboardDisplay.delay.instructions")) { cell(instructions) }
+        row {
+            cell(delayMode).label(toolsMessages.getMessage("keyboardDisplay.delay.mode"), LabelPosition.TOP)
+            cell(instructions).label(toolsMessages.getMessage("keyboardDisplay.delay.instructions"), LabelPosition.TOP)
+        }.layout(RowLayout.INDEPENDENT).topGap(TopGap.SMALL)
         row { cell(delayedOutput) }
         row {
             columns = intTextField(columnRange).columns(4)
@@ -93,7 +96,7 @@ internal class KeyboardDisplayView(project: Project) : Disposable {
             resize = button(toolsMessages.getMessage("keyboardDisplay.resize")) { resizeDisplay() }.component
         }
         row { cell(remaining) }
-        row { comment(toolsMessages.getMessage("keyboardDisplay.help"), maxLineLength = 32) }
+        row { comment(toolsMessages.getMessage("keyboardDisplay.help")).resizableColumn() }.layout(RowLayout.INDEPENDENT)
     }
     val component = scrollableToolPanel(this, controls, mapOf(editor.contentComponent to editor.component))
 

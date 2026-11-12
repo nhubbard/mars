@@ -3,14 +3,15 @@ package edu.missouristate.mars.plugin.tools
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.text.StringUtil
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.ui.components.JBCheckBox
-import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTextArea
 import com.intellij.ui.dsl.builder.Align
 import com.intellij.ui.dsl.builder.AlignX
 import com.intellij.ui.dsl.builder.LabelPosition
+import com.intellij.ui.dsl.builder.RowLayout
 import com.intellij.ui.dsl.builder.TopGap
 import com.intellij.ui.table.JBTable
 import com.intellij.util.ui.JBDimension
@@ -21,6 +22,7 @@ import edu.missouristate.mars.plugin.tools.BranchHistoryTable.Observation
 import edu.missouristate.mars.plugin.tools.BranchHistoryTable.Options
 import edu.missouristate.mars.util.Binary
 import javax.swing.JButton
+import javax.swing.JEditorPane
 import javax.swing.table.AbstractTableModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -41,7 +43,7 @@ internal class BranchHistoryView(project: Project) : Disposable {
         fitToolColumns("", "$notTaken, $notTaken", notTaken, "", "", "100%",
             toolsMessages.getMessage("branchHistory.result.incorrect"))
     }
-    private val latest = JBLabel().apply { minimumSize = JBDimension(0, 0) }
+    private lateinit var latest: JEditorPane
     private val log = JBTextArea(5, 32).apply { isEditable = false }
     private val tableScroll = JBScrollPane(table).apply { minimumSize = JBDimension(0, 84) }
     private val logScroll = JBScrollPane(log).apply { minimumSize = JBDimension(0, 84) }
@@ -49,8 +51,10 @@ internal class BranchHistoryView(project: Project) : Disposable {
 
     val component = scrollableToolPanel(this, marsToolPanel {
         marsExecutionRow(selector.component)
-        row(toolsMessages.getMessage("branchHistory.size")) { cell(size) }
-        row(toolsMessages.getMessage("branchHistory.bits")) { cell(history) }
+        row {
+            panel { row { cell(size).label(toolsMessages.getMessage("branchHistory.size"), LabelPosition.TOP) } }
+            panel { row { cell(history).label(toolsMessages.getMessage("branchHistory.bits"), LabelPosition.TOP) } }
+        }.layout(RowLayout.INDEPENDENT)
         row { cell(initialTaken) }
         row { cell(apply) }
         row {
@@ -58,13 +62,14 @@ internal class BranchHistoryView(project: Project) : Disposable {
             cell(reset)
         }
         row {
-            cell(latest).label(toolsMessages.getMessage("branchHistory.latest.label"), LabelPosition.TOP)
-                .align(AlignX.FILL).resizableColumn()
-        }.topGap(TopGap.SMALL)
+            latest = text(toolsMessages.getMessage("branchHistory.latest.empty"))
+                .label(toolsMessages.getMessage("branchHistory.latest.label"), LabelPosition.TOP)
+                .resizableColumn().component
+        }.layout(RowLayout.INDEPENDENT).topGap(TopGap.SMALL)
         row { cell(tableScroll).align(Align.FILL).resizableColumn() }.resizableRow()
         row { label(toolsMessages.getMessage("branchHistory.log")).component.labelFor = log }
         row { cell(logScroll).align(AlignX.FILL).resizableColumn() }
-        row { comment(toolsMessages.getMessage("branchHistory.reverse"), maxLineLength = 30) }
+        row { comment(toolsMessages.getMessage("branchHistory.reverse")).resizableColumn() }.layout(RowLayout.INDEPENDENT)
     }, mapOf(table to tableScroll, log to logScroll))
 
     init {
@@ -116,11 +121,11 @@ internal class BranchHistoryView(project: Project) : Disposable {
         if (snapshot == previous) return
         previous = snapshot
         val decision = snapshot?.recent?.lastOrNull()
-        latest.text = decision?.let {
+        val description = decision?.let {
             val assembly = ProgramStatement(it.instruction, it.pc, InstructionDefaults.get()).printableBasicAssemblyStatement.trimEnd()
             toolsMessages.getMessage("branchHistory.latest", Binary.intToHexString(it.pc), assembly, it.index.toString())
         } ?: toolsMessages.getMessage("branchHistory.latest.empty")
-        latest.toolTipText = latest.text
+        latest.text = StringUtil.escapeXmlEntities(description)
         tableModel.update(snapshot?.rows.orEmpty(), decision)
         log.text = snapshot?.recent.orEmpty().joinToString("\n") {
             toolsMessages.getMessage(

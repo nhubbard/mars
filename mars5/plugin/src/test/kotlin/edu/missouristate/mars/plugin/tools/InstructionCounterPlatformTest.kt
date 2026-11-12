@@ -324,6 +324,9 @@ class InstructionCounterPlatformTest {
                 scroll.viewport.view.doLayout()
                 return scroll
             }
+            fun latestBranch() = UIUtil.findComponentsOfType(branches, JLabel::class.java)
+                .single { it.text == "Latest branch" }.labelFor as JEditorPane
+            fun latestBranchText() = latestBranch().document.let { it.getText(0, it.length).trim() }
             fun assertCompactSettings(viewport: JViewport, firstName: String, secondName: String) {
                 val body = assertInstanceOf(JComponent::class.java, viewport.view)
                 fun setting(name: String): Pair<JLabel, JComboBox<*>> {
@@ -348,6 +351,10 @@ class InstructionCounterPlatformTest {
                 assertTrue("No captured instructions" in xrayText())
                 assertFalse(button("Connect").isEnabled)
                 assertFalse(button("Reset").isEnabled)
+                for (width in listOf(240, 610)) {
+                    val dock = layoutDock(branches, width, 460)
+                    assertCompactSettings(dock.viewport, "Table entries", "History bits")
+                }
                 assertFalse(button("Apply and Reset", branches).isEnabled)
                 assertFalse(button("Apply and Clear", bitmap).isEnabled)
                 assertFalse(button("Apply and Reset", cache).isEnabled)
@@ -392,6 +399,8 @@ class InstructionCounterPlatformTest {
                     viewport.doLayout()
                     val body = viewport.view
                     body.doLayout()
+                    assertFalse(scroll.horizontalScrollBar.isVisible)
+                    assertEquals(viewport.extentSize.width, body.width)
                     assertCompactSettings(viewport, "Display width", "Display height")
                     assertCompactSettings(viewport, "Unit width", "Unit height")
                     val grid = canvas(panel)
@@ -788,9 +797,16 @@ class InstructionCounterPlatformTest {
                     assertEquals("Correct", table.getValueAt(1, 6))
                     assertTrue(log.text.contains("predicted Not taken, actual Taken (Incorrect)"))
                     assertTrue(log.text.contains("predicted Not taken, actual Not taken (Correct)"))
-                    val latest = UIUtil.findComponentsOfType(branches, JBLabel::class.java)
-                        .single { it.text.startsWith("0x00400004 · bne") }
-                    assertTrue(latest.text.endsWith(" · row 1"))
+                    val description = latestBranchText()
+                    assertTrue(description.startsWith("0x00400004 · bne"))
+                    assertTrue(description.endsWith(" · row 1"))
+                    val latest = latestBranch()
+                    fun lastLineY() = latest.modelToView2D(latest.document.length - 1).y
+                    val narrow = layoutDock(branches, 200, 460)
+                    assertTrue(latest.x + latest.width <= narrow.viewport.extentSize.width)
+                    val narrowLastLine = lastLineY()
+                    layoutDock(branches, 610, 460)
+                    assertTrue(lastLineY() < narrowLastLine)
                 }
             }
             withContext(Dispatchers.EDT) {
@@ -805,7 +821,7 @@ class InstructionCounterPlatformTest {
                 assertEquals("Taken, Taken", table.getValueAt(0, 1))
                 assertEquals("0", table.getValueAt(0, 4))
                 assertEquals("", table.getValueAt(1, 6))
-                assertTrue(UIUtil.findComponentsOfType(branches, JBLabel::class.java).any { it.text == "No branches recorded." })
+                assertEquals("No branches recorded.", latestBranchText())
                 assertTrue(UIUtil.findComponentsOfType(branches, JBTextArea::class.java).single().text.isEmpty())
                 button("Connect", branches).doClick()
                 button("Reset", branches).doClick()

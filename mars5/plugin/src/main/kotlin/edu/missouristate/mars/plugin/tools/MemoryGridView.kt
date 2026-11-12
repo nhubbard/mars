@@ -11,6 +11,7 @@ import com.intellij.ui.components.JBCheckBox
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.dsl.builder.Align
 import com.intellij.ui.dsl.builder.LabelPosition
+import com.intellij.ui.dsl.builder.RowLayout
 import com.intellij.ui.dsl.builder.TopGap
 import com.intellij.ui.dsl.listCellRenderer.textListCellRenderer
 import com.intellij.util.ui.JBUI
@@ -38,6 +39,7 @@ import javax.swing.JComponent
 import javax.swing.JPanel
 import javax.swing.JSpinner
 import javax.swing.KeyStroke
+import javax.swing.ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
 import javax.swing.SpinnerNumberModel
 import javax.swing.SwingUtilities
 import kotlinx.coroutines.Dispatchers
@@ -98,8 +100,8 @@ internal class MemoryGridView(
         }
         row { cell(canvas).align(Align.FILL).resizableColumn() }.resizableRow()
         row { cell(inspection) }
-        row { comment(toolsMessages.getMessage(mode.helpKey), maxLineLength = 30) }
-    }, true)
+        row { comment(toolsMessages.getMessage(mode.helpKey)).resizableColumn() }.layout(RowLayout.INDEPENDENT)
+    }, true).apply { horizontalScrollBarPolicy = HORIZONTAL_SCROLLBAR_NEVER }
 
     init {
         UIUtil.uiTraverser(component.viewport.view).filter(JComponent::class.java).forEach { control ->

@@ -175,12 +175,16 @@ class KeyboardDisplayPlatformTest {
                     "Terminal content width ${body.width} exceeds viewport width ${viewport.width}"
                 }
                 val fieldLabels = UIUtil.findComponentsOfType(view.component, JLabel::class.java)
-                for (field in fields) {
+                val delay = UIUtil.findComponentsOfType(view.component, JComboBox::class.java).single { it.itemCount == 3 }
+                val instructions = UIUtil.findComponentsOfType(view.component, JSpinner::class.java).single()
+                for (field in fields + listOf(delay, instructions)) {
                     val label = fieldLabels.single { it.labelFor === field }
                     assertTrue(label.y + label.height <= field.y)
                     assertTrue(field.x + field.width <= viewport.width)
                 }
                 assertTrue(columns.x + columns.width <= rows.x)
+                assertTrue(delay.y < instructions.y + instructions.height && instructions.y < delay.y + delay.height)
+                assertTrue(delay.x + delay.width <= instructions.x)
                 val display = SwingUtilities.convertRectangle(editor.component.parent, editor.component.bounds, body)
                 assertTrue(viewport.viewRect.contains(display.x, display.y))
                 val resize = button("Resize and Reset")
@@ -193,11 +197,10 @@ class KeyboardDisplayPlatformTest {
                     "Resize bounds $bounds must be visible in ${viewport.viewRect}"
                 }
                 assertTrue(type('M'))
-                val delay = UIUtil.findComponentsOfType(view.component, JComboBox::class.java).single { it.itemCount == 3 }
                 delay.selectedItem = Delay.UNIFORM
                 assertEquals(Delay.UNIFORM, process.keyboardDisplay.snapshot().options.delay)
                 delay.selectedItem = Delay.FIXED
-                UIUtil.findComponentsOfType(view.component, JSpinner::class.java).single().value = 2
+                instructions.value = 2
                 UIUtil.findComponentsOfType(view.component, JBCheckBox::class.java).single().doClick()
                 assertEquals(Options(Delay.FIXED, 2, false), process.keyboardDisplay.snapshot().options)
             }
