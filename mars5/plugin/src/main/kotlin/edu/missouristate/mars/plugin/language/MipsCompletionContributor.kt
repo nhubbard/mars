@@ -41,8 +41,19 @@ class MipsCompletionContributor : CompletionContributor(), DumbAware {
                 for ((name, replacement) in statementEquivalenceCompletions(file, range, prefix, options)) {
                     lookup.addElement(equivalenceLookup(name, replacement))
                 }
-                val macros = file.project.service<MarsAnalysisService>().macroCompletionSignatures(file, position.textOffset, prefix)
+                val analysis = file.project.service<MarsAnalysisService>()
+                val macros = analysis.macroCompletionSignatures(file, position.textOffset, prefix)
+                val addresses = if (analysis.hasIntegerDataList(file, position) &&
+                    analysis.isIntegerDataCandidate(file, position, macroHead = true)
+                ) {
+                    analysis.labelCompletionNames(file, position, prefix, LabelCompletionContext.DATA).filterTo(HashSet()) {
+                        TokenTypes.matchTokenType(it) == TokenTypes.IDENTIFIER && !it.startsWith('.') &&
+                            (it !in macros || !analysis.completesDataHeadAsMacro(file, range, it))
+                    }
+                } else emptySet()
+                lookup.addAllElements(addresses.map(LookupElementBuilder::create))
                 for ((name, signatures) in macros) {
+                    if (name in addresses) continue
                     lookup.addElement(LookupElementBuilder.create(name).withTailText(signatures.joinToString(" / ", prefix = " "), true))
                 }
             }
@@ -52,7 +63,8 @@ class MipsCompletionContributor : CompletionContributor(), DumbAware {
                 val position = parameters.position
                 val root = parameters.originalFile as MipsFile
                 val options = root.project.service<MarsAssemblySettings>().executionOptions
-                val operand = if (!statementHead.accepts(position)) {
+                val atHead = statementHead.accepts(position)
+                val operand = if (!atHead) {
                     MipsInstructionOperand.at(position, root, options.allowPseudoInstructions)
                 } else null
                 val analysis = root.project.service<MarsAnalysisService>()
@@ -78,12 +90,11 @@ class MipsCompletionContributor : CompletionContributor(), DumbAware {
                     val names = analysis.labelCompletionNames(root, position, prefix, LabelCompletionContext.EXPORT)
                         .filter { it !in written && TokenTypes.matchTokenType(it) == TokenTypes.IDENTIFIER }
                     lookup.addAllElements(names.map(LookupElementBuilder::create))
-                } else if (operand?.acceptsLabel == true || data?.isDataLabel(root, analysis, position) == true) {
+                } else if (operand?.acceptsLabel == true || !atHead && data?.isDataLabel(root, analysis, position) == true) {
                     val labelContext = if (operand == null) LabelCompletionContext.DATA else LabelCompletionContext.INSTRUCTION
                     val names = analysis.labelCompletionNames(root, position, prefix, labelContext)
                     val addresses = if (labelContext == LabelCompletionContext.DATA) {
-                        val first = statementHead.accepts(position)
-                        names.filter { TokenTypes.matchTokenType(it) == TokenTypes.IDENTIFIER && (!first || !it.startsWith('.')) }
+                        names.filter { TokenTypes.matchTokenType(it) == TokenTypes.IDENTIFIER }
                     } else names
                     lookup.addAllElements(addresses.map(LookupElementBuilder::create))
                 }

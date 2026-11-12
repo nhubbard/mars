@@ -8,6 +8,7 @@ import com.intellij.openapi.application.EDT
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.components.service
 import com.intellij.openapi.fileEditor.FileDocumentManager
+import com.intellij.openapi.util.TextRange
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
 import com.intellij.psi.PsiDocumentManager
@@ -613,6 +614,54 @@ class MipsCompletionPlatformTest {
         val memory = context.memory
         assertEquals(program.machineList.first().address, memory.getWordNoNotify(memory.dataBaseAddress + Int.SIZE_BYTES))
     }
+
+    @Test
+    fun `a shared macro and label name completes as the role selected by the written arguments`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val current = project.get()
+            IndexingTestUtil.suspendUntilIndexesAreReady(current)
+            val definitions = """
+                .macro shared (%left, %right)
+                  .text
+                  addiu ${'$'}t0, ${'$'}zero, %left
+                  .data
+                .end_macro
+                .eqv PAIR 2, 3
+                .eqv CYCLE OTHER
+                .eqv OTHER CYCLE
+                .data
+                .word 0
+            """.trimIndent() + "\n"
+            val suffix = "\n.globl shared\nshared: .word 0\nsharedOther: .word 0\n"
+            val completed = withContext(Dispatchers.EDT) {
+                fun choices(line: String): List<LookupElement> {
+                    fixture.configureByText("shared-completion.mars", definitions + line + suffix)
+                    return fixture.completeBasic().orEmpty().filter { it.lookupString == "shared" }
+                }
+                val macro = choices("sha<caret> PAIR").single()
+                assertEquals(" (%left, %right)", LookupElementPresentation().also(macro::renderElement).tailText)
+                val cycle = fixture.configureByText("shared-completion.mars", definitions + "sha CYCLE" + suffix) as MipsFile
+                val range = TextRange.from(definitions.length, "sha".length)
+                assertTrue(!current.service<MarsAnalysisService>().completesDataHeadAsMacro(cycle, range, "shared"))
+                val label = choices("sha<caret> 7").single()
+                assertNull(LookupElementPresentation().also(label::renderElement).tailText)
+                fixture.lookup.setCurrentItem(label)
+                fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR)
+                val dataSource = fixture.file.text
+                val call = choices("sha<caret> PAIR").single()
+                fixture.lookup.setCurrentItem(call)
+                fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR)
+                dataSource to fixture.file.text
+            }
+            val context = current.service<MarsSessionService>().context
+            val dataEntry = directory.resolve("data.mars").also { it.writeText(completed.first) }
+            assertTrue(context.assemble(listOf(dataEntry), null, true, false).machineList.isEmpty())
+            val memory = context.memory
+            assertEquals(context.symbolTable.getAddress("shared"), memory.getWordNoNotify(memory.dataBaseAddress + Int.SIZE_BYTES))
+            val macroEntry = directory.resolve("call.mars").also { it.writeText(completed.second) }
+            val program = context.assemble(listOf(macroEntry), null, true, false)
+            assertEquals(listOf(0x24080002), program.machineList.map { it.binaryStatement })
+        }
 
     @Test
     fun `integer data operands complete aliases without changing written values`(@TempDir directory: Path) =
