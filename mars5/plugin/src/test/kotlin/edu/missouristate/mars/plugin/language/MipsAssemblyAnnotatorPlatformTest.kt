@@ -11,6 +11,7 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.DefaultLanguageHighlighterColors
 import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.fileEditor.FileDocumentManager
+import com.intellij.openapi.fileTypes.ExactFileNameMatcher
 import com.intellij.openapi.fileTypes.FileTypeManager
 import com.intellij.openapi.fileTypes.PlainTextFileType
 import com.intellij.openapi.progress.ProcessCanceledException
@@ -39,6 +40,7 @@ import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.analysis.inferredMipsAssemblyRoot
 import edu.missouristate.mars.plugin.analysis.mipsSourceTimeline
+import edu.missouristate.mars.plugin.analysis.unresolvedAssemblySourceSyntax
 import edu.missouristate.mars.plugin.build.MarsAssemblySettings
 import edu.missouristate.mars.plugin.build.MarsBuildService
 import edu.missouristate.mars.plugin.language.references.MipsIncludeNavigation
@@ -478,9 +480,45 @@ class MipsAssemblyAnnotatorPlatformTest {
             assertEquals("9", analysis.editorTimeline(leaf).prefix(leaf, shift).equivalence("SHIFT")?.replacement)
             assertTrue(Files.readString(ignored.toNioPath()).startsWith(".eqv SHIFT 4"))
             FileDocumentManager.getInstance().saveDocument(document)
-            Files.writeString(ignored.toNioPath(), ".eqv COUNT 4\n.include \"leaf.s\"\n")
+            val diskRevision = ".eqv COUNT 42\n.include \"leaf.s\"\n"
+            Files.writeString(ignored.toNioPath(), diskRevision)
             ignored.refresh(false, false)
+            assertEquals(diskRevision, document.text)
             assertNull(leaf.findReferenceAt(leaf.text.indexOf("SHIFT"))?.resolve())
+        }
+    }
+
+    @Test
+    fun `read-only include views follow the name and file type of their original`() = timeoutRunBlocking<Unit> {
+        withContext(Dispatchers.EDT) {
+            val types = FileTypeManager.getInstance()
+            val ignored = types.ignoredFilesList
+            val matcher = ExactFileNameMatcher("renamed.png")
+            try {
+                WriteCommandAction.runWriteCommandAction(project) {
+                    types.ignoredFilesList = "$ignored;initial.png;renamed.png"
+                }
+                val source = fixture.tempDirFixture.createFile("initial.png", "nop\n")
+                val original = checkNotNull(unresolvedAssemblySourceSyntax(project, source))
+                assertSame(original, unresolvedAssemblySourceSyntax(project, source))
+                WriteCommandAction.runWriteCommandAction(project) { source.rename(this, "renamed.png") }
+                val renamed = checkNotNull(unresolvedAssemblySourceSyntax(project, source))
+                assertNotSame(original, renamed)
+                assertEquals("renamed.png", renamed.name)
+
+                WriteCommandAction.runWriteCommandAction(project) { types.associate(PlainTextFileType.INSTANCE, matcher) }
+                assertFalse(source.fileType.isBinary)
+                val text = checkNotNull(unresolvedAssemblySourceSyntax(project, source))
+                assertNotSame(renamed, text)
+                val document = checkNotNull(FileDocumentManager.getInstance().getDocument(source))
+                WriteCommandAction.runWriteCommandAction(project) { document.setText("syscall\n") }
+                assertEquals("syscall\n", unresolvedAssemblySourceSyntax(project, source)?.text)
+            } finally {
+                WriteCommandAction.runWriteCommandAction(project) {
+                    types.removeAssociation(PlainTextFileType.INSTANCE, matcher)
+                    types.ignoredFilesList = ignored
+                }
+            }
         }
     }
 

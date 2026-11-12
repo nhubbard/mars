@@ -1,12 +1,17 @@
 package edu.missouristate.mars.plugin.analysis
 
 import com.intellij.notebook.editor.BackedVirtualFile
+import com.intellij.openapi.components.Service
+import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.Document
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectRootModificationTracker
+import com.intellij.openapi.util.Key
+import com.intellij.openapi.util.ModificationTracker
 import com.intellij.openapi.util.TextRange
+import com.intellij.openapi.util.UserDataHolderBase
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.openapi.vfs.limits.FileSizeLimit
@@ -17,6 +22,7 @@ import com.intellij.psi.PsiManager
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
+import com.intellij.util.containers.CollectionFactory
 import edu.missouristate.mars.ErrorList
 import edu.missouristate.mars.assembler.Directives
 import edu.missouristate.mars.assembler.Macro
@@ -497,23 +503,43 @@ internal fun unresolvedAssemblySourceSyntax(
     if (file.isDirectory) return null
     onDependency(file)
     if (FileSizeLimit.isTooLargeForContentLoading(file.length, file.extension)) return null
-    // An ignored file has a project-specific view provider even when it has no PSI file.
-    val provider = PsiManager.getInstance(project).findViewProvider(file)!!
-    val source = CachedValuesManager.getManager(project).getCachedValue(provider) {
-        val document = if (file.fileType.isBinary) null else FileDocumentManager.getInstance().getDocument(file)
-        val syntax = lazy { readOnlyAssemblySource(project, file, document?.text) }
-        CachedValueProvider.Result.create(UnresolvedSource(syntax, document),
-            listOfNotNull(file, document, ProjectRootModificationTracker.getInstance(project)))
+    // An ignored file has no physical PSI to retain its weakly cached view provider.
+    val holder = project.service<UnresolvedAssemblySyntaxCache>().holders.getOrPut(file, ::UserDataHolderBase)
+    val source = CachedValuesManager.getManager(project).getCachedValue(holder) {
+        val name = file.name
+        val type = file.fileType
+        val document = if (type.isBinary) null else FileDocumentManager.getInstance().getDocument(file)
+        val classification = ModificationTracker {
+            if (file.name == name && file.fileType == type) 0 else 1
+        }
+        val syntax = lazy { readOnlyAssemblySource(project, file, document?.text, holder) }
+        CachedValueProvider.Result.create(UnresolvedSource(syntax, document, classification),
+            listOfNotNull(file, document, classification, ProjectRootModificationTracker.getInstance(project)))
     }
+    onDependency(source.classification)
     source.document?.let(onDependency)
     return source.syntax.value
 }
 
-private data class UnresolvedSource(val syntax: Lazy<MipsFile?>, val document: Document?)
+@Service(Service.Level.PROJECT)
+private class UnresolvedAssemblySyntaxCache {
+    val holders = CollectionFactory.createConcurrentWeakValueMap<VirtualFile, UserDataHolderBase>()
+}
 
-private fun readOnlyAssemblySource(project: Project, file: VirtualFile, documentText: String? = null): MipsFile? {
+private val unresolvedSyntaxHolder = Key.create<UserDataHolderBase>("mars.assembly.unresolved.source")
+
+private data class UnresolvedSource(
+    val syntax: Lazy<MipsFile?>, val document: Document?, val classification: ModificationTracker,
+)
+
+private fun readOnlyAssemblySource(
+    project: Project, file: VirtualFile, documentText: String? = null, holder: UserDataHolderBase? = null,
+): MipsFile? {
     val text = documentText ?: readDiskAssemblyText(file) ?: return null
-    return PsiManager.getInstance(project).findFile(mipsAssemblySourceView(file, text)) as MipsFile
+    val syntax = PsiManager.getInstance(project).findFile(mipsAssemblySourceView(file, text)) as MipsFile
+    // Keep the cached value alive while an editor or timeline retains this PSI.
+    syntax.putUserData(unresolvedSyntaxHolder, holder)
+    return syntax
 }
 
 internal fun PsiFile.assemblySourceOriginalFile(): VirtualFile {
