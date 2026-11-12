@@ -4,7 +4,7 @@ import edu.missouristate.mars.mips.hardware.AccessNotice.Companion.WRITE
 import edu.missouristate.mars.mips.hardware.AccessOrigin.EXECUTION
 import edu.missouristate.mars.mips.hardware.MemoryAccessNotice
 import edu.missouristate.mars.mips.hardware.MemoryState
-import edu.missouristate.mars.mips.hardware.MemoryState.WORD_LENGTH_BYTES
+import edu.missouristate.mars.mips.hardware.MemoryState.Companion.WORD_LENGTH_BYTES
 import java.util.Random
 import java.util.function.Consumer
 import kotlin.math.roundToInt

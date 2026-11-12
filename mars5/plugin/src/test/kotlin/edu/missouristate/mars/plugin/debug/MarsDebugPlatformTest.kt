@@ -1957,7 +1957,7 @@ class MarsDebugPlatformTest {
     fun `watch reads honor big endian and cancellation completes pending requests`() {
         MarsSessionService.createMarsComponent().context().use { machine ->
             val memory = machine.memory
-            memory.setByteOrder(MemoryState.BIG_ENDIAN)
+            memory.byteOrder = MemoryState.BIG_ENDIAN
             val address = memory.memoryMapBaseAddress
             memory.setWord(address, 0x11223344)
             val notices = ArrayList<Any>()

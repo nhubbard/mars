@@ -2,7 +2,7 @@ package edu.missouristate.mars.mips.instructions.basic
 
 import edu.missouristate.mars.ProcessingException
 import edu.missouristate.mars.mips.hardware.AddressErrorException
-import edu.missouristate.mars.mips.hardware.MemoryState.WORD_LENGTH_BYTES
+import edu.missouristate.mars.mips.hardware.MemoryState.Companion.WORD_LENGTH_BYTES
 import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
 import edu.missouristate.mars.util.Binary

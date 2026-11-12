@@ -1,6 +1,6 @@
 package edu.missouristate.mars.mips.dump
 
-import edu.missouristate.mars.mips.hardware.MemoryState.WORD_LENGTH_BYTES
+import edu.missouristate.mars.mips.hardware.MemoryState.Companion.WORD_LENGTH_BYTES
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException

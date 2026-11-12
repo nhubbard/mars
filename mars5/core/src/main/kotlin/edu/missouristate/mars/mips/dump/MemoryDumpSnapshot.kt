@@ -2,7 +2,7 @@ package edu.missouristate.mars.mips.dump
 
 import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.mips.hardware.AddressErrorException
-import edu.missouristate.mars.mips.hardware.MemoryState.WORD_LENGTH_BYTES
+import edu.missouristate.mars.mips.hardware.MemoryState.Companion.WORD_LENGTH_BYTES
 
 /** A detached memory range and the display options at the moment it was captured. */
 class MemoryDumpSnapshot private constructor(

@@ -1119,7 +1119,7 @@ Test sources and generated build output are excluded from this production invent
 | [kotlin/edu/missouristate/mars/mips/hardware/MemoryAccessNotice.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/mips/hardware/MemoryAccessNotice.kt) | C10 |
 | [kotlin/edu/missouristate/mars/mips/hardware/MemoryConfiguration.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/mips/hardware/MemoryConfiguration.kt) | C09 |
 | [kotlin/edu/missouristate/mars/mips/hardware/MemoryConfigurations.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/mips/hardware/MemoryConfigurations.kt) | C09 |
-| [java/edu/missouristate/mars/mips/hardware/MemoryState.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/mips/hardware/MemoryState.java) | C09 |
+| [kotlin/edu/missouristate/mars/mips/hardware/MemoryState.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/mips/hardware/MemoryState.kt) | C09 |
 | [kotlin/edu/missouristate/mars/mips/hardware/Register.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/mips/hardware/Register.kt) | C06 |
 | [kotlin/edu/missouristate/mars/mips/hardware/RegisterAccessNotice.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/mips/hardware/RegisterAccessNotice.kt) | C10 |
 | [kotlin/edu/missouristate/mars/mips/hardware/memory/TextMemorySegment.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/mips/hardware/memory/TextMemorySegment.kt) | C09 |

@@ -9,7 +9,7 @@ import edu.missouristate.mars.mips.hardware.AccessNotice.Companion.WRITE
 import edu.missouristate.mars.mips.hardware.AccessOrigin.EXECUTION
 import edu.missouristate.mars.mips.hardware.MemoryAccessNotice
 import edu.missouristate.mars.mips.hardware.MemoryState
-import edu.missouristate.mars.mips.hardware.MemoryState.WORD_LENGTH_BYTES
+import edu.missouristate.mars.mips.hardware.MemoryState.Companion.WORD_LENGTH_BYTES
 import edu.missouristate.mars.plugin.tools.ScavengerHuntGame.Companion.administratorId
 import edu.missouristate.mars.plugin.tools.ScavengerHuntGame.Companion.playerCount
 import edu.missouristate.mars.plugin.tools.ScavengerHuntGame.Companion.taskSize

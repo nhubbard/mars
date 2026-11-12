@@ -13,7 +13,7 @@ import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.mips.dump.MemoryDumpSnapshot
 import edu.missouristate.mars.mips.dump.SegmentWindowDumpFormat
 import edu.missouristate.mars.mips.hardware.AddressErrorException
-import edu.missouristate.mars.mips.hardware.MemoryState.WORD_LENGTH_BYTES
+import edu.missouristate.mars.mips.hardware.MemoryState.Companion.WORD_LENGTH_BYTES
 import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.util.Binary
 import java.io.IOException
