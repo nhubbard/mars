@@ -106,42 +106,42 @@ internal fun writeStarterSources(root: Path, separateLibrary: Boolean): List<Pat
     }
 }
 
-private val standaloneMain = """
+private val standaloneMain = $$"""
     .data
     greeting: .asciiz "Hello from MARS!\n"
 
     .text
     .globl main
     main:
-        la ${'$'}a0, greeting
-        li ${'$'}v0, 4
+        la $a0, greeting
+        li $v0, 4
         syscall
 
-        li ${'$'}v0, 10
+        li $v0, 10
         syscall
 """.trimIndent() + "\n"
 
-private val linkedMain = """
+private val linkedMain = $$"""
     .data
     greeting: .asciiz "Hello from MARS!\n"
 
     .text
     .globl main
     main:
-        la ${'$'}a0, greeting
+        la $a0, greeting
         jal print_string
         nop
 
-        li ${'$'}v0, 10
+        li $v0, 10
         syscall
 """.trimIndent() + "\n"
 
-private val consoleLibrary = """
+private val consoleLibrary = $$"""
     .text
     .globl print_string
     print_string:
-        li ${'$'}v0, 4
+        li $v0, 4
         syscall
-        jr ${'$'}ra
+        jr $ra
         nop
 """.trimIndent() + "\n"

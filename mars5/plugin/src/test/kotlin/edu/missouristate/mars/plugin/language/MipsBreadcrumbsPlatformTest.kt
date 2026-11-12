@@ -23,13 +23,13 @@ class MipsBreadcrumbsPlatformTest {
 
     @Test
     fun `native collector follows written segments macro and label boundaries`() = timeoutRunBlocking<Unit> {
-        val source = """
+        val source = $$"""
             # outside all declarations
             start: nop
             .macro emit (%name)
                 nop # before first local label
                 %name: nop
-                addiu ${'$'}a0, ${'$'}zero, 42
+                addiu $a0, $zero, 42
             .end_macro
             nop # after the macro definition
             .data
@@ -56,7 +56,7 @@ class MipsBreadcrumbsPlatformTest {
     @Test
     fun `native breadcrumb navigation and subsequent edits use current source offsets`() = timeoutRunBlocking<Unit> {
         val current = project.get()
-        val source = ".text\nmain: nop\n    addiu ${'$'}a0, ${'$'}zero, 42\n"
+        val source = $$".text\nmain: nop\n    addiu $a0, $zero, 42\n"
         withContext(Dispatchers.EDT) { fixture.configureByText("entry.s", source) }
         val initial = readAction { crumbs(source.indexOf("addiu")) }
         assertEquals(listOf("entry.s", ".text", "main"), initial.map { it.text })

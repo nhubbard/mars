@@ -199,12 +199,12 @@ class MarsToolProviderPlatformTest {
     }
 
     private fun execution(id: Long, ready: CompletableDeferred<Unit>): Pair<MarsProcessHandler, Content> {
-        val file = fixture.addFileToProject("intro-$id.asm", """
-            li ${'$'}v0, 12
+        val file = fixture.addFileToProject("intro-$id.asm", $$"""
+            li $v0, 12
             syscall
             nop
             nop
-            li ${'$'}v0, 12
+            li $v0, 12
             syscall
             nop
             nop

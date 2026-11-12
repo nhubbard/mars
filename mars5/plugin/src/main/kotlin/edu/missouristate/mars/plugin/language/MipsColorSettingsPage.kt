@@ -18,7 +18,7 @@ internal class MipsColorSettingsPage : ColorSettingsPage {
 
     override fun getAdditionalHighlightingTagToDescriptorMap() = semanticColors
 
-    override fun getDemoText() = """
+    override fun getDemoText() = $$"""
         # MIPS source
         .data
         .asciiz "MARS"
@@ -34,10 +34,10 @@ internal class MipsColorSettingsPage : ColorSettingsPage {
             <instruction>addiu</instruction> %counter, %counter, -1
         .end_macro
         .text
-        <label>main</label>: <instruction>li</instruction> ${'$'}t0, <equivalence>COUNT</equivalence>
-        <label>loop</label>: <macro>decrement</macro> (${'$'}t0)
-              <instruction>bgtz</instruction> ${'$'}t0, <equivalence>AGAIN</equivalence>
-              <instruction>li</instruction> ${'$'}v0, 10
+        <label>main</label>: <instruction>li</instruction> $t0, <equivalence>COUNT</equivalence>
+        <label>loop</label>: <macro>decrement</macro> ($t0)
+              <instruction>bgtz</instruction> $t0, <equivalence>AGAIN</equivalence>
+              <instruction>li</instruction> $v0, 10
               <instruction>syscall</instruction>
     """.trimIndent()
 

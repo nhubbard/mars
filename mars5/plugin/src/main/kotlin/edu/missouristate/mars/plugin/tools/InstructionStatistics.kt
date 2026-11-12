@@ -55,15 +55,15 @@ internal class InstructionStatistics : InstructionCounts {
 
     private companion object {
         val aluFunctions = buildSet {
-          addAll((0x02..0x07).toSet())
-          addAll(0x10..0x2b)
-          add(0x00)
+            addAll(0x02..0x07)
+            addAll(0x10..0x2b)
+            add(0x00)
         }
         val aluOpcodes = (0x08..0x0f).toSet() + 0x1c
         val memoryOpcodes = buildSet {
-          addAll((0x20..0x26).toSet())
-          addAll(0x28..0x2e)
-          addAll(setOf(0x30, 0x31, 0x35, 0x38, 0x39, 0x3d))
+            addAll(0x20..0x26)
+            addAll(0x28..0x2e)
+            addAll(listOf(0x30, 0x31, 0x35, 0x38, 0x39, 0x3d))
         }
     }
 }

@@ -228,24 +228,24 @@ class MipsGoToSymbolPlatformTest {
     @Test
     fun `symbol search uses the effective external reservation names`() = timeoutRunBlocking<Unit> {
         val current = project.get()
-        val source = """
+        val source = $$"""
             .extern STORAGE SIZE
             RESERVE generated 4
             .extern literal 4
             .extern REGISTER 4
             SWITCH: .extern obsolete 4
-            .macro reserve (${'$'}slot, ${'$'}broken)
-              .extern ${'$'}slot 4
-              .extern ${'$'}broken @
+            .macro reserve ($slot, $broken)
+              .extern $slot 4
+              .extern $broken @
             .end_macro
         """.trimIndent()
         val body = withContext(Dispatchers.EDT) {
             val body = fixture.addFileToProject("external-symbols.s", source)
-            fixture.addFileToProject("external-aliases.asm", """
+            fixture.addFileToProject("external-aliases.asm", $$"""
                 .eqv STORAGE renamed
                 .eqv RESERVE .extern
                 .eqv SIZE 4
-                .eqv REGISTER ${'$'}t0
+                .eqv REGISTER $t0
                 .eqv SWITCH .data
                 .include "external-symbols.s"
             """.trimIndent())
@@ -256,14 +256,14 @@ class MipsGoToSymbolPlatformTest {
         readAction {
             val names = mutableSetOf<String>()
             contributor.processNames(names::add, scope, null)
-            assertTrue(names.containsAll(setOf("renamed", "generated", "literal", "\$t0")))
-            for ((name, origin) in listOf("renamed" to "STORAGE", "generated" to "RESERVE", "\$t0" to "REGISTER")) {
+            assertTrue(names.containsAll(setOf("renamed", "generated", "literal", $$"$t0")))
+            for ((name, origin) in listOf("renamed" to "STORAGE", "generated" to "RESERVE", $$"$t0" to "REGISTER")) {
                 val result = assertInstanceOf(OpenFileDescriptor::class.java, items(name, scope).single())
                 assertEquals(body.virtualFile, result.file)
                 assertEquals(source.indexOf(origin), result.offset)
             }
             assertEquals(SymbolKind.EXTERNAL, (items("literal", scope).single() as MipsDeclaration).kind)
-            for (missing in listOf("STORAGE", "REGISTER", "obsolete", "\$slot", "\$broken")) {
+            for (missing in listOf("STORAGE", "REGISTER", "obsolete", $$"$slot", $$"$broken")) {
                 assertTrue(items(missing, scope).isEmpty(), missing)
             }
         }

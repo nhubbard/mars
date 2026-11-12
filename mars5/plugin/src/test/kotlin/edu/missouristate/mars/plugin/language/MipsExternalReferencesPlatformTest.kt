@@ -35,7 +35,7 @@ class MipsExternalReferencesPlatformTest {
 
     @Test
     fun `extern names receive declaration highlighting across the whole written name`() = timeoutRunBlocking<Unit> {
-        val names = listOf("\$t0", ".word", ".set", ")", "+9", "\"slot name\"", "'A'", ".include")
+        val names = listOf($$"$t0", ".word", ".set", ")", "+9", "\"slot name\"", "'A'", ".include")
         val source = names.joinToString("\n", postfix = "\n") { ".extern $it, 4" }
         configure(source)
         withContext(Dispatchers.EDT) {
@@ -63,14 +63,14 @@ class MipsExternalReferencesPlatformTest {
 
     @Test
     fun `local labels shadow external storage and exports require a local label`() = timeoutRunBlocking<Unit> {
-        val source = ".extern shared 4\n.data\nshared: .word 0\n.text\nla \$t0, sha<caret>red\n"
+        val source = $$".extern shared 4\n.data\nshared: .word 0\n.text\nla $t0, sha<caret>red\n"
         assertEquals(source.indexOf("shared:"), target(source)?.offset)
         assertNull(target(".extern shared 4\n.globl sha<caret>red\n"))
-        assertEquals(8, target(".extern shared 4\n.text\nla \$t0, sha<caret>red\n")?.offset)
+        assertEquals(8, target($$".extern shared 4\n.text\nla $t0, sha<caret>red\n")?.offset)
         assertNull(target(".extern shared 4\n.extern sha<caret>red 4\n"))
-        assertEquals(8, target(".extern \$shared 4\nla \$t0, \$sha<caret>red\n")?.offset)
-        assertEquals(8, target(".extern nop 4\nla \$t0, n<caret>op\n")?.offset)
-        val renamed = ".eqv STORAGE shared\n.extern STORAGE 4\nla \$t0, sha<caret>red\n"
+        assertEquals(8, target($$".extern $shared 4\nla $t0, $sha<caret>red\n")?.offset)
+        assertEquals(8, target($$".extern nop 4\nla $t0, n<caret>op\n")?.offset)
+        val renamed = $$".eqv STORAGE shared\n.extern STORAGE 4\nla $t0, sha<caret>red\n"
         assertEquals(renamed.lastIndexOf("STORAGE"), target(renamed)?.offset)
     }
 
@@ -78,17 +78,17 @@ class MipsExternalReferencesPlatformTest {
     fun `external operands bind macro formals and keep storage names out of the outline until expansion`(
         @TempDir directory: Path,
     ) = timeoutRunBlocking<Unit> {
-        val source = """
+        val source = $$"""
             .eqv RESERVE .extern
-            .eqv NAME ${'$'}slot
-            .macro reserve (${'$'}slot, %other)
-              .extern ${'$'}slot 4
+            .eqv NAME $slot
+            .macro reserve ($slot, %other)
+              .extern $slot 4
               .extern %other 4
               .extern NAME 4
-              RESERVE ${'$'}slot 4
+              RESERVE $slot 4
             .end_macro
             reserve(payload, second)
-            .extern ${'$'}standalone 4
+            .extern $standalone 4
             .extern %unaddressable 4
             .data
             .word payload, second
@@ -105,13 +105,13 @@ class MipsExternalReferencesPlatformTest {
         assertEquals(memory.externBaseAddress + 4, memory.getWordNoNotify(memory.dataBaseAddress + 4))
 
         configure(source)
-        val slot = source.indexOf(".extern \$slot") + ".extern ".length
+        val slot = source.indexOf($$".extern $slot") + ".extern ".length
         val other = source.indexOf(".extern %other") + ".extern ".length
         val alias = source.indexOf(".extern NAME") + ".extern ".length
         readAction {
             val file = fixture.file as MipsFile
             assertTrue(PsiTreeUtil.collectElementsOfType(file, PsiErrorElement::class.java).isEmpty())
-            val expected = mapOf(slot to source.indexOf("(\$slot") + 1, other to source.indexOf("%other"), alias to source.indexOf("NAME"))
+            val expected = mapOf(slot to source.indexOf($$"($slot") + 1, other to source.indexOf("%other"), alias to source.indexOf("NAME"))
             for ((use, declaration) in expected) {
                 assertEquals(declaration, file.findReferenceAt(use)?.resolve()?.textOffset)
             }
@@ -122,7 +122,7 @@ class MipsExternalReferencesPlatformTest {
             val literal = timeline.expandedExternalsIn(file).values.single()
             assertEquals("%unaddressable", literal.name)
             assertEquals(source.indexOf("%unaddressable"), literal.offset)
-            assertEquals(setOf("\$standalone"), timeline.externalStorage.keys)
+            assertEquals(setOf($$"$standalone"), timeline.externalStorage.keys)
         }
         withContext(Dispatchers.EDT) {
             val highlights = fixture.doHighlighting()
@@ -136,7 +136,8 @@ class MipsExternalReferencesPlatformTest {
 
     @Test
     fun `only active external storage participates in operand completion`() = timeoutRunBlocking<Unit> {
-        configure("""
+        configure(
+          $$"""
             .macro unused
               .extern sharedMacro 4
             .end_macro
@@ -157,10 +158,10 @@ class MipsExternalReferencesPlatformTest {
             .extern STORAGE SIZE
             .eqv sharedWrong unrelated
             .extern sharedWrong 4
-            .eqv sharedRegister ${'$'}t0
+            .eqv sharedRegister $t0
             .extern sharedRegister 4
             .extern separate 4
-            la ${'$'}t0, shared<caret>
+            la $t0, shared<caret>
         """.trimIndent())
         withContext(Dispatchers.EDT) {
             val items = fixture.completeBasic().orEmpty().filter { it.lookupString.startsWith("shared") }
@@ -262,7 +263,8 @@ class MipsExternalReferencesPlatformTest {
 
     @Test
     fun `completion includes only valid external aliases outside macro bodies`() = timeoutRunBlocking<Unit> {
-        configure("""
+        configure(
+          $$"""
             .eqv RESERVE .extern
             .eqv FIRST SECOND
             .eqv SECOND FIRST
@@ -271,11 +273,11 @@ class MipsExternalReferencesPlatformTest {
             RESERVE sharedMissing
             RESERVE sharedNegative -4
             RESERVE sharedCyclic FIRST
-            RESERVE ${'$'}t0 4
+            RESERVE $t0 4
             .macro hidden
               RESERVE sharedHidden 4
             .end_macro
-            la ${'$'}t0, shared<caret>
+            la $t0, shared<caret>
         """.trimIndent())
         withContext(Dispatchers.EDT) {
             val names = fixture.completeBasic().orEmpty().map { it.lookupString }.filter { it.startsWith("shared") }

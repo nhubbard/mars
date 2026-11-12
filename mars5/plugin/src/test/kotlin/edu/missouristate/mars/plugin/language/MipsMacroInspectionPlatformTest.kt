@@ -46,35 +46,35 @@ class MipsMacroInspectionPlatformTest {
             fixture.enableInspections(inspection)
             fixture.configureByText("plain.asm", "nop")
             assertTrue(warnings().isEmpty())
-            val source = """
+            val source = $$"""
                 .text
-                .macro example (%used, %used, ${'$'}ok, ${'$'}ok)
-                    addiu ${'$'}t0, ${'$'}zero, %used
-                    addiu ${'$'}t1, ${'$'}zero, ${'$'}ok
-                    addiu ${'$'}t2, ${'$'}zero, %missing
-                    addiu ${'$'}t3, ${'$'}zero, ${'$'}missing
+                .macro example (%used, %used, $ok, $ok)
+                    addiu $t0, $zero, %used
+                    addiu $t1, $zero, $ok
+                    addiu $t2, $zero, %missing
+                    addiu $t3, $zero, $missing
                 %destination: nop
-                    .asciiz "%quoted ${'$'}quoted"
+                    .asciiz "%quoted $quoted"
                     # %comment
                 .end_macro
-                addiu ${'$'}t4, ${'$'}zero, %outside
+                addiu $t4, $zero, %outside
             """.trimIndent()
             fixture.configureByText("parameters.asm", source)
             assertEquals(
                 listOf(
                     Warning(source.indexOf("%used, %used") + "%used, ".length, "%used", duplicate("%used")),
-                    Warning(source.indexOf("${'$'}ok, ${'$'}ok") + "${'$'}ok, ".length, "${'$'}ok", duplicate("${'$'}ok")),
+                    Warning(source.indexOf($$"$ok, $ok") + $$"$ok, ".length, $$"$ok", duplicate($$"$ok")),
                     Warning(source.indexOf("%missing"), "%missing", unknown("example", "%missing")),
-                    Warning(source.indexOf("${'$'}missing"), "${'$'}missing", unknown("example", "${'$'}missing")),
+                    Warning(source.indexOf($$"$missing"), $$"$missing", unknown("example", $$"$missing")),
                     Warning(source.indexOf("%destination"), "%destination", unknown("example", "%destination")),
                 ),
                 warnings(),
             )
             WriteCommandAction.runWriteCommandAction(fixture.project) {
                 val headerEnd = source.indexOf(')')
-                fixture.editor.document.insertString(headerEnd, ", %missing, ${'$'}missing, %destination")
+                fixture.editor.document.insertString(headerEnd, $$", %missing, $missing, %destination")
             }
-            assertEquals(listOf(duplicate("%used"), duplicate("${'$'}ok")), warnings().map(Warning::message))
+            assertEquals(listOf(duplicate("%used"), duplicate($$"$ok")), warnings().map(Warning::message))
         }
     }
 
@@ -82,7 +82,7 @@ class MipsMacroInspectionPlatformTest {
     fun `alias generated parameters point to the original alias and ignore invalid expansions`() = timeoutRunBlocking<Unit> {
         withContext(Dispatchers.EDT) {
             fixture.enableInspections(MipsMacroParameterInspection::class.java)
-            val source = """
+            val source = $$"""
                 .eqv BEGIN .macro
                 .eqv END .end_macro
                 .eqv FORM %item, %item, %item
@@ -91,7 +91,7 @@ class MipsMacroInspectionPlatformTest {
                 .eqv FIRST SECOND
                 .eqv SECOND FIRST
                 BEGIN aliased (FORM)
-                    addiu ${'$'}t0, ${'$'}zero, BOUND
+                    addiu $t0, $zero, BOUND
                     .word UNKNOWN
                     .word %skipped, FIRST
                     ,,,
@@ -99,10 +99,10 @@ class MipsMacroInspectionPlatformTest {
                     .end_macro %ignored
                 END
                 .macro direct (FORM)
-                    addiu ${'$'}t0, ${'$'}zero, BOUND
+                    addiu $t0, $zero, BOUND
                 .end_macro
                 .macro valid (%ok)
-                    addiu ${'$'}t0, ${'$'}zero, %ok
+                    addiu $t0, $zero, %ok
                 .end_macro
                 nop
             """.trimIndent()
@@ -120,7 +120,7 @@ class MipsMacroInspectionPlatformTest {
 
     @Test
     fun `the include prepass discards written macro parameter candidates on the replaced line`() = timeoutRunBlocking<Unit> {
-        val source = ".macro emit (%value)\n%discarded: .include \"body.s\"\nli \$t0, %missing\n.end_macro\n"
+        val source = $$".macro emit (%value)\n%discarded: .include \"body.s\"\nli $t0, %missing\n.end_macro\n"
         val project = projectFixture.get()
         withContext(Dispatchers.EDT) {
             fixture.enableInspections(MipsMacroParameterInspection::class.java)
@@ -136,14 +136,14 @@ class MipsMacroInspectionPlatformTest {
     @Test
     fun `a malformed expanded closer reports its written token and leaves the macro open`(@TempDir directory: Path) =
         timeoutRunBlocking<Unit> {
-            val source = """
+            val source = $$"""
                 .eqv CLOSE .EnD_MaCrO
                 .eqv BAD .end_macro extra
                 .eqv LABEL outside:
                 .macro emit (%value)
                 CLOSE 7
                 BAD
-                body: addiu ${'$'}t0, ${'$'}zero, %value
+                body: addiu $t0, $zero, %value
                 CLOSE # actual closer
                 emit(42)
                 LABEL .end_macro extra
@@ -221,7 +221,7 @@ class MipsMacroInspectionPlatformTest {
     @Test
     fun `unmatched closers and the unclosed opener point to their written tokens`(@TempDir directory: Path) =
         timeoutRunBlocking<Unit> {
-            val source = """
+            val source = $$"""
                 .eqv OPEN .macro
                 .eqv STOP .end_macro
                 .eqv LABEL alias_label
@@ -231,7 +231,7 @@ class MipsMacroInspectionPlatformTest {
                 LABEL: .end_macro
                 OPEN emit (%value)
                 inside: .end_macro # macro bodies retain their labels
-                li ${'$'}t0, %value
+                li $t0, %value
             """.trimIndent()
             val entry = directory.resolve("boundaries.asm").also { it.writeText(source) }
             val context = projectFixture.get().service<MarsSessionService>().context
@@ -480,7 +480,7 @@ class MipsMacroInspectionPlatformTest {
     fun `closing a macro from an included header appends to the entry after the body`(@TempDir directory: Path) =
         timeoutRunBlocking<Unit> {
             val project = projectFixture.get()
-            val body = ".include \"header.inc\"\naddiu \$t0, \$zero, %value"
+            val body = $$".include \"header.inc\"\naddiu $t0, $zero, %value"
             val header = ".macro emit (%value)\n"
             val (entry, other) = withContext(Dispatchers.EDT) {
                 val include = fixture.addFileToProject("header.inc", header)
@@ -523,8 +523,9 @@ class MipsMacroInspectionPlatformTest {
         timeoutRunBlocking<Unit> {
             val project = projectFixture.get()
             val repaired = withContext(Dispatchers.EDT) {
-                val direct = ".macro emit\naddiu \$t0, \$zero, 7\n.end_macro st<caret>ray # keep\nemit\n"
-                val aliased = ".eqv CLOSE .end_macro\n.macro emit\naddiu \$t0, \$zero, 7\nCL<caret>OSE stray # keep\nemit\n"
+                val direct = $$".macro emit\naddiu $t0, $zero, 7\n.end_macro st<caret>ray # keep\nemit\n"
+                val aliased =
+                  $$".eqv CLOSE .end_macro\n.macro emit\naddiu $t0, $zero, 7\nCL<caret>OSE stray # keep\nemit\n"
                 listOf(direct, aliased).map { source ->
                     fixture.configureByText("macro-tail.mars", source)
                     assertTrue(errors().any { it.second == trailingCloseMessage })
@@ -659,7 +660,7 @@ class MipsMacroInspectionPlatformTest {
     @Test
     fun `nested openers report their written tokens without replacing the outer macro`(@TempDir directory: Path) =
         timeoutRunBlocking<Unit> {
-            val source = """
+            val source = $$"""
                 .eqv OPEN .macro
                 .eqv LABEL inside_alias
                 .eqv PREFIX generated:
@@ -673,7 +674,7 @@ class MipsMacroInspectionPlatformTest {
                 PREFIX .macro generated_labeled (%other)
                 OPEN BAD_NAME
                 .macro BAD_NAME (9)
-                li ${'$'}t0, %value
+                li $t0, %value
                 .end_macro
             """.trimIndent()
             val entry = directory.resolve("nested.asm").also { it.writeText(source) }
@@ -797,15 +798,15 @@ class MipsMacroInspectionPlatformTest {
     @Test
     fun `expanded openers diagnose missing and invalid names at the original tokens`(@TempDir directory: Path) =
         timeoutRunBlocking<Unit> {
-            val source = """
+            val source = $$"""
                 .eqv OPEN .macro
                 .eqv BAD_NAME 7
-                .eqv WHOLE .macro ${'$'}t0
+                .eqv WHOLE .macro $t0
                 OPEN # missing name
                 .macro BAD_NAME
                 WHOLE
                 .macro real (%value)
-                    li ${'$'}t0, %value
+                    li $t0, %value
                 .end_macro
                 real(42)
             """.trimIndent()
@@ -814,7 +815,9 @@ class MipsMacroInspectionPlatformTest {
             val context = project.service<MarsSessionService>().context
             val failure = assertThrows<ProcessingException> { context.assemble(listOf(entry), null, true, false) }
             assertEquals(
-                listOf("\".macro\" directive requires at least one argument.", "Invalid Macro name \"7\"", "Invalid Macro name \"\$t0\""),
+                listOf("\".macro\" directive requires at least one argument.", "Invalid Macro name \"7\"",
+                  $$"Invalid Macro name \"$t0\""
+                ),
                 failure.errors()!!.errorMessages.map { it.message },
             )
             withContext(Dispatchers.EDT) { fixture.configureByText("bad-macro-names.asm", source) }
@@ -834,7 +837,7 @@ class MipsMacroInspectionPlatformTest {
                         source.replace("OPEN # missing name", "OPEN first\n.end_macro")
                             .replace("BAD_NAME 7", "BAD_NAME second")
                             .replace(".macro BAD_NAME\n", ".macro BAD_NAME\n.end_macro\n")
-                            .replace(".macro \$t0", ".macro third").replace("\nWHOLE\n", "\nWHOLE\n.end_macro\n"),
+                            .replace($$".macro $t0", ".macro third").replace("\nWHOLE\n", "\nWHOLE\n.end_macro\n"),
                     )
                 }
                 assertTrue(errors().isEmpty())
@@ -938,10 +941,10 @@ class MipsMacroInspectionPlatformTest {
 
     @Test
     fun `invalid expanded formals point to their written tokens and refresh after edits`() = timeoutRunBlocking<Unit> {
-        val source = """
+        val source = $$"""
             .eqv FORMS %kept, 7, 8
             .macro emit (FORMS)
-                li ${'$'}t0, %kept
+                li $t0, %kept
             .end_macro
             .macro literal (%first, 9)
                 nop
@@ -975,7 +978,7 @@ class MipsMacroInspectionPlatformTest {
 
     @Test
     fun `a lexical error on a generated header gets one diagnostic`() = timeoutRunBlocking<Unit> {
-        val source = ".eqv OPEN .macro\n.eqv FORM %value\nOPEN emit (FORM, @)\nli \$t0, %value\n.end_macro\n"
+        val source = $$".eqv OPEN .macro\n.eqv FORM %value\nOPEN emit (FORM, @)\nli $t0, %value\n.end_macro\n"
         withContext(Dispatchers.EDT) { fixture.configureByText("bad-generated-formal.asm", source) }
         IndexingTestUtil.suspendUntilIndexesAreReady(projectFixture.get())
         withContext(Dispatchers.EDT) {
@@ -1024,7 +1027,9 @@ class MipsMacroInspectionPlatformTest {
         val (entry, body) = withContext(Dispatchers.EDT) {
             fixture.enableInspections(MipsMacroParameterInspection::class.java)
             fixture.addFileToProject("macro-start.s", ".macro scoped (%used)\n")
-            val body = fixture.addFileToProject("macro-body.s", "addiu ${'$'}t0, ${'$'}zero, %used\naddiu ${'$'}t1, ${'$'}zero, %absent\n")
+            val body = fixture.addFileToProject("macro-body.s",
+              $$"addiu $t0, $zero, %used\naddiu $t1, $zero, %absent\n"
+            )
             val entry = fixture.addFileToProject("entry.asm", """
                 .text
                 .include "macro-start.s"

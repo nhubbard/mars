@@ -262,16 +262,16 @@ class MarsDebugPlatformTest {
         val manager = debugger.breakpointManager
         val address = 0x10010000
         val (source, point) = withContext(Dispatchers.EDT) {
-            val file = fixture.addFileToProject("watchpoints.asm", """
+            val file = fixture.addFileToProject("watchpoints.asm", $$"""
                 .data
                 cell: .word 7
                 .text
-                la ${'$'}t0, cell
-                lbu ${'$'}t1, 0(${'$'}t0)
-                lw ${'$'}t1, 0(${'$'}t0)
-                li ${'$'}t2, 1
-                sb ${'$'}t2, 3(${'$'}t0)
-                sh ${'$'}t2, 0(${'$'}t0)
+                la $t0, cell
+                lbu $t1, 0($t0)
+                lw $t1, 0($t0)
+                li $t2, 1
+                sb $t2, 3($t0)
+                sh $t2, 0($t0)
                 nop
             """.trimIndent()).virtualFile
             addBreakpoint(file, 3)
@@ -318,7 +318,7 @@ class MarsDebugPlatformTest {
             val kernel = fixture.addFileToProject("exception/kernel/handler.s", ".ktext 0x80000180\nnop\n").virtualFile
             val document = requireNotNull(FileDocumentManager.getInstance().getDocument(kernel))
             WriteAction.run<RuntimeException> {
-                document.setText(".ktext 0x80000180\nli \$t0, 42\nli \$v0, 10\nsyscall\n")
+                document.setText($$".ktext 0x80000180\nli $t0, 42\nli $v0, 10\nsyscall\n")
             }
             project.getService(MarsAssemblySettings::class.java).changeExceptionHandler(kernel.path)
             addBreakpoint(kernel, 2)
@@ -328,7 +328,7 @@ class MarsDebugPlatformTest {
             debug.assertPausedAt(kernel, 2)
             withContext(Dispatchers.EDT) {
                 val frame = requireNotNull(debug.session.currentStackFrame)
-                assertEquals("0x0000002a", evaluate(debug.session, frame, "\$t0"))
+                assertEquals("0x0000002a", evaluate(debug.session, frame, $$"$t0"))
                 debug.session.resume()
             }
             assertEquals(0, debug.exit.await())
@@ -339,20 +339,20 @@ class MarsDebugPlatformTest {
     @ValueSource(booleans = [false, true])
     fun `Debug stops in another assembly source and resolves its own data symbols`(orderedProject: Boolean) = timeoutRunBlocking<Unit> {
         val (main, sibling) = withContext(Dispatchers.EDT) {
-            val main = fixture.addFileToProject("directory/main.asm", """
+            val main = fixture.addFileToProject("directory/main.asm", $$"""
                 jal sibling
                 nop
-                li ${'$'}v0, 10
+                li $v0, 10
                 syscall
             """.trimIndent()).virtualFile
             val libraryPath = if (orderedProject) "library/library.s" else "directory/library.s"
-            val sibling = fixture.addFileToProject(libraryPath, """
+            val sibling = fixture.addFileToProject(libraryPath, $$"""
                 .data
                 siblingValue: .word 23
                 .text
                 .globl sibling
-                sibling: lw ${'$'}t0, siblingValue
-                jr ${'$'}ra
+                sibling: lw $t0, siblingValue
+                jr $ra
                 nop
             """.trimIndent()).virtualFile
             if (orderedProject) {
@@ -401,7 +401,7 @@ class MarsDebugPlatformTest {
             debug.assertPausedAt(macros, 1)
             withContext(Dispatchers.EDT) {
                 val registers = registerValues(debug.session, requireNotNull(debug.session.currentStackFrame))
-                assertEquals("10.1 (0x4121999a)", registers["\$f12"])
+                assertEquals("10.1 (0x4121999a)", registers[$$"$f12"])
                 debug.session.resume()
             }
             assertEquals(0, debug.exit.await())
@@ -418,7 +418,7 @@ class MarsDebugPlatformTest {
     fun `native debugger stops in an include before its syscall and steps and runs to the cursor`() = timeoutRunBlocking<Unit> {
         val (entry, include) = withContext(Dispatchers.EDT) {
             val main = fixture.addFileToProject("main.s", ".include \"print.s\"\nnop\nnop\n").virtualFile
-            val body = fixture.addFileToProject("print.s", "li \$a0, 42\nli \$v0, 1\nsyscall\nnop\n").virtualFile
+            val body = fixture.addFileToProject("print.s", $$"li $a0, 42\nli $v0, 1\nsyscall\nnop\n").virtualFile
             assertFalse(breakpointType.canPutAt(main, 0, project))
             assertTrue(breakpointType.canPutAt(body, 2, project))
             assertFalse(breakpointType.canPutAt(body, 12, project))
@@ -499,10 +499,10 @@ class MarsDebugPlatformTest {
     fun `one breakpoint in a macro body stops at each expansion`() = timeoutRunBlocking<Unit> {
         val (entry, definitions) = withContext(Dispatchers.EDT) {
             val main = fixture.addFileToProject("macros.s", ".include \"defs.s\"\nemit (42)\nemit (43)\n").virtualFile
-            val macros = fixture.addFileToProject("defs.s", """
+            val macros = fixture.addFileToProject("defs.s", $$"""
                 .macro emit (%value)
-                  li ${'$'}a0, %value
-                  li ${'$'}v0, 1
+                  li $a0, %value
+                  li $v0, 1
                   syscall
                 .end_macro
             """.trimIndent()).virtualFile
@@ -526,15 +526,15 @@ class MarsDebugPlatformTest {
     fun `a macro parameter supplied through an alias binds a native breakpoint when used as an instruction`() =
         timeoutRunBlocking<Unit> {
             val entry = withContext(Dispatchers.EDT) {
-                val source = fixture.addFileToProject("parameter-operation.asm", """
+                val source = fixture.addFileToProject("parameter-operation.asm", $$"""
                     .eqv HEAD %operation
                     .macro emit (%operation, %value)
-                      HEAD ${'$'}a0, %value
-                      li ${'$'}v0, 1
+                      HEAD $a0, %value
+                      li $v0, 1
                       syscall
                     .end_macro
                     emit(li, 42)
-                    li ${'$'}v0, 10
+                    li $v0, 10
                     syscall
                 """.trimIndent()).virtualFile
                 val outside = fixture.addFileToProject("no-macro.asm", ".eqv HEAD %operation\nHEAD\n").virtualFile
@@ -555,23 +555,23 @@ class MarsDebugPlatformTest {
     @Test
     fun `aliased instructions and macro calls bind native breakpoints to their machine code`() = timeoutRunBlocking<Unit> {
         val (entry, definitions) = withContext(Dispatchers.EDT) {
-            val definitions = fixture.addFileToProject("aliases.s", """
+            val definitions = fixture.addFileToProject("aliases.s", $$"""
                 .eqv DEFINE .eqv
                 DEFINE AREA .data
                 DEFINE WORDS .word
                 DEFINE VALUE 2
                 DEFINE ROW location:
                 DEFINE CODE .text
-                DEFINE SETUP li ${'$'}a0
+                DEFINE SETUP li $a0
                 DEFINE PREFIX before:
                 DEFINE CALL emit
                 .macro emit (%value)
-                  li ${'$'}a0, %value
-                  li ${'$'}v0, 1
+                  li $a0, %value
+                  li $v0, 1
                   syscall
                 .end_macro
             """.trimIndent() + "\n").virtualFile
-            val entry = fixture.addFileToProject("aliased-breakpoints.asm", """
+            val entry = fixture.addFileToProject("aliased-breakpoints.asm", $$"""
                 .include "aliases.s"
                 AREA
                 WORDS 7
@@ -579,7 +579,7 @@ class MarsDebugPlatformTest {
                 ROW
                 CODE
                 start: SETUP 42
-                li ${'$'}v0, 1
+                li $v0, 1
                 syscall
                 PREFIX CALL(43)
             """.trimIndent() + "\n").virtualFile
@@ -612,11 +612,11 @@ class MarsDebugPlatformTest {
     @Test
     fun `data continuations are not breakpoint sites while matching macros still bind`() = timeoutRunBlocking<Unit> {
         val (entry, instructionLine) = withContext(Dispatchers.EDT) {
-            val source = """
+            val source = $$"""
                 .macro emit (%value)
                   .text
-                  li ${'$'}a0, %value
-                  li ${'$'}v0, 1
+                  li $a0, %value
+                  li $v0, 1
                   syscall
                   .data
                 .end_macro
@@ -629,7 +629,7 @@ class MarsDebugPlatformTest {
                 emit: .word 0
                 CALL (42)
                 .text
-                li ${'$'}v0, 10
+                li $v0, 10
                 syscall
             """.trimIndent()
             val file = fixture.addFileToProject("data-breakpoints.mars", source).virtualFile
@@ -643,7 +643,7 @@ class MarsDebugPlatformTest {
             val incomplete = fixture.addFileToProject("incomplete.mars",
                 ".include \"missing.inc\"\n.data\n.word 0\nemit 7:2\n").virtualFile
             assertTrue(breakpointType.canPutAt(incomplete, 3, project))
-            file to line("li ${'$'}a0, %value")
+            file to line($$"li $a0, %value")
         }
         withDebug(entry) { debug ->
             debug.assertPausedAt(entry, instructionLine)
@@ -708,7 +708,7 @@ class MarsDebugPlatformTest {
     @ValueSource(booleans = [false, true])
     fun `suspension tolerates an instruction pointer without an assembled source line`(invalidAddress: Boolean) = timeoutRunBlocking<Unit> {
         val source = withContext(Dispatchers.EDT) {
-            val assembly = if (invalidAddress) "jr \$zero\n" else "nop\n"
+            val assembly = if (invalidAddress) $$"jr $zero\n" else "nop\n"
             fixture.addFileToProject("missing.s", assembly).virtualFile.also { addBreakpoint(it, 0) }
         }
         withDebug(source) { debug ->
@@ -788,10 +788,12 @@ class MarsDebugPlatformTest {
     @Test
     fun `source steps group pseudo instructions and distinguish consecutive macro expansions`() = timeoutRunBlocking<Unit> {
         val (entry, macros) = withContext(Dispatchers.EDT) {
-            val macro = fixture.addFileToProject("step-macros.s", ".macro load (%value)\nli \$t1, %value\n.end_macro\n").virtualFile
-            val file = fixture.addFileToProject("steps.asm", """
+            val macro = fixture.addFileToProject("step-macros.s",
+              $$".macro load (%value)\nli $t1, %value\n.end_macro\n"
+            ).virtualFile
+            val file = fixture.addFileToProject("steps.asm", $$"""
                 .include "step-macros.s"
-                li ${'$'}t0, 0x12345678
+                li $t0, 0x12345678
                 load(0x23456789)
                 load(0x3456789a)
                 nop
@@ -816,7 +818,9 @@ class MarsDebugPlatformTest {
             }
             debug.assertPausedAt(macros, 1)
             withContext(Dispatchers.EDT) {
-                assertEquals("0x12345678", evaluate(debug.session, requireNotNull(debug.session.currentStackFrame), "\$t0"))
+                assertEquals("0x12345678", evaluate(debug.session, requireNotNull(debug.session.currentStackFrame),
+                  $$"$t0"
+                ))
                 val (action, event) = toolbarAction(debug.session, "Step Instruction")
                 action.actionPerformed(event)
             }
@@ -827,12 +831,16 @@ class MarsDebugPlatformTest {
             }
             debug.assertPausedAt(macros, 1)
             withContext(Dispatchers.EDT) {
-                assertEquals("0x23456789", evaluate(debug.session, requireNotNull(debug.session.currentStackFrame), "\$t1"))
+                assertEquals("0x23456789", evaluate(debug.session, requireNotNull(debug.session.currentStackFrame),
+                  $$"$t1"
+                ))
                 debug.session.stepInto()
             }
             debug.assertPausedAt(entry, 4)
             withContext(Dispatchers.EDT) {
-                assertEquals("0x3456789a", evaluate(debug.session, requireNotNull(debug.session.currentStackFrame), "\$t1"))
+                assertEquals("0x3456789a", evaluate(debug.session, requireNotNull(debug.session.currentStackFrame),
+                  $$"$t1"
+                ))
                 debug.session.resume()
             }
             assertEquals(0, debug.exit.await())
@@ -842,7 +850,7 @@ class MarsDebugPlatformTest {
     @Test
     fun `source stepping visits a configured branch delay slot before the target`() = timeoutRunBlocking<Unit> {
         val file = withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("debug-delay.s", "b target\nli \$t0, 7\nli \$t0, 9\ntarget: nop\n")
+            fixture.addFileToProject("debug-delay.s", $$"b target\nli $t0, 7\nli $t0, 9\ntarget: nop\n")
                 .virtualFile.also { addBreakpoint(it, 0) }
         }
         withDebug(file, { delayedBranchingMode = ProjectOptionOverride.ENABLED }) { debug ->
@@ -858,7 +866,9 @@ class MarsDebugPlatformTest {
             debug.assertPausedAt(file, 3)
             assertEquals(listOf(branch), process.branchHistory.snapshot().recent)
             withContext(Dispatchers.EDT) {
-                assertEquals("0x00000007", evaluate(debug.session, requireNotNull(debug.session.currentStackFrame), "\$t0"))
+                assertEquals("0x00000007", evaluate(debug.session, requireNotNull(debug.session.currentStackFrame),
+                  $$"$t0"
+                ))
                 debug.session.resume()
             }
             assertEquals(0, debug.exit.await())
@@ -868,22 +878,22 @@ class MarsDebugPlatformTest {
     @Test
     fun `step over a recursive call stops after all matching returns`() = timeoutRunBlocking<Unit> {
         val file = withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("step-over-recursion.s", """
-                li ${'$'}a0, 2
+            fixture.addFileToProject("step-over-recursion.s", $$"""
+                li $a0, 2
                 jal descend
                 done: nop
-                li ${'$'}v0, 10
+                li $v0, 10
                 syscall
                 descend:
-                beq ${'$'}a0, ${'$'}zero, leaf
-                addiu ${'$'}sp, ${'$'}sp, -4
-                sw ${'$'}ra, 0(${'$'}sp)
-                addiu ${'$'}a0, ${'$'}a0, -1
+                beq $a0, $zero, leaf
+                addiu $sp, $sp, -4
+                sw $ra, 0($sp)
+                addiu $a0, $a0, -1
                 jal descend
-                return_again: lw ${'$'}ra, 0(${'$'}sp)
-                addiu ${'$'}sp, ${'$'}sp, 4
-                leaf: addiu ${'$'}t0, ${'$'}t0, 1
-                jr ${'$'}ra
+                return_again: lw $ra, 0($sp)
+                addiu $sp, $sp, 4
+                leaf: addiu $t0, $t0, 1
+                jr $ra
             """.trimIndent()).virtualFile.also {
                 addBreakpoint(it, 1)
                 val logpoint = addBreakpoint(it, 10)
@@ -895,7 +905,9 @@ class MarsDebugPlatformTest {
             withContext(Dispatchers.EDT) { debug.session.stepOver(false) }
             debug.assertPausedAt(file, 2)
             withContext(Dispatchers.EDT) {
-                assertEquals("0x00000003", evaluate(debug.session, requireNotNull(debug.session.currentStackFrame), "\$t0"))
+                assertEquals("0x00000003", evaluate(debug.session, requireNotNull(debug.session.currentStackFrame),
+                  $$"$t0"
+                ))
                 debug.session.resume()
             }
             assertEquals(0, debug.exit.await())
@@ -906,17 +918,17 @@ class MarsDebugPlatformTest {
     @ValueSource(booleans = [false, true])
     fun `step over respects delay slots custom links and enabled breakpoints`(breakInsideCall: Boolean) = timeoutRunBlocking<Unit> {
         val file = withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("step-over-link.s", """
-                la ${'$'}t0, callee
-                jalr ${'$'}s0, ${'$'}t0
-                addiu ${'$'}t2, ${'$'}t2, 1
+            fixture.addFileToProject("step-over-link.s", $$"""
+                la $t0, callee
+                jalr $s0, $t0
+                addiu $t2, $t2, 1
                 done: nop
-                li ${'$'}v0, 10
+                li $v0, 10
                 syscall
                 callee: j tail
                 nop
-                tail: addiu ${'$'}t2, ${'$'}t2, 2
-                jr ${'$'}s0
+                tail: addiu $t2, $t2, 2
+                jr $s0
                 nop
             """.trimIndent()).virtualFile.also {
                 addBreakpoint(it, 1)
@@ -929,7 +941,7 @@ class MarsDebugPlatformTest {
             debug.assertPausedAt(file, if (breakInsideCall) 8 else 3)
             withContext(Dispatchers.EDT) {
                 val result = if (breakInsideCall) "0x00000001" else "0x00000003"
-                assertEquals(result, evaluate(debug.session, requireNotNull(debug.session.currentStackFrame), "\$t2"))
+                assertEquals(result, evaluate(debug.session, requireNotNull(debug.session.currentStackFrame), $$"$t2"))
                 if (breakInsideCall) debug.session.stepOut() else debug.session.resume()
             }
             if (breakInsideCall) {
@@ -944,22 +956,22 @@ class MarsDebugPlatformTest {
     @ValueSource(booleans = [false, true])
     fun `step out tracks repeated recursive return addresses and restores a caller on backstep`(wholeSource: Boolean) = timeoutRunBlocking<Unit> {
         val file = withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("step-out-recursion.s", """
-                li ${'$'}a0, 2
+            fixture.addFileToProject("step-out-recursion.s", $$"""
+                li $a0, 2
                 jal descend
-                done: li ${'$'}v0, 10
+                done: li $v0, 10
                 syscall
-                descend: beq ${'$'}a0, ${'$'}zero, leaf
-                addiu ${'$'}sp, ${'$'}sp, -4
-                sw ${'$'}ra, 0(${'$'}sp)
-                addiu ${'$'}a0, ${'$'}a0, -1
+                descend: beq $a0, $zero, leaf
+                addiu $sp, $sp, -4
+                sw $ra, 0($sp)
+                addiu $a0, $a0, -1
                 jal descend
-                return_again: lw ${'$'}ra, 0(${'$'}sp)
-                addiu ${'$'}sp, ${'$'}sp, 4
-                leaf: jr ${'$'}ra
+                return_again: lw $ra, 0($sp)
+                addiu $sp, $sp, 4
+                leaf: jr $ra
             """.trimIndent()).virtualFile.also {
                 val breakpoint = addBreakpoint(it, 4)
-                WriteAction.run<RuntimeException> { breakpoint.setCondition("\$a0 == 0") }
+                WriteAction.run<RuntimeException> { breakpoint.setCondition($$"$a0 == 0") }
             }
         }
         withDebug(file) { debug ->
@@ -994,17 +1006,17 @@ class MarsDebugPlatformTest {
     @Test
     fun `step out stops at a trap and can still return to the caller after eret`() = timeoutRunBlocking<Unit> {
         val file = withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("step-out-trap.s", """
+            fixture.addFileToProject("step-out-trap.s", $$"""
                 jal callee
-                done: li ${'$'}v0, 10
+                done: li $v0, 10
                 syscall
                 callee: nop
                 break
-                jr ${'$'}ra
+                jr $ra
                 .ktext 0x80000180
-                mfc0 ${'$'}k0, ${'$'}14
-                addiu ${'$'}k0, ${'$'}k0, 4
-                mtc0 ${'$'}k0, ${'$'}14
+                mfc0 $k0, $14
+                addiu $k0, $k0, 4
+                mtc0 $k0, $14
                 eret
             """.trimIndent()).virtualFile.also {
                 addBreakpoint(it, 3)
@@ -1023,7 +1035,7 @@ class MarsDebugPlatformTest {
                 assertEquals("Caller at step-out-trap.s:1", frameLabel(caller))
                 assertEquals(mapOf("Interrupted address" to "0x00400010"), callerFields(debug.session, interrupted, 1))
                 assertEquals(
-                    mapOf("Call address" to "0x00400000", "Return address" to "0x00400004", "Link register" to "\$31"),
+                    mapOf("Call address" to "0x00400000", "Return address" to "0x00400004", "Link register" to $$"$31"),
                     callerFields(debug.session, caller, 3),
                 )
             }
@@ -1042,16 +1054,16 @@ class MarsDebugPlatformTest {
     @Test
     fun `deep caller stacks deliver multiple batches and keep executable data addresses`() = timeoutRunBlocking<Unit> {
         val file = withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("deep-callers.s", """
+            fixture.addFileToProject("deep-callers.s", $$"""
                 .data
                 code: .word 0x0320f809, 0x2402000a, 0x0000000c
                 .text
-                la ${'$'}t9, descend
-                la ${'$'}t0, code
-                li ${'$'}a0, 65
-                jr ${'$'}t0
-                descend: beq ${'$'}a0, ${'$'}zero, leaf
-                addiu ${'$'}a0, ${'$'}a0, -1
+                la $t9, descend
+                la $t0, code
+                li $a0, 65
+                jr $t0
+                descend: beq $a0, $zero, leaf
+                addiu $a0, $a0, -1
                 jal descend
                 leaf: nop
             """.trimIndent()).virtualFile.also { addBreakpoint(it, 10) }
@@ -1104,7 +1116,7 @@ class MarsDebugPlatformTest {
     @Test
     fun `step over groups a pseudo instruction and follows a jump without a call`() = timeoutRunBlocking<Unit> {
         val file = withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("step-over-pseudo.s", "li \$t0, 0x12345678\nj end\nnop\nend: nop\n")
+            fixture.addFileToProject("step-over-pseudo.s", $$"li $t0, 0x12345678\nj end\nnop\nend: nop\n")
                 .virtualFile.also { addBreakpoint(it, 0) }
         }
         withDebug(file) { debug ->
@@ -1112,7 +1124,9 @@ class MarsDebugPlatformTest {
             withContext(Dispatchers.EDT) { debug.session.stepOver(false) }
             debug.assertPausedAt(file, 1)
             withContext(Dispatchers.EDT) {
-                assertEquals("0x12345678", evaluate(debug.session, requireNotNull(debug.session.currentStackFrame), "\$t0"))
+                assertEquals("0x12345678", evaluate(debug.session, requireNotNull(debug.session.currentStackFrame),
+                  $$"$t0"
+                ))
                 debug.session.stepOver(false)
             }
             debug.assertPausedAt(file, 3)
@@ -1126,10 +1140,10 @@ class MarsDebugPlatformTest {
     fun `debugging inherits project self modifying code and steps the rewritten instruction without stale source`() = timeoutRunBlocking<Unit> {
         val file = withContext(Dispatchers.EDT) {
             project.service<MarsAssemblySettings>().changeSelfModifyingCode(true)
-            fixture.addFileToProject("debug-patch.s", """
-                la ${'$'}t0, patch
-                li ${'$'}t1, 0x240a002a
-                sw ${'$'}t1, 0(${'$'}t0)
+            fixture.addFileToProject("debug-patch.s", $$"""
+                la $t0, patch
+                li $t1, 0x240a002a
+                sw $t1, 0($t0)
                 patch: nop
                 after_patch: nop
             """.trimIndent()).virtualFile.also { addBreakpoint(it, 2) }
@@ -1141,19 +1155,21 @@ class MarsDebugPlatformTest {
             withContext(Dispatchers.EDT) {
                 val frame = requireNotNull(debug.session.currentStackFrame)
                 assertEquals("0x240a002a", evaluate(debug.session, frame, "word(pc)"))
-                assertEquals("0x00000000", evaluate(debug.session, frame, "\$t2"))
+                assertEquals("0x00000000", evaluate(debug.session, frame, $$"$t2"))
                 debug.session.stepOver(false)
             }
             debug.assertPausedAt(file, 4)
             withContext(Dispatchers.EDT) {
-                assertEquals("0x0000002a", evaluate(debug.session, requireNotNull(debug.session.currentStackFrame), "\$t2"))
+                assertEquals("0x0000002a", evaluate(debug.session, requireNotNull(debug.session.currentStackFrame),
+                  $$"$t2"
+                ))
                 val (action, event) = toolbarAction(debug.session, "Backstep Source Statement")
                 action.actionPerformed(event)
             }
             assertNull(debug.nextPosition())
             withContext(Dispatchers.EDT) {
                 val frame = requireNotNull(debug.session.currentStackFrame)
-                assertEquals("0x00000000", evaluate(debug.session, frame, "\$t2"))
+                assertEquals("0x00000000", evaluate(debug.session, frame, $$"$t2"))
                 assertEquals("0x240a002a", evaluate(debug.session, frame, "word(pc)"))
                 val (action, event) = toolbarAction(debug.session, "Backstep Source Statement")
                 action.actionPerformed(event)
@@ -1174,7 +1190,7 @@ class MarsDebugPlatformTest {
         val secondLine = 1
         val afterLine = if (macro) 3 else 1
         val (entry, include) = withContext(Dispatchers.EDT) {
-            val instruction = "li \$t0, 0x12345678\n"
+            val instruction = $$"li $t0, 0x12345678\n"
             val bodyText = if (macro) ".macro load\n${instruction}.end_macro\n" else instruction.repeat(2)
             val calls = if (macro) "load()\nload()\n" else ""
             val entryText = ".include \"undo-body.s\"\n${calls}after: nop\n"
@@ -1213,7 +1229,7 @@ class MarsDebugPlatformTest {
                 withContext(Dispatchers.EDT) {
                     val frame = requireNotNull(debug.session.currentStackFrame)
                     assertEquals(pc, evaluate(debug.session, frame, "pc"))
-                    assertEquals(register, evaluate(debug.session, frame, "\$t0"))
+                    assertEquals(register, evaluate(debug.session, frame, $$"$t0"))
                 }
             }
             withContext(Dispatchers.EDT) {
@@ -1266,15 +1282,15 @@ class MarsDebugPlatformTest {
     @Test
     fun `native Variables tree renders coherent CPU and coprocessor values from each suspension`() = timeoutRunBlocking<Unit> {
         val source = withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("registers.s", """
-                ${'$'}入口: addiu ${'$'}0x8, ${'$'}zero, -2
-                addiu ${'$'}t1, ${'$'}zero, 3
-                mult ${'$'}t0, ${'$'}t1
-                lui ${'$'}t2, 0x3ff8
-                mtc1 ${'$'}t2, ${'$'}f1
-                c.eq.s ${'$'}f0, ${'$'}f0
-                addiu ${'$'}t3, ${'$'}zero, 0x1234
-                mtc0 ${'$'}t3, ${'$'}14
+            fixture.addFileToProject("registers.s", $$"""
+                $入口: addiu $0x8, $zero, -2
+                addiu $t1, $zero, 3
+                mult $t0, $t1
+                lui $t2, 0x3ff8
+                mtc1 $t2, $f1
+                c.eq.s $f0, $f0
+                addiu $t3, $zero, 0x1234
+                mtc0 $t3, $14
                 stop: nop
                 .globl stop
             """.trimIndent()).virtualFile.also {
@@ -1296,31 +1312,31 @@ class MarsDebugPlatformTest {
                 val current = registerValues(debug.session, second)
                 assertEquals("0x00400000", initial["pc"])
                 assertEquals("0x00400020", current["pc"])
-                assertEquals("0x00000000", initial["\$t0"])
-                assertEquals("0xfffffffe", current["\$t0"])
+                assertEquals("0x00000000", initial[$$"$t0"])
+                assertEquals("0xfffffffe", current[$$"$t0"])
                 assertEquals("0xffffffff", current["hi"])
                 assertEquals("0xfffffffa", current["lo"])
-                assertEquals("0x00000000", initial["\$14 (epc)"])
-                assertEquals("0x00001234", current["\$14 (epc)"])
+                assertEquals("0x00000000", initial[$$"$14 (epc)"])
+                assertEquals("0x00001234", current[$$"$14 (epc)"])
                 assertEquals("0x00000000", initial["FCC"])
                 assertEquals("0x00000001", current["FCC"])
-                assertEquals("1.9375 (0x3ff80000)", current["\$f1"])
-                assertEquals("1.5 (0x3ff8000000000000)", current["\$f0/\$f1"])
+                assertEquals("1.9375 (0x3ff80000)", current[$$"$f1"])
+                assertEquals("1.5 (0x3ff8000000000000)", current[$$"$f0/$f1"])
                 assertFalse(requireNotNull(second.evaluator).isCodeFragmentEvaluationSupported)
-                assertEquals("0x00000000", evaluate(debug.session, first, "\$0x8"))
+                assertEquals("0x00000000", evaluate(debug.session, first, $$"$0x8"))
                 val expressions = mapOf(
-                    "\$t0" to "0xfffffffe",
-                    "\$8" to "0xfffffffe",
-                    "\$0x8" to "0xfffffffe",
-                    "\$010" to "0xfffffffe",
-                    "\$٨" to "0xfffffffe",
+                    $$"$t0" to "0xfffffffe",
+                    $$"$8" to "0xfffffffe",
+                    $$"$0x8" to "0xfffffffe",
+                    $$"$010" to "0xfffffffe",
+                    $$"$٨" to "0xfffffffe",
                     "pc" to "0x00400020",
                     "hi" to "0xffffffff",
                     "lo" to "0xfffffffa",
-                    "cp0.\$14" to "0x00001234",
+                    $$"cp0.$14" to "0x00001234",
                     "FCC" to "0x00000001",
-                    "\$f1" to "1.9375 (0x3ff80000)",
-                    "\$入口" to "0x00400000",
+                    $$"$f1" to "1.9375 (0x3ff80000)",
+                    $$"$入口" to "0x00400000",
                     "stop" to "0x00400020",
                     " 'A' " to "0x00000041",
                     "(+0x10 - (2 + 3))" to "0x0000000b",
@@ -1330,25 +1346,25 @@ class MarsDebugPlatformTest {
                     "0x1.8p-2" to "0.375",
                     "0X1.8P+2" to "6.0",
                     "1e-2 + 1" to "1.01",
-                    "(\$t1 + 0.5) - 1" to "2.5",
-                    "\$f1 + 1" to "2.9375",
+                    $$"($t1 + 0.5) - 1" to "2.5",
+                    $$"$f1 + 1" to "2.9375",
                     "-1.5" to "-1.5",
-                    "\$t0==-2" to "0x00000001",
-                    "\$t0==2" to "0x00000000",
-                    "\$t0 != 2" to "0x00000001",
-                    "\$t0 != -2" to "0x00000000",
-                    "\$t0<0" to "0x00000001",
-                    "\$t0< -2" to "0x00000000",
-                    "\$t0 <= -2" to "0x00000001",
-                    "\$t0 <= -3" to "0x00000000",
-                    "\$t0 > -3" to "0x00000001",
-                    "\$t0 > 0" to "0x00000000",
-                    "\$t0 >= -2" to "0x00000001",
-                    "\$t0 >= 0" to "0x00000000",
+                    $$"$t0==-2" to "0x00000001",
+                    $$"$t0==2" to "0x00000000",
+                    $$"$t0 != 2" to "0x00000001",
+                    $$"$t0 != -2" to "0x00000000",
+                    $$"$t0<0" to "0x00000001",
+                    $$"$t0< -2" to "0x00000000",
+                    $$"$t0 <= -2" to "0x00000001",
+                    $$"$t0 <= -3" to "0x00000000",
+                    $$"$t0 > -3" to "0x00000001",
+                    $$"$t0 > 0" to "0x00000000",
+                    $$"$t0 >= -2" to "0x00000001",
+                    $$"$t0 >= 0" to "0x00000000",
                     "1 == 2 < 3 + 1" to "0x00000001",
                     "(1 + (2 < 3)) == 2" to "0x00000001",
                     "3 > 2 > 0" to "0x00000001",
-                    "\$f1 > 1" to "0x00000001",
+                    $$"$f1 > 1" to "0x00000001",
                     "NaN != NaN" to "0x00000001",
                     "NaN >= 0" to "0x00000000",
                     "-0.0 == 0.0" to "0x00000001",
@@ -1369,14 +1385,15 @@ class MarsDebugPlatformTest {
                     assertEquals(expected, evaluate(debug.session, second, expression), expression)
                 }
                 for (expression in listOf("", "1".repeat(1025), "1\n2", "1\r2", "1,2", "1+", "\"text\"",
-                    "\$t0(\$t1)", "1 + unknown", "unknown + 1", "-unknown", "syscall", "\$t0 = 3",
+                  $$"$t0($t1)", "1 + unknown", "unknown + 1", "-unknown", "syscall", $$"$t0 = 3",
                     "1 <", "1 ==", "!= 1", "1 ! 2", "1 < = 2", "1,==1", "(1,)", "1 # == 2", "1:2",
                     "1 |", "1 ^", "1 &", "1 >>", "~", "1 && 1", "1 <<= 2", "1 & 2.5", "2.5 | 1", "~2.5",
-                    "'ab'", "'\\400'", "'\\q'", "0xGG", "\$32", "\$f32")) {
+                    "'ab'", "'\\400'", "'\\q'", "0xGG", $$"$32", $$"$f32"
+                )) {
                     assertEquals("Enter a valid MIPS debugger expression using registers, labels, numbers, memory reads, arithmetic, comparisons, or bitwise operators.",
                         evaluate(debug.session, second, expression), expression)
                 }
-                assertEquals("0xfffffffe", evaluate(debug.session, second, "\$t0"))
+                assertEquals("0xfffffffe", evaluate(debug.session, second, $$"$t0"))
                 debug.session.resume()
             }
             assertEquals(0, debug.exit.await())
@@ -1386,16 +1403,16 @@ class MarsDebugPlatformTest {
     @Test
     fun `Quick Evaluate supplies native expression ranges and reads the right register bank`() = timeoutRunBlocking<Unit> {
         val (source, unrelated, unfinished) = withContext(Dispatchers.EDT) {
-            val source = fixture.addFileToProject("quick-evaluate.mars", """
+            val source = fixture.addFileToProject("quick-evaluate.mars", $$"""
                 .data
                 pc: .word 42
                 message: .asciiz "text"
                 .text
-                addiu ${'$'}0x8, ${'$'}zero, -2
-                mtc0 ${'$'}0x8, ${'$'}14
-                la ${'$'}t1, pc
-                ori ${'$'}t2, ${'$'}zero, 'A'
-                addiu ${'$'}t0, ${'$'}zero, 7
+                addiu $0x8, $zero, -2
+                mtc0 $0x8, $14
+                la $t1, pc
+                ori $t2, $zero, 'A'
+                addiu $t0, $zero, 7
                 stop: nop # ignored
                 .extern external, 4
                 .extern -4, 4
@@ -1408,7 +1425,9 @@ class MarsDebugPlatformTest {
             """.trimIndent()).virtualFile
             addBreakpoint(source, 9)
             Triple(source, fixture.addFileToProject("outside.txt", "42").virtualFile,
-                fixture.addFileToProject("unfinished.mars", "j absent\nmtc0 \$t0, \$2\nmtc0 \$t0, \$f1\n.word \$t0\n.word -(1)").virtualFile)
+                fixture.addFileToProject("unfinished.mars",
+                  $$"j absent\nmtc0 $t0, $2\nmtc0 $t0, $f1\n.word $t0\n.word -(1)"
+                ).virtualFile)
         }
         withDebug(source) { debug ->
             debug.assertPausedAt(source, 9)
@@ -1425,10 +1444,10 @@ class MarsDebugPlatformTest {
                     assertEquals(text, info.displayText ?: text)
                     assertEquals(expected, evaluate(debug.session, frame, info.expressionText ?: text))
                 }
-                val hexRegister = document.text.indexOf("\$0x8")
+                val hexRegister = document.text.indexOf($$"$0x8")
                 assertHint(hexRegister, 4, "0x00000007")
-                assertHint(document.text.lastIndexOf("\$0x8"), 4, "0x00000007")
-                assertHint(document.text.indexOf("\$14"), 3, "0xfffffffe")
+                assertHint(document.text.lastIndexOf($$"$0x8"), 4, "0x00000007")
+                assertHint(document.text.indexOf($$"$14"), 3, "0xfffffffe")
                 val signed = document.text.indexOf("-2")
                 assertHint(signed, 2, "0xfffffffe")
                 assertHint(signed, 2, "0xfffffffe", signed + 1)
@@ -1457,10 +1476,12 @@ class MarsDebugPlatformTest {
                 val textDocument = requireNotNull(documents.getDocument(unrelated))
                 assertNull(evaluator.getExpressionInfoAtOffsetAsync(project, textDocument, 0, false).await())
                 val draft = requireNotNull(documents.getDocument(unfinished))
-                for (word in listOf("absent", "\$2", "\$f1", "-")) {
+                for (word in listOf("absent", $$"$2", $$"$f1", "-")) {
                     assertNull(evaluator.getExpressionInfoAtOffsetAsync(project, draft, draft.text.indexOf(word), false).await(), word)
                 }
-                val draftRegister = requireNotNull(evaluator.getExpressionInfoAtOffsetAsync(project, draft, draft.text.lastIndexOf("\$t0"), false).await())
+                val draftRegister = requireNotNull(evaluator.getExpressionInfoAtOffsetAsync(project, draft, draft.text.lastIndexOf(
+                  $$"$t0"
+                ), false).await())
                 assertEquals("0x00000007", evaluate(debug.session, frame, requireNotNull(draftRegister.expressionText)))
                 debug.session.resume()
             }
@@ -1471,35 +1492,35 @@ class MarsDebugPlatformTest {
     @Test
     fun `Quick Evaluate follows operands in the loaded macro expansion`() = timeoutRunBlocking<Unit> {
         val (source, library) = withContext(Dispatchers.EDT) {
-            val source = fixture.addFileToProject("expanded.mars", """
-                .eqv TARGET ${'$'}t0
+            val source = fixture.addFileToProject("expanded.mars", $$"""
+                .eqv TARGET $t0
                 .eqv LIMIT -7
-                .eqv ADDRESS 0(${'$'}sp)
+                .eqv ADDRESS 0($sp)
                 .eqv PTR pc
                 .eqv LP (
-                .eqv EPC ${'$'}14
+                .eqv EPC $14
                 .include "setup.inc"
                 .data
                 pc: .word 42
                 .text
-                addiu ${'$'}t0, ${'$'}zero, 17
-                addiu ${'$'}t1, ${'$'}zero, 23
+                addiu $t0, $zero, 17
+                addiu $t1, $zero, 23
                 set(TARGET, LIMIT)
-                set(${'$'}t1, 0x12345678)
-                la ${'$'}t2, PTR
-                mtc0 ${'$'}t0, EPC
-                lw ${'$'}t3, ADDRESS
-                lw ${'$'}t3, 0 LP ${'$'}sp)
-                forward(${'$'}t1)
-                mixed(${'$'}14)
+                set($t1, 0x12345678)
+                la $t2, PTR
+                mtc0 $t0, EPC
+                lw $t3, ADDRESS
+                lw $t3, 0 LP $sp)
+                forward($t1)
+                mixed($14)
                 nop
             """.trimIndent()).virtualFile
-            val library = fixture.addFileToProject("setup.inc", """
+            val library = fixture.addFileToProject("setup.inc", $$"""
                 .macro set (%reg, %value)
                 li %reg, %value
                 .end_macro
                 .macro repeat (%item)
-                addu %item, %item, ${'$'}zero
+                addu %item, %item, $zero
                 .end_macro
                 .macro forward (%passed)
                 repeat(%passed)
@@ -1561,11 +1582,11 @@ class MarsDebugPlatformTest {
             debug.assertPausedAt(library, 4)
             hint(library, "%item", "0x12345678")
             hint(library, "%passed", "0x12345678")
-            hint(source, "\$t1", "0x12345678")
+            hint(source, $$"$t1", "0x12345678")
             withContext(Dispatchers.EDT) { debug.session.resume() }
             debug.assertPausedAt(library, 10)
             hint(library, "%bank", "0xfffffff9")
-            hint(source, "\$14", null)
+            hint(source, $$"$14", null)
             withContext(Dispatchers.EDT) { debug.session.resume() }
             assertEquals(0, debug.exit.await())
         }
@@ -1574,29 +1595,29 @@ class MarsDebugPlatformTest {
     @Test
     fun `Quick Evaluate uses the assembled label binding in the editor source`() = timeoutRunBlocking<Unit> {
         val (main, sibling, include) = withContext(Dispatchers.EDT) {
-            val main = fixture.addFileToProject("bindings/main.mars", """
+            val main = fixture.addFileToProject("bindings/main.mars", $$"""
                 .data
                 localValue: .word 41
                 .include "shared.inc"
                 .eqv OFFSET localValue + 4
                 .text
-                la ${'$'}t1, localValue
-                la ${'$'}t2, OFFSET
-                la ${'$'}t3, shared
+                la $t1, localValue
+                la $t2, OFFSET
+                la $t3, shared
                 jal sibling
                 nop
-                li ${'$'}v0, 10
+                li $v0, 10
                 syscall
             """.trimIndent()).virtualFile
-            val sibling = fixture.addFileToProject("bindings/sibling.s", """
+            val sibling = fixture.addFileToProject("bindings/sibling.s", $$"""
                 .data
                 localValue: .word 23
                 .include "shared.inc"
                 .text
                 .globl sibling
-                sibling: lw ${'$'}t0, localValue
-                la ${'$'}t3, shared
-                jr ${'$'}ra
+                sibling: lw $t0, localValue
+                la $t3, shared
+                jr $ra
                 nop
             """.trimIndent()).virtualFile
             val include = fixture.addFileToProject("bindings/shared.inc", "shared: .word 7\n.word shared").virtualFile
@@ -1672,10 +1693,10 @@ class MarsDebugPlatformTest {
     @Test
     fun `keyboard and display attach before the first debug instruction and rewind with the session`() = timeoutRunBlocking<Unit> {
         val source = withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("terminal-debug.asm", """
-                lui ${'$'}t0, 0xffff
-                li ${'$'}t1, 65
-                sb ${'$'}t1, 12(${'$'}t0)
+            fixture.addFileToProject("terminal-debug.asm", $$"""
+                lui $t0, 0xffff
+                li $t1, 65
+                sb $t1, 12($t0)
                 nop
                 nop
             """.trimIndent()).virtualFile.also { addBreakpoint(it, 2) }
@@ -1717,16 +1738,16 @@ class MarsDebugPlatformTest {
     @Test
     fun `MarsBot position and pen trail rewind through native Debug`() = timeoutRunBlocking<Unit> {
         val source = withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("mars-bot-debug.asm", """
-                lui ${'$'}t0, 0xffff
-                ori ${'$'}t0, ${'$'}t0, 0x8000
-                li ${'$'}t1, 90
-                sw ${'$'}t1, 0x10(${'$'}t0)
-                li ${'$'}t1, 1
-                sw ${'$'}t1, 0x20(${'$'}t0)
-                sw ${'$'}t1, 0x50(${'$'}t0)
+            fixture.addFileToProject("mars-bot-debug.asm", $$"""
+                lui $t0, 0xffff
+                ori $t0, $t0, 0x8000
+                li $t1, 90
+                sw $t1, 0x10($t0)
+                li $t1, 1
+                sw $t1, 0x20($t0)
+                sw $t1, 0x50($t0)
                 nop
-                sw ${'$'}zero, 0x50(${'$'}t0)
+                sw $zero, 0x50($t0)
             """.trimIndent()).virtualFile.also { addBreakpoint(it, 6) }
         }
         withDebug(source, { connectMarsBot = true }) { debug ->
@@ -1763,14 +1784,14 @@ class MarsDebugPlatformTest {
     @Test
     fun `Scavenger Hunt reset and memory rewind together through Debug`() = timeoutRunBlocking<Unit> {
         val source = withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("hunt-debug.asm", """
-                lui ${'$'}t0, 0xffff
-                ori ${'$'}t0, ${'$'}t0, 0xe000
-                li ${'$'}t1, 1
-                sw ${'$'}t1, 8(${'$'}t0)
-                sw ${'$'}t1, 0(${'$'}t0)
-                sw ${'$'}zero, 4(${'$'}t0)
-                sb ${'$'}t1, 0(${'$'}t0)
+            fixture.addFileToProject("hunt-debug.asm", $$"""
+                lui $t0, 0xffff
+                ori $t0, $t0, 0xe000
+                li $t1, 1
+                sw $t1, 8($t0)
+                sw $t1, 0($t0)
+                sw $zero, 4($t0)
+                sb $t1, 0($t0)
                 nop
                 nop
             """.trimIndent()).virtualFile.also { addBreakpoint(it, 6) }
@@ -1816,11 +1837,11 @@ class MarsDebugPlatformTest {
     @Test
     fun `Digital Lab keypad input reaches the machine and backstep restores the previous latch`() = timeoutRunBlocking<Unit> {
         val source = withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("digital-lab-debug.asm", """
-                lui ${'$'}t0, 0xffff
-                li ${'$'}t1, 2
-                sb ${'$'}t1, 0x12(${'$'}t0)
-                lbu ${'$'}t2, 0x14(${'$'}t0)
+            fixture.addFileToProject("digital-lab-debug.asm", $$"""
+                lui $t0, 0xffff
+                li $t1, 2
+                sb $t1, 0x12($t0)
+                lbu $t2, 0x14($t0)
                 nop
             """.trimIndent()).virtualFile.also { addBreakpoint(it, 2) }
         }
@@ -1843,7 +1864,7 @@ class MarsDebugPlatformTest {
             debug.assertPausedAt(source, 4)
             withContext(Dispatchers.EDT) {
                 val frame = requireNotNull(debug.session.currentStackFrame)
-                assertEquals("0x00000042", evaluate(debug.session, frame, "\$t2"))
+                assertEquals("0x00000042", evaluate(debug.session, frame, $$"$t2"))
                 val (action, event) = backstepAction(debug.session)
                 action.actionPerformed(event)
             }
@@ -1873,14 +1894,14 @@ class MarsDebugPlatformTest {
     @Test
     fun `memory watches read the current suspension across a store and backstep`() = timeoutRunBlocking<Unit> {
         val source = withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("watch-memory.asm", """
+            fixture.addFileToProject("watch-memory.asm", $$"""
                 .data
                 buffer: .word 0x11223344
                 pointer: .word buffer
                 .text
-                la ${'$'}t0, buffer
-                li ${'$'}t1, 0x55667788
-                sw ${'$'}t1, 0(${'$'}t0)
+                la $t0, buffer
+                li $t1, 0x55667788
+                sw $t1, 0($t0)
                 nop
             """.trimIndent()).virtualFile.also { addBreakpoint(it, 6) }
         }
@@ -1897,7 +1918,7 @@ class MarsDebugPlatformTest {
                 val expected = mapOf(
                     "byte(buffer)" to "0x00000044",
                     "byte(buffer+3)" to "0x00000011",
-                    "half(\$t0+2)" to "0x00001122",
+                    $$"half($t0+2)" to "0x00001122",
                     "word(buffer)" to "0x11223344",
                     "word(word(pointer))" to "0x11223344",
                     "word(pc)" to "0xad090000",
@@ -2030,12 +2051,12 @@ class MarsDebugPlatformTest {
     @Test
     fun `native Variables edits refresh the pause and reject stale register modifiers`() = timeoutRunBlocking<Unit> {
         val source = withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("edit-register.s", """
+            fixture.addFileToProject("edit-register.s", $$"""
                 .data
                 patch: .word 41
                 .text
-                li ${'$'}t0, 7
-                addiu ${'$'}t1, ${'$'}t0, 1
+                li $t0, 7
+                addiu $t1, $t0, 1
                 nop
             """.trimIndent()).virtualFile.also { addBreakpoint(it, 4) }
         }
@@ -2046,9 +2067,9 @@ class MarsDebugPlatformTest {
                 val edits = inspectRegisterNodes(debug.session, frame) { nodes ->
                     nodes.associate { requireNotNull(it.name) to it.valueContainer.modifier }
                 }
-                assertNull(edits.getValue("\$zero"))
+                assertNull(edits.getValue($$"$zero"))
                 assertNull(edits.getValue("pc"))
-                val t0 = requireNotNull(edits.getValue("\$t0"))
+                val t0 = requireNotNull(edits.getValue($$"$t0"))
                 assertEquals("0x00000007", t0.initialValueEditorText)
                 assertTrue(backstepAction(debug.session).second.presentation.isEnabled)
                 assertNull(editValue(t0, "7"))
@@ -2063,16 +2084,16 @@ class MarsDebugPlatformTest {
                 assertNull(editValue(t0, "word(patch) + 1"))
                 assertFalse(backstepAction(debug.session).second.presentation.isEnabled)
                 assertSame(frame, debug.session.currentStackFrame)
-                assertEquals("0x0000002a", evaluate(debug.session, frame, "\$t0"))
+                assertEquals("0x0000002a", evaluate(debug.session, frame, $$"$t0"))
                 assertNull(editValue(requireNotNull(edits.getValue("hi")), "-1"))
                 assertNull(editValue(requireNotNull(edits.getValue("lo")), "0x80000000"))
-                assertNull(editValue(requireNotNull(edits.getValue("\$sp")), "\$sp - 16"))
+                assertNull(editValue(requireNotNull(edits.getValue($$"$sp")), $$"$sp - 16"))
                 val values = registerValues(debug.session, frame)
-                assertEquals("0x0000002a", values["\$t0"])
+                assertEquals("0x0000002a", values[$$"$t0"])
                 assertEquals("0xffffffff", values["hi"])
                 assertEquals("0x80000000", values["lo"])
                 val context = assertInstanceOf(MarsSuspendContext::class.java, debug.session.suspendContext)
-                assertEquals(values["\$sp"], "0x" + context.memoryRegions.getValue(MemoryRegion.STACK).toString(16))
+                assertEquals(values[$$"$sp"], "0x" + context.memoryRegions.getValue(MemoryRegion.STACK).toString(16))
                 debug.session.stepInto()
                 assertEquals("This debugger frame no longer accepts register edits.", editValue(t0, "99"))
                 t0
@@ -2080,7 +2101,9 @@ class MarsDebugPlatformTest {
             debug.assertPausedAt(source, 5)
             withContext(Dispatchers.EDT) {
                 assertEquals("This debugger frame no longer accepts register edits.", editValue(modifier, "99"))
-                assertEquals("0x0000002b", evaluate(debug.session, requireNotNull(debug.session.currentStackFrame), "\$t1"))
+                assertEquals("0x0000002b", evaluate(debug.session, requireNotNull(debug.session.currentStackFrame),
+                  $$"$t1"
+                ))
                 assertTrue(backstepAction(debug.session).second.presentation.isEnabled)
                 debug.session.resume()
             }
@@ -2091,9 +2114,9 @@ class MarsDebugPlatformTest {
     @Test
     fun `native Coprocessor 0 edits update watches and execution without writing CPU registers`() = timeoutRunBlocking<Unit> {
         val source = withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("edit-cp0.s", """
-                addiu ${'$'}t0, ${'$'}zero, 7
-                mfc0 ${'$'}t1, ${'$'}14
+            fixture.addFileToProject("edit-cp0.s", $$"""
+                addiu $t0, $zero, 7
+                mfc0 $t1, $14
                 nop
             """.trimIndent()).virtualFile.also { addBreakpoint(it, 1) }
         }
@@ -2104,29 +2127,31 @@ class MarsDebugPlatformTest {
                 val edits = inspectRegisterNodes(debug.session, frame) { nodes ->
                     nodes.associate { requireNotNull(it.name) to it.valueContainer.modifier }
                 }
-                val epc = requireNotNull(edits.getValue("\$14 (epc)"))
+                val epc = requireNotNull(edits.getValue($$"$14 (epc)"))
                 assertEquals("0x00000000", epc.initialValueEditorText)
-                assertNull(editValue(epc, "cp0.\$14"))
+                assertNull(editValue(epc, $$"cp0.$14"))
                 assertTrue(backstepAction(debug.session).second.presentation.isEnabled)
-                assertNull(editValue(epc, "\$t0 + 35"))
+                assertNull(editValue(epc, $$"$t0 + 35"))
                 assertFalse(backstepAction(debug.session).second.presentation.isEnabled)
-                assertNull(editValue(requireNotNull(edits.getValue("\$8 (vaddr)")), "0x80000000"))
-                assertNull(editValue(requireNotNull(edits.getValue("\$12 (status)")), "0xff10"))
-                assertNull(editValue(requireNotNull(edits.getValue("\$13 (cause)")), "0x10"))
-                assertEquals("0x0000002a", evaluate(debug.session, frame, "cp0.\$14"))
-                assertEquals("0x80000000", evaluate(debug.session, frame, "cp0.\$8"))
+                assertNull(editValue(requireNotNull(edits.getValue($$"$8 (vaddr)")), "0x80000000"))
+                assertNull(editValue(requireNotNull(edits.getValue($$"$12 (status)")), "0xff10"))
+                assertNull(editValue(requireNotNull(edits.getValue($$"$13 (cause)")), "0x10"))
+                assertEquals("0x0000002a", evaluate(debug.session, frame, $$"cp0.$14"))
+                assertEquals("0x80000000", evaluate(debug.session, frame, $$"cp0.$8"))
                 val values = registerValues(debug.session, frame)
-                assertEquals("0x0000002a", values["\$14 (epc)"])
-                assertEquals("0x80000000", values["\$8 (vaddr)"])
-                assertEquals("0x0000ff10", values["\$12 (status)"])
-                assertEquals("0x00000010", values["\$13 (cause)"])
-                assertEquals("0x00000007", values["\$t0"])
-                assertEquals("0x00000000", values["\$t6"])
+                assertEquals("0x0000002a", values[$$"$14 (epc)"])
+                assertEquals("0x80000000", values[$$"$8 (vaddr)"])
+                assertEquals("0x0000ff10", values[$$"$12 (status)"])
+                assertEquals("0x00000010", values[$$"$13 (cause)"])
+                assertEquals("0x00000007", values[$$"$t0"])
+                assertEquals("0x00000000", values[$$"$t6"])
                 debug.session.stepInto()
             }
             debug.assertPausedAt(source, 2)
             withContext(Dispatchers.EDT) {
-                assertEquals("0x0000002a", evaluate(debug.session, requireNotNull(debug.session.currentStackFrame), "\$t1"))
+                assertEquals("0x0000002a", evaluate(debug.session, requireNotNull(debug.session.currentStackFrame),
+                  $$"$t1"
+                ))
                 debug.session.resume()
             }
             assertEquals(0, debug.exit.await())
@@ -2136,9 +2161,9 @@ class MarsDebugPlatformTest {
     @Test
     fun `native FPU edits keep single registers pairs and condition flags coherent`() = timeoutRunBlocking<Unit> {
         val source = withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("edit-cp1.s", """
-                addiu ${'$'}t0, ${'$'}zero, 7
-                mfc1 ${'$'}t1, ${'$'}f31
+            fixture.addFileToProject("edit-cp1.s", $$"""
+                addiu $t0, $zero, 7
+                mfc1 $t1, $f31
                 nop
             """.trimIndent()).virtualFile.also { addBreakpoint(it, 1) }
         }
@@ -2149,10 +2174,10 @@ class MarsDebugPlatformTest {
                 val edits = inspectRegisterNodes(debug.session, frame) { nodes ->
                     nodes.associate { requireNotNull(it.name) to it.valueContainer.modifier }
                 }
-                val f0 = requireNotNull(edits.getValue("\$f0"))
-                val f1 = requireNotNull(edits.getValue("\$f1"))
-                val f2 = requireNotNull(edits.getValue("\$f2"))
-                val pair = requireNotNull(edits.getValue("\$f30/\$f31"))
+                val f0 = requireNotNull(edits.getValue($$"$f0"))
+                val f1 = requireNotNull(edits.getValue($$"$f1"))
+                val f2 = requireNotNull(edits.getValue($$"$f2"))
+                val pair = requireNotNull(edits.getValue($$"$f30/$f31"))
                 val flags = requireNotNull(edits.getValue("FCC"))
                 assertEquals("0x00000000", f0.initialValueEditorText)
                 assertEquals("0x0000000000000000", pair.initialValueEditorText)
@@ -2166,32 +2191,34 @@ class MarsDebugPlatformTest {
 
                 assertNull(editValue(f0, "0x7fc00123"))
                 assertFalse(backstepAction(debug.session).second.presentation.isEnabled)
-                assertNull(editValue(f1, "\$f0"))
-                assertEquals("NaN (0x7fc00123)", evaluate(debug.session, frame, "\$f1"))
+                assertNull(editValue(f1, $$"$f0"))
+                assertEquals("NaN (0x7fc00123)", evaluate(debug.session, frame, $$"$f1"))
                 assertNull(editValue(f0, "-0.0"))
-                assertNull(editValue(f2, "\$t0"))
-                assertEquals("7.0 (0x40e00000)", evaluate(debug.session, frame, "\$f2"))
-                assertNull(editValue(f2, "\$t0 + 0.5"))
+                assertNull(editValue(f2, $$"$t0"))
+                assertEquals("7.0 (0x40e00000)", evaluate(debug.session, frame, $$"$f2"))
+                assertNull(editValue(f2, $$"$t0 + 0.5"))
                 assertNull(editValue(pair, "0Xfff8000000000123"))
                 var values = registerValues(debug.session, frame)
-                assertEquals("-0.0 (0x80000000)", values["\$f0"])
-                assertEquals("7.5 (0x40f00000)", values["\$f2"])
-                assertEquals("NaN (0xfff8000000000123)", values["\$f30/\$f31"])
-                assertTrue(values.getValue("\$f30").endsWith("(0x00000123)"))
-                assertEquals("NaN (0xfff80000)", values["\$f31"])
+                assertEquals("-0.0 (0x80000000)", values[$$"$f0"])
+                assertEquals("7.5 (0x40f00000)", values[$$"$f2"])
+                assertEquals("NaN (0xfff8000000000123)", values[$$"$f30/$f31"])
+                assertTrue(values.getValue($$"$f30").endsWith("(0x00000123)"))
+                assertEquals("NaN (0xfff80000)", values[$$"$f31"])
                 assertNull(editValue(pair, "-2.5"))
-                assertEquals("-2.5 (0xc004000000000000)", registerValues(debug.session, frame)["\$f30/\$f31"])
-                assertNull(editValue(pair, "\$f2 + 0.25"))
+                assertEquals("-2.5 (0xc004000000000000)", registerValues(debug.session, frame)[$$"$f30/$f31"])
+                assertNull(editValue(pair, $$"$f2 + 0.25"))
                 assertNull(editValue(flags, "FCC | 0x81"))
                 values = registerValues(debug.session, frame)
-                assertEquals("7.75 (0x401f000000000000)", values["\$f30/\$f31"])
+                assertEquals("7.75 (0x401f000000000000)", values[$$"$f30/$f31"])
                 assertEquals("0x00000081", values["FCC"])
                 assertEquals("0x00000081", evaluate(debug.session, frame, "FCC"))
                 debug.session.stepInto()
             }
             debug.assertPausedAt(source, 2)
             withContext(Dispatchers.EDT) {
-                assertEquals("0x401f0000", evaluate(debug.session, requireNotNull(debug.session.currentStackFrame), "\$t1"))
+                assertEquals("0x401f0000", evaluate(debug.session, requireNotNull(debug.session.currentStackFrame),
+                  $$"$t1"
+                ))
                 debug.session.resume()
             }
             assertEquals(0, debug.exit.await())
@@ -2232,7 +2259,7 @@ class MarsDebugPlatformTest {
         val settings = project.service<MarsAssemblySettings>()
         val source = withContext(Dispatchers.EDT) {
             settings.changeBackstepLimit(2)
-            val text = "addiu \$t0, \$t0, 1\n".repeat(3) + "nop\n"
+            val text = $$"addiu $t0, $t0, 1\n".repeat(3) + "nop\n"
             fixture.addFileToProject("backstep-limit.s", text).virtualFile.also { addBreakpoint(it, 3) }
         }
         suspend fun verifyHistory(expectedLines: IntProgression, changeLimitWhilePaused: Boolean) {
@@ -2252,7 +2279,7 @@ class MarsDebugPlatformTest {
                 withContext(Dispatchers.EDT) {
                     assertFalse(backstepAction(debug.session).second.presentation.isEnabled)
                     val values = registerValues(debug.session, requireNotNull(debug.session.currentStackFrame))
-                    assertEquals(if (expectedLines.last == 1) "0x00000001" else "0x00000000", values["\$t0"])
+                    assertEquals(if (expectedLines.last == 1) "0x00000001" else "0x00000000", values[$$"$t0"])
                 }
             }
         }
@@ -2263,7 +2290,7 @@ class MarsDebugPlatformTest {
     @Test
     fun `native toolbar backstep restores the preceding instruction and refreshes Variables`() = timeoutRunBlocking<Unit> {
         val source = withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("undo.s", "li \$a0, 7\nli \$v0, 1\nsyscall\nnop\n").virtualFile.also {
+            fixture.addFileToProject("undo.s", $$"li $a0, 7\nli $v0, 1\nsyscall\nnop\n").virtualFile.also {
                 addBreakpoint(it, 0)
             }
         }
@@ -2298,8 +2325,8 @@ class MarsDebugPlatformTest {
                 action.update(event)
                 assertFalse(event.presentation.isEnabled)
                 val values = registerValues(debug.session, requireNotNull(debug.session.currentStackFrame))
-                assertEquals("0x00000000", values["\$a0"])
-                assertEquals("0x00000000", values["\$v0"])
+                assertEquals("0x00000000", values[$$"$a0"])
+                assertEquals("0x00000000", values[$$"$v0"])
                 debug.session.resume()
             }
             assertEquals(0, debug.exit.await())
@@ -2331,13 +2358,13 @@ class MarsDebugPlatformTest {
     @Test
     fun `Debug Memory edits the selected pause and rejects a dialog completed after resume`() = timeoutRunBlocking<Unit> {
         val source = withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("memory-edit.s", """
+            fixture.addFileToProject("memory-edit.s", $$"""
                 .data
                 payload: .word 7
                 .text
-                li ${'$'}t0, 35
-                lw ${'$'}a0, payload
-                li ${'$'}v0, 1
+                li $t0, 35
+                lw $a0, payload
+                li $v0, 1
                 syscall
             """.trimIndent()).virtualFile.also {
                 addBreakpoint(it, 4)
@@ -2397,7 +2424,7 @@ class MarsDebugPlatformTest {
                 assertStatus("address out of range")
                 withContext(Dispatchers.EDT) { assertTrue(backstepAction(debug.session).second.presentation.isEnabled) }
 
-                enter("268500992", "word(payload) + \$t0")
+                enter("268500992", $$"word(payload) + $t0")
                 edits.receive()
                 assertMemory(table, "0x10010000", "2a 00 00 00")
                 withContext(Dispatchers.EDT) {
@@ -2428,7 +2455,7 @@ class MarsDebugPlatformTest {
     @Test
     fun `editing executable memory refreshes disassembly and drops stale source for the paused instruction`() = timeoutRunBlocking<Unit> {
         val source = withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("edit-instruction.s", "li \$a0, 0\naddiu \$a0, \$a0, 2\nli \$v0, 1\nsyscall\n")
+            fixture.addFileToProject("edit-instruction.s", $$"li $a0, 0\naddiu $a0, $a0, 2\nli $v0, 1\nsyscall\n")
                 .virtualFile.also { addBreakpoint(it, 1) }
         }
         withDebug(source, configure = { selfModifyingCodeMode = ProjectOptionOverride.ENABLED }) { debug ->
@@ -2488,14 +2515,14 @@ class MarsDebugPlatformTest {
     @Test
     fun `Debug Memory reads the active suspension and refreshes after a store and backstep`() = timeoutRunBlocking<Unit> {
         val source = withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("memory.s", """
+            fixture.addFileToProject("memory.s", $$"""
                 .data
                 payload: .byte 65, 0, 127, 255
                 .text
-                addiu ${'$'}t1, ${'$'}zero, 66
-                la ${'$'}t0, payload
-                addiu ${'$'}sp, ${'$'}sp, -32
-                sb ${'$'}t1, 0(${'$'}t0)
+                addiu $t1, $zero, 66
+                la $t0, payload
+                addiu $sp, $sp, -32
+                sb $t1, 0($t0)
                 nop
             """.trimIndent()).virtualFile.also {
                 addBreakpoint(it, 3)
@@ -2627,19 +2654,19 @@ class MarsDebugPlatformTest {
     @Test
     fun `Debug Memory highlights the newest recorded write and restores the previous write on backstep`() = timeoutRunBlocking<Unit> {
         val source = withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("last-memory-write.asm", """
+            fixture.addFileToProject("last-memory-write.asm", $$"""
                 .data
                 buffer: .space 0x200
                 .text
-                la ${'$'}t0, buffer
-                li ${'$'}t1, 0x1234
-                sw ${'$'}t1, 0(${'$'}t0)
+                la $t0, buffer
+                li $t1, 0x1234
+                sw $t1, 0($t0)
                 first: nop
-                sh ${'$'}t1, 0x104(${'$'}t0)
+                sh $t1, 0x104($t0)
                 second: nop
-                sb ${'$'}t1, 0x105(${'$'}t0)
+                sb $t1, 0x105($t0)
                 third: nop
-                li ${'$'}v0, 10
+                li $v0, 10
                 syscall
             """.trimIndent()).virtualFile.also { file ->
                 for (line in listOf(5, 6, 8, 10)) addBreakpoint(file, line)
@@ -2754,7 +2781,7 @@ class MarsDebugPlatformTest {
                 assertWrite("Last write at 268501252 (2 bytes)", listOf("34", "12"), listOf("0x00001234"))
                 withContext(Dispatchers.EDT) {
                     inspectRegisterNodes(debug.session, requireNotNull(debug.session.currentStackFrame)) { nodes ->
-                        val modifier = requireNotNull(nodes.single { it.name == "\$t1" }.valueContainer.modifier)
+                        val modifier = requireNotNull(nodes.single { it.name == $$"$t1" }.valueContainer.modifier)
                         assertNull(editValue(modifier, "0x5678"))
                     }
                     debug.session.rebuildViews()
@@ -2783,7 +2810,7 @@ class MarsDebugPlatformTest {
     @Test
     fun `Debug terminates at the instruction budget across a breakpoint and backstep`() = timeoutRunBlocking<Unit> {
         val file = withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("limited.asm", "loop: addiu \$t0, \$t0, 1\nj loop\n")
+            fixture.addFileToProject("limited.asm", $$"loop: addiu $t0, $t0, 1\nj loop\n")
                 .virtualFile.also { addBreakpoint(it, 1) }
         }
         withDebug(file, { instructionLimit = 3 }) { debug ->
@@ -2805,7 +2832,9 @@ class MarsDebugPlatformTest {
     @Test
     fun `Debug stops at global main before executing any instruction from its prepared image`() = timeoutRunBlocking<Unit> {
         val file = withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("debug-main.asm", "nop\nli \$v0, 10\nsyscall\n.globl main\nmain: li \$t0, 42\nli \$v0, 10\nsyscall\n")
+            fixture.addFileToProject("debug-main.asm",
+              $$"nop\nli $v0, 10\nsyscall\n.globl main\nmain: li $t0, 42\nli $v0, 10\nsyscall\n"
+            )
                 .virtualFile.also {
                     addBreakpoint(it, 0)
                     addBreakpoint(it, 4)
@@ -2824,27 +2853,27 @@ class MarsDebugPlatformTest {
     @Test
     fun `Debug writes relative files in the configured working directory after resume`() = timeoutRunBlocking<Unit> {
         val (file, output) = withContext(Dispatchers.EDT) {
-            val source = fixture.addFileToProject("debug-working-dir.asm", """
+            val source = fixture.addFileToProject("debug-working-dir.asm", $$"""
                 .data
                 filename: .asciiz "created.txt"
                 payload: .ascii "debug"
                 .text
-                la ${'$'}a0, filename
-                li ${'$'}a1, 1
-                li ${'$'}v0, 13
+                la $a0, filename
+                li $a1, 1
+                li $v0, 13
                 syscall
-                move ${'$'}a0, ${'$'}v0
-                la ${'$'}a1, payload
-                li ${'$'}a2, 5
-                li ${'$'}v0, 15
+                move $a0, $v0
+                la $a1, payload
+                li $a2, 5
+                li $v0, 15
                 syscall
-                li ${'$'}v0, 10
+                li $v0, 10
                 syscall
             """.trimIndent()).virtualFile.also { addBreakpoint(it, 4) }
             val marker = fixture.addFileToProject("debug-io/marker.txt", "").virtualFile
             source to marker.toNioPath().resolveSibling("created.txt")
         }
-        withDebug(file, { workingDirectory = "\$PROJECT_DIR\$/debug-io" }) { debug ->
+        withDebug(file, { workingDirectory = $$"$PROJECT_DIR$/debug-io" }) { debug ->
             debug.assertPausedAt(file, 4)
             withContext(Dispatchers.EDT) { debug.session.resume() }
             assertEquals(0, debug.exit.await())
@@ -2856,7 +2885,7 @@ class MarsDebugPlatformTest {
     @Test
     fun `Debug exposes the launch speed and can change it while paused`() = timeoutRunBlocking<Unit> {
         val file = withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("debug-speed.asm", "nop\nli \$v0, 10\nsyscall\n")
+            fixture.addFileToProject("debug-speed.asm", $$"nop\nli $v0, 10\nsyscall\n")
                 .virtualFile.also { addBreakpoint(it, 0) }
         }
         withDebug(file, { runSpeed = 0.05f }) { debug ->
@@ -2887,11 +2916,11 @@ class MarsDebugPlatformTest {
             debug.assertPausedAt(file, 0)
             withContext(Dispatchers.EDT) {
                 val frame = requireNotNull(debug.session.currentStackFrame)
-                assertEquals("0x00000002", evaluate(debug.session, frame, "\$a0"))
-                assertEquals("0x00000002", evaluate(debug.session, frame, "word(\$sp)"))
-                assertEquals("0x00000000", evaluate(debug.session, frame, "word(\$a1 + 8)"))
-                assertEquals("0x00000061", evaluate(debug.session, frame, "byte(word(\$a1))"))
-                assertEquals("0x00000000", evaluate(debug.session, frame, "byte(word(\$a1 + 4))"))
+                assertEquals("0x00000002", evaluate(debug.session, frame, $$"$a0"))
+                assertEquals("0x00000002", evaluate(debug.session, frame, $$"word($sp)"))
+                assertEquals("0x00000000", evaluate(debug.session, frame, $$"word($a1 + 8)"))
+                assertEquals("0x00000061", evaluate(debug.session, frame, $$"byte(word($a1))"))
+                assertEquals("0x00000000", evaluate(debug.session, frame, $$"byte(word($a1 + 4))"))
                 debug.session.resume()
             }
             assertEquals(0, debug.exit.await())
@@ -2929,8 +2958,8 @@ class MarsDebugPlatformTest {
     @Test
     fun `assembling another opened file leaves the paused machine intact`() = timeoutRunBlocking<Unit> {
         val (entry, other) = withContext(Dispatchers.EDT) {
-            val entry = fixture.addFileToProject("paused.asm", "li \$t0, 42\nnop\n").virtualFile
-            val other = fixture.addFileToProject("other.asm", "li \$t0, 99\n") as MipsFile
+            val entry = fixture.addFileToProject("paused.asm", $$"li $t0, 42\nnop\n").virtualFile
+            val other = fixture.addFileToProject("other.asm", $$"li $t0, 99\n") as MipsFile
             addBreakpoint(entry, 1)
             entry to other
         }
@@ -2948,7 +2977,9 @@ class MarsDebugPlatformTest {
             }
             withContext(Dispatchers.EDT) {
                 assertSame(suspension, debug.session.suspendContext)
-                assertEquals("0x0000002a", evaluate(debug.session, requireNotNull(debug.session.currentStackFrame), "\$t0"))
+                assertEquals("0x0000002a", evaluate(debug.session, requireNotNull(debug.session.currentStackFrame),
+                  $$"$t0"
+                ))
                 debug.session.resume()
             }
             assertEquals(0, debug.exit.await())
@@ -3106,18 +3137,18 @@ class MarsDebugPlatformTest {
     @Test
     fun `Symbols opens live code and exact data addresses without moving the PC`() = timeoutRunBlocking<Unit> {
         val source = withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("symbol-addresses.asm", """
-                ${'\t'}.extern externalSlot, 4
+            fixture.addFileToProject("symbol-addresses.asm", $$"""
+                $${'\t'}.extern externalSlot, 4
                 .data
                 padding: .byte 0
                 payload: .byte 42
                 .text
                 entry: nop
                 next: nop
-                li ${'$'}v0, 10
+                li $v0, 10
                 syscall
                 .text 0x00400100
-                far: addiu ${'$'}t0, ${'$'}zero, 42
+                far: addiu $t0, $zero, 42
             """.trimIndent()).virtualFile.also {
                 addBreakpoint(it, 5)
                 addBreakpoint(it, 6)
@@ -3247,12 +3278,12 @@ class MarsDebugPlatformTest {
     @Test
     fun `Debugger address display updates existing views and preserves machine state`() = timeoutRunBlocking<Unit> {
         val file = withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("display-addresses.asm", """
+            fixture.addFileToProject("display-addresses.asm", $$"""
                 .kdata
                 kernelWord: .word 0x41424344
                 .text
                 entry: nop
-                li ${'$'}v0, 10
+                li $v0, 10
                 syscall
             """.trimIndent()).virtualFile.also { addBreakpoint(it, 3) }
         }
@@ -3355,20 +3386,20 @@ class MarsDebugPlatformTest {
     @Test
     fun `Debugger value display reformats captured register and memory words independently of addresses`() = timeoutRunBlocking<Unit> {
         val source = withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("display-values.asm", """
+            fixture.addFileToProject("display-values.asm", $$"""
                 .data
                 words: .word -1, 0x80000000, 65, 0
                 .text
-                li ${'$'}t0, -2
-                li ${'$'}t1, -1
-                mtc0 ${'$'}t1, ${'$'}14
-                li ${'$'}t2, 0xbff80000
-                mtc1 ${'$'}t2, ${'$'}f1
-                li ${'$'}t3, 0x7fc01234
-                mtc1 ${'$'}t3, ${'$'}f2
-                c.eq.s ${'$'}f4, ${'$'}f4
+                li $t0, -2
+                li $t1, -1
+                mtc0 $t1, $14
+                li $t2, 0xbff80000
+                mtc1 $t2, $f1
+                li $t3, 0x7fc01234
+                mtc1 $t3, $f2
+                c.eq.s $f4, $f4
                 checkpoint: nop
-                li ${'$'}v0, 10
+                li $v0, 10
                 syscall
             """.trimIndent()).virtualFile.also { addBreakpoint(it, 11) }
         }
@@ -3398,9 +3429,9 @@ class MarsDebugPlatformTest {
                 val frame = requireNotNull(debug.session.currentStackFrame)
                 withContext(Dispatchers.EDT) {
                     val initial = registerValues(debug.session, frame)
-                    assertEquals("0xfffffffe", initial["\$t0"])
-                    assertEquals("NaN (0x7fc01234)", initial["\$f2"])
-                    assertEquals("-1.5 (0xbff8000000000000)", initial["\$f0/\$f1"])
+                    assertEquals("0xfffffffe", initial[$$"$t0"])
+                    assertEquals("NaN (0x7fc01234)", initial[$$"$f2"])
+                    assertEquals("-1.5 (0xbff8000000000000)", initial[$$"$f0/$f1"])
                     assertEquals("Words", table.getColumnName(3))
                     assertEquals("0xffffffff  0x80000000  0x00000041  0x00000000", table.getValueAt(0, 3))
 
@@ -3415,19 +3446,19 @@ class MarsDebugPlatformTest {
                     assertEquals("........A.......", table.getValueAt(0, 2))
                     assertEquals("4294967295", display.formatUnsignedValue(-1))
                     val decimal = registerValues(debug.session, frame)
-                    assertEquals("-2", decimal["\$t0"])
-                    assertEquals("0", decimal["\$zero"])
+                    assertEquals("-2", decimal[$$"$t0"])
+                    assertEquals("0", decimal[$$"$zero"])
                     assertEquals(parseMemoryAddress(initial.getValue("pc")).toString(), decimal["pc"])
-                    assertEquals("-1", decimal["\$14 (epc)"])
+                    assertEquals("-1", decimal[$$"$14 (epc)"])
                     assertEquals("1", decimal["FCC"])
-                    assertEquals("NaN", decimal["\$f2"])
-                    assertEquals("-1.5", decimal["\$f0/\$f1"])
+                    assertEquals("NaN", decimal[$$"$f2"])
+                    assertEquals("-1.5", decimal[$$"$f0/$f1"])
                     inspectRegisterNodes(debug.session, frame) { values ->
                         val modifiers = values.associate { it.name to it.valueContainer.modifier }
-                        assertEquals("-2", modifiers.getValue("\$t0")!!.initialValueEditorText)
-                        assertEquals("0x7fc01234", modifiers.getValue("\$f2")!!.initialValueEditorText)
+                        assertEquals("-2", modifiers.getValue($$"$t0")!!.initialValueEditorText)
+                        assertEquals("0x7fc01234", modifiers.getValue($$"$f2")!!.initialValueEditorText)
                     }
-                    assertEquals("0xfffffffe", evaluate(debug.session, frame, "\$t0"))
+                    assertEquals("0xfffffffe", evaluate(debug.session, frame, $$"$t0"))
                     val xml = XmlSerializer.serialize(display.getState())
                     val loaded = XmlSerializer.deserialize(xml, MarsDebuggerDisplaySettings.Settings::class.java)
                     assertFalse(loaded.hexValues)
@@ -3578,7 +3609,7 @@ class MarsDebugPlatformTest {
             val path = entry.toNioPath().resolveSibling("large-debug.inc")
             Files.newBufferedWriter(path).use { writer ->
                 repeat(count) { writer.write(comment) }
-                writer.write("addiu \$t0, \$zero, 7\n# no instruction\naddiu \$t1, \$t0, 1\nnop\n")
+                writer.write($$"addiu $t0, $zero, 7\n# no instruction\naddiu $t1, $t0, 1\nnop\n")
             }
             val include = checkNotNull(LocalFileSystem.getInstance().refreshAndFindFileByNioFile(path))
             assertFalse(available(event(includeProject = false)))
@@ -3646,7 +3677,7 @@ class MarsDebugPlatformTest {
 
     @Test
     fun `Debug shows the assembled include and runs to a cursor in the captured text`() = timeoutRunBlocking<Unit> {
-        val body = "nop\naddiu \$t0, \$zero, 42\nnop\n"
+        val body = $$"nop\naddiu $t0, $zero, 42\nnop\n"
         val (source, include) = withContext(Dispatchers.EDT) {
             val entry = fixture.addFileToProject("captured.asm", ".include \"captured-body.s\"\nnop\n").virtualFile
             val include = fixture.addFileToProject("captured-body.s", body).virtualFile.also { addBreakpoint(it, 0) }
@@ -3677,7 +3708,9 @@ class MarsDebugPlatformTest {
             }
             debug.assertPausedAt(capturedFile, 2)
             withContext(Dispatchers.EDT) {
-                assertEquals("0x0000002a", evaluate(debug.session, requireNotNull(debug.session.currentStackFrame), "\$t0"))
+                assertEquals("0x0000002a", evaluate(debug.session, requireNotNull(debug.session.currentStackFrame),
+                  $$"$t0"
+                ))
                 val document = requireNotNull(FileDocumentManager.getInstance().getDocument(include))
                 WriteAction.run<RuntimeException> {
                     debugger.breakpointManager.removeBreakpoint(staleBreakpoint)
@@ -3698,7 +3731,7 @@ class MarsDebugPlatformTest {
         val action = ActionManager.getInstance().getAction("Mars.ToggleOriginalBreakpoint")
         val entryText = ".include \"$name\"\nnop\n"
         val (entry, include, view) = withContext(Dispatchers.EDT) {
-            val include = fixture.tempDirFixture.createFile(name, "# comment\naddiu \$t0, \$zero, 42\nnop\n")
+            val include = fixture.tempDirFixture.createFile(name, $$"# comment\naddiu $t0, $zero, 42\nnop\n")
             val entry = fixture.addFileToProject("read-only-debug.mars", entryText).virtualFile
             fixture.configureFromExistingVirtualFile(entry)
             val target = GotoDeclarationAction.findTargetElement(project, fixture.editor, entryText.indexOf(name) + 1) as MipsFile
@@ -3738,7 +3771,9 @@ class MarsDebugPlatformTest {
             }
             debug.assertPausedAt(first.file, 2)
             withContext(Dispatchers.EDT) {
-                assertEquals("0x0000002a", evaluate(debug.session, requireNotNull(debug.session.currentStackFrame), "\$t0"))
+                assertEquals("0x0000002a", evaluate(debug.session, requireNotNull(debug.session.currentStackFrame),
+                  $$"$t0"
+                ))
                 debug.session.resume()
             }
             assertEquals(0, debug.exit.await())
@@ -3770,7 +3805,7 @@ class MarsDebugPlatformTest {
     @Test
     fun `Disassembly restores layout and sort without changing selected instruction actions`() = timeoutRunBlocking<Unit> {
         val source = withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("disassembly-layout.asm", "entry: nop\nnext: nop\nli \$v0, 10\nsyscall\n").virtualFile
+            fixture.addFileToProject("disassembly-layout.asm", $$"entry: nop\nnext: nop\nli $v0, 10\nsyscall\n").virtualFile
                 .also { addBreakpoint(it, 0) }
         }
         val properties = PropertiesComponent.getInstance()
@@ -3887,13 +3922,13 @@ class MarsDebugPlatformTest {
     @Test
     fun `Disassembly marks the pending delay slot and follows the last executed address across backsteps`() = timeoutRunBlocking<Unit> {
         val source = withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("execution-markers.asm", """
+            fixture.addFileToProject("execution-markers.asm", $$"""
                 b far
-                addiu ${'$'}t0, ${'$'}zero, 7
+                addiu $t0, $zero, 7
                 nop
                 .text 0x00400100
                 far: nop
-                li ${'$'}v0, 10
+                li $v0, 10
                 syscall
             """.trimIndent()).virtualFile.also { addBreakpoint(it, 0) }
         }
@@ -3987,17 +4022,17 @@ class MarsDebugPlatformTest {
     @Test
     fun `Variables highlights written register banks and restores their presentation on backstep`() = timeoutRunBlocking<Unit> {
         val source = withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("register-highlights.asm", """
-                addiu ${'$'}t0, ${'$'}zero, 2
-                addiu ${'$'}t1, ${'$'}zero, 3
-                mult ${'$'}t0, ${'$'}t1
-                mtc1 ${'$'}t0, ${'$'}f1
-                c.eq.s ${'$'}f0, ${'$'}f0
-                mtc0 ${'$'}t0, ${'$'}14
+            fixture.addFileToProject("register-highlights.asm", $$"""
+                addiu $t0, $zero, 2
+                addiu $t1, $zero, 3
+                mult $t0, $t1
+                mtc1 $t0, $f1
+                c.eq.s $f0, $f0
+                mtc0 $t0, $14
                 nop
-                add.d ${'$'}f2, ${'$'}f0, ${'$'}f0
+                add.d $f2, $f0, $f0
                 nop
-                li ${'$'}v0, 10
+                li $v0, 10
                 syscall
             """.trimIndent()).virtualFile.also {
                 addBreakpoint(it, 3)
@@ -4053,32 +4088,32 @@ class MarsDebugPlatformTest {
             }
             withContext(Dispatchers.EDT) { debug.session.resume() }
             debug.assertPausedAt(source, 6)
-            assertHighlighted("hi", "lo", "\$14 (epc)", "FCC", "\$f1", "\$f0/\$f1")
+            assertHighlighted("hi", "lo", $$"$14 (epc)", "FCC", $$"$f1", $$"$f0/$f1")
             withContext(Dispatchers.EDT) { debug.session.resume() }
             debug.assertPausedAt(source, 8)
-            assertHighlighted("hi", "lo", "\$14 (epc)", "FCC", "\$f2", "\$f3", "\$f2/\$f3")
+            assertHighlighted("hi", "lo", $$"$14 (epc)", "FCC", $$"$f2", $$"$f3", $$"$f2/$f3")
             withContext(Dispatchers.EDT) {
                 val (action, event) = backstepAction(debug.session)
                 action.actionPerformed(event)
             }
             debug.assertPausedAt(source, 7)
-            assertHighlighted("hi", "lo", "\$14 (epc)", "FCC", "\$f1", "\$f0/\$f1")
+            assertHighlighted("hi", "lo", $$"$14 (epc)", "FCC", $$"$f1", $$"$f0/$f1")
         }
     }
 
     @Test
     fun `native Disassembly shows live code follows PC and navigates to source`() = timeoutRunBlocking<Unit> {
         val (source, fragment) = withContext(Dispatchers.EDT) {
-            val fragment = fixture.addFileToProject("disassembly-body.s", "li \$t1, 0x240b0043\n").virtualFile
-            val entry = fixture.addFileToProject("disassembly.s", """
+            val fragment = fixture.addFileToProject("disassembly-body.s", $$"li $t1, 0x240b0043\n").virtualFile
+            val entry = fixture.addFileToProject("disassembly.s", $$"""
                 .data
                 payload: .word 0x240a002a, 0x01400008, 0xffffffff
                 .text
-                la ${'$'}t0, payload
+                la $t0, payload
                 .include "disassembly-body.s"
-                sw ${'$'}t1, patch
+                sw $t1, patch
                 patch: nop
-                jr ${'$'}t0
+                jr $t0
             """.trimIndent()).virtualFile.also { addBreakpoint(it, 5) }
             entry to fragment
         }
@@ -4137,7 +4172,7 @@ class MarsDebugPlatformTest {
                         val captured = requireNotNull(FileDocumentManager.getInstance().getFile(editor.document))
                         assertEquals("disassembly-body.s (assembled snapshot)", captured.name)
                         assertFalse(captured.isWritable)
-                        assertEquals("li \$t1, 0x240b0043\n", editor.document.text)
+                        assertEquals($$"li $t1, 0x240b0043\n", editor.document.text)
                     }
                 }
                 withContext(Dispatchers.EDT) { debug.session.stepInto() }
@@ -4220,12 +4255,12 @@ class MarsDebugPlatformTest {
         val type = XDebuggerUtil.getInstance().findBreakpointType(MarsAddressBreakpointType::class.java)
         val source = withContext(Dispatchers.EDT) {
             val other = fixture.addFileToProject("other.s", "nop\n").virtualFile
-            val file = fixture.addFileToProject("raw-breakpoints.s", """
+            val file = fixture.addFileToProject("raw-breakpoints.s", $$"""
                 .data
                 code: .word 0x25290001, 0x25290002, 0x25290004, 0x2402000a, 0x0000000c
                 .text
-                la ${'$'}t0, code
-                jr ${'$'}t0
+                la $t0, code
+                jr $t0
             """.trimIndent()).virtualFile
             addBreakpoint(file, 4)
             WriteAction.run<RuntimeException> {
@@ -4308,7 +4343,7 @@ class MarsDebugPlatformTest {
                     val logpoint = debugger.breakpointManager.getBreakpoints(type).single { it.properties?.address == 0x10010008 }
                     WriteAction.run<RuntimeException> {
                         logpoint.suspendPolicy = SuspendPolicy.NONE
-                        logpoint.setLogExpression("\$t1")
+                        logpoint.setLogExpression($$"$t1")
                     }
                 }
                 marker(logAddress, type.suspendNoneIcon)
@@ -4320,7 +4355,7 @@ class MarsDebugPlatformTest {
                 withContext(Dispatchers.EDT) {
                     val frame = requireNotNull(debug.session.currentStackFrame)
                     assertEquals(hitAddress, evaluate(debug.session, frame, "pc"))
-                    assertEquals("0x00000001", evaluate(debug.session, frame, "\$t1"))
+                    assertEquals("0x00000001", evaluate(debug.session, frame, $$"$t1"))
                 }
                 marker(hitAddress, type.enabledIcon)
                 withContext(Dispatchers.EDT) {
@@ -4510,12 +4545,12 @@ class MarsDebugPlatformTest {
         }
 
     private suspend fun exportDebugProgram(): VirtualFile = withContext(Dispatchers.EDT) {
-        fixture.addFileToProject("export-debug.s", """
+        fixture.addFileToProject("export-debug.s", $$"""
             .data
             payload: .word 7
             .text
-            addiu ${'$'}t0, ${'$'}zero, 9
-            sw ${'$'}t0, payload
+            addiu $t0, $zero, 9
+            sw $t0, payload
             nop
         """.trimIndent()).virtualFile.also {
             addBreakpoint(it, 3)
@@ -4548,7 +4583,7 @@ class MarsDebugPlatformTest {
     @Test
     fun `debugger editor highlights comparison and bit operators with the expression lexer`() = timeoutRunBlocking<Unit> {
         withContext(Dispatchers.EDT) {
-            val source = "(~\$t0 >>> 7 & 8 ^ 1 | 2) != (3 < 4)"
+            val source = $$"(~$t0 >>> 7 & 8 ^ 1 | 2) != (3 < 4)"
             val expression = XDebuggerUtil.getInstance().createExpression(source, null, null, EvaluationMode.EXPRESSION)
             val document = MarsDebugEditors.createDocument(project, expression, null, EvaluationMode.EXPRESSION, "breakpoint")
             val factory = EditorFactory.getInstance()
@@ -4573,18 +4608,18 @@ class MarsDebugPlatformTest {
 
     @Test
     fun `native conditions and log expressions use the machine state before the instruction`() = timeoutRunBlocking<Unit> {
-        val source = """
+        val source = $$"""
             .data
             flag: .word 0
             .text
-            li ${'$'}t0, 1
+            li $t0, 1
             false_hit: nop
             bad_condition: nop
-            sw ${'$'}t0, flag
+            sw $t0, flag
             log_value: nop
             bad_log: nop
-            true_hit: addiu ${'$'}t0, ${'$'}t0, 1
-            li ${'$'}v0, 10
+            true_hit: addiu $t0, $t0, 1
+            li $v0, 10
             syscall
         """.trimIndent()
         val disposable = Disposer.newDisposable()
@@ -4611,20 +4646,22 @@ class MarsDebugPlatformTest {
                     badCondition.setCondition("unknown")
                     badCondition.setLogExpression("0x22222222")
                     logValue.setCondition("word(flag)")
-                    logValue.setLogExpression("(word(flag) | \$t0) + 0x1235")
+                    logValue.setLogExpression($$"(word(flag) | $t0) + 0x1235")
                     logValue.suspendPolicy = SuspendPolicy.NONE
                     badLog.setLogExpression("word(flag+1)")
                     badLog.isLogMessage = true
                     badLog.suspendPolicy = SuspendPolicy.NONE
-                    trueHit.setCondition("((word(flag) << 1) >>> 1) == \$t0")
-                    trueHit.setLogExpression("\$t0")
+                    trueHit.setCondition($$"((word(flag) << 1) >>> 1) == $t0")
+                    trueHit.setLogExpression($$"$t0")
                 }
                 file
             }
             withDebug(file) { debug ->
                 debug.assertPausedAt(file, 9)
                 withContext(Dispatchers.EDT) {
-                    assertEquals("0x00000001", evaluate(debug.session, requireNotNull(debug.session.currentStackFrame), "\$t0"))
+                    assertEquals("0x00000001", evaluate(debug.session, requireNotNull(debug.session.currentStackFrame),
+                      $$"$t0"
+                    ))
                 }
                 assertEquals("Could not evaluate MIPS breakpoint condition. Enter a valid MIPS debugger expression using registers, labels, numbers, memory reads, arithmetic, comparisons, or bitwise operators.", errors.receive())
                 assertEquals("Could not evaluate MIPS breakpoint log expression. The memory address is invalid, unaligned, or unavailable.", errors.receive())
@@ -4652,20 +4689,20 @@ class MarsDebugPlatformTest {
     @Test
     fun `ClearScreen removes earlier output from the native Debug console`() = timeoutRunBlocking<Unit> {
         val source = withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("debug-clear.asm", """
+            fixture.addFileToProject("debug-clear.asm", $$"""
                 .data
                 before: .asciiz "old debug output"
                 after: .asciiz "new debug output"
                 .text
-                la ${'$'}a0, before
-                li ${'$'}v0, 4
+                la $a0, before
+                li $v0, 4
                 syscall
-                li ${'$'}v0, 60
+                li $v0, 60
                 syscall
-                la ${'$'}a0, after
-                li ${'$'}v0, 4
+                la $a0, after
+                li $v0, 4
                 syscall
-                li ${'$'}v0, 10
+                li $v0, 10
                 syscall
             """.trimIndent()).virtualFile.also { addBreakpoint(it, 12) }
         }
@@ -4685,7 +4722,7 @@ class MarsDebugPlatformTest {
     @Test
     fun `native logpoint continues and a disabled breakpoint can be enabled again`() = timeoutRunBlocking<Unit> {
         val source = withContext(Dispatchers.EDT) {
-            val file = fixture.addFileToProject("loop.s", "nop\nli \$v0, 1\nsyscall\nloop: b loop\nnop\n").virtualFile
+            val file = fixture.addFileToProject("loop.s", $$"nop\nli $v0, 1\nsyscall\nloop: b loop\nnop\n").virtualFile
             val log = addBreakpoint(file, 0)
             val stop = addBreakpoint(file, 3)
             WriteAction.run<RuntimeException> {
@@ -4729,20 +4766,20 @@ class MarsDebugPlatformTest {
         leaveEnabled: Boolean,
     ) = timeoutRunBlocking<Unit> {
         val source = withContext(Dispatchers.EDT) {
-            val file = fixture.addFileToProject("dependent-breakpoint.mars", """
+            val file = fixture.addFileToProject("dependent-breakpoint.mars", $$"""
                 .text
-                li ${'$'}t0, 0
-                li ${'$'}t1, 3
-                again: addiu ${'$'}t0, ${'$'}t0, 1
-                beq ${'$'}t0, ${'$'}t1, done
+                li $t0, 0
+                li $t1, 3
+                again: addiu $t0, $t0, 1
+                beq $t0, $t1, done
                 nop
-                li ${'$'}t2, 1
-                bne ${'$'}t0, ${'$'}t2, again
+                li $t2, 1
+                bne $t0, $t2, again
                 nop
                 nop
                 b again
                 nop
-                done: li ${'$'}v0, 10
+                done: li $v0, 10
                 syscall
             """.trimIndent()).virtualFile
             val dependent = addBreakpoint(file, 3)
@@ -4761,7 +4798,7 @@ class MarsDebugPlatformTest {
                 debug.assertPausedAt(source, 3)
                 withContext(Dispatchers.EDT) {
                     val frame = requireNotNull(debug.session.currentStackFrame)
-                    assertEquals(expected, evaluate(debug.session, frame, "\$t0"))
+                    assertEquals(expected, evaluate(debug.session, frame, $$"$t0"))
                     debug.session.resume()
                 }
             }
@@ -4775,14 +4812,14 @@ class MarsDebugPlatformTest {
         addressBreakpoint: Boolean,
     ) = timeoutRunBlocking<Unit> {
         val source = withContext(Dispatchers.EDT) {
-            val file = fixture.addFileToProject("breakpoint-hits.mars", """
+            val file = fixture.addFileToProject("breakpoint-hits.mars", $$"""
                 .text
-                li ${'$'}t0, 0
-                li ${'$'}t1, 6
-                again: addiu ${'$'}t0, ${'$'}t0, 1
-                bne ${'$'}t0, ${'$'}t1, again
+                li $t0, 0
+                li $t1, 6
+                again: addiu $t0, $t0, 1
+                bne $t0, $t1, again
                 nop
-                li ${'$'}v0, 10
+                li $v0, 10
                 syscall
             """.trimIndent()).virtualFile
             fun <B : XBreakpoint<*>> configure(point: B, panel: XBreakpointCustomPropertiesPanel<B>) {
@@ -4799,7 +4836,7 @@ class MarsDebugPlatformTest {
                 panel.saveTo(point)
                 panel.loadFrom(point)
                 assertEquals(2, spinner.value)
-                point.setCondition("\$t0 > 0")
+                point.setCondition($$"$t0 > 0")
             }
             WriteAction.run<RuntimeException> {
                 if (addressBreakpoint) {
@@ -4835,7 +4872,7 @@ class MarsDebugPlatformTest {
                     debug.assertPausedAt(source, 3)
                     withContext(Dispatchers.EDT) {
                         val frame = requireNotNull(debug.session.currentStackFrame)
-                        assertEquals(expected, evaluate(debug.session, frame, "\$t0"))
+                        assertEquals(expected, evaluate(debug.session, frame, $$"$t0"))
                         debug.session.resume()
                     }
                 }
@@ -4854,20 +4891,20 @@ class MarsDebugPlatformTest {
         editInterval: Boolean,
     ) = timeoutRunBlocking<Unit> {
         val (source, address) = withContext(Dispatchers.EDT) {
-            val file = fixture.addFileToProject("coincident-breakpoints.mars", """
+            val file = fixture.addFileToProject("coincident-breakpoints.mars", $$"""
                 .text
-                li ${'$'}t0, 0
-                li ${'$'}t1, 4
-                again: addiu ${'$'}t0, ${'$'}t0, 1
-                bne ${'$'}t0, ${'$'}t1, again
+                li $t0, 0
+                li $t1, 4
+                again: addiu $t0, $t0, 1
+                bne $t0, $t1, again
                 nop
-                li ${'$'}v0, 10
+                li $v0, 10
                 syscall
             """.trimIndent()).virtualFile
             val line = addBreakpoint(file, 3)
             val type = XDebuggerUtil.getInstance().findBreakpointType(MarsAddressBreakpointType::class.java)
             val address = WriteAction.compute<_, RuntimeException> {
-                line.setCondition("\$t0 == 0")
+                line.setCondition($$"$t0 == 0")
                 debugger.breakpointManager.addBreakpoint(type, MarsAddressBreakpointProperties(file.path, 0x00400008, hitInterval = 2))
             }
             file to address
@@ -4878,7 +4915,7 @@ class MarsDebugPlatformTest {
                 debug.assertPausedAt(source, 3)
                 withContext(Dispatchers.EDT) {
                     val frame = requireNotNull(debug.session.currentStackFrame)
-                    assertEquals(Binary.intToHexString(expected), evaluate(debug.session, frame, "\$t0"))
+                    assertEquals(Binary.intToHexString(expected), evaluate(debug.session, frame, $$"$t0"))
                     if (expected == 0 && editInterval) address.properties.hitInterval = 3
                     debug.session.resume()
                 }
@@ -4891,7 +4928,8 @@ class MarsDebugPlatformTest {
     fun `floating point tool edits only the selected paused register and refreshes the debugger`() = timeoutRunBlocking<Unit> {
         val file = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("float-tool.asm",
-                "lui \$t0, 0x3fc0\nmtc1 \$t0, \$f0\nmfc1 \$t1, \$f0\nli \$v0, 5\nsyscall\n")
+              $$"lui $t0, 0x3fc0\nmtc1 $t0, $f0\nmfc1 $t1, $f0\nli $v0, 5\nsyscall\n"
+            )
                 .virtualFile.also { addBreakpoint(it, 2) }
         }
         withDebug(file) { debug ->
@@ -4944,7 +4982,7 @@ class MarsDebugPlatformTest {
                 }
                 pollAssertionsAsync(5.seconds, 20.milliseconds) {
                     withContext(Dispatchers.EDT) {
-                        assertEquals("NaN (0x7fc00123)", evaluate(debug.session, frame, "\$f0"))
+                        assertEquals("NaN (0x7fc00123)", evaluate(debug.session, frame, $$"$f0"))
                         assertEquals("0x7fc00123", hex().text)
                         assertFalse(backstepAction(debug.session).second.presentation.isEnabled)
                     }

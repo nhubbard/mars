@@ -32,7 +32,7 @@ class MipsScannerTest {
             "\u000c" to MipsTokenKind.BAD_CHARACTER,
             "\n" to MipsTokenKind.NEWLINE, "\r" to MipsTokenKind.NEWLINE, "\r\n" to MipsTokenKind.NEWLINE,
             "# comment" to MipsTokenKind.COMMENT, "name" to MipsTokenKind.WORD,
-            "_local.\$x" to MipsTokenKind.WORD,
+            $$"_local.$x" to MipsTokenKind.WORD,
             ".text" to MipsTokenKind.DIRECTIVE, "$" + "a0" to MipsTokenKind.REGISTER,
             "%arg" to MipsTokenKind.PARAMETER, "12" to MipsTokenKind.NUMBER, "0" to MipsTokenKind.NUMBER, "012" to MipsTokenKind.NUMBER,
             ".5e-2" to MipsTokenKind.NUMBER, "1.0E+5" to MipsTokenKind.NUMBER,
@@ -170,8 +170,8 @@ class MipsScannerTest {
             ".word 0X80000000, 0xffffffff, 4294967295, 077, 09, ١٢",
             ".double 0x1p2, 1e2, 2147483648",
             ".word 0xG, 0x, 1oops, 1e, 0b101, 0x123456789",
-            ".macro emit (%value!@?, \$argument)",
-            ".macro emit (%, %!, %%, %value-7, \$)",
+          $$".macro emit (%value!@?, $argument)",
+          $$".macro emit (%, %!, %%, %value-7, $)",
         )) {
             val assembly = tokenizer.tokenizeLine(1, source, ErrorList(), false)
             val tokens = MipsScanner.scan(source).filter { it.kind !in setOf(MipsTokenKind.SPACE, MipsTokenKind.COMMA) }
@@ -238,7 +238,7 @@ class MipsScannerTest {
 
     @Test
     fun `scanner handles every prefix and arbitrary restart slice without gaps`() {
-        val sample = ".macro m (%x)\r\nlabel: lw \$t0,label+4(\$sp) # note\n.asciiz \"x\\\"y\"\n.byte '\\0'\n.end_macro"
+        val sample = $$".macro m (%x)\r\nlabel: lw $t0,label+4($sp) # note\n.asciiz \"x\\\"y\"\n.byte '\\0'\n.end_macro"
         for (length in 0..sample.length) {
             val text = sample.take(length)
             val tokens = MipsScanner.scan(text)

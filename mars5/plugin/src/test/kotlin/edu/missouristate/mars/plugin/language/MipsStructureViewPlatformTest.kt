@@ -45,7 +45,7 @@ class MipsStructureViewPlatformTest {
     @Test
     fun `native structure lists declarations in source order and groups macro-local labels`() = timeoutRunBlocking<Unit> {
         withContext(Dispatchers.EDT) {
-            fixture.configureByText("outline.asm", """
+            fixture.configureByText("outline.asm", $$"""
                 .eqv SIZE 4
                 .extern buffer 4
                 entry: nop
@@ -53,7 +53,7 @@ class MipsStructureViewPlatformTest {
                   local: nop
                   .macro nested
                   %label: nop
-                  <caret>inner: lw ${'$'}t0,4(
+                  <caret>inner: lw $t0,4(
                 .end_macro
                 entry: nop
                 .macro unfinished
@@ -237,10 +237,10 @@ class MipsStructureViewPlatformTest {
         """.trimIndent()
         withContext(Dispatchers.EDT) {
             val body = fixture.addFileToProject("extern-outline.s", source)
-            fixture.addFileToProject("extern-outline-entry.asm", """
+            fixture.addFileToProject("extern-outline-entry.asm", $$"""
                 .eqv RESERVE .extern
                 .eqv STORAGE renamed
-                .eqv REGISTER ${'$'}t0
+                .eqv REGISTER $t0
                 .eqv SWITCH .data
                 .macro remote
                 .include "extern-outline.s"
@@ -253,7 +253,7 @@ class MipsStructureViewPlatformTest {
             val model = builder.createStructureViewModel(fixture.editor)
             try {
                 val nodes = model.root.children.map { it as StructureViewTreeElement }
-                assertEquals(listOf("foreign", "renamed", "generated", "literal", "\$t0", "emit"), nodes.map(::name))
+                assertEquals(listOf("foreign", "renamed", "generated", "literal", $$"$t0", "emit"), nodes.map(::name))
                 assertEquals("local", nodes.last().children.single().presentation.presentableText)
                 for ((node, origin) in nodes.subList(1, 5).zip(listOf("STORAGE", "RESERVE generated", "literal", "REGISTER"))) {
                     assertNotNull(node.presentation.getIcon(false))

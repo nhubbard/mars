@@ -52,12 +52,12 @@ class MipsParserPlatformTest {
     @Test
     fun `macro definitions retain raw operands until the assembler expands them`(@TempDir directory: Path) =
         timeoutRunBlocking<Unit> {
-            val source = """
+            val source = $$"""
                 .macro deferred (%value)
-                    addiu ${'$'}t0, +
-                    addiu ${'$'}t0, :
-                    addiu ${'$'}t0, )
-                    lw ${'$'}t0, 0(${'$'}sp
+                    addiu $t0, +
+                    addiu $t0, :
+                    addiu $t0, )
+                    lw $t0, 0($sp
                     .word )
                     .include %value
                     ) 6 (
@@ -69,7 +69,7 @@ class MipsParserPlatformTest {
                     .word 1
                     42 43
                     .text
-                    addiu ${'$'}a0, ${'$'}zero, %value
+                    addiu $a0, $zero, %value
                 .end_macro
                 emit(42)
             """.trimIndent() + "\n"
@@ -82,7 +82,7 @@ class MipsParserPlatformTest {
 
             readAction {
                 val file = assertParses(source)
-                assertEquals(listOf("\$t0, +", "\$t0, :", "\$t0, )", "\$t0, 0(\$sp", ")", ") 6 (", "4 : )"),
+                assertEquals(listOf($$"$t0, +", $$"$t0, :", $$"$t0, )", $$"$t0, 0($sp", ")", ") 6 (", "4 : )"),
                     descendants(file.node, "OPERAND_FRAGMENT").map { it.text }.toList())
                 val deferredBody = descendants(file.node, "MACRO_DEFINITION").first()
                 assertEquals(listOf(") 6 (", "4 : )", "42 43"),
@@ -93,13 +93,14 @@ class MipsParserPlatformTest {
                     })
                 assertEquals("deferredLabel:", descendants(deferredBody, "LABEL").single().text)
                 val validBody = descendants(file.node, "MACRO_DEFINITION").last()
-                assertEquals(listOf("1", "42", "43", "\$a0", "\$zero", "%value"),
+                assertEquals(listOf("1", "42", "43", $$"$a0", $$"$zero", "%value"),
                     descendants(validBody, "OPERAND").map { it.text }.toList())
                 assertEquals(listOf("emit(42)"), descendants(file.node, "OPERATION_CANDIDATE").map { it.text }.toList())
 
                 val factory = PsiFileFactory.getInstance(project.get())
                 val invalid = factory.createFileFromText("invalid.asm", MipsFileType,
-                    "addiu \$t0, :\n.macro bad\n.word 'bad'\n.end_macro\nnext: nop")
+                  $$"addiu $t0, :\n.macro bad\n.word 'bad'\n.end_macro\nnext: nop"
+                )
                 assertEquals(2, PsiTreeUtil.findChildrenOfType(invalid, PsiErrorElement::class.java).size)
                 assertEquals("next:", descendants(invalid.node, "LABEL").single().text)
             }
@@ -107,10 +108,10 @@ class MipsParserPlatformTest {
 
     @Test
     fun `mixed case macro and equivalence directives assemble and produce native PSI`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
-        val source = """
+        val source = $$"""
             .EqV LIMIT 7
             .MaCrO emit (%value)
-              addiu ${'$'}t0, ${'$'}zero, %value
+              addiu $t0, $zero, %value
             .EnD_MaCrO
             emit(LIMIT)
         """.trimIndent()
@@ -128,7 +129,7 @@ class MipsParserPlatformTest {
     @Test
     fun `macros with boundaries in different files assemble and each file parses`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
         val open = ".macro emit (%value)"
-        val body = "addiu \$t0, \$zero, %value"
+        val body = $$"addiu $t0, $zero, %value"
         val close = ".end_macro"
         val call = "emit(7)"
 
@@ -147,13 +148,13 @@ class MipsParserPlatformTest {
 
     @Test
     fun `macro boundary keywords remain replacement text and expand during assembly`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
-        val source = """
+        val source = $$"""
             .eqv BEGIN .macro emit (%value)
             .eqv END .end_macro
             .eqv DECLARE .eqv
             DECLARE LIMIT 7
             BEGIN
-              addiu ${'$'}t0, ${'$'}zero, %value
+              addiu $t0, $zero, %value
             END
             emit(LIMIT)
         """.trimIndent()
@@ -164,8 +165,8 @@ class MipsParserPlatformTest {
     @Test
     fun `short equivalence directives are no-ops when the assembler has fewer than three tokens`(@TempDir directory: Path) =
         timeoutRunBlocking<Unit> {
-            val noOps = listOf(".eqv", "  .EQV , # ignored", ".eqv UNSET", ".eqv -7", ".eqv ,,, 7", ".eqv \$t0", ".eqv \"unused\"")
-            val source = noOps.joinToString("\n", postfix = "\n.eqv VALUE 7\naddiu \$t0, \$zero, VALUE\n.eqv EOF")
+            val noOps = listOf(".eqv", "  .EQV , # ignored", ".eqv UNSET", ".eqv -7", ".eqv ,,, 7", $$".eqv $t0", ".eqv \"unused\"")
+            val source = noOps.joinToString("\n", postfix = $$"\n.eqv VALUE 7\naddiu $t0, $zero, VALUE\n.eqv EOF")
             assertAssembles(directory, source)
             readAction {
                 val file = assertParses(source)
@@ -190,7 +191,7 @@ class MipsParserPlatformTest {
     fun `equivalence replacement preserves the original character literal in editor PSI`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
         val spellings = listOf("'A'" to 65, "'\\n'" to 10, "'\\101'" to 65, "'\\''" to 39, "'\\\\'" to 92)
         for ((literal, value) in spellings) {
-            val source = ".eqv VALUE $literal, # preserve the literal\nli \$t0, VALUE\n"
+            val source = $$".eqv VALUE $$literal, # preserve the literal\nli $t0, VALUE\n"
             assertAssembles(directory, source, 0x24080000 or value)
             readAction {
                 val statement = assertParses(source).node.findChildByType(MipsTypes.psi("STATEMENT"))!!
@@ -209,10 +210,10 @@ class MipsParserPlatformTest {
             "%value-7" to "(%value-7",
             "%!" to "(%!)",
             "%%" to "(%%)",
-            "\$value" to "\$value)",
+            $$"$value" to $$"$value)",
         )
         for ((name, signature) in signatures) {
-            val source = ".macro emit $signature\naddiu \$t0, \$zero, $name\n.end_macro\nemit(7)"
+            val source = $$".macro emit $$signature\naddiu $t0, $zero, $$name\n.end_macro\nemit(7)"
             assertAssembles(directory, source)
             readAction {
                 val file = assertParses(source)
@@ -229,12 +230,12 @@ class MipsParserPlatformTest {
 
     @Test
     fun `macro signature aliases expand into a name and parameter list`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
-        val source = """
+        val source = $$"""
             .eqv NAME emit
             .eqv PARAMETERS FORMALS
             .eqv FORMALS (%unused, %value)
             .macro NAME PARAMETERS
-              addiu ${'$'}t0, ${'$'}zero, %value
+              addiu $t0, $zero, %value
             .end_macro
             emit (0, 7)
         """.trimIndent()
@@ -263,7 +264,7 @@ class MipsParserPlatformTest {
         val calls = listOf(
             Triple("emit", "(+,7)", listOf("(", "+", "7", ")")),
             Triple(".emit", "(:,7)", listOf("(", ":", "7", ")")),
-            Triple("\$emit", " ),7", listOf(")", "7")),
+            Triple($$"$emit", " ),7", listOf(")", "7")),
             Triple("emit", "((,7)", listOf("(", "(", "7", ")")),
             Triple("emit", "(nop,7)", listOf("(", "nop", "7", ")")),
             Triple("emit", "(\"ignored\",7)", listOf("(", "\"ignored\"", "7", ")")),
@@ -273,7 +274,7 @@ class MipsParserPlatformTest {
         )
         for ((name, arguments, tokens) in calls) {
             val call = name + arguments
-            val source = ".macro $name (%ignored,%value)\naddiu \$t0, \$zero, %value\n.end_macro\nentry: $call"
+            val source = $$".macro $$name (%ignored,%value)\naddiu $t0, $zero, %value\n.end_macro\nentry: $$call"
             assertAssembles(directory, source)
             readAction {
                 val file = assertParses(source)
@@ -294,7 +295,7 @@ class MipsParserPlatformTest {
             data class Invocation(val line: String, val arity: Int, val arguments: List<TextRange>)
 
             val tokenizer = Tokenizer()
-            val left = listOf("name", ".42name", "\$sp", "\$name", "nop", "'\\377'", "1e-2", ".42", "NaN", "%raw")
+            val left = listOf("name", ".42name", $$"$sp", $$"$name", "nop", "'\\377'", "1e-2", ".42", "NaN", "%raw")
             val right = listOf("-2", "+3", "-0x080000000", "(,7", ") 8", ":7", "'\\+77'", "\"% raw\"")
             val invocations = buildList {
                 for (first in left) for (second in right) for (separator in listOf("", " ", ",,")) {
@@ -338,9 +339,9 @@ class MipsParserPlatformTest {
     @Test
     fun `only the leading label is consumed before a raw macro call inside another macro`(@TempDir directory: Path) =
         timeoutRunBlocking<Unit> {
-            val source = """
+            val source = $$"""
                 .macro emit (%ignored, %value)
-                    addiu ${'$'}t0, ${'$'}zero, %value
+                    addiu $t0, $zero, %value
                 .end_macro
                 .macro outer
                     local: emit: 7
@@ -435,9 +436,9 @@ class MipsParserPlatformTest {
 
     @Test
     fun `macro parameter can supply an operation during expansion`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
-        val source = """
+        val source = $$"""
             .macro emit (%ignored,%value)
-              addiu ${'$'}t0, ${'$'}zero, %value
+              addiu $t0, $zero, %value
             .end_macro
             .macro forward (%operation,%value)
               %operation +,%value
@@ -450,10 +451,10 @@ class MipsParserPlatformTest {
 
     @Test
     fun `macro parameters can supply a label without swallowing its instruction`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
-        for (parameter in listOf("%entry", "\$entry")) {
-            val source = """
-                .macro emit ($parameter)
-                  $parameter: addiu ${'$'}t0, ${'$'}zero, 7
+        for (parameter in listOf("%entry", $$"$entry")) {
+            val source = $$"""
+                .macro emit ($$parameter)
+                  $$parameter: addiu $t0, $zero, 7
                 .end_macro
                 emit(generated_entry)
                 .globl generated_entry
@@ -471,11 +472,11 @@ class MipsParserPlatformTest {
     @Test
     fun `expandable operand fragments preserve load syntax supplied by equivalences and macros`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
         val cases = listOf(
-            ".eqv OPEN (\nlw \$t0,0 OPEN \$sp)" to "\$t0,0 OPEN \$sp)",
-            ".eqv CLOSE )\nlw \$t0,0(\$sp CLOSE" to "\$t0,0(\$sp CLOSE",
-            ".eqv BASE \$sp)\nlw \$t0,(BASE" to "\$t0,(BASE",
-            ".macro read (%close)\nlw \$t0,0(\$sp %close\n.end_macro\nread())" to "\$t0,0(\$sp %close",
-            ".macro read (\$close)\nlw \$t0,0(\$sp \$close\n.end_macro\nread())" to "\$t0,0(\$sp \$close",
+            $$".eqv OPEN (\nlw $t0,0 OPEN $sp)" to $$"$t0,0 OPEN $sp)",
+            $$".eqv CLOSE )\nlw $t0,0($sp CLOSE" to $$"$t0,0($sp CLOSE",
+            $$".eqv BASE $sp)\nlw $t0,(BASE" to $$"$t0,(BASE",
+            $$".macro read (%close)\nlw $t0,0($sp %close\n.end_macro\nread())" to $$"$t0,0($sp %close",
+            $$".macro read ($close)\nlw $t0,0($sp $close\n.end_macro\nread())" to $$"$t0,0($sp $close",
         )
         for ((source, operands) in cases) {
             assertAssembles(directory, source, expectedInstruction = 0x8fa80000.toInt())
@@ -485,7 +486,7 @@ class MipsParserPlatformTest {
             }
         }
         readAction {
-            val ordinary = assertParses("lw \$t0,label+4(\$sp)\n")
+            val ordinary = assertParses($$"lw $t0,label+4($sp)\n")
             assertEquals(1, descendants(ordinary.node, "ADDRESS_EXPR").count())
             assertTrue(descendants(ordinary.node, "OPERAND_FRAGMENT").none())
         }
@@ -498,12 +499,12 @@ class MipsParserPlatformTest {
 
     @Test
     fun `include prepass replaces labels equivalences and unfinished instructions`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
-        directory.resolve("included.s").writeText("addiu \$t0,\$zero,7")
+        directory.resolve("included.s").writeText($$"addiu $t0,$zero,7")
         val lines = listOf(
             ": .include \"included.s\"",
             "before: .include \"included.s\" +",
             ".eqv NEVER 42 .include \"included.s\"",
-            "lw \$t0,0(\$sp .include \"included.s\"",
+          $$"lw $t0,0($sp .include \"included.s\"",
             ".include 1 .InClUdE ,, \"included.s\"",
         )
         for (line in lines) {
@@ -588,7 +589,7 @@ class MipsParserPlatformTest {
 
     @Test
     fun `an include can replace a macro boundary line before macro assembly`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
-        directory.resolve("body.s").writeText("addiu \$t0,\$zero,7")
+        directory.resolve("body.s").writeText($$"addiu $t0,$zero,7")
         for (prefix in listOf(".end_macro", ".macro replaced")) {
             val include = "$prefix .include \"body.s\""
             val source = ".macro emit\n$include\n.end_macro\nemit"
@@ -607,8 +608,8 @@ class MipsParserPlatformTest {
     @Test
     fun `a rejected macro name keeps later labels and macro definitions in their own scopes`(@TempDir directory: Path) =
         timeoutRunBlocking<Unit> {
-            val body = "outside: nop\n.macro emit (%value)\ninside: li \$t0, %value\n.end_macro\nemit(7)\n"
-            val names = listOf("nop", "\$t0", ".word", "17", "%name", "")
+            val body = $$"outside: nop\n.macro emit (%value)\ninside: li $t0, %value\n.end_macro\nemit(7)\n"
+            val names = listOf("nop", $$"$t0", ".word", "17", "%name", "")
             for (name in names) {
                 val header = if (name.isEmpty()) "entry: .MaCrO,, # waiting" else "entry: .MaCrO,, $name (%arg)"
                 val source = "$header\n$body"
@@ -642,7 +643,7 @@ class MipsParserPlatformTest {
             val rejected = mapOf("7)" to "7", "-17)" to "-17", "+ 17)" to "+", "@)" to "@", "%)" to "%",
                 "\"oops\" .eqv PHANTOM 7" to "\"oops\"")
             for ((tail, badToken) in rejected) {
-                val source = ".macro emit (%value, $tail\nbody: li \$t0, %value\n.end_macro\nemit(7)\n"
+                val source = $$".macro emit (%value, $$tail\nbody: li $t0, %value\n.end_macro\nemit(7)\n"
                 val file = PsiFileFactory.getInstance(project.get()).createFileFromText("macro.asm", MipsFileType, source)
                 assertEquals(source, file.node.text)
                 val macro = descendants(file.node, "MACRO_DEFINITION").single()
@@ -661,7 +662,7 @@ class MipsParserPlatformTest {
     @Test
     fun `bare percent is invalid in the assembler and editor without closing the macro`(@TempDir directory: Path) =
         timeoutRunBlocking<Unit> {
-            val source = ".macro emit (%value)\nli \$t0, %\nbody: nop\n.end_macro\nemit(7)"
+            val source = $$".macro emit (%value)\nli $t0, %\nbody: nop\n.end_macro\nemit(7)"
             val entry = directory.resolve("unfinished.asm").also { it.writeText(source) }
             val context = project.get().service<MarsSessionService>().context
             val failure = assertThrows<ProcessingException> { context.assemble(listOf(entry), null, true, false) }
@@ -679,10 +680,10 @@ class MipsParserPlatformTest {
 
     @Test
     fun `a nested macro opener does not consume the outer terminator`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
-        val source = """
+        val source = $$"""
             .macro outer (%value)
             .macro inner (%other)
-            inside: li ${'$'}t0, %value
+            inside: li $t0, %value
             .end_macro
             outside: nop
             outer(7)
@@ -698,7 +699,7 @@ class MipsParserPlatformTest {
                 ".macro" to emptyList(),
                 ".macro .word" to emptyList(),
                 ".macro .set" to emptyList(),
-                ".macro \$t0" to emptyList(),
+                $$".macro $t0" to emptyList(),
                 "nested_label: .macro inner" to listOf("nested_label:"),
                 "first_label: nested_label: .macro inner" to listOf("first_label:"),
             )
@@ -708,7 +709,7 @@ class MipsParserPlatformTest {
                 val errors = PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java).map { it.errorDescription }
                 assertEquals(when (opener) {
                     ".macro" -> listOf("Expected a macro name")
-                    ".macro .word", ".macro .set", ".macro \$t0" -> listOf("Invalid MARS macro name")
+                    ".macro .word", ".macro .set", $$".macro $t0" -> listOf("Invalid MARS macro name")
                     else -> emptyList()
                 }, errors, opener)
                 val outer = descendants(file.node, "MACRO_DEFINITION").single()
@@ -723,7 +724,7 @@ class MipsParserPlatformTest {
 
     @Test
     fun `malformed macro endings preserve body scope until a standalone terminator`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
-        val valid = ".macro emit\nbody: addiu \$t0, \$zero, 7\n.end_macro,, # close\nemit\n"
+        val valid = $$".macro emit\nbody: addiu $t0, $zero, 7\n.end_macro,, # close\nemit\n"
         assertAssembles(directory, valid)
         readAction {
             val validMacro = descendants(assertParses(valid).node, "MACRO_DEFINITION").single()
@@ -747,11 +748,11 @@ class MipsParserPlatformTest {
 
     @Test
     fun `assembler commas remain punctuation without blocking native syntax`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
-        val source = """
+        val source = $$"""
             , , # separators alone
             ,,.eqv ,, VALUE ,, 7 ,, # ignored trailing separators
             ,,.macro,, emit,,(,,%value,,,),,
-              ,,addiu,, ${'$'}t0,,, ${'$'}zero,,,%value,,
+              ,,addiu,, $t0,,, $zero,,,%value,,
             ,,.end_macro,,,
             ,,.data,,
             ,,.word,, 1,, -2,, +3,,
@@ -766,7 +767,7 @@ class MipsParserPlatformTest {
             val file = assertParses(source)
             assertEquals(source.count { it == ',' }, descendants(file.node, "COMMA").count())
             assertEquals(listOf("entry,, :"), descendants(file.node, "LABEL").map { it.text }.toList())
-            assertEquals(listOf("${'$'}t0", "${'$'}zero", "%value", "1", "-2", "+3"),
+            assertEquals(listOf($$"$t0", $$"$zero", "%value", "1", "-2", "+3"),
                 descendants(file.node, "OPERAND").map { it.text }.toList())
             assertEquals(listOf("(", "VALUE", ")"), descendants(file.node, "INVOCATION_TOKEN").map { it.text }.toList())
             val adjacent = assertParses(".word 1, (2)\n")
@@ -777,14 +778,14 @@ class MipsParserPlatformTest {
 
     @Test
     fun `comma free signed data has the same operand boundaries as the assembler`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
-        val source = """
+        val source = $$"""
             .data
             values: .word 1 -2 +3
                 4-5+6
                 'a'-7
             .float 1.25-2.5+3e-1
             .text
-            addiu ${'$'}t0 ${'$'}zero-2
+            addiu $t0 $zero-2
         """.trimIndent()
         assertAssembles(directory, source, 0x2408fffe)
         val memory = project.get().service<MarsSessionService>().context.memory
@@ -792,7 +793,8 @@ class MipsParserPlatformTest {
         assertEquals(expected, expected.indices.map { memory.getWordNoNotify(memory.dataBaseAddress + it * 4) })
         readAction {
             val file = assertParses(source)
-            assertEquals(listOf("1", "-2", "+3", "4", "-5", "+6", "'a'", "-7", "1.25", "-2.5", "+3e-1", "\$t0", "\$zero", "-2"),
+            assertEquals(listOf("1", "-2", "+3", "4", "-5", "+6", "'a'", "-7", "1.25", "-2.5", "+3e-1", $$"$t0",
+              $$"$zero", "-2"),
                 descendants(file.node, "OPERAND").map { it.text }.toList())
             assertTrue(descendants(file.node, "ADD_EXPR").none())
         }
@@ -963,7 +965,7 @@ class MipsParserPlatformTest {
         val macroOperandCalls = tokens.mapIndexed { index, row ->
             row.drop(1).filter { it.type !in punctuation }.joinToString(",", prefix = "operands_$index(", postfix = ")") { it.value }
         }
-        val macroOperandDefinitions = listOf("%", "\$").map { sigil ->
+        val macroOperandDefinitions = listOf("%", $$"$").map { sigil ->
             tokens.flatMapIndexed { index, row ->
                 val parameters = ArrayList<String>()
                 val body = row.drop(1).joinToString(separator, prefix = row.first().value + separator) { token ->
@@ -1122,9 +1124,9 @@ class MipsParserPlatformTest {
                 val registers = registerTokens.map { row ->
                     row.map { token ->
                         if (token.type == TokenTypes.FP_REGISTER_NAME) {
-                            "\$f" + spelling(RegisterNames.floating(token.value)!!.number)
+                            $$"$f" + spelling(RegisterNames.floating(token.value)!!.number)
                         } else {
-                            "\$" + spelling(RegisterNames.integer(token.value)!!.number)
+                            $$"$" + spelling(RegisterNames.integer(token.value)!!.number)
                         }
                     }
                 }
@@ -1152,30 +1154,30 @@ class MipsParserPlatformTest {
 
     @Test
     fun `address operands follow the assembler with or without commas`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
-        val header = ".eqv BASE \$sp\n.eqv DEST \$t0\n.eqv OFFSET + 4\n.data\ntarget: .word 0\nnop: .word 0\n.text\n"
-        val canonical = """
-            lw ${'$'}t0,(${'$'}sp)
-            lwc1 ${'$'}f0,(${'$'}sp)
-            lw ${'$'}t0,4(${'$'}sp)
-            lw ${'$'}t0,target(${'$'}sp)
-            lw ${'$'}t0,'D'(${'$'}sp)
-            lw ${'$'}t0,8(${'$'}sp)
-            lw ${'$'}t0,(${'$'}sp)
-            lw ${'$'}t0,(${'$'}sp)
-            lw ${'$'}t0,(${'$'}sp)
-            lw ${'$'}t0,nop+ 4(${'$'}sp)
+        val header = $$".eqv BASE $sp\n.eqv DEST $t0\n.eqv OFFSET + 4\n.data\ntarget: .word 0\nnop: .word 0\n.text\n"
+        val canonical = $$"""
+            lw $t0,($sp)
+            lwc1 $f0,($sp)
+            lw $t0,4($sp)
+            lw $t0,target($sp)
+            lw $t0,'D'($sp)
+            lw $t0,8($sp)
+            lw $t0,($sp)
+            lw $t0,($sp)
+            lw $t0,($sp)
+            lw $t0,nop+ 4($sp)
         """.trimIndent()
-        val alternate = """
-            lw ${'$'}t0(${'$'}sp)
-            lwc1 ${'$'}f0(${'$'}sp)
-            lw ${'$'}t0,4,,(${'$'}sp)
-            lw ${'$'}t0,target,(${'$'}sp)
-            lw ${'$'}t0,'D',(${'$'}sp)
-            lw ${'$'}t0,8,,(,BASE,)
-            lw DEST (${'$'}sp)
-            lw DEST,(${'$'}sp)
-            read: lw DEST,,,(${'$'}sp)
-            lw ${'$'}t0,nop OFFSET(${'$'}sp)
+        val alternate = $$"""
+            lw $t0($sp)
+            lwc1 $f0($sp)
+            lw $t0,4,,($sp)
+            lw $t0,target,($sp)
+            lw $t0,'D',($sp)
+            lw $t0,8,,(,BASE,)
+            lw DEST ($sp)
+            lw DEST,($sp)
+            read: lw DEST,,,($sp)
+            lw $t0,nop OFFSET($sp)
         """.trimIndent()
         val context = project.get().service<MarsSessionService>().context
         fun assemble(text: String): List<Int> {
@@ -1188,40 +1190,40 @@ class MipsParserPlatformTest {
             val instructions = descendants(root, "INSTRUCTION").toList()
             assertEquals(
                 listOf(
-                    listOf("\$t0", "(\$sp)"), listOf("\$f0", "(\$sp)"), listOf("\$t0", "4,,(\$sp)"),
-                    listOf("\$t0", "target,(\$sp)"), listOf("\$t0", "'D',(\$sp)"), listOf("\$t0", "8,,(,BASE,)"),
-                    listOf("DEST", "(\$sp)"), listOf("DEST", "(\$sp)"),
-                    listOf("DEST", "(\$sp)"), listOf("\$t0", "nop", "OFFSET(\$sp)"),
+                    listOf($$"$t0", $$"($sp)"), listOf($$"$f0", $$"($sp)"), listOf($$"$t0", $$"4,,($sp)"),
+                    listOf($$"$t0", $$"target,($sp)"), listOf($$"$t0", $$"'D',($sp)"), listOf($$"$t0", "8,,(,BASE,)"),
+                    listOf("DEST", $$"($sp)"), listOf("DEST", $$"($sp)"),
+                    listOf("DEST", $$"($sp)"), listOf($$"$t0", "nop", $$"OFFSET($sp)"),
                 ),
                 instructions.map { descendants(it, "OPERAND").map { operand -> operand.text }.toList() },
             )
-            assertEquals(listOf("4,,(\$sp)", "target,(\$sp)", "'D',(\$sp)", "8,,(,BASE,)", "OFFSET(\$sp)"),
+            assertEquals(listOf($$"4,,($sp)", $$"target,($sp)", $$"'D',($sp)", "8,,(,BASE,)", $$"OFFSET($sp)"),
                 descendants(root, "ADDRESS_EXPR").map { it.text }.toList())
         }
-        for (formal in listOf("%dest", "\$dest")) {
-            val source = ".macro load ($formal)\nlw $formal (\$sp)\n.end_macro\nload(\$t0)\n"
+        for (formal in listOf("%dest", $$"$dest")) {
+            val source = $$".macro load ($$formal)\nlw $$formal ($sp)\n.end_macro\nload($t0)\n"
             assertAssembles(directory, source, 0x8fa80000.toInt())
             readAction {
                 val instruction = descendants(assertParses(source).node, "INSTRUCTION").single()
-                assertEquals(listOf(formal, "(\$sp)"), descendants(instruction, "OPERAND").map { it.text }.toList())
+                assertEquals(listOf(formal, $$"($sp)"), descendants(instruction, "OPERAND").map { it.text }.toList())
             }
         }
     }
 
     @Test
     fun `commas preserve label offsets and their optional base registers`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
-        val header = ".eqv DELTA 4\n.data\ntarget: .word 0\n\$target: .word 0\nnop: .word 0\n.text\n"
+        val header = $$".eqv DELTA 4\n.data\ntarget: .word 0\n$target: .word 0\nnop: .word 0\n.text\n"
         val operands = listOf(
             "target,,+4",
-            "\$target,+4",
-            "target,,+,,DELTA,,(\$sp)",
-            "nop,,+ 4,,(\$sp)",
+          $$"$target,+4",
+          $$"target,,+,,DELTA,,($sp)",
+          $$"nop,,+ 4,,($sp)",
         )
         val canonical = listOf(
-            "la \$t0,target+4",
-            "la \$t0,\$target+4",
-            "lw \$t0,target+4(\$sp)",
-            "lw \$t0,nop+ 4(\$sp)",
+          $$"la $t0,target+4",
+          $$"la $t0,$target+4",
+          $$"lw $t0,target+4($sp)",
+          $$"lw $t0,nop+ 4($sp)",
         )
         val alternate = canonical.zip(operands) { line, operand ->
             "${line.substringBefore(',')},$operand"
@@ -1236,21 +1238,21 @@ class MipsParserPlatformTest {
             val source = header + alternate.joinToString("\n", postfix = "\n")
             val instructions = descendants(assertParses(source).node, "INSTRUCTION").toList()
             assertEquals(
-                operands.map { listOf("\$t0", it) },
+                operands.map { listOf($$"$t0", it) },
                 instructions.map { descendants(it, "OPERAND").map { operand -> operand.text }.toList() },
             )
             assertEquals(operands, instructions.flatMap { descendants(it, "ADD_EXPR").map { offset -> offset.text } })
-            assertEquals(listOf("DELTA,,(\$sp)", "4,,(\$sp)"),
+            assertEquals(listOf($$"DELTA,,($sp)", $$"4,,($sp)"),
                 instructions.flatMap { descendants(it, "ADDRESS_EXPR").map { address -> address.text } })
-            val signed = assertParses("la \$t0,nop,+4\n")
-            assertEquals(listOf("\$t0", "nop", "+4"), descendants(signed.node, "OPERAND").map { it.text }.toList())
+            val signed = assertParses($$"la $t0,nop,+4\n")
+            assertEquals(listOf($$"$t0", "nop", "+4"), descendants(signed.node, "OPERAND").map { it.text }.toList())
         }
     }
 
     @Test
     fun `adjacent plus in a macro label offset stays with the address operand`(@TempDir directory: Path) =
         timeoutRunBlocking<Unit> {
-            val source = """
+            val source = $$"""
                 .macro load (%out, %label, %reg)
                     la %out,%label+4
                     lw %out,%label,+4(%reg)
@@ -1261,7 +1263,7 @@ class MipsParserPlatformTest {
                 .data
                 values: .word 0, 7
                 .text
-                load(${'$'}t0, values, ${'$'}sp)
+                load($t0, values, $sp)
             """.trimIndent()
             val context = project.get().service<MarsSessionService>().context
             fun assemble(text: String): List<Int> {
@@ -1290,10 +1292,10 @@ class MipsParserPlatformTest {
     @Test
     fun `signed immediates after register aliases stay separate from the register`(@TempDir directory: Path) =
         timeoutRunBlocking<Unit> {
-            val t0 = "\$t0"
-            val t1 = "\$t1"
-            val zero = "\$zero"
-            val src = "\$src"
+            val t0 = $$"$t0"
+            val t1 = $$"$t1"
+            val zero = $$"$zero"
+            val src = $$"$src"
             val definitions = """
                 .eqv SRC $zero
                 .eqv REGS $t0, $zero
@@ -1336,7 +1338,7 @@ class MipsParserPlatformTest {
                 assertEquals(
                     listOf(
                         listOf(t0, src, "-4"), listOf(t0, "SRC", "+4"), listOf(t0, "SRC", "-4"),
-                        listOf("REGS", "+4"), listOf("DEST", "+4"), listOf("\$t0", "values,+4"),
+                        listOf("REGS", "+4"), listOf("DEST", "+4"), listOf($$"$t0", "values,+4"),
                     ),
                     descendants(root, "INSTRUCTION").toList().map { instruction ->
                         descendants(instruction, "OPERAND").map { it.text }.toList()
@@ -1441,15 +1443,15 @@ class MipsParserPlatformTest {
     @Test
     fun `malformed operands keep later arguments and replacement tokens on the same line`() = timeoutRunBlocking<Unit> {
         readAction {
-            val source = """
+            val source = $$"""
                 .data
                 .word 0x, 7
                 .eqv VALUE @bad, 8
                 .text
                 .macro emit (%a, %b, %c)
-                addiu ${'$'}t0, 1e, %b
+                addiu $t0, 1e, %b
                 .end_macro
-                emit(0x, ${'$'}t0, target)
+                emit(0x, $t0, target)
                 target: nop
             """.trimIndent()
             val file = PsiFileFactory.getInstance(project.get()).createFileFromText("editing.mars", MipsFileType, source)
@@ -1459,8 +1461,8 @@ class MipsParserPlatformTest {
             assertTrue(errors.all { it.errorDescription == "Invalid MARS operand token" })
             assertEquals(listOf("0x", "7"), descendants(file.node, "OPERAND").map { it.text }.toList())
             assertEquals(listOf("@bad", "8"), descendants(file.node, "REPLACEMENT").map { it.text }.toList())
-            assertEquals("\$t0, 1e, %b", descendants(file.node, "OPERAND_FRAGMENT").single().text)
-            assertEquals(listOf("(", "0x", "\$t0", "target", ")"),
+            assertEquals($$"$t0, 1e, %b", descendants(file.node, "OPERAND_FRAGMENT").single().text)
+            assertEquals(listOf("(", "0x", $$"$t0", "target", ")"),
                 descendants(file.node, "INVOCATION_TOKEN").map { it.text }.toList())
             assertEquals("target:", descendants(file.node, "LABEL").single().text)
         }
@@ -1491,7 +1493,7 @@ class MipsParserPlatformTest {
 
     @Test
     fun `detached signs before commas keep following operands in their own slots`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
-        val source = ".data\n.word + , 7\n.word 3, -, 8\n.text\naddiu \$t0, \$zero, +,, 9\nnext: nop\n"
+        val source = $$".data\n.word + , 7\n.word 3, -, 8\n.text\naddiu $t0, $zero, +,, 9\nnext: nop\n"
         val entry = directory.resolve("detached-sign.mars").also { it.writeText(source) }
         val context = project.get().service<MarsSessionService>().context
         val failure = assertThrows<ProcessingException> { context.assemble(listOf(entry), null, true, false) }
@@ -1501,7 +1503,7 @@ class MipsParserPlatformTest {
             val file = PsiFileFactory.getInstance(project.get()).createFileFromText("detached-sign.mars", MipsFileType, source)
             assertEquals(source, file.text)
             val operands = descendants(file.node, "OPERAND").map { it.text }.toList()
-            assertEquals(listOf("+", "7", "3", "-", "8", "\$t0", "\$zero", "+", "9"), operands)
+            assertEquals(listOf("+", "7", "3", "-", "8", $$"$t0", $$"$zero", "+", "9"), operands)
             assertEquals(listOf("+", "-", "+"), PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java).map { it.text })
             assertEquals("next:", descendants(file.node, "LABEL").single().text)
 
@@ -1516,12 +1518,12 @@ class MipsParserPlatformTest {
     @Test
     fun `malformed offsets retain their address and base register in PSI`() = timeoutRunBlocking<Unit> {
         readAction {
-            val source = "lw \$t0, -0x(\$sp)\nlw \$t1, 0x, (\$fp)\nnext: nop\n"
+            val source = $$"lw $t0, -0x($sp)\nlw $t1, 0x, ($fp)\nnext: nop\n"
             val file = PsiFileFactory.getInstance(project.get()).createFileFromText("address-editing.mars", MipsFileType, source)
             assertEquals(source, file.text)
             val addresses = descendants(file.node, "ADDRESS_EXPR").toList()
-            assertEquals(listOf("-0x(\$sp)", "0x, (\$fp)"), addresses.map { it.text })
-            assertEquals(listOf("\$sp", "\$fp"), addresses.flatMap { descendants(it, "REGISTER").map { it.text }.toList() })
+            assertEquals(listOf($$"-0x($sp)", $$"0x, ($fp)"), addresses.map { it.text })
+            assertEquals(listOf($$"$sp", $$"$fp"), addresses.flatMap { descendants(it, "REGISTER").map { it.text }.toList() })
             assertEquals(listOf("-0x", "0x"), PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java).map { it.text })
             assertEquals("next:", descendants(file.node, "LABEL").single().text)
         }
@@ -1529,16 +1531,16 @@ class MipsParserPlatformTest {
 
     @Test
     fun `unfinished parenthesized operands retain their base and subsequent operands`() = timeoutRunBlocking<Unit> {
-        val source = "lw \$t0, (\$sp, 7\nsw \$t0, 4(\$fp, 8\nlw \$t1, (\nsw \$t1, 4(\n" +
-            "lw \$t1, ()\nsw \$t1, 4()\nnext: nop\n"
+        val source = $$"lw $t0, ($sp, 7\nsw $t0, 4($fp, 8\nlw $t1, (\nsw $t1, 4(\n" +
+            $$"lw $t1, ()\nsw $t1, 4()\nnext: nop\n"
         readAction {
             val file = PsiFileFactory.getInstance(project.get()).createFileFromText("parenthesis-editing.mars", MipsFileType, source)
             assertEquals(source, file.text)
-            assertEquals(listOf("(\$sp", "(", "()"), descendants(file.node, "GROUP_EXPR").map { it.text }.toList())
-            assertEquals(listOf("4(\$fp", "4(", "4()"), descendants(file.node, "ADDRESS_EXPR").map { it.text }.toList())
+            assertEquals(listOf($$"($sp", "(", "()"), descendants(file.node, "GROUP_EXPR").map { it.text }.toList())
+            assertEquals(listOf($$"4($fp", "4(", "4()"), descendants(file.node, "ADDRESS_EXPR").map { it.text }.toList())
             val instructions = descendants(file.node, "INSTRUCTION").toList()
-            assertEquals(listOf("\$t0", "(\$sp", "7"), descendants(instructions[0], "OPERAND").map { it.text }.toList())
-            assertEquals(listOf("\$t0", "4(\$fp", "8"), descendants(instructions[1], "OPERAND").map { it.text }.toList())
+            assertEquals(listOf($$"$t0", $$"($sp", "7"), descendants(instructions[0], "OPERAND").map { it.text }.toList())
+            assertEquals(listOf($$"$t0", $$"4($fp", "8"), descendants(instructions[1], "OPERAND").map { it.text }.toList())
             assertTrue(PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java).isNotEmpty())
             assertEquals("next:", descendants(file.node, "LABEL").single().text)
             assertEquals("nop", instructions.last().text)
@@ -1549,7 +1551,7 @@ class MipsParserPlatformTest {
     fun `punctuation in percent formals survives parsing and macro substitution`(@TempDir directory: Path) =
         timeoutRunBlocking<Unit> {
             val formal = "%value!@?.part"
-            val source = ".macro emit ($formal)\naddiu \$t0, \$zero, $formal\n.end_macro\nemit(7)"
+            val source = $$".macro emit ($$formal)\naddiu $t0, $zero, $$formal\n.end_macro\nemit(7)"
             assertAssembles(directory, source)
             readAction {
                 val file = assertParses(source)
@@ -1575,17 +1577,17 @@ class MipsParserPlatformTest {
 
     @Test
     fun `dot-prefixed names containing digits stay distinct from decimal literals`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
-        val source = """
+        val source = $$"""
             .eqv .1_count 7
             .macro .2_load (%value)
-              addiu ${'$'}t0, ${'$'}zero, %value
+              addiu $t0, $zero, %value
             .end_macro
             .data
             .3_data: .float .5e-2
             .word .3_data
             .text
             .4_entry: .2_load(.1_count)
-            la ${'$'}t1, .3_data
+            la $t1, .3_data
             j .4_entry
         """.trimIndent()
         val entry = directory.resolve("dotted-names.asm").also { it.writeText(source) }
@@ -1610,10 +1612,10 @@ class MipsParserPlatformTest {
     @Test
     fun `Unicode include paths symbols and decimal digits preserve syntax and expansion origins`(@TempDir directory: Path) =
         timeoutRunBlocking<Unit> {
-            val library = """
+            val library = $$"""
                 .eqv 定数 ٧
-                .macro 印字 (${'$'}量)
-                  ADDIU ${'$'}t0, ${'$'}zero, ${'$'}量
+                .macro 印字 ($量)
+                  ADDIU $t0, $zero, $量
                 .end_macro
             """.trimIndent()
             val source = """
@@ -1644,7 +1646,7 @@ class MipsParserPlatformTest {
             readAction {
                 val libraryRoot = assertParses(library, include.fileName.toString()).node
                 assertEquals("٧", descendants(libraryRoot, "REPLACEMENT").single().text)
-                assertEquals("\$量", descendants(libraryRoot, "MACRO_PARAMETER").single().text)
+                assertEquals($$"$量", descendants(libraryRoot, "MACRO_PARAMETER").single().text)
                 val root = assertParses(source, entry.fileName.toString()).node
                 assertEquals(".include \"常用.inc\"", descendants(root, "INCLUDE_LINE").single().text)
                 assertEquals(listOf(".數據:", "入口:"), descendants(root, "LABEL").map { it.text }.toList())
@@ -1741,7 +1743,7 @@ class MipsParserPlatformTest {
     @Test
     fun `unfinished quotes retain raw operands accepted by the assembler`(@TempDir directory: Path) =
         timeoutRunBlocking<Unit> {
-            directory.resolve("part.s").writeText("addiu \$t0, \$zero, 7\n")
+            directory.resolve("part.s").writeText($$"addiu $t0, $zero, 7\n")
             val source = """
                 .eqv RAW "alias
                 .set RAW
@@ -1846,10 +1848,10 @@ class MipsParserPlatformTest {
 
     @Test
     fun `every core directive parses and assembles in ordinary and comma-heavy source`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
-        val source = """
+        val source = $$"""
             .eqv WORD_VALUE 7
             .macro emit (%x)
-              addiu ${'$'}t0, ${'$'}zero, %x
+              addiu $t0, $zero, %x
             .end_macro
             .include "data.s"
             .extern externalWord 4
@@ -1909,7 +1911,7 @@ class MipsParserPlatformTest {
 
     @Test
     fun `extern recognizes names spelled like registers and directives`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
-        val names = listOf("\$t0", ".word", ".set")
+        val names = listOf($$"$t0", ".word", ".set")
         val source = names.joinToString("\n", postfix = "\n.text\nmain: nop\n") { ".extern $it, 4" }
         val entry = directory.resolve("extern.mars").also { it.writeText(source) }
         val context = project.get().service<MarsSessionService>().context
@@ -1966,12 +1968,13 @@ class MipsParserPlatformTest {
     @Test
     fun `registered native parser handles macros data directives repeats and equivalences`() = timeoutRunBlocking<Unit> {
         readAction {
-            assertParses("""
+            assertParses(
+              $$"""
                 .eqv SIZE 8
-                .eqv PRINT li ${'$'}v0, 1
+                .eqv PRINT li $v0, 1
                 .macro print (%value)
-                  li ${'$'}v0, 1
-                  add ${'$'}a0, ${'$'}zero, %value
+                  li $v0, 1
+                  add $a0, $zero, %value
                   syscall
                 .end_macro
                 .data
@@ -1981,7 +1984,7 @@ class MipsParserPlatformTest {
                 .byte 'a', '\n', '\123'
                 .text
                 main: print(10)
-                lw ${'$'}t0, values+4(${'$'}sp)
+                lw $t0, values+4($sp)
             """.trimIndent() + "\n")
         }
     }
@@ -2003,7 +2006,8 @@ class MipsParserPlatformTest {
             assertTrue(definition.stringLiteralElements.contains(MipsTypes.psi("STRING")))
             assertThrows<UnsupportedOperationException> { definition.createParser(project.get()) }
             assertSame(MipsTypes.converter, MipsElementTypeConverterFactory().getElementTypeConverter())
-            val text = ".macro .end_macro .eqv .word \$t0 %x 1 'a' \"x\" #comment\n + - ( ) , : @ \"unterminated\n'open"
+            val text =
+              $$".macro .end_macro .eqv .word $t0 %x 1 'a' \"x\" #comment\n + - ( ) , : @ \"unterminated\n'open"
             val lexer = definition.createLexer(project.get())
             lexer.start(text)
             assertSame(text, lexer.bufferSequence)
@@ -2063,7 +2067,9 @@ class MipsParserPlatformTest {
     @Test
     fun `incomplete and malformed statements preserve later source lines`() = timeoutRunBlocking<Unit> {
         readAction {
-            for (broken in listOf("lw \$t0,4(\$sp", "add \$t0,+", "bad @ token", ".eqv @", ".eqv -0xG", ".eqv ,,, 7 8", ".macro foo (1", ".macro 7",
+            for (broken in listOf(
+              $$"lw $t0,4($sp",
+              $$"add $t0,+", "bad @ token", ".eqv @", ".eqv -0xG", ".eqv ,,, 7 8", ".macro foo (1", ".macro 7",
                 ".word 1 != 2", ".word 1 <= 2", ".word (1+2)",
                 ".word 1 | 2", ".word 1 ^ 2", ".word 1 & 2", ".word ~1", ".word 1 << 2", ".word 1 >>> 2")) {
                 val text = broken + "\nnext: nop\n"
@@ -2080,8 +2086,8 @@ class MipsParserPlatformTest {
         readAction {
             val factory = PsiFileFactory.getInstance(project.get())
             val sources = listOf(
-                ".macro m (%x)\nlocal: lw \$t0,label+4(\$sp) #note\n.asciiz \"hello\"\n.end_macro\n.data\n.word 1:4\n.text\nm(5)\n",
-                ".eqv MIN -0x080000000\n.macro pair(\$dst, %value)\nli \$dst, %value\n.end_macro\npair(\$t1, MIN)\n",
+              $$".macro m (%x)\nlocal: lw $t0,label+4($sp) #note\n.asciiz \"hello\"\n.end_macro\n.data\n.word 1:4\n.text\nm(5)\n",
+              $$".eqv MIN -0x080000000\n.macro pair($dst, %value)\nli $dst, %value\n.end_macro\npair($t1, MIN)\n",
                 ": .include \"folder/part.s\" +\n.extern shared,4\n.kdata\n.word shared\n -3:2\n.set ignored )\n",
             )
             for (source in sources) {
@@ -2200,7 +2206,7 @@ class MipsParserPlatformTest {
                 val operations = descendants(assertParses(source).node, "INSTRUCTION").toList()
                 assertEquals(cases.map { it.first }, operations.map { it.text })
                 operations.forEach { operation ->
-                    assertEquals(listOf("\$t1", operation.text.substringAfter(',')),
+                    assertEquals(listOf($$"$t1", operation.text.substringAfter(',')),
                         descendants(operation, "OPERAND").map { it.text }.toList(), operation.text)
                 }
             }
@@ -2211,13 +2217,13 @@ class MipsParserPlatformTest {
         val cases = listOf(
             ".macro empty\n.end_macro\n",
             ".macro empty()\n.end_macro\n",
-            ".macro spim(\$arg, \$other)\n add \$arg \$arg \$other\n.end_macro\n",
+          $$".macro spim($arg, $other)\n add $arg $arg $other\n.end_macro\n",
             ".macro plain %a %b\n nop\n.end_macro\n",
-            ".eqv expr, (+1 - 2):4\n.eqv text \"x\" 'a' %p .data \$t0\n",
-            "first: second: nop\nlast:\nLİ \$v0, 1\nB NOP\n.ent ignored, +\n",
+          $$".eqv expr, (+1 - 2):4\n.eqv text \"x\" 'a' %p .data $t0\n",
+          $$"first: second: nop\nlast:\nLİ $v0, 1\nB NOP\n.ent ignored, +\n",
             ".word\n.word 1,2,\n.data\n.word 1\n 2 -3 +4\n \"text\" 'a'\n",
-            ".macro m(%x,%y)\n lw \$t0,%x(%y)\n.end_macro\nm()\nm(1,2,)\n",
-            "lw \$t0, (\$sp)\n.word (1 + 2) - 3\n.word +(-2)\n",
+          $$".macro m(%x,%y)\n lw $t0,%x(%y)\n.end_macro\nm()\nm(1,2,)\n",
+          $$"lw $t0, ($sp)\n.word (1 + 2) - 3\n.word +(-2)\n",
             ".data\n.globl main\n.extern name,4\n.align 2\n.space 8\n.half 0xffff\n.ascii \"x\"\n",
             ".kdata 0x90000000\n.ktext 0x80000180\n.set noat\n.include \"other.asm\"\n",
         )

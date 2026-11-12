@@ -181,7 +181,8 @@ class KeyboardDisplayDeviceTest {
         @TempDir directory: Path,
     ) {
         val entry = directory.resolve("terminal.asm").also {
-            it.writeText("nop\nlui \$t0, 0xffff\naddiu \$t1, \$zero, 65\nnop\nsw \$t1, 12(\$t0)\n" +
+            it.writeText(
+              $$"nop\nlui $t0, 0xffff\naddiu $t1, $zero, 65\nnop\nsw $t1, 12($t0)\n" +
                 "nop\n".repeat(12))
         }
         for (delay in listOf(Delay.UNIFORM, Delay.NORMAL)) {

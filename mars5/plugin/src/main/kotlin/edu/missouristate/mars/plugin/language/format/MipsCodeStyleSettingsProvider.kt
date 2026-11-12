@@ -22,16 +22,16 @@ internal class MipsCodeStyleSettingsProvider : LanguageCodeStyleSettingsProvider
         indentOptions.CONTINUATION_INDENT_SIZE = 4
     }
 
-    override fun getCodeSample(settingsType: SettingsType) = """
+    override fun getCodeSample(settingsType: SettingsType) = $$"""
         .macro decrement (%counter)
             addiu %counter, %counter, -1
         .end_macro
 
         .text
         main:
-            lw ${'$'}t0, 0(${'$'}sp)
-            decrement (${'$'}t0)
-            bgtz ${'$'}t0, main
+            lw $t0, 0($sp)
+            decrement ($t0)
+            bgtz $t0, main
     """.trimIndent()
 
     override fun createConfigurable(baseSettings: CodeStyleSettings, modelSettings: CodeStyleSettings) =

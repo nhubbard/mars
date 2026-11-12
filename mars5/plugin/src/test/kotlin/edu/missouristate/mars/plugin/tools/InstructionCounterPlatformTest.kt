@@ -553,7 +553,7 @@ class InstructionCounterPlatformTest {
                 }
                 addExecutionContent(run, unrelated)
             }
-            val first = launch(run, 1, "addiu \$t0, \$zero, 7\n")
+            val first = launch(run, 1, $$"addiu $t0, $zero, 7\n")
             waitFor(1, "1 (100%)")
             val firstBitmap = (first.getUserData(RunContentDescriptor.DESCRIPTOR_KEY)!!.processHandler as MarsProcessHandler).bitmapDisplay
             withContext(Dispatchers.EDT) {
@@ -688,7 +688,7 @@ class InstructionCounterPlatformTest {
             assertFalse(firstBitmap.snapshot().connected)
 
             val bitmapRun = launch(
-                run, 4, "lui \$t0, 0x1001\nlui \$t1, 0xff\nsw \$t1, 0(\$t0)\nli \$t1, 0xff\nsw \$t1, 4(\$t0)\n",
+                run, 4, $$"lui $t0, 0x1001\nlui $t1, 0xff\nsw $t1, 0($t0)\nli $t1, 0xff\nsw $t1, 4($t0)\n",
                 captureGrids = true,
             )
             waitFor(1, "5 (100%)")
@@ -853,7 +853,7 @@ class InstructionCounterPlatformTest {
                 assertInspection("Focus or click to inspect a cell.")
             }
 
-            val branchRun = launch(run, 3, "beq \$zero, \$zero, next\nnext: bne \$zero, \$zero, next\n")
+            val branchRun = launch(run, 3, $$"beq $zero, $zero, next\nnext: bne $zero, $zero, next\n")
             waitFor(1, "2 (100%)")
             pollAssertionsAsync(5.seconds, 30.milliseconds) {
                 withContext(Dispatchers.EDT) {
@@ -909,17 +909,17 @@ class InstructionCounterPlatformTest {
                 assertTrue(checkNotNull(branchRun.manager).removeContent(branchRun, true))
             }
             waitFor(0, "0 (0%)")
-            val liveTablesRun = launch(run, 11, """
+            val liveTablesRun = launch(run, 11, $$"""
                 .data
                 value: .word 0
                 .text
-                la ${'$'}t0, value
-                sw ${'$'}zero, 0(${'$'}t0)
-                bne ${'$'}zero, ${'$'}zero, done
-                li ${'$'}v0, 5
+                la $t0, value
+                sw $zero, 0($t0)
+                bne $zero, $zero, done
+                li $v0, 5
                 syscall
-                lw ${'$'}t1, 0(${'$'}t0)
-                beq ${'$'}zero, ${'$'}zero, done
+                lw $t1, 0($t0)
+                beq $zero, $zero, done
                 done: nop
             """.trimIndent())
             val liveProcess = liveTablesRun.getUserData(RunContentDescriptor.DESCRIPTOR_KEY)!!.processHandler!!
@@ -948,7 +948,7 @@ class InstructionCounterPlatformTest {
                 assertTrue(checkNotNull(liveTablesRun.manager).removeContent(liveTablesRun, true))
             }
             waitFor(0, "0 (0%)")
-            val floatRun = launch(run, 5, "lui \$t0, 0x3fc0\nmtc1 \$t0, \$f0\n", start = false)
+            val floatRun = launch(run, 5, $$"lui $t0, 0x3fc0\nmtc1 $t0, $f0\n", start = false)
             waitFor(1, "0 (0%)")
             withContext(Dispatchers.EDT) {
                 floatRegister.selectedIndex = 1
@@ -976,17 +976,17 @@ class InstructionCounterPlatformTest {
                 assertTrue(checkNotNull(floatRun.manager).removeContent(floatRun, true))
             }
             waitFor(0, "0 (0%)")
-            val labRun = launch(run, 6, """
-                li ${'$'}v0, 12
+            val labRun = launch(run, 6, $$"""
+                li $v0, 12
                 syscall
-                lui ${'$'}t0, 0xffff
-                li ${'$'}t1, 0x3f
-                sb ${'$'}t1, 0x10(${'$'}t0)
-                li ${'$'}t1, 0x06
-                sb ${'$'}t1, 0x11(${'$'}t0)
-                li ${'$'}t1, 1
-                sb ${'$'}t1, 0x13(${'$'}t0)
-                li ${'$'}v0, 12
+                lui $t0, 0xffff
+                li $t1, 0x3f
+                sb $t1, 0x10($t0)
+                li $t1, 0x06
+                sb $t1, 0x11($t0)
+                li $t1, 1
+                sb $t1, 0x13($t0)
+                li $v0, 12
                 syscall
             """.trimIndent())
             val labProcess = labRun.getUserData(RunContentDescriptor.DESCRIPTOR_KEY)!!.processHandler as MarsProcessHandler
@@ -1100,24 +1100,24 @@ class InstructionCounterPlatformTest {
                 paintRobot(1, 1)
                 paintRobot(280, 180)
             }
-            val robotRun = launch(run, 7, """
-                li ${'$'}v0, 12
+            val robotRun = launch(run, 7, $$"""
+                li $v0, 12
                 syscall
-                lui ${'$'}t0, 0xffff
-                ori ${'$'}t0, ${'$'}t0, 0x8000
-                li ${'$'}t1, 90
-                sw ${'$'}t1, 0x10(${'$'}t0)
-                li ${'$'}t1, 1
-                sw ${'$'}t1, 0x20(${'$'}t0)
-                sw ${'$'}t1, 0x50(${'$'}t0)
-                li ${'$'}v0, 12
+                lui $t0, 0xffff
+                ori $t0, $t0, 0x8000
+                li $t1, 90
+                sw $t1, 0x10($t0)
+                li $t1, 1
+                sw $t1, 0x20($t0)
+                sw $t1, 0x50($t0)
+                li $v0, 12
                 syscall
-                li ${'$'}t1, 128
+                li $t1, 128
                 poll:
-                lw ${'$'}t2, 0x30(${'$'}t0)
-                blt ${'$'}t2, ${'$'}t1, poll
-                sw ${'$'}zero, 0x50(${'$'}t0)
-                li ${'$'}v0, 12
+                lw $t2, 0x30($t0)
+                blt $t2, $t1, poll
+                sw $zero, 0x50($t0)
+                li $v0, 12
                 syscall
             """.trimIndent())
             val robotProcess = robotRun.getUserData(RunContentDescriptor.DESCRIPTOR_KEY)!!.processHandler as MarsProcessHandler

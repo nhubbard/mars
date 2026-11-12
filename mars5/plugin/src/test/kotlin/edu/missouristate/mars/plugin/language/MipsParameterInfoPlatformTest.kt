@@ -41,14 +41,14 @@ class MipsParameterInfoPlatformTest {
     @Test
     fun `native parameter info presents every distinct basic and pseudo form`() = timeoutRunBlocking<Unit> {
         withContext(Dispatchers.EDT) {
-            val hint = info("entry: DIV \$t0 \$t1, <caret>").orEmpty()
+            val hint = info($$"entry: DIV $t0 $t1, <caret>").orEmpty()
             val rows = hint.split("\n-\n")
             val forms = checkNotNull(InstructionDefaults.get().matchOperator("div")).map { it.exampleFormat }.toSet()
             assertEquals(forms, rows.map { it.replace("<b>", "").replace("</b>", "") }.toSet())
             assertEquals(forms.size, rows.size)
-            assertTrue("div \$t1,\$t2,<b>\$t3</b>" in rows, hint)
-            assertTrue("div \$t1,\$t2,<b>-100</b>" in rows, hint)
-            assertTrue("div \$t1,\$t2" in rows, hint)
+            assertTrue($$"div $t1,$t2,<b>$t3</b>" in rows, hint)
+            assertTrue($$"div $t1,$t2,<b>-100</b>" in rows, hint)
+            assertTrue($$"div $t1,$t2" in rows, hint)
         }
     }
 
@@ -56,8 +56,8 @@ class MipsParameterInfoPlatformTest {
     fun `parameter info shows only supported forms when pseudo instructions are disabled`() = timeoutRunBlocking<Unit> {
         withContext(Dispatchers.EDT) {
             project.get().service<MarsAssemblySettings>().changeAssemblerOptions(false, warningsAreErrors = false)
-            assertEquals("div \$t1,<b>\$t2</b>", info("div \$t0, <caret>"))
-            assertEquals("div \$t1,<b>\$t2</b>", info(".eqv DIVIDE div\nDIVIDE \$t0, <caret>"))
+            assertEquals($$"div $t1,<b>$t2</b>", info($$"div $t0, <caret>"))
+            assertEquals($$"div $t1,<b>$t2</b>", info($$".eqv DIVIDE div\nDIVIDE $t0, <caret>"))
             assertNull(info("li <caret>"))
             assertEquals("emit (<b>%arg</b>)", info(".macro emit (%arg)\nnop\n.end_macro\nemit(<caret>)"))
         }
@@ -70,35 +70,35 @@ class MipsParameterInfoPlatformTest {
             settings.changeBareMachine(true)
             fun rows(source: String) = info(source).orEmpty().split("\n-\n")
             assertEquals(
-                setOf("add <b>\$9</b>,\$10,\$11", "add <b>\$9</b>,\$10,-100", "add <b>\$9</b>,\$10,100000"),
+                setOf($$"add <b>$9</b>,$10,$11", $$"add <b>$9</b>,$10,-100", $$"add <b>$9</b>,$10,100000"),
                 rows("add <caret>").toSet(),
             )
-            assertTrue("add \$9,\$10,<b>\$11</b>" in rows("add \$8, \$0, <caret>"))
-            val memory = info("lw \$8, -4(<caret>)").orEmpty().split("\n-\n")
-            assertTrue("lw \$9,-100(<b>\$10</b>)" in memory)
-            assertEquals("sll \$9,<b>\$10</b>,10", info(".eqv SHIFT sll \$8\nSHIFT <caret>"))
-            assertEquals("add.s \$f0,<b>\$f1</b>,\$f3", info("add.s \$f0, <caret>"))
-            assertEquals("mtc0 \$9,<b>\$8</b>", info("mtc0 \$8, <caret>"))
-            assertEquals("emit (<b>\$arg</b>)", info(".macro emit (\$arg)\nnop\n.end_macro\nemit(<caret>)"))
+            assertTrue($$"add $9,$10,<b>$11</b>" in rows($$"add $8, $0, <caret>"))
+            val memory = info($$"lw $8, -4(<caret>)").orEmpty().split("\n-\n")
+            assertTrue($$"lw $9,-100(<b>$10</b>)" in memory)
+            assertEquals($$"sll $9,<b>$10</b>,10", info($$".eqv SHIFT sll $8\nSHIFT <caret>"))
+            assertEquals($$"add.s $f0,<b>$f1</b>,$f3", info($$"add.s $f0, <caret>"))
+            assertEquals($$"mtc0 $9,<b>$8</b>", info($$"mtc0 $8, <caret>"))
+            assertEquals($$"emit (<b>$arg</b>)", info($$".macro emit ($arg)\nnop\n.end_macro\nemit(<caret>)"))
 
             settings.changeAssemblerOptions(false, warningsAreErrors = false)
-            assertEquals("div \$9,<b>\$10</b>", info("div \$8, <caret>"))
+            assertEquals($$"div $9,<b>$10</b>", info($$"div $8, <caret>"))
             assertNull(info("li <caret>"))
             settings.changeBareMachine(false)
-            assertEquals("add \$t1,\$t2,<b>\$t3</b>", info("add \$t0, \$zero, <caret>"))
+            assertEquals($$"add $t1,$t2,<b>$t3</b>", info($$"add $t0, $zero, <caret>"))
         }
     }
 
     @Test
     fun `current token follows separators and incomplete memory addresses`() = timeoutRunBlocking<Unit> {
         withContext(Dispatchers.EDT) {
-            assertEquals("sll <b>\$t1</b>,\$t2,10", info("sll<caret>"))
-            assertEquals("sll <b>\$t1</b>,\$t2,10", info("sll \$t<caret>0, \$t1, 4"))
-            assertEquals("sll \$t1,<b>\$t2</b>,10", info("sll \$t0 <caret>"))
-            val address = info("  ,,lw \$t0,, -4(<caret>").orEmpty()
-            assertTrue("lw \$t1,-100(<b>\$t2</b>)" in address.split("\n-\n"), address)
-            val symbol = info("lw \$t0, entry+<caret>").orEmpty()
-            assertTrue("lw \$t1,label+<b>100000</b>" in symbol.split("\n-\n"), symbol)
+            assertEquals($$"sll <b>$t1</b>,$t2,10", info("sll<caret>"))
+            assertEquals($$"sll <b>$t1</b>,$t2,10", info($$"sll $t<caret>0, $t1, 4"))
+            assertEquals($$"sll $t1,<b>$t2</b>,10", info($$"sll $t0 <caret>"))
+            val address = info($$"  ,,lw $t0,, -4(<caret>").orEmpty()
+            assertTrue($$"lw $t1,-100(<b>$t2</b>)" in address.split("\n-\n"), address)
+            val symbol = info($$"lw $t0, entry+<caret>").orEmpty()
+            assertTrue($$"lw $t1,label+<b>100000</b>" in symbol.split("\n-\n"), symbol)
             assertEquals("nop", info("nop <caret>"))
         }
     }
@@ -106,8 +106,9 @@ class MipsParameterInfoPlatformTest {
     @Test
     fun `parameter info stays off comments and noninstruction text`() = timeoutRunBlocking<Unit> {
         withContext(Dispatchers.EDT) {
-            for (source in listOf("   <caret>", "\u000c<caret>", "@<caret>", "a<caret>dd \$t0", "entry: <caret>", ".word <caret>1",
-                "custom \$t0 <caret>", "add \$t0, \$t1 # <caret>comment")) {
+            for (source in listOf("   <caret>", "\u000c<caret>", "@<caret>", $$"a<caret>dd $t0", "entry: <caret>", ".word <caret>1",
+              $$"custom $t0 <caret>", $$"add $t0, $t1 # <caret>comment"
+            )) {
                 assertNull(info(source), source)
             }
             val file = fixture.configureByText("uncommitted-parameter.asm", "nop\n")
@@ -125,25 +126,25 @@ class MipsParameterInfoPlatformTest {
     @Test
     fun `parameter info counts operands after an aliased mnemonic`() = timeoutRunBlocking<Unit> {
         withContext(Dispatchers.EDT) {
-            val include = includeAliases("SHIFT SLL \$t0", "DIVIDE div \$t0,\$t1")
-            assertEquals("sll \$t1,<b>\$t2</b>,10", info("${include}entry: SHIFT<caret>"))
-            assertEquals("sll \$t1,<b>\$t2</b>,10", info("${include}SHIFT \$<caret>"))
-            assertEquals("sll \$t1,<b>\$t2</b>,10", info("${include}SHIFT bad%<caret>"))
-            assertEquals("sll \$t1,\$t2,<b>10</b>", info("${include}SHIFT \$t1, <caret>"))
-            assertEquals(info("div \$t0,\$t1 <caret>"), info("${include}DIVIDE <caret>"))
+            val include = includeAliases($$"SHIFT SLL $t0", $$"DIVIDE div $t0,$t1")
+            assertEquals($$"sll $t1,<b>$t2</b>,10", info("${include}entry: SHIFT<caret>"))
+            assertEquals($$"sll $t1,<b>$t2</b>,10", info($$"$${include}SHIFT $<caret>"))
+            assertEquals($$"sll $t1,<b>$t2</b>,10", info("${include}SHIFT bad%<caret>"))
+            assertEquals($$"sll $t1,$t2,<b>10</b>", info($$"$${include}SHIFT $t1, <caret>"))
+            assertEquals(info($$"div $t0,$t1 <caret>"), info("${include}DIVIDE <caret>"))
         }
     }
 
     @Test
     fun `parameter info follows expanded registers and relative addresses`() = timeoutRunBlocking<Unit> {
         withContext(Dispatchers.EDT) {
-            val include = includeAliases("LOAD lw \$t0", "OFFSET -4(", "REGS \$t0,\$t1")
-            val addressHint = info("lw \$t0, -4(<caret>")
+            val include = includeAliases($$"LOAD lw $t0", "OFFSET -4(", $$"REGS $t0,$t1")
+            val addressHint = info($$"lw $t0, -4(<caret>")
             assertEquals(addressHint, info("${include}LOAD OFFSET<caret>"))
-            assertEquals(addressHint, info("${include}entry: lw \$t0, OFFSET<caret> \$sp)"))
-            assertEquals("sll \$t1,\$t2,<b>10</b>", info("${include}entry: sll REGS, <caret>4"))
+            assertEquals(addressHint, info($$"$${include}entry: lw $t0, OFFSET<caret> $sp)"))
+            assertEquals($$"sll $t1,$t2,<b>10</b>", info("${include}entry: sll REGS, <caret>4"))
             DumbModeTestUtils.runInDumbModeSynchronously(project.get()) {
-                assertEquals("sll \$t1,<b>\$t2</b>,10", fixture.parameterInfoAtCaret)
+                assertEquals($$"sll $t1,<b>$t2</b>,10", fixture.parameterInfoAtCaret)
             }
         }
     }
@@ -152,11 +153,11 @@ class MipsParameterInfoPlatformTest {
     fun `parameter info follows aliased label prefixes and separators`() = timeoutRunBlocking<Unit> {
         withContext(Dispatchers.EDT) {
             val include = includeAliases("PREFIX row:", "SEP :")
-            val shiftHint = info("sll \$t0, <caret>")
-            assertEquals(shiftHint, info("${include}PREFIX sll \$t0, <caret>"))
-            assertEquals(shiftHint, info("${include}split SEP sll \$t0, <caret>"))
-            assertEquals(shiftHint, info("${include}addiu SEP sll \$t0, <caret>"))
-            assertEquals("sll \$t1,<b>\$t2</b>,10", info("${include}addiu SEP sll \$t0, bad%<caret>"))
+            val shiftHint = info($$"sll $t0, <caret>")
+            assertEquals(shiftHint, info($$"$${include}PREFIX sll $t0, <caret>"))
+            assertEquals(shiftHint, info($$"$${include}split SEP sll $t0, <caret>"))
+            assertEquals(shiftHint, info($$"$${include}addiu SEP sll $t0, <caret>"))
+            assertEquals($$"sll $t1,<b>$t2</b>,10", info($$"$${include}addiu SEP sll $t0, bad%<caret>"))
         }
     }
 
@@ -167,11 +168,11 @@ class MipsParameterInfoPlatformTest {
                 ".eqv WORDS .word\nWORDS <caret>1",
                 ".eqv FIRST SECOND\n.eqv SECOND FIRST\nFIRST <caret>",
                 ".eqv FIRST SECOND\n.eqv SECOND FIRST\nsll FIRST, <caret>",
-                ".eqv SHIFT sll \$t0\n.eqv FIRST SECOND\n.eqv SECOND FIRST\nSHIFT FIRST <caret>",
+              $$".eqv SHIFT sll $t0\n.eqv FIRST SECOND\n.eqv SECOND FIRST\nSHIFT FIRST <caret>",
                 ".eqv PREFIX row:\nPREFIX <caret>",
                 ".eqv SEP :\naddiu SEP <caret>",
                 "SHIFT <caret>\n.eqv SHIFT sll",
-                ".eqv SHIFT sll\nSH<caret>IFT \$t0",
+              $$".eqv SHIFT sll\nSH<caret>IFT $t0",
             )) {
                 assertNull(info(source), source)
             }
@@ -180,13 +181,13 @@ class MipsParameterInfoPlatformTest {
 
     @Test
     fun `macro hints follow raw arguments and optional SPIM parentheses`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
-        val definition = """
-            .macro emit (%ignored, ${'$'}value)
-              addiu ${'$'}t0, ${'$'}zero, ${'$'}value
+        val definition = $$"""
+            .macro emit (%ignored, $value)
+              addiu $t0, $zero, $value
             .end_macro
         """.trimIndent() + "\n"
-        val first = "emit (<b>%ignored</b>, \$value)"
-        val second = "emit (%ignored, <b>\$value</b>)"
+        val first = $$"emit (<b>%ignored</b>, $value)"
+        val second = $$"emit (%ignored, <b>$value</b>)"
         withContext(Dispatchers.EDT) {
             assertEquals(first, info(definition + "emit<caret> (+, 7)"))
             assertEquals(first, info(definition + "emit (<caret>+, 7)"))
@@ -198,7 +199,7 @@ class MipsParameterInfoPlatformTest {
             assertEquals(first, info(definition + "entry: emit:<caret> 7"))
             assertEquals(second, info(definition + "entry: emit: <caret>7"))
             assertEquals(second, info(definition + "emit (+, <caret>bad%"))
-            assertEquals("emit (%ignored, \$value)", info(definition + ".eqv CLOSE )\nemit (+, 7 C<caret>LOSE"))
+            assertEquals($$"emit (%ignored, $value)", info(definition + ".eqv CLOSE )\nemit (+, 7 C<caret>LOSE"))
             assertNull(info(definition + "emit (+, 7)<caret>"))
         }
         val entry = directory.resolve("entry.asm").also {
@@ -224,17 +225,18 @@ class MipsParameterInfoPlatformTest {
             val definition = ".macro emit (%first, %second, %third)\nnop\n.end_macro\n"
             val second = "emit (%first, <b>%second</b>, %third)"
             val third = "emit (%first, %second, <b>%third</b>)"
-            assertEquals("emit (<b>%first</b>, %second, %third)", info(definition + "emit(0x<caret>, \$t0, target)"))
-            assertEquals(second, info(definition + "emit(0x, \$t<caret>0, target)"))
-            assertEquals(third, info(definition + "emit(0x, \$t0, <caret>target)"))
-            assertEquals(third, info(definition + "emit(0x, \$t0, <caret>"))
-            assertEquals(third, info(definition + ".eqv CALL emit\nCALL(0x, \$t0, <caret>target)"))
-            assertNull(info(definition + "emit(0x, \$t0, target)<caret>"))
-            assertEquals("sll \$t1,\$t2,<b>10</b>",
-                info(".eqv SHIFT sll \$t0\nSHIFT bad%, <caret>4"))
+            assertEquals("emit (<b>%first</b>, %second, %third)", info(definition + $$"emit(0x<caret>, $t0, target)"))
+            assertEquals(second, info(definition + $$"emit(0x, $t<caret>0, target)"))
+            assertEquals(third, info(definition + $$"emit(0x, $t0, <caret>target)"))
+            assertEquals(third, info(definition + $$"emit(0x, $t0, <caret>"))
+            assertEquals(third, info(definition + $$".eqv CALL emit\nCALL(0x, $t0, <caret>target)"))
+            assertNull(info(definition + $$"emit(0x, $t0, target)<caret>"))
+            assertEquals(
+              $$"sll $t1,$t2,<b>10</b>",
+                info($$".eqv SHIFT sll $t0\nSHIFT bad%, <caret>4"))
             val cycle = ".eqv FIRST SECOND\n.eqv SECOND FIRST\n"
             assertEquals(second, info(definition + cycle + "emit(0x, <caret>FIRST, target)"))
-            assertNull(info(definition + cycle + "emit(FIRST, \$t0, <caret>target)"))
+            assertNull(info(definition + cycle + $$"emit(FIRST, $t0, <caret>target)"))
         }
     }
 
@@ -420,8 +422,8 @@ class MipsParameterInfoPlatformTest {
     fun `popup updates reject stale instruction forms after unsaved include edits`() = timeoutRunBlocking<Unit> {
         val current = project.get()
         withContext(Dispatchers.EDT) {
-            val include = fixture.addFileToProject("aliases.s", ".eqv SHIFT sll \$t0\n")
-            assertEquals("sll \$t1,<b>\$t2</b>,10", info(".include \"aliases.s\"\nSHIFT <caret>\n# end"))
+            val include = fixture.addFileToProject("aliases.s", $$".eqv SHIFT sll $t0\n")
+            assertEquals($$"sll $t1,<b>$t2</b>,10", info(".include \"aliases.s\"\nSHIFT <caret>\n# end"))
             val editor = fixture.editor
             val file = fixture.file
             val handler = MipsParameterInfoHandler()
@@ -442,9 +444,9 @@ class MipsParameterInfoPlatformTest {
                 document.setText(text)
                 PsiDocumentManager.getInstance(current).commitAllDocuments()
             }
-            edit(".eqv SHIFT srl \$t0\n")
+            edit($$".eqv SHIFT srl $t0\n")
             assertNull(handler.findElementForUpdatingParameterInfo(update))
-            assertEquals("srl \$t1,<b>\$t2</b>,10", fixture.parameterInfoAtCaret)
+            assertEquals($$"srl $t1,<b>$t2</b>,10", fixture.parameterInfoAtCaret)
             edit(".eqv SHIFT .word\n")
             assertNull(handler.findElementForUpdatingParameterInfo(update))
             handler.updateParameterInfo(owner, update)

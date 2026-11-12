@@ -129,13 +129,13 @@ class MipsAddressInlayPlatformTest {
 
     @Test
     fun `native pseudo expansions follow unsaved aliases and outer macro calls`() = timeoutRunBlocking<Unit> {
-        val source = """
+        val source = $$"""
             .include "values.txt"
-            li ${'$'}t0, 1
-            COMMAND ${'$'}t1, VALUE
+            li $t0, 1
+            COMMAND $t1, VALUE
             nop
             .macro inner (%value)
-                li ${'$'}t2, %value
+                li $t2, %value
                 nop
             .end_macro
             .macro outer (%value)
@@ -189,7 +189,7 @@ class MipsAddressInlayPlatformTest {
     fun `nested read-only includes show addresses and expansions for the current entry and source`() = timeoutRunBlocking<Unit> {
         val entryText = ".eqv VALUE 0x12345678\n.text\nnop\n.include \"bridge.png\"\n"
         val bridgeText = ".include \"body.zip\"\n"
-        val bodyText = "included: li \$t0, VALUE\n"
+        val bodyText = $$"included: li $t0, VALUE\n"
         val (entry, body) = withContext(Dispatchers.EDT) {
             fixture.tempDirFixture.createFile("bridge.png", bridgeText)
             val body = fixture.tempDirFixture.createFile("body.zip", bodyText)

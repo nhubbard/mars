@@ -103,7 +103,7 @@ class MarsNewProjectWizardTest {
             val paths = assembly.projectSources
             val expected = if (separateLibrary) listOf("main.asm", "console.s") else listOf("main.asm")
             assertEquals(expected.map { root.resolve("src").resolve(it) }, paths)
-            assertEquals(expected.map { "\$PROJECT_DIR\$/src/$it" }, assembly.getState().sources)
+            assertEquals(expected.map { $$"$PROJECT_DIR$/src/$$it" }, assembly.getState().sources)
             val module = ModuleManager.getInstance(project).modules.single()
             val roots = ModuleRootManager.getInstance(module)
             assertEquals(GeneralModuleType.TYPE_ID, ModuleType.get(module).id)

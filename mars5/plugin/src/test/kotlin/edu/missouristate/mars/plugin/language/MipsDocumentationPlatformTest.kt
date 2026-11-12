@@ -33,13 +33,13 @@ class MipsDocumentationPlatformTest {
 
     @Test
     fun `quick documentation presents the core instruction examples and descriptions`() = timeoutRunBlocking<Unit> {
-        val html = documentation("entry: DIV<caret> \$t0, \$t1, \$t2").orEmpty()
+        val html = documentation($$"entry: DIV<caret> $t0, $t1, $t2").orEmpty()
         val forms = checkNotNull(InstructionDefaults.get().matchOperator("div"))
         for (instruction in forms) {
             assertTrue(StringUtil.escapeXmlEntities(instruction.exampleFormat) in html, html)
             assertTrue(StringUtil.escapeXmlEntities(instruction.description) in html, html)
         }
-        assertTrue("c.eq.s" in documentation("c.<caret>eq.s \$f0, \$f2").orEmpty())
+        assertTrue("c.eq.s" in documentation($$"c.<caret>eq.s $f0, $f2").orEmpty())
     }
 
     @Test
@@ -49,11 +49,11 @@ class MipsDocumentationPlatformTest {
         val registered = SyscallRegistry().services().map { it.number to it.name }.sortedBy { it.first }
         assertEquals(registered, displayed)
         for (contract in listOf(
-            "Set ${'$'}v0 to the service number",
-            "${'$'}a0 = integer",
-            "${'$'}f12/${'$'}f13 = double",
-            "${'$'}v0 = descriptor or negative error",
-            "0 &lt;= value &lt; ${'$'}a1",
+          $$"Set $v0 to the service number",
+          $$"$a0 = integer",
+          $$"$f12/$f13 = double",
+          $$"$v0 = descriptor or negative error",
+          $$"0 &lt;= value &lt; $a1",
             "-4 truncated",
             "Clears the simulator console",
         )) assertTrue(contract in html, contract)
@@ -99,7 +99,7 @@ class MipsDocumentationPlatformTest {
 
     @Test
     fun `completion documentation uses the same catalog target as the editor`() = timeoutRunBlocking<Unit> {
-        val direct = documentation("di<caret>v \$t0, \$t1")
+        val direct = documentation($$"di<caret>v $t0, $t1")
         val item = withContext(Dispatchers.EDT) {
             fixture.configureByText("doc.asm", "di<caret>\n")
             fixture.completeBasic().orEmpty().single { it.lookupString == "div" }
@@ -251,8 +251,8 @@ class MipsDocumentationPlatformTest {
     @Test
     fun `catalog alias completion documents the effective operation and rechecks edits`() = timeoutRunBlocking<Unit> {
         val current = project.get()
-        val source = """
-            .eqv LAUNCH row: addiu ${'$'}t0, ${'$'}zero
+        val source = $$"""
+            .eqv LAUNCH row: addiu $t0, $zero
             .eqv LAUNCH_WORD .word
             LA.old 7
         """.trimIndent()
@@ -275,9 +275,9 @@ class MipsDocumentationPlatformTest {
             WriteCommandAction.runWriteCommandAction(current) { document.replaceString(start, start + from.length, to) }
             PsiDocumentManager.getInstance(current).commitAllDocuments()
         }
-        edit(" 7", " ${'$'}f0")
+        edit(" 7", $$" $f0")
         assertNull(computeDocumentationBlocking(pointer))
-        edit("row: addiu ${'$'}t0, ${'$'}zero", ".word")
+        edit($$"row: addiu $t0, $zero", ".word")
         assertEquals(MipsDocumentationCatalog[".word"].referenceHtml(), computeDocumentationBlocking(pointer)?.html)
         edit(".eqv LAUNCH .word", ".eqv LAUNCH .include \"data.inc\"")
         assertNull(computeDocumentationBlocking(pointer))
@@ -285,10 +285,10 @@ class MipsDocumentationPlatformTest {
 
     @Test
     fun `operation aliases show the core documentation and keep declaration navigation`() = timeoutRunBlocking<Unit> {
-        val definitions = ".eqv DEFINE .eqv\nDEFINE OP DIV \$t0,\$t1\nDEFINE STORE .WoRd\n"
+        val definitions = $$".eqv DEFINE .eqv\nDEFINE OP DIV $t0,$t1\nDEFINE STORE .WoRd\n"
         withContext(Dispatchers.EDT) { fixture.addFileToProject("aliases.s", definitions) }
         val include = ".include \"aliases.s\"\n"
-        val instruction = documentation("di<caret>v \$t0, \$t1").orEmpty()
+        val instruction = documentation($$"di<caret>v $t0, $t1").orEmpty()
         assertTrue("div" in instruction)
         assertEquals(instruction, documentation("${include}entry: O<caret>P"))
         readAction {
@@ -326,7 +326,7 @@ class MipsDocumentationPlatformTest {
     fun `alias documentation is limited to operation heads with a catalog operation`() = timeoutRunBlocking<Unit> {
         val sources = listOf(
             ".eqv OP nop\nO<caret>P: nop",
-            ".eqv OP nop\nbeq \$t0, \$t1, O<caret>P",
+          $$".eqv OP nop\nbeq $t0, $t1, O<caret>P",
             ".eqv OP nop\ncustom O<caret>P",
             ".eqv OP nop\nOP  <caret> 7",
             ".eqv OP custom\nO<caret>P",

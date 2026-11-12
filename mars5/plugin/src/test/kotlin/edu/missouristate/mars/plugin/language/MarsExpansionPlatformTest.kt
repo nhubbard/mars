@@ -55,9 +55,9 @@ class MarsExpansionPlatformTest {
     fun `editor action lists nested emitted instructions from unsaved sources and navigates each frame`() = timeoutRunBlocking<Unit> {
         val current = project.get()
         val (definition, entry) = withContext(Dispatchers.EDT) {
-            val definition = fixture.addFileToProject("macros.s", """
+            val definition = fixture.addFileToProject("macros.s", $$"""
                 .macro inner
-                  li ${'$'}t0, 0x12345678
+                  li $t0, 0x12345678
                 .end_macro
                 .macro outer
                   inner
@@ -139,7 +139,7 @@ class MarsExpansionPlatformTest {
     @ValueSource(strings = ["defs.png", "defs.inc~"])
     fun `expansion from a read-only include navigates current macro origins`(definitionName: String) = timeoutRunBlocking<Unit> {
         val current = project.get()
-        val entryText = ".eqv DEST \$t0\n.include \"bridge.zip\"\n.text\nnop\n.include \"body.zip\"\n"
+        val entryText = $$".eqv DEST $t0\n.include \"bridge.zip\"\n.text\nnop\n.include \"body.zip\"\n"
         val definitionText = ".macro emit (%value)\nli DEST, %value\n.end_macro\n"
         val call = "emit(0x12345678)\n"
         val (entry, defs, body) = withContext(Dispatchers.EDT) {
@@ -223,7 +223,7 @@ class MarsExpansionPlatformTest {
                 val path = entry.virtualFile.toNioPath().resolveSibling("large.inc")
                 Files.newBufferedWriter(path).use { writer ->
                     repeat(count) { writer.write(padding) }
-                    writer.write(".macro emit\nli \$t0, 0x12345678\n.end_macro\n")
+                    writer.write($$".macro emit\nli $t0, 0x12345678\n.end_macro\n")
                 }
                 entry to VirtualFileManager.getInstance().refreshAndFindFileByNioPath(path)!!
             }
@@ -248,7 +248,7 @@ class MarsExpansionPlatformTest {
                 val selected = FileEditorManager.getInstance(current).selectedTextEditor!!
                 assertFalse(checkNotNull(selected.virtualFile).isWritable)
                 val line = selected.document.getLineNumber(selected.caretModel.offset)
-                assertTrue(selected.document.getText().startsWith("li \$t0, 0x12345678", selected.document.getLineStartOffset(line)))
+                assertTrue(selected.document.getText().startsWith($$"li $t0, 0x12345678", selected.document.getLineStartOffset(line)))
 
                 Files.writeString(include.toNioPath(), "# changed\n", APPEND)
                 include.refresh(false, false)

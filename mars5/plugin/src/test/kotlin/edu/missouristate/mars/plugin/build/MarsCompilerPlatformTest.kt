@@ -50,7 +50,7 @@ class MarsCompilerPlatformTest {
         val task = compiler.beforeTasks.filterIsInstance<MarsCompilerTask>().single()
         val settings = project.service<MarsAssemblySettings>()
         val (entry, library, unrelated) = withContext(Dispatchers.EDT) {
-            val entry = fixture.addFileToProject("app/main.asm", "la \$t0, fromLibrary\n").virtualFile
+            val entry = fixture.addFileToProject("app/main.asm", $$"la $t0, fromLibrary\n").virtualFile
             val library = fixture.addFileToProject("lib/words.s", "nop\n").virtualFile
             val unrelated = fixture.addFileToProject("other/Unrelated.java", "class Unrelated {}").virtualFile
             Triple(entry, library, unrelated)
@@ -109,7 +109,7 @@ class MarsCompilerPlatformTest {
             strict.messages.single().copy(navigatable = null))
 
         withContext(Dispatchers.EDT) { settings.changeAssemblerOptions(true, false) }
-        withContext(Dispatchers.EDT) { edit(entry, "nop\nla \$t0, missing_label\n") }
+        withContext(Dispatchers.EDT) { edit(entry, $$"nop\nla $t0, missing_label\n") }
         val failed = context(entry)
         assertFalse(execute(failed))
         val messages = failed.messages.toList()

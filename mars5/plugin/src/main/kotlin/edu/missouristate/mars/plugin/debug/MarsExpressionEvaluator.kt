@@ -64,7 +64,7 @@ internal class MarsExpressionEvaluator(
         put("hi", Word(cpu.getValueNoNotify(HI_REGISTER)))
         put("lo", Word(cpu.getValueNoNotify(LO_REGISTER)))
         for (register in machine.coprocessor0.registers) {
-            put("cp0.\$${register.number}", Word(register.valueNoNotify))
+            put($$"cp0.$$${register.number}", Word(register.valueNoNotify))
         }
         val fpu = machine.coprocessor1
         for (register in fpu.registers) {
@@ -141,7 +141,7 @@ internal class MarsExpressionEvaluator(
     private fun registerExpression(name: String, coprocessor0: Boolean): String? {
         val expression = if (coprocessor0) {
             val register = RegisterNames.integer(name) ?: return null
-            "cp0.\$${register.number}"
+            $$"cp0.$$${register.number}"
         } else name
         return expression.takeIf { resolveReference(it) != null }
     }

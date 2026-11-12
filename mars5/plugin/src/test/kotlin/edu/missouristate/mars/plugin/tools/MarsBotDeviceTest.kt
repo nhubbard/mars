@@ -169,14 +169,15 @@ class MarsBotDeviceTest {
     @Test
     fun `rewind restores the clock position words and pen history of real instructions`(@TempDir directory: Path) {
         val entry = directory.resolve("robot.asm").also {
-            it.writeText("""
-                lui ${'$'}t0, 0xffff
-                ori ${'$'}t0, ${'$'}t0, 0x8000
-                li ${'$'}t1, 90
-                sw ${'$'}t1, 0x10(${'$'}t0)
-                li ${'$'}t1, 1
-                sw ${'$'}t1, 0x20(${'$'}t0)
-                sw ${'$'}t1, 0x50(${'$'}t0)
+            it.writeText(
+              $$"""
+                lui $t0, 0xffff
+                ori $t0, $t0, 0x8000
+                li $t1, 90
+                sw $t1, 0x10($t0)
+                li $t1, 1
+                sw $t1, 0x20($t0)
+                sw $t1, 0x50($t0)
                 nop
                 nop
                 nop

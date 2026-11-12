@@ -120,32 +120,32 @@ class ScavengerHuntPlatformTest {
             try { board().paint(graphics) } finally { graphics.dispose() }
         }
         val (process, content, blank) = withContext(Dispatchers.EDT) {
-            val file = fixture.addFileToProject("hunt-panel.asm", """
-                li ${'$'}v0, 12
+            val file = fixture.addFileToProject("hunt-panel.asm", $$"""
+                li $v0, 12
                 syscall
-                lui ${'$'}s0, 0xffff
-                ori ${'$'}s0, ${'$'}s0, 0xe000
-                lui ${'$'}s1, 0xffff
-                ori ${'$'}s1, ${'$'}s1, 0x8000
-                li ${'$'}t0, 1
-                sw ${'$'}t0, 8(${'$'}s0)
-                sw ${'$'}t0, 4(${'$'}s0)
-                li ${'$'}v0, 12
+                lui $s0, 0xffff
+                ori $s0, $s0, 0xe000
+                lui $s1, 0xffff
+                ori $s1, $s1, 0x8000
+                li $t0, 1
+                sw $t0, 8($s0)
+                sw $t0, 4($s0)
+                li $v0, 12
                 syscall
-                li ${'$'}t0, 2
-                sw ${'$'}t0, 0(${'$'}s0)
-                sw ${'$'}zero, 4(${'$'}s0)
-                li ${'$'}t0, 0x28aaff
-                sw ${'$'}t0, 0x1c(${'$'}s1)
-                li ${'$'}t0, 257
-                sw ${'$'}t0, 8(${'$'}s1)
-                li ${'$'}t0, 1
-                sw ${'$'}t0, 0x10(${'$'}s1)
-                sw ${'$'}t0, 0x410(${'$'}s1)
-                li ${'$'}v0, 12
+                li $t0, 2
+                sw $t0, 0($s0)
+                sw $zero, 4($s0)
+                li $t0, 0x28aaff
+                sw $t0, 0x1c($s1)
+                li $t0, 257
+                sw $t0, 8($s1)
+                li $t0, 1
+                sw $t0, 0x10($s1)
+                sw $t0, 0x410($s1)
+                li $v0, 12
                 syscall
                 nop
-                li ${'$'}v0, 12
+                li $v0, 12
                 syscall
             """.trimIndent()).virtualFile
             assertFalse(huntButton("Connect").isEnabled)

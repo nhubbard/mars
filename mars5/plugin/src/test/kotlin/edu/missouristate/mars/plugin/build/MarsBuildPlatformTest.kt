@@ -132,7 +132,7 @@ class MarsBuildPlatformTest {
         val (first, broken, last) = withContext(Dispatchers.EDT) {
             fun task(name: String, source: String): MarsBuildTask =
                 MarsBuildTask(MarsSourceSet(fixture.addFileToProject(name, source).virtualFile.toNioPath()))
-            Triple(task("first.asm", "nop\n"), task("broken.asm", "la \$t0, undefined\n"), task("last.asm", "nop\n"))
+            Triple(task("first.asm", "nop\n"), task("broken.asm", $$"la $t0, undefined\n"), task("last.asm", "nop\n"))
         }
         val disposable = Disposer.newDisposable()
         try {
@@ -174,7 +174,7 @@ class MarsBuildPlatformTest {
         val settings = project.service<MarsAssemblySettings>()
         val request = FileEditorOpenRequest.withFocus(false)
         val (entry, include, library) = withContext(Dispatchers.EDT) {
-            val entry = fixture.addFileToProject("main.asm", ".include \"body.s\"\nla \$a0, library\n").virtualFile
+            val entry = fixture.addFileToProject("main.asm", $$".include \"body.s\"\nla $a0, library\n").virtualFile
             val include = fixture.addFileToProject("body.s", "nop\n").virtualFile
             val library = fixture.addFileToProject("library.s", ".globl library\nlibrary: nop\n").virtualFile
             TrustedProjects.setProjectTrusted(project, true)
@@ -317,7 +317,7 @@ class MarsBuildPlatformTest {
     @Test
     fun `launch reuses a successful build with current diagnostic positions and rebuild replaces it`() = timeoutRunBlocking<Unit> {
         val (entry, include) = withContext(Dispatchers.EDT) {
-            val main = fixture.addFileToProject("cached.asm", ".include \"value.s\"\nli \$t0, VALUE\n").virtualFile
+            val main = fixture.addFileToProject("cached.asm", $$".include \"value.s\"\nli $t0, VALUE\n").virtualFile
             val value = fixture.addFileToProject("value.s", ".set noat\n.eqv VALUE 42\n").virtualFile
             main to value
         }
@@ -414,7 +414,7 @@ class MarsBuildPlatformTest {
         val (first, last) = withContext(Dispatchers.EDT) {
             fun task(name: String, source: String) =
                 MarsBuildTask(MarsSourceSet(fixture.addFileToProject(name, source).virtualFile.toNioPath()))
-            task("cancel-first.s", "la \$t0, undefined\n") to task("cancel-last.s", "nop\n")
+            task("cancel-first.s", $$"la $t0, undefined\n") to task("cancel-last.s", "nop\n")
         }
         val disposable = Disposer.newDisposable()
         try {
@@ -435,10 +435,10 @@ class MarsBuildPlatformTest {
     @Test
     fun `ordered project sources persist and update assembly and editor analysis`() = timeoutRunBlocking<Unit> {
         val (main, alpha, zulu) = withContext(Dispatchers.EDT) {
-            val main = fixture.addFileToProject("app/main.asm", "la \$t0, fromAlpha\nla \$t1, fromZulu\n") as MipsFile
+            val main = fixture.addFileToProject("app/main.asm", $$"la $t0, fromAlpha\nla $t1, fromZulu\n") as MipsFile
             val alpha = fixture.addFileToProject("lib-a/alpha.s", ".eqv NUMBER 7\n.include \"shared.s\"\n.globl fromAlpha\nfromAlpha: nop\n") as MipsFile
             val zulu = fixture.addFileToProject("lib-z/zulu", ".eqv NUMBER 9\n.include \"../lib-a/shared.s\"\n.globl fromZulu\nfromZulu: nop\n")
-            fixture.addFileToProject("lib-a/shared.s", "li \$t4, NUMBER\n")
+            fixture.addFileToProject("lib-a/shared.s", $$"li $t4, NUMBER\n")
             Triple(main, alpha, zulu)
         }
         val paths = listOf(main, alpha, zulu).map { it.virtualFile.toNioPath() }
@@ -637,11 +637,11 @@ class MarsBuildPlatformTest {
     @Test
     fun `assembler policy persists and changes native build and editor diagnostics`() = timeoutRunBlocking<Unit> {
         val file = withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("policy.asm", """
+            fixture.addFileToProject("policy.asm", $$"""
                 .data
                 .byte 300
                 .text
-                li ${'$'}t0, 7
+                li $t0, 7
                 .macro emit (%name)
                 %name: nop
                 .end_macro
@@ -839,8 +839,8 @@ class MarsBuildPlatformTest {
     @Test
     fun `project execution defaults persist and bare machine updates Build and editor diagnostics`() = timeoutRunBlocking<Unit> {
         val (named, numeric) = withContext(Dispatchers.EDT) {
-            val named = fixture.addFileToProject("named.s", "addiu \$t0,\$zero,7\n") as MipsFile
-            val numeric = fixture.addFileToProject("numeric.s", "addiu \$8,\$0,7\n") as MipsFile
+            val named = fixture.addFileToProject("named.s", $$"addiu $t0,$zero,7\n") as MipsFile
+            val numeric = fixture.addFileToProject("numeric.s", $$"addiu $8,$0,7\n") as MipsFile
             named to numeric
         }
         IndexingTestUtil.suspendUntilIndexesAreReady(project)
@@ -887,7 +887,7 @@ class MarsBuildPlatformTest {
     @Test
     fun `project settings select a single exception handler and invalidate stale analysis and builds`() = timeoutRunBlocking<Unit> {
         val (main, handler) = withContext(Dispatchers.EDT) {
-            val main = fixture.addFileToProject("trap/main.asm", "la \$t0, trapEntry\nnop\n") as MipsFile
+            val main = fixture.addFileToProject("trap/main.asm", $$"la $t0, trapEntry\nnop\n") as MipsFile
             val handler = fixture.addFileToProject("trap/handler.asm", ".ktext 0x80000180\nnop\n") as MipsFile
             fixture.addFileToProject("trap/parts/body.s", "trapEntry: nop\n")
             edit(handler.virtualFile, ".ktext 0x80000180\n.globl trapEntry\n.include \"parts/body.s\"\n")
@@ -998,14 +998,15 @@ class MarsBuildPlatformTest {
             val main = fixture.addFileToProject("project/main.asm", ".text\n.globl entry\nentry: nop\n") as MipsFile
             val last = fixture.addFileToProject("project/zulu.s", ".eqv NUMBER 11\n.include \"shared/defs.s\"\n.text\nzulu: nop\n") as MipsFile
             val helper = fixture.addFileToProject("project/Alpha.MARS", ".globl helper\nhelper: nop\n") as MipsFile
-            fixture.addFileToProject("project/shared/defs.s", "addiu \$t2, \$zero, NUMBER\n")
+            fixture.addFileToProject("project/shared/defs.s", $$"addiu $t2, $zero, NUMBER\n")
             fixture.addFileToProject("project/shared/value.inc", ".eqv OTHER_NUMBER 7\n")
             fixture.addFileToProject("project/shared/ignored.s", "invalid instruction\n")
             fixture.addFileToProject("project/notes.txt", "not assembly\n")
             fixture.addFileToProject("project/include-only.inc", "not a top-level assembly source\n")
             fixture.addFileToProject("project/LICENSE", "not assembly\n")
             edit(helper.virtualFile, ".eqv NUMBER 7\n.include \"shared/value.inc\"\n.include \"shared/defs.s\"\n.globl helper\n" +
-                "helper: addiu \$t0, \$zero, NUMBER\nprivateHelper: nop\n.macro unused\n.globl entry\n.end_macro\njal entry\n")
+                $$"helper: addiu $t0, $zero, NUMBER\nprivateHelper: nop\n.macro unused\n.globl entry\n.end_macro\njal entry\n"
+            )
             PsiDocumentManager.getInstance(project).commitAllDocuments()
             Triple(main, helper, last)
         }
@@ -1109,7 +1110,7 @@ class MarsBuildPlatformTest {
     @Test
     fun `directory assembly includes dotfiles only by name or with a real assembly extension`() = timeoutRunBlocking<Unit> {
         val (entry, include, sibling) = withContext(Dispatchers.EDT) {
-            val entry = fixture.addFileToProject("dotfiles/main.asm", ".include \".asm\"\naddiu \$t0,\$zero,VALUE\n")
+            val entry = fixture.addFileToProject("dotfiles/main.asm", $$".include \".asm\"\naddiu $t0,$zero,VALUE\n")
             val include = fixture.addFileToProject("dotfiles/.asm", ".eqv VALUE 7\n")
             val sibling = fixture.addFileToProject("dotfiles/.local.S", "nop\n")
             fixture.addFileToProject("dotfiles/.s", "not a valid instruction\n")
@@ -1128,22 +1129,22 @@ class MarsBuildPlatformTest {
 
     @Test
     fun `an included file uses earlier definitions in the selected entry even after a failed build`() = timeoutRunBlocking<Unit> {
-        val source = """
-            li ${'$'}t0, %value
-            li ${'$'}t1, COUNT
+        val source = $$"""
+            li $t0, %value
+            li $t1, COUNT
             .end_macro
             helper ARGS
-            la ${'$'}t4, reservation
+            la $t4, reservation
             j publicAfter
-            li ${'$'}t2, LATE
+            li $t2, LATE
         """.trimIndent()
-        fun entry(values: String) = """
+        fun entry(values: String) = $$"""
             .eqv UNUSED 1
             .eqv RESERVE .extern
             RESERVE reservation 4
-            .include "$values"
+            .include "$$values"
             .macro helper (%number)
-              li ${'$'}t3, %number
+              li $t3, %number
             .end_macro
             .eqv DEFINE .eqv
             DEFINE ARGS (9)
@@ -1381,13 +1382,13 @@ class MarsBuildPlatformTest {
 
     @Test
     fun `completion keeps generated names while typing a direct instruction operand`() = timeoutRunBlocking<Unit> {
-        val source = """
+        val source = $$"""
             .include "macro.s"
             emit (generatedOne)
             emit (generated_M0)
             reserve (generatedStorage)
             .extern ) 4
-            .extern ${'$'}t0 4
+            .extern $t0 4
             .globl generatedOne
             nop: nop
             j generatedOne
@@ -1450,14 +1451,14 @@ class MarsBuildPlatformTest {
         val disposable = Disposer.newDisposable()
         try {
             val events = recordBuildEvents(disposable)
-            val source = """
+            val source = $$"""
                 .include "definitions.s"
                 emit (generated)
                 emit (privateLabel)
                 reserve (storage)
                 j generated
                 j privateLabel
-                la ${'$'}t0, storage
+                la $t0, storage
                 .globl generated
             """.trimIndent()
             val body = ".macro emit (%entry)\n  %entry: nop\n.end_macro\n" +
@@ -1640,10 +1641,10 @@ class MarsBuildPlatformTest {
     ) =
         timeoutRunBlocking<Unit> {
             val includeName = "pièce.$includeExtension"
-            val prelude = "ignored: lw \$t0,0(\$sp"
-            val entryText = "\r\n$prelude .include \"$includeName\"\r\n.text\r\nentrée: assign(\$t0)\r\n"
+            val prelude = $$"ignored: lw $t0,0($sp"
+            val entryText = $$"\r\n$$prelude .include \"$$includeName\"\r\n.text\r\nentrée: assign($t0)\r\n"
             val includeText = ".eqv LIMIT 7\r.data\rtexte: .asciiz \"é\uFEFF\"\n" +
-                ".macro assign (%reg)\r\n\taddiu %reg, \$zero, LIMIT\r.end_macro"
+                $$".macro assign (%reg)\r\n\taddiu %reg, $zero, LIMIT\r.end_macro"
             val normalizedEntry = entryText.replace("\r\n", "\n")
             val normalizedInclude = includeText.replace("\r\n", "\n").replace('\r', '\n')
             val hex = HexFormat.of()
@@ -1745,13 +1746,13 @@ class MarsBuildPlatformTest {
 
     @Test
     fun `build and include navigation follow a symlink before resolving a parent segment`() = timeoutRunBlocking<Unit> {
-        val source = """
+        val source = $$"""
             .include "shortcut/../value.s"
             .include "value.s"
             .text
-            addiu ${'$'}t0, ${'$'}zero, REMOTE
-            addiu ${'$'}t1, ${'$'}zero, LOCAL
-            addiu ${'$'}t2, ${'$'}zero, NESTED
+            addiu $t0, $zero, REMOTE
+            addiu $t1, $zero, LOCAL
+            addiu $t2, $zero, NESTED
         """.trimIndent()
         val (entry, remote, local) = withContext(Dispatchers.EDT) {
             val temp = fixture.tempDirFixture
@@ -2054,8 +2055,8 @@ class MarsBuildPlatformTest {
         val disposable = Disposer.newDisposable()
         try {
             val events = recordBuildEvents(disposable)
-            val use = "\tentry: lwc1 DEST, ADDRESS \$s29)"
-            val source = ".eqv DEST \$f0\n.eqv ADDRESS OFFSET\n.eqv OFFSET -4(\n$use\n"
+            val use = $$"\tentry: lwc1 DEST, ADDRESS $s29)"
+            val source = $$".eqv DEST $f0\n.eqv ADDRESS OFFSET\n.eqv OFFSET -4(\n$$use\n"
             val (main, child) = withContext(Dispatchers.EDT) {
                 val main = fixture.addFileToProject("main.asm", ".include \"child.s\"\n").virtualFile
                 val child = fixture.addFileToProject("child.s", "nop\n").virtualFile
@@ -2069,11 +2070,11 @@ class MarsBuildPlatformTest {
             assertTrue(error.message.contains("operand is of incorrect type"), error.message)
             assertEquals(child.toNioPath(), error.filePosition.path)
             assertEquals(3, error.filePosition.startLine)
-            assertEquals(use.indexOf("\$s29"), error.filePosition.startColumn)
+            assertEquals(use.indexOf($$"$s29"), error.filePosition.startColumn)
             readAction {
                 val link = assertInstanceOf(OpenFileDescriptor::class.java, error.getNavigatable(project))
                 assertEquals(child, link.file)
-                assertEquals(source.indexOf("\$s29"), link.offset)
+                assertEquals(source.indexOf($$"$s29"), link.offset)
             }
             val finish = assertInstanceOf(FinishBuildEvent::class.java, events.receive())
             assertEquals(start.id, finish.id)
@@ -2089,13 +2090,13 @@ class MarsBuildPlatformTest {
         try {
             val events = recordBuildEvents(disposable)
             val call = "outer (BAD)"
-            val mainText = ".include \"macros.s\"\n.eqv BAD \$s29\n$call\n"
+            val mainText = $$".include \"macros.s\"\n.eqv BAD $s29\n$$call\n"
             val main = withContext(Dispatchers.EDT) {
                 val main = fixture.addFileToProject("main.asm", mainText).virtualFile
                 val include = fixture.addFileToProject("macros.s", "nop\n").virtualFile
-                edit(include, """
+                edit(include, $$"""
                     .macro inner (%argument)
-                        lwc1 ${'$'}f0, -4(%argument)
+                        lwc1 $f0, -4(%argument)
                     .end_macro
                     .macro outer (%forwarded)
                         inner (%forwarded)
@@ -2129,7 +2130,7 @@ class MarsBuildPlatformTest {
         val disposable = Disposer.newDisposable()
         try {
             val events = recordBuildEvents(disposable)
-            val use = "\tOPERATION \$t0, FIRST"
+            val use = $$"\tOPERATION $t0, FIRST"
             val source = ".eqv OPERATION li\n.eqv FIRST SECOND\n.eqv SECOND FIRST + 1\n$use\n"
             val (main, include) = withContext(Dispatchers.EDT) {
                 val main = fixture.addFileToProject("main.asm", ".include \"child.s\"\nnop\n").virtualFile

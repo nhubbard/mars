@@ -64,7 +64,9 @@ class MarsMemoryExportPlatformTest {
     fun `all six formats export unsaved included data as exact bytes`() = timeoutRunBlocking<Unit> {
         val entry = withContext(Dispatchers.EDT) {
             val include = fixture.addFileToProject("words.s", ".word 0\n").virtualFile
-            val source = fixture.addFileToProject("entry.asm", ".data\n.include \"words.s\"\n.text\naddiu \$t0, \$zero, 7\n")
+            val source = fixture.addFileToProject("entry.asm",
+              $$".data\n.include \"words.s\"\n.text\naddiu $t0, $zero, 7\n"
+            )
             val document = FileDocumentManager.getInstance().getDocument(include)!!
             WriteCommandAction.runWriteCommandAction(project) { document.setText(".word 0x41424344\n") }
             source.virtualFile.toNioPath()
@@ -123,7 +125,7 @@ class MarsMemoryExportPlatformTest {
         assertTrue(Files.isDirectory(existingDirectory))
         Files.list(directory).use { assertEquals(setOf(destination, existingDirectory), it.toList().toSet()) }
 
-        val kernel = source("kernel.s", ".ktext 0x80000180\naddiu \$t0, \$zero, 7\n")
+        val kernel = source("kernel.s", $$".ktext 0x80000180\naddiu $t0, $zero, 7\n")
         assertNull(export.export(kernel, range(0x80000180u, 0x80000180u), destination))
         assertEquals(listOf("24080007"), Files.readAllLines(destination))
     }

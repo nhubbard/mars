@@ -40,7 +40,7 @@ class MipsLabelReferencesPlatformTest {
             fixture.addFileToProject("parts/inner.s", "target.label: nop\n")
             fixture.addFileToProject("unrelated.s", ".globl target.label\ntarget.label: nop\n")
         }
-        configure(".include \"parts/outer.s\"\nentry: beq \$t0, \$zero, target.<caret>label\n")
+        configure($$".include \"parts/outer.s\"\nentry: beq $t0, $zero, target.<caret>label\n")
         readAction {
             val reference = referenceAtCaret() as PsiPolyVariantReference
             assertTrue(reference.isSoft)
@@ -142,21 +142,21 @@ class MipsLabelReferencesPlatformTest {
 
     @Test
     fun `label binding follows assembler operand formats`() = timeoutRunBlocking<Unit> {
-        configure("nop: nop\nlw \$t0, n<caret>op+4(\$sp)\n")
+        configure($$"nop: nop\nlw $t0, n<caret>op+4($sp)\n")
         readAction { assertEquals(0, referenceAtCaret()?.resolve()?.textOffset) }
-        configure("target: nop\n.eqv PAIR \$t0, \$t1\nentry: beq PAIR, tar<caret>get\n")
+        configure($$"target: nop\n.eqv PAIR $t0, $t1\nentry: beq PAIR, tar<caret>get\n")
         readAction { assertEquals(0, referenceAtCaret()?.resolve()?.textOffset) }
-        configure("target: nop\n.eqv OPEN (\nentry: lw \$t0, tar<caret>get OPEN \$sp)\n")
+        configure($$"target: nop\n.eqv OPEN (\nentry: lw $t0, tar<caret>get OPEN $sp)\n")
         readAction {
             val reference = referenceAtCaret()!!
             assertEquals(MipsTypes.psi("OPERAND_FRAGMENT"), reference.element.parent.node.elementType)
             assertEquals(0, reference.resolve()?.textOffset)
         }
-        for (source in listOf("lw \$t0, 4(\$s<caret>p)\n", "b invalid<caret>%name\n")) {
+        for (source in listOf($$"lw $t0, 4($s<caret>p)\n", "b invalid<caret>%name\n")) {
             configure(source)
             readAction { assertNull(referenceAtCaret(), source) }
         }
-        for (source in listOf("sll \$t0, \$t1, shi<caret>ft\n", ".word shi<caret>ft\n")) {
+        for (source in listOf($$"sll $t0, $t1, shi<caret>ft\n", ".word shi<caret>ft\n")) {
             configure("shift: nop\n$source")
             readAction { assertNull((referenceAtCaret() as PsiPolyVariantReference).resolve(), source) }
         }
@@ -168,13 +168,13 @@ class MipsLabelReferencesPlatformTest {
         readAction { assertEquals(SymbolKind.CONSTANT, (referenceAtCaret()?.resolve() as MipsDeclaration).kind) }
         configure("target: nop\nb tar<caret>get\n.eqv target somewhere\n")
         readAction { assertEquals(0, referenceAtCaret()?.resolve()?.textOffset) }
-        configure("\$target: nop\n.macro emit (\$target)\nb \$tar<caret>get\n.end_macro\n")
-        readAction { assertEquals(fixture.file.text.indexOf("\$target", startIndex = 1), referenceAtCaret()?.resolve()?.textOffset) }
+        configure($$"$target: nop\n.macro emit ($target)\nb $tar<caret>get\n.end_macro\n")
+        readAction { assertEquals(fixture.file.text.indexOf($$"$target", startIndex = 1), referenceAtCaret()?.resolve()?.textOffset) }
     }
 
     @Test
     fun `aliased instructions resolve label slots after expanding earlier operands`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
-        val definitions = ".eqv DEFINE .eqv\nDEFINE BRANCH bne \$t0, \$zero\n"
+        val definitions = $$".eqv DEFINE .eqv\nDEFINE BRANCH bne $t0, $zero\n"
         val include = ".include \"aliases.s\"\n"
         withContext(Dispatchers.EDT) { fixture.addFileToProject("aliases.s", definitions) }
         val branch = "entry: BRANCH tar<caret>get\ntarget: nop\n"
@@ -185,11 +185,11 @@ class MipsLabelReferencesPlatformTest {
 
         configure(".eqv BR j\nBR n<caret>op\nnop: nop\n")
         readAction { assertEquals(fixture.file.text.indexOf("nop:"), referenceAtCaret()?.resolve()?.textOffset) }
-        configure(".eqv LOAD lw \$t0\n.eqv OFFSET address+4\nLOAD OFFSET(\$ba<caret>se)\n\$base: nop\n")
+        configure($$".eqv LOAD lw $t0\n.eqv OFFSET address+4\nLOAD OFFSET($ba<caret>se)\n$base: nop\n")
         readAction { assertNull(referenceAtCaret()?.resolve()) }
-        configure(".eqv LOAD lw \$t0\nLOAD addr<caret>ess+4(\$sp)\naddress: nop\n")
+        configure($$".eqv LOAD lw $t0\nLOAD addr<caret>ess+4($sp)\naddress: nop\n")
         readAction { assertEquals(fixture.file.text.indexOf("address:"), referenceAtCaret()?.resolve()?.textOffset) }
-        configure(".eqv SHIFT sll \$t0, \$t1\nSHIFT shi<caret>ft\nshift: nop\n")
+        configure($$".eqv SHIFT sll $t0, $t1\nSHIFT shi<caret>ft\nshift: nop\n")
         readAction { assertNull(referenceAtCaret()?.resolve()) }
 
         directory.resolve("aliases.s").writeText(definitions)
@@ -201,16 +201,17 @@ class MipsLabelReferencesPlatformTest {
     @Test
     fun `label navigation and usage search survive malformed earlier operands`() = timeoutRunBlocking<Unit> {
         withContext(Dispatchers.EDT) { fixture.addFileToProject("target.inc", "target: nop\n") }
-        configure("""
+        configure(
+          $$"""
             .include "target.inc"
             .eqv BR beq
-            .eqv REG ${'$'}t0
+            .eqv REG $t0
             .eqv FIRST SECOND
             .eqv SECOND FIRST
-            BR ${'$'}t0, 0x, tar<caret>get
+            BR $t0, 0x, tar<caret>get
             beq REG, 0x, target
             sll REG, 0x, target
-            BR FIRST, ${'$'}t0, target
+            BR FIRST, $t0, target
         """.trimIndent())
         readAction {
             val reference = checkNotNull(referenceAtCaret())
@@ -299,7 +300,7 @@ class MipsLabelReferencesPlatformTest {
     @Test
     fun `a separator alias declares the written label before assembly`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
         val definitions = ".eqv SEP :\n"
-        val body = "entry, SEP, addiu \$t0, \$zero, 7\naddiu SEP nop\n"
+        val body = $$"entry, SEP, addiu $t0, $zero, 7\naddiu SEP nop\n"
         val includes = ".include \"definitions.s\"\n.include \"body.s\"\n"
         withContext(Dispatchers.EDT) {
             fixture.addFileToProject("definitions.s", definitions)

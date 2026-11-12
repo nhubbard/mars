@@ -56,12 +56,12 @@ class MipsCompletionPlatformTest {
             assertEquals(enabled.size, matches.size)
             val division = matches.single { it.lookupString == "div" }
             val presentation = LookupElementPresentation().also(division::renderElement)
-            assertEquals(" \$t1,\$t2", presentation.tailText)
+            assertEquals($$" $t1,$t2", presentation.tailText)
 
-            fixture.configureByText("completion.asm", "div \$t0, \$t1, <caret>\n")
-            assertEquals(allowPseudo, fixture.completeBasic().orEmpty().any { it.lookupString == "\$t2" })
-            fixture.configureByText("completion.asm", ".eqv DIVIDE div\nDIVIDE \$t0, \$t1, <caret>\n")
-            assertEquals(allowPseudo, fixture.completeBasic().orEmpty().any { it.lookupString == "\$t2" })
+            fixture.configureByText("completion.asm", $$"div $t0, $t1, <caret>\n")
+            assertEquals(allowPseudo, fixture.completeBasic().orEmpty().any { it.lookupString == $$"$t2" })
+            fixture.configureByText("completion.asm", $$".eqv DIVIDE div\nDIVIDE $t0, $t1, <caret>\n")
+            assertEquals(allowPseudo, fixture.completeBasic().orEmpty().any { it.lookupString == $$"$t2" })
         }
     }
 
@@ -76,12 +76,12 @@ class MipsCompletionPlatformTest {
                 fixture.configureByText("numeric-examples.asm", "  <caret>")
                 val items = fixture.completeBasic().orEmpty().associateBy { it.lookupString }
                 fun tail(name: String) = LookupElementPresentation().also(items.getValue(name)::renderElement).tailText
-                assertEquals(" \$9,\$10", tail("div"))
-                assertEquals(" \$9,\$8", tail("mtc0"))
-                assertEquals(" \$f0,\$f1,\$f3", tail("add.s"))
+                assertEquals($$" $9,$10", tail("div"))
+                assertEquals($$" $9,$8", tail("mtc0"))
+                assertEquals($$" $f0,$f1,$f3", tail("add.s"))
                 assertEquals("  " + Directives.TEXT.description, tail(".text"))
                 assertEquals(allowPseudo, "li" in items)
-                if (allowPseudo) assertEquals(" \$9,-100", tail("li"))
+                if (allowPseudo) assertEquals($$" $9,-100", tail("li"))
             }
         }
     }
@@ -90,9 +90,9 @@ class MipsCompletionPlatformTest {
     fun `statement completion offers instruction aliases that fit written operands and project settings`(@TempDir directory: Path) =
         timeoutRunBlocking<Unit> {
             val current = project.get()
-            val definitions = ".eqv RUN_OP sll\n.eqv RUN_ONE RUN_OP \$t0,\n.eqv RUN_NUMBERED sll \$8,\n" +
-                ".eqv RUN_PAIR sll \$t0, \$t1,\n.eqv RUN_ALL sll \$t0, \$t1, 4\n.eqv RUN_BAD sll \$f0,\n" +
-                ".eqv RUN_PSEUDO li \$t0,\n.eqv RUN_LABEL local:\n" +
+            val definitions = $$".eqv RUN_OP sll\n.eqv RUN_ONE RUN_OP $t0,\n.eqv RUN_NUMBERED sll $8,\n" +
+                $$".eqv RUN_PAIR sll $t0, $t1,\n.eqv RUN_ALL sll $t0, $t1, 4\n.eqv RUN_BAD sll $f0,\n" +
+                $$".eqv RUN_PSEUDO li $t0,\n.eqv RUN_LABEL local:\n" +
                 ".eqv RUN_CYCLE LOOP\n.eqv LOOP RUN_CYCLE\n"
             val include = ".include \"heads.inc\"\n"
             val suffix = "\n.eqv RUN_LATE nop\n"
@@ -109,8 +109,8 @@ class MipsCompletionPlatformTest {
                 }
                 val basic = setOf("RUN_OP", "RUN_ONE", "RUN_NUMBERED", "RUN_PAIR", "RUN_ALL")
                 assertEquals(basic + "RUN_PSEUDO", aliases("RUN_<caret>"))
-                assertEquals(setOf("RUN_ONE", "RUN_NUMBERED"), aliases("entry: RUN_<caret>.old \$t1, 4"))
-                val unfinished = aliases("entry: RUN_<caret> \$t1, 0x")
+                assertEquals(setOf("RUN_ONE", "RUN_NUMBERED"), aliases($$"entry: RUN_<caret>.old $t1, 4"))
+                val unfinished = aliases($$"entry: RUN_<caret> $t1, 0x")
                 assertTrue(unfinished.containsAll(setOf("RUN_ONE", "RUN_NUMBERED")))
                 assertTrue("RUN_BAD" !in unfinished && "RUN_ALL" !in unfinished)
                 assertTrue(aliases("entry: RUN_<caret> 0x, )").isEmpty())
@@ -119,15 +119,15 @@ class MipsCompletionPlatformTest {
                 settings.changeAssemblerOptions(false, warningsAreErrors = false)
                 assertEquals(basic, aliases("RUN_<caret>"))
                 settings.changeBareMachine(true)
-                assertEquals(setOf("RUN_NUMBERED"), aliases("entry: RUN_<caret> \$9, 4"))
+                assertEquals(setOf("RUN_NUMBERED"), aliases($$"entry: RUN_<caret> $9, 4"))
                 settings.changeBareMachine(false)
 
-                assertEquals(setOf("RUN_ONE", "RUN_NUMBERED"), aliases("entry: RUN_<caret>.old \$t1, 4"))
+                assertEquals(setOf("RUN_ONE", "RUN_NUMBERED"), aliases($$"entry: RUN_<caret>.old $t1, 4"))
                 val selected = fixture.lookup.items.single { it.lookupString == "RUN_ONE" }
-                assertEquals(" = RUN_OP \$t0", LookupElementPresentation().also(selected::renderElement).tailText)
+                assertEquals($$" = RUN_OP $t0", LookupElementPresentation().also(selected::renderElement).tailText)
                 fixture.lookup.setCurrentItem(selected)
                 fixture.finishLookup(Lookup.REPLACE_SELECT_CHAR)
-                assertEquals(include + "entry: RUN_ONE \$t1, 4" + suffix, fixture.file.text)
+                assertEquals(include + $$"entry: RUN_ONE $t1, 4" + suffix, fixture.file.text)
                 fixture.file.text
             }
             directory.resolve("heads.inc").writeText(definitions)
@@ -145,7 +145,7 @@ class MipsCompletionPlatformTest {
                 ".eqv DIRECT_TEXT .text\n.eqv DIRECT_NUMBER 42\n" +
                 ".eqv VALUE_LIST .word valuee\n.eqv DIRECT_BROKEN VALUE_LIST-5\n"
             val before = ".include \"directives.inc\"\n.data\n"
-            val after = "\nDIRECT_DEFINE SHIFT 4\nDIRECT_TEXT\nsll \$t0, \$t1, SHIFT\n.eqv DIRECT_LATE .space\n"
+            val after = $$"\nDIRECT_DEFINE SHIFT 4\nDIRECT_TEXT\nsll $t0, $t1, SHIFT\n.eqv DIRECT_LATE .space\n"
             withContext(Dispatchers.EDT) { fixture.addFileToProject("directives.inc", definitions) }
             IndexingTestUtil.suspendUntilIndexesAreReady(current)
             val completed = withContext(Dispatchers.EDT) {
@@ -177,9 +177,9 @@ class MipsCompletionPlatformTest {
     fun `statement completion offers macro aliases with compatible call arity`(@TempDir directory: Path) =
         timeoutRunBlocking<Unit> {
             val current = project.get()
-            val definitions = ".macro emit\n.end_macro\n.macro emit (%dst, %amount)\nsll %dst, \$t1, %amount\n.end_macro\n" +
-                ".eqv CALL_OP emit\n.eqv CALL_FIRST CALL_OP \$t0\n.eqv CALL_WRAPPED emit(\$t0, 4)\n" +
-                ".eqv CALL_SHORT emit(\$t0)\n.eqv CALL_LONG emit \$t0, 4, 5\n.eqv CALL_OPEN emit(\n" +
+            val definitions = $$".macro emit\n.end_macro\n.macro emit (%dst, %amount)\nsll %dst, $t1, %amount\n.end_macro\n" +
+                $$".eqv CALL_OP emit\n.eqv CALL_FIRST CALL_OP $t0\n.eqv CALL_WRAPPED emit($t0, 4)\n" +
+                $$".eqv CALL_SHORT emit($t0)\n.eqv CALL_LONG emit $t0, 4, 5\n.eqv CALL_OPEN emit(\n" +
                 ".eqv CALL_UNKNOWN later\n.eqv BROKEN emit valuee\n.eqv ZERO emit()\n"
             val include = ".include \"macro-aliases.inc\"\n"
             val suffix = "\n.macro emit (%later)\n.end_macro\n.macro later\n.end_macro\n"
@@ -195,14 +195,14 @@ class MipsCompletionPlatformTest {
                     }
                 }
                 assertEquals(setOf("CALL_OP", "CALL_FIRST", "CALL_WRAPPED", "CALL_OPEN"), aliases("CALL_<caret>"))
-                assertEquals(setOf("CALL_OP"), aliases("CALL_<caret>(\$t0, 4)"))
-                assertEquals(setOf("CALL_OP", "CALL_OPEN"), aliases("CALL_<caret>(\$t0"))
-                assertTrue(aliases("CALL_<caret> \$t0, 4, 9").isEmpty())
+                assertEquals(setOf("CALL_OP"), aliases($$"CALL_<caret>($t0, 4)"))
+                assertEquals(setOf("CALL_OP", "CALL_OPEN"), aliases($$"CALL_<caret>($t0"))
+                assertTrue(aliases($$"CALL_<caret> $t0, 4, 9").isEmpty())
                 assertTrue(aliases("BROKEN<caret>-5").isEmpty())
                 assertEquals(setOf("ZERO"), aliases("ZERO<caret>"))
                 assertEquals(setOf("CALL_OP", "CALL_FIRST", "CALL_OPEN"), aliases("entry: CALL_<caret>.old, 4"))
                 val selected = fixture.lookup.items.single { it.lookupString == "CALL_FIRST" }
-                assertEquals(" = CALL_OP \$t0", LookupElementPresentation().also(selected::renderElement).tailText)
+                assertEquals($$" = CALL_OP $t0", LookupElementPresentation().also(selected::renderElement).tailText)
                 fixture.lookup.setCurrentItem(selected)
                 fixture.finishLookup(Lookup.REPLACE_SELECT_CHAR)
                 assertEquals(include + "entry: CALL_FIRST, 4" + suffix, fixture.file.text)
@@ -218,14 +218,14 @@ class MipsCompletionPlatformTest {
     fun `catalog completion inserts a dotted mnemonic after a label and a directive inside a macro`() = timeoutRunBlocking<Unit> {
         IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
         withContext(Dispatchers.EDT) {
-            fixture.configureByText("completion.asm", "entry: C.<caret>eq.s \$f0, \$f2\n")
+            fixture.configureByText("completion.asm", $$"entry: C.<caret>eq.s $f0, $f2\n")
             val instruction = fixture.completeBasic().orEmpty().single { it.lookupString == "c.eq.s" }
             val example = InstructionDefaults.get().instructionList.first { it.name == "c.eq.s" }.exampleFormat
             val presentation = LookupElementPresentation().also(instruction::renderElement)
             assertEquals(example.removePrefix("c.eq.s"), presentation.tailText)
             fixture.lookup.setCurrentItem(instruction)
             fixture.finishLookup(Lookup.REPLACE_SELECT_CHAR)
-            assertEquals("entry: c.eq.s \$f0, \$f2\n", fixture.file.text)
+            assertEquals($$"entry: c.eq.s $f0, $f2\n", fixture.file.text)
 
             fixture.configureByText("completion.asm", ".macro emit\n  .A<caret>\n.end_macro\n")
             val directive = fixture.completeBasic().orEmpty().single { it.lookupString == ".asciiz" }
@@ -237,22 +237,22 @@ class MipsCompletionPlatformTest {
 
     @Test
     fun `macro completion displays the visible overloads and inserts the call name`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
-        val include = """
+        val include = $$"""
             .macro emit (%obsolete)
-              addiu ${'$'}t0, ${'$'}zero, 1
+              addiu $t0, $zero, 1
             .end_macro
             .macro emitPair
               nop
             .end_macro
         """.trimIndent()
-        val source = """
+        val source = $$"""
             .include "macros.s"
             .eqv OPEN .macro
             .eqv CLOSE .end_macro
             OPEN emit (%value)
-              addiu ${'$'}t0, ${'$'}zero, %value
+              addiu $t0, $zero, %value
             CLOSE
-            .macro emit (%left, ${'$'}right)
+            .macro emit (%left, $right)
               nop
             .end_macro
             entry: em<caret>itTail (7)
@@ -271,7 +271,7 @@ class MipsCompletionPlatformTest {
             assertEquals(setOf("emit", "emitPair"), choices.map { it.lookupString }.toSet())
             val item = choices.single { it.lookupString == "emit" }
             val presentation = LookupElementPresentation().also(item::renderElement)
-            assertEquals(" (%value) / (%left, \$right)", presentation.tailText)
+            assertEquals($$" (%value) / (%left, $right)", presentation.tailText)
             fixture.lookup.setCurrentItem(item)
             fixture.finishLookup(Lookup.REPLACE_SELECT_CHAR)
             fixture.file.text.also { assertEquals(source.replace("em<caret>itTail", "emit"), it) }
@@ -332,7 +332,7 @@ class MipsCompletionPlatformTest {
         timeoutRunBlocking<Unit> {
             val current = project.get()
             val definitions = ".eqv OPEN .macro\n.eqv FORMALS (%value, %valueMore)\nOPEN emit FORMALS\n"
-            val source = ".include \"formals.s\"\naddiu \$t0, \$zero, %va<caret>lueSuffix\n.end_macro\nemit(7, 0)\n"
+            val source = $$".include \"formals.s\"\naddiu $t0, $zero, %va<caret>lueSuffix\n.end_macro\nemit(7, 0)\n"
             withContext(Dispatchers.EDT) {
                 fixture.addFileToProject("formals.s", definitions)
                 fixture.configureByText("formal-completion.asm", source)
@@ -354,27 +354,27 @@ class MipsCompletionPlatformTest {
     @Test
     fun `formal suggestions follow token context case and macro scope`() = timeoutRunBlocking<Unit> {
         val current = project.get()
-        val formals = setOf("%value", "%valueMore", "\$destination", "\$distance")
+        val formals = setOf("%value", "%valueMore", $$"$destination", $$"$distance")
         val header = ".macro emit (${formals.joinToString()})\n"
         val end = ".end_macro\n"
         val percent = setOf("%value", "%valueMore")
-        val spim = setOf("\$destination", "\$distance")
+        val spim = setOf($$"$destination", $$"$distance")
         val cases = listOf(
             "$header    <caret>\n$end" to formals,
             "$header    %<caret>\n$end" to percent,
-            "$header    li \$t0, %<caret>\n$end" to percent,
+            $$"$$header    li $t0, %<caret>\n$$end" to percent,
             "$header    %va<caret>: nop\n$end" to percent,
             "$header    other(%va<caret>)\n$end" to percent,
-            "$header    lw \$t0, 0(\$d<caret>)\n$end" to spim,
-            "$header    .eqv \$destination 7\n    li \$t0, <caret>\n$end" to (formals - "\$destination"),
-            "$header    .eqv \$d<caret> 7\n$end" to spim,
+            $$"$$header    lw $t0, 0($d<caret>)\n$$end" to spim,
+            $$"$$header    .eqv $destination 7\n    li $t0, <caret>\n$$end" to (formals - $$"$destination"),
+            $$"$$header    .eqv $d<caret> 7\n$$end" to spim,
             "$header    .eqv CONSTANT %va<caret>\n$end" to percent,
-            "$header    .eqv \$destination 7\n    .eqv CONSTANT \$d<caret>\n$end" to spim,
-            "$header    li \$t0, %V<caret>\n$end" to emptySet(),
-            "$header    li \$t0, VALUE<caret>\n$end" to emptySet(),
+            $$"$$header    .eqv $destination 7\n    .eqv CONSTANT $d<caret>\n$$end" to spim,
+            $$"$$header    li $t0, %V<caret>\n$$end" to emptySet(),
+            $$"$$header    li $t0, VALUE<caret>\n$$end" to emptySet(),
             "$header    .asciiz \"%va<caret>\"\n$end" to emptySet(),
             "$header    # %va<caret>\n$end" to emptySet(),
-            "$header${end}li \$t0, %va<caret>\n" to emptySet(),
+            $$"$$header$${end}li $t0, %va<caret>\n" to emptySet(),
             ".macro emit (%va<caret>lue, %valueMore)\n$end" to emptySet(),
         )
         IndexingTestUtil.suspendUntilIndexesAreReady(current)
@@ -385,9 +385,9 @@ class MipsCompletionPlatformTest {
                     .map { it.lookupString }
                 assertEquals(expected, names.toSet(), source)
             }
-            fixture.configureByText("formal-registers.asm", "$header    li \$<caret>, 7\n$end")
+            fixture.configureByText("formal-registers.asm", $$"$$header    li $<caret>, 7\n$$end")
             val names = fixture.completeBasic().orEmpty().map { it.lookupString }
-            assertTrue("\$t0" in names && spim.all { it in names }, names.toString())
+            assertTrue($$"$t0" in names && spim.all { it in names }, names.toString())
             val file = fixture.file as MipsFile
             val position = file.findElementAt(fixture.editor.caretModel.offset - 1)!!
             val analysis = current.service<MarsAnalysisService>()
@@ -402,7 +402,7 @@ class MipsCompletionPlatformTest {
         val current = project.get()
         IndexingTestUtil.suspendUntilIndexesAreReady(current)
         withContext(Dispatchers.EDT) {
-            val file = fixture.configureByText("macro-scope.asm", """
+            val file = fixture.configureByText("macro-scope.asm", $$"""
                 .macro emit
                 .end_macro
                 .macro EmitCase
@@ -412,7 +412,7 @@ class MipsCompletionPlatformTest {
                 .eqv emitShadowed nop
                 .macro emitInvalid 7
                 .end_macro
-                .macro ${'$'}emitDollar
+                .macro $emitDollar
                 .end_macro
                 .macro emitOpen
                   <caret>
@@ -421,16 +421,16 @@ class MipsCompletionPlatformTest {
             val offset = fixture.editor.caretModel.offset
             assertEquals(mapOf("emit" to listOf("()")), analysis.macroCompletionSignatures(file, offset, "em"))
             assertEquals(setOf("EmitCase"), analysis.macroCompletionSignatures(file, offset, "Em").keys)
-            assertEquals(setOf("\$emitDollar"), analysis.macroCompletionSignatures(file, offset, "\$em").keys)
+            assertEquals(setOf($$"$emitDollar"), analysis.macroCompletionSignatures(file, offset, $$"$em").keys)
             DumbModeTestUtils.runInDumbModeSynchronously(current) {
                 assertTrue(analysis.macroCompletionSignatures(file, offset, "").isEmpty())
             }
-            val dollarCall = ".macro \$emitDollar\n.end_macro\n.macro \$emitOther\n.end_macro\n\$em<caret>\n"
+            val dollarCall = $$".macro $emitDollar\n.end_macro\n.macro $emitOther\n.end_macro\n$em<caret>\n"
             fixture.configureByText("macro-dollar.asm", dollarCall)
-            val dollarMacro = fixture.completeBasic().orEmpty().single { it.lookupString == "\$emitDollar" }
+            val dollarMacro = fixture.completeBasic().orEmpty().single { it.lookupString == $$"$emitDollar" }
             fixture.lookup.setCurrentItem(dollarMacro)
             fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR)
-            assertEquals(dollarCall.replace("\$em<caret>", "\$emitDollar"), fixture.file.text)
+            assertEquals(dollarCall.replace($$"$em<caret>", $$"$emitDollar"), fixture.file.text)
         }
     }
 
@@ -446,34 +446,34 @@ class MipsCompletionPlatformTest {
             }
 
             val integer = registers("entry: ADD <caret>")
-            val numbers = (0..31).map { "\$$it" }.toSet()
+            val numbers = (0..31).map { $$"$$$it" }.toSet()
             if (bareMachine) {
                 assertEquals(numbers, integer)
             } else {
                 assertEquals(64, integer.size)
-                assertTrue(integer.containsAll(numbers + setOf("\$t0", "\$zero")))
+                assertTrue(integer.containsAll(numbers + setOf($$"$t0", $$"$zero")))
             }
-            assertEquals(integer, registers("lw \$t0, 4(<caret>)"))
-            assertEquals(integer, registers("lw \$t0,, -4(<caret>"))
-            assertEquals(integer, registers("lw \$t0, (<caret>)"))
-            assertEquals(integer, registers("lw \$t0, address+4(<caret>)"))
-            assertEquals(integer, registers("div \$t0 \$t1 <caret>"))
-            assertEquals(integer, registers("mtc0 <caret>, \$12"))
-            assertEquals(integer, registers(".eqv LOAD lw \$t0\nLOAD 4(<caret>)"))
-            assertEquals(integer, registers(".eqv SEP :\nentry SEP lw \$t0, 4(<caret>)"))
+            assertEquals(integer, registers($$"lw $t0, 4(<caret>)"))
+            assertEquals(integer, registers($$"lw $t0,, -4(<caret>"))
+            assertEquals(integer, registers($$"lw $t0, (<caret>)"))
+            assertEquals(integer, registers($$"lw $t0, address+4(<caret>)"))
+            assertEquals(integer, registers($$"div $t0 $t1 <caret>"))
+            assertEquals(integer, registers($$"mtc0 <caret>, $12"))
+            assertEquals(integer, registers($$".eqv LOAD lw $t0\nLOAD 4(<caret>)"))
+            assertEquals(integer, registers($$".eqv SEP :\nentry SEP lw $t0, 4(<caret>)"))
 
-            val floating = (0..31).map { "\$f$it" }.toSet()
-            assertEquals(floating, registers("add.s \$f0, <caret>"))
-            assertEquals(floating, registers("mtc1 \$t0, <caret>"))
-            assertEquals(floating, registers(".eqv TRANSFER mtc1 \$t0\nTRANSFER <caret>"))
-            assertEquals(floating, registers(".eqv SEP :\naddiu SEP mtc1 \$t0, <caret>"))
+            val floating = (0..31).map { $$"$f$$it" }.toSet()
+            assertEquals(floating, registers($$"add.s $f0, <caret>"))
+            assertEquals(floating, registers($$"mtc1 $t0, <caret>"))
+            assertEquals(floating, registers($$".eqv TRANSFER mtc1 $t0\nTRANSFER <caret>"))
+            assertEquals(floating, registers($$".eqv SEP :\naddiu SEP mtc1 $t0, <caret>"))
 
-            val system = setOf("\$8", "\$12", "\$13", "\$14")
-            assertEquals(system, registers("mfc0 \$t0, <caret>"))
-            assertEquals(system, registers("mtc0 \$t0, <caret>"))
-            assertEquals(system, registers(".eqv TRANSFER mtc0 \$t0\nTRANSFER <caret>"))
+            val system = setOf($$"$8", $$"$12", $$"$13", $$"$14")
+            assertEquals(system, registers($$"mfc0 $t0, <caret>"))
+            assertEquals(system, registers($$"mtc0 $t0, <caret>"))
+            assertEquals(system, registers($$".eqv TRANSFER mtc0 $t0\nTRANSFER <caret>"))
 
-            for (source in listOf("lw \$t0, address <caret>", "sll \$t0, \$t1, <caret>", "nop <caret>", "emit <caret>")) {
+            for (source in listOf($$"lw $t0, address <caret>", $$"sll $t0, $t1, <caret>", "nop <caret>", "emit <caret>")) {
                 assertTrue(registers(source).isEmpty(), source)
             }
         }
@@ -483,9 +483,9 @@ class MipsCompletionPlatformTest {
     fun `completion follows operands and punctuation from unsaved included equivalences`(@TempDir directory: Path) =
         timeoutRunBlocking<Unit> {
             val current = project.get()
-            val aliases = ".eqv ADDRESS OFFSET\n.eqv OFFSET -4(\n.eqv DEST \$f0\n.eqv PAIR \$t0, \$t1\n"
+            val aliases = $$".eqv ADDRESS OFFSET\n.eqv OFFSET -4(\n.eqv DEST $f0\n.eqv PAIR $t0, $t1\n"
             val prefix = ".include \"outer.s\"\n"
-            val source = prefix + "entry: lwc1 DEST, ADDRESS \$s<caret>9)\n"
+            val source = prefix + $$"entry: lwc1 DEST, ADDRESS $s<caret>9)\n"
             val inner = withContext(Dispatchers.EDT) {
                 fixture.addFileToProject("outer.s", ".include \"aliases.s\"\n")
                 fixture.addFileToProject("aliases.s", aliases).virtualFile
@@ -494,10 +494,10 @@ class MipsCompletionPlatformTest {
             val completed = withContext(Dispatchers.EDT) {
                 fixture.configureByText("operand-aliases.asm", source)
                 val registers = fixture.completeBasic().orEmpty().filter { it.lookupString.startsWith('$') }
-                assertEquals(((0..7).map { "\$s$it" } + "\$sp").toSet(), registers.map { it.lookupString }.toSet())
-                fixture.lookup.setCurrentItem(registers.single { it.lookupString == "\$s2" })
+                assertEquals(((0..7).map { $$"$s$$it" } + $$"$sp").toSet(), registers.map { it.lookupString }.toSet())
+                fixture.lookup.setCurrentItem(registers.single { it.lookupString == $$"$s2" })
                 fixture.finishLookup(Lookup.REPLACE_SELECT_CHAR)
-                assertEquals(source.replace("\$s<caret>9", "\$s2"), fixture.file.text)
+                assertEquals(source.replace($$"$s<caret>9", $$"$s2"), fixture.file.text)
                 val completed = fixture.file.text
 
                 val document = FileDocumentManager.getInstance().getDocument(inner)!!
@@ -528,14 +528,14 @@ class MipsCompletionPlatformTest {
                 fixture.configureByText("incomplete-alias.mars", source)
                 return fixture.completeBasic().orEmpty().map { it.lookupString }.toSet()
             }
-            val branch = ".eqv BR beq\nBR \$t0, 0x, tar<caret>" + labels
+            val branch = $$".eqv BR beq\nBR $t0, 0x, tar<caret>" + labels
             assertEquals(setOf("target", "target2"), candidates(branch))
             fixture.lookup.setCurrentItem(fixture.lookup.items.single { it.lookupString == "target" })
             fixture.finishLookup(Lookup.REPLACE_SELECT_CHAR)
             assertEquals(branch.replace("tar<caret>", "target"), fixture.file.text)
-            assertEquals(setOf("target", "target2"), candidates(".eqv REG \$t0\nbeq REG, 0x, tar<caret>" + labels))
-            assertEquals(setOf("\$8", "\$12", "\$13", "\$14"), candidates(".eqv TRANSFER mtc0\nTRANSFER 0x, \$<caret>\n"))
-            assertTrue(candidates(".eqv BR beq\n.eqv FIRST SECOND\n.eqv SECOND FIRST\nBR FIRST, \$t0, tar<caret>" + labels)
+            assertEquals(setOf("target", "target2"), candidates($$".eqv REG $t0\nbeq REG, 0x, tar<caret>" + labels))
+            assertEquals(setOf($$"$8", $$"$12", $$"$13", $$"$14"), candidates($$".eqv TRANSFER mtc0\nTRANSFER 0x, $<caret>\n"))
+            assertTrue(candidates($$".eqv BR beq\n.eqv FIRST SECOND\n.eqv SECOND FIRST\nBR FIRST, $t0, tar<caret>" + labels)
                 .none { it.startsWith("target") })
         }
     }
@@ -586,7 +586,7 @@ class MipsCompletionPlatformTest {
         IndexingTestUtil.suspendUntilIndexesAreReady(current)
         val completed = withContext(Dispatchers.EDT) {
             val definitions = ".text\ntargetPlain: nop\ntargetShadow: nop\ntargetValue: nop\nnop: nop\n.local: nop\n" +
-                ".eqv targetShadow \$t0\n.eqv targetValue 12\n.data\n.word 0\n"
+                $$".eqv targetShadow $t0\n.eqv targetValue 12\n.data\n.word 0\n"
             fun items(line: String): List<LookupElement> {
                 fixture.configureByText("data-address-spellings.mars", definitions + line + "\n")
                 return CodeInsightSettings.runWithTemporarySettings<_, Error> {
@@ -620,10 +620,10 @@ class MipsCompletionPlatformTest {
         timeoutRunBlocking<Unit> {
             val current = project.get()
             IndexingTestUtil.suspendUntilIndexesAreReady(current)
-            val definitions = """
+            val definitions = $$"""
                 .macro shared (%left, %right)
                   .text
-                  addiu ${'$'}t0, ${'$'}zero, %left
+                  addiu $t0, $zero, %left
                   .data
                 .end_macro
                 .eqv PAIR 2, 3
@@ -669,7 +669,7 @@ class MipsCompletionPlatformTest {
             val current = project.get()
             val definitions = ".eqv WORDS .word\n.eqv VALUE_NUM 3\n.eqv VALUE_ZERO 0\n.eqv VALUE_NEG -2\n" +
                 ".eqv VALUE_LIST VALUE_NUM, 8\n.eqv VALUE_SYMBOL target\n.eqv VALUE_DOTTED .local\n" +
-                ".eqv VALUE_FLOAT 1.5\n.eqv VALUE_REG \$t0\n.eqv VALUE_TEXT \"text\"\n" +
+                $$".eqv VALUE_FLOAT 1.5\n.eqv VALUE_REG $t0\n.eqv VALUE_TEXT \"text\"\n" +
                 ".eqv VALUE_LABEL generated:\n.eqv VALUE_MACRO emit\n.macro emit\n.end_macro\n"
             val include = ".include \"values.inc\"\n"
             val before = include + ".data\n"
@@ -698,11 +698,11 @@ class MipsCompletionPlatformTest {
                 assertEquals(setOf("VALUE_NUM"), aliases("WORDS 1:VALUE_<caret>"))
                 assertEquals(integers, aliases(".word 0\n0, VALUE_<caret>:2"))
                 assertEquals(integers, aliases(".word 0\n.5, VALUE_<caret>:2"))
-                assertTrue(aliases(".word 0\n\$t0, VALUE_<caret>:2").isEmpty())
+                assertTrue(aliases($$".word 0\n$t0, VALUE_<caret>:2").isEmpty())
                 assertTrue(aliases(".word VALUE_<caret>:0").isEmpty())
                 assertTrue(aliases(".word VALUE_<caret>:1.5").isEmpty())
                 assertTrue(aliases(".word target:VALUE_<caret>").isEmpty())
-                assertTrue(aliases(".word VALUE_<caret>, \$t0").isEmpty())
+                assertTrue(aliases($$".word VALUE_<caret>, $t0").isEmpty())
                 assertEquals(integers + setOf("VALUE_LIST", "VALUE_FLOAT", "VALUE_MACRO"), aliases(".float 0\nVALUE_<caret>"))
                 assertTrue(aliases(".set VALUE_<caret>").isEmpty())
                 assertTrue(aliases(".word VALUE_<caret>", include + ".text\n").isEmpty())
@@ -734,7 +734,7 @@ class MipsCompletionPlatformTest {
             val current = project.get()
             val definitions = ".eqv REALS .float\n.eqv STRINGS .asciiz\n.eqv VAL_INT 3\n.eqv VAL_REAL -1.5\n" +
                 ".eqv VAL_MIX VAL_REAL, 2.25\n.eqv VAL_WIDE 1.0e40\n.eqv VAL_HEX 0x10\n" +
-                ".eqv VAL_REG \$t0\n.eqv VAL_ZERO 0\n.eqv VAL_LABEL target\n" +
+                $$".eqv VAL_REG $t0\n.eqv VAL_ZERO 0\n.eqv VAL_LABEL target\n" +
                 ".eqv VAL_STRING \"A\\n\"\n.eqv VAL_QUOTES VAL_STRING, \"B\"\n.eqv VAL_OPEN \"unfinished\n"
             val include = ".include \"real-and-string.inc\"\n"
             val before = include + ".data\n"
@@ -893,7 +893,7 @@ class MipsCompletionPlatformTest {
             val definitions = ".eqv EXPORT .globl\n.eqv EX_FIRST alpha\n.eqv EX_SECOND beta\n" +
                 ".eqv EX_PAIR EX_FIRST, beta\n.eqv EX_CHAIN EX_PAIR\n.eqv EX_DUP alpha, alpha\n" +
                 ".eqv EX_EXTERNAL storage\n.eqv EX_MISSING absent\n.eqv EX_OTHER other\n" +
-                ".eqv EX_OPCODE add.s\n.eqv EX_REGISTER \$t0\n.eqv LOOP AGAIN\n.eqv AGAIN LOOP\n" +
+                $$".eqv EX_OPCODE add.s\n.eqv EX_REGISTER $t0\n.eqv LOOP AGAIN\n.eqv AGAIN LOOP\n" +
                 ".eqv EX_INCLUDED included\n.eqv MADE generated:\n.eqv EX_GENERATED generated\nincluded: nop\n"
             val prefix = ".include \"export-aliases.inc\"\n.extern storage 4\n"
             val suffix = "\nalpha: nop\nbeta: nop\ngamma: nop\nadd.s: nop\nMADE nop\n.eqv EX_LATE gamma\n"
@@ -916,7 +916,7 @@ class MipsCompletionPlatformTest {
                 assertEquals(independent + "EX_FIRST", aliases("tag: EXPORT EX_<caret>, beta"))
                 assertEquals(independent + "EX_SECOND", aliases(".globl EX_FIRST, EX_<caret>"))
                 assertEquals(independent, aliases(".globl alpha, EX_<caret>, EX_SECOND"))
-                assertTrue(aliases(".globl EX_<caret>, \$t0").isEmpty())
+                assertTrue(aliases($$".globl EX_<caret>, $t0").isEmpty())
                 assertTrue(aliases(".globl EX_<caret>, LOOP").isEmpty())
                 assertEquals(setOf("EX_PAIR"), aliases("EXPORT EX_P<caret>.old, gamma"))
                 fixture.lookup.setCurrentItem(fixture.lookup.items.single { it.lookupString == "EX_PAIR" })
@@ -935,19 +935,19 @@ class MipsCompletionPlatformTest {
     fun `instruction completion offers equivalences that fit the assembler operand format`(@TempDir directory: Path) =
         timeoutRunBlocking<Unit> {
             val current = project.get()
-            val definitions = """
-                .eqv ARG_REG ${'$'}t1
-                .eqv ARG_NUMBERED ${'$'}9
-                .eqv ARG_FP ${'$'}f1
+            val definitions = $$"""
+                .eqv ARG_REG $t1
+                .eqv ARG_NUMBERED $9
+                .eqv ARG_FP $f1
                 .eqv ARG_SMALL 4
                 .eqv ARG_LARGE 32
-                .eqv ARG_ADDRESS ARG_SMALL(${'$'}sp)
-                .eqv ARG_PAIR ${'$'}t1, 4
+                .eqv ARG_ADDRESS ARG_SMALL($sp)
+                .eqv ARG_PAIR $t1, 4
                 .eqv ARG_TARGET target
                 .eqv ARG_CYCLE LOOP
                 .eqv LOOP ARG_CYCLE
                 .eqv ARG_LABEL :
-                .eqv ARG_REHEAD : add ${'$'}t0
+                .eqv ARG_REHEAD : add $t0
             """.trimIndent() + "\n"
             val include = ".include \"operands.inc\"\n"
             val suffix = "\ntarget: nop\n.eqv ARG_LATE 2\n"
@@ -962,15 +962,15 @@ class MipsCompletionPlatformTest {
                             .map { item -> item.lookupString }.filter { name -> name.startsWith("ARG_") }.toSet()
                     }
                 }
-                assertEquals(setOf("ARG_SMALL"), aliases("sll \$t0, \$t1, ARG_<caret>"))
+                assertEquals(setOf("ARG_SMALL"), aliases($$"sll $t0, $t1, ARG_<caret>"))
                 assertEquals(setOf("ARG_REG", "ARG_NUMBERED"), aliases("sll ARG_<caret>"))
-                assertEquals(setOf("ARG_REG", "ARG_NUMBERED", "ARG_PAIR"), aliases("sll \$t0, ARG_<caret>"))
-                assertEquals(setOf("ARG_ADDRESS", "ARG_SMALL", "ARG_LARGE", "ARG_TARGET"), aliases("lw \$t0, ARG_<caret>"))
-                assertEquals(setOf("ARG_REG", "ARG_NUMBERED"), aliases("lw \$t0, 4(ARG_<caret>)"))
-                assertEquals(setOf("ARG_FP"), aliases("add.s \$f0, ARG_<caret>"))
+                assertEquals(setOf("ARG_REG", "ARG_NUMBERED", "ARG_PAIR"), aliases($$"sll $t0, ARG_<caret>"))
+                assertEquals(setOf("ARG_ADDRESS", "ARG_SMALL", "ARG_LARGE", "ARG_TARGET"), aliases($$"lw $t0, ARG_<caret>"))
+                assertEquals(setOf("ARG_REG", "ARG_NUMBERED"), aliases($$"lw $t0, 4(ARG_<caret>)"))
+                assertEquals(setOf("ARG_FP"), aliases($$"add.s $f0, ARG_<caret>"))
                 assertEquals(setOf("ARG_TARGET"), aliases("j ARG_<caret>"))
                 assertTrue(aliases("nop ARG_<caret>").isEmpty())
-                val file = fixture.configureByText("equivalence-indexing.mars", "sll \$t0, ARG_<caret>") as MipsFile
+                val file = fixture.configureByText("equivalence-indexing.mars", $$"sll $t0, ARG_<caret>") as MipsFile
                 val position = file.findElementAt(fixture.editor.caretModel.offset - 1)!!
                 DumbModeTestUtils.runInDumbModeSynchronously(current) {
                     val operand = requireNotNull(MipsInstructionOperand.at(position, file))
@@ -981,15 +981,15 @@ class MipsCompletionPlatformTest {
                 }
                 val settings = current.service<MarsAssemblySettings>()
                 settings.changeBareMachine(true)
-                assertEquals(setOf("ARG_NUMBERED"), aliases("sll \$8, ARG_<caret>"))
+                assertEquals(setOf("ARG_NUMBERED"), aliases($$"sll $8, ARG_<caret>"))
                 settings.changeBareMachine(false)
 
-                assertEquals(setOf("ARG_REG", "ARG_NUMBERED", "ARG_PAIR"), aliases("sll \$t0, ARG_<caret>.old"))
+                assertEquals(setOf("ARG_REG", "ARG_NUMBERED", "ARG_PAIR"), aliases($$"sll $t0, ARG_<caret>.old"))
                 val pair = fixture.lookup.items.single { it.lookupString == "ARG_PAIR" }
-                assertEquals(" = \$t1, 4", LookupElementPresentation().also(pair::renderElement).tailText)
+                assertEquals($$" = $t1, 4", LookupElementPresentation().also(pair::renderElement).tailText)
                 fixture.lookup.setCurrentItem(pair)
                 fixture.finishLookup(Lookup.REPLACE_SELECT_CHAR)
-                assertEquals(include + "sll \$t0, ARG_PAIR" + suffix, fixture.file.text)
+                assertEquals(include + $$"sll $t0, ARG_PAIR" + suffix, fixture.file.text)
                 fixture.file.text
             }
             directory.resolve("operands.inc").writeText(definitions)
@@ -1002,8 +1002,8 @@ class MipsCompletionPlatformTest {
     fun `equivalence suggestions preserve already written operands and address punctuation`(@TempDir directory: Path) =
         timeoutRunBlocking<Unit> {
             val current = project.get()
-            val definitions = ".eqv TAIL_BASE \$sp\n.eqv TAIL_CLOSE \$sp)\n.eqv TAIL_REG \$t1\n" +
-                ".eqv TAIL_PAIR \$t1, 4\n.eqv TAIL_ADDR 4(\$sp)\n.eqv TAIL_OFFSET 4\n.eqv CLOSE )\n" +
+            val definitions = $$".eqv TAIL_BASE $sp\n.eqv TAIL_CLOSE $sp)\n.eqv TAIL_REG $t1\n" +
+                $$".eqv TAIL_PAIR $t1, 4\n.eqv TAIL_ADDR 4($sp)\n.eqv TAIL_OFFSET 4\n.eqv CLOSE )\n" +
                 ".eqv LOOP AGAIN\n.eqv AGAIN LOOP\n"
             val include = ".include \"suffix.inc\"\n"
             withContext(Dispatchers.EDT) { fixture.addFileToProject("suffix.inc", definitions) }
@@ -1017,20 +1017,20 @@ class MipsCompletionPlatformTest {
                     }
                 }
                 val registers = setOf("TAIL_BASE", "TAIL_REG")
-                assertEquals(registers, aliases("lw \$t0, 4(TAIL_<caret>)"))
-                assertEquals(registers, aliases("lw \$t0, 4(TAIL_<caret> CLOSE"))
-                assertEquals(registers, aliases("lw \$t0, 4(<caret>)"))
-                assertEquals(registers + "TAIL_CLOSE", aliases("lw \$t0, 4(TAIL_<caret>", newline = ""))
-                assertEquals(registers + "TAIL_CLOSE", aliases("lw \$t0, 4(<caret>", newline = ""))
-                assertEquals(setOf("TAIL_OFFSET"), aliases("lw \$t0, TAIL_<caret>(\$sp)"))
-                assertEquals(registers, aliases("sll \$t0, TAIL_<caret>, 7"))
-                assertEquals(registers, aliases("sll \$t0, TAIL_<caret>, 0x"))
-                assertTrue(aliases("sll \$t0, TAIL_<caret>, )").isEmpty())
-                assertEquals(registers + "TAIL_PAIR", aliases("sll \$t0, TAIL_<caret>, LOOP"))
-                assertEquals(registers, aliases("lw \$t0, 4(TAIL_<caret>.old) # keep the suffix"))
+                assertEquals(registers, aliases($$"lw $t0, 4(TAIL_<caret>)"))
+                assertEquals(registers, aliases($$"lw $t0, 4(TAIL_<caret> CLOSE"))
+                assertEquals(registers, aliases($$"lw $t0, 4(<caret>)"))
+                assertEquals(registers + "TAIL_CLOSE", aliases($$"lw $t0, 4(TAIL_<caret>", newline = ""))
+                assertEquals(registers + "TAIL_CLOSE", aliases($$"lw $t0, 4(<caret>", newline = ""))
+                assertEquals(setOf("TAIL_OFFSET"), aliases($$"lw $t0, TAIL_<caret>($sp)"))
+                assertEquals(registers, aliases($$"sll $t0, TAIL_<caret>, 7"))
+                assertEquals(registers, aliases($$"sll $t0, TAIL_<caret>, 0x"))
+                assertTrue(aliases($$"sll $t0, TAIL_<caret>, )").isEmpty())
+                assertEquals(registers + "TAIL_PAIR", aliases($$"sll $t0, TAIL_<caret>, LOOP"))
+                assertEquals(registers, aliases($$"lw $t0, 4(TAIL_<caret>.old) # keep the suffix"))
                 fixture.lookup.setCurrentItem(fixture.lookup.items.single { it.lookupString == "TAIL_BASE" })
                 fixture.finishLookup(Lookup.REPLACE_SELECT_CHAR)
-                assertEquals(include + "lw \$t0, 4(TAIL_BASE) # keep the suffix\n", fixture.file.text)
+                assertEquals(include + $$"lw $t0, 4(TAIL_BASE) # keep the suffix\n", fixture.file.text)
                 fixture.file.text
             }
             directory.resolve("suffix.inc").writeText(definitions)
@@ -1043,11 +1043,11 @@ class MipsCompletionPlatformTest {
     fun `register insertion replaces the complete token and preserves the address punctuation`() = timeoutRunBlocking<Unit> {
         IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
         withContext(Dispatchers.EDT) {
-            fixture.configureByText("registers.asm", "lw \$t0, 4(\$t<caret>8)\n")
-            val item = fixture.completeBasic().orEmpty().single { it.lookupString == "\$t2" }
+            fixture.configureByText("registers.asm", $$"lw $t0, 4($t<caret>8)\n")
+            val item = fixture.completeBasic().orEmpty().single { it.lookupString == $$"$t2" }
             fixture.lookup.setCurrentItem(item)
             fixture.finishLookup(Lookup.REPLACE_SELECT_CHAR)
-            assertEquals("lw \$t0, 4(\$t2)\n", fixture.file.text)
+            assertEquals($$"lw $t0, 4($t2)\n", fixture.file.text)
         }
     }
 
@@ -1061,7 +1061,7 @@ class MipsCompletionPlatformTest {
             fixture.addFileToProject("parts/outer.s", "Target.included: nop\n.include \"inner.s\"\n")
         }
         withContext(Dispatchers.EDT) {
-            fixture.configureByText("labels.asm", """
+            fixture.configureByText("labels.asm", $$"""
                 .include "parts/outer.s"
                 .include "parts/plain.txt"
                 .include "missing.s"
@@ -1069,7 +1069,7 @@ class MipsCompletionPlatformTest {
                 .macro Target.macro
                   Target.private: nop
                 .end_macro
-                entry: beq ${'$'}t0, ${'$'}zero, Target.<caret>old
+                entry: beq $t0, $zero, Target.<caret>old
                 Target.local: nop
                 target.lowercase: nop
             """.trimIndent())
@@ -1088,28 +1088,30 @@ class MipsCompletionPlatformTest {
             assertTrue("target.lowercase" !in fixture.lookupElementStrings.orEmpty())
             fixture.lookup.setCurrentItem(matches.single { it.lookupString == "Target.updated" })
             fixture.finishLookup(Lookup.REPLACE_SELECT_CHAR)
-            assertTrue(fixture.file.text.contains("entry: beq \$t0, \$zero, Target.updated\n"))
+            assertTrue(fixture.file.text.contains($$"entry: beq $t0, $zero, Target.updated\n"))
         }
     }
 
     @Test
     fun `labels inside macros stay in their physical macro scope`() = timeoutRunBlocking<Unit> {
         withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("macro-part.s", "injectedLabel: nop\n\$includedParameterLabel: nop\n")
-            fixture.addFileToProject("macro-extra.txt", "plainLabel: nop\n%generatedLabel: nop\n\$plainParameterLabel: nop\n")
+            fixture.addFileToProject("macro-part.s", $$"injectedLabel: nop\n$includedParameterLabel: nop\n")
+            fixture.addFileToProject("macro-extra.txt",
+              $$"plainLabel: nop\n%generatedLabel: nop\n$plainParameterLabel: nop\n"
+            )
             fixture.addFileToProject("other-part.s", "hiddenLabel: nop\n")
-            fixture.configureByText("macro.asm", """
+            fixture.configureByText("macro.asm", $$"""
                 outerLabel: nop
-                ${'$'}gccLabel: nop
+                $gccLabel: nop
                 .macro other
                   .include "other-part.s"
                   otherLabel: nop
                 .end_macro
-                .macro emit (${'$'}parameterLabel, ${'$'}includedParameterLabel, ${'$'}plainParameterLabel, %generatedLabel)
+                .macro emit ($parameterLabel, $includedParameterLabel, $plainParameterLabel, %generatedLabel)
                   .include "macro-part.s"
                   .include "macro-extra.txt"
                   currentLabel: nop
-                  ${'$'}parameterLabel: nop
+                  $parameterLabel: nop
                   j <caret>
                 .end_macro
             """.trimIndent())
@@ -1120,9 +1122,9 @@ class MipsCompletionPlatformTest {
             val (parameters, labels) = choices.partition {
                 LookupElementPresentation().also(it::renderElement).typeText == "Macro parameter"
             }
-            assertEquals(setOf("outerLabel", "\$gccLabel", "currentLabel", "injectedLabel", "plainLabel"),
+            assertEquals(setOf("outerLabel", $$"$gccLabel", "currentLabel", "injectedLabel", "plainLabel"),
                 labels.map { it.lookupString }.toSet())
-            assertEquals(setOf("\$includedParameterLabel", "\$parameterLabel", "\$plainParameterLabel", "%generatedLabel"),
+            assertEquals(setOf($$"$includedParameterLabel", $$"$parameterLabel", $$"$plainParameterLabel", "%generatedLabel"),
                 parameters.map { it.lookupString }.toSet())
         }
     }
@@ -1150,11 +1152,11 @@ class MipsCompletionPlatformTest {
     fun `completion exposes expanded labels and hides the replaced spelling`() = timeoutRunBlocking<Unit> {
         val current = project.get()
         withContext(Dispatchers.EDT) {
-            fixture.configureByText("expanded-labels.asm", """
+            fixture.configureByText("expanded-labels.asm", $$"""
                 .eqv PREFIX labelGenerated:
                 .eqv labelOld labelRenamed
                 .eqv PRIVATE labelPrivate:
-                .eqv FORMAL ${'$'}labelParameter:
+                .eqv FORMAL $labelParameter:
                 .eqv OTHER unrelated:
                 .eqv SEP :
                 PREFIX nop

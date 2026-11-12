@@ -161,7 +161,7 @@ class DigitalLabDeviceTest {
     @Test
     fun `backstep across connection restores the old display and leaves unrelated port data alone`(@TempDir directory: Path) {
         val path = directory.resolve("display.asm").also {
-            it.writeText("lui \$t0, 0xffff\naddiu \$t1, \$zero, 0x3f\nsb \$t1, 0x10(\$t0)\nnop\n")
+            it.writeText($$"lui $t0, 0xffff\naddiu $t1, $zero, 0x3f\nsb $t1, 0x10($t0)\nnop\n")
         }
         MarsSessionService.createMarsComponent().context().use { session ->
             val program = session.assemble(listOf(path))

@@ -35,14 +35,14 @@ class MipsMacroFormalRenamePlatformTest {
 
     @Test
     fun `native rename rewrites one parameter across includes and supports undo and redo`() = timeoutRunBlocking<Unit> {
-        val rootText = """
-            .eqv REG ${'$'}a0
+        val rootText = $$"""
+            .eqv REG $a0
             .macro emit (%value)
                 .include "body.s"
-                li ${'$'}a1, %value
+                li $a1, %value
             .end_macro
             .macro other (%value)
-                li ${'$'}a0, %value
+                li $a0, %value
             .end_macro
             emit(7)
             .data
@@ -58,12 +58,12 @@ class MipsMacroFormalRenamePlatformTest {
         val current = project.get()
         IndexingTestUtil.suspendUntilIndexesAreReady(current)
         val target = readAction { formals(root).first() }
-        val newName = "\$operand"
+        val newName = $$"$operand"
         readAction {
             val validator = MipsMacroFormalRenameInputValidator()
             assertTrue(validator.pattern.accepts(target))
             assertTrue(validator.isInputValid(newName, target, ProcessingContext()))
-            assertFalse(validator.isInputValid("\$t0", target, ProcessingContext()))
+            assertFalse(validator.isInputValid($$"$t0", target, ProcessingContext()))
             assertFalse(validator.isInputValid("%two words", target, ProcessingContext()))
             val processor = RenamePsiElementProcessor.forElement(target)
             assertTrue(processor is MipsMacroFormalRenameProcessor)
@@ -82,7 +82,10 @@ class MipsMacroFormalRenamePlatformTest {
                 assertEquals(expectedBody, body.text)
             }
             RenameProcessor(current, target, newName, false, false).run()
-            val renamedRoot = rootText.replaceFirst("(%value)", "($newName)").replaceFirst("\$a1, %value", "\$a1, $newName")
+            val renamedRoot = rootText.replaceFirst("(%value)", "($newName)").replaceFirst(
+              $$"$a1, %value",
+              $$"$a1, $$newName"
+            )
             val renamedBody = bodyText.replaceFirst("%value", newName).replace(".extern %value", ".extern $newName")
             assertSources(renamedRoot, renamedBody)
             PsiTestUtil.checkFileStructure(body)
@@ -103,19 +106,19 @@ class MipsMacroFormalRenamePlatformTest {
 
     @Test
     fun `rename refuses ambiguous headers references and new token boundaries`() = timeoutRunBlocking<Unit> {
-        withContext(Dispatchers.EDT) { fixture.addFileToProject("plain-body.txt", "li \$a0, %arg\n") }
+        withContext(Dispatchers.EDT) { fixture.addFileToProject("plain-body.txt", $$"li $a0, %arg\n") }
         val cases = listOf(
             Triple(".macro emit (%arg)\n.end_macro", "%", "Enter one MARS macro parameter"),
             Triple(".macro emit (%arg, %arg)\n.end_macro", "%next", "unambiguous effective name"),
             Triple(".eqv FORM %arg\n.macro emit (FORM)\n.end_macro", "%next", "unambiguous effective name"),
             Triple(".macro emit (%arg, %next)\n.end_macro", "%next", "conflicts"),
-            Triple(".eqv \$next 3\n.macro emit (%arg)\n.end_macro", "\$next", "conflicts"),
+            Triple($$".eqv $next 3\n.macro emit (%arg)\n.end_macro", $$"$next", "conflicts"),
             Triple(".macro emit (%arg)\n%next\n.end_macro", "%next", "conflicts"),
-            Triple(".macro emit (\$arg)\nli \$a0, \$arg-2\n.end_macro", "%next", "conflicts"),
-            Triple(".macro emit (%arg)\nli \$a0, %arg-2\n.end_macro", "\$spare", "conflicts"),
-            Triple(".eqv VALUE %arg\n.macro emit (%arg)\nli \$a0, VALUE\n.end_macro", "%next", "supplied through an equivalence"),
-            Triple(".macro emit (\$arg)\n.eqv EXPORTED \$arg\n.end_macro", "%next", "supplied through an equivalence"),
-            Triple(".macro emit (%arg)\nli \$a0, @\n.end_macro", "%next", "fully resolved"),
+            Triple($$".macro emit ($arg)\nli $a0, $arg-2\n.end_macro", "%next", "conflicts"),
+            Triple($$".macro emit (%arg)\nli $a0, %arg-2\n.end_macro", $$"$spare", "conflicts"),
+            Triple($$".eqv VALUE %arg\n.macro emit (%arg)\nli $a0, VALUE\n.end_macro", "%next", "supplied through an equivalence"),
+            Triple($$".macro emit ($arg)\n.eqv EXPORTED $arg\n.end_macro", "%next", "supplied through an equivalence"),
+            Triple($$".macro emit (%arg)\nli $a0, @\n.end_macro", "%next", "fully resolved"),
             Triple(".macro emit (%arg)\n.include \"absent.s\"\n.end_macro", "%next", "fully resolved"),
             Triple(".macro emit (%arg)\n.include \"plain-body.txt\"\n.end_macro", "%next", "fully resolved"),
             Triple(".macro emit (%arg)\nnop", "%next", "closed macro"),
@@ -144,11 +147,12 @@ class MipsMacroFormalRenamePlatformTest {
 
     @Test
     fun `rename refuses declarations or references shared by independent entries`() = timeoutRunBlocking<Unit> {
-        val body = "li \$a0, %arg\n"
+        val body = $$"li $a0, %arg\n"
         val (first, header) = withContext(Dispatchers.EDT) {
             val header = fixture.addFileToProject("header.s", ".macro included (%arg)\n.end_macro\n")
             fixture.addFileToProject("body.s", body)
-            val prefix = ".include \"header.s\"\n.macro emit (%arg)\n.include \"body.s\"\n.end_macro\n.eqv LIMIT 1\nli \$t0, LIMIT\n"
+            val prefix =
+              $$".include \"header.s\"\n.macro emit (%arg)\n.include \"body.s\"\n.end_macro\n.eqv LIMIT 1\nli $t0, LIMIT\n"
             val first = fixture.addFileToProject("first.asm", prefix)
             fixture.addFileToProject("second.asm", prefix)
             first to header

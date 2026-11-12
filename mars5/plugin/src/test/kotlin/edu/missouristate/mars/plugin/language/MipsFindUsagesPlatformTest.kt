@@ -42,29 +42,29 @@ class MipsFindUsagesPlatformTest {
 
     @Test
     fun `native usage search resolves nested includes externals and macro overloads`() = timeoutRunBlocking<Unit> {
-        val source = """
+        val source = $$"""
             .include "parts/outer.s"
             j .target.label
-            addiu ${'$'}t0, ${'$'}zero, LIMIT
+            addiu $t0, $zero, LIMIT
             emit()
-            emit(${'$'}t0)
-            la ${'$'}t1, ${'$'}buffer
+            emit($t0)
+            la $t1, $buffer
             .eqv LIMIT
             # j .target.label
             .data
-            .asciiz ".target.label ${'$'}buffer"
+            .asciiz ".target.label $buffer"
         """.trimIndent()
         val definitions = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("parts/outer.s", ".include \"defs.s\"\n")
-            val defs = fixture.addFileToProject("parts/defs.s", """
+            val defs = fixture.addFileToProject("parts/defs.s", $$"""
                 .eqv LIMIT 7
-                .extern ${'$'}buffer 4
+                .extern $buffer 4
                 .target.label: nop
                 .macro emit
                 nop
                 .end_macro
                 .macro emit (%arg)
-                move ${'$'}a0, %arg
+                move $a0, %arg
                 .end_macro
             """.trimIndent())
             fixture.addFileToProject("unrelated.s", ".target.label: nop\nj .target.label\n")
@@ -73,7 +73,7 @@ class MipsFindUsagesPlatformTest {
         }
         IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
         val targets = readAction { declarations(definitions).sortedBy { it.textOffset } }
-        val names = listOf("LIMIT", "\$buffer", ".target.label", "emit", "emit")
+        val names = listOf("LIMIT", $$"$buffer", ".target.label", "emit", "emit")
         val types = listOf("constant", "external symbol", "label", "macro", "macro")
         readAction {
             assertEquals(names, targets.map { it.name })
@@ -83,7 +83,7 @@ class MipsFindUsagesPlatformTest {
             assertTrue(targets.all(LanguageFindUsages::canFindUsagesFor))
             assertNotNull(LanguageFindUsages.getHelpId(targets.first()))
         }
-        val sites = listOf("LIMIT", "\$buffer", ".target.label", "emit()", "emit(\$t0)")
+        val sites = listOf("LIMIT", $$"$buffer", ".target.label", "emit()", $$"emit($t0)")
         for ((target, site) in targets.zip(sites)) {
             val offsets = if (site == "LIMIT") setOf(source.indexOf(site), source.lastIndexOf(site)) else setOf(source.indexOf(site))
             assertEquals(offsets.map { "entry.asm" to it }.toSet(), usageLocations(target), site)
@@ -139,19 +139,19 @@ class MipsFindUsagesPlatformTest {
 
     @Test
     fun `native usage search resolves written and aliased macro formals across includes`() = timeoutRunBlocking<Unit> {
-        val header = ".macro emit (%?, \$value, FORMALS, %?, BROKEN)\n"
-        val entry = """
+        val header = $$".macro emit (%?, $value, FORMALS, %?, BROKEN)\n"
+        val entry = $$"""
             .eqv FORMALS (%first, %second)
             .include "header.s"
-            move ${'$'}a0, ${'$'}value
+            move $a0, $value
             %?(%first)
-            li ${'$'}a1, %second
+            li $a1, %second
             # %? %first
             .asciiz "%second"
             .macro ignored (%orphan)
             .end_macro
-            .macro other (%first, ${'$'}value)
-            li ${'$'}a0, %first
+            .macro other (%first, $value)
+            li $a0, %first
             .end_macro
         """.trimIndent()
         val current = project.get()
@@ -170,7 +170,7 @@ class MipsFindUsagesPlatformTest {
         val firstUse = operationUse + "%?(".length
         val secondUse = entry.indexOf("%second", entry.indexOf("li "))
         readAction {
-            assertEquals(listOf("%?", "\$value", "FORMALS", "%?", "BROKEN"), formals.map { it.name })
+            assertEquals(listOf("%?", $$"$value", "FORMALS", "%?", "BROKEN"), formals.map { it.name })
             assertEquals(listOf(true, true, true, true, false), formals.map(LanguageFindUsages::canFindUsagesFor))
             val orphan = entryFile.findElementAt(entry.indexOf("%orphan"))!!.parent
             assertFalse(LanguageFindUsages.canFindUsagesFor(orphan))
@@ -182,7 +182,7 @@ class MipsFindUsagesPlatformTest {
             assertEquals(operation, entryFile.findReferenceAt(operationUse)?.resolve())
         }
         assertEquals(setOf("formals.asm" to operationUse), usageLocations(operation))
-        assertEquals(setOf("formals.asm" to entry.indexOf("\$value", entry.indexOf("move"))), usageLocations(value))
+        assertEquals(setOf("formals.asm" to entry.indexOf($$"$value", entry.indexOf("move"))), usageLocations(value))
         assertEquals(setOf("formals.asm" to firstUse, "formals.asm" to secondUse), usageLocations(aliases))
         assertTrue(usageLocations(duplicate).isEmpty())
         withContext(Dispatchers.EDT) {

@@ -26,22 +26,22 @@ class MipsTransferLineMarkerPlatformTest {
 
     @Test
     fun `native gutter exposes concrete branch call and jump destinations`() = timeoutRunBlocking<Unit> {
-        val source = """
+        val source = $$"""
             .include "targets.txt"
             .eqv DEST first
             .eqv CALL jal DEST
             .eqv DEFINED entry:
             DEFINED CALL
-            beq ${'$'}t0, ${'$'}zero, first # Conditional branch
-            beq ${'$'}t0, 100000, first
-            bgeu ${'$'}t0, ${'$'}t1, DEST
+            beq $t0, $zero, first # Conditional branch
+            beq $t0, 100000, first
+            bgeu $t0, $t1, DEST
             bc1t 1, first
             j nop
             nop: nop
             j missing
-            jalr ${'$'}t0
-            la ${'$'}t0, first
-            beq ${'$'}t0, first
+            jalr $t0
+            la $t0, first
+            beq $t0, first
             .extern storage 4
             j storage
             .macro emit
@@ -52,7 +52,7 @@ class MipsTransferLineMarkerPlatformTest {
             DATA first
             .eqv CYCLE LOOP
             .eqv LOOP CYCLE
-            beq ${'$'}t0, ${'$'}zero, CYCLE
+            beq $t0, $zero, CYCLE
             unknown first
         """.trimIndent()
         withContext(Dispatchers.EDT) {

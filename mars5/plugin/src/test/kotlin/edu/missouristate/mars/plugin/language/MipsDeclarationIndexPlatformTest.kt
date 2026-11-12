@@ -33,7 +33,7 @@ class MipsDeclarationIndexPlatformTest {
 
     @Test
     fun `native index records all declaration kinds duplicates and macro ownership`() = timeoutRunBlocking<Unit> {
-        val source = """
+        val source = $$"""
             .EqV shared 7
             ,,shared,, :,, nop
             shared: nop
@@ -45,14 +45,14 @@ class MipsDeclarationIndexPlatformTest {
             .MaCrO emit(%x, 7)
               .macro rejected
               .end_macro stray
-              local: li ${'$'}v0, %x
+              local: li $v0, %x
               .eqv inside 2
             .EnD_MaCrO
             .data
             .1_private: .word 1
-            ${'$'}gcc: .word 2
+            $gcc: .word 2
             .extern reserved 4
-            .extern ${'$'}t0, 4
+            .extern $t0, 4
             .extern .half, 2
             .extern .set, 4
             .extern ) 4
@@ -86,15 +86,16 @@ class MipsDeclarationIndexPlatformTest {
             assertEquals(listOf(MipsDeclarationSite(SymbolKind.LABEL, source.indexOf("local:"), macro)), sites("local"))
             assertEquals(listOf(MipsDeclarationSite(SymbolKind.CONSTANT, source.indexOf("inside"), macro)), sites("inside"))
             assertEquals(listOf(MipsDeclarationSite(SymbolKind.LABEL, source.indexOf(".1_private"), -1)), sites(".1_private"))
-            assertEquals(1, sites("\$gcc").size)
+            assertEquals(1, sites($$"$gcc").size)
             assertEquals(listOf(MipsDeclarationSite(SymbolKind.EXTERNAL, source.indexOf("reserved"), -1)), sites("reserved"))
-            for (name in listOf("\$t0", ".half", ".set")) {
+            for (name in listOf($$"$t0", ".half", ".set")) {
                 assertEquals(listOf(MipsDeclarationSite(SymbolKind.EXTERNAL, source.indexOf(name), -1)), sites(name))
             }
             for ((name, spelling) in mapOf(")" to ") 4", "-42" to "-42", "65" to "'A'")) {
                 assertEquals(listOf(MipsDeclarationSite(SymbolKind.EXTERNAL, source.indexOf(spelling), -1)), sites(name))
             }
-            for (absent in listOf("ghost", "fake", "ignored", "\$v0", "%x", "replaced", "REMOVED", "UNDEFINED", "NaN", "Infinity")) {
+            for (absent in listOf("ghost", "fake", "ignored",
+              $$"$v0", "%x", "replaced", "REMOVED", "UNDEFINED", "NaN", "Infinity")) {
                 assertTrue(sites(absent).isEmpty(), absent)
             }
         }

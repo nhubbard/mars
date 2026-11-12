@@ -95,14 +95,14 @@ class MipsFileReferencesPlatformTest {
 
     @Test
     fun `Go to Declaration opens ignored includes without supplying a file rename target`() = timeoutRunBlocking<Unit> {
-        val source = """
+        val source = $$"""
             .include "parts/bridge.inc~"
             .include "normal.inc"
             .include "later.inc~"
             .include "oversized.inc~"
             .include ""
             .asciiz "parts/bridge.inc~"
-            li ${'$'}t0, VALUE
+            li $t0, VALUE
         """.trimIndent()
         val original = ".include \"nested.inc~\"\n.eqv VALUE 4\n"
         val (entry, ignored, normal, nested) = withContext(Dispatchers.EDT) {
@@ -174,7 +174,7 @@ class MipsFileReferencesPlatformTest {
     @Test
     fun `Go to Declaration opens binary classified include text as MIPS and keeps the physical file reference`() =
         timeoutRunBlocking<Unit> {
-            val source = ".include \"parts/opaque.png\"\n.include \"parts/plain.txt\"\nli \$t0, VALUE\n"
+            val source = $$".include \"parts/opaque.png\"\n.include \"parts/plain.txt\"\nli $t0, VALUE\n"
             val definitions = ".include \"nested.inc\"\n.eqv VALUE 7\n"
             val (binary, ordinary, nested) = withContext(Dispatchers.EDT) {
                 val binary = fixture.tempDirFixture.createFile("parts/opaque.png", definitions)
@@ -209,7 +209,7 @@ class MipsFileReferencesPlatformTest {
     @Test
     fun `include paths hidden by a malformed character recover references and update highlighting after edits`() =
         timeoutRunBlocking<Unit> {
-            val source = "'a#xx .include,, \"part.s\"\nli \$t0, COUNT\n"
+            val source = $$"'a#xx .include,, \"part.s\"\nli $t0, COUNT\n"
             val target = withContext(Dispatchers.EDT) {
                 val included = fixture.addFileToProject("part.s", ".eqv COUNT 42\n")
                 val entry = fixture.addFileToProject("main.asm", source)
@@ -346,7 +346,7 @@ class MipsFileReferencesPlatformTest {
             val fromRoot = outsideProject.root.relativize(included)
             val path = Files.writeString(
                 outsideProject.resolve("main.asm"),
-                ".include \"shortcut/../../$fromRoot\"\naddiu \$t0, \$zero, COUNT\n",
+              $$".include \"shortcut/../../$$fromRoot\"\naddiu $t0, $zero, COUNT\n",
             )
             val link = Files.createSymbolicLink(outsideProject.resolve("shortcut"), outsideProject.root)
             val manager = VirtualFileManager.getInstance()
@@ -387,8 +387,8 @@ class MipsFileReferencesPlatformTest {
             val directory = temp.toRealPath()
             val actual = Files.createDirectory(directory.resolve("actual"))
             val original = Files.writeString(actual.resolve("value.s"), ".include \"neighbor.s\"\n")
-            val originalNeighbor = Files.writeString(actual.resolve("neighbor.s"), "addiu \$t0, \$zero, 7\n")
-            val aliasNeighbor = Files.writeString(directory.resolve("neighbor.s"), "addiu \$t0, \$zero, 9\n")
+            val originalNeighbor = Files.writeString(actual.resolve("neighbor.s"), $$"addiu $t0, $zero, 7\n")
+            val aliasNeighbor = Files.writeString(directory.resolve("neighbor.s"), $$"addiu $t0, $zero, 9\n")
             val folderAlias = Files.createSymbolicLink(directory.resolve("alias"), actual)
             val fileAlias = Files.createSymbolicLink(directory.resolve("alternate.s"), original)
             val duplicate = Files.writeString(directory.resolve("duplicate.asm"), """

@@ -108,12 +108,12 @@ class MipsAssemblyAnnotatorPlatformTest {
     @Test
     fun `background assembly follows option changes for the same selected entry`() = timeoutRunBlocking<Unit> {
         val file = withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("delay-layout.asm", """
+            fixture.addFileToProject("delay-layout.asm", $$"""
                 .macro gen (%label)
                 %label: nop
                 .end_macro
                 .set noat
-                div ${'$'}t0, ${'$'}t1, ${'$'}t2
+                div $t0, $t1, $t2
                 marker: nop
                 gen(generated)
                 j generated
@@ -280,7 +280,7 @@ class MipsAssemblyAnnotatorPlatformTest {
 
     @Test
     fun `syntax highlights follow the effective segment through includes and edits`() = timeoutRunBlocking<Unit> {
-        val source = "(\n)\n:\n\$sp)\nlabel::suffix\n"
+        val source = $$"(\n)\n:\n$sp)\nlabel::suffix\n"
         val (entry, segment, body) = withContext(Dispatchers.EDT) {
             val mode = fixture.addFileToProject("segment.txt", ".eqv SWITCH .data\nSWITCH\n")
             val part = fixture.addFileToProject("body.s", source)
@@ -298,11 +298,11 @@ class MipsAssemblyAnnotatorPlatformTest {
             assertTrue(errors().isNotEmpty())
             edit(segment, ".kdata\n")
             assertTrue(errors().isEmpty())
-            edit(body, "\$sp) @\n.word )\n+ )\n")
+            edit(body, $$"$sp) @\n.word )\n+ )\n")
             val invalid = errors()
-            assertTrue(invalid.any { it.startOffset < "\$sp) @\n".length })
-            assertTrue(invalid.any { it.startOffset in "\$sp) @\n".length until "\$sp) @\n.word )\n".length })
-            assertTrue(invalid.any { it.startOffset >= "\$sp) @\n.word )\n".length })
+            assertTrue(invalid.any { it.startOffset < $$"$sp) @\n".length })
+            assertTrue(invalid.any { it.startOffset in $$"$sp) @\n".length until $$"$sp) @\n.word )\n".length })
+            assertTrue(invalid.any { it.startOffset >= $$"$sp) @\n.word )\n".length })
         }
     }
 
@@ -453,7 +453,7 @@ class MipsAssemblyAnnotatorPlatformTest {
         val (entry, ignored, leaf) = withContext(Dispatchers.EDT) {
             val main = fixture.addFileToProject("entry.s", ".macro outer\n.end_macro\n.include \"bridge.inc~\"\n") as MipsFile
             val ignored = fixture.tempDirFixture.createFile("bridge.inc~", ".eqv SHIFT 4\n.include \"leaf.s\"\n")
-            val leaf = fixture.addFileToProject("leaf.s", ".macro inner\n.end_macro\nsll \$t0, \$t1, SHIFT\n") as MipsFile
+            val leaf = fixture.addFileToProject("leaf.s", $$".macro inner\n.end_macro\nsll $t0, $t1, SHIFT\n") as MipsFile
             Triple(main, ignored, leaf)
         }
         IndexingTestUtil.suspendUntilIndexesAreReady(project)
@@ -543,7 +543,8 @@ class MipsAssemblyAnnotatorPlatformTest {
                 }
                 large.refresh(false, false)
                 val entry = fixture.addFileToProject("entry.s",
-                    ".include \"opaque.png\"\nsll \$t0, \$t1, SHIFT\n.include \"oversized.inc~\"\nnop\n") as MipsFile
+                  $$".include \"opaque.png\"\nsll $t0, $t1, SHIFT\n.include \"oversized.inc~\"\nnop\n"
+                ) as MipsFile
                 entry to fixture.addFileToProject("leaf.s", ".macro inner\n.end_macro\nnop\n") as MipsFile
             }
             IndexingTestUtil.suspendUntilIndexesAreReady(project)
@@ -570,10 +571,10 @@ class MipsAssemblyAnnotatorPlatformTest {
 
     @Test
     fun `aliases in a binary-classified include participate in completion highlighting and navigation`() = timeoutRunBlocking<Unit> {
-        val entry = ".include \"parts/opaque.zip\"\nsll \$t0, SOURCE, SHIFT\n"
+        val entry = $$".include \"parts/opaque.zip\"\nsll $t0, SOURCE, SHIFT\n"
         val definitions = ".include \"inner.inc\"\n.eqv SHIFT 4\n"
         val binary = withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("parts/inner.inc", ".eqv SOURCE \$t1\n")
+            fixture.addFileToProject("parts/inner.inc", $$".eqv SOURCE $t1\n")
             fixture.tempDirFixture.createFile("parts/opaque.zip", definitions)
         }
         IndexingTestUtil.suspendUntilIndexesAreReady(project)
@@ -723,7 +724,7 @@ class MipsAssemblyAnnotatorPlatformTest {
     @Test
     fun `inherited circular equivalences highlight their physical use before a build`() = timeoutRunBlocking<Unit> {
         val definitions = ".eqv OPERATION li\n.eqv FIRST SECOND\n.eqv SECOND FIRST + 1\n"
-        val source = "\tOPERATION \$t0, FIRST # original operand\n"
+        val source = $$"\tOPERATION $t0, FIRST # original operand\n"
         val parent = withContext(Dispatchers.EDT) {
             val parent = fixture.addFileToProject("entry.asm", "${definitions}.include \"part.s\"\n")
             val part = fixture.addFileToProject("part.s", source)

@@ -38,13 +38,13 @@ class MipsMacroReferencesPlatformTest {
     @Test
     fun `navigation selects the latest closed definition with the same case and argument count`() = timeoutRunBlocking<Unit> {
         val first = ".macro emit\nnop\n.end_macro\n"
-        val second = ".macro emit (\$arg)\nnop\n.end_macro\n"
+        val second = $$".macro emit ($arg)\nnop\n.end_macro\n"
         val newer = ".macro emit ((%replacement))\nnop\n.end_macro\n"
         val definitions = first + second + newer
         assertEquals(definitions.lastIndexOf("emit"), target("${definitions}entry: em<caret>it(,,+,,) # one token\n")?.offset)
         assertEquals(definitions.lastIndexOf("emit"), target("${definitions}entry: em<caret>it: # colon is an argument\n")?.offset)
         assertEquals(first.indexOf("emit"), target("${definitions}em<caret>it()\n")?.offset)
-        assertEquals(first.length + second.indexOf("emit"), target("$first${second}em<caret>it \$t0\n$newer")?.offset)
+        assertEquals(first.length + second.indexOf("emit"), target($$"$$first$${second}em<caret>it $t0\n$$newer")?.offset)
         assertNull(target("${definitions}Em<caret>it(1)\n"))
         assertNull(target("${definitions}em<caret>it(1,2,3)\n"))
         assertNull(target("em<caret>it\n$first"))
@@ -55,7 +55,7 @@ class MipsMacroReferencesPlatformTest {
 
     @Test
     fun `navigation follows the expanded operation token after a generated label`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
-        val definitions = ".macro emit (%value)\naddiu \$t0, \$zero, 7\n.end_macro\n.eqv SEP :\n.eqv CALL emit\n"
+        val definitions = $$".macro emit (%value)\naddiu $t0, $zero, 7\n.end_macro\n.eqv SEP :\n.eqv CALL emit\n"
         for (label in listOf("split", "addiu")) {
             val resolved = target("${definitions}$label SEP em<caret>it(7)\n")
             assertEquals(definitions.indexOf("emit"), resolved?.offset)
@@ -75,8 +75,8 @@ class MipsMacroReferencesPlatformTest {
 
     @Test
     fun `macro arity follows chained equivalences and substituted parentheses`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
-        val one = ".macro emit (%x)\naddiu \$t0, \$zero, %x\n.end_macro\n"
-        val two = ".macro emit (%x,%y)\naddiu \$t1, \$zero, %y\n.end_macro\n"
+        val one = $$".macro emit (%x)\naddiu $t0, $zero, %x\n.end_macro\n"
+        val two = $$".macro emit (%x,%y)\naddiu $t1, $zero, %y\n.end_macro\n"
         val definitions = one + two
         val aliases = ".eqv ARGS PAIR\n.eqv PAIR 1,2 # comment\n.eqv OPEN (\n.eqv CLOSE )\n"
         val call = "em<caret>it(ARGS)\n"
@@ -148,7 +148,7 @@ class MipsMacroReferencesPlatformTest {
     fun `aliased macro boundaries follow include order and navigate to their written name`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
         val definitions = ".eqv START OPEN\n.eqv OPEN .MaCrO\n.eqv STOP .EnD_MaCrO\n"
         val header = "entry: START emit (%value)\n"
-        val body = "addiu \$t0, \$zero, %value\n"
+        val body = $$"addiu $t0, $zero, %value\n"
         val footer = "STOP # done\n"
         val include = ".include \"aliases.s\"\n.include \"open.s\"\n"
         val close = ".include \"close.s\"\n"
@@ -210,7 +210,7 @@ class MipsMacroReferencesPlatformTest {
     fun `a written macro opener can follow a terminator supplied by an include`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
         val close = ".end_macro\n"
         val prefix = ".macro first\nnop\n.include \"close.s\"\n"
-        val second = "label: .macro NAME (%value)\naddiu \$t0, \$zero, %value\n.end_macro\n"
+        val second = $$"label: .macro NAME (%value)\naddiu $t0, $zero, %value\n.end_macro\n"
         val source = ".eqv NAME emit\n$prefix$second"
         val call = "em<caret>it(7)\n"
         withContext(Dispatchers.EDT) { fixture.addFileToProject("close.s", close) }

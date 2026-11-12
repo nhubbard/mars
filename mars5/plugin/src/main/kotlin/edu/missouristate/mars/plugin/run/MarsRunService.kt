@@ -235,7 +235,7 @@ internal class MarsProcessHandler(
     override fun destroyProcessImpl() { execution.cancel() }
     override fun detachProcessImpl() = destroyProcessImpl()
     override fun detachIsDefault() = false
-    override fun getProcessInput(): OutputStream? = consoleInput
+    override fun getProcessInput(): OutputStream = consoleInput
 
     suspend fun runSlice(simulator: SimulatorEngine, steps: Long = 0, breakpoint: IntPredicate? = null): StopEvent =
         awaitSlice(simulator) {
@@ -328,9 +328,9 @@ internal class MarsProcessHandler(
                             // The execution tab can still show the final words after the session closes.
                             readFloatingRegister = IntArray(floatingRegisters.size) { floatingRegisters[it].valueNoNotify }::get
                         }
-                        if (memoryDumps.isNotEmpty() && stop.reason in dumpReasons) exportAfterRun(session,
-                          program.sources.snapshot.texts().keys.plusElement(entry)
-                        )
+                        if (memoryDumps.isNotEmpty() && stop.reason in dumpReasons) {
+                            exportAfterRun(session, program.sources.snapshot.texts().keys.plusElement(entry))
+                        }
                         when (stop.reason) {
                             StopEvent.Reason.NORMAL_EXIT, StopEvent.Reason.CLIFF_TERMINATION -> stop.exitCode
                             StopEvent.Reason.INSTRUCTION_LIMIT -> {

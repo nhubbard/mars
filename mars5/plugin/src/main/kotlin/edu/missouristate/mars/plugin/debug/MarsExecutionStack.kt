@@ -62,7 +62,7 @@ internal class MarsCallerFrame(private val site: CallerSite, private val positio
         values.add(RegisterValue(runMessages.getMessage(addressKey)) { Binary.intToHexString(site.pc) })
         if (call != null) {
             values.add(RegisterValue(runMessages.getMessage("debug.frame.return.address")) { Binary.intToHexString(call.returnAddress) })
-            values.add(RegisterValue(runMessages.getMessage("debug.frame.link.register")) { "\$${call.linkRegister}" })
+            values.add(RegisterValue(runMessages.getMessage("debug.frame.link.register")) { $$"$$${call.linkRegister}" })
         }
         node.addChildren(values, true)
     }

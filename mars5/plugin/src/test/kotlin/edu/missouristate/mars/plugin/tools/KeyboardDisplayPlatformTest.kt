@@ -84,22 +84,22 @@ class KeyboardDisplayPlatformTest {
     fun `tool keyboard drives a real receiver and renders sequential and addressed output`() = timeoutRunBlocking<Unit>(20.seconds) {
         val project = projectFixture.get()
         val (view, process, content) = withContext(Dispatchers.EDT) {
-            val file = fixture.addFileToProject("terminal.asm", """
-                li ${'$'}v0, 12
+            val file = fixture.addFileToProject("terminal.asm", $$"""
+                li $v0, 12
                 syscall
-                lui ${'$'}t0, 0xffff
-                lbu ${'$'}t1, 4(${'$'}t0)
-                sb ${'$'}t1, 12(${'$'}t0)
-                li ${'$'}v0, 12
+                lui $t0, 0xffff
+                lbu $t1, 4($t0)
+                sb $t1, 12($t0)
+                li $v0, 12
                 syscall
-                lui ${'$'}t1, 0x00b0
-                ori ${'$'}t1, ${'$'}t1, 0x0107
-                sw ${'$'}t1, 12(${'$'}t0)
+                lui $t1, 0x00b0
+                ori $t1, $t1, 0x0107
+                sw $t1, 12($t0)
                 nop
                 nop
-                li ${'$'}t1, 88
-                sw ${'$'}t1, 12(${'$'}t0)
-                li ${'$'}v0, 12
+                li $t1, 88
+                sw $t1, 12($t0)
+                li $v0, 12
                 syscall
             """.trimIndent()).virtualFile
             val view = KeyboardDisplayView(project)

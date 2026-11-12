@@ -50,45 +50,46 @@ class MarsSyscallDialogsPlatformTest {
         val handlers = mutableListOf<MarsProcessHandler>()
         val prompts = mutableListOf<String>()
         try {
-            val path = writeSource("""
+            val path = writeSource(
+              $$"""
                 .data
                 buffer: .space 8
                 .text
                 .macro call (%service)
-                    li ${'$'}v0, %service
+                    li $v0, %service
                     syscall
                 .end_macro
                 .macro separator
-                    li ${'$'}a0, 124
+                    li $a0, 124
                     call (11)
                 .end_macro
                 call (5)
-                move ${'$'}a0, ${'$'}v0
+                move $a0, $v0
                 call (1)
                 separator
                 call (6)
-                mov.s ${'$'}f12, ${'$'}f0
+                mov.s $f12, $f0
                 call (2)
                 separator
                 call (7)
-                mov.d ${'$'}f12, ${'$'}f0
+                mov.d $f12, $f0
                 call (3)
                 separator
-                la ${'$'}a0, buffer
-                li ${'$'}a1, 5
+                la $a0, buffer
+                li $a1, 5
                 call (8)
-                la ${'$'}a0, buffer
+                la $a0, buffer
                 call (4)
                 separator
                 call (12)
-                move ${'$'}a0, ${'$'}v0
+                move $a0, $v0
                 call (11)
                 separator
-                li ${'$'}a0, 0
-                la ${'$'}a1, buffer
-                li ${'$'}a2, 1
+                li $a0, 0
+                la $a1, buffer
+                li $a2, 1
                 call (14)
-                lbu ${'$'}a0, buffer
+                lbu $a0, buffer
                 call (11)
                 call (10)
             """.trimIndent())
@@ -163,17 +164,18 @@ class MarsSyscallDialogsPlatformTest {
     fun `canceling standard input follows the existing end-of-input behavior`(syscall: Int) = timeoutRunBlocking<Unit> {
         try {
             withContext(Dispatchers.EDT) { interceptSyscallDialog { it.doCancelAction() } }
-            val (_, recording) = run("""
+            val (_, recording) = run(
+              $$"""
                 .data
                 buffer: .space 8
                 .text
-                la ${'$'}a0, buffer
-                li ${'$'}a1, 8
-                li ${'$'}v0, $syscall
+                la $a0, buffer
+                li $a1, 8
+                li $v0, $$syscall
                 syscall
-                li ${'$'}v0, 4
+                li $v0, 4
                 syscall
-                li ${'$'}v0, 10
+                li $v0, 10
                 syscall
             """.trimIndent(), MarsInputMode.DIALOG)
             if (syscall == 8) {
@@ -202,20 +204,21 @@ class MarsSyscallDialogsPlatformTest {
                     }
                 }
             }
-            val (_, recording) = run("""
+            val (_, recording) = run(
+              $$"""
                 .data
                 prompt: .asciiz "<html>Confirm?"
                 .text
-                li ${'$'}s0, 3
+                li $s0, 3
                 repeat:
-                la ${'$'}a0, prompt
-                li ${'$'}v0, 50
+                la $a0, prompt
+                li $v0, 50
                 syscall
-                li ${'$'}v0, 1
+                li $v0, 1
                 syscall
-                addiu ${'$'}s0, ${'$'}s0, -1
-                bnez ${'$'}s0, repeat
-                li ${'$'}v0, 10
+                addiu $s0, $s0, -1
+                bnez $s0, repeat
+                li $v0, 10
                 syscall
             """.trimIndent())
             assertEquals(0, recording.exit.await())
@@ -245,60 +248,61 @@ class MarsSyscallDialogsPlatformTest {
                     }
                 }
             }
-            val (_, recording) = run("""
+            val (_, recording) = run(
+              $$"""
                 .data
                 prompt: .asciiz "Enter a value"
                 buffer: .space 16
                 .text
                 .macro status
-                    move ${'$'}a0, ${'$'}s1
-                    li ${'$'}v0, 1
+                    move $a0, $s1
+                    li $v0, 1
                     syscall
-                    li ${'$'}a0, 124
-                    li ${'$'}v0, 11
+                    li $a0, 124
+                    li $v0, 11
                     syscall
                 .end_macro
-                li ${'$'}s0, 4
+                li $s0, 4
                 repeat:
-                la ${'$'}a0, prompt
-                li ${'$'}v0, 51
+                la $a0, prompt
+                li $v0, 51
                 syscall
-                move ${'$'}s1, ${'$'}a1
-                li ${'$'}v0, 1
+                move $s1, $a1
+                li $v0, 1
                 syscall
-                li ${'$'}a0, 58
-                li ${'$'}v0, 11
-                syscall
-                status
-                addiu ${'$'}s0, ${'$'}s0, -1
-                bnez ${'$'}s0, repeat
-                la ${'$'}a0, prompt
-                li ${'$'}v0, 52
-                syscall
-                move ${'$'}s1, ${'$'}a1
-                mov.s ${'$'}f12, ${'$'}f0
-                li ${'$'}v0, 2
+                li $a0, 58
+                li $v0, 11
                 syscall
                 status
-                la ${'$'}a0, prompt
-                li ${'$'}v0, 53
+                addiu $s0, $s0, -1
+                bnez $s0, repeat
+                la $a0, prompt
+                li $v0, 52
                 syscall
-                move ${'$'}s1, ${'$'}a1
-                mov.d ${'$'}f12, ${'$'}f0
-                li ${'$'}v0, 3
-                syscall
-                status
-                la ${'$'}a0, prompt
-                la ${'$'}a1, buffer
-                li ${'$'}a2, 16
-                li ${'$'}v0, 54
-                syscall
-                move ${'$'}s1, ${'$'}a1
-                la ${'$'}a0, buffer
-                li ${'$'}v0, 4
+                move $s1, $a1
+                mov.s $f12, $f0
+                li $v0, 2
                 syscall
                 status
-                li ${'$'}v0, 10
+                la $a0, prompt
+                li $v0, 53
+                syscall
+                move $s1, $a1
+                mov.d $f12, $f0
+                li $v0, 3
+                syscall
+                status
+                la $a0, prompt
+                la $a1, buffer
+                li $a2, 16
+                li $v0, 54
+                syscall
+                move $s1, $a1
+                la $a0, buffer
+                li $v0, 4
+                syscall
+                status
+                li $v0, 10
                 syscall
             """.trimIndent())
             assertEquals(0, recording.exit.await())
@@ -333,38 +337,39 @@ class MarsSyscallDialogsPlatformTest {
                     }
                 }
             }
-            val (_, recording) = run("""
+            val (_, recording) = run(
+              $$"""
                 .data
                 message: .asciiz "Value: "
                 suffix: .asciiz "text"
                 single: .float 1.25
                 double: .double 2.5
                 .text
-                li ${'$'}s0, 0
+                li $s0, 0
                 repeat:
-                la ${'$'}a0, message
-                move ${'$'}a1, ${'$'}s0
-                li ${'$'}v0, 55
+                la $a0, message
+                move $a1, $s0
+                li $v0, 55
                 syscall
-                addiu ${'$'}s0, ${'$'}s0, 1
-                blt ${'$'}s0, 5, repeat
-                la ${'$'}a0, message
-                li ${'$'}a1, 42
-                li ${'$'}v0, 56
+                addiu $s0, $s0, 1
+                blt $s0, 5, repeat
+                la $a0, message
+                li $a1, 42
+                li $v0, 56
                 syscall
-                la ${'$'}a0, message
-                l.d ${'$'}f12, double
-                li ${'$'}v0, 58
+                la $a0, message
+                l.d $f12, double
+                li $v0, 58
                 syscall
-                la ${'$'}a0, message
-                l.s ${'$'}f12, single
-                li ${'$'}v0, 57
+                la $a0, message
+                l.s $f12, single
+                li $v0, 57
                 syscall
-                la ${'$'}a0, message
-                la ${'$'}a1, suffix
-                li ${'$'}v0, 59
+                la $a0, message
+                la $a1, suffix
+                li $v0, 59
                 syscall
-                li ${'$'}v0, 10
+                li $v0, 10
                 syscall
             """.trimIndent())
             assertEquals(0, recording.exit.await())
@@ -400,15 +405,16 @@ class MarsSyscallDialogsPlatformTest {
         val showing = CompletableDeferred<MarsSyscallDialog>()
         try {
             withContext(Dispatchers.EDT) { interceptSyscallDialog { showing.complete(it) } }
-            val (handler, recording) = run("""
+            val (handler, recording) = run(
+              $$"""
                 .data
                 prompt: .asciiz "Waiting"
                 .text
-                la ${'$'}a0, prompt
-                li ${'$'}v0, 51
+                la $a0, prompt
+                li $v0, 51
                 syscall
-                li ${'$'}a0, 1
-                li ${'$'}v0, 1
+                li $a0, 1
+                li $v0, 1
                 syscall
             """.trimIndent())
             val dialog = showing.await()

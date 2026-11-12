@@ -130,7 +130,7 @@ class MarsRunPlatformTest {
         val lifetime = Disposer.newDisposable()
         val started = CompletableDeferred<Triple<MarsProcessHandler, Recording, ConsoleViewImpl>>()
         val body = ".macro inner\nbreak BREAK_CODE\n.end_macro\n"
-        val invocation = ".eqv BREAK_CODE 7\n.include \"fault-macros.s\"\n.text\nli \$v0, 5\nsyscall\nouter\n"
+        val invocation = $$".eqv BREAK_CODE 7\n.include \"fault-macros.s\"\n.text\nli $v0, 5\nsyscall\nouter\n"
         val readOnly = faultName != "fault-body.s"
         val executor = if (debug) DefaultDebugExecutor.getDebugExecutorInstance() else executor
         try {
@@ -259,21 +259,21 @@ class MarsRunPlatformTest {
             val (config, data) = withContext(Dispatchers.EDT) {
                 manager.forceCompilationInTests = true
                 val data = fixture.addFileToProject("reset-data.s", ".data\nvalue: .word 7\n").virtualFile
-                val file = fixture.addFileToProject("reset.asm", """
+                val file = fixture.addFileToProject("reset.asm", $$"""
                     .include "reset-data.s"
                     .text
-                    lw ${'$'}t0, 0(${'$'}a1)
-                    lbu ${'$'}a0, 0(${'$'}t0)
-                    li ${'$'}v0, 11
+                    lw $t0, 0($a1)
+                    lbu $a0, 0($t0)
+                    li $v0, 11
                     syscall
-                    la ${'$'}t0, value
-                    lw ${'$'}a0, 0(${'$'}t0)
-                    sw ${'$'}zero, 0(${'$'}t0)
-                    li ${'$'}v0, 1
+                    la $t0, value
+                    lw $a0, 0($t0)
+                    sw $zero, 0($t0)
+                    li $v0, 1
                     syscall
-                    li ${'$'}v0, 5
+                    li $v0, 5
                     syscall
-                    li ${'$'}v0, 10
+                    li $v0, 10
                     syscall
                 """.trimIndent()).virtualFile
                 val settings = RunManager.getInstance(project).createConfiguration("Reset fixture", type)
@@ -364,9 +364,9 @@ class MarsRunPlatformTest {
         try {
             val env = withContext(Dispatchers.EDT) {
                 manager.forceCompilationInTests = true
-                val text = "li \$a0, 42\nli \$v0, 1\nsyscall\nli \$v0, 10\nsyscall\n"
+                val text = $$"li $a0, 42\nli $v0, 1\nsyscall\nli $v0, 10\nsyscall\n"
                 val file = fixture.addFileToProject("before-launch.asm",
-                    if (scenario.startsWith("assembly-")) "la \$t0, missing\n" else text,
+                    if (scenario.startsWith("assembly-")) $$"la $t0, missing\n" else text,
                 ).virtualFile
                 val config = type.createTemplateConfiguration(project)
                 config.options.sourcePath = file.path
@@ -479,13 +479,13 @@ class MarsRunPlatformTest {
         val recording = Recording()
         try {
             val include = withContext(Dispatchers.EDT) {
-                val source = fixture.addFileToProject("main.asm", """
+                val source = fixture.addFileToProject("main.asm", $$"""
                     .include "value.s"
-                    li ${'$'}a0, VALUE
-                    li ${'$'}v0, 1
+                    li $a0, VALUE
+                    li $v0, 1
                     syscall
-                    li ${'$'}a0, 9
-                    li ${'$'}v0, 17
+                    li $a0, 9
+                    li $v0, 17
                     syscall
                 """.trimIndent())
                 val include = fixture.addFileToProject("value.s", ".eqv VALUE 1\n").virtualFile
@@ -523,14 +523,14 @@ class MarsRunPlatformTest {
         val build = project.getService(MarsBuildService::class.java)
         try {
             val source = withContext(Dispatchers.EDT) {
-                fixture.addFileToProject("entry.asm", """
+                fixture.addFileToProject("entry.asm", $$"""
                     .text
-                    li ${'$'}a0, 1
-                    li ${'$'}v0, 17
+                    li $a0, 1
+                    li $v0, 17
                     syscall
                     .globl main
-                    main: li ${'$'}a0, 2
-                    li ${'$'}v0, 17
+                    main: li $a0, 2
+                    li $v0, 17
                     syscall
                 """.trimIndent()).virtualFile.toNioPath()
             }
@@ -603,30 +603,30 @@ class MarsRunPlatformTest {
         val custom = Recording()
         try {
             withContext(Dispatchers.EDT) {
-                val source = fixture.addFileToProject("launch/app.asm", """
+                val source = fixture.addFileToProject("launch/app.asm", $$"""
                     .include "length.inc"
                     .data
                     path: .asciiz "message.txt"
                     buffer: .space LENGTH
                     .text
-                    la ${'$'}a0, path
-                    li ${'$'}a1, 0
-                    li ${'$'}v0, 13
+                    la $a0, path
+                    li $a1, 0
+                    li $v0, 13
                     syscall
-                    move ${'$'}s0, ${'$'}v0
-                    move ${'$'}a0, ${'$'}s0
-                    la ${'$'}a1, buffer
-                    li ${'$'}a2, LENGTH
-                    li ${'$'}v0, 14
+                    move $s0, $v0
+                    move $a0, $s0
+                    la $a1, buffer
+                    li $a2, LENGTH
+                    li $v0, 14
                     syscall
-                    move ${'$'}a2, ${'$'}v0
-                    li ${'$'}a0, 1
-                    li ${'$'}v0, 15
+                    move $a2, $v0
+                    li $a0, 1
+                    li $v0, 15
                     syscall
-                    move ${'$'}a0, ${'$'}s0
-                    li ${'$'}v0, 16
+                    move $a0, $s0
+                    li $v0, 16
                     syscall
-                    li ${'$'}v0, 10
+                    li $v0, 10
                     syscall
                 """.trimIndent()).virtualFile
                 fixture.addFileToProject("launch/length.inc", ".eqv LENGTH 6\n")
@@ -636,7 +636,7 @@ class MarsRunPlatformTest {
                 val config = type.createTemplateConfiguration(project)
                 config.options.sourcePath = source.path
                 val editor = config.configurationEditor
-                val macro = "\$PROJECT_DIR\$/runtime inputs"
+                val macro = $$"$PROJECT_DIR$/runtime inputs"
                 try {
                     editor.resetFrom(config)
                     val field = UIUtil.findComponentsOfType(editor.component, TextFieldWithBrowseButton::class.java).single()
@@ -652,7 +652,7 @@ class MarsRunPlatformTest {
                 val restored = type.createTemplateConfiguration(project).also { it.readExternal(xml) }
                 assertEquals(macro, restored.options.workingDirectory)
                 restored.checkConfiguration()
-                for (bad in listOf("relative", "\$PROJECT_DIR\$/missing", "\$PROJECT_DIR\$/launch/message.txt")) {
+                for (bad in listOf("relative", $$"$PROJECT_DIR$/missing", $$"$PROJECT_DIR$/launch/message.txt")) {
                     config.options.workingDirectory = bad
                     assertThrows<RuntimeConfigurationError> { config.checkConfiguration() }
                     val invalid = ExecutionEnvironmentBuilder.create(executor, config).build()
@@ -834,24 +834,24 @@ class MarsRunPlatformTest {
         val second = Recording()
         try {
             withContext(Dispatchers.EDT) {
-                val source = fixture.addFileToProject("argv.asm", """
-                    move ${'$'}s0, ${'$'}a0
-                    move ${'$'}s1, ${'$'}a1
-                    li ${'$'}v0, 1
+                val source = fixture.addFileToProject("argv.asm", $$"""
+                    move $s0, $a0
+                    move $s1, $a1
+                    li $v0, 1
                     syscall
                     next:
-                        beqz ${'$'}s0, done
-                        li ${'$'}a0, 124
-                        li ${'$'}v0, 11
+                        beqz $s0, done
+                        li $a0, 124
+                        li $v0, 11
                         syscall
-                        lw ${'$'}a0, 0(${'$'}s1)
-                        li ${'$'}v0, 4
+                        lw $a0, 0($s1)
+                        li $v0, 4
                         syscall
-                        addiu ${'$'}s1, ${'$'}s1, 4
-                        addiu ${'$'}s0, ${'$'}s0, -1
+                        addiu $s1, $s1, 4
+                        addiu $s0, $s0, -1
                         j next
                     done:
-                        li ${'$'}v0, 10
+                        li $v0, 10
                         syscall
                 """.trimIndent())
                 val config = type.createTemplateConfiguration(project)
@@ -950,7 +950,8 @@ class MarsRunPlatformTest {
         try {
             val source = withContext(Dispatchers.EDT) {
                 val source = fixture.addFileToProject("policy.asm",
-                    ".data\n.byte 300\n.text\nli \$a0, 42\nli \$v0, 1\nsyscall\nli \$v0, 10\nsyscall\n")
+                  $$".data\n.byte 300\n.text\nli $a0, 42\nli $v0, 1\nsyscall\nli $v0, 10\nsyscall\n"
+                )
                 project.getService(MarsAssemblySettings::class.java).changeAssemblerOptions(false, true)
                 source.virtualFile.path
             }
@@ -1013,15 +1014,15 @@ class MarsRunPlatformTest {
         val recording = Recording()
         try {
             val library = withContext(Dispatchers.EDT) {
-                val source = fixture.addFileToProject("app/main.asm", """
+                val source = fixture.addFileToProject("app/main.asm", $$"""
                     .data
                     anchor: .word 0
                     .text
-                    la ${'$'}t0, anchor
-                    lw ${'$'}a0, 4(${'$'}t0)
-                    li ${'$'}v0, 1
+                    la $t0, anchor
+                    lw $a0, 4($t0)
+                    li $v0, 1
                     syscall
-                    li ${'$'}v0, 10
+                    li $v0, 10
                     syscall
                 """.trimIndent())
                 val early = fixture.addFileToProject("lib-a/alpha.s", ".data\n.word 3\n").virtualFile
@@ -1088,12 +1089,12 @@ class MarsRunPlatformTest {
         val recording = Recording()
         try {
             val include = withContext(Dispatchers.EDT) {
-                val source = fixture.addFileToProject("main.asm", """
-                    lw ${'$'}a0, VALUE
-                    li ${'$'}v0, 1
+                val source = fixture.addFileToProject("main.asm", $$"""
+                    lw $a0, VALUE
+                    li $v0, 1
                     syscall
-                    li ${'$'}a0, 9
-                    li ${'$'}v0, 17
+                    li $a0, 9
+                    li $v0, 17
                     syscall
                 """.trimIndent())
                 val include = fixture.addFileToProject("value.s", ".data\n.globl VALUE\nVALUE: .word 1\n").virtualFile
@@ -1128,11 +1129,11 @@ class MarsRunPlatformTest {
     @Test
     fun `native Run inherits project delay slots and honors an explicit override`() = timeoutRunBlocking<Unit> {
         val file = withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("delay.asm", """
-                li ${'$'}a0, 1
+            fixture.addFileToProject("delay.asm", $$"""
+                li $a0, 1
                 b print_value
-                addiu ${'$'}a0, ${'$'}a0, 2
-                print_value: li ${'$'}v0, 1
+                addiu $a0, $a0, 2
+                print_value: li $v0, 1
                 syscall
             """.trimIndent()).virtualFile
         }
@@ -1651,16 +1652,17 @@ class MarsRunPlatformTest {
                 val definitions = fixture.addFileToProject("preserved.s", ".eqv EXIT_STATUS 9\n").virtualFile.toNioPath()
                 definitions to empty
             }
-            val recording = runConfiguredDump("""
+            val recording = runConfiguredDump(
+              $$"""
                 .include "preserved.s"
                 .include "defs/outer.inc"
                 .data
                 payload: .word 7
                 .text
-                addiu ${'$'}t0, ${'$'}zero, 42
-                sw ${'$'}t0, payload
-                li ${'$'}a0, EXIT_STATUS
-                li ${'$'}v0, 17
+                addiu $t0, $zero, 42
+                sw $t0, payload
+                li $a0, EXIT_STATUS
+                li $v0, 17
                 syscall
             """.trimIndent(), listOf(
                 dumpState(include),
@@ -1701,7 +1703,7 @@ class MarsRunPlatformTest {
             val untouched = directory.resolve("untouched.txt").also { Files.writeString(it, "keep") }
             assertEquals(1, runConfiguredDump("b missing\n", listOf(dumpState(untouched))).exit.await())
             assertEquals("keep", Files.readString(untouched))
-            val (running, console) = run("li \$v0, 1\nsyscall\nloop: b loop\nnop\n", listOf(dumpState(untouched)))
+            val (running, console) = run($$"li $v0, 1\nsyscall\nloop: b loop\nnop\n", listOf(dumpState(untouched)))
             console.output.await()
             withContext(Dispatchers.EDT) { running.destroyProcess() }
             assertEquals(130, console.exit.await())
@@ -1765,7 +1767,7 @@ class MarsRunPlatformTest {
         val cases = listOf(
             Triple("b missing\n", 1, "Assembly failed"),
             Triple("break\n", 1, "MARS runtime error"),
-            Triple("li \$t0, 1\njr \$t0\n", 1, "fetch address for text segment not aligned"),
+            Triple($$"li $t0, 1\njr $t0\n", 1, "fetch address for text segment not aligned"),
             Triple("nop\n", 0, ""),
         )
         for ((source, status, message) in cases) {
@@ -1780,28 +1782,29 @@ class MarsRunPlatformTest {
     @Test
     fun `relative file syscalls route raw bytes to the matching console streams`() = timeoutRunBlocking<Unit> {
         withContext(Dispatchers.EDT) { fixture.addFileToProject("input.txt", "µ") }
-        val (_, recording) = run("""
+        val (_, recording) = run(
+          $$"""
             .data
             path: .asciiz "input.txt"
             buffer: .space 2
             .text
-            la ${'$'}a0, path
-            li ${'$'}a1, 0
-            li ${'$'}v0, 13
+            la $a0, path
+            li $a1, 0
+            li $v0, 13
             syscall
-            move ${'$'}a0, ${'$'}v0
-            la ${'$'}a1, buffer
-            li ${'$'}a2, 2
-            li ${'$'}v0, 14
+            move $a0, $v0
+            la $a1, buffer
+            li $a2, 2
+            li $v0, 14
             syscall
-            move ${'$'}a2, ${'$'}v0
-            li ${'$'}a0, 1
-            li ${'$'}v0, 15
+            move $a2, $v0
+            li $a0, 1
+            li $v0, 15
             syscall
-            li ${'$'}a0, 2
-            li ${'$'}v0, 15
+            li $a0, 2
+            li $v0, 15
             syscall
-            li ${'$'}v0, 10
+            li $v0, 10
             syscall
         """.trimIndent())
         assertEquals(0, recording.exit.await())
@@ -1812,7 +1815,7 @@ class MarsRunPlatformTest {
     @Test
     fun `stop and detach wait for the owned simulation to stop`() = timeoutRunBlocking<Unit> {
         for (detach in listOf(false, true)) {
-            val (handler, recording) = run("li \$a0, 7\nli \$v0, 1\nsyscall\nloop: b loop\nnop\n")
+            val (handler, recording) = run($$"li $a0, 7\nli $v0, 1\nsyscall\nloop: b loop\nnop\n")
             recording.output.await()
             assertFalse(handler.detachIsDefault())
             withContext(Dispatchers.EDT) {
@@ -1838,39 +1841,40 @@ class MarsRunPlatformTest {
     }
 
     private suspend fun checkConsoleInput(encoding: String) {
-        val (handler, recording) = run("""
+        val (handler, recording) = run(
+          $$"""
             .data
             buffer: .space 4
             .text
-            li ${'$'}v0, 5
+            li $v0, 5
             syscall
-            move ${'$'}a0, ${'$'}v0
-            li ${'$'}v0, 1
+            move $a0, $v0
+            li $v0, 1
             syscall
-            li ${'$'}v0, 12
+            li $v0, 12
             syscall
-            move ${'$'}a0, ${'$'}v0
-            li ${'$'}v0, 11
+            move $a0, $v0
+            li $v0, 11
             syscall
-            li ${'$'}a0, 0
-            la ${'$'}a1, buffer
-            li ${'$'}a2, ${if (encoding == "UTF-16") 4 else 2}
-            li ${'$'}v0, 14
+            li $a0, 0
+            la $a1, buffer
+            li $a2, $${if (encoding == "UTF-16") 4 else 2}
+            li $v0, 14
             syscall
-            move ${'$'}t0, ${'$'}v0
-            la ${'$'}t1, buffer
+            move $t0, $v0
+            la $t1, buffer
         print_byte:
-            lbu ${'$'}a0, 0(${'$'}t1)
-            li ${'$'}v0, 1
+            lbu $a0, 0($t1)
+            li $v0, 1
             syscall
-            li ${'$'}a0, 32
-            li ${'$'}v0, 11
+            li $a0, 32
+            li $v0, 11
             syscall
-            addiu ${'$'}t1, ${'$'}t1, 1
-            addiu ${'$'}t0, ${'$'}t0, -1
-            bgtz ${'$'}t0, print_byte
+            addiu $t1, $t1, 1
+            addiu $t0, $t0, -1
+            bgtz $t0, print_byte
             nop
-            li ${'$'}v0, 10
+            li $v0, 10
             syscall
         """.trimIndent())
         val console = withContext(Dispatchers.EDT) {
@@ -1898,21 +1902,21 @@ class MarsRunPlatformTest {
         val lineCount = 4_096
         val recording = Recording()
         val (handler, console) = withContext(Dispatchers.EDT) {
-            val file = fixture.addFileToProject("burst.asm", """
+            val file = fixture.addFileToProject("burst.asm", $$"""
                 .text
-                li ${'$'}t0, 0
-                li ${'$'}t1, $lineCount
+                li $t0, 0
+                li $t1, $$lineCount
                 emit:
-                    move ${'$'}a0, ${'$'}t0
-                    li ${'$'}v0, 1
+                    move $a0, $t0
+                    li $v0, 1
                     syscall
-                    li ${'$'}a0, 10
-                    li ${'$'}v0, 11
+                    li $a0, 10
+                    li $v0, 11
                     syscall
-                    addiu ${'$'}t0, ${'$'}t0, 1
-                    bne ${'$'}t0, ${'$'}t1, emit
+                    addiu $t0, $t0, 1
+                    bne $t0, $t1, emit
                     nop
-                li ${'$'}v0, 10
+                li $v0, 10
                 syscall
             """.trimIndent()).virtualFile
             val config = type.createTemplateConfiguration(project)
@@ -1955,27 +1959,27 @@ class MarsRunPlatformTest {
         val handlers = mutableListOf<MarsProcessHandler>()
         try {
             val (first, second) = withContext(Dispatchers.EDT) {
-                val file = fixture.addFileToProject("clear-screen.asm", """
+                val file = fixture.addFileToProject("clear-screen.asm", $$"""
                     .data
                     before: .asciiz "before clear"
                     after: .asciiz "after clear "
                     .text
-                    la ${'$'}a0, before
-                    li ${'$'}v0, 4
+                    la $a0, before
+                    li $v0, 4
                     syscall
-                    li ${'$'}v0, 5
+                    li $v0, 5
                     syscall
-                    li ${'$'}v0, 60
+                    li $v0, 60
                     syscall
-                    la ${'$'}a0, after
-                    li ${'$'}v0, 4
+                    la $a0, after
+                    li $v0, 4
                     syscall
-                    li ${'$'}v0, 5
+                    li $v0, 5
                     syscall
-                    move ${'$'}a0, ${'$'}v0
-                    li ${'$'}v0, 1
+                    move $a0, $v0
+                    li $v0, 1
                     syscall
-                    li ${'$'}v0, 10
+                    li $v0, 10
                     syscall
                 """.trimIndent()).virtualFile
                 val config = type.createTemplateConfiguration(project)
@@ -2026,7 +2030,7 @@ class MarsRunPlatformTest {
 
     @Test
     fun `Stop releases the simulator during a long MARS sleep`() = timeoutRunBlocking<Unit> {
-        val (handler, recording) = run("li \$a0, 60000\nli \$v0, 32\nsyscall\nli \$a0, 42\nli \$v0, 1\nsyscall\n")
+        val (handler, recording) = run($$"li $a0, 60000\nli $v0, 32\nsyscall\nli $a0, 42\nli $v0, 1\nsyscall\n")
         try {
             pollAssertionsAsync(5.seconds, 10.milliseconds) {
                 assertTrue(Thread.getAllStackTraces().any { (thread, trace) ->
@@ -2046,18 +2050,18 @@ class MarsRunPlatformTest {
 
     @Test
     fun `MARS sleep resumes normally and keeps the error for negative durations`() = timeoutRunBlocking<Unit> {
-        val (_, complete) = run("li \$a0, 10\nli \$v0, 32\nsyscall\nli \$a0, 42\nli \$v0, 1\nsyscall\nli \$v0, 10\nsyscall\n")
+        val (_, complete) = run($$"li $a0, 10\nli $v0, 32\nsyscall\nli $a0, 42\nli $v0, 1\nsyscall\nli $v0, 10\nsyscall\n")
         assertEquals(0, complete.exit.await())
         assertEquals("42", complete.stdout.toString())
         assertEquals("", complete.stderr.toString())
-        val (_, invalid) = run("li \$a0, -1\nli \$v0, 32\nsyscall\n")
+        val (_, invalid) = run($$"li $a0, -1\nli $v0, 32\nsyscall\n")
         assertEquals(1, invalid.exit.await())
         assertEquals("MARS runtime error. timeout value is negative\n", invalid.stderr.toString())
     }
 
     @Test
     fun `stop releases a syscall blocked on console input`() = timeoutRunBlocking<Unit> {
-        val (handler, recording) = run("li \$v0, 5\nsyscall\n")
+        val (handler, recording) = run($$"li $v0, 5\nsyscall\n")
         try {
             pollAssertionsAsync(5.seconds, 10.milliseconds) {
                 // The prompt alone would race the next instruction. Wait until the simulator enters the read.

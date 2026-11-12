@@ -51,17 +51,19 @@ class ScavengerHuntDeviceTest {
 
     @Test
     fun `administrator initialization publishes every player region and rewinds a double store`() {
-        withProgram("""
-            lui ${'$'}s0, 0xffff
-            ori ${'$'}s0, ${'$'}s0, 0xe000
-            li ${'$'}t0, 5
-            mtc1 ${'$'}t0, ${'$'}f2
-            li ${'$'}t0, 123
-            mtc1 ${'$'}t0, ${'$'}f3
-            sdc1 ${'$'}f2, 8(${'$'}s0)
-            lw ${'$'}t1, 8(${'$'}s0)
+        withProgram(
+          $$"""
+            lui $s0, 0xffff
+            ori $s0, $s0, 0xe000
+            li $t0, 5
+            mtc1 $t0, $f2
+            li $t0, 123
+            mtc1 $t0, $f3
+            sdc1 $f2, 8($s0)
+            lw $t1, 8($s0)
             nop
-        """) { session, device ->
+        """
+        ) { session, device ->
             val memory = session.memory
             memory.setWord(GAME_ON, 9)
             memory.setWord(TURNS, 7)
@@ -119,44 +121,46 @@ class ScavengerHuntDeviceTest {
 
     @Test
     fun `program commands move and sort through MMIO and rewind their acknowledgements`() {
-        withProgram("""
-            lui ${'$'}s0, 0xffff
-            ori ${'$'}s0, ${'$'}s0, 0xe000
-            lui ${'$'}s1, 0xffff
-            ori ${'$'}s1, ${'$'}s1, 0x8000
-            li ${'$'}t0, 1
-            sw ${'$'}t0, 8(${'$'}s0)
-            sw ${'$'}t0, 0(${'$'}s0)
-            sw ${'$'}zero, 4(${'$'}s0)
-            li ${'$'}t1, 257
-            sw ${'$'}t1, 8(${'$'}s1)
-            sw ${'$'}t0, 0x10(${'$'}s1)
-            li ${'$'}t1, 0xff
-            sw ${'$'}t1, 0x1c(${'$'}s1)
-            lw ${'$'}t2, 0x20(${'$'}s1)
-            addiu ${'$'}t2, ${'$'}t2, -1
+        withProgram(
+          $$"""
+            lui $s0, 0xffff
+            ori $s0, $s0, 0xe000
+            lui $s1, 0xffff
+            ori $s1, $s1, 0x8000
+            li $t0, 1
+            sw $t0, 8($s0)
+            sw $t0, 0($s0)
+            sw $zero, 4($s0)
+            li $t1, 257
+            sw $t1, 8($s1)
+            sw $t0, 0x10($s1)
+            li $t1, 0xff
+            sw $t1, 0x1c($s1)
+            lw $t2, 0x20($s1)
+            addiu $t2, $t2, -1
         pass:
-            addu ${'$'}t3, ${'$'}zero, ${'$'}t2
-            addiu ${'$'}t4, ${'$'}s1, 0x128
+            addu $t3, $zero, $t2
+            addiu $t4, $s1, 0x128
         pair:
-            lw ${'$'}t5, 0(${'$'}t4)
-            lw ${'$'}t6, 4(${'$'}t4)
-            ble ${'$'}t5, ${'$'}t6, keep
+            lw $t5, 0($t4)
+            lw $t6, 4($t4)
+            ble $t5, $t6, keep
             nop
-            sw ${'$'}t6, 0(${'$'}t4)
-            sw ${'$'}t5, 4(${'$'}t4)
+            sw $t6, 0($t4)
+            sw $t5, 4($t4)
         keep:
-            addiu ${'$'}t4, ${'$'}t4, 4
-            addiu ${'$'}t3, ${'$'}t3, -1
-            bgtz ${'$'}t3, pair
+            addiu $t4, $t4, 4
+            addiu $t3, $t3, -1
+            bgtz $t3, pair
             nop
-            addiu ${'$'}t2, ${'$'}t2, -1
-            bgtz ${'$'}t2, pass
+            addiu $t2, $t2, -1
+            bgtz $t2, pass
             nop
         submit:
-            sw ${'$'}t0, 0x124(${'$'}s1)
+            sw $t0, 0x124($s1)
             nop
-        """) { session, device ->
+        """
+        ) { session, device ->
             val memory = session.memory
             step(session, 10)
             assertEquals(0, memory.getWord(IDENTITY))
@@ -199,33 +203,35 @@ class ScavengerHuntDeviceTest {
 
     @Test
     fun `rejections leave the active player and handshakes consistent`() {
-        withProgram("""
-            lui ${'$'}s0, 0xffff
-            ori ${'$'}s0, ${'$'}s0, 0xe000
-            lui ${'$'}s1, 0xffff
-            ori ${'$'}s1, ${'$'}s1, 0x8000
-            li ${'$'}t0, 1
-            sw ${'$'}t0, 8(${'$'}s0)
-            li ${'$'}t1, 88
-            sw ${'$'}t1, 0(${'$'}s0)
-            sw ${'$'}t0, 4(${'$'}s0)
-            li ${'$'}t1, 2
-            sw ${'$'}t1, 0(${'$'}s0)
-            sw ${'$'}zero, 4(${'$'}s0)
-            sw ${'$'}zero, 8(${'$'}s0)
-            sw ${'$'}t0, 0x410(${'$'}s1)
-            sw ${'$'}zero, 8(${'$'}s1)
-            sw ${'$'}t0, 0x10(${'$'}s1)
-            sw ${'$'}zero, 0x10(${'$'}s1)
-            sw ${'$'}t0, 0x124(${'$'}s1)
-            sw ${'$'}zero, 0x124(${'$'}s1)
-            li ${'$'}t1, 3
-            sw ${'$'}t1, 0(${'$'}s0)
-            li ${'$'}t1, 21
-            sw ${'$'}t1, 4(${'$'}s0)
-            sw ${'$'}t0, 0x10(${'$'}s1)
+        withProgram(
+          $$"""
+            lui $s0, 0xffff
+            ori $s0, $s0, 0xe000
+            lui $s1, 0xffff
+            ori $s1, $s1, 0x8000
+            li $t0, 1
+            sw $t0, 8($s0)
+            li $t1, 88
+            sw $t1, 0($s0)
+            sw $t0, 4($s0)
+            li $t1, 2
+            sw $t1, 0($s0)
+            sw $zero, 4($s0)
+            sw $zero, 8($s0)
+            sw $t0, 0x410($s1)
+            sw $zero, 8($s1)
+            sw $t0, 0x10($s1)
+            sw $zero, 0x10($s1)
+            sw $t0, 0x124($s1)
+            sw $zero, 0x124($s1)
+            li $t1, 3
+            sw $t1, 0($s0)
+            li $t1, 21
+            sw $t1, 4($s0)
+            sw $t0, 0x10($s1)
             nop
-        """) { session, device ->
+        """
+        ) { session, device ->
             val memory = session.memory
             step(session, 10)
             assertEquals(999, memory.getWord(IDENTITY))
@@ -261,16 +267,18 @@ class ScavengerHuntDeviceTest {
 
     @Test
     fun `only aligned execution stores are commands and device detaches cleanly`() {
-        withProgram("""
-            lui ${'$'}s0, 0xffff
-            ori ${'$'}s0, ${'$'}s0, 0xe000
-            li ${'$'}t0, 1
-            sb ${'$'}t0, 8(${'$'}s0)
-            sw ${'$'}t0, 8(${'$'}s0)
+        withProgram(
+          $$"""
+            lui $s0, 0xffff
+            ori $s0, $s0, 0xe000
+            li $t0, 1
+            sb $t0, 8($s0)
+            sw $t0, 8($s0)
             nop
-            sw ${'$'}t0, 8(${'$'}s0)
+            sw $t0, 8($s0)
             nop
-        """) { session, device ->
+        """
+        ) { session, device ->
             assertTrue(ScavengerHuntDevice.supports(session.memory))
             assertEquals(2, session.memory.countObservers())
             session.memory.setWord(GAME_ON, 1)
@@ -307,10 +315,11 @@ class ScavengerHuntDeviceTest {
     fun `attaching during a double store leaves that instruction unclaimed`() {
         MarsSessionService.createMarsComponent().context().use { session ->
             val file = directory.resolve("attach.asm").also {
-                it.writeText("""
-                    lui ${'$'}t0, 0xffff
-                    ori ${'$'}t0, ${'$'}t0, 0xe000
-                    sdc1 ${'$'}f2, 0(${'$'}t0)
+                it.writeText(
+                  $$"""
+                    lui $t0, 0xffff
+                    ori $t0, $t0, 0xe000
+                    sdc1 $f2, 0($t0)
                     nop
                     nop
                 """.trimIndent())
@@ -382,7 +391,7 @@ class ScavengerHuntDeviceTest {
     fun `a pending memory callback cannot restart a detached device`() {
         MarsSessionService.createMarsComponent().context().use { session ->
             val file = directory.resolve("detach.asm").also {
-                it.writeText("lui \$t0, 0xffff\nori \$t0, \$t0, 0xe000\nsw \$zero, 8(\$t0)\nnop\n")
+                it.writeText($$"lui $t0, 0xffff\nori $t0, $t0, 0xe000\nsw $zero, 8($t0)\nnop\n")
             }
             session.assemble(listOf(file))
             lateinit var device: ScavengerHuntDevice
@@ -402,18 +411,20 @@ class ScavengerHuntDeviceTest {
 
     @Test
     fun `administrator writes are allowed before a round and a player cannot start one`() {
-        withProgram("""
-            lui ${'$'}s0, 0xffff
-            ori ${'$'}s0, ${'$'}s0, 0xe000
-            lui ${'$'}s1, 0xffff
-            ori ${'$'}s1, ${'$'}s1, 0x8000
-            li ${'$'}t0, 1
-            sw ${'$'}t0, 0x1c(${'$'}s1)
-            sw ${'$'}t0, 0(${'$'}s0)
-            sw ${'$'}zero, 4(${'$'}s0)
-            sw ${'$'}t0, 8(${'$'}s0)
-            lw ${'$'}t0, 1(${'$'}s0)
-        """) { session, device ->
+        withProgram(
+          $$"""
+            lui $s0, 0xffff
+            ori $s0, $s0, 0xe000
+            lui $s1, 0xffff
+            ori $s1, $s1, 0x8000
+            li $t0, 1
+            sw $t0, 0x1c($s1)
+            sw $t0, 0($s0)
+            sw $zero, 4($s0)
+            sw $t0, 8($s0)
+            lw $t0, 1($s0)
+        """
+        ) { session, device ->
             step(session, 6)
             assertEquals(1, session.memory.getWord(PLAYER_BASE + COLOR))
             assertNull(device.snapshot().diagnostic)

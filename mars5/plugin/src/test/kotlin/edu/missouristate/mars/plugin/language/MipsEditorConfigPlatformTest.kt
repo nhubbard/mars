@@ -49,7 +49,7 @@ class MipsEditorConfigPlatformTest {
                     tab_width = 8
                 """.trimIndent())
                 fixture.addFileToProject("nested/.editorconfig", "[*.asm]\nij_mars-mips_indent_size = 6\n")
-                val source = ".macro emit (%value)\nnop\n.end_macro\n.text\nmain:\naddiu ${'$'}a0,${'$'}zero,42\n"
+                val source = $$".macro emit (%value)\nnop\n.end_macro\n.text\nmain:\naddiu $a0,$zero,42\n"
                 for ((path, size, prefix) in listOf(
                     Triple("main.asm", 2, "  "),
                     Triple("other.s", 8, "\t"),
@@ -60,7 +60,8 @@ class MipsEditorConfigPlatformTest {
                     val options = CodeStyle.getIndentOptions(file)
                     assertEquals(size, options.INDENT_SIZE, path)
                     assertEquals(prefix == "\t", options.USE_TAB_CHARACTER, path)
-                    val expected = ".macro emit (%value)\n${prefix}nop\n.end_macro\n.text\nmain:\n${prefix}addiu ${'$'}a0, ${'$'}zero, 42\n"
+                    val expected =
+                      $$".macro emit (%value)\n$${prefix}nop\n.end_macro\n.text\nmain:\n$${prefix}addiu $a0, $zero, 42\n"
                     repeat(2) {
                         WriteCommandAction.runWriteCommandAction(current) { CodeStyleManager.getInstance(current).reformat(file) }
                         fixture.checkResult(expected)

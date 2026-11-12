@@ -144,12 +144,12 @@ class MipsEditorPlatformTest {
     @Test
     fun `assembly editors highlight mnemonics only in instruction positions`() = timeoutRunBlocking<Unit> {
         withContext(Dispatchers.EDT) {
-            val source = """
+            val source = $$"""
                 .text
-                addiu: addiu ${'$'}t0, ${'$'}zero, 1
-                    LI ${'$'}v0, 10
-                    c.eq.s ${'$'}f0, ${'$'}f2
-                    s.s ${'$'}f0, addiu
+                addiu: addiu $t0, $zero, 1
+                    LI $v0, 10
+                    c.eq.s $f0, $f2
+                    s.s $f0, addiu
                     # syscall
                     syscall
             """.trimIndent()
@@ -174,7 +174,7 @@ class MipsEditorPlatformTest {
                 for (highlight in highlights) {
                     assertEquals(expected, highlight.getTextAttributes(fixture.file, editor.colorsScheme))
                 }
-                val register = editor.highlighter.createIterator(source.indexOf("${'$'}t0")).textAttributes
+                val register = editor.highlighter.createIterator(source.indexOf($$"$t0")).textAttributes
                 assertEquals(
                     editor.colorsScheme.getAttributes(registerColor).foregroundColor,
                     register.foregroundColor,
@@ -187,8 +187,8 @@ class MipsEditorPlatformTest {
     fun `only aliases supplying an instruction are colored as mnemonics`() = timeoutRunBlocking<Unit> {
         val current = project.get()
         withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("aliases.s", ".eqv DEFINE .eqv\nDEFINE BRANCH bne \$t0, \$zero\n")
-            fixture.configureByText("alias-highlight.asm", """
+            fixture.addFileToProject("aliases.s", $$".eqv DEFINE .eqv\nDEFINE BRANCH bne $t0, $zero\n")
+            fixture.configureByText("alias-highlight.asm", $$"""
                 .include "aliases.s"
                 .eqv DATA_SEG .data
                 .eqv FIRST SECOND
@@ -201,9 +201,9 @@ class MipsEditorPlatformTest {
                 DATA_SEG
                 FIRST
                 LABEL
-                OTHER addiu ${'$'}t0, ${'$'}zero, 7
+                OTHER addiu $t0, $zero, 7
                 split COLON BRANCH target
-                BOTH ${'$'}t0, ${'$'}t0, 1
+                BOTH $t0, $t0, 1
                 addiu COLON syscall
                 j COLON
                 BRANCH: nop
@@ -218,7 +218,7 @@ class MipsEditorPlatformTest {
             val source = file.text
             val highlights = fixture.highlightAfterMipsRefresh().filter { it.forcedTextAttributesKey == instructionMnemonicColor }
             val expected = listOf(
-                "addiu \$t0, \$zero, 7" to "addiu",
+                $$"addiu $t0, $zero, 7" to "addiu",
                 "syscall\nj COLON" to "syscall",
                 "nop\ntarget" to "nop", "nop\nLATE" to "nop",
             ).map { (context, mnemonic) ->
@@ -243,12 +243,12 @@ class MipsEditorPlatformTest {
     fun `labels macros and equivalences use semantic colors in assembly editors`() = timeoutRunBlocking<Unit> {
         val current = project.get()
         withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("definitions.s", """
+            fixture.addFileToProject("definitions.s", $$"""
                 .macro paint (%value)
-                    li ${'$'}t0, %value
+                    li $t0, %value
                 .end_macro
             """.trimIndent())
-            fixture.configureByText("symbols.asm", """
+            fixture.configureByText("symbols.asm", $$"""
                 .include "definitions.s"
                 .eqv COUNT 7
                 .eqv MARKER next:
@@ -262,12 +262,12 @@ class MipsEditorPlatformTest {
                 main: CALL (COUNT)
                 colons: CALL:
                 MARKER paint (COUNT)
-                addiu ${'$'}t0, ${'$'}t0, 1
-                bgtz ${'$'}t0, next
+                addiu $t0, $t0, 1
+                bgtz $t0, next
                 j missing
                 local (2)
-                .macro local (${'$'}parameter)
-                    paint (${'$'}parameter)
+                .macro local ($parameter)
+                    paint ($parameter)
                 .end_macro
                 .macro target (%where)
                 %where: nop
@@ -291,21 +291,21 @@ class MipsEditorPlatformTest {
             assertColor(".globl main", labelColor, "main")
             assertColor("main: CALL", labelColor, "main")
             assertColor("MARKER paint", equivalenceColor)
-            assertColor("bgtz ${'$'}t0, next", labelColor, "next")
+            assertColor($$"bgtz $t0, next", labelColor, "next")
             assertColor("j missing", labelColor, "missing")
             assertColor(".macro local", macroColor, "local")
             assertColor("CALL (COUNT)", macroColor)
             assertColor("colons: CALL:", labelColor, "colons")
             assertColor("colons: CALL:", macroColor, "CALL")
             assertColor("paint (COUNT)", macroColor)
-            assertColor("paint (${'$'}parameter)", macroColor)
+            assertColor($$"paint ($parameter)", macroColor)
             assertColor("local (5)", macroColor)
             assertTrue(highlights.none { it.startOffset == source.indexOf("local (2)") && it.forcedTextAttributesKey == macroColor })
-            assertColor("addiu ${'$'}t0", instructionMnemonicColor)
+            assertColor($$"addiu $t0", instructionMnemonicColor)
             assertColor(".eqv COUNT", equivalenceColor, "COUNT")
             assertColor("CALL (COUNT)", DefaultLanguageHighlighterColors.NUMBER, "COUNT")
-            assertColor("(${'$'}parameter)\n", macroParameterColor, "${'$'}parameter")
-            assertColor("paint (${'$'}parameter)", macroParameterColor, "${'$'}parameter")
+            assertColor($$"($parameter)\n", macroParameterColor, $$"$parameter")
+            assertColor($$"paint ($parameter)", macroParameterColor, $$"$parameter")
             assertColor("DATA\n.extern", directiveColor, "DATA")
         }
     }
@@ -313,7 +313,7 @@ class MipsEditorPlatformTest {
     @Test
     fun `aliased macro headers color their written name and formals`() = timeoutRunBlocking<Unit> {
         val current = project.get()
-        val source = """
+        val source = $$"""
             .eqv OPEN .macro
             .eqv CLOSE .end_macro
             .eqv NAME emit
@@ -321,7 +321,7 @@ class MipsEditorPlatformTest {
             .eqv BOTH blended (%arg)
             .eqv COMPLETE .macro whole (%arg)
             OPEN NAME FORMALS
-              addiu %reg, ${'$'}zero, %value
+              addiu %reg, $zero, %value
             CLOSE
             OPEN simple (%arg)
               nop
@@ -332,7 +332,7 @@ class MipsEditorPlatformTest {
             COMPLETE
               nop
             CLOSE
-            emit (${'$'}t0, 7)
+            emit ($t0, 7)
             simple (2)
             blended (3)
             whole (4)
@@ -369,9 +369,9 @@ class MipsEditorPlatformTest {
     fun `macro arguments and aliases take the colors of their use sites`() = timeoutRunBlocking<Unit> {
         val current = project.get()
         withContext(Dispatchers.EDT) {
-            fixture.configureByText("alias-colors.asm", """
+            fixture.configureByText("alias-colors.asm", $$"""
                 .eqv NUMBER -4
-                .eqv BASE ${'$'}sp
+                .eqv BASE $sp
                 .eqv OPEN (
                 .eqv CLOSE )
                 .eqv DEST loop
@@ -379,23 +379,23 @@ class MipsEditorPlatformTest {
                 .eqv MANY 1, 2
                 .eqv VALUE %value
                 .eqv HEAD %op
-                .eqv SPIM_HEAD ${'$'}operation
-                .eqv SPIM_VALUE ${'$'}value
+                .eqv SPIM_HEAD $operation
+                .eqv SPIM_VALUE $value
                 .eqv FIRST SECOND
                 .eqv SECOND FIRST
                 .eqv CALL emit
                 .eqv OPCODE nop
                 .macro emit (%value)
-                    li ${'$'}t0, VALUE
+                    li $t0, VALUE
                 .end_macro
                 .macro apply (%op)
                     %op
                     HEAD
                 .end_macro
-                .macro spim (${'$'}operation, ${'$'}value)
-                    ${'$'}operation
+                .macro spim ($operation, $value)
+                    $operation
                     SPIM_HEAD
-                    li ${'$'}t0, SPIM_VALUE
+                    li $t0, SPIM_VALUE
                 .end_macro
                 .data
                 text: .asciiz MESSAGE
@@ -403,7 +403,7 @@ class MipsEditorPlatformTest {
                 .data DEST
                 .text
                 loop: nop
-                lw ${'$'}t1, NUMBER OPEN BASE CLOSE
+                lw $t1, NUMBER OPEN BASE CLOSE
                 j DEST
                 CALL (bare_argument)
                 CALL (DEST)
@@ -411,7 +411,7 @@ class MipsEditorPlatformTest {
                 apply (OPCODE)
                 CALL (FIRST)
                 unknown (bare_argument)
-                ${'$'}operation
+                $operation
                 HEAD
                 nop
             """.trimIndent())
@@ -431,13 +431,13 @@ class MipsEditorPlatformTest {
             assertEquals(punctuationColor, color("BASE CLOSE", "CLOSE"))
             assertEquals(labelColor, color("j DEST", "DEST"))
             assertEquals(stringColor, color(".asciiz MESSAGE", "MESSAGE"))
-            assertEquals(macroParameterColor, color("li \$t0, VALUE", "VALUE"))
+            assertEquals(macroParameterColor, color($$"li $t0, VALUE", "VALUE"))
             assertEquals(macroParameterColor, color("\n    %op\n", "%op"))
             assertEquals(macroParameterColor, color("\n    HEAD\n", "HEAD"))
-            assertEquals(macroParameterColor, color("\n    \$operation\n", "\$operation"))
+            assertEquals(macroParameterColor, color($$"\n    $operation\n", $$"$operation"))
             assertEquals(macroParameterColor, color("\n    SPIM_HEAD\n", "SPIM_HEAD"))
-            assertEquals(macroParameterColor, color("li \$t0, SPIM_VALUE", "SPIM_VALUE"))
-            assertNull(color("\n\$operation\n", "\$operation"))
+            assertEquals(macroParameterColor, color($$"li $t0, SPIM_VALUE", "SPIM_VALUE"))
+            assertNull(color($$"\n$operation\n", $$"$operation"))
             assertEquals(equivalenceColor, color("\nHEAD\nnop", "HEAD"))
             assertEquals(equivalenceColor, color(".word MANY", "MANY"))
             assertEquals(macroColor, color("CALL (bare_argument)", "CALL"))
@@ -497,13 +497,13 @@ class MipsEditorPlatformTest {
     fun `alias invocations use a single effective role and preserve the alias color for composite or unknown expansions`() =
         timeoutRunBlocking<Unit> {
             val current = project.get()
-            val source = """
+            val source = $$"""
                 .eqv NAME actual
                 .eqv HEAD second
                 .eqv SEPARATOR :
                 .eqv ENTRY third:
-                .eqv BUNDLE fourth: li ${'$'}t0, 42
-                .eqv LOAD li ${'$'}t1, 42
+                .eqv BUNDLE fourth: li $t0, 42
+                .eqv LOAD li $t1, 42
                 .eqv OPCODE nop
                 .eqv UNRESOLVED unknown
                 NAME: OPCODE
@@ -539,16 +539,16 @@ class MipsEditorPlatformTest {
     @Test
     fun `signed literals punctuation macro formals and equivalence replacements get visible styles`() = timeoutRunBlocking<Unit> {
         withContext(Dispatchers.EDT) {
-            fixture.configureByText("punctuation.asm", """
+            fixture.configureByText("punctuation.asm", $$"""
                 .eqv DISP -4
                 .eqv NEXT repeat_loop
                 .eqv INCREMENT addiu
                 .macro bump (%counter)
                     addiu %counter, %counter, -1
                 .end_macro
-                repeat_loop: bump (${'$'}t0)
-                lw ${'$'}t1, -4(${'$'}t0)
-                la ${'$'}t0, repeat_loop+4
+                repeat_loop: bump ($t0)
+                lw $t1, -4($t0)
+                la $t0, repeat_loop+4
                 .word - 5
                 -17 +8:2
                 - 9:2
@@ -562,7 +562,7 @@ class MipsEditorPlatformTest {
                     it.startOffset == start && it.endOffset == start + token.length && it.forcedTextAttributesKey == key
                 }
             }
-            for (context in listOf("DISP -4", "%counter, -1", "-4(${'$'}t0)", "-17 +8:2")) {
+            for (context in listOf("DISP -4", "%counter, -1", $$"-4($t0)", "-17 +8:2")) {
                 assertTrue(hasHighlight(context, "-", DefaultLanguageHighlighterColors.NUMBER), context)
             }
             assertFalse(hasHighlight("repeat_loop+4", "+", DefaultLanguageHighlighterColors.NUMBER))
@@ -585,7 +585,8 @@ class MipsEditorPlatformTest {
     @Test
     fun `all significant lexer tokens have an editor color category`() {
         val syntax = MipsSyntaxHighlighter()
-        val source = ".text .macro .end_macro .eqv .include .set .extern .word foo addiu \$macro \$t0 %p 7 \"ok\" 'a' : , ( ) + - # note\n\"incomplete\n'bad\n"
+        val source =
+          $$".text .macro .end_macro .eqv .include .set .extern .word foo addiu $macro $t0 %p 7 \"ok\" 'a' : , ( ) + - # note\n\"incomplete\n'bad\n"
         val lexer = syntax.highlightingLexer
         lexer.start(source)
         while (lexer.tokenType != null) {
@@ -660,25 +661,25 @@ class MipsEditorPlatformTest {
     @Test
     fun `platform comment action toggles selected instructions and existing comments`() = timeoutRunBlocking<Unit> {
         withContext(Dispatchers.EDT) {
-            val source = "<selection>li \$v0, 1\n# explain\nsyscall</selection>\n"
+            val source = $$"<selection>li $v0, 1\n# explain\nsyscall</selection>\n"
             fixture.configureByText(MipsFileType, source)
             fixture.performEditorAction(IdeActions.ACTION_COMMENT_LINE)
-            assertEquals("#li \$v0, 1\n## explain\n#syscall\n", fixture.editor.document.text)
+            assertEquals($$"#li $v0, 1\n## explain\n#syscall\n", fixture.editor.document.text)
             fixture.performEditorAction(IdeActions.ACTION_COMMENT_LINE)
-            fixture.checkResult("li \$v0, 1\n# explain\nsyscall\n")
+            fixture.checkResult($$"li $v0, 1\n# explain\nsyscall\n")
         }
     }
 
     @Test
     fun `platform typing pairs parentheses skips an existing close and deletes an empty pair`() = timeoutRunBlocking<Unit> {
         withContext(Dispatchers.EDT) {
-            fixture.configureByText(MipsFileType, "lw \$t0, 4<caret>")
+            fixture.configureByText(MipsFileType, $$"lw $t0, 4<caret>")
             fixture.type('(')
-            fixture.checkResult("lw \$t0, 4(<caret>)")
+            fixture.checkResult($$"lw $t0, 4(<caret>)")
             fixture.performEditorAction(IdeActions.ACTION_EDITOR_BACKSPACE)
-            fixture.checkResult("lw \$t0, 4<caret>")
-            fixture.type("(\$sp)")
-            fixture.checkResult("lw \$t0, 4(\$sp)<caret>")
+            fixture.checkResult($$"lw $t0, 4<caret>")
+            fixture.type($$"($sp)")
+            fixture.checkResult($$"lw $t0, 4($sp)<caret>")
         }
     }
 
@@ -728,7 +729,7 @@ class MipsEditorPlatformTest {
     fun `native folding hides only the macro body and leaves its header and terminator visible`() = timeoutRunBlocking<Unit> {
         withContext(Dispatchers.EDT) {
             val header = "macro_label: .MaCrO emit (%value) # signature"
-            val body = "  # body comment\n  addiu \$t0, \$zero, %value"
+            val body = $$"  # body comment\n  addiu $t0, $zero, %value"
             val source = "$header\n$body\n.EnD_mAcRo,, # terminator\nnext: nop\n"
             for (extension in listOf("asm", "s")) {
                 fixture.configureByText("fold.$extension", source)
@@ -753,7 +754,7 @@ class MipsEditorPlatformTest {
     @Test
     fun `native folding pairs aliased boundaries using the including entry`() = timeoutRunBlocking<Unit> {
         val current = project.get()
-        val source = "OPEN emit (%dest) # header\n    addiu %dest, \$zero, 7\nSTOP # closer\n"
+        val source = $$"OPEN emit (%dest) # header\n    addiu %dest, $zero, 7\nSTOP # closer\n"
         val documents = PsiDocumentManager.getInstance(current)
         val refresh = current.service<MipsFoldingRefresh>()
         val entry = withContext(Dispatchers.EDT) {

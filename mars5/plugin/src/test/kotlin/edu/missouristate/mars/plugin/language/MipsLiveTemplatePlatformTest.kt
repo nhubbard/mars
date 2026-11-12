@@ -34,8 +34,8 @@ class MipsLiveTemplatePlatformTest {
             fixture.type("argument")
             next()
             assertEquals(1, fixture.editor.caretModel.logicalPosition.line)
-            fixture.type("li ${'$'}a0, %argument")
-            assertEquals(".macro emitValue (%argument)\n    li ${'$'}a0, %argument\n.end_macro\n", fixture.editor.document.text)
+            fixture.type($$"li $a0, %argument")
+            assertEquals($$".macro emitValue (%argument)\n    li $a0, %argument\n.end_macro\n", fixture.editor.document.text)
         }
     }
 
@@ -63,7 +63,7 @@ class MipsLiveTemplatePlatformTest {
             for ((shortcut, service) in listOf("mipsprint" to 1, "mipsexit" to 10)) {
                 fixture.configureByText("main.s", ".text\n    $shortcut<caret>\n")
                 expand()
-                fixture.checkResult(".text\n    addiu ${'$'}v0, ${'$'}zero, $service\n    syscall\n")
+                fixture.checkResult($$".text\n    addiu $v0, $zero, $$service\n    syscall\n")
             }
         }
     }

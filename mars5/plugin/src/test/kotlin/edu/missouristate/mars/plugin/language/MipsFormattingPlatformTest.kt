@@ -36,9 +36,9 @@ class MipsFormattingPlatformTest {
 
     @Test
     fun `reformat normalizes native syntax and preserves machine words and data`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
-        val source = """
+        val source = $$"""
               .eqv    OFFSET -4
-             .eqv OP   addiu  ${'$'}t0,   ${'$'}t0,  1
+             .eqv OP   addiu  $t0,   $t0,  1
             .eqv DEF .eqv
             DEF AGAIN 1,   2
             .eqv AGAIN 1,   2
@@ -55,11 +55,11 @@ class MipsFormattingPlatformTest {
             -17    +8 : 2
                .text
              main   :
-             lw  ${'$'}t0 ,  -4  ( ${'$'}sp )
-             lw  ${'$'}t1 , OFFSET  ( ${'$'}sp )
+             lw  $t0 ,  -4  ( $sp )
+             lw  $t1 , OFFSET  ( $sp )
                  OP
-             local ( ${'$'}t0 , 2 )
-                  emit( ${'$'}t0  ,  7 )    # invocation may also be a text substitution
+             local ( $t0 , 2 )
+                  emit( $t0  ,  7 )    # invocation may also be a text substitution
             target :  nop
              j   target
         """.trimIndent()
@@ -71,9 +71,9 @@ class MipsFormattingPlatformTest {
             assertEquals(first, reformat(), "formatting must be idempotent")
             first
         }
-        val expected = """
+        val expected = $$"""
             .eqv OFFSET -4
-            .eqv OP   addiu  ${'$'}t0,   ${'$'}t0,  1
+            .eqv OP   addiu  $t0,   $t0,  1
             .eqv DEF .eqv
             DEF AGAIN 1,   2
             .eqv AGAIN 1,   2
@@ -90,11 +90,11 @@ class MipsFormattingPlatformTest {
                 -17 +8:2
             .text
             main:
-                lw ${'$'}t0, -4(${'$'}sp)
-                lw ${'$'}t1, OFFSET(${'$'}sp)
+                lw $t0, -4($sp)
+                lw $t1, OFFSET($sp)
                 OP
-                local (${'$'}t0, 2)
-                emit(${'$'}t0, 7) # invocation may also be a text substitution
+                local ($t0, 2)
+                emit($t0, 7) # invocation may also be a text substitution
             target: nop
                 j target
         """.trimIndent()
@@ -172,11 +172,11 @@ class MipsFormattingPlatformTest {
     @Test
     fun `reformat preserves replacement whitespace when a macro operand defines an equivalence`(@TempDir directory: Path) =
         timeoutRunBlocking<Unit> {
-            val source = """
+            val source = $$"""
                 .eqv DEFINE .eqv
                 .eqv OPEN "z
                 .macro unused
-                li   ${'$'}t0   DEFINE RAW OPEN ,      "
+                li   $t0   DEFINE RAW OPEN ,      "
                 .end_macro
                 .data
                 .asciiz RAW
@@ -193,7 +193,7 @@ class MipsFormattingPlatformTest {
                 result
             }
             assertEquals(before, assemble(directory.resolve("operand-definition-after.asm"), formatted))
-            assertTrue("    li ${'$'}t0 DEFINE RAW OPEN ,      \"" in formatted, formatted)
+            assertTrue($$"    li $t0 DEFINE RAW OPEN ,      \"" in formatted, formatted)
         }
 
     @Test
@@ -362,7 +362,7 @@ class MipsFormattingPlatformTest {
     @Test
     fun `reformat preserves text that a macro formal can place inside a string`(@TempDir directory: Path) =
         timeoutRunBlocking<Unit> {
-            val source = """
+            val source = $$"""
                 .data
                 .macro append (%open)
                 .asciiz   %open ,      "
@@ -371,8 +371,8 @@ class MipsFormattingPlatformTest {
                 .macro append (%first, %second)
                 .byte 0
                 .end_macro
-                .macro duplicate (${'$'}quote)
-                .asciiz   ${'$'}quote ,   ${'$'}quote
+                .macro duplicate ($quote)
+                .asciiz   $quote ,   $quote
                 .end_macro
                 duplicate "
                 .macro forward (%open)
@@ -394,31 +394,31 @@ class MipsFormattingPlatformTest {
             }
             assertEquals(before, assemble(directory.resolve("macro-quoted-after.asm"), formatted))
             assertTrue("    .asciiz %open ,      \"" in formatted, formatted)
-            assertTrue("    .asciiz \$quote ,   \$quote" in formatted, formatted)
+            assertTrue($$"    .asciiz $quote ,   $quote" in formatted, formatted)
             assertTrue("    append    %open ,      tail" in formatted, formatted)
         }
 
     @Test
     fun `reformat uses the substituted operation at alias call sites without changing assembly`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
-        val source = """
+        val source = $$"""
             .eqv LOAD lw
             .eqv CALL emit
             .eqv OFFSET -4
-            .eqv BASE ${'$'}sp
+            .eqv BASE $sp
             .eqv CLOSE )
             .eqv DEFINE .eqv
             .eqv MARKER alias_label:
             DEFINE KEEP 1,   2
             .macro emit (%value)
-                li ${'$'}t1, %value
+                li $t1, %value
             .end_macro
             .macro discard (%a, %b, %c, %d, %e)
                 nop
             .end_macro
             .text
             MARKER
-            LOAD  ${'$'}t0 , OFFSET  ( BASE )
-            LOAD  ${'$'}t2 , ( BASE )
+            LOAD  $t0 , OFFSET  ( BASE )
+            LOAD  $t2 , ( BASE )
             CALL( OFFSET )
             CALL ( OFFSET CLOSE
             discard ignored .eqv RAW 1,   2
@@ -427,14 +427,14 @@ class MipsFormattingPlatformTest {
         val formatted = withContext(Dispatchers.EDT) {
             fixture.configureByText("alias-layout.asm", source)
             DumbModeTestUtils.runInDumbModeSynchronously(fixture.project) {
-                assertTrue("LOAD  ${'$'}t0 , OFFSET  ( BASE )" in reformat())
+                assertTrue($$"LOAD  $t0 , OFFSET  ( BASE )" in reformat())
             }
             val result = reformat()
             assertEquals(result, reformat())
             result
         }
-        assertTrue("    LOAD ${'$'}t0, OFFSET(BASE)" in formatted, formatted)
-        assertTrue("    LOAD ${'$'}t2, (BASE)" in formatted, formatted)
+        assertTrue($$"    LOAD $t0, OFFSET(BASE)" in formatted, formatted)
+        assertTrue($$"    LOAD $t2, (BASE)" in formatted, formatted)
         assertTrue("    CALL(OFFSET)" in formatted, formatted)
         assertTrue("    CALL (OFFSET CLOSE" in formatted, formatted)
         assertTrue("DEFINE KEEP 1,   2" in formatted, formatted)
@@ -445,20 +445,20 @@ class MipsFormattingPlatformTest {
 
     @Test
     fun `aliases that complete an operand expose its safe spacing boundaries`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
-        val source = """
+        val source = $$"""
             .eqv OPEN (
             .eqv CLOSE )
-            .eqv BASE ${'$'}sp
+            .eqv BASE $sp
             .eqv OFFSET -4
-            .eqv DEST ${'$'}t0
+            .eqv DEST $t0
             .eqv PREFIX 4(
             .eqv PAIR 7,   9
             .data
             values: .word PAIR
             .text
             lw  DEST , OFFSET  ( BASE CLOSE
-            lw  ${'$'}t1  , PREFIX   BASE  )
-            lw  ${'$'}t2 , OFFSET OPEN  BASE )
+            lw  $t1  , PREFIX   BASE  )
+            lw  $t2 , OFFSET OPEN  BASE )
             lw  DEST  ( BASE CLOSE
         """.trimIndent()
         val formatted = withContext(Dispatchers.EDT) {
@@ -467,20 +467,21 @@ class MipsFormattingPlatformTest {
             assertEquals(result, reformat())
             result
         }
-        assertEquals("""
+        assertEquals(
+          $$"""
             .eqv OPEN (
             .eqv CLOSE )
-            .eqv BASE ${'$'}sp
+            .eqv BASE $sp
             .eqv OFFSET -4
-            .eqv DEST ${'$'}t0
+            .eqv DEST $t0
             .eqv PREFIX 4(
             .eqv PAIR 7,   9
             .data
             values: .word PAIR
             .text
                 lw DEST, OFFSET(BASE CLOSE
-                lw ${'$'}t1, PREFIX BASE)
-                lw ${'$'}t2, OFFSET OPEN BASE)
+                lw $t1, PREFIX BASE)
+                lw $t2, OFFSET OPEN BASE)
                 lw DEST (BASE CLOSE
         """.trimIndent(), formatted)
         assertEquals(assemble(directory.resolve("compound-before.asm"), source),
@@ -489,11 +490,11 @@ class MipsFormattingPlatformTest {
 
     @Test
     fun `complete operands use expanded address and group roles when spacing parentheses`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
-        val source = """
+        val source = $$"""
             .eqv LOAD lw
-            .eqv DEST ${'$'}t0
-            .eqv BASE ${'$'}sp
-            .eqv PAIR ${'$'}t2, 8
+            .eqv DEST $t0
+            .eqv BASE $sp
+            .eqv PAIR $t2, 8
             .eqv LABEL entry:
             .text
             lw  DEST( BASE )
@@ -501,7 +502,7 @@ class MipsFormattingPlatformTest {
             LABEL lw DEST( BASE )
             lw  PAIR   ( BASE )
             LOAD PAIR   ( BASE )
-            lw ${'$'}t1, 4   ( ${'$'}sp )
+            lw $t1, 4   ( $sp )
         """.trimIndent()
         val formatted = withContext(Dispatchers.EDT) {
             fixture.configureByText("complete-alias-addresses.asm", source)
@@ -509,11 +510,12 @@ class MipsFormattingPlatformTest {
             assertEquals(result, reformat())
             result
         }
-        assertEquals("""
+        assertEquals(
+          $$"""
             .eqv LOAD lw
-            .eqv DEST ${'$'}t0
-            .eqv BASE ${'$'}sp
-            .eqv PAIR ${'$'}t2, 8
+            .eqv DEST $t0
+            .eqv BASE $sp
+            .eqv PAIR $t2, 8
             .eqv LABEL entry:
             .text
                 lw DEST (BASE)
@@ -521,7 +523,7 @@ class MipsFormattingPlatformTest {
             LABEL lw DEST (BASE)
                 lw PAIR(BASE)
                 LOAD PAIR(BASE)
-                lw ${'$'}t1, 4(${'$'}sp)
+                lw $t1, 4($sp)
         """.trimIndent(), formatted)
         assertEquals(assemble(directory.resolve("complete-before.asm"), source),
             assemble(directory.resolve("complete-after.asm"), formatted))
@@ -530,25 +532,25 @@ class MipsFormattingPlatformTest {
     @Test
     fun `operand aliases that leave invalid or incomplete syntax keep their internal spacing`() = timeoutRunBlocking<Unit> {
         withContext(Dispatchers.EDT) {
-            val source = """
+            val source = $$"""
                 .eqv OFFSET 4
                 .eqv LOAD lw
                 .eqv FIRST SECOND
                 .eqv SECOND FIRST
                 .text
-                lw ${'$'}t0 , OFFSET  ( ${'$'}sp
-                lw ${'$'}t1 , FIRST  ( ${'$'}sp
-                lw ${'$'}t2 , UNKNOWN  ( ${'$'}sp
-                LOAD ${'$'}t3, OFFSET  ( ${'$'}sp
+                lw $t0 , OFFSET  ( $sp
+                lw $t1 , FIRST  ( $sp
+                lw $t2 , UNKNOWN  ( $sp
+                LOAD $t3, OFFSET  ( $sp
                 .word OFFSET    )
                 next: nop
             """.trimIndent()
             fixture.configureByText("incomplete-addresses.asm", source)
             val result = reformat()
-            assertTrue("${'$'}t0 , OFFSET  ( ${'$'}sp" in result, result)
-            assertTrue("${'$'}t1 , FIRST  ( ${'$'}sp" in result, result)
-            assertTrue("${'$'}t2 , UNKNOWN  ( ${'$'}sp" in result, result)
-            assertTrue("LOAD ${'$'}t3, OFFSET (${'$'}sp" in result, result)
+            assertTrue($$"$t0 , OFFSET  ( $sp" in result, result)
+            assertTrue($$"$t1 , FIRST  ( $sp" in result, result)
+            assertTrue($$"$t2 , UNKNOWN  ( $sp" in result, result)
+            assertTrue($$"LOAD $t3, OFFSET ($sp" in result, result)
             assertTrue(".word OFFSET    )" in result, result)
             assertTrue("next: nop" in result, result)
             assertEquals(result, reformat())
@@ -557,7 +559,7 @@ class MipsFormattingPlatformTest {
 
     @Test
     fun `expanded labels and directives set the margin without rewriting aliases`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
-        val source = """
+        val source = $$"""
             .eqv DATA .data
             .eqv TEXT .text
             .eqv SEP :
@@ -566,7 +568,7 @@ class MipsFormattingPlatformTest {
                DATA
             number   SEP    .word  VALUE
                 TEXT
-               MARKER   li  ${'$'}t0 ,  VALUE
+               MARKER   li  $t0 ,  VALUE
                entry    SEP   nop
                 addiu   SEP   nop
               j   target
@@ -577,7 +579,8 @@ class MipsFormattingPlatformTest {
             assertEquals(result, reformat())
             result
         }
-        assertEquals("""
+        assertEquals(
+          $$"""
             .eqv DATA .data
             .eqv TEXT .text
             .eqv SEP :
@@ -586,7 +589,7 @@ class MipsFormattingPlatformTest {
             DATA
             number SEP .word VALUE
             TEXT
-            MARKER li ${'$'}t0, VALUE
+            MARKER li $t0, VALUE
             entry SEP nop
             addiu SEP nop
                 j target
@@ -597,12 +600,12 @@ class MipsFormattingPlatformTest {
 
     @Test
     fun `macro indentation follows effective boundaries inside and outside physical macro blocks`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
-        val source = """
+        val source = $$"""
             .eqv OPEN .macro
             .eqv CLOSE .end_macro
             .text
               OPEN first (%arg)
-            local: addiu ${'$'}t0, ${'$'}zero, %arg
+            local: addiu $t0, $zero, %arg
             .eqv VALUE 6
                  CLOSE # closes the aliased opener
                 outside: nop
@@ -623,12 +626,13 @@ class MipsFormattingPlatformTest {
             assertEquals(result, reformat())
             result
         }
-        assertEquals("""
+        assertEquals(
+          $$"""
             .eqv OPEN .macro
             .eqv CLOSE .end_macro
             .text
             OPEN first (%arg)
-                local: addiu ${'$'}t0, ${'$'}zero, %arg
+                local: addiu $t0, $zero, %arg
                 .eqv VALUE 6
             CLOSE # closes the aliased opener
             outside: nop
@@ -706,7 +710,7 @@ class MipsFormattingPlatformTest {
     fun `selection formatting respects project indent size and preserves malformed lines`() = timeoutRunBlocking<Unit> {
         val current = project.get()
         withContext(Dispatchers.EDT) {
-            val source = ".text\nstart :   nop\n   lw ${'$'}t0,4(${'$'}sp\n  addiu ${'$'}t0 , ${'$'}zero , 1\nnext :    nop\n"
+            val source = $$".text\nstart :   nop\n   lw $t0,4($sp\n  addiu $t0 , $zero , 1\nnext :    nop\n"
             val settings = CodeStyle.createTestSettings(CodeStyle.getSettings(current))
             settings.getCommonSettings(MipsLanguage).indentOptions!!.INDENT_SIZE = 2
             settings.AUTODETECT_INDENTS = false
@@ -719,7 +723,7 @@ class MipsFormattingPlatformTest {
                     CodeStyleManager.getInstance(current).reformatText(fixture.file, listOf(TextRange(start, end)))
                 }
                 assertEquals(
-                    ".text\nstart :   nop\n   lw ${'$'}t0,4(${'$'}sp\n  addiu ${'$'}t0, ${'$'}zero, 1\nnext :    nop\n",
+                  $$".text\nstart :   nop\n   lw $t0,4($sp\n  addiu $t0, $zero, 1\nnext :    nop\n",
                     fixture.editor.document.text,
                 )
             })
@@ -840,7 +844,7 @@ class MipsFormattingPlatformTest {
             assertEquals(assemble(directory.resolve("before.mars"), source, 56),
                 assemble(directory.resolve("after.mars"), formatted, 56))
 
-            val unresolved = ".eqv REGISTER \$t0\n.data\n.ascii \"\"\nPAD   1 : 2\n.word 0\nREGISTER   1 : 2\n"
+            val unresolved = $$".eqv REGISTER $t0\n.data\n.ascii \"\"\nPAD   1 : 2\n.word 0\nREGISTER   1 : 2\n"
             val unresolvedFormatted = withContext(Dispatchers.EDT) {
                 fixture.configureByText("repeat-while-editing.mars", unresolved)
                 reformat()
@@ -852,7 +856,7 @@ class MipsFormattingPlatformTest {
     @Test
     fun `formatting compact macro offsets keeps signed fields and normalizes commas`(@TempDir directory: Path) =
         timeoutRunBlocking<Unit> {
-            val source = """
+            val source = $$"""
                 .macro compact (%out,%label,%base)
                 la %out,%label+4
                 lw %out,%label,+4( %base )
@@ -862,7 +866,7 @@ class MipsFormattingPlatformTest {
                 .data
                 values: .word -1,+2
                 .text
-                compact(${'$'}t0,values,${'$'}sp)
+                compact($t0,values,$sp)
             """.trimIndent()
             val formatted = withContext(Dispatchers.EDT) {
                 fixture.configureByText("compact-offsets.asm", source)
@@ -870,7 +874,7 @@ class MipsFormattingPlatformTest {
                 assertEquals(result, reformat())
                 result
             }
-            val expected = """
+            val expected = $$"""
                 .macro compact (%out, %label, %base)
                     la %out, %label+4
                     lw %out, %label, +4(%base)
@@ -880,7 +884,7 @@ class MipsFormattingPlatformTest {
                 .data
                 values: .word -1, +2
                 .text
-                    compact(${'$'}t0, values, ${'$'}sp)
+                    compact($t0, values, $sp)
             """.trimIndent()
             assertEquals(assemble(directory.resolve("compact-before.asm"), source),
                 assemble(directory.resolve("compact-after.asm"), formatted))
@@ -890,18 +894,18 @@ class MipsFormattingPlatformTest {
     @Test
     fun `formatting preserves unjoined signs and can recover around broken syntax`() = timeoutRunBlocking<Unit> {
         withContext(Dispatchers.EDT) {
-            val source = """
+            val source = $$"""
                 .data
                 message: .asciiz"x  y"
                 .word 1e-2, 1-2+3
                 .text
-                entry   :   la ${'$'}t0 , message+4
+                entry   :   la $t0 , message+4
                 malformed: )  6  (
                 unknown 'X,   7
-                lw ${'$'}t0 , 4  ( ${'$'}sp
-                lw ${'$'}t1  ,  0(${'$'}sp)
-                lw ${'$'}t2   ,  4(${'$'}sp)
-                addiu ${'$'}t0, ${'$'}t0, - 4
+                lw $t0 , 4  ( $sp
+                lw $t1  ,  0($sp)
+                lw $t2   ,  4($sp)
+                addiu $t0, $t0, - 4
                 next :   nop
             """.trimIndent()
             fixture.configureByText("recovery.asm", source)
@@ -909,11 +913,11 @@ class MipsFormattingPlatformTest {
             assertTrue("message: .asciiz\"x  y\"" in result, result)
             assertTrue("1e-2" in result, result)
             assertTrue("1-2+3" in result, result)
-            assertTrue("entry: la ${'$'}t0, message+4" in result, result)
+            assertTrue($$"entry: la $t0, message+4" in result, result)
             assertTrue("malformed: )  6  (" in result, result)
             assertTrue("unknown 'X,   7" in result, result)
-            assertTrue("${'$'}t1  " in result, result)
-            assertTrue("${'$'}t2   ," in result, result)
+            assertTrue($$"$t1  " in result, result)
+            assertTrue($$"$t2   ," in result, result)
             assertTrue("- 4" in result, result)
             assertTrue("next: nop" in result, result)
             assertEquals(result, reformat())

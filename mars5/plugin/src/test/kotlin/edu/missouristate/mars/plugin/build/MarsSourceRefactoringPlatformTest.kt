@@ -163,7 +163,7 @@ class MarsSourceRefactoringPlatformTest {
 
     private fun stored(path: Path): String {
         val projectPath = Path.of(requireNotNull(project.basePath))
-        return "\$PROJECT_DIR\$/${projectPath.relativize(path).invariantSeparatorsPathString}"
+        return $$"$PROJECT_DIR$/$${projectPath.relativize(path).invariantSeparatorsPathString}"
     }
 
     private fun withUndo(action: (UndoManager) -> Unit) {

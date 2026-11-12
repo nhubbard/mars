@@ -42,7 +42,7 @@ class MipsEquivalenceReferencesPlatformTest {
         timeoutRunBlocking<Unit> {
             val definition = ".eqv DECLARE VALUE 7\n"
             val shortForm = ".eqv DECLARE\n"
-            val use = "addiu \$t0, \$zero, VALUE\n"
+            val use = $$"addiu $t0, $zero, VALUE\n"
             val source = definition + shortForm + use
             val entry = directory.resolve("short-equivalence.asm").also { it.writeText(source) }
             val program = project.get().service<MarsSessionService>().context.assemble(listOf(entry), null, true, false)
@@ -65,7 +65,7 @@ class MipsEquivalenceReferencesPlatformTest {
         }
         val include = ".include \"parts/outer.s\"\n"
         val definition = ".eqv COUNT 4\n"
-        val use = "li \$t0, CO<caret>UNT\n"
+        val use = $$"li $t0, CO<caret>UNT\n"
         assertEquals("inner.s", target(".include \"missing.s\"\n$include$definition$use")?.file)
         assertTrue(target("$definition$include$use")?.inEntry == true)
         assertNull(target("$use$include"))
@@ -77,7 +77,7 @@ class MipsEquivalenceReferencesPlatformTest {
         val current = project.get()
         withContext(Dispatchers.EDT) {
             fixture.addFileToProject("cycle.s", ".include \"cycle.s\"\n.eqv COUNT 4\n")
-            fixture.configureByText("entry.asm", ".include \"cycle.s\"\nli \$t0, CO<caret>UNT\n")
+            fixture.configureByText("entry.asm", $$".include \"cycle.s\"\nli $t0, CO<caret>UNT\n")
         }
         IndexingTestUtil.suspendUntilIndexesAreReady(current)
         withContext(Dispatchers.EDT) {
@@ -94,12 +94,12 @@ class MipsEquivalenceReferencesPlatformTest {
     @Test
     fun `equivalences bind in immediate segment macro argument and operation positions`() = timeoutRunBlocking<Unit> {
         for ((source, name) in listOf(
-            ".eqv VALUE 4\nsll \$t0, \$t1, VA<caret>LUE\n" to "VALUE",
+            $$".eqv VALUE 4\nsll $t0, $t1, VA<caret>LUE\n" to "VALUE",
             ".eqv BASE 0x10010000\n.data BA<caret>SE\n" to "BASE",
             ".eqv EMIT nop\nEM<caret>IT\n" to "EMIT",
             ".eqv VALUE 4\nemit(VA<caret>LUE)\n" to "VALUE",
-            ".eqv END )\nlw \$t0, 4(\$sp E<caret>ND\n" to "END",
-            ".eqv VALUE 4\n.eqv ALIAS VALUE\nli \$t0, AL<caret>IAS\n" to "ALIAS",
+            $$".eqv END )\nlw $t0, 4($sp E<caret>ND\n" to "END",
+            $$".eqv VALUE 4\n.eqv ALIAS VALUE\nli $t0, AL<caret>IAS\n" to "ALIAS",
             ".macro emit\n.eqv VALUE 4\n.end_macro\n.word VA<caret>LUE\n" to "VALUE",
         )) {
             val declaration = target(source)
@@ -107,7 +107,7 @@ class MipsEquivalenceReferencesPlatformTest {
             assertEquals(SymbolKind.CONSTANT, declaration?.kind, source)
         }
         assertNull(target(".eqv VALUE 4\n.eqv ALIAS VA<caret>LUE\n"))
-        assertNull(target(".eqv VALUE\nli \$t0, VA<caret>LUE\n"))
+        assertNull(target($$".eqv VALUE\nli $t0, VA<caret>LUE\n"))
     }
 
     @Test
@@ -115,7 +115,7 @@ class MipsEquivalenceReferencesPlatformTest {
         val generator = ".eqv DEFINE .eqv\n.eqv MAKE DEFINE\n"
         val definitions = "start: MAKE COUNT 7\nMAKE LIMIT COUNT\n"
         val include = ".include \"definitions.s\"\n"
-        val use = "addiu \$t0, \$zero, LI<caret>MIT\n"
+        val use = $$"addiu $t0, $zero, LI<caret>MIT\n"
         withContext(Dispatchers.EDT) { fixture.addFileToProject("definitions.s", definitions) }
         val source = "$generator$include$use"
         assertEquals(Target("definitions.s", "MAKE", null, false, definitions.lastIndexOf("MAKE")), target(source))
@@ -135,7 +135,7 @@ class MipsEquivalenceReferencesPlatformTest {
     @Test
     fun `macro operands that record equivalences are visible after the call`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
         val macro = ".macro discard (%first, %directive, %name, %value)\nnop\n.end_macro\n"
-        val use = "addiu \$t0, \$zero, CO<caret>UNT\n"
+        val use = $$"addiu $t0, $zero, CO<caret>UNT\n"
         val context = project.get().service<MarsSessionService>().context
         for (directive in listOf(".eQv", "DEFINE")) {
             val call = "discard ignored $directive COUNT 7\n"
@@ -156,11 +156,11 @@ class MipsEquivalenceReferencesPlatformTest {
         timeoutRunBlocking<Unit> {
             val aliases = ".eqv DEFINE .eqv\n.eqv WHOLE .eqv COUNT 7\n.eqv PREFIX 2 .eqv COUNT 7\n"
             val beforeBody = aliases + ".macro unused\n"
-            val use = "addiu \$t0, \$zero, CO<caret>UNT\n"
+            val use = $$"addiu $t0, $zero, CO<caret>UNT\n"
             val context = project.get().service<MarsSessionService>().context
             for ((body, site) in listOf(
-                "li \$t0 .eqv COUNT 7" to ".eqv",
-                "li \$t0 DEFINE COUNT 7" to "DEFINE",
+                $$"li $t0 .eqv COUNT 7" to ".eqv",
+                $$"li $t0 DEFINE COUNT 7" to "DEFINE",
                 "1 2 .eqv COUNT 7" to ".eqv",
                 "-1 , 'A' DEFINE COUNT 7" to "DEFINE",
                 "1 2 WHOLE" to "WHOLE",
@@ -189,7 +189,7 @@ class MipsEquivalenceReferencesPlatformTest {
             val macro = ".macro discard (%first, %directive, %name, %value)\n.end_macro\n"
             for (line in listOf("MAKE RESULT VALUE", "discard VALUE .eqv RESULT VALUE")) {
                 val before = definitions + macro
-                val use = "addiu \$t0, \$zero, RESULT\n"
+                val use = $$"addiu $t0, $zero, RESULT\n"
                 val source = "$before$line\n$use"
                 val entry = directory.resolve("definition.asm").also { it.writeText(source) }
                 val program = project.get().service<MarsSessionService>().context.assemble(listOf(entry), null, true, false)
@@ -201,21 +201,21 @@ class MipsEquivalenceReferencesPlatformTest {
                 val result = target("$before$line\n" + use.replace("RESULT", "RES<caret>ULT"))
                 assertEquals(if (line.startsWith("MAKE")) "MAKE" else ".eqv", result?.name)
             }
-            val usageSource = "${definitions}MAKE RESULT VALUE\nli \$t0, VALUE\n"
+            val usageSource = $$"$${definitions}MAKE RESULT VALUE\nli $t0, VALUE\n"
             assertEquals("MAKE", target(usageSource.replace("MAKE RESULT", "MA<caret>KE RESULT"))?.name)
             readAction {
                 val definition = fixture.file.findElementAt(usageSource.indexOf("VALUE"))!!.parent as MipsDeclaration
                 val usages = fixture.findUsages(definition).map { it.reference!!.element.textOffset }
                 assertEquals(listOf(usageSource.lastIndexOf("VALUE")), usages)
             }
-            val cycle = ".eqv FIRST SECOND\n.eqv SECOND FIRST\nli \$t0, F<caret>IRST\n"
+            val cycle = $$".eqv FIRST SECOND\n.eqv SECOND FIRST\nli $t0, F<caret>IRST\n"
             assertEquals("FIRST", target(cycle)?.name)
         }
 
     @Test
     fun `generated lookups refresh when an include appears or its unsaved PSI changes`() = timeoutRunBlocking<Unit> {
         val current = project.get()
-        val source = ".eqv DEFINE .eqv\n.include \"late.s\"\nli \$t0, CO<caret>UNT\n"
+        val source = $$".eqv DEFINE .eqv\n.include \"late.s\"\nli $t0, CO<caret>UNT\n"
         assertNull(target(source))
         val included = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("late.s", "DEFINE COUNT 7\n").virtualFile
@@ -235,7 +235,7 @@ class MipsEquivalenceReferencesPlatformTest {
     @Test
     fun `included sources follow a unique entry before assembly and respect explicit entry selection`() = timeoutRunBlocking<Unit> {
         val current = project.get()
-        val source = "li \$t0, VALUE\n"
+        val source = $$"li $t0, VALUE\n"
         val include = ".include \"part.s\"\n"
         val firstSource = ".eqv VALUE 7\n$include"
         val secondSource = ".eqv VALUE 8\n$include"

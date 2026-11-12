@@ -46,14 +46,14 @@ class MipsReferenceIndexPlatformTest {
 
     @Test
     fun `native index records unresolved symbol kinds offsets and physical macro ownership`() = timeoutRunBlocking<Unit> {
-        val source = """
+        val source = $$"""
             .eqv Alias .emit
             .eqv Literal NOP
             ,,.macro,, .emit (%arg FORMALS, 7)
               .macro rejected
               .end_macro stray
-              local: lw,, ${'$'}t0,,,Shared+4(${'$'}sp)
-              lw ${'$'}t0,0(${'$'}sp CLOSE
+              local: lw,, $t0,,,Shared+4($sp)
+              lw $t0,0($sp CLOSE
               ) BODY_SYMBOL (
             .end_macro
             .macro nop
@@ -61,15 +61,15 @@ class MipsReferenceIndexPlatformTest {
             ,,top,, :,, .emit(,,Shared,,,NOP)
             b NOP
             .globl Shared
-            .word ${'$'}gcc, .1_private
+            .word $gcc, .1_private
             .float NaN, Infinity
             .set noat ), :
             .extern STORAGE_NAME 4
             .extern nop 4
             .data DATA_ADDRESS trailing
-            .text ${'$'}textAddress unused
+            .text $textAddress unused
             .kdata 0x90000020 ignored
-            li ${'$'}v0, invalid%name
+            li $v0, invalid%name
             .asciiz "literal"
             # comment
             erased: .eqv BAD hidden @ .include "missing.s"
@@ -107,12 +107,12 @@ class MipsReferenceIndexPlatformTest {
             assertEquals(listOf(MipsReferenceSite(SymbolKind.CONSTANT, source.indexOf("rejected"), macro)), sites("rejected"))
             assertEquals(listOf(MipsReferenceSite(SymbolKind.CONSTANT, source.indexOf("local:"), macro)), sites("local"))
             assertEquals(listOf(MipsReferenceSite(SymbolKind.CONSTANT, source.indexOf("top,,"), -1)), sites("top"))
-            assertEquals(operandKinds.map { MipsReferenceSite(it, source.indexOf("\$gcc"), -1) }, sites("\$gcc"))
+            assertEquals(operandKinds.map { MipsReferenceSite(it, source.indexOf($$"$gcc"), -1) }, sites($$"$gcc"))
             assertEquals(operandKinds.map { MipsReferenceSite(it, source.indexOf(".1_private"), -1) }, sites(".1_private"))
-            for (name in listOf("DATA_ADDRESS", "\$textAddress", "STORAGE_NAME")) {
+            for (name in listOf("DATA_ADDRESS", $$"$textAddress", "STORAGE_NAME")) {
                 assertEquals(listOf(MipsReferenceSite(SymbolKind.CONSTANT, source.indexOf(name), -1)), sites(name))
             }
-            for (name in listOf("Alias", "Literal", "shared", "%arg", "\$t0", "lw", "NaN", "Infinity",
+            for (name in listOf("Alias", "Literal", "shared", "%arg", $$"$t0", "lw", "NaN", "Infinity",
                 "trailing", "unused", "ignored", "stray",
                 "noat", "invalid%name", "literal", "comment", "erased", "BAD", "hidden", "missing.s", "nop")) {
                 assertTrue(sites(name).isEmpty(), name)

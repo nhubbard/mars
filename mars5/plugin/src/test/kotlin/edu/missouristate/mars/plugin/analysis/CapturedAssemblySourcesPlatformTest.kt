@@ -57,13 +57,13 @@ class CapturedAssemblySourcesPlatformTest {
     @Test
     fun `captures uncommitted entry and transitive include documents before assembly`() = timeoutRunBlocking<Unit> {
         val include = if (SystemInfoRt.isWindows) "/parts/outer.txt" else "./parts/outer.txt"
-        val mainText = ".include \"$include\"\nli \$t0, VALUE\n"
+        val mainText = $$".include \"$$include\"\nli $t0, VALUE\n"
         val innerText = ".eqv VALUE 42\n"
         val (main, outer, inner, handler) = withContext(Dispatchers.EDT) {
             val leaf = fixture.addFileToProject("parts/with spaces#é.txt", ".eqv VALUE 1\n").virtualFile
             val entry = fixture.addFileToProject("main.asm", "nop\n").virtualFile
             val intermediate = fixture.addFileToProject("parts/outer.txt", ".include \"${leaf.path}\"\n").virtualFile
-            val start = fixture.addFileToProject("startup.s", "addiu \$s0, \$zero, 17\n").virtualFile
+            val start = fixture.addFileToProject("startup.s", $$"addiu $s0, $zero, 17\n").virtualFile
             edit(entry, mainText)
             edit(leaf, innerText)
             listOf(entry, intermediate, leaf, start)
@@ -101,7 +101,8 @@ class CapturedAssemblySourcesPlatformTest {
             val main = fixture.addFileToProject("entry.mars", ".include \"payload.png\"\nemit\nj destination\nj raw_target\n") as MipsFile
             fixture.addFileToProject("tail.inc", "destination: nop\n")
             val path = main.virtualFile.toNioPath().resolveSibling("payload.png")
-            val text = ".include \"tail.inc\"\r\nraw_target: j destination\r\n.macro emit\r\naddiu \$t0, \$zero, 42\r\n.end_macro\r\n"
+            val text =
+              $$".include \"tail.inc\"\r\nraw_target: j destination\r\n.macro emit\r\naddiu $t0, $zero, 42\r\n.end_macro\r\n"
             Files.write(path, byteArrayOf(0xff.toByte(), 0xfe.toByte()) + text.toByteArray(Charsets.UTF_16LE))
             val include = checkNotNull(VirtualFileManager.getInstance().refreshAndFindFileByNioPath(path))
             main to include
@@ -114,7 +115,7 @@ class CapturedAssemblySourcesPlatformTest {
         val sources = initial.sources
         assertEquals(setOf(path), sources.diskSources)
         assertEquals(setOf(entry, path, path.resolveSibling("tail.inc")), sources.snapshot.texts().keys)
-        assertEquals(".include \"tail.inc\"\nraw_target: j destination\n.macro emit\naddiu \$t0, \$zero, 42\n.end_macro\n", sources.snapshot.texts()[path])
+        assertEquals($$".include \"tail.inc\"\nraw_target: j destination\n.macro emit\naddiu $t0, $zero, 42\n.end_macro\n", sources.snapshot.texts()[path])
 
         val component = MarsSessionService.createMarsComponent()
         component.context().use {
@@ -199,7 +200,7 @@ class CapturedAssemblySourcesPlatformTest {
         }
 
         withContext(Dispatchers.EDT) {
-            Files.writeString(path, ".include \"tail.inc\"\n.macro emit\naddiu \$t0, \$zero, 17\n.end_macro\n")
+            Files.writeString(path, $$".include \"tail.inc\"\n.macro emit\naddiu $t0, $zero, 17\n.end_macro\n")
             include.refresh(false, false)
         }
         readAction {
@@ -298,9 +299,9 @@ class CapturedAssemblySourcesPlatformTest {
                 output.write(byteArrayOf(0xff.toByte(), 0xfe.toByte()))
                 output.bufferedWriter(Charsets.UTF_16LE).use { writer ->
                     repeat(commentCount) { writer.write(diskLine) }
-                    writer.write(".include \"tail.s\"\r\n\taddiu \$t0, \$zero, 7\r\n")
+                    writer.write($$".include \"tail.s\"\r\n\taddiu $t0, $zero, 7\r\n")
                     writer.write("#" + " ".repeat(32_768) + "\r\n")
-                    writer.write("\taddiu \$t1, \$zero, 8\r\n\ttarget: nop\r\n.macro emit # Macro documentation\r\nnop\r\n.end_macro\r\n")
+                    writer.write($$"\taddiu $t1, $zero, 8\r\n\ttarget: nop\r\n.macro emit # Macro documentation\r\nnop\r\n.end_macro\r\n")
                     writer.write("${padding}farTarget: nop\r\n.macro ${padding}padded # Wide definition\r\nnop\r\n.end_macro\r\n")
                 }
             }
@@ -319,7 +320,7 @@ class CapturedAssemblySourcesPlatformTest {
         }
 
         val capture = captureAssemblySources(listOf(entry), null)
-        assertTrue(capture.snapshot.texts().getValue(largePath).contains("\taddiu \$t1, \$zero, 8\n\ttarget: nop\n"))
+        assertTrue(capture.snapshot.texts().getValue(largePath).contains($$"\taddiu $t1, $zero, 8\n\ttarget: nop\n"))
         assertTrue(largePath.resolveSibling("tail.s") in capture.snapshot.texts())
         val component = MarsSessionService.createMarsComponent()
         component.context().use { session ->
@@ -374,7 +375,7 @@ class CapturedAssemblySourcesPlatformTest {
                 assertNull(MarsExecutionSources(capture).location(position.file, position.line))
                 val excerpt = checkNotNull(documents.getDocument(position.file))
                 val lineStart = excerpt.getLineStartOffset(position.line)
-                assertTrue(excerpt.text.startsWith("\taddiu \$t0, \$zero, 7\n", lineStart))
+                assertTrue(excerpt.text.startsWith($$"\taddiu $t0, $zero, 7\n", lineStart))
                 val descriptor = sources.hyperlink(project.get(), location, 2).descriptor
                 assertSame(position.file, descriptor?.file)
                 assertEquals(lineStart + 1, descriptor?.offset)
@@ -388,7 +389,7 @@ class CapturedAssemblySourcesPlatformTest {
                 assertSame(next.file, sources.position(Location(largePath, instructionLine + 3)).file)
                 val nextExcerpt = checkNotNull(documents.getDocument(next.file))
                 assertTrue(nextExcerpt.text.startsWith("# "))
-                assertTrue(nextExcerpt.text.startsWith("\taddiu \$t1, \$zero, 8\n", nextExcerpt.getLineStartOffset(next.line)))
+                assertTrue(nextExcerpt.text.startsWith($$"\taddiu $t1, $zero, 8\n", nextExcerpt.getLineStartOffset(next.line)))
                 wideLink.file
             }
             withContext(Dispatchers.EDT) {
@@ -499,8 +500,8 @@ class CapturedAssemblySourcesPlatformTest {
     fun `separately selected directory aliases retain each entry's unsaved source and include set`() = timeoutRunBlocking<Unit> {
         val (main, alias) = withContext(Dispatchers.EDT) {
             val entry = fixture.addFileToProject("source/main.asm", ".include \"saved.s\"\n").virtualFile
-            fixture.addFileToProject("source/saved.s", "addiu \$t0, \$zero, 7\n")
-            fixture.addFileToProject("source/edited.s", "addiu \$t1, \$zero, 2\n")
+            fixture.addFileToProject("source/saved.s", $$"addiu $t0, $zero, 7\n")
+            fixture.addFileToProject("source/edited.s", $$"addiu $t1, $zero, 2\n")
             val link = Files.createSymbolicLink(entry.toNioPath().parent.resolveSibling("shortcut"), entry.toNioPath().parent)
             val shortcut = checkNotNull(VirtualFileManager.getInstance().refreshAndFindFileByNioPath(link))
             val aliasFile = checkNotNull(shortcut.findChild("main.asm"))

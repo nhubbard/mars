@@ -49,9 +49,9 @@ class MipsSmartEnterPlatformTest {
     fun `complete statement closes matching basic and extended memory operands before comments`() = timeoutRunBlocking<Unit> {
         withContext(Dispatchers.EDT) {
             val cases = listOf(
-                "mark: lw ${'$'}t0, -4(${'$'}sp<caret>  # keep me" to "mark: lw ${'$'}t0, -4(${'$'}sp)  # keep me",
-                "    sw ${'$'}t0 (${'$'}s0<caret>" to "    sw ${'$'}t0 (${'$'}s0)",
-                "    lw ${'$'}t0, item(${'$'}s0<caret>" to "    lw ${'$'}t0, item(${'$'}s0)",
+                $$"mark: lw $t0, -4($sp<caret>  # keep me" to $$"mark: lw $t0, -4($sp)  # keep me",
+                $$"    sw $t0 ($s0<caret>" to $$"    sw $t0 ($s0)",
+                $$"    lw $t0, item($s0<caret>" to $$"    lw $t0, item($s0)",
             )
             for ((written, closed) in cases) {
                 fixture.configureByText("main.s", "$written\ntail: nop\n")
@@ -66,8 +66,8 @@ class MipsSmartEnterPlatformTest {
     fun `complete statement repairs effective memory instructions from included aliases`(@TempDir directory: Path) =
         timeoutRunBlocking<Unit> {
             val current = project.get()
-            val definitions = ".eqv LOAD lw\n.eqv BASE \$sp\n.eqv OFFSET 4(\n" +
-                ".eqv CLOSED \$sp)\n.eqv WHOLE LOAD \$t0, OFFSET BASE\n.eqv INVALID \$f0\n"
+            val definitions = $$".eqv LOAD lw\n.eqv BASE $sp\n.eqv OFFSET 4(\n" +
+                $$".eqv CLOSED $sp)\n.eqv WHOLE LOAD $t0, OFFSET BASE\n.eqv INVALID $f0\n"
             val include = ".include \"addresses.inc\""
             withContext(Dispatchers.EDT) { fixture.addFileToProject("addresses.inc", definitions) }
             IndexingTestUtil.suspendUntilIndexesAreReady(current)
@@ -78,19 +78,19 @@ class MipsSmartEnterPlatformTest {
                     assertEquals(listOf(include, closed, "", "tail: nop", ""), lines(), written)
                     assertEquals(2, fixture.editor.caretModel.logicalPosition.line)
                 }
-                check("mark: LOAD \$t0, 4(BASE<caret>  # preserve", "mark: LOAD \$t0, 4(BASE)  # preserve")
-                check("lw \$t0, OFFSET BASE<caret>", "lw \$t0, OFFSET BASE)")
+                check($$"mark: LOAD $t0, 4(BASE<caret>  # preserve", $$"mark: LOAD $t0, 4(BASE)  # preserve")
+                check($$"lw $t0, OFFSET BASE<caret>", $$"lw $t0, OFFSET BASE)")
                 check("WHOLE<caret>", "WHOLE)")
-                check("LOAD \$t0, tail(BASE<caret>", "LOAD \$t0, tail(BASE)")
-                check("lw \$t0, 4(CLOSED<caret>", "lw \$t0, 4(CLOSED")
-                check("LOAD \$t0, 4(INVALID<caret>", "LOAD \$t0, 4(INVALID")
+                check($$"LOAD $t0, tail(BASE<caret>", $$"LOAD $t0, tail(BASE)")
+                check($$"lw $t0, 4(CLOSED<caret>", $$"lw $t0, 4(CLOSED")
+                check($$"LOAD $t0, 4(INVALID<caret>", $$"LOAD $t0, 4(INVALID")
                 check("emit 4(BASE<caret>", "emit 4(BASE")
                 val settings = current.service<MarsAssemblySettings>()
                 settings.changeAssemblerOptions(false, warningsAreErrors = false)
-                check("LOAD \$t0, tail(BASE<caret>", "LOAD \$t0, tail(BASE")
+                check($$"LOAD $t0, tail(BASE<caret>", $$"LOAD $t0, tail(BASE")
                 settings.changeBareMachine(true)
-                check("LOAD \$8, 4(BASE<caret>", "LOAD \$8, 4(BASE")
-                check("LOAD \$8, 4(\$29<caret>", "LOAD \$8, 4(\$29)")
+                check($$"LOAD $8, 4(BASE<caret>", $$"LOAD $8, 4(BASE")
+                check($$"LOAD $8, 4($29<caret>", $$"LOAD $8, 4($29)")
                 fixture.file.text
             }
             directory.resolve("addresses.inc").writeText(definitions)
@@ -103,8 +103,8 @@ class MipsSmartEnterPlatformTest {
     fun `complete statement closes macro wrappers only when they select a visible overload`(@TempDir directory: Path) =
         timeoutRunBlocking<Unit> {
             val current = project.get()
-            val definitions = ".eqv CALL emit\n.eqv WHOLE CALL(\$t0, 7\n.eqv OPEN_QUOTE \"text\n" +
-                ".macro emit (%dst, %value)\naddiu %dst, \$zero, %value\n.end_macro\n" +
+            val definitions = $$".eqv CALL emit\n.eqv WHOLE CALL($t0, 7\n.eqv OPEN_QUOTE \"text\n" +
+                $$".macro emit (%dst, %value)\naddiu %dst, $zero, %value\n.end_macro\n" +
                 ".macro empty\n.end_macro\n.macro quote (%value)\n.end_macro\n" +
                 ".macro dual (%value)\n.end_macro\n.macro dual (%raw, %value)\n.end_macro\n" +
                 ".macro three (%directive, %name, %value)\n.end_macro\n"
@@ -118,22 +118,24 @@ class MipsSmartEnterPlatformTest {
                     assertEquals(listOf(include, expected, "") + tail.lines(), lines(), written)
                     assertEquals(2, fixture.editor.caretModel.logicalPosition.line)
                 }
-                check("emit(\$t0, 7<caret>", "emit(\$t0, 7)")
+                check($$"emit($t0, 7<caret>", $$"emit($t0, 7)")
                 check("empty(<caret>", "empty()")
-                check("emit(\$t0<caret>", "emit(\$t0")
-                check("emit(\$t0)<caret>", "emit(\$t0)")
+                check($$"emit($t0<caret>", $$"emit($t0")
+                check($$"emit($t0)<caret>", $$"emit($t0)")
                 check("dual(7<caret>", "dual(7")
-                check("emit \$t0, 7<caret>", "emit \$t0, 7")
-                check("emit(\$t0, @<caret>", "emit(\$t0, @")
+                check($$"emit $t0, 7<caret>", $$"emit $t0, 7")
+                check($$"emit($t0, @<caret>", $$"emit($t0, @")
                 check("quote(OPEN_QUOTE \" ) # end\"<caret>", "quote(OPEN_QUOTE \" ) # end\"")
                 check("three(.eqv SIDE_EFFECT 7<caret>", "three(.eqv SIDE_EFFECT 7")
                 check("later(<caret>", "later(", ".macro later\n.end_macro\n")
-                fixture.configureByText("macro-repair.mars", "$include\n.macro wrapper\nemit(\$t0, 7<caret>\n.end_macro\n")
+                fixture.configureByText("macro-repair.mars",
+                  $$"$$include\n.macro wrapper\nemit($t0, 7<caret>\n.end_macro\n"
+                )
                 complete()
-                assertEquals(listOf(include, ".macro wrapper", "emit(\$t0, 7", "", ".end_macro", ""), lines())
-                fixture.configureByText("macro-repair.mars", "$include\nemit(\$t0, 7<caret>\n")
+                assertEquals(listOf(include, ".macro wrapper", $$"emit($t0, 7", "", ".end_macro", ""), lines())
+                fixture.configureByText("macro-repair.mars", $$"$$include\nemit($t0, 7<caret>\n")
                 DumbModeTestUtils.runInDumbModeSynchronously(current) { complete() }
-                assertEquals(listOf(include, "emit(\$t0, 7", "", ""), lines())
+                assertEquals(listOf(include, $$"emit($t0, 7", "", ""), lines())
                 check("entry: WHOLE<caret>  # preserve", "entry: WHOLE)  # preserve")
                 fixture.file.text
             }
@@ -148,7 +150,7 @@ class MipsSmartEnterPlatformTest {
         timeoutRunBlocking<Unit> {
             val current = project.get()
             val incomplete = ".macro emit (%value)\n.end_macro\n.include \"shared.inc\"\n"
-            val valid = ".macro emit (%raw, %value)\naddiu \$t0, \$zero, %value\n.end_macro\n.include \"shared.inc\"\n"
+            val valid = $$".macro emit (%raw, %value)\naddiu $t0, $zero, %value\n.end_macro\n.include \"shared.inc\"\n"
             val shared = "emit(7\n"
             val selected = withContext(Dispatchers.EDT) {
                 val entry = fixture.addFileToProject("incomplete.mars", incomplete)
@@ -176,9 +178,9 @@ class MipsSmartEnterPlatformTest {
     fun `complete statement repairs a shared operand when every entry agrees`(@TempDir directory: Path) =
         timeoutRunBlocking<Unit> {
             val current = project.get()
-            val stack = ".eqv FETCH lw\n.eqv BASE \$sp\n.include \"operand.inc\"\n"
-            val frame = stack.replace("\$sp", "\$fp")
-            val operand = "FETCH \$t0, 4(BASE"
+            val stack = $$".eqv FETCH lw\n.eqv BASE $sp\n.include \"operand.inc\"\n"
+            val frame = stack.replace($$"$sp", $$"$fp")
+            val operand = $$"FETCH $t0, 4(BASE"
             val shared = withContext(Dispatchers.EDT) {
                 fixture.addFileToProject("stack.mars", stack)
                 fixture.addFileToProject("frame.mars", frame)
@@ -219,13 +221,13 @@ class MipsSmartEnterPlatformTest {
                 "<caret>",
                 "# .include \"path<caret>",
                 ".asciiz \"path<caret>",
-                "lw ${'$'}t0, 0(${'$'}sp)<caret>",
-                "lw ${'$'}t0, 0(<caret>",
+              $$"lw $t0, 0($sp)<caret>",
+              $$"lw $t0, 0(<caret>",
                 "emit<caret>",
-                "emit (${'$'}sp<caret>",
-                ".word ${'$'}sp<caret>",
-                "add ${'$'}t0, ${'$'}t1, (${'$'}sp<caret>",
-                "lw ${'$'}t0, @(${'$'}sp<caret>",
+              $$"emit ($sp<caret>",
+              $$".word $sp<caret>",
+              $$"add $t0, $t1, ($sp<caret>",
+              $$"lw $t0, @($sp<caret>",
             )) {
                 fixture.configureByText("main.asm", "$source\ntail: nop\n")
                 complete()
