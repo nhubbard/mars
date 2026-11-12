@@ -8,6 +8,7 @@ import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.ex.ActionUtil
 import com.intellij.openapi.actionSystem.impl.SimpleDataContext
 import com.intellij.openapi.application.EDT
+import com.intellij.openapi.application.WriteAction
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.editor.EditorFactory
@@ -19,6 +20,7 @@ import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.openapi.vfs.limits.FileSizeLimit
 import com.intellij.psi.PsiFileFactory
+import com.intellij.psi.PsiManager
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
 import com.intellij.testFramework.IndexingTestUtil
@@ -29,6 +31,7 @@ import com.intellij.ui.UiInterceptors
 import edu.missouristate.mars.api.AssembledInstruction
 import edu.missouristate.mars.api.InstructionSourceMap.Location
 import edu.missouristate.mars.api.InstructionSourceMap.Origin
+import edu.missouristate.mars.plugin.analysis.inferredMipsAssemblyRoot
 import edu.missouristate.mars.plugin.run.MarsExecutionSources
 import java.nio.file.Files
 import java.nio.file.StandardOpenOption.APPEND
@@ -136,20 +139,20 @@ class MarsExpansionPlatformTest {
     @ValueSource(strings = ["defs.png", "defs.inc~"])
     fun `expansion from a read-only include navigates current macro origins`(definitionName: String) = timeoutRunBlocking<Unit> {
         val current = project.get()
-        val entryText = ".include \"$definitionName\"\n.text\nnop\n.include \"body.zip\"\n"
+        val entryText = ".eqv DEST \$t0\n.include \"bridge.zip\"\n.text\nnop\n.include \"body.zip\"\n"
+        val definitionText = ".macro emit (%value)\nli DEST, %value\n.end_macro\n"
         val call = "emit(0x12345678)\n"
-        val (defs, body) = withContext(Dispatchers.EDT) {
-            val defs = fixture.tempDirFixture.createFile(definitionName, ".macro emit (%value)\nli \$t0, %value\n.end_macro\n")
+        val (entry, defs, body) = withContext(Dispatchers.EDT) {
+            val defs = fixture.tempDirFixture.createFile(definitionName, definitionText)
+            fixture.tempDirFixture.createFile("bridge.zip", ".include \"$definitionName\"\n")
             val body = fixture.tempDirFixture.createFile("body.zip", call)
-            val entry = fixture.addFileToProject("entry.mars", entryText)
+            val entry = fixture.addFileToProject("entry.mars", entryText) as MipsFile
             fixture.configureFromExistingVirtualFile(entry.virtualFile)
-            defs to body
+            Triple(entry, defs, body)
         }
         IndexingTestUtil.suspendUntilIndexesAreReady(current)
-        val (definition, use) = withContext(Dispatchers.EDT) {
-            fun target(name: String) = GotoDeclarationAction.findTargetElement(current, fixture.editor, entryText.indexOf(name) + 1) as MipsFile
-            val definition = target(definitionName)
-            val use = target("body.zip")
+        val use = withContext(Dispatchers.EDT) {
+            val use = GotoDeclarationAction.findTargetElement(current, fixture.editor, entryText.indexOf("body.zip") + 1) as MipsFile
             fixture.openFileInEditor(use.virtualFile)
             val action = ActionManager.getInstance().getAction("Mars.ShowExpansion")
             val event = TestActionEvent.createTestEvent(action, SimpleDataContext.builder()
@@ -159,7 +162,7 @@ class MarsExpansionPlatformTest {
                 .build())
             action.update(event)
             assertTrue(event.presentation.isEnabledAndVisible)
-            definition to use
+            use
         }
         val preview = inspectExpansion(use, 1, call) as ExpansionPreview.Instructions
         val origin = Location(defs.toNioPath(), 2)
@@ -168,10 +171,15 @@ class MarsExpansionPlatformTest {
         assertEquals(origin, preview.rows.first().origin().location())
         assertEquals(useLocation, preview.rows.first().origin().caller().location())
         val sources = MarsExecutionSources(preview.capture.sources)
-        readAction {
-            assertEquals(definition.virtualFile, sources.currentLineDescriptor(current, origin)?.file)
+        val definition = readAction {
+            val view = checkNotNull(sources.currentLineDescriptor(current, origin)).file
+            val definition = PsiManager.getInstance(current).findFile(view) as MipsFile
+            assertEquals(defs, view.mipsAssemblySourceOrigin)
+            assertTrue(view.mipsAssemblySourceEntries.isEmpty())
+            assertNull(definition.findReferenceAt(definitionText.indexOf("DEST"))?.resolve())
             assertEquals(use.virtualFile, sources.currentLineDescriptor(current, useLocation)?.file)
             assertNull(sources.currentLineDescriptor(current, Location(defs.toNioPath(), 99)))
+            definition
         }
         withContext(Dispatchers.EDT) {
             val step = instructionStep(current, fixture.editor, preview)
@@ -182,6 +190,19 @@ class MarsExpansionPlatformTest {
             val selected = FileEditorManager.getInstance(current).selectedTextEditor!!
             assertEquals(definition.virtualFile, selected.virtualFile)
             assertEquals(1, selected.caretModel.logicalPosition.line)
+            assertEquals(setOf(entry.virtualFile), definition.virtualFile.mipsAssemblySourceEntries)
+            assertEquals(entry.virtualFile, inferredMipsAssemblyRoot(definition))
+            assertEquals(entry, definition.findReferenceAt(definitionText.indexOf("DEST"))?.resolve()?.containingFile)
+            val bridge = checkNotNull(defs.parent.findChild("bridge.zip"))
+            Files.writeString(bridge.toNioPath(), "# include removed\n")
+            bridge.refresh(false, false)
+            assertNull(inferredMipsAssemblyRoot(definition))
+            assertNull(definition.findReferenceAt(definitionText.indexOf("DEST"))?.resolve())
+            val entryFile = entry.virtualFile
+            WriteAction.run<RuntimeException> { entryFile.delete(this) }
+            chain.finalRunnable!!.run()
+            assertEquals(setOf(entryFile), definition.virtualFile.mipsAssemblySourceEntries)
+            assertNull(inferredMipsAssemblyRoot(definition))
             Files.writeString(defs.toNioPath(), "# changed\n", APPEND)
             defs.refresh(false, false)
             assertNull(sources.currentLineDescriptor(current, origin))

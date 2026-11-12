@@ -14,6 +14,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.openapi.ui.popup.util.BaseListPopupStep
 import com.intellij.openapi.util.text.StringUtil
+import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.platform.ide.progress.withBackgroundProgress
 import edu.missouristate.mars.api.AssembledInstruction
 import edu.missouristate.mars.api.InstructionSourceMap.Location
@@ -117,22 +118,33 @@ internal fun instructionStep(project: Project, editor: Editor, preview: Expansio
         override fun hasSubstep(selectedValue: AssembledInstruction) = true
 
         override fun onChosen(selectedValue: AssembledInstruction, finalChoice: Boolean) =
-            originStep(project, editor, MarsExecutionSources(preview.capture.sources), selectedValue.origin())
+            originStep(project, editor, preview.capture, selectedValue.origin())
     }
 
-private fun originStep(project: Project, editor: Editor, sources: MarsExecutionSources, origin: Origin) =
+private fun originStep(project: Project, editor: Editor, capture: EditorAssemblyCapture, origin: Origin) =
     object : BaseListPopupStep<Origin>(
         messages.getMessage("expansion.origin.title"), generateSequence(origin, Origin::caller).toList(),
     ) {
+        private val sources = MarsExecutionSources(capture.sources)
+
         override fun getTextFor(value: Origin): String {
             val location = value.location()
             return "${location.file()}:${location.line()}"
         }
 
         override fun onChosen(selectedValue: Origin, finalChoice: Boolean) = doFinalStep {
-            val target = sources.currentLineDescriptor(project, selectedValue.location())
-            if (target == null) HintManager.getInstance().showErrorHint(editor, messages.getMessage("expansion.unavailable.changed"))
-            else target.navigate(true)
+            val location = selectedValue.location()
+            val target = sources.currentLineDescriptor(project, location)
+            if (target == null) {
+                HintManager.getInstance().showErrorHint(editor, messages.getMessage("expansion.unavailable.changed"))
+                return@doFinalStep
+            }
+            if (target.file.mipsAssemblySourceOrigin != null) {
+                val root = capture.sources.rootsBySource.getValue(location.file())
+                // The editor rechecks this candidate against the current graph before using it.
+                LocalFileSystem.getInstance().findFileByNioFile(root)?.let(target.file::rememberMipsAssemblyEntry)
+            }
+            target.navigate(true)
         }
     }
 

@@ -674,7 +674,10 @@ the emitted `lui` and `ori` instructions.
 **Show MARS Expansion** also works in read-only include tabs with a known
 assembly entry. Its instruction rows show addresses and encodings. Select
 a row to follow the macro definition or call site. For a current ignored or
-binary-classified include, the action opens its read-only MIPS view.
+binary-classified include, the action opens its read-only MIPS view. A
+nested view inherits the containing entry as an editor context candidate,
+so references and inlays can use that assembly while the include chain
+still connects it to the entry.
 Oversized sources use a bounded excerpt, and changed origins require a
 fresh preview.
 
