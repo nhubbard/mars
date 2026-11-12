@@ -109,7 +109,7 @@ val distributionNotices = listOf(
   thirdPartyNotices,
 )
 tasks.processResources {
-  from(rootProject.layout.projectDirectory.dir("desktop/src/main/resources/help")) {
+  from(rootProject.layout.projectDirectory.dir("shared/help")) {
     include("Acknowledgements.html", "MarsHelpHistory.html")
     into("mars-reference")
   }
@@ -208,7 +208,7 @@ tasks.check { dependsOn(tasks.jacocoTestCoverageVerification) }
 
 // A launch always verifies the plugin; callers clean the build and sandbox first.
 tasks.named<RunIdeTask>("runIde") {
-  dependsOn(tasks.check, ":core:check", ":cli:check", ":datapath:check", ":desktop:check", rootProject.tasks.named("check"))
+  dependsOn(tasks.check, ":core:check", ":cli:check", ":datapath:check", rootProject.tasks.named("check"))
   val suppliedArchive = providers.gradleProperty("packagedSmokeArchive").map { rootProject.file(it) }
   if (providers.gradleProperty("packagedSmoke").isPresent || suppliedArchive.isPresent) {
     val scenario = layout.projectDirectory.dir("src/qualification")

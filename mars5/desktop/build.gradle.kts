@@ -31,6 +31,7 @@ tasks.jar {
 
 tasks.processResources {
   from(rootProject.layout.projectDirectory.dir("shared/datapath")) { include("images/*.png") }
+  from(rootProject.layout.projectDirectory.dir("shared/help")) { into("help") }
 }
 
 val cliArchive = project(":cli").tasks.named<Jar>("jar").flatMap { it.archiveFile }

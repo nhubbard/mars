@@ -1521,7 +1521,7 @@ No resource is discarded without checking its consumers and preserving the relev
 | [shared/MARSlicense.txt](/Users/nhubbard/IdeaProjects/mars-original/mars5/shared/MARSlicense.txt) | H01: preserve the original desktop license in the core and plugin distributions |
 | [MainDatapath.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/datapath/src/main/java/edu/missouristate/mars/datapath/MainDatapath.java) | T12 compiled processor datapath and mnemonic lookups |
 | [ControlDatapath.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/datapath/src/main/java/edu/missouristate/mars/datapath/ControlDatapath.java) | T12 compiled control diagram |
-| [desktop/help/Acknowledgements.html](/Users/nhubbard/IdeaProjects/mars-original/mars5/desktop/src/main/resources/help/Acknowledgements.html) | H01: preserve/update bundled documentation and attribution |
+| [shared/help/Acknowledgements.html](/Users/nhubbard/IdeaProjects/mars-original/mars5/shared/help/Acknowledgements.html) | H01: preserve/update bundled documentation and attribution |
 | [desktop/help/BugReportingHelp.html](/Users/nhubbard/IdeaProjects/mars-original/mars5/desktop/src/main/resources/help/BugReportingHelp.html) | H01: preserve/update bundled documentation and attribution |
 | [desktop/help/ExceptionsHelp.html](/Users/nhubbard/IdeaProjects/mars-original/mars5/desktop/src/main/resources/help/ExceptionsHelp.html) | H01: preserve/update bundled documentation and attribution |
 | [desktop/help/HTML_of_links_for_posting_to_MARS_website.html](/Users/nhubbard/IdeaProjects/mars-original/mars5/desktop/src/main/resources/help/HTML_of_links_for_posting_to_MARS_website.html) | H01: preserve/update bundled documentation and attribution |
@@ -1529,7 +1529,7 @@ No resource is discarded without checking its consumers and preserving the relev
 | [desktop/help/MacrosHelp.html](/Users/nhubbard/IdeaProjects/mars-original/mars5/desktop/src/main/resources/help/MacrosHelp.html) | H01: preserve/update bundled documentation and attribution |
 | [desktop/help/MarsHelpCommand.html](/Users/nhubbard/IdeaProjects/mars-original/mars5/desktop/src/main/resources/help/MarsHelpCommand.html) | H01: preserve/update bundled documentation and attribution |
 | [desktop/help/MarsHelpDebugging.html](/Users/nhubbard/IdeaProjects/mars-original/mars5/desktop/src/main/resources/help/MarsHelpDebugging.html) | H01: preserve/update bundled documentation and attribution |
-| [desktop/help/MarsHelpHistory.html](/Users/nhubbard/IdeaProjects/mars-original/mars5/desktop/src/main/resources/help/MarsHelpHistory.html) | H01: preserve/update bundled documentation and attribution |
+| [shared/help/MarsHelpHistory.html](/Users/nhubbard/IdeaProjects/mars-original/mars5/shared/help/MarsHelpHistory.html) | H01: preserve/update bundled documentation and attribution |
 | [desktop/help/MarsHelpIDE.html](/Users/nhubbard/IdeaProjects/mars-original/mars5/desktop/src/main/resources/help/MarsHelpIDE.html) | H01: preserve/update bundled documentation and attribution |
 | [desktop/help/MarsHelpIntro.html](/Users/nhubbard/IdeaProjects/mars-original/mars5/desktop/src/main/resources/help/MarsHelpIntro.html) | H01: preserve/update bundled documentation and attribution |
 | [desktop/help/MarsHelpLimits.html](/Users/nhubbard/IdeaProjects/mars-original/mars5/desktop/src/main/resources/help/MarsHelpLimits.html) | H01: preserve/update bundled documentation and attribution |

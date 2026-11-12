@@ -15,7 +15,7 @@ and the [modernization plan](MODERNIZATION_PLAN.md) for the broader project.
 | `mars5/core` | Independent assembler, simulator, hardware, undo, and frontend contracts |
 | `mars5/cli` | Standalone command-line launcher |
 | `mars5/datapath` | Compiled MIPS X-Ray diagram tables shared by both frontends |
-| `mars5/desktop` | Existing Venus editor and tools with explicit session ownership |
+| `mars5/desktop` | Legacy Venus reference build, enabled only with `-PincludeVenus` |
 | `mars5/plugin` | Kotlin IntelliJ plugin for editing, assembling, running, and debugging MIPS |
 
 Build with JDK 25 and the Gradle wrapper:
@@ -25,8 +25,10 @@ cd mars5
 ./gradlew build :plugin:buildPlugin :core:benchmarkClasses
 java -jar cli/build/libs/cli-1.0-SNAPSHOT.jar --help
 java -jar cli/build/libs/cli-1.0-SNAPSHOT.jar path/to/program.s
-java -jar desktop/build/libs/desktop-1.0-SNAPSHOT.jar
 ```
+
+For parity checks against Venus during the migration, run
+`./gradlew -PincludeVenus :desktop:check` from `mars5`.
 
 The plugin targets IntelliJ IDEA 2026.3 (build 263) using Kotlin 2.4.21 and IntelliJ Platform
 Gradle Plugin 2.20.0. It uses the IDE's Kotlin runtime. Its ZIP is produced in
