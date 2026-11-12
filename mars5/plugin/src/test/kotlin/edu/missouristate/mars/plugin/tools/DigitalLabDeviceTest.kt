@@ -117,7 +117,7 @@ class DigitalLabDeviceTest {
                     assertEquals(0x41, memory.getByte(start + 4))
                     assertEquals(30, lab.snapshot().timerRemaining)
                     val stop = session.simulator().runAsync(1, null).get(5, TimeUnit.SECONDS)
-                    assertEquals(if (masked) StopEvent.Reason.STEP_LIMIT else StopEvent.Reason.EXCEPTION, stop.reason())
+                    assertEquals(if (masked) StopEvent.Reason.STEP_LIMIT else StopEvent.Reason.EXCEPTION, stop.reason)
                     assertEquals(if (masked) 0 else 0xc00, session.coprocessor0.getRegister(CAUSE)!!.valueNoNotify)
                 }
             }

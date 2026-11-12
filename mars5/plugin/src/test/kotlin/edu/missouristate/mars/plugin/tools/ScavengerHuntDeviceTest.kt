@@ -176,7 +176,7 @@ class ScavengerHuntDeviceTest {
             step(session, 3)
             assertEquals(0xff, device.snapshot().game.round!!.players[0].color)
             val submit = session.getProgram().localSymbolTable.getAddress("submit")
-            assertEquals(BREAKPOINT, session.simulator().runUntilAsync(4000) { it == submit }.get(5, SECONDS).reason())
+            assertEquals(BREAKPOINT, session.simulator().runUntilAsync(4000) { it == submit }.get(5, SECONDS).reason)
             val beforeTask = device.snapshot()
             val sorted = beforeTask.game.round!!.players[0].task.sorted()
             assertEquals(sorted, List(20) { memory.getWord(playerBase + taskArray + 4 * it) })
@@ -422,7 +422,7 @@ class ScavengerHuntDeviceTest {
             assertEquals(Diagnostic(gameOn, Rejection.ADMINISTRATOR_REQUIRED), device.snapshot().diagnostic)
             assertNull(device.snapshot().game.round)
             val rejected = device.snapshot()
-            assertEquals(EXCEPTION, session.simulator().runAsync(1, null).get(5, SECONDS).reason())
+            assertEquals(EXCEPTION, session.simulator().runAsync(1, null).get(5, SECONDS).reason)
             assertEquals(rejected, device.snapshot())
         }
     }
@@ -436,7 +436,7 @@ class ScavengerHuntDeviceTest {
     }
 
     private fun step(session: MarsContext, count: Long = 1) {
-        assertEquals(STEP_LIMIT, session.simulator().runAsync(count, null).get(5, SECONDS).reason())
+        assertEquals(STEP_LIMIT, session.simulator().runAsync(count, null).get(5, SECONDS).reason)
     }
 
     private fun backstep(session: MarsContext) {

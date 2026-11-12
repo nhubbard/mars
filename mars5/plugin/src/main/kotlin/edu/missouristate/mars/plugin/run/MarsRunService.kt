@@ -290,7 +290,7 @@ internal class MarsProcessHandler(
                         simulator.setRunSpeedSource { runSpeed.toDouble() }
                         simulator.addListener(object : SimulatorListener {
                             override fun onStep(event: StepEvent) {
-                                val word = event.instruction()
+                                val word = event.instruction
                                 val instruction = session.instructionSet.findByBinaryCode(word)
                                 instructionCounter.record(instruction)
                                 instructionStatistics.record(word, instruction)
@@ -327,9 +327,9 @@ internal class MarsProcessHandler(
                             // The execution tab can still show the final words after the session closes.
                             readFloatingRegister = IntArray(floatingRegisters.size) { floatingRegisters[it].valueNoNotify }::get
                         }
-                        if (memoryDumps.isNotEmpty() && stop.reason() in dumpReasons) exportAfterRun(session, program.sources.snapshot.texts().keys + entry)
-                        when (stop.reason()) {
-                            StopEvent.Reason.NORMAL_EXIT, StopEvent.Reason.CLIFF_TERMINATION -> stop.exitCode()
+                        if (memoryDumps.isNotEmpty() && stop.reason in dumpReasons) exportAfterRun(session, program.sources.snapshot.texts().keys + entry)
+                        when (stop.reason) {
+                            StopEvent.Reason.NORMAL_EXIT, StopEvent.Reason.CLIFF_TERMINATION -> stop.exitCode
                             StopEvent.Reason.INSTRUCTION_LIMIT -> {
                                 notifyTextAvailable(runMessages.getMessage("run.instruction.limit.reached", instructionLimit) + "\n",
                                     ProcessOutputTypes.STDERR)
@@ -344,8 +344,8 @@ internal class MarsProcessHandler(
     }
 
     private fun reportRuntimeError(event: ErrorEvent, sources: MarsExecutionSources) {
-        notifyTextAvailable(runMessages.getMessage("run.runtime.error", event.message()) + "\n", ProcessOutputTypes.STDERR)
-        val origin = (event.cause() as? ProcessingException)?.instructionOrigin() ?: return
+        notifyTextAvailable(runMessages.getMessage("run.runtime.error", event.message) + "\n", ProcessOutputTypes.STDERR)
+        val origin = (event.cause as? ProcessingException)?.instructionOrigin() ?: return
         val view = console ?: return
         for ((index, frame) in generateSequence(origin, Origin::caller).withIndex()) {
             val location = frame.location()

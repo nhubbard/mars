@@ -579,15 +579,15 @@ class InstructionCounterPlatformTest {
                     assertEquals(2, xray.executions.size)
                     xray.selectExecution(xray.executions[1])
                     chooseXRay("Execution", xray.executions[0].label)
-                    assertEquals(2L, xray.step?.stepCount())
+                    assertEquals(2L, xray.step?.stepCount)
                     assertTrue("2 of 2" in xrayText())
                     clickXRay("Previous step")
-                    assertEquals(1L, xray.step?.stepCount())
+                    assertEquals(1L, xray.step?.stepCount)
                     assertTrue("1 of 2" in xrayText())
                     clickXRay("Next step")
-                    assertEquals(2L, xray.step?.stepCount())
+                    assertEquals(2L, xray.step?.stepCount)
                     chooseXRay("Instruction", xray.steps.first().xRayLabel())
-                    assertEquals(1L, xray.step?.stepCount())
+                    assertEquals(1L, xray.step?.stepCount)
                     clickXRay("Next step")
                     clickXRay("Previous step")
                     chooseXRay("Diagram", "Registers")
@@ -614,7 +614,7 @@ class InstructionCounterPlatformTest {
             pollAssertionsAsync(5.seconds, 30.milliseconds) {
                 withContext(Dispatchers.EDT) {
                     assertEquals(3, xray.steps.size)
-                    assertEquals(1L, xray.step?.stepCount())
+                    assertEquals(1L, xray.step?.stepCount)
                     assertTrue(xray.steps.last().xRayLabel().contains("Unknown instruction"))
                 }
             }
@@ -657,7 +657,7 @@ class InstructionCounterPlatformTest {
             pollAssertionsAsync(5.seconds, 30.milliseconds) {
                 withContext(Dispatchers.EDT) {
                     assertTrue(xray.canPlay)
-                    assertEquals(3L, xray.step?.stepCount())
+                    assertEquals(3L, xray.step?.stepCount)
                 }
             }
             withContext(Dispatchers.EDT) {

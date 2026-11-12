@@ -58,7 +58,7 @@ internal class XRayTrace {
     }
 
     private fun trimAfter(stepCount: Long) {
-        while ((steps.lastOrNull()?.stepCount() ?: 0) > stepCount) {
+        while ((steps.lastOrNull()?.stepCount ?: 0) > stepCount) {
             steps.removeLast()
             cached = null
         }
@@ -74,14 +74,14 @@ internal class XRayTrace {
 
 /** Formats the executed machine word using the core catalog, independent of mutable simulator memory. */
 internal class XRayInstruction(private val event: StepEvent) {
-    private val statement = ProgramStatement(event.instruction(), event.pc(), InstructionDefaults.get())
+    private val statement = ProgramStatement(event.instruction, event.pc, InstructionDefaults.get())
     private val instruction = statement.instruction as? BasicInstruction
-    val word = event.instruction()
+    val word = event.instruction
     val format = instruction?.instructionFormat
     private val mnemonic = instruction?.name ?: toolsMessages.getMessage("xray.unknown")
 
     fun describe(): String = buildString {
-        val address = Binary.intToHexString(event.pc())
+        val address = Binary.intToHexString(event.pc)
         val machine = Binary.intToHexString(word)
         appendLine(toolsMessages.getMessage("xray.instructionDetails", address, machine, statement.printableBasicAssemblyStatement.trimEnd()))
         val bits = Binary.intToBinaryString(word)
@@ -95,7 +95,7 @@ internal class XRayInstruction(private val event: StepEvent) {
             null -> bits
         }
         append(fields)
-        when (event.branchOutcome()) {
+        when (event.branchOutcome) {
             TAKEN -> appendLine().append(toolsMessages.getMessage("xray.branch", toolsMessages.getMessage("branchHistory.taken")))
             NOT_TAKEN -> appendLine().append(toolsMessages.getMessage("xray.branch", toolsMessages.getMessage("branchHistory.notTaken")))
             null -> Unit
@@ -104,7 +104,7 @@ internal class XRayInstruction(private val event: StepEvent) {
 
     fun signalLabel(name: String): String = when (name) {
         "ALUVALUE" -> mnemonic
-        "CP+4" -> if (event.branchOutcome() == TAKEN) toolsMessages.getMessage("xray.pc.offset") else "PC + 4"
+        "CP+4" -> if (event.branchOutcome == TAKEN) toolsMessages.getMessage("xray.pc.offset") else "PC + 4"
         "READING" -> toolsMessages.getMessage("xray.register.read")
         "WRITING" -> toolsMessages.getMessage("xray.register.write")
         else -> name

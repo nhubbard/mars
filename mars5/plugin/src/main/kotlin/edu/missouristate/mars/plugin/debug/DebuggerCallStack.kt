@@ -18,7 +18,7 @@ internal class DebuggerCallStack(
     data class CallerSite(val id: Long, val pc: Int, val origin: Origin?, val call: Call?)
 
     private class Frame(val parent: Frame?, val site: CallerSite) {
-        val returnAddress = site.call?.returnAddress()
+        val returnAddress = site.call?.returnAddress
         val depth: Int = (parent?.depth ?: 0) + 1
         val handlerDepth: Int = if (returnAddress == null) depth else parent?.handlerDepth ?: 0
     }
@@ -44,16 +44,16 @@ internal class DebuggerCallStack(
 
     override fun onStep(event: StepEvent) {
         val before = head
-        head = when (val transfer = event.transfer()) {
-            is Call -> Frame(before, CallerSite(++nextId, event.pc(), sourceAt(event.pc()), transfer))
-            ExceptionEntry.INSTANCE -> Frame(before, CallerSite(++nextId, event.pc(), sourceAt(event.pc()), null))
+        head = when (val transfer = event.transfer) {
+            is Call -> Frame(before, CallerSite(++nextId, event.pc, sourceAt(event.pc), transfer))
+            ExceptionEntry.INSTANCE -> Frame(before, CallerSite(++nextId, event.pc, sourceAt(event.pc), null))
             ExceptionReturn.INSTANCE -> generateSequence(before, Frame::parent).firstOrNull { it.returnAddress == null }?.parent
-            is Jump -> if (before != null && before.returnAddress == transfer.target()) before.parent else before
+            is Jump -> if (before != null && before.returnAddress == transfer.target) before.parent else before
             else -> before
         }
         if (head === before) return
         if (history.size == undoCapacity) history.removeFirst()
-        history.addLast(Change(event.stepCount(), before))
+        history.addLast(Change(event.stepCount, before))
     }
 
     override fun onBackstep(stepCount: Long) {

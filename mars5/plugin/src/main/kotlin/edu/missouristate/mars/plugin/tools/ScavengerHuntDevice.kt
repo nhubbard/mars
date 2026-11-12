@@ -47,7 +47,7 @@ internal class ScavengerHuntDevice(session: MarsContext, connectAtLaunch: Boolea
     private val simulator = session.simulator()
     private val observer = Consumer<MemoryAccessNotice>(::record)
     private val listener = object : SimulatorListener {
-        override fun onStep(event: StepEvent) = completeInstruction(event.stepCount())
+        override fun onStep(event: StepEvent) = completeInstruction(event.stepCount)
         override fun onStop(event: StopEvent) = Unit
         override fun onError(event: ErrorEvent) = discardInstruction()
     }

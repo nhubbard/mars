@@ -2283,7 +2283,7 @@ class MarsDebugPlatformTest {
             }
             debug.assertPausedAt(source, 3)
             assertEquals("7", debug.stdout.toString())
-            assertEquals(listOf(1L, 2L, 3L), process.xray.snapshot().map { it.stepCount() })
+            assertEquals(listOf(1L, 2L, 3L), process.xray.snapshot().map { it.stepCount })
             for (line in 2 downTo 0) {
                 withContext(Dispatchers.EDT) {
                     action.update(event)

@@ -32,9 +32,9 @@ internal class BranchHistoryTable {
 
     @Synchronized
     fun record(event: StepEvent) {
-        val outcome = event.branchOutcome() ?: return
+        val outcome = event.branchOutcome ?: return
         if (!connected) return
-        val index = (event.pc() ushr 2) and (options.size - 1)
+        val index = (event.pc ushr 2) and (options.size - 1)
         val entry = rows[index]
         val taken = outcome == TAKEN
         val predicted = entry.predictedTaken
@@ -47,8 +47,8 @@ internal class BranchHistoryTable {
             if (entry.history == if (taken) mask else 0) entry.predictedTaken = taken
         }
         if (recent.size == logLimit) recent.removeFirst()
-        val target = event.pc() + INSTRUCTION_LENGTH + (event.instruction().toShort().toInt() shl 2)
-        recent.addLast(Observation(event.pc(), event.instruction(), target, index, predicted, taken))
+        val target = event.pc + INSTRUCTION_LENGTH + (event.instruction.toShort().toInt() shl 2)
+        recent.addLast(Observation(event.pc, event.instruction, target, index, predicted, taken))
     }
 
     @Synchronized

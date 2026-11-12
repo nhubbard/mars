@@ -164,7 +164,7 @@ internal class XRayView(private val project: Project) : Disposable {
 }
 
 internal fun StepEvent.xRayLabel(): String {
-    val decoded = InstructionDefaults.get().findByBinaryCode(instruction())
+    val decoded = InstructionDefaults.get().findByBinaryCode(instruction)
     val name = decoded?.name ?: toolsMessages.getMessage("xray.unknown")
-    return toolsMessages.getMessage("xray.step", stepCount().toString(), Binary.intToHexString(pc()), name)
+    return toolsMessages.getMessage("xray.step", stepCount.toString(), Binary.intToHexString(pc), name)
 }

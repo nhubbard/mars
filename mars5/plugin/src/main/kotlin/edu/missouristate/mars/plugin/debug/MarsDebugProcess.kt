@@ -377,7 +377,7 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
                 } finally {
                     stepOver?.let(engine::removeListener)
                 }
-                val reason: StopEvent.Reason = event.reason()
+                val reason: StopEvent.Reason = event.reason
                 when (reason) {
                     StopEvent.Reason.BREAKPOINT, StopEvent.Reason.PAUSE, StopEvent.Reason.STEP_LIMIT -> {
                         val reached = if (reason == StopEvent.Reason.BREAKPOINT) hits + watchpointHits else watchpointHits.toList()
@@ -614,11 +614,11 @@ private class StepOver(private val source: SourceStep?) : SimulatorListener {
     private var returned = false
 
     override fun onStep(event: StepEvent) {
-        when (val transfer = event.transfer() ?: return) {
-            is Call -> returnAddresses.addLast(transfer.returnAddress())
+        when (val transfer = event.transfer ?: return) {
+            is Call -> returnAddresses.addLast(transfer.returnAddress)
             is ExceptionEntry -> enteredHandler = true
             is ExceptionReturn -> Unit
-            is Jump -> if (returnAddresses.lastOrNull() == transfer.target()) {
+            is Jump -> if (returnAddresses.lastOrNull() == transfer.target) {
                 returnAddresses.removeLast()
                 returned = returnAddresses.isEmpty()
             }
