@@ -1,6 +1,7 @@
-package edu.missouristate.mars.mips.dump;
+package edu.missouristate.mars.mips.dump
 
-import java.util.List;
+import java.io.IOException
+import java.io.PrintStream
 
 /*
 Copyright (c) 2003-2008,  Pete Sanderson and Kenneth Vollmar
@@ -30,29 +31,22 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 (MIT license, http://www.opensource.org/licenses/mit-license.html)
  */
 
-/** Registry of all available memory dump formats. */
-public final class DumpFormatLoader {
+/** Common metadata for a memory dump format. */
+abstract class AbstractDumpFormat(
+    private val name: String,
+    commandDescriptor: String?,
+    override val description: String?,
+    override val fileExtension: String?,
+) : DumpFormat {
+    override val commandDescriptor: String? = commandDescriptor?.replace(" ", "")
 
-  /** All concrete {@link DumpFormat} implementations available in this build. */
-  public static final List<DumpFormat> FORMATS =
-      List.of(
-          new AsciiTextDumpFormat(),
-          new BinaryDumpFormat(),
-          new BinaryTextDumpFormat(),
-          new HexTextDumpFormat(),
-          new IntelHexDumpFormat(),
-          new SegmentWindowDumpFormat());
+    override fun toString(): String = name
 
-  /**
-   * Returns the dump format whose command-line descriptor matches the given string, or {@code null}
-   * if none matches.
-   */
-  public static DumpFormat findByCommandDescriptor(String descriptor) {
-    return FORMATS.stream()
-        .filter(f -> f.getCommandDescriptor().equals(descriptor))
-        .findFirst()
-        .orElse(null);
-  }
-
-  private DumpFormatLoader() {}
+    companion object {
+        @JvmStatic
+        @Throws(IOException::class)
+        protected fun checkOutput(out: PrintStream) {
+            if (out.checkError()) throw IOException("Could not write the memory dump")
+        }
+    }
 }

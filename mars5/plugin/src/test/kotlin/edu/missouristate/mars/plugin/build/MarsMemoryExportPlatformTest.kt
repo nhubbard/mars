@@ -80,11 +80,12 @@ class MarsMemoryExportPlatformTest {
         )
         assertEquals(outputs.keys, DumpFormatLoader.FORMATS.map { it.commandDescriptor }.toSet())
         for (format in DumpFormatLoader.FORMATS) {
-            val output = directory.resolve(format.commandDescriptor)
+            val descriptor = requireNotNull(format.commandDescriptor)
+            val output = directory.resolve(descriptor)
             val range = 0x10010000u..0x10010000u
             assertNull(export.export(entry, MemoryExportOptions(format, MemoryExportRegion.RANGE, range), output))
-            val lineEnd = if (format.commandDescriptor == "Binary") "" else HexFormat.of().formatHex(newline.toByteArray())
-            assertEquals(outputs.getValue(format.commandDescriptor) + lineEnd, HexFormat.of().formatHex(Files.readAllBytes(output)), format.toString())
+            val lineEnd = if (descriptor == "Binary") "" else HexFormat.of().formatHex(newline.toByteArray())
+            assertEquals(outputs.getValue(descriptor) + lineEnd, HexFormat.of().formatHex(Files.readAllBytes(output)), format.toString())
         }
         val text = directory.resolve("text")
         assertNull(export.export(entry, MemoryExportOptions(format("HexText"), MemoryExportRegion.TEXT), text))

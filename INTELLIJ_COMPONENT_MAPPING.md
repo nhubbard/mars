@@ -1100,15 +1100,15 @@ Test sources and generated build output are excluded from this production invent
 | [java/edu/missouristate/mars/core/SimulationSettings.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/core/SimulationSettings.java) | S01 |
 | [java/edu/missouristate/mars/di/CoreModule.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/di/CoreModule.java) | C01 |
 | [java/edu/missouristate/mars/di/MarsComponent.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/di/MarsComponent.java) | C01 |
-| [java/edu/missouristate/mars/mips/dump/AbstractDumpFormat.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/mips/dump/AbstractDumpFormat.java) | B05 |
-| [java/edu/missouristate/mars/mips/dump/AsciiTextDumpFormat.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/mips/dump/AsciiTextDumpFormat.java) | B05 |
-| [java/edu/missouristate/mars/mips/dump/BinaryDumpFormat.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/mips/dump/BinaryDumpFormat.java) | B05 |
-| [java/edu/missouristate/mars/mips/dump/BinaryTextDumpFormat.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/mips/dump/BinaryTextDumpFormat.java) | B05 |
-| [java/edu/missouristate/mars/mips/dump/DumpFormat.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/mips/dump/DumpFormat.java) | B05 |
-| [java/edu/missouristate/mars/mips/dump/DumpFormatLoader.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/mips/dump/DumpFormatLoader.java) | B05 |
-| [java/edu/missouristate/mars/mips/dump/HexTextDumpFormat.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/mips/dump/HexTextDumpFormat.java) | B05 |
-| [java/edu/missouristate/mars/mips/dump/IntelHexDumpFormat.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/mips/dump/IntelHexDumpFormat.java) | B05 |
-| [java/edu/missouristate/mars/mips/dump/SegmentWindowDumpFormat.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/mips/dump/SegmentWindowDumpFormat.java) | B05 |
+| [kotlin/edu/missouristate/mars/mips/dump/AbstractDumpFormat.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/mips/dump/AbstractDumpFormat.kt) | B05 |
+| [kotlin/edu/missouristate/mars/mips/dump/AsciiTextDumpFormat.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/mips/dump/AsciiTextDumpFormat.kt) | B05 |
+| [kotlin/edu/missouristate/mars/mips/dump/BinaryDumpFormat.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/mips/dump/BinaryDumpFormat.kt) | B05 |
+| [kotlin/edu/missouristate/mars/mips/dump/BinaryTextDumpFormat.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/mips/dump/BinaryTextDumpFormat.kt) | B05 |
+| [kotlin/edu/missouristate/mars/mips/dump/DumpFormat.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/mips/dump/DumpFormat.kt) | B05 |
+| [kotlin/edu/missouristate/mars/mips/dump/DumpFormatLoader.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/mips/dump/DumpFormatLoader.kt) | B05 |
+| [kotlin/edu/missouristate/mars/mips/dump/HexTextDumpFormat.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/mips/dump/HexTextDumpFormat.kt) | B05 |
+| [kotlin/edu/missouristate/mars/mips/dump/IntelHexDumpFormat.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/mips/dump/IntelHexDumpFormat.kt) | B05 |
+| [kotlin/edu/missouristate/mars/mips/dump/SegmentWindowDumpFormat.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/mips/dump/SegmentWindowDumpFormat.kt) | B05 |
 | [java/edu/missouristate/mars/mips/hardware/AccessNotice.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/mips/hardware/AccessNotice.java) | C10 |
 | [java/edu/missouristate/mars/mips/hardware/AccessOrigin.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/mips/hardware/AccessOrigin.java) | C10 |
 | [java/edu/missouristate/mars/mips/hardware/AddressErrorException.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/mips/hardware/AddressErrorException.java) | C09 |
@@ -1499,7 +1499,7 @@ Venus was retired after plugin qualification. These links point to the archived 
 | [InstructionSourceMap.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/api/InstructionSourceMap.java) | C03, D01, D02 |
 | [AssemblySymbolUses.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/assembler/AssemblySymbolUses.java) | C03, E07, E08 |
 | [AssemblyImage.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/core/AssemblyImage.java) | B04, R05 |
-| [MemoryDumpSnapshot.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/mips/dump/MemoryDumpSnapshot.java) | B05 |
+| [MemoryDumpSnapshot.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/mips/dump/MemoryDumpSnapshot.kt) | B05 |
 | [MemoryAddressRange.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/mips/hardware/MemoryAddressRange.java) | B05, C09, D12 |
 | [CliMachineReport.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/cli/src/main/java/edu/missouristate/mars/cli/CliMachineReport.java) | B06 |
 | [CliMemoryDump.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/cli/src/main/java/edu/missouristate/mars/cli/CliMemoryDump.java) | B05, B06 |

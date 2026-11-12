@@ -23,6 +23,7 @@ import edu.missouristate.mars.mips.hardware.MemoryState
 import edu.missouristate.mars.plugin.language.MipsFileType
 import edu.missouristate.mars.util.Binary
 import java.nio.file.Path
+import java.util.Objects
 import javax.swing.JTextField
 
 internal val memoryExportMessages = DynamicBundle(MarsMemoryExportAction::class.java, "messages.MarsBundle")
@@ -58,7 +59,7 @@ internal fun chooseMemoryExport(
 
     val options = dialog.options()
     val descriptor = FileSaverDescriptor(
-        memoryExportMessages.getMessage("export.save.title"), options.format.description.trim(),
+        memoryExportMessages.getMessage("export.save.title"), Objects.toString(options.format.description, "").trim(),
     )
     options.format.fileExtension?.let { descriptor.withExtensionFilter(it) }
     val chooser = FileChooserFactory.getInstance().createSaveFileDialog(descriptor, project)
