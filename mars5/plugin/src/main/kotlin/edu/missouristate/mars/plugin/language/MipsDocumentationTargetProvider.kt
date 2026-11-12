@@ -45,10 +45,9 @@ internal class MipsDocumentationTargetProvider : DocumentationTargetProvider, Lo
             val analysis = file.project.service<MarsAnalysisService>()
             val site = analysis.operationSite(file, candidate.operationHead)?.takeIf { it.range.startOffset == token.textOffset }
             val definition = site?.macroDefinition
-            val calls = analysis.assembledMacroCallsAt(file, token, hasLiveDefinition = definition != null)
+            val calls = analysis.assembledMacroDefinitionsAt(file, token, hasLiveDefinition = definition != null)
             if (calls.isNotEmpty()) {
-                return calls.distinctBy { Triple(it.definition(), it.name(), it.parameters()) }.mapNotNull { call ->
-                    val (source, offset) = analysis.sourceTokenPosition(call.definition()) ?: return@mapNotNull null
+                return calls.distinctBy { (call) -> Triple(call.definition(), call.name(), call.parameters()) }.map { (call, source, offset) ->
                     MacroDocumentation(token, source, offset, call.name(), call.parameters(), expanded = true)
                 }.sortedWith(compareBy({ it.source.viewProvider.virtualFile.path }, { it.nameOffset }, { it.signature }))
             }

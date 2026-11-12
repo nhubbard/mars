@@ -1547,6 +1547,8 @@ class MarsBuildPlatformTest {
         }
         publishWithoutColumn(Definition(definition.address(), definition.kind(), definition.origin()))
         readAction { assertEquals("%entry", target(entry)?.text) }
+        publishWithoutColumn(Definition(definition.address(), definition.kind(), definition.origin(), definition.macroPrivate(), 500))
+        readAction { assertNull(target(entry)) }
         publishWithoutColumn(Definition(definition.address(), definition.kind(), null))
         readAction { assertNull(target(entry)) }
         val missingRevision = capture.copy(revisions = capture.revisions - setOf(includePath))

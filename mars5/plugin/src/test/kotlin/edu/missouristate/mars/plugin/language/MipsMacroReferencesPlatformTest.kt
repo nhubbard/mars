@@ -250,7 +250,7 @@ class MipsMacroReferencesPlatformTest {
             val analysis = current.service<MarsAnalysisService>()
             DumbModeTestUtils.runInDumbModeSynchronously(current) {
                 assertTrue(analysis.macroTargets(file, use).isEmpty())
-                assertTrue(analysis.assembledMacroCallsAt(file, use, hasLiveDefinition = false).isEmpty())
+                assertTrue(analysis.assembledMacroDefinitionsAt(file, use, hasLiveDefinition = false).isEmpty())
             }
             assertEquals(7, analysis.macroTargets(file, use).single().textOffset)
         }

@@ -35,8 +35,7 @@ internal class BackgroundAssemblyMemo {
             val result = sources.assembleIn(component, ProgressManager::checkCanceled)
             val program = result.program()
             val symbols = program?.let {
-                AssemblySymbols(sources.sourceSet.entry, sources.revisions, it.symbolMap(), sources.snapshot.texts(),
-                    options, sources.rootsBySource, sources.directoryStamp, sources.exceptionHandler, sources.sourceSet)
+                AssemblySymbols(sources, it.symbolMap(), options)
             }
             BackgroundAssemblyOutcome(result.errors().groupBy(AssemblyError::file), symbols, program?.pseudoExpansions().orEmpty())
         }

@@ -104,6 +104,12 @@ internal class MarsExecutionSources(private val capture: CapturedAssemblySources
         }
     }
 
+    /** Provides bounded source text when an IDE document preview ends before a declaration. */
+    fun excerptPosition(location: Location): Pair<VirtualFile, Int> {
+        val file = excerptAt(location.file(), texts.getValue(location.file()), location.line() - 1)
+        return file to (location.line() - 1 - file.firstLine)
+    }
+
     private fun excerptAt(path: Path, text: String, line: Int): CapturedFile {
         val offsets = lineOffsets.computeIfAbsent(path) { LineOffsetsUtil.create(text) }
         val pageStart = offsets.getLineStart(line) / EXCERPT_SIZE * EXCERPT_SIZE

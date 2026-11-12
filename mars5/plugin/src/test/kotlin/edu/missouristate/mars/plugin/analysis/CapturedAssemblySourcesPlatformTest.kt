@@ -3,6 +3,7 @@ package edu.missouristate.mars.plugin.analysis
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.command.WriteCommandAction
+import com.intellij.openapi.components.service
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.util.SystemInfoRt
@@ -14,8 +15,12 @@ import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsigh
 import com.intellij.psi.PsiManager
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
+import edu.missouristate.mars.api.AssemblySymbolMap
+import edu.missouristate.mars.api.AssemblySymbolMap.Definition
+import edu.missouristate.mars.api.AssemblySymbolMap.SourceToken
 import edu.missouristate.mars.api.InstructionSourceMap.Location
 import edu.missouristate.mars.plugin.MarsSessionService
+import edu.missouristate.mars.plugin.language.MipsDocumentationTargetProvider
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.run.MarsExecutionSources
 import java.nio.file.Files
@@ -82,7 +87,7 @@ class CapturedAssemblySourcesPlatformTest {
         val diskLine = "$comment\r\n"
         val commentCount = FileSizeLimit.getContentLoadLimit("inc") / (diskLine.length * Char.SIZE_BYTES) + 1
         val (entry, large) = withContext(Dispatchers.EDT) {
-            val source = fixture.addFileToProject("entry.mars", ".include \"large.inc\"\n").virtualFile
+            val source = fixture.addFileToProject("entry.mars", ".include \"large.inc\"\nemit\nj target\n").virtualFile
             fixture.addFileToProject("tail.s", "nop\n")
             val path = source.toNioPath().resolveSibling("large.inc")
             Files.newOutputStream(path).use { output ->
@@ -91,7 +96,7 @@ class CapturedAssemblySourcesPlatformTest {
                     repeat(commentCount) { writer.write(diskLine) }
                     writer.write(".include \"tail.s\"\r\n\taddiu \$t0, \$zero, 7\r\n")
                     writer.write("#" + " ".repeat(32_768) + "\r\n")
-                    writer.write("\taddiu \$t1, \$zero, 8\r\nnop\r\n")
+                    writer.write("\taddiu \$t1, \$zero, 8\r\n\ttarget: nop\r\n.macro emit # Macro documentation\r\nnop\r\n.end_macro\r\n")
                 }
             }
             source.toNioPath() to checkNotNull(VirtualFileManager.getInstance().refreshAndFindFileByNioPath(path))
@@ -109,20 +114,39 @@ class CapturedAssemblySourcesPlatformTest {
         }
 
         val capture = captureAssemblySources(listOf(entry), null)
-        assertTrue(capture.snapshot.texts().getValue(largePath).endsWith("\taddiu \$t1, \$zero, 8\nnop\n"))
+        assertTrue(capture.snapshot.texts().getValue(largePath).contains("\taddiu \$t1, \$zero, 8\n\ttarget: nop\n"))
         assertTrue(largePath.resolveSibling("tail.s") in capture.snapshot.texts())
         val component = MarsSessionService.createMarsComponent()
         component.context().use { session ->
             val result = capture.assembleIn(component)
             assertTrue(result.succeeded(), result.errors().toString())
             val statements = session.program.machineList
-            assertEquals(listOf(0, 0x24080007, 0x24090008, 0), statements.map { it.binaryStatement })
+            assertEquals(listOf(0, 0x24080007, 0x24090008, 0, 0), statements.dropLast(1).map { it.binaryStatement })
             val location = Location(largePath, instructionLine)
             assertEquals(location, result.program().sourceMap().origins()[statements[1].address]?.location())
+            val ide = project.get()
+            val analysis = ide.service<MarsAnalysisService>()
+            analysis.publishBuiltSymbols(analysis.beginSymbolBuild(entry), capture, result.program().symbolMap())
             readAction {
+                val main = PsiManager.getInstance(ide).findFile(VirtualFileManager.getInstance().findFileByNioPath(entry)!!) as MipsFile
+                val label = checkNotNull(main.findReferenceAt(main.text.indexOf("target"))?.resolve())
+                assertEquals("target", label.text)
+                val excerptFile = label.containingFile.virtualFile
+                assertNotEquals(large, excerptFile)
+                assertFalse(excerptFile.isWritable)
+                val macroCall = main.text.indexOf("emit")
+                val macro = checkNotNull(main.findReferenceAt(macroCall)?.resolve())
+                assertEquals("emit", macro.text)
+                assertSame(excerptFile, macro.containingFile.virtualFile)
+                val docs = MipsDocumentationTargetProvider().documentationTargets(main, macroCall).single()
+                val documentationLink = assertInstanceOf(OpenFileDescriptor::class.java, docs.navigatable)
+                assertSame(excerptFile, documentationLink.file)
+                assertEquals(macro.textOffset, documentationLink.offset)
+                assertNull(analysis.sourceTokenPosition(SourceToken(Location(largePath, instructionLine + 3), 2)))
+
                 val sources = MarsExecutionSources(capture)
                 assertEquals(large, sources.position(Location(largePath, 1)).file)
-                assertEquals(3, sources.hyperlink(project.get(), Location(entry, 4), 2).descriptor?.line)
+                assertEquals(8, sources.hyperlink(project.get(), Location(entry, 9), 2).descriptor?.line)
                 val position = sources.position(location)
                 assertNotEquals(large, position.file)
                 assertFalse(position.file.isWritable)
@@ -145,6 +169,15 @@ class CapturedAssemblySourcesPlatformTest {
                 val nextExcerpt = checkNotNull(documents.getDocument(next.file))
                 assertTrue(nextExcerpt.text.startsWith("# "))
                 assertTrue(nextExcerpt.text.startsWith("\taddiu \$t1, \$zero, 8\n", nextExcerpt.getLineStartOffset(next.line)))
+            }
+            val definition = result.program().symbolMap().locals().getValue(entry).getValue("target")
+            val badColumn = Definition(definition.address(), definition.kind(), definition.origin(), definition.macroPrivate(), 100)
+            analysis.publishBuiltSymbols(analysis.beginSymbolBuild(entry), capture,
+                AssemblySymbolMap(mapOf(entry to mapOf("target" to badColumn)), emptyMap()))
+            readAction {
+                val source = VirtualFileManager.getInstance().findFileByNioPath(entry)!!
+                val main = PsiManager.getInstance(ide).findFile(source) as MipsFile
+                assertNull(main.findReferenceAt(main.text.indexOf("target"))?.resolve())
             }
         }
         val unavailable = readAction {

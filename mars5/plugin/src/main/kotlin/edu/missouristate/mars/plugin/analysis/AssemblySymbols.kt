@@ -7,24 +7,24 @@ import edu.missouristate.mars.api.AssemblySymbolMap
 import edu.missouristate.mars.api.AssemblySymbolMap.SourceToken
 import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.plugin.MarsExecutionOptions
-import edu.missouristate.mars.plugin.build.MarsSourceSet
 import edu.missouristate.mars.plugin.language.MipsFile
+import edu.missouristate.mars.plugin.run.MarsExecutionSources
 import java.nio.file.Path
 import java.util.TreeSet
 import kotlin.io.path.invariantSeparatorsPathString
 
 /** Immutable, detached facts shared by explicit and background assembly. */
 internal class AssemblySymbols(
-    val entry: Path,
-    val revisions: Map<Path, Long> = emptyMap(),
-    val symbols: AssemblySymbolMap = AssemblySymbolMap.EMPTY,
-    val texts: Map<Path, String> = emptyMap(),
-    val options: MarsExecutionOptions = MarsExecutionOptions(),
-    private val rootsBySource: Map<Path, Path> = mapOf(entry to entry),
-    val directoryStamp: Long? = null,
-    val exceptionHandler: Path? = null,
-    val sourceSet: MarsSourceSet = MarsSourceSet(entry),
+    private val capture: CapturedAssemblySources,
+    val symbols: AssemblySymbolMap,
+    val options: MarsExecutionOptions,
 ) {
+    val entry get() = sourceSet.entry
+    val sourceSet get() = capture.sourceSet
+    val revisions get() = capture.revisions
+    val texts get() = capture.snapshot.texts()
+    val exceptionHandler get() = capture.exceptionHandler
+    val sourceExcerpts by lazy { MarsExecutionSources(capture) }
     private val sourcesByUrl = revisions.keys.associateBy { VfsUtilCore.pathToUrl(it.invariantSeparatorsPathString) }
     val macroCallSites = symbols.macroCalls().entries.groupBy { it.key.location() }
     val assembledMacroUsages: Map<SourceToken, Set<SourceToken>> = buildMap<SourceToken, MutableSet<SourceToken>> {
@@ -43,12 +43,12 @@ internal class AssemblySymbols(
     }
     val localSymbols get() = localSymbols(entry)
 
-    fun rootFor(source: Path): Path = rootsBySource.getValue(source)
+    fun rootFor(source: Path): Path = capture.rootsBySource.getValue(source)
 
     fun localSymbols(source: Path) = symbols.locals()[rootFor(source)].orEmpty()
 
     fun hasCurrentDirectory(): Boolean =
-        directoryStamp?.let { it == VirtualFileManager.getInstance().structureModificationCount } ?: true
+        capture.directoryStamp?.let { it == VirtualFileManager.getInstance().structureModificationCount } ?: true
 
     fun sourcePath(file: MipsFile): Path? = sourcesByUrl[file.viewProvider.virtualFile.url]
 

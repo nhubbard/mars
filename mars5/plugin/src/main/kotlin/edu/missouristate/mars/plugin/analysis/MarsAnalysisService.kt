@@ -6,6 +6,7 @@ import com.intellij.openapi.application.constrainedReadAction
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.Document
+import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
@@ -145,13 +146,11 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         val entry get() = sourceSet.entry
     }
 
-    internal class SymbolBuild(val selection: AssemblySelection) {
-        val entry: Path get() = selection.entry
-    }
+    internal class SymbolBuild(val selection: AssemblySelection)
 
     private class BuildSelection(
         val request: SymbolBuild,
-        val snapshot: AssemblySymbols = AssemblySymbols(request.entry, options = request.selection.options),
+        val snapshot: AssemblySymbols? = null,
     )
 
     // A launch can override the assembler policy without changing editor diagnostics for the project.
@@ -177,8 +176,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
     internal fun publishBuiltSymbols(build: SymbolBuild, sources: CapturedAssemblySources, symbols: AssemblySymbolMap) {
         val current = lastBuild.get()
         if (current.request === build) {
-            val snapshot = AssemblySymbols(build.entry, sources.revisions, symbols, sources.snapshot.texts(), build.selection.options,
-                sources.rootsBySource, sources.directoryStamp, sources.exceptionHandler, sources.sourceSet)
+            val snapshot = AssemblySymbols(sources, symbols, build.selection.options)
             lastBuild.compareAndSet(current, BuildSelection(build, snapshot))
         }
     }
@@ -296,10 +294,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         val document = target ?: return null
         val manager = PsiDocumentManager.getInstance(project)
         if (!manager.isCommitted(document)) return null
-        val file = manager.getPsiFile(document) ?: return null
-        val start = document.getLineStartOffset(location.line() - 1)
-        val offset = definition.column()?.let { start + it - 1 }
-            ?: CharArrayUtil.shiftForward(document.charsSequence, start, " \t,")
+        val (file, offset) = build.declarationPosition(document, location, definition.column()) ?: return null
         return if (file is MipsFile) file.findElementAt(offset) else MipsIncludedDeclaration.at(file, offset)
     }
 
@@ -322,20 +317,32 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         val owner = operationOwner(position) ?: return emptyList()
         val site = operationSite(root, owner.operationHead)
         val definition = site?.macroDefinition?.takeIf { site.range.startOffset == position.textOffset }
-        val calls = assembledMacroCallsAt(root, position, hasLiveDefinition = definition != null)
-        if (calls.isNotEmpty()) return calls.map(MacroCall::definition).distinct().mapNotNull(::macroDeclarationAt)
+        val calls = assembledMacroDefinitionsAt(root, position, hasLiveDefinition = definition != null)
+        if (calls.isNotEmpty()) return calls.distinctBy { it.first.definition() }.map { (_, file, offset) ->
+            macroDeclarationAt(file, offset)
+        }
         val header = definition?.header ?: return emptyList()
         val declaration = header as? MipsDeclaration ?: header.containingFile.findElementAt(definition.nameOffset)
         return listOfNotNull(declaration).map { it.writtenDeclarationAt(definition.nameOffset) }
     }
 
-    internal fun assembledMacroCallsAt(root: MipsFile, position: PsiElement, hasLiveDefinition: Boolean): Set<MacroCall> {
-        if (hasLiveDefinition && !editorTimeline(root).hasIncompleteIncludes) return emptySet()
+    internal fun assembledMacroDefinitionsAt(
+        root: MipsFile, position: PsiElement, hasLiveDefinition: Boolean,
+    ): List<Triple<MacroCall, PsiFile, Int>> {
+        if (hasLiveDefinition && !editorTimeline(root).hasIncompleteIncludes) return emptyList()
         return fromAssemblySymbols(root) { snapshot, path ->
             val calls = snapshot.symbols.macroCalls()[sourceTokenAt(root, path, position.textOffset)]
                 ?: return@fromAssemblySymbols null
             if (!snapshot.hasCurrentMacroSources()) return@fromAssemblySymbols null
-            calls
+            val files = VirtualFileManager.getInstance()
+            val documents = FileDocumentManager.getInstance()
+            calls.mapNotNull { call ->
+                val target = call.definition()
+                val location = target.location()
+                val document = documents.getDocument(files.findFileByNioPath(location.file())!!)!!
+                val (file, offset) = snapshot.declarationPosition(document, location, target.column()) ?: return@mapNotNull null
+                Triple(call, file, offset)
+            }
         }.orEmpty()
     }
 
@@ -369,8 +376,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         }
     }
 
-    private fun macroDeclarationAt(target: SourceToken): PsiElement? {
-        val (file, offset) = sourceTokenPosition(target) ?: return null
+    private fun macroDeclarationAt(file: PsiFile, offset: Int): PsiElement {
         if (file !is MipsFile) return MipsIncludedDeclaration.at(file, offset)
         val token = file.findElementAt(offset)!!
         val declaration = token.parent
@@ -382,8 +388,24 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         // The source snapshot has already validated each physical file and its committed document.
         val source = VirtualFileManager.getInstance().findFileByNioPath(location.file())!!
         val file = PsiManager.getInstance(project).findFile(source) ?: return null
-        val line = location.line() - 1
-        return file to (file.fileDocument.getLineStartOffset(line) + target.column() - 1)
+        return file.fileDocument.sourceOffset(location.line() - 1, target.column())?.let { file to it }
+    }
+
+    private fun AssemblySymbols.declarationPosition(document: Document, location: Location, column: Int?): Pair<PsiFile, Int>? {
+        val manager = PsiDocumentManager.getInstance(project)
+        val offset = document.sourceOffset(location.line() - 1, column)
+        if (offset != null) return manager.getPsiFile(document)?.let { it to offset }
+        if (!FileDocumentManager.getInstance().isPartialPreviewOfALargeFile(document)) return null
+        val (excerpt, line) = sourceExcerpts.excerptPosition(location)
+        val file = PsiManager.getInstance(project).findFile(excerpt)!!
+        return file.fileDocument.sourceOffset(line, column)?.let { file to it }
+    }
+
+    private fun Document.sourceOffset(line: Int, column: Int?): Int? {
+        if (line >= lineCount) return null
+        val start = getLineStartOffset(line)
+        val offset = column?.let { start + it - 1 } ?: CharArrayUtil.shiftForward(charsSequence, start, " \t,")
+        return offset.takeIf { it < getLineEndOffset(line) }
     }
 
     internal fun macroCompletionSignatures(root: MipsFile, offset: Int, namePrefix: String): Map<String, List<String>> {
