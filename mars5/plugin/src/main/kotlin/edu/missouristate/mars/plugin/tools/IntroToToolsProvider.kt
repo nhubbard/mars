@@ -11,6 +11,7 @@ import com.intellij.util.ui.launchOnShow
 import java.util.concurrent.atomic.AtomicLong
 import javax.swing.JComponent
 import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 
 /** A working example of a tool contributed through the public provider API. */
 internal class IntroToToolsProvider : MarsToolProvider {
@@ -54,7 +55,7 @@ internal class IntroToToolsProvider : MarsToolProvider {
         val job = component.launchOnShow("Refresh Introduction to Tools") {
             while (true) {
                 render()
-                delay(200)
+                delay(200.milliseconds)
             }
         }
         Disposer.register(context.disposable) { job.cancel() }

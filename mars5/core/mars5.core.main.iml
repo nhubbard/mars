@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module external.linked.project.id=":core:main" external.linked.project.path="$MODULE_DIR$" external.root.project.path="$MODULE_DIR$/.." external.system.id="GRADLE" external.system.module.group="edu.missouristate" external.system.module.type="sourceSet" external.system.module.version="1.0-SNAPSHOT" type="JAVA_MODULE" version="4">
+  <component name="FacetManager">
+    <facet external-system-id="GRADLE" type="kotlin-language" name="Kotlin">
+      <configuration version="5" platform="JVM 25" allPlatforms="JVM [25]" useProjectSettings="false" pureKotlinSourceFolders="$MODULE_DIR$/src/test/kotlin;/Users/nhubbard/IdeaProjects/mars-original/mars5/core/build/generated/ksp/test/kotlin;/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin;/Users/nhubbard/IdeaProjects/mars-original/mars5/core/build/generated/ksp/benchmark/kotlin;/Users/nhubbard/IdeaProjects/mars-original/mars5/core/build/generated/ksp/main/java;/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/benchmark/kotlin;/Users/nhubbard/IdeaProjects/mars-original/mars5/core/build/generated/ksp/test/java;/Users/nhubbard/IdeaProjects/mars-original/mars5/core/build/generated/ksp/main/kotlin;/Users/nhubbard/IdeaProjects/mars-original/mars5/core/build/generated/ksp/benchmark/java">
+        <compilerSettings>
+          <option name="additionalArguments" value="-Werror" />
+        </compilerSettings>
+        <compilerArguments>
+          <flagArguments>
+            <flagArg name="allowNoSourceFiles" arg="true" />
+            <flagArg name="noReflect" arg="true" />
+            <flagArg name="noStdlib" arg="true" />
+          </flagArguments>
+          <stringArguments>
+            <stringArg name="destination" arg="$MODULE_DIR$/build/classes/kotlin/main" />
+            <stringArg name="jvmTarget" arg="25" />
+            <stringArg name="moduleName" arg="edu.missouristate:core" />
+            <stringArg name="apiVersion" arg="2.4" />
+            <stringArg name="languageVersion" arg="2.4" />
+          </stringArguments>
+          <arrayArguments>
+            <arrayArg name="pluginClasspaths">
+              <args>
+                <arg>$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.google.devtools.ksp/symbol-processing-api/2.3.12/a33f85e876b6d7db81d6e50d497559a9333648cb/symbol-processing-api-2.3.12.jar</arg>
+                <arg>$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.jetbrains.kotlin/kotlin-scripting-jvm/2.4.21/211b20726a31d9f5865dc7c6e7add1c3e1705631/kotlin-scripting-jvm-2.4.21.jar</arg>
+                <arg>$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.jetbrains.kotlin/kotlin-scripting-common/2.4.21/e087d59ab6964459935851f7eb46c19d5976a14a/kotlin-scripting-common-2.4.21.jar</arg>
+                <arg>$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.jetbrains.kotlin/kotlin-stdlib/2.4.21/c343e135bd1e7dd94b7ed76b4159068d888d09db/kotlin-stdlib-2.4.21.jar</arg>
+                <arg>$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.jetbrains.kotlin/kotlin-script-runtime/2.4.21/abc7ff9f7e229cb6bdfadad81e93c871e6cdde41/kotlin-script-runtime-2.4.21.jar</arg>
+                <arg>$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.jetbrains/annotations/13.0/919f0dfe192fb4e063e7dacadee7f8bb9a2672a9/annotations-13.0.jar</arg>
+              </args>
+            </arrayArg>
+          </arrayArguments>
+        </compilerArguments>
+      </configuration>
+    </facet>
+  </component>
+  <component name="NewModuleRootManager">
+    <output url="file://$MODULE_DIR$/build/classes/java/main" />
+    <exclude-output />
+    <content url="file://$MODULE_DIR$/build/generated/ksp/main/java">
+      <sourceFolder url="file://$MODULE_DIR$/build/generated/ksp/main/java" isTestSource="false" />
+    </content>
+    <content url="file://$MODULE_DIR$/build/generated/ksp/main/kotlin" />
+    <content url="file://$MODULE_DIR$/src/main">
+      <sourceFolder url="file://$MODULE_DIR$/src/main/java" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/src/main/kotlin" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/src/main/resources" type="java-resource" />
+    </content>
+    <orderEntry type="jdk" jdkName="openjdk-25" jdkType="JavaSDK" />
+    <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="library" name="Gradle: org.jetbrains.kotlin:kotlin-stdlib:2.4.21" level="project" />
+    <orderEntry type="library" name="Gradle: com.google.dagger:dagger:2.60.1" level="project" />
+    <orderEntry type="library" name="Gradle: org.jetbrains:annotations:13.0" level="project" />
+    <orderEntry type="library" name="Gradle: jakarta.inject:jakarta.inject-api:2.0.1" level="project" />
+    <orderEntry type="library" name="Gradle: javax.inject:javax.inject:1" level="project" />
+    <orderEntry type="library" name="Gradle: org.jspecify:jspecify:1.0.0" level="project" />
+  </component>
+</module>

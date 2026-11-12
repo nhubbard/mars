@@ -21,6 +21,7 @@ import javax.swing.JToggleButton
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import kotlin.time.Duration.Companion.milliseconds
 
 internal class DigitalLabView(project: Project) : Disposable {
     private var selected: DigitalLabDevice? = null
@@ -78,7 +79,7 @@ internal class DigitalLabView(project: Project) : Disposable {
     private val refreshJob = component.launchOnShow("Refresh MARS Digital Lab Sim") {
         while (true) {
             withContext(Dispatchers.EDT) { refresh() }
-            delay(200)
+            delay(200.milliseconds)
         }
     }
 

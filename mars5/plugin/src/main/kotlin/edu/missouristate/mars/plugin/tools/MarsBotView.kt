@@ -26,6 +26,7 @@ import javax.swing.JButton
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import kotlin.time.Duration.Companion.milliseconds
 
 internal class MarsBotView(project: Project) : Disposable {
     private var selected: MarsBotDevice? = null
@@ -81,7 +82,7 @@ internal class MarsBotView(project: Project) : Disposable {
     private val refreshJob = component.launchOnShow("Refresh MARS MarsBot") {
         while (true) {
             withContext(Dispatchers.EDT) { refresh() }
-            delay(100)
+            delay(100.milliseconds)
         }
     }
 

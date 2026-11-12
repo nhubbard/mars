@@ -29,6 +29,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.runInterruptible
 import kotlinx.coroutines.withContext
+import kotlin.time.Duration.Companion.milliseconds
 
 internal class MarsIdeSyscallEnvironment(
     private val execution: Job,
@@ -48,7 +49,7 @@ internal class MarsIdeSyscallEnvironment(
 
     override fun sleepMillis(milliseconds: Int) {
         require(milliseconds >= 0) { "timeout value is negative" }
-        runBlocking(execution) { delay(milliseconds.toLong()) }
+        runBlocking(execution) { delay(milliseconds.toLong().milliseconds) }
     }
 
     override fun showInputDialog(message: String?) = dialogs.showInputDialog(message!!)

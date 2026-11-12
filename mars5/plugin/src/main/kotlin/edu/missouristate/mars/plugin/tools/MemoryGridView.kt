@@ -45,6 +45,7 @@ import javax.swing.SwingUtilities
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import kotlin.time.Duration.Companion.milliseconds
 
 internal class MemoryGridView(
     project: Project, private val mode: Mode, private val model: (MarsProcessHandler) -> MemoryGridDisplay,
@@ -144,7 +145,7 @@ internal class MemoryGridView(
     private val refreshJob = component.launchOnShow("Refresh MARS memory display") {
         while (true) {
             withContext(Dispatchers.EDT) { refresh() }
-            delay(200)
+            delay(200.milliseconds)
         }
     }
 

@@ -18,6 +18,7 @@ import java.awt.Color
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jetbrains.jewel.bridge.JewelComposePanel
+import kotlin.time.Duration.Companion.milliseconds
 
 internal class XRayView(private val project: Project) : Disposable {
     private val playback = XRayPlayback()
@@ -56,14 +57,14 @@ internal class XRayView(private val project: Project) : Disposable {
     private val refreshJob = component.launchOnShow("Refresh MIPS X-Ray") {
         launch {
             while (true) {
-                delay(30)
+                delay(30.milliseconds)
                 if (playback.advance(rate.ticks)) showPosition()
             }
         }
         while (true) {
             refreshExecutions()
             refreshTrace()
-            delay(200)
+            delay(200.milliseconds)
         }
     }
 

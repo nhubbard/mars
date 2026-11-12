@@ -42,6 +42,7 @@ import javax.swing.table.AbstractTableModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import kotlin.time.Duration.Companion.milliseconds
 
 internal class MarsToolsWindowFactory : ToolWindowFactory, DumbAware {
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
@@ -244,7 +245,7 @@ private class InstructionCountsView(
     private val refreshJob = component.launchOnShow("Refresh MARS instruction counts") {
         while (true) {
             withContext(Dispatchers.EDT) { refresh() }
-            delay(200)
+            delay(200.milliseconds)
         }
     }
 

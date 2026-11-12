@@ -9,6 +9,7 @@ import edu.missouristate.mars.api.StepEvent
 import java.util.EventListener
 import javax.swing.JComponent
 import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 
 /** Contributes a tab to MARS Tools. Keep the provider lightweight and construct UI in [createContent]. */
 interface MarsToolProvider {
@@ -41,7 +42,7 @@ class MarsToolContext internal constructor(val project: Project, val disposable:
         val job = selector.component.launchOnShow("Refresh MARS tool executions") {
             while (true) {
                 selector.refresh()
-                delay(200)
+                delay(200.milliseconds)
             }
         }
         Disposer.register(disposable) { job.cancel() }

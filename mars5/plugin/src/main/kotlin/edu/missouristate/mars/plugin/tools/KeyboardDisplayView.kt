@@ -35,6 +35,7 @@ import javax.swing.SpinnerNumberModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import kotlin.time.Duration.Companion.milliseconds
 
 internal class KeyboardDisplayView(project: Project) : Disposable {
     private val factory = EditorFactory.getInstance()
@@ -134,7 +135,7 @@ internal class KeyboardDisplayView(project: Project) : Disposable {
                 selector.refresh()
                 render()
             }
-            delay(200)
+            delay(200.milliseconds)
         }
     }
 

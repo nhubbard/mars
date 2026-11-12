@@ -32,6 +32,7 @@ import javax.swing.table.AbstractTableModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import kotlin.time.Duration.Companion.milliseconds
 
 internal class DataCacheView(project: Project) : Disposable {
     private val selector = MarsToolExecutionSelector(project, ::selectionChanged)
@@ -135,7 +136,7 @@ internal class DataCacheView(project: Project) : Disposable {
     private val refreshJob = component.launchOnShow("Refresh MARS data cache") {
         while (true) {
             withContext(Dispatchers.EDT) { refresh() }
-            delay(200)
+            delay(200.milliseconds)
         }
     }
 

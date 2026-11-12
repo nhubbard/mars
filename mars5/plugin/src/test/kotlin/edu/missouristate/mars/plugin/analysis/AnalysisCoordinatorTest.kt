@@ -7,6 +7,7 @@ import kotlinx.coroutines.*
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
+import kotlin.time.Duration.Companion.milliseconds
 
 class AnalysisCoordinatorTest {
     @Test
@@ -33,7 +34,7 @@ class AnalysisCoordinatorTest {
                 val latest = coordinator.submit(facts)
                 facts.clear()
                 release.countDown()
-                assertTrue(withTimeout(10_000) { latest.await() })
+                assertTrue(withTimeout(10_000.milliseconds) { latest.await() })
                 assertTrue(old.isCancelled)
                 assertEquals(2, coordinator.snapshot.generation)
                 assertTrue(coordinator.snapshot.index.inScope(setOf(source))
@@ -84,7 +85,7 @@ class AnalysisCoordinatorTest {
                 assertTrue(entered.await(10, TimeUnit.SECONDS))
                 coordinator.close()
                 release.countDown()
-                withTimeout(10_000) { task.join() }
+                withTimeout(10_000.milliseconds) { task.join() }
                 assertTrue(task.isCancelled)
                 assertEquals(1, coordinator.snapshot.generation)
                 assertThrows<IllegalStateException> { coordinator.submit(emptyList()) }

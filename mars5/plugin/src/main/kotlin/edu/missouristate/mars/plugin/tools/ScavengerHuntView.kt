@@ -33,6 +33,7 @@ import kotlin.math.roundToInt
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import kotlin.time.Duration.Companion.milliseconds
 
 internal class ScavengerHuntView(project: Project) : Disposable {
     private var selected: MarsProcessHandler? = null
@@ -85,7 +86,7 @@ internal class ScavengerHuntView(project: Project) : Disposable {
     private val refreshJob = component.launchOnShow("Refresh MARS Scavenger Hunt") {
         while (true) {
             withContext(Dispatchers.EDT) { refresh() }
-            delay(100)
+            delay(100.milliseconds)
         }
     }
 
