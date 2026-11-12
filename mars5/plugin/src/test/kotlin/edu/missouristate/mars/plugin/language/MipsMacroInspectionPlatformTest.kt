@@ -725,6 +725,43 @@ class MipsMacroInspectionPlatformTest {
     }
 
     @Test
+    fun `macro diagnostics mark the full signed token or its written aliases`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val source = """
+                .eqv OPEN .macro
+                .eqv SIGNED -7
+                .eqv SEVEN 7
+                .macro -7
+                .macro + 7
+                label: .macro +7
+                OPEN -7
+                OPEN -SEVEN
+                .macro SIGNED
+                OPEN emit (%accepted, +7)
+                .end_macro
+                nop
+            """.trimIndent()
+            val entry = directory.resolve("signed-macro-errors.mars").also { it.writeText(source) }
+            val project = projectFixture.get()
+            val context = project.service<MarsSessionService>().context
+            val failure = assertThrows<ProcessingException> { context.assemble(listOf(entry)) }
+            assertEquals(
+                listOf("-7", "+", "+7", "-7", "-7", "-7").map { "Invalid Macro name \"$it\"" } +
+                    "Invalid macro argument '+7'",
+                failure.errors().errorMessages.map { it.message },
+            )
+            withContext(Dispatchers.EDT) { fixture.configureByText("signed-macro-errors.mars", source) }
+            IndexingTestUtil.suspendUntilIndexesAreReady(project)
+            withContext(Dispatchers.EDT) {
+                assertEquals(
+                    listOf("-7", "+", "+7", "-7", "-SEVEN", "SIGNED").map { it to invalidNameMessage } +
+                        ("+7" to "Invalid MARS macro parameter '+7'"),
+                    errors(),
+                )
+            }
+        }
+
+    @Test
     fun `expanded openers diagnose missing and invalid names at the original tokens`(@TempDir directory: Path) =
         timeoutRunBlocking<Unit> {
             val source = """

@@ -141,7 +141,7 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
                 macroBoundaries[eventCount] = null
             }
             is MipsSourceEvent.RejectedMacro -> if (firstIncompleteInclude == Int.MAX_VALUE) {
-                cursor.locations.macroBoundaryProblems.add(MacroBoundaryProblem(event.offset, event.kind))
+                cursor.locations.macroBoundaryProblems.add(MacroBoundaryProblem(event.offset, event.kind, event.lastOffset))
             }
             is MipsSourceEvent.DataDirective -> if (macro == null) {
                 when (event.directive) {
@@ -386,7 +386,7 @@ internal enum class MacroPart { NAME, PARAMETER }
 
 internal data class MacroBody(val opening: PsiElement, val closingOffset: Int)
 
-internal data class MacroBoundaryProblem(val offset: Int, val kind: Kind) {
+internal data class MacroBoundaryProblem(val offset: Int, val kind: Kind, val lastOffset: Int = offset) {
     enum class Kind { MISSING_NAME, INVALID_NAME, NESTED_BEGIN, TRAILING_TEXT, UNMATCHED_END, MISSING_END }
 }
 

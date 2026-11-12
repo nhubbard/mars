@@ -130,10 +130,10 @@ internal sealed interface MipsSourceEvent {
         }
     }
 
-    data class MacroFormal(val value: String, val offset: Int)
+    data class MacroFormal(val value: String, val offset: Int, val lastOffset: Int = offset)
 
     data class End(override val offset: Int) : Effective
-    data class RejectedMacro(override val offset: Int, val kind: Kind) : Effective
+    data class RejectedMacro(override val offset: Int, val kind: Kind, val lastOffset: Int = offset) : Effective
 
     data class LabeledMacro(val event: Effective, val label: String) : MipsSourceEvent {
         override val offset get() = event.offset
@@ -305,16 +305,18 @@ private fun macroSignature(
     header: PsiElement, tokens: TokenList, operation: Int, start: Int, mapped: Tokenizer.MappedLine?,
 ): MipsSourceEvent.Effective? {
     if (tokens.directiveAt(operation) != Directives.MACRO) return null
-    fun originalOffset(token: Token): Int {
-        val column = token.startPos - 1
-        return start + (mapped?.originalOffset(column) ?: column)
-    }
+    fun originalColumn(column: Int): Int = start + (mapped?.originalOffset(column) ?: column)
+    fun originalOffset(token: Token): Int = originalColumn(token.startPos - 1)
+    // Signs are separate editor leaves. Map the end back too, so a substituted
+    // magnitude highlights its full written alias and a generated sign stays on its alias.
+    fun lastOffset(token: Token): Int =
+        if (token.value.first() in "+-") originalColumn(token.startPos + token.value.length - 2) else originalOffset(token)
     val directive = originalOffset(tokens[operation])
     val nameIndex = operation + 1
     if (nameIndex == tokens.size()) return MipsSourceEvent.RejectedMacro(directive, Kind.MISSING_NAME)
     val name = tokens[nameIndex]
     if (name.type != TokenTypes.IDENTIFIER) {
-        return MipsSourceEvent.RejectedMacro(originalOffset(name), Kind.INVALID_NAME)
+        return MipsSourceEvent.RejectedMacro(originalOffset(name), Kind.INVALID_NAME, lastOffset(name))
     }
     val arguments = (nameIndex + 1 until tokens.size()).map(tokens::get)
         .filter { it.type != TokenTypes.LEFT_PAREN && it.type != TokenTypes.RIGHT_PAREN }
@@ -322,7 +324,7 @@ private fun macroSignature(
     val invalid = arguments.getOrNull(parameters.size)
     return MipsSourceEvent.Begin(header, name.value, originalOffset(name), directive,
         parameters.map { MipsSourceEvent.MacroFormal(it.value, originalOffset(it)) },
-        invalid?.let { MipsSourceEvent.MacroFormal(it.value, originalOffset(it)) })
+        invalid?.let { MipsSourceEvent.MacroFormal(it.value, originalOffset(it), lastOffset(it)) })
 }
 
 private fun writtenMacroEnd(element: PsiElement): MipsSourceEvent? {

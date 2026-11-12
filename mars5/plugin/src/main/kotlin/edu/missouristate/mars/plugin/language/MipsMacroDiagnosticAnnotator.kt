@@ -10,6 +10,7 @@ import com.intellij.modcommand.Presentation
 import com.intellij.modcommand.PsiBasedModCommandAction
 import com.intellij.openapi.components.service
 import com.intellij.openapi.progress.ProgressManager
+import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiErrorElement
 import com.intellij.psi.PsiManager
@@ -50,9 +51,9 @@ internal class MipsMacroDiagnosticAnnotator : Annotator {
             if (PsiTreeUtil.getParentOfType(site, PsiErrorElement::class.java) != null) continue
             if (!hasEntry) return
             holder.newAnnotation(HighlightSeverity.ERROR, bundle.getMessage("syntax.macro.formal.expanded", invalid.value))
-                .range(site.textRange).create()
+                .range(macroDiagnosticRange(site, invalid.lastOffset)).create()
         }
-        for ((offset, kind) in timeline.macroBoundaryProblems(file)) {
+        for ((offset, kind, lastOffset) in timeline.macroBoundaryProblems(file)) {
             ProgressManager.checkCanceled()
             if (!hasEntry) return
             val site = file.findElementAt(offset)!!
@@ -64,7 +65,8 @@ internal class MipsMacroDiagnosticAnnotator : Annotator {
                 Kind.UNMATCHED_END -> "syntax.macro.end.unmatched"
                 Kind.MISSING_END -> "syntax.macro.end.missing"
             }
-            val annotation = holder.newAnnotation(HighlightSeverity.ERROR, bundle.getMessage(message)).range(site.textRange)
+            val annotation = holder.newAnnotation(HighlightSeverity.ERROR, bundle.getMessage(message))
+                .range(macroDiagnosticRange(site, lastOffset))
             if (kind == Kind.MISSING_END) annotation.withFix(CloseUnterminatedMacro(site))
             if (kind == Kind.TRAILING_TEXT) annotation.withFix(CommentAfterMacroEnd(site))
             if (kind == Kind.UNMATCHED_END) annotation.withFix(CommentOutUnmatchedMacroEnd(site))
@@ -72,6 +74,9 @@ internal class MipsMacroDiagnosticAnnotator : Annotator {
         }
     }
 }
+
+private fun macroDiagnosticRange(site: PsiElement, lastOffset: Int): TextRange =
+    site.textRange.union(site.containingFile.findElementAt(lastOffset)!!.textRange)
 
 private class CommentOutUnmatchedMacroEnd(site: PsiElement) : PsiBasedModCommandAction<PsiElement>(site) {
     override fun getFamilyName(): String = bundle.getMessage("syntax.macro.end.commentUnmatched")

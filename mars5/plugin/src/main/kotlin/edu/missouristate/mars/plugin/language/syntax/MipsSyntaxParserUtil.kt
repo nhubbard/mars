@@ -195,6 +195,7 @@ private fun SyntaxTreeBuilder.recoverMacroTail(messageKey: String) {
             error(message)
         } else {
             val marker = mark()
+            if (tokenType in signs && signAttachesToNumber(previousToken(separators))) advanceLexer()
             advanceLexer()
             marker.error(message)
         }
