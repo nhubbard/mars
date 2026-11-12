@@ -587,7 +587,7 @@ class MarsBuildPlatformTest {
         val original = prepare()
         assertSame(original.image, prepare().image)
         val oldDiagnostic = analyzeFixed()
-        assertTrue(oldDiagnostic.diagnostics.any { it.message().contains("Invalid address") })
+        assertTrue(oldDiagnostic.diagnostics.any { it.message!!.contains("Invalid address") })
         assertTrue(readAction { annotator.acceptResult(fixed, oldDiagnostic).isNotEmpty() })
 
         withContext(Dispatchers.EDT) {
@@ -718,14 +718,14 @@ class MarsBuildPlatformTest {
             readAction { assertTrue(annotator.acceptResult(file, oldResult).isEmpty()) }
             val strict = annotator.doAnnotate(readAction { requireNotNull(annotator.collectInformation(file)) })
             assertFalse(strict.diagnostics.single().isWarning)
-            assertEquals(warning.message, strict.diagnostics.single().message())
+            assertEquals(warning.message, strict.diagnostics.single().message)
             assertEquals(1, readAction { annotator.acceptResult(file, strict).size })
 
             withContext(Dispatchers.EDT) { settings.changeAssemblerOptions(false, true) }
             readAction { assertTrue(annotator.acceptResult(file, strict).isEmpty()) }
             val basicOnly = annotator.doAnnotate(readAction { requireNotNull(annotator.collectInformation(file)) })
             assertEquals(2, basicOnly.diagnostics.size)
-            assertTrue(basicOnly.diagnostics.any { it.message().contains("Extended") })
+            assertTrue(basicOnly.diagnostics.any { it.message!!.contains("Extended") })
             assertTrue(basicOnly.diagnostics.none { it.isWarning })
             assertTrue(build().hasErrors())
             assertEquals(listOf(MessageEvent.Kind.ERROR, MessageEvent.Kind.ERROR), diagnostics().map { it.kind })
@@ -881,7 +881,7 @@ class MarsBuildPlatformTest {
         assertFalse(build.assemble(named.virtualFile.toNioPath()))
         assertTrue(build.assemble(numeric.virtualFile.toNioPath()))
         val result = annotator.doAnnotate(readAction { requireNotNull(annotator.collectInformation(named)) })
-        assertTrue(result.diagnostics.single().message().contains("Use register number"))
+        assertTrue(result.diagnostics.single().message!!.contains("Use register number"))
     }
 
     @Test
@@ -961,12 +961,12 @@ class MarsBuildPlatformTest {
                 requireNotNull(collectEditorAssembly(main))
             }
             val missing = analysis.backgroundAssembly.assemble(stale.sources, stale.structureStamp, stale.options)
-            assertTrue(missing.diagnostics.values.flatten().any { it.message().contains(absent.toString()) })
+            assertTrue(missing.diagnostics.values.flatten().any { it.message!!.contains(absent.toString()) })
             withContext(Dispatchers.EDT) { settings.changeExceptionHandler(another.toString()) }
             val updated = readAction { requireNotNull(collectEditorAssembly(main)) }
             assertEquals(stale.sources.revisions, updated.sources.revisions)
             val missingAgain = analysis.backgroundAssembly.assemble(updated.sources, updated.structureStamp, updated.options)
-            assertTrue(missingAgain.diagnostics.values.flatten().any { it.message().contains(another.toString()) })
+            assertTrue(missingAgain.diagnostics.values.flatten().any { it.message!!.contains(another.toString()) })
             service.assemble(entry)
             assertInstanceOf(FailureResult::class.java, finish().result)
 
@@ -1728,18 +1728,18 @@ class MarsBuildPlatformTest {
                 assertFalse(result.succeeded())
                 result.errors().single()
             }
-            assertEquals(2, diagnostic.line())
-            assertEquals("ignored: ".length + 1, diagnostic.column())
-            assertTrue(diagnostic.message().endsWith("Invalid language element: 0xG"))
+            assertEquals(2, diagnostic.line)
+            assertEquals("ignored: ".length + 1, diagnostic.column)
+            assertTrue(diagnostic.message!!.endsWith("Invalid language element: 0xG"))
             assertArrayEquals(entryBytes, Files.readAllBytes(entry), "Assembling the editor capture must preserve the original bytes")
             val malformedBytes = hex.parseHex(entryBom) + malformed.replace("\n", "\r\n").toByteArray(Charset.forName(entryEncoding))
             val malformedOnDisk = Files.write(entry.resolveSibling("malformed.mars"), malformedBytes)
             MarsSessionService.createMarsComponent().context().use { disk ->
                 val failure = assertThrows(ProcessingException::class.java) { disk.assemble(listOf(malformedOnDisk)) }
                 val diskDiagnostic = failure.errors()!!.errorMessages.single()
-                assertEquals(diagnostic.line(), diskDiagnostic.line)
-                assertEquals(diagnostic.column(), diskDiagnostic.position)
-                assertEquals(diagnostic.message(), diskDiagnostic.message)
+                assertEquals(diagnostic.line, diskDiagnostic.line)
+                assertEquals(diagnostic.column, diskDiagnostic.position)
+                assertEquals(diagnostic.message, diskDiagnostic.message)
             }
         }
 
@@ -1803,9 +1803,9 @@ class MarsBuildPlatformTest {
             val failure = captureAssemblySources(listOf(broken), null).assembleIn(component)
             assertFalse(failure.succeeded())
             val error = failure.errors().single()
-            assertEquals(broken, error.file())
-            assertEquals(2, error.line())
-            assertTrue(error.message().contains("Error reading include file"))
+            assertEquals(broken, error.file)
+            assertEquals(2, error.line)
+            assertTrue(error.message!!.contains("Error reading include file"))
         }
     }
 
@@ -2276,7 +2276,7 @@ class MarsBuildPlatformTest {
                 val event = diagnosticEvent(project, id, diagnostic, capture.copy(revisions = revisions))
                 assertFalse(event is FileMessageEvent)
                 assertNull(event.getNavigatable(project))
-                assertEquals(diagnostic.message(), event.message)
+                assertEquals(diagnostic.message, event.message)
             }
         }
     }

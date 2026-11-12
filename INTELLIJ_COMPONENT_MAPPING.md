@@ -1055,7 +1055,7 @@ Test sources and generated build output are excluded from this production invent
 | [kotlin/edu/missouristate/mars/ProcessingException.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/ProcessingException.kt) | B02 |
 | [kotlin/edu/missouristate/mars/ProgramStatement.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/ProgramStatement.kt) | C03 |
 | [kotlin/edu/missouristate/mars/Settings.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/Settings.kt) | S01 |
-| [java/edu/missouristate/mars/api/AssemblyError.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/api/AssemblyError.java) | B02 |
+| [kotlin/edu/missouristate/mars/api/AssemblyError.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/api/AssemblyError.kt) | B02 |
 | [kotlin/edu/missouristate/mars/api/AssemblyResult.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/api/AssemblyResult.kt) | C02 |
 | [kotlin/edu/missouristate/mars/api/ErrorEvent.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/api/ErrorEvent.kt) | R01 |
 | [kotlin/edu/missouristate/mars/api/EventEmitter.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/api/EventEmitter.kt) | C10 |
@@ -1339,7 +1339,7 @@ Test sources and generated build output are excluded from this production invent
 | [kotlin/edu/missouristate/mars/simulator/ProgramArgumentList.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/simulator/ProgramArgumentList.kt) | C11 |
 | [kotlin/edu/missouristate/mars/simulator/SimulatorEngine.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/simulator/SimulatorEngine.kt) | R01 |
 | [kotlin/edu/missouristate/mars/util/Binary.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/util/Binary.kt) | C13 |
-| [java/edu/missouristate/mars/util/FilenameFinder.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/util/FilenameFinder.java) | C13 |
+| [kotlin/edu/missouristate/mars/util/FilenameFinder.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/util/FilenameFinder.kt) | C13 |
 | [kotlin/edu/missouristate/mars/util/MemoryDump.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/util/MemoryDump.kt) | C13 |
 | [kotlin/edu/missouristate/mars/util/NumberDisplayBase.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/util/NumberDisplayBase.kt) | C13 |
 | [kotlin/edu/missouristate/mars/util/PropertiesFile.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/util/PropertiesFile.kt) | C13 |

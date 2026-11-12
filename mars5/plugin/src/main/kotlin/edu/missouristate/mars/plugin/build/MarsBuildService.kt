@@ -228,21 +228,21 @@ internal fun diagnosticEvent(
     sources: MarsExecutionSources = MarsExecutionSources(capture),
 ): MessageEvent {
     val kind = if (diagnostic.isWarning) MessageEvent.Kind.WARNING else MessageEvent.Kind.ERROR
-    val builder = MessageEvent.builder(diagnostic.message(), kind).withParentId(buildId)
-    val path = diagnostic.file() ?: return builder.build()
-    if (diagnostic.line() < 1) return builder.withHint(path.toString()).build()
-    val location = Location(path, diagnostic.line())
+    val builder = MessageEvent.builder(diagnostic.message!!, kind).withParentId(buildId)
+    val path = diagnostic.file ?: return builder.build()
+    if (diagnostic.line < 1) return builder.withHint(path.toString()).build()
+    val location = Location(path, diagnostic.line)
     val target = sources.currentLineDescriptor(project, location) ?: return builder.withHint(path.toString()).build()
     val editorFile = target.file
     val document = FileDocumentManager.getInstance().getDocument(editorFile)!!
-    val line = diagnostic.line() - 1
+    val line = diagnostic.line - 1
     // Live text positions carry an offset. Captured views carry an editor line, which may be relative to an excerpt.
     if (target.line < 0 && document.modificationStamp != capture.revisions[path]) {
         return builder.withHint(path.toString()).build()
     }
     val editorLine = target.line.takeIf { it >= 0 } ?: line
     val start = document.getLineStartOffset(editorLine)
-    val column = (diagnostic.column() - 1).coerceIn(0, document.getLineEndOffset(editorLine) - start)
+    val column = (diagnostic.column - 1).coerceIn(0, document.getLineEndOffset(editorLine) - start)
     sources.rememberEntryFor(editorFile, location)
     return builder.withFilePosition(FilePosition(path, line, column))
         .withNavigatable(OpenFileDescriptor(project, editorFile, start + column))

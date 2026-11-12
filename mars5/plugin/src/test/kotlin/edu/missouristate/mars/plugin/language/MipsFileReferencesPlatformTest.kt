@@ -422,7 +422,7 @@ class MipsFileReferencesPlatformTest {
             val capturedComponent = MarsSessionService.createMarsComponent()
             capturedComponent.context().use {
                 val result = capture.assembleIn(capturedComponent)
-                assertTrue(result.errors().single().message().contains("Recursive include"))
+                assertTrue(result.errors().single().message!!.contains("Recursive include"))
             }
             readAction {
                 fun paths(file: MipsFile) = mipsSourceTimeline(file).sourceFiles().map { it.virtualFile.toNioPath() }.toList()
@@ -461,9 +461,9 @@ class MipsFileReferencesPlatformTest {
             }
             component.context().use {
                 val error = capture.assembleIn(component).errors().single()
-                assertEquals(entry, error.file())
-                assertEquals(1, error.line())
-                assertTrue(error.message().contains(entry.parent.resolve(request).toString()))
+                assertEquals(entry, error.file)
+                assertEquals(1, error.line)
+                assertTrue(error.message!!.contains(entry.parent.resolve(request).toString()))
                 assertEquals(disk, error)
             }
         }

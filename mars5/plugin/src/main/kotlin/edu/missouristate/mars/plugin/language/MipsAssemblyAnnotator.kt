@@ -47,7 +47,7 @@ internal class MipsAssemblyAnnotator : ExternalAnnotator<MipsAssemblyAnnotator.I
     override fun apply(psiFile: PsiFile, annotationResult: Result, holder: AnnotationHolder) {
         for ((diagnostic, range) in acceptResult(psiFile as MipsFile, annotationResult)) {
             val severity = if (diagnostic.isWarning) HighlightSeverity.WARNING else HighlightSeverity.ERROR
-            holder.newAnnotation(severity, diagnostic.message()).range(range).create()
+            holder.newAnnotation(severity, diagnostic.message!!).range(range).create()
         }
     }
 
@@ -69,16 +69,16 @@ internal class MipsAssemblyAnnotator : ExternalAnnotator<MipsAssemblyAnnotator.I
 }
 
 internal fun diagnosticRange(document: Document, error: AssemblyError): TextRange? {
-    val line = error.line() - 1
+    val line = error.line - 1
     if (line !in 0 until document.lineCount) return null
     val start = document.getLineStartOffset(line)
     val end = document.getLineEndOffset(line)
-    val offset = start + (error.column() - 1).coerceIn(0, end - start)
+    val offset = start + (error.column - 1).coerceIn(0, end - start)
     val token = MipsScanner.next(document.charsSequence, offset, end) ?: return TextRange(start, end)
     if (token.kind == MipsTokenKind.PLUS || token.kind == MipsTokenKind.MINUS) {
         // The lexer keeps signs separate. The assembler can attach one to a number.
         val source = document.getText(TextRange(start, end))
-        val tokens = Tokenizer().tokenizeLine(null, error.line(), source, false)
+        val tokens = Tokenizer().tokenizeLine(null, error.line, source, false)
         val index = (0 until tokens.size()).firstOrNull { tokens[it].startPos == offset - start + 1 }
         if (index != null) return TextRange(offset, start + tokens[index].endPos - 1)
     }

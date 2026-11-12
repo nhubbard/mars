@@ -279,8 +279,8 @@ class CapturedAssemblySourcesPlatformTest {
         val component = MarsSessionService.createMarsComponent()
         component.context().use {
             val diagnostic = unavailable.assembleIn(component).errors().single()
-            assertEquals(main, diagnostic.file())
-            assertEquals(1, diagnostic.line())
+            assertEquals(main, diagnostic.file)
+            assertEquals(1, diagnostic.line)
         }
     }
 
@@ -464,9 +464,9 @@ class CapturedAssemblySourcesPlatformTest {
             val result = capture.assembleIn(component)
             assertFalse(result.succeeded())
             val error = result.errors().single()
-            assertEquals(outer, error.file())
-            assertEquals(2, error.line())
-            assertTrue(error.message().contains("Recursive include of file"))
+            assertEquals(outer, error.file)
+            assertEquals(2, error.line)
+            assertTrue(error.message!!.contains("Recursive include of file"))
         }
     }
 
@@ -489,9 +489,9 @@ class CapturedAssemblySourcesPlatformTest {
         val component = MarsSessionService.createMarsComponent()
         component.context().use {
             val error = capture.assembleIn(component).errors().single()
-            assertEquals(main, error.file())
-            assertEquals(2, error.line())
-            assertTrue(error.message().contains("Recursive include of file"))
+            assertEquals(main, error.file)
+            assertEquals(2, error.line)
+            assertTrue(error.message!!.contains("Recursive include of file"))
         }
     }
 

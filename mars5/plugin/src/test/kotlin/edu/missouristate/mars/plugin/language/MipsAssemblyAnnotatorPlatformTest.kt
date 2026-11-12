@@ -87,7 +87,7 @@ class MipsAssemblyAnnotatorPlatformTest {
         val partResult = analyze(partInput)
         assertSame(entryResult.outcome, partResult.outcome)
         assertTrue(entryResult.diagnostics.single().isWarning)
-        assertTrue(partResult.diagnostics.single().message().contains("missing"))
+        assertTrue(partResult.diagnostics.single().message!!.contains("missing"))
         assertNull(partResult.symbols)
 
         withContext(Dispatchers.EDT) { edit(include.virtualFile, "defined: nop\n") }
@@ -783,10 +783,10 @@ class MipsAssemblyAnnotatorPlatformTest {
                 assertEquals(setOf(entryPath), input.capture.sources.revisions.keys)
                 val result = withContext(Dispatchers.Default) { annotator.doAnnotate(input) }
                 val (error, range) = readAction { annotator.acceptResult(file, result).single() }
-                assertEquals("Unterminated .include path", error.message())
+                assertEquals("Unterminated .include path", error.message)
                 assertEquals(unfinished, range.substring(source))
                 val highlight = fixture.highlightAfterMipsRefresh().single { it.severity == HighlightSeverity.ERROR }
-                assertEquals(error.message(), highlight.description)
+                assertEquals(error.message, highlight.description)
                 assertEquals(range, TextRange(highlight.startOffset, highlight.endOffset))
                 assertEquals(MipsTypes.psi("OPERATION"), file.findElementAt(source.lastIndexOf("nop"))?.parent?.elementType)
             }

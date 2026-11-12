@@ -270,7 +270,7 @@ internal fun CapturedAssemblySources.assembleIn(component: MarsComponent, checkC
     if (!settings.isWarningsAreErrors) return result
     return AssemblyResult(result.program(), result.errors().map { diagnostic ->
         if (diagnostic.isWarning) {
-            AssemblyError(diagnostic.file(), diagnostic.line(), diagnostic.column(), diagnostic.message(), false)
+            AssemblyError(diagnostic.file, diagnostic.line, diagnostic.column, diagnostic.message, false)
         } else diagnostic
     })
 }
