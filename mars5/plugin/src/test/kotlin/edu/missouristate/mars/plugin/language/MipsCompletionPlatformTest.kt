@@ -1,6 +1,8 @@
 package edu.missouristate.mars.plugin.language
 
+import com.intellij.codeInsight.CodeInsightSettings
 import com.intellij.codeInsight.lookup.Lookup
+import com.intellij.codeInsight.lookup.LookupElement
 import com.intellij.codeInsight.lookup.LookupElementPresentation
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.command.WriteCommandAction
@@ -17,6 +19,7 @@ import edu.missouristate.mars.assembler.Directives
 import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.InstructionDefaults
 import edu.missouristate.mars.plugin.MarsSessionService
+import edu.missouristate.mars.plugin.analysis.LabelCompletionContext
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.build.MarsAssemblySettings
 import kotlinx.coroutines.Dispatchers
@@ -249,7 +252,8 @@ class MipsCompletionPlatformTest {
         withContext(Dispatchers.EDT) {
             for ((source, expected) in cases) {
                 fixture.configureByText("formal-scope.asm", source)
-                val names = fixture.completeBasic().orEmpty().map { it.lookupString }.filter { it in formals }
+                val names = fixture.completeBasic().orEmpty().filter { it.lookupString in formals && it.typeText() == "Macro parameter" }
+                    .map { it.lookupString }
                 assertEquals(expected, names.toSet(), source)
             }
             fixture.configureByText("formal-registers.asm", "$header    li \$<caret>, 7\n$end")
@@ -491,6 +495,72 @@ class MipsCompletionPlatformTest {
         }
 
     @Test
+    fun `instruction completion offers equivalences that fit the assembler operand format`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val current = project.get()
+            val definitions = """
+                .eqv ARG_REG ${'$'}t1
+                .eqv ARG_NUMBERED ${'$'}9
+                .eqv ARG_FP ${'$'}f1
+                .eqv ARG_SMALL 4
+                .eqv ARG_LARGE 32
+                .eqv ARG_ADDRESS ARG_SMALL(${'$'}sp)
+                .eqv ARG_PAIR ${'$'}t1, 4
+                .eqv ARG_TARGET target
+                .eqv ARG_CYCLE LOOP
+                .eqv LOOP ARG_CYCLE
+                .eqv ARG_LABEL :
+                .eqv ARG_REHEAD : add ${'$'}t0
+            """.trimIndent() + "\n"
+            val include = ".include \"operands.inc\"\n"
+            val suffix = "\ntarget: nop\n.eqv ARG_LATE 2\n"
+            withContext(Dispatchers.EDT) { fixture.addFileToProject("operands.inc", definitions) }
+            IndexingTestUtil.suspendUntilIndexesAreReady(current)
+            val completed = withContext(Dispatchers.EDT) {
+                fun aliases(line: String): Set<String> {
+                    fixture.configureByText("equivalence-completion.mars", include + line + suffix)
+                    return CodeInsightSettings.runWithTemporarySettings<_, Error> {
+                        it.AUTOCOMPLETE_ON_CODE_COMPLETION = false
+                        fixture.completeBasic().orEmpty().filter { item -> item.typeText() == "Equivalence" }
+                            .map { item -> item.lookupString }.filter { name -> name.startsWith("ARG_") }.toSet()
+                    }
+                }
+                assertEquals(setOf("ARG_SMALL"), aliases("sll \$t0, \$t1, ARG_<caret>"))
+                assertEquals(setOf("ARG_REG", "ARG_NUMBERED"), aliases("sll ARG_<caret>"))
+                assertEquals(setOf("ARG_REG", "ARG_NUMBERED", "ARG_PAIR"), aliases("sll \$t0, ARG_<caret>"))
+                assertEquals(setOf("ARG_ADDRESS", "ARG_SMALL", "ARG_LARGE", "ARG_TARGET"), aliases("lw \$t0, ARG_<caret>"))
+                assertEquals(setOf("ARG_REG", "ARG_NUMBERED"), aliases("lw \$t0, 4(ARG_<caret>)"))
+                assertEquals(setOf("ARG_FP"), aliases("add.s \$f0, ARG_<caret>"))
+                assertEquals(setOf("ARG_TARGET"), aliases("j ARG_<caret>"))
+                assertTrue(aliases("nop ARG_<caret>").isEmpty())
+                val file = fixture.configureByText("equivalence-indexing.mars", "sll \$t0, ARG_<caret>") as MipsFile
+                val position = file.findElementAt(fixture.editor.caretModel.offset - 1)!!
+                DumbModeTestUtils.runInDumbModeSynchronously(current) {
+                    val operand = requireNotNull(MipsInstructionOperand.at(position, file))
+                    assertTrue(operand.equivalenceCompletions(file, "ARG_", bareMachine = false).isEmpty())
+                    assertTrue(current.service<MarsAnalysisService>()
+                        .labelCompletionNames(file, position, "ARG_", LabelCompletionContext.INSTRUCTION).isEmpty())
+                }
+                val settings = current.service<MarsAssemblySettings>()
+                settings.changeBareMachine(true)
+                assertEquals(setOf("ARG_NUMBERED"), aliases("sll \$8, ARG_<caret>"))
+                settings.changeBareMachine(false)
+
+                assertEquals(setOf("ARG_REG", "ARG_NUMBERED", "ARG_PAIR"), aliases("sll \$t0, ARG_<caret>.old"))
+                val pair = fixture.lookup.items.single { it.lookupString == "ARG_PAIR" }
+                assertEquals(" = \$t1, 4", LookupElementPresentation().also(pair::renderElement).tailText)
+                fixture.lookup.setCurrentItem(pair)
+                fixture.finishLookup(Lookup.REPLACE_SELECT_CHAR)
+                assertEquals(include + "sll \$t0, ARG_PAIR" + suffix, fixture.file.text)
+                fixture.file.text
+            }
+            directory.resolve("operands.inc").writeText(definitions)
+            val entry = directory.resolve("equivalence-completion.mars").also { it.writeText(completed) }
+            val program = current.service<MarsSessionService>().context.assemble(listOf(entry), null, true, false)
+            assertEquals(listOf(0x00094100, 0), program.machineList.map { it.binaryStatement })
+        }
+
+    @Test
     fun `register insertion replaces the complete token and preserves the address punctuation`() = timeoutRunBlocking<Unit> {
         IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
         withContext(Dispatchers.EDT) {
@@ -533,8 +603,9 @@ class MipsCompletionPlatformTest {
                 PsiDocumentManager.getInstance(current).commitAllDocuments()
             }
             val matches = fixture.completeBasic().orEmpty().filter { it.lookupString.startsWith("Target.") }
+            assertEquals(setOf("Target.renamed"), matches.filter { it.typeText() == "Equivalence" }.map { it.lookupString }.toSet())
             assertEquals(setOf("Target.local", "Target.nested", "Target.updated", "Target.plain", "Target.effective"),
-                matches.map { it.lookupString }.toSet())
+                matches.filterNot { it.typeText() == "Equivalence" }.map { it.lookupString }.toSet())
             assertTrue("target.lowercase" !in fixture.lookupElementStrings.orEmpty())
             fixture.lookup.setCurrentItem(matches.single { it.lookupString == "Target.updated" })
             fixture.finishLookup(Lookup.REPLACE_SELECT_CHAR)
@@ -611,6 +682,8 @@ class MipsCompletionPlatformTest {
                 labelSeparated SEP nop
                 OTHER nop
                 labelOld: nop
+                labelShadow: nop
+                .eqv labelShadow 7
                 .macro other
                   PRIVATE nop
                   FORMAL nop
@@ -620,8 +693,10 @@ class MipsCompletionPlatformTest {
         }
         IndexingTestUtil.suspendUntilIndexesAreReady(current)
         withContext(Dispatchers.EDT) {
-            val names = fixture.completeBasic().orEmpty().map { it.lookupString }.filter { it.startsWith("label") }
-            assertEquals(setOf("labelGenerated", "labelRenamed", "labelSeparated"), names.toSet())
+            val items = fixture.completeBasic().orEmpty().filter { it.lookupString.startsWith("label") }
+            assertEquals(setOf("labelOld"), items.filter { it.typeText() == "Equivalence" }.map { it.lookupString }.toSet())
+            assertEquals(setOf("labelGenerated", "labelRenamed", "labelSeparated"),
+                items.filterNot { it.typeText() == "Equivalence" }.map { it.lookupString }.toSet())
         }
         withContext(Dispatchers.EDT) {
             fixture.configureByText("expanded-macro-labels.asm", """
@@ -659,4 +734,6 @@ class MipsCompletionPlatformTest {
             }
         }
     }
+
+    private fun LookupElement.typeText(): String? = LookupElementPresentation().also(::renderElement).typeText
 }

@@ -16,6 +16,7 @@ import com.intellij.util.ProcessingContext
 import edu.missouristate.mars.assembler.RegisterNames
 import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.mips.instructions.Instruction
+import edu.missouristate.mars.plugin.analysis.LabelCompletionContext
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.build.MarsAssemblySettings
 import edu.missouristate.mars.plugin.language.psi.DataLabelOperand
@@ -54,16 +55,21 @@ class MipsCompletionContributor : CompletionContributor(), DumbAware {
                 val lookup = result.withPrefixMatcher(prefix)
                 if (operand != null) {
                     lookup.addAllElements(registerCandidates(operand.formats, operand.index, options.bareMachine).map(LookupElementBuilder::create))
+                    for ((name, replacement) in operand.equivalenceCompletions(root, prefix, options.bareMachine)) {
+                        lookup.addElement(LookupElementBuilder.create(name).withTailText(" = " + replacement, true)
+                            .withTypeText(messages.getMessage("colors.equivalence")))
+                    }
                 }
                 val data = if (operand == null) DataLabelOperand.at(position) else null
                 val export = data?.exportHead(position)?.let { analysis.exportOperandsBefore(root, it, position) }
                 if (export != null) {
                     val written = (1 until export.size()).mapTo(HashSet()) { export[it].value }
-                    val names = analysis.labelCompletionNames(root, position, prefix, forExport = true)
+                    val names = analysis.labelCompletionNames(root, position, prefix, LabelCompletionContext.EXPORT)
                         .filter { it !in written && TokenTypes.matchTokenType(it) == TokenTypes.IDENTIFIER }
                     lookup.addAllElements(names.map(LookupElementBuilder::create))
                 } else if (operand?.acceptsLabel == true || data?.isDataLabel(root, analysis, position) == true) {
-                    val names = analysis.labelCompletionNames(root, position, prefix)
+                    val labelContext = if (operand == null) LabelCompletionContext.SOURCE else LabelCompletionContext.INSTRUCTION
+                    val names = analysis.labelCompletionNames(root, position, prefix, labelContext)
                     lookup.addAllElements(names.map(LookupElementBuilder::create))
                 }
             }

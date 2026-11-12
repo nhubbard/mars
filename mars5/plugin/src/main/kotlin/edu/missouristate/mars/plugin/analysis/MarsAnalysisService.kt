@@ -66,6 +66,8 @@ internal data class OperationSite(
 
 internal enum class OperandParenthesis { ADDRESS, GROUP }
 
+internal enum class LabelCompletionContext { SOURCE, INSTRUCTION, EXPORT }
+
 internal data class FormattingLine(
     val operationType: TokenTypes?,
     val atMargin: Boolean,
@@ -206,10 +208,10 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
 
     /** Joins physical and equivalence-generated names with the last compatible assembly. */
     internal fun labelCompletionNames(
-        root: MipsFile, position: PsiElement, prefix: String, forExport: Boolean = false,
+        root: MipsFile, position: PsiElement, prefix: String, context: LabelCompletionContext = LabelCompletionContext.SOURCE,
     ): Set<String> = buildSet {
-        if (!DumbService.isDumb(project)) {
-            val timeline = editorTimeline(root)
+        val timeline = if (DumbService.isDumb(project)) null else editorTimeline(root)
+        if (timeline != null) {
             val macro = timeline.macroAt(root, position.textOffset)
             for (file in timeline.sourceFiles()) {
                 for ((name, sites) in declarations(file)) {
@@ -223,11 +225,11 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
                 ProgressManager.checkCanceled()
                 if (name.startsWith(prefix) && labels.any { it.macro == null || it.macro === macro }) add(name)
             }
-            if (!forExport) timeline.externalStorage.keys.filterTo(this) { it.startsWith(prefix) }
+            if (context != LabelCompletionContext.EXPORT) timeline.externalStorage.keys.filterTo(this) { it.startsWith(prefix) }
         }
-        addAll(builtLabelNames(root, position.textOffset + prefix.length, prefix, localOnly = forExport))
-        if (forExport) {
-            val visible = editorPrefix(root, sourceLineStart(position))
+        addAll(builtLabelNames(root, position.textOffset + prefix.length, prefix, localOnly = context == LabelCompletionContext.EXPORT))
+        if (context != LabelCompletionContext.SOURCE && timeline != null) {
+            val visible = timeline.prefix(root, sourceLineStart(position))
             removeAll { visible.equivalence(it) != null }
         }
     }
@@ -479,6 +481,21 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         }
         return expandedOperation(prefix, writtenOperationPrefix(head, source), allowIncompleteOperand)
             ?.takeIf { !it.isEmpty && it[0].type == TokenTypes.OPERATOR }
+    }
+
+    internal fun instructionEquivalenceCompletions(
+        root: MipsFile, head: PsiElement, source: String, typedPrefix: String, accepts: (TokenList) -> Boolean,
+    ): Map<String, String> {
+        if (DumbService.isDumb(project)) return emptyMap()
+        val visible = editorPrefix(root, sourceLineStart(head))
+        val beforeOperand = writtenOperationPrefix(head, source)
+        return buildMap {
+            for (definition in visible.equivalencesStartingWith(typedPrefix)) {
+                ProgressManager.checkCanceled()
+                val tokens = expandedOperation(visible, beforeOperand + definition.name, allowIncompleteOperand = true) ?: continue
+                if (accepts(tokens)) put(definition.name, definition.replacement)
+            }
+        }
     }
 
     private fun isGeneratedMnemonicLabel(root: MipsFile, head: PsiElement): Boolean {

@@ -1,5 +1,6 @@
 package edu.missouristate.mars.plugin.language
 
+import com.intellij.codeInsight.lookup.LookupElementPresentation
 import com.intellij.codeInsight.navigation.actions.GotoDeclarationAction
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.application.EDT
@@ -162,8 +163,10 @@ class MipsExternalReferencesPlatformTest {
             la ${'$'}t0, shared<caret>
         """.trimIndent())
         withContext(Dispatchers.EDT) {
-            val names = fixture.completeBasic().orEmpty().map { it.lookupString }.filter { it.startsWith("shared") }
-            assertEquals(setOf("sharedFirst", "sharedSecond", "sharedAlias"), names.toSet())
+            val items = fixture.completeBasic().orEmpty().filter { it.lookupString.startsWith("shared") }
+            val (equivalences, storage) = items.partition { LookupElementPresentation().also(it::renderElement).typeText == "Equivalence" }
+            assertEquals(setOf("sharedFirst", "sharedSecond", "sharedAlias"), storage.map { it.lookupString }.toSet())
+            assertEquals(setOf("sharedWrong"), equivalences.map { it.lookupString }.toSet())
         }
     }
 

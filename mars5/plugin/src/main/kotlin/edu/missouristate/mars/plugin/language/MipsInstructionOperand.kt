@@ -6,6 +6,7 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.tree.TokenSet
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.util.elementType
+import edu.missouristate.mars.assembler.OperandFormat
 import edu.missouristate.mars.assembler.RegisterNames
 import edu.missouristate.mars.assembler.TokenList
 import edu.missouristate.mars.assembler.TokenTypes
@@ -75,8 +76,19 @@ internal fun renderInstructionExample(instruction: Instruction, bareMachine: Boo
     return MipsParameterRow(text.append(example, previousEnd, example.length).toString(), ranges)
 }
 
-internal class MipsInstructionOperand(val index: Int, val formats: List<Instruction>) {
+internal class MipsInstructionOperand private constructor(
+    val index: Int, val formats: List<Instruction>, private val head: PsiElement, private val beforeOperand: String,
+) {
     val acceptsLabel: Boolean get() = formats.any { it.tokenList[index].type == TokenTypes.IDENTIFIER }
+
+    fun equivalenceCompletions(file: MipsFile, prefix: String, bareMachine: Boolean): Map<String, String> {
+        if (formats.isEmpty()) return emptyMap()
+        return file.project.service<MarsAnalysisService>().instructionEquivalenceCompletions(file, head, beforeOperand, prefix) { tokens ->
+            !tokens.isEmpty && formats.any {
+                it.name.equals(tokens[0].value, ignoreCase = true) && OperandFormat.matchesOperands(tokens, it, index, bareMachine)
+            }
+        }
+    }
 
     companion object {
         private val addressPunctuation = setOf(TokenTypes.LEFT_PAREN, TokenTypes.RIGHT_PAREN)
@@ -91,7 +103,7 @@ internal class MipsInstructionOperand(val index: Int, val formats: List<Instruct
             val formats = enabledInstructionFormats(tokens[0].value, allowPseudo).filter {
                 index < it.tokenList.size() && matchesAddressShape(tokens, it.tokenList)
             }
-            return MipsInstructionOperand(index, formats)
+            return MipsInstructionOperand(index, formats, instruction.operationHead, prefix)
         }
 
         private fun matchesAddressShape(tokens: TokenList, format: TokenList): Boolean = (1 until tokens.size()).all { index ->

@@ -333,6 +333,10 @@ internal class MipsSourceTimeline(
         fun equivalence(name: String): MipsSourceEvent.Equivalence? =
             equivalences[name]?.takeIf { it.index < end }?.definition
 
+        fun equivalencesStartingWith(prefix: String): Sequence<MipsSourceEvent.Equivalence> =
+            equivalences.asSequence().filter { (name, entry) -> name.startsWith(prefix) && entry.index < end }
+                .map { it.value.definition }
+
         fun isMacroParameter(name: String): Boolean = openMacro != null && Macro.tokenIsMacroParameter(name, true)
 
         fun operationType(tokens: TokenList, operationIndex: Int): TokenTypes? {
