@@ -66,7 +66,7 @@ internal class SecondPassProcessor(
             try {
                 context.memory().setStatement(address, statement)
             } catch (error: AddressErrorException) {
-                errors.add(ErrorMessage(statement.originalTokenList[0], "Invalid address for text segment: ${error.address}"))
+                errors.add(ErrorMessage(statement.originalTokenList!![0], "Invalid address for text segment: ${error.address}"))
             }
         }
 

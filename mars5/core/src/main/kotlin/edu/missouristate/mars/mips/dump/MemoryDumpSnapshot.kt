@@ -46,7 +46,7 @@ class MemoryDumpSnapshot private constructor(
                 checkCancellation.run()
                 val word = if (captureSource) {
                     val statement = memory.getStatementNoNotify(address.toInt()) ?: break
-                    sourceLines.add(SourceLine(statement.printableBasicAssemblyStatement, statement.sourceLine, statement.source))
+                    sourceLines.add(SourceLine(statement.printableBasicAssemblyStatement, statement.sourceLine, statement.source!!))
                     statement.binaryStatement
                 } else {
                     memory.getRawWordOrNull(address.toInt()) ?: break

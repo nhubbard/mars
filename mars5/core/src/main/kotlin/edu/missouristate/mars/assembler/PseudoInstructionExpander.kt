@@ -18,7 +18,7 @@ internal class PseudoInstructionExpander(private val context: AssemblyContext) {
         })
         val tokenizer = context.tokenizer(program)
         val line = statement.sourceLine
-        val operands = tokenizer.tokenizeLine(line, statement.basicAssemblyStatement, errors, false)
+        val operands = tokenizer.tokenizeLine(line, statement.basicAssemblyStatement!!, errors, false)
         val result = ArrayList<ProgramStatement>(templates.size)
         var address = statement.address
         for ((index, template) in templates.withIndex()) {

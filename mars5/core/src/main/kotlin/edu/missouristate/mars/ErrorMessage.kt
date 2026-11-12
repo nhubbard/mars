@@ -58,7 +58,7 @@ open class ErrorMessage private constructor(
 
     /** Recover the macro definition's line from the source attached to a runtime instruction. */
     constructor(statement: ProgramStatement, message: String?) :
-        this(statement, message, firstMacroLine(statement.source))
+        this(statement, message, firstMacroLine(statement.source!!))
 
     private constructor(statement: ProgramStatement, message: String?, definitionLine: Int?) : this(
         ERROR, statement.sourceFile, definitionLine ?: statement.sourceLine, 0, message,

@@ -2192,7 +2192,7 @@ class MipsParserPlatformTest {
             for ((index, case) in cases.withIndex()) {
                 val (written, expansion) = case
                 val statements = byLine.getValue(index + 2)
-                assertEquals(expansion, statements.map { it.instruction.name }, written)
+                assertEquals(expansion, statements.map { it.instruction!!.name }, written)
                 assertEquals(List(expansion.size) { expansion.size > 1 },
                     statements.map { it.address in sourceMap.pseudoAddresses() }, written)
             }
