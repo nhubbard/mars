@@ -3204,9 +3204,11 @@ For a release candidate on GitHub, run the **Build** workflow manually with
 starts IntelliJ under Xvfb. All three jobs run the same packaged replay before
 verifying and uploading the ZIP. The checksum check ties each uploaded ZIP
 to its own replay, and the `mars-packaged-smoke-<runner>-<commit>` artifact
-contains the IDE log, screenshots, and Run and Debug outputs. Ordinary push
-and pull request builds run the headless checks. Archive replacement remains
-a separate release check.
+contains the IDE log, screenshots, and Run and Debug outputs. Pushing a
+candidate to `codex/release-qualification` also starts that replay, which
+lets a candidate branch qualify before the default branch has the updated
+workflow. Other pushes and pull request builds run the headless checks.
+Archive replacement remains a separate release check.
 
 ### Packaged editor, Run, and Debug smoke
 

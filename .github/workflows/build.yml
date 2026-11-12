@@ -11,6 +11,10 @@ on:
 jobs:
   verify:
     runs-on: ${{ matrix.os }}
+    env:
+      MARS_PACKAGED_SMOKE: >-
+        ${{ (inputs.packaged_smoke || (github.event_name == 'push' && github.ref == 'refs/heads/codex/release-qualification'))
+            && 'true' || 'false' }}
     strategy:
       fail-fast: false
       matrix:
@@ -36,19 +40,19 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends libegl1 libgl1
       - name: Install Linux display tools
-        if: runner.os == 'Linux' && inputs.packaged_smoke
+        if: runner.os == 'Linux' && env.MARS_PACKAGED_SMOKE == 'true'
         run: sudo apt-get install -y --no-install-recommends dbus-x11 openbox xauth xvfb
       - name: Build and test MARS
-        if: ${{ !inputs.packaged_smoke }}
+        if: env.MARS_PACKAGED_SMOKE != 'true'
         run: ${{ matrix.gradle }} build :core:benchmarkClasses --no-daemon
       - name: Build and run the packaged IDE smoke on Linux
-        if: runner.os == 'Linux' && inputs.packaged_smoke
+        if: runner.os == 'Linux' && env.MARS_PACKAGED_SMOKE == 'true'
         run: |
           dbus-run-session -- xvfb-run -a -s '-screen 0 1600x1000x24' \
             sh -c 'openbox & exec "$@"' mars-smoke \
             ./gradlew clean cleanSandbox build :core:benchmarkClasses runIde -PpackagedSmoke --no-daemon --max-workers=2
       - name: Build and run the packaged IDE smoke
-        if: runner.os != 'Linux' && inputs.packaged_smoke
+        if: runner.os != 'Linux' && env.MARS_PACKAGED_SMOKE == 'true'
         run: ${{ matrix.gradle }} clean cleanSandbox build :core:benchmarkClasses runIde -PpackagedSmoke --no-daemon --max-workers=2
       - run: java -jar cli/build/libs/cli-1.0-SNAPSHOT.jar --help
       - name: Verify IntelliJ plugin
@@ -57,8 +61,6 @@ jobs:
         run: ${{ matrix.gradle }} -p ../examples/smoke check --no-daemon
       - name: Record the verified plugin ZIP checksum
         shell: pwsh
-        env:
-          MARS_PACKAGED_SMOKE: ${{ inputs.packaged_smoke }}
         run: |
           $archives = @(Get-ChildItem plugin/build/distributions -Filter '*.zip' -File)
           if ($archives.Count -ne 1) {
@@ -97,7 +99,7 @@ jobs:
             examples/smoke/instruction-lab/build/instruction-catalog/failures.txt
             examples/smoke/png-decoder/build/test-results/test/TEST-*.xml
       - name: Save packaged IDE smoke evidence
-        if: ${{ !cancelled() && inputs.packaged_smoke }}
+        if: ${{ !cancelled() && env.MARS_PACKAGED_SMOKE == 'true' }}
         uses: actions/upload-artifact@v4
         with:
           name: mars-packaged-smoke-${{ matrix.os }}-${{ github.sha }}
