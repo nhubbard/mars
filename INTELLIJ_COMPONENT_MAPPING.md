@@ -1067,7 +1067,7 @@ Test sources and generated build output are excluded from this production invent
 | [java/edu/missouristate/mars/api/MarsSimulator.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/api/MarsSimulator.java) | R01 |
 | [java/edu/missouristate/mars/api/MemoryAccessException.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/api/MemoryAccessException.java) | C09 |
 | [java/edu/missouristate/mars/api/Program.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/api/Program.java) | C03 |
-| [java/edu/missouristate/mars/api/SessionSyscallEnvironment.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/api/SessionSyscallEnvironment.java) | I01 |
+| [kotlin/edu/missouristate/mars/api/SessionSyscallEnvironment.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/api/SessionSyscallEnvironment.kt) | I01 |
 | [java/edu/missouristate/mars/api/SimulatorListener.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/api/SimulatorListener.java) | R01 |
 | [kotlin/edu/missouristate/mars/api/SimulatorState.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/api/SimulatorState.kt) | R01 |
 | [java/edu/missouristate/mars/api/StepEvent.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/api/StepEvent.java) | R01 |
@@ -1332,7 +1332,7 @@ Test sources and generated build output are excluded from this production invent
 | [kotlin/edu/missouristate/mars/mips/instructions/syscalls/SyscallSleep.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/mips/instructions/syscalls/SyscallSleep.kt) | I07 |
 | [kotlin/edu/missouristate/mars/mips/instructions/syscalls/SyscallTime.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/mips/instructions/syscalls/SyscallTime.kt) | I07 |
 | [kotlin/edu/missouristate/mars/mips/instructions/syscalls/SyscallWrite.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/mips/instructions/syscalls/SyscallWrite.kt) | I03 |
-| [java/edu/missouristate/mars/mips/instructions/syscalls/ToneGenerator.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/mips/instructions/syscalls/ToneGenerator.java) | I06 |
+| [kotlin/edu/missouristate/mars/mips/instructions/syscalls/ToneGenerator.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/mips/instructions/syscalls/ToneGenerator.kt) | I06 |
 | [java/edu/missouristate/mars/simulator/BackStepper.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/simulator/BackStepper.java) | C12 |
 | [kotlin/edu/missouristate/mars/simulator/DelayedBranchState.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/simulator/DelayedBranchState.kt) | C11 |
 | [kotlin/edu/missouristate/mars/simulator/Exceptions.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/simulator/Exceptions.kt) | C11 |

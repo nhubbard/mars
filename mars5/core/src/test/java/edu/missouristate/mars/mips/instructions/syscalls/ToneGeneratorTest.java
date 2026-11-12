@@ -44,6 +44,21 @@ class ToneGeneratorTest {
   }
 
   @Test
+  void aCompletedSynchronousToneLeavesTheLaunchInterruptSet() {
+    var device = new RecordingSequencer();
+    device.completeAndInterruptOnStart = true;
+    var failures = new ArrayList<Exception>();
+    try (var generator = new ToneGenerator(device::proxy, failures::add)) {
+      generator.generateToneSynchronously((byte) 60, 200, (byte) 0, (byte) 80);
+      assertThat(Thread.currentThread().isInterrupted()).isTrue();
+      assertThat(device.closed.getCount()).isZero();
+      assertThat(failures).isEmpty();
+    } finally {
+      Thread.interrupted();
+    }
+  }
+
+  @Test
   void asynchronousToneReturnsWhilePlayingAndSessionCloseInterruptsIt() throws Exception {
     var device = new RecordingSequencer();
     var failures = new ArrayList<Exception>();
@@ -95,6 +110,7 @@ class ToneGeneratorTest {
     MetaEventListener listener;
     MidiUnavailableException openFailure;
     InvalidMidiDataException sequenceFailure;
+    boolean completeAndInterruptOnStart;
 
     Sequencer proxy() {
       return (Sequencer) Proxy.newProxyInstance(
@@ -112,7 +128,13 @@ class ToneGeneratorTest {
                 listener = (MetaEventListener) args[0];
                 return true;
               }
-              case "start" -> started.countDown();
+              case "start" -> {
+                started.countDown();
+                if (completeAndInterruptOnStart) {
+                  listener.meta(new MetaMessage(47, new byte[0], 0));
+                  Thread.currentThread().interrupt();
+                }
+              }
               case "close" -> closed.countDown();
               default -> throw new UnsupportedOperationException(method.getName());
             }
