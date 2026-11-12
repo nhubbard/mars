@@ -72,7 +72,7 @@ internal data class OperationSite(
 
 internal enum class OperandParenthesis { ADDRESS, GROUP }
 
-internal enum class LabelCompletionContext { SOURCE, INSTRUCTION, EXPORT }
+internal enum class LabelCompletionContext { SOURCE, INSTRUCTION, DATA, EXPORT }
 
 internal data class FormattingLine(
     val operationType: TokenTypes?,

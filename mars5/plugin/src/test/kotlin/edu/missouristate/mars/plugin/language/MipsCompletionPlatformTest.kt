@@ -580,6 +580,41 @@ class MipsCompletionPlatformTest {
         }
 
     @Test
+    fun `integer data completion uses spellings the assembler can consume as addresses`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+        val current = project.get()
+        IndexingTestUtil.suspendUntilIndexesAreReady(current)
+        val completed = withContext(Dispatchers.EDT) {
+            val definitions = ".text\ntargetPlain: nop\ntargetShadow: nop\ntargetValue: nop\nnop: nop\n.local: nop\n" +
+                ".eqv targetShadow \$t0\n.eqv targetValue 12\n.data\n.word 0\n"
+            fun items(line: String): List<LookupElement> {
+                fixture.configureByText("data-address-spellings.mars", definitions + line + "\n")
+                return CodeInsightSettings.runWithTemporarySettings<_, Error> {
+                    it.AUTOCOMPLETE_ON_CODE_COMPLETION = false
+                    fixture.completeBasic().orEmpty().toList()
+                }
+            }
+            for (line in listOf("target<caret> 2 3", ".word target<caret>", "2, target<caret>")) {
+                val matches = items(line).filter { it.lookupString.startsWith("target") }
+                assertEquals(setOf("targetPlain", "targetValue"), matches.map { it.lookupString }.toSet(), line)
+                assertEquals("Equivalence", matches.single { it.lookupString == "targetValue" }.typeText(), line)
+            }
+            assertTrue(items(".word no<caret>").none { it.lookupString == "nop" })
+            assertTrue(items(".word .lo<caret>").any { it.lookupString == ".local" })
+            assertTrue(items("<caret>targetPlain 2 3").none { it.lookupString == ".local" })
+            items("target<caret> 2 3")
+            fixture.lookup.setCurrentItem(fixture.lookup.items.single { it.lookupString == "targetPlain" })
+            fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR)
+            assertEquals(definitions + "targetPlain 2 3\n", fixture.file.text)
+            fixture.file.text
+        }
+        val entry = directory.resolve("data-address-spellings.mars").also { it.writeText(completed) }
+        val context = current.service<MarsSessionService>().context
+        val program = context.assemble(listOf(entry), null, true, false)
+        val memory = context.memory
+        assertEquals(program.machineList.first().address, memory.getWordNoNotify(memory.dataBaseAddress + Int.SIZE_BYTES))
+    }
+
+    @Test
     fun `integer data operands complete aliases without changing written values`(@TempDir directory: Path) =
         timeoutRunBlocking<Unit> {
             val current = project.get()

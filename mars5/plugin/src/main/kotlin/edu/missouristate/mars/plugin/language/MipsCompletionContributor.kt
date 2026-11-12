@@ -79,9 +79,13 @@ class MipsCompletionContributor : CompletionContributor(), DumbAware {
                         .filter { it !in written && TokenTypes.matchTokenType(it) == TokenTypes.IDENTIFIER }
                     lookup.addAllElements(names.map(LookupElementBuilder::create))
                 } else if (operand?.acceptsLabel == true || data?.isDataLabel(root, analysis, position) == true) {
-                    val labelContext = if (operand == null) LabelCompletionContext.SOURCE else LabelCompletionContext.INSTRUCTION
+                    val labelContext = if (operand == null) LabelCompletionContext.DATA else LabelCompletionContext.INSTRUCTION
                     val names = analysis.labelCompletionNames(root, position, prefix, labelContext)
-                    lookup.addAllElements(names.map(LookupElementBuilder::create))
+                    val addresses = if (labelContext == LabelCompletionContext.DATA) {
+                        val first = statementHead.accepts(position)
+                        names.filter { TokenTypes.matchTokenType(it) == TokenTypes.IDENTIFIER && (!first || !it.startsWith('.')) }
+                    } else names
+                    lookup.addAllElements(addresses.map(LookupElementBuilder::create))
                 }
             }
         })
