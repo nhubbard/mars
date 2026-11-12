@@ -3200,9 +3200,29 @@ bytes and the IDE to finish the replay. IntelliJ saves the debugger and
 MARS Tools screenshots with its sandbox logs. A successful replay records the
 ZIP checksum beside the screenshots in `packaged-smoke-SHA256SUMS`.
 
+To replay a ZIP downloaded from CI, keep it outside Gradle's build directories
+and pass its path. This option also enables the packaged smoke scenario.
+
+```sh
+./gradlew clean cleanSandbox runIde -PpackagedSmokeArchive="/path/to/downloaded/plugin.zip"
+```
+
+The launcher installs a copy of the supplied ZIP and records that copy's
+checksum and original filename. The checkout still runs its normal checks.
+Compare the replay checksum with the CI artifact's `SHA256SUMS` to tie the
+host results to the downloaded candidate.
+
 The first qualification run passed on Apple Silicon macOS with IntelliJ
 IDEA `IU-263.7307.200`. Plugin Verifier and both archive checks passed for
 the same ZIP.
+
+On the same host, the supplied-archive replay installed a ZIP with a distinct
+checksum and a filename containing spaces. All eight installed JARs matched
+the supplied ZIP byte for byte, and both executions produced the expected
+output. The default replay also passed and recorded the checksum of the
+locally built ZIP. A missing supplied path stopped before IntelliJ started
+and produced no success checksum. The replay evidence is under
+`mars5/.gradle/release-host-checks/packaged-smoke-supplied-archive`.
 
 ### Java core coverage baseline
 

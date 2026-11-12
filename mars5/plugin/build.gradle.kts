@@ -209,25 +209,36 @@ tasks.check { dependsOn(tasks.jacocoTestCoverageVerification) }
 // A launch always verifies the plugin; callers clean the build and sandbox first.
 tasks.named<RunIdeTask>("runIde") {
   dependsOn(tasks.check, ":core:check", ":cli:check", ":datapath:check", ":desktop:check", rootProject.tasks.named("check"))
-  if (providers.gradleProperty("packagedSmoke").isPresent) {
+  val suppliedArchive = providers.gradleProperty("packagedSmokeArchive").map { rootProject.file(it) }
+  if (providers.gradleProperty("packagedSmoke").isPresent || suppliedArchive.isPresent) {
     val scenario = layout.projectDirectory.dir("src/qualification")
     val fixture = layout.buildDirectory.dir("packaged-smoke")
-    dependsOn(pluginArchive)
+    val candidate = suppliedArchive.orElse(pluginArchive.flatMap { it.archiveFile }.map { it.asFile })
+    val stagedArchive = layout.buildDirectory.dir("packaged-smoke-input")
+      .zip(candidate) { directory, archive -> directory.file(archive.name).asFile }
+    if (!suppliedArchive.isPresent) dependsOn(pluginArchive)
     args(fixture.get().asFile.absolutePath)
     systemProperty("testscript.filename", scenario.file("packaged-smoke.ijperf").asFile.absolutePath)
     systemProperty("performance.plugin.playback.runner.useDirectActionCall", "true")
     timeout.set(Duration.ofMinutes(5))
 
     doFirst {
+      val log = sandboxLogDirectory.get().asFile
+      project.delete(log.resolve("packaged-smoke-complete.txt"), log.resolve("packaged-smoke-SHA256SUMS"))
+      val archive = candidate.get()
+      check(archive.isFile) {
+        "Packaged smoke ZIP not found at $archive. Keep supplied archives outside build directories cleaned by Gradle."
+      }
+      // Install and hash the same local copy, even if an external archive is replaced during the replay.
+      val staged = archive.copyTo(stagedArchive.get(), overwrite = true)
       project.sync {
         from(scenario.dir("project"))
         into(fixture)
       }
-      val archive = pluginArchive.get()
       val plugins = sandboxPluginsDirectory.get().asFile
-      project.delete(plugins.resolve(archive.archiveBaseName.get()))
+      project.delete(plugins.resolve(pluginArchive.get().archiveBaseName.get()))
       project.copy {
-        from(project.zipTree(archive.archiveFile.get().asFile))
+        from(project.zipTree(staged))
         into(plugins)
       }
       val options = sandboxConfigDirectory.dir("options").get().asFile
@@ -239,8 +250,6 @@ tasks.named<RunIdeTask>("runIde") {
           <option name="TRUSTED_PROJECT_PATHS"><map><entry key="$trustedPath" value="true" /></map></option>
         </component></application>
       """.trimIndent())
-      val log = sandboxLogDirectory.get().asFile
-      project.delete(log.resolve("packaged-smoke-complete.txt"))
     }
     doLast {
       val log = sandboxLogDirectory.get().asFile
@@ -254,7 +263,7 @@ tasks.named<RunIdeTask>("runIde") {
           "The MARS program did not write the expected result to $result."
         }
       }
-      val archive = pluginArchive.get().archiveFile.get().asFile
+      val archive = stagedArchive.get()
       val checksum = MessageDigest.getInstance("SHA-256").digest(archive.readBytes())
         .joinToString("") { "%02x".format(it) }
       log.resolve("packaged-smoke-SHA256SUMS").writeText("$checksum  ${archive.name}\n")
