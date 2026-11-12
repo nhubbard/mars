@@ -692,6 +692,14 @@ structure invalidate the cache. The selected build entry supplies context for in
 editors. Native fixtures cover definition order, malformed and duplicate definitions,
 include cycles, an include appearing after lookup, and unsaved edits.
 
+Explicit includes with binary file associations contribute editor context through read-only
+MIPS PSI for files within IntelliJ's content-loading limit. Their text uses the assembler's
+disk decoder, and the include still resolves relative to its original directory. File
+content changes invalidate the cached context. Completion and contextual highlighting
+can use these definitions, and Go to Declaration opens the captured MIPS text.
+Oversized files still participate in assembly and use assembled source locations for
+macro and label navigation.
+
 ## Go to Declaration for macro calls
 
 Go to Declaration opens live macro definitions, equivalences, and other

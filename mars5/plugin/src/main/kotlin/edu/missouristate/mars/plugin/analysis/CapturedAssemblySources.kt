@@ -9,6 +9,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectRootModificationTracker
 import com.intellij.openapi.util.Key
 import com.intellij.openapi.util.text.StringUtil
+import com.intellij.openapi.vfs.DiskQueryRelay
 import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
@@ -145,13 +146,7 @@ internal fun collectAssemblySources(
         onDependency(document ?: file)
         val text = if (binary) {
             // The assembler reads explicit sources as text even when IntelliJ has no text editor for them.
-            try {
-                StringUtil.convertLineSeparators(AssemblySourceReader.open(path).use { it.readText() }).also {
-                    diskSources.add(path)
-                }
-            } catch (_: IOException) {
-                return null
-            }
+            readDiskAssemblyText(file)?.also { diskSources.add(path) } ?: return null
         } else if (document == null) return null
         else if (documents.isPartialPreviewOfALargeFile(document)) {
             onDependency(file)
@@ -209,6 +204,20 @@ internal fun collectAssemblySources(
         previewLineCounts = copyOfMap(previewLineCounts), diskSources = diskSources.toSet(),
     )
 }
+
+private data class DiskSourceRead(val path: Path, val revision: Long)
+
+private val diskAssemblyText = DiskQueryRelay<DiskSourceRead, String?> { source ->
+    try {
+        StringUtil.convertLineSeparators(AssemblySourceReader.open(source.path).use { it.readText() })
+    } catch (_: IOException) {
+        // The assembler reports an unavailable source at its entry or include site.
+        null
+    }
+}
+
+internal fun readDiskAssemblyText(file: VirtualFile): String? =
+    diskAssemblyText.accessDiskWithCheckCanceled(DiskSourceRead(file.toNioPath(), file.modificationStamp))
 
 /** Highlighting can reuse capture across editors until an input document or the VFS structure changes. */
 private val captureKeys = MarsAssemblyMode.entries.associateWith { mode ->

@@ -1,6 +1,8 @@
 package edu.missouristate.mars.plugin.analysis
 
+import com.intellij.notebook.editor.BackedVirtualFile
 import com.intellij.openapi.progress.ProgressManager
+import com.intellij.openapi.roots.ProjectRootModificationTracker
 import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
@@ -8,9 +10,11 @@ import com.intellij.openapi.vfs.limits.FileSizeLimit
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiFileFactory
+import com.intellij.psi.PsiManager
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
+import com.intellij.testFramework.ReadOnlyLightVirtualFile
 import edu.missouristate.mars.ErrorList
 import edu.missouristate.mars.assembler.Directives
 import edu.missouristate.mars.assembler.Macro
@@ -21,6 +25,7 @@ import edu.missouristate.mars.plugin.analysis.MacroBoundaryProblem.Kind
 import edu.missouristate.mars.plugin.analysis.MipsSourceEvent.Begin
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.MipsFileType
+import edu.missouristate.mars.plugin.language.MipsLanguage
 import edu.missouristate.mars.plugin.language.collectRegisterUsages
 import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
 import edu.missouristate.mars.plugin.language.psi.MipsStringLiteral
@@ -31,10 +36,12 @@ import java.util.concurrent.ConcurrentHashMap
 
 /** Include-ordered editor facts, cached against the PSI files that contributed them. */
 internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedValuesManager.getCachedValue(entry) {
-    val dependencies = arrayListOf<Any>(VirtualFileManager.VFS_STRUCTURE_MODIFICATIONS, entry)
+    val dependencies = arrayListOf<Any>(
+        VirtualFileManager.VFS_STRUCTURE_MODIFICATIONS, ProjectRootModificationTracker.getInstance(entry.project), entry,
+    )
     var eventCount = 0
     val files = LinkedHashMap<VirtualFile, SourceFileEvents>()
-    val visited = hashSetOf(entry.originalFile.viewProvider.virtualFile.includeIdentity())
+    val visited = hashSetOf(entry.assemblySourceOriginalFile().includeIdentity())
     val equivalences = HashMap<String, IndexedEquivalence>()
     val externalStorage = LinkedHashMap<String, PsiElement>()
     val unindexedLabels = LinkedHashMap<String, MutableList<TimelineLabel>>()
@@ -52,7 +59,7 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
     enter(entry)
     var macro: Begin? = null
     var firstIncompleteInclude = Int.MAX_VALUE
-    var unindexedSources = entry.originalFile !is MipsFile
+    var unindexedSources = entry.isUnindexedAssemblySource()
     var inData = false
     var dataList = Directives.WORD
     var previousDataList: Directives? = null
@@ -162,13 +169,17 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
             is MipsSourceEvent.Include -> {
                 val included = (resolveMipsInclude(event.literal, event.path) as? PsiFile)
                     ?.takeIf { visited.add(it.virtualFile.includeIdentity()) }
-                included?.let(dependencies::add)
+                if (included != null) {
+                    dependencies.add(included)
+                    // Binary PSI does not track a text document, so use the VFS content stamp.
+                    if (included.fileType.isBinary) dependencies.add(included.virtualFile)
+                }
                 val syntax = assemblySourceSyntax(included)
                 if (syntax == null) {
                     firstIncompleteInclude = minOf(firstIncompleteInclude, index)
                     continue
                 }
-                if (syntax.originalFile !is MipsFile) unindexedSources = true
+                if (syntax.isUnindexedAssemblySource()) unindexedSources = true
                 enter(syntax)
             }
         }
@@ -407,7 +418,7 @@ internal data class MacroBoundaryProblem(val offset: Int, val kind: Kind, val la
 }
 
 internal class SourceFileEvents(val file: MipsFile, val order: Int) {
-    val isUnindexedSource = file.originalFile !is MipsFile
+    val isUnindexedSource = file.isUnindexedAssemblySource()
     val sites = ArrayList<SourceEventSite>()
     val generatedMacroParts = HashMap<Int, MacroPart>()
     val replacedLabels = HashSet<Int>()
@@ -448,16 +459,36 @@ internal fun resolveMipsInclude(literal: MipsStringLiteral, path: String) = Mips
 private fun VirtualFile.includeIdentity() = mipsIncludeDirectoryPath() to name
 
 internal fun assemblySourceSyntax(source: PsiFile?): MipsFile? {
-    if (source == null || source.fileType.isBinary) return null
+    if (source == null) return null
     val file = source.viewProvider.virtualFile
     // The document may only contain the editor preview. Build captures the full source separately.
     if (FileSizeLimit.isTooLargeForContentLoading(file.length, file.extension)) return null
     if (source is MipsFile) return source
     return CachedValuesManager.getCachedValue(source) {
-        val file = PsiFileFactory.getInstance(source.project)
-            .createFileFromText(source.name, MipsFileType, source.viewProvider.contents.toString()) as MipsFile
-        // FileReferenceSet resolves relative paths against the original physical file.
-        file.setOriginalFile(source)
-        CachedValueProvider.Result.create(file, source)
+        val syntax = if (source.fileType.isBinary) {
+            val text = readDiskAssemblyText(file)
+                ?: return@getCachedValue CachedValueProvider.Result.create(null, source, file)
+            PsiManager.getInstance(source.project).findFile(BinaryAssemblySourceFile(file, text)) as MipsFile
+        } else {
+            val copy = PsiFileFactory.getInstance(source.project)
+                .createFileFromText(source.name, MipsFileType, source.viewProvider.contents.toString()) as MipsFile
+            // FileReferenceSet resolves relative paths against the original physical file.
+            copy.setOriginalFile(source)
+            copy
+        }
+        CachedValueProvider.Result.create(syntax, source, file)
     }
 }
+
+internal class BinaryAssemblySourceFile(private val origin: VirtualFile, text: String) :
+    ReadOnlyLightVirtualFile(origin.name, MipsLanguage, text), BackedVirtualFile {
+    init { setFileType(MipsFileType) }
+
+    override fun getOriginFile(): VirtualFile = origin
+}
+
+private fun MipsFile.assemblySourceOriginalFile(): VirtualFile =
+    BackedVirtualFile.getOriginFileIfBacked(originalFile.viewProvider.virtualFile)
+
+private fun MipsFile.isUnindexedAssemblySource(): Boolean =
+    originalFile !is MipsFile || viewProvider.virtualFile is BinaryAssemblySourceFile

@@ -19,6 +19,7 @@ import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsigh
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiManager
 import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.fixtures.impl.CodeInsightTestFixtureImpl
 import com.intellij.testFramework.junit5.TestApplication
@@ -144,10 +145,10 @@ class CapturedAssemblySourcesPlatformTest {
             assertEquals("emit", macro.text)
             assertFalse(macro.containingFile.virtualFile.isWritable)
             val diskLabel = checkNotNull(main.findReferenceAt(main.text.indexOf("raw_target"))?.resolve())
-            assertEquals("raw_target", diskLabel.text)
+            assertEquals("raw_target", (diskLabel as MipsDeclaration).name)
             assertFalse(diskLabel.containingFile.virtualFile.isWritable)
-            val target = assertInstanceOf(MipsDeclaration::class.java,
-                main.findReferenceAt(main.text.indexOf("destination"))?.resolve()?.parent)
+            val targetFile = PsiManager.getInstance(project.get()).findFile(include.parent.findChild("tail.inc")!!)
+            val target = checkNotNull(MipsDeclaration.findAt(targetFile, 0, "destination"))
             val analysis = project.get().service<MarsAnalysisService>()
             assertNull(analysis.sourceTokenPosition(SourceToken(Location(path, 2), 3)))
             val (excerpt, offset) = analysis.assembledExcerptUsages(target, GlobalSearchScope.allScope(project.get())).single()
@@ -207,6 +208,41 @@ class CapturedAssemblySourcesPlatformTest {
     }
 
     @Test
+    fun `oversized binary include keeps assembled macro and label navigation`() = timeoutRunBlocking<Unit> {
+        val (main, include) = withContext(Dispatchers.EDT) {
+            val file = fixture.addFileToProject("entry.mars", ".include \"large.png\"\nemit\nj target\n") as MipsFile
+            val path = file.virtualFile.toNioPath().resolveSibling("large.png")
+            val comment = "#" + " ".repeat(16_382) + "\n"
+            Files.newBufferedWriter(path).use { writer ->
+                writer.write(".macro emit\nnop\n.end_macro\ntarget: nop\n")
+                repeat(FileSizeLimit.getContentLoadLimit("png") / comment.length + 1) { writer.write(comment) }
+            }
+            file to checkNotNull(VirtualFileManager.getInstance().refreshAndFindFileByNioPath(path))
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
+        val capture = readAction {
+            assertTrue(mipsSourceTimeline(main).hasIncompleteIncludes)
+            checkNotNull(collectEditorAssembly(main))
+        }
+        val component = MarsSessionService.createMarsComponent()
+        component.context().use {
+            val result = capture.sources.assembleIn(component)
+            assertTrue(result.succeeded(), result.errors().toString())
+            val analysis = project.get().service<MarsAnalysisService>()
+            analysis.publishBuiltSymbols(analysis.beginSymbolBuild(capture.source), capture.sources, result.program().symbolMap())
+        }
+        readAction {
+            for (name in listOf("emit", "target")) {
+                val target = checkNotNull(main.findReferenceAt(main.text.indexOf(name))?.resolve())
+                assertEquals(name, target.text)
+                val file = target.containingFile.virtualFile
+                assertNotEquals(include, file)
+                assertFalse(file.isWritable)
+            }
+        }
+    }
+
+    @Test
     fun `disk include removed before reading is reported at its include site`() = timeoutRunBlocking<Unit> {
         val (main, include) = withContext(Dispatchers.EDT) {
             val main = fixture.addFileToProject("entry.mars", ".include \"gone.png\"\n")
@@ -216,7 +252,11 @@ class CapturedAssemblySourcesPlatformTest {
         }
         val unavailable = readAction {
             collectAssemblySources(listOf(main), null) { dependency ->
-                if (dependency == include) Files.deleteIfExists(include.toNioPath())
+                if (dependency == include) {
+                    val source = PsiManager.getInstance(project.get()).findFile(include)
+                    Files.deleteIfExists(include.toNioPath())
+                    assertNull(assemblySourceSyntax(checkNotNull(source)))
+                }
             }
         }
         assertEquals(setOf(main), unavailable.snapshot.texts().keys)

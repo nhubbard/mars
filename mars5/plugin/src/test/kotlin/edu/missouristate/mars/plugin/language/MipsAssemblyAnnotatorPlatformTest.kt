@@ -3,10 +3,12 @@ package edu.missouristate.mars.plugin.language
 import com.intellij.codeInsight.navigation.actions.GotoDeclarationAction
 import com.intellij.ide.highlighter.JavaFileType
 import com.intellij.lang.annotation.HighlightSeverity
+import com.intellij.notebook.editor.BackedVirtualFile
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.components.service
+import com.intellij.openapi.editor.DefaultLanguageHighlighterColors
 import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileTypes.PlainTextFileType
@@ -19,6 +21,7 @@ import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiErrorElement
 import com.intellij.psi.PsiFileFactory
 import com.intellij.psi.PsiManager
+import com.intellij.psi.PsiNamedElement
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.util.elementType
 import com.intellij.testFramework.DumbModeTestUtils
@@ -34,12 +37,14 @@ import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.build.MarsAssemblySettings
 import edu.missouristate.mars.plugin.build.MarsBuildService
+import java.nio.file.Files
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.job
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotSame
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertSame
@@ -435,7 +440,7 @@ class MipsAssemblyAnnotatorPlatformTest {
     }
 
     @Test
-    fun `ignored and binary includes preserve incomplete editor context`() = timeoutRunBlocking<Unit> {
+    fun `ignored includes preserve incomplete editor context`() = timeoutRunBlocking<Unit> {
         val (entry, ignored, leaf) = withContext(Dispatchers.EDT) {
             val main = fixture.addFileToProject("entry.s", ".macro outer\n.end_macro\n.include \"bridge.inc~\"\n") as MipsFile
             val ignored = fixture.tempDirFixture.createFile("bridge.inc~", ".include \"leaf.s\"\n")
@@ -452,16 +457,46 @@ class MipsAssemblyAnnotatorPlatformTest {
             assertEquals(setOf("inner"), analysis.editorTimeline(leaf).macroNames)
         }
 
+    }
+
+    @Test
+    fun `aliases in a binary-classified include participate in completion highlighting and navigation`() = timeoutRunBlocking<Unit> {
+        val entry = ".include \"parts/opaque.zip\"\nsll \$t0, SOURCE, SHIFT\n"
+        val definitions = ".include \"inner.inc\"\n.eqv SHIFT 4\n"
         val binary = withContext(Dispatchers.EDT) {
-            val binary = fixture.tempDirFixture.createFile("opaque.zip", ".macro wrong\n.end_macro\n")
-            edit(entry.virtualFile, ".include \"opaque.zip\"\nnop\n")
-            binary
+            fixture.addFileToProject("parts/inner.inc", ".eqv SOURCE \$t1\n")
+            fixture.tempDirFixture.createFile("parts/opaque.zip", definitions)
         }
-        readAction {
-            assertTrue(PsiManager.getInstance(project).findFile(binary)!!.fileType.isBinary)
-            val timeline = analysis.editorTimeline(entry)
-            assertTrue(timeline.hasIncompleteIncludes)
-            assertTrue(timeline.macroNames.isEmpty())
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        val file = withContext(Dispatchers.EDT) {
+            val file = fixture.configureByText("entry.s", entry) as MipsFile
+            val analysis = project.service<MarsAnalysisService>()
+            val timeline = analysis.editorTimeline(file)
+            assertFalse(timeline.hasIncompleteIncludes)
+            assertTrue(timeline.hasUnindexedSources)
+            val highlights = fixture.highlightAfterMipsRefresh()
+            val shift = entry.indexOf("SHIFT")
+            assertTrue(highlights.any { it.startOffset == shift && it.endOffset == shift + "SHIFT".length &&
+                it.forcedTextAttributesKey == DefaultLanguageHighlighterColors.NUMBER })
+            val source = checkNotNull(file.findReferenceAt(entry.indexOf("SOURCE"))?.resolve())
+            assertEquals("inner.inc", source.containingFile.name)
+            val target = checkNotNull(file.findReferenceAt(shift)?.resolve())
+            assertEquals(binary, BackedVirtualFile.getOriginFileIfBacked(target.containingFile.virtualFile))
+            assertSame(target.containingFile, target.containingFile.originalFile)
+            assertFalse(target.containingFile.virtualFile.isWritable)
+            assertEquals("SHIFT", (target as PsiNamedElement).name)
+            assertEquals(definitions.indexOf("SHIFT"), target.textOffset)
+
+            fixture.configureByText("completion.s", entry.replace("SHIFT", "SHI<caret>"))
+            assertTrue(fixture.completeBasic().orEmpty().any { it.lookupString == "SHIFT" } ||
+                fixture.editor.document.text.contains(", SHIFT"))
+            file
+        }
+
+        withContext(Dispatchers.EDT) {
+            Files.writeString(binary.toNioPath(), definitions.replace("SHIFT", "AMOUNT"))
+            binary.refresh(false, false)
+            assertNull(file.findReferenceAt(entry.indexOf("SHIFT"))?.resolve())
         }
     }
 
