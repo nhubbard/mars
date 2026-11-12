@@ -1,3 +1,5 @@
+@file:Suppress("FunctionName")
+
 package edu.missouristate.mars.plugin.tools.xray
 
 import androidx.compose.foundation.layout.Arrangement

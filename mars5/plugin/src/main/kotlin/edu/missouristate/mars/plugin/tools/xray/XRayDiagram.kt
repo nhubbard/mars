@@ -38,7 +38,7 @@ internal class XRayDiagram private constructor(
 
     private data class Arrival(val index: Int, val time: Int)
 
-    private val colors = Palette.values().take(wires.first().colors().size).associateWith { palette ->
+    private val colors = Palette.entries.toTypedArray().take(wires.first().colors().size).associateWith { palette ->
         wires.map { Color(it.rgb(palette)) }
     }
 
