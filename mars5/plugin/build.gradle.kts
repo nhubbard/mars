@@ -34,7 +34,10 @@ repositories {
 val localIdePath = providers.gradleProperty("localIdePath")
 
 dependencies {
-  implementation(project(":core"))
+  implementation(project(":core")) {
+    // The standalone CLI bundles this runtime. IntelliJ supplies it for the plugin.
+    exclude(group = "org.jetbrains.kotlin", module = "kotlin-stdlib")
+  }
   implementation(project(":datapath"))
   testCompileOnly(project(":plugin-jvm-compiler"))
   intellijPlatform {

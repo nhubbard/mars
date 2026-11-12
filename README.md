@@ -1,11 +1,12 @@
 # MARS 5
 
-MARS 5 combines an independent Java assembler/simulator with a Kotlin IntelliJ plugin. Phase 2.5 has removed
+MARS 5 combines an independent assembler/simulator with a Kotlin IntelliJ plugin. Phase 2.5 has removed
 the deprecated global runtime and compatibility module. The independent core and CLI run without
 Venus, and the standalone desktop application now uses the same session-owned core.
 
 The Kotlin IntelliJ plugin provides MARS assembly editing, build diagnostics, native Run and Debug,
-and educational tools. The core, CLI, and desktop application are Java. See the
+and educational tools. The core is migrating from Java to Kotlin. The CLI and the Venus reference
+target remain Java. See the
 [IntelliJ component mapping](INTELLIJ_COMPONENT_MAPPING.md) for scope and release gates,
 the [plugin implementation notes](PLUGIN_IMPLEMENTATION.md) for usage and verification,
 and the [modernization plan](MODERNIZATION_PLAN.md) for the broader project.

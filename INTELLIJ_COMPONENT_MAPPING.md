@@ -1058,7 +1058,7 @@ Test sources and generated build output are excluded from this production invent
 | [java/edu/missouristate/mars/api/AssemblyError.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/api/AssemblyError.java) | B02 |
 | [java/edu/missouristate/mars/api/AssemblyResult.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/api/AssemblyResult.java) | C02 |
 | [java/edu/missouristate/mars/api/ErrorEvent.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/api/ErrorEvent.java) | R01 |
-| [java/edu/missouristate/mars/api/EventEmitter.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/api/EventEmitter.java) | C10 |
+| [kotlin/edu/missouristate/mars/api/EventEmitter.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/api/EventEmitter.kt) | C10 |
 | [java/edu/missouristate/mars/api/MarsAssembler.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/api/MarsAssembler.java) | C02 |
 | [java/edu/missouristate/mars/api/MarsGuiProxy.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/api/MarsGuiProxy.java) | I01 |
 | [java/edu/missouristate/mars/api/MarsMemory.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/api/MarsMemory.java) | C09 |
@@ -1069,7 +1069,7 @@ Test sources and generated build output are excluded from this production invent
 | [java/edu/missouristate/mars/api/Program.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/api/Program.java) | C03 |
 | [java/edu/missouristate/mars/api/SessionSyscallEnvironment.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/api/SessionSyscallEnvironment.java) | I01 |
 | [java/edu/missouristate/mars/api/SimulatorListener.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/api/SimulatorListener.java) | R01 |
-| [java/edu/missouristate/mars/api/SimulatorState.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/api/SimulatorState.java) | R01 |
+| [kotlin/edu/missouristate/mars/api/SimulatorState.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/api/SimulatorState.kt) | R01 |
 | [java/edu/missouristate/mars/api/StepEvent.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/api/StepEvent.java) | R01 |
 | [java/edu/missouristate/mars/api/StopEvent.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/api/StopEvent.java) | R01 |
 | [java/edu/missouristate/mars/api/SyscallEnvironment.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/api/SyscallEnvironment.java) | I01 |

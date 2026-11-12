@@ -2,6 +2,7 @@ import java.util.zip.ZipFile
 
 plugins {
   id("java")
+  kotlin("jvm")
   jacoco
 }
 
@@ -13,6 +14,7 @@ repositories {
 }
 
 dependencies {
+  implementation(kotlin("stdlib", kotlin.coreLibrariesVersion))
   implementation("com.google.dagger:dagger:2.59.2")
   annotationProcessor("com.google.dagger:dagger-compiler:2.59.2")
 
@@ -20,6 +22,11 @@ dependencies {
   testImplementation("org.junit.jupiter:junit-jupiter")
   testImplementation("org.assertj:assertj-core:3.26.3")
   testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+}
+
+kotlin {
+  jvmToolchain(25)
+  compilerOptions { allWarningsAsErrors.set(true) }
 }
 
 tasks.test {
@@ -62,7 +69,7 @@ tasks.register<JavaExec>("benchmark") {
 val verifyCoreIsolation = tasks.register("verifyCoreIsolation") {
   group = "verification"
   description = "Reject desktop, compatibility, and XML dependencies from the core library."
-  val sources = fileTree("src/main/java") { include("**/*.java") }
+  val sources = fileTree("src/main") { include("**/*.java", "**/*.kt") }
   val archive = tasks.jar.flatMap { it.archiveFile }
   inputs.files(sources)
   inputs.file(archive)
