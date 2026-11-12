@@ -121,6 +121,8 @@ class InstructionCounterPlatformTest {
         }
     }
 
+    private fun paneText(pane: JEditorPane) = pane.document.let { it.getText(0, it.length).trim() }
+
     @OptIn(ExperimentalComposeUiApi::class, ExperimentalJewelApi::class)
     @Test
     fun `MARS Tools selects native executions and controls their counters independently`() = timeoutRunBlocking<Unit>(45.seconds) {
@@ -290,7 +292,7 @@ class InstructionCounterPlatformTest {
             }
             fun assertInspection(text: String, panel: JComponent = references) {
                 assertEquals(text, canvas(panel).accessibleContext.accessibleDescription)
-                assertTrue(UIUtil.findComponentsOfType(panel, JBLabel::class.java).any { it.text == text })
+                assertTrue(UIUtil.findComponentsOfType(panel, JEditorPane::class.java).any { paneText(it) == text })
             }
             fun tooltip(panel: JComponent, x: Int, y: Int): String? {
                 val grid = canvas(panel)
@@ -345,7 +347,7 @@ class InstructionCounterPlatformTest {
             }
             fun latestBranch() = UIUtil.findComponentsOfType(branches, JLabel::class.java)
                 .single { it.text == "Latest branch" }.labelFor as JEditorPane
-            fun latestBranchText() = latestBranch().document.let { it.getText(0, it.length).trim() }
+            fun latestBranchText() = paneText(latestBranch())
             fun assertCompactSettings(viewport: JViewport, firstName: String, secondName: String) {
                 val body = assertInstanceOf(JComponent::class.java, viewport.view)
                 fun setting(name: String): Pair<JLabel, JComboBox<*>> {
@@ -453,12 +455,14 @@ class InstructionCounterPlatformTest {
                     reset.focusListeners.forEach { it.focusGained(FocusEvent(reset, FocusEvent.FOCUS_GAINED)) }
                     assertTrue(viewport.viewRect.contains(resetBounds))
 
-                    val details = UIUtil.findComponentsOfType(panel, JBLabel::class.java)
-                        .single { it.text == grid.accessibleContext.accessibleDescription }
-                    val detailsBounds = SwingUtilities.convertRectangle(details.parent, details.bounds, body)
+                    val details = UIUtil.findComponentsOfType(panel, JEditorPane::class.java)
+                        .single { paneText(it) == grid.accessibleContext.accessibleDescription }
                     grid.focusListeners.forEach { it.focusGained(FocusEvent(grid, FocusEvent.FOCUS_GAINED)) }
+                    val detailsBounds = SwingUtilities.convertRectangle(details.parent, details.bounds, body)
                     assertTrue(viewport.viewRect.y <= gridBounds.y)
-                    assertTrue(viewport.viewRect.maxY >= detailsBounds.maxY)
+                    assertTrue(viewport.viewRect.maxY >= detailsBounds.maxY) {
+                        "Viewport ${viewport.viewRect}, grid $gridBounds, details $detailsBounds"
+                    }
                     grid.clearInspection()
                 }
                 assertEquals(null, tooltip(references, 10, 10))
@@ -686,10 +690,10 @@ class InstructionCounterPlatformTest {
             val dataCache = (bitmapRun.getUserData(RunContentDescriptor.DESCRIPTOR_KEY)!!.processHandler as MarsProcessHandler).dataCache
             pollAssertionsAsync(5.seconds, 30.milliseconds) {
                 withContext(Dispatchers.EDT) {
-                    val status = UIUtil.findComponentsOfType(cache, JBLabel::class.java).map { it.text }
-                    assertTrue("128 bytes   |   Accesses 2" in status, status.toString())
-                    assertTrue("Hits 1   |   Misses 1" in status, status.toString())
-                    assertTrue("50%" in status)
+                    val status = UIUtil.findComponentsOfType(cache, JEditorPane::class.java).map(::paneText)
+                    assertTrue("128 bytes | Accesses 2" in status, status.toString())
+                    assertTrue("Hits 1 | Misses 1" in status, status.toString())
+                    assertTrue(UIUtil.findComponentsOfType(cache, JBLabel::class.java).any { it.text == "50%" })
                     assertEquals(50, UIUtil.findComponentsOfType(cache, JProgressBar::class.java).single().value)
                 }
             }
@@ -701,7 +705,9 @@ class InstructionCounterPlatformTest {
                     assertCompactSettings(dock.viewport, "Cache blocks", "Words per block")
                     assertEquals(percent.preferredSize.width, percent.width)
                     assertTrue(percent.x + percent.width <= hitRate.x)
+                    assertEquals(JBUI.scale(112), hitRate.preferredSize.width)
                     assertTrue(hitRate.width in 1..hitRate.preferredSize.width)
+                    if (width == 610) assertEquals(hitRate.preferredSize.width, hitRate.width)
                     assertTrue(hitRate.x + hitRate.width <= dock.viewport.extentSize.width)
                 }
                 val blockTable = UIUtil.findComponentsOfType(cache, JBTable::class.java).single()
@@ -766,8 +772,27 @@ class InstructionCounterPlatformTest {
                 assertEquals("(1, 0) · 0x10010004 · #0000ff", tooltip(bitmap, 1, 128))
                 focusGrid(bitmap)
                 assertInspection("(0, 0) · 0x10010000 · #ff0000", bitmap)
+                gridKey(KeyEvent.VK_LEFT, bitmap)
+                assertInspection("(0, 0) · 0x10010000 · #ff0000", bitmap)
                 gridKey(KeyEvent.VK_RIGHT, bitmap)
-                assertInspection("(1, 0) · 0x10010004 · #0000ff", bitmap)
+                val pixel = "(1, 0) · 0x10010004 · #0000ff"
+                assertInspection(pixel, bitmap)
+                val displaySettings = UIUtil.findComponentsOfType(bitmap, JLabel::class.java)
+                    .single { it.text == "Display Settings" }.accessibleContext.accessibleAction
+                assertTrue(displaySettings.doAccessibleAction(0))
+                val dock = layoutDock(bitmap, 185, 460)
+                val pixelDetails = UIUtil.findComponentsOfType(bitmap, JEditorPane::class.java).single { paneText(it) == pixel }
+                // The HTML view requests a new layout after it receives the new width.
+                dock.viewport.view.doLayout()
+                val firstLine = pixelDetails.modelToView2D(1)
+                val lastLine = pixelDetails.modelToView2D(pixelDetails.document.length - 1)
+                assertTrue(lastLine.y > firstLine.y) {
+                    "Pixel details ${pixelDetails.bounds} in ${dock.viewport.extentSize}, " +
+                        "first $firstLine, last $lastLine, font width ${pixelDetails.getFontMetrics(pixelDetails.font).stringWidth(pixel)}"
+                }
+                assertTrue(lastLine.maxY <= pixelDetails.height, "The wrapped line should be visible")
+                assertTrue(pixelDetails.x + pixelDetails.width <= dock.viewport.extentSize.width)
+                assertTrue(displaySettings.doAccessibleAction(0))
                 val selectedPixel = renderBitmap()
                 assertEquals(Color.BLUE.rgb, selectedPixel.getRGB(1, 128))
                 assertEquals(Color.WHITE.rgb, selectedPixel.getRGB(1 + JBUI.scale(7) / 2, 128))

@@ -17,6 +17,7 @@ import com.intellij.ui.dsl.builder.TopGap
 import com.intellij.ui.dsl.listCellRenderer.textListCellRenderer
 import com.intellij.ui.table.JBTable
 import com.intellij.util.ui.JBDimension
+import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.launchOnShow
 import edu.missouristate.mars.plugin.tools.DataCacheSimulator.Access
 import edu.missouristate.mars.plugin.tools.DataCacheSimulator.Options
@@ -25,6 +26,7 @@ import edu.missouristate.mars.plugin.tools.DataCacheSimulator.Replacement
 import edu.missouristate.mars.util.Binary
 import javax.swing.DefaultComboBoxModel
 import javax.swing.JButton
+import javax.swing.JEditorPane
 import javax.swing.JProgressBar
 import javax.swing.table.AbstractTableModel
 import kotlinx.coroutines.Dispatchers
@@ -46,10 +48,12 @@ internal class DataCacheView(project: Project) : Disposable {
     private val toggle = JButton()
     private val reset = JButton(toolsMessages.getMessage("counter.reset"))
     private val logging = JBCheckBox(toolsMessages.getMessage("cache.logging"))
-    private val summary = JBLabel()
-    private val traffic = JBLabel()
+    private lateinit var summary: JEditorPane
+    private lateinit var traffic: JEditorPane
     private val percentage = JBLabel()
     private val rate = JProgressBar(0, 100).apply {
+        preferredSize = preferredSize.apply { width = JBUI.scale(112) }
+        minimumSize = minimumSize.apply { width = 0 }
         accessibleContext.accessibleName = toolsMessages.getMessage("cache.rate")
     }
     private val blockModel = CacheBlockTableModel()
@@ -74,16 +78,16 @@ internal class DataCacheView(project: Project) : Disposable {
                 panel { row { cell(blocks).label(toolsMessages.getMessage("cache.blocks"), LabelPosition.TOP) } }
                 panel { row { cell(words).label(toolsMessages.getMessage("cache.words"), LabelPosition.TOP) } }
             }.layout(RowLayout.INDEPENDENT)
-            row(toolsMessages.getMessage("cache.ways")) { cell(ways) }
+            row { cell(ways).label(toolsMessages.getMessage("cache.ways"), LabelPosition.TOP) }
             row { cell(replacement).label(toolsMessages.getMessage("cache.replacement"), LabelPosition.TOP) }
             row { cell(apply) }
         }.expanded = false
-        row { cell(summary) }.topGap(TopGap.SMALL)
-        row { cell(traffic) }
+        row { summary = text("").resizableColumn().component }.layout(RowLayout.INDEPENDENT).topGap(TopGap.SMALL)
+        row { traffic = text("").resizableColumn().component }.layout(RowLayout.INDEPENDENT)
         row {
             label(toolsMessages.getMessage("cache.rate")).gap(RightGap.SMALL).component.labelFor = rate
             cell(percentage).gap(RightGap.SMALL)
-            cell(rate).resizableColumn()
+            cell(rate).align(AlignX.LEFT).resizableColumn()
         }.layout(RowLayout.INDEPENDENT)
         row {
             cell(tableScroll).align(Align.FILL).resizableColumn()

@@ -8,7 +8,6 @@ import com.intellij.openapi.ui.ComboBox
 import com.intellij.ui.ColorPanel
 import com.intellij.ui.ScrollPaneFactory
 import com.intellij.ui.components.JBCheckBox
-import com.intellij.ui.components.JBLabel
 import com.intellij.ui.dsl.builder.Align
 import com.intellij.ui.dsl.builder.LabelPosition
 import com.intellij.ui.dsl.builder.RowLayout
@@ -36,6 +35,7 @@ import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import javax.swing.JButton
 import javax.swing.JComponent
+import javax.swing.JEditorPane
 import javax.swing.JPanel
 import javax.swing.JSpinner
 import javax.swing.KeyStroke
@@ -67,8 +67,9 @@ internal class MemoryGridView(
     private val toggle = JButton()
     private val reset = JButton(toolsMessages.getMessage("counter.reset"))
     private val blank = Frame(mode.defaults(), null)
-    private val inspection = JBLabel(toolsMessages.getMessage(mode.inspectionHintKey))
-    private val canvas = MemoryGridCanvas(blank, mode.nameKey, inspection.text, ::describeCell) { inspection.text = it }
+    private val inspectionHint = toolsMessages.getMessage(mode.inspectionHintKey)
+    private lateinit var inspection: JEditorPane
+    private val canvas = MemoryGridCanvas(blank, mode.nameKey, inspectionHint, ::describeCell) { inspection.text = it }
     private var selected: MemoryGridDisplay? = null
     private val reference = if (mode == Mode.REFERENCES) ReferenceControls() else null
 
@@ -89,7 +90,7 @@ internal class MemoryGridView(
                 panel { row { cell(unitHeight).label(toolsMessages.getMessage("bitmap.unitHeight"), LabelPosition.TOP) } }
             }
             reference?.let { controls ->
-                row(toolsMessages.getMessage("references.words")) { cell(controls.words) }
+                row { cell(controls.words).label(toolsMessages.getMessage("references.words"), LabelPosition.TOP) }
                 row { cell(controls.threshold).label(toolsMessages.getMessage("references.threshold"), LabelPosition.TOP) }
                     .topGap(TopGap.SMALL)
                 row {
@@ -101,18 +102,22 @@ internal class MemoryGridView(
             row { cell(apply) }
         }.expanded = false
         row { cell(canvas).align(Align.FILL).resizableColumn() }.resizableRow()
-        row { cell(inspection) }
+        row { inspection = text(inspectionHint).resizableColumn().component }.layout(RowLayout.INDEPENDENT)
         row { comment(toolsMessages.getMessage(mode.helpKey)).resizableColumn() }.layout(RowLayout.INDEPENDENT)
     }, true).apply { horizontalScrollBarPolicy = HORIZONTAL_SCROLLBAR_NEVER }
 
     init {
         UIUtil.uiTraverser(component.viewport.view).filter(JComponent::class.java).forEach { control ->
             control.whenFocusGained(this) {
-                val bounds = Rectangle(0, 0, control.width, control.height)
                 if (control === canvas) {
+                    // The initial inspection can change the height of the wrapping text.
+                    inspection.parent.doLayout()
+                    val bounds = Rectangle(0, 0, canvas.width, canvas.height)
                     bounds.add(SwingUtilities.convertRectangle(inspection.parent, inspection.bounds, canvas))
+                    canvas.scrollRectToVisible(bounds)
+                } else {
+                    control.scrollRectToVisible(Rectangle(0, 0, control.width, control.height))
                 }
-                control.scrollRectToVisible(bounds)
             }
         }
         apply.addActionListener {
@@ -286,7 +291,9 @@ internal class MemoryGridCanvas(
     }
 
     private fun showInspection(text: String) {
-        getAccessibleContext().accessibleDescription = text
+        val accessibility = accessibleContext
+        if (accessibility.accessibleDescription == text) return
+        accessibility.accessibleDescription = text
         inspectionChanged(text)
     }
 
