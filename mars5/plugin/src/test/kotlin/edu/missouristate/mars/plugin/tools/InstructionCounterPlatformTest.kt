@@ -385,10 +385,10 @@ class InstructionCounterPlatformTest {
                 val branchTable = UIUtil.findComponentsOfType(branches, JBTable::class.java).single()
                 val branchTableScroll = assertInstanceOf(JScrollPane::class.java,
                     SwingUtilities.getAncestorOfClass(JScrollPane::class.java, branchTable))
-                assertCollapsedSettings(branches, "Prediction Settings", button("Apply and Reset", branches), branchTableScroll)
+                assertCollapsedSettings(branches, "Prediction", button("Apply and Reset", branches), branchTableScroll)
                 for (width in listOf(240, 610)) {
                     val dock = layoutDock(branches, width, 460)
-                    assertCompactSettings(dock.viewport, "Table entries", "History bits")
+                    assertCompactSettings(dock.viewport, "Entries", "History bits")
                 }
                 assertFalse(button("Apply and Reset", branches).isEnabled)
                 assertFalse(button("Apply and Clear", bitmap).isEnabled)
@@ -867,8 +867,18 @@ class InstructionCounterPlatformTest {
                     assertTrue(description.endsWith(" · row 1"))
                     val latest = latestBranch()
                     fun lastLineY() = latest.modelToView2D(latest.document.length - 1).y
-                    val narrow = layoutDock(branches, 200, 460)
-                    assertTrue(latest.x + latest.width <= narrow.viewport.extentSize.width)
+                    val narrow = layoutDock(branches, 180, 460)
+                    val viewWidth = narrow.viewport.extentSize.width
+                    assertTrue(latest.x + latest.width <= viewWidth) {
+                        val body = narrow.viewport.view as JComponent
+                        val bounds = body.components.filter { it.isVisible }.joinToString("\n") {
+                            "${it.javaClass.simpleName} ${it.accessibleContext?.accessibleName}: " +
+                                "${it.bounds} min=${it.minimumSize.width} pref=${it.preferredSize.width}"
+                        }
+                        "Latest branch bounds ${latest.bounds} exceed the ${viewWidth}px viewport. " +
+                            "Body minimum: ${body.minimumSize.width}px, insets: ${body.insets}.\n$bounds"
+                    }
+                    assertCompactSettings(narrow.viewport, "Entries", "History bits")
                     val narrowLastLine = lastLineY()
                     layoutDock(branches, 610, 460)
                     assertTrue(lastLineY() < narrowLastLine)

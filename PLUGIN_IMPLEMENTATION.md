@@ -2219,6 +2219,16 @@ The same packaged replay passed on Ubuntu ARM64, along with all 2,019 Jupiter
 tests and both coverage gates. The Linux replay and reports are under
 `mars5/.gradle/release-host-checks/linux-arm64-live-table-selection`.
 
+The Branch History fixture checks the wrapped latest-branch details and the
+two expanded prediction controls at a 180-pixel dock width. Shorter labels
+passed the focused fixture on macOS and emulated Ubuntu x64. The drop-downs
+were wider in the fresh macOS suite, so the panel also uses IntelliJ's small
+gap between the prediction controls. The packaged
+replay verifies that Down Arrow selects a visible row in Branch History and
+Data Cache at 150% zoom in High Contrast. The logs, focused test reports
+and screenshots are under
+`mars5/.gradle/release-host-checks/branch-history-viewport`.
+
 ## Floating Point Representation
 
 The Floating Point Representation tab provides an independent binary32
