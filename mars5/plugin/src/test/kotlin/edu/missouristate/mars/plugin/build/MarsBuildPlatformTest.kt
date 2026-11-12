@@ -104,6 +104,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.withContext
 import org.jetbrains.concurrency.await
+import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertInstanceOf
@@ -1626,16 +1627,18 @@ class MarsBuildPlatformTest {
 
     @ParameterizedTest
     @CsvSource(
+        "'', UTF-8, '', UTF-8, inc",
         "efbbbf, UTF-8, fffe, UTF-16LE, s",
         "feff, UTF-16BE, efbbbf, UTF-8, inc",
         "0000feff, UTF-32BE, fffe0000, UTF-32LE, txt",
     )
-    fun `marked Unicode files assemble with the same image and source map from disk and IntelliJ documents`(
+    fun `Unicode files with mixed line endings assemble with the same image and source map from disk and IntelliJ`(
         entryBom: String, entryEncoding: String, includeBom: String, includeEncoding: String, includeExtension: String,
     ) =
         timeoutRunBlocking<Unit> {
             val includeName = "pièce.$includeExtension"
-            val entryText = "\r\n.include \"$includeName\"\r\n.text\r\nentrée: assign(\$t0)"
+            val prelude = "ignored: lw \$t0,0(\$sp"
+            val entryText = "\r\n$prelude .include \"$includeName\"\r\n.text\r\nentrée: assign(\$t0)\r\n"
             val includeText = ".eqv LIMIT 7\r.data\rtexte: .asciiz \"é\uFEFF\"\n" +
                 ".macro assign (%reg)\r\n\taddiu %reg, \$zero, LIMIT\r.end_macro"
             val normalizedEntry = entryText.replace("\r\n", "\n")
@@ -1663,6 +1666,9 @@ class MarsBuildPlatformTest {
                 assertTrue(PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java).isEmpty())
                 val includedFile = file.findReferenceAt(file.text.indexOf(includeName))?.resolve()?.containingFile
                 assertEquals(include, includedFile?.virtualFile?.toNioPath())
+                val includeManager = FileIncludeManager.getManager(project)
+                assertEquals(setOf(includeFile), includeManager.getIncludedFiles(entryFile, true).toSet())
+                assertEquals(setOf(entryFile), includeManager.getIncludingFiles(includeFile, true).toSet())
                 val includedSyntax = checkNotNull(assemblySourceSyntax(includedFile))
                 assertEquals(normalizedInclude, includedSyntax.text)
                 assertTrue(PsiTreeUtil.findChildrenOfType(includedSyntax, PsiErrorElement::class.java).isEmpty())
@@ -1690,12 +1696,47 @@ class MarsBuildPlatformTest {
                     assertEquals(expectedWords, ide.program.machineList.map { it.binaryStatement })
                     assertEquals(expected.sourceMap(), result.program().sourceMap())
                     assertEquals(expected.symbolMap(), result.program().symbolMap())
+                    assertTrue("ignored" !in result.program().symbolMap().locals()[entry].orEmpty())
                     val origin = result.program().sourceMap().origins().values.single()
                     assertEquals(Location(include, 5), origin.location())
                     assertEquals(Location(entry, 4), origin.caller().location())
                     val base = ide.memory.dataBaseAddress
                     assertEquals(listOf(0xe9, 0xff, 0), (0..2).map { ide.memory.getByte(base + it) })
                 }
+            }
+
+            val malformed = normalizedEntry.replace(prelude, "ignored: 0xG")
+            withContext(Dispatchers.EDT) {
+                edit(entryFile, malformed)
+                PsiDocumentManager.getInstance(project).commitAllDocuments()
+            }
+            readAction {
+                val file = PsiManager.getInstance(project).findFile(entryFile) as MipsFile
+                val error = PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java).single()
+                assertEquals("0xG", error.text)
+                assertEquals(malformed.indexOf("0xG"), error.textOffset)
+                assertEquals("Invalid MARS token on include line", error.errorDescription)
+                assertEquals(include, file.findReferenceAt(malformed.indexOf(includeName))?.resolve()?.containingFile?.virtualFile?.toNioPath())
+            }
+            val malformedCapture = captureAssemblySources(listOf(entry), null)
+            val malformedComponent = MarsSessionService.createMarsComponent()
+            val diagnostic = malformedComponent.context().use {
+                val result = malformedCapture.assembleIn(malformedComponent)
+                assertFalse(result.succeeded())
+                result.errors().single()
+            }
+            assertEquals(2, diagnostic.line())
+            assertEquals("ignored: ".length + 1, diagnostic.column())
+            assertTrue(diagnostic.message().endsWith("Invalid language element: 0xG"))
+            assertArrayEquals(entryBytes, Files.readAllBytes(entry), "Assembling the editor capture must preserve the original bytes")
+            val malformedBytes = hex.parseHex(entryBom) + malformed.replace("\n", "\r\n").toByteArray(Charset.forName(entryEncoding))
+            val malformedOnDisk = Files.write(entry.resolveSibling("malformed.mars"), malformedBytes)
+            MarsSessionService.createMarsComponent().context().use { disk ->
+                val failure = assertThrows(ProcessingException::class.java) { disk.assemble(listOf(malformedOnDisk)) }
+                val diskDiagnostic = failure.errors().errorMessages.single()
+                assertEquals(diagnostic.line(), diskDiagnostic.line)
+                assertEquals(diagnostic.column(), diskDiagnostic.position)
+                assertEquals(diagnostic.message(), diskDiagnostic.message)
             }
         }
 
