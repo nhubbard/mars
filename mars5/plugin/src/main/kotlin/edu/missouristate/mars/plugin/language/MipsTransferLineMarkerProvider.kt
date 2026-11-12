@@ -66,7 +66,7 @@ internal class MipsTransferLineMarkerProvider : RelatedItemLineMarkerProvider() 
                 it.instructionFormat == I_BRANCH_FORMAT || it.instructionFormat == J_FORMAT
             }
             val pseudo = forms.filterIsInstance<ExtendedInstruction>().filter(ExtendedInstruction::branchesToLabel)
-            (basic + pseudo).groupBy(Instruction::getName)
+            (basic + pseudo).groupBy(Instruction::name)
         }
     }
 }

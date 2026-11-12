@@ -2,7 +2,7 @@ package edu.missouristate.mars.plugin.tools
 
 import edu.missouristate.mars.api.StepEvent
 import edu.missouristate.mars.api.StepEvent.BranchOutcome.TAKEN
-import edu.missouristate.mars.mips.instructions.Instruction.INSTRUCTION_LENGTH
+import edu.missouristate.mars.mips.instructions.Instruction.Companion.INSTRUCTION_LENGTH
 
 internal class BranchHistoryTable {
     data class Options(val size: Int = 16, val historyBits: Int = 1, val initialTaken: Boolean = false) {

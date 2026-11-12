@@ -1081,7 +1081,7 @@ Test sources and generated build output are excluded from this production invent
 | [java/edu/missouristate/mars/assembler/MacroPool.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/assembler/MacroPool.java) | C03 |
 | [java/edu/missouristate/mars/assembler/OperandFormat.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/assembler/OperandFormat.java) | C02 |
 | [java/edu/missouristate/mars/assembler/Parser.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/assembler/Parser.java) | C02 |
-| [java/edu/missouristate/mars/assembler/PseudoInstructionExpander.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/assembler/PseudoInstructionExpander.java) | C03 |
+| [kotlin/edu/missouristate/mars/assembler/PseudoInstructionExpander.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/assembler/PseudoInstructionExpander.kt) | C03 |
 | [java/edu/missouristate/mars/assembler/RegisterNames.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/assembler/RegisterNames.java) | C02 |
 | [java/edu/missouristate/mars/assembler/SecondPassProcessor.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/assembler/SecondPassProcessor.java) | C02 |
 | [java/edu/missouristate/mars/assembler/SourceLine.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/assembler/SourceLine.java) | C03 |
@@ -1091,7 +1091,7 @@ Test sources and generated build output are excluded from this production invent
 | [java/edu/missouristate/mars/assembler/TokenList.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/assembler/TokenList.java) | C02 |
 | [java/edu/missouristate/mars/assembler/TokenTypes.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/assembler/TokenTypes.java) | C02 |
 | [java/edu/missouristate/mars/assembler/Tokenizer.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/assembler/Tokenizer.java) | C02 |
-| [java/edu/missouristate/mars/assembler/TranslationCode.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/assembler/TranslationCode.java) | C02 |
+| [kotlin/edu/missouristate/mars/assembler/TranslationCode.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/assembler/TranslationCode.kt) | C02 |
 | [java/edu/missouristate/mars/core/AssemblyContext.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/core/AssemblyContext.java) | C02 |
 | [java/edu/missouristate/mars/core/InstructionContext.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/core/InstructionContext.java) | C01 |
 | [java/edu/missouristate/mars/core/MarsContext.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/core/MarsContext.java) | C01 |
@@ -1124,10 +1124,10 @@ Test sources and generated build output are excluded from this production invent
 | [java/edu/missouristate/mars/mips/hardware/RegisterAccessNotice.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/mips/hardware/RegisterAccessNotice.java) | C10 |
 | [java/edu/missouristate/mars/mips/hardware/memory/TextMemorySegment.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/mips/hardware/memory/TextMemorySegment.java) | C09 |
 | [java/edu/missouristate/mars/mips/hardware/memory/WordMemorySegment.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/mips/hardware/memory/WordMemorySegment.java) | C09 |
-| [java/edu/missouristate/mars/mips/instructions/BasicInstruction.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/mips/instructions/BasicInstruction.java) | C04 |
+| [kotlin/edu/missouristate/mars/mips/instructions/BasicInstruction.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/mips/instructions/BasicInstruction.kt) | C04 |
 | [kotlin/edu/missouristate/mars/mips/instructions/BasicInstructionFormat.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/mips/instructions/BasicInstructionFormat.kt) | C04 |
-| [java/edu/missouristate/mars/mips/instructions/ExtendedInstruction.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/mips/instructions/ExtendedInstruction.java) | C04 |
-| [java/edu/missouristate/mars/mips/instructions/Instruction.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/mips/instructions/Instruction.java) | C04 |
+| [kotlin/edu/missouristate/mars/mips/instructions/ExtendedInstruction.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/mips/instructions/ExtendedInstruction.kt) | C04 |
+| [kotlin/edu/missouristate/mars/mips/instructions/Instruction.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/mips/instructions/Instruction.kt) | C04 |
 | [kotlin/edu/missouristate/mars/mips/instructions/InstructionDefaults.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/mips/instructions/InstructionDefaults.kt) | C04 |
 | [kotlin/edu/missouristate/mars/mips/instructions/InstructionLoader.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/mips/instructions/InstructionLoader.kt) | C04 |
 | [kotlin/edu/missouristate/mars/mips/instructions/InstructionSet.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/mips/instructions/InstructionSet.kt) | C04 |
