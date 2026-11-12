@@ -3,7 +3,6 @@ package edu.missouristate.mars.plugin.language
 import com.intellij.codeInsight.navigation.actions.GotoDeclarationAction
 import com.intellij.ide.highlighter.JavaFileType
 import com.intellij.lang.annotation.HighlightSeverity
-import com.intellij.notebook.editor.BackedVirtualFile
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.command.WriteCommandAction
@@ -463,7 +462,7 @@ class MipsAssemblyAnnotatorPlatformTest {
             val offset = leaf.text.indexOf("SHIFT")
             val definition = checkNotNull(leaf.findReferenceAt(offset)?.resolve())
             assertEquals("SHIFT", (definition as PsiNamedElement).name)
-            assertEquals(ignored, BackedVirtualFile.getOriginFileIfBacked(definition.containingFile.virtualFile))
+            assertEquals(ignored, definition.containingFile.virtualFile.mipsAssemblySourceOrigin)
             assertFalse(definition.containingFile.virtualFile.isWritable)
         }
         withContext(Dispatchers.EDT) {
@@ -547,7 +546,7 @@ class MipsAssemblyAnnotatorPlatformTest {
             val source = checkNotNull(file.findReferenceAt(entry.indexOf("SOURCE"))?.resolve())
             assertEquals("inner.inc", source.containingFile.name)
             val target = checkNotNull(file.findReferenceAt(shift)?.resolve())
-            assertEquals(binary, BackedVirtualFile.getOriginFileIfBacked(target.containingFile.virtualFile))
+            assertEquals(binary, target.containingFile.virtualFile.mipsAssemblySourceOrigin)
             assertSame(target.containingFile, target.containingFile.originalFile)
             assertFalse(target.containingFile.virtualFile.isWritable)
             assertEquals("SHIFT", (target as PsiNamedElement).name)

@@ -3325,6 +3325,16 @@ that replay. A separate editor-only replay restored the editor PSI and
 compiler task, then ran the assembly file and printed `reload smoke ready`
 in the native console. The code-style error did not recur in that replay.
 
+Read-only include views use IntelliJ's in-memory virtual file with a plain-text fallback.
+The file-type extension supplies MIPS support while the plugin is loaded. This keeps
+IntelliJ's closed-tab history from retaining a plugin-defined virtual file. Before unload,
+MARS clears the inspection renderer, closes the generated include tabs, and asks
+IntelliJ to reparse their in-memory files as plain text. In the packaged macOS replay, both nested include tabs opened as MIPS source, Disable left the
+physical assembly tab open, and the parser produced no errors after unload. IntelliJ
+still reported the old classloader as referenced, so this replay did not qualify
+restart-free re-enable. The logs and reference traces are under
+`mars5/.gradle/release-host-checks/dynamic-reload/ignored-include-unload-replay`.
+
 With X-Ray open, IntelliJ removed the tool window and retained the old
 loader. The reference analysis followed a Compose panel's parent chain to
 the tool window's localized stripe-title supplier, which captured the

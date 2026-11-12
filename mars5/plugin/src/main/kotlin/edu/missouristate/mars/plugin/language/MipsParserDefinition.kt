@@ -6,11 +6,9 @@ import com.intellij.lang.ASTNode
 import com.intellij.lang.ParserDefinition
 import com.intellij.lang.PsiParser
 import com.intellij.openapi.project.Project
-import com.intellij.platform.backend.navigation.NavigationRequest
 import com.intellij.platform.syntax.psi.lexer.LexerAdapter
 import com.intellij.psi.FileViewProvider
 import com.intellij.psi.tree.TokenSet
-import edu.missouristate.mars.plugin.analysis.ReadOnlyAssemblySourceFile
 import edu.missouristate.mars.plugin.analysis.SymbolKind
 import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
 import edu.missouristate.mars.plugin.language.psi.MipsMacroFormal
@@ -36,11 +34,4 @@ class MipsParserDefinition : ParserDefinition {
 
 class MipsFile(viewProvider: FileViewProvider) : PsiFileBase(viewProvider, MipsLanguage) {
     override fun getFileType() = MipsFileType
-
-    override fun navigationRequest(): NavigationRequest? {
-        val file = viewProvider.virtualFile
-        // Native file navigation may unwrap a backed file and open its ignored origin as plain text.
-        return if (file is ReadOnlyAssemblySourceFile) NavigationRequest.sourceNavigationRequest(project, file, 0)
-        else super.navigationRequest()
-    }
 }

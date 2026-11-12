@@ -4,7 +4,6 @@ import com.intellij.codeInsight.lookup.Lookup
 import com.intellij.codeInsight.navigation.actions.GotoDeclarationAction
 import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.mock.MockVirtualFile
-import com.intellij.notebook.editor.BackedVirtualFile
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.command.WriteCommandAction
@@ -131,7 +130,7 @@ class MipsFileReferencesPlatformTest {
             assertSame(backup, target(source.lastIndexOf("VALUE") + 1)?.containingFile)
             assertEquals(original, backup.text)
             assertFalse(backup.virtualFile.isWritable)
-            assertEquals(ignored, BackedVirtualFile.getOriginFileIfBacked(backup.virtualFile))
+            assertEquals(ignored, backup.virtualFile.mipsAssemblySourceOrigin)
             assertNull(PsiManager.getInstance(ide).findFile(ignored))
             assertNull(fixture.file.findReferenceAt(offset)?.resolve())
             assertInstanceOf(PsiDirectory::class.java, target(source.indexOf("parts/") + 1))
@@ -153,7 +152,7 @@ class MipsFileReferencesPlatformTest {
 
             fixture.openFileInEditor(backup.virtualFile)
             val next = assertInstanceOf(MipsFile::class.java, target(original.indexOf("nested.inc~") + 1))
-            assertEquals(nested, BackedVirtualFile.getOriginFileIfBacked(next.virtualFile))
+            assertEquals(nested, next.virtualFile.mipsAssemblySourceOrigin)
 
             fixture.configureFromExistingVirtualFile(entry)
             val revised = original.replace("VALUE 4", "VALUE 9")

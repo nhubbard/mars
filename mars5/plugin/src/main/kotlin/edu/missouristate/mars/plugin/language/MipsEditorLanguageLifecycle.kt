@@ -5,7 +5,10 @@ import com.intellij.ide.plugins.IdeaPluginDescriptor
 import com.intellij.lang.LanguageUtil
 import com.intellij.openapi.application.WriteIntentReadAction
 import com.intellij.openapi.editor.EditorFactory
+import com.intellij.openapi.editor.ex.EditorMarkupModel
 import com.intellij.openapi.fileEditor.FileDocumentManager
+import com.intellij.openapi.fileEditor.FileEditorManager
+import com.intellij.openapi.project.ProjectManager
 import java.util.function.Supplier
 
 internal class MipsEditorLanguageLifecycle : DynamicPluginListener {
@@ -29,6 +32,17 @@ internal class MipsEditorLanguageLifecycle : DynamicPluginListener {
                 editor.settings.setLanguageSupplier(
                     if (loaded) Supplier { LanguageUtil.getFileTypeLanguage(file.fileType) } else null,
                 )
+                if (!loaded) {
+                    // The inspection renderer retains the languages for its last highlighting pass.
+                    (editor.markupModel as EditorMarkupModel).setErrorStripeRenderer(null)
+                }
+            }
+            if (!loaded) {
+                for (project in ProjectManager.getInstance().openProjects) {
+                    val manager = FileEditorManager.getInstance(project)
+                    manager.openFiles.filter { it.mipsAssemblySourceOrigin != null }.forEach(manager::closeFile)
+                }
+                detachMipsAssemblySourceViews()
             }
         }
     }

@@ -17,7 +17,6 @@ import com.intellij.psi.PsiManager
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
-import com.intellij.testFramework.ReadOnlyLightVirtualFile
 import edu.missouristate.mars.ErrorList
 import edu.missouristate.mars.assembler.Directives
 import edu.missouristate.mars.assembler.Macro
@@ -28,8 +27,9 @@ import edu.missouristate.mars.plugin.analysis.MacroBoundaryProblem.Kind
 import edu.missouristate.mars.plugin.analysis.MipsSourceEvent.Begin
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.MipsFileType
-import edu.missouristate.mars.plugin.language.MipsLanguage
 import edu.missouristate.mars.plugin.language.collectRegisterUsages
+import edu.missouristate.mars.plugin.language.mipsAssemblySourceOrigin
+import edu.missouristate.mars.plugin.language.mipsAssemblySourceView
 import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
 import edu.missouristate.mars.plugin.language.psi.MipsStringLiteral
 import edu.missouristate.mars.plugin.language.references.MipsFileReferenceSet
@@ -510,18 +510,13 @@ private data class UnresolvedSource(val syntax: MipsFile?, val document: Documen
 
 private fun readOnlyAssemblySource(project: Project, file: VirtualFile, documentText: String? = null): MipsFile? {
     val text = documentText ?: readDiskAssemblyText(file) ?: return null
-    return PsiManager.getInstance(project).findFile(ReadOnlyAssemblySourceFile(file, text)) as MipsFile
+    return PsiManager.getInstance(project).findFile(mipsAssemblySourceView(file, text)) as MipsFile
 }
 
-internal class ReadOnlyAssemblySourceFile(private val origin: VirtualFile, text: String) :
-    ReadOnlyLightVirtualFile(origin.name, MipsLanguage, text), BackedVirtualFile {
-    init { setFileType(MipsFileType) }
-
-    override fun getOriginFile(): VirtualFile = origin
+internal fun PsiFile.assemblySourceOriginalFile(): VirtualFile {
+    val file = originalFile.viewProvider.virtualFile
+    return file.mipsAssemblySourceOrigin ?: BackedVirtualFile.getOriginFileIfBacked(file)
 }
-
-internal fun PsiFile.assemblySourceOriginalFile(): VirtualFile =
-    BackedVirtualFile.getOriginFileIfBacked(originalFile.viewProvider.virtualFile)
 
 private fun MipsFile.isUnindexedAssemblySource(): Boolean =
-    originalFile !is MipsFile || viewProvider.virtualFile is ReadOnlyAssemblySourceFile
+    originalFile !is MipsFile || viewProvider.virtualFile.mipsAssemblySourceOrigin != null

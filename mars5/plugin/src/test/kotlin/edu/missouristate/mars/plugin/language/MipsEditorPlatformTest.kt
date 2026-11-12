@@ -11,12 +11,16 @@ import com.intellij.lang.LanguageCommenters
 import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.lang.java.JavaLanguage
 import com.intellij.openapi.actionSystem.IdeActions
+import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.DefaultLanguageHighlighterColors
 import com.intellij.openapi.editor.EditorFactory
+import com.intellij.openapi.editor.ex.EditorMarkupModel
+import com.intellij.openapi.editor.markup.AnalyzerStatus
+import com.intellij.openapi.editor.markup.ErrorStripeRenderer
 import com.intellij.openapi.editor.HighlighterColors
 import com.intellij.openapi.editor.colors.EditorColorsManager
 import com.intellij.openapi.editor.colors.TextAttributesKey
@@ -33,6 +37,7 @@ import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsigh
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.TokenType
 import com.intellij.psi.codeStyle.CodeStyleSettingsManager
+import com.intellij.psi.PsiManager
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.DumbModeTestUtils
 import com.intellij.testFramework.EditorTestUtil
@@ -78,11 +83,25 @@ class MipsEditorPlatformTest {
                 fixture.configureFromExistingVirtualFile(source.virtualFile)
                 val editor = fixture.editor
                 editor.settings.setLanguageSupplier { MipsLanguage }
+                val markup = editor.markupModel as EditorMarkupModel
+                val renderer = object : ErrorStripeRenderer, Disposable {
+                    override fun getStatus() = AnalyzerStatus.EMPTY
+                    override fun dispose() = Unit
+                }
+                markup.setErrorStripeRenderer(renderer)
                 editor.caretModel.moveToOffset(6)
                 val javaFile = fixture.addFileToProject("Lifecycle.java", "class Lifecycle {}")
                 val manager = FileEditorManager.getInstance(current)
                 manager.openFile(javaFile.virtualFile, FileEditorOpenRequest.withFocus(false))
                 val javaEditor = manager.getEditors(javaFile.virtualFile).filterIsInstance<TextEditor>().single().editor
+                val include = mipsAssemblySourceView(source.virtualFile, ".eqv VALUE 4\n")
+                manager.openFile(include, FileEditorOpenRequest.withFocus(false))
+                val includeEditor = manager.getEditors(include).filterIsInstance<TextEditor>().single().editor
+                val closedInclude = mipsAssemblySourceView(source.virtualFile, "nop\n")
+                val psi = PsiManager.getInstance(current)
+                val includePsi = psi.findFile(include)!!
+                val closedPsi = psi.findFile(closedInclude)!!
+                assertSame(MipsFileType, closedPsi.fileType)
                 javaEditor.settings.setLanguageSupplier { JavaLanguage.INSTANCE }
                 val factory = EditorFactory.getInstance()
                 val unbacked = factory.createEditor(factory.createDocument("Scratch"), current)
@@ -92,9 +111,17 @@ class MipsEditorPlatformTest {
                     listener.beforePluginUnload(java, false)
                     listener.pluginLoaded(java)
                     assertEquals(81, editor.settings.getRightMargin(current))
+                    assertFalse(includeEditor.isDisposed)
+                    assertSame(renderer, markup.errorStripeRenderer)
 
                     val mars = requireNotNull(PluginManagerCore.getPlugin(PluginId.getId("edu.missouristate.mars")))
                     listener.beforePluginUnload(mars, false)
+                    assertTrue(includeEditor.isDisposed)
+                    assertFalse(manager.isFileOpen(include))
+                    assertNull(markup.errorStripeRenderer)
+                    assertFalse(includePsi.isValid)
+                    assertFalse(closedPsi.isValid)
+                    assertSame(PlainTextFileType.INSTANCE, psi.findFile(closedInclude)?.fileType)
                     assertEquals(120, editor.settings.getRightMargin(current))
                     assertEquals(93, javaEditor.settings.getRightMargin(current))
                     assertFalse(editor.isDisposed)
