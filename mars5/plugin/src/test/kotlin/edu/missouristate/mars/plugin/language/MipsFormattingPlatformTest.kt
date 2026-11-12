@@ -775,6 +775,54 @@ class MipsFormattingPlatformTest {
         }
 
     @Test
+    fun `formatting follows expanded repetition without changing written aliases or macro calls`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val source = """
+                .eqv PAD 99
+                .eqv COLON :
+                .eqv IGNORED .unknown
+                .macro emit (%value, %colon, %count)
+                    .word %value %colon %count
+                .end_macro
+                .data
+                .word 0
+                PAD    6  :  2
+                PAD    8   COLON   2
+                marker     4 : 2
+                row: PAD    5 : 2
+                emit    7  :  2
+                IGNORED    9 : 2
+                .float 0
+                PAD    .5 : 2
+                .text
+                nop
+            """.trimIndent()
+            val formatted = withContext(Dispatchers.EDT) {
+                fixture.configureByText("repeat-layout.mars", source)
+                val result = reformat()
+                assertEquals(result, reformat())
+                result
+            }
+            assertTrue("PAD 6:2" in formatted, formatted)
+            assertTrue("PAD 8 COLON 2" in formatted, formatted)
+            assertTrue("marker 4:2" in formatted, formatted)
+            assertTrue("row: PAD 5:2" in formatted, formatted)
+            assertTrue("emit 7: 2" in formatted, formatted)
+            assertTrue("IGNORED    9 : 2" in formatted, formatted)
+            assertTrue("PAD .5:2" in formatted, formatted)
+            assertEquals(assemble(directory.resolve("before.mars"), source, 56),
+                assemble(directory.resolve("after.mars"), formatted, 56))
+
+            val unresolved = ".eqv REGISTER \$t0\n.data\n.ascii \"\"\nPAD   1 : 2\n.word 0\nREGISTER   1 : 2\n"
+            val unresolvedFormatted = withContext(Dispatchers.EDT) {
+                fixture.configureByText("repeat-while-editing.mars", unresolved)
+                reformat()
+            }
+            assertTrue("PAD   1 : 2" in unresolvedFormatted, unresolvedFormatted)
+            assertTrue("REGISTER   1 : 2" in unresolvedFormatted, unresolvedFormatted)
+        }
+
+    @Test
     fun `formatting compact macro offsets keeps signed fields and normalizes commas`(@TempDir directory: Path) =
         timeoutRunBlocking<Unit> {
             val source = """
@@ -858,12 +906,12 @@ class MipsFormattingPlatformTest {
         return fixture.editor.document.text
     }
 
-    private fun assemble(path: Path, source: String): Pair<List<Int>, List<Int>> {
+    private fun assemble(path: Path, source: String, dataBytes: Int = 48): Pair<List<Int>, List<Int>> {
         path.writeText(source)
         return MarsSessionService.createMarsComponent().context().use { context ->
             val program = context.assemble(listOf(path), null, true, false)
             val memory = context.memory
-            program.machineList.map { it.binaryStatement } to List(48) { memory.getByte(memory.dataBaseAddress + it) }
+            program.machineList.map { it.binaryStatement } to List(dataBytes) { memory.getByte(memory.dataBaseAddress + it) }
         }
     }
 }

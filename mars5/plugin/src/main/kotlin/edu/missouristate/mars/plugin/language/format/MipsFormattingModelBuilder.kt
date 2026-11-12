@@ -65,7 +65,6 @@ private class MipsBlock(
     private val line: FormattingLine? = null,
     alignment: Alignment? = null,
 ) : AbstractBlock(node, null, alignment) {
-    private val rawOperation = line?.operationType.takeIf { node.elementType == candidate }
     private val hasSemanticMacroHeader by lazy(LazyThreadSafetyMode.NONE) {
         val context = timelines.value?.primary ?: return@lazy false
         val headerEnd = CharArrayUtil.shiftForwardUntil(source, myNode.startOffset, "\r\n")
@@ -73,7 +72,7 @@ private class MipsBlock(
     }
 
     private fun isOpaque() = myNode.elementType in opaque ||
-        myNode.elementType == candidate && rawOperation !in formatOperations ||
+        myNode.elementType == candidate && line?.canFormatCandidate != true ||
         myNode.elementType == operandFragment && line?.operandParentheses == null
 
     override fun getIndent() = indent
@@ -109,7 +108,7 @@ private class MipsBlock(
         val rawOperation = child.findChildByType(candidate) != null
         val protected = contexts.alternatives.flatMap { context ->
             val layout = layoutIn(child, context) ?: return@flatMap emptyList()
-            if (rawOperation && layout.operationType !in formatOperations) {
+            if (rawOperation && !layout.canFormatCandidate) {
                 // Another entry can treat this operation as raw replacement text.
                 listOf(physicalLineRange(sourceLineStart(child.psi)))
             } else layout.verbatimOperandRanges
@@ -118,6 +117,9 @@ private class MipsBlock(
         return primary?.copy(verbatimOperandRanges = primary.verbatimOperandRanges + protected)
             ?: FormattingLine(null, false, null, protected)
     }
+
+    private val FormattingLine.canFormatCandidate: Boolean
+        get() = numericContinuationRepeat || operationType in formatOperations
 
     private fun layoutIn(child: ASTNode, context: MipsSourceTimeline): FormattingLine? {
         val operation = child.findChildByType(operationOwners)
@@ -188,7 +190,8 @@ private class MipsBlock(
             after == leftParen && expandedParenthesis == OperandParenthesis.ADDRESS -> noSpaces
             after == leftParen && expandedParenthesis == OperandParenthesis.GROUP -> oneSpace
             after == leftParen && myNode.elementType == address -> noSpaces
-            before == colon && myNode.elementType == repetition -> noSpaces
+            before == colon && (myNode.elementType == repetition ||
+                line?.numericContinuationRepeat == true && myNode.elementType == candidate) -> noSpaces
             before in separators || after == comment -> oneSpace
             gap.isNotEmpty() -> oneSpace
             else -> readOnly

@@ -36,6 +36,7 @@ import edu.missouristate.mars.api.InstructionSourceMap.Location
 import edu.missouristate.mars.assembler.DataTypes
 import edu.missouristate.mars.assembler.Directives
 import edu.missouristate.mars.assembler.Macro
+import edu.missouristate.mars.assembler.Token
 import edu.missouristate.mars.assembler.TokenList
 import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.assembler.Tokenizer
@@ -79,6 +80,7 @@ internal data class FormattingLine(
     // Null means the formatter has no complete expanded operand layout.
     val operandParentheses: Map<Int, OperandParenthesis>?,
     val verbatimOperandRanges: List<TextRange>,
+    val numericContinuationRepeat: Boolean = false,
 )
 
 internal data class MacroInvocation(
@@ -675,7 +677,11 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
                 }
             }
         }
-        return FormattingLine(spacingType, hasLabel || type == TokenTypes.DIRECTIVE, openings, verbatim)
+        val data = prefix.dataList
+        val numericContinuationRepeat = type == null && tokens.hasNumericRepetitionShape() &&
+            tokens[0].canStartDataContinuation() &&
+            (Directives.isIntegerDirective(data) || Directives.isFloatingDirective(data))
+        return FormattingLine(spacingType, hasLabel || type == TokenTypes.DIRECTIVE, openings, verbatim, numericContinuationRepeat)
     }
 
     // An opening quote supplied by an alias can absorb written tokens and whitespace.
@@ -764,6 +770,9 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         return this
     }
 
+    private fun Token.canStartDataContinuation(): Boolean =
+        TokenTypes.startsDataContinuation(type) && (type != TokenTypes.IDENTIFIER || !value.startsWith('.'))
+
     private fun matchingMacro(
         prefix: MipsSourceTimeline.Prefix, tokens: TokenList, operationIndex: Int = 0,
     ): MipsSourceEvent.Begin? {
@@ -850,9 +859,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
                 1
             } else {
                 // The assembler tries a matching macro or an unknown dotted directive before a data continuation.
-                if (!TokenTypes.startsDataContinuation(head.type) ||
-                    head.type == TokenTypes.IDENTIFIER && head.value.startsWith('.') || visible.matchingMacro(tokens, 0) != null
-                ) {
+                if (!head.canStartDataContinuation() || visible.matchingMacro(tokens, 0) != null) {
                     return@equivalenceCompletions false
                 }
                 0
