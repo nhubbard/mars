@@ -854,9 +854,9 @@ macro source maps, CP0/CP1 state, console transcripts, tool traces and visual pr
 
 The intended CI pipeline runs fast pure/engine tests, model tests, Run/Debug integration, coverage merge/gates,
 plugin packaging, descriptor validation and Plugin Verifier against the supported 263 build.
-Run packaged UI/host tests on supported platforms before release; preserve logs, screenshots and failing project fixtures.
-Qualify IntelliJ on each supported desktop operating system with one native architecture.
-Use the packaged replay to check installation, native filesystem behavior, and desktop UI integration.
+Preserve logs, screenshots and failing project fixtures from packaged host checks.
+For this candidate, the native macOS and Ubuntu replays qualify installation, filesystem behavior and desktop UI integration.
+Windows is accepted on the basis of the shared IntelliJ APIs and JVM implementation, with native Windows replay available in CI for follow-up verification.
 Use a separate upgrade job for future IntelliJ releases. That job informs migration and does not widen the declared compatibility range.
 
 Reject new project uses of deprecated/removal APIs, internal APIs, obsolete test frameworks and desktop dependencies.
@@ -929,7 +929,7 @@ public Build event builders; native Run/Debug consoles; custom XDebugger process
 - Editing reaches native resolve, navigation, rename, completion, diagnostics, docs, formatting and search functionality.
 - Run/Debug support breakpoints, pause/stop/reset, source/instruction steps, watches/edits, reverse, memory and coprocessor views.
 - Every in-scope educational tool works in multiple sessions without a desktop dependency.
-- Coverage, lifecycle, cancellation, performance, accessibility, package and supported-OS checks pass.
+- Coverage, lifecycle, cancellation, performance, accessibility and package checks pass. Record host evidence and any accepted qualification limits.
 
 Performance acceptance uses repeatable source and event corpora. Record baseline completion/analysis latency, build time,
 stepping latency, sustained output throughput and tool-event throughput on named hardware.

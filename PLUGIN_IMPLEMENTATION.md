@@ -2968,9 +2968,8 @@ The example fixture copy includes authored assembly files and excludes generated
 catalog cases and Gradle state.
 
 These checks establish the implemented editor behavior against the pinned IntelliJ
-platform. Cross-host keyboard and hover interaction and the full feature-by-feature
-release checklist remain part of release qualification. See the release preflight
-below for packaged macOS install and archive replacement evidence.
+platform. The M7 ledger and release preflight below record the feature audit,
+packaged UI evidence, and archive replacement results.
 
 ## M6 educational-tool test ledger
 
@@ -2997,7 +2996,7 @@ same controls and process handlers as Run and Debug.
 | T13 Scavenger Hunt | `ScavengerHuntGame`, `ScavengerHuntDevice`, `ScavengerHuntView` | `ScavengerHuntGameTest` and `ScavengerHuntDeviceTest` cover authentication, energy, tasks, moves, per-player registers, reset and rewind. `ScavengerHuntPlatformTest` checks the scoreboard and attachment conflicts. `MarsDebugPlatformTest` verifies that reset and memory rewind together. |
 | T14 Screen Magnifier | Excluded by user decision | No IntelliJ implementation or test requirement. The desktop tool remains part of the reference application. |
 | T15 Tool registration and lifecycle | `MarsToolProvider`, `MarsToolExtensions`, `MarsToolsWindowFactory` | `MarsToolProviderPlatformTest` verifies provider registration, ordering, ID validation, failure reporting, cancellation retry and dynamic removal. `InstructionCounterPlatformTest` checks the built-in tabs and the terminal editor's lifetime. |
-| V08 Shared presentation and settings | Tool content and native UI controls, run configuration options | The tool fixtures exercise focus, scaled layout, native rendering and disposal. `MarsRunPlatformTest` checks persistence and defaults for launch-time capture and MMIO attachment options. Full theme, scaling and keyboard traversal checks on each release host remain open. |
+| V08 Shared presentation and settings | Tool content and native UI controls, run configuration options | The tool fixtures exercise focus, scaled layout, native rendering and disposal. `MarsRunPlatformTest` checks persistence and defaults for launch-time capture and MMIO attachment options. Packaged macOS and Ubuntu replays cover keyboard traversal, hover, scaling and High Contrast for the tools documented above. |
 
 The panels use IntelliJ's `ToolWindowFactory`, `ContentFactory`,
 `ContentManagerListener`, `Disposer`, `RunContentManager`, UI DSL and
@@ -3171,10 +3170,9 @@ packaged acceptance is still pending.
 | E11, W01–W02 | File and editing actions use IntelliJ's standard actions and keymaps. `MarsNewFilePlatformTest` verifies the MIPS-specific file creation path. The packaged Linux replay below verifies clipboard actions and saving. |
 | H01 | `MarsReferencePlatformTest` checks the offline catalog, inert archived help, packaged notices, search, and About. `MipsDocumentationPlatformTest` exercises Quick Documentation in the editor and completion popup. |
 
-The remaining release checks include the desktop operating system matrix,
-packaged UI checks for keyboard, hover, scaling, and high contrast, and
-final feature-by-feature acceptance. The packaged macOS install and archive
-replacement on macOS and Ubuntu ARM64 are recorded below.
+Packaged UI evidence includes keyboard, hover, scaling, and High Contrast
+replays on macOS and Ubuntu ARM64. See the release preflight for the host
+qualification decision and the archive replacement results.
 
 ### Packaged MIDI playback and Stop on macOS
 
@@ -3238,11 +3236,13 @@ under `mars5/.gradle/release-host-checks/linux-arm64-print`.
 
 The GitHub Actions build runs the same Java 25 test, CLI smoke, plugin
 verification, and instruction lab checks on Linux, macOS, and Windows.
-The packaged replay qualifies IntelliJ integration on each operating system,
-including installation, the filesystem, native editor actions, and the UI
-toolkit. The candidate ZIP's eight JARs contain no native libraries. The
-plugin uses the host IntelliJ runtime, so each operating system needs a
-native replay on one architecture.
+The packaged replay exercises installation, filesystem behavior, native
+editor actions, and the UI toolkit. The candidate ZIP's eight JARs contain
+no native libraries and use the host IntelliJ runtime. For this candidate,
+native macOS and Ubuntu are the release evidence. The project owner
+accepted Windows compatibility on the basis of the shared IntelliJ APIs and
+JVM implementation. The Windows replay remains available in CI and was
+unrun for this candidate.
 Emulated runs are supplemental diagnostics. Each runner uploads its Jupiter
 results, plugin coverage report, Java core coverage report, Plugin Verifier
 report, and the instruction lab's catalog execution and PNG decoder test
@@ -3288,6 +3288,13 @@ source, ZIP checksum, and Run and Debug output matched across hosts.
 The logs and screenshots are under
 `mars5/.gradle/release-host-checks/all-extension-packaged-smoke`.
 
+The final preflight used the ZIP from this replay. All 2,154 project tests,
+both plugin coverage gates, the core isolation check, Plugin Verifier, and
+the standalone CLI smoke passed. The six workbench tests passed, with all
+543 instruction catalog forms accounted for. The ZIP checksum still
+matched after preflight. Build and workbench logs are under
+`mars5/.gradle/release-host-checks/final-qualification`.
+
 Minimal Ubuntu test images need the `libegl1` and `libgl1` packages used
 by CI. IntelliJ's bundled Compose runtime loads these system libraries when
 it renders MARS tools. For unattended Linux runs, the workflow also provides
@@ -3320,7 +3327,6 @@ the CLI smoke check, and the instruction lab and PNG decoder tests. Logs,
 checksums, and screenshots are under
 `mars5/.gradle/release-host-checks/current-candidate-macos` and
 `mars5/.gradle/release-host-checks/linux-arm64-current-candidate`.
-The packaged Windows replay remains open.
 
 On the same host, the supplied-archive replay installed a ZIP with a distinct
 checksum and a filename containing spaces. All eight installed JARs matched
@@ -3519,7 +3525,7 @@ The two IDE logs and the project hashes are under
 `mars5/.gradle/release-host-checks/linux-arm64-upgrade`.
 
 Both hosts exercised ZIP replacement on the same IDE build. Marketplace
-delivery and the remaining host matrix require separate qualification.
+delivery has its own qualification process.
 
 The macOS replacement replay was repeated with the hit-count ZIP from
 `858b8d2a`. The baseline IDE saved an enabled line breakpoint with condition
@@ -3638,7 +3644,6 @@ Ultimate module in that instance. The full test run preceded these
 replay-only settings. The checkout revision, ZIP checksum, tests, verifier
 report, IDE log, and screenshots are under
 `mars5/.gradle/release-host-checks/linux-x64-live-reload-qualified`.
-Lifecycle checks on Windows remain open.
 
 ### Reviewed API use in the 263 target
 
