@@ -91,7 +91,7 @@ class MipsCompletionPlatformTest {
             val current = project.get()
             val definitions = ".eqv RUN_OP sll\n.eqv RUN_ONE RUN_OP \$t0,\n.eqv RUN_NUMBERED sll \$8,\n" +
                 ".eqv RUN_PAIR sll \$t0, \$t1,\n.eqv RUN_ALL sll \$t0, \$t1, 4\n.eqv RUN_BAD sll \$f0,\n" +
-                ".eqv RUN_PSEUDO li \$t0,\n.eqv RUN_DIRECTIVE .word\n.eqv RUN_LABEL local:\n" +
+                ".eqv RUN_PSEUDO li \$t0,\n.eqv RUN_LABEL local:\n" +
                 ".eqv RUN_CYCLE LOOP\n.eqv LOOP RUN_CYCLE\n"
             val include = ".include \"heads.inc\"\n"
             val suffix = "\n.eqv RUN_LATE nop\n"
@@ -132,6 +132,43 @@ class MipsCompletionPlatformTest {
             directory.resolve("heads.inc").writeText(definitions)
             val entry = directory.resolve("head-completion.mars").also { it.writeText(completed) }
             val program = current.service<MarsSessionService>().context.assemble(listOf(entry), null, false, false)
+            assertEquals(listOf(0x00094100), program.machineList.map { it.binaryStatement })
+        }
+
+    @Test
+    fun `statement completion offers expanded directives handled by the assembler`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val current = project.get()
+            val definitions = ".eqv DIRECT_WORD .WoRd\n.eqv DIRECT_VALUES DIRECT_WORD 7,\n" +
+                ".eqv DIRECT_INCLUDE .include\n.eqv DIRECT_UNKNOWN .unknown\n.eqv DIRECT_DEFINE .eqv\n" +
+                ".eqv DIRECT_TEXT .text\n.eqv DIRECT_NUMBER 42\n" +
+                ".eqv VALUE_LIST .word valuee\n.eqv DIRECT_BROKEN VALUE_LIST-5\n"
+            val before = ".include \"directives.inc\"\n.data\n"
+            val after = "\nDIRECT_DEFINE SHIFT 4\nDIRECT_TEXT\nsll \$t0, \$t1, SHIFT\n.eqv DIRECT_LATE .space\n"
+            withContext(Dispatchers.EDT) { fixture.addFileToProject("directives.inc", definitions) }
+            IndexingTestUtil.suspendUntilIndexesAreReady(current)
+            val completed = withContext(Dispatchers.EDT) {
+                fun aliases(line: String): Set<String> {
+                    fixture.configureByText("directive-aliases.mars", before + line + after)
+                    return CodeInsightSettings.runWithTemporarySettings<_, Error> {
+                        it.AUTOCOMPLETE_ON_CODE_COMPLETION = false
+                        fixture.completeBasic().orEmpty().filter { item -> item.typeText() == "Equivalence" }
+                            .map { item -> item.lookupString }.toSet()
+                    }
+                }
+                assertEquals(setOf("DIRECT_WORD", "DIRECT_VALUES", "DIRECT_TEXT", "DIRECT_DEFINE"), aliases("DIRECT_<caret>"))
+                assertTrue(aliases("DIRECT_I<caret> \"missing.inc\"").isEmpty())
+                assertEquals(setOf("DIRECT_VALUES"), aliases("values: DIRECT_V<caret>.old 9"))
+                val selected = fixture.lookup.items.single { it.lookupString == "DIRECT_VALUES" }
+                assertEquals(" = DIRECT_WORD 7", LookupElementPresentation().also(selected::renderElement).tailText)
+                fixture.lookup.setCurrentItem(selected)
+                fixture.finishLookup(Lookup.REPLACE_SELECT_CHAR)
+                assertEquals(before + "values: DIRECT_VALUES 9" + after, fixture.file.text)
+                fixture.file.text
+            }
+            directory.resolve("directives.inc").writeText(definitions)
+            val entry = directory.resolve("directive-aliases.mars").also { it.writeText(completed) }
+            val program = current.service<MarsSessionService>().context.assemble(listOf(entry), null, true, false)
             assertEquals(listOf(0x00094100), program.machineList.map { it.binaryStatement })
         }
 

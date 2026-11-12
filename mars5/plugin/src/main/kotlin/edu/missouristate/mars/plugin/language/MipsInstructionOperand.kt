@@ -6,6 +6,7 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.tree.TokenSet
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.util.elementType
+import edu.missouristate.mars.assembler.Directives
 import edu.missouristate.mars.assembler.Macro
 import edu.missouristate.mars.assembler.OperandFormat
 import edu.missouristate.mars.assembler.RegisterNames
@@ -63,6 +64,9 @@ internal fun statementEquivalenceCompletions(
     when (operation.type) {
         TokenTypes.OPERATOR -> matchesInstructionHead(tokens, end, options)
         TokenTypes.IDENTIFIER -> matchesMacroCall(tokens, end, visible.macroOverloads(operation.value).keys)
+        // The assembler reads physical .include lines before it expands equivalences.
+        TokenTypes.DIRECTIVE -> Directives.matchDirective(operation.value) != Directives.INCLUDE &&
+            (1 until end).none { tokens[it].type == TokenTypes.ERROR }
         else -> false
     }
 }
