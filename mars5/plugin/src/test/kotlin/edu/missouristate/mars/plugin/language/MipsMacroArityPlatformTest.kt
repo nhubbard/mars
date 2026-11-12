@@ -14,6 +14,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
@@ -128,6 +130,67 @@ class MipsMacroArityPlatformTest {
             assertTrue(source.indexOf("CALL (1, 2)") in macroColors)
             fixture.configureByText("plain.s", ".text\nnop\n")
             assertTrue(warnings().isEmpty())
+        }
+    }
+
+    @Test
+    fun `macro hints yield to valid data continuations when no overload matches`() = timeoutRunBlocking<Unit> {
+        withContext(Dispatchers.EDT) {
+            fixture.enableInspections(MipsMacroArityInspection::class.java)
+            val source = """
+                .macro emit (%one)
+                .end_macro
+                .macro matched (%value, %separator, %count)
+                .end_macro
+                .macro .dotted (%one)
+                .end_macro
+                .eqv CALL emit
+                .data
+                emit: .word 0
+                emit 7:2
+                CALL 9:2
+                emit 2 3
+                matched 5:2
+                emit 1:0
+                emit 2 (
+                emit unknown 3
+                .dotted 7:2
+                .ascii ""
+                emit 6:2
+                .float 0
+                emit .5:2
+                emit 1e300:2
+                emit 0x10:2
+                emit 2 3
+                .text
+                emit 7:2
+                .macro empty (%one)
+                .end_macro
+                empty:
+            """.trimIndent()
+            fixture.configureByText("data-fallback.mars", source)
+            val file = fixture.file as MipsFile
+            val analysis = file.project.service<MarsAnalysisService>()
+            fun hints(line: String, offset: Int = source.indexOf(line)) =
+                analysis.macroInvocation(file, file.findElementAt(offset)!!, line.substringBefore(' ') + " ")
+            for (line in listOf("emit 7:2", "CALL 9:2", "emit 2 3", "emit .5:2")) assertNull(hints(line), line)
+            for (line in listOf("matched 5:2", "emit 1:0", "emit 2 (", "emit 1e300:2")) assertNotNull(hints(line), line)
+            assertNotNull(hints("emit 7:2", source.lastIndexOf("emit 7:2")))
+            assertNotNull(analysis.macroInvocation(file, file.findElementAt(source.indexOf("empty:"))!!, "empty "))
+            assertEquals(
+                listOf(
+                    Warning(source.indexOf("emit 1:0"), "emit", message("emit", 3, "1")),
+                    Warning(source.indexOf("emit 2 ("), "emit", message("emit", 2, "1")),
+                    Warning(source.indexOf("emit unknown 3"), "emit", message("emit", 2, "1")),
+                    Warning(source.indexOf(".dotted 7:2"), ".dotted", message(".dotted", 3, "1")),
+                    Warning(source.indexOf("emit 6:2"), "emit", message("emit", 3, "1")),
+                    Warning(source.indexOf("emit 1e300:2"), "emit", message("emit", 3, "1")),
+                    Warning(source.indexOf("emit 0x10:2"), "emit", message("emit", 3, "1")),
+                    Warning(source.lastIndexOf("emit 2 3"), "emit", message("emit", 2, "1")),
+                    Warning(source.lastIndexOf("emit 7:2"), "emit", message("emit", 3, "1")),
+                ),
+                warnings(),
+            )
         }
     }
 

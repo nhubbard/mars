@@ -452,6 +452,8 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         val definitions = prefix.macroOverloads(tokens[0].value)
         if (definitions.isEmpty()) return null
         val fullTokens = expandedOperation(prefix, sourceLine(head, fromLineStart = true), allowIncompleteOperand = true)
+        if (fullTokens != null && !fullTokens.isEmpty && fullTokens.macroArgumentCount() !in definitions &&
+            canAssembleDataContinuation(root, head, prefix.dataList, fullTokens)) return null
         return MacroInvocation(tokens, fullTokens, definitions.values.map { definition -> definition.parameters.map { it.value } })
     }
 
@@ -530,9 +532,25 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         val definitions = prefix.macroOverloads(name)
         if (definitions.isEmpty()) return null
         val actual = tokens.macroArgumentCount()
-        if (actual in definitions) return null
+        if (actual in definitions || canAssembleDataContinuation(root, head, prefix.dataList, tokens)) return null
         val offset = start + expanded.originalOffset(tokens[0].startPos - 1)
         return MacroArityMismatch(root.findElementAt(offset)!!, name, actual, definitions.keys.sorted())
+    }
+
+    private fun canAssembleDataContinuation(
+        root: MipsFile, head: PsiElement, directive: Directives?, tokens: TokenList,
+    ): Boolean {
+        if (directive == null || !tokens[0].canStartDataContinuation()) return false
+        val integer = Directives.isIntegerDirective(directive)
+        if ((integer || Directives.isFloatingDirective(directive)) && tokens.hasNumericRepetitionShape()) {
+            return tokens.acceptsDataRepetition(directive)
+        }
+        // A macro name is an identifier, which only an integer list can consume as an address.
+        return integer && (0 until tokens.size()).all { index ->
+            val token = tokens[index]
+            TokenTypes.isIntegerTokenType(token.type) ||
+                token.type == TokenTypes.IDENTIFIER && labelTargets(root, head, allowExternal = true, name = token.value).isNotEmpty()
+        }
     }
 
     internal fun editorInstructionTokens(
@@ -864,23 +882,26 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
                 }
                 0
             }
-            fun acceptsValue(index: Int, allowLabel: Boolean): Boolean {
-                val token = tokens[index]
-                return when {
-                    integer -> TokenTypes.isIntegerTokenType(token.type) || allowLabel && token.type == TokenTypes.IDENTIFIER
-                    floating -> (TokenTypes.isIntegerTokenType(token.type) || TokenTypes.isFloatingTokenType(token.type)) &&
-                        token.value.toDoubleOrNull()?.let { !DataTypes.outOfRange(directive, it) } == true
-                    else -> token.type == TokenTypes.QUOTED_STRING && token.hasClosingDoubleQuote()
-                }
-            }
             if ((integer || floating) && tokens.hasNumericRepetitionShape()) {
                 // The assembler recognizes the four-token repetition shape before it walks a numeric list.
-                acceptsValue(1, allowLabel = false) && TokenTypes.isIntegerTokenType(tokens[3].type) &&
-                    Binary.stringToInt(tokens[3].value) > 0
+                tokens.acceptsDataRepetition(directive)
             } else {
-                (first until tokens.size()).all { acceptsValue(it, allowLabel = true) }
+                (first until tokens.size()).all { tokens[it].acceptsDataValue(directive, allowLabel = true) }
             }
         }
+    }
+
+    private fun TokenList.acceptsDataRepetition(directive: Directives): Boolean =
+        this[1].acceptsDataValue(directive, allowLabel = false) && TokenTypes.isIntegerTokenType(this[3].type) &&
+            Binary.stringToInt(this[3].value) > 0
+
+    private fun Token.acceptsDataValue(directive: Directives, allowLabel: Boolean): Boolean = when {
+        Directives.isIntegerDirective(directive) ->
+            TokenTypes.isIntegerTokenType(type) || allowLabel && type == TokenTypes.IDENTIFIER
+        Directives.isFloatingDirective(directive) ->
+            (TokenTypes.isIntegerTokenType(type) || TokenTypes.isFloatingTokenType(type)) &&
+                value.toDoubleOrNull()?.let { !DataTypes.outOfRange(directive, it) } == true
+        else -> type == TokenTypes.QUOTED_STRING && hasClosingDoubleQuote()
     }
 
     internal fun defersContextDependentError(root: MipsFile, position: PsiElement): Boolean {

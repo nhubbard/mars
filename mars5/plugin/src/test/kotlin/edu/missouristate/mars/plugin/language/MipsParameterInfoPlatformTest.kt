@@ -198,6 +198,16 @@ class MipsParameterInfoPlatformTest {
     }
 
     @Test
+    fun `native parameter info distinguishes a repetition from a matching macro`() = timeoutRunBlocking<Unit> {
+        withContext(Dispatchers.EDT) {
+            val setup = ".macro emit (%one)\n.end_macro\n.data\n.word 0\n"
+            assertNull(info(setup + "emit <caret>7:2"))
+            assertEquals("emit (<b>%one</b>)", info(setup + "emit <caret>7"))
+            assertEquals("emit (<b>%one</b>)", info(setup + ".text\nemit <caret>7:2"))
+        }
+    }
+
+    @Test
     fun `parameter info counts later operands after malformed tokens without expanding a cycle`() = timeoutRunBlocking<Unit> {
         withContext(Dispatchers.EDT) {
             val definition = ".macro emit (%first, %second, %third)\nnop\n.end_macro\n"
