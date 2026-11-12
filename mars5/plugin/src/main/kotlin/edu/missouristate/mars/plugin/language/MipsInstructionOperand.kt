@@ -6,6 +6,7 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.tree.TokenSet
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.util.elementType
+import edu.missouristate.mars.assembler.Macro
 import edu.missouristate.mars.assembler.OperandFormat
 import edu.missouristate.mars.assembler.RegisterNames
 import edu.missouristate.mars.assembler.TokenList
@@ -17,6 +18,7 @@ import edu.missouristate.mars.mips.instructions.basic.InstrMfc0
 import edu.missouristate.mars.mips.instructions.basic.InstrMtc0
 import edu.missouristate.mars.plugin.MarsExecutionOptions
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
+import edu.missouristate.mars.plugin.analysis.macroArgumentCount
 import edu.missouristate.mars.plugin.analysis.macroLineTokens
 
 private val instructionType = MipsTypes.psi("INSTRUCTION")
@@ -53,13 +55,31 @@ internal fun enabledInstructionFormats(name: String, allowPseudo: Boolean): List
     return if (allowPseudo) formats else formats.filterIsInstance<BasicInstruction>()
 }
 
-internal fun instructionHeadEquivalenceCompletions(
+internal fun statementEquivalenceCompletions(
     file: MipsFile, range: TextRange, prefix: String, options: MarsExecutionOptions,
-): Map<String, String> = file.project.service<MarsAnalysisService>().equivalenceCompletions(file, range, prefix) { tokens, end ->
-    if (end == 0 || tokens[0].type != TokenTypes.OPERATOR) return@equivalenceCompletions false
+): Map<String, String> = file.project.service<MarsAnalysisService>().equivalenceCompletions(file, range, prefix) { tokens, end, visible ->
+    if (end == 0) return@equivalenceCompletions false
+    val operation = tokens[0]
+    when (operation.type) {
+        TokenTypes.OPERATOR -> matchesInstructionHead(tokens, end, options)
+        TokenTypes.IDENTIFIER -> matchesMacroCall(tokens, end, visible.macroOverloads(operation.value).keys)
+        else -> false
+    }
+}
+
+private fun matchesMacroCall(tokens: TokenList, end: Int, arities: Set<Int>): Boolean {
+    if (arities.isEmpty() || (1 until end).any { tokens[it].type == TokenTypes.ERROR }) return false
+    val arguments = tokens.macroArgumentCount()
+    if (Macro.hasCallParentheses(tokens)) return arguments in arities
+    // An unfinished opening wrapper can still be closed as the user finishes the call.
+    val minimum = if (tokens.size() > 1 && tokens[1].type == TokenTypes.LEFT_PAREN) arguments - 1 else arguments
+    return arities.any { it >= minimum }
+}
+
+private fun matchesInstructionHead(tokens: TokenList, end: Int, options: MarsExecutionOptions): Boolean {
     // A broken written operand should not hide aliases whose own operands already fit.
     val checkedEnd = if ((end until tokens.size()).any { tokens[it].type == TokenTypes.ERROR }) end else tokens.size()
-    enabledInstructionFormats(tokens[0].value, options.allowPseudoInstructions).any { format ->
+    return enabledInstructionFormats(tokens[0].value, options.allowPseudoInstructions).any { format ->
         tokens.size() <= format.tokenList.size() &&
             (checkedEnd == 1 || OperandFormat.matchesOperands(tokens, format, 1, checkedEnd, options.bareMachine)) &&
             matchesAddressShape(tokens, format.tokenList, checkedEnd)
@@ -106,7 +126,7 @@ internal class MipsInstructionOperand private constructor(
     fun equivalenceCompletions(file: MipsFile, prefix: String, bareMachine: Boolean, replacementEnd: Int): Map<String, String> {
         if (formats.isEmpty()) return emptyMap()
         val operand = TextRange(startOffset, replacementEnd)
-        return file.project.service<MarsAnalysisService>().equivalenceCompletions(file, operand, prefix) { tokens, end ->
+        return file.project.service<MarsAnalysisService>().equivalenceCompletions(file, operand, prefix) { tokens, end, _ ->
             !tokens.isEmpty && formats.any {
                 it.name.equals(tokens[0].value, ignoreCase = true) &&
                     tokens.size() <= it.tokenList.size() &&

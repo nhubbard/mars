@@ -136,6 +136,47 @@ class MipsCompletionPlatformTest {
         }
 
     @Test
+    fun `statement completion offers macro aliases with compatible call arity`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val current = project.get()
+            val definitions = ".macro emit\n.end_macro\n.macro emit (%dst, %amount)\nsll %dst, \$t1, %amount\n.end_macro\n" +
+                ".eqv CALL_OP emit\n.eqv CALL_FIRST CALL_OP \$t0\n.eqv CALL_WRAPPED emit(\$t0, 4)\n" +
+                ".eqv CALL_SHORT emit(\$t0)\n.eqv CALL_LONG emit \$t0, 4, 5\n.eqv CALL_OPEN emit(\n" +
+                ".eqv CALL_UNKNOWN later\n.eqv BROKEN emit valuee\n.eqv ZERO emit()\n"
+            val include = ".include \"macro-aliases.inc\"\n"
+            val suffix = "\n.macro emit (%later)\n.end_macro\n.macro later\n.end_macro\n"
+            withContext(Dispatchers.EDT) { fixture.addFileToProject("macro-aliases.inc", definitions) }
+            IndexingTestUtil.suspendUntilIndexesAreReady(current)
+            val completed = withContext(Dispatchers.EDT) {
+                fun aliases(line: String): Set<String> {
+                    fixture.configureByText("macro-alias-completion.mars", include + line + suffix)
+                    return CodeInsightSettings.runWithTemporarySettings<_, Error> {
+                        it.AUTOCOMPLETE_ON_CODE_COMPLETION = false
+                        fixture.completeBasic().orEmpty().filter { item -> item.typeText() == "Equivalence" }
+                            .map { item -> item.lookupString }.toSet()
+                    }
+                }
+                assertEquals(setOf("CALL_OP", "CALL_FIRST", "CALL_WRAPPED", "CALL_OPEN"), aliases("CALL_<caret>"))
+                assertEquals(setOf("CALL_OP"), aliases("CALL_<caret>(\$t0, 4)"))
+                assertEquals(setOf("CALL_OP", "CALL_OPEN"), aliases("CALL_<caret>(\$t0"))
+                assertTrue(aliases("CALL_<caret> \$t0, 4, 9").isEmpty())
+                assertTrue(aliases("BROKEN<caret>-5").isEmpty())
+                assertEquals(setOf("ZERO"), aliases("ZERO<caret>"))
+                assertEquals(setOf("CALL_OP", "CALL_FIRST", "CALL_OPEN"), aliases("entry: CALL_<caret>.old, 4"))
+                val selected = fixture.lookup.items.single { it.lookupString == "CALL_FIRST" }
+                assertEquals(" = CALL_OP \$t0", LookupElementPresentation().also(selected::renderElement).tailText)
+                fixture.lookup.setCurrentItem(selected)
+                fixture.finishLookup(Lookup.REPLACE_SELECT_CHAR)
+                assertEquals(include + "entry: CALL_FIRST, 4" + suffix, fixture.file.text)
+                fixture.file.text
+            }
+            directory.resolve("macro-aliases.inc").writeText(definitions)
+            val entry = directory.resolve("macro-alias-completion.mars").also { it.writeText(completed) }
+            val program = current.service<MarsSessionService>().context.assemble(listOf(entry), null, true, false)
+            assertEquals(listOf(0x00094100), program.machineList.map { it.binaryStatement })
+        }
+
+    @Test
     fun `catalog completion inserts a dotted mnemonic after a label and a directive inside a macro`() = timeoutRunBlocking<Unit> {
         IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
         withContext(Dispatchers.EDT) {

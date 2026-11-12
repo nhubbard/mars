@@ -484,7 +484,8 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
     }
 
     internal fun equivalenceCompletions(
-        root: MipsFile, replacement: TextRange, typedPrefix: String, accepts: (TokenList, Int) -> Boolean,
+        root: MipsFile, replacement: TextRange, typedPrefix: String,
+        accepts: (TokenList, Int, MipsSourceTimeline.Prefix) -> Boolean,
     ): Map<String, String> {
         if (DumbService.isDumb(project)) return emptyMap()
         val source = root.viewProvider.contents
@@ -502,7 +503,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
                     ?: after.takeIf(String::isNotEmpty)?.let { expandedOperation(visible, throughAlias, allowIncompleteOperand = true) }
                     ?: continue
                 val end = (0 until tokens.size()).firstOrNull { tokens[it].originalStartPos > throughAlias.length } ?: tokens.size()
-                if (accepts(tokens, end)) put(definition.name, definition.replacement)
+                if (accepts(tokens, end, visible)) put(definition.name, definition.replacement)
             }
         }
     }

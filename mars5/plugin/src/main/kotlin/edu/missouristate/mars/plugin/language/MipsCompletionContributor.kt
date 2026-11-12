@@ -38,7 +38,7 @@ class MipsCompletionContributor : CompletionContributor(), DumbAware {
                 }
                 lookup.caseInsensitive().addAllElements(items)
                 val range = TextRange(position.textOffset, replacementEnd(parameters))
-                for ((name, replacement) in instructionHeadEquivalenceCompletions(file, range, prefix, options)) {
+                for ((name, replacement) in statementEquivalenceCompletions(file, range, prefix, options)) {
                     lookup.addElement(equivalenceLookup(name, replacement))
                 }
                 val macros = file.project.service<MarsAnalysisService>().macroCompletionSignatures(file, position.textOffset, prefix)
