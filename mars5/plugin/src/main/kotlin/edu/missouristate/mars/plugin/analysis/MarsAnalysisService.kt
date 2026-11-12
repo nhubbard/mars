@@ -233,7 +233,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
     }
 
     internal fun labelTargets(
-        root: MipsFile, position: PsiElement, allowExternal: Boolean, name: String = position.text,
+        root: MipsFile, position: PsiElement, allowExternal: Boolean, name: String = position.text, forExport: Boolean = false,
     ): List<PsiElement> {
         val timeline = if (DumbService.isDumb(project)) null else editorTimeline(root)
         if (timeline != null) {
@@ -265,18 +265,21 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
             if (local.isNotEmpty()) return local
             if (outer.isNotEmpty()) return outer
         }
-        val built = builtLabelTarget(root, name, allowExternal)
+        val built = fromAssemblySymbols(root) { snapshot, source ->
+            val exportSite = if (forExport) sourceTokenAt(root, source, position.textOffset) else null
+            builtLabelTarget(snapshot, source, name, allowExternal, exportSite)
+        }
         if (built != null) return listOf(built)
         return if (allowExternal) listOfNotNull(timeline?.externalStorage?.get(name)?.writtenDeclarationAt()) else emptyList()
     }
 
-    private fun builtLabelTarget(root: MipsFile, name: String, allowExternal: Boolean): PsiElement? {
-        return fromAssemblySymbols(root) { snapshot, source -> builtLabelTarget(snapshot, source, name, allowExternal) }
-    }
-
-    private fun builtLabelTarget(build: AssemblySymbols, source: Path, name: String, allowExternal: Boolean): PsiElement? {
+    private fun builtLabelTarget(
+        build: AssemblySymbols, source: Path, name: String, allowExternal: Boolean, exportSite: SourceToken?,
+    ): PsiElement? {
         val definition = build.localSymbols(source)[name] ?: build.symbols.globals()[name] ?: return null
         if (definition.kind() == Kind.EXTERNAL && !allowExternal) return null
+        // A global can belong to a different assembly root. Only use a binding recorded for this export operand.
+        if (exportSite != null && build.symbols.symbolUses()[exportSite].orEmpty().none { it.name() == name }) return null
 
         val location = definition.origin()?.location() ?: return null
         var target: Document? = null

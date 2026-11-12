@@ -199,6 +199,10 @@ class MipsExternalReferencesPlatformTest {
         assertEquals(source.indexOf("other:"), target(source.replace(", other", ", oth<caret>er"))?.offset)
         assertNull(target(source.replace("PUBLISH target", "PUBLISH sha<caret>red")))
         assertNull(target(source.replace("PUBLISH target", "PUBLISH (other), tar<caret>get")))
+        assertNull(target(source.replace("PUBLISH target", ".globl (other), tar<caret>get")))
+        assertNull(target(source.replace("PUBLISH target", ".globl 4, tar<caret>get")))
+        val direct = source.replace("PUBLISH target", ".globl target")
+        assertEquals(direct.indexOf("target:"), target(direct.replace(".globl target", ".globl tar<caret>get"))?.offset)
         val reordered = source.replace(
             ".include \"storage.s\"\n.extern shared 12", ".extern shared 12\n.include \"storage.s\"",
         )

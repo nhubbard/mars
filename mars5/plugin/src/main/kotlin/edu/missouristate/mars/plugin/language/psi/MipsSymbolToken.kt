@@ -104,7 +104,7 @@ internal class MipsSymbolToken(type: IElementType, text: CharSequence) : LeafPsi
             }
             val use = labelUse(file, analysis)
             return if (use != null) {
-                analysis.labelTargets(file, element, allowExternal = use == LabelUse.REFERENCE)
+                analysis.labelTargets(file, element, allowExternal = use == LabelUse.REFERENCE, forExport = use == LabelUse.EXPORT)
                     .map(::PsiElementResolveResult).toTypedArray()
             } else emptyArray()
         }
@@ -143,13 +143,10 @@ internal class MipsSymbolToken(type: IElementType, text: CharSequence) : LeafPsi
 
         private fun labelUse(file: MipsFile, analysis: MarsAnalysisService): LabelUse? {
             val instructionLabel = label || aliasOperand && MipsInstructionOperand.at(element, file)?.acceptsLabel == true
-            val exportsLabel = data == DataLabelOperand.EXPORT || aliasOperand && equivalence && !instructionLabel &&
-                analysis.exportOperandsBefore(file, element.parent.parent.firstChild, element) != null
-            return when {
-                exportsLabel -> LabelUse.EXPORT
-                instructionLabel || data?.isDataLabel(file, analysis, element) == true -> LabelUse.REFERENCE
-                else -> null
-            }
+            if (instructionLabel) return LabelUse.REFERENCE
+            val export = data?.exportHead(element)?.let { analysis.exportOperandsBefore(file, it, element) }
+            if (export != null) return LabelUse.EXPORT
+            return LabelUse.REFERENCE.takeIf { data?.isDataLabel(file, analysis, element) == true }
         }
     }
 

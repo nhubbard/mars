@@ -1000,7 +1000,8 @@ class MarsBuildPlatformTest {
             fixture.addFileToProject("project/notes.txt", "not assembly\n")
             fixture.addFileToProject("project/include-only.inc", "not a top-level assembly source\n")
             fixture.addFileToProject("project/LICENSE", "not assembly\n")
-            edit(helper.virtualFile, ".eqv NUMBER 7\n.include \"shared/value.inc\"\n.include \"shared/defs.s\"\n.globl helper\nhelper: addiu \$t0, \$zero, NUMBER\nprivateHelper: nop\njal entry\n")
+            edit(helper.virtualFile, ".eqv NUMBER 7\n.include \"shared/value.inc\"\n.include \"shared/defs.s\"\n.globl helper\n" +
+                "helper: addiu \$t0, \$zero, NUMBER\nprivateHelper: nop\n.macro unused\n.globl entry\n.end_macro\njal entry\n")
             PsiDocumentManager.getInstance(project).commitAllDocuments()
             Triple(main, helper, last)
         }
@@ -1039,6 +1040,8 @@ class MarsBuildPlatformTest {
             val (fromMain, fromHelper, single) = readAction {
                 val element = requireNotNull(helper.findElementAt(helper.text.lastIndexOf("entry")))
                 assertEquals(main.virtualFile, analysis.labelTargets(helper, element, false).single().containingFile.virtualFile)
+                val inactiveExport = requireNotNull(helper.findElementAt(helper.text.indexOf(".globl entry") + ".globl ".length))
+                assertNull(inactiveExport.reference?.resolve())
                 assertNull(analysis.selectedAssembly(customType))
                 val scratch = PsiFileFactory.getInstance(project).createFileFromText("scratch.asm", MipsFileType, "nop") as MipsFile
                 assertNull(analysis.selectedAssembly(scratch))
@@ -1071,6 +1074,14 @@ class MarsBuildPlatformTest {
             assertEquals(listOf("helper"), symbols.matchingNames(entry, "help"))
             assertTrue(symbols.matchingNames(entry, "help", localOnly = true).isEmpty())
             assertEquals(listOf("privateHelper"), symbols.matchingNames(helperPath, "private", localOnly = true))
+            withContext(Dispatchers.EDT) {
+                val export = requireNotNull(main.findElementAt(main.text.indexOf(".globl entry") + ".globl ".length))
+                DumbModeTestUtils.runInDumbModeSynchronously(project) {
+                    val declaration = analysis.labelTargets(main, export, allowExternal = false, forExport = true).single()
+                    assertEquals(main.text.indexOf("entry:"), declaration.textOffset)
+                    assertTrue(analysis.labelTargets(main, export, allowExternal = false, name = "helper", forExport = true).isEmpty())
+                }
+            }
             val created = withContext(Dispatchers.EDT) {
                 fixture.addFileToProject("project/beta.s", "beta: nop\n") as MipsFile
             }
