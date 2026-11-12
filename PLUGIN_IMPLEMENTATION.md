@@ -3341,11 +3341,32 @@ verified that the same valid result can be applied after indexing.
 Clean packaged replays of the fix passed on macOS and Ubuntu ARM64.
 The Ubuntu run passed Plugin Verifier, the standalone CLI help check,
 all 543 instruction catalog forms, and all six smoke tests. Skiko fell
-back from OpenGL under Xvfb and the replay completed. Native Windows
-and Linux x64 lifecycle checks remain open. The replays and reference reports are under
+back from OpenGL under Xvfb and the replay completed. The replays and reference reports are under
 `mars5/.gradle/release-host-checks/dynamic-reload`.
 Ubuntu reports are under
 `mars5/.gradle/release-host-checks/linux-arm64-live-reload`.
+
+The Ubuntu 24.04 x64 run at `031152eb` used CPU emulation on Apple Silicon,
+Temurin 25, and IntelliJ IDEA `IU-263.7307.200` under Xvfb. All 2,101 Jupiter
+tests passed, including 769 plugin tests, and both plugin coverage checks
+passed. This run exercised the complete instruction matrix and the narrow
+Bitmap Display, terminal, MarsBot, and Scavenger Hunt layout checks.
+
+The clean packaged replay disabled MARS with X-Ray visible, kept the editor
+tab open, collected the old plugin classloader, and re-enabled MARS without
+restarting IntelliJ. X-Ray displayed all six steps of the subsequent run
+and the console printed `reload smoke ready`. The replay then opened the
+terminal, MarsBot, and Bitmap Display in narrow docks. Plugin Verifier
+reported the ZIP compatible with the pinned build.
+
+The 6 GiB guest needed a separate compilation pass and a 1,152 MiB IDE heap
+for the replay. The disposable IDE also disabled Air, Kotlin, JavaScript,
+and Database Tools to free memory, which caused IntelliJ to disable its
+Ultimate module in that instance. The full test run preceded these
+replay-only settings. The checkout revision, ZIP checksum, tests, verifier
+report, IDE log, and screenshots are under
+`mars5/.gradle/release-host-checks/linux-x64-live-reload-qualified`.
+Lifecycle checks on native x64 Linux hardware and Windows remain open.
 
 ### Reviewed API use in the 263 target
 
