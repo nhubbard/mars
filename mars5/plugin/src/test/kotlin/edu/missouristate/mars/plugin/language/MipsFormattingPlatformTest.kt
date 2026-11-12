@@ -52,6 +52,7 @@ class MipsFormattingPlatformTest {
              words  :    .word  4 ,  -2, AGAIN
             message: .asciiz  "x  y,  (-1)"
             repeated: .word 7  :  2
+            -17    +8 : 2
                .text
              main   :
              lw  ${'$'}t0 ,  -4  ( ${'$'}sp )
@@ -86,6 +87,7 @@ class MipsFormattingPlatformTest {
             words: .word 4, -2, AGAIN
             message: .asciiz "x  y,  (-1)"
             repeated: .word 7:2
+                -17 +8:2
             .text
             main:
                 lw ${'$'}t0, -4(${'$'}sp)
@@ -861,7 +863,7 @@ class MipsFormattingPlatformTest {
         return MarsSessionService.createMarsComponent().context().use { context ->
             val program = context.assemble(listOf(path), null, true, false)
             val memory = context.memory
-            program.machineList.map { it.binaryStatement } to List(40) { memory.getByte(memory.dataBaseAddress + it) }
+            program.machineList.map { it.binaryStatement } to List(48) { memory.getByte(memory.dataBaseAddress + it) }
         }
     }
 }

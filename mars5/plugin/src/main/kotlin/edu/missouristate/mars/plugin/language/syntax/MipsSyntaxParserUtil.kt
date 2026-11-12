@@ -29,6 +29,7 @@ import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.NUMBER
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.PARAMETER
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.PLUS
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.REGISTER
+import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.STRING
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.UNCLOSED_CHARACTER
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.WORD
 import java.util.TreeSet
@@ -36,6 +37,7 @@ import java.util.TreeSet
 internal object DebuggerExpressionParsing : ParserUserState
 
 private val signs = setOf(PLUS, MINUS)
+private val repeatPrefixes = signs + setOf(NUMBER, CHARACTER, STRING)
 private val identifiers = setOf(WORD, DOLLAR_WORD)
 private val addressLabels = identifiers + setOf(MNEMONIC, PARAMETER)
 private val addressOffsets = setOf(NUMBER, CHARACTER, WORD, MNEMONIC, DOLLAR_WORD, PARAMETER, BAD_CHARACTER)
@@ -88,16 +90,20 @@ internal fun startsSignedNumber(runtime: SyntaxGeneratedParserRuntime, level: In
     return builder.tokenType in signs && builder.signAttachesToNumber(builder.previousToken(separators))
 }
 
-/** A detached sign can precede the value and count in the assembler's continuation form. */
+/** A literal or detached sign can occupy the ignored first token of a continued numeric repetition. */
 @Suppress("UNUSED_PARAMETER")
-internal fun isDetachedDataRepeat(runtime: SyntaxGeneratedParserRuntime, level: Int): Boolean {
+internal fun isDataRepeatPrefix(runtime: SyntaxGeneratedParserRuntime, level: Int): Boolean {
     val builder = runtime.syntaxBuilder
-    if (builder.tokenType !in signs || builder.signTouchesNumber()) return false
+    if (builder.tokenType !in repeatPrefixes) return false
+    val detachedSign = builder.tokenType in signs && !builder.signTouchesNumber()
+    // Each assembler number can occupy two lexer leaves, including its sign.
+    if (!detachedSign && (2..4).none { builder.lookAhead(it) == COLON }) return false
     val start = builder.currentOffset
     val source = builder.text
     val end = CharArrayUtil.shiftForwardUntil(source, start, "\r\n")
     val tokens = Tokenizer().tokenizeLine(1, source.subSequence(start, end).toString(), ErrorList(), false)
     if (tokens.hasNumericRepetitionShape()) return true
+    if (!detachedSign) return false
     val firstSubstitutable = (1 until tokens.size()).firstOrNull {
         val type = tokens[it].type
         type == TokenTypes.IDENTIFIER || type == TokenTypes.MACRO_PARAMETER

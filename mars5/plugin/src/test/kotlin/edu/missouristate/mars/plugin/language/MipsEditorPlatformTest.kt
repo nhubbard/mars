@@ -486,6 +486,8 @@ class MipsEditorPlatformTest {
                 lw ${'$'}t1, -4(${'$'}t0)
                 la ${'$'}t0, repeat_loop+4
                 .word - 5
+                -17 +8:2
+                - 9:2
                 -
             """.trimIndent())
             val source = fixture.file.text
@@ -496,11 +498,12 @@ class MipsEditorPlatformTest {
                     it.startOffset == start && it.endOffset == start + token.length && it.forcedTextAttributesKey == key
                 }
             }
-            for (context in listOf("DISP -4", "%counter, -1", "-4(${'$'}t0)")) {
+            for (context in listOf("DISP -4", "%counter, -1", "-4(${'$'}t0)", "-17 +8:2")) {
                 assertTrue(hasHighlight(context, "-", DefaultLanguageHighlighterColors.NUMBER), context)
             }
             assertFalse(hasHighlight("repeat_loop+4", "+", DefaultLanguageHighlighterColors.NUMBER))
             assertFalse(hasHighlight(".word - 5", "-", DefaultLanguageHighlighterColors.NUMBER))
+            assertFalse(hasHighlight("- 9:2", "-", DefaultLanguageHighlighterColors.NUMBER))
             assertTrue(hasHighlight("NEXT repeat_loop", "repeat_loop", equivalenceReplacementColor))
             assertTrue(hasHighlight("INCREMENT addiu", "addiu", equivalenceReplacementColor))
             val editor = fixture.editor

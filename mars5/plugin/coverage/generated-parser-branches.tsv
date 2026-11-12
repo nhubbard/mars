@@ -1,4 +1,4 @@
-# sha256	fb9a494ef923d61506de77a520422a2bc86d6f6eb6e2d2abeac08f3386f6d90b
+# sha256	9f8423f610f9b1da12c7db1e00f35f2cf717314f2231b9ebe93da3a87bfdd0a8
 # Exact generated defensive outcomes reviewed against lookahead, pinning, optional rules and progress guards.
 # line	maximum missed branches	source	reason
 57	1	if (!runtime_.recursion_guard_(level_, "assembly_token")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
@@ -12,179 +12,179 @@
 142	1	if (!runtime_.recursion_guard_(level_, "data_continuation_0")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
 152	1	if (!runtime_.recursion_guard_(level_, "data_continuation_1")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
 160	1	if (!runtime_.recursion_guard_(level_, "data_repeat_prefix")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-164	1	result_ = result_ && data_repeat_prefix_1(runtime_, level_ + 1)	The successful detached-repetition predicate guarantees a plus or minus token.
+164	1	result_ = result_ && data_repeat_prefix_1(runtime_, level_ + 1)	The repetition predicate guarantees one of the supported prefix forms.
 171	1	if (!runtime_.recursion_guard_(level_, "data_repeat_prefix_1")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-181	1	if (!runtime_.recursion_guard_(level_, "debugger_expression")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-193	1	if (!runtime_.recursion_guard_(level_, "directive_statement")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-200	2	result_ = result_ && directive_statement_1(runtime_, level_ + 1)	Generated short-circuit after guaranteed predictive token consumption or an always-successful optional helper.
-202	3	return result_ || pinned_	Generated pinned recovery return; a successful predictive token pins this production.
-207	1	if (!runtime_.recursion_guard_(level_, "directive_statement_0")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-216	1	if (!runtime_.recursion_guard_(level_, "directive_statement_1")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-224	1	if (!runtime_.recursion_guard_(level_, "equivalence")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-231	1	result_ = result_ && runtime_.report_error_(name(runtime_, level_ + 1))	Generated short-circuit after guaranteed predictive token consumption or an always-successful optional helper.
-232	1	result_ = pinned_ && equivalence_2(runtime_, level_ + 1) && result_	Predictive EQV consumption guarantees the pin. The valid and malformed replacement paths are exercised.
-234	1	return result_ || pinned_	Generated pinned recovery return; a successful predictive token pins this production.
-239	1	if (!runtime_.recursion_guard_(level_, "equivalence_2")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-246	1	if (!runtime_.empty_element_parsed_guard_("equivalence_2", pos_)) break	Generated no-progress guard. A successful replacement consumes one assembly token.
-255	1	if (!runtime_.recursion_guard_(level_, "external_name")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-267	1	if (!runtime_.recursion_guard_(level_, "external_signed_name")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-278	1	if (!runtime_.recursion_guard_(level_, "external_statement")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-283	2	result_ = result_ && external_statement_1(runtime_, level_ + 1)	Generated short-circuit after predictive token consumption and always-successful optional or repetition helpers.
-284	2	result_ = result_ && external_statement_2(runtime_, level_ + 1)	Generated short-circuit after predictive token consumption and always-successful optional or repetition helpers.
-291	1	if (!runtime_.recursion_guard_(level_, "external_statement_1")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-298	1	if (!runtime_.recursion_guard_(level_, "external_statement_2")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-302	1	if (!runtime_.empty_element_parsed_guard_("external_statement_2", pos_)) break	Generated progress guard; each successful external operand consumes input.
-310	1	if (!runtime_.recursion_guard_(level_, "file__")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-314	1	if (!runtime_.empty_element_parsed_guard_("file__", pos_)) break	Generated no-progress guard; the tested grammar alternatives always consume input on success.
-321	1	if (!runtime_.recursion_guard_(level_, "file_0")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-333	1	if (!runtime_.recursion_guard_(level_, "fixed_operand_token")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-344	1	if (!runtime_.recursion_guard_(level_, "fixed_operand_token_0")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-355	1	if (!runtime_.recursion_guard_(level_, "ignored_set")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-360	2	result_ = result_ && ignored_set_1(runtime_, level_ + 1)	The SET predictor guarantees token consumption and the repeated payload succeeds unless its recursion guard rejects the call.
-367	1	if (!runtime_.recursion_guard_(level_, "ignored_set_1")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-371	1	if (!runtime_.empty_element_parsed_guard_("ignored_set_1", pos_)) break	Generated no-progress guard. A successful payload token always consumes input.
-379	1	if (!runtime_.recursion_guard_(level_, "include_line")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-383	1	result_ = result_ && include_line_1(runtime_, level_ + 1)	The assembler finds a quoted path only on a physical line with at least one consumable token.
-390	1	if (!runtime_.recursion_guard_(level_, "include_line_1")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-394	1	while (result_) {	The assembler finds a quoted path only on a physical line with at least one consumable token.
-397	1	if (!runtime_.empty_element_parsed_guard_("include_line_1", pos_)) break	Generated progress guard; every successful include token consumes input.
-406	1	if (!runtime_.recursion_guard_(level_, "include_token")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-418	1	if (!runtime_.recursion_guard_(level_, "instruction")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-423	2	result_ = result_ && instruction_1(runtime_, level_ + 1)	Mnemonic lookahead guarantees the operation and the optional operand helper succeeds unless a recursion guard fires.
-430	1	if (!runtime_.recursion_guard_(level_, "instruction_1")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-438	1	if (!runtime_.recursion_guard_(level_, "invocation_token")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-449	1	if (!runtime_.recursion_guard_(level_, "label")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-460	1	if (!runtime_.recursion_guard_(level_, "label_0")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-472	1	if (!runtime_.recursion_guard_(level_, "line_end")) return false	Generated recursion limit guard. Deep-input safety belongs to the platform runtime.
-484	1	if (!runtime_.recursion_guard_(level_, "line_recover")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-495	1	if (!runtime_.recursion_guard_(level_, "macro_body")) return false	Generated recursion limit guard. Deep-input safety belongs to the platform runtime.
-511	1	if (!runtime_.recursion_guard_(level_, "macro_body_statement")) return false	Generated recursion limit guard. Deep-input safety belongs to the platform runtime.
-523	1	if (!runtime_.recursion_guard_(level_, "macro_body_statement_1")) return false	Generated recursion limit guard. Deep-input safety belongs to the platform runtime.
-527	1	result_ = result_ && macro_body_statement_1_1(runtime_, level_ + 1)	The optional body helper succeeds after the required label prefix.
-534	1	if (!runtime_.recursion_guard_(level_, "macro_body_statement_1_1")) return false	Generated recursion limit guard. Deep-input safety belongs to the platform runtime.
-542	1	if (!runtime_.recursion_guard_(level_, "macro_data_continuation")) return false	Generated recursion limit guard. Deep-input safety belongs to the platform runtime.
-546	1	result_ = result_ && macro_data_continuation_1(runtime_, level_ + 1)	The generated optional prefix helper returns true after trying the repetition prefix.
-554	1	if (!runtime_.recursion_guard_(level_, "macro_data_continuation_0")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-564	1	if (!runtime_.recursion_guard_(level_, "macro_data_continuation_1")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-572	1	if (!runtime_.recursion_guard_(level_, "macro_definition")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-578	1	result_ = result_ && macro_definition_1(runtime_, level_ + 1)	Predictive MACRO lookahead guarantees consumption before testing the name.
-580	1	result_ = result_ && runtime_.report_error_(macro_signature(runtime_, level_ + 1))	The successful name lookahead guarantees signature pinning unless the recursion guard fires.
-581	2	result_ = pinned_ && macro_definition_3(runtime_, level_ + 1) && result_	Once pinned, signature recovery succeeds and the body accepts its following newline or EOF.
-583	1	return result_ || pinned_	The signature and body succeed after the macro name pins the production unless a platform guard fires.
-588	1	if (!runtime_.recursion_guard_(level_, "macro_definition_1")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-598	1	if (!runtime_.recursion_guard_(level_, "macro_definition_3")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-609	1	if (!runtime_.recursion_guard_(level_, "macro_definition_3_0")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-613	1	result_ = result_ && macro_definition_3_0_1(runtime_, level_ + 1)	The repeated body helper succeeds unless the platform recursion guard fires.
-614	1	result_ = result_ && macro_definition_3_0_2(runtime_, level_ + 1)	The optional closing token helper succeeds unless the platform recursion guard fires.
-621	1	if (!runtime_.recursion_guard_(level_, "macro_definition_3_0_1")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-625	1	if (!runtime_.empty_element_parsed_guard_("macro_definition_3_0_1", pos_)) break	Generated progress guard; every successful body item consumes a newline or statement.
-632	1	if (!runtime_.recursion_guard_(level_, "macro_definition_3_0_1_0")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-641	1	if (!runtime_.recursion_guard_(level_, "macro_definition_3_0_2")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-649	1	if (!runtime_.recursion_guard_(level_, "macro_directive_statement")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-654	2	result_ = result_ && macro_directive_statement_1(runtime_, level_ + 1)	Generated short-circuit after guaranteed predictive token consumption and an always-successful optional helper.
-661	1	if (!runtime_.recursion_guard_(level_, "macro_directive_statement_0")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-670	1	if (!runtime_.recursion_guard_(level_, "macro_directive_statement_1")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-678	1	if (!runtime_.recursion_guard_(level_, "macro_end")) return false	Generated recursion limit guard. Deep-input safety belongs to the platform runtime.
-683	1	result_ = result_ && macro_end_1(runtime_, level_ + 1)	Predictive END_MACRO lookahead guarantees token consumption before the end-of-line check.
-690	1	if (!runtime_.recursion_guard_(level_, "macro_end_1")) return false	Generated recursion limit guard. Deep-input safety belongs to the platform runtime.
-701	1	if (!runtime_.recursion_guard_(level_, "macro_header")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-712	1	if (!runtime_.recursion_guard_(level_, "macro_header_1")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-716	1	result_ = result_ && macro_header_1_1(runtime_, level_ + 1)	After consuming MACRO, a pinned signature or invalid-name recovery succeeds unless the recursion guard fires.
-723	1	if (!runtime_.recursion_guard_(level_, "macro_header_1_1")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-734	1	if (!runtime_.recursion_guard_(level_, "macro_header_1_1_0")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-738	1	result_ = result_ && macro_signature(runtime_, level_ + 1)	The successful name lookahead guarantees signature pinning unless the recursion guard fires.
-745	1	if (!runtime_.recursion_guard_(level_, "macro_header_1_1_0_0")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-756	1	if (!runtime_.recursion_guard_(level_, "macro_instruction")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-761	2	result_ = result_ && macro_instruction_1(runtime_, level_ + 1)	Generated short-circuit after guaranteed predictive token consumption and an always-successful optional helper.
-768	1	if (!runtime_.recursion_guard_(level_, "macro_instruction_1")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-776	1	if (!runtime_.recursion_guard_(level_, "macro_name")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-787	1	if (!runtime_.recursion_guard_(level_, "macro_operand_fragment")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-794	1	if (!runtime_.empty_element_parsed_guard_("macro_operand_fragment", pos_)) break	Generated zero-progress guard; every successful repetition consumes a token.
-803	1	if (!runtime_.recursion_guard_(level_, "macro_operand_line")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-815	1	if (!runtime_.recursion_guard_(level_, "macro_parameter")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-828	1	if (!runtime_.recursion_guard_(level_, "macro_signature")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-829	1	if (!runtime_.nextTokenIs("<macro signature>", MipsSyntaxTypes.DOLLAR_WORD, MipsSyntaxTypes.WORD)) return false	Both call sites verify the name before entering the signature production.
-835	2	result_ = result_ && runtime_.report_error_(macro_signature_1(runtime_, level_ + 1))	The verified name pins the signature, and the optional parameter list succeeds unless the recursion guard fires.
-836	3	result_ = pinned_ && macro_signature_2(runtime_, level_ + 1) && result_	The verified name and optional list succeed, and the tail always reaches the line end or consumes a rejected formal.
-838	3	return result_ || pinned_	The signature succeeds once its name is verified, except when a generated recursion guard fires.
-843	1	if (!runtime_.recursion_guard_(level_, "macro_signature_1")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-850	1	if (!runtime_.recursion_guard_(level_, "macro_signature_2")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-861	1	if (!runtime_.recursion_guard_(level_, "macro_signature_2_0")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-872	1	if (!runtime_.recursion_guard_(level_, "macro_statement")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-883	1	if (!runtime_.recursion_guard_(level_, "macro_statement_0")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-894	1	if (!runtime_.recursion_guard_(level_, "malformed_macro_end")) return false	Generated recursion limit guard. Deep-input safety belongs to the platform runtime.
-899	2	result_ = result_ && recoverMalformedMacroEnd(runtime_, level_ + 1)	Predictive END_MACRO lookahead guarantees token consumption. Macro tail recovery always completes the production.
-907	1	if (!runtime_.recursion_guard_(level_, "name")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-927	1	if (!runtime_.recursion_guard_(level_, "non_macro_body")) return false	Generated recursion limit guard. Deep-input safety belongs to the platform runtime.
-945	1	if (!runtime_.recursion_guard_(level_, "operand")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-949	1	result_ = result_ && operand_1(runtime_, level_ + 1)	Generated short-circuit after guaranteed predictive token consumption or an always-successful optional helper.
-956	1	if (!runtime_.recursion_guard_(level_, "operand_1")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-964	1	if (!runtime_.recursion_guard_(level_, "operand_fragment")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-968	1	result_ = result_ && operand_fragment_1(runtime_, level_ + 1)	Positive lookahead guarantees a nonempty assembly-token sequence before the fragment parser runs.
-975	1	if (!runtime_.recursion_guard_(level_, "operand_fragment_0")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-985	1	if (!runtime_.recursion_guard_(level_, "operand_fragment_0_0")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-989	1	result_ = result_ && substitutable_operand_token(runtime_, level_ + 1)	The fixed token repetition succeeds unless the platform recursion guard fires.
-996	1	if (!runtime_.recursion_guard_(level_, "operand_fragment_0_0_0")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-1000	1	if (!runtime_.empty_element_parsed_guard_("operand_fragment_0_0_0", pos_)) break	Generated progress guard; each successful fixed token consumes input.
-1007	1	if (!runtime_.recursion_guard_(level_, "operand_fragment_1")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-1011	1	while (result_) {	Positive lookahead guarantees that the first assembly token is present before the loop begins.
-1014	1	if (!runtime_.empty_element_parsed_guard_("operand_fragment_1", pos_)) break	Generated progress guard; each successful assembly token consumes input.
-1023	1	if (!runtime_.recursion_guard_(level_, "operand_line")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-1036	1	if (!runtime_.recursion_guard_(level_, "operand_list")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-1043	1	if (!runtime_.empty_element_parsed_guard_("operand_list", pos_)) break	Generated no-progress guard; each successful operand consumes at least one source token.
-1052	1	if (!runtime_.recursion_guard_(level_, "operation")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-1053	1	if (!runtime_.nextTokenIs(MipsSyntaxTypes.MNEMONIC)) return false	The instruction production already checked the same mnemonic token without advancing.
-1064	1	if (!runtime_.recursion_guard_(level_, "operation_candidate")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-1068	1	result_ = result_ && operation_candidate_1(runtime_, level_ + 1)	The invocation token loop always succeeds unless the platform recursion guard fires.
-1075	1	if (!runtime_.recursion_guard_(level_, "operation_candidate_1")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-1079	1	if (!runtime_.empty_element_parsed_guard_("operation_candidate_1", pos_)) break	Generated progress guard; each invocation token consumes input.
-1087	1	if (!runtime_.recursion_guard_(level_, "parameter_list")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-1094	1	if (!runtime_.empty_element_parsed_guard_("parameter_list", pos_)) break	Generated progress guard; each parameter or punctuation token consumes input.
-1102	1	if (!runtime_.recursion_guard_(level_, "parameter_list_0")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-1113	1	if (!runtime_.recursion_guard_(level_, "parenthesized_operand")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-1120	1	result_ = result_ && runtime_.report_error_(nested_expression(runtime_, level_ + 1))	The opening parenthesis already matched lookahead, so its consumption cannot short-circuit the nested expression.
-1121	1	result_ = pinned_ && runtime_.consumeToken(MipsSyntaxTypes.RIGHT_PAREN) && result_	The opening parenthesis already matched lookahead, so the generated pin cannot be false.
-1123	1	return result_ || pinned_	The opening parenthesis already matched lookahead, so the generated pin cannot be false.
-1129	1	if (!runtime_.recursion_guard_(level_, "quoted_operand")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-1140	1	if (!runtime_.recursion_guard_(level_, "raw_operand")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-1150	1	if (!runtime_.recursion_guard_(level_, "repetition")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-1157	1	result_ = result_ && expr(runtime_, level_ + 1, -1)	Generated short-circuit after guaranteed predictive token consumption or an always-successful optional helper.
-1159	1	return result_ || pinned_	Generated pinned recovery return; a successful predictive token pins this production.
-1165	1	if (!runtime_.recursion_guard_(level_, "replacement")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-1176	1	if (!runtime_.recursion_guard_(level_, "segment_address_symbol")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-1189	1	if (!runtime_.recursion_guard_(level_, "segment_switch")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-1194	2	result_ = result_ && segment_switch_1(runtime_, level_ + 1)	Generated short-circuit after predictive token consumption and always-successful optional or repetition helpers.
-1195	2	result_ = result_ && segment_switch_2(runtime_, level_ + 1)	Generated short-circuit after predictive token consumption and always-successful optional or repetition helpers.
-1202	1	if (!runtime_.recursion_guard_(level_, "segment_switch_1")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-1209	1	if (!runtime_.recursion_guard_(level_, "segment_switch_2")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-1213	1	if (!runtime_.empty_element_parsed_guard_("segment_switch_2", pos_)) break	Generated progress guard; each successful segment suffix token consumes input.
-1221	1	if (!runtime_.recursion_guard_(level_, "short_equivalence")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-1226	1	result_ = result_ && isShortEquivalence(runtime_, level_ + 1)	Predictive EQV lookahead guarantees consumption before the assembler token-count check.
-1227	1	result_ = result_ && short_equivalence_2(runtime_, level_ + 1)	The optional raw operand always succeeds after its generated recursion guard.
-1228	1	result_ = result_ && short_equivalence_3(runtime_, level_ + 1)	Defensive line-end check; the short-form predicate permits at most one assembler operand, including a recovered signed token.
-1235	1	if (!runtime_.recursion_guard_(level_, "short_equivalence_2")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-1242	1	if (!runtime_.recursion_guard_(level_, "short_equivalence_3")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-1253	1	if (!runtime_.recursion_guard_(level_, "signed_number")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-1257	1	result_ = result_ && signed_number_1(runtime_, level_ + 1)	The predicate guarantees the current token is PLUS or MINUS; only the platform recursion guard can make the helper fail.
-1265	1	if (!runtime_.recursion_guard_(level_, "signed_number_1")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-1275	1	if (!runtime_.recursion_guard_(level_, "single_assembly_token")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-1304	1	if (!runtime_.recursion_guard_(level_, "statement")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-1316	1	if (!runtime_.recursion_guard_(level_, "statement_1")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-1320	1	result_ = result_ && statement_1_1(runtime_, level_ + 1)	The optional body helper succeeds unless the platform recursion guard fires.
-1327	1	if (!runtime_.recursion_guard_(level_, "statement_1_1")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-1335	1	if (!runtime_.recursion_guard_(level_, "substitutable_operand_token")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-1366	1	if (!runtime_.recursion_guard_(level_, "expr")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-1383	1	if (!runtime_.recursion_guard_(level_, "expr_0")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-1415	1	else if (priority_ < 9 && address_expr_0(runtime_, level_ + 1)) {	Generated Pratt postfix threshold. No grammar production calls it with a higher precedence.
-1429	1	if (!runtime_.recursion_guard_(level_, "add_expr_0")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-1440	1	if (!runtime_.recursion_guard_(level_, "add_expr_0_1")) return false	Generated recursion limit guard for the two infix operator alternatives.
-1449	1	if (!runtime_.recursion_guard_(level_, "invalid_operand_expr")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-1458	1	if (!runtime_.recursion_guard_(level_, "unary_expr")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-1471	1	if (!runtime_.recursion_guard_(level_, "unary_expr_0")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-1481	1	if (!runtime_.recursion_guard_(level_, "address_expr_0")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-1492	1	if (!runtime_.recursion_guard_(level_, "group_expr")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-1499	1	result_ = result_ && runtime_.report_error_(nested_expression(runtime_, level_ + 1))	The opening parenthesis already matched lookahead, so its consumption cannot short-circuit the nested expression.
-1500	1	result_ = pinned_ && runtime_.consumeToken(MipsSyntaxTypes.RIGHT_PAREN) && result_	The opening parenthesis already matched lookahead, so the generated pin cannot be false.
-1502	1	return result_ || pinned_	The opening parenthesis already matched lookahead, so the generated pin cannot be false.
-1507	1	if (!runtime_.recursion_guard_(level_, "literal_expr")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
-1520	1	if (!runtime_.recursion_guard_(level_, "reference_expr")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+185	1	if (!runtime_.recursion_guard_(level_, "debugger_expression")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+197	1	if (!runtime_.recursion_guard_(level_, "directive_statement")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+204	2	result_ = result_ && directive_statement_1(runtime_, level_ + 1)	Generated short-circuit after guaranteed predictive token consumption or an always-successful optional helper.
+206	3	return result_ || pinned_	Generated pinned recovery return; a successful predictive token pins this production.
+211	1	if (!runtime_.recursion_guard_(level_, "directive_statement_0")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+220	1	if (!runtime_.recursion_guard_(level_, "directive_statement_1")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+228	1	if (!runtime_.recursion_guard_(level_, "equivalence")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+235	1	result_ = result_ && runtime_.report_error_(name(runtime_, level_ + 1))	Generated short-circuit after guaranteed predictive token consumption or an always-successful optional helper.
+236	1	result_ = pinned_ && equivalence_2(runtime_, level_ + 1) && result_	Predictive EQV consumption guarantees the pin. The valid and malformed replacement paths are exercised.
+238	1	return result_ || pinned_	Generated pinned recovery return; a successful predictive token pins this production.
+243	1	if (!runtime_.recursion_guard_(level_, "equivalence_2")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+250	1	if (!runtime_.empty_element_parsed_guard_("equivalence_2", pos_)) break	Generated no-progress guard. A successful replacement consumes one assembly token.
+259	1	if (!runtime_.recursion_guard_(level_, "external_name")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+271	1	if (!runtime_.recursion_guard_(level_, "external_signed_name")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+282	1	if (!runtime_.recursion_guard_(level_, "external_statement")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+287	2	result_ = result_ && external_statement_1(runtime_, level_ + 1)	Generated short-circuit after predictive token consumption and always-successful optional or repetition helpers.
+288	2	result_ = result_ && external_statement_2(runtime_, level_ + 1)	Generated short-circuit after predictive token consumption and always-successful optional or repetition helpers.
+295	1	if (!runtime_.recursion_guard_(level_, "external_statement_1")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+302	1	if (!runtime_.recursion_guard_(level_, "external_statement_2")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+306	1	if (!runtime_.empty_element_parsed_guard_("external_statement_2", pos_)) break	Generated progress guard; each successful external operand consumes input.
+314	1	if (!runtime_.recursion_guard_(level_, "file__")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+318	1	if (!runtime_.empty_element_parsed_guard_("file__", pos_)) break	Generated no-progress guard; the tested grammar alternatives always consume input on success.
+325	1	if (!runtime_.recursion_guard_(level_, "file_0")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+337	1	if (!runtime_.recursion_guard_(level_, "fixed_operand_token")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+348	1	if (!runtime_.recursion_guard_(level_, "fixed_operand_token_0")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+359	1	if (!runtime_.recursion_guard_(level_, "ignored_set")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+364	2	result_ = result_ && ignored_set_1(runtime_, level_ + 1)	The SET predictor guarantees token consumption and the repeated payload succeeds unless its recursion guard rejects the call.
+371	1	if (!runtime_.recursion_guard_(level_, "ignored_set_1")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+375	1	if (!runtime_.empty_element_parsed_guard_("ignored_set_1", pos_)) break	Generated no-progress guard. A successful payload token always consumes input.
+383	1	if (!runtime_.recursion_guard_(level_, "include_line")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+387	1	result_ = result_ && include_line_1(runtime_, level_ + 1)	The assembler finds a quoted path only on a physical line with at least one consumable token.
+394	1	if (!runtime_.recursion_guard_(level_, "include_line_1")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+398	1	while (result_) {	The assembler finds a quoted path only on a physical line with at least one consumable token.
+401	1	if (!runtime_.empty_element_parsed_guard_("include_line_1", pos_)) break	Generated progress guard; every successful include token consumes input.
+410	1	if (!runtime_.recursion_guard_(level_, "include_token")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+422	1	if (!runtime_.recursion_guard_(level_, "instruction")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+427	2	result_ = result_ && instruction_1(runtime_, level_ + 1)	Mnemonic lookahead guarantees the operation and the optional operand helper succeeds unless a recursion guard fires.
+434	1	if (!runtime_.recursion_guard_(level_, "instruction_1")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+442	1	if (!runtime_.recursion_guard_(level_, "invocation_token")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+453	1	if (!runtime_.recursion_guard_(level_, "label")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+464	1	if (!runtime_.recursion_guard_(level_, "label_0")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+476	1	if (!runtime_.recursion_guard_(level_, "line_end")) return false	Generated recursion limit guard. Deep-input safety belongs to the platform runtime.
+488	1	if (!runtime_.recursion_guard_(level_, "line_recover")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+499	1	if (!runtime_.recursion_guard_(level_, "macro_body")) return false	Generated recursion limit guard. Deep-input safety belongs to the platform runtime.
+515	1	if (!runtime_.recursion_guard_(level_, "macro_body_statement")) return false	Generated recursion limit guard. Deep-input safety belongs to the platform runtime.
+527	1	if (!runtime_.recursion_guard_(level_, "macro_body_statement_1")) return false	Generated recursion limit guard. Deep-input safety belongs to the platform runtime.
+531	1	result_ = result_ && macro_body_statement_1_1(runtime_, level_ + 1)	The optional body helper succeeds after the required label prefix.
+538	1	if (!runtime_.recursion_guard_(level_, "macro_body_statement_1_1")) return false	Generated recursion limit guard. Deep-input safety belongs to the platform runtime.
+546	1	if (!runtime_.recursion_guard_(level_, "macro_data_continuation")) return false	Generated recursion limit guard. Deep-input safety belongs to the platform runtime.
+550	1	result_ = result_ && macro_data_continuation_1(runtime_, level_ + 1)	The generated optional prefix helper returns true after trying the repetition prefix.
+558	1	if (!runtime_.recursion_guard_(level_, "macro_data_continuation_0")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+568	1	if (!runtime_.recursion_guard_(level_, "macro_data_continuation_1")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+576	1	if (!runtime_.recursion_guard_(level_, "macro_definition")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+582	1	result_ = result_ && macro_definition_1(runtime_, level_ + 1)	Predictive MACRO lookahead guarantees consumption before testing the name.
+584	1	result_ = result_ && runtime_.report_error_(macro_signature(runtime_, level_ + 1))	The successful name lookahead guarantees signature pinning unless the recursion guard fires.
+585	2	result_ = pinned_ && macro_definition_3(runtime_, level_ + 1) && result_	Once pinned, signature recovery succeeds and the body accepts its following newline or EOF.
+587	1	return result_ || pinned_	The signature and body succeed after the macro name pins the production unless a platform guard fires.
+592	1	if (!runtime_.recursion_guard_(level_, "macro_definition_1")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+602	1	if (!runtime_.recursion_guard_(level_, "macro_definition_3")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+613	1	if (!runtime_.recursion_guard_(level_, "macro_definition_3_0")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+617	1	result_ = result_ && macro_definition_3_0_1(runtime_, level_ + 1)	The repeated body helper succeeds unless the platform recursion guard fires.
+618	1	result_ = result_ && macro_definition_3_0_2(runtime_, level_ + 1)	The optional closing token helper succeeds unless the platform recursion guard fires.
+625	1	if (!runtime_.recursion_guard_(level_, "macro_definition_3_0_1")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+629	1	if (!runtime_.empty_element_parsed_guard_("macro_definition_3_0_1", pos_)) break	Generated progress guard; every successful body item consumes a newline or statement.
+636	1	if (!runtime_.recursion_guard_(level_, "macro_definition_3_0_1_0")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+645	1	if (!runtime_.recursion_guard_(level_, "macro_definition_3_0_2")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+653	1	if (!runtime_.recursion_guard_(level_, "macro_directive_statement")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+658	2	result_ = result_ && macro_directive_statement_1(runtime_, level_ + 1)	Generated short-circuit after guaranteed predictive token consumption and an always-successful optional helper.
+665	1	if (!runtime_.recursion_guard_(level_, "macro_directive_statement_0")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+674	1	if (!runtime_.recursion_guard_(level_, "macro_directive_statement_1")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+682	1	if (!runtime_.recursion_guard_(level_, "macro_end")) return false	Generated recursion limit guard. Deep-input safety belongs to the platform runtime.
+687	1	result_ = result_ && macro_end_1(runtime_, level_ + 1)	Predictive END_MACRO lookahead guarantees token consumption before the end-of-line check.
+694	1	if (!runtime_.recursion_guard_(level_, "macro_end_1")) return false	Generated recursion limit guard. Deep-input safety belongs to the platform runtime.
+705	1	if (!runtime_.recursion_guard_(level_, "macro_header")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+716	1	if (!runtime_.recursion_guard_(level_, "macro_header_1")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+720	1	result_ = result_ && macro_header_1_1(runtime_, level_ + 1)	After consuming MACRO, a pinned signature or invalid-name recovery succeeds unless the recursion guard fires.
+727	1	if (!runtime_.recursion_guard_(level_, "macro_header_1_1")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+738	1	if (!runtime_.recursion_guard_(level_, "macro_header_1_1_0")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+742	1	result_ = result_ && macro_signature(runtime_, level_ + 1)	The successful name lookahead guarantees signature pinning unless the recursion guard fires.
+749	1	if (!runtime_.recursion_guard_(level_, "macro_header_1_1_0_0")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+760	1	if (!runtime_.recursion_guard_(level_, "macro_instruction")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+765	2	result_ = result_ && macro_instruction_1(runtime_, level_ + 1)	Generated short-circuit after guaranteed predictive token consumption and an always-successful optional helper.
+772	1	if (!runtime_.recursion_guard_(level_, "macro_instruction_1")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+780	1	if (!runtime_.recursion_guard_(level_, "macro_name")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+791	1	if (!runtime_.recursion_guard_(level_, "macro_operand_fragment")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+798	1	if (!runtime_.empty_element_parsed_guard_("macro_operand_fragment", pos_)) break	Generated zero-progress guard; every successful repetition consumes a token.
+807	1	if (!runtime_.recursion_guard_(level_, "macro_operand_line")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+819	1	if (!runtime_.recursion_guard_(level_, "macro_parameter")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+832	1	if (!runtime_.recursion_guard_(level_, "macro_signature")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+833	1	if (!runtime_.nextTokenIs("<macro signature>", MipsSyntaxTypes.DOLLAR_WORD, MipsSyntaxTypes.WORD)) return false	Both call sites verify the name before entering the signature production.
+839	2	result_ = result_ && runtime_.report_error_(macro_signature_1(runtime_, level_ + 1))	The verified name pins the signature, and the optional parameter list succeeds unless the recursion guard fires.
+840	3	result_ = pinned_ && macro_signature_2(runtime_, level_ + 1) && result_	The verified name and optional list succeed, and the tail always reaches the line end or consumes a rejected formal.
+842	3	return result_ || pinned_	The signature succeeds once its name is verified, except when a generated recursion guard fires.
+847	1	if (!runtime_.recursion_guard_(level_, "macro_signature_1")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+854	1	if (!runtime_.recursion_guard_(level_, "macro_signature_2")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+865	1	if (!runtime_.recursion_guard_(level_, "macro_signature_2_0")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+876	1	if (!runtime_.recursion_guard_(level_, "macro_statement")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+887	1	if (!runtime_.recursion_guard_(level_, "macro_statement_0")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+898	1	if (!runtime_.recursion_guard_(level_, "malformed_macro_end")) return false	Generated recursion limit guard. Deep-input safety belongs to the platform runtime.
+903	2	result_ = result_ && recoverMalformedMacroEnd(runtime_, level_ + 1)	Predictive END_MACRO lookahead guarantees token consumption. Macro tail recovery always completes the production.
+911	1	if (!runtime_.recursion_guard_(level_, "name")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+931	1	if (!runtime_.recursion_guard_(level_, "non_macro_body")) return false	Generated recursion limit guard. Deep-input safety belongs to the platform runtime.
+949	1	if (!runtime_.recursion_guard_(level_, "operand")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+953	1	result_ = result_ && operand_1(runtime_, level_ + 1)	Generated short-circuit after guaranteed predictive token consumption or an always-successful optional helper.
+960	1	if (!runtime_.recursion_guard_(level_, "operand_1")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+968	1	if (!runtime_.recursion_guard_(level_, "operand_fragment")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+972	1	result_ = result_ && operand_fragment_1(runtime_, level_ + 1)	Positive lookahead guarantees a nonempty assembly-token sequence before the fragment parser runs.
+979	1	if (!runtime_.recursion_guard_(level_, "operand_fragment_0")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+989	1	if (!runtime_.recursion_guard_(level_, "operand_fragment_0_0")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+993	1	result_ = result_ && substitutable_operand_token(runtime_, level_ + 1)	The fixed token repetition succeeds unless the platform recursion guard fires.
+1000	1	if (!runtime_.recursion_guard_(level_, "operand_fragment_0_0_0")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+1004	1	if (!runtime_.empty_element_parsed_guard_("operand_fragment_0_0_0", pos_)) break	Generated progress guard; each successful fixed token consumes input.
+1011	1	if (!runtime_.recursion_guard_(level_, "operand_fragment_1")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+1015	1	while (result_) {	Positive lookahead guarantees that the first assembly token is present before the loop begins.
+1018	1	if (!runtime_.empty_element_parsed_guard_("operand_fragment_1", pos_)) break	Generated progress guard; each successful assembly token consumes input.
+1027	1	if (!runtime_.recursion_guard_(level_, "operand_line")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+1040	1	if (!runtime_.recursion_guard_(level_, "operand_list")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+1047	1	if (!runtime_.empty_element_parsed_guard_("operand_list", pos_)) break	Generated no-progress guard; each successful operand consumes at least one source token.
+1056	1	if (!runtime_.recursion_guard_(level_, "operation")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+1057	1	if (!runtime_.nextTokenIs(MipsSyntaxTypes.MNEMONIC)) return false	The instruction production already checked the same mnemonic token without advancing.
+1068	1	if (!runtime_.recursion_guard_(level_, "operation_candidate")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+1072	1	result_ = result_ && operation_candidate_1(runtime_, level_ + 1)	The invocation token loop always succeeds unless the platform recursion guard fires.
+1079	1	if (!runtime_.recursion_guard_(level_, "operation_candidate_1")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+1083	1	if (!runtime_.empty_element_parsed_guard_("operation_candidate_1", pos_)) break	Generated progress guard; each invocation token consumes input.
+1091	1	if (!runtime_.recursion_guard_(level_, "parameter_list")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+1098	1	if (!runtime_.empty_element_parsed_guard_("parameter_list", pos_)) break	Generated progress guard; each parameter or punctuation token consumes input.
+1106	1	if (!runtime_.recursion_guard_(level_, "parameter_list_0")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+1117	1	if (!runtime_.recursion_guard_(level_, "parenthesized_operand")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+1124	1	result_ = result_ && runtime_.report_error_(nested_expression(runtime_, level_ + 1))	The opening parenthesis already matched lookahead, so its consumption cannot short-circuit the nested expression.
+1125	1	result_ = pinned_ && runtime_.consumeToken(MipsSyntaxTypes.RIGHT_PAREN) && result_	The opening parenthesis already matched lookahead, so the generated pin cannot be false.
+1127	1	return result_ || pinned_	The opening parenthesis already matched lookahead, so the generated pin cannot be false.
+1133	1	if (!runtime_.recursion_guard_(level_, "quoted_operand")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+1144	1	if (!runtime_.recursion_guard_(level_, "raw_operand")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+1154	1	if (!runtime_.recursion_guard_(level_, "repetition")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+1161	1	result_ = result_ && expr(runtime_, level_ + 1, -1)	Generated short-circuit after guaranteed predictive token consumption or an always-successful optional helper.
+1163	1	return result_ || pinned_	Generated pinned recovery return; a successful predictive token pins this production.
+1169	1	if (!runtime_.recursion_guard_(level_, "replacement")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+1180	1	if (!runtime_.recursion_guard_(level_, "segment_address_symbol")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+1193	1	if (!runtime_.recursion_guard_(level_, "segment_switch")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+1198	2	result_ = result_ && segment_switch_1(runtime_, level_ + 1)	Generated short-circuit after predictive token consumption and always-successful optional or repetition helpers.
+1199	2	result_ = result_ && segment_switch_2(runtime_, level_ + 1)	Generated short-circuit after predictive token consumption and always-successful optional or repetition helpers.
+1206	1	if (!runtime_.recursion_guard_(level_, "segment_switch_1")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+1213	1	if (!runtime_.recursion_guard_(level_, "segment_switch_2")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+1217	1	if (!runtime_.empty_element_parsed_guard_("segment_switch_2", pos_)) break	Generated progress guard; each successful segment suffix token consumes input.
+1225	1	if (!runtime_.recursion_guard_(level_, "short_equivalence")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+1230	1	result_ = result_ && isShortEquivalence(runtime_, level_ + 1)	Predictive EQV lookahead guarantees consumption before the assembler token-count check.
+1231	1	result_ = result_ && short_equivalence_2(runtime_, level_ + 1)	The optional raw operand always succeeds after its generated recursion guard.
+1232	1	result_ = result_ && short_equivalence_3(runtime_, level_ + 1)	Defensive line-end check; the short-form predicate permits at most one assembler operand, including a recovered signed token.
+1239	1	if (!runtime_.recursion_guard_(level_, "short_equivalence_2")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+1246	1	if (!runtime_.recursion_guard_(level_, "short_equivalence_3")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+1257	1	if (!runtime_.recursion_guard_(level_, "signed_number")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+1261	1	result_ = result_ && signed_number_1(runtime_, level_ + 1)	The predicate guarantees the current token is PLUS or MINUS; only the platform recursion guard can make the helper fail.
+1269	1	if (!runtime_.recursion_guard_(level_, "signed_number_1")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+1279	1	if (!runtime_.recursion_guard_(level_, "single_assembly_token")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+1308	1	if (!runtime_.recursion_guard_(level_, "statement")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+1320	1	if (!runtime_.recursion_guard_(level_, "statement_1")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+1324	1	result_ = result_ && statement_1_1(runtime_, level_ + 1)	The optional body helper succeeds unless the platform recursion guard fires.
+1331	1	if (!runtime_.recursion_guard_(level_, "statement_1_1")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+1339	1	if (!runtime_.recursion_guard_(level_, "substitutable_operand_token")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+1370	1	if (!runtime_.recursion_guard_(level_, "expr")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+1387	1	if (!runtime_.recursion_guard_(level_, "expr_0")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+1419	1	else if (priority_ < 9 && address_expr_0(runtime_, level_ + 1)) {	Generated Pratt postfix threshold. No grammar production calls it with a higher precedence.
+1433	1	if (!runtime_.recursion_guard_(level_, "add_expr_0")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+1444	1	if (!runtime_.recursion_guard_(level_, "add_expr_0_1")) return false	Generated recursion limit guard for the two infix operator alternatives.
+1453	1	if (!runtime_.recursion_guard_(level_, "invalid_operand_expr")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+1462	1	if (!runtime_.recursion_guard_(level_, "unary_expr")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+1475	1	if (!runtime_.recursion_guard_(level_, "unary_expr_0")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+1485	1	if (!runtime_.recursion_guard_(level_, "address_expr_0")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+1496	1	if (!runtime_.recursion_guard_(level_, "group_expr")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+1503	1	result_ = result_ && runtime_.report_error_(nested_expression(runtime_, level_ + 1))	The opening parenthesis already matched lookahead, so its consumption cannot short-circuit the nested expression.
+1504	1	result_ = pinned_ && runtime_.consumeToken(MipsSyntaxTypes.RIGHT_PAREN) && result_	The opening parenthesis already matched lookahead, so the generated pin cannot be false.
+1506	1	return result_ || pinned_	The opening parenthesis already matched lookahead, so the generated pin cannot be false.
+1511	1	if (!runtime_.recursion_guard_(level_, "literal_expr")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.
+1524	1	if (!runtime_.recursion_guard_(level_, "reference_expr")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.

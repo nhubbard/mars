@@ -1,7 +1,7 @@
 {
   generate=[psi="no" parser-api="syntax"]
   parserClass="edu.missouristate.mars.plugin.language.parser.MipsParser"
-  parserImports=["edu.missouristate.mars.plugin.language.syntax.continueOperand" "edu.missouristate.mars.plugin.language.syntax.startsSignedNumber" "edu.missouristate.mars.plugin.language.syntax.isDetachedDataRepeat" "edu.missouristate.mars.plugin.language.syntax.isShortEquivalence" "edu.missouristate.mars.plugin.language.syntax.isIncludeLine" "edu.missouristate.mars.plugin.language.syntax.recoverBadIncludeToken" "edu.missouristate.mars.plugin.language.syntax.recoverBadOperandToken" "edu.missouristate.mars.plugin.language.syntax.recoverInvalidOperandExpression" "edu.missouristate.mars.plugin.language.syntax.recoverMissingMacroName" "edu.missouristate.mars.plugin.language.syntax.recoverInvalidMacroName" "edu.missouristate.mars.plugin.language.syntax.recoverInvalidMacroFormal" "edu.missouristate.mars.plugin.language.syntax.recoverMalformedMacroEnd" "edu.missouristate.mars.plugin.language.syntax.recoverCharacterLiteral" "edu.missouristate.mars.plugin.language.syntax.recoverStatement" "edu.missouristate.mars.plugin.language.syntax.parseCompleteOperands"]
+  parserImports=["edu.missouristate.mars.plugin.language.syntax.continueOperand" "edu.missouristate.mars.plugin.language.syntax.startsSignedNumber" "edu.missouristate.mars.plugin.language.syntax.isDataRepeatPrefix" "edu.missouristate.mars.plugin.language.syntax.isShortEquivalence" "edu.missouristate.mars.plugin.language.syntax.isIncludeLine" "edu.missouristate.mars.plugin.language.syntax.recoverBadIncludeToken" "edu.missouristate.mars.plugin.language.syntax.recoverBadOperandToken" "edu.missouristate.mars.plugin.language.syntax.recoverInvalidOperandExpression" "edu.missouristate.mars.plugin.language.syntax.recoverMissingMacroName" "edu.missouristate.mars.plugin.language.syntax.recoverInvalidMacroName" "edu.missouristate.mars.plugin.language.syntax.recoverInvalidMacroFormal" "edu.missouristate.mars.plugin.language.syntax.recoverMalformedMacroEnd" "edu.missouristate.mars.plugin.language.syntax.recoverCharacterLiteral" "edu.missouristate.mars.plugin.language.syntax.recoverStatement" "edu.missouristate.mars.plugin.language.syntax.parseCompleteOperands"]
   syntaxElementTypeHolderClass="edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes"
   extends(".*_expr")=expr
   tokens=[
@@ -105,8 +105,8 @@ operation_candidate ::= candidate_head invocation_token*
 private candidate_head ::= WORD | DOLLAR_WORD | PARAMETER
 invocation_token ::= assembly_token
 data_continuation ::= !BAD_CHARACTER data_repeat_prefix? operand_line
-// A detached sign can occupy the discarded first token of a continued numeric repetition.
-data_repeat_prefix ::= <<isDetachedDataRepeat>> (PLUS | MINUS)
+// The four-token numeric repetition form discards the first token of a continuation.
+data_repeat_prefix ::= <<isDataRepeatPrefix>> (signed_number | NUMBER | CHARACTER | STRING | PLUS | MINUS)
 // A body line without a written operation is also deferred until expansion.
 macro_data_continuation ::= !BAD_CHARACTER data_repeat_prefix? macro_operand_line {elementType=data_continuation}
 private operand_line ::= <<parseCompleteOperands complete_operand_list>> | operand_fragment | operand_list

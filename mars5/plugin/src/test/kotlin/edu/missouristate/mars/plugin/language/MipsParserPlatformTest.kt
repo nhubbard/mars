@@ -800,6 +800,42 @@ class MipsParserPlatformTest {
         }
 
     @Test
+    fun `continued repetitions distinguish discarded literals from values`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val source = """
+                .data
+                .word 0
+                99 7:2
+                -17 +8:2
+                'A' -9:2
+                "ignored" 10:2
+                row: +11 -12:2
+                5 6
+                .macro emit
+                -1 -2:2
+                .end_macro
+                emit
+                .text
+                nop
+            """.trimIndent()
+            assertAssembles(directory, source, expectedInstruction = 0)
+            val memory = project.get().service<MarsSessionService>().context.memory
+            val expected = listOf(0, 7, 7, 8, 8, -9, -9, 10, 10, -12, -12, 5, 6, -2, -2)
+            assertEquals(expected, expected.indices.map { memory.getWordNoNotify(memory.dataBaseAddress + it * Int.SIZE_BYTES) })
+            readAction {
+                val file = assertParses(source)
+                assertEquals(listOf("99", "-17", "'A'", "\"ignored\"", "+11", "-1"),
+                    descendants(file.node, "DATA_REPEAT_PREFIX").map { it.text }.toList())
+                val continuations = descendants(file.node, "DATA_CONTINUATION").toList()
+                assertEquals(listOf(
+                    listOf("7:2"), listOf("+8:2"), listOf("-9:2"), listOf("10:2"), listOf("-12:2"), listOf("5", "6"), listOf("-2:2"),
+                ), continuations.map { descendants(it, "OPERAND").map { operand -> operand.text }.toList() })
+                val incomplete = assertParses(".word 0\n9 7:2 3\n")
+                assertTrue(descendants(incomplete.node, "DATA_REPEAT_PREFIX").none())
+            }
+        }
+
+    @Test
     fun `data repetition aliases preserve detached signs and adjacent signs keep their value`(@TempDir directory: Path) =
         timeoutRunBlocking<Unit> {
             directory.resolve("repetitions.inc").writeText(".eqv REPEAT 7:2\n.eqv SUFFIX :2\n.eqv VALUE 5\n")
