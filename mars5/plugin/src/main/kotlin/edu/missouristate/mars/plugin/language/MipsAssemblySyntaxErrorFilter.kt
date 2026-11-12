@@ -9,6 +9,7 @@ import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 internal class MipsAssemblySyntaxErrorFilter : HighlightErrorFilter() {
     override fun shouldHighlightErrorElement(element: PsiErrorElement): Boolean {
         val file = element.containingFile as? MipsFile ?: return true
-        return !file.project.service<MarsAnalysisService>().defersContextDependentError(file, element)
+        val analysis = file.project.service<MarsAnalysisService>()
+        return !supersededMacroFormalError(file, element, analysis) && !analysis.defersContextDependentError(file, element)
     }
 }

@@ -10,6 +10,7 @@ import com.intellij.modcommand.Presentation
 import com.intellij.modcommand.PsiBasedModCommandAction
 import com.intellij.openapi.components.service
 import com.intellij.openapi.progress.ProgressManager
+import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiErrorElement
@@ -45,13 +46,14 @@ internal class MipsMacroDiagnosticAnnotator : Annotator {
         for (macro in timeline.localMacros(file).values) {
             ProgressManager.checkCanceled()
             val invalid = macro.invalidFormal ?: continue
-            // A physical syntax error on this header already explains the rejected parameter list.
-            if (PsiTreeUtil.hasErrorElements(macro.header)) continue
             val site = file.findElementAt(invalid.offset)!!
-            if (PsiTreeUtil.getParentOfType(site, PsiErrorElement::class.java) != null) continue
+            val range = macroDiagnosticRange(site, invalid.lastOffset)
+            val physicalError = PsiTreeUtil.getParentOfType(site, PsiErrorElement::class.java)
+            if (physicalError != null && !physicalError.isSupersededFormalError(range)) continue
             if (!hasEntry) return
+            if (timeline.prefix(file, sourceLineStart(site)).hasIncompleteIncludes) continue
             holder.newAnnotation(HighlightSeverity.ERROR, bundle.getMessage("syntax.macro.formal.expanded", invalid.value))
-                .range(macroDiagnosticRange(site, invalid.lastOffset)).create()
+                .range(range).create()
         }
         for ((offset, kind, lastOffset) in timeline.macroBoundaryProblems(file)) {
             ProgressManager.checkCanceled()
@@ -77,6 +79,21 @@ internal class MipsMacroDiagnosticAnnotator : Annotator {
 
 private fun macroDiagnosticRange(site: PsiElement, lastOffset: Int): TextRange =
     site.textRange.union(site.containingFile.findElementAt(lastOffset)!!.textRange)
+
+internal fun supersededMacroFormalError(file: MipsFile, error: PsiErrorElement, analysis: MarsAnalysisService): Boolean {
+    if (error.errorDescription != bundle.getMessage("syntax.macro.formal.invalid")) return false
+    if (DumbService.isDumb(file.project)) return false
+    val timeline = analysis.editorTimeline(file)
+    val invalid = timeline.localMacros(file)[error.parent]?.invalidFormal ?: return false
+    val site = file.findElementAt(invalid.offset)!!
+    val range = macroDiagnosticRange(site, invalid.lastOffset)
+    return error.isSupersededFormalError(range) &&
+        !timeline.prefix(file, sourceLineStart(error)).hasIncompleteIncludes && hasAssemblyEntry(file, analysis)
+}
+
+private fun PsiErrorElement.isSupersededFormalError(effective: TextRange): Boolean =
+    errorDescription == bundle.getMessage("syntax.macro.formal.invalid") &&
+        (effective.startOffset < textRange.startOffset || effective.endOffset > textRange.endOffset)
 
 private class CommentOutUnmatchedMacroEnd(site: PsiElement) : PsiBasedModCommandAction<PsiElement>(site) {
     override fun getFamilyName(): String = bundle.getMessage("syntax.macro.end.commentUnmatched")

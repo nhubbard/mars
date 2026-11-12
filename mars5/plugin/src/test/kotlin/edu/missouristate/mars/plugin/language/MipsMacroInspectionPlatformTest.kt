@@ -9,6 +9,9 @@ import com.intellij.openapi.components.service
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
 import com.intellij.psi.PsiDocumentManager
+import com.intellij.psi.PsiErrorElement
+import com.intellij.psi.util.PsiTreeUtil
+import com.intellij.testFramework.DumbModeTestUtils
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
@@ -833,6 +836,76 @@ class MipsMacroInspectionPlatformTest {
     }
 
     @Test
+    fun `the first rejected formal takes precedence over a later parser error`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val source = """
+                .eqv FORM 7
+                .eqv SEVEN 7
+                .macro ordinary (%kept, rejected, 9)
+                .end_macro
+                .macro expanded (FORM, 9)
+                .end_macro
+                .macro signed (-SEVEN, 9)
+                .end_macro
+                nop
+            """.trimIndent()
+            val project = projectFixture.get()
+            val entry = directory.resolve("first-invalid-formal.mars").also { it.writeText(source) }
+            val context = project.service<MarsSessionService>().context
+            val failure = assertThrows<ProcessingException> { context.assemble(listOf(entry)) }
+            assertEquals(listOf("rejected", "7", "-7").map { "Invalid macro argument '$it'" },
+                failure.errors().errorMessages.map { it.message })
+            withContext(Dispatchers.EDT) { fixture.configureByText("first-invalid-formal.mars", source) }
+            IndexingTestUtil.suspendUntilIndexesAreReady(project)
+            withContext(Dispatchers.EDT) {
+                assertEquals(
+                    listOf(
+                        "rejected" to "Invalid MARS macro parameter 'rejected'",
+                        "FORM" to "Invalid MARS macro parameter '7'",
+                        "-SEVEN" to "Invalid MARS macro parameter '-7'",
+                    ),
+                    errors(),
+                )
+                val physicalError = PsiTreeUtil.findChildOfType(fixture.file, PsiErrorElement::class.java)!!
+                DumbModeTestUtils.runInDumbModeSynchronously(project) {
+                    assertTrue(MipsAssemblySyntaxErrorFilter().shouldHighlightErrorElement(physicalError))
+                }
+                WriteCommandAction.runWriteCommandAction(project) {
+                    fixture.editor.document.setText(source.replace(".eqv FORM 7", ".eqv FORM %accepted"))
+                }
+                assertEquals("9" to "Invalid MARS macro parameter", errors()[1])
+            }
+        }
+
+    @Test
+    fun `an earlier unresolved include leaves the physical formal diagnostic available`() = timeoutRunBlocking<Unit> {
+        val source = ".include \"formals.inc\"\n.macro emit (FORM, 9)\nnop\n.end_macro\n"
+        val project = projectFixture.get()
+        withContext(Dispatchers.EDT) {
+            val file = fixture.addFileToProject("waiting.mars", source)
+            fixture.configureFromExistingVirtualFile(file.virtualFile)
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        withContext(Dispatchers.EDT) {
+            assertEquals(listOf("9" to "Invalid MARS macro parameter"), errors().filter { "macro parameter" in it.second })
+            fixture.addFileToProject("formals.inc", ".eqv FORM 7\n")
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        withContext(Dispatchers.EDT) {
+            assertEquals(listOf("FORM" to "Invalid MARS macro parameter '7'"), errors())
+        }
+    }
+
+    @Test
+    fun `a nested macro header has no effective formal to replace its parser error`() = timeoutRunBlocking<Unit> {
+        withContext(Dispatchers.EDT) {
+            fixture.configureByText("nested-invalid-formal.mars", ".macro outer\n.macro inner (9)\n.end_macro\n")
+            val error = PsiTreeUtil.findChildOfType(fixture.file, PsiErrorElement::class.java)!!
+            assertTrue(MipsAssemblySyntaxErrorFilter().shouldHighlightErrorElement(error))
+        }
+    }
+
+    @Test
     fun `invalid expanded formals point to their written tokens and refresh after edits`() = timeoutRunBlocking<Unit> {
         val source = """
             .eqv FORMS %kept, 7, 8
@@ -886,18 +959,18 @@ class MipsMacroInspectionPlatformTest {
         val (valid, invalid) = withContext(Dispatchers.EDT) {
             val first = fixture.addFileToProject("valid.asm", ".eqv FORM %value\n.include \"shared.s\"\n")
             val second = fixture.addFileToProject("invalid.asm", ".eqv FORM 17\n.include \"shared.s\"\n")
-            val shared = fixture.addFileToProject("shared.s", ".macro emit (FORM)\nnop\n.end_macro\n")
+            val shared = fixture.addFileToProject("shared.s", ".macro emit (FORM, 9)\nnop\n.end_macro\n")
             fixture.configureFromExistingVirtualFile(shared.virtualFile)
             first.virtualFile to second.virtualFile
         }
         IndexingTestUtil.suspendUntilIndexesAreReady(current)
         withContext(Dispatchers.EDT) {
-            assertTrue(errors().isEmpty())
+            assertEquals(listOf("9" to "Invalid MARS macro parameter"), errors())
             val settings = current.service<MarsAssemblySettings>()
             settings.changeSources(listOf(invalid.path))
             assertEquals(listOf("FORM" to "Invalid MARS macro parameter '17'"), errors())
             settings.changeSources(listOf(valid.path))
-            assertTrue(errors().isEmpty())
+            assertEquals(listOf("9" to "Invalid MARS macro parameter"), errors())
         }
     }
 
