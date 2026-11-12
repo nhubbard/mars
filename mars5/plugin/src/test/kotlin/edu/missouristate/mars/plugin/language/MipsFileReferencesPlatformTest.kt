@@ -290,6 +290,7 @@ class MipsFileReferencesPlatformTest {
             Include("""C:\parts\child.s""", true, listOf("parts", "child.s")),
             Include("C:/parts//child.s", true, listOf("parts", "child.s")),
             Include("C:/", true, listOf("C:/")),
+            Include("//", true, listOf("//")),
             Include("""\\server""", true, listOf("""\\server""")),
             Include("""\\server\share""", true, listOf("""\\server\share""")),
             Include("""\\server\share\parts\child.s""", true, listOf("parts", "child.s")),
@@ -312,7 +313,26 @@ class MipsFileReferencesPlatformTest {
                 }
             }
             assertEquals(child, sets.first().allReferences.last().resolve())
-            if (!SystemInfoRt.isWindows) assertTrue(sets[3].defaultContexts.isEmpty())
+            val missingRoot = if (SystemInfoRt.isWindows) "//" else "C:/"
+            assertTrue(sets.single { it.pathString == missingRoot }.defaultContexts.isEmpty())
+        }
+    }
+
+    @Test
+    fun `POSIX include paths preserve literal backslashes and slash roots`() = timeoutRunBlocking<Unit> {
+        readAction {
+            val paths = listOf("""parts\child.s""", "/parts//child.s")
+            val file = PsiFileFactory.getInstance(project.get()).createFileFromText(
+                "posix.asm", MipsFileType, paths.joinToString("\n") { ".include \"$it\"" },
+            )
+            val literals = PsiTreeUtil.findChildrenOfType(file, MipsStringLiteral::class.java).toList()
+            assertEquals(paths, literals.map { it.text.substring(1, it.textLength - 1) })
+            val relative = MipsFileReferenceSet(paths[0], literals[0], windowsPaths = false)
+            assertFalse(relative.isAbsolutePathReference)
+            assertEquals(listOf(paths[0]), relative.allReferences.map { it.canonicalText })
+            val absolute = MipsFileReferenceSet(paths[1], literals[1], windowsPaths = false)
+            assertTrue(absolute.isAbsolutePathReference)
+            assertEquals(listOf("parts", "child.s"), absolute.allReferences.map { it.canonicalText })
         }
     }
 
