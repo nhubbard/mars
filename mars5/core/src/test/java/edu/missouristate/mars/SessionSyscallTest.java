@@ -258,7 +258,7 @@ class SessionSyscallTest {
           li $v0, 10
           syscall
           """
-              .formatted(output));
+              .formatted(output.toString().replace("\\", "\\\\").replace("\"", "\\\"")));
       assertThat(session.assemble(List.of(source)).simulate(200)).isTrue();
       assertThat(Files.readAllBytes(output)).containsExactly(65, 0, 66);
       assertThat(session.registerFile.getValue(16)).isEqualTo(3);
