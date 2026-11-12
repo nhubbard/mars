@@ -267,7 +267,7 @@ internal class MipsSourceTimeline(
         files.getValue(file.viewProvider.virtualFile).localMacroBodies
 
     fun macroBoundaryProblems(file: MipsFile): List<MacroBoundaryProblem> =
-        files.getValue(file.viewProvider.virtualFile).macroBoundaryProblems
+        files[file.viewProvider.virtualFile]?.macroBoundaryProblems.orEmpty()
 
     fun localMacros(file: MipsFile): Map<PsiElement, Begin> =
         files.getValue(file.viewProvider.virtualFile).localMacros

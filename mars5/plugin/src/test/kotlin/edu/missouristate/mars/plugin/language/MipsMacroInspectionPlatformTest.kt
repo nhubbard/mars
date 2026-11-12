@@ -15,6 +15,7 @@ import com.intellij.testFramework.junit5.TestApplication
 import edu.missouristate.mars.ProcessingException
 import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
+import edu.missouristate.mars.plugin.analysis.mipsSourceTimeline
 import edu.missouristate.mars.plugin.build.MarsAssemblySettings
 import edu.missouristate.mars.plugin.build.MarsBuildService
 import edu.missouristate.mars.plugin.language.inspection.MipsMacroParameterInspection
@@ -253,6 +254,94 @@ class MipsMacroInspectionPlatformTest {
                 assertEquals(emptyList<Pair<String, String>>(), errors())
             }
         }
+
+    @Test
+    fun `commenting out an unmatched macro closer preserves a separately written label`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val project = projectFixture.get()
+            val repaired = withContext(Dispatchers.EDT) {
+                val direct = "  .end_<caret>macro # keep\ntarget: nop\nj target\n"
+                val aliased = ".eqv CLOSE .end_macro\ntarget: CL<caret>OSE # keep\nnop\nj target\n"
+                listOf(direct to ".end_macro", aliased to "CLOSE").map { (source, closer) ->
+                    fixture.configureByText("unmatched-end.mars", source)
+                    assertEquals(listOf(unmatchedEndMessage), errors().map { it.second })
+                    val action = fixture.availableIntentions.single { it.text == commentUnmatchedEnd }
+                    val fixed = source.replace("<caret>", "").replace("$closer # keep", "# $closer # keep")
+                    fixture.launchAction(action)
+                    assertEquals(fixed, fixture.editor.document.text)
+                    assertTrue(errors().isEmpty())
+                    val command = checkNotNull(action.asModCommandAction())
+                    val context = ActionContext.from(fixture.editor, fixture.file)
+                    assertEquals(null, command.getPresentation(context))
+                    assertTrue(command.perform(context).isEmpty)
+                    fixed
+                }
+            }
+            val context = project.service<MarsSessionService>().context
+            for ((index, source) in repaired.withIndex()) {
+                val entry = directory.resolve("unmatched-$index.mars").also { it.writeText(source) }
+                assertEquals(listOf(0, 0x08100000), context.assemble(listOf(entry)).machineList.map { it.binaryStatement })
+            }
+        }
+
+    @Test
+    fun `an unmatched closer fix cannot discard a label supplied by the same alias`() = timeoutRunBlocking<Unit> {
+        withContext(Dispatchers.EDT) {
+            for (source in listOf(
+                ".eqv CLOSE target: .end_macro\nCL<caret>OSE\n",
+                ".eqv CLOSE : .end_macro\ntarget CL<caret>OSE\n",
+            )) {
+                fixture.configureByText("compound-closer.mars", source)
+                assertEquals(listOf("CLOSE" to unmatchedEndMessage), errors())
+                assertTrue(fixture.availableIntentions.none { it.text == commentUnmatchedEnd })
+            }
+        }
+    }
+
+    @Test
+    fun `an unmatched closer fix checks other entries sharing the included source`() = timeoutRunBlocking<Unit> {
+        val project = projectFixture.get()
+        val includeLine = ".include \"shared-end.inc\"\n"
+        val matched = ".macro emit\n$includeLine"
+        val (entry, other) = withContext(Dispatchers.EDT) {
+            val include = fixture.addFileToProject("shared-end.inc", ".end_macro\n")
+            val root = fixture.addFileToProject("unmatched-entry.mars", includeLine)
+            val alternative = fixture.addFileToProject("other-entry.mars", matched)
+            fixture.configureFromExistingVirtualFile(include.virtualFile)
+            fixture.editor.caretModel.moveToOffset(1)
+            root to alternative
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        withContext(Dispatchers.EDT) {
+            val documents = PsiDocumentManager.getInstance(project)
+            fun updateOtherEntry(text: String) {
+                WriteCommandAction.runWriteCommandAction(project) { documents.getDocument(other)!!.setText(text) }
+                documents.commitAllDocuments()
+            }
+            val settings = project.service<MarsAssemblySettings>()
+            settings.changeSources(listOf(entry.virtualFile.path))
+            assertEquals(listOf(".end_macro" to unmatchedEndMessage), errors())
+            assertTrue(fixture.availableIntentions.none { it.text == commentUnmatchedEnd })
+            updateOtherEntry(includeLine)
+            assertEquals(listOf(".end_macro" to unmatchedEndMessage), errors())
+            val action = fixture.availableIntentions.single { it.text == commentUnmatchedEnd }
+            val context = ActionContext.from(fixture.editor, fixture.file)
+            val command = checkNotNull(action.asModCommandAction())
+            settings.changeSources(emptyList())
+            assertEquals(null, command.getPresentation(context))
+            assertTrue(command.perform(context).isEmpty)
+            settings.changeSources(listOf(entry.virtualFile.path))
+            updateOtherEntry(matched)
+            assertEquals(null, command.getPresentation(context))
+            assertTrue(command.perform(context).isEmpty)
+            updateOtherEntry("nop\n")
+            assertTrue(mipsSourceTimeline(other as MipsFile).macroBoundaryProblems(fixture.file as MipsFile).isEmpty())
+            updateOtherEntry(includeLine)
+            fixture.launchAction(action)
+            assertEquals("# .end_macro\n", fixture.editor.document.text)
+            assertTrue(errors().isEmpty())
+        }
+    }
 
     @Test
     fun `an invalid expanded label does not expose a trailing closer as an operation`() = timeoutRunBlocking<Unit> {
@@ -777,6 +866,7 @@ class MipsMacroInspectionPlatformTest {
 
     private val trailingCloseMessage = "Unexpected text after .end_macro"
     private val unmatchedEndMessage = ".end_macro without a matching .macro"
+    private val commentUnmatchedEnd = "Comment out unmatched .end_macro"
     private val missingEndMessage = "Missing .end_macro for this macro"
     private val nestedMacroMessage = "Nested macros are not allowed"
     private val invalidNameMessage = "Invalid MARS macro name"

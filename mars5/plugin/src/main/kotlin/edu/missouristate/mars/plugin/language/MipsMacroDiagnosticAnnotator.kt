@@ -12,6 +12,7 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiErrorElement
+import com.intellij.psi.PsiManager
 import com.intellij.psi.util.PsiTreeUtil
 import edu.missouristate.mars.ErrorList
 import edu.missouristate.mars.assembler.Directives
@@ -19,8 +20,10 @@ import edu.missouristate.mars.assembler.Tokenizer
 import edu.missouristate.mars.plugin.analysis.MacroBoundaryProblem
 import edu.missouristate.mars.plugin.analysis.MacroBoundaryProblem.Kind
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
+import edu.missouristate.mars.plugin.analysis.MipsSourceTimeline
 import edu.missouristate.mars.plugin.analysis.discardTrailingComment
 import edu.missouristate.mars.plugin.analysis.mipsAssemblyRoots
+import edu.missouristate.mars.plugin.analysis.mipsSourceTimeline
 import edu.missouristate.mars.plugin.analysis.sourceLine
 import edu.missouristate.mars.plugin.analysis.sourceLineStart
 
@@ -64,8 +67,51 @@ internal class MipsMacroDiagnosticAnnotator : Annotator {
             val annotation = holder.newAnnotation(HighlightSeverity.ERROR, bundle.getMessage(message)).range(site.textRange)
             if (kind == Kind.MISSING_END) annotation.withFix(CloseUnterminatedMacro(site))
             if (kind == Kind.TRAILING_TEXT) annotation.withFix(CommentAfterMacroEnd(site))
+            if (kind == Kind.UNMATCHED_END) annotation.withFix(CommentOutUnmatchedMacroEnd(site))
             annotation.create()
         }
+    }
+}
+
+private class CommentOutUnmatchedMacroEnd(site: PsiElement) : PsiBasedModCommandAction<PsiElement>(site) {
+    override fun getFamilyName(): String = bundle.getMessage("syntax.macro.end.commentUnmatched")
+
+    override fun getPresentation(context: ActionContext, element: PsiElement): Presentation? =
+        commentOffset(element)?.let { Presentation.of(familyName) }
+
+    override fun perform(context: ActionContext, element: PsiElement): ModCommand {
+        val offset = commentOffset(element) ?: return ModCommand.nop()
+        return ModCommand.psiUpdate(element.containingFile) { writable ->
+            writable.viewProvider.document!!.insertString(offset, "# ")
+        }
+    }
+
+    private fun commentOffset(element: PsiElement): Int? {
+        val file = element.containingFile as MipsFile
+        val analysis = file.project.service<MarsAnalysisService>()
+        if (!hasAssemblyEntry(file, analysis)) return null
+        val timeline = analysis.editorTimeline(file)
+        val offset = element.textOffset
+        if (!canComment(file, element, timeline)) return null
+        // An included closer can be stray for one entry and close a real macro in another.
+        for (root in mipsAssemblyRoots(file)) {
+            if (root == timeline.entryFile.viewProvider.virtualFile) continue
+            val entry = PsiManager.getInstance(file.project).findFile(root) as MipsFile
+            if (!canComment(file, element, mipsSourceTimeline(entry))) return null
+        }
+        return offset
+    }
+
+    private fun canComment(file: MipsFile, element: PsiElement, timeline: MipsSourceTimeline): Boolean {
+        val offset = element.textOffset
+        if (MacroBoundaryProblem(offset, Kind.UNMATCHED_END) !in timeline.macroBoundaryProblems(file)) return false
+        val start = sourceLineStart(element)
+        val prefix = timeline.prefix(file, start)
+        val line = sourceLine(element, fromLineStart = true)
+        val mapped = Tokenizer.tokenizeMappedLine(line, ErrorList(), { prefix.equivalence(it)?.replacement }, ProgressManager::checkCanceled)
+        val tokens = mapped.tokens()
+        // Keep the entire label, including its colon, if an alias supplies part of it.
+        return !tokens.beginsWithLabel() || start + mapped.originalOffset(tokens[1].startPos - 1) < offset
     }
 }
 
