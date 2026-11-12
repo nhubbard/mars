@@ -12,7 +12,6 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.util.text.StringUtil
-import com.intellij.psi.PsiManager
 import com.intellij.psi.SyntaxTraverser
 import com.intellij.psi.TokenType
 import com.intellij.psi.formatter.DocumentBasedFormattingModel
@@ -26,8 +25,7 @@ import edu.missouristate.mars.plugin.analysis.FormattingLine
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.analysis.MipsSourceTimeline
 import edu.missouristate.mars.plugin.analysis.OperandParenthesis
-import edu.missouristate.mars.plugin.analysis.mipsAssemblyRoots
-import edu.missouristate.mars.plugin.analysis.mipsSourceTimeline
+import edu.missouristate.mars.plugin.analysis.includingMipsTimelines
 import edu.missouristate.mars.plugin.analysis.sourceLineStart
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.MipsTypes
@@ -41,12 +39,7 @@ internal class MipsFormattingModelBuilder : FormattingModelBuilder {
         val timelines = lazy(LazyThreadSafetyMode.NONE) {
             if (DumbService.isDumb(file.project)) return@lazy null
             val primary = analysis.editorTimeline(file)
-            val psi = PsiManager.getInstance(file.project)
-            val alternatives = mipsAssemblyRoots(file).asSequence()
-                .filter { it != file.viewProvider.virtualFile }
-                .map { mipsSourceTimeline(psi.findFile(it) as MipsFile) }
-                .filter { it !== primary && it.includes(file) }
-                .toList()
+            val alternatives = includingMipsTimelines(file).filter { it !== primary }.toList()
             FormattingTimelines(primary, alternatives)
         }
         val root = MipsBlock(file.node, Indent.getNoneIndent(), file.viewProvider.contents, analysis, timelines)

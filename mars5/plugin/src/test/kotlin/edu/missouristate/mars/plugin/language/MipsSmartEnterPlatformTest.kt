@@ -14,6 +14,7 @@ import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.build.MarsAssemblySettings
+import edu.missouristate.mars.plugin.build.MarsBuildService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -143,6 +144,75 @@ class MipsSmartEnterPlatformTest {
         }
 
     @Test
+    fun `complete statement preserves a valid macro invocation in another entry`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val current = project.get()
+            val incomplete = ".macro emit (%value)\n.end_macro\n.include \"shared.inc\"\n"
+            val valid = ".macro emit (%raw, %value)\naddiu \$t0, \$zero, %value\n.end_macro\n.include \"shared.inc\"\n"
+            val shared = "emit(7\n"
+            val selected = withContext(Dispatchers.EDT) {
+                val entry = fixture.addFileToProject("incomplete.mars", incomplete)
+                fixture.addFileToProject("valid.mars", valid)
+                fixture.addFileToProject("shared.inc", shared)
+                entry.virtualFile.toNioPath()
+            }
+            IndexingTestUtil.suspendUntilIndexesAreReady(current)
+            assertEquals(false, current.service<MarsBuildService>().assemble(selected))
+            val result = withContext(Dispatchers.EDT) {
+                val included = fixture.findFileInTempDir("shared.inc")!!
+                fixture.configureFromExistingVirtualFile(included)
+                fixture.editor.caretModel.moveToOffset(shared.indexOf('7') + 1)
+                complete()
+                assertEquals(listOf("emit(7", "", ""), lines())
+                fixture.file.text
+            }
+            directory.resolve("shared.inc").writeText(result)
+            val entry = directory.resolve("valid.mars").also { it.writeText(valid) }
+            val context = current.service<MarsSessionService>().context
+            assertEquals(listOf(0x24080007), context.assemble(listOf(entry)).machineList.map { it.binaryStatement })
+        }
+
+    @Test
+    fun `complete statement repairs a shared operand when every entry agrees`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val current = project.get()
+            val stack = ".eqv FETCH lw\n.eqv BASE \$sp\n.include \"operand.inc\"\n"
+            val frame = stack.replace("\$sp", "\$fp")
+            val operand = "FETCH \$t0, 4(BASE"
+            val shared = withContext(Dispatchers.EDT) {
+                fixture.addFileToProject("stack.mars", stack)
+                fixture.addFileToProject("frame.mars", frame)
+                fixture.addFileToProject("operand.inc", "$operand\n").virtualFile.also {
+                    fixture.configureFromExistingVirtualFile(it)
+                }
+            }
+            IndexingTestUtil.suspendUntilIndexesAreReady(current)
+            val repaired = withContext(Dispatchers.EDT) {
+                fixture.editor.caretModel.moveToOffset(operand.length)
+                complete()
+                assertEquals(listOf("$operand)", "", ""), lines())
+                fixture.file.text.also {
+                    UndoManager.getInstance(current).undo(FileEditorManager.getInstance(current).selectedEditor)
+                    PsiDocumentManager.getInstance(current).commitAllDocuments()
+                }
+            }
+            assertEquals(false, current.service<MarsBuildService>().assemble(shared.toNioPath()))
+            withContext(Dispatchers.EDT) {
+                fixture.editor.caretModel.moveToOffset(operand.length)
+                complete()
+                assertEquals(listOf(operand, "", ""), lines())
+            }
+            directory.resolve("operand.inc").writeText(repaired)
+            val context = current.service<MarsSessionService>().context
+            for ((name, source, encoding) in listOf(
+                Triple("stack.mars", stack, 0x8fa80004.toInt()), Triple("frame.mars", frame, 0x8fc80004.toInt()),
+            )) {
+                val entry = directory.resolve(name).also { it.writeText(source) }
+                assertEquals(listOf(encoding), context.assemble(listOf(entry)).machineList.map { it.binaryStatement })
+            }
+        }
+
+    @Test
     fun `complete statement leaves source alone when no safe delimiter is missing`() = timeoutRunBlocking<Unit> {
         withContext(Dispatchers.EDT) {
             for (source in listOf(
@@ -151,6 +221,7 @@ class MipsSmartEnterPlatformTest {
                 ".asciiz \"path<caret>",
                 "lw ${'$'}t0, 0(${'$'}sp)<caret>",
                 "lw ${'$'}t0, 0(<caret>",
+                "emit<caret>",
                 "emit (${'$'}sp<caret>",
                 ".word ${'$'}sp<caret>",
                 "add ${'$'}t0, ${'$'}t1, (${'$'}sp<caret>",

@@ -36,6 +36,7 @@ import edu.missouristate.mars.api.InstructionSourceMap.Location
 import edu.missouristate.mars.assembler.DataTypes
 import edu.missouristate.mars.assembler.Directives
 import edu.missouristate.mars.assembler.Macro
+import edu.missouristate.mars.assembler.OperandFormat
 import edu.missouristate.mars.assembler.Token
 import edu.missouristate.mars.assembler.TokenList
 import edu.missouristate.mars.assembler.TokenTypes
@@ -48,6 +49,7 @@ import edu.missouristate.mars.plugin.language.mipsAssemblySourceOrigin
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.MipsFileType
 import edu.missouristate.mars.plugin.language.MipsTypes
+import edu.missouristate.mars.plugin.language.enabledInstructionFormats
 import edu.missouristate.mars.plugin.language.index.MipsDeclarationIndex
 import edu.missouristate.mars.plugin.language.index.MipsDeclarationSite
 import edu.missouristate.mars.plugin.language.index.MipsReferenceIndex
@@ -501,20 +503,39 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         return MacroInvocation(tokens, fullTokens, definitions.values.map { definition -> definition.parameters.map { it.value } })
     }
 
-    internal fun closesMacroInvocation(root: MipsFile, head: PsiElement, source: String): Boolean {
+    internal fun closesStatementOperand(file: MipsFile, head: PsiElement, source: String): Boolean {
         if (DumbService.isDumb(project)) return false
-        val prefix = editorPrefix(root, sourceLineStart(head))
-        if (prefix.openMacro != null) return false
+        val including = includingMipsTimelines(file).toSet()
+        val primary = editorTimeline(file)
+        // An unselected shared include has no standalone assembly context.
+        val contexts = if (including.isNotEmpty() && primary === mipsSourceTimeline(file) && selectedAssembly(file) == null) {
+            including
+        } else {
+            including + primary
+        }
         val written = writtenOperationPrefix(head, source)
+        val start = sourceLineStart(head)
+        val options = settings.executionOptions
+        return contexts.all { closesOperandIn(it.prefix(file, start), written, options) }
+    }
+
+    private fun closesOperandIn(prefix: MipsSourceTimeline.Prefix, written: String, options: MarsExecutionOptions): Boolean {
         val errors = ErrorList()
         val expanded = Tokenizer.expandLine("$written)", errors, { prefix.equivalence(it)?.replacement }, ProgressManager::checkCanceled)
         // A positional .eqv can absorb the delimiter into its replacement text.
         if (errors.errorsOccurred() || expanded.definition() != null) return false
         val completed = expanded.tokens().operationTokens()
-        if (!Macro.hasCallParentheses(completed)) return false
+        if (completed.size() < 3) return false
         val last = completed.size() - 1
-        // An alias can expose a comment that swallows the proposed delimiter.
-        if (completed[last].originalStartPos != written.length + 1 || prefix.matchingMacro(completed, 0) == null) return false
+        // An alias can expose a comment or quote that swallows the proposed delimiter.
+        if (completed[last].originalStartPos != written.length + 1) return false
+        if (completed[0].type == TokenTypes.OPERATOR) {
+            return enabledInstructionFormats(completed[0].value, options.allowPseudoInstructions).any { format ->
+                completed.size() == format.tokenList.size() &&
+                    OperandFormat.matchesOperands(completed, format, 1, completed.size(), options.bareMachine)
+            }
+        }
+        if (prefix.openMacro != null || !Macro.hasCallParentheses(completed) || prefix.matchingMacro(completed, 0) == null) return false
         completed.remove(last)
         // MARS can treat the opening parenthesis as an argument in an unwrapped call.
         return !Macro.hasCallParentheses(completed) && prefix.matchingMacro(completed, 0) == null

@@ -325,8 +325,10 @@ written memory operand when adding `)` after the base register produces a
 valid form for the written mnemonic. For example, `lw $t0, -4($sp` becomes
 `lw $t0, -4($sp)`. It inserts the delimiter before any inline comment.
 IntelliJ then starts a new line using the editor's indentation rules, and
-Undo restores both edits together. Macro calls, aliased mnemonics and
-ambiguous operands use the ordinary Start New Line behavior.
+Undo restores both edits together. The command also recognizes aliased
+instructions and macro overloads. In a shared include, every known assembly
+entry must agree before it inserts a closing parenthesis. During indexing,
+the command can still close a physical include quote.
 
 ## Mnemonic and directive completion
 

@@ -61,6 +61,16 @@ internal fun mipsAssemblyRoots(project: Project, selected: VirtualFile): List<Vi
 
 internal fun mipsAssemblyRoots(file: MipsFile): List<VirtualFile> = assemblyAncestors(file).roots
 
+/** Indexed includers are candidates until the assembler's include traversal reaches this file. */
+internal fun includingMipsTimelines(file: MipsFile): Sequence<MipsSourceTimeline> {
+    val original = file.assemblySourceOriginalFile()
+    val psi = PsiManager.getInstance(file.project)
+    return mipsAssemblyRoots(file).asSequence()
+        .filter { it != original }
+        .map { mipsSourceTimeline(psi.findFile(it) as MipsFile) }
+        .filter { it.includes(file) }
+}
+
 private fun assemblyAncestors(project: Project, selected: VirtualFile): AssemblyAncestors {
     val manager = FileIncludeManager.getManager(project)
     val psi = PsiManager.getInstance(project)
