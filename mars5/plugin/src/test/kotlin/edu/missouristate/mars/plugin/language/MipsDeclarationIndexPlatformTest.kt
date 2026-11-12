@@ -107,17 +107,23 @@ class MipsDeclarationIndexPlatformTest {
                 fixture.addFileToProject("hidden.s", "'a .include \"part.s\"")
                 fixture.addFileToProject("incomplete.s", ".include \"unfinished")
                 fixture.addFileToProject("recovery.s", ".macro ghost .include \"unfinished")
+                fixture.addFileToProject(
+                    "labeled-recovery.s", "discarded: .macro ghost .include \"unfinished\nvisible: nop",
+                )
                 fixture.addFileToProject("discarded-equivalence.s", "@ .eqv VALUE .include \"unfinished")
             }
         }
         IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
         readAction {
+            val index = FileBasedIndex.getInstance()
+            val scope = GlobalSearchScope.projectScope(project.get())
+            assertTrue(index.getContainingFiles(MipsDeclarationIndex.NAME, "discarded", scope).isEmpty())
+            assertTrue(index.getContainingFiles(MipsDeclarationIndex.NAME, "ghost", scope).isEmpty())
+            val visible = index.getValues(MipsDeclarationIndex.NAME, "visible", scope).flatten().single()
+            assertEquals(-1, visible.macroOffset)
             assertEquals(
                 setOf(recognized),
-                FileBasedIndex.getInstance().getContainingFiles(
-                    MipsDeclarationIndex.NAME, MipsDeclarationIndex.EXPANSION_SEED,
-                    GlobalSearchScope.projectScope(project.get()),
-                ).toSet(),
+                index.getContainingFiles(MipsDeclarationIndex.NAME, MipsDeclarationIndex.EXPANSION_SEED, scope).toSet(),
             )
         }
     }
@@ -139,7 +145,7 @@ class MipsDeclarationIndexPlatformTest {
             assertTrue(index.getContainingFiles(MipsDeclarationIndex.NAME, "ignored", scope).isEmpty())
             val extension = MipsDeclarationIndex()
             assertSame(MipsDeclarationIndex.NAME, extension.name)
-            assertEquals(32, extension.version)
+            assertEquals(33, extension.version)
             assertTrue(extension.dependsOnFileContent())
             assertTrue(extension.inputFilter.acceptInput(file.virtualFile))
             assertTrue(extension.keyDescriptor.isEqual("key", "key"))

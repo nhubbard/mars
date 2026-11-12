@@ -1137,17 +1137,17 @@ errors.
 The parser recognizes an `INCLUDE_LINE` when the assembler's include prepass would replace the
 physical line. It preserves the full token sequence and avoids producing declaration or instruction
 nodes for the replaced prefix. A valid include on a macro closing line takes precedence over the
-physical closing token. Incomplete include directives still have ordinary directive PSI.
+physical closing token. An incomplete include with an ordinary prefix retains its directive PSI.
 
 The file-local annotator reports an unfinished quoted include at the path itself, even
 when the open file belongs to multiple possible entries. It uses the same physical
 operand and quote offsets as the assembler. IntelliJ runs this check during indexing.
-When a line starts with a malformed token or a macro boundary before an
-unfinished include, the parser keeps the path together and leaves the
-surrounding macro scope intact. Invalid tokens retain their own error
-ranges. The declaration and reference indexes rebuild for this behavior.
-Its standard external annotation pass waits for the local error to clear. Closing the
-quote removes the error and makes the path eligible for references and include traversal.
+When a malformed token or macro boundary appears before an unfinished
+include, with or without a leading label, the parser keeps the path together
+and leaves the surrounding macro scope intact. Invalid tokens retain their
+own error ranges. The declaration and reference indexes rebuild for this behavior.
+The external assembly annotator waits for the local error to clear. Closing
+the quote removes the error and enables references and include traversal.
 Basic Completion also suggests filenames while the quote is open. The editor
 uses IntelliJ's native path completion on a temporary copy of the source.
 Selecting a filename leaves the original quote open for typing, Smart Enter,

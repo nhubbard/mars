@@ -558,6 +558,8 @@ class MipsParserPlatformTest {
             val cases = mapOf(
                 "@ .include \"unfinished" to listOf("@"),
                 ".macro ghost .include \"unfinished" to emptyList(),
+                "draft: .macro ghost .include \"unfinished" to emptyList(),
+                "nop: @ .include \"unfinished" to listOf("@"),
                 "'a#xx .include \"unfinished" to listOf("'a", "#xx "),
             )
             for ((line, expectedErrors) in cases) {
@@ -572,10 +574,15 @@ class MipsParserPlatformTest {
                 assertEquals("nop", descendants(file.node, "INSTRUCTION").single().text)
                 assertEquals(expectedErrors, PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java).map { it.text })
             }
-            val nested = assertParses(".macro outer\n.end_macro .include \"unfinished\ninside: nop\n.end_macro\noutside: nop\n")
+            val invocation = assertParses("call .include \"unfinished")
+            assertTrue(descendants(invocation.node, "INCLUDE_LINE").none())
+            val ordinary = assertParses("draft: .include \"unfinished")
+            assertEquals("draft:", descendants(ordinary.node, "LABEL").single().text)
+            assertTrue(descendants(ordinary.node, "INCLUDE_LINE").none())
+            val nested = assertParses(".macro outer\ninside: .end_macro .include \"unfinished\nkept: nop\n.end_macro\noutside: nop\n")
             val outer = descendants(nested.node, "MACRO_DEFINITION").single()
-            assertEquals(listOf("inside:"), descendants(outer, "LABEL").map { it.text }.toList())
-            assertEquals(".end_macro .include \"unfinished", descendants(outer, "INCLUDE_LINE").single().text)
+            assertEquals(listOf("kept:"), descendants(outer, "LABEL").map { it.text }.toList())
+            assertEquals("inside: .end_macro .include \"unfinished", descendants(outer, "INCLUDE_LINE").single().text)
         }
     }
 

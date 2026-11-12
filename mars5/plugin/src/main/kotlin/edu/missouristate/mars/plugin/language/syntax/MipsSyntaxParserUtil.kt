@@ -40,7 +40,7 @@ internal object DebuggerExpressionParsing : ParserUserState
 private val signs = setOf(PLUS, MINUS)
 private val repeatPrefixes = signs + setOf(NUMBER, CHARACTER, STRING)
 private val identifiers = setOf(WORD, DOLLAR_WORD)
-private val addressLabels = identifiers + setOf(MNEMONIC, PARAMETER)
+private val labelTokens = identifiers + setOf(MNEMONIC, PARAMETER)
 private val addressOffsets = setOf(NUMBER, CHARACTER, WORD, MNEMONIC, DOLLAR_WORD, PARAMETER, BAD_CHARACTER)
 private val addressBases = setOf(REGISTER, WORD, DOLLAR_WORD, PARAMETER)
 private val registerAliases = identifiers + PARAMETER
@@ -78,7 +78,7 @@ internal fun continueOperand(runtime: SyntaxGeneratedParserRuntime, level: Int):
     }
     val left = if (previous == COMMA) builder.previousToken(separators) else previous
     // The assembler accepts commas around the plus in a label offset.
-    if (previous == COMMA && (builder.tokenType != PLUS || left !in addressLabels)) return false
+    if (previous == COMMA && (builder.tokenType != PLUS || left !in labelTokens)) return false
     if (builder.tokenType !in signs || !builder.signTouchesNumber()) return true
     // An identifier can become a register or value during substitution. An adjacent sign
     // belongs to the following number unless a written instruction permits label + offset here.
@@ -139,7 +139,10 @@ internal fun isIncludeLine(runtime: SyntaxGeneratedParserRuntime, level: Int): B
     val start = builder.currentOffset
     val source = builder.text
     val include = inspectMipsInclude(source, start, CharArrayUtil.shiftForwardUntil(source, start, "\r\n")) ?: return false
-    return include.path() != null || builder.tokenType in unfinishedIncludeRecoveryHeads
+    if (include.path() != null || builder.tokenType in unfinishedIncludeRecoveryHeads) return true
+    // Like the statement rule, look past at most one leading label.
+    return builder.tokenType in labelTokens && builder.lookAhead(1) == COLON &&
+        builder.lookAhead(2) in unfinishedIncludeRecoveryHeads
 }
 
 internal fun inspectMipsInclude(source: CharSequence, start: Int, end: Int): Tokenizer.IncludePath? {
