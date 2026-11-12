@@ -523,8 +523,8 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         val errors = ErrorList()
         val expanded = Tokenizer.expandLine("$written)", errors, { prefix.equivalence(it)?.replacement }, ProgressManager::checkCanceled)
         // A positional .eqv can absorb the delimiter into its replacement text.
-        if (errors.errorsOccurred() || expanded.definition() != null) return false
-        val completed = expanded.tokens().operationTokens()
+        if (errors.errorsOccurred() || expanded.definition != null) return false
+        val completed = expanded.tokens.operationTokens()
         if (completed.size() < 3) return false
         val last = completed.size() - 1
         // An alias can expose a comment or quote that swallows the proposed delimiter.

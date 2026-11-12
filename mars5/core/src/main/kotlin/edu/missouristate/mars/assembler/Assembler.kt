@@ -39,7 +39,7 @@ class Assembler(private val context: AssemblyContext) {
         val symbolUses = AssemblySymbolUses()
         val first = FirstPassProcessor(context, checkCancellation, symbolUses)
         val errors = try {
-            first.process(programs, extended, warnings)
+            first.process(programs, extended)
         } catch (failure: ProcessingException) {
             errorList = failure.errors()
             throw failure

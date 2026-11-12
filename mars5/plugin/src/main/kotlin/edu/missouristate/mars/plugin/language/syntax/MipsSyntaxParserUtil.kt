@@ -151,7 +151,7 @@ internal fun isIncludeLine(runtime: SyntaxGeneratedParserRuntime, level: Int): B
     val start = builder.currentOffset
     val source = builder.text
     val include = inspectMipsInclude(source, start, CharArrayUtil.shiftForwardUntil(source, start, "\r\n")) ?: return false
-    if (include.path() != null || builder.tokenType in unfinishedIncludeRecoveryHeads) return true
+    if (include.path != null || builder.tokenType in unfinishedIncludeRecoveryHeads) return true
     // Like the statement rule, look past at most one leading label.
     return builder.tokenType in labelTokens && builder.lookAhead(1) == COLON &&
         builder.lookAhead(2) in unfinishedIncludeRecoveryHeads

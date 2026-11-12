@@ -76,7 +76,7 @@ internal fun MipsMacroFormal.checkedRenameSites(newName: String): Set<PsiElement
                 val references = lineTokens.filter { it.value == oldName }
                 if (references.isEmpty()) continue
                 if (!exclusive) throw formalRenameError("macro.rename.incomplete.scope")
-                if (expanded.expanded().definition() != null) throw formalRenameError("macro.rename.indirect.use")
+                if (expanded.expanded().definition != null) throw formalRenameError("macro.rename.indirect.use")
                 val positions = references.map { token ->
                     val column = token.originalStartPos - 1
                     val leaf = source.findElementAt(start + column)!!

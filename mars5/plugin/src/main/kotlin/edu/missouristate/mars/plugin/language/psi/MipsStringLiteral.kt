@@ -27,8 +27,8 @@ internal fun mipsIncludeSites(file: PsiFile): MipsIncludeSites = CachedValuesMan
     val paths = LinkedHashMap<Int, String>()
     val unterminated = LinkedHashMap<Int, Int>()
     forEachMipsInclude(file.node.chars) { start, include ->
-        val quote = start + include.offset()
-        val path = include.path()
+        val quote = start + include.offset
+        val path = include.path
         if (path == null) unterminated[quote] = start else paths[quote] = path
     }
     CachedValueProvider.Result.create(MipsIncludeSites(paths, unterminated), file)

@@ -29,10 +29,10 @@ class MipsIncludeProvider internal constructor(private val windowsPaths: Boolean
     override fun getIncludeInfos(content: FileContent): Array<FileIncludeInfo> {
         val includes = ArrayList<FileIncludeInfo>()
         forEachMipsInclude(content.contentAsText) { start, include ->
-            val path = include.path() ?: return@forEachMipsInclude
+            val path = include.path ?: return@forEachMipsInclude
             val normalized = if (windowsPaths) path.replace('\\', '/') else path
             val name = includeKey(normalized.substringAfterLast('/'))
-            includes.add(FileIncludeInfo(name, path, start + include.offset(), false))
+            includes.add(FileIncludeInfo(name, path, start + include.offset, false))
         }
         return includes.toTypedArray()
     }

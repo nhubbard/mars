@@ -206,9 +206,9 @@ private fun expandedDirective(
     val tokens = expanded.tokens()
     tokens.discardTrailingComment()
     val start = sourceLineStart(head)
-    expanded.expanded().definition()?.let {
+    expanded.expanded().definition?.let {
         val site = head.containingFile.findElementAt(start + expanded.equivalenceDirectiveOffset())!!
-        return MipsSourceEvent.Equivalence(site, it.name(), it.replacement())
+        return MipsSourceEvent.Equivalence(site, it.name, it.replacement)
     }
     val operation = tokens.operationIndex(inMacro)
     val directive = tokens.directiveAt(operation) ?: return null
