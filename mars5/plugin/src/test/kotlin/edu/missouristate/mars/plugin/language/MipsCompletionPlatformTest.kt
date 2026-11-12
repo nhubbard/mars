@@ -156,7 +156,7 @@ class MipsCompletionPlatformTest {
                             .map { item -> item.lookupString }.toSet()
                     }
                 }
-                assertEquals(setOf("DIRECT_WORD", "DIRECT_VALUES", "DIRECT_TEXT", "DIRECT_DEFINE"), aliases("DIRECT_<caret>"))
+                assertEquals(setOf("DIRECT_WORD", "DIRECT_VALUES", "DIRECT_TEXT", "DIRECT_DEFINE"), aliases(".text\nDIRECT_<caret>"))
                 assertTrue(aliases("DIRECT_I<caret> \"missing.inc\"").isEmpty())
                 assertEquals(setOf("DIRECT_VALUES"), aliases("values: DIRECT_V<caret>.old 9"))
                 val selected = fixture.lookup.items.single { it.lookupString == "DIRECT_VALUES" }
@@ -575,6 +575,70 @@ class MipsCompletionPlatformTest {
             val program = context.assemble(listOf(entry), null, true, false)
             val memory = context.memory
             assertEquals(program.machineList.last().address, memory.getWordNoNotify(memory.dataBaseAddress + Int.SIZE_BYTES))
+        }
+
+    @Test
+    fun `integer data operands complete aliases without changing written values`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val current = project.get()
+            val definitions = ".eqv WORDS .word\n.eqv VALUE_NUM 3\n.eqv VALUE_ZERO 0\n.eqv VALUE_NEG -2\n" +
+                ".eqv VALUE_LIST VALUE_NUM, 8\n.eqv VALUE_SYMBOL target\n.eqv VALUE_DOTTED .local\n" +
+                ".eqv VALUE_FLOAT 1.5\n.eqv VALUE_REG \$t0\n.eqv VALUE_TEXT \"text\"\n" +
+                ".eqv VALUE_LABEL generated:\n.eqv VALUE_MACRO emit\n.macro emit\n.end_macro\n"
+            val include = ".include \"values.inc\"\n"
+            val before = include + ".data\n"
+            val after = "\n.text\ntarget: nop\n.local: nop\nemit: nop\n.eqv VALUE_LATE 4\n"
+            withContext(Dispatchers.EDT) { fixture.addFileToProject("values.inc", definitions) }
+            IndexingTestUtil.suspendUntilIndexesAreReady(current)
+            val completed = withContext(Dispatchers.EDT) {
+                fun aliases(line: String, start: String = before): Set<String> {
+                    fixture.configureByText("data-aliases.mars", start + line + after)
+                    return CodeInsightSettings.runWithTemporarySettings<_, Error> {
+                        it.AUTOCOMPLETE_ON_CODE_COMPLETION = false
+                        fixture.completeBasic().orEmpty().filter { item -> item.typeText() == "Equivalence" }
+                            .map { item -> item.lookupString }.toSet()
+                    }
+                }
+                val integers = setOf("VALUE_NUM", "VALUE_ZERO", "VALUE_NEG")
+                val list = integers + setOf("VALUE_LIST", "VALUE_SYMBOL", "VALUE_DOTTED", "VALUE_MACRO")
+                assertEquals(list, aliases(".word VALUE_<caret>"))
+                assertEquals(list, aliases(".half VALUE_<caret>"))
+                assertEquals(list, aliases(".byte VALUE_<caret>"))
+                assertEquals(list, aliases("slot: WORDS VALUE_<caret>"))
+                assertEquals(list - "VALUE_DOTTED", aliases(".word 0\nVALUE_<caret>"))
+                assertEquals(setOf("WORDS"), aliases("WOR<caret>"))
+                assertEquals(list, aliases(".word 0\n1, VALUE_<caret>"))
+                assertEquals(integers, aliases(".word VALUE_<caret>:2"))
+                assertEquals(setOf("VALUE_NUM"), aliases("WORDS 1:VALUE_<caret>"))
+                assertEquals(integers, aliases(".word 0\n0, VALUE_<caret>:2"))
+                assertEquals(integers, aliases(".word 0\n.5, VALUE_<caret>:2"))
+                assertTrue(aliases(".word 0\n\$t0, VALUE_<caret>:2").isEmpty())
+                assertTrue(aliases(".word VALUE_<caret>:0").isEmpty())
+                assertTrue(aliases(".word VALUE_<caret>:1.5").isEmpty())
+                assertTrue(aliases(".word target:VALUE_<caret>").isEmpty())
+                assertTrue(aliases(".word VALUE_<caret>, \$t0").isEmpty())
+                assertEquals(setOf("VALUE_MACRO"), aliases(".float 0\nVALUE_<caret>"))
+                assertTrue(aliases(".align VALUE_<caret>").isEmpty())
+                assertTrue(aliases(".word VALUE_<caret>", include + ".text\n").isEmpty())
+                val unindexed = fixture.configureByText("data-indexing.mars", before + ".word VALUE_" + after) as MipsFile
+                val range = unindexed.findElementAt(before.length + ".word ".length)!!.textRange
+                DumbModeTestUtils.runInDumbModeSynchronously(current) {
+                    assertTrue(current.service<MarsAnalysisService>().integerDataEquivalenceCompletions(unindexed, range, "VALUE_").isEmpty())
+                }
+                assertEquals(setOf("VALUE_LIST"), aliases("slot: WORDS 2, VALUE_L<caret>.old, 9"))
+                val selected = fixture.lookup.items.single { it.lookupString == "VALUE_LIST" }
+                assertEquals(" = VALUE_NUM, 8", LookupElementPresentation().also(selected::renderElement).tailText)
+                fixture.lookup.setCurrentItem(selected)
+                fixture.finishLookup(Lookup.REPLACE_SELECT_CHAR)
+                assertEquals(before + "slot: WORDS 2, VALUE_LIST, 9" + after, fixture.file.text)
+                fixture.file.text
+            }
+            directory.resolve("values.inc").writeText(definitions)
+            val entry = directory.resolve("data-aliases.mars").also { it.writeText(completed) }
+            val context = current.service<MarsSessionService>().context
+            context.assemble(listOf(entry), null, true, false)
+            val memory = context.memory
+            assertEquals(listOf(2, 3, 8, 9), List(4) { memory.getWordNoNotify(memory.dataBaseAddress + it * Int.SIZE_BYTES) })
         }
 
     @Test

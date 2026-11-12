@@ -52,6 +52,7 @@ import edu.missouristate.mars.plugin.language.psi.MipsIncludedDeclaration
 import edu.missouristate.mars.plugin.language.psi.MipsMacroFormal
 import edu.missouristate.mars.plugin.language.psi.equivalenceDefinitionParameterContexts
 import edu.missouristate.mars.plugin.language.psi.writtenDeclarationAt
+import edu.missouristate.mars.util.Binary
 import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.CoroutineScope
@@ -737,6 +738,39 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
     internal fun hasIntegerDataList(root: MipsFile, position: PsiElement): Boolean {
         if (DumbService.isDumb(project)) return false
         return editorPrefix(root, position.textOffset).hasIntegerDataList
+    }
+
+    internal fun integerDataEquivalenceCompletions(root: MipsFile, range: TextRange, prefix: String): Map<String, String> {
+        if (DumbService.isDumb(project) || !editorPrefix(root, range.startOffset).hasIntegerDataList) return emptyMap()
+        val column = range.startOffset - sourceLineStart(root.viewProvider.contents, range.startOffset) + 1
+        return equivalenceCompletions(root, range, prefix) { tokens, end, visible ->
+            if (end == 0) return@equivalenceCompletions false
+            val head = tokens[0]
+            val first = if (head.type == TokenTypes.DIRECTIVE) {
+                if (head.originalStartPos >= column || !Directives.isIntegerDirective(Directives.matchDirective(head.value))) {
+                    return@equivalenceCompletions false
+                }
+                1
+            } else {
+                // The assembler tries a matching macro or an unknown dotted directive before a data continuation.
+                if (!TokenTypes.startsDataContinuation(head.type) ||
+                    head.type == TokenTypes.IDENTIFIER && head.value.startsWith('.') || visible.matchingMacro(tokens, 0) != null
+                ) {
+                    return@equivalenceCompletions false
+                }
+                0
+            }
+            if (tokens.size() == 4 && tokens[2].type == TokenTypes.COLON) {
+                // The assembler recognizes the four-token repetition shape before it walks a numeric list.
+                TokenTypes.isIntegerTokenType(tokens[1].type) && TokenTypes.isIntegerTokenType(tokens[3].type) &&
+                    Binary.stringToInt(tokens[3].value) > 0
+            } else {
+                (first until tokens.size()).all { index ->
+                    val type = tokens[index].type
+                    type == TokenTypes.IDENTIFIER || TokenTypes.isIntegerTokenType(type)
+                }
+            }
+        }
     }
 
     internal fun defersContextDependentError(root: MipsFile, position: PsiElement): Boolean {

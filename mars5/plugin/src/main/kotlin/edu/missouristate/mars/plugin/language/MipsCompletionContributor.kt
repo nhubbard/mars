@@ -58,11 +58,15 @@ class MipsCompletionContributor : CompletionContributor(), DumbAware {
                 val analysis = root.project.service<MarsAnalysisService>()
                 val prefix = prefix(parameters)
                 val lookup = result.withPrefixMatcher(prefix)
-                if (operand != null) {
+                val end = replacementEnd(parameters)
+                val equivalences = if (operand != null) {
                     lookup.addAllElements(registerCandidates(operand.formats, operand.index, options.bareMachine).map(LookupElementBuilder::create))
-                    for ((name, replacement) in operand.equivalenceCompletions(root, prefix, options.bareMachine, replacementEnd(parameters))) {
-                        lookup.addElement(equivalenceLookup(name, replacement))
-                    }
+                    operand.equivalenceCompletions(root, prefix, options.bareMachine, end)
+                } else {
+                    analysis.integerDataEquivalenceCompletions(root, TextRange(position.textOffset, end), prefix)
+                }
+                for ((name, replacement) in equivalences) {
+                    lookup.addElement(equivalenceLookup(name, replacement))
                 }
                 val data = if (operand == null) DataLabelOperand.at(position) else null
                 val export = data?.exportHead(position)?.let { analysis.exportOperandsBefore(root, it, position) }
