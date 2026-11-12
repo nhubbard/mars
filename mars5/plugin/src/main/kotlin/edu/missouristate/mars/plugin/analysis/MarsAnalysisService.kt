@@ -50,7 +50,6 @@ import edu.missouristate.mars.plugin.language.MipsTypes
 import edu.missouristate.mars.plugin.language.index.MipsDeclarationIndex
 import edu.missouristate.mars.plugin.language.index.MipsDeclarationSite
 import edu.missouristate.mars.plugin.language.index.MipsReferenceIndex
-import edu.missouristate.mars.plugin.language.matchesMacroCall
 import edu.missouristate.mars.plugin.language.operationHead
 import edu.missouristate.mars.plugin.language.operationOwner
 import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
@@ -451,21 +450,20 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         return prefix.macroOverloads(name).values
     }
 
-    internal fun macroAliasCompletionDefinitions(root: MipsFile, range: TextRange, name: String): Collection<MipsSourceEvent.Begin> {
-        if (DumbService.isDumb(project)) return emptyList()
+    internal fun <T> resolveStatementAliasCompletion(
+        root: MipsFile, range: TextRange, name: String,
+        resolve: (TokenList, Int, MipsSourceTimeline.Prefix) -> T?,
+    ): T? {
+        if (DumbService.isDumb(project)) return null
         val source = root.viewProvider.contents
         val start = sourceLineStart(source, range.startOffset)
         val end = CharArrayUtil.shiftForwardUntil(source, range.endOffset, "\r\n")
         val visible = editorPrefix(root, start)
-        if (visible.equivalence(name) == null) return emptyList()
+        if (visible.equivalence(name) == null) return null
         val before = source.subSequence(start, range.startOffset).toString()
         val after = source.subSequence(range.endOffset, end).toString()
-        val (tokens, throughAlias) = expandCompletionAlias(visible, before + name, after, allowBrokenSuffix = true) ?: return emptyList()
-        if (throughAlias == 0 || tokens[0].type != TokenTypes.IDENTIFIER) return emptyList()
-        val overloads = visible.macroOverloads(tokens[0].value)
-        if (!matchesMacroCall(tokens, throughAlias, overloads.keys)) return emptyList()
-        val exact = overloads[tokens.macroArgumentCount()]
-        return if (exact == null) overloads.filterKeys { matchesMacroCall(tokens, throughAlias, setOf(it)) }.values else listOf(exact)
+        val (tokens, throughAlias) = expandCompletionAlias(visible, before + name, after, allowBrokenSuffix = true) ?: return null
+        return if (throughAlias == 0) null else resolve(tokens, throughAlias, visible)
     }
 
     internal fun completesDataHeadAsMacro(root: MipsFile, range: TextRange, name: String): Boolean {

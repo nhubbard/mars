@@ -61,15 +61,18 @@ internal fun statementEquivalenceCompletions(
 ): Map<String, String> = file.project.service<MarsAnalysisService>().equivalenceCompletions(file, range, prefix) { tokens, end, visible ->
     if (end == 0) return@equivalenceCompletions false
     val operation = tokens[0]
-    when (operation.type) {
+    if (operation.type == TokenTypes.IDENTIFIER) matchesMacroCall(tokens, end, visible.macroOverloads(operation.value).keys)
+    else matchesCatalogAlias(tokens, end, options)
+}
+
+internal fun matchesCatalogAlias(tokens: TokenList, end: Int, options: MarsExecutionOptions): Boolean =
+    when (tokens[0].type) {
         TokenTypes.OPERATOR -> matchesInstructionHead(tokens, end, options)
-        TokenTypes.IDENTIFIER -> matchesMacroCall(tokens, end, visible.macroOverloads(operation.value).keys)
         // The assembler reads physical .include lines before it expands equivalences.
-        TokenTypes.DIRECTIVE -> Directives.matchDirective(operation.value) != Directives.INCLUDE &&
+        TokenTypes.DIRECTIVE -> Directives.matchDirective(tokens[0].value) != Directives.INCLUDE &&
             (1 until end).none { tokens[it].type == TokenTypes.ERROR }
         else -> false
     }
-}
 
 internal fun matchesMacroCall(tokens: TokenList, end: Int, arities: Set<Int>): Boolean {
     if (arities.isEmpty() || (1 until end).any { tokens[it].type == TokenTypes.ERROR }) return false

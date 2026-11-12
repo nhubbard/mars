@@ -209,7 +209,8 @@ class MipsDocumentationPlatformTest {
         }
         val provider = IdeDocumentationTargetProvider.getInstance(current)
         val pointer = readAction {
-            assertTrue(provider.documentationTargets(fixture.editor, fixture.file, other).isEmpty())
+            val directive = provider.documentationTargets(fixture.editor, fixture.file, other).single()
+            assertEquals(".word", directive.computePresentation().presentableText)
             val target = provider.documentationTargets(fixture.editor, fixture.file, call).single()
             assertEquals("CALL", target.computePresentation().presentableText)
             assertEquals(fixture.file.text.indexOf("emit (%left"), (target.navigatable as OpenFileDescriptor).offset)
@@ -244,6 +245,41 @@ class MipsDocumentationPlatformTest {
         edit(fixture.file.text, "nop\n")
         assertNull(computeDocumentationBlocking(pointer))
         withContext(Dispatchers.EDT) { WriteCommandAction.runWriteCommandAction(current) { entry.delete(this) } }
+        assertNull(computeDocumentationBlocking(pointer))
+    }
+
+    @Test
+    fun `catalog alias completion documents the effective operation and rechecks edits`() = timeoutRunBlocking<Unit> {
+        val current = project.get()
+        val source = """
+            .eqv LAUNCH row: addiu ${'$'}t0, ${'$'}zero
+            .eqv LAUNCH_WORD .word
+            LA.old 7
+        """.trimIndent()
+        withContext(Dispatchers.EDT) {
+            fixture.configureByText("alias-catalog.mars", source.replace("LA.old", "LA<caret>.old"))
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(current)
+        val item = withContext(Dispatchers.EDT) { fixture.completeBasic().orEmpty().single { it.lookupString == "LAUNCH" } }
+        val pointer = readAction {
+            val target = IdeDocumentationTargetProvider.getInstance(current)
+                .documentationTargets(fixture.editor, fixture.file, item).single()
+            assertEquals("addiu", target.computePresentation().presentableText)
+            target.createPointer()
+        }
+        assertEquals(MipsDocumentationCatalog["addiu"].referenceHtml(), computeDocumentationBlocking(pointer)?.html)
+        withContext(Dispatchers.EDT) { fixture.lookup.hideLookup(false) }
+        suspend fun edit(from: String, to: String) = withContext(Dispatchers.EDT) {
+            val document = fixture.editor.document
+            val start = document.text.indexOf(from)
+            WriteCommandAction.runWriteCommandAction(current) { document.replaceString(start, start + from.length, to) }
+            PsiDocumentManager.getInstance(current).commitAllDocuments()
+        }
+        edit(" 7", " ${'$'}f0")
+        assertNull(computeDocumentationBlocking(pointer))
+        edit("row: addiu ${'$'}t0, ${'$'}zero", ".word")
+        assertEquals(MipsDocumentationCatalog[".word"].referenceHtml(), computeDocumentationBlocking(pointer)?.html)
+        edit(".eqv LAUNCH .word", ".eqv LAUNCH .include \"data.inc\"")
         assertNull(computeDocumentationBlocking(pointer))
     }
 

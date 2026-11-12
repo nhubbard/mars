@@ -30,6 +30,8 @@ import edu.missouristate.mars.mips.instructions.Instruction
 import edu.missouristate.mars.mips.instructions.InstructionDefaults
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.analysis.MipsSourceEvent
+import edu.missouristate.mars.plugin.analysis.macroArgumentCount
+import edu.missouristate.mars.plugin.build.MarsAssemblySettings
 import java.util.TreeMap
 
 internal class MipsDocumentationTargetProvider : DocumentationTargetProvider, LookupElementDocumentationTargetProvider {
@@ -80,7 +82,7 @@ internal class MipsDocumentationTargetProvider : DocumentationTargetProvider, Lo
         when (val item = element.`object`) {
             is MipsCatalogEntry -> item
             is MipsMacroLookup -> macroLookupDocumentation(psiFile, offset, item.name)
-            else -> element.getUserData(mipsStatementAliasSite)?.let { macroAliasLookupDocumentation(it, element.lookupString) }
+            else -> element.getUserData(mipsStatementAliasSite)?.let { statementAliasLookupDocumentation(it, element.lookupString) }
         }
 
     private fun macroLookupDocumentation(file: PsiFile?, offset: Int, name: String): DocumentationTarget? {
@@ -94,13 +96,34 @@ internal class MipsDocumentationTargetProvider : DocumentationTargetProvider, Lo
         })
     }
 
-    private fun macroAliasLookupDocumentation(site: SmartPsiFileRange, name: String): DocumentationTarget? {
+    private fun statementAliasLookupDocumentation(site: SmartPsiFileRange, name: String): DocumentationTarget? {
         val file = site.containingFile as? MipsFile ?: return null
         val range = site.psiRange ?: return null
-        val definitions = file.project.service<MarsAnalysisService>()
-            .macroAliasCompletionDefinitions(file, TextRange.create(range), name)
-        if (definitions.isEmpty()) return null
-        return MacroLookupDocumentation(name, definitions, Pointer { macroAliasLookupDocumentation(site, name) })
+        val pointer = Pointer<DocumentationTarget> { statementAliasLookupDocumentation(site, name) }
+        val options = file.project.service<MarsAssemblySettings>().executionOptions
+        return file.project.service<MarsAnalysisService>().resolveStatementAliasCompletion(file, TextRange.create(range), name) { tokens, end, visible ->
+            val operation = tokens[0]
+            if (operation.type == TokenTypes.IDENTIFIER) {
+                val overloads = visible.macroOverloads(operation.value)
+                if (!matchesMacroCall(tokens, end, overloads.keys)) return@resolveStatementAliasCompletion null
+                val exact = overloads[tokens.macroArgumentCount()]
+                val definitions = if (exact == null) overloads.filterKeys { matchesMacroCall(tokens, end, setOf(it)) }.values else listOf(exact)
+                MacroLookupDocumentation(name, definitions, pointer)
+            } else if (matchesCatalogAlias(tokens, end, options)) {
+                CatalogAliasDocumentation(MipsDocumentationCatalog[operation.value], pointer)
+            } else null
+        }
+    }
+
+    private class CatalogAliasDocumentation(
+        private val entry: MipsCatalogEntry,
+        private val pointer: Pointer<DocumentationTarget>,
+    ) : DocumentationTarget {
+        override fun createPointer(): Pointer<DocumentationTarget> = pointer
+
+        override fun computePresentation(): TargetPresentation = TargetPresentation.builder(entry.name).presentation()
+
+        override fun computeDocumentation(): DocumentationResult = DocumentationResult.documentation(entry.documentationHtml())
     }
 
     private class MacroLookupDocumentation(
@@ -218,9 +241,9 @@ internal class MipsCatalogEntry(
         }
     }
 
-    override fun computeDocumentation(): DocumentationResult = DocumentationResult.documentation(
-        referenceHtml() + if (name == "syscall") MipsSyscallDocumentation.html else "",
-    )
+    fun documentationHtml(): String = referenceHtml() + if (name == "syscall") MipsSyscallDocumentation.html else ""
+
+    override fun computeDocumentation(): DocumentationResult = DocumentationResult.documentation(documentationHtml())
 }
 
 internal object MipsDocumentationCatalog {
