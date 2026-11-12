@@ -17,6 +17,8 @@ dependencies {
   implementation(kotlin("stdlib", kotlin.coreLibrariesVersion))
   implementation("com.google.dagger:dagger:2.59.2")
   annotationProcessor("com.google.dagger:dagger-compiler:2.59.2")
+  // Dagger reads the Kotlin metadata on types in the Java dependency graph.
+  annotationProcessor(kotlin("metadata-jvm", kotlin.coreLibrariesVersion))
 
   testImplementation(platform("org.junit:junit-bom:6.0.0"))
   testImplementation("org.junit.jupiter:junit-jupiter")
