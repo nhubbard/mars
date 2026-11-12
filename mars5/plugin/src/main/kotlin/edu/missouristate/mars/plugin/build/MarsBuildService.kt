@@ -183,7 +183,7 @@ internal class MarsBuildService(private val project: Project, private val scope:
     ): BuildOutput {
         options.applyForAssembly(component.context())
         val result = sources.assembleIn(component)
-        return BuildOutput(result.errors(), if (result.succeeded()) result.program().symbolMap() else null)
+        return BuildOutput(result.errors(), if (result.succeeded()) result.program()!!.symbolMap() else null)
     }
 
     private suspend fun assembleAndReport(

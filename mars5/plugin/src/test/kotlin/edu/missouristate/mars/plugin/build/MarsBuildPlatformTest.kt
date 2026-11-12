@@ -1533,7 +1533,7 @@ class MarsBuildPlatformTest {
         val includePath = include.virtualFile.toNioPath()
         val capture = captureAssemblySources(listOf(path), null)
         val component = MarsSessionService.createMarsComponent()
-        val program = component.context().use { capture.assembleIn(component).program() }
+        val program = component.context().use { capture.assembleIn(component).program()!! }
         val older = analysis.beginSymbolBuild(path)
         val current = analysis.beginSymbolBuild(path)
         analysis.publishBuiltSymbols(older, capture, program.symbolMap())
@@ -1569,7 +1569,7 @@ class MarsBuildPlatformTest {
         }
         val plainCapture = captureAssemblySources(listOf(path), null)
         val plainComponent = MarsSessionService.createMarsComponent()
-        val plainProgram = plainComponent.context().use { plainCapture.assembleIn(plainComponent).program() }
+        val plainProgram = plainComponent.context().use { plainCapture.assembleIn(plainComponent).program()!! }
         analysis.publishBuiltSymbols(analysis.beginSymbolBuild(path), plainCapture, plainProgram.symbolMap())
         assertEquals(plainPath, plainProgram.symbolMap().locals()[path]?.get("generated")?.origin()?.location()?.file())
         val plainDeclaration = readAction {
@@ -1594,7 +1594,7 @@ class MarsBuildPlatformTest {
         }
         val ignoredCapture = captureAssemblySources(listOf(path), null)
         val ignoredComponent = MarsSessionService.createMarsComponent()
-        val ignoredProgram = ignoredComponent.context().use { ignoredCapture.assembleIn(ignoredComponent).program() }
+        val ignoredProgram = ignoredComponent.context().use { ignoredCapture.assembleIn(ignoredComponent).program()!! }
         analysis.publishBuiltSymbols(analysis.beginSymbolBuild(path), ignoredCapture, ignoredProgram.symbolMap())
         readAction {
             assertEquals(ignored.toNioPath(), ignoredProgram.symbolMap().locals()[path]?.get("generated")?.origin()?.location()?.file())
@@ -1619,7 +1619,7 @@ class MarsBuildPlatformTest {
                 includeDocument.setText(changedText)
                 val revisions = mapOf(path to mainDocument.modificationStamp, includePath to includeDocument.modificationStamp)
                 val updated = capture.copy(snapshot = changed, revisions = revisions)
-                analysis.publishBuiltSymbols(analysis.beginSymbolBuild(path), updated, changedResult.program().symbolMap())
+                analysis.publishBuiltSymbols(analysis.beginSymbolBuild(path), updated, changedResult.program()!!.symbolMap())
                 assertFalse(PsiDocumentManager.getInstance(project).isCommitted(includeDocument))
                 assertNull(target(entry))
             }
@@ -1697,10 +1697,10 @@ class MarsBuildPlatformTest {
                     val expectedWords = expected.machineList.map { it.binaryStatement }
                     assertEquals(listOf(0x24080007), expectedWords)
                     assertEquals(expectedWords, ide.program.machineList.map { it.binaryStatement })
-                    assertEquals(expected.sourceMap(), result.program().sourceMap())
-                    assertEquals(expected.symbolMap(), result.program().symbolMap())
-                    assertTrue("ignored" !in result.program().symbolMap().locals()[entry].orEmpty())
-                    val origin = result.program().sourceMap().origins().values.single()
+                    assertEquals(expected.sourceMap(), result.program()!!.sourceMap())
+                    assertEquals(expected.symbolMap(), result.program()!!.symbolMap())
+                    assertTrue("ignored" !in result.program()!!.symbolMap().locals()[entry].orEmpty())
+                    val origin = result.program()!!.sourceMap().origins().values.single()
                     assertEquals(Location(include, 5), origin.location())
                     assertEquals(Location(entry, 4), origin.caller().location())
                     val base = ide.memory.dataBaseAddress

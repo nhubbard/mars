@@ -126,7 +126,7 @@ class CapturedAssemblySourcesPlatformTest {
             assertEquals(diskWords, it.program.machineList.map { statement -> statement.binaryStatement })
             assertEquals(0x2408002a, diskWords[2])
             val analysis = project.get().service<MarsAnalysisService>()
-            analysis.publishBuiltSymbols(analysis.beginSymbolBuild(entry), sources, captured.program().symbolMap())
+            analysis.publishBuiltSymbols(analysis.beginSymbolBuild(entry), sources, captured.program()!!.symbolMap())
         }
 
         val selected = readAction { checkNotNull(collectEditorAssembly(main)) }
@@ -233,7 +233,7 @@ class CapturedAssemblySourcesPlatformTest {
             val result = capture.sources.assembleIn(component)
             assertTrue(result.succeeded(), result.errors().toString())
             val analysis = project.get().service<MarsAnalysisService>()
-            analysis.publishBuiltSymbols(analysis.beginSymbolBuild(capture.source), capture.sources, result.program().symbolMap())
+            analysis.publishBuiltSymbols(analysis.beginSymbolBuild(capture.source), capture.sources, result.program()!!.symbolMap())
         }
         readAction {
             val sources = MarsExecutionSources(capture.sources)
@@ -328,10 +328,10 @@ class CapturedAssemblySourcesPlatformTest {
             val statements = session.program.machineList
             assertEquals(listOf(0, 0x24080007, 0x24090008, 0, 0, 0, 0), statements.dropLast(2).map { it.binaryStatement })
             val location = Location(largePath, instructionLine)
-            assertEquals(location, result.program().sourceMap().origins()[statements[1].address]?.location())
+            assertEquals(location, result.program()!!.sourceMap().origins()[statements[1].address]?.location())
             val ide = project.get()
             val analysis = ide.service<MarsAnalysisService>()
-            analysis.publishBuiltSymbols(analysis.beginSymbolBuild(entry), capture, result.program().symbolMap())
+            analysis.publishBuiltSymbols(analysis.beginSymbolBuild(entry), capture, result.program()!!.symbolMap())
             val croppedMacro = readAction {
                 val main = PsiManager.getInstance(ide).findFile(VirtualFileManager.getInstance().findFileByNioPath(entry)!!) as MipsFile
                 val label = checkNotNull(main.findReferenceAt(main.text.indexOf("target"))?.resolve())
@@ -395,8 +395,8 @@ class CapturedAssemblySourcesPlatformTest {
                 fixture.openFileInEditor(croppedMacro)
                 assertFalse(fixture.doHighlighting().any { it.severity == HighlightSeverity.ERROR })
             }
-            val definition = result.program().symbolMap().locals().getValue(entry).getValue("target")
-            val wide = result.program().symbolMap().locals().getValue(entry).getValue("farTarget")
+            val definition = result.program()!!.symbolMap().locals().getValue(entry).getValue("target")
+            val wide = result.program()!!.symbolMap().locals().getValue(entry).getValue("farTarget")
             val withoutColumn = Definition(wide.address(), wide.kind(), wide.origin())
             val badColumn = Definition(definition.address(), definition.kind(), definition.origin(), definition.macroPrivate(), 100)
             analysis.publishBuiltSymbols(analysis.beginSymbolBuild(entry), capture,
@@ -457,7 +457,7 @@ class CapturedAssemblySourcesPlatformTest {
         val alias = outer.resolveSibling("shortcut/main.asm")
         val capture = captureAssemblySources(listOf(main), null)
         assertEquals(setOf(main, outer, alias), capture.revisions.keys)
-        assertEquals(setOf(main.resolveSibling("../parts/outer.s"), alias), capture.snapshot.resolvedIncludes().keys)
+        assertEquals(setOf(main.resolveSibling("../parts/outer.s"), alias), capture.snapshot.resolvedIncludes()!!.keys)
         assertEquals(capture.snapshot.includeIdentity(main), capture.snapshot.includeIdentity(alias))
         val component = MarsSessionService.createMarsComponent()
         component.context().use {

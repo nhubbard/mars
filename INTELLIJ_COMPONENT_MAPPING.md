@@ -1056,7 +1056,7 @@ Test sources and generated build output are excluded from this production invent
 | [java/edu/missouristate/mars/ProgramStatement.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/ProgramStatement.java) | C03 |
 | [java/edu/missouristate/mars/Settings.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/Settings.java) | S01 |
 | [java/edu/missouristate/mars/api/AssemblyError.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/api/AssemblyError.java) | B02 |
-| [java/edu/missouristate/mars/api/AssemblyResult.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/api/AssemblyResult.java) | C02 |
+| [kotlin/edu/missouristate/mars/api/AssemblyResult.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/api/AssemblyResult.kt) | C02 |
 | [kotlin/edu/missouristate/mars/api/ErrorEvent.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/api/ErrorEvent.kt) | R01 |
 | [kotlin/edu/missouristate/mars/api/EventEmitter.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/api/EventEmitter.kt) | C10 |
 | [kotlin/edu/missouristate/mars/api/MarsAssembler.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/api/MarsAssembler.kt) | C02 |
@@ -1494,7 +1494,7 @@ Venus was retired after plugin qualification. These links point to the archived 
 | Source | Mapping ID |
 | --- | --- |
 | [AssembledInstruction.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/api/AssembledInstruction.java) | C03, D01 |
-| [AssemblySourceSnapshot.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/api/AssemblySourceSnapshot.java) | B01, B04 |
+| [AssemblySourceSnapshot.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/api/AssemblySourceSnapshot.kt) | B01, B04 |
 | [AssemblySymbolMap.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/api/AssemblySymbolMap.java) | C03, V06 |
 | [InstructionSourceMap.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/api/InstructionSourceMap.java) | C03, D01, D02 |
 | [AssemblySymbolUses.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/assembler/AssemblySymbolUses.java) | C03, E07, E08 |

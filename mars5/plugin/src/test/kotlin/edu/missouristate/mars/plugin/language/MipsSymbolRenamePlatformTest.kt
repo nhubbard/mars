@@ -91,7 +91,7 @@ class MipsSymbolRenamePlatformTest {
             val symbols = component.context().use {
                 val result = component.assembler().assembleSnapshot(capture.snapshot, null, true, false)
                 assertTrue(result.succeeded(), result.errors().toString())
-                result.program().symbolMap()
+                result.program()!!.symbolMap()
             }
             val analysis = project.service<MarsAnalysisService>()
             analysis.publishBuiltSymbols(analysis.beginSymbolBuild(path), capture, symbols)
