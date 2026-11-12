@@ -84,11 +84,14 @@ internal fun supersededMacroFormalError(file: MipsFile, error: PsiErrorElement, 
     if (error.errorDescription != bundle.getMessage("syntax.macro.formal.invalid")) return false
     if (DumbService.isDumb(file.project)) return false
     val timeline = analysis.editorTimeline(file)
+    val lineStart = sourceLineStart(error)
+    // The assembler rejects these headers before it checks any of their parameters.
+    if (timeline.rejectsMacroHeaderOnLine(file, lineStart)) return hasAssemblyEntry(file, analysis)
     val invalid = timeline.localMacros(file)[error.parent]?.invalidFormal ?: return false
     val site = file.findElementAt(invalid.offset)!!
     val range = macroDiagnosticRange(site, invalid.lastOffset)
     return error.isSupersededFormalError(range) &&
-        !timeline.prefix(file, sourceLineStart(error)).hasIncompleteIncludes && hasAssemblyEntry(file, analysis)
+        !timeline.prefix(file, lineStart).hasIncompleteIncludes && hasAssemblyEntry(file, analysis)
 }
 
 private fun PsiErrorElement.isSupersededFormalError(effective: TextRange): Boolean =

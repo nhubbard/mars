@@ -269,6 +269,9 @@ internal class MipsSourceTimeline(
     fun macroBoundaryProblems(file: MipsFile): List<MacroBoundaryProblem> =
         files[file.viewProvider.virtualFile]?.macroBoundaryProblems.orEmpty()
 
+    fun rejectsMacroHeaderOnLine(file: MipsFile, lineStart: Int): Boolean =
+        lineStart in files.getValue(file.viewProvider.virtualFile).rejectedMacroHeaderLines
+
     fun localMacros(file: MipsFile): Map<PsiElement, Begin> =
         files.getValue(file.viewProvider.virtualFile).localMacros
 
@@ -399,11 +402,18 @@ internal class SourceFileEvents(val file: MipsFile, val order: Int) {
     val expandedExternals = LinkedHashMap<PsiElement, MipsSourceEvent.External>()
     val macroClosingLines = HashSet<Int>()
     val macroBoundaryProblems = ArrayList<MacroBoundaryProblem>()
+    val rejectedMacroHeaderLines: Set<Int> by lazy {
+        val source = file.viewProvider.contents
+        macroBoundaryProblems.asSequence().filter { it.kind in rejectedMacroHeaderKinds }
+            .mapTo(HashSet()) { sourceLineStart(source, it.offset) }
+    }
     val localMacros = LinkedHashMap<PsiElement, Begin>()
     val generatedMacroNames = HashSet<Int>()
     val localMacroBodies = ArrayList<MacroBody>()
     var end = 0
 }
+
+private val rejectedMacroHeaderKinds = setOf(Kind.MISSING_NAME, Kind.INVALID_NAME, Kind.NESTED_BEGIN)
 
 internal data class IndexedEquivalence(val index: Int, val definition: MipsSourceEvent.Equivalence)
 

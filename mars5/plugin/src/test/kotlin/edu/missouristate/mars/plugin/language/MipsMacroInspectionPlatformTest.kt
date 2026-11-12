@@ -651,13 +651,14 @@ class MipsMacroInspectionPlatformTest {
                 .eqv PREFIX generated:
                 .eqv BAD_NAME 7
                 .macro outer (%value)
-                .macro nested (%other)
+                .macro nested (%other, 9)
                 OPEN expanded (%other)
                 inside: .macro labeled (%other)
                 LABEL: .macro alias_labeled (%other)
                 %value: .macro parameter_labeled (%other)
                 PREFIX .macro generated_labeled (%other)
                 OPEN BAD_NAME
+                .macro BAD_NAME (9)
                 li ${'$'}t0, %value
                 .end_macro
             """.trimIndent()
@@ -666,14 +667,17 @@ class MipsMacroInspectionPlatformTest {
             val context = project.service<MarsSessionService>().context
             val failure = assertThrows<ProcessingException> { context.assemble(listOf(entry), null, true, false) }
             assertEquals(
-                listOf(nestedMacroMessage, nestedMacroMessage, "Invalid Macro name \"7\""),
+                listOf(nestedMacroMessage, nestedMacroMessage, "Invalid Macro name \"7\"", "Invalid Macro name \"7\""),
                 failure.errors().errorMessages.map { it.message },
             )
             withContext(Dispatchers.EDT) { fixture.configureByText("nested.asm", "$source\nouter(7)\n") }
             IndexingTestUtil.suspendUntilIndexesAreReady(project)
             withContext(Dispatchers.EDT) {
                 assertEquals(
-                    listOf(".macro" to nestedMacroMessage, "OPEN" to nestedMacroMessage, "BAD_NAME" to invalidNameMessage),
+                    listOf(
+                        ".macro" to nestedMacroMessage, "OPEN" to nestedMacroMessage,
+                        "BAD_NAME" to invalidNameMessage, "BAD_NAME" to invalidNameMessage,
+                    ),
                     errors(),
                 )
                 readAction {
@@ -684,7 +688,7 @@ class MipsMacroInspectionPlatformTest {
                 }
                 WriteCommandAction.runWriteCommandAction(project) {
                     fixture.editor.document.setText(
-                        source.substringBefore(".macro nested") + source.substringAfter("OPEN BAD_NAME\n") + "\nouter(7)\n",
+                        source.substringBefore(".macro nested") + source.substringAfter(".macro BAD_NAME (9)\n") + "\nouter(7)\n",
                     )
                 }
                 assertTrue(errors().isEmpty())
@@ -695,7 +699,7 @@ class MipsMacroInspectionPlatformTest {
     fun `a shared opener is nested only in the entry that opens a macro before including it`() = timeoutRunBlocking<Unit> {
         val current = projectFixture.get()
         val (standalone, nested) = withContext(Dispatchers.EDT) {
-            val inner = fixture.addFileToProject("inner.s", ".macro emit\nnop\n")
+            val inner = fixture.addFileToProject("inner.s", ".macro emit (9)\nnop\n")
             val standalone = fixture.addFileToProject("standalone.asm", ".include \"inner.s\"\n.end_macro\n")
             val nested = fixture.addFileToProject("nested.asm", ".macro outer\n.include \"inner.s\"\n.end_macro\n")
             fixture.configureFromExistingVirtualFile(inner.virtualFile)
@@ -704,11 +708,11 @@ class MipsMacroInspectionPlatformTest {
         IndexingTestUtil.suspendUntilIndexesAreReady(current)
         withContext(Dispatchers.EDT) {
             val settings = current.service<MarsAssemblySettings>()
-            assertTrue(errors().isEmpty())
+            assertEquals(listOf("9" to "Invalid MARS macro parameter"), errors())
             settings.changeSources(listOf(nested.path))
             assertEquals(listOf(".macro" to nestedMacroMessage), errors())
             settings.changeSources(listOf(standalone.path))
-            assertTrue(errors().isEmpty())
+            assertEquals(listOf("9" to "Invalid MARS macro parameter"), errors())
         }
     }
 
@@ -897,11 +901,12 @@ class MipsMacroInspectionPlatformTest {
     }
 
     @Test
-    fun `a nested macro header has no effective formal to replace its parser error`() = timeoutRunBlocking<Unit> {
+    fun `an unresolved include can change whether a header is nested`() = timeoutRunBlocking<Unit> {
         withContext(Dispatchers.EDT) {
-            fixture.configureByText("nested-invalid-formal.mars", ".macro outer\n.macro inner (9)\n.end_macro\n")
-            val error = PsiTreeUtil.findChildOfType(fixture.file, PsiErrorElement::class.java)!!
-            assertTrue(MipsAssemblySyntaxErrorFilter().shouldHighlightErrorElement(error))
+            val source = ".macro outer\n.include \"missing.inc\"\n.macro inner (9)\n.end_macro\n"
+            fixture.configureByText("nested-invalid-formal.mars", source)
+            assertEquals(listOf("9" to "Invalid MARS macro parameter"),
+                errors().filter { "macro parameter" in it.second || it.second == nestedMacroMessage })
         }
     }
 
