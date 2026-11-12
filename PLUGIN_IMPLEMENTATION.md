@@ -1138,6 +1138,10 @@ when the open file belongs to multiple possible entries. It uses the same physic
 operand and quote offsets as the assembler. IntelliJ runs this check during indexing.
 Its standard external annotation pass waits for the local error to clear. Closing the
 quote removes the error and makes the path eligible for references and include traversal.
+Basic Completion also suggests filenames while the quote is open. The editor
+uses IntelliJ's native path completion on a temporary copy of the source.
+Selecting a filename leaves the original quote open for typing, Smart Enter,
+or the closing-quote quick fix.
 The same local check highlights missing files, invalid paths, and directories
 used as include operands. It resolves local paths through the build capture’s VFS
 lookup, so files excluded from the editor index can still be valid includes.

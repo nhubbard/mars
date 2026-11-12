@@ -31,6 +31,7 @@ import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.util.IncorrectOperationException
+import com.intellij.util.indexing.FileContentImpl
 import edu.missouristate.mars.ProcessingException
 import edu.missouristate.mars.plugin.language.index.MipsIncludeProvider
 import edu.missouristate.mars.plugin.MarsSessionService
@@ -489,6 +490,34 @@ class MipsFileReferencesPlatformTest {
             val selected = fixture.lookup.currentItem!!.lookupString
             fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR)
             assertEquals(".include \"parts/$selected\"\n", fixture.file.text)
+        }
+    }
+
+    @Test
+    fun `unterminated include paths keep native filename completion without adding an include edge`() = timeoutRunBlocking<Unit> {
+        withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("parts/target.asm", "target: nop\n")
+            fixture.addFileToProject("parts/tangent.s", "tangent: nop\n")
+            fixture.configureByText("main.asm", ".include \"parts/ta<caret>\n")
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
+        withContext(Dispatchers.EDT) {
+            fixture.completeBasic()
+            assertTrue(fixture.lookupElementStrings.orEmpty().containsAll(listOf("target.asm", "tangent.s")))
+            val selected = fixture.lookup.currentItem!!.lookupString
+            fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR)
+            assertEquals(".include \"parts/$selected\n", fixture.file.text)
+            val content = FileContentImpl.createByText(fixture.file.virtualFile, fixture.file.text, null)
+            assertTrue(MipsIncludeProvider().getIncludeInfos(content).isEmpty())
+            val offset = fixture.file.text.indexOf(selected)
+            val literal = fixture.file.findElementAt(offset)!!
+            assertTrue(literal.isUnterminatedInclude())
+            assertNull(fixture.file.findReferenceAt(offset))
+            fixture.configureByText("data.asm", ".asciiz \"parts/target.asm\n")
+            val data = fixture.file.findElementAt(fixture.file.text.indexOf("target.asm"))!!
+            assertFalse(data.isUnterminatedInclude())
+            fixture.configureByText("empty.asm", "<caret>")
+            assertTrue(fixture.completeBasic().orEmpty().any { it.lookupString == "nop" })
         }
     }
 

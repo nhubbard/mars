@@ -3,6 +3,7 @@ package edu.missouristate.mars.plugin.language
 import com.intellij.DynamicBundle
 import com.intellij.codeInsight.completion.CompletionContributor
 import com.intellij.codeInsight.completion.CompletionInitializationContext
+import com.intellij.codeInsight.completion.CompletionInitializationContext.DUMMY_IDENTIFIER_TRIMMED
 import com.intellij.codeInsight.completion.CompletionParameters
 import com.intellij.codeInsight.completion.CompletionProvider
 import com.intellij.codeInsight.completion.CompletionResultSet
@@ -121,6 +122,14 @@ class MipsCompletionContributor : CompletionContributor(), DumbAware {
                 )
             }
         })
+    }
+
+    override fun beforeCompletion(context: CompletionInitializationContext) {
+        val previous = context.file.findElementAt(context.startOffset - 1) ?: return
+        if (previous.isUnterminatedInclude()) {
+            // Balance the path in IntelliJ's completion copy so native file references provide the variants.
+            context.dummyIdentifier = DUMMY_IDENTIFIER_TRIMMED + "\""
+        }
     }
 
     override fun duringCompletion(context: CompletionInitializationContext) {
