@@ -1,7 +1,9 @@
 package edu.missouristate.mars.plugin.analysis
 
 import com.intellij.notebook.editor.BackedVirtualFile
+import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.progress.ProgressManager
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectRootModificationTracker
 import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.vfs.VirtualFile
@@ -30,6 +32,8 @@ import edu.missouristate.mars.plugin.language.collectRegisterUsages
 import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
 import edu.missouristate.mars.plugin.language.psi.MipsStringLiteral
 import edu.missouristate.mars.plugin.language.references.MipsFileReferenceSet
+import edu.missouristate.mars.plugin.language.references.findMipsIncludeFile
+import edu.missouristate.mars.plugin.language.references.mipsIncludeRequest
 import edu.missouristate.mars.plugin.language.references.mipsIncludeDirectoryPath
 import java.util.TreeMap
 import java.util.concurrent.ConcurrentHashMap
@@ -167,14 +171,19 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
             }
             is MipsSourceEvent.UnterminatedInclude -> firstIncompleteInclude = minOf(firstIncompleteInclude, index)
             is MipsSourceEvent.Include -> {
-                val included = (resolveMipsInclude(event.literal, event.path) as? PsiFile)
-                    ?.takeIf { visited.add(it.virtualFile.includeIdentity()) }
-                if (included != null) {
-                    dependencies.add(included)
-                    // Binary PSI does not track a text document, so use the VFS content stamp.
-                    if (included.fileType.isBinary) dependencies.add(included.virtualFile)
-                }
-                val syntax = assemblySourceSyntax(included)
+                val included = resolveMipsInclude(event.literal, event.path) as? PsiFile
+                val file = included?.virtualFile ?: cursor.locations.file.assemblySourceOriginalFile()
+                    .mipsIncludeRequest(event.path)?.let(VirtualFileManager.getInstance()::findMipsIncludeFile)
+                val syntax = if (file != null && visited.add(file.includeIdentity())) {
+                    if (included == null) {
+                        unresolvedAssemblySourceSyntax(entry.project, file, dependencies)
+                    } else {
+                        dependencies.add(included)
+                        // Binary PSI does not track a text document, so use the VFS content stamp.
+                        if (included.fileType.isBinary) dependencies.add(file)
+                        assemblySourceSyntax(included)
+                    }
+                } else null
                 if (syntax == null) {
                     firstIncompleteInclude = minOf(firstIncompleteInclude, index)
                     continue
@@ -466,9 +475,7 @@ internal fun assemblySourceSyntax(source: PsiFile?): MipsFile? {
     if (source is MipsFile) return source
     return CachedValuesManager.getCachedValue(source) {
         val syntax = if (source.fileType.isBinary) {
-            val text = readDiskAssemblyText(file)
-                ?: return@getCachedValue CachedValueProvider.Result.create(null, source, file)
-            PsiManager.getInstance(source.project).findFile(BinaryAssemblySourceFile(file, text)) as MipsFile
+            readOnlyAssemblySource(source.project, file)
         } else {
             val copy = PsiFileFactory.getInstance(source.project)
                 .createFileFromText(source.name, MipsFileType, source.viewProvider.contents.toString()) as MipsFile
@@ -480,7 +487,21 @@ internal fun assemblySourceSyntax(source: PsiFile?): MipsFile? {
     }
 }
 
-internal class BinaryAssemblySourceFile(private val origin: VirtualFile, text: String) :
+private fun unresolvedAssemblySourceSyntax(project: Project, file: VirtualFile, dependencies: MutableList<Any>): MipsFile? {
+    if (file.isDirectory) return null
+    dependencies.add(file)
+    if (FileSizeLimit.isTooLargeForContentLoading(file.length, file.extension)) return null
+    val document = if (file.fileType.isBinary) null else FileDocumentManager.getInstance().getDocument(file)
+    document?.let(dependencies::add)
+    return readOnlyAssemblySource(project, file, document?.text)
+}
+
+private fun readOnlyAssemblySource(project: Project, file: VirtualFile, documentText: String? = null): MipsFile? {
+    val text = documentText ?: readDiskAssemblyText(file) ?: return null
+    return PsiManager.getInstance(project).findFile(ReadOnlyAssemblySourceFile(file, text)) as MipsFile
+}
+
+internal class ReadOnlyAssemblySourceFile(private val origin: VirtualFile, text: String) :
     ReadOnlyLightVirtualFile(origin.name, MipsLanguage, text), BackedVirtualFile {
     init { setFileType(MipsFileType) }
 
@@ -491,4 +512,4 @@ private fun MipsFile.assemblySourceOriginalFile(): VirtualFile =
     BackedVirtualFile.getOriginFileIfBacked(originalFile.viewProvider.virtualFile)
 
 private fun MipsFile.isUnindexedAssemblySource(): Boolean =
-    originalFile !is MipsFile || viewProvider.virtualFile is BinaryAssemblySourceFile
+    originalFile !is MipsFile || viewProvider.virtualFile is ReadOnlyAssemblySourceFile

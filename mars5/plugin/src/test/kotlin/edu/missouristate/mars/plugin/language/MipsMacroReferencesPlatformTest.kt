@@ -24,6 +24,7 @@ import kotlin.io.path.writeText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -317,7 +318,10 @@ class MipsMacroReferencesPlatformTest {
             val topLevelOffset = source.lastIndexOf("external")
             assertEquals(declaration, file.findReferenceAt(topLevelOffset)?.resolve())
             assertEquals(declaration, GotoDeclarationAction.findTargetElement(current, fixture.editor, topLevelOffset))
-            assertNull(file.findReferenceAt(source.indexOf("unavailable"))!!.resolve())
+            val hidden = file.findReferenceAt(source.indexOf("unavailable"))!!.resolve() as MipsDeclaration
+            assertEquals("unavailable", hidden.name)
+            assertEquals("hidden.inc~", hidden.containingFile.name)
+            assertFalse(hidden.containingFile.virtualFile.isWritable)
             val instruction = file.findElementAt(source.indexOf("nop"))!!
             assertTrue(current.service<MarsAnalysisService>().macroTargets(file as MipsFile, instruction).isEmpty())
             WriteCommandAction.runWriteCommandAction(current) {

@@ -13,7 +13,7 @@ import com.intellij.psi.impl.source.resolve.reference.impl.providers.FileReferen
 import com.intellij.psi.impl.source.resolve.reference.impl.providers.FileReferenceHelper
 import com.intellij.psi.impl.source.resolve.reference.impl.providers.FileReferenceSet
 import com.intellij.util.text.CharArrayUtil
-import edu.missouristate.mars.plugin.analysis.BinaryAssemblySourceFile
+import edu.missouristate.mars.plugin.analysis.ReadOnlyAssemblySourceFile
 import edu.missouristate.mars.plugin.language.psi.MipsStringLiteral
 
 /** MARS paths are literal filesystem paths. Spaces and question marks are not URL syntax. */
@@ -37,7 +37,7 @@ class MipsFileReferenceSet internal constructor(
     }
 
     override fun getParentDirectoryContext(): Collection<PsiFileSystemItem> {
-        val source = element.containingFile.viewProvider.virtualFile as? BinaryAssemblySourceFile
+        val source = element.containingFile.viewProvider.virtualFile as? ReadOnlyAssemblySourceFile
             ?: return super.getParentDirectoryContext()
         // Only physical include files have a backed MIPS source view.
         return listOfNotNull(element.manager.findDirectory(source.originFile.parent!!))

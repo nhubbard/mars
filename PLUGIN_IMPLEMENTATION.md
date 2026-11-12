@@ -289,8 +289,9 @@ macro body, which can use definitions later in the assembly source. On rows that
 can consume string data, it keeps spacing after identifiers that remain unresolved
 after both passes, since a preceding macro call can define them during assembly.
 During indexing, Reformat Code can adjust indentation but preserves spacing within
-lines until it can resolve the assembly context. An unresolved or ignored include
-likewise preserves spacing in the source that follows it in assembly order.
+lines until it can resolve the assembly context. An unresolved include or one
+beyond IntelliJ’s content-loading limit likewise preserves spacing in the source
+that follows it in assembly order.
 When a file has multiple containing entries, formatting follows the active layout
 while preserving string data and raw replacement text required by any of them.
 
@@ -692,13 +693,13 @@ structure invalidate the cache. The selected build entry supplies context for in
 editors. Native fixtures cover definition order, malformed and duplicate definitions,
 include cycles, an include appearing after lookup, and unsaved edits.
 
-Explicit includes with binary file associations contribute editor context through read-only
-MIPS PSI for files within IntelliJ's content-loading limit. Their text uses the assembler's
-disk decoder, and the include still resolves relative to its original directory. File
-content changes invalidate the cached context. Completion and contextual highlighting
-can use these definitions, and Go to Declaration opens the captured MIPS text.
-Oversized files still participate in assembly and use assembled source locations for
-macro and label navigation.
+Explicit includes that IntelliJ ignores or classifies as binary contribute editor context
+through read-only MIPS PSI within IntelliJ's content-loading limit. The editor uses an
+available text document or the assembler's disk decoder. Nested includes resolve relative
+to the original directory. File and document changes invalidate the cached context.
+Completion and contextual highlighting can use these definitions, and Go to Declaration
+opens the captured MIPS text. Oversized files still participate in assembly and use
+assembled source locations for macro and label navigation.
 
 ## Go to Declaration for macro calls
 
@@ -1080,8 +1081,8 @@ another language. It parses a contextual copy and keeps navigation ranges
 in the original file. For example, a `.java` include can open a macro and
 include a nested `.s` body. When the containing entry is selected, the
 nested editor uses that macro scope. The include keeps its IntelliJ file
-type, and the MARS index still indexes MIPS files. A binary or ignored
-include marks the editor context incomplete.
+type. For binary or ignored includes, the editor follows the physical path and
+parses a read-only MIPS view when the file fits within the content-loading limit.
 In a fresh IntelliJ test instance, selecting the containing entry through
 Build cleared two false syntax errors in the nested `.s` editor.
 

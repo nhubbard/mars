@@ -3,8 +3,19 @@ package edu.missouristate.mars.plugin.language.references
 import com.intellij.openapi.vfs.VFileProperty
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
+import edu.missouristate.mars.assembler.Tokenizer
+import java.nio.file.InvalidPathException
 import java.nio.file.Path
 import java.util.Objects.requireNonNullElse
+
+internal fun VirtualFile.mipsIncludeRequest(path: String): Path? {
+    if (!isInLocalFileSystem) return null
+    return try {
+        Path.of(Tokenizer.resolveIncludePath(toNioPath().toString(), path))
+    } catch (_: InvalidPathException) {
+        null
+    }
+}
 
 /** Resolves an absolute VFS path in chunks, applying disk semantics at explicit dot segments. */
 internal fun VirtualFileManager.findMipsIncludeFile(request: Path): VirtualFile? {

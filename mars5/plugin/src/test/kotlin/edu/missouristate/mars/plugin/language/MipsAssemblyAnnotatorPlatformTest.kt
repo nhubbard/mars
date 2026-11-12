@@ -11,10 +11,12 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.DefaultLanguageHighlighterColors
 import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.fileEditor.FileDocumentManager
+import com.intellij.openapi.fileTypes.FileTypeManager
 import com.intellij.openapi.fileTypes.PlainTextFileType
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.openapi.vfs.limits.FileSizeLimit
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
 import com.intellij.psi.PsiDocumentManager
@@ -440,11 +442,11 @@ class MipsAssemblyAnnotatorPlatformTest {
     }
 
     @Test
-    fun `ignored includes preserve incomplete editor context`() = timeoutRunBlocking<Unit> {
+    fun `ignored includes contribute editor context to nested assembly sources`() = timeoutRunBlocking<Unit> {
         val (entry, ignored, leaf) = withContext(Dispatchers.EDT) {
             val main = fixture.addFileToProject("entry.s", ".macro outer\n.end_macro\n.include \"bridge.inc~\"\n") as MipsFile
-            val ignored = fixture.tempDirFixture.createFile("bridge.inc~", ".include \"leaf.s\"\n")
-            val leaf = fixture.addFileToProject("leaf.s", ".macro inner\n.end_macro\nnop\n") as MipsFile
+            val ignored = fixture.tempDirFixture.createFile("bridge.inc~", ".eqv SHIFT 4\n.include \"leaf.s\"\n")
+            val leaf = fixture.addFileToProject("leaf.s", ".macro inner\n.end_macro\nsll \$t0, \$t1, SHIFT\n") as MipsFile
             Triple(main, ignored, leaf)
         }
         IndexingTestUtil.suspendUntilIndexesAreReady(project)
@@ -454,9 +456,73 @@ class MipsAssemblyAnnotatorPlatformTest {
         readAction {
             assertNull(PsiManager.getInstance(project).findFile(ignored))
             assertEquals(entryPath, analysis.selectedAssembly(leaf)?.entry)
-            assertEquals(setOf("inner"), analysis.editorTimeline(leaf).macroNames)
+            val timeline = analysis.editorTimeline(leaf)
+            assertEquals(setOf("outer", "inner"), timeline.macroNames)
+            assertFalse(timeline.hasIncompleteIncludes)
+            assertTrue(timeline.hasUnindexedSources)
+            val offset = leaf.text.indexOf("SHIFT")
+            val definition = checkNotNull(leaf.findReferenceAt(offset)?.resolve())
+            assertEquals("SHIFT", (definition as PsiNamedElement).name)
+            assertEquals(ignored, BackedVirtualFile.getOriginFileIfBacked(definition.containingFile.virtualFile))
+            assertFalse(definition.containingFile.virtualFile.isWritable)
         }
+        withContext(Dispatchers.EDT) {
+            val document = checkNotNull(FileDocumentManager.getInstance().getDocument(ignored))
+            WriteCommandAction.runWriteCommandAction(project) { document.setText(".eqv SHIFT 9\n.include \"leaf.s\"\n") }
+            val shift = leaf.text.indexOf("SHIFT")
+            assertEquals("9", analysis.editorTimeline(leaf).prefix(leaf, shift).equivalence("SHIFT")?.replacement)
+            assertTrue(Files.readString(ignored.toNioPath()).startsWith(".eqv SHIFT 4"))
+            FileDocumentManager.getInstance().saveDocument(document)
+            Files.writeString(ignored.toNioPath(), ".eqv COUNT 4\n.include \"leaf.s\"\n")
+            ignored.refresh(false, false)
+            assertNull(leaf.findReferenceAt(leaf.text.indexOf("SHIFT"))?.resolve())
+        }
+    }
 
+    @Test
+    fun `ignored binary sources use the assembler decoder and oversized sources leave incomplete context`() = timeoutRunBlocking<Unit> {
+        val types = FileTypeManager.getInstance()
+        val ignored = types.ignoredFilesList
+        try {
+            val (file, leaf) = withContext(Dispatchers.EDT) {
+                WriteCommandAction.runWriteCommandAction(project) { types.ignoredFilesList = "$ignored;opaque.png" }
+                val opaque = fixture.tempDirFixture.createFile("opaque.png")
+                val text = ".eqv SHIFT 4\r\n"
+                Files.write(opaque.toNioPath(), byteArrayOf(0xff.toByte(), 0xfe.toByte()) + text.toByteArray(Charsets.UTF_16LE))
+                opaque.refresh(false, false)
+                assertTrue(opaque.fileType.isBinary)
+                assertNull(PsiManager.getInstance(project).findFile(opaque))
+                val large = fixture.tempDirFixture.createFile("oversized.inc~")
+                val comment = "#" + " ".repeat(16_382) + "\n"
+                Files.newBufferedWriter(large.toNioPath()).use { writer ->
+                    writer.write(".include \"leaf.s\"\n")
+                    repeat(FileSizeLimit.getContentLoadLimit(large.extension) / comment.length + 1) { writer.write(comment) }
+                }
+                large.refresh(false, false)
+                val entry = fixture.addFileToProject("entry.s",
+                    ".include \"opaque.png\"\nsll \$t0, \$t1, SHIFT\n.include \"oversized.inc~\"\nnop\n") as MipsFile
+                entry to fixture.addFileToProject("leaf.s", ".macro inner\n.end_macro\nnop\n") as MipsFile
+            }
+            IndexingTestUtil.suspendUntilIndexesAreReady(project)
+            val entryPath = file.virtualFile.toNioPath()
+            assertTrue(project.service<MarsBuildService>().assemble(entryPath))
+            readAction {
+                val analysis = project.service<MarsAnalysisService>()
+                val timeline = analysis.editorTimeline(file)
+                val shift = file.text.indexOf("SHIFT")
+                assertTrue(timeline.hasIncompleteIncludes)
+                assertFalse(timeline.prefix(file, shift).hasIncompleteIncludes)
+                assertEquals("4", timeline.prefix(file, shift).equivalence("SHIFT")?.replacement)
+                assertEquals(entryPath, analysis.selectedAssembly(leaf)?.entry)
+                val leafTimeline = analysis.editorTimeline(leaf)
+                assertFalse(leafTimeline.includes(file))
+                assertEquals(setOf("inner"), leafTimeline.macroNames)
+            }
+        } finally {
+            withContext(Dispatchers.EDT) {
+                WriteCommandAction.runWriteCommandAction(project) { types.ignoredFilesList = ignored }
+            }
+        }
     }
 
     @Test

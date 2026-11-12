@@ -233,7 +233,7 @@ class MipsFormattingPlatformTest {
         }
 
     @Test
-    fun `reformat preserves spacing when an ignored include can supply string data`(@TempDir directory: Path) =
+    fun `reformat preserves expanded string data from an ignored include`(@TempDir directory: Path) =
         timeoutRunBlocking<Unit> {
             val definitions = ".eqv HEAD \"x\n"
             val source = """
@@ -264,7 +264,7 @@ class MipsFormattingPlatformTest {
             assertEquals(before, assemble(directory.resolve("ignored-after.asm"), formatted))
             assertTrue("prefix: .byte 7" in formatted, formatted)
             assertTrue("    inside: .asciiz HEAD ,      \"" in formatted, formatted)
-            assertTrue("outside   :   .asciiz   HEAD ,   \"" in formatted, formatted)
+            assertTrue("outside: .asciiz HEAD ,   \"" in formatted, formatted)
         }
 
     @Test

@@ -15,12 +15,11 @@ import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.util.elementType
 import com.intellij.util.IncorrectOperationException
-import edu.missouristate.mars.assembler.Tokenizer
 import edu.missouristate.mars.plugin.language.psi.MipsStringLiteral
 import edu.missouristate.mars.plugin.language.psi.mipsIncludeSites
 import edu.missouristate.mars.plugin.language.references.dotSegments
 import edu.missouristate.mars.plugin.language.references.findMipsIncludeFile
-import java.nio.file.InvalidPathException
+import edu.missouristate.mars.plugin.language.references.mipsIncludeRequest
 import java.nio.file.Path
 
 /** The include prepass examines the physical line before resolving symbols or choosing a build entry. */
@@ -38,11 +37,7 @@ internal class MipsIncludePathAnnotator : Annotator, DumbAware {
         val path = mipsIncludeSites(file).paths[literal.textOffset] ?: return
         val source = file.originalFile.viewProvider.virtualFile
         if (!source.isInLocalFileSystem) return
-        val request = try {
-            Path.of(Tokenizer.resolveIncludePath(source.toNioPath().toString(), path))
-        } catch (_: InvalidPathException) {
-            null
-        }
+        val request = source.mipsIncludeRequest(path)
         val files = VirtualFileManager.getInstance()
         val target = request?.let(files::findMipsIncludeFile)
         if (target != null && !target.isDirectory) return
