@@ -55,6 +55,25 @@ internal class MarsExecutionSources(private val capture: CapturedAssemblySources
         file != null && matches(file, path, text)
     }
 
+    /** Navigates an assembly origin only while its source still matches the captured revision. */
+    fun currentLineDescriptor(project: Project, location: Location): OpenFileDescriptor? {
+        val path = location.file()
+        val file = LocalFileSystem.getInstance().findFileByNioFile(path) ?: return null
+        val documents = FileDocumentManager.getInstance()
+        val document = documents.getDocument(file) ?: return null
+        val text = texts[path] ?: return null
+        val partial = documents.isPartialPreviewOfALargeFile(document)
+        val current = if (partial) document.modificationStamp == capture.revisions.getValue(path)
+            else StringUtil.equals(document.immutableCharSequence, text)
+        if (!current) return null
+
+        val line = location.line() - 1
+        if (line < document.lineCount) return OpenFileDescriptor(project, file, document.getLineStartOffset(line))
+        if (!partial || line >= offsets(path, text).lineCount) return null
+        val excerpt = excerptAt(path, text, line)
+        return OpenFileDescriptor(project, excerpt, line - excerpt.firstLine, 0)
+    }
+
     fun position(location: Location): XSourcePosition {
         val file = fileAt(location)
         val position = XDebuggerUtil.getInstance().createPosition(file, location.line() - 1 - firstLine(file))!!

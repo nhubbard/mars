@@ -7,6 +7,7 @@ import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.ex.ActionUtil
 import com.intellij.openapi.actionSystem.impl.SimpleDataContext
 import com.intellij.openapi.application.EDT
+import com.intellij.openapi.application.readAction
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.fileEditor.FileEditorManager
@@ -14,6 +15,8 @@ import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.ui.popup.ListPopup
 import com.intellij.openapi.ui.popup.ListPopupStep
 import com.intellij.openapi.util.Disposer
+import com.intellij.openapi.vfs.VirtualFileManager
+import com.intellij.openapi.vfs.limits.FileSizeLimit
 import com.intellij.psi.PsiFileFactory
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
@@ -25,6 +28,9 @@ import com.intellij.ui.UiInterceptors
 import edu.missouristate.mars.api.AssembledInstruction
 import edu.missouristate.mars.api.InstructionSourceMap.Location
 import edu.missouristate.mars.api.InstructionSourceMap.Origin
+import edu.missouristate.mars.plugin.run.MarsExecutionSources
+import java.nio.file.Files
+import java.nio.file.StandardOpenOption.APPEND
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -124,6 +130,52 @@ class MarsExpansionPlatformTest {
     }
 
     @Test
+    fun `expansion navigates to a macro instruction beyond a large include preview and rejects stale source`() =
+        timeoutRunBlocking<Unit> {
+            val current = project.get()
+            val text = ".include \"large.inc\"\n.text\nemit\n"
+            val padding = "#" + " ".repeat(4094) + "\n"
+            val count = FileSizeLimit.getContentLoadLimit("inc") / padding.length + 1
+            val (entry, include) = withContext(Dispatchers.EDT) {
+                val entry = fixture.addFileToProject("main.mars", text) as MipsFile
+                fixture.configureFromExistingVirtualFile(entry.virtualFile)
+                val path = entry.virtualFile.toNioPath().resolveSibling("large.inc")
+                Files.newBufferedWriter(path).use { writer ->
+                    repeat(count) { writer.write(padding) }
+                    writer.write(".macro emit\nli \$t0, 0x12345678\n.end_macro\n")
+                }
+                entry to VirtualFileManager.getInstance().refreshAndFindFileByNioPath(path)!!
+            }
+            IndexingTestUtil.suspendUntilIndexesAreReady(current)
+            val preview = inspectExpansion(entry, 3, text) as ExpansionPreview.Instructions
+            val origin = preview.rows.first().origin().location()
+            assertEquals(Location(include.toNioPath(), count + 2), origin)
+            val sources = MarsExecutionSources(preview.capture.sources)
+            readAction {
+                val first = sources.currentLineDescriptor(current, Location(include.toNioPath(), 1))!!
+                assertEquals(include, first.file)
+                assertEquals(0, first.offset)
+                assertNull(sources.currentLineDescriptor(current, Location(include.toNioPath(), count + 100)))
+            }
+            withContext(Dispatchers.EDT) {
+                val editor = fixture.editor
+                val step = instructionStep(current, editor, preview)
+                @Suppress("UNCHECKED_CAST")
+                val chain = step.onChosen(preview.rows.first(), true) as ListPopupStep<Origin>
+                chain.onChosen(chain.values.first(), true)
+                chain.finalRunnable!!.run()
+                val selected = FileEditorManager.getInstance(current).selectedTextEditor!!
+                assertFalse(checkNotNull(selected.virtualFile).isWritable)
+                val line = selected.document.getLineNumber(selected.caretModel.offset)
+                assertTrue(selected.document.getText().startsWith("li \$t0, 0x12345678", selected.document.getLineStartOffset(line)))
+
+                Files.writeString(include.toNioPath(), "# changed\n", APPEND)
+                include.refresh(false, false)
+                assertNull(sources.currentLineDescriptor(current, origin))
+            }
+        }
+
+    @Test
     fun `empty failed stale and ambiguous requests yield distinct results`() = timeoutRunBlocking<Unit> {
         val current = project.get()
         val (file, text) = withContext(Dispatchers.EDT) {
@@ -148,16 +200,18 @@ class MarsExpansionPlatformTest {
         }
         val preview = inspectExpansion(file, 2, nextText) as ExpansionPreview.Instructions
         assertEquals("nop", preview.rows.single().assembly().trim())
-        withContext(Dispatchers.EDT) { fixture.addFileToProject("unrelated.txt", "new file") }
+        val unrelated = withContext(Dispatchers.EDT) { fixture.addFileToProject("unrelated.txt", "new file").virtualFile }
         val afterUnrelatedEdit = preview.capture.expansionAt(file, 2) as ExpansionPreview.Instructions
         assertEquals(preview.rows, afterUnrelatedEdit.rows)
         withContext(Dispatchers.EDT) {
             val path = file.virtualFile.toNioPath()
-            assertNull(expansionSourceTarget(current, preview.capture, Location(path, 99)))
-            assertNull(expansionSourceTarget(current, preview.capture, Location(path.resolveSibling("missing.s"), 1)))
-            assertNull(expansionSourceTarget(current, preview.capture, Location(path.parent, 1)))
+            val sources = MarsExecutionSources(preview.capture.sources)
+            assertNull(sources.currentLineDescriptor(current, Location(path, 99)))
+            assertNull(sources.currentLineDescriptor(current, Location(path.resolveSibling("missing.s"), 1)))
+            assertNull(sources.currentLineDescriptor(current, Location(path.parent, 1)))
+            assertNull(sources.currentLineDescriptor(current, Location(unrelated.toNioPath(), 1)))
             WriteCommandAction.runWriteCommandAction(current) { fixture.editor.document.insertString(0, "# changed\n") }
-            assertNull(expansionSourceTarget(current, preview.capture, preview.rows.single().origin().location()))
+            assertNull(sources.currentLineDescriptor(current, preview.rows.single().origin().location()))
         }
         assertEquals(ExpansionPreview.Unavailable.CHANGED, preview.capture.expansionAt(file, 2))
         withContext(Dispatchers.EDT) {

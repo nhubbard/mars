@@ -10,13 +10,10 @@ import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.ReadConstraint
 import com.intellij.openapi.application.constrainedReadAction
 import com.intellij.openapi.editor.Editor
-import com.intellij.openapi.fileEditor.FileDocumentManager
-import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.openapi.ui.popup.util.BaseListPopupStep
 import com.intellij.openapi.util.text.StringUtil
-import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.platform.ide.progress.withBackgroundProgress
 import edu.missouristate.mars.api.AssembledInstruction
 import edu.missouristate.mars.api.InstructionSourceMap.Location
@@ -26,6 +23,7 @@ import edu.missouristate.mars.plugin.analysis.EditorAssemblyCapture
 import edu.missouristate.mars.plugin.analysis.assembleIn
 import edu.missouristate.mars.plugin.analysis.collectEditorAssembly
 import edu.missouristate.mars.plugin.build.isLocalSource
+import edu.missouristate.mars.plugin.run.MarsExecutionSources
 import edu.missouristate.mars.util.Binary
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
@@ -118,10 +116,10 @@ internal fun instructionStep(project: Project, editor: Editor, preview: Expansio
         override fun hasSubstep(selectedValue: AssembledInstruction) = true
 
         override fun onChosen(selectedValue: AssembledInstruction, finalChoice: Boolean) =
-            originStep(project, editor, preview.capture, selectedValue.origin())
+            originStep(project, editor, MarsExecutionSources(preview.capture.sources), selectedValue.origin())
     }
 
-private fun originStep(project: Project, editor: Editor, capture: EditorAssemblyCapture, origin: Origin) =
+private fun originStep(project: Project, editor: Editor, sources: MarsExecutionSources, origin: Origin) =
     object : BaseListPopupStep<Origin>(
         messages.getMessage("expansion.origin.title"), generateSequence(origin, Origin::caller).toList(),
     ) {
@@ -131,19 +129,10 @@ private fun originStep(project: Project, editor: Editor, capture: EditorAssembly
         }
 
         override fun onChosen(selectedValue: Origin, finalChoice: Boolean) = doFinalStep {
-            val target = expansionSourceTarget(project, capture, selectedValue.location())
+            val target = sources.currentLineDescriptor(project, selectedValue.location())
             if (target == null) HintManager.getInstance().showErrorHint(editor, messages.getMessage("expansion.unavailable.changed"))
             else target.navigate(true)
         }
     }
-
-internal fun expansionSourceTarget(project: Project, capture: EditorAssemblyCapture, location: Location): OpenFileDescriptor? {
-    val file = VirtualFileManager.getInstance().findFileByNioPath(location.file()) ?: return null
-    val document = FileDocumentManager.getInstance().getDocument(file) ?: return null
-    if (!StringUtil.equals(document.immutableCharSequence, capture.sources.snapshot.texts()[location.file()]) ||
-        location.line() > document.lineCount
-    ) return null
-    return OpenFileDescriptor(project, file, document.getLineStartOffset(location.line() - 1))
-}
 
 private val messages = DynamicBundle(MarsShowExpansionAction::class.java, "messages.MarsBundle")
