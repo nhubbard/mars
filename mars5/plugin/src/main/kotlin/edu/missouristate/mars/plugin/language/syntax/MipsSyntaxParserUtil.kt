@@ -19,6 +19,7 @@ import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.CHARACTER
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.COLON
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.COMMA
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.DOLLAR_WORD
+import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.END_MACRO
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.INVALID_CHARACTER
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.LEFT_PAREN
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.MACRO
@@ -45,6 +46,7 @@ private val addressBases = setOf(REGISTER, WORD, DOLLAR_WORD, PARAMETER)
 private val registerAliases = identifiers + PARAMETER
 private val spacing = setOf(WHITE_SPACE)
 private val separators = spacing + COMMA
+private val unfinishedIncludeRecoveryHeads = setOf(MACRO, END_MACRO, BAD_CHARACTER, UNCLOSED_CHARACTER, INVALID_CHARACTER)
 private val syntaxMessages = DynamicBundle(MipsScanner::class.java, "messages.MarsBundle")
 private val labelOffsetMnemonics by lazy {
     InstructionDefaults.get().instructionList.asSequence()
@@ -130,13 +132,14 @@ internal fun isShortEquivalence(runtime: SyntaxGeneratedParserRuntime, level: In
 
 private fun SyntaxElementType?.endsLine() = this == null || this == NEWLINE
 
-/** The assembler's include prepass runs on the physical line before any parsing or expansion. */
+/** Use the prepass's line, or recover an unfinished path before a malformed prefix consumes it. */
 @Suppress("UNUSED_PARAMETER")
 internal fun isIncludeLine(runtime: SyntaxGeneratedParserRuntime, level: Int): Boolean {
     val builder = runtime.syntaxBuilder
     val start = builder.currentOffset
     val source = builder.text
-    return inspectMipsInclude(source, start, CharArrayUtil.shiftForwardUntil(source, start, "\r\n"))?.path() != null
+    val include = inspectMipsInclude(source, start, CharArrayUtil.shiftForwardUntil(source, start, "\r\n")) ?: return false
+    return include.path() != null || builder.tokenType in unfinishedIncludeRecoveryHeads
 }
 
 internal fun inspectMipsInclude(source: CharSequence, start: Int, end: Int): Tokenizer.IncludePath? {

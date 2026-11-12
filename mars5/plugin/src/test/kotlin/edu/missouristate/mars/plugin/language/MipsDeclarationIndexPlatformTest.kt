@@ -103,9 +103,11 @@ class MipsDeclarationIndexPlatformTest {
     @Test
     fun `only includes recognized by the assembler seed expanded symbol searches`() = timeoutRunBlocking<Unit> {
         val recognized = withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("recognized.s", "'abcde.include \"part.s\"").virtualFile.also {
+            fixture.addFileToProject("recognized.s", "'abcde.include \"part.s\" \"unused suffix").virtualFile.also {
                 fixture.addFileToProject("hidden.s", "'a .include \"part.s\"")
                 fixture.addFileToProject("incomplete.s", ".include \"unfinished")
+                fixture.addFileToProject("recovery.s", ".macro ghost .include \"unfinished")
+                fixture.addFileToProject("discarded-equivalence.s", "@ .eqv VALUE .include \"unfinished")
             }
         }
         IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
@@ -137,7 +139,7 @@ class MipsDeclarationIndexPlatformTest {
             assertTrue(index.getContainingFiles(MipsDeclarationIndex.NAME, "ignored", scope).isEmpty())
             val extension = MipsDeclarationIndex()
             assertSame(MipsDeclarationIndex.NAME, extension.name)
-            assertEquals(31, extension.version)
+            assertEquals(32, extension.version)
             assertTrue(extension.dependsOnFileContent())
             assertTrue(extension.inputFilter.acceptInput(file.virtualFile))
             assertTrue(extension.keyDescriptor.isEqual("key", "key"))

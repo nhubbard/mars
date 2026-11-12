@@ -3,7 +3,6 @@ package edu.missouristate.mars.plugin.language.index
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiRecursiveElementWalkingVisitor
-import com.intellij.psi.tree.TokenSet
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.util.PsiUtilCore
 import com.intellij.util.indexing.DataIndexer
@@ -13,6 +12,7 @@ import com.intellij.util.indexing.FileContent
 import com.intellij.util.indexing.ID
 import com.intellij.util.io.DataExternalizer
 import com.intellij.util.io.EnumeratorStringDescriptor
+import edu.missouristate.mars.assembler.Tokenizer
 import edu.missouristate.mars.plugin.analysis.SymbolKind
 import edu.missouristate.mars.plugin.language.MipsFileType
 import edu.missouristate.mars.plugin.language.MipsTypes
@@ -26,7 +26,7 @@ data class MipsDeclarationSite(val kind: SymbolKind, val offset: Int, val macroO
 /** Index only this file's syntax. Never resolve names or query another index while producing facts. */
 class MipsDeclarationIndex : FileBasedIndexExtension<String, List<MipsDeclarationSite>>() {
     override fun getName() = NAME
-    override fun getVersion(): Int = 31
+    override fun getVersion(): Int = 32
     override fun dependsOnFileContent(): Boolean = true
     override fun getInputFilter() = DefaultFileTypeSpecificInputFilter(MipsFileType)
     override fun getKeyDescriptor() = EnumeratorStringDescriptor.INSTANCE
@@ -37,7 +37,7 @@ class MipsDeclarationIndex : FileBasedIndexExtension<String, List<MipsDeclaratio
         content.psiFile.accept(object : PsiRecursiveElementWalkingVisitor() {
             override fun visitElement(element: PsiElement) {
                 ProgressManager.checkCanceled()
-                if (element.node.elementType in expansionSeeds) declarations.getOrPut(EXPANSION_SEED, ::ArrayList)
+                if (element.seedsExpansion()) declarations.getOrPut(EXPANSION_SEED, ::ArrayList)
                 if (element is MipsDeclaration) {
                     val name = element.name
                     // A percent token in .extern can be literal storage outside a macro.
@@ -61,7 +61,18 @@ class MipsDeclarationIndex : FileBasedIndexExtension<String, List<MipsDeclaratio
     companion object {
         val NAME: ID<String, List<MipsDeclarationSite>> = ID.create("mars.declarations")
         internal const val EXPANSION_SEED = "#mars.expansion"
-        private val expansionSeeds = TokenSet.create(MipsTypes.psi("EQV"), MipsTypes.psi("INCLUDE_LINE"))
+        private val equivalence = MipsTypes.psi("EQV")
+        private val includeLine = MipsTypes.psi("INCLUDE_LINE")
+        private val unclosedString = MipsTypes.psi("UNCLOSED_STRING")
+
+        private fun PsiElement.seedsExpansion(): Boolean = when (node.elementType) {
+            equivalence -> node.treeParent.elementType != includeLine
+            includeLine -> {
+                // Recovery also uses INCLUDE_LINE, but an unfinished path supplies no source.
+                node.findChildByType(unclosedString) == null || Tokenizer().findInclude(node.text) != null
+            }
+            else -> false
+        }
     }
 }
 

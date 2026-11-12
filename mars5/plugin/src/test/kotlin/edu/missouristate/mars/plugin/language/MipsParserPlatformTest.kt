@@ -552,6 +552,34 @@ class MipsParserPlatformTest {
     }
 
     @Test
+    fun `unfinished include paths recover without interpreting their prefixes as statements`() = timeoutRunBlocking<Unit> {
+        readAction {
+            val factory = PsiFileFactory.getInstance(project.get())
+            val cases = mapOf(
+                "@ .include \"unfinished" to listOf("@"),
+                ".macro ghost .include \"unfinished" to emptyList(),
+                "'a#xx .include \"unfinished" to listOf("'a", "#xx "),
+            )
+            for ((line, expectedErrors) in cases) {
+                val source = "$line\nnext: nop\n"
+                val file = factory.createFileFromText("editing.mars", MipsFileType, source)
+                assertEquals(source, file.text)
+                val include = descendants(file.node, "INCLUDE_LINE").single()
+                assertEquals(line, include.text)
+                assertEquals("\"unfinished", descendants(include, "UNCLOSED_STRING").single().text)
+                assertEquals(listOf("next:"), descendants(file.node, "LABEL").map { it.text }.toList())
+                assertTrue(descendants(file.node, "MACRO_DEFINITION").none())
+                assertEquals("nop", descendants(file.node, "INSTRUCTION").single().text)
+                assertEquals(expectedErrors, PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java).map { it.text })
+            }
+            val nested = assertParses(".macro outer\n.end_macro .include \"unfinished\ninside: nop\n.end_macro\noutside: nop\n")
+            val outer = descendants(nested.node, "MACRO_DEFINITION").single()
+            assertEquals(listOf("inside:"), descendants(outer, "LABEL").map { it.text }.toList())
+            assertEquals(".end_macro .include \"unfinished", descendants(outer, "INCLUDE_LINE").single().text)
+        }
+    }
+
+    @Test
     fun `an include can replace a macro boundary line before macro assembly`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
         directory.resolve("body.s").writeText("addiu \$t0,\$zero,7")
         for (prefix in listOf(".end_macro", ".macro replaced")) {

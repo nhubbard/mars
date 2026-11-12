@@ -569,6 +569,20 @@ class MipsMacroInspectionPlatformTest {
                 errors()
                 assertTrue(fixture.availableIntentions.none { it.text == "Comment out text after .end_macro" }, source)
             }
+            val aliased = ".eqv CLOSE .end_macro\n.macro emit\nCL<caret>OSE extra\n"
+            fixture.configureByText("macro-tail.mars", aliased)
+            errors()
+            val beforeInclude = checkNotNull(
+                fixture.availableIntentions.single { it.text == "Comment out text after .end_macro" }.asModCommandAction(),
+            )
+            WriteCommandAction.runWriteCommandAction(project) {
+                val editor = fixture.editor
+                val line = editor.caretModel.logicalPosition.line
+                editor.document.insertString(editor.document.getLineEndOffset(line), " .include \"unfinished")
+            }
+            PsiDocumentManager.getInstance(project).commitAllDocuments()
+            assertEquals(null, beforeInclude.getPresentation(ActionContext.from(fixture.editor, fixture.file)))
+
             val source = ".macro emit\n.end_macro extra\n"
             val shared = fixture.addFileToProject("shared.inc", source)
             fixture.configureFromExistingVirtualFile(shared.virtualFile)
