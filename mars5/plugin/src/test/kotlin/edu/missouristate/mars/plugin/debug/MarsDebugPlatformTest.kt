@@ -602,6 +602,72 @@ class MarsDebugPlatformTest {
     }
 
     @Test
+    fun `data continuations are not breakpoint sites while matching macros still bind`() = timeoutRunBlocking<Unit> {
+        val (entry, instructionLine) = withContext(Dispatchers.EDT) {
+            val source = """
+                .macro emit (%value)
+                  .text
+                  li ${'$'}a0, %value
+                  li ${'$'}v0, 1
+                  syscall
+                  .data
+                .end_macro
+                .eqv CALL emit
+                .data
+                .word 0
+                emit 7:2
+                CALL 9:2
+                emit 2 3
+                emit: .word 0
+                CALL (42)
+                .text
+                li ${'$'}v0, 10
+                syscall
+            """.trimIndent()
+            val file = fixture.addFileToProject("data-breakpoints.mars", source).virtualFile
+            fun line(text: String) = source.lines().indexOfFirst { it.trim() == text }
+            for (row in listOf("emit 7:2", "CALL 9:2", "emit 2 3")) {
+                assertFalse(breakpointType.canPutAt(file, line(row), project), row)
+            }
+            val call = line("CALL (42)")
+            assertTrue(breakpointType.canPutAt(file, call, project))
+            addBreakpoint(file, call)
+            val incomplete = fixture.addFileToProject("incomplete.mars",
+                ".include \"missing.inc\"\n.data\n.word 0\nemit 7:2\n").virtualFile
+            assertTrue(breakpointType.canPutAt(incomplete, 3, project))
+            file to line("li ${'$'}a0, %value")
+        }
+        withDebug(entry) { debug ->
+            debug.assertPausedAt(entry, instructionLine)
+            assertEquals("", debug.stdout.toString())
+            withContext(Dispatchers.EDT) { debug.session.resume() }
+            assertEquals(0, debug.exit.await())
+            assertEquals("42", debug.stdout.toString())
+        }
+    }
+
+    @Test
+    fun `shared data rows keep provisional breakpoints until an assembly entry is selected`() = timeoutRunBlocking<Unit> {
+        withContext(Dispatchers.EDT) {
+            val first = fixture.addFileToProject("first.mars", ".include \"shared.inc\"\n").virtualFile
+            val second = fixture.addFileToProject("second.mars", """
+                .macro emit (%one, %two, %three)
+                    .text
+                    nop
+                .end_macro
+                .include "shared.inc"
+            """.trimIndent()).virtualFile
+            val shared = fixture.addFileToProject("shared.inc", ".data\n.word 0\nemit 7:2\n").virtualFile
+            assertTrue(breakpointType.canPutAt(shared, 2, project))
+            val analysis = project.service<MarsAnalysisService>()
+            analysis.beginSymbolBuild(first.toNioPath())
+            assertFalse(breakpointType.canPutAt(shared, 2, project))
+            analysis.beginSymbolBuild(second.toNioPath())
+            assertTrue(breakpointType.canPutAt(shared, 2, project))
+        }
+    }
+
+    @Test
     fun `incomplete or unavailable alias context keeps breakpoint placement provisional`() = timeoutRunBlocking<Unit> {
         withContext(Dispatchers.EDT) {
             val file = fixture.addFileToProject("provisional.s", """

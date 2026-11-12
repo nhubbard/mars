@@ -736,12 +736,21 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
 
     /** Unresolved operations may still become executable in a containing entry or macro expansion. */
     internal fun canSetOperationBreakpoint(root: MipsFile, head: PsiElement): Boolean {
-        val prefix = leadingEquivalencePrefix(root, head) ?: return true
+        val aliased = leadingEquivalencePrefix(root, head)
+        val prefix = aliased ?: run {
+            if (head.elementType == mnemonicType || DumbService.isDumb(project)) return true
+            editorPrefix(root, head.textOffset).takeIf { it.dataList != null } ?: return true
+        }
         val tokens = expandedOperation(prefix, sourceLine(head, fromLineStart = true)) ?: return true
         if (tokens.isEmpty) return false
         val operation = tokens[0]
-        return operation.type == TokenTypes.OPERATOR || operation.type == TokenTypes.IDENTIFIER ||
-            prefix.isMacroParameter(operation.value)
+        if (operation.type != TokenTypes.IDENTIFIER) {
+            return operation.type == TokenTypes.OPERATOR || prefix.isMacroParameter(operation.value)
+        }
+        if (prefix.hasIncompleteIncludes || prefix.matchingMacro(tokens, 0) != null) return true
+        if (!canAssembleDataContinuation(root, head, prefix.dataList, tokens)) return true
+        // A shared include can acquire a matching macro from another entry.
+        return mipsAssemblyRoots(root).size > 1 && selectedEditorContext(root) == null
     }
 
     private fun leadingEquivalencePrefix(root: MipsFile, head: PsiElement): MipsSourceTimeline.Prefix? {
