@@ -1,6 +1,6 @@
 package edu.missouristate.mars.plugin.tools
 
-import edu.missouristate.mars.mips.hardware.AccessOrigin.duringExecution
+import edu.missouristate.mars.mips.hardware.AccessOrigin.Companion.duringExecution
 import edu.missouristate.mars.mips.hardware.Coprocessor0State.Companion.STATUS
 import edu.missouristate.mars.mips.hardware.MemoryAccessNotice
 import edu.missouristate.mars.plugin.MarsSessionService

@@ -120,7 +120,7 @@ internal fun disassemblyWindow(
             statement?.printableBasicAssemblyStatement?.trimEnd() ?: "—",
             statement?.instructionOrigin?.location(),
             address == pc && markers.nextIsDelaySlot,
-            markers.previous?.takeIf { it.address() == address.toInt() },
+            markers.previous?.takeIf { it.address == address.toInt() },
         )
     }
 }
@@ -153,7 +153,7 @@ internal class MarsDisassemblyView(
             buildList {
                 if (row.nextIsDelaySlot) add(runMessages.getMessage("debug.disassembly.delay.next"))
                 row.previous?.let {
-                    val key = if (it.delaySlot()) "debug.disassembly.previous.delay" else "debug.disassembly.previous"
+                    val key = if (it.delaySlot) "debug.disassembly.previous.delay" else "debug.disassembly.previous"
                     add(runMessages.getMessage(key))
                 }
             }.joinToString(" · ")
@@ -311,7 +311,7 @@ internal class MarsDisassemblyView(
         table.clearSelection()
         model.items = emptyList()
         val context = session.suspendContext as? MarsSuspendContext
-        previousAddress = context?.executionMarkers?.previous?.address()
+        previousAddress = context?.executionMarkers?.previous?.address
         lastExecuted.isEnabled = previousAddress != null
         if (context == null) {
             followPc.isEnabled = false

@@ -9,7 +9,7 @@ import edu.missouristate.mars.api.StopEvent.Reason.EXCEPTION
 import edu.missouristate.mars.api.StopEvent.Reason.STEP_LIMIT
 import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.mips.hardware.AccessNotice.Companion.WRITE
-import edu.missouristate.mars.mips.hardware.AccessOrigin.duringExecution
+import edu.missouristate.mars.mips.hardware.AccessOrigin.Companion.duringExecution
 import edu.missouristate.mars.mips.hardware.MemoryAccessNotice
 import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.tools.ScavengerHuntDevice.Companion.authentication

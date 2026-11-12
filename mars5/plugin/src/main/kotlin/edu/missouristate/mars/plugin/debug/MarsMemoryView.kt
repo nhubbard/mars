@@ -159,7 +159,7 @@ internal class MarsMemoryView(private val session: XDebugSession, private val en
         next.addActionListener { move(BYTES_PER_PAGE) }
         export.addActionListener { exportSuspension() }
         edit.addActionListener { editSuspension() }
-        lastWrite.addActionListener { showAddress(displayedWrite!!.address()) }
+        lastWrite.addActionListener { showAddress(displayedWrite!!.address) }
         regions.addItemListener { event ->
             if (event.stateChange == ItemEvent.SELECTED) {
                 regions.selectedItem = null
@@ -285,7 +285,7 @@ internal class MarsMemoryView(private val session: XDebugSession, private val en
 
     private fun renderWriteStatus() {
         writeStatus.text = displayedWrite?.let {
-            runMessages.getMessage("debug.memory.last.write.status", display.formatAddress(it.address()), it.length())
+            runMessages.getMessage("debug.memory.last.write.status", display.formatAddress(it.address), it.length)
         }.orEmpty()
     }
 
@@ -298,8 +298,8 @@ internal class MarsMemoryView(private val session: XDebugSession, private val en
                 return
             }
             val start = model.getItem(table.convertRowIndexToModel(row)).address.toUInt().toLong()
-            val writeStart = write.address().toUInt().toLong()
-            val writeEnd = writeStart + write.length()
+            val writeStart = write.address.toUInt().toLong()
+            val writeEnd = writeStart + write.length
             val highlight = MarsMachineHighlight.WRITE.tableStyle()
             for ((index, token) in text.split(separator).withIndex()) {
                 if (index > 0) append(separator)

@@ -2441,7 +2441,7 @@ class MarsDebugPlatformTest {
                     val memory = requireNotNull(layout.findContent("MarsMipsMemory")).component
                     val edit = UIUtil.findComponentsOfType(memory, JButton::class.java).single { it.text == "Edit Word…" }
                     val context = assertInstanceOf(MarsSuspendContext::class.java, debug.session.suspendContext)
-                    assertEquals(0x00400000, context.executionMarkers.previous?.address())
+                    assertEquals(0x00400000, context.executionMarkers.previous?.address)
                     interceptMemoryEdit { finishMemoryEdit(it, "0x00400004", "0x2404002a") }
                     edit.doClick()
                     val disassembly = requireNotNull(layout.findContent("MarsMipsDisassembly")).component

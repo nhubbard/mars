@@ -2,7 +2,7 @@ package edu.missouristate.mars.plugin.tools
 
 import edu.missouristate.mars.api.StopEvent
 import edu.missouristate.mars.ProcessingException
-import edu.missouristate.mars.mips.hardware.AccessOrigin.duringExecution
+import edu.missouristate.mars.mips.hardware.AccessOrigin.Companion.duringExecution
 import edu.missouristate.mars.mips.hardware.Coprocessor0State.Companion.CAUSE
 import edu.missouristate.mars.mips.hardware.Coprocessor0State.Companion.STATUS
 import edu.missouristate.mars.mips.hardware.MemoryAccessNotice
