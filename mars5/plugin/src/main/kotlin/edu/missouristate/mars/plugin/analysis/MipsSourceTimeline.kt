@@ -301,31 +301,43 @@ internal class MipsSourceTimeline(
         return EquivalenceUse(definition.site, uses.types[offset], offset == uses.operationOffset)
     }
 
+    fun isNumericRepetition(file: MipsFile, position: PsiElement): Boolean {
+        val start = sourceLineStart(position)
+        // Completion analyzes a PSI copy with its placeholder in the slot being edited.
+        val uses = if (position.containingFile === file) equivalenceUses(file, position, start)
+            else analyzeEquivalences(file, position, start)
+        return uses.numericRepetition
+    }
+
     private fun equivalenceUses(file: MipsFile, position: PsiElement, start: Int): LineEquivalenceUses =
-        equivalenceUsesByLine.getOrPut(file to start) {
-            val prefix = prefix(file, start)
-            val errors = ErrorList()
-            val expansion = Tokenizer.tokenizeMappedLine(
-                sourceLine(position, fromLineStart = true), errors,
-                { prefix.equivalence(it)?.replacement }, ProgressManager::checkCanceled,
-            )
-            val tokens = expansion.tokens()
-            tokens.discardTrailingComment()
-            val operationIndex = if (tokens.beginsWithLabel()) 2 else 0
-            val operation = if (operationIndex < tokens.size()) tokens[operationIndex] else null
-            val operationOffset = if (operation != null && prefix.operationType(tokens, operationIndex) != null) {
-                expansion.originalOffset(operation.startPos - 1)
-            } else -1
-            val tokensByOffset = if (errors.errorsOccurred()) emptyMap() else (0 until tokens.size()).map(tokens::get).groupBy {
-                expansion.originalOffset(it.startPos - 1)
-            }
-            val types = expansion.substitutionOffsets().associateWith { offset ->
-                tokensByOffset[offset]?.singleOrNull()?.let {
-                    if (prefix.isMacroParameter(it.value)) TokenTypes.MACRO_PARAMETER else it.type
-                }
-            }
-            LineEquivalenceUses(types, operationOffset)
+        equivalenceUsesByLine.getOrPut(file to start) { analyzeEquivalences(file, position, start) }
+
+    private fun analyzeEquivalences(file: MipsFile, position: PsiElement, start: Int): LineEquivalenceUses {
+        val prefix = prefix(file, start)
+        val errors = ErrorList()
+        val expansion = Tokenizer.tokenizeMappedLine(
+            sourceLine(position, fromLineStart = true), errors,
+            { prefix.equivalence(it)?.replacement }, ProgressManager::checkCanceled,
+        )
+        val tokens = expansion.tokens()
+        tokens.discardTrailingComment()
+        val operationIndex = if (tokens.beginsWithLabel()) 2 else 0
+        val operation = if (operationIndex < tokens.size()) tokens[operationIndex] else null
+        val operationOffset = if (operation != null && prefix.operationType(tokens, operationIndex) != null) {
+            expansion.originalOffset(operation.startPos - 1)
+        } else -1
+        val tokensByOffset = if (errors.errorsOccurred()) emptyMap() else (0 until tokens.size()).map(tokens::get).groupBy {
+            expansion.originalOffset(it.startPos - 1)
         }
+        val types = expansion.substitutionOffsets().associateWith { offset ->
+            tokensByOffset[offset]?.singleOrNull()?.let {
+                if (prefix.isMacroParameter(it.value)) TokenTypes.MACRO_PARAMETER else it.type
+            }
+        }
+        repeat(operationIndex) { tokens.remove(0) }
+        val numericRepetition = tokens.hasCompleteEquivalenceExpansion() && tokens.hasNumericRepetitionShape()
+        return LineEquivalenceUses(types, operationOffset, numericRepetition)
+    }
 
     private fun prefixEnd(file: MipsFile, offset: Int): Int {
         val locations = files.getValue(file.viewProvider.virtualFile)
@@ -421,7 +433,9 @@ internal data class IndexedEquivalence(val index: Int, val definition: MipsSourc
 /** A substituted token has no single type when it supplies several tokens or the expansion fails. */
 internal data class EquivalenceUse(val target: PsiElement, val type: TokenTypes?, val suppliesOperation: Boolean)
 
-private data class LineEquivalenceUses(val types: Map<Int, TokenTypes?>, val operationOffset: Int)
+private data class LineEquivalenceUses(
+    val types: Map<Int, TokenTypes?>, val operationOffset: Int, val numericRepetition: Boolean,
+)
 
 internal data class TimelineLabel(val name: String, val site: PsiElement, val macro: Begin?, val generated: Boolean)
 

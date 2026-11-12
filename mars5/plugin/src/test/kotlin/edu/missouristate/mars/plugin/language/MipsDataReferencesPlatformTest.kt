@@ -44,6 +44,19 @@ class MipsDataReferencesPlatformTest {
     }
 
     @Test
+    fun `aliased repetition punctuation does not make numeric slots into label references`() = timeoutRunBlocking<Unit> {
+        val setup = ".eqv SUFFIX :2\n.eqv SEPARATOR :\n.eqv VALUE 7\n.eqv FIRST SECOND\n.eqv SECOND FIRST\n.data\n"
+        val end = "\ntarget: .word 0\n"
+        for (use in listOf(".word tar<caret>get SUFFIX", ".word VALUE SEPARATOR tar<caret>get",
+            ".word 0\n99, tar<caret>get SUFFIX", "row: .word tar<caret>get SUFFIX")) {
+            assertNull(target(setup + use + end), use)
+        }
+        assertEquals(SymbolKind.CONSTANT, target(setup + ".word VA<caret>LUE SUFFIX" + end))
+        assertEquals(SymbolKind.LABEL, target(setup + ".word tar<caret>get FIRST" + end))
+        assertEquals(SymbolKind.LABEL, target(setup + "row: .word tar<caret>get, 2" + end))
+    }
+
+    @Test
     fun `continued lists follow the data state across include and macro boundaries`() = timeoutRunBlocking<Unit> {
         withContext(Dispatchers.EDT) {
             fixture.addFileToProject("parts/setup.s", ".include \"mode.s\"\n")

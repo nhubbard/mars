@@ -543,7 +543,7 @@ class MipsCompletionPlatformTest {
     fun `integer data completion follows includes aliases and continuation lines`(@TempDir directory: Path) =
         timeoutRunBlocking<Unit> {
             val current = project.get()
-            val setup = ".data\n.eqv WORDS .word\n.word 0\n"
+            val setup = ".data\n.eqv WORDS .word\n.eqv SUFFIX :2\n.eqv SEPARATOR :\n.word 0\n"
             val prefix = ".include \"setup.inc\"\n"
             val labels = "\n.text\ntargetOne: nop\ntargetTwo: nop\n"
             withContext(Dispatchers.EDT) { fixture.addFileToProject("setup.inc", setup) }
@@ -560,7 +560,9 @@ class MipsCompletionPlatformTest {
                 }
                 for (line in listOf(".float tar<caret>", ".text\n.word tar<caret>", ".float 0\n2, tar<caret>",
                     ".extern targetExtern 4\n.globl targetExt<caret>",
-                    ".word tar<caret>:2", ".word (tar<caret>)", ".macro emit (%arg)\n.end_macro\nemit tar<caret>")) {
+                    ".word tar<caret>:2", ".word (tar<caret>)", ".word tar<caret> SUFFIX",
+                    ".word 7 SEPARATOR tar<caret>", "99 tar<caret> SUFFIX", "row: .word <caret> SUFFIX",
+                    ".macro emit (%arg)\n.end_macro\nemit tar<caret>")) {
                     assertTrue(candidates(line).isEmpty(), line)
                 }
                 assertEquals(expected, candidates("WORDS target<caret>.old"))

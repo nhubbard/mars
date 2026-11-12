@@ -177,7 +177,7 @@ internal enum class DataLabelOperand {
 
     fun isDataLabel(file: MipsFile, analysis: MarsAnalysisService, element: PsiElement): Boolean {
         if (this == EXPORT || !analysis.hasIntegerDataList(file, element)) return false
-        if (this == LIST) return true
+        if (this == LIST) return !analysis.isNumericDataRepetition(file, element)
         val candidateHead = PsiUtilCore.getElementType(element.parent) == candidateType
         val head = if (candidateHead) element else element.parent.parent.firstChild
         return analysis.isIntegerDataCandidate(file, head, candidateHead)

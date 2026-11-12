@@ -809,6 +809,9 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         return Directives.isIntegerDirective(editorPrefix(root, position.textOffset).dataList)
     }
 
+    internal fun isNumericDataRepetition(root: MipsFile, position: PsiElement): Boolean =
+        editorTimeline(root).isNumericRepetition(root, position)
+
     internal fun directiveOperandEquivalenceCompletions(root: MipsFile, range: TextRange, prefix: String): Map<String, String> {
         if (DumbService.isDumb(project)) return emptyMap()
         val activeList = editorPrefix(root, range.startOffset).dataList
