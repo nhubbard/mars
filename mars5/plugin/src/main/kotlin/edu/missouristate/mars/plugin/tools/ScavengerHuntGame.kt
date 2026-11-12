@@ -2,7 +2,7 @@ package edu.missouristate.mars.plugin.tools
 
 /** Immutable game state shared by the memory-mapped device and its scoreboard. */
 internal data class ScavengerHuntGame(
-    val playerId: Int = administratorId,
+    val playerId: Int = ADMINISTRATOR_ID,
     val authenticationSequence: Int = 0,
     val turnsRemaining: Int = 0,
     val round: Round? = null,
@@ -37,25 +37,25 @@ internal data class ScavengerHuntGame(
         val next = authenticationSequence + 1
         val advanced = copy(authenticationSequence = next)
         if (authentication != next) return Result(advanced, Rejection.AUTHENTICATION)
-        if (requestedId != administratorId && requestedId !in 0 until playerCount) {
+        if (requestedId != ADMINISTRATOR_ID && requestedId !in 0 until PLAYER_COUNT) {
             return Result(advanced, Rejection.UNKNOWN_PLAYER)
         }
         return Result(advanced.copy(playerId = requestedId))
     }
 
     fun startRound(instruction: Long): Result {
-        if (playerId != administratorId) return Result(this, Rejection.ADMINISTRATOR_REQUIRED)
-        val random = ScavengerRandom(initialRandomState)
-        val locations = List(locationCount - 1) {
-            Point((random.nextDouble() * boardWidth).toInt(), (random.nextDouble() * (boardHeight - 50)).toInt())
+        if (playerId != ADMINISTRATOR_ID) return Result(this, Rejection.ADMINISTRATOR_REQUIRED)
+        val random = ScavengerRandom(INITIAL_RANDOM_STATE)
+        val locations = List(LOCATION_COUNT - 1) {
+            Point((random.nextDouble() * BOARD_WIDTH).toInt(), (random.nextDouble() * (BOARD_HEIGHT - 50)).toInt())
         } + start
-        val players = List(playerCount) { Player(start, startingEnergy, 0, random.nextTask()) }
+        val players = List(PLAYER_COUNT) { Player(start, STARTING_ENERGY, 0, random.nextTask()) }
         return Result(copy(authenticationSequence = 0, round = Round(locations, players, instruction, random.state)))
     }
 
     fun move(destination: Point, instruction: Long): Result = updatePlayer { activeRound, player ->
         if (player.energy <= 0) return@updatePlayer Result(this, Rejection.NO_ENERGY)
-        if (destination.x !in 0..boardWidth || destination.y !in 0..boardHeight) {
+        if (destination.x !in 0..BOARD_WIDTH || destination.y !in 0..BOARD_HEIGHT) {
             return@updatePlayer Result(this, Rejection.OUTSIDE_BOARD)
         }
         val dx = destination.x - player.position.x
@@ -67,7 +67,7 @@ internal data class ScavengerHuntGame(
         for ((index, location) in activeRound.locations.withIndex()) {
             if (destination == location) visited = visited or (1 shl index)
         }
-        val finish = if (visited == allLocations && player.finishAfterInstructions == null) {
+        val finish = if (visited == ALL_LOCATIONS && player.finishAfterInstructions == null) {
             instruction - activeRound.firstInstruction
         } else player.finishAfterInstructions
         replacePlayer(activeRound, player.copy(
@@ -79,12 +79,12 @@ internal data class ScavengerHuntGame(
     }
 
     fun completeTask(words: List<Int>): Result = updatePlayer { activeRound, player ->
-        if (words.size != taskSize || (1 until taskSize).any { words[it - 1] > words[it] }) {
+        if (words.size != TASK_SIZE || (1 until TASK_SIZE).any { words[it - 1] > words[it] }) {
             return@updatePlayer Result(this, Rejection.INVALID_TASK)
         }
         val random = ScavengerRandom(activeRound.randomState)
         val task = random.nextTask()
-        replacePlayer(activeRound.copy(randomState = random.state), player.copy(energy = startingEnergy, task = task))
+        replacePlayer(activeRound.copy(randomState = random.state), player.copy(energy = STARTING_ENERGY, task = task))
     }
 
     fun changeColor(color: Int): Result = updatePlayer { activeRound, player ->
@@ -92,7 +92,7 @@ internal data class ScavengerHuntGame(
     }
 
     private inline fun updatePlayer(update: (Round, Player) -> Result): Result {
-        if (playerId == administratorId) return Result(this, Rejection.PLAYER_REQUIRED)
+        if (playerId == ADMINISTRATOR_ID) return Result(this, Rejection.PLAYER_REQUIRED)
         val activeRound = round ?: return Result(this, Rejection.ROUND_NOT_STARTED)
         return update(activeRound, activeRound.players[playerId])
     }
@@ -104,15 +104,15 @@ internal data class ScavengerHuntGame(
     }
 
     companion object {
-        const val administratorId = 999
-        const val playerCount = 22
-        const val boardWidth = 712
-        const val boardHeight = 652
-        const val locationCount = 7
-        const val taskSize = 20
-        private const val startingEnergy = 20
-        private const val allLocations = (1 shl locationCount) - 1
-        private const val initialRandomState = 42L xor 0x5deece66dL
+        const val ADMINISTRATOR_ID = 999
+        const val PLAYER_COUNT = 22
+        const val BOARD_WIDTH = 712
+        const val BOARD_HEIGHT = 652
+        const val LOCATION_COUNT = 7
+        const val TASK_SIZE = 20
+        private const val STARTING_ENERGY = 20
+        private const val ALL_LOCATIONS = (1 shl LOCATION_COUNT) - 1
+        private const val INITIAL_RANDOM_STATE = 42L xor 0x5deece66dL
         private val start = Point(255, 255)
     }
 }
@@ -126,5 +126,5 @@ private class ScavengerRandom(var state: Long) {
 
     fun nextDouble(): Double = ((next(26) shl 27) + next(27)) / (1L shl 53).toDouble()
 
-    fun nextTask(): List<Int> = List(ScavengerHuntGame.taskSize) { (nextDouble() * Int.MAX_VALUE).toInt() }
+    fun nextTask(): List<Int> = List(ScavengerHuntGame.TASK_SIZE) { (nextDouble() * Int.MAX_VALUE).toInt() }
 }

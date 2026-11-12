@@ -25,8 +25,8 @@ internal data class MarsBotWorld(
             270 -> Point(-1.0, 0.0)
             else -> Math.toRadians(heading.toDouble()).let { Point(StrictMath.sin(it), -StrictMath.cos(it)) }
         }
-        val next = Point((position.x + direction.x).coerceIn(0.0, lastPixel),
-            (position.y + direction.y).coerceIn(0.0, lastPixel))
+        val next = Point((position.x + direction.x).coerceIn(0.0, LAST_PIXEL),
+            (position.y + direction.y).coerceIn(0.0, LAST_PIXEL))
         if (next == position) return this
         val path = if (penDown) extendTrail(next) else trail
         return copy(position = next, trail = path)
@@ -48,7 +48,7 @@ internal data class MarsBotWorld(
     }
 
     companion object {
-        const val boardSize = 512
-        private const val lastPixel = 511.0
+        const val BOARD_SIZE = 512
+        private const val LAST_PIXEL = 511.0
     }
 }

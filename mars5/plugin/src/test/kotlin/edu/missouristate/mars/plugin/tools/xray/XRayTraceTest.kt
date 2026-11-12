@@ -14,7 +14,7 @@ class XRayTraceTest {
     fun `bounded history includes repeated PCs and rewinds by execution step`() {
         val trace = XRayTrace()
         assertTrue(trace.snapshot().isEmpty())
-        val capacity = XRayTrace.capacity
+        val capacity = XRayTrace.CAPACITY
         for (step in 1..capacity + 2) trace.record(StepEvent(0x00400000, 0, step.toLong()))
         val original = trace.snapshot()
         assertSame(original, trace.snapshot())

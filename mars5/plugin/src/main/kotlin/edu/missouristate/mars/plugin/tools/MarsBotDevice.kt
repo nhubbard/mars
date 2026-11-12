@@ -33,7 +33,7 @@ internal class MarsBotDevice(private val connectAtLaunch: Boolean = false) {
     private var connected = connectAtLaunch
     private var hasConnected = connectAtLaunch
     private var world = MarsBotWorld()
-    private var instructionsPerTick = defaultInstructionsPerTick
+    private var instructionsPerTick = DEFAULT_INSTRUCTIONS_PER_TICK
     private var remaining = instructionsPerTick
     private var publish = false
     private var checkpoint: RewindState? = null
@@ -166,7 +166,7 @@ internal class MarsBotDevice(private val connectAtLaunch: Boolean = false) {
     }
 
     companion object {
-        const val defaultInstructionsPerTick = 64
+        const val DEFAULT_INSTRUCTIONS_PER_TICK = 64
         val instructionRange = 1..1_000_000
     }
 }

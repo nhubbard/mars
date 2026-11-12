@@ -13,9 +13,9 @@ import com.intellij.ui.dsl.builder.columns
 import com.intellij.ui.scale.JBUIScale
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.launchOnShow
-import edu.missouristate.mars.plugin.tools.MarsBotDevice.Companion.defaultInstructionsPerTick
+import edu.missouristate.mars.plugin.tools.MarsBotDevice.Companion.DEFAULT_INSTRUCTIONS_PER_TICK
 import edu.missouristate.mars.plugin.tools.MarsBotDevice.Companion.instructionRange
-import edu.missouristate.mars.plugin.tools.MarsBotWorld.Companion.boardSize
+import edu.missouristate.mars.plugin.tools.MarsBotWorld.Companion.BOARD_SIZE
 import java.awt.BasicStroke
 import java.awt.Graphics
 import java.awt.Graphics2D
@@ -73,7 +73,7 @@ internal class MarsBotView(project: Project) : Disposable {
             selected!!.reset()
             render()
         }
-        clock.text = defaultInstructionsPerTick.toString()
+        clock.text = DEFAULT_INSTRUCTIONS_PER_TICK.toString()
         clock.addActionListener { updateClock() }
         controls.registerValidators(this)
         refresh()
@@ -100,7 +100,7 @@ internal class MarsBotView(project: Project) : Disposable {
         if (current !== selected) {
             selected?.releaseView()
             selected = current
-            clock.text = (current?.snapshot()?.instructionsPerTick ?: defaultInstructionsPerTick).toString()
+            clock.text = (current?.snapshot()?.instructionsPerTick ?: DEFAULT_INSTRUCTIONS_PER_TICK).toString()
         }
     }
 
@@ -174,7 +174,7 @@ internal class MarsBotBoard : JBPanel<MarsBotBoard>() {
 
             val current = world ?: return
             g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
-            val scale = side.toDouble() / (boardSize - 1)
+            val scale = side.toDouble() / (BOARD_SIZE - 1)
             g.color = JBColor.foreground()
             g.stroke = BasicStroke(JBUI.scale(2).toFloat(), BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND)
             current.trail?.strokes()?.forEach { stroke ->

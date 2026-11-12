@@ -108,7 +108,7 @@ internal class MemoryGridDisplay(private val captureAtLaunch: Boolean = false, m
 
     @Synchronized
     fun setColor(threshold: Long, rgb: Int) {
-        palette[threshold] = rgb and rgbMask
+        palette[threshold] = rgb and RGB_MASK
         val current = counts
         pixels = IntArray(options.cells) { colorAt(current?.get(it) ?: 0) }
         cachedFrame = null
@@ -168,7 +168,7 @@ internal class MemoryGridDisplay(private val captureAtLaunch: Boolean = false, m
         } else {
             if (notice.accessType != WRITE) return
             // The notice is delivered on the writer's thread after the store has completed.
-            source.getWordNoNotify(notice.address and -4) and rgbMask
+            source.getWordNoNotify(notice.address and -4) and RGB_MASK
         }
         val colors = pixels ?: IntArray(options.cells).also { pixels = it }
         colors[index] = color
@@ -179,7 +179,7 @@ internal class MemoryGridDisplay(private val captureAtLaunch: Boolean = false, m
         val displaySizes = listOf(64, 128, 256, 512, 1024)
         val unitSizes = listOf(1, 2, 4, 8, 16, 32)
         val wordCounts = (0..11).map { 1 shl it }
-        private const val rgbMask = 0x00ff_ffff
+        private const val RGB_MASK = 0x00ff_ffff
         private val defaultPalette = mapOf(
             0L to 0x000000, 1L to 0x0000ff, 2L to 0x00ff00,
             3L to 0xffff00, 5L to 0xffc800, 10L to 0xff0000,

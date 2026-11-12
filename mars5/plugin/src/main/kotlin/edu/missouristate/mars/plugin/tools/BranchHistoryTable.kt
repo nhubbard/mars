@@ -46,7 +46,7 @@ internal class BranchHistoryTable {
             entry.incorrect++
             if (entry.history == if (taken) mask else 0) entry.predictedTaken = taken
         }
-        if (recent.size == logLimit) recent.removeFirst()
+        if (recent.size == LOG_LIMIT) recent.removeFirst()
         val target = event.pc + INSTRUCTION_LENGTH + (event.instruction.toShort().toInt() shl 2)
         recent.addLast(Observation(event.pc, event.instruction, target, index, predicted, taken))
     }
@@ -82,6 +82,6 @@ internal class BranchHistoryTable {
     companion object {
         val sizes = listOf(8, 16, 32)
         val histories = listOf(1, 2)
-        private const val logLimit = 128
+        private const val LOG_LIMIT = 128
     }
 }

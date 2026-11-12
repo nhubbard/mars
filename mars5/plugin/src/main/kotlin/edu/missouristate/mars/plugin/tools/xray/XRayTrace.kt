@@ -42,7 +42,7 @@ internal class XRayTrace {
     @Synchronized
     fun record(event: StepEvent) {
         if (!connected) return
-        if (steps.size == capacity) steps.removeFirst()
+        if (steps.size == CAPACITY) steps.removeFirst()
         steps.addLast(event)
         cached = null
     }
@@ -68,7 +68,7 @@ internal class XRayTrace {
     fun snapshot(): List<StepEvent> = cached ?: steps.toList().also { cached = it }
 
     companion object {
-        const val capacity = 128
+        const val CAPACITY = 128
     }
 }
 

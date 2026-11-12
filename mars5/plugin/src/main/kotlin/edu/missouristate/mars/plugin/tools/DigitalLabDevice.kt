@@ -90,15 +90,15 @@ internal class DigitalLabDevice(private val connectAtLaunch: Boolean = false) {
         if (keyChanged) {
             keyChanged = false
             appliedKey = key
-            if (appliedKey != null && row and 0xf0 != 0) interrupts = keyboardInterrupt
+            if (appliedKey != null && row and 0xf0 != 0) interrupts = KEYBOARD_INTERRUPT
         }
         if (keyOutputDirty) {
             keyOutputDirty = false
             writeKey(session.memory)
         }
         if (timerRemaining > 0 && --timerRemaining == 0) {
-            timerRemaining = timerPeriod
-            interrupts = interrupts or timerInterrupt
+            timerRemaining = TIMER_PERIOD
+            interrupts = interrupts or TIMER_INTERRUPT
         }
         if (interrupts != 0 && session.coprocessor0.getRegister(STATUS)!!.valueNoNotify and 2 == 0) {
             session.setDeviceInterrupts(interrupts, interrupts)
@@ -115,7 +115,7 @@ internal class DigitalLabDevice(private val connectAtLaunch: Boolean = false) {
     private fun updateObserver() {
         val source = memory ?: return
         source.deleteObserver(observer)
-        if (connected) source.addObserver(observer, source.memoryMapBaseAddress + controlOffset)
+        if (connected) source.addObserver(observer, source.memoryMapBaseAddress + CONTROL_OFFSET)
     }
 
     @Synchronized
@@ -130,7 +130,7 @@ internal class DigitalLabDevice(private val connectAtLaunch: Boolean = false) {
     private fun record(notice: MemoryAccessNotice) {
         if (!connected || notice.origin() != EXECUTION || notice.accessType != WRITE) return
         val source = memory!!
-        val firstAddress = source.memoryMapBaseAddress + controlOffset
+        val firstAddress = source.memoryMapBaseAddress + CONTROL_OFFSET
         // Read the stored bytes so byte, halfword, and word writes use the machine's layout.
         val word = source.getWordNoNotify(firstAddress)
         val first = notice.address - firstAddress
@@ -143,7 +143,7 @@ internal class DigitalLabDevice(private val connectAtLaunch: Boolean = false) {
                     row = byte
                     keyOutputDirty = true
                 }
-                else -> timerRemaining = if (byte == 0) 0 else timerPeriod
+                else -> timerRemaining = if (byte == 0) 0 else TIMER_PERIOD
             }
         }
     }
@@ -153,7 +153,7 @@ internal class DigitalLabDevice(private val connectAtLaunch: Boolean = false) {
             val rowBit = 1 shl (it / 4)
             if (row and 0xf == rowBit) rowBit or (1 shl (4 + it % 4)) else 0
         } ?: 0
-        source.setByte(source.memoryMapBaseAddress + keyOffset, code)
+        source.setByte(source.memoryMapBaseAddress + KEY_OFFSET, code)
     }
 
     @Synchronized
@@ -161,10 +161,10 @@ internal class DigitalLabDevice(private val connectAtLaunch: Boolean = false) {
         // A device that has never connected can reuse the initial, inactive checkpoint.
         if (!hasConnected) restoreCheckpoint?.let { return it }
         val source = session.memory
-        val address = source.memoryMapBaseAddress + keyOffset
+        val address = source.memoryMapBaseAddress + KEY_OFFSET
         val output = if (connected) source.getWordNoNotify(address) and 0xff else null
         val state = RewindState(right, left, appliedKey, row, timerRemaining, output,
-            session.pendingDeviceInterrupts() and interruptMask)
+            session.pendingDeviceInterrupts() and INTERRUPT_MASK)
         if (state != checkpoint) {
             checkpoint = state
             restoreCheckpoint = Runnable { restore(session, address, state) }
@@ -186,16 +186,16 @@ internal class DigitalLabDevice(private val connectAtLaunch: Boolean = false) {
         state.output?.let { output ->
             if (source.getWordNoNotify(address) and 0xff != output) source.setByte(address, output)
         }
-        session.setDeviceInterrupts(interruptMask, state.pendingInterrupts)
+        session.setDeviceInterrupts(INTERRUPT_MASK, state.pendingInterrupts)
     }
 
     private companion object {
-        const val controlOffset = 0x10
-        const val keyOffset = 0x14
-        const val timerPeriod = 30
+        const val CONTROL_OFFSET = 0x10
+        const val KEY_OFFSET = 0x14
+        const val TIMER_PERIOD = 30
         // The core shifts exception codes left by two for Coprocessor 0 Cause.
-        const val timerInterrupt = 0x100
-        const val keyboardInterrupt = 0x200
-        const val interruptMask = timerInterrupt or keyboardInterrupt
+        const val TIMER_INTERRUPT = 0x100
+        const val KEYBOARD_INTERRUPT = 0x200
+        const val INTERRUPT_MASK = TIMER_INTERRUPT or KEYBOARD_INTERRUPT
     }
 }

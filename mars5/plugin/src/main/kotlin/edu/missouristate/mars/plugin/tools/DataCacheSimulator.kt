@@ -60,7 +60,7 @@ internal class DataCacheSimulator {
     private var logging = false
     private var accesses = 0L
     private var hits = 0L
-    private var tags = IntArray(options.blocks) { emptyTag }
+    private var tags = IntArray(options.blocks) { EMPTY_TAG }
     private var recency = LongArray(options.blocks)
     private var hit = BooleanArray(options.blocks)
     private val random = Random(0)
@@ -89,8 +89,8 @@ internal class DataCacheSimulator {
         recency[block] = number
         hit[block] = found
         if (logging) {
-            if (recent.size == logLimit) recent.removeFirst()
-            recent.addLast(Access(number, address, notice.accessType == WRITE, set, tag, block, previous.takeUnless { it == emptyTag }))
+            if (recent.size == LOG_LIMIT) recent.removeFirst()
+            recent.addLast(Access(number, address, notice.accessType == WRITE, set, tag, block, previous.takeUnless { it == EMPTY_TAG }))
         }
         cached = null
     }
@@ -98,7 +98,7 @@ internal class DataCacheSimulator {
     private fun findBlock(first: Int, tag: Int): Int {
         var oldest = first
         for (block in first until first + options.ways) {
-            if (tags[block] == tag || tags[block] == emptyTag) return block
+            if (tags[block] == tag || tags[block] == EMPTY_TAG) return block
             if (recency[block] < recency[oldest]) oldest = block
         }
         // One-way sets have a single victim and do not consume the random sequence.
@@ -108,7 +108,7 @@ internal class DataCacheSimulator {
     @Synchronized
     fun snapshot(): Snapshot = cached ?: Snapshot(
         connected, logging, options, accesses, hits,
-        tags.indices.map { Block(tags[it].takeUnless { tag -> tag == emptyTag }, recency[it], hit[it]) }, recent.toList(),
+        tags.indices.map { Block(tags[it].takeUnless { tag -> tag == EMPTY_TAG }, recency[it], hit[it]) }, recent.toList(),
     ).also { cached = it }
 
     @Synchronized
@@ -138,7 +138,7 @@ internal class DataCacheSimulator {
 
     @Synchronized
     fun reset() {
-        tags = IntArray(options.blocks) { emptyTag }
+        tags = IntArray(options.blocks) { EMPTY_TAG }
         recency = LongArray(options.blocks)
         hit = BooleanArray(options.blocks)
         accesses = 0
@@ -150,7 +150,7 @@ internal class DataCacheSimulator {
 
     companion object {
         val sizes = (0..11).map { 1 shl it }
-        private const val emptyTag = -1
-        private const val logLimit = 128
+        private const val EMPTY_TAG = -1
+        private const val LOG_LIMIT = 128
     }
 }

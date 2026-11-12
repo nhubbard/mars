@@ -15,8 +15,8 @@ data class MipsToken(val kind: MipsTokenKind, val start: Int, val end: Int)
 
 /** Lossless file-local scanning. Every token ends at a restartable boundary; strings end at EOL. */
 object MipsScanner {
-    private const val characterDelimiters = " \t,:()#\"+-"
-    private const val assemblyDelimiters = " \t\r\n,:()#\"'"
+    private const val CHARACTER_DELIMITERS = " \t,:()#\"+-"
+    private const val ASSEMBLY_DELIMITERS = " \t\r\n,:()#\"'"
 
     fun scan(source: CharSequence): List<MipsToken> = buildList {
         var position = 0
@@ -60,7 +60,7 @@ object MipsScanner {
                 while (position < end && source[position] != '\r' && source[position] != '\n') {
                     val character = source[position]
                     // A separator can itself be the character, as in ',' or '#'.
-                    if (character in characterDelimiters &&
+                    if (character in CHARACTER_DELIMITERS &&
                         !(position == start + 1 && position + 1 < end && source[position + 1] == '\'')) {
                         break
                     }
@@ -114,7 +114,7 @@ object MipsScanner {
                 // MARS accepts punctuation in parameter names, but requires something after '%'.
                 while (position < end) {
                     val character = source[position]
-                    if (character in assemblyDelimiters ||
+                    if (character in ASSEMBLY_DELIMITERS ||
                         character in "+-" && !continuesSignedExponent(source, position, end)) break
                     position++
                 }
@@ -137,7 +137,7 @@ object MipsScanner {
                     } else if (character in "+-" && continuesSignedExponent(source, position, end, exponentMarkers)) {
                         signedExponent = true
                         position++
-                    } else if (!debuggerExpression && character !in assemblyDelimiters && character !in "+-") {
+                    } else if (!debuggerExpression && character !in ASSEMBLY_DELIMITERS && character !in "+-") {
                         // MARS classifies the whole candidate, even when it contains illegal characters.
                         invalidCharacter = true
                         position++

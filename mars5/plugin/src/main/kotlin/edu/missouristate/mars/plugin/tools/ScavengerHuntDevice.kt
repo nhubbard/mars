@@ -10,9 +10,9 @@ import edu.missouristate.mars.mips.hardware.AccessOrigin.EXECUTION
 import edu.missouristate.mars.mips.hardware.MemoryAccessNotice
 import edu.missouristate.mars.mips.hardware.MemoryState
 import edu.missouristate.mars.mips.hardware.MemoryState.Companion.WORD_LENGTH_BYTES
-import edu.missouristate.mars.plugin.tools.ScavengerHuntGame.Companion.administratorId
-import edu.missouristate.mars.plugin.tools.ScavengerHuntGame.Companion.playerCount
-import edu.missouristate.mars.plugin.tools.ScavengerHuntGame.Companion.taskSize
+import edu.missouristate.mars.plugin.tools.ScavengerHuntGame.Companion.ADMINISTRATOR_ID
+import edu.missouristate.mars.plugin.tools.ScavengerHuntGame.Companion.PLAYER_COUNT
+import edu.missouristate.mars.plugin.tools.ScavengerHuntGame.Companion.TASK_SIZE
 import edu.missouristate.mars.plugin.tools.ScavengerHuntGame.Player
 import edu.missouristate.mars.plugin.tools.ScavengerHuntGame.Point
 import edu.missouristate.mars.plugin.tools.ScavengerHuntGame.Rejection
@@ -78,8 +78,8 @@ internal class ScavengerHuntDevice(session: MarsContext, connectAtLaunch: Boolea
         if (next == connected) return
         connected = next
         if (connected) {
-            memory.addObserver(observer, playerBase, playerEnd)
-            memory.addObserver(observer, authentication, turns)
+            memory.addObserver(observer, PLAYER_BASE, PLAYER_END)
+            memory.addObserver(observer, AUTHENTICATION, TURNS)
         } else {
             memory.deleteObserver(observer)
             resetPending = false
@@ -120,18 +120,18 @@ internal class ScavengerHuntDevice(session: MarsContext, connectAtLaunch: Boolea
             if (resetPending && !wrotePort) {
                 if (backStepper.enabled() && frame == null) return
                 resetPending = false
-                state = state.copy(game = state.game.copy(playerId = administratorId))
+                state = state.copy(game = state.game.copy(playerId = ADMINISTRATOR_ID))
                 startRound(instruction)
             }
             for ((address, value) in stores) {
                 when (address) {
-                    authentication -> Unit
-                    identity -> {
-                        update(address, state.game.authenticate(memory.getWordNoNotify(authentication), value))
-                        publish(identity, state.game.playerId)
+                    AUTHENTICATION -> Unit
+                    IDENTITY -> {
+                        update(address, state.game.authenticate(memory.getWordNoNotify(AUTHENTICATION), value))
+                        publish(IDENTITY, state.game.playerId)
                     }
-                    gameOn -> startRound(instruction)
-                    turns -> state = state.copy(game = state.game.copy(turnsRemaining = value))
+                    GAME_ON -> startRound(instruction)
+                    TURNS -> state = state.copy(game = state.game.copy(turnsRemaining = value))
                     else -> writePlayer(address, value, instruction)
                 }
             }
@@ -142,42 +142,42 @@ internal class ScavengerHuntDevice(session: MarsContext, connectAtLaunch: Boolea
 
     private fun startRound(instruction: Long) {
         val result = state.game.startRound(instruction)
-        update(gameOn, result)
+        update(GAME_ON, result)
         val round = state.game.round
-        publish(gameOn, if (round == null) 0 else 1)
+        publish(GAME_ON, if (round == null) 0 else 1)
         if (result.rejection != null) return
 
-        publish(authentication, 0)
-        publish(identity, administratorId)
+        publish(AUTHENTICATION, 0)
+        publish(IDENTITY, ADMINISTRATOR_ID)
         round!!.players.forEachIndexed { index, player ->
-            val base = playerBase + index * playerStride
+            val base = PLAYER_BASE + index * PLAYER_STRIDE
             publishPosition(base, player)
-            publish(base + targetX, player.position.x)
-            publish(base + targetY, player.position.y)
-            publish(base + moveReady, 0)
-            publish(base + locationCount, round.locations.size)
-            publish(base + color, player.color)
-            publish(base + taskSizeOffset, taskSize)
+            publish(base + TARGET_X, player.position.x)
+            publish(base + TARGET_Y, player.position.y)
+            publish(base + MOVE_READY, 0)
+            publish(base + LOCATION_COUNT, round.locations.size)
+            publish(base + COLOR, player.color)
+            publish(base + TASK_SIZE_OFFSET, TASK_SIZE)
             round.locations.forEachIndexed { location, point ->
-                publish(base + locationArray + location * 8, point.x)
-                publish(base + locationArray + location * 8 + 4, point.y)
+                publish(base + LOCATION_ARRAY + location * 8, point.x)
+                publish(base + LOCATION_ARRAY + location * 8 + 4, point.y)
             }
-            publish(base + taskComplete, 0)
+            publish(base + TASK_COMPLETE, 0)
             publishTask(base, player)
         }
     }
 
     private fun writePlayer(address: Int, value: Int, instruction: Long) {
         val id = state.game.playerId
-        if (id == administratorId) return
-        val base = playerBase + id * playerStride
-        if (address !in base until base + playerStride) {
+        if (id == ADMINISTRATOR_ID) return
+        val base = PLAYER_BASE + id * PLAYER_STRIDE
+        if (address !in base until base + PLAYER_STRIDE) {
             state = state.copy(diagnostic = Diagnostic(address, null))
             return
         }
         when (address - base) {
-            moveReady -> if (value != 0) {
-                val point = Point(memory.getWordNoNotify(base + targetX), memory.getWordNoNotify(base + targetY))
+            MOVE_READY -> if (value != 0) {
+                val point = Point(memory.getWordNoNotify(base + TARGET_X), memory.getWordNoNotify(base + TARGET_Y))
                 val result = state.game.move(point, instruction)
                 update(address, result)
                 if (result.rejection == null) {
@@ -185,14 +185,14 @@ internal class ScavengerHuntDevice(session: MarsContext, connectAtLaunch: Boolea
                     publish(address, 0)
                 }
             }
-            color -> update(address, state.game.changeColor(value))
-            taskComplete -> if (value != 0) {
-                val words = List(taskSize) { memory.getWordNoNotify(base + taskArray + it * WORD_LENGTH_BYTES) }
+            COLOR -> update(address, state.game.changeColor(value))
+            TASK_COMPLETE -> if (value != 0) {
+                val words = List(TASK_SIZE) { memory.getWordNoNotify(base + TASK_ARRAY + it * WORD_LENGTH_BYTES) }
                 val result = state.game.completeTask(words)
                 update(address, result)
                 if (result.rejection == null) {
                     val player = player(id)
-                    publish(base + energy, player.energy)
+                    publish(base + ENERGY, player.energy)
                     publishTask(base, player)
                     publish(address, 0)
                 }
@@ -207,13 +207,13 @@ internal class ScavengerHuntDevice(session: MarsContext, connectAtLaunch: Boolea
     }
 
     private fun publishPosition(base: Int, player: Player) {
-        publish(base + positionX, player.position.x)
-        publish(base + positionY, player.position.y)
-        publish(base + energy, player.energy)
+        publish(base + POSITION_X, player.position.x)
+        publish(base + POSITION_Y, player.position.y)
+        publish(base + ENERGY, player.energy)
     }
 
     private fun publishTask(base: Int, player: Player) {
-        player.task.forEachIndexed { index, word -> publish(base + taskArray + index * WORD_LENGTH_BYTES, word) }
+        player.task.forEachIndexed { index, word -> publish(base + TASK_ARRAY + index * WORD_LENGTH_BYTES, word) }
     }
 
     private fun publish(address: Int, value: Int) {
@@ -246,27 +246,27 @@ internal class ScavengerHuntDevice(session: MarsContext, connectAtLaunch: Boolea
     }
 
     companion object {
-        const val playerBase = 0xffff8000.toInt()
-        const val playerStride = 0x400
-        private const val playerEnd = playerBase + playerStride * playerCount - WORD_LENGTH_BYTES
-        const val authentication = 0xffffe000.toInt()
-        const val identity = authentication + 4
-        const val gameOn = authentication + 8
-        const val turns = authentication + 12
-        const val positionX = 0x0
-        const val positionY = 0x4
-        const val targetX = 0x8
-        const val targetY = 0xc
-        const val moveReady = 0x10
-        const val energy = 0x14
-        const val locationCount = 0x18
-        const val color = 0x1c
-        const val taskSizeOffset = 0x20
-        const val locationArray = 0x24
-        const val taskComplete = 0x124
-        const val taskArray = 0x128
+        const val PLAYER_BASE = 0xffff8000.toInt()
+        const val PLAYER_STRIDE = 0x400
+        private const val PLAYER_END = PLAYER_BASE + PLAYER_STRIDE * PLAYER_COUNT - WORD_LENGTH_BYTES
+        const val AUTHENTICATION = 0xffffe000.toInt()
+        const val IDENTITY = AUTHENTICATION + 4
+        const val GAME_ON = AUTHENTICATION + 8
+        const val TURNS = AUTHENTICATION + 12
+        const val POSITION_X = 0x0
+        const val POSITION_Y = 0x4
+        const val TARGET_X = 0x8
+        const val TARGET_Y = 0xc
+        const val MOVE_READY = 0x10
+        const val ENERGY = 0x14
+        const val LOCATION_COUNT = 0x18
+        const val COLOR = 0x1c
+        const val TASK_SIZE_OFFSET = 0x20
+        const val LOCATION_ARRAY = 0x24
+        const val TASK_COMPLETE = 0x124
+        const val TASK_ARRAY = 0x128
 
         fun supports(memory: MemoryState): Boolean =
-            memory.memoryMapBaseAddress <= playerBase && turns < memory.memoryMapLimitAddress
+            memory.memoryMapBaseAddress <= PLAYER_BASE && TURNS < memory.memoryMapLimitAddress
     }
 }

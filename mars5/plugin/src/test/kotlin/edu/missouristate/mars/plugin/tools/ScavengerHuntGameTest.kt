@@ -1,10 +1,10 @@
 package edu.missouristate.mars.plugin.tools
 
-import edu.missouristate.mars.plugin.tools.ScavengerHuntGame.Companion.administratorId
-import edu.missouristate.mars.plugin.tools.ScavengerHuntGame.Companion.boardHeight
-import edu.missouristate.mars.plugin.tools.ScavengerHuntGame.Companion.boardWidth
-import edu.missouristate.mars.plugin.tools.ScavengerHuntGame.Companion.playerCount
-import edu.missouristate.mars.plugin.tools.ScavengerHuntGame.Companion.taskSize
+import edu.missouristate.mars.plugin.tools.ScavengerHuntGame.Companion.ADMINISTRATOR_ID
+import edu.missouristate.mars.plugin.tools.ScavengerHuntGame.Companion.BOARD_HEIGHT
+import edu.missouristate.mars.plugin.tools.ScavengerHuntGame.Companion.BOARD_WIDTH
+import edu.missouristate.mars.plugin.tools.ScavengerHuntGame.Companion.PLAYER_COUNT
+import edu.missouristate.mars.plugin.tools.ScavengerHuntGame.Companion.TASK_SIZE
 import edu.missouristate.mars.plugin.tools.ScavengerHuntGame.Point
 import edu.missouristate.mars.plugin.tools.ScavengerHuntGame.Rejection
 import java.util.Random
@@ -44,7 +44,7 @@ class ScavengerHuntGameTest {
         val selected = game.authenticate(1, 21).game
         val completed = selected.completeTask(round.players[21].task.sorted()).game
         assertEquals(List(20) { (reference.nextDouble() * Int.MAX_VALUE).toInt() }, completed.round!!.players[21].task)
-        val restarted = completed.authenticate(2, administratorId).game.startRound(200).game
+        val restarted = completed.authenticate(2, ADMINISTRATOR_ID).game.startRound(200).game
         assertEquals(round.copy(firstInstruction = 200), restarted.round)
         assertEquals(0, restarted.authenticationSequence)
         assertEquals(40, restarted.turnsRemaining)
@@ -58,19 +58,19 @@ class ScavengerHuntGameTest {
         val rejected = initial.authenticate(999, 0)
         assertEquals(Rejection.AUTHENTICATION, rejected.rejection)
         assertEquals(1, rejected.game.authenticationSequence)
-        assertEquals(administratorId, rejected.game.playerId)
+        assertEquals(ADMINISTRATOR_ID, rejected.game.playerId)
         val negative = rejected.game.authenticate(2, -1)
         assertEquals(Rejection.UNKNOWN_PLAYER, negative.rejection)
-        val overflowId = negative.game.authenticate(3, playerCount)
+        val overflowId = negative.game.authenticate(3, PLAYER_COUNT)
         assertEquals(Rejection.UNKNOWN_PLAYER, overflowId.rejection)
-        assertEquals(administratorId, overflowId.game.playerId)
+        assertEquals(ADMINISTRATOR_ID, overflowId.game.playerId)
         val authenticated = overflowId.game.authenticate(4, 0)
         assertNull(authenticated.rejection)
         assertEquals(0, authenticated.game.playerId)
-        val wrapped = authenticated.game.copy(authenticationSequence = Int.MAX_VALUE).authenticate(Int.MIN_VALUE, administratorId)
+        val wrapped = authenticated.game.copy(authenticationSequence = Int.MAX_VALUE).authenticate(Int.MIN_VALUE, ADMINISTRATOR_ID)
         assertNull(wrapped.rejection)
         assertEquals(Int.MIN_VALUE, wrapped.game.authenticationSequence)
-        assertEquals(administratorId, wrapped.game.playerId)
+        assertEquals(ADMINISTRATOR_ID, wrapped.game.playerId)
     }
 
     @Test
@@ -88,7 +88,7 @@ class ScavengerHuntGameTest {
     @Test
     fun `moves enforce board limits distance and energy without changing other players`() {
         val game = playerGame()
-        for (point in listOf(Point(-1, 0), Point(boardWidth + 1, 0), Point(0, -1), Point(0, boardHeight + 1))) {
+        for (point in listOf(Point(-1, 0), Point(BOARD_WIDTH + 1, 0), Point(0, -1), Point(0, BOARD_HEIGHT + 1))) {
             val outside = game.move(point, 1)
             assertEquals(Rejection.OUTSIDE_BOARD, outside.rejection)
             assertSame(game, outside.game)
@@ -143,9 +143,9 @@ class ScavengerHuntGameTest {
         val rejected = painted.completeTask(player.task.dropLast(1))
         assertEquals(Rejection.INVALID_TASK, rejected.rejection)
         assertSame(painted, rejected.game)
-        val wrongOrder = List(taskSize) { -it }
+        val wrongOrder = List(TASK_SIZE) { -it }
         assertEquals(Rejection.INVALID_TASK, painted.completeTask(wrongOrder).rejection)
-        val signedSorted = listOf(Int.MIN_VALUE) + List(taskSize - 2) { -1 } + Int.MAX_VALUE
+        val signedSorted = listOf(Int.MIN_VALUE) + List(TASK_SIZE - 2) { -1 } + Int.MAX_VALUE
         val completed = painted.completeTask(signedSorted)
         assertNull(completed.rejection)
         val next = completed.game.round!!

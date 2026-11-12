@@ -15,10 +15,10 @@ import com.intellij.util.ui.JBDimension
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.launchOnShow
 import edu.missouristate.mars.plugin.run.MarsProcessHandler
-import edu.missouristate.mars.plugin.tools.ScavengerHuntGame.Companion.administratorId
-import edu.missouristate.mars.plugin.tools.ScavengerHuntGame.Companion.boardHeight
-import edu.missouristate.mars.plugin.tools.ScavengerHuntGame.Companion.boardWidth
-import edu.missouristate.mars.plugin.tools.ScavengerHuntGame.Companion.locationCount
+import edu.missouristate.mars.plugin.tools.ScavengerHuntGame.Companion.ADMINISTRATOR_ID
+import edu.missouristate.mars.plugin.tools.ScavengerHuntGame.Companion.BOARD_HEIGHT
+import edu.missouristate.mars.plugin.tools.ScavengerHuntGame.Companion.BOARD_WIDTH
+import edu.missouristate.mars.plugin.tools.ScavengerHuntGame.Companion.LOCATION_COUNT
 import edu.missouristate.mars.plugin.tools.ScavengerHuntGame.Round
 import java.awt.Color
 import java.awt.Graphics
@@ -118,7 +118,7 @@ internal class ScavengerHuntView(project: Project) : Disposable {
             snapshot?.resetPending == true -> toolsMessages.getMessage("scavenger.reset.pending")
             round == null -> toolsMessages.getMessage("scavenger.waiting")
             else -> {
-                val player = if (game.playerId == administratorId) toolsMessages.getMessage("scavenger.admin")
+                val player = if (game.playerId == ADMINISTRATOR_ID) toolsMessages.getMessage("scavenger.admin")
                 else toolsMessages.getMessage("scavenger.activePlayer", game.playerId)
                 toolsMessages.getMessage("scavenger.status", player, game.turnsRemaining)
             }
@@ -149,9 +149,9 @@ internal class ScavengerHuntView(project: Project) : Disposable {
 private fun JBTable.sizeScoreboardColumns() {
     val samples = listOf(
         "",
-        toolsMessages.getMessage("scavenger.point", boardWidth, boardHeight),
+        toolsMessages.getMessage("scavenger.point", BOARD_WIDTH, BOARD_HEIGHT),
         "",
-        toolsMessages.getMessage("scavenger.visits", locationCount, locationCount),
+        toolsMessages.getMessage("scavenger.visits", LOCATION_COUNT, LOCATION_COUNT),
         Long.MAX_VALUE.toString(),
     )
     val metrics = getFontMetrics(font)
@@ -222,10 +222,10 @@ internal class ScavengerHuntBoard : JBPanel<ScavengerHuntBoard>() {
     override fun paintComponent(graphics: Graphics) {
         super.paintComponent(graphics)
         val pad = JBUI.scale(10)
-        val scale = minOf((width - 2 * pad).toDouble() / boardWidth, (height - 2 * pad).toDouble() / boardHeight)
+        val scale = minOf((width - 2 * pad).toDouble() / BOARD_WIDTH, (height - 2 * pad).toDouble() / BOARD_HEIGHT)
         if (scale <= 0) return
-        val wide = (boardWidth * scale).roundToInt()
-        val high = (boardHeight * scale).roundToInt()
+        val wide = (BOARD_WIDTH * scale).roundToInt()
+        val high = (BOARD_HEIGHT * scale).roundToInt()
         val g = graphics.create() as Graphics2D
         try {
             g.translate((width - wide) / 2, (height - high) / 2)

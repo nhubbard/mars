@@ -12,24 +12,24 @@ import edu.missouristate.mars.mips.hardware.AccessNotice.Companion.WRITE
 import edu.missouristate.mars.mips.hardware.AccessOrigin.Companion.duringExecution
 import edu.missouristate.mars.mips.hardware.MemoryAccessNotice
 import edu.missouristate.mars.plugin.MarsSessionService
-import edu.missouristate.mars.plugin.tools.ScavengerHuntDevice.Companion.authentication
-import edu.missouristate.mars.plugin.tools.ScavengerHuntDevice.Companion.color
-import edu.missouristate.mars.plugin.tools.ScavengerHuntDevice.Companion.energy
-import edu.missouristate.mars.plugin.tools.ScavengerHuntDevice.Companion.gameOn
-import edu.missouristate.mars.plugin.tools.ScavengerHuntDevice.Companion.identity
-import edu.missouristate.mars.plugin.tools.ScavengerHuntDevice.Companion.locationArray
-import edu.missouristate.mars.plugin.tools.ScavengerHuntDevice.Companion.locationCount
-import edu.missouristate.mars.plugin.tools.ScavengerHuntDevice.Companion.moveReady
-import edu.missouristate.mars.plugin.tools.ScavengerHuntDevice.Companion.playerBase
-import edu.missouristate.mars.plugin.tools.ScavengerHuntDevice.Companion.playerStride
-import edu.missouristate.mars.plugin.tools.ScavengerHuntDevice.Companion.positionX
-import edu.missouristate.mars.plugin.tools.ScavengerHuntDevice.Companion.positionY
-import edu.missouristate.mars.plugin.tools.ScavengerHuntDevice.Companion.targetX
-import edu.missouristate.mars.plugin.tools.ScavengerHuntDevice.Companion.targetY
-import edu.missouristate.mars.plugin.tools.ScavengerHuntDevice.Companion.taskArray
-import edu.missouristate.mars.plugin.tools.ScavengerHuntDevice.Companion.taskComplete
-import edu.missouristate.mars.plugin.tools.ScavengerHuntDevice.Companion.taskSizeOffset
-import edu.missouristate.mars.plugin.tools.ScavengerHuntDevice.Companion.turns
+import edu.missouristate.mars.plugin.tools.ScavengerHuntDevice.Companion.AUTHENTICATION
+import edu.missouristate.mars.plugin.tools.ScavengerHuntDevice.Companion.COLOR
+import edu.missouristate.mars.plugin.tools.ScavengerHuntDevice.Companion.ENERGY
+import edu.missouristate.mars.plugin.tools.ScavengerHuntDevice.Companion.GAME_ON
+import edu.missouristate.mars.plugin.tools.ScavengerHuntDevice.Companion.IDENTITY
+import edu.missouristate.mars.plugin.tools.ScavengerHuntDevice.Companion.LOCATION_ARRAY
+import edu.missouristate.mars.plugin.tools.ScavengerHuntDevice.Companion.LOCATION_COUNT
+import edu.missouristate.mars.plugin.tools.ScavengerHuntDevice.Companion.MOVE_READY
+import edu.missouristate.mars.plugin.tools.ScavengerHuntDevice.Companion.PLAYER_BASE
+import edu.missouristate.mars.plugin.tools.ScavengerHuntDevice.Companion.PLAYER_STRIDE
+import edu.missouristate.mars.plugin.tools.ScavengerHuntDevice.Companion.POSITION_X
+import edu.missouristate.mars.plugin.tools.ScavengerHuntDevice.Companion.POSITION_Y
+import edu.missouristate.mars.plugin.tools.ScavengerHuntDevice.Companion.TARGET_X
+import edu.missouristate.mars.plugin.tools.ScavengerHuntDevice.Companion.TARGET_Y
+import edu.missouristate.mars.plugin.tools.ScavengerHuntDevice.Companion.TASK_ARRAY
+import edu.missouristate.mars.plugin.tools.ScavengerHuntDevice.Companion.TASK_COMPLETE
+import edu.missouristate.mars.plugin.tools.ScavengerHuntDevice.Companion.TASK_SIZE_OFFSET
+import edu.missouristate.mars.plugin.tools.ScavengerHuntDevice.Companion.TURNS
 import edu.missouristate.mars.plugin.tools.ScavengerHuntDevice.Diagnostic
 import edu.missouristate.mars.plugin.tools.ScavengerHuntGame.Point
 import edu.missouristate.mars.plugin.tools.ScavengerHuntGame.Rejection
@@ -63,12 +63,12 @@ class ScavengerHuntDeviceTest {
             nop
         """) { session, device ->
             val memory = session.memory
-            memory.setWord(gameOn, 9)
-            memory.setWord(turns, 7)
-            memory.setWord(identity, 501)
-            memory.setWord(authentication, 70)
-            memory.setWord(playerBase + positionX, 84)
-            memory.setWord(playerBase + taskArray, 16)
+            memory.setWord(GAME_ON, 9)
+            memory.setWord(TURNS, 7)
+            memory.setWord(IDENTITY, 501)
+            memory.setWord(AUTHENTICATION, 70)
+            memory.setWord(PLAYER_BASE + POSITION_X, 84)
+            memory.setWord(PLAYER_BASE + TASK_ARRAY, 16)
             assertNull(device.snapshot().game.round)
             step(session, 6)
             val before = device.snapshot()
@@ -76,37 +76,37 @@ class ScavengerHuntDeviceTest {
             val started = device.snapshot()
             val round = requireNotNull(started.game.round)
             assertEquals(7L, round.firstInstruction)
-            assertEquals(1, memory.getWord(gameOn))
-            assertEquals(123, memory.getWord(turns))
+            assertEquals(1, memory.getWord(GAME_ON))
+            assertEquals(123, memory.getWord(TURNS))
             assertEquals(123, started.game.turnsRemaining)
-            assertEquals(999, memory.getWord(identity))
-            assertEquals(0, memory.getWord(authentication))
+            assertEquals(999, memory.getWord(IDENTITY))
+            assertEquals(0, memory.getWord(AUTHENTICATION))
             assertNull(started.diagnostic)
             round.players.forEachIndexed { index, player ->
-                val base = playerBase + index * playerStride
-                assertEquals(255, memory.getWord(base + positionX))
-                assertEquals(255, memory.getWord(base + positionY))
-                assertEquals(255, memory.getWord(base + targetX))
-                assertEquals(255, memory.getWord(base + targetY))
-                assertEquals(0, memory.getWord(base + moveReady))
-                assertEquals(20, memory.getWord(base + energy))
-                assertEquals(7, memory.getWord(base + locationCount))
-                assertEquals(0, memory.getWord(base + color))
-                assertEquals(20, memory.getWord(base + taskSizeOffset))
-                assertEquals(0, memory.getWord(base + taskComplete))
+                val base = PLAYER_BASE + index * PLAYER_STRIDE
+                assertEquals(255, memory.getWord(base + POSITION_X))
+                assertEquals(255, memory.getWord(base + POSITION_Y))
+                assertEquals(255, memory.getWord(base + TARGET_X))
+                assertEquals(255, memory.getWord(base + TARGET_Y))
+                assertEquals(0, memory.getWord(base + MOVE_READY))
+                assertEquals(20, memory.getWord(base + ENERGY))
+                assertEquals(7, memory.getWord(base + LOCATION_COUNT))
+                assertEquals(0, memory.getWord(base + COLOR))
+                assertEquals(20, memory.getWord(base + TASK_SIZE_OFFSET))
+                assertEquals(0, memory.getWord(base + TASK_COMPLETE))
                 assertEquals(round.locations, List(7) {
-                    Point(memory.getWord(base + locationArray + 8 * it), memory.getWord(base + locationArray + 8 * it + 4))
+                    Point(memory.getWord(base + LOCATION_ARRAY + 8 * it), memory.getWord(base + LOCATION_ARRAY + 8 * it + 4))
                 })
-                assertEquals(player.task, List(20) { memory.getWord(base + taskArray + 4 * it) })
+                assertEquals(player.task, List(20) { memory.getWord(base + TASK_ARRAY + 4 * it) })
             }
             backstep(session)
             assertEquals(before, device.snapshot())
-            assertEquals(9, memory.getWord(gameOn))
-            assertEquals(7, memory.getWord(turns))
-            assertEquals(501, memory.getWord(identity))
-            assertEquals(70, memory.getWord(authentication))
-            assertEquals(84, memory.getWord(playerBase + positionX))
-            assertEquals(16, memory.getWord(playerBase + taskArray))
+            assertEquals(9, memory.getWord(GAME_ON))
+            assertEquals(7, memory.getWord(TURNS))
+            assertEquals(501, memory.getWord(IDENTITY))
+            assertEquals(70, memory.getWord(AUTHENTICATION))
+            assertEquals(84, memory.getWord(PLAYER_BASE + POSITION_X))
+            assertEquals(16, memory.getWord(PLAYER_BASE + TASK_ARRAY))
             step(session)
             assertEquals(started, device.snapshot())
             step(session)
@@ -159,39 +159,39 @@ class ScavengerHuntDeviceTest {
         """) { session, device ->
             val memory = session.memory
             step(session, 10)
-            assertEquals(0, memory.getWord(identity))
+            assertEquals(0, memory.getWord(IDENTITY))
             assertEquals(1, device.snapshot().game.authenticationSequence)
-            memory.setWord(playerBase + moveReady, 33)
+            memory.setWord(PLAYER_BASE + MOVE_READY, 33)
             val beforeMove = device.snapshot()
             step(session)
             assertEquals(Point(257, 255), device.snapshot().game.round!!.players[0].position)
-            assertEquals(257, memory.getWord(playerBase + positionX))
-            assertEquals(19, memory.getWord(playerBase + energy))
-            assertEquals(0, memory.getWord(playerBase + moveReady))
+            assertEquals(257, memory.getWord(PLAYER_BASE + POSITION_X))
+            assertEquals(19, memory.getWord(PLAYER_BASE + ENERGY))
+            assertEquals(0, memory.getWord(PLAYER_BASE + MOVE_READY))
             backstep(session)
             assertEquals(beforeMove, device.snapshot())
-            assertEquals(255, memory.getWord(playerBase + positionX))
-            assertEquals(20, memory.getWord(playerBase + energy))
-            assertEquals(33, memory.getWord(playerBase + moveReady))
+            assertEquals(255, memory.getWord(PLAYER_BASE + POSITION_X))
+            assertEquals(20, memory.getWord(PLAYER_BASE + ENERGY))
+            assertEquals(33, memory.getWord(PLAYER_BASE + MOVE_READY))
             step(session, 3)
             assertEquals(0xff, device.snapshot().game.round!!.players[0].color)
             val submit = session.program!!.localSymbolTable!!.getAddress("submit")
             assertEquals(BREAKPOINT, session.simulator().runUntilAsync(4000) { it == submit }.get(5, SECONDS).reason)
             val beforeTask = device.snapshot()
             val sorted = beforeTask.game.round!!.players[0].task.sorted()
-            assertEquals(sorted, List(20) { memory.getWord(playerBase + taskArray + 4 * it) })
-            memory.setWord(playerBase + taskComplete, 66)
+            assertEquals(sorted, List(20) { memory.getWord(PLAYER_BASE + TASK_ARRAY + 4 * it) })
+            memory.setWord(PLAYER_BASE + TASK_COMPLETE, 66)
             step(session)
             val afterTask = device.snapshot()
-            assertEquals(20, memory.getWord(playerBase + energy))
-            assertEquals(0, memory.getWord(playerBase + taskComplete))
-            assertEquals(afterTask.game.round!!.players[0].task, List(20) { memory.getWord(playerBase + taskArray + 4 * it) })
+            assertEquals(20, memory.getWord(PLAYER_BASE + ENERGY))
+            assertEquals(0, memory.getWord(PLAYER_BASE + TASK_COMPLETE))
+            assertEquals(afterTask.game.round!!.players[0].task, List(20) { memory.getWord(PLAYER_BASE + TASK_ARRAY + 4 * it) })
             assertEquals(beforeTask.game.round.players[1], afterTask.game.round.players[1])
             backstep(session)
             assertEquals(beforeTask, device.snapshot())
-            assertEquals(sorted, List(20) { memory.getWord(playerBase + taskArray + 4 * it) })
-            assertEquals(66, memory.getWord(playerBase + taskComplete))
-            assertEquals(19, memory.getWord(playerBase + energy))
+            assertEquals(sorted, List(20) { memory.getWord(PLAYER_BASE + TASK_ARRAY + 4 * it) })
+            assertEquals(66, memory.getWord(PLAYER_BASE + TASK_COMPLETE))
+            assertEquals(19, memory.getWord(PLAYER_BASE + ENERGY))
             step(session)
             assertEquals(afterTask, device.snapshot())
         }
@@ -228,34 +228,34 @@ class ScavengerHuntDeviceTest {
         """) { session, device ->
             val memory = session.memory
             step(session, 10)
-            assertEquals(999, memory.getWord(identity))
-            assertEquals(Diagnostic(identity, Rejection.AUTHENTICATION), device.snapshot().diagnostic)
+            assertEquals(999, memory.getWord(IDENTITY))
+            assertEquals(Diagnostic(IDENTITY, Rejection.AUTHENTICATION), device.snapshot().diagnostic)
             step(session, 2)
-            assertEquals(0, memory.getWord(identity))
+            assertEquals(0, memory.getWord(IDENTITY))
             assertNull(device.snapshot().diagnostic)
             step(session)
-            assertEquals(1, memory.getWord(gameOn))
-            assertEquals(Diagnostic(gameOn, Rejection.ADMINISTRATOR_REQUIRED), device.snapshot().diagnostic)
+            assertEquals(1, memory.getWord(GAME_ON))
+            assertEquals(Diagnostic(GAME_ON, Rejection.ADMINISTRATOR_REQUIRED), device.snapshot().diagnostic)
             step(session)
-            assertEquals(Diagnostic(playerBase + playerStride + moveReady, null), device.snapshot().diagnostic)
-            assertEquals(1, memory.getWord(playerBase + playerStride + moveReady))
-            assertEquals(20, memory.getWord(playerBase + playerStride + energy))
+            assertEquals(Diagnostic(PLAYER_BASE + PLAYER_STRIDE + MOVE_READY, null), device.snapshot().diagnostic)
+            assertEquals(1, memory.getWord(PLAYER_BASE + PLAYER_STRIDE + MOVE_READY))
+            assertEquals(20, memory.getWord(PLAYER_BASE + PLAYER_STRIDE + ENERGY))
             step(session, 2)
-            assertEquals(Diagnostic(playerBase + moveReady, Rejection.MOVE_TOO_FAR), device.snapshot().diagnostic)
-            assertEquals(1, memory.getWord(playerBase + moveReady))
-            assertEquals(20, memory.getWord(playerBase + energy))
+            assertEquals(Diagnostic(PLAYER_BASE + MOVE_READY, Rejection.MOVE_TOO_FAR), device.snapshot().diagnostic)
+            assertEquals(1, memory.getWord(PLAYER_BASE + MOVE_READY))
+            assertEquals(20, memory.getWord(PLAYER_BASE + ENERGY))
             step(session)
-            assertEquals(0, memory.getWord(playerBase + moveReady))
-            memory.setWord(playerBase + taskArray, Int.MAX_VALUE)
-            memory.setWord(playerBase + taskArray + 4, Int.MIN_VALUE)
+            assertEquals(0, memory.getWord(PLAYER_BASE + MOVE_READY))
+            memory.setWord(PLAYER_BASE + TASK_ARRAY, Int.MAX_VALUE)
+            memory.setWord(PLAYER_BASE + TASK_ARRAY + 4, Int.MIN_VALUE)
             step(session)
-            assertEquals(Diagnostic(playerBase + taskComplete, Rejection.INVALID_TASK), device.snapshot().diagnostic)
-            assertEquals(1, memory.getWord(playerBase + taskComplete))
+            assertEquals(Diagnostic(PLAYER_BASE + TASK_COMPLETE, Rejection.INVALID_TASK), device.snapshot().diagnostic)
+            assertEquals(1, memory.getWord(PLAYER_BASE + TASK_COMPLETE))
             step(session)
-            assertEquals(0, memory.getWord(playerBase + taskComplete))
+            assertEquals(0, memory.getWord(PLAYER_BASE + TASK_COMPLETE))
             step(session, 5)
             assertEquals(21, device.snapshot().game.playerId)
-            assertEquals(Diagnostic(playerBase + moveReady, null), device.snapshot().diagnostic)
+            assertEquals(Diagnostic(PLAYER_BASE + MOVE_READY, null), device.snapshot().diagnostic)
         }
     }
 
@@ -273,11 +273,11 @@ class ScavengerHuntDeviceTest {
         """) { session, device ->
             assertTrue(ScavengerHuntDevice.supports(session.memory))
             assertEquals(2, session.memory.countObservers())
-            session.memory.setWord(gameOn, 1)
-            session.memory.getWord(gameOn)
+            session.memory.setWord(GAME_ON, 1)
+            session.memory.getWord(GAME_ON)
             duringExecution<Unit, Exception> {
-                session.memory.getWord(gameOn)
-                session.memory.set(gameOn + 1, 1, 4)
+                session.memory.getWord(GAME_ON)
+                session.memory.set(GAME_ON + 1, 1, 4)
             }
             step(session, 4)
             assertNull(device.snapshot().game.round)
@@ -294,7 +294,7 @@ class ScavengerHuntDeviceTest {
             assertEquals(finished.copy(available = false, connected = false), device.snapshot())
         }
         MarsSessionService.createMarsComponent().context().use { session ->
-            session.memory.memoryMapLimitAddress = turns
+            session.memory.memoryMapLimitAddress = TURNS
             assertFalse(ScavengerHuntDevice.supports(session.memory))
             session.setMemoryConfiguration("CompactTextAtZero")
             assertFalse(ScavengerHuntDevice.supports(session.memory))
@@ -323,7 +323,7 @@ class ScavengerHuntDeviceTest {
                     device.requestReset()
                 }
             }
-            session.memory.addObserver(connect, authentication)
+            session.memory.addObserver(connect, AUTHENTICATION)
             device = ScavengerHuntDevice(session, connectAtLaunch = false)
             device.use {
                 device.requestReset()
@@ -389,7 +389,7 @@ class ScavengerHuntDeviceTest {
             val detach = Consumer<MemoryAccessNotice> { notice ->
                 if (notice.accessType == WRITE) device.close()
             }
-            session.memory.addObserver(detach, gameOn)
+            session.memory.addObserver(detach, GAME_ON)
             device = ScavengerHuntDevice(session)
             device.use {
                 step(session, 3)
@@ -415,11 +415,11 @@ class ScavengerHuntDeviceTest {
             lw ${'$'}t0, 1(${'$'}s0)
         """) { session, device ->
             step(session, 6)
-            assertEquals(1, session.memory.getWord(playerBase + color))
+            assertEquals(1, session.memory.getWord(PLAYER_BASE + COLOR))
             assertNull(device.snapshot().diagnostic)
             step(session, 3)
-            assertEquals(0, session.memory.getWord(gameOn))
-            assertEquals(Diagnostic(gameOn, Rejection.ADMINISTRATOR_REQUIRED), device.snapshot().diagnostic)
+            assertEquals(0, session.memory.getWord(GAME_ON))
+            assertEquals(Diagnostic(GAME_ON, Rejection.ADMINISTRATOR_REQUIRED), device.snapshot().diagnostic)
             assertNull(device.snapshot().game.round)
             val rejected = device.snapshot()
             assertEquals(EXCEPTION, session.simulator().runAsync(1, null).get(5, SECONDS).reason)

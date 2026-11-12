@@ -85,7 +85,7 @@ internal fun xRayPanelContent(
             }
             val detailsLabel = toolsMessages.getMessage("xray.description")
             Box(Modifier.fillMaxWidth().height(112.dp).semantics { contentDescription = detailsLabel }) { details() }
-            InfoText(toolsMessages.getMessage("xray.help", XRayTrace.capacity))
+            InfoText(toolsMessages.getMessage("xray.help", XRayTrace.CAPACITY))
         }
     }
 }

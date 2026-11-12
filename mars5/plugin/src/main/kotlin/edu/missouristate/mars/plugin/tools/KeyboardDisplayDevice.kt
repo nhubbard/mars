@@ -122,13 +122,13 @@ internal class KeyboardDisplayDevice(
         var interrupts = 0
         queuedKey?.let { character ->
             queuedKey = null
-            source.setWord(start + receiverData, character)
-            if (setReady(source, start, true) and interruptEnable != 0) interrupts = EXTERNAL_INTERRUPT_KEYBOARD
+            source.setWord(start + RECEIVER_DATA, character)
+            if (setReady(source, start, true) and INTERRUPT_ENABLE != 0) interrupts = EXTERNAL_INTERRUPT_KEYBOARD
         }
         val word = transmitted
         if (word != null) {
             transmitted = null
-            setReady(source, start + transmitterControl, false)
+            setReady(source, start + TRANSMITTER_CONTROL, false)
             transfer = Transfer(word, nextDelay(), options.displayAfterDelay)
             if (!options.displayAfterDelay) display = display.transmit(word)
         } else {
@@ -137,7 +137,7 @@ internal class KeyboardDisplayDevice(
                 if (current.remaining == 1) {
                     transfer = null
                     if (current.delayed) display = display.transmit(current.word)
-                    if (setReady(source, start + transmitterControl, true) and interruptEnable != 0) {
+                    if (setReady(source, start + TRANSMITTER_CONTROL, true) and INTERRUPT_ENABLE != 0) {
                         interrupts = interrupts or EXTERNAL_INTERRUPT_DISPLAY
                     }
                 } else {
@@ -175,8 +175,8 @@ internal class KeyboardDisplayDevice(
         val start = source.memoryMapBaseAddress
         source.deleteObserver(observer)
         if (connected) {
-            source.addObserver(observer, start + receiverData)
-            source.addObserver(observer, start + transmitterData)
+            source.addObserver(observer, start + RECEIVER_DATA)
+            source.addObserver(observer, start + TRANSMITTER_DATA)
         }
     }
 
@@ -194,22 +194,22 @@ internal class KeyboardDisplayDevice(
         val source = memory!!
         val start = source.memoryMapBaseAddress
         val offset = notice.address - start
-        if (offset == receiverData && notice.accessType == READ) {
+        if (offset == RECEIVER_DATA && notice.accessType == READ) {
             receiverRead = true
-        } else if (offset == transmitterData && notice.accessType == WRITE && transfer == null &&
-            transmitted == null && !initialize && source.getWordNoNotify(start + transmitterControl) and ready != 0) {
-            transmitted = source.getWordNoNotify(start + transmitterData)
+        } else if (offset == TRANSMITTER_DATA && notice.accessType == WRITE && transfer == null &&
+            transmitted == null && !initialize && source.getWordNoNotify(start + TRANSMITTER_CONTROL) and READY != 0) {
+            transmitted = source.getWordNoNotify(start + TRANSMITTER_DATA)
         }
     }
 
     private fun initializePorts(source: MemoryState, start: Int) {
         setReady(source, start, false)
-        setReady(source, start + transmitterControl, true)
+        setReady(source, start + TRANSMITTER_CONTROL, true)
     }
 
     private fun setReady(source: MemoryState, address: Int, value: Boolean): Int {
         val previous = source.getWordNoNotify(address)
-        val current = if (value) previous or ready else previous and ready.inv()
+        val current = if (value) previous or READY else previous and READY.inv()
         if (current != previous) source.setWord(address, current)
         return current
     }
@@ -220,9 +220,9 @@ internal class KeyboardDisplayDevice(
         val source = session.memory
         val start = source.memoryMapBaseAddress
         val ports = if (connected) Ports(source.getWordNoNotify(start),
-            source.getWordNoNotify(start + receiverData), source.getWordNoNotify(start + transmitterControl)) else null
+            source.getWordNoNotify(start + RECEIVER_DATA), source.getWordNoNotify(start + TRANSMITTER_CONTROL)) else null
         val state = RewindState(display, transfer, sequence, ports, initialize,
-            session.pendingDeviceInterrupts() and interruptMask)
+            session.pendingDeviceInterrupts() and INTERRUPT_MASK)
         if (state != checkpoint) {
             checkpoint = state
             restoreCheckpoint = Runnable { restore(session, start, state) }
@@ -240,10 +240,10 @@ internal class KeyboardDisplayDevice(
         state.ports?.let { ports ->
             val source = session.memory
             restorePort(source, start, ports.receiverControl)
-            restorePort(source, start + receiverData, ports.receiverData)
-            restorePort(source, start + transmitterControl, ports.transmitterControl)
+            restorePort(source, start + RECEIVER_DATA, ports.receiverData)
+            restorePort(source, start + TRANSMITTER_CONTROL, ports.transmitterControl)
         }
-        session.setDeviceInterrupts(interruptMask, state.interrupts)
+        session.setDeviceInterrupts(INTERRUPT_MASK, state.interrupts)
     }
 
     private fun restorePort(source: MemoryState, address: Int, value: Int) {
@@ -251,11 +251,11 @@ internal class KeyboardDisplayDevice(
     }
 
     private companion object {
-        const val receiverData = 4
-        const val transmitterControl = 8
-        const val transmitterData = 12
-        const val ready = 1
-        const val interruptEnable = 2
-        const val interruptMask = EXTERNAL_INTERRUPT_KEYBOARD or EXTERNAL_INTERRUPT_DISPLAY
+        const val RECEIVER_DATA = 4
+        const val TRANSMITTER_CONTROL = 8
+        const val TRANSMITTER_DATA = 12
+        const val READY = 1
+        const val INTERRUPT_ENABLE = 2
+        const val INTERRUPT_MASK = EXTERNAL_INTERRUPT_KEYBOARD or EXTERNAL_INTERRUPT_DISPLAY
     }
 }
