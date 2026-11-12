@@ -4,6 +4,7 @@ import com.intellij.diff.tools.util.text.LineOffsets
 import com.intellij.diff.tools.util.text.LineOffsetsUtil
 import com.intellij.execution.filters.FileHyperlinkInfo
 import com.intellij.notebook.editor.BackedVirtualFile
+import com.intellij.openapi.application.runReadActionBlocking
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.fileTypes.FileTypeRegistry
@@ -26,6 +27,7 @@ import edu.missouristate.mars.plugin.analysis.unresolvedAssemblySourceSyntax
 import edu.missouristate.mars.plugin.language.MipsFileType
 import edu.missouristate.mars.plugin.language.MipsLanguage
 import edu.missouristate.mars.plugin.language.mipsAssemblySourceOrigin
+import edu.missouristate.mars.plugin.language.rememberMipsAssemblyEntry
 import java.nio.file.Path
 import java.util.concurrent.ConcurrentHashMap
 
@@ -90,10 +92,23 @@ internal class MarsExecutionSources(private val capture: CapturedAssemblySources
 
     private fun currentReadOnlyLine(project: Project, file: VirtualFile, path: Path, text: String, line: Int): OpenFileDescriptor? {
         if (line >= offsets(path, text).lineCount) return null
+        val view = readOnlyView(project, file) ?: excerptAt(path, text, line)
+        return OpenFileDescriptor(project, view, line - firstLine(view), 0)
+    }
+
+    private fun readOnlyView(project: Project, file: VirtualFile): VirtualFile? {
         val physical = PsiManager.getInstance(project).findFile(file)
         val syntax = if (physical == null) unresolvedAssemblySourceSyntax(project, file) else assemblySourceSyntax(physical)
-        val view = syntax?.virtualFile ?: excerptAt(path, text, line)
-        return OpenFileDescriptor(project, view, line - firstLine(view), 0)
+        return syntax?.virtualFile
+    }
+
+    fun navigateTo(descriptor: OpenFileDescriptor, location: Location) {
+        if (descriptor.file.mipsAssemblySourceOrigin != null) {
+            val root = capture.rootsBySource.getValue(location.file())
+            // The editor rechecks this candidate against the current graph before using it.
+            LocalFileSystem.getInstance().findFileByNioFile(root)?.let(descriptor.file::rememberMipsAssemblyEntry)
+        }
+        descriptor.navigate(true)
     }
 
     fun position(location: Location): XSourcePosition {
@@ -106,12 +121,15 @@ internal class MarsExecutionSources(private val capture: CapturedAssemblySources
     }
 
     fun hyperlink(project: Project, location: Location, column: Int? = null): FileHyperlinkInfo = object : FileHyperlinkInfo {
-        override fun getDescriptor() = descriptor(project, location, column)
-        override fun navigate(project: Project) = getDescriptor().navigate(true)
+        override fun getDescriptor() = runReadActionBlocking {
+            descriptor(project, location, column, fileAt(location, project))
+        }
+        override fun navigate(project: Project) = navigateTo(getDescriptor(), location)
     }
 
-    private fun descriptor(project: Project, location: Location, column: Int? = null): OpenFileDescriptor {
-        val file = fileAt(location)
+    private fun descriptor(
+        project: Project, location: Location, column: Int? = null, file: VirtualFile = fileAt(location),
+    ): OpenFileDescriptor {
         val line = location.line() - 1 - firstLine(file)
         if (column == null) return OpenFileDescriptor(project, file, line, 0)
         // Assembler columns count source characters. IntelliJ logical columns expand tabs.
@@ -149,14 +167,20 @@ internal class MarsExecutionSources(private val capture: CapturedAssemblySources
 
     private fun pathOf(file: VirtualFile) = file.fileSystem.getNioPath(file)?.let { it.toAbsolutePath().normalize() }
 
-    private fun fileAt(location: Location): VirtualFile {
+    private fun fileAt(location: Location, consoleProject: Project? = null): VirtualFile {
         val path = location.file()
         val text = texts.getValue(path)
         if (location.line() > capture.previewLineCounts.getOrDefault(path, Int.MAX_VALUE)) {
             return excerptAt(path, text, location.line() - 1)
         }
         val file = LocalFileSystem.getInstance().findFileByNioFile(path)
-        if (file != null && matches(file, path, text) && !FileTypeRegistry.getInstance().isFileIgnored(file)) return file
+        if (file != null) {
+            if (matches(file, path, text) && !FileTypeRegistry.getInstance().isFileIgnored(file)) return file
+            // Debugger positions keep their execution snapshot. Console links can open the current editor view.
+            if (consoleProject != null && matchesBreakpointSource(file, path, text)) {
+                return readOnlyView(consoleProject, file) ?: excerptAt(path, text, location.line() - 1)
+            }
+        }
         return snapshots.computeIfAbsent(path) {
             CapturedFile(it, 0, snapshotOwner, runMessages.getMessage("run.source.captured", it.fileName), text)
         }

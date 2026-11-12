@@ -236,11 +236,12 @@ class CapturedAssemblySourcesPlatformTest {
             analysis.publishBuiltSymbols(analysis.beginSymbolBuild(capture.source), capture.sources, result.program().symbolMap())
         }
         readAction {
-            val line = checkNotNull(MarsExecutionSources(capture.sources).currentLineDescriptor(
-                project.get(), Location(include.toNioPath(), 2),
-            ))
+            val sources = MarsExecutionSources(capture.sources)
+            val location = Location(include.toNioPath(), 2)
+            val line = checkNotNull(sources.currentLineDescriptor(project.get(), location))
             assertFalse(line.file.isWritable)
             assertTrue(line.file.name.startsWith("large.png"))
+            assertSame(line.file, sources.hyperlink(project.get(), location).descriptor?.file)
             for (name in listOf("emit", "target")) {
                 val target = checkNotNull(main.findReferenceAt(main.text.indexOf(name))?.resolve())
                 assertEquals(name, target.text)

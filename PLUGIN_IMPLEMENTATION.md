@@ -1666,10 +1666,13 @@ execution position.
 Run and Debug report the simulator's terminal error once in the console.
 Errors from assembled instructions link to the physical instruction and each
 macro invocation that led to it, including callers in different files. The
-links open live source when it matches the loaded assembly. If the source has
-changed or disappeared, they open the corresponding line in a read-only copy
-of the assembled text. An instruction fetch fault without assembly provenance
-shows its machine address and reason.
+links open live source when it matches the loaded assembly. For a current
+ignored or binary-classified include, the console opens its read-only MIPS
+view with the containing assembly context. Oversized current sources open
+a bounded excerpt. If the source has changed or disappeared, the link opens
+the corresponding line in a read-only copy of the assembled text. An
+instruction fetch fault without assembly provenance shows its machine address
+and reason.
 
 ## Native line debugging
 

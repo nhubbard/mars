@@ -88,6 +88,7 @@ import edu.missouristate.mars.plugin.build.MemoryExportRegion
 import edu.missouristate.mars.plugin.build.interceptMemoryExportDialog
 import edu.missouristate.mars.plugin.build.replaceMemoryExportSaveDialog
 import edu.missouristate.mars.plugin.language.MipsFileType
+import edu.missouristate.mars.plugin.language.mipsAssemblySourceOrigin
 import java.nio.file.Files
 import java.nio.file.Path
 import javax.swing.JCheckBox
@@ -108,6 +109,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.CsvSource
 import org.junit.jupiter.params.provider.ValueSource
 
 @TestApplication
@@ -120,18 +122,22 @@ class MarsRunPlatformTest {
     private var runCount = 0
 
     @ParameterizedTest
-    @ValueSource(booleans = [false, true])
-    fun `runtime errors link to the loaded instruction and each macro caller in Run and Debug`(debug: Boolean) = timeoutRunBlocking<Unit> {
+    @CsvSource("false, fault-body.s", "true, fault-body.s", "false, fault-body.png", "true, fault-body.inc~")
+    fun `runtime errors link to the loaded instruction and each macro caller in Run and Debug`(
+        debug: Boolean, faultName: String,
+    ) = timeoutRunBlocking<Unit> {
         val lifetime = Disposer.newDisposable()
         val started = CompletableDeferred<Triple<MarsProcessHandler, Recording, ConsoleViewImpl>>()
-        val body = ".macro inner\nbreak 7\n.end_macro\n"
-        val invocation = ".include \"fault-macros.s\"\n.text\nli \$v0, 5\nsyscall\nouter\n"
+        val body = ".macro inner\nbreak BREAK_CODE\n.end_macro\n"
+        val invocation = ".eqv BREAK_CODE 7\n.include \"fault-macros.s\"\n.text\nli \$v0, 5\nsyscall\nouter\n"
+        val readOnly = faultName != "fault-body.s"
         val executor = if (debug) DefaultDebugExecutor.getDebugExecutorInstance() else executor
         try {
             val (entry, wrappers, fault) = withContext(Dispatchers.EDT) {
-                val fault = fixture.addFileToProject("with space/fault-body.s", body).virtualFile
+                val fault = fixture.tempDirFixture.createFile("with space/$faultName", body)
+                fixture.tempDirFixture.createFile("with space/bridge.zip", ".include \"$faultName\"\n")
                 val wrappers = fixture.addFileToProject("fault-macros.s", """
-                    .include "with space/fault-body.s"
+                    .include "with space/bridge.zip"
                     .macro outer
                     inner
                     .end_macro
@@ -155,9 +161,11 @@ class MarsRunPlatformTest {
             }
             val (handler, recording, console) = started.await()
             pollAssertionsAsync(5.seconds, 10.milliseconds) { assertEquals(1L, handler.instructionCounter.snapshot().total) }
-            withContext(Dispatchers.EDT) {
-                val document = requireNotNull(FileDocumentManager.getInstance().getDocument(fault))
-                WriteCommandAction.runWriteCommandAction(project) { document.setText(body.replace("break 7", "nop")) }
+            if (!readOnly) {
+                withContext(Dispatchers.EDT) {
+                    val document = requireNotNull(FileDocumentManager.getInstance().getDocument(fault))
+                    WriteCommandAction.runWriteCommandAction(project) { document.setText(body.replace("break BREAK_CODE", "nop")) }
+                }
             }
             handler.processInput.write("0\n".toByteArray())
             assertEquals(1, recording.exit.await())
@@ -169,7 +177,7 @@ class MarsRunPlatformTest {
                     val text = console.editor!!.document.text
                     assertTrue(text.contains("Instruction at ${fault.path}:2\n"), text)
                     assertTrue(text.contains("Called from ${wrappers.path}:3\n"), text)
-                    assertTrue(text.contains("Called from ${entry.path}:5\n"), text)
+                    assertTrue(text.contains("Called from ${entry.path}:6\n"), text)
                 }
             }
             withContext(Dispatchers.EDT) {
@@ -181,11 +189,30 @@ class MarsRunPlatformTest {
                     return assertInstanceOf(FileHyperlinkInfo::class.java, EditorHyperlinkSupport.getHyperlinkInfo(highlighter))
                 }
                 val instruction = link("Instruction at ")
+                if (readOnly) {
+                    val live = requireNotNull(instruction.descriptor)
+                    assertEquals(fault, live.file.mipsAssemblySourceOrigin)
+                    assertEquals(1, live.line)
+                    instruction.navigate(project)
+                    val editor = requireNotNull(FileEditorManager.getInstance(project).selectedTextEditor)
+                    assertEquals(live.file, editor.virtualFile)
+                    assertEquals(1, editor.caretModel.logicalPosition.line)
+                    val psi = requireNotNull(PsiManager.getInstance(project).findFile(live.file))
+                    val reference = psi.findReferenceAt(body.indexOf("BREAK_CODE"))
+                    assertEquals(entry, reference?.resolve()?.containingFile?.virtualFile)
+                    Files.writeString(fault.toNioPath(), "# rewritten after the fault\nnop\n")
+                    fault.refresh(false, false)
+                }
                 val assembled = requireNotNull(instruction.descriptor)
                 assertNotEquals(fault, assembled.file)
                 assertFalse(assembled.file.isWritable)
+                assertNull(assembled.file.mipsAssemblySourceOrigin)
                 assertEquals(body, FileDocumentManager.getInstance().getDocument(assembled.file)?.text)
                 assertEquals(1, assembled.line)
+                if (readOnly) {
+                    WriteCommandAction.runWriteCommandAction(project) { fault.delete(this) }
+                    assertEquals(assembled.file, instruction.descriptor?.file)
+                }
 
                 val wrapper = requireNotNull(link("Called from ${wrappers.path}").descriptor)
                 assertEquals(wrappers, wrapper.file)
@@ -198,7 +225,7 @@ class MarsRunPlatformTest {
                 caller.navigate(project)
                 val selected = requireNotNull(FileEditorManager.getInstance(project).selectedTextEditor)
                 assertEquals(invocation, selected.document.text)
-                assertEquals(4, selected.caretModel.logicalPosition.line)
+                assertEquals(5, selected.caretModel.logicalPosition.line)
                 assertFalse(FileDocumentManager.getInstance().getFile(selected.document)!!.isWritable)
             }
         } finally {
