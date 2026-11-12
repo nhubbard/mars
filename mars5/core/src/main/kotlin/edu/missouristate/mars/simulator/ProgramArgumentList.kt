@@ -111,9 +111,9 @@ open class ProgramArgumentList {
             memory.set(stackAddress, argumentAddresses.size, word)
 
             // Initialize the registers directly to keep launch setup out of the undo history.
-            session.registerFile.getUserRegister("\$sp").setValue(stackAddress)
-            session.registerFile.getUserRegister("\$a0").setValue(argumentAddresses.size)
-            session.registerFile.getUserRegister("\$a1").setValue(stackAddress + word)
+            session.registerFile.getUserRegister("\$sp")!!.setValue(stackAddress)
+            session.registerFile.getUserRegister("\$a0")!!.setValue(argumentAddresses.size)
+            session.registerFile.getUserRegister("\$a1")!!.setValue(stackAddress + word)
         } catch (failure: AddressErrorException) {
             throw IllegalArgumentException("Program arguments exceed session stack memory", failure)
         }

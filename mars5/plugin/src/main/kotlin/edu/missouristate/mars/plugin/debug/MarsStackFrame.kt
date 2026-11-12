@@ -14,9 +14,9 @@ import com.intellij.xdebugger.frame.XValuePlace
 import com.intellij.xdebugger.frame.presentation.XValuePresentation
 import edu.missouristate.mars.api.AssemblySymbolMap.Definition
 import edu.missouristate.mars.core.MarsContext
-import edu.missouristate.mars.mips.hardware.Coprocessor1State.CONDITION_FLAG_MASK
-import edu.missouristate.mars.mips.hardware.IntegerRegisterFile.HI_REGISTER
-import edu.missouristate.mars.mips.hardware.IntegerRegisterFile.LO_REGISTER
+import edu.missouristate.mars.mips.hardware.Coprocessor1State.Companion.CONDITION_FLAG_MASK
+import edu.missouristate.mars.mips.hardware.IntegerRegisterFile.Companion.HI_REGISTER
+import edu.missouristate.mars.mips.hardware.IntegerRegisterFile.Companion.LO_REGISTER
 import edu.missouristate.mars.plugin.debug.RegisterBank.COPROCESSOR_0
 import edu.missouristate.mars.plugin.debug.RegisterBank.CPU
 import edu.missouristate.mars.plugin.debug.RegisterBank.FPU_DOUBLE

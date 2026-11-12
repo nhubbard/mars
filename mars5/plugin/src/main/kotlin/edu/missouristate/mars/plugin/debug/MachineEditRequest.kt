@@ -5,7 +5,7 @@ import com.intellij.xdebugger.frame.XValueModifier
 import com.intellij.xdebugger.frame.XValueModifier.XModificationCallback
 import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.mips.hardware.AddressErrorException
-import edu.missouristate.mars.mips.hardware.Coprocessor1State.CONDITION_FLAG_MASK
+import edu.missouristate.mars.mips.hardware.Coprocessor1State.Companion.CONDITION_FLAG_MASK
 import edu.missouristate.mars.plugin.run.runMessages
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.SendChannel

@@ -23,7 +23,7 @@ import com.intellij.xdebugger.XDebugSession
 import com.intellij.xdebugger.XDebugSessionListener
 import com.intellij.xdebugger.frame.XValueModifier.XModificationCallback
 import edu.missouristate.mars.core.MarsContext
-import edu.missouristate.mars.mips.hardware.IntegerRegisterFile.STACK_POINTER_REGISTER
+import edu.missouristate.mars.mips.hardware.IntegerRegisterFile.Companion.STACK_POINTER_REGISTER
 import edu.missouristate.mars.mips.hardware.MemoryState
 import edu.missouristate.mars.plugin.build.MarsMemoryExportService
 import edu.missouristate.mars.plugin.build.chooseMemoryExport

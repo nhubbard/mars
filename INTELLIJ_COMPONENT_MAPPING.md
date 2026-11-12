@@ -1062,7 +1062,7 @@ Test sources and generated build output are excluded from this production invent
 | [java/edu/missouristate/mars/api/MarsAssembler.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/api/MarsAssembler.java) | C02 |
 | [java/edu/missouristate/mars/api/MarsGuiProxy.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/api/MarsGuiProxy.java) | I01 |
 | [java/edu/missouristate/mars/api/MarsMemory.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/api/MarsMemory.java) | C09 |
-| [java/edu/missouristate/mars/api/MarsRegisterFile.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/api/MarsRegisterFile.java) | C06 |
+| [kotlin/edu/missouristate/mars/api/MarsRegisterFile.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/api/MarsRegisterFile.kt) | C06 |
 | [java/edu/missouristate/mars/api/MarsSettings.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/api/MarsSettings.java) | S01 |
 | [java/edu/missouristate/mars/api/MarsSimulator.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/api/MarsSimulator.java) | R01 |
 | [java/edu/missouristate/mars/api/MemoryAccessException.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/api/MemoryAccessException.java) | C09 |
@@ -1113,8 +1113,8 @@ Test sources and generated build output are excluded from this production invent
 | [java/edu/missouristate/mars/mips/hardware/AccessOrigin.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/mips/hardware/AccessOrigin.java) | C10 |
 | [kotlin/edu/missouristate/mars/mips/hardware/AddressErrorException.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/mips/hardware/AddressErrorException.kt) | C09 |
 | [kotlin/edu/missouristate/mars/mips/hardware/Coprocessor0State.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/mips/hardware/Coprocessor0State.kt) | C07 |
-| [java/edu/missouristate/mars/mips/hardware/Coprocessor1State.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/mips/hardware/Coprocessor1State.java) | C08 |
-| [java/edu/missouristate/mars/mips/hardware/IntegerRegisterFile.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/mips/hardware/IntegerRegisterFile.java) | C06 |
+| [kotlin/edu/missouristate/mars/mips/hardware/Coprocessor1State.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/mips/hardware/Coprocessor1State.kt) | C08 |
+| [kotlin/edu/missouristate/mars/mips/hardware/IntegerRegisterFile.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/mips/hardware/IntegerRegisterFile.kt) | C06 |
 | [kotlin/edu/missouristate/mars/mips/hardware/InvalidRegisterAccessException.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/mips/hardware/InvalidRegisterAccessException.kt) | C06 |
 | [kotlin/edu/missouristate/mars/mips/hardware/MemoryAccessNotice.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/mips/hardware/MemoryAccessNotice.kt) | C10 |
 | [java/edu/missouristate/mars/mips/hardware/MemoryConfiguration.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/mips/hardware/MemoryConfiguration.java) | C09 |

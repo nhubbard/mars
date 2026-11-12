@@ -72,6 +72,21 @@ class Coprocessor1StateTest {
     assertThat(state.getLongFromRegisterPair(number)).isEqualTo(~bits);
   }
 
+  @Test
+  void registerPairObserversSeeTheOddRegisterBeforeTheEvenRegister() throws Exception {
+    var state = new Coprocessor1State();
+    var notices = new ArrayList<RegisterAccessNotice>();
+    state.addRegistersObserver(notices::add);
+
+    state.setRegisterPairToDouble(4, 1.5);
+    assertThat(state.getDoubleFromRegisterPair(4)).isEqualTo(1.5);
+
+    assertThat(notices).extracting(RegisterAccessNotice::getRegisterName)
+        .containsExactly("$f5", "$f4", "$f5", "$f4");
+    assertThat(notices).extracting(RegisterAccessNotice::getAccessType)
+        .containsExactly(AccessNotice.WRITE, AccessNotice.WRITE, AccessNotice.READ, AccessNotice.READ);
+  }
+
   @ParameterizedTest
   @ValueSource(
       longs = {

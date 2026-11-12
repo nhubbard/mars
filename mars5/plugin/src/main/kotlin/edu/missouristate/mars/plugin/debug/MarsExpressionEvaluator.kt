@@ -26,9 +26,9 @@ import edu.missouristate.mars.assembler.RegisterNames
 import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.assembler.Tokenizer
 import edu.missouristate.mars.core.MarsContext
-import edu.missouristate.mars.mips.hardware.Coprocessor1State.CONDITION_FLAG_MASK
-import edu.missouristate.mars.mips.hardware.IntegerRegisterFile.HI_REGISTER
-import edu.missouristate.mars.mips.hardware.IntegerRegisterFile.LO_REGISTER
+import edu.missouristate.mars.mips.hardware.Coprocessor1State.Companion.CONDITION_FLAG_MASK
+import edu.missouristate.mars.mips.hardware.IntegerRegisterFile.Companion.HI_REGISTER
+import edu.missouristate.mars.mips.hardware.IntegerRegisterFile.Companion.LO_REGISTER
 import edu.missouristate.mars.mips.hardware.MemoryState
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.MipsFileType

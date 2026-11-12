@@ -10,7 +10,7 @@ open class InstrJ : BasicInstruction(
     "000010 ffffffffffffffffffffffffff",
     { statement, context ->
         val operands = statement.operands
-        val region = context.registerFile.getProgramCounter() and 0xf0000000.toInt()
+        val region = context.registerFile.programCounter and 0xf0000000.toInt()
         context.jump(region or (operands[0] shl 2))
     },
 )

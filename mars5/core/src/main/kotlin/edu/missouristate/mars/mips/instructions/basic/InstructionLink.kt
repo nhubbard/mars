@@ -5,7 +5,7 @@ import edu.missouristate.mars.mips.instructions.Instruction.Companion.INSTRUCTIO
 
 /** Saves the address following the jump or its delay slot, as selected by the simulation. */
 internal fun InstructionContext.linkReturnAddress(register: Int) {
-    val nextAddress = registerFile.getProgramCounter()
+    val nextAddress = registerFile.programCounter
     val delay = if (settings().isDelayedBranchingEnabled) INSTRUCTION_LENGTH else 0
     link(register, nextAddress + delay)
 }
