@@ -25,7 +25,6 @@ import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
 import edu.missouristate.mars.plugin.language.psi.MipsStringLiteral
 import edu.missouristate.mars.plugin.language.references.MipsFileReferenceSet
 import edu.missouristate.mars.plugin.language.references.mipsIncludeDirectoryPath
-import java.util.BitSet
 import java.util.TreeMap
 import java.util.concurrent.ConcurrentHashMap
 
@@ -41,7 +40,7 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
     val macroBoundaries = TreeMap<Int, Begin?>()
     val macroNames = HashSet<String>()
     val closedMacros = LinkedHashMap<String, MutableMap<Int, TreeMap<Int, Begin>>>()
-    val integerDataPrefixes = BitSet()
+    val dataLists = TreeMap<Int, Directives?>()
     val pending = ArrayDeque<SourceCursor>()
     fun enter(file: MipsFile) {
         val locations = SourceFileEvents(file, files.size)
@@ -55,6 +54,7 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
     var unindexedSources = entry.originalFile !is MipsFile
     var inData = false
     var dataList = Directives.WORD
+    var previousDataList: Directives? = null
     val replacement: (String) -> String? = { equivalences[it]?.definition?.replacement }
     fun addLabel(name: String, site: PsiElement, generated: Boolean) {
         if (macro != null && Macro.tokenIsMacroParameter(name, true)) return
@@ -171,7 +171,11 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
                 enter(syntax)
             }
         }
-        if (macro == null && inData && Directives.isIntegerDirective(dataList)) integerDataPrefixes.set(eventCount)
+        val activeDataList = if (macro == null && inData) dataList else null
+        if (activeDataList != previousDataList) {
+            dataLists[eventCount] = activeDataList
+            previousDataList = activeDataList
+        }
     }
     val unclosed = macro
     if (unclosed != null && firstIncompleteInclude == Int.MAX_VALUE) {
@@ -179,7 +183,7 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
         files.getValue(openingFile).macroBoundaryProblems.add(MacroBoundaryProblem(unclosed.directiveOffset, Kind.MISSING_END))
     }
     CachedValueProvider.Result.create(
-        MipsSourceTimeline(files, equivalences, integerDataPrefixes, externalStorage, unindexedLabels, macroBoundaries,
+        MipsSourceTimeline(files, equivalences, dataLists, externalStorage, unindexedLabels, macroBoundaries,
             macroNames, closedMacros, firstIncompleteInclude, unindexedSources),
         dependencies,
     )
@@ -188,7 +192,7 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
 internal class MipsSourceTimeline(
     private val files: Map<VirtualFile, SourceFileEvents>,
     private val equivalences: Map<String, IndexedEquivalence>,
-    private val integerDataPrefixes: BitSet,
+    private val dataLists: TreeMap<Int, Directives?>,
     val externalStorage: Map<String, PsiElement>,
     val unindexedLabels: Map<String, List<TimelineLabel>>,
     private val macroBoundaries: TreeMap<Int, Begin?>,
@@ -327,7 +331,7 @@ internal class MipsSourceTimeline(
 
     inner class Prefix(private val end: Int) {
         val hasIncompleteIncludes: Boolean get() = end > firstIncompleteInclude
-        val hasIntegerDataList: Boolean get() = integerDataPrefixes[end]
+        val dataList: Directives? get() = dataLists.floorEntry(end)?.value
         val openMacro: Begin? get() = openMacro(end)
 
         fun equivalence(name: String): MipsSourceEvent.Equivalence? =

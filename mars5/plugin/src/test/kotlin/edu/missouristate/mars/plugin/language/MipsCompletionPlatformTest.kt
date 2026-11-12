@@ -617,13 +617,13 @@ class MipsCompletionPlatformTest {
                 assertTrue(aliases(".word VALUE_<caret>:1.5").isEmpty())
                 assertTrue(aliases(".word target:VALUE_<caret>").isEmpty())
                 assertTrue(aliases(".word VALUE_<caret>, \$t0").isEmpty())
-                assertEquals(setOf("VALUE_MACRO"), aliases(".float 0\nVALUE_<caret>"))
+                assertEquals(integers + setOf("VALUE_LIST", "VALUE_FLOAT", "VALUE_MACRO"), aliases(".float 0\nVALUE_<caret>"))
                 assertTrue(aliases(".align VALUE_<caret>").isEmpty())
                 assertTrue(aliases(".word VALUE_<caret>", include + ".text\n").isEmpty())
                 val unindexed = fixture.configureByText("data-indexing.mars", before + ".word VALUE_" + after) as MipsFile
                 val range = unindexed.findElementAt(before.length + ".word ".length)!!.textRange
                 DumbModeTestUtils.runInDumbModeSynchronously(current) {
-                    assertTrue(current.service<MarsAnalysisService>().integerDataEquivalenceCompletions(unindexed, range, "VALUE_").isEmpty())
+                    assertTrue(current.service<MarsAnalysisService>().dataEquivalenceCompletions(unindexed, range, "VALUE_").isEmpty())
                 }
                 assertEquals(setOf("VALUE_LIST"), aliases("slot: WORDS 2, VALUE_L<caret>.old, 9"))
                 val selected = fixture.lookup.items.single { it.lookupString == "VALUE_LIST" }
@@ -639,6 +639,59 @@ class MipsCompletionPlatformTest {
             context.assemble(listOf(entry), null, true, false)
             val memory = context.memory
             assertEquals(listOf(2, 3, 8, 9), List(4) { memory.getWordNoNotify(memory.dataBaseAddress + it * Int.SIZE_BYTES) })
+        }
+
+    @Test
+    fun `data lists complete real and quoted equivalences using the active directive`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val current = project.get()
+            val definitions = ".eqv REALS .float\n.eqv STRINGS .asciiz\n.eqv VAL_INT 3\n.eqv VAL_REAL -1.5\n" +
+                ".eqv VAL_MIX VAL_REAL, 2.25\n.eqv VAL_WIDE 1.0e40\n.eqv VAL_HEX 0x10\n" +
+                ".eqv VAL_REG \$t0\n.eqv VAL_ZERO 0\n.eqv VAL_LABEL target\n" +
+                ".eqv VAL_STRING \"A\\n\"\n.eqv VAL_QUOTES VAL_STRING, \"B\"\n.eqv VAL_OPEN \"unfinished\n"
+            val include = ".include \"real-and-string.inc\"\n"
+            val before = include + ".data\n"
+            val after = "\n.text\ntarget: nop\n.eqv VAL_LATE 4.5\n"
+            withContext(Dispatchers.EDT) { fixture.addFileToProject("real-and-string.inc", definitions) }
+            IndexingTestUtil.suspendUntilIndexesAreReady(current)
+            val completed = withContext(Dispatchers.EDT) {
+                fun aliases(line: String, start: String = before): Set<String> {
+                    fixture.configureByText("real-and-string.mars", start + line + after)
+                    return CodeInsightSettings.runWithTemporarySettings<_, Error> {
+                        it.AUTOCOMPLETE_ON_CODE_COMPLETION = false
+                        fixture.completeBasic().orEmpty().filter { item -> item.typeText() == "Equivalence" }
+                            .map { item -> item.lookupString }.toSet()
+                    }
+                }
+                val reals = setOf("VAL_INT", "VAL_REAL", "VAL_MIX", "VAL_ZERO")
+                val strings = setOf("VAL_STRING", "VAL_QUOTES")
+                assertEquals(reals, aliases(".float VAL_<caret>"))
+                assertEquals(reals + "VAL_WIDE", aliases(".double VAL_<caret>"))
+                assertEquals(reals, aliases(".float 1\nVAL_<caret>"))
+                assertEquals(reals, aliases(".kdata\n.float 1\n.text\n.kdata\nVAL_<caret>", include))
+                assertEquals(reals - "VAL_MIX", aliases("REALS VAL_<caret>:2"))
+                assertEquals(setOf("VAL_INT", "VAL_HEX"), aliases(".float -1.5:VAL_<caret>"))
+                assertEquals(strings, aliases(".ascii VAL_<caret>"))
+                assertEquals(strings, aliases(".asciiz \"x\"\nVAL_<caret>"))
+                assertEquals(strings, aliases("label: STRINGS VAL_<caret>"))
+                assertTrue(aliases(".ascii VAL_<caret>:2").isEmpty())
+                assertTrue(aliases(".asciiz VAL_<caret>, \"unfinished").isEmpty())
+                assertTrue(aliases(".ascii VAL_<caret>", include + ".text\n").isEmpty())
+                assertEquals(setOf("VAL_QUOTES"), aliases(".float VAL_MIX\nlabel: STRINGS VAL_Q<caret>.old, \"Z\""))
+                fixture.lookup.setCurrentItem(fixture.lookup.items.single { it.lookupString == "VAL_QUOTES" })
+                fixture.finishLookup(Lookup.REPLACE_SELECT_CHAR)
+                assertEquals(before + ".float VAL_MIX\nlabel: STRINGS VAL_QUOTES, \"Z\"" + after, fixture.file.text)
+                fixture.file.text
+            }
+            directory.resolve("real-and-string.inc").writeText(definitions)
+            val entry = directory.resolve("real-and-string.mars").also { it.writeText(completed) }
+            val context = current.service<MarsSessionService>().context
+            context.assemble(listOf(entry), null, true, false)
+            val memory = context.memory
+            val base = memory.dataBaseAddress
+            assertEquals((-1.5f).toBits(), memory.getWordNoNotify(base))
+            assertEquals(2.25f.toBits(), memory.getWordNoNotify(base + Int.SIZE_BYTES))
+            assertEquals(listOf(65, 10, 0, 66, 0, 90, 0), List(7) { memory.getByte(base + 2 * Int.SIZE_BYTES + it) })
         }
 
     @Test

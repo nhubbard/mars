@@ -157,7 +157,7 @@ public class Token {
   }
 
   /** A token starting with a double quote can reach the end of its line without closing. */
-  boolean hasClosingDoubleQuote() {
+  public boolean hasClosingDoubleQuote() {
     return value.length() > 1 && value.charAt(value.length() - 1) == '"';
   }
 

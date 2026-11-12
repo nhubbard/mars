@@ -30,6 +30,7 @@ import edu.missouristate.mars.api.AssemblySymbolMap.Kind
 import edu.missouristate.mars.api.AssemblySymbolMap.MacroCall
 import edu.missouristate.mars.api.AssemblySymbolMap.SourceToken
 import edu.missouristate.mars.api.InstructionSourceMap.Location
+import edu.missouristate.mars.assembler.DataTypes
 import edu.missouristate.mars.assembler.Directives
 import edu.missouristate.mars.assembler.Macro
 import edu.missouristate.mars.assembler.TokenList
@@ -737,17 +738,20 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
 
     internal fun hasIntegerDataList(root: MipsFile, position: PsiElement): Boolean {
         if (DumbService.isDumb(project)) return false
-        return editorPrefix(root, position.textOffset).hasIntegerDataList
+        return Directives.isIntegerDirective(editorPrefix(root, position.textOffset).dataList)
     }
 
-    internal fun integerDataEquivalenceCompletions(root: MipsFile, range: TextRange, prefix: String): Map<String, String> {
-        if (DumbService.isDumb(project) || !editorPrefix(root, range.startOffset).hasIntegerDataList) return emptyMap()
+    internal fun dataEquivalenceCompletions(root: MipsFile, range: TextRange, prefix: String): Map<String, String> {
+        if (DumbService.isDumb(project)) return emptyMap()
+        val directive = editorPrefix(root, range.startOffset).dataList ?: return emptyMap()
+        val integer = Directives.isIntegerDirective(directive)
+        val floating = Directives.isFloatingDirective(directive)
         val column = range.startOffset - sourceLineStart(root.viewProvider.contents, range.startOffset) + 1
         return equivalenceCompletions(root, range, prefix) { tokens, end, visible ->
             if (end == 0) return@equivalenceCompletions false
             val head = tokens[0]
             val first = if (head.type == TokenTypes.DIRECTIVE) {
-                if (head.originalStartPos >= column || !Directives.isIntegerDirective(Directives.matchDirective(head.value))) {
+                if (head.originalStartPos >= column || Directives.matchDirective(head.value) != directive) {
                     return@equivalenceCompletions false
                 }
                 1
@@ -760,15 +764,21 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
                 }
                 0
             }
-            if (tokens.size() == 4 && tokens[2].type == TokenTypes.COLON) {
+            fun acceptsValue(index: Int, allowLabel: Boolean): Boolean {
+                val token = tokens[index]
+                return when {
+                    integer -> TokenTypes.isIntegerTokenType(token.type) || allowLabel && token.type == TokenTypes.IDENTIFIER
+                    floating -> (TokenTypes.isIntegerTokenType(token.type) || TokenTypes.isFloatingTokenType(token.type)) &&
+                        token.value.toDoubleOrNull()?.let { !DataTypes.outOfRange(directive, it) } == true
+                    else -> token.type == TokenTypes.QUOTED_STRING && token.hasClosingDoubleQuote()
+                }
+            }
+            if ((integer || floating) && tokens.size() == 4 && tokens[2].type == TokenTypes.COLON) {
                 // The assembler recognizes the four-token repetition shape before it walks a numeric list.
-                TokenTypes.isIntegerTokenType(tokens[1].type) && TokenTypes.isIntegerTokenType(tokens[3].type) &&
+                acceptsValue(1, allowLabel = false) && TokenTypes.isIntegerTokenType(tokens[3].type) &&
                     Binary.stringToInt(tokens[3].value) > 0
             } else {
-                (first until tokens.size()).all { index ->
-                    val type = tokens[index].type
-                    type == TokenTypes.IDENTIFIER || TokenTypes.isIntegerTokenType(type)
-                }
+                (first until tokens.size()).all { acceptsValue(it, allowLabel = true) }
             }
         }
     }
