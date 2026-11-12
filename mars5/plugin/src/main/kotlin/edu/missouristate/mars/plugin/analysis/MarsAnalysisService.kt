@@ -488,6 +488,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
 
     internal fun equivalenceCompletions(
         root: MipsFile, replacement: TextRange, typedPrefix: String,
+        allowBrokenSuffix: Boolean = true,
         accepts: (TokenList, Int, MipsSourceTimeline.Prefix) -> Boolean,
     ): Map<String, String> {
         if (DumbService.isDumb(project)) return emptyMap()
@@ -503,7 +504,8 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
                 val throughAlias = before + definition.name
                 val tokens = expandedOperation(visible, throughAlias + after, allowIncompleteOperand = true)
                     // A cyclic equivalence later on the line can prevent expansion of the full instruction.
-                    ?: after.takeIf(String::isNotEmpty)?.let { expandedOperation(visible, throughAlias, allowIncompleteOperand = true) }
+                    ?: after.takeIf { allowBrokenSuffix && it.isNotEmpty() }
+                        ?.let { expandedOperation(visible, throughAlias, allowIncompleteOperand = true) }
                     ?: continue
                 val end = (0 until tokens.size()).firstOrNull { tokens[it].originalStartPos > throughAlias.length } ?: tokens.size()
                 if (accepts(tokens, end, visible)) put(definition.name, definition.replacement)
@@ -856,6 +858,21 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         return tokens.takeIf {
             !it.isEmpty && Directives.matchDirective(it[0].value) == Directives.GLOBL &&
                 (1 until it.size()).all { index -> it[index].type == TokenTypes.IDENTIFIER }
+        }
+    }
+
+    internal fun exportEquivalenceCompletions(
+        root: MipsFile, position: PsiElement, range: TextRange, prefix: String, operandIndex: Int,
+    ): Map<String, String> {
+        val eligible by lazy { labelCompletionNames(root, position, "", LabelCompletionContext.EXPORT) }
+        return equivalenceCompletions(root, range, prefix, allowBrokenSuffix = false) { tokens, end, _ ->
+            val names = HashSet<String>()
+            // Compare expanded spellings on both sides. Exporting a name twice fails during global transfer.
+            (1 until tokens.size()).all { index ->
+                val token = tokens[index]
+                token.type == TokenTypes.IDENTIFIER && names.add(token.value) &&
+                    (index !in operandIndex until end || token.value in eligible)
+            }
         }
     }
 

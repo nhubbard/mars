@@ -59,17 +59,20 @@ class MipsCompletionContributor : CompletionContributor(), DumbAware {
                 val prefix = prefix(parameters)
                 val lookup = result.withPrefixMatcher(prefix)
                 val end = replacementEnd(parameters)
-                val equivalences = if (operand != null) {
-                    lookup.addAllElements(registerCandidates(operand.formats, operand.index, options.bareMachine).map(LookupElementBuilder::create))
-                    operand.equivalenceCompletions(root, prefix, options.bareMachine, end)
-                } else {
-                    analysis.directiveOperandEquivalenceCompletions(root, TextRange(position.textOffset, end), prefix)
+                val data = if (operand == null) DataLabelOperand.at(position) else null
+                val export = data?.exportHead(position)?.let { analysis.exportOperandsBefore(root, it, position) }
+                val range = TextRange(position.textOffset, end)
+                val equivalences = when {
+                    operand != null -> {
+                        lookup.addAllElements(registerCandidates(operand.formats, operand.index, options.bareMachine).map(LookupElementBuilder::create))
+                        operand.equivalenceCompletions(root, prefix, options.bareMachine, end)
+                    }
+                    export != null -> analysis.exportEquivalenceCompletions(root, position, range, prefix, export.size())
+                    else -> analysis.directiveOperandEquivalenceCompletions(root, range, prefix)
                 }
                 for ((name, replacement) in equivalences) {
                     lookup.addElement(equivalenceLookup(name, replacement))
                 }
-                val data = if (operand == null) DataLabelOperand.at(position) else null
-                val export = data?.exportHead(position)?.let { analysis.exportOperandsBefore(root, it, position) }
                 if (export != null) {
                     val written = (1 until export.size()).mapTo(HashSet()) { export[it].value }
                     val names = analysis.labelCompletionNames(root, position, prefix, LabelCompletionContext.EXPORT)

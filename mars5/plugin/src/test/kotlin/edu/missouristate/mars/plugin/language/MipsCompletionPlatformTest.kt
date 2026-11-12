@@ -792,6 +792,51 @@ class MipsCompletionPlatformTest {
         }
 
     @Test
+    fun `export completion offers aliases whose expanded labels are local and distinct`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val current = project.get()
+            val definitions = ".eqv EXPORT .globl\n.eqv EX_FIRST alpha\n.eqv EX_SECOND beta\n" +
+                ".eqv EX_PAIR EX_FIRST, beta\n.eqv EX_CHAIN EX_PAIR\n.eqv EX_DUP alpha, alpha\n" +
+                ".eqv EX_EXTERNAL storage\n.eqv EX_MISSING absent\n.eqv EX_OTHER other\n" +
+                ".eqv EX_OPCODE add.s\n.eqv EX_REGISTER \$t0\n.eqv LOOP AGAIN\n.eqv AGAIN LOOP\n" +
+                ".eqv EX_INCLUDED included\n.eqv MADE generated:\n.eqv EX_GENERATED generated\nincluded: nop\n"
+            val prefix = ".include \"export-aliases.inc\"\n.extern storage 4\n"
+            val suffix = "\nalpha: nop\nbeta: nop\ngamma: nop\nadd.s: nop\nMADE nop\n.eqv EX_LATE gamma\n"
+            withContext(Dispatchers.EDT) {
+                fixture.addFileToProject("export-aliases.inc", definitions)
+                fixture.addFileToProject("separate.mars", ".globl other\nother: nop\n")
+            }
+            IndexingTestUtil.suspendUntilIndexesAreReady(current)
+            val completed = withContext(Dispatchers.EDT) {
+                fun aliases(line: String): Set<String> {
+                    fixture.configureByText("export-aliases.mars", prefix + line + suffix)
+                    return CodeInsightSettings.runWithTemporarySettings<_, Error> {
+                        it.AUTOCOMPLETE_ON_CODE_COMPLETION = false
+                        fixture.completeBasic().orEmpty().filter { item -> item.typeText() == "Equivalence" }
+                            .map { it.lookupString }.toSet()
+                    }
+                }
+                val independent = setOf("EX_INCLUDED", "EX_GENERATED")
+                assertEquals(independent + setOf("EX_FIRST", "EX_SECOND", "EX_PAIR", "EX_CHAIN"), aliases(".globl EX_<caret>"))
+                assertEquals(independent + "EX_FIRST", aliases("tag: EXPORT EX_<caret>, beta"))
+                assertEquals(independent + "EX_SECOND", aliases(".globl EX_FIRST, EX_<caret>"))
+                assertEquals(independent, aliases(".globl alpha, EX_<caret>, EX_SECOND"))
+                assertTrue(aliases(".globl EX_<caret>, \$t0").isEmpty())
+                assertTrue(aliases(".globl EX_<caret>, LOOP").isEmpty())
+                assertEquals(setOf("EX_PAIR"), aliases("EXPORT EX_P<caret>.old, gamma"))
+                fixture.lookup.setCurrentItem(fixture.lookup.items.single { it.lookupString == "EX_PAIR" })
+                fixture.finishLookup(Lookup.REPLACE_SELECT_CHAR)
+                assertEquals(prefix + "EXPORT EX_PAIR, gamma" + suffix, fixture.file.text)
+                fixture.file.text
+            }
+            directory.resolve("export-aliases.inc").writeText(definitions)
+            val entry = directory.resolve("export-aliases.mars").also { it.writeText(completed) }
+            val context = current.service<MarsSessionService>().context
+            context.assemble(listOf(entry), null, true, false)
+            assertEquals(setOf("storage", "alpha", "beta", "gamma"), context.symbolTable.allSymbols.map { it.name }.toSet())
+        }
+
+    @Test
     fun `instruction completion offers equivalences that fit the assembler operand format`(@TempDir directory: Path) =
         timeoutRunBlocking<Unit> {
             val current = project.get()
