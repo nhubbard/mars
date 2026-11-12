@@ -3,6 +3,7 @@ package edu.missouristate.mars.plugin.run
 import com.intellij.diff.tools.util.text.LineOffsets
 import com.intellij.diff.tools.util.text.LineOffsetsUtil
 import com.intellij.execution.filters.FileHyperlinkInfo
+import com.intellij.notebook.editor.BackedVirtualFile
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.project.Project
@@ -24,13 +25,21 @@ import java.util.concurrent.ConcurrentHashMap
 
 /** Resolves debugger positions and console links against the sources of one loaded image. */
 internal class MarsExecutionSources(private val capture: CapturedAssemblySources) {
-    private class CapturedFile(
+    private open class CapturedFile(
         val pathInImage: Path, val firstLine: Int, val owner: Any, name: String, text: String,
     ) : ReadOnlyLightVirtualFile(name, MipsLanguage, text) {
         init { setFileType(MipsFileType) }
     }
 
-    private data class ExcerptStart(val path: Path, val offset: Int, val firstLine: Int, val prefix: String)
+    private class BackedExcerpt(
+        private val original: VirtualFile, path: Path, firstLine: Int, owner: Any, name: String, text: String,
+    ) : CapturedFile(path, firstLine, owner, name, text), BackedVirtualFile {
+        override fun getOriginFile() = original
+    }
+
+    private data class ExcerptStart(
+        val path: Path, val offset: Int, val firstLine: Int, val prefix: String, val original: VirtualFile? = null,
+    )
 
     private val snapshotOwner = Any()
     private val snapshots = ConcurrentHashMap<Path, CapturedFile>()
@@ -109,7 +118,7 @@ internal class MarsExecutionSources(private val capture: CapturedAssemblySources
     }
 
     /** Returns the declaration's offset inside bounded, read-only source text. */
-    fun excerptPosition(location: Location, column: Int?): Pair<VirtualFile, Int>? {
+    fun excerptPosition(location: Location, column: Int?, original: VirtualFile? = null): Pair<VirtualFile, Int>? {
         val path = location.file()
         val text = texts.getValue(path)
         val line = location.line() - 1
@@ -118,10 +127,10 @@ internal class MarsExecutionSources(private val capture: CapturedAssemblySources
         val token = column?.let { lineStart + it - 1 } ?: CharArrayUtil.shiftForward(text, lineStart, " \t,")
         if (token >= offsets.getLineEnd(line)) return null
 
-        val start = excerptStart(path, offsets, line)
+        val start = excerptStart(path, offsets, line).copy(original = original)
         if (token - start.offset >= EXCERPT_SIZE) {
             // Begin at the declaration when a long line would use up its surrounding context.
-            return excerpt(ExcerptStart(path, token, line, ""), text) to 0
+            return excerpt(ExcerptStart(path, token, line, "", original), text) to 0
         }
         return excerpt(start, text) to
             (token - start.offset + start.prefix.length)
@@ -144,11 +153,11 @@ internal class MarsExecutionSources(private val capture: CapturedAssemblySources
     private fun excerpt(start: ExcerptStart, text: String): CapturedFile =
         excerpts.computeIfAbsent(start) {
             val end = it.offset + minOf(text.length - it.offset, 2 * EXCERPT_SIZE)
-            CapturedFile(
-                it.path, it.firstLine, snapshotOwner,
-                runMessages.getMessage("run.source.excerpt", it.path.fileName, it.firstLine + 1),
-                it.prefix + text.substring(it.offset, end),
-            ).apply { putUserData(excerptKey, true) }
+            val name = runMessages.getMessage("run.source.excerpt", it.path.fileName, it.firstLine + 1)
+            val content = it.prefix + text.substring(it.offset, end)
+            val file = if (it.original == null) CapturedFile(it.path, it.firstLine, snapshotOwner, name, content)
+                else BackedExcerpt(it.original, it.path, it.firstLine, snapshotOwner, name, content)
+            file.apply { putUserData(excerptKey, true) }
         }
 
     private fun matches(file: VirtualFile, path: Path, text: String): Boolean {

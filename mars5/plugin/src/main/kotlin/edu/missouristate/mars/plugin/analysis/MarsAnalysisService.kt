@@ -21,6 +21,8 @@ import com.intellij.psi.PsiManager
 import com.intellij.psi.SyntaxTraverser
 import com.intellij.psi.TokenType
 import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.psi.search.LocalSearchScope
+import com.intellij.psi.search.SearchScope
 import com.intellij.psi.util.elementType
 import com.intellij.util.containers.SLRUMap
 import com.intellij.util.indexing.FileBasedIndex
@@ -346,7 +348,30 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         }.orEmpty()
     }
 
-    internal fun assembledUsages(target: MipsDeclaration): Sequence<SourceToken> {
+    internal fun assembledUsages(target: MipsDeclaration): Sequence<SourceToken> =
+        assembledUsageSites(target).map { it.first }
+
+    internal fun assembledExcerptUsages(target: MipsDeclaration, scope: SearchScope): Sequence<Pair<PsiFile, Int>> {
+        val files = VirtualFileManager.getInstance()
+        val documents = FileDocumentManager.getInstance()
+        val psi = PsiManager.getInstance(project)
+        return assembledUsageSites(target).mapNotNull { (site, snapshot) ->
+            ProgressManager.checkCanceled()
+            val location = site.location()
+            val original = files.findFileByNioPath(location.file())!!
+            // A local scope restricted to a PSI subtree cannot include an off-preview occurrence.
+            val inScope = if (scope is LocalSearchScope) scope.scope.any { it is PsiFile && it.virtualFile == original }
+                else scope.contains(original)
+            if (!inScope) return@mapNotNull null
+            val document = documents.getDocument(original)!!
+            if (!documents.isPartialPreviewOfALargeFile(document) ||
+                document.sourceOffset(location.line() - 1, site.column()) != null) return@mapNotNull null
+            val (excerpt, offset) = snapshot.sourceExcerpts.excerptPosition(location, site.column(), original) ?: return@mapNotNull null
+            psi.findFile(excerpt)!! to offset
+        }
+    }
+
+    private fun assembledUsageSites(target: MipsDeclaration): Sequence<Pair<SourceToken, AssemblySymbols>> {
         val file = target.containingFile as MipsFile
         val snapshots = listOfNotNull(lastBuild.get()?.snapshot) + synchronized(backgroundSymbols) { backgroundSymbols.values() }
         val handler = exceptionHandler
@@ -359,8 +384,8 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
             if (!snapshot.isCurrent(handler) || !snapshot.hasCurrentDirectory() ||
                 selection.options != selection.forEditor().options || !snapshot.hasCurrentMacroSources()
             ) return@flatMap emptySequence()
-            sites.asSequence()
-        }.distinct()
+            sites.asSequence().map { it to snapshot }
+        }.distinctBy { it.first }
     }
 
     private fun sourceTokenAt(file: MipsFile, path: Path, offset: Int): SourceToken {

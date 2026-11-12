@@ -3,6 +3,7 @@ package edu.missouristate.mars.plugin.language
 import com.intellij.DynamicBundle
 import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.Document
+import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.util.Key
 import com.intellij.openapi.util.TextRange
@@ -395,6 +396,7 @@ private fun SourceToken.offsetIn(document: Document) = document.getLineStartOffs
 private fun SourceToken.editIn(documents: Map<Path, Document>, name: String, assemblerSpelling: Boolean): SymbolEdit {
     val path = location().file()
     val document = documents.getValue(path)
+    if (FileDocumentManager.getInstance().isPartialPreviewOfALargeFile(document)) throw symbolRenameError("symbol.rename.preview")
     val offset = offsetIn(document)
     val length = if (assemblerSpelling) {
         val token = assemblerTokensStartingAt(document.charsSequence, offset).firstOrNull { it.value == name }

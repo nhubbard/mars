@@ -100,6 +100,7 @@
     <lang.psiStructureViewFactory language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsStructureViewFactory"/>
     <breadcrumbsInfoProvider implementation="edu.missouristate.mars.plugin.language.MipsBreadcrumbsProvider"/>
     <lang.foldingBuilder language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsFoldingBuilder"/>
+    <customUsageSearcher implementation="edu.missouristate.mars.plugin.language.MipsExcerptUsageSearcher"/>
     <lang.findUsagesProvider language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsFindUsagesProvider"/>
     <targetElementEvaluator language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsTargetElementEvaluator"/>
     <referencesSearch implementation="edu.missouristate.mars.plugin.language.MipsAssembledReferencesSearcher"/>

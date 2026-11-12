@@ -1,6 +1,9 @@
 package edu.missouristate.mars.plugin.language
 
 import com.intellij.codeInsight.TargetElementUtil
+import com.intellij.find.findUsages.CustomUsageSearcher
+import com.intellij.find.findUsages.FindUsagesOptions
+import com.intellij.notebook.editor.BackedVirtualFile
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.command.WriteCommandAction
@@ -12,6 +15,7 @@ import com.intellij.openapi.ui.TestDialogManager
 import com.intellij.openapi.util.Segment
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
+import com.intellij.openapi.vfs.limits.FileSizeLimit
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
 import com.intellij.psi.PsiDocumentManager
@@ -29,11 +33,18 @@ import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.usageView.UsageInfo
+import com.intellij.usages.Usage
+import com.intellij.usages.UsageInfo2UsageAdapter
+import com.intellij.util.Processor
 import com.intellij.util.IncorrectOperationException
 import com.intellij.util.ProcessingContext
 import com.intellij.util.containers.MultiMap
+import edu.missouristate.mars.api.AssemblySymbolMap
+import edu.missouristate.mars.api.AssemblySymbolMap.SourceToken
+import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.analysis.SymbolKind
+import edu.missouristate.mars.plugin.analysis.captureAssemblySources
 import edu.missouristate.mars.plugin.build.MarsAssemblyMode
 import edu.missouristate.mars.plugin.build.MarsAssemblySettings
 import edu.missouristate.mars.plugin.build.MarsSourceSet
@@ -54,6 +65,93 @@ class MipsSymbolRenamePlatformTest {
     private val fixture by codeInsightFixture(projectFixture)
     private val project get() = projectFixture.get()
     private val processor = MipsSymbolRenameProcessor()
+
+    @Test
+    fun `Find Usages shows off-preview assembly bindings as read-only results and Rename reports the incomplete file`() =
+        timeoutRunBlocking<Unit> {
+            val source = ".eqv VALUE 1\ntarget: nop\nj target\n.include \"large.inc\"\n"
+            val (entry, large) = withContext(Dispatchers.EDT) {
+                val entry = fixture.addFileToProject("entry.mars", source)
+                val path = entry.virtualFile.toNioPath().resolveSibling("large.inc")
+                Files.newBufferedWriter(path).use { writer ->
+                    writer.write("j target # Visible usage\n")
+                    val comment = "#" + " ".repeat(4094) + "\n"
+                    repeat(FileSizeLimit.getContentLoadLimit("inc") / comment.length + 1) { writer.write(comment) }
+                    writer.write("j target # First hidden usage\n")
+                    writer.write("j target # Second hidden usage\n")
+                }
+                val large = VirtualFileManager.getInstance().refreshAndFindFileByNioPath(path)!!
+                fixture.configureFromExistingVirtualFile(entry.virtualFile)
+                entry to large
+            }
+            IndexingTestUtil.suspendUntilIndexesAreReady(project)
+            val path = entry.virtualFile.toNioPath()
+            val capture = captureAssemblySources(listOf(path), null)
+            val component = MarsSessionService.createMarsComponent()
+            val symbols = component.context().use {
+                val result = component.assembler().assembleSnapshot(capture.snapshot, null, true, false)
+                assertTrue(result.succeeded(), result.errors().toString())
+                result.program().symbolMap()
+            }
+            val analysis = project.service<MarsAnalysisService>()
+            analysis.publishBuiltSymbols(analysis.beginSymbolBuild(path), capture, symbols)
+            val target = readAction { label(entry) }
+            val searcher = MipsExcerptUsageSearcher()
+            withContext(Dispatchers.EDT) {
+                val scope = GlobalSearchScope.projectScope(project)
+                val options = FindUsagesOptions(scope).apply { isUsages = true }
+                val results = mutableListOf<Usage>()
+                val collect = Processor<Usage> { results.add(it) }
+                searcher.processElementUsages(entry, collect, options)
+                searcher.processElementUsages(constants(entry).single(), collect, options)
+                searcher.processElementUsages(target, collect, FindUsagesOptions(scope))
+                searcher.processElementUsages(target, collect, FindUsagesOptions(GlobalSearchScope.fileScope(entry)).apply { isUsages = true })
+                assertTrue(results.isEmpty())
+
+                val preview = fixture.psiManager.findFile(large)!!
+                options.searchScope = LocalSearchScope(arrayOf<PsiElement>(target, preview))
+                searcher.processElementUsages(target, collect, options)
+                assertEquals(2, results.size)
+                for (result in results) {
+                    val usage = result as UsageInfo2UsageAdapter
+                    assertTrue(usage.isReadOnly)
+                    assertTrue(usage.canNavigateToSource())
+                    assertEquals(large, BackedVirtualFile.getOriginFileIfBacked(usage.file!!))
+                    val info = usage.usageInfo
+                    assertEquals("target", info.rangeInElement!!.substring(info.element!!.text))
+                }
+                var consumed = 0
+                searcher.processElementUsages(target, Processor { consumed++; false }, options)
+                assertEquals(1, consumed)
+                options.searchScope = LocalSearchScope(target)
+                searcher.processElementUsages(target, collect, options)
+                assertEquals(2, results.size)
+
+                assertTrue(scope.contains(large), "Large include belongs to the fixture project")
+                options.searchScope = scope
+                results.clear()
+                CustomUsageSearcher.EP_NAME.extensionList.filterIsInstance<MipsExcerptUsageSearcher>().single()
+                    .processElementUsages(target, collect, options)
+                assertEquals(2, results.size, "Global search finds both excerpts")
+                assertTrue(results.all { it.isValid })
+                val tree = fixture.getUsageViewTreeTextRepresentation(target)
+                assertTrue("First hidden usage" in tree, tree)
+                assertTrue("Second hidden usage" in tree, tree)
+                assertTrue(conflicts(target, "renamed", usages(target)).contains("loaded one of these files as a preview"))
+                assertEquals(source, entry.text)
+
+                val largePath = large.toNioPath()
+                val hidden = symbols.symbolUses().entries.first { (site) ->
+                    site.location().file() == largePath && site.location().line() > capture.previewLineCounts.getValue(largePath)
+                }
+                val malformed = AssemblySymbolMap(symbols.locals(), symbols.globals(), emptyMap(),
+                    mapOf(SourceToken(hidden.key.location(), 100) to hidden.value))
+                analysis.publishBuiltSymbols(analysis.beginSymbolBuild(path), capture, malformed)
+                results.clear()
+                searcher.processElementUsages(target, collect, options)
+                assertTrue(results.isEmpty())
+            }
+        }
 
     @Test
     fun `native rename finds nested include references before highlighting and after unsaved edits`() = timeoutRunBlocking<Unit> {

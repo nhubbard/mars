@@ -1,15 +1,22 @@
 package edu.missouristate.mars.plugin.language
 
+import com.intellij.find.findUsages.CustomUsageSearcher
+import com.intellij.find.findUsages.FindUsagesOptions
 import com.intellij.openapi.application.QueryExecutorBase
+import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.components.service
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.util.TextRange
+import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiReference
 import com.intellij.psi.PsiReferenceBase
 import com.intellij.psi.search.PsiSearchScopeUtil
 import com.intellij.psi.search.SearchScope
 import com.intellij.psi.search.searches.ReferencesSearch.SearchParameters
 import com.intellij.psi.util.PsiTreeUtil
+import com.intellij.usageView.UsageInfo
+import com.intellij.usages.Usage
+import com.intellij.usages.UsageInfo2UsageAdapter
 import com.intellij.util.Processor
 import com.intellij.util.text.CharArrayUtil
 import edu.missouristate.mars.api.AssemblySymbolMap.SourceToken
@@ -38,10 +45,30 @@ internal class MipsAssembledReferencesSearcher : QueryExecutorBase<PsiReference,
     }
 }
 
+/** Adds navigable, read-only occurrences to Find Usages without exposing them to refactoring. */
+internal class MipsExcerptUsageSearcher : CustomUsageSearcher() {
+    override fun processElementUsages(element: PsiElement, processor: Processor<in Usage>, options: FindUsagesOptions) {
+        val target = element as? MipsDeclaration ?: return
+        if (!options.isUsages || target.kind == SymbolKind.CONSTANT) return
+        ReadAction.computeBlocking<Unit, RuntimeException> {
+            val analysis = target.project.service<MarsAnalysisService>()
+            for ((file, offset) in analysis.assembledExcerptUsages(target, options.searchScope)) {
+                val reference = assembledReferenceAt(target, file.findElementAt(offset)!!, offset)
+                if (!processor.process(UsageInfo2UsageAdapter(UsageInfo(reference)))) break
+            }
+        }
+    }
+}
+
 internal fun MarsAnalysisService.assembledReference(target: MipsDeclaration, site: SourceToken, scope: SearchScope): PsiReference? {
     val (file, offset) = sourceTokenPosition(site) ?: return null
     val leaf = file.findElementAt(offset)!!
     if (!PsiSearchScopeUtil.isInScope(scope, leaf)) return null
+    return assembledReferenceAt(target, leaf, offset)
+}
+
+private fun assembledReferenceAt(target: MipsDeclaration, leaf: PsiElement, offset: Int): PsiReference {
+    val file = leaf.containingFile
     val text = file.viewProvider.contents
     val editorEnd = if (file is MipsFile) leaf.textRange.endOffset else MipsScanner.next(text, offset)!!.end
     if (target.usesAssemblerSpelling()) {
