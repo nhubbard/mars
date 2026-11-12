@@ -1738,10 +1738,12 @@ Only visits whose conditions pass count. The count belongs to the debug
 session and starts fresh on the next launch or after changing the interval.
 Coincident line and address breakpoints each count the visit before IntelliJ
 selects a suspension.
-The packaged macOS replay opened the native dialog on a temporary line
-breakpoint, then completed the editor, Run, and Debug scenario. The
-screenshot, log, and ZIP checksum are under
-`mars5/.gradle/release-host-checks/breakpoint-hit-interval`.
+The packaged macOS and Ubuntu ARM64 replays of `858b8d2a` opened the native
+dialog on a temporary line breakpoint, then completed the editor, Run, and
+Debug scenario. Both used the same ZIP by SHA-256 and passed 2,154 Jupiter
+tests and both plugin coverage gates. Screenshots, logs, and checksums are
+under `mars5/.gradle/release-host-checks/breakpoint-hit-interval` and
+`mars5/.gradle/release-host-checks/linux-arm64-hit-interval`.
 
 Each pause accepts one command to advance or rewind the simulator. A delayed
 or repeated callback from an earlier pause cannot replace an accepted command
@@ -3151,11 +3153,18 @@ defines the release acceptance checklist. The M5 and M6 ledgers above cover
 the editor and tool milestones. The following fixtures exercise the remaining
 integration boundaries in the release build.
 
+The inventory audit checked all 536 source and resource rows in sections 14
+and 15. Every row had a valid mapping ID and a current file target. The M5,
+M6, and M7 ledgers together account for all 92 feature IDs, including the
+explicit Screen Magnifier exclusion. The host checks below record where
+packaged acceptance is still pending.
+
 | Mapping | Evidence in the release build |
 | --- | --- |
 | C01–C13 | `CoreSessionIntegrationTest`, `BasicInstructionSemanticsTest`, `InstructionEncodingTest`, `PseudoExpansionTest`, `RuntimeServicesTest`, and `SessionBackStepperTest` exercise the independent engine, encoding, memory, interrupt, event, and history contracts. `verifyCoreIsolation` checks the core distribution boundary. |
 | E01–E03, E05 | `MipsEditorPlatformTest`, `MipsParserPlatformTest`, the native declaration/reference index fixtures, and `MipsAssemblyAnnotatorPlatformTest` exercise editor behavior, catalog syntax, references, and assembler diagnostics against captured text. |
-| B01–B05, B07–B08 | `CapturedAssemblySourcesPlatformTest`, `MarsBuildPlatformTest`, `MarsMemoryExportPlatformTest`, `MarsNewProjectWizardTest`, and `MarsCompilerPlatformTest` cover source capture, build reuse, navigation from diagnostics, dump formats, project creation, and optional Java compiler integration. B06 launcher evidence is below. |
+| B01–B05, B07–B08 | `CapturedAssemblySourcesPlatformTest`, `MarsBuildPlatformTest`, `MarsMemoryExportPlatformTest`, `MarsNewProjectWizardTest`, and `MarsCompilerPlatformTest` cover source capture, build reuse, navigation from diagnostics, dump formats, project creation, and optional Java compiler integration. |
+| B06 | The [host qualification](#host-qualification) records the 23-case `LauncherParityTest` comparison of the standalone and Venus launchers. |
 | R01–R06, I01–I08 | `MarsRunPlatformTest`, `MarsSyscallDialogsPlatformTest`, `MarsMidiPlatformTest`, and core `SyscallContractTest` cover the run lifecycle, launch settings, console and file I/O, exit handling, and syscall contracts. The packaged macOS MIDI replay is below. External MIDI hardware remains a host check. |
 | D01–D12, V01–V07 | `MarsDebugPlatformTest` drives native XDebugger breakpoints, stepping, expressions, reverse execution, watchpoints, variables, and the debugger's memory, symbols, and disassembly views. `DebuggerCallStackTest` exercises frame and exception history. |
 | S01–S07, W03 | `MarsBuildPlatformTest`, `MarsRunPlatformTest`, `MarsDebugPlatformTest`, `MipsEditorPlatformTest`, and the three Venus preference import fixtures cover project defaults, run overrides, display settings, theme defaults, migration, and native Run/Debug controls. |
