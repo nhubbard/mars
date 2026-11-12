@@ -51,9 +51,10 @@ internal class MarsIdeSyscallEnvironment(
         runBlocking(execution) { delay(milliseconds.toLong()) }
     }
 
-    override fun showInputDialog(message: String) = dialogs.showInputDialog(message)
-    override fun showConfirmDialog(message: String) = dialogs.showConfirmDialog(message)
-    override fun showMessageDialog(message: String, title: String?, messageType: Int) = dialogs.showMessageDialog(message, title, messageType)
+    override fun showInputDialog(message: String?) = dialogs.showInputDialog(message!!)
+    override fun showConfirmDialog(message: String?) = dialogs.showConfirmDialog(message!!)
+    override fun showMessageDialog(message: String?, title: String?, messageType: Int) =
+        dialogs.showMessageDialog(message!!, title, messageType)
     override fun clearConsole() = onEdt(execution) { clear() }
 }
 

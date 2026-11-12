@@ -153,8 +153,8 @@ public final class CoreModule {
 
   @Provides
   @Singleton
-  static MarsAssembler provideAssembler(SessionAssembler assembler) {
-    return assembler;
+  static MarsAssembler provideAssembler(MarsContext session) {
+    return new SessionAssembler(session);
   }
 
   @Provides
