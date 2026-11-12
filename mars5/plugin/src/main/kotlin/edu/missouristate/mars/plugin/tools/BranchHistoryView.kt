@@ -11,7 +11,6 @@ import com.intellij.ui.components.JBTextArea
 import com.intellij.ui.dsl.builder.Align
 import com.intellij.ui.dsl.builder.AlignX
 import com.intellij.ui.dsl.builder.LabelPosition
-import com.intellij.ui.dsl.builder.RightGap
 import com.intellij.ui.dsl.builder.RowLayout
 import com.intellij.ui.dsl.builder.TopGap
 import com.intellij.ui.table.JBTable
@@ -58,9 +57,10 @@ internal class BranchHistoryView(project: Project) : Disposable {
         }
         collapsibleGroup(toolsMessages.getMessage("branchHistory.settings"), indent = false) {
             row {
-                panel { row { cell(size).label(toolsMessages.getMessage("branchHistory.size"), LabelPosition.TOP) } }
-                    .gap(RightGap.SMALL)
-                panel { row { cell(history).label(toolsMessages.getMessage("branchHistory.bits"), LabelPosition.TOP) } }
+                cell(size).label(toolsMessages.getMessage("branchHistory.size"), LabelPosition.TOP)
+            }.layout(RowLayout.INDEPENDENT)
+            row {
+                cell(history).label(toolsMessages.getMessage("branchHistory.bits"), LabelPosition.TOP)
             }.layout(RowLayout.INDEPENDENT)
             row { cell(initialTaken) }
             row { cell(apply) }

@@ -348,7 +348,7 @@ class InstructionCounterPlatformTest {
             fun latestBranch() = UIUtil.findComponentsOfType(branches, JLabel::class.java)
                 .single { it.text == "Latest branch" }.labelFor as JEditorPane
             fun latestBranchText() = paneText(latestBranch())
-            fun assertCompactSettings(viewport: JViewport, firstName: String, secondName: String) {
+            fun assertCompactSettings(viewport: JViewport, firstName: String, secondName: String, stacked: Boolean = false) {
                 val body = assertInstanceOf(JComponent::class.java, viewport.view)
                 fun setting(name: String): Pair<JLabel, JComboBox<*>> {
                     val label = UIUtil.findComponentsOfType(body, JLabel::class.java).single { it.text == name }
@@ -360,9 +360,14 @@ class InstructionCounterPlatformTest {
                 }
                 val (firstLabel, first) = setting(firstName)
                 val (secondLabel, second) = setting(secondName)
-                assertEquals(first.y, second.y)
-                assertTrue(maxOf(first.x + first.width, firstLabel.x + firstLabel.width) < second.x)
-                val rightEdge = maxOf(second.x + second.width, secondLabel.x + secondLabel.width)
+                if (stacked) {
+                    assertEquals(first.x, second.x)
+                    assertTrue(first.y + first.height <= secondLabel.y)
+                } else {
+                    assertEquals(first.y, second.y)
+                    assertTrue(maxOf(first.x + first.width, firstLabel.x + firstLabel.width) < second.x)
+                }
+                val rightEdge = listOf(first, firstLabel, second, secondLabel).maxOf { it.x + it.width }
                 assertTrue(rightEdge <= viewport.extentSize.width) {
                     "$secondName ends at $rightEdge in a ${viewport.extentSize.width}-pixel viewport"
                 }
@@ -388,7 +393,7 @@ class InstructionCounterPlatformTest {
                 assertCollapsedSettings(branches, "Prediction", button("Apply and Reset", branches), branchTableScroll)
                 for (width in listOf(240, 610)) {
                     val dock = layoutDock(branches, width, 460)
-                    assertCompactSettings(dock.viewport, "Entries", "History bits")
+                    assertCompactSettings(dock.viewport, "Entries", "History bits", stacked = true)
                 }
                 assertFalse(button("Apply and Reset", branches).isEnabled)
                 assertFalse(button("Apply and Clear", bitmap).isEnabled)
@@ -878,7 +883,7 @@ class InstructionCounterPlatformTest {
                         "Latest branch bounds ${latest.bounds} exceed the ${viewWidth}px viewport. " +
                             "Body minimum: ${body.minimumSize.width}px, insets: ${body.insets}.\n$bounds"
                     }
-                    assertCompactSettings(narrow.viewport, "Entries", "History bits")
+                    assertCompactSettings(narrow.viewport, "Entries", "History bits", stacked = true)
                     val narrowLastLine = lastLineY()
                     layoutDock(branches, 610, 460)
                     assertTrue(lastLineY() < narrowLastLine)
