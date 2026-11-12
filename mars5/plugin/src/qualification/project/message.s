@@ -1,2 +1,1 @@
-.data
-result: .ascii "MARS packaged smoke\n"
+résultat: .ascii "MARS packaged smoke\n"

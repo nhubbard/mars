@@ -239,6 +239,9 @@ tasks.named<RunIdeTask>("runIde") {
         from(scenario.dir("project"))
         into(fixture)
       }
+      // Exercise CRLF on every host, independent of the checkout's line ending settings.
+      val legacySource = fixture.get().file("legacy.asm").asFile
+      legacySource.writeText(legacySource.readText().replace("\r\n", "\n").replace("\n", "\r\n"))
       val plugins = sandboxPluginsDirectory.get().asFile
       project.delete(plugins.resolve(pluginArchive.get().archiveBaseName.get()))
       project.copy {

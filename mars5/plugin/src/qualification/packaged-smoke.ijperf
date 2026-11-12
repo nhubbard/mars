@@ -6,8 +6,19 @@
 %action GotoDeclaration
 %assertCurrentFile routine.inc
 %assertCaretPosition 1 1
-%action Back
-%assertCurrentFile entry.mars
+%goto 30 13
+%action GotoDeclaration
+%assertCurrentFile legacy.asm
+%goto 2 13
+%action GotoDeclaration
+%assertCurrentFile message.s
+%openFile -file routine.inc -timeout 45
+%goto 12 14
+%action GotoDeclaration
+%assertCurrentFile message.s
+%assertCaretPosition 1 1
+%openFile -file entry.mars -timeout 45
+%goto 4 10
 %action ToggleTemporaryLineBreakpoint
 %debugRunConfiguration Release Debug, 45
 %assertCurrentFile entry.mars

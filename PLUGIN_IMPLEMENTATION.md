@@ -3273,12 +3273,20 @@ On a graphical IntelliJ 2026.3 host, run from `mars5` with Java 25.
 Use `gradlew.bat` on Windows. The launcher installs the built ZIP into the
 clean IDE and opens a fresh copy of the qualification project. IntelliJ runs
 the saved MARS configuration, navigates from a `.mars` file to a label in an
-`.inc` file, stops at a breakpoint, steps into the included routine, and
-resumes. The routine reads its output bytes from a nested `.s` include.
+`.inc` file, and follows nested includes through a CRLF `.asm` file to a
+`.s` file. Go to Declaration also resolves the Unicode data label used by
+the routine. Debug stops at a breakpoint, steps into the included routine,
+and resumes. Run and Debug write the bytes defined in the `.s` file.
 The check requires both the Run and Debug executions to write those exact
 bytes and the IDE to finish the replay. IntelliJ saves the debugger and
 MARS Tools screenshots with its sandbox logs. A successful replay records the
 ZIP checksum beside the screenshots in `packaged-smoke-SHA256SUMS`.
+
+The four-extension replay passed on Apple Silicon macOS and Ubuntu ARM64
+with the same ZIP used for the hit-count qualification. The staged CRLF
+source, ZIP checksum, and Run and Debug output matched across hosts.
+The logs and screenshots are under
+`mars5/.gradle/release-host-checks/all-extension-packaged-smoke`.
 
 Minimal Ubuntu test images need the `libegl1` and `libgl1` packages used
 by CI. IntelliJ's bundled Compose runtime loads these system libraries when

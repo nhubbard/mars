@@ -9,7 +9,7 @@ write_result:
     move $t0, $v0
 
     move $a0, $t0
-    la $a1, result
+    la $a1, résultat
     li $a2, 20
     li $v0, 15
     syscall
@@ -27,4 +27,4 @@ failed:
     li $v0, 17
     syscall
 
-.include "message.s"
+.include "legacy.asm"
