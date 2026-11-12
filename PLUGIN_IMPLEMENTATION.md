@@ -3325,14 +3325,31 @@ that replay. A separate editor-only replay restored the editor PSI and
 compiler task, then ran the assembly file and printed `reload smoke ready`
 in the native console. The code-style error did not recur in that replay.
 
-Read-only include views use IntelliJ's in-memory virtual file with a plain-text fallback.
-The file-type extension supplies MIPS support while the plugin is loaded. This keeps
-IntelliJ's closed-tab history from retaining a plugin-defined virtual file. Before unload,
-MARS clears the inspection renderer, closes the generated include tabs, and asks
-IntelliJ to reparse their in-memory files as plain text. In the packaged macOS replay, both nested include tabs opened as MIPS source, Disable left the
-physical assembly tab open, and the parser produced no errors after unload. IntelliJ
-still reported the old classloader as referenced, so this replay did not qualify
-restart-free re-enable. The logs and reference traces are under
+Read-only include views use IntelliJ's in-memory virtual file with a plain-text
+fallback. The file-type extension supplies MIPS support while the plugin is
+loaded. The generated file stores a text creation diagnostic because
+IntelliJ's closed-tab history can retain its creation backtrace and the
+plugin classes on that stack. Before unload, MARS clears the inspection
+renderer, closes the generated include tabs, and asks IntelliJ to reparse
+their in-memory files as plain text.
+
+The packaged macOS replay opened both nested include tabs as MIPS source.
+Disable closed the generated tabs and left the physical assembly tab open.
+The reference traces reached the old language through IntelliJ's cached
+inspection status both with a generated tab focused and with focus in a
+plain-text editor. Clearing the stripe renderer does not synchronously clear
+that status in IntelliJ 2026.3. A separate replay with a prior execution
+reached the old classloader through IntelliJ's Services dashboard. It
+stores the run configuration in its backend ID registry for the life of the
+project, which can retain the registration after the configuration type
+unloads.
+
+A clean macOS replay ran MARS, opened both generated includes, and disabled
+the plugin. Closing the project released the old classloader. IntelliJ then
+enabled MARS and reopened the project in the same process. A new execution
+printed `reload smoke ready`, and Go to Declaration opened the ignored include
+again. Reload with the project continuously open remains unqualified. The
+logs and reference traces are under
 `mars5/.gradle/release-host-checks/dynamic-reload/ignored-include-unload-replay`.
 
 With X-Ray open, IntelliJ removed the tool window and retained the old

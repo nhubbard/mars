@@ -16,11 +16,17 @@ internal val VirtualFile.mipsAssemblySourceOrigin: VirtualFile?
     get() = getUserData(assemblySourceOrigin)
 
 internal fun mipsAssemblySourceView(origin: VirtualFile, text: String): VirtualFile =
-    LightVirtualFile(origin.name, PlainTextFileType.INSTANCE, text).apply {
-        putUserData(assemblySourceOrigin, origin)
-        isWritable = false
-        assemblySourceViews.add(this)
-    }
+    LightVirtualFile.builder()
+        .name(origin.name)
+        .fileType(PlainTextFileType.INSTANCE)
+        .content(text)
+        // Closed-tab history can keep this file after unload. A Throwable backtrace would keep plugin classes.
+        .creationTrace("MARS read-only assembly source")
+        .build().apply {
+            putUserData(assemblySourceOrigin, origin)
+            isWritable = false
+            assemblySourceViews.add(this)
+        }
 
 internal fun detachMipsAssemblySourceViews() {
     val files = synchronized(assemblySourceViews) {

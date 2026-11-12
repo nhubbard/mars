@@ -20,6 +20,7 @@ import com.intellij.psi.ElementManipulators
 import com.intellij.psi.PsiDirectory
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiFileFactory
+import com.intellij.psi.PsiInvalidElementAccessException
 import com.intellij.psi.PsiManager
 import com.intellij.psi.impl.include.FileIncludeInfo
 import com.intellij.psi.impl.include.FileIncludeManager
@@ -130,6 +131,7 @@ class MipsFileReferencesPlatformTest {
             assertSame(backup, target(source.lastIndexOf("VALUE") + 1)?.containingFile)
             assertEquals(original, backup.text)
             assertFalse(backup.virtualFile.isWritable)
+            assertEquals("MARS read-only assembly source", PsiInvalidElementAccessException.getCreationTrace(backup.virtualFile))
             assertEquals(ignored, backup.virtualFile.mipsAssemblySourceOrigin)
             assertNull(PsiManager.getInstance(ide).findFile(ignored))
             assertNull(fixture.file.findReferenceAt(offset)?.resolve())
