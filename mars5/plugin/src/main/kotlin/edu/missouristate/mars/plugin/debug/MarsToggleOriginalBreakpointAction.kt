@@ -32,7 +32,7 @@ internal class MarsToggleOriginalBreakpointAction : DumbAwareAction() {
         val line = location.line() - 1
         WriteAction.run<RuntimeException> {
             val existing = manager.findBreakpointsAtLine(type, file, line).firstOrNull()
-            if (existing == null) manager.addLineBreakpoint(type, file.url, line, null)
+            if (existing == null) manager.addLineBreakpoint(type, file.url, line, type.createBreakpointProperties(file, line))
             else manager.removeBreakpoint(existing)
         }
     }

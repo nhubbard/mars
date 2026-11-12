@@ -82,6 +82,8 @@ import com.intellij.xdebugger.XDebuggerManager
 import com.intellij.xdebugger.XDebuggerUtil
 import com.intellij.xdebugger.XSourcePosition
 import com.intellij.xdebugger.breakpoints.SuspendPolicy
+import com.intellij.xdebugger.breakpoints.XBreakpoint
+import com.intellij.xdebugger.breakpoints.ui.XBreakpointCustomPropertiesPanel
 import com.intellij.xdebugger.evaluation.EvaluationMode
 import com.intellij.xdebugger.evaluation.XDebuggerEvaluator.XEvaluationCallback
 import com.intellij.xdebugger.frame.XExecutionStack.XStackFrameContainer
@@ -145,6 +147,7 @@ import edu.missouristate.mars.plugin.run.MarsRunService
 import edu.missouristate.mars.plugin.run.RunMemoryDumpState
 import edu.missouristate.mars.plugin.run.runMessages
 import edu.missouristate.mars.plugin.tools.FloatingPointView
+import edu.missouristate.mars.util.Binary
 import java.awt.event.ActionEvent
 import java.awt.Color
 import java.awt.Font
@@ -162,6 +165,7 @@ import javax.swing.JComponent
 import javax.swing.JEditorPane
 import javax.swing.JList
 import javax.swing.JPanel
+import javax.swing.JSpinner
 import javax.swing.JTextField
 import javax.swing.RowSorter.SortKey
 import javax.swing.SortOrder
@@ -425,7 +429,7 @@ class MarsDebugPlatformTest {
                 body.parent.createChildDirectory(this, "directory.s")
             }
             assertFalse(breakpointType.canPutAt(directory, 0, project))
-            assertNull(breakpointType.createBreakpointProperties(body, 2))
+            assertEquals(1, breakpointType.createBreakpointProperties(body, 2).hitInterval)
             XDebuggerUtil.getInstance().toggleLineBreakpoint(project, breakpointType, body, 2)
             addBreakpoint(main, 0)
             addBreakpoint(main, 1).also { point ->
@@ -4763,8 +4767,123 @@ class MarsDebugPlatformTest {
         }
     }
 
-    private fun addBreakpoint(file: VirtualFile, line: Int) =
-        WriteAction.compute<_, RuntimeException> { debugger.breakpointManager.addLineBreakpoint(breakpointType, file.url, line, null) }
+    @ParameterizedTest(name = "address breakpoint = {0}")
+    @ValueSource(booleans = [false, true])
+    fun `native instruction breakpoint counts matching hits within each debug session`(
+        addressBreakpoint: Boolean,
+    ) = timeoutRunBlocking<Unit> {
+        val source = withContext(Dispatchers.EDT) {
+            val file = fixture.addFileToProject("breakpoint-hits.mars", """
+                .text
+                li ${'$'}t0, 0
+                li ${'$'}t1, 6
+                again: addiu ${'$'}t0, ${'$'}t0, 1
+                bne ${'$'}t0, ${'$'}t1, again
+                nop
+                li ${'$'}v0, 10
+                syscall
+            """.trimIndent()).virtualFile
+            fun <B : XBreakpoint<*>> configure(point: B, panel: XBreakpointCustomPropertiesPanel<B>) {
+                val spinner = UIUtil.findComponentsOfType(panel.component, JSpinner::class.java).single()
+                panel.loadFrom(point)
+                assertEquals(1, spinner.value)
+                spinner.value = 2
+                panel.saveTo(point)
+                spinner.value = 1
+                panel.loadFrom(point)
+                assertEquals(2, spinner.value)
+                val editor = assertInstanceOf(JSpinner.NumberEditor::class.java, spinner.editor)
+                editor.textField.text = "0"
+                panel.saveTo(point)
+                panel.loadFrom(point)
+                assertEquals(2, spinner.value)
+                point.setCondition("\$t0 > 0")
+            }
+            WriteAction.run<RuntimeException> {
+                if (addressBreakpoint) {
+                    val type = XDebuggerUtil.getInstance().findBreakpointType(MarsAddressBreakpointType::class.java)
+                    val point = debugger.breakpointManager.addBreakpoint(type, MarsAddressBreakpointProperties(file.path, 0x00400008))
+                    configure(point, type.createCustomConditionsPanel())
+                    val saved = XmlSerializer.serialize(point.properties.state)
+                    val restored = type.createProperties()
+                    restored.loadState(XmlSerializer.deserialize(saved, MarsAddressBreakpointProperties::class.java))
+                    assertEquals(2, restored.hitInterval)
+                    assertEquals(1, XmlSerializer.deserialize(Element("state"), MarsAddressBreakpointProperties::class.java).hitInterval)
+                } else {
+                    val point = addBreakpoint(file, 3)
+                    val panel = breakpointType.createCustomConditionsPanel()
+                    configure(point, panel)
+                    val saved = XmlSerializer.serialize(point.properties.state)
+                    val restored = breakpointType.createProperties()
+                    restored.loadState(XmlSerializer.deserialize(saved, MarsLineBreakpointProperties::class.java))
+                    assertEquals(2, restored.hitInterval)
+                    assertEquals(1, XmlSerializer.deserialize(Element("state"), MarsLineBreakpointProperties::class.java).hitInterval)
+                    val withoutProperties = debugger.breakpointManager.addLineBreakpoint(breakpointType, file.url, 0, null)
+                    panel.loadFrom(withoutProperties)
+                    assertEquals(1, UIUtil.findComponentsOfType(panel.component, JSpinner::class.java).single().value)
+                    panel.saveTo(withoutProperties)
+                    debugger.breakpointManager.removeBreakpoint(withoutProperties)
+                }
+            }
+            file
+        }
+        repeat(2) {
+            withDebug(source) { debug ->
+                for (expected in listOf("0x00000002", "0x00000004")) {
+                    debug.assertPausedAt(source, 3)
+                    withContext(Dispatchers.EDT) {
+                        val frame = requireNotNull(debug.session.currentStackFrame)
+                        assertEquals(expected, evaluate(debug.session, frame, "\$t0"))
+                        debug.session.resume()
+                    }
+                }
+                assertEquals(0, debug.exit.await())
+            }
+        }
+    }
+
+    private fun addBreakpoint(file: VirtualFile, line: Int) = WriteAction.compute<_, RuntimeException> {
+        debugger.breakpointManager.addLineBreakpoint(breakpointType, file.url, line, breakpointType.createBreakpointProperties(file, line))
+    }
+
+    @ParameterizedTest(name = "edit the address hit interval while paused = {0}")
+    @ValueSource(booleans = [false, true])
+    fun `coincident instruction breakpoints count the same visit before selecting a suspension`(
+        editInterval: Boolean,
+    ) = timeoutRunBlocking<Unit> {
+        val (source, address) = withContext(Dispatchers.EDT) {
+            val file = fixture.addFileToProject("coincident-breakpoints.mars", """
+                .text
+                li ${'$'}t0, 0
+                li ${'$'}t1, 4
+                again: addiu ${'$'}t0, ${'$'}t0, 1
+                bne ${'$'}t0, ${'$'}t1, again
+                nop
+                li ${'$'}v0, 10
+                syscall
+            """.trimIndent()).virtualFile
+            val line = addBreakpoint(file, 3)
+            val type = XDebuggerUtil.getInstance().findBreakpointType(MarsAddressBreakpointType::class.java)
+            val address = WriteAction.compute<_, RuntimeException> {
+                line.setCondition("\$t0 == 0")
+                debugger.breakpointManager.addBreakpoint(type, MarsAddressBreakpointProperties(file.path, 0x00400008, hitInterval = 2))
+            }
+            file to address
+        }
+        withDebug(source) { debug ->
+            val expectedHits = if (editInterval) listOf(0, 3) else listOf(0, 1, 3)
+            for (expected in expectedHits) {
+                debug.assertPausedAt(source, 3)
+                withContext(Dispatchers.EDT) {
+                    val frame = requireNotNull(debug.session.currentStackFrame)
+                    assertEquals(Binary.intToHexString(expected), evaluate(debug.session, frame, "\$t0"))
+                    if (expected == 0 && editInterval) address.properties.hitInterval = 3
+                    debug.session.resume()
+                }
+            }
+            assertEquals(0, debug.exit.await())
+        }
+    }
 
     @Test
     fun `floating point tool edits only the selected paused register and refreshes the debugger`() = timeoutRunBlocking<Unit> {

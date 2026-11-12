@@ -25,9 +25,7 @@ import com.intellij.xdebugger.XSourcePosition
 import com.intellij.xdebugger.breakpoints.SuspendPolicy
 import com.intellij.xdebugger.breakpoints.XBreakpoint
 import com.intellij.xdebugger.breakpoints.XBreakpointHandler
-import com.intellij.xdebugger.breakpoints.XBreakpointProperties
 import com.intellij.xdebugger.breakpoints.XBreakpointType
-import com.intellij.xdebugger.breakpoints.XLineBreakpoint
 import com.intellij.xdebugger.evaluation.EvaluationMode
 import com.intellij.xdebugger.evaluation.XDebuggerEditorsProvider
 import com.intellij.xdebugger.frame.XSuspendContext
@@ -72,7 +70,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.withContext
 
-private typealias LineBreakpoint = XLineBreakpoint<XBreakpointProperties<*>>
 private const val SOURCE_STEP_LIMIT = 256L
 private const val CALL_STEP_LIMIT = 100_000L
 
@@ -103,6 +100,8 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
     private val registeredLines = linkedSetOf<LineBreakpoint>()
     private val registeredAddresses = linkedSetOf<AddressBreakpoint>()
     private val registeredWatchpoints = linkedSetOf<MemoryWatchpoint>()
+    private data class HitProgress(val interval: Int, val hits: Int)
+    private val hitProgress = mutableMapOf<XBreakpoint<*>, HitProgress>()
     private var boundMachine: MarsContext? = null
     @Volatile private var addresses = emptyMap<Int, List<XBreakpoint<*>>>()
     @Volatile private var watchpoints = emptyMap<MemoryWatchpoint, MemoryWatchRange>()
@@ -140,6 +139,7 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
             override fun unregisterBreakpoint(breakpoint: B, temporary: Boolean) {
                 synchronized(bindings) {
                     registered.remove(breakpoint)
+                    if (!temporary) hitProgress.remove(breakpoint)
                     updateBindings()
                 }
             }
@@ -384,6 +384,7 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
                         withSuspension(machine, calls) { pause ->
                             val context = pause.context
                             val breakpointSuspended = reached.sortedBy { it.suspendPolicy != SuspendPolicy.NONE }
+                                .filter { matchesBreakpoint(it, context, machine.memory) }
                                 .any { handleBreakpoint(it, context, machine.memory) }
                             val positionReached = reason != StopEvent.Reason.BREAKPOINT || stepOrTargetReached
                             if (!breakpointSuspended && positionReached) {
@@ -407,10 +408,9 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
         }
     }
 
-    private suspend fun handleBreakpoint(breakpoint: XBreakpoint<*>, context: MarsSuspendContext, memory: MemoryState): Boolean {
-        val evaluator = context.frame.evaluator
+    private suspend fun matchesBreakpoint(breakpoint: XBreakpoint<*>, context: MarsSuspendContext, memory: MemoryState): Boolean {
         breakpoint.conditionExpression?.let { expression ->
-            val condition = evaluator.evaluateStopped(expression.expression, memory).getOrElse { error ->
+            val condition = context.frame.evaluator.evaluateStopped(expression.expression, memory).getOrElse { error ->
                 withContext(Dispatchers.EDT) {
                     session.reportError(runMessages.getMessage("debug.breakpoint.condition.error", error.message))
                 }
@@ -418,11 +418,30 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
             }
             if (condition.number == 0.0) return false
         }
+        return matchesHitInterval(breakpoint)
+    }
 
-        val logged = breakpoint.logExpressionObject?.let { evaluator.evaluateStopped(it.expression, memory) }
+    private suspend fun handleBreakpoint(breakpoint: XBreakpoint<*>, context: MarsSuspendContext, memory: MemoryState): Boolean {
+        val logged = breakpoint.logExpressionObject?.let { context.frame.evaluator.evaluateStopped(it.expression, memory) }
         return withContext(Dispatchers.EDT) {
             logged?.exceptionOrNull()?.let { session.reportError(runMessages.getMessage("debug.breakpoint.log.error", it.message)) }
             session.breakpointReached(breakpoint, logged?.getOrNull()?.display(), context)
+        }
+    }
+
+    private fun matchesHitInterval(breakpoint: XBreakpoint<*>): Boolean {
+        val properties = breakpoint.properties as? MarsBreakpointHitCount ?: return true
+        return synchronized(bindings) {
+            val interval = properties.hitInterval
+            val previous = hitProgress[breakpoint]
+            val hits = if (previous?.interval == interval) previous.hits + 1 else 1
+            if (hits >= interval) {
+                hitProgress.remove(breakpoint)
+                true
+            } else {
+                hitProgress[breakpoint] = HitProgress(interval, hits)
+                false
+            }
         }
     }
 

@@ -1729,7 +1729,19 @@ conditions and log expressions share the evaluator described below.
 The native debugger fixture runs a loop through a dependent breakpoint
 before and after a non-suspending trigger. It verifies that the breakpoint
 first stops on the second visit and that IntelliJ's **Leave enabled** option
-controls whether it stops on the third. The D03 hit-count filter remains open.
+controls whether it stops on the third.
+
+For MIPS line and address breakpoints, **Stop or log every** in the native
+Breakpoints dialog sets the number of matching hits per stop or log. The
+default is one, including for saved breakpoints that predate the setting.
+Only visits whose conditions pass count. The count belongs to the debug
+session and starts fresh on the next launch or after changing the interval.
+Coincident line and address breakpoints each count the visit before IntelliJ
+selects a suspension.
+The packaged macOS replay opened the native dialog on a temporary line
+breakpoint, then completed the editor, Run, and Debug scenario. The
+screenshot, log, and ZIP checksum are under
+`mars5/.gradle/release-host-checks/breakpoint-hit-interval`.
 
 Each pause accepts one command to advance or rewind the simulator. A delayed
 or repeated callback from an earlier pause cannot replace an accepted command

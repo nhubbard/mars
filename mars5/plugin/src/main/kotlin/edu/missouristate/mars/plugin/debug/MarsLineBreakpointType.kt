@@ -6,6 +6,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.util.elementType
+import com.intellij.util.xmlb.annotations.Attribute
 import com.intellij.xdebugger.XDebuggerUtil
 import com.intellij.xdebugger.breakpoints.XBreakpointProperties
 import com.intellij.xdebugger.breakpoints.XLineBreakpoint
@@ -17,12 +18,18 @@ import edu.missouristate.mars.plugin.language.operationHead
 import edu.missouristate.mars.plugin.language.operationOwners
 import edu.missouristate.mars.plugin.run.runMessages
 
-internal class MarsLineBreakpointType : XLineBreakpointType<XBreakpointProperties<*>>(
+internal typealias LineBreakpoint = XLineBreakpoint<MarsLineBreakpointProperties>
+
+internal class MarsLineBreakpointType : XLineBreakpointType<MarsLineBreakpointProperties>(
     "MarsMipsLine", runMessages.getMessage("debug.breakpoint.type"),
 ) {
-    override fun createBreakpointProperties(file: VirtualFile, line: Int): XBreakpointProperties<*>? = null
+    override fun createProperties() = MarsLineBreakpointProperties()
 
-    override fun getEditorsProvider(breakpoint: XLineBreakpoint<XBreakpointProperties<*>>, project: Project) = MarsDebugEditors
+    override fun createBreakpointProperties(file: VirtualFile, line: Int) = createProperties()
+
+    override fun getEditorsProvider(breakpoint: LineBreakpoint, project: Project) = MarsDebugEditors
+
+    override fun createCustomConditionsPanel() = MarsBreakpointHitCountPanel<LineBreakpoint>()
 
     override fun canBeHitInOtherPlaces() = true
 
@@ -42,5 +49,15 @@ internal class MarsLineBreakpointType : XLineBreakpointType<XBreakpointPropertie
             !candidate
         }
         return candidate
+    }
+}
+
+internal class MarsLineBreakpointProperties(
+    @get:Attribute @Volatile override var hitInterval: Int = 1,
+) : XBreakpointProperties<MarsLineBreakpointProperties>(), MarsBreakpointHitCount {
+    override fun getState() = this
+
+    override fun loadState(state: MarsLineBreakpointProperties) {
+        hitInterval = state.hitInterval
     }
 }

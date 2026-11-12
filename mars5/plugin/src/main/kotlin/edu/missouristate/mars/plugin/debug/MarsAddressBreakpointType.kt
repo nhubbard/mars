@@ -22,17 +22,21 @@ internal class MarsAddressBreakpointType : XBreakpointType<AddressBreakpoint, Ma
     }
 
     override fun getEditorsProvider(breakpoint: AddressBreakpoint, project: Project) = MarsDebugEditors
+
+    override fun createCustomConditionsPanel() = MarsBreakpointHitCountPanel<AddressBreakpoint>()
 }
 
 internal class MarsAddressBreakpointProperties(
     @get:Attribute var entry: String = "",
     @get:Attribute var address: Int = -1,
-) : XBreakpointProperties<MarsAddressBreakpointProperties>() {
+    @get:Attribute @Volatile override var hitInterval: Int = 1,
+) : XBreakpointProperties<MarsAddressBreakpointProperties>(), MarsBreakpointHitCount {
     override fun getState() = this
 
     override fun loadState(state: MarsAddressBreakpointProperties) {
         entry = state.entry
         address = state.address
+        hitInterval = state.hitInterval
     }
 
     fun addressIn(entry: String): Int? =

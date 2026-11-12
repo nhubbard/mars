@@ -609,7 +609,9 @@ A step operation must remain cancellable and respect explicit breakpoints, excep
 The core's existing breakpoint array is insufficient for conditional/live breakpoints and entry-point stops.
 Add a core boundary hook before relying on debugger callbacks. Do not emulate this with a UI loop that repeatedly calls `step()`.
 At a breakpoint, the controller evaluates side-effect-free conditions and logging expressions against a coherent snapshot.
-Ask the platform whether to suspend and honor that result; avoid two independent implementations of platform hit-count/dependency semantics.
+Ask the platform whether to suspend and honor that result. IntelliJ owns dependency and logpoint handling.
+The Java debugger's hit count uses JDI requests and the generic XDebugger API has no hit count.
+Use the public breakpoint conditions panel extension for MARS instruction hit counts and apply the filter in the session worker.
 Prove the handshake in a real Jupiter platform test before exposing advanced breakpoint controls.
 
 ### 7.3 Evaluation, history, and external effects
