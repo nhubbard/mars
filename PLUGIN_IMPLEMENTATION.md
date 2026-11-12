@@ -663,7 +663,13 @@ on the outermost invocation line. Basic instructions written in the macro
 body are excluded from that count.
 
 Both inlay providers share the detached background assembly and its freshness
-checks. Each provider has an independent setting and starts disabled.
+checks. The providers also work in read-only include tabs when navigation
+identifies their assembly entry. If the underlying include changes, open its
+current revision through Go to Declaration to see hints for the new text.
+Each provider has an independent setting and starts disabled. A clean
+IntelliJ 2026.3 replay followed `entry.mars` through `bridge.png` to
+`body.zip`, verified the address `0x00400004`, and expanded the hint to
+the emitted `lui` and `ori` instructions.
 
 ## Branch and call gutter navigation
 

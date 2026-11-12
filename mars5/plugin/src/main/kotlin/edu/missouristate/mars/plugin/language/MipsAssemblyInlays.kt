@@ -113,7 +113,7 @@ private fun MipsFile.currentAssemblyHints(): MipsAssemblyHints? {
     val snapshot = getUserData(assemblyHints) ?: return null
     val documents = PsiDocumentManager.getInstance(project)
     if (!documents.isCommitted(documents.getDocument(this)!!)) return null
-    val capture = collectEditorAssembly(this) ?: return null
+    val capture = collectEditorAssembly(this, readOnlyInclude = true) ?: return null
     return snapshot.takeIf { it.version == capture.hintVersion() }
 }
 

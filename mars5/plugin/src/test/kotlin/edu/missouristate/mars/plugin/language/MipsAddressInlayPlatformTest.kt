@@ -11,6 +11,7 @@ import com.intellij.codeInsight.hints.declarative.PresentationTreeBuilder
 import com.intellij.codeInsight.hints.declarative.impl.DeclarativeInlayHintsPassFactory
 import com.intellij.codeInsight.hints.declarative.impl.inlayRenderer.DeclarativeInlayRenderer
 import com.intellij.codeInsight.hints.declarative.impl.views.TextInlayPresentationEntry
+import com.intellij.codeInsight.navigation.actions.GotoDeclarationAction
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.command.WriteCommandAction
@@ -31,6 +32,7 @@ import edu.missouristate.mars.plugin.MarsMemoryLayout
 import edu.missouristate.mars.plugin.build.MarsAssemblySettings
 import java.awt.Point
 import java.awt.event.MouseEvent
+import java.nio.file.Files
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -180,6 +182,64 @@ class MipsAddressInlayPlatformTest {
                 assertNoPublishedHints(entry, MipsExpansionInlayProvider())
             }
             assertHints(emptyList(), MIPS_EXPANSION_HINTS_ID)
+        }
+    }
+
+    @Test
+    fun `nested read-only includes show addresses and expansions for the current entry and source`() = timeoutRunBlocking<Unit> {
+        val entryText = ".eqv VALUE 0x12345678\n.text\nnop\n.include \"bridge.png\"\n"
+        val bridgeText = ".include \"body.zip\"\n"
+        val bodyText = "included: li \$t0, VALUE\n"
+        val (entry, body) = withContext(Dispatchers.EDT) {
+            fixture.tempDirFixture.createFile("bridge.png", bridgeText)
+            val body = fixture.tempDirFixture.createFile("body.zip", bodyText)
+            val entry = fixture.addFileToProject("entry.mars", entryText)
+            entry to body
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        suspend fun openBody(): MipsFile = withContext(Dispatchers.EDT) {
+            fixture.configureFromExistingVirtualFile(entry.virtualFile)
+            val bridge = GotoDeclarationAction.findTargetElement(project, fixture.editor, fixture.editor.document.text.indexOf("bridge.png") + 1) as MipsFile
+            fixture.openFileInEditor(bridge.virtualFile)
+            val view = GotoDeclarationAction.findTargetElement(project, fixture.editor, bridgeText.indexOf("body.zip") + 1) as MipsFile
+            fixture.openFileInEditor(view.virtualFile)
+            view
+        }
+        val view = openBody()
+        withEnabledHints {
+            withEnabledHints(MIPS_EXPANSION_HINTS_ID) {
+                assertHints(listOf("0x00400004"))
+                assertHints(listOf("2 instructions"), MIPS_EXPANSION_HINTS_ID)
+                withContext(Dispatchers.EDT) {
+                    val docs = PsiDocumentManager.getInstance(project)
+                    val document = docs.getDocument(entry)!!
+                    WriteCommandAction.runWriteCommandAction(project) {
+                        document.setText(entryText.replace("0x12345678", "7").replace("nop", "nop\nnop"))
+                    }
+                    docs.commitDocument(document)
+                    assertNoPublishedHints(view)
+                    assertNoPublishedHints(view, MipsExpansionInlayProvider())
+                }
+                assertHints(listOf("0x00400008"))
+                assertHints(listOf("1 instruction"), MIPS_EXPANSION_HINTS_ID)
+
+                withContext(Dispatchers.EDT) {
+                    val documents = FileDocumentManager.getInstance()
+                    documents.saveDocument(documents.getDocument(entry.virtualFile)!!)
+                }
+                Files.writeString(body.toNioPath(), "nop\n" + bodyText)
+                withContext(Dispatchers.EDT) { body.refresh(false, false) }
+                IndexingTestUtil.suspendUntilIndexesAreReady(project)
+                withContext(Dispatchers.EDT) {
+                    assertNoPublishedHints(view)
+                    assertNoPublishedHints(view, MipsExpansionInlayProvider())
+                }
+                assertHints(emptyList())
+                assertHints(emptyList(), MIPS_EXPANSION_HINTS_ID)
+                openBody()
+                assertHints(listOf("0x0040000c"))
+                assertHints(listOf("1 instruction"), MIPS_EXPANSION_HINTS_ID)
+            }
         }
     }
 
