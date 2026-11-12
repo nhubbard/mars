@@ -139,7 +139,7 @@ class CapturedAssemblySourcesPlatformTest {
             assertFalse(position.file.isWritable)
             assertNotEquals(include, position.file)
             assertEquals(origin, execution.location(position.file, position.line))
-            assertNull(execution.originalLine(position.file, position.line))
+            assertEquals(include to origin, execution.originalLine(position.file, position.line))
             val originView = checkNotNull(execution.currentLineDescriptor(project.get(), origin)).file
             assertEquals(include, originView.mipsAssemblySourceOrigin)
             assertFalse(originView.isWritable)

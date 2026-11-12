@@ -1,5 +1,6 @@
 package edu.missouristate.mars.plugin.debug
 
+import com.intellij.codeInsight.navigation.actions.GotoDeclarationAction
 import com.intellij.execution.ExecutionListener
 import com.intellij.execution.ExecutionManager
 import com.intellij.execution.impl.ExecutionManagerImpl
@@ -130,6 +131,7 @@ import edu.missouristate.mars.plugin.build.interceptMemoryExportDialog
 import edu.missouristate.mars.plugin.build.replaceMemoryExportSaveDialog
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.MipsFileType
+import edu.missouristate.mars.plugin.analysis.captureAssemblySources
 import edu.missouristate.mars.plugin.language.MipsTypes
 import edu.missouristate.mars.plugin.run.MarsRunType
 import edu.missouristate.mars.plugin.run.MarsBeforeLaunchTask
@@ -147,6 +149,7 @@ import java.awt.Color
 import java.awt.Font
 import java.awt.event.MouseEvent
 import java.io.File
+import java.io.RandomAccessFile
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.CountDownLatch
@@ -3681,6 +3684,81 @@ class MarsDebugPlatformTest {
             debug.assertPausedAt(include, 1)
             withContext(Dispatchers.EDT) { debug.session.resume() }
             assertEquals(0, debug.exit.await())
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = ["debug-body.png", "debug-body.inc~"])
+    fun `read-only include tabs set persistent breakpoints and run to the cursor`(name: String) = timeoutRunBlocking<Unit> {
+        val action = ActionManager.getInstance().getAction("Mars.ToggleOriginalBreakpoint")
+        val entryText = ".include \"$name\"\nnop\n"
+        val (entry, include, view) = withContext(Dispatchers.EDT) {
+            val include = fixture.tempDirFixture.createFile(name, "# comment\naddiu \$t0, \$zero, 42\nnop\n")
+            val entry = fixture.addFileToProject("read-only-debug.mars", entryText).virtualFile
+            fixture.configureFromExistingVirtualFile(entry)
+            val target = GotoDeclarationAction.findTargetElement(project, fixture.editor, entryText.indexOf(name) + 1) as MipsFile
+            fixture.openFileInEditor(target.virtualFile)
+            Triple(entry, include, target.virtualFile)
+        }
+        fun event(line: Int): AnActionEvent {
+            val editor = fixture.editor
+            editor.caretModel.moveToOffset(editor.document.getLineStartOffset(line))
+            return AnActionEvent.createEvent(action, SimpleDataContext.builder()
+                .add(CommonDataKeys.PROJECT, project)
+                .add(CommonDataKeys.EDITOR, editor)
+                .build(), null, ActionPlaces.EDITOR_POPUP, ActionUiKind.POPUP, null)
+        }
+        withContext(Dispatchers.EDT) {
+            val comment = event(0)
+            action.update(comment)
+            assertFalse(comment.presentation.isEnabledAndVisible)
+            val instruction = event(1)
+            action.update(instruction)
+            assertTrue(instruction.presentation.isEnabledAndVisible)
+            assertFalse(breakpointType.canPutAt(view, 1, project))
+            action.actionPerformed(instruction)
+            val manager = debugger.breakpointManager
+            assertEquals(include.url, manager.findBreakpointsAtLine(breakpointType, include, 1).single().fileUrl)
+            assertTrue(manager.findBreakpointsAtLine(breakpointType, view, 1).isEmpty())
+            action.actionPerformed(instruction)
+            assertTrue(manager.findBreakpointsAtLine(breakpointType, include, 1).isEmpty())
+            action.actionPerformed(instruction)
+        }
+        withDebug(entry) { debug ->
+            val first = requireNotNull(debug.nextPosition())
+            assertFalse(first.file.isWritable)
+            assertEquals(1, first.line)
+            withContext(Dispatchers.EDT) {
+                debug.session.runToPosition(XDebuggerUtil.getInstance().createPosition(view, 2)!!, false)
+            }
+            debug.assertPausedAt(first.file, 2)
+            withContext(Dispatchers.EDT) {
+                assertEquals("0x0000002a", evaluate(debug.session, requireNotNull(debug.session.currentStackFrame), "\$t0"))
+                debug.session.resume()
+            }
+            assertEquals(0, debug.exit.await())
+        }
+        withContext(Dispatchers.EDT) {
+            fixture.openFileInEditor(view)
+            Files.writeString(include.toNioPath(), "# replaced\nnop\nnop\nnop\n")
+            include.refresh(false, false)
+            val stale = event(1)
+            action.update(stale)
+            assertFalse(stale.presentation.isEnabledAndVisible)
+        }
+        val updatedSources = MarsExecutionSources(captureAssemblySources(listOf(entry.toNioPath()), null))
+        assertNull(updatedSources.location(view, 1))
+        withContext(Dispatchers.EDT) {
+            val stale = event(1)
+            RandomAccessFile(include.toNioPath().toFile(), "rw").use { file ->
+                file.setLength(FileSizeLimit.getContentLoadLimit(include.extension).toLong() + 1)
+            }
+            include.refresh(false, false)
+            action.update(stale)
+            assertFalse(stale.presentation.isEnabledAndVisible)
+            WriteAction.run<RuntimeException> { include.delete(this) }
+            action.update(stale)
+            assertFalse(stale.presentation.isEnabledAndVisible)
         }
     }
 

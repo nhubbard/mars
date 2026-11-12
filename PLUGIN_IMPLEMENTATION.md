@@ -1676,6 +1676,12 @@ literal, or a label alone leaves the line without a breakpoint. Unresolved opera
 eligible while the editor is indexing or lacks the containing entry's definitions. The
 assembled source map determines the actual address at debug time.
 
+In a read-only include tab, use **Toggle MIPS Breakpoint in Original Source**
+from the editor context menu. IntelliJ stores the breakpoint against the
+physical include, so it remains available after the tab closes. **Run to
+Cursor** also accepts a read-only include position whose text matches the
+running assembly. The editor action rejects a stale read-only view.
+
 The Debug view shows the live CPU frame followed by observed callers and
 interrupted locations. Older frames navigate to the physical source of the call
 or interrupted instruction when available. Calls from executable data show an
@@ -1683,12 +1689,13 @@ address. Older frames show read-only call metadata. Live registers and expressio
 evaluation belong to the current CPU frame.
 
 Debugger frames and **Disassembly → Open Source** use the source captured with
-the running image. Unchanged files open in the project editor. If a file has
-been edited or removed, the debugger opens a read-only **assembled snapshot**
-tab at the original line. **Run to Cursor** accepts positions in that snapshot
-or an unchanged file. A cursor in changed text cannot select a line in the
-running image. New or updated line breakpoints resolve only when their
-source matches the assembled text.
+the running image. Unchanged files with a text editor open in the project.
+For changed, missing, ignored, or binary-classified sources, the debugger
+opens a read-only **assembled snapshot** tab at the original line.
+**Run to Cursor** accepts positions in that snapshot or an unchanged file.
+A cursor in changed text cannot select a line in the running image.
+New or updated line breakpoints resolve only when their source matches the
+assembled text.
 
 Resume, Pause, Stop, source
 Step Into, Step Over, Step Out, Step Instruction, and Run to Cursor are wired. The platform handles breakpoint

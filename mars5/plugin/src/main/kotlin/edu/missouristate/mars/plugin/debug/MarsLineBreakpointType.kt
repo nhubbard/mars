@@ -28,6 +28,10 @@ internal class MarsLineBreakpointType : XLineBreakpointType<XBreakpointPropertie
 
     override fun canPutAt(file: VirtualFile, line: Int, project: Project): Boolean {
         if (file.fileSystem !== LocalFileSystem.getInstance() || file.fileType !== MipsFileType) return false
+        return canPutAtOperation(file, line, project)
+    }
+
+    internal fun canPutAtOperation(file: VirtualFile, line: Int, project: Project): Boolean {
         val document = FileDocumentManager.getInstance().getDocument(file) ?: return false
         var candidate = false
         XDebuggerUtil.getInstance().iterateLine(project, document, line) { leaf ->

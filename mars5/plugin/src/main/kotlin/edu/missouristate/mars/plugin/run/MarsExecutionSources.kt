@@ -14,6 +14,7 @@ import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiManager
 import com.intellij.testFramework.ReadOnlyLightVirtualFile
+import com.intellij.testFramework.LightVirtualFile
 import com.intellij.util.text.CharArrayUtil
 import com.intellij.xdebugger.XDebuggerUtil
 import com.intellij.xdebugger.XSourcePosition
@@ -24,6 +25,7 @@ import edu.missouristate.mars.plugin.analysis.assemblySourceSyntax
 import edu.missouristate.mars.plugin.analysis.unresolvedAssemblySourceSyntax
 import edu.missouristate.mars.plugin.language.MipsFileType
 import edu.missouristate.mars.plugin.language.MipsLanguage
+import edu.missouristate.mars.plugin.language.mipsAssemblySourceOrigin
 import java.nio.file.Path
 import java.util.concurrent.ConcurrentHashMap
 
@@ -56,9 +58,7 @@ internal class MarsExecutionSources(private val capture: CapturedAssemblySources
     /** Checks live source identity under a read action without loading uncached documents. */
     fun isCurrent(): Boolean = texts.all { (path, text) ->
         val file = LocalFileSystem.getInstance().findFileByNioFile(path)
-        file != null && if (path in capture.diskSources) {
-            file.fileType.isBinary && file.modificationStamp == capture.revisions.getValue(path)
-        } else matches(file, path, text)
+        file != null && matchesBreakpointSource(file, path, text)
     }
 
     /** Navigates an assembly origin only while its source still matches the captured revision. */
@@ -127,8 +127,12 @@ internal class MarsExecutionSources(private val capture: CapturedAssemblySources
         val path = if (file is CapturedFile) {
             file.pathInImage.takeIf { file.owner === snapshotOwner }
         } else {
-            pathOf(file)?.takeIf { path ->
-                texts[path]?.let { text -> matches(file, path, text) } == true
+            val original = file.mipsAssemblySourceOrigin
+            val source = original ?: file
+            pathOf(source)?.takeIf { path ->
+                val text = texts[path] ?: return@takeIf false
+                matchesBreakpointSource(source, path, text) &&
+                    (original == null || StringUtil.equals((file as LightVirtualFile).content, text))
             }
         }
         return path?.let { Location(it, firstLine + line + 1) }
@@ -138,7 +142,7 @@ internal class MarsExecutionSources(private val capture: CapturedAssemblySources
         if (file !is CapturedFile) return null
         val location = location(file, line) ?: return null
         val original = LocalFileSystem.getInstance().findFileByNioFile(location.file()) ?: return null
-        return (original to location).takeIf { matches(original, location.file(), texts.getValue(location.file())) }
+        return (original to location).takeIf { matchesBreakpointSource(original, location.file(), texts.getValue(location.file())) }
     }
 
     private fun firstLine(file: VirtualFile): Int = (file as? CapturedFile)?.firstLine ?: 0
@@ -152,7 +156,7 @@ internal class MarsExecutionSources(private val capture: CapturedAssemblySources
             return excerptAt(path, text, location.line() - 1)
         }
         val file = LocalFileSystem.getInstance().findFileByNioFile(path)
-        if (file != null && matches(file, path, text)) return file
+        if (file != null && matches(file, path, text) && !FileTypeRegistry.getInstance().isFileIgnored(file)) return file
         return snapshots.computeIfAbsent(path) {
             CapturedFile(it, 0, snapshotOwner, runMessages.getMessage("run.source.captured", it.fileName), text)
         }
@@ -208,6 +212,10 @@ internal class MarsExecutionSources(private val capture: CapturedAssemblySources
         if (document == null) return file.modificationStamp == capturedStamp
         return document.modificationStamp == capturedStamp || StringUtil.equals(document.immutableCharSequence, text)
     }
+
+    private fun matchesBreakpointSource(file: VirtualFile, path: Path, text: String): Boolean =
+        if (path in capture.diskSources) file.fileType.isBinary && file.modificationStamp == capture.revisions.getValue(path)
+        else matches(file, path, text)
 
     companion object {
         private const val EXCERPT_SIZE = 32 * 1024
