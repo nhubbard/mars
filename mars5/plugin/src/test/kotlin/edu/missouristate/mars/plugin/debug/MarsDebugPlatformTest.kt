@@ -99,6 +99,7 @@ import com.intellij.xdebugger.frame.XValue
 import com.intellij.xdebugger.frame.XValueModifier
 import com.intellij.xdebugger.frame.XValueModifier.XModificationCallback
 import com.intellij.xdebugger.impl.actions.XDebuggerActions
+import com.intellij.xdebugger.impl.breakpoints.XBreakpointManagerImpl
 import com.intellij.xdebugger.impl.ui.tree.XDebuggerTree
 import com.intellij.xdebugger.impl.ui.tree.nodes.XStackFrameNode
 import com.intellij.xdebugger.impl.ui.tree.nodes.XValueContainerNode
@@ -4713,6 +4714,52 @@ class MarsDebugPlatformTest {
             debug.assertPausedAt(source.first, 3)
             withContext(Dispatchers.EDT) { debug.session.stop() }
             assertEquals(130, debug.exit.await())
+        }
+    }
+
+    @ParameterizedTest(name = "leave dependent breakpoint enabled = {0}")
+    @ValueSource(booleans = [false, true])
+    fun `native dependent breakpoints arm after their trigger and honor the leave enabled option`(
+        leaveEnabled: Boolean,
+    ) = timeoutRunBlocking<Unit> {
+        val source = withContext(Dispatchers.EDT) {
+            val file = fixture.addFileToProject("dependent-breakpoint.mars", """
+                .text
+                li ${'$'}t0, 0
+                li ${'$'}t1, 3
+                again: addiu ${'$'}t0, ${'$'}t0, 1
+                beq ${'$'}t0, ${'$'}t1, done
+                nop
+                li ${'$'}t2, 1
+                bne ${'$'}t0, ${'$'}t2, again
+                nop
+                nop
+                b again
+                nop
+                done: li ${'$'}v0, 10
+                syscall
+            """.trimIndent()).virtualFile
+            val dependent = addBreakpoint(file, 3)
+            val trigger = addBreakpoint(file, 9)
+            // Match the platform fixture's setup for the native Breakpoints dialog option.
+            val manager = assertInstanceOf(XBreakpointManagerImpl::class.java, debugger.breakpointManager)
+            WriteAction.run<RuntimeException> {
+                trigger.suspendPolicy = SuspendPolicy.NONE
+                manager.dependentBreakpointManager.setMasterBreakpoint(dependent, trigger, leaveEnabled)
+            }
+            file
+        }
+        withDebug(source) { debug ->
+            val expectedHits = if (leaveEnabled) listOf("0x00000001", "0x00000002") else listOf("0x00000001")
+            for (expected in expectedHits) {
+                debug.assertPausedAt(source, 3)
+                withContext(Dispatchers.EDT) {
+                    val frame = requireNotNull(debug.session.currentStackFrame)
+                    assertEquals(expected, evaluate(debug.session, frame, "\$t0"))
+                    debug.session.resume()
+                }
+            }
+            assertEquals(0, debug.exit.await())
         }
     }
 

@@ -1726,6 +1726,10 @@ Resume, Pause, Stop, source
 Step Into, Step Over, Step Out, Step Instruction, and Run to Cursor are wired. The platform handles breakpoint
 enablement, muting, dependencies, and non-suspending logpoints. Breakpoint
 conditions and log expressions share the evaluator described below.
+The native debugger fixture runs a loop through a dependent breakpoint
+before and after a non-suspending trigger. It verifies that the breakpoint
+first stops on the second visit and that IntelliJ's **Leave enabled** option
+controls whether it stops on the third. The D03 hit-count filter remains open.
 
 Each pause accepts one command to advance or rewind the simulator. A delayed
 or repeated callback from an earlier pause cannot replace an accepted command
