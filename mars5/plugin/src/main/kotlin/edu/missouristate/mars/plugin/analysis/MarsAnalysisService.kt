@@ -92,6 +92,7 @@ private val groupExpressionType = MipsTypes.psi("GROUP_EXPR")
 private val leftParenType = MipsTypes.psi("LEFT_PAREN")
 private val incompleteOperandTypes = setOf(TokenType.ERROR_ELEMENT, MipsTypes.psi("OPERAND_FRAGMENT"),
     MipsTypes.psi("UNCLOSED_STRING"))
+private val segmentDirectives = setOf(Directives.DATA, Directives.KDATA, Directives.TEXT, Directives.KTEXT)
 
 internal data class IndexedSymbolCandidates(
     val declarations: List<IndexedSymbolSite>,
@@ -741,12 +742,34 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         return Directives.isIntegerDirective(editorPrefix(root, position.textOffset).dataList)
     }
 
-    internal fun dataEquivalenceCompletions(root: MipsFile, range: TextRange, prefix: String): Map<String, String> {
+    internal fun directiveOperandEquivalenceCompletions(root: MipsFile, range: TextRange, prefix: String): Map<String, String> {
         if (DumbService.isDumb(project)) return emptyMap()
-        val directive = editorPrefix(root, range.startOffset).dataList ?: return emptyMap()
+        val activeList = editorPrefix(root, range.startOffset).dataList
+        val source = root.viewProvider.contents
+        val lineStart = sourceLineStart(source, range.startOffset)
+        val leading = expandedOperation(editorPrefix(root, lineStart), source.subSequence(lineStart, range.startOffset).toString())
+        if (leading != null && !leading.isEmpty) {
+            val head = Directives.matchDirective(leading[0].value)
+            val segment = head in segmentDirectives
+            val slot = when {
+                segment -> 1
+                head == Directives.EXTERN -> 2
+                head == Directives.SPACE || head == Directives.ALIGN -> if (activeList != null) 1 else return emptyMap()
+                else -> null
+            }
+            if (slot != null) {
+                if (leading.size() != slot) return emptyMap()
+                return equivalenceCompletions(root, range, prefix) { tokens, end, _ ->
+                    // Segment switches use their first operand. Allocation and alignment require exact arity.
+                    end == slot + 1 && TokenTypes.isIntegerTokenType(tokens[slot].type) &&
+                        (segment || tokens.size() == end && Binary.stringToInt(tokens[slot].value) >= 0)
+                }
+            }
+        }
+        val directive = activeList ?: return emptyMap()
         val integer = Directives.isIntegerDirective(directive)
         val floating = Directives.isFloatingDirective(directive)
-        val column = range.startOffset - sourceLineStart(root.viewProvider.contents, range.startOffset) + 1
+        val column = range.startOffset - lineStart + 1
         return equivalenceCompletions(root, range, prefix) { tokens, end, visible ->
             if (end == 0) return@equivalenceCompletions false
             val head = tokens[0]

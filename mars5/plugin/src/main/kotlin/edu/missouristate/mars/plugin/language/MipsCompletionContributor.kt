@@ -63,7 +63,7 @@ class MipsCompletionContributor : CompletionContributor(), DumbAware {
                     lookup.addAllElements(registerCandidates(operand.formats, operand.index, options.bareMachine).map(LookupElementBuilder::create))
                     operand.equivalenceCompletions(root, prefix, options.bareMachine, end)
                 } else {
-                    analysis.dataEquivalenceCompletions(root, TextRange(position.textOffset, end), prefix)
+                    analysis.directiveOperandEquivalenceCompletions(root, TextRange(position.textOffset, end), prefix)
                 }
                 for ((name, replacement) in equivalences) {
                     lookup.addElement(equivalenceLookup(name, replacement))

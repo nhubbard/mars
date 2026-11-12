@@ -298,7 +298,7 @@ internal fun followingEquivalenceName(head: PsiElement): String? {
 }
 
 internal fun TokenList.discardTrailingComment() {
-    if (this[size() - 1].type == TokenTypes.COMMENT) remove(size() - 1)
+    if (!isEmpty && this[size() - 1].type == TokenTypes.COMMENT) remove(size() - 1)
 }
 
 private fun macroSignature(
