@@ -1094,12 +1094,12 @@ Test sources and generated build output are excluded from this production invent
 | [kotlin/edu/missouristate/mars/assembler/TranslationCode.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/assembler/TranslationCode.kt) | C02 |
 | [kotlin/edu/missouristate/mars/core/AssemblyContext.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/core/AssemblyContext.kt) | C02 |
 | [kotlin/edu/missouristate/mars/core/InstructionContext.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/core/InstructionContext.kt) | C01 |
-| [java/edu/missouristate/mars/core/MarsContext.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/core/MarsContext.java) | C01 |
+| [kotlin/edu/missouristate/mars/core/MarsContext.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/core/MarsContext.kt) | C01 |
 | [kotlin/edu/missouristate/mars/core/MarsMemoryAdapter.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/core/MarsMemoryAdapter.kt) | C09 |
 | [kotlin/edu/missouristate/mars/core/SessionAssembler.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/core/SessionAssembler.kt) | C02 |
 | [kotlin/edu/missouristate/mars/core/SimulationSettings.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/core/SimulationSettings.kt) | S01 |
-| [java/edu/missouristate/mars/di/CoreModule.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/di/CoreModule.java) | C01 |
-| [java/edu/missouristate/mars/di/MarsComponent.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/di/MarsComponent.java) | C01 |
+| [kotlin/edu/missouristate/mars/di/CoreModule.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/di/CoreModule.kt) | C01 |
+| [kotlin/edu/missouristate/mars/di/MarsComponent.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/di/MarsComponent.kt) | C01 |
 | [kotlin/edu/missouristate/mars/mips/dump/AbstractDumpFormat.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/mips/dump/AbstractDumpFormat.kt) | B05 |
 | [kotlin/edu/missouristate/mars/mips/dump/AsciiTextDumpFormat.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/mips/dump/AsciiTextDumpFormat.kt) | B05 |
 | [kotlin/edu/missouristate/mars/mips/dump/BinaryDumpFormat.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/mips/dump/BinaryDumpFormat.kt) | B05 |

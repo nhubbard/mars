@@ -284,7 +284,7 @@ internal class MarsProcessHandler(
                     val dialogs = MarsSyscallDialogs(project, entry.fileName.toString(), execution)
                     val textInput = if (inputMode == MarsInputMode.DIALOG) TextInput(dialogs::readStandardInput) else null
                     SessionSyscallEnvironment(session.memory, stdin, output, error, workingDirectory, inputCharset, textInput).use { io ->
-                        session.program.setSyscallEnvironment(MarsIdeSyscallEnvironment(execution, io, dialogs, ::clearConsole))
+                        session.program!!.setSyscallEnvironment(MarsIdeSyscallEnvironment(execution, io, dialogs, ::clearConsole))
                         val simulator = session.simulator()
                         simulator.setInstructionLimit(instructionLimit.toLong())
                         simulator.setRunSpeedSource { runSpeed.toDouble() }

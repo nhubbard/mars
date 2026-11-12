@@ -376,7 +376,7 @@ class MipsFileReferencesPlatformTest {
             val result = capture.assembleIn(component)
             assertTrue(result.succeeded(), result.errors().toString())
             assertEquals(0x24080007, disk)
-            assertEquals(disk, session.program.machineList!!.single().binaryStatement)
+            assertEquals(disk, session.program!!.machineList!!.single().binaryStatement)
         }
     }
 

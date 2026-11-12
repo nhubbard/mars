@@ -3,10 +3,10 @@ Third-party libraries bundled with MARS MIPS
 These libraries are distributed under the Apache License, Version 2.0.
 See Apache-2.0.txt in this directory for the license text.
 
-JAR dagger-2.59.2.jar
+JAR dagger-2.60.1.jar
 Dagger
 Copyright (C) The Dagger Authors.
-https://github.com/google/dagger/tree/dagger-2.59.2
+https://github.com/google/dagger/tree/dagger-2.60.1
 
 JAR jakarta.inject-api-2.0.1.jar
 Eclipse Jakarta Dependency Injection

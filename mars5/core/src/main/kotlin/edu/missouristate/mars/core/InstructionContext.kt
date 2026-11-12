@@ -217,7 +217,7 @@ class InstructionContext(private val session: MarsContext, private val environme
         lastTransfer = null
         lastBranchOutcome = null
         val history = session.backStepper
-        val recording = history?.beginInstruction(registerFile.programCounter, statement) == true
+        val recording = history.beginInstruction(registerFile.programCounter, statement)
         try {
             registerFile.incrementPC()
             try {

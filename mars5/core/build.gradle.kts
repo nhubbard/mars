@@ -3,6 +3,7 @@ import java.util.zip.ZipFile
 plugins {
   id("java")
   kotlin("jvm")
+  id("com.google.devtools.ksp") version "2.3.12"
   jacoco
 }
 
@@ -15,10 +16,8 @@ repositories {
 
 dependencies {
   implementation(kotlin("stdlib", kotlin.coreLibrariesVersion))
-  implementation("com.google.dagger:dagger:2.59.2")
-  annotationProcessor("com.google.dagger:dagger-compiler:2.59.2")
-  // Dagger reads the Kotlin metadata on types in the Java dependency graph.
-  annotationProcessor(kotlin("metadata-jvm", kotlin.coreLibrariesVersion))
+  implementation("com.google.dagger:dagger:2.60.1")
+  ksp("com.google.dagger:dagger-compiler:2.60.1")
 
   testImplementation(platform("org.junit:junit-bom:6.0.0"))
   testImplementation("org.junit.jupiter:junit-jupiter")

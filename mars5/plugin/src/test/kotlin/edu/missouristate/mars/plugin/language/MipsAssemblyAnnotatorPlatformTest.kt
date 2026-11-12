@@ -150,7 +150,7 @@ class MipsAssemblyAnnotatorPlatformTest {
         val component = MarsSessionService.createMarsComponent()
         val assembledAddress = component.context().use { session ->
             assertTrue(build.assemble(path, component, activateBuildView = false, options = options))
-            session.program.symbolMap().locals().getValue(path).getValue("marker").address
+            session.program!!.symbolMap().locals().getValue(path).getValue("marker").address
         }
         val delayed = analyze()
         assertEquals(options, delayed.input.capture.options)

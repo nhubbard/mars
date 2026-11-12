@@ -360,9 +360,9 @@ class MarsBuildPlatformTest {
             warning(upToDate = false)
             MarsSessionService.createMarsComponent().context().use { session ->
                 session.loadAssemblyImage(initial.image) {}
-                assertEquals(0x2408002a, session.program.machineList!!.single().binaryStatement)
+                assertEquals(0x2408002a, session.program!!.machineList!!.single().binaryStatement)
                 session.loadAssemblyImage(changed.image) {}
-                assertEquals(0x24080063, session.program.machineList!!.single().binaryStatement)
+                assertEquals(0x24080063, session.program!!.machineList!!.single().binaryStatement)
             }
         } finally {
             withContext(Dispatchers.EDT) { Disposer.dispose(lifetime) }
@@ -1122,7 +1122,7 @@ class MarsBuildPlatformTest {
         component.context().use { session ->
             val result = capture.assembleIn(component)
             assertTrue(result.succeeded(), result.errors().toString())
-            assertEquals(listOf(0x24080007, 0), session.program.machineList!!.map { it.binaryStatement })
+            assertEquals(listOf(0x24080007, 0), session.program!!.machineList!!.map { it.binaryStatement })
         }
     }
 
@@ -1696,7 +1696,7 @@ class MarsBuildPlatformTest {
                     assertTrue(result.succeeded(), result.errors().toString())
                     val expectedWords = expected.machineList!!.map { it.binaryStatement }
                     assertEquals(listOf(0x24080007), expectedWords)
-                    assertEquals(expectedWords, ide.program.machineList!!.map { it.binaryStatement })
+                    assertEquals(expectedWords, ide.program!!.machineList!!.map { it.binaryStatement })
                     assertEquals(expected.sourceMap(), result.program()!!.sourceMap())
                     assertEquals(expected.symbolMap(), result.program()!!.symbolMap())
                     assertTrue("ignored" !in result.program()!!.symbolMap().locals()[entry].orEmpty())
@@ -1790,11 +1790,11 @@ class MarsBuildPlatformTest {
         component.context().use { session ->
             val build = project.service<MarsBuildService>()
             assertTrue(build.assemble(entry, component, activateBuildView = false))
-            assertEquals(expected, session.program.machineList!!.map { it.binaryStatement })
+            assertEquals(expected, session.program!!.machineList!!.map { it.binaryStatement })
 
             withContext(Dispatchers.EDT) { edit(remote, ".eqv REMOTE 11\n.include \"next.s\"\n") }
             assertTrue(build.assemble(entry, component, activateBuildView = false))
-            assertEquals(listOf(0x2408000b, 0x24090002, 0x240a0008), session.program.machineList!!.map { it.binaryStatement })
+            assertEquals(listOf(0x2408000b, 0x24090002, 0x240a0008), session.program!!.machineList!!.map { it.binaryStatement })
             assertTrue(Files.readString(remote.toNioPath()).contains(".eqv REMOTE 7"))
 
             val broken = withContext(Dispatchers.EDT) {

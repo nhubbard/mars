@@ -120,7 +120,7 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
     private val loadedSymbols = MutableStateFlow<LoadedSymbols?>(null)
     private val handler = state.createProcess { machine, executionSources ->
         sources = executionSources
-        loadedSymbols.value = LoadedSymbols(machine.program.symbolMap(), executionSources)
+        loadedSymbols.value = LoadedSymbols(machine.program!!.symbolMap(), executionSources)
         debug(this, machine)
     }
 
@@ -268,7 +268,7 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
     internal fun originalBreakpointLine(file: VirtualFile, line: Int): Pair<VirtualFile, Location>? = synchronized(bindings) {
         val machine = boundMachine ?: return@synchronized null
         val target = sources.originalLine(file, line) ?: return@synchronized null
-        target.takeIf { machine.program.sourceMap().breakpoints().containsKey(target.second) }
+        target.takeIf { machine.program!!.sourceMap().breakpoints().containsKey(target.second) }
     }
 
     private fun rejectCommand(message: String, context: MarsSuspendContext) {
@@ -278,7 +278,7 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
 
     private fun updateBindings() {
         val machine = boundMachine ?: return
-        val map = machine.program.sourceMap()
+        val map = machine.program!!.sourceMap()
         val next = mutableMapOf<Int, MutableList<XBreakpoint<*>>>()
         for (breakpoint in registeredLines) {
             val file = VirtualFileManager.getInstance().findFileByUrl(breakpoint.fileUrl)
@@ -322,7 +322,7 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
         val calls = DebuggerCallStack(machine.backStepper.capacity()) { machine.memory.sourceStatement(it)?.instructionOrigin }
         engine.addListener(calls)
         simulator = engine
-        val map = machine.program.sourceMap()
+        val map = machine.program!!.sourceMap()
         try {
             synchronized(bindings) {
                 boundMachine = machine
@@ -514,7 +514,7 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
         val pc = machine.registerFile.programCounterRegister.valueNoNotify
         val statement = machine.memory.sourceStatement(pc)
         val origin = statement?.instructionOrigin
-        val program = machine.program
+        val program = machine.program!!
         val symbols = program.symbolMap()
         val assemblyEntry = statement?.sourceFile?.ifEmpty { program.filename } ?: program.filename
         val localSymbols = symbols.locals().getValue(Path.of(assemblyEntry).toAbsolutePath().normalize())
