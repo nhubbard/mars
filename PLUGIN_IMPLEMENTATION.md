@@ -281,6 +281,9 @@ The bundled IntelliJ EditorConfig integration applies these settings to
 labels and macro boundaries retain their usual placement.
 When `.eqv` expansion opens a string across written operands, the formatter
 uses the assembler’s source ranges to preserve whitespace that becomes string data.
+If an operand supplies an `.eqv` directive, the formatter preserves the
+written text from that directive onward. A later expansion can turn its
+replacement whitespace into string data.
 Inside a macro, spacing after a formal is preserved on rows that can treat an
 argument as text. This also covers incomplete quoted arguments forwarded to another
 macro. Rows with known instruction mnemonics keep ordinary operand formatting.

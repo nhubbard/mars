@@ -170,6 +170,33 @@ class MipsFormattingPlatformTest {
         }
 
     @Test
+    fun `reformat preserves replacement whitespace when a macro operand defines an equivalence`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val source = """
+                .eqv DEFINE .eqv
+                .eqv OPEN "z
+                .macro unused
+                li   ${'$'}t0   DEFINE RAW OPEN ,      "
+                .end_macro
+                .data
+                .asciiz RAW
+                .text
+                nop
+            """.trimIndent()
+            val before = assemble(directory.resolve("operand-definition-before.asm"), source)
+            val bytes = "z ,      ".map(Char::code) + 0
+            assertEquals(bytes, before.second.take(bytes.size))
+            val formatted = withContext(Dispatchers.EDT) {
+                fixture.configureByText("operand-definition.mars", source)
+                val result = reformat()
+                assertEquals(result, reformat())
+                result
+            }
+            assertEquals(before, assemble(directory.resolve("operand-definition-after.asm"), formatted))
+            assertTrue("    li ${'$'}t0 DEFINE RAW OPEN ,      \"" in formatted, formatted)
+        }
+
+    @Test
     fun `reformat preserves data for every entry that uses a shared include`(@TempDir directory: Path) =
         timeoutRunBlocking<Unit> {
             val dataEntry = """

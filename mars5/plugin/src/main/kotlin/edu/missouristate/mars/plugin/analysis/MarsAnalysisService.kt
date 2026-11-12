@@ -705,17 +705,19 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         val errors = ErrorList()
         val replacement: (String) -> String? = { prefix.equivalence(it)?.replacement }
         val mapped = Tokenizer.tokenizeMappedLine(source, errors, replacement, ProgressManager::checkCanceled)
-        val expanded = mapped.expanded()
         if (errors.errorsOccurred()) return null
-        val hasLabel = expanded.tokens().beginsWithLabel()
-        val tokens = expanded.tokens().operationTokens()
-        val type = if (tokens.isEmpty) null else prefix.operationType(tokens, 0)
         // Even a macro call can record an equivalence as a tokenizer side effect.
-        val canFormatOperands = expanded.definition() == null
+        val definition = mapped.equivalenceDirectiveOffset()
+        val canFormatOperands = definition < 0
+        val hasLabel = mapped.tokens().beginsWithLabel()
+        val tokens = mapped.tokens().operationTokens()
+        val type = if (tokens.isEmpty) null else prefix.operationType(tokens, 0)
         val spacingType = type.takeIf { canFormatOperands }
         val openings = if (canFormatOperands && projectOperands) expandedOperandParentheses(mapped, source, start) else null
         val macro = prefix.openMacro
         val verbatim = buildList {
+            // A later substitution can turn the recorded whitespace into string data.
+            if (!canFormatOperands) add(TextRange(start + definition, start + source.length))
             addAll(quotedStringRanges(tokens) { start + mapped.originalOffset(it) })
             val formals = macro?.parametersByName.orEmpty()
             // A formal can absorb the rest of a row as a quoted argument, even when a
