@@ -1,5 +1,6 @@
 package edu.missouristate.mars.plugin.analysis
 
+import com.intellij.openapi.editor.Document
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.openapi.vfs.VirtualFileManager
@@ -22,6 +23,7 @@ internal class AssemblySymbols(
     val entry get() = sourceSet.entry
     val sourceSet get() = capture.sourceSet
     val revisions get() = capture.revisions
+    val diskSources get() = capture.diskSources
     val texts get() = capture.snapshot.texts()
     val exceptionHandler get() = capture.exceptionHandler
     val sourceExcerpts by lazy { MarsExecutionSources(capture) }
@@ -42,6 +44,8 @@ internal class AssemblySymbols(
         }
     }
     val localSymbols get() = localSymbols(entry)
+
+    fun validateSourceDocuments(accept: (Path, Document, Long) -> Boolean) = capture.validateSourceDocuments(accept)
 
     fun rootFor(source: Path): Path = capture.rootsBySource.getValue(source)
 

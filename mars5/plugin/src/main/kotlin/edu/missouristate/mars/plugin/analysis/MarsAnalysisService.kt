@@ -290,14 +290,14 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
 
         val location = definition.origin()?.location() ?: return null
         var target: Document? = null
-        val valid = build.revisions.validateSourceDocuments { path, document, revision ->
+        val valid = build.validateSourceDocuments { path, document, revision ->
             if (path == location.file()) target = document
             document.modificationStamp == revision
         }
         if (!valid) return null
-        val document = target ?: return null
+        val document = target
         val manager = PsiDocumentManager.getInstance(project)
-        if (!manager.isCommitted(document)) return null
+        if (document != null && !manager.isCommitted(document)) return null
         val (file, offset) = build.declarationPosition(document, location, definition.column()) ?: return null
         return if (file is MipsFile) file.findElementAt(offset) else MipsIncludedDeclaration.at(file, offset)
     }
@@ -310,7 +310,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
     ): List<String>? {
         val names = build.matchingNames(activeSource, prefix, localOnly)
         if (names.isEmpty()) return null
-        val valid = build.revisions.validateSourceDocuments { path, document, revision ->
+        val valid = build.validateSourceDocuments { path, document, revision ->
             document.modificationStamp == revision ||
                 path == activeSource && preservesBuiltLabelNames(build.texts.getValue(path), document, offset)
         }
@@ -343,7 +343,8 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
             calls.mapNotNull { call ->
                 val target = call.definition()
                 val location = target.location()
-                val document = documents.getDocument(files.findFileByNioPath(location.file())!!)!!
+                val document = if (location.file() in snapshot.diskSources) null
+                    else documents.getDocument(files.findFileByNioPath(location.file())!!)
                 val (file, offset) = snapshot.declarationPosition(document, location, target.column()) ?: return@mapNotNull null
                 Triple(call, file, offset)
             }
@@ -365,9 +366,11 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
             val inScope = if (scope is LocalSearchScope) scope.scope.any { it is PsiFile && it.virtualFile == original }
                 else scope.contains(original)
             if (!inScope) return@mapNotNull null
-            val document = documents.getDocument(original)!!
-            if (!documents.isPartialPreviewOfALargeFile(document) ||
-                document.sourceOffset(location.line() - 1, site.column()) != null) return@mapNotNull null
+            if (location.file() !in snapshot.diskSources) {
+                val document = documents.getDocument(original)!!
+                if (!documents.isPartialPreviewOfALargeFile(document) ||
+                    document.sourceOffset(location.line() - 1, site.column()) != null) return@mapNotNull null
+            }
             val (excerpt, offset) = snapshot.sourceExcerpts.excerptPosition(location, site.column(), original) ?: return@mapNotNull null
             psi.findFile(excerpt)!! to offset
         }
@@ -398,7 +401,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
 
     private fun AssemblySymbols.hasCurrentMacroSources(): Boolean {
         val manager = PsiDocumentManager.getInstance(project)
-        return revisions.validateSourceDocuments { _, source, revision ->
+        return validateSourceDocuments { _, source, revision ->
             manager.isCommitted(source) && source.modificationStamp == revision
         }
     }
@@ -414,15 +417,17 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         val location = target.location()
         // The source snapshot has already validated each physical file and its committed document.
         val source = VirtualFileManager.getInstance().findFileByNioPath(location.file())!!
+        if (source.fileType.isBinary) return null
         val file = PsiManager.getInstance(project).findFile(source) ?: return null
         return file.fileDocument.sourceOffset(location.line() - 1, target.column())?.let { file to it }
     }
 
-    private fun AssemblySymbols.declarationPosition(document: Document, location: Location, column: Int?): Pair<PsiFile, Int>? {
-        val manager = PsiDocumentManager.getInstance(project)
-        val offset = document.sourceOffset(location.line() - 1, column)
-        if (offset != null) return manager.getPsiFile(document)?.let { it to offset }
-        if (!FileDocumentManager.getInstance().isPartialPreviewOfALargeFile(document)) return null
+    private fun AssemblySymbols.declarationPosition(document: Document?, location: Location, column: Int?): Pair<PsiFile, Int>? {
+        if (document != null) {
+            val offset = document.sourceOffset(location.line() - 1, column)
+            if (offset != null) return PsiDocumentManager.getInstance(project).getPsiFile(document)?.let { it to offset }
+            if (!FileDocumentManager.getInstance().isPartialPreviewOfALargeFile(document)) return null
+        } else if (location.file() !in diskSources) return null
         val (excerpt, excerptOffset) = sourceExcerpts.excerptPosition(location, column) ?: return null
         return PsiManager.getInstance(project).findFile(excerpt)!! to excerptOffset
     }

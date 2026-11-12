@@ -1,5 +1,6 @@
 package edu.missouristate.mars.plugin.analysis
 
+import com.intellij.build.events.FileMessageEvent
 import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.readAction
@@ -7,22 +8,32 @@ import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.components.service
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
+import com.intellij.openapi.fileTypes.PlainTextFileType
+import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.SystemInfoRt
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.openapi.vfs.limits.FileSizeLimit
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
+import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiManager
+import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.testFramework.common.timeoutRunBlocking
+import com.intellij.testFramework.fixtures.impl.CodeInsightTestFixtureImpl
 import com.intellij.testFramework.junit5.TestApplication
+import com.intellij.util.containers.MultiMap
+import edu.missouristate.mars.api.AssemblyError
 import edu.missouristate.mars.api.AssemblySymbolMap
 import edu.missouristate.mars.api.AssemblySymbolMap.Definition
 import edu.missouristate.mars.api.AssemblySymbolMap.SourceToken
 import edu.missouristate.mars.api.InstructionSourceMap.Location
 import edu.missouristate.mars.plugin.MarsSessionService
+import edu.missouristate.mars.plugin.build.diagnosticEvent
 import edu.missouristate.mars.plugin.language.MipsDocumentationTargetProvider
 import edu.missouristate.mars.plugin.language.MipsFile
+import edu.missouristate.mars.plugin.language.MipsSymbolRenameProcessor
+import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
 import edu.missouristate.mars.plugin.run.MarsExecutionSources
 import java.nio.file.Files
 import kotlinx.coroutines.Dispatchers
@@ -80,6 +91,143 @@ class CapturedAssemblySourcesPlatformTest {
         assertTrue(program.simulate(5))
         assertEquals(42, context.registerFile.getValue(8))
         assertEquals(17, context.registerFile.getValue(16))
+    }
+
+    @Test
+    fun `binary-classified include uses disk source text and invalidates after a VFS refresh`() = timeoutRunBlocking<Unit> {
+        val (main, include) = withContext(Dispatchers.EDT) {
+            val main = fixture.addFileToProject("entry.mars", ".include \"payload.png\"\nemit\nj destination\nj raw_target\n") as MipsFile
+            fixture.addFileToProject("tail.inc", "destination: nop\n")
+            val path = main.virtualFile.toNioPath().resolveSibling("payload.png")
+            val text = ".include \"tail.inc\"\r\nraw_target: j destination\r\n.macro emit\r\naddiu \$t0, \$zero, 42\r\n.end_macro\r\n"
+            Files.write(path, byteArrayOf(0xff.toByte(), 0xfe.toByte()) + text.toByteArray(Charsets.UTF_16LE))
+            val include = checkNotNull(VirtualFileManager.getInstance().refreshAndFindFileByNioPath(path))
+            main to include
+        }
+        val entry = main.virtualFile.toNioPath()
+        val path = include.toNioPath()
+        assertTrue(include.fileType.isBinary)
+
+        val initial = readAction { checkNotNull(collectEditorAssembly(main)) }
+        val sources = initial.sources
+        assertEquals(setOf(path), sources.diskSources)
+        assertEquals(setOf(entry, path, path.resolveSibling("tail.inc")), sources.snapshot.texts().keys)
+        assertEquals(".include \"tail.inc\"\nraw_target: j destination\n.macro emit\naddiu \$t0, \$zero, 42\n.end_macro\n", sources.snapshot.texts()[path])
+
+        val component = MarsSessionService.createMarsComponent()
+        component.context().use {
+            val disk = component.assembler().assemble(listOf(entry))
+            assertTrue(disk.succeeded(), disk.errors().toString())
+            val diskWords = it.program.machineList.map { statement -> statement.binaryStatement }
+            val captured = sources.assembleIn(component)
+            assertTrue(captured.succeeded(), captured.errors().toString())
+            assertEquals(diskWords, it.program.machineList.map { statement -> statement.binaryStatement })
+            assertEquals(0x2408002a, diskWords[2])
+            val analysis = project.get().service<MarsAnalysisService>()
+            analysis.publishBuiltSymbols(analysis.beginSymbolBuild(entry), sources, captured.program().symbolMap())
+        }
+
+        val selected = readAction { checkNotNull(collectEditorAssembly(main)) }
+        val execution = MarsExecutionSources(sources)
+        val origin = Location(path, 4)
+        readAction {
+            assertTrue(selected.validate(main) { _, document, revision -> document.modificationStamp == revision })
+            assertTrue(execution.isCurrent())
+            val position = execution.position(origin)
+            assertFalse(position.file.isWritable)
+            assertNotEquals(include, position.file)
+            assertEquals(origin, execution.location(position.file, position.line))
+            assertNull(execution.originalLine(position.file, position.line))
+            assertNull(execution.currentLineDescriptor(project.get(), origin))
+            assertEquals(main.virtualFile, execution.currentLineDescriptor(project.get(), Location(entry, 1))?.file)
+            val macro = checkNotNull(main.findReferenceAt(main.text.indexOf("\nemit") + 1)?.resolve())
+            assertEquals("emit", macro.text)
+            assertFalse(macro.containingFile.virtualFile.isWritable)
+            val diskLabel = checkNotNull(main.findReferenceAt(main.text.indexOf("raw_target"))?.resolve())
+            assertEquals("raw_target", diskLabel.text)
+            assertFalse(diskLabel.containingFile.virtualFile.isWritable)
+            val target = assertInstanceOf(MipsDeclaration::class.java,
+                main.findReferenceAt(main.text.indexOf("destination"))?.resolve()?.parent)
+            val analysis = project.get().service<MarsAnalysisService>()
+            assertNull(analysis.sourceTokenPosition(SourceToken(Location(path, 2), 3)))
+            val (excerpt, offset) = analysis.assembledExcerptUsages(target, GlobalSearchScope.allScope(project.get())).single()
+            assertTrue(excerpt.text.startsWith("destination", offset))
+            assertFalse(excerpt.virtualFile.isWritable)
+            val diagnostic = diagnosticEvent(project.get(), Any(), AssemblyError(path, 4, 1, "Test warning", true),
+                sources.revisions)
+            assertFalse(diagnostic is FileMessageEvent)
+            assertEquals("Test warning", diagnostic.message)
+        }
+
+        withContext(Dispatchers.EDT) {
+            val targetFile = PsiManager.getInstance(project.get()).findFile(include.parent.findChild("tail.inc")!!) as MipsFile
+            val target = checkNotNull(MipsDeclaration.findAt(targetFile, 0, "destination"))
+            val processor = MipsSymbolRenameProcessor()
+            processor.findCollisions(target, "renamed", mapOf(target to "renamed"), mutableListOf())
+            val conflicts = MultiMap.create<PsiElement, String>()
+            processor.findExistingNameConflicts(target, "renamed", conflicts)
+            assertTrue(conflicts[target].single().contains("written declaration"))
+        }
+
+        val lifetime = Disposer.newDisposable()
+        val plain = try {
+            withContext(Dispatchers.EDT) {
+                CodeInsightTestFixtureImpl.associateExtensionTemporarily(PlainTextFileType.INSTANCE, "png", lifetime)
+            }
+            readAction {
+                assertFalse(execution.isCurrent())
+                assertFalse(execution.position(origin).file.isWritable)
+                assertFalse(sources.validateSourceDocuments { _, _, _ -> true })
+                val plainCapture = checkNotNull(collectEditorAssembly(main)).sources
+                assertFalse(path in plainCapture.diskSources)
+                assertTrue(path in plainCapture.revisions)
+                plainCapture
+            }
+        } finally {
+            withContext(Dispatchers.EDT) { Disposer.dispose(lifetime) }
+        }
+        readAction {
+            assertFalse(plain.validateSourceDocuments { _, _, _ -> true })
+            val formerText = MarsExecutionSources(plain)
+            assertFalse(formerText.isCurrent())
+            assertNull(formerText.currentLineDescriptor(project.get(), origin))
+        }
+
+        withContext(Dispatchers.EDT) {
+            Files.writeString(path, ".include \"tail.inc\"\n.macro emit\naddiu \$t0, \$zero, 17\n.end_macro\n")
+            include.refresh(false, false)
+        }
+        readAction {
+            assertFalse(selected.validate(main) { _, document, revision -> document.modificationStamp == revision })
+            assertFalse(execution.isCurrent())
+            val updated = checkNotNull(collectEditorAssembly(main))
+            assertTrue(updated.sources.snapshot.texts().getValue(path).contains("17"))
+            assertNotEquals(sources.revisions[path], updated.sources.revisions[path])
+        }
+    }
+
+    @Test
+    fun `disk include removed before reading is reported at its include site`() = timeoutRunBlocking<Unit> {
+        val (main, include) = withContext(Dispatchers.EDT) {
+            val main = fixture.addFileToProject("entry.mars", ".include \"gone.png\"\n")
+            val path = main.virtualFile.toNioPath().resolveSibling("gone.png")
+            Files.writeString(path, "nop\n")
+            main.virtualFile.toNioPath() to checkNotNull(VirtualFileManager.getInstance().refreshAndFindFileByNioPath(path))
+        }
+        val unavailable = readAction {
+            collectAssemblySources(listOf(main), null) { dependency ->
+                if (dependency == include) Files.deleteIfExists(include.toNioPath())
+            }
+        }
+        assertEquals(setOf(main), unavailable.snapshot.texts().keys)
+        val directory = main.parent
+        assertTrue(captureAssemblySources(listOf(directory), null).snapshot.texts().isEmpty())
+        val component = MarsSessionService.createMarsComponent()
+        component.context().use {
+            val diagnostic = unavailable.assembleIn(component).errors().single()
+            assertEquals(main, diagnostic.file())
+            assertEquals(1, diagnostic.line())
+        }
     }
 
     @Test

@@ -224,7 +224,7 @@ internal fun diagnosticEvent(
     val builder = MessageEvent.builder(diagnostic.message(), kind).withParentId(buildId)
     val path = diagnostic.file() ?: return builder.build()
     val file = VirtualFileManager.getInstance().findFileByNioPath(path)
-    val document = file?.let(FileDocumentManager.getInstance()::getDocument)
+    val document = file?.takeUnless { it.fileType.isBinary }?.let(FileDocumentManager.getInstance()::getDocument)
     val line = diagnostic.line() - 1
     if (document == null || document.modificationStamp != revisions[path] || line < 0 || line >= document.lineCount) {
         return builder.withHint(path.toString()).build()

@@ -6,6 +6,7 @@ import com.intellij.openapi.editor.Document
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.roots.ProjectRootModificationTracker
 import com.intellij.openapi.util.Key
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.openapi.vfs.VfsUtilCore
@@ -18,6 +19,7 @@ import com.intellij.psi.util.CachedValuesManager
 import edu.missouristate.mars.ApplicationInfo
 import edu.missouristate.mars.api.AssemblyError
 import edu.missouristate.mars.api.AssemblyResult
+import edu.missouristate.mars.api.AssemblySourceReader
 import edu.missouristate.mars.api.AssemblySourceSnapshot
 import edu.missouristate.mars.assembler.Tokenizer
 import edu.missouristate.mars.di.MarsComponent
@@ -45,6 +47,7 @@ internal data class CapturedAssemblySources(
     val directoryStamp: Long? = null,
     val sourceSet: MarsSourceSet = MarsSourceSet(snapshot.entries(), MarsAssemblyMode.SINGLE),
     val previewLineCounts: Map<Path, Int> = emptyMap(),
+    val diskSources: Set<Path> = emptySet(),
 )
 
 internal data class EditorAssemblyCapture(
@@ -63,7 +66,7 @@ internal data class EditorAssemblyCapture(
         if (options != effectiveOptions(file, selected)) return false
         val entry = sources.sourceSet.entry
         if (entry != selected?.entry && entry != inferredMipsAssemblyEntry(file)) return false
-        return sources.revisions.validateSourceDocuments(accept)
+        return sources.validateSourceDocuments(accept)
     }
 }
 
@@ -129,6 +132,7 @@ internal fun collectAssemblySources(
     val documents = FileDocumentManager.getInstance()
     val captured = HashMap<Path, SourceDocument>()
     val previewLineCounts = HashMap<Path, Int>()
+    val diskSources = HashSet<Path>()
     val rootsBySource = (ordered + listOfNotNull(handler)).associateWithTo(HashMap()) { it }
     val resolvedIncludes = HashMap<Path, Path>()
     val tokenizer = Tokenizer()
@@ -136,10 +140,20 @@ internal fun collectAssemblySources(
     fun capture(path: Path): SourceDocument? {
         captured[path]?.let { return it }
         val file = files.findFileByNioPath(path) ?: return null
-        val document = documents.getDocument(file)
+        val binary = !file.isDirectory && file.fileType.isBinary
+        val document = if (binary) null else documents.getDocument(file)
         onDependency(document ?: file)
-        if (document == null) return null
-        val text = if (documents.isPartialPreviewOfALargeFile(document)) {
+        val text = if (binary) {
+            // The assembler reads explicit sources as text even when IntelliJ has no text editor for them.
+            try {
+                StringUtil.convertLineSeparators(AssemblySourceReader.open(path).use { it.readText() }).also {
+                    diskSources.add(path)
+                }
+            } catch (_: IOException) {
+                return null
+            }
+        } else if (document == null) return null
+        else if (documents.isPartialPreviewOfALargeFile(document)) {
             onDependency(file)
             try {
                 StringUtil.convertLineSeparators(VfsUtilCore.loadText(file)).also {
@@ -152,7 +166,8 @@ internal fun collectAssemblySources(
         } else document.text
         // Directory aliases share an include location. A file symlink keeps its own name and directory.
         val identity = path.fileSystem.getPath(file.mipsIncludeDirectoryPath()!!).resolve(file.name)
-        return SourceDocument(text, document.modificationStamp, identity).also { captured[path] = it }
+        val revision = document?.modificationStamp ?: file.modificationStamp
+        return SourceDocument(text, revision, identity).also { captured[path] = it }
     }
 
     for (root in (listOfNotNull(handler) + ordered).distinct()) {
@@ -191,7 +206,7 @@ internal fun collectAssemblySources(
     )
     return CapturedAssemblySources(
         snapshot, handler, copyOfMap(captured.mapValues { it.value.revision }), copyOfMap(rootsBySource),
-        previewLineCounts = copyOfMap(previewLineCounts),
+        previewLineCounts = copyOfMap(previewLineCounts), diskSources = diskSources.toSet(),
     )
 }
 
@@ -207,7 +222,10 @@ internal fun collectBackgroundAssemblySources(project: Project, sourceSet: MarsS
         ?: return collectBuildSources(sourceSet, settings.exceptionHandler)
     val key = captureKeys.getValue(sourceSet.mode)
     return CachedValuesManager.getCachedValue(psi, key) {
-        val dependencies = arrayListOf<Any>(VirtualFileManager.VFS_STRUCTURE_MODIFICATIONS, settings.sourceChanges)
+        val dependencies = arrayListOf<Any>(
+            VirtualFileManager.VFS_STRUCTURE_MODIFICATIONS, ProjectRootModificationTracker.getInstance(project),
+            settings.sourceChanges,
+        )
         val currentSources = if (sourceSet.mode == MarsAssemblyMode.PROJECT) {
             MarsSourceSet(settings.projectSources, MarsAssemblyMode.PROJECT)
         } else sourceSet
@@ -235,15 +253,21 @@ internal fun CapturedAssemblySources.assembleIn(component: MarsComponent, checkC
     })
 }
 
-/** Validates source dependencies and supplies their current documents under the same read action. */
-internal fun Map<Path, Long>.validateSourceDocuments(accept: (Path, Document, Long) -> Boolean): Boolean {
+/** Validates all source dependencies and supplies current editor documents under the same read action. */
+internal fun CapturedAssemblySources.validateSourceDocuments(accept: (Path, Document, Long) -> Boolean): Boolean {
     val files = VirtualFileManager.getInstance()
     val documents = FileDocumentManager.getInstance()
-    for ((path, revision) in this) {
+    for ((path, revision) in revisions) {
         ProgressManager.checkCanceled()
         val source = files.findFileByNioPath(path) ?: return false
-        val document = documents.getDocument(source) ?: return false
-        if (!accept(path, document, revision)) return false
+        val diskBacked = path in diskSources
+        if (source.fileType.isBinary != diskBacked) return false
+        if (diskBacked) {
+            if (source.modificationStamp != revision) return false
+        } else {
+            val document = documents.getDocument(source) ?: return false
+            if (!accept(path, document, revision)) return false
+        }
     }
     return true
 }

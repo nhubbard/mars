@@ -52,15 +52,19 @@ internal class MarsExecutionSources(private val capture: CapturedAssemblySources
     /** Checks live source identity under a read action without loading uncached documents. */
     fun isCurrent(): Boolean = texts.all { (path, text) ->
         val file = LocalFileSystem.getInstance().findFileByNioFile(path)
-        file != null && matches(file, path, text)
+        file != null && if (path in capture.diskSources) {
+            file.fileType.isBinary && file.modificationStamp == capture.revisions.getValue(path)
+        } else matches(file, path, text)
     }
 
     /** Navigates an assembly origin only while its source still matches the captured revision. */
     fun currentLineDescriptor(project: Project, location: Location): OpenFileDescriptor? {
         val path = location.file()
+        if (path in capture.diskSources) return null
         val file = LocalFileSystem.getInstance().findFileByNioFile(path) ?: return null
         val documents = FileDocumentManager.getInstance()
-        val document = documents.getDocument(file) ?: return null
+        val document = if (file.fileType.isBinary) null else documents.getDocument(file)
+        if (document == null) return null
         val text = texts[path] ?: return null
         val partial = documents.isPartialPreviewOfALargeFile(document)
         val current = if (partial) document.modificationStamp == capture.revisions.getValue(path)
@@ -180,6 +184,7 @@ internal class MarsExecutionSources(private val capture: CapturedAssemblySources
         }
 
     private fun matches(file: VirtualFile, path: Path, text: String): Boolean {
+        if (file.fileType.isBinary || path in capture.diskSources) return false
         val document = FileDocumentManager.getInstance().getCachedDocument(file)
         val capturedStamp = capture.revisions.getValue(path)
         if (document == null) return file.modificationStamp == capturedStamp

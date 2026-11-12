@@ -169,8 +169,9 @@ private fun verifyRename(target: MipsDeclaration, newName: String, usages: Set<S
     val documents = capture.committedDocuments(file) ?: throw symbolRenameError("symbol.rename.stale")
     val vfs = VirtualFileManager.getInstance()
     val psi = PsiManager.getInstance(project)
-    val sourceFiles = documents.keys.associateWith { vfs.findFileByNioPath(it)!! }
-    for (sourceFile in sourceFiles.values) {
+    val sourceFiles = sources.revisions.keys.associateWith { vfs.findFileByNioPath(it)!! }
+    for (path in documents.keys) {
+        val sourceFile = sourceFiles.getValue(path)
         val source = psi.findFile(sourceFile)
         if (source !is MipsFile && source !is PsiPlainTextFile) throw symbolRenameError("symbol.rename.scope")
     }
@@ -395,7 +396,7 @@ private fun SourceToken.offsetIn(document: Document) = document.getLineStartOffs
 
 private fun SourceToken.editIn(documents: Map<Path, Document>, name: String, assemblerSpelling: Boolean): SymbolEdit {
     val path = location().file()
-    val document = documents.getValue(path)
+    val document = documents[path] ?: throw symbolRenameError("symbol.rename.scope")
     if (FileDocumentManager.getInstance().isPartialPreviewOfALargeFile(document)) throw symbolRenameError("symbol.rename.preview")
     val offset = offsetIn(document)
     val length = if (assemblerSpelling) {

@@ -95,7 +95,7 @@ private val assemblyHints = Key.create<MipsAssemblyHints>("mars.mips.assembled.i
 
 internal data class MipsAssemblyHintVersion(
     val sources: MarsSourceSet, val handler: Path?, val options: MarsExecutionOptions,
-    val documents: Map<Path, Long>, val structure: Long,
+    val revisions: Map<Path, Long>, val structure: Long, val diskSources: Set<Path>,
 )
 
 internal data class MipsWrittenAddress(val line: Int, val column: Int, val name: String, val address: Int)
@@ -107,7 +107,7 @@ internal data class MipsAssemblyHints(
 )
 
 private fun EditorAssemblyCapture.hintVersion() =
-    MipsAssemblyHintVersion(sources.sourceSet, sources.exceptionHandler, options, sources.revisions, structureStamp)
+    MipsAssemblyHintVersion(sources.sourceSet, sources.exceptionHandler, options, sources.revisions, structureStamp, sources.diskSources)
 
 private fun MipsFile.currentAssemblyHints(): MipsAssemblyHints? {
     val snapshot = getUserData(assemblyHints) ?: return null

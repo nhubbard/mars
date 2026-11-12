@@ -20,14 +20,14 @@ internal data class BackgroundAssemblyOutcome(
 internal class BackgroundAssemblyMemo {
     private data class Revision(
         val sourceSet: MarsSourceSet, val exceptionHandler: Path?,
-        val documents: Map<Path, Long>, val structure: Long, val options: MarsExecutionOptions,
+        val revisions: Map<Path, Long>, val diskSources: Set<Path>, val structure: Long, val options: MarsExecutionOptions,
     )
 
     private val outcomes = SLRUMap<Revision, BackgroundAssemblyOutcome>(4, 4)
 
     fun assemble(sources: CapturedAssemblySources, structureStamp: Long, options: MarsExecutionOptions): BackgroundAssemblyOutcome {
         ProgressManager.checkCanceled()
-        val key = Revision(sources.sourceSet, sources.exceptionHandler, sources.revisions, structureStamp, options)
+        val key = Revision(sources.sourceSet, sources.exceptionHandler, sources.revisions, sources.diskSources, structureStamp, options)
         synchronized(outcomes) { outcomes.get(key) }?.let { return it }
         val component = MarsSessionService.createMarsComponent()
         val outcome = component.context().use { session ->
