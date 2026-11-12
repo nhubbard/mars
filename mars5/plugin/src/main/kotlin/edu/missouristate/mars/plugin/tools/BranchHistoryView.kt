@@ -21,7 +21,6 @@ import edu.missouristate.mars.plugin.tools.BranchHistoryTable.Observation
 import edu.missouristate.mars.plugin.tools.BranchHistoryTable.Options
 import edu.missouristate.mars.util.Binary
 import javax.swing.JButton
-import javax.swing.ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
 import javax.swing.table.AbstractTableModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -66,9 +65,7 @@ internal class BranchHistoryView(project: Project) : Disposable {
         row { label(toolsMessages.getMessage("branchHistory.log")).component.labelFor = log }
         row { cell(logScroll).align(AlignX.FILL).resizableColumn() }
         row { comment(toolsMessages.getMessage("branchHistory.reverse"), maxLineLength = 30) }
-    }, mapOf(table to tableScroll, log to logScroll)).apply {
-        horizontalScrollBarPolicy = HORIZONTAL_SCROLLBAR_NEVER
-    }
+    }, mapOf(table to tableScroll, log to logScroll))
 
     init {
         apply.addActionListener {

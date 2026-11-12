@@ -35,6 +35,7 @@ import javax.swing.JButton
 import javax.swing.JComponent
 import javax.swing.JProgressBar
 import javax.swing.JTable
+import javax.swing.ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
 import javax.swing.SwingUtilities
 import javax.swing.table.AbstractTableModel
 import kotlinx.coroutines.Dispatchers
@@ -121,6 +122,7 @@ internal fun scrollableToolPanel(
     body: JComponent,
     focusTargets: Map<JComponent, JComponent>,
 ) = ScrollPaneFactory.createScrollPane(body, true).also {
+    it.horizontalScrollBarPolicy = HORIZONTAL_SCROLLBAR_NEVER
     UIUtil.uiTraverser(body).filter(JComponent::class.java).forEach { control ->
         control.whenFocusGained(owner) {
             // Scroll the tool panel even when the focused control handles scrolling internally.

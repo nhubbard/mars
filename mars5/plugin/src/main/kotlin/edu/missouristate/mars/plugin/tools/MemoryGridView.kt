@@ -74,12 +74,12 @@ internal class MemoryGridView(
         marsExecutionRow(selector.component)
         row { cell(base).label(toolsMessages.getMessage("bitmap.base"), LabelPosition.TOP) }
         row {
-            cell(width).label(toolsMessages.getMessage("bitmap.width"), LabelPosition.TOP)
-            cell(height).label(toolsMessages.getMessage("bitmap.height"), LabelPosition.TOP)
+            panel { row { cell(width).label(toolsMessages.getMessage("bitmap.width"), LabelPosition.TOP) } }
+            panel { row { cell(height).label(toolsMessages.getMessage("bitmap.height"), LabelPosition.TOP) } }
         }
         row {
-            cell(unitWidth).label(toolsMessages.getMessage("bitmap.unitWidth"), LabelPosition.TOP)
-            cell(unitHeight).label(toolsMessages.getMessage("bitmap.unitHeight"), LabelPosition.TOP)
+            panel { row { cell(unitWidth).label(toolsMessages.getMessage("bitmap.unitWidth"), LabelPosition.TOP) } }
+            panel { row { cell(unitHeight).label(toolsMessages.getMessage("bitmap.unitHeight"), LabelPosition.TOP) } }
         }
         reference?.let { controls ->
             row(toolsMessages.getMessage("references.words")) { cell(controls.words) }

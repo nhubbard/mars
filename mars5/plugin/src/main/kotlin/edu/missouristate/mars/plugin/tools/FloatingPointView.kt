@@ -26,7 +26,6 @@ import edu.missouristate.mars.plugin.tools.FloatingPointRepresentation.Kind
 import edu.missouristate.mars.util.Binary
 import javax.swing.JButton
 import javax.swing.JEditorPane
-import javax.swing.ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -85,9 +84,7 @@ internal class FloatingPointView(private val project: Project) : Disposable {
         row { feedback = text("").resizableColumn().component }.layout(RowLayout.INDEPENDENT)
         row { comment(toolsMessages.getMessage("float.help")).resizableColumn() }.layout(RowLayout.INDEPENDENT)
     }
-    val component = scrollableToolPanel(this, controls, mapOf(fraction to fractionControl)).apply {
-        horizontalScrollBarPolicy = HORIZONTAL_SCROLLBAR_NEVER
-    }
+    val component = scrollableToolPanel(this, controls, mapOf(fraction to fractionControl))
 
     init {
         register.addActionListener { bindingChanged() }

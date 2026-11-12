@@ -26,7 +26,6 @@ import edu.missouristate.mars.util.Binary
 import javax.swing.DefaultComboBoxModel
 import javax.swing.JButton
 import javax.swing.JProgressBar
-import javax.swing.ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
 import javax.swing.table.AbstractTableModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -67,8 +66,8 @@ internal class DataCacheView(project: Project) : Disposable {
         marsExecutionRow(selector.component)
         row { cell(placement).label(toolsMessages.getMessage("cache.placement"), LabelPosition.TOP) }
         row {
-            cell(blocks).label(toolsMessages.getMessage("cache.blocks"), LabelPosition.TOP)
-            cell(words).label(toolsMessages.getMessage("cache.words"), LabelPosition.TOP)
+            panel { row { cell(blocks).label(toolsMessages.getMessage("cache.blocks"), LabelPosition.TOP) } }
+            panel { row { cell(words).label(toolsMessages.getMessage("cache.words"), LabelPosition.TOP) } }
         }
         row(toolsMessages.getMessage("cache.ways")) { cell(ways) }
         row { cell(replacement).label(toolsMessages.getMessage("cache.replacement"), LabelPosition.TOP) }
@@ -92,9 +91,7 @@ internal class DataCacheView(project: Project) : Disposable {
             row { cell(logScroll).align(AlignX.FILL).resizableColumn() }
         }.expanded = false
         row { comment(toolsMessages.getMessage("cache.scope"), maxLineLength = 30) }
-    }, mapOf(table to tableScroll, log to logScroll)).apply {
-        horizontalScrollBarPolicy = HORIZONTAL_SCROLLBAR_NEVER
-    }
+    }, mapOf(table to tableScroll, log to logScroll))
 
     init {
         placement.addActionListener { updateWays() }
