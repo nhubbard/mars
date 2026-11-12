@@ -21,6 +21,7 @@ import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.COMMA
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.DOLLAR_WORD
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.INVALID_CHARACTER
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.LEFT_PAREN
+import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.MACRO
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.MINUS
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.MNEMONIC
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.NEWLINE
@@ -164,10 +165,20 @@ private fun SyntaxTreeBuilder.recoverBadToken(messageKey: String): Boolean {
 
 /** Report a rejected header and leave the following line in its original scope. */
 @Suppress("UNUSED_PARAMETER")
-internal fun recoverInvalidMacroName(runtime: SyntaxGeneratedParserRuntime, level: Int): Boolean {
+internal fun recoverMissingMacroName(runtime: SyntaxGeneratedParserRuntime, level: Int): Boolean {
     val builder = runtime.syntaxBuilder
-    val message = if (builder.tokenType.endsLine()) "syntax.macro.name.missing" else "syntax.macro.name.invalid"
-    builder.recoverMacroTail(message)
+    if (builder.tokenType != MACRO || !builder.lookAhead(1).endsLine()) return false
+    val directive = builder.mark()
+    val followsLabel = builder.previousToken(separators) == COLON
+    builder.advanceLexer()
+    // The timeline decides whether a label is stripped before interpreting this directive.
+    if (followsLabel) directive.drop() else directive.error(syntaxMessages.getMessage("syntax.macro.name.missing"))
+    return true
+}
+
+@Suppress("UNUSED_PARAMETER")
+internal fun recoverInvalidMacroName(runtime: SyntaxGeneratedParserRuntime, level: Int): Boolean {
+    runtime.syntaxBuilder.recoverMacroTail("syntax.macro.name.invalid")
     return true
 }
 
@@ -191,14 +202,10 @@ private fun SyntaxTreeBuilder.recoverMacroTail(messageKey: String) {
     val prefix = Tokenizer().tokenizeLine(1, text.subSequence(start, offset).toString(), ErrorList(), false)
     if (prefix.size() < 2 || prefix[1].type != TokenTypes.COLON) {
         val message = syntaxMessages.getMessage(messageKey)
-        if (tokenType.endsLine()) {
-            error(message)
-        } else {
-            val marker = mark()
-            if (tokenType in signs && signAttachesToNumber(previousToken(separators))) advanceLexer()
-            advanceLexer()
-            marker.error(message)
-        }
+        val marker = mark()
+        if (tokenType in signs && signAttachesToNumber(previousToken(separators))) advanceLexer()
+        advanceLexer()
+        marker.error(message)
     }
     while (!tokenType.endsLine()) advanceLexer()
 }

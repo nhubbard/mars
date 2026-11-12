@@ -769,6 +769,18 @@ class MipsMacroInspectionPlatformTest {
         }
 
     @Test
+    fun `missing macro names mark the directive before comments and at the end of the file`() = timeoutRunBlocking<Unit> {
+        val source = ".MaCrO,, # keep\nnop\n.eqv OPEN .macro\nOPEN # keep\nnop\n.macro"
+        val expected = listOf(".MaCrO", "OPEN", ".macro").map { it to "Expected a macro name" }
+        withContext(Dispatchers.EDT) {
+            for (extension in listOf("s", "asm", "mars", "inc")) {
+                fixture.configureByText("missing-macro-name.$extension", source)
+                assertEquals(expected, errors(), extension)
+            }
+        }
+    }
+
+    @Test
     fun `expanded openers diagnose missing and invalid names at the original tokens`(@TempDir directory: Path) =
         timeoutRunBlocking<Unit> {
             val source = """

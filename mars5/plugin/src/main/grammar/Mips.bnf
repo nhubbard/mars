@@ -1,7 +1,7 @@
 {
   generate=[psi="no" parser-api="syntax"]
   parserClass="edu.missouristate.mars.plugin.language.parser.MipsParser"
-  parserImports=["edu.missouristate.mars.plugin.language.syntax.continueOperand" "edu.missouristate.mars.plugin.language.syntax.startsSignedNumber" "edu.missouristate.mars.plugin.language.syntax.isDetachedDataRepeat" "edu.missouristate.mars.plugin.language.syntax.isShortEquivalence" "edu.missouristate.mars.plugin.language.syntax.isIncludeLine" "edu.missouristate.mars.plugin.language.syntax.recoverBadIncludeToken" "edu.missouristate.mars.plugin.language.syntax.recoverBadOperandToken" "edu.missouristate.mars.plugin.language.syntax.recoverInvalidOperandExpression" "edu.missouristate.mars.plugin.language.syntax.recoverInvalidMacroName" "edu.missouristate.mars.plugin.language.syntax.recoverInvalidMacroFormal" "edu.missouristate.mars.plugin.language.syntax.recoverMalformedMacroEnd" "edu.missouristate.mars.plugin.language.syntax.recoverCharacterLiteral" "edu.missouristate.mars.plugin.language.syntax.recoverStatement" "edu.missouristate.mars.plugin.language.syntax.parseCompleteOperands"]
+  parserImports=["edu.missouristate.mars.plugin.language.syntax.continueOperand" "edu.missouristate.mars.plugin.language.syntax.startsSignedNumber" "edu.missouristate.mars.plugin.language.syntax.isDetachedDataRepeat" "edu.missouristate.mars.plugin.language.syntax.isShortEquivalence" "edu.missouristate.mars.plugin.language.syntax.isIncludeLine" "edu.missouristate.mars.plugin.language.syntax.recoverBadIncludeToken" "edu.missouristate.mars.plugin.language.syntax.recoverBadOperandToken" "edu.missouristate.mars.plugin.language.syntax.recoverInvalidOperandExpression" "edu.missouristate.mars.plugin.language.syntax.recoverMissingMacroName" "edu.missouristate.mars.plugin.language.syntax.recoverInvalidMacroName" "edu.missouristate.mars.plugin.language.syntax.recoverInvalidMacroFormal" "edu.missouristate.mars.plugin.language.syntax.recoverMalformedMacroEnd" "edu.missouristate.mars.plugin.language.syntax.recoverCharacterLiteral" "edu.missouristate.mars.plugin.language.syntax.recoverStatement" "edu.missouristate.mars.plugin.language.syntax.parseCompleteOperands"]
   syntaxElementTypeHolderClass="edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes"
   extends(".*_expr")=expr
   tokens=[
@@ -60,7 +60,7 @@ private macro_statement ::= !macro_end macro_body_statement
 macro_body_statement ::= (include_line | label macro_body? | macro_body) {elementType=statement recoverWhile=line_recover}
 private macro_body ::= macro_header | macro_instruction | macro_directive_statement | non_macro_body | macro_data_continuation | <<recoverStatement>>
 // Keep the signature for include-aware binding without opening a nested PSI body.
-macro_header ::= MACRO (&macro_name macro_signature | <<recoverInvalidMacroName>>)
+macro_header ::= <<recoverMissingMacroName>> | MACRO (&macro_name macro_signature | <<recoverInvalidMacroName>>)
 // MARS leaves the macro open if the closing directive has additional tokens.
 private macro_end ::= END_MACRO &line_end
 private malformed_macro_end ::= END_MACRO <<recoverMalformedMacroEnd>>
