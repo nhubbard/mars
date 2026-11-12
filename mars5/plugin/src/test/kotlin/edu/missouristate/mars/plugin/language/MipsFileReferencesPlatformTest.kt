@@ -171,6 +171,41 @@ class MipsFileReferencesPlatformTest {
     }
 
     @Test
+    fun `Go to Declaration opens binary classified include text as MIPS and keeps the physical file reference`() =
+        timeoutRunBlocking<Unit> {
+            val source = ".include \"parts/opaque.png\"\n.include \"parts/plain.txt\"\nli \$t0, VALUE\n"
+            val definitions = ".include \"nested.inc\"\n.eqv VALUE 7\n"
+            val (binary, ordinary, nested) = withContext(Dispatchers.EDT) {
+                val binary = fixture.tempDirFixture.createFile("parts/opaque.png", definitions)
+                val ordinary = fixture.tempDirFixture.createFile("parts/plain.txt", "# ordinary text include\n")
+                val nested = fixture.addFileToProject("parts/nested.inc", "nop\n").virtualFile
+                val entry = fixture.addFileToProject("entry.mars", source)
+                fixture.configureFromExistingVirtualFile(entry.virtualFile)
+                listOf(binary, ordinary, nested)
+            }
+            val ide = project.get()
+            IndexingTestUtil.suspendUntilIndexesAreReady(ide)
+            withContext(Dispatchers.EDT) {
+                fun target(offset: Int) = GotoDeclarationAction.findTargetElement(ide, fixture.editor, offset)
+                val offset = source.indexOf("opaque.png") + 1
+                assertTrue(binary.fileType.isBinary)
+                val physical = PsiManager.getInstance(ide).findFile(binary)
+                assertNotNull(physical)
+                assertSame(physical, fixture.file.findReferenceAt(offset)?.resolve())
+                val generated = assertInstanceOf(MipsFile::class.java, target(offset))
+                assertSame(binary, generated.virtualFile.mipsAssemblySourceOrigin)
+                assertEquals(definitions, generated.text)
+                assertFalse(generated.virtualFile.isWritable)
+                assertSame(generated, target(offset))
+                assertSame(generated, target(source.indexOf("VALUE") + 1)?.containingFile)
+                assertEquals(ordinary, target(source.indexOf("plain.txt") + 1)?.containingFile?.virtualFile)
+
+                fixture.openFileInEditor(generated.virtualFile)
+                assertEquals(nested, target(definitions.indexOf("nested.inc") + 1)?.containingFile?.virtualFile)
+            }
+        }
+
+    @Test
     fun `include paths hidden by a malformed character recover references and update highlighting after edits`() =
         timeoutRunBlocking<Unit> {
             val source = "'a#xx .include,, \"part.s\"\nli \$t0, COUNT\n"

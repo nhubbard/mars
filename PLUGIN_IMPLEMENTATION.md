@@ -698,8 +698,9 @@ through read-only MIPS PSI within IntelliJ's content-loading limit. The editor u
 available text document or the assembler's disk decoder. Nested includes resolve relative
 to the original directory. File and document changes invalidate the cached context.
 Completion and contextual highlighting can use these definitions. Go to Declaration on a
-symbol or on the filename of an ignored include opens the captured MIPS text. The filename
-action leaves the file outside IntelliJ's ordinary file references and refactoring scope.
+symbol or on the filename of an ignored or binary-classified include opens the captured
+MIPS text. The captured view stays outside the file reference graph. A binary file's
+native reference still points to the physical file for refactoring.
 Oversized files still participate in assembly and use assembled source locations for macro
 and label navigation.
 
