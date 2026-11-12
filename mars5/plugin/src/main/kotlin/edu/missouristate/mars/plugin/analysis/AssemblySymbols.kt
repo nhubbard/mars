@@ -28,7 +28,7 @@ internal class AssemblySymbols(
     val exceptionHandler get() = capture.exceptionHandler
     val sourceExcerpts by lazy { MarsExecutionSources(capture) }
     private val sourcesByUrl = revisions.keys.associateBy { VfsUtilCore.pathToUrl(it.invariantSeparatorsPathString) }
-    val macroCallSites = symbols.macroCalls().entries.groupBy { it.key.location() }
+    val macroCallSites = symbols.macroCalls().entries.groupBy { it.key.location }
     val assembledMacroUsages: Map<SourceToken, Set<SourceToken>> = buildMap<SourceToken, MutableSet<SourceToken>> {
         for ((site, calls) in symbols.macroCalls()) {
             ProgressManager.checkCanceled()
@@ -39,7 +39,7 @@ internal class AssemblySymbols(
         buildMap<SourceToken, MutableSet<SourceToken>> {
             for ((site, bindings) in symbols.symbolUses()) {
                 ProgressManager.checkCanceled()
-                for (binding in bindings) getOrPut(binding.definition(), ::LinkedHashSet).add(site)
+                for (binding in bindings) getOrPut(binding.definition, ::LinkedHashSet).add(site)
             }
         }
     }
@@ -62,7 +62,7 @@ internal class AssemblySymbols(
     private fun collectNames(definitions: Map<String, AssemblySymbolMap.Definition>) = TreeSet<String>().apply {
         for ((name, definition) in definitions) {
             ProgressManager.checkCanceled()
-            if (definition.macroPrivate()) continue
+            if (definition.macroPrivate) continue
             val type = TokenTypes.matchTokenType(name)
             if (type == TokenTypes.IDENTIFIER || type == TokenTypes.OPERATOR) add(name)
         }

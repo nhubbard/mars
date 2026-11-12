@@ -112,12 +112,12 @@ internal suspend fun EditorAssemblyCapture.expansionAt(file: MipsFile, line: Int
 internal fun instructionStep(project: Project, editor: Editor, preview: ExpansionPreview.Instructions) =
     object : BaseListPopupStep<AssembledInstruction>(messages.getMessage("expansion.title"), preview.rows) {
         override fun getTextFor(value: AssembledInstruction): String =
-            "${Binary.intToHexString(value.address())}  ${Binary.intToHexString(value.encoding())}  ${value.assembly()}"
+            "${Binary.intToHexString(value.address)}  ${Binary.intToHexString(value.encoding)}  ${value.assembly}"
 
         override fun hasSubstep(selectedValue: AssembledInstruction) = true
 
         override fun onChosen(selectedValue: AssembledInstruction, finalChoice: Boolean) =
-            originStep(project, editor, MarsExecutionSources(preview.capture.sources), selectedValue.origin())
+            originStep(project, editor, MarsExecutionSources(preview.capture.sources), selectedValue.origin!!)
     }
 
 private fun originStep(project: Project, editor: Editor, sources: MarsExecutionSources, origin: Origin) =
@@ -125,12 +125,12 @@ private fun originStep(project: Project, editor: Editor, sources: MarsExecutionS
         messages.getMessage("expansion.origin.title"), generateSequence(origin, Origin::caller).toList(),
     ) {
         override fun getTextFor(value: Origin): String {
-            val location = value.location()
+            val location = value.location
             return "${location.file()}:${location.line()}"
         }
 
         override fun onChosen(selectedValue: Origin, finalChoice: Boolean) = doFinalStep {
-            val location = selectedValue.location()
+            val location = selectedValue.location
             val target = sources.currentLineDescriptor(project, location)
             if (target == null) {
                 HintManager.getInstance().showErrorHint(editor, messages.getMessage("expansion.unavailable.changed"))

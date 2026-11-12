@@ -348,7 +348,7 @@ internal class MarsProcessHandler(
         val origin = (event.cause as? ProcessingException)?.instructionOrigin() ?: return
         val view = console ?: return
         for ((index, frame) in generateSequence(origin, Origin::caller).withIndex()) {
-            val location = frame.location()
+            val location = frame.location
             val label = if (index == 0) "run.runtime.source" else "run.runtime.caller"
             view.print(runMessages.getMessage(label) + " ", ConsoleViewContentType.SYSTEM_OUTPUT)
             view.printHyperlink("${location.file().invariantSeparatorsPathString}:${location.line()}", sources.hyperlink(project, location))

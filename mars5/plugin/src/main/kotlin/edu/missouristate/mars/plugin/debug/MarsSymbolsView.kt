@@ -58,27 +58,27 @@ internal class LoadedSymbols(private val symbols: AssemblySymbolMap, val sources
         }
     }
 
-    private val definitionsBySite = rows.groupBy { it.location to it.definition.column() }
-        .mapValues { (_, rows) -> rows.groupBy(AssembledSymbol::name) { it.definition.address() } }
+    private val definitionsBySite = rows.groupBy { it.location to it.definition.column }
+        .mapValues { (_, rows) -> rows.groupBy(AssembledSymbol::name) { it.definition.address } }
 
     /** An external declaration can expand or normalize its spelling at this captured source site. */
     fun addressAt(site: SourceToken, spelling: String?): Int? {
         val bindings = symbols.symbolUses()[site]
         val addresses = if (bindings == null) {
-            val definitions = definitionsBySite.getOrDefault(site.location() to site.column(), emptyMap())
+            val definitions = definitionsBySite.getOrDefault(site.location to site.column, emptyMap())
             if (spelling == null) definitions.values.flatten() else definitions.getOrDefault(spelling, emptyList())
         } else {
-            if (spelling != null && bindings.any { it.name() != spelling }) return null
-            bindings.map { it.address() }
+            if (spelling != null && bindings.any { it.name != spelling }) return null
+            bindings.map { it.address }
         }
         return addresses.distinct().singleOrNull()
     }
 }
 
 internal data class AssembledSymbol(val name: String, val definition: Definition, val unit: Path?) {
-    val location get() = definition.origin()?.location()
+    val location get() = definition.origin?.location
     val scope get() = when {
-        definition.macroPrivate() -> "macro"
+        definition.macroPrivate -> "macro"
         unit != null -> "local"
         else -> "global"
     }
@@ -136,8 +136,8 @@ internal class MarsSymbolsView(
     private val inspectAddress = JButton(runMessages.getMessage("debug.symbols.inspect")).apply { isEnabled = false }
     private val model = ListTableModel<AssembledSymbol>(
         column(MarsSymbolColumn.NAME, AssembledSymbol::name),
-        column(MarsSymbolColumn.ADDRESS, { display.formatAddress(it.definition.address()) }, compareBy { it.definition.address().toUInt() }),
-        column(MarsSymbolColumn.KIND) { runMessages.getMessage("debug.symbols.kind.${it.definition.kind().name.lowercase(Locale.ROOT)}") },
+        column(MarsSymbolColumn.ADDRESS, { display.formatAddress(it.definition.address) }, compareBy { it.definition.address.toUInt() }),
+        column(MarsSymbolColumn.KIND) { runMessages.getMessage("debug.symbols.kind.${it.definition.kind.name.lowercase(Locale.ROOT)}") },
         column(MarsSymbolColumn.SCOPE) { runMessages.getMessage("debug.symbols.scope.${it.scope}") },
         column(MarsSymbolColumn.UNIT) { it.unit?.let(::displayPath).orEmpty() },
         column(MarsSymbolColumn.DEFINITION) { it.location?.let { site -> "${displayPath(site.file())}:${site.line()}" }.orEmpty() },
@@ -201,7 +201,7 @@ internal class MarsSymbolsView(
         table.selectionModel.addListSelectionListener { openSource.isEnabled = table.selectedObject?.location != null }
         openSource.addActionListener {
             val symbol = table.selectedObject!!
-            displayed!!.sources.hyperlink(project, symbol.location!!, symbol.definition.column()).navigate(project)
+            displayed!!.sources.hyperlink(project, symbol.location!!, symbol.definition.column).navigate(project)
         }
 
         EditorFactory.getInstance().eventMulticaster.addDocumentListener(object : DocumentListener {

@@ -169,13 +169,13 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
             ui.addContent(listing, 3, PlaceInGrid.center, false)
             val symbols = MarsSymbolsView(session.project, loadedSymbols)
             symbols.bindAddressInspection(session) { definition ->
-                when (definition.kind()) {
+                when (definition.kind) {
                     Kind.TEXT -> {
-                        disassembly.showAddress(definition.address())
+                        disassembly.showAddress(definition.address)
                         ui.selectAndFocus(listing, true, true)
                     }
                     Kind.DATA, Kind.EXTERNAL -> {
-                        view.showAddress(definition.address())
+                        view.showAddress(definition.address)
                         ui.selectAndFocus(content, true, true)
                     }
                 }
@@ -543,7 +543,7 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
     }
 
     private fun sourcePosition(origin: Origin?): XSourcePosition? =
-        origin?.let { sourcePosition(it.location()) }
+        origin?.let { sourcePosition(it.location) }
 
     private fun sourcePosition(location: Location): XSourcePosition = sources.position(location)
 

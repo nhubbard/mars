@@ -1493,10 +1493,10 @@ Venus was retired after plugin qualification. These links point to the archived 
 
 | Source | Mapping ID |
 | --- | --- |
-| [AssembledInstruction.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/api/AssembledInstruction.java) | C03, D01 |
+| [AssembledInstruction.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/api/AssembledInstruction.kt) | C03, D01 |
 | [AssemblySourceSnapshot.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/api/AssemblySourceSnapshot.kt) | B01, B04 |
-| [AssemblySymbolMap.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/api/AssemblySymbolMap.java) | C03, V06 |
-| [InstructionSourceMap.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/api/InstructionSourceMap.java) | C03, D01, D02 |
+| [AssemblySymbolMap.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/api/AssemblySymbolMap.kt) | C03, V06 |
+| [InstructionSourceMap.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/api/InstructionSourceMap.kt) | C03, D01, D02 |
 | [AssemblySymbolUses.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/assembler/AssemblySymbolUses.java) | C03, E07, E08 |
 | [AssemblyImage.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/core/AssemblyImage.kt) | B04, R05 |
 | [MemoryDumpSnapshot.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/mips/dump/MemoryDumpSnapshot.kt) | B05 |

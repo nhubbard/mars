@@ -288,11 +288,11 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         build: AssemblySymbols, source: Path, name: String, allowExternal: Boolean, exportSite: SourceToken?,
     ): PsiElement? {
         val definition = build.localSymbols(source)[name] ?: build.symbols.globals()[name] ?: return null
-        if (definition.kind() == Kind.EXTERNAL && !allowExternal) return null
+        if (definition.kind == Kind.EXTERNAL && !allowExternal) return null
         // A global can belong to a different assembly root. Only use a binding recorded for this export operand.
-        if (exportSite != null && build.symbols.symbolUses()[exportSite].orEmpty().none { it.name() == name }) return null
+        if (exportSite != null && build.symbols.symbolUses()[exportSite].orEmpty().none { it.name == name }) return null
 
-        val location = definition.origin()?.location() ?: return null
+        val location = definition.origin?.location ?: return null
         var target: Document? = null
         val valid = build.validateSourceDocuments { path, document, revision ->
             if (path == location.file()) target = document
@@ -302,7 +302,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         val document = target
         val manager = PsiDocumentManager.getInstance(project)
         if (document != null && !manager.isCommitted(document)) return null
-        val (file, offset) = build.declarationPosition(document, location, definition.column()) ?: return null
+        val (file, offset) = build.declarationPosition(document, location, definition.column) ?: return null
         return if (file is MipsFile) file.findElementAt(offset) else MipsIncludedDeclaration.at(file, offset)
     }
 
@@ -346,10 +346,10 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
             val documents = FileDocumentManager.getInstance()
             calls.mapNotNull { call ->
                 val target = call.definition()
-                val location = target.location()
+                val location = target.location
                 val document = if (location.file() in snapshot.diskSources) null
                     else documents.getDocument(files.findFileByNioPath(location.file())!!)
-                val (file, offset) = snapshot.declarationPosition(document, location, target.column()) ?: return@mapNotNull null
+                val (file, offset) = snapshot.declarationPosition(document, location, target.column) ?: return@mapNotNull null
                 Triple(call, file, offset)
             }
         }.orEmpty()
@@ -364,7 +364,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         val psi = PsiManager.getInstance(project)
         return assembledUsageSites(target).mapNotNull { (site, snapshot) ->
             ProgressManager.checkCanceled()
-            val location = site.location()
+            val location = site.location
             val original = files.findFileByNioPath(location.file())!!
             // A local scope restricted to a PSI subtree cannot include an off-preview occurrence.
             val inScope = if (scope is LocalSearchScope) scope.scope.any { it is PsiFile && it.virtualFile == original }
@@ -373,9 +373,9 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
             if (location.file() !in snapshot.diskSources) {
                 val document = documents.getDocument(original)!!
                 if (!documents.isPartialPreviewOfALargeFile(document) ||
-                    document.sourceOffset(location.line() - 1, site.column()) != null) return@mapNotNull null
+                    document.sourceOffset(location.line() - 1, site.column) != null) return@mapNotNull null
             }
-            val (excerpt, offset) = snapshot.sourceExcerpts.excerptPosition(location, site.column(), original) ?: return@mapNotNull null
+            val (excerpt, offset) = snapshot.sourceExcerpts.excerptPosition(location, site.column, original) ?: return@mapNotNull null
             psi.findFile(excerpt)!! to offset
         }
     }
@@ -418,12 +418,12 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
     }
 
     internal fun sourceTokenPosition(target: SourceToken): Pair<PsiFile, Int>? {
-        val location = target.location()
+        val location = target.location
         // The source snapshot has already validated each physical file and its committed document.
         val source = VirtualFileManager.getInstance().findFileByNioPath(location.file())!!
         if (source.fileType.isBinary) return null
         val file = PsiManager.getInstance(project).findFile(source) ?: return null
-        return file.fileDocument.sourceOffset(location.line() - 1, target.column())?.let { file to it }
+        return file.fileDocument.sourceOffset(location.line() - 1, target.column)?.let { file to it }
     }
 
     private fun AssemblySymbols.declarationPosition(document: Document?, location: Location, column: Int?): Pair<PsiFile, Int>? {
@@ -551,7 +551,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
             val start = document.getLineStartOffset(line)
             val column = caret - start + 1
             val site = snapshot.macroCallSites[Location(path, line + 1)].orEmpty()
-                .filter { it.key.column() <= column }.maxByOrNull { it.key.column() }
+                .filter { it.key.column <= column }.maxByOrNull { it.key.column }
                 ?: return@fromAssemblySymbols null
             if (!snapshot.hasCurrentMacroSources()) return@fromAssemblySymbols null
             val previous = root.findElementAt(caret - 1).elementType

@@ -328,7 +328,7 @@ class CapturedAssemblySourcesPlatformTest {
             val statements = session.program.machineList
             assertEquals(listOf(0, 0x24080007, 0x24090008, 0, 0, 0, 0), statements.dropLast(2).map { it.binaryStatement })
             val location = Location(largePath, instructionLine)
-            assertEquals(location, result.program()!!.sourceMap().origins()[statements[1].address]?.location())
+            assertEquals(location, result.program()!!.sourceMap().origins()[statements[1].address]?.location)
             val ide = project.get()
             val analysis = ide.service<MarsAnalysisService>()
             analysis.publishBuiltSymbols(analysis.beginSymbolBuild(entry), capture, result.program()!!.symbolMap())
@@ -397,8 +397,8 @@ class CapturedAssemblySourcesPlatformTest {
             }
             val definition = result.program()!!.symbolMap().locals().getValue(entry).getValue("target")
             val wide = result.program()!!.symbolMap().locals().getValue(entry).getValue("farTarget")
-            val withoutColumn = Definition(wide.address(), wide.kind(), wide.origin())
-            val badColumn = Definition(definition.address(), definition.kind(), definition.origin(), definition.macroPrivate(), 100)
+            val withoutColumn = Definition(wide.address, wide.kind, wide.origin)
+            val badColumn = Definition(definition.address, definition.kind, definition.origin, definition.macroPrivate, 100)
             analysis.publishBuiltSymbols(analysis.beginSymbolBuild(entry), capture,
                 AssemblySymbolMap(mapOf(entry to mapOf("target" to badColumn, "farTarget" to withoutColumn)), emptyMap()))
             readAction {

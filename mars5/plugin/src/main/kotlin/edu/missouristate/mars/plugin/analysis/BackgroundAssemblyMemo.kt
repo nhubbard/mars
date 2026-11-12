@@ -51,7 +51,7 @@ private fun Program.pseudoExpansions(): Map<Path, Map<Int, List<String>>> = buil
     for (instruction in pseudoInstructions(ProgressManager::checkCanceled)) {
         ProgressManager.checkCanceled()
         // Macro arguments are concrete at the outermost invocation, not in the macro definition.
-        val location = generateSequence(instruction.origin(), Origin::caller).last().location()
-        getOrPut(location.file(), ::LinkedHashMap).getOrPut(location.line(), ::ArrayList).add(instruction.assembly())
+        val location = generateSequence(instruction.origin!!, Origin::caller).last().location
+        getOrPut(location.file(), ::LinkedHashMap).getOrPut(location.line(), ::ArrayList).add(instruction.assembly)
     }
 }

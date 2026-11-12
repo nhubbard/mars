@@ -142,10 +142,10 @@ class MipsSymbolRenamePlatformTest {
 
                 val largePath = large.toNioPath()
                 val hidden = symbols.symbolUses().entries.first { (site) ->
-                    site.location().file() == largePath && site.location().line() > capture.previewLineCounts.getValue(largePath)
+                    site.location.file() == largePath && site.location.line() > capture.previewLineCounts.getValue(largePath)
                 }
                 val malformed = AssemblySymbolMap(symbols.locals(), symbols.globals(), emptyMap(),
-                    mapOf(SourceToken(hidden.key.location(), 100) to hidden.value))
+                    mapOf(SourceToken(hidden.key.location, 100) to hidden.value))
                 analysis.publishBuiltSymbols(analysis.beginSymbolBuild(path), capture, malformed)
                 results.clear()
                 searcher.processElementUsages(target, collect, options)

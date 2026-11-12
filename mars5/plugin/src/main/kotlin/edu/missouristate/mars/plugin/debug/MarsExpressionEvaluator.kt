@@ -234,7 +234,7 @@ internal class MarsExpressionEvaluator(
             ?: RegisterNames.integer(name)?.let { registers.getValue(it.name) }
             ?: symbolAddress(name)?.let(::Word)
 
-    private fun symbolAddress(name: String): Int? = (localSymbols[name] ?: globalSymbols[name])?.address()
+    private fun symbolAddress(name: String): Int? = (localSymbols[name] ?: globalSymbols[name])?.address
 
     private fun signedWord(operator: ASTNode, operand: ASTNode): Immediate? {
         if (operator.elementType != minusType || operand.elementType != literalType ||

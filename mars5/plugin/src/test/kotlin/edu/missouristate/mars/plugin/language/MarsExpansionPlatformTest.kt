@@ -168,8 +168,8 @@ class MarsExpansionPlatformTest {
         val origin = Location(defs.toNioPath(), 2)
         val useLocation = Location(body.toNioPath(), 1)
         assertEquals(listOf(0x00400004, 0x00400008), preview.rows.map(AssembledInstruction::address))
-        assertEquals(origin, preview.rows.first().origin().location())
-        assertEquals(useLocation, preview.rows.first().origin().caller().location())
+        assertEquals(origin, preview.rows.first().origin!!.location)
+        assertEquals(useLocation, preview.rows.first().origin!!.caller!!.location)
         val sources = MarsExecutionSources(preview.capture.sources)
         val definition = readAction {
             val view = checkNotNull(sources.currentLineDescriptor(current, origin)).file
@@ -229,7 +229,7 @@ class MarsExpansionPlatformTest {
             }
             IndexingTestUtil.suspendUntilIndexesAreReady(current)
             val preview = inspectExpansion(entry, 3, text) as ExpansionPreview.Instructions
-            val origin = preview.rows.first().origin().location()
+            val origin = preview.rows.first().origin!!.location
             assertEquals(Location(include.toNioPath(), count + 2), origin)
             val sources = MarsExecutionSources(preview.capture.sources)
             readAction {
@@ -280,7 +280,7 @@ class MarsExpansionPlatformTest {
             showExpansionPreview(current, editor, ExpansionPreview.Unavailable.EMPTY)
         }
         val preview = inspectExpansion(file, 2, nextText) as ExpansionPreview.Instructions
-        assertEquals("nop", preview.rows.single().assembly().trim())
+        assertEquals("nop", preview.rows.single().assembly.trim())
         val unrelated = withContext(Dispatchers.EDT) { fixture.addFileToProject("unrelated.txt", "new file").virtualFile }
         val afterUnrelatedEdit = preview.capture.expansionAt(file, 2) as ExpansionPreview.Instructions
         assertEquals(preview.rows, afterUnrelatedEdit.rows)
@@ -292,7 +292,7 @@ class MarsExpansionPlatformTest {
             assertNull(sources.currentLineDescriptor(current, Location(path.parent, 1)))
             assertNull(sources.currentLineDescriptor(current, Location(unrelated.toNioPath(), 1)))
             WriteCommandAction.runWriteCommandAction(current) { fixture.editor.document.insertString(0, "# changed\n") }
-            assertNull(sources.currentLineDescriptor(current, preview.rows.single().origin().location()))
+            assertNull(sources.currentLineDescriptor(current, preview.rows.single().origin!!.location))
         }
         assertEquals(ExpansionPreview.Unavailable.CHANGED, preview.capture.expansionAt(file, 2))
         withContext(Dispatchers.EDT) {

@@ -531,8 +531,8 @@ class MarsBuildPlatformTest {
             val previous = analysis.backgroundAssembly.assemble(first.sources, first.structureStamp, first.options)
             val previousSymbols = requireNotNull(previous.symbols)
             analysis.publishBackgroundSymbols(previousSymbols)
-            assertTrue(previousSymbols.symbols.globals().getValue("fromAlpha").address() <
-                previousSymbols.symbols.globals().getValue("fromZulu").address())
+            assertTrue(previousSymbols.symbols.globals().getValue("fromAlpha").address <
+                previousSymbols.symbols.globals().getValue("fromZulu").address)
             val reordered = listOf(paths[0], paths[2], paths[1])
             withContext(Dispatchers.EDT) { settings.changeSources(reordered.map { it.toString() }) }
             val refreshed = readAction {
@@ -548,8 +548,8 @@ class MarsBuildPlatformTest {
             }
             val result = analysis.backgroundAssembly.assemble(refreshed.sources, refreshed.structureStamp, refreshed.options)
             val symbols = requireNotNull(result.symbols)
-            assertTrue(symbols.symbols.globals().getValue("fromZulu").address() <
-                symbols.symbols.globals().getValue("fromAlpha").address())
+            assertTrue(symbols.symbols.globals().getValue("fromZulu").address <
+                symbols.symbols.globals().getValue("fromAlpha").address)
             project.service<MarsBuildService>().assemble(requireNotNull(settings.projectSourceSet()))
             withContext(Dispatchers.EDT) {
                 edit(alpha.virtualFile, ".globl fromAlpha\nfromAlpha: nop\n")
@@ -616,7 +616,7 @@ class MarsBuildPlatformTest {
         assertTrue(readAction { annotator.acceptResult(fixed, oldDiagnostic).isEmpty() })
         val compactAnalysis = analyzeFixed()
         assertTrue(compactAnalysis.diagnostics.isEmpty())
-        assertEquals(0x3000, requireNotNull(compactAnalysis.symbols).localSymbols.getValue("fixed").address())
+        assertEquals(0x3000, requireNotNull(compactAnalysis.symbols).localSymbols.getValue("fixed").address)
         assertTrue(build.assemble(fixed.virtualFile.toNioPath()))
 
         withContext(Dispatchers.EDT) { settings.changeMemoryLayout(MarsMemoryLayout.TEXT_AT_ZERO) }
@@ -1549,11 +1549,11 @@ class MarsBuildPlatformTest {
             val symbols = AssemblySymbolMap(mapOf(path to mapOf("generated" to value)), emptyMap())
             analysis.publishBuiltSymbols(analysis.beginSymbolBuild(path), capture, symbols)
         }
-        publishWithoutColumn(Definition(definition.address(), definition.kind(), definition.origin()))
+        publishWithoutColumn(Definition(definition.address, definition.kind, definition.origin))
         readAction { assertEquals("%entry", target(entry)?.text) }
-        publishWithoutColumn(Definition(definition.address(), definition.kind(), definition.origin(), definition.macroPrivate(), 500))
+        publishWithoutColumn(Definition(definition.address, definition.kind, definition.origin, definition.macroPrivate, 500))
         readAction { assertNull(target(entry)) }
-        publishWithoutColumn(Definition(definition.address(), definition.kind(), null))
+        publishWithoutColumn(Definition(definition.address, definition.kind, null))
         readAction { assertNull(target(entry)) }
         val missingRevision = capture.copy(revisions = capture.revisions - setOf(includePath))
         analysis.publishBuiltSymbols(analysis.beginSymbolBuild(path), missingRevision, program.symbolMap())
@@ -1571,7 +1571,7 @@ class MarsBuildPlatformTest {
         val plainComponent = MarsSessionService.createMarsComponent()
         val plainProgram = plainComponent.context().use { plainCapture.assembleIn(plainComponent).program()!! }
         analysis.publishBuiltSymbols(analysis.beginSymbolBuild(path), plainCapture, plainProgram.symbolMap())
-        assertEquals(plainPath, plainProgram.symbolMap().locals()[path]?.get("generated")?.origin()?.location()?.file())
+        assertEquals(plainPath, plainProgram.symbolMap().locals()[path]?.get("generated")?.origin?.location?.file())
         val plainDeclaration = readAction {
             target(entry)!!.also {
                 assertEquals(plain, it.containingFile.virtualFile)
@@ -1597,7 +1597,7 @@ class MarsBuildPlatformTest {
         val ignoredProgram = ignoredComponent.context().use { ignoredCapture.assembleIn(ignoredComponent).program()!! }
         analysis.publishBuiltSymbols(analysis.beginSymbolBuild(path), ignoredCapture, ignoredProgram.symbolMap())
         readAction {
-            assertEquals(ignored.toNioPath(), ignoredProgram.symbolMap().locals()[path]?.get("generated")?.origin()?.location()?.file())
+            assertEquals(ignored.toNioPath(), ignoredProgram.symbolMap().locals()[path]?.get("generated")?.origin?.location?.file())
             assertNull(PsiManager.getInstance(project).findFile(ignored))
             assertNull(target(entry))
         }
@@ -1701,8 +1701,8 @@ class MarsBuildPlatformTest {
                     assertEquals(expected.symbolMap(), result.program()!!.symbolMap())
                     assertTrue("ignored" !in result.program()!!.symbolMap().locals()[entry].orEmpty())
                     val origin = result.program()!!.sourceMap().origins().values.single()
-                    assertEquals(Location(include, 5), origin.location())
-                    assertEquals(Location(entry, 4), origin.caller().location())
+                    assertEquals(Location(include, 5), origin.location)
+                    assertEquals(Location(entry, 4), origin.caller!!.location)
                     val base = ide.memory.dataBaseAddress
                     assertEquals(listOf(0xe9, 0xff, 0), (0..2).map { ide.memory.getByte(base + it) })
                 }

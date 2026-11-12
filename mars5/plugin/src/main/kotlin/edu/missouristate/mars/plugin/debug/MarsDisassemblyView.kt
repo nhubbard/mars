@@ -118,7 +118,7 @@ internal fun disassemblyWindow(
             address.toInt(),
             statement?.let { Binary.intToHexString(it.binaryStatement) } ?: "—",
             statement?.printableBasicAssemblyStatement?.trimEnd() ?: "—",
-            statement?.instructionOrigin?.location(),
+            statement?.instructionOrigin?.location,
             address == pc && markers.nextIsDelaySlot,
             markers.previous?.takeIf { it.address == address.toInt() },
         )

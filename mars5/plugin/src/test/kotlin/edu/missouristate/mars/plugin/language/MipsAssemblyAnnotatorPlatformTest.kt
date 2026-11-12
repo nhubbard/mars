@@ -129,7 +129,7 @@ class MipsAssemblyAnnotatorPlatformTest {
         build.assemble(path)
         val withoutDelay = analyze()
         assertEquals(1, readAction { annotator.acceptResult(file, withoutDelay).size })
-        val original = requireNotNull(withoutDelay.symbols).localSymbols.getValue("marker").address()
+        val original = requireNotNull(withoutDelay.symbols).localSymbols.getValue("marker").address
 
         val options = MarsExecutionOptions(delayedBranching = true)
         val analysis = project.service<MarsAnalysisService>()
@@ -150,14 +150,14 @@ class MipsAssemblyAnnotatorPlatformTest {
         val component = MarsSessionService.createMarsComponent()
         val assembledAddress = component.context().use { session ->
             assertTrue(build.assemble(path, component, activateBuildView = false, options = options))
-            session.program.symbolMap().locals().getValue(path).getValue("marker").address()
+            session.program.symbolMap().locals().getValue(path).getValue("marker").address
         }
         val delayed = analyze()
         assertEquals(options, delayed.input.capture.options)
         assertEquals(withoutDelay.input.capture.sources.revisions, delayed.input.capture.sources.revisions)
         assertNotSame(withoutDelay.outcome, delayed.outcome)
         assertEquals(original + 4, assembledAddress)
-        assertEquals(assembledAddress, requireNotNull(delayed.symbols).localSymbols.getValue("marker").address())
+        assertEquals(assembledAddress, requireNotNull(delayed.symbols).localSymbols.getValue("marker").address)
         assertTrue(readAction { annotator.acceptResult(file, withoutDelay).isEmpty() })
         assertEquals(1, readAction { annotator.acceptResult(file, delayed).size })
         assertEquals(setOf("generated"), names())

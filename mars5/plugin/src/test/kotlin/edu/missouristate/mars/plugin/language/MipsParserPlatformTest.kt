@@ -997,7 +997,7 @@ class MipsParserPlatformTest {
                 assertEquals(memory.textBaseAddress, program.machineList.first().address, name)
                 program.machineList.map { statement ->
                     val origin = origins.getValue(statement.address)
-                    val invocation = (origin.caller() ?: origin).location().line() - prefix.size
+                    val invocation = (origin.caller ?: origin).location.line() - prefix.size
                     statement.binaryStatement to (batch * batchSize + invocation)
                 }
             }
@@ -1632,10 +1632,11 @@ class MipsParserPlatformTest {
             val expanded = program.machineList.first()
             assertEquals(0x24080007, expanded.binaryStatement)
             val origin = program.sourceMap().origins().getValue(expanded.address)
-            assertEquals(include.toRealPath(), origin.location().file().toRealPath())
-            assertEquals(3, origin.location().line())
-            assertEquals(entry.toRealPath(), origin.caller().location().file().toRealPath())
-            assertEquals(6, origin.caller().location().line())
+            assertEquals(include.toRealPath(), origin.location.file().toRealPath())
+            assertEquals(3, origin.location.line())
+            val caller = requireNotNull(origin.caller)
+            assertEquals(entry.toRealPath(), caller.location.file().toRealPath())
+            assertEquals(6, caller.location.line())
             val base = context.memory.dataBaseAddress
             assertEquals(7, context.memory.getWordNoNotify(base))
             assertEquals(base, context.memory.getWordNoNotify(base + 4))
@@ -2124,7 +2125,7 @@ class MipsParserPlatformTest {
         val program = project.get().service<MarsSessionService>().context
             .assemble(listOf(directory.resolve("workbench.asm")), null, true, false)
         assertTrue(program.instructionCount() > 0)
-        assertTrue(program.sourceMap().origins().values.any { it.location().file().fileName.toString() == "bit_algorithms.s" })
+        assertTrue(program.sourceMap().origins().values.any { it.location.file().fileName.toString() == "bit_algorithms.s" })
     }
 
     @Test
@@ -2154,7 +2155,7 @@ class MipsParserPlatformTest {
             assertTrue(expected.size > 500, "The full decoder and both included libraries must assemble")
             val renamedProgram = context.assemble(listOf(directory.resolve("viewer.mars")), null, true, false)
             assertEquals(expected, renamedProgram.machineList.map { it.address to it.binaryStatement })
-            val origins = renamedProgram.sourceMap().origins().values.map { it.location() }
+            val origins = renamedProgram.sourceMap().origins().values.map { it.location }
             assertEquals(renamed.keys, origins.map { it.file().fileName.toString() }.toSet())
             for (name in renamed.keys) {
                 assertTrue(origins.count { it.file().fileName.toString() == name } > 30, name)
@@ -2186,7 +2187,7 @@ class MipsParserPlatformTest {
             val entry = directory.resolve("address-offsets.asm").also { it.writeText(source) }
             val program = project.get().service<MarsSessionService>().context.assemble(listOf(entry), null, true, false)
             val sourceMap = program.sourceMap()
-            val byLine = program.machineList.groupBy { sourceMap.origins().getValue(it.address).location().line() }
+            val byLine = program.machineList.groupBy { sourceMap.origins().getValue(it.address).location.line() }
             assertEquals((2..cases.size + 1).toSet(), byLine.keys)
             for ((index, case) in cases.withIndex()) {
                 val (written, expansion) = case

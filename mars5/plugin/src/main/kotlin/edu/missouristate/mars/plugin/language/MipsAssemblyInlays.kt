@@ -125,9 +125,9 @@ private fun EditorAssemblyCapture.writtenAddresses(symbols: AssemblySymbols?): L
     symbols?.let {
         (it.localSymbols(source).asSequence() + it.symbols.globals().asSequence()).mapNotNull { (name, definition) ->
             ProgressManager.checkCanceled()
-            val origin = definition.origin()!!
-            if (origin.caller() != null || origin.location().file() != source) return@mapNotNull null
-            MipsWrittenAddress(origin.location().line(), definition.column()!!, name, definition.address())
+            val origin = definition.origin!!
+            if (origin.caller != null || origin.location.file() != source) return@mapNotNull null
+            MipsWrittenAddress(origin.location.line(), definition.column!!, name, definition.address)
         }.toList()
     }.orEmpty()
 
