@@ -1,7 +1,11 @@
 package edu.missouristate.mars.plugin.language
 
+import com.intellij.codeInsight.actions.ReaderModeMatcher
+import com.intellij.codeInsight.actions.ReaderModeProvider.ReaderMode
+import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.fileTypes.PlainTextFileType
 import com.intellij.openapi.fileTypes.impl.FileTypeOverrider
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Key
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.testFramework.LightVirtualFile
@@ -40,4 +44,10 @@ internal fun detachMipsAssemblySourceViews() {
 /** Editor history can retain a closed view, so its file stores only platform objects. */
 internal class MipsAssemblySourceFileTypeOverrider : FileTypeOverrider {
     override fun getOverriddenFileType(file: VirtualFile) = MipsFileType.takeIf { file.mipsAssemblySourceOrigin != null }
+}
+
+/** Generated includes are project sources even though their editor view is read-only. */
+internal class MipsAssemblySourceReaderModeMatcher : ReaderModeMatcher {
+    override fun matches(project: Project, file: VirtualFile, editor: Editor?, mode: ReaderMode): Boolean? =
+        if (file.mipsAssemblySourceOrigin != null) false else null
 }

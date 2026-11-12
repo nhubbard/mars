@@ -44,6 +44,7 @@ import edu.missouristate.mars.plugin.MarsExecutionOptions
 import edu.missouristate.mars.plugin.build.MarsAssemblySettings
 import edu.missouristate.mars.plugin.build.MarsAssemblyMode
 import edu.missouristate.mars.plugin.build.MarsSourceSet
+import edu.missouristate.mars.plugin.language.mipsAssemblySourceOrigin
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.MipsFileType
 import edu.missouristate.mars.plugin.language.MipsTypes
@@ -119,7 +120,8 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
     internal fun selectedAssembly(file: MipsFile): AssemblySelection? = selectedEditorContext(file)?.assembly
 
     private fun selectedEditorContext(file: MipsFile): EditorContext? {
-        val virtualFile = file.viewProvider.virtualFile
+        val view = file.viewProvider.virtualFile
+        val virtualFile = view.mipsAssemblySourceOrigin ?: view
         if (!virtualFile.isInLocalFileSystem) return null
         val path = virtualFile.toNioPath()
         val build = lastBuild.get()
@@ -1064,7 +1066,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
     private fun selectedTimeline(file: MipsFile): MipsSourceTimeline? {
         val context = selectedEditorContext(file) ?: return null
         val root = context.root
-        if (file.viewProvider.virtualFile.toNioPath() == root) return mipsSourceTimeline(file)
+        if (file.assemblySourceOriginalFile().toNioPath() == root) return mipsSourceTimeline(file)
         // The capture includes this root and is invalidated on VFS structure changes.
         val entry = VirtualFileManager.getInstance().findFileByNioPath(root)!!
         val entryPsi = assemblySourceSyntax(PsiManager.getInstance(project).findFile(entry)) ?: return null

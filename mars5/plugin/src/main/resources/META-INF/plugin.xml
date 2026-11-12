@@ -52,6 +52,7 @@
                 icon="AllIcons.Toolwindows.ToolWindowServices" doNotActivateOnStart="true"/>
     <fileType name="MARS MIPS" language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsFileType" fieldName="INSTANCE" extensions="asm;s;inc;mars"/>
     <fileTypeOverrider implementation="edu.missouristate.mars.plugin.language.MipsAssemblySourceFileTypeOverrider"/>
+    <readerModeMatcher implementation="edu.missouristate.mars.plugin.language.MipsAssemblySourceReaderModeMatcher"/>
     <lang.syntaxHighlighterFactory language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsSyntaxHighlighterFactory"/>
     <annotator language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsInstructionHighlighter"/>
     <annotator language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsIncludeCycleAnnotator"/>

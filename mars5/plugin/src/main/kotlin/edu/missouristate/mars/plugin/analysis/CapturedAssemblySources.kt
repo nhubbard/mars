@@ -30,6 +30,7 @@ import edu.missouristate.mars.plugin.build.MarsAssemblySettings
 import edu.missouristate.mars.plugin.build.MarsAssemblyMode
 import edu.missouristate.mars.plugin.build.MarsSourceSet
 import edu.missouristate.mars.plugin.language.MipsFile
+import edu.missouristate.mars.plugin.language.mipsAssemblySourceOrigin
 import edu.missouristate.mars.plugin.language.references.findMipsIncludeFile
 import edu.missouristate.mars.plugin.language.references.mipsIncludeDirectoryPath
 import edu.missouristate.mars.util.FilenameFinder
@@ -67,21 +68,33 @@ internal data class EditorAssemblyCapture(
         if (options != effectiveOptions(file, selected)) return false
         val entry = sources.sourceSet.entry
         if (entry != selected?.entry && entry != inferredMipsAssemblyEntry(file)) return false
+        if (!sources.matchesEditor(file, source)) return false
         return sources.validateSourceDocuments(accept)
     }
 }
 
 /** Chooses the same assembly entry for editor diagnostics and on-demand inspection. */
-internal fun collectEditorAssembly(file: MipsFile): EditorAssemblyCapture? {
-    val virtualFile = file.viewProvider.virtualFile
+internal fun collectEditorAssembly(file: MipsFile, readOnlyInclude: Boolean = false): EditorAssemblyCapture? {
+    val view = file.viewProvider.virtualFile
+    val origin = view.mipsAssemblySourceOrigin.takeIf { readOnlyInclude }
+    val virtualFile = origin ?: view
     if (!virtualFile.isInLocalFileSystem) return null
     val source = virtualFile.toNioPath().toAbsolutePath().normalize()
     val selected = file.project.service<MarsAnalysisService>().selectedAssembly(file)
-    val sourceSet = selected?.sourceSet ?: MarsSourceSet(inferredMipsAssemblyEntry(file) ?: return null)
+    val sourceSet = selected?.sourceSet ?: run {
+        val entry = inferredMipsAssemblyEntry(file) ?: return null
+        if (origin != null && entry == source) return null
+        MarsSourceSet(entry)
+    }
     val sources = collectBackgroundAssemblySources(file.project, sourceSet)
+    if (!sources.matchesEditor(file, source)) return null
     return EditorAssemblyCapture(source, selected, sources, effectiveOptions(file, selected),
         VirtualFileManager.getInstance().structureModificationCount)
 }
+
+private fun CapturedAssemblySources.matchesEditor(file: MipsFile, source: Path): Boolean =
+    file.viewProvider.virtualFile.mipsAssemblySourceOrigin == null ||
+        snapshot.texts()[source] == file.viewProvider.contents.toString()
 
 private fun effectiveOptions(file: MipsFile, selection: AssemblySelection?): MarsExecutionOptions =
     selection?.options ?: file.project.service<MarsAssemblySettings>().executionOptions

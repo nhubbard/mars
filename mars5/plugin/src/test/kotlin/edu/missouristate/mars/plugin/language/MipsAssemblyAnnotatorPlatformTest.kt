@@ -1,5 +1,6 @@
 package edu.missouristate.mars.plugin.language
 
+import com.intellij.codeInsight.actions.ReaderModeProvider.ReaderMode
 import com.intellij.codeInsight.navigation.actions.GotoDeclarationAction
 import com.intellij.ide.highlighter.JavaFileType
 import com.intellij.lang.annotation.HighlightSeverity
@@ -935,6 +936,76 @@ class MipsAssemblyAnnotatorPlatformTest {
         }
         val selectedErrors = fixture.highlightAfterMipsRefresh().filter { it.severity == HighlightSeverity.ERROR }
         assertTrue(selectedErrors.single().description.startsWith("Recursive include of file"))
+    }
+
+    @Test
+    fun `read-only include editors highlight the entry diagnostics for their displayed revision`() = timeoutRunBlocking<Unit> {
+        val source = ".data\n.include \"defs.png\"\n.text\nnop\n"
+        val binaryText = ".byte -129\n.include \"nested.inc~\"\n"
+        val nestedText = ".byte +256\n"
+        val (entry, physical) = withContext(Dispatchers.EDT) {
+            val binary = fixture.tempDirFixture.createFile("defs.png", binaryText)
+            fixture.tempDirFixture.createFile("nested.inc~", nestedText)
+            val entry = fixture.addFileToProject("entry.mars", source) as MipsFile
+            fixture.configureFromExistingVirtualFile(entry.virtualFile)
+            entry to binary
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        val view = withContext(Dispatchers.EDT) {
+            val binary = GotoDeclarationAction.findTargetElement(project, fixture.editor, source.indexOf("defs.png") + 1) as MipsFile
+            fixture.openFileInEditor(binary.virtualFile)
+            binary
+        }
+        suspend fun highlightedWarning(text: String): String {
+            val warning = fixture.highlightAfterMipsRefresh().single {
+                it.severity == HighlightSeverity.WARNING && it.description?.contains("possibly truncated") == true
+            }
+            return text.substring(warning.startOffset, warning.endOffset)
+        }
+
+        readAction {
+            val readerMode = MipsAssemblySourceReaderModeMatcher()
+            assertEquals(false, readerMode.matches(project, view.virtualFile, null, ReaderMode.READ_ONLY))
+            assertNull(readerMode.matches(project, physical, null, ReaderMode.READ_ONLY))
+        }
+        assertEquals("-129", highlightedWarning(binaryText))
+        val input = readAction { checkNotNull(annotator.collectInformation(view)) }
+        assertSame(readAction { annotator.collectInformation(entry) }?.capture?.sources, input.capture.sources)
+        val result = withContext(Dispatchers.Default) { annotator.doAnnotate(input) }
+        val analysis = project.service<MarsAnalysisService>()
+        analysis.beginSymbolBuild(entry.virtualFile.toNioPath())
+        withContext(Dispatchers.EDT) {
+            val nested = GotoDeclarationAction.findTargetElement(project, fixture.editor, binaryText.indexOf("nested.inc~") + 1) as MipsFile
+            fixture.openFileInEditor(nested.virtualFile)
+        }
+        assertEquals("+256", highlightedWarning(nestedText))
+        val selected = readAction { checkNotNull(annotator.collectInformation(view)) }
+        val selectedResult = withContext(Dispatchers.Default) { annotator.doAnnotate(selected) }
+        assertEquals(1, readAction { annotator.acceptResult(view, selectedResult).size })
+
+        val revisedText = binaryText.replace("-129", "-130")
+        Files.writeString(physical.toNioPath(), revisedText)
+        val (revised, orphan) = withContext(Dispatchers.EDT) {
+            physical.refresh(false, false)
+            fixture.configureFromExistingVirtualFile(entry.virtualFile)
+            val revised = GotoDeclarationAction.findTargetElement(project, fixture.editor, source.indexOf("defs.png") + 1) as MipsFile
+            val orphanFile = fixture.tempDirFixture.createFile("orphan.png", ".byte -129\n")
+            val orphan = PsiManager.getInstance(project).findFile(mipsAssemblySourceView(orphanFile, ".byte -129\n")) as MipsFile
+            revised to orphan
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        val revisedInput = readAction { checkNotNull(annotator.collectInformation(revised)) }
+        val revisedResult = withContext(Dispatchers.Default) { annotator.doAnnotate(revisedInput) }
+        readAction {
+            assertTrue(annotator.acceptResult(view, result).isEmpty())
+            assertTrue(annotator.acceptResult(view, selectedResult).isEmpty())
+            assertTrue(annotator.acceptResult(view, revisedResult).isEmpty())
+            assertNull(annotator.collectInformation(view))
+            assertNull(annotator.collectInformation(orphan))
+            val (warning, range) = annotator.acceptResult(revised, revisedResult).single()
+            assertTrue(warning.isWarning)
+            assertEquals("-130", range.substring(revisedText))
+        }
     }
 
     @Test

@@ -7,6 +7,7 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.Document
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.util.TextRange
+import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiFile
 import edu.missouristate.mars.api.AssemblyError
 import edu.missouristate.mars.assembler.Tokenizer
@@ -33,7 +34,7 @@ internal class MipsAssemblyAnnotator : ExternalAnnotator<MipsAssemblyAnnotator.I
 
     override fun collectInformation(psiFile: PsiFile): Input? {
         val file = psiFile as? MipsFile ?: return null
-        val capture = collectEditorAssembly(file) ?: return null
+        val capture = collectEditorAssembly(file, readOnlyInclude = true) ?: return null
         val analysis = file.project.service<MarsAnalysisService>()
         return Input(capture, analysis.backgroundAssembly)
     }
@@ -61,15 +62,9 @@ internal class MipsAssemblyAnnotator : ExternalAnnotator<MipsAssemblyAnnotator.I
 
     private fun validatedDiagnostics(file: MipsFile, result: Result): List<Pair<AssemblyError, TextRange>>? {
         if (result.diagnostics.isEmpty() && result.symbols == null) return null
-        val input = result.input.capture
-        var ranges = emptyList<Pair<AssemblyError, TextRange>>()
-        val valid = input.validate(file) { path, document, revision ->
-            if (path == input.source) ranges = result.diagnostics.mapNotNull { error ->
-                diagnosticRange(document, error)?.let { error to it }
-            }
-            document.modificationStamp == revision
-        }
-        return ranges.takeIf { valid }
+        if (!result.input.capture.validate(file) { _, document, revision -> document.modificationStamp == revision }) return null
+        val document = PsiDocumentManager.getInstance(file.project).getDocument(file)!!
+        return result.diagnostics.mapNotNull { error -> diagnosticRange(document, error)?.let { error to it } }
     }
 }
 

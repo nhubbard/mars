@@ -11,6 +11,7 @@ import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.util.PsiModificationTracker
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.MipsFileType
+import edu.missouristate.mars.plugin.language.mipsAssemblySourceOrigin
 import edu.missouristate.mars.plugin.language.index.resolveIndexedMipsInclude
 import edu.missouristate.mars.plugin.language.psi.MipsStringLiteral
 import java.nio.file.Path
@@ -20,7 +21,7 @@ private data class AssemblyAncestors(val roots: List<VirtualFile>, val withoutRo
 private fun assemblyAncestors(file: MipsFile): AssemblyAncestors =
     CachedValuesManager.getCachedValue(file) {
         CachedValueProvider.Result.create(
-            assemblyAncestors(file.project, file.viewProvider.virtualFile),
+            assemblyAncestors(file.project, file.viewProvider.virtualFile.mipsAssemblySourceOrigin ?: file.viewProvider.virtualFile),
             PsiModificationTracker.MODIFICATION_COUNT, VirtualFileManager.VFS_STRUCTURE_MODIFICATIONS,
         )
     }
