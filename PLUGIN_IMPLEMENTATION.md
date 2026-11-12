@@ -3101,6 +3101,33 @@ Debug launch to the breakpoint. Step Into took 127 ms and Step Over took
 101 ms. These are single observations from the Linux trace, with the IDE
 displayed through Xvfb.
 
+### Assembly, console, and Bitmap Display performance
+
+On an 18-core Apple M5 Pro running macOS 27.2.1 and OpenJDK 25.0.1,
+`./gradlew :core:benchmark` averaged 89.3 ms to assemble 10,000 instructions.
+The Gradle task configures JMH with one warmup and one measurement iteration.
+
+On the same Mac, the sustained-output Jupiter fixture recorded 420 ms
+when run alone and 248 ms during the full 47-test Run fixture class.
+Both measurements start with process notification and end after verifying
+all 4,096 lines in the native Run console. The test checks exact order and
+content in both the process stream and IntelliJ's rendered document and
+records elapsed time in the
+Jupiter report. The measurement includes guest execution, console flushing,
+and the final assertion. Run the fixture from `mars5` with
+`./gradlew :plugin:test --tests '*MarsRunPlatformTest.*sustained output burst*'`.
+
+The packaged Ubuntu ARM64 PNG replay recorded 11.958 s from starting the
+decoder to verifying the final Bitmap Display frame against ImageIO.
+It checked all 262,144 displayed pixels, or about 21,900 verified pixels per
+second for that full simulation, display, and comparison workload. The
+two-vCPU guest used IntelliJ IDEA `IU-263.7307.200` under Xvfb. The native
+IDE log is under `mars5/.gradle/release-host-checks/linux-arm64-complete-source`.
+
+These observations describe the named workloads and hosts. The console
+and bitmap assertions check correctness, and the measured rates are
+baselines for repeat runs on comparable hardware.
+
 ## M7 parity evidence
 
 The [component mapping](INTELLIJ_COMPONENT_MAPPING.md#123-final-parity-checklist)

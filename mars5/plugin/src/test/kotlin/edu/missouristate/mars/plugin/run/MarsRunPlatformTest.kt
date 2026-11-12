@@ -98,6 +98,7 @@ import javax.swing.JPanel
 import javax.swing.JTextField
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.TimeSource
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
@@ -1923,10 +1924,12 @@ class MarsRunPlatformTest {
             val view = assertInstanceOf(ConsoleViewImpl::class.java, result.executionConsole)
             view.component
             process.addProcessListener(recording)
-            process.startNotify()
             process to view
         }
         try {
+            val started = withContext(Dispatchers.EDT) {
+                TimeSource.Monotonic.markNow().also { handler.startNotify() }
+            }
             assertEquals(0, recording.exit.await())
             val expected = buildString { repeat(lineCount) { appendLine(it) } }
             assertEquals(expected, recording.stdout.toString())
@@ -1937,6 +1940,7 @@ class MarsRunPlatformTest {
                     assertEquals(expected, console.editor!!.document.text)
                 }
             }
+            println("MARS Run console verified $lineCount lines in ${started.elapsedNow().inWholeMilliseconds} ms")
         } finally {
             withContext(NonCancellable + Dispatchers.EDT) {
                 handler.destroyProcess()
