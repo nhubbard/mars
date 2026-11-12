@@ -37,8 +37,11 @@ import edu.missouristate.mars.api.AssemblySymbolMap
 import edu.missouristate.mars.plugin.MarsExecutionOptions
 import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
+import edu.missouristate.mars.plugin.analysis.inferredMipsAssemblyRoot
+import edu.missouristate.mars.plugin.analysis.mipsSourceTimeline
 import edu.missouristate.mars.plugin.build.MarsAssemblySettings
 import edu.missouristate.mars.plugin.build.MarsBuildService
+import edu.missouristate.mars.plugin.language.references.MipsIncludeNavigation
 import java.nio.file.Files
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -53,6 +56,8 @@ import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 
 @TestApplication
 class MipsAssemblyAnnotatorPlatformTest {
@@ -938,14 +943,15 @@ class MipsAssemblyAnnotatorPlatformTest {
         assertTrue(selectedErrors.single().description.startsWith("Recursive include of file"))
     }
 
-    @Test
-    fun `read-only include editors highlight the entry diagnostics for their displayed revision`() = timeoutRunBlocking<Unit> {
+    @ParameterizedTest
+    @ValueSource(strings = ["nested.inc~", "nested.zip"])
+    fun `read-only include editors highlight the entry diagnostics for their displayed revision`(nestedName: String) = timeoutRunBlocking<Unit> {
         val source = ".data\n.include \"defs.png\"\n.text\nnop\n"
-        val binaryText = ".byte -129\n.include \"nested.inc~\"\n"
+        val binaryText = ".byte -129\n.include \"$nestedName\"\n"
         val nestedText = ".byte +256\n"
         val (entry, physical) = withContext(Dispatchers.EDT) {
             val binary = fixture.tempDirFixture.createFile("defs.png", binaryText)
-            fixture.tempDirFixture.createFile("nested.inc~", nestedText)
+            fixture.tempDirFixture.createFile(nestedName, nestedText)
             val entry = fixture.addFileToProject("entry.mars", source) as MipsFile
             fixture.configureFromExistingVirtualFile(entry.virtualFile)
             entry to binary
@@ -973,12 +979,22 @@ class MipsAssemblyAnnotatorPlatformTest {
         assertSame(readAction { annotator.collectInformation(entry) }?.capture?.sources, input.capture.sources)
         val result = withContext(Dispatchers.Default) { annotator.doAnnotate(input) }
         val analysis = project.service<MarsAnalysisService>()
-        analysis.beginSymbolBuild(entry.virtualFile.toNioPath())
-        withContext(Dispatchers.EDT) {
-            val nested = GotoDeclarationAction.findTargetElement(project, fixture.editor, binaryText.indexOf("nested.inc~") + 1) as MipsFile
+        val nested = withContext(Dispatchers.EDT) {
+            val nested = GotoDeclarationAction.findTargetElement(project, fixture.editor, binaryText.indexOf(nestedName) + 1) as MipsFile
             fixture.openFileInEditor(nested.virtualFile)
+            nested
         }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        readAction {
+            assertEquals(setOf(entry.virtualFile), nested.virtualFile.mipsAssemblySourceEntries)
+            assertTrue(mipsSourceTimeline(entry).includes(nested))
+            assertEquals(entry.virtualFile, inferredMipsAssemblyRoot(nested))
+        }
+        val nestedInput = readAction { checkNotNull(annotator.collectInformation(nested)) }
+        assertNull(nestedInput.capture.selectedAssembly)
+        assertSame(input.capture.sources, nestedInput.capture.sources)
         assertEquals("+256", highlightedWarning(nestedText))
+        analysis.beginSymbolBuild(entry.virtualFile.toNioPath())
         val selected = readAction { checkNotNull(annotator.collectInformation(view)) }
         val selectedResult = withContext(Dispatchers.Default) { annotator.doAnnotate(selected) }
         assertEquals(1, readAction { annotator.acceptResult(view, selectedResult).size })
@@ -1002,10 +1018,60 @@ class MipsAssemblyAnnotatorPlatformTest {
             assertTrue(annotator.acceptResult(view, revisedResult).isEmpty())
             assertNull(annotator.collectInformation(view))
             assertNull(annotator.collectInformation(orphan))
+            assertFalse(analysis.editorTimeline(view).includes(revised))
             val (warning, range) = annotator.acceptResult(revised, revisedResult).single()
             assertTrue(warning.isWarning)
             assertEquals("-130", range.substring(revisedText))
         }
+    }
+
+    @Test
+    fun `include navigation rechecks ambiguous and invalidated entry candidates`() = timeoutRunBlocking<Unit> {
+        val include = ".include \"shared.inc~\"\n"
+        val offset = include.indexOf("shared.inc~") + 1
+        val (first, second) = withContext(Dispatchers.EDT) {
+            fixture.tempDirFixture.createFile("shared.inc~", ".include \"leaf.inc~\"\n")
+            fixture.tempDirFixture.createFile("leaf.inc~", ".byte -129\n")
+            val first = fixture.addFileToProject("first.mars", include + "nop\n").virtualFile
+            val second = fixture.addFileToProject("second.mars", include + "nop\n").virtualFile
+            first to second
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        val shared = withContext(Dispatchers.EDT) {
+            fixture.configureFromExistingVirtualFile(first)
+            val literal = fixture.file.findElementAt(offset)
+            DumbModeTestUtils.runInDumbModeSynchronously(project) {
+                val target = MipsIncludeNavigation().getGotoDeclarationTargets(literal, offset, fixture.editor)!!.single()
+                assertTrue(target.containingFile.virtualFile.mipsAssemblySourceEntries.isEmpty())
+            }
+            GotoDeclarationAction.findTargetElement(project, fixture.editor, offset) as MipsFile
+        }
+        readAction { assertEquals(first, inferredMipsAssemblyRoot(shared)) }
+
+        withContext(Dispatchers.EDT) {
+            fixture.configureFromExistingVirtualFile(second)
+            assertSame(shared, GotoDeclarationAction.findTargetElement(project, fixture.editor, offset))
+        }
+        readAction { assertNull(inferredMipsAssemblyRoot(shared)) }
+        withContext(Dispatchers.EDT) {
+            fixture.openFileInEditor(shared.virtualFile)
+            val leaf = GotoDeclarationAction.findTargetElement(project, fixture.editor, shared.text.indexOf("leaf.inc~") + 1) as MipsFile
+            assertTrue(leaf.virtualFile.mipsAssemblySourceEntries.isEmpty())
+        }
+        withContext(Dispatchers.EDT) { edit(first, "nop\n") }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        readAction { assertEquals(second, inferredMipsAssemblyRoot(shared)) }
+
+        withContext(Dispatchers.EDT) {
+            WriteCommandAction.runWriteCommandAction(project) { second.rename(this, "second.txt") }
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        readAction { assertNull(inferredMipsAssemblyRoot(shared)) }
+        withContext(Dispatchers.EDT) {
+            WriteCommandAction.runWriteCommandAction(project) { second.delete(this) }
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        readAction { assertNull(inferredMipsAssemblyRoot(shared)) }
     }
 
     @Test

@@ -475,17 +475,20 @@ internal fun assemblySourceSyntax(source: PsiFile?): MipsFile? {
     if (FileSizeLimit.isTooLargeForContentLoading(file.length, file.extension)) return null
     if (source is MipsFile) return source
     return CachedValuesManager.getCachedValue(source) {
-        val syntax = if (source.fileType.isBinary) {
-            readOnlyAssemblySource(source.project, file)
-        } else {
-            val copy = PsiFileFactory.getInstance(source.project)
-                .createFileFromText(source.name, MipsFileType, source.viewProvider.contents.toString()) as MipsFile
-            // FileReferenceSet resolves relative paths against the original physical file.
-            copy.setOriginalFile(source)
-            copy
+        // CachedValue can evaluate competing providers. Create PSI only for the published value.
+        val syntax = lazy {
+            if (source.fileType.isBinary) {
+                readOnlyAssemblySource(source.project, file)
+            } else {
+                val copy = PsiFileFactory.getInstance(source.project)
+                    .createFileFromText(source.name, MipsFileType, source.viewProvider.contents.toString()) as MipsFile
+                // FileReferenceSet resolves relative paths against the original physical file.
+                copy.setOriginalFile(source)
+                copy
+            }
         }
         CachedValueProvider.Result.create(syntax, source, file)
-    }
+    }.value
 }
 
 internal fun unresolvedAssemblySourceSyntax(
@@ -498,15 +501,15 @@ internal fun unresolvedAssemblySourceSyntax(
     val provider = PsiManager.getInstance(project).findViewProvider(file)!!
     val source = CachedValuesManager.getManager(project).getCachedValue(provider) {
         val document = if (file.fileType.isBinary) null else FileDocumentManager.getInstance().getDocument(file)
-        val syntax = readOnlyAssemblySource(project, file, document?.text)
+        val syntax = lazy { readOnlyAssemblySource(project, file, document?.text) }
         CachedValueProvider.Result.create(UnresolvedSource(syntax, document),
             listOfNotNull(file, document, ProjectRootModificationTracker.getInstance(project)))
     }
     source.document?.let(onDependency)
-    return source.syntax
+    return source.syntax.value
 }
 
-private data class UnresolvedSource(val syntax: MipsFile?, val document: Document?)
+private data class UnresolvedSource(val syntax: Lazy<MipsFile?>, val document: Document?)
 
 private fun readOnlyAssemblySource(project: Project, file: VirtualFile, documentText: String? = null): MipsFile? {
     val text = documentText ?: readDiskAssemblyText(file) ?: return null

@@ -701,13 +701,19 @@ Completion and contextual highlighting can use these definitions. Go to Declarat
 symbol or on the filename of an ignored or binary-classified include opens the captured
 MIPS text. The captured view stays outside the file reference graph. A binary file's
 native reference still points to the physical file for refactoring.
-Read-only include editors display assembler diagnostics when an indexed includer
-or the selected assembly identifies the entry. Results apply only while the
-displayed text matches the captured source and the source revisions are current.
+Read-only include editors display assembler diagnostics when the selected assembly,
+an indexed includer, or include navigation identifies the entry. Following nested
+filenames carries the entry through generated views. The current include graph
+must still contain the view, and multiple viable entries require an explicit
+assembly selection. The PSI cache creates one generated view per published source
+revision so concurrent editor passes can compare view identity. Results apply
+while the displayed text matches the captured source and the source revisions
+are current.
 The generated tabs are exempt from automatic Reader Mode so the native assembler
 pass can run. A clean IntelliJ 2026.3 replay opened an explicitly included
 `defs.png` and verified that the truncation warning covered the complete `-129`
-operand before the first build.
+operand before the first build. A second clean replay followed `defs.png` to
+`nested.inc~` and verified the same warning in the nested tab before any build.
 Oversized files still participate in assembly and use assembled source locations for macro
 and label navigation.
 

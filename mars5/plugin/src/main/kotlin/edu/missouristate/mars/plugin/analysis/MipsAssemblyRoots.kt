@@ -12,6 +12,7 @@ import com.intellij.psi.util.PsiModificationTracker
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.MipsFileType
 import edu.missouristate.mars.plugin.language.mipsAssemblySourceOrigin
+import edu.missouristate.mars.plugin.language.mipsAssemblySourceEntries
 import edu.missouristate.mars.plugin.language.index.resolveIndexedMipsInclude
 import edu.missouristate.mars.plugin.language.psi.MipsStringLiteral
 import java.nio.file.Path
@@ -26,8 +27,22 @@ private fun assemblyAncestors(file: MipsFile): AssemblyAncestors =
         )
     }
 
-internal fun inferredMipsAssemblyRoot(file: MipsFile): VirtualFile? =
-    assemblyAncestors(file).roots.singleOrNull()
+internal fun inferredMipsAssemblyRoot(file: MipsFile): VirtualFile? {
+    val indexed = assemblyAncestors(file).roots
+    val view = file.viewProvider.virtualFile
+    val navigated = view.mipsAssemblySourceEntries
+    if (navigated.isEmpty()) return indexed.singleOrNull()
+
+    val roots = indexed.filterNot { it == view.mipsAssemblySourceOrigin }.toMutableSet()
+    val psi = PsiManager.getInstance(file.project)
+    for (candidate in navigated) {
+        if (candidate in roots || !candidate.isValid) continue
+        val entry = psi.findFile(candidate) as? MipsFile ?: continue
+        // Navigation is a candidate only. Recheck the current include graph after source edits.
+        if (mipsSourceTimeline(entry).includes(file)) roots.add(candidate)
+    }
+    return roots.singleOrNull()
+}
 
 internal fun inferredMipsAssemblyEntry(file: MipsFile): Path? =
     inferredMipsAssemblyRoot(file)?.let { it.toNioPath().toAbsolutePath().normalize() }

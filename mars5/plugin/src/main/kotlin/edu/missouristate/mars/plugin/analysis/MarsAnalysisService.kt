@@ -1052,12 +1052,14 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
 
     internal fun editorTimeline(file: MipsFile): MipsSourceTimeline {
         selectedTimeline(file)?.takeIf { it.includes(file) }?.let { return it }
-        val source = file.viewProvider.virtualFile
+        val view = file.viewProvider.virtualFile
+        val source = view.mipsAssemblySourceOrigin ?: view
         if (source.isInLocalFileSystem && !DumbService.isDumb(project)) {
             val root = inferredMipsAssemblyRoot(file)
             if (root != null && root != source) {
                 val entry = PsiManager.getInstance(project).findFile(root) as MipsFile
-                return mipsSourceTimeline(entry)
+                val timeline = mipsSourceTimeline(entry)
+                if (timeline.includes(file)) return timeline
             }
         }
         return mipsSourceTimeline(file)

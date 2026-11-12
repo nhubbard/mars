@@ -12,12 +12,21 @@ import com.intellij.testFramework.LightVirtualFile
 import com.intellij.util.FileContentUtilCore
 import java.util.Collections
 import java.util.WeakHashMap
+import java.util.concurrent.ConcurrentHashMap
 
 private val assemblySourceOrigin = Key.create<VirtualFile>("mars.assembly.source.origin")
+private val assemblySourceEntries = Key.create<MutableSet<VirtualFile>>("mars.assembly.source.entries")
 private val assemblySourceViews = Collections.synchronizedSet(Collections.newSetFromMap(WeakHashMap<VirtualFile, Boolean>()))
 
 internal val VirtualFile.mipsAssemblySourceOrigin: VirtualFile?
     get() = getUserData(assemblySourceOrigin)
+
+internal val VirtualFile.mipsAssemblySourceEntries: Set<VirtualFile>
+    get() = getUserData(assemblySourceEntries).orEmpty()
+
+internal fun VirtualFile.rememberMipsAssemblyEntry(entry: VirtualFile) {
+    putUserDataIfAbsent(assemblySourceEntries, ConcurrentHashMap.newKeySet()).add(entry)
+}
 
 internal fun mipsAssemblySourceView(origin: VirtualFile, text: String): VirtualFile =
     LightVirtualFile.builder()
@@ -36,7 +45,10 @@ internal fun detachMipsAssemblySourceViews() {
     val files = synchronized(assemblySourceViews) {
         assemblySourceViews.toList().also { assemblySourceViews.clear() }
     }
-    for (file in files) file.putUserData(assemblySourceOrigin, null)
+    for (file in files) {
+        file.putUserData(assemblySourceOrigin, null)
+        file.putUserData(assemblySourceEntries, null)
+    }
     // Closed light files retain their last PSI provider in the file's user data.
     FileContentUtilCore.reparseFiles(files)
 }
