@@ -3156,6 +3156,16 @@ the same three Bitmap Display positions using the arrow keys. Its
 screenshot and saved theme ID are under
 `mars5/.gradle/release-host-checks/bitmap-high-contrast`.
 
+The SHA-256-matched release ZIP from the packaged editor and debugger replay
+also passed the Bitmap Display keyboard check on Apple Silicon macOS.
+In High Contrast, the canvas kept focus and Right and Down moved the
+selection from the first cell to column 1, row 1. At each position the text
+rendered by the wrapping details pane matched the canvas's accessible
+description, including the address and RGB value. The clean launch ran
+2,148 Jupiter tests and both plugin coverage gates. The completion record,
+saved theme and screenshots are under
+`mars5/.gradle/release-host-checks/candidate-bitmap-accessibility`.
+
 A separate clean Ubuntu ARM64 replay opened `pixels.asm` and invoked
 IntelliJ's Print action. The dialog selected the assembly file and exposed
 line numbers and syntax printing. The test captured the dialog, dismissed

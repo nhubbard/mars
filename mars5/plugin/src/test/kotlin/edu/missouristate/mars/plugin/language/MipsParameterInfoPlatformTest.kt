@@ -118,34 +118,40 @@ class MipsParameterInfoPlatformTest {
     }
 
     @Test
-    fun `parameter info counts expanded operands and incomplete tokens in instruction aliases`() = timeoutRunBlocking<Unit> {
+    fun `parameter info counts operands after an aliased mnemonic`() = timeoutRunBlocking<Unit> {
         withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("aliases.s", """
-                .eqv DEFINE .eqv
-                DEFINE SHIFT SLL ${'$'}t0
-                DEFINE LOAD lw ${'$'}t0
-                DEFINE OFFSET -4(
-                DEFINE REGS ${'$'}t0,${'$'}t1
-                DEFINE PREFIX row:
-                DEFINE SEP :
-                DEFINE DIVIDE div ${'$'}t0,${'$'}t1
-            """.trimIndent() + "\n")
-            val include = ".include \"aliases.s\"\n"
+            val include = includeAliases("SHIFT SLL \$t0", "DIVIDE div \$t0,\$t1")
             assertEquals("sll \$t1,<b>\$t2</b>,10", info("${include}entry: SHIFT<caret>"))
             assertEquals("sll \$t1,<b>\$t2</b>,10", info("${include}SHIFT \$<caret>"))
             assertEquals("sll \$t1,<b>\$t2</b>,10", info("${include}SHIFT bad%<caret>"))
             assertEquals("sll \$t1,\$t2,<b>10</b>", info("${include}SHIFT \$t1, <caret>"))
-            assertEquals(info("lw \$t0, -4(<caret>"), info("${include}LOAD OFFSET<caret>"))
-            assertEquals(info("lw \$t0, -4(<caret>"), info("${include}entry: lw \$t0, OFFSET<caret> \$sp)"))
+            assertEquals(info("div \$t0,\$t1 <caret>"), info("${include}DIVIDE <caret>"))
+        }
+    }
+
+    @Test
+    fun `parameter info follows expanded registers and relative addresses`() = timeoutRunBlocking<Unit> {
+        withContext(Dispatchers.EDT) {
+            val include = includeAliases("LOAD lw \$t0", "OFFSET -4(", "REGS \$t0,\$t1")
+            val addressHint = info("lw \$t0, -4(<caret>")
+            assertEquals(addressHint, info("${include}LOAD OFFSET<caret>"))
+            assertEquals(addressHint, info("${include}entry: lw \$t0, OFFSET<caret> \$sp)"))
             assertEquals("sll \$t1,\$t2,<b>10</b>", info("${include}entry: sll REGS, <caret>4"))
             DumbModeTestUtils.runInDumbModeSynchronously(project.get()) {
                 assertEquals("sll \$t1,<b>\$t2</b>,10", fixture.parameterInfoAtCaret)
             }
-            assertEquals(info("sll \$t0, <caret>"), info("${include}PREFIX sll \$t0, <caret>"))
-            assertEquals(info("sll \$t0, <caret>"), info("${include}split SEP sll \$t0, <caret>"))
-            assertEquals(info("sll \$t0, <caret>"), info("${include}addiu SEP sll \$t0, <caret>"))
+        }
+    }
+
+    @Test
+    fun `parameter info follows aliased label prefixes and separators`() = timeoutRunBlocking<Unit> {
+        withContext(Dispatchers.EDT) {
+            val include = includeAliases("PREFIX row:", "SEP :")
+            val shiftHint = info("sll \$t0, <caret>")
+            assertEquals(shiftHint, info("${include}PREFIX sll \$t0, <caret>"))
+            assertEquals(shiftHint, info("${include}split SEP sll \$t0, <caret>"))
+            assertEquals(shiftHint, info("${include}addiu SEP sll \$t0, <caret>"))
             assertEquals("sll \$t1,<b>\$t2</b>,10", info("${include}addiu SEP sll \$t0, bad%<caret>"))
-            assertEquals(info("div \$t0,\$t1 <caret>"), info("${include}DIVIDE <caret>"))
         }
     }
 
@@ -438,6 +444,12 @@ class MipsParameterInfoPlatformTest {
             assertNull(handler.findElementForUpdatingParameterInfo(update))
             handler.updateParameterInfo(owner, update)
         }
+    }
+
+    private fun includeAliases(vararg definitions: String): String {
+        val aliases = definitions.joinToString("\n", prefix = ".eqv DEFINE .eqv\n", postfix = "\n") { "DEFINE $it" }
+        fixture.addFileToProject("aliases.s", aliases)
+        return ".include \"aliases.s\"\n"
     }
 
     private fun info(source: String): String? {
