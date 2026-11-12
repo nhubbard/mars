@@ -439,6 +439,18 @@ class InstructionCounterPlatformTest {
                 val fractionMetrics = fractionField.getFontMetrics(fractionField.font)
                 assertTrue(fractionMetrics.stringWidth(fractionField.text) + fractionMetrics.charWidth('0') <=
                     fractionField.width - fractionField.insets.left - fractionField.insets.right)
+                val formula = UIUtil.findComponentsOfType(floating, JEditorPane::class.java).single {
+                    it.document.getText(0, it.document.length).contains("(binary significand)")
+                }
+                val formulaWidthInNarrowDock = formula.width
+                fun formulaLinePositions(): Pair<Double, Double> {
+                    val text = formula.document.getText(0, formula.document.length)
+                    val first = formula.modelToView2D(text.indexOf("(-1)"))
+                    val last = formula.modelToView2D(text.lastIndexOf(')'))
+                    return first.y to last.y
+                }
+                val (narrowFirstLine, narrowLastLine) = formulaLinePositions()
+                assertTrue(narrowFirstLine < narrowLastLine)
                 val floatReset = button("Reset", floating)
                 val floatResetBounds = SwingUtilities.convertRectangle(floatReset.parent, floatReset.bounds, floatBody)
                 assertTrue(floatResetBounds.height > 0)
@@ -448,6 +460,9 @@ class InstructionCounterPlatformTest {
                 layoutDock(floating, 610, 460)
                 fractionField.parent.doLayout()
                 assertEquals(fractionField.preferredSize.width, fractionField.width)
+                assertTrue(formula.width > formulaWidthInNarrowDock)
+                val (wideFirstLine, wideLastLine) = formulaLinePositions()
+                assertEquals(wideFirstLine, wideLastLine)
                 floatReset.doClick()
                 assertEquals("0x00000000", floatField(12).text)
                 assertEquals(0, fractionField.caretPosition)

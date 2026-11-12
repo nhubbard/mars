@@ -9,6 +9,7 @@ import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBTextField
 import com.intellij.ui.dsl.builder.AlignX
 import com.intellij.ui.dsl.builder.LabelPosition
+import com.intellij.ui.dsl.builder.RowLayout
 import com.intellij.ui.dsl.builder.panel
 import com.intellij.util.ui.UIUtil
 import com.intellij.util.ui.launchOnShow
@@ -25,11 +26,10 @@ import edu.missouristate.mars.plugin.tools.FloatingPointRepresentation.Kind
 import edu.missouristate.mars.util.Binary
 import javax.swing.JButton
 import javax.swing.JEditorPane
+import javax.swing.ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
-
-private const val floatingPointTextColumns = 28
 
 internal class FloatingPointView(private val project: Project) : Disposable {
     private val selector = MarsToolExecutionSelector(project, ::bindingChanged)
@@ -70,7 +70,7 @@ internal class FloatingPointView(private val project: Project) : Disposable {
     private val controls = marsToolPanel {
         marsExecutionRow(selector.component)
         row { cell(register).label(toolsMessages.getMessage("float.register"), LabelPosition.TOP) }
-        row { access = text("", maxLineLength = floatingPointTextColumns).component }
+        row { access = text("").resizableColumn().component }.layout(RowLayout.INDEPENDENT)
         row { cell(decimal).label(toolsMessages.getMessage("float.decimal"), LabelPosition.TOP) }
         row { cell(hex).label(toolsMessages.getMessage("float.hex"), LabelPosition.TOP) }
         row {
@@ -80,12 +80,14 @@ internal class FloatingPointView(private val project: Project) : Disposable {
         row { cell(fractionControl).resizableColumn() }
         row(toolsMessages.getMessage("float.classification")) { cell(classification) }
         row { label(toolsMessages.getMessage("float.interpretation")) }
-        row { formula = text("", maxLineLength = floatingPointTextColumns).component }
+        row { formula = text("").resizableColumn().component }.layout(RowLayout.INDEPENDENT)
         row { cell(reset) }
-        row { feedback = text("", maxLineLength = floatingPointTextColumns).component }
-        row { comment(toolsMessages.getMessage("float.help"), maxLineLength = floatingPointTextColumns) }
+        row { feedback = text("").resizableColumn().component }.layout(RowLayout.INDEPENDENT)
+        row { comment(toolsMessages.getMessage("float.help")).resizableColumn() }.layout(RowLayout.INDEPENDENT)
     }
-    val component = scrollableToolPanel(this, controls, mapOf(fraction to fractionControl))
+    val component = scrollableToolPanel(this, controls, mapOf(fraction to fractionControl)).apply {
+        horizontalScrollBarPolicy = HORIZONTAL_SCROLLBAR_NEVER
+    }
 
     init {
         register.addActionListener { bindingChanged() }
