@@ -86,6 +86,56 @@ class MipsCompletionPlatformTest {
     }
 
     @Test
+    fun `statement completion offers instruction aliases that fit written operands and project settings`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val current = project.get()
+            val definitions = ".eqv RUN_OP sll\n.eqv RUN_ONE RUN_OP \$t0,\n.eqv RUN_NUMBERED sll \$8,\n" +
+                ".eqv RUN_PAIR sll \$t0, \$t1,\n.eqv RUN_ALL sll \$t0, \$t1, 4\n.eqv RUN_BAD sll \$f0,\n" +
+                ".eqv RUN_PSEUDO li \$t0,\n.eqv RUN_DIRECTIVE .word\n.eqv RUN_LABEL local:\n" +
+                ".eqv RUN_CYCLE LOOP\n.eqv LOOP RUN_CYCLE\n"
+            val include = ".include \"heads.inc\"\n"
+            val suffix = "\n.eqv RUN_LATE nop\n"
+            withContext(Dispatchers.EDT) { fixture.addFileToProject("heads.inc", definitions) }
+            IndexingTestUtil.suspendUntilIndexesAreReady(current)
+            val completed = withContext(Dispatchers.EDT) {
+                fun aliases(line: String): Set<String> {
+                    fixture.configureByText("head-completion.mars", include + line + suffix)
+                    return CodeInsightSettings.runWithTemporarySettings<_, Error> {
+                        it.AUTOCOMPLETE_ON_CODE_COMPLETION = false
+                        fixture.completeBasic().orEmpty().filter { item -> item.typeText() == "Equivalence" }
+                            .map { item -> item.lookupString }.filter { name -> name.startsWith("RUN_") }.toSet()
+                    }
+                }
+                val basic = setOf("RUN_OP", "RUN_ONE", "RUN_NUMBERED", "RUN_PAIR", "RUN_ALL")
+                assertEquals(basic + "RUN_PSEUDO", aliases("RUN_<caret>"))
+                assertEquals(setOf("RUN_ONE", "RUN_NUMBERED"), aliases("entry: RUN_<caret>.old \$t1, 4"))
+                val unfinished = aliases("entry: RUN_<caret> \$t1, 0x")
+                assertTrue(unfinished.containsAll(setOf("RUN_ONE", "RUN_NUMBERED")))
+                assertTrue("RUN_BAD" !in unfinished && "RUN_ALL" !in unfinished)
+                assertTrue(aliases("entry: RUN_<caret> 0x, )").isEmpty())
+                assertTrue(aliases("RUN_<caret> nop").isEmpty())
+                val settings = current.service<MarsAssemblySettings>()
+                settings.changeAssemblerOptions(false, warningsAreErrors = false)
+                assertEquals(basic, aliases("RUN_<caret>"))
+                settings.changeBareMachine(true)
+                assertEquals(setOf("RUN_NUMBERED"), aliases("entry: RUN_<caret> \$9, 4"))
+                settings.changeBareMachine(false)
+
+                assertEquals(setOf("RUN_ONE", "RUN_NUMBERED"), aliases("entry: RUN_<caret>.old \$t1, 4"))
+                val selected = fixture.lookup.items.single { it.lookupString == "RUN_ONE" }
+                assertEquals(" = RUN_OP \$t0", LookupElementPresentation().also(selected::renderElement).tailText)
+                fixture.lookup.setCurrentItem(selected)
+                fixture.finishLookup(Lookup.REPLACE_SELECT_CHAR)
+                assertEquals(include + "entry: RUN_ONE \$t1, 4" + suffix, fixture.file.text)
+                fixture.file.text
+            }
+            directory.resolve("heads.inc").writeText(definitions)
+            val entry = directory.resolve("head-completion.mars").also { it.writeText(completed) }
+            val program = current.service<MarsSessionService>().context.assemble(listOf(entry), null, false, false)
+            assertEquals(listOf(0x00094100), program.machineList.map { it.binaryStatement })
+        }
+
+    @Test
     fun `catalog completion inserts a dotted mnemonic after a label and a directive inside a macro`() = timeoutRunBlocking<Unit> {
         IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
         withContext(Dispatchers.EDT) {

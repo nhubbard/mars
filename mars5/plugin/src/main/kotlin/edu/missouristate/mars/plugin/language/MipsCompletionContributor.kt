@@ -10,6 +10,7 @@ import com.intellij.codeInsight.completion.CompletionType
 import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.DumbAware
+import com.intellij.openapi.util.TextRange
 import com.intellij.patterns.PlatformPatterns.psiElement
 import com.intellij.psi.tree.TokenSet
 import com.intellij.util.ProcessingContext
@@ -36,6 +37,10 @@ class MipsCompletionContributor : CompletionContributor(), DumbAware {
                     tail?.let { LookupElementBuilder.create(entry, entry.name).withTailText(it, true) }
                 }
                 lookup.caseInsensitive().addAllElements(items)
+                val range = TextRange(position.textOffset, replacementEnd(parameters))
+                for ((name, replacement) in instructionHeadEquivalenceCompletions(file, range, prefix, options)) {
+                    lookup.addElement(equivalenceLookup(name, replacement))
+                }
                 val macros = file.project.service<MarsAnalysisService>().macroCompletionSignatures(file, position.textOffset, prefix)
                 for ((name, signatures) in macros) {
                     lookup.addElement(LookupElementBuilder.create(name).withTailText(signatures.joinToString(" / ", prefix = " "), true))
@@ -55,13 +60,8 @@ class MipsCompletionContributor : CompletionContributor(), DumbAware {
                 val lookup = result.withPrefixMatcher(prefix)
                 if (operand != null) {
                     lookup.addAllElements(registerCandidates(operand.formats, operand.index, options.bareMachine).map(LookupElementBuilder::create))
-                    val original = parameters.originalPosition
-                    val replacementEnd = if (original != null && operandOrContinuationPosition.accepts(original)) {
-                        original.textRange.endOffset
-                    } else position.textOffset
-                    for ((name, replacement) in operand.equivalenceCompletions(root, prefix, options.bareMachine, replacementEnd)) {
-                        lookup.addElement(LookupElementBuilder.create(name).withTailText(" = " + replacement, true)
-                            .withTypeText(messages.getMessage("colors.equivalence")))
+                    for ((name, replacement) in operand.equivalenceCompletions(root, prefix, options.bareMachine, replacementEnd(parameters))) {
+                        lookup.addElement(equivalenceLookup(name, replacement))
                     }
                 }
                 val data = if (operand == null) DataLabelOperand.at(position) else null
@@ -129,6 +129,14 @@ class MipsCompletionContributor : CompletionContributor(), DumbAware {
             val position = parameters.position
             return position.text.substring(0, parameters.offset - position.textOffset)
         }
+
+        fun replacementEnd(parameters: CompletionParameters): Int = parameters.originalPosition
+            ?.takeIf { statementHead.accepts(it) || operandOrContinuationPosition.accepts(it) }
+            ?.let { it.textRange.endOffset } ?: parameters.position.textOffset
+
+        fun equivalenceLookup(name: String, replacement: String): LookupElementBuilder =
+            LookupElementBuilder.create(name).withTailText(" = " + replacement, true)
+                .withTypeText(messages.getMessage("colors.equivalence"))
 
         fun registerCandidates(formats: List<Instruction>, index: Int, bareMachine: Boolean): Set<String> = buildSet {
             for (instruction in formats) {

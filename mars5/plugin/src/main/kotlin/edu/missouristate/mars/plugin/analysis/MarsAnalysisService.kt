@@ -483,25 +483,25 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
             ?.takeIf { !it.isEmpty && it[0].type == TokenTypes.OPERATOR }
     }
 
-    internal fun instructionEquivalenceCompletions(
-        root: MipsFile, operand: TextRange, typedPrefix: String, accepts: (TokenList, Int) -> Boolean,
+    internal fun equivalenceCompletions(
+        root: MipsFile, replacement: TextRange, typedPrefix: String, accepts: (TokenList, Int) -> Boolean,
     ): Map<String, String> {
         if (DumbService.isDumb(project)) return emptyMap()
         val source = root.viewProvider.contents
-        val lineStart = sourceLineStart(source, operand.startOffset)
-        val lineEnd = CharArrayUtil.shiftForwardUntil(source, operand.endOffset, "\r\n")
+        val lineStart = sourceLineStart(source, replacement.startOffset)
+        val lineEnd = CharArrayUtil.shiftForwardUntil(source, replacement.endOffset, "\r\n")
         val visible = editorPrefix(root, lineStart)
-        val beforeOperand = source.subSequence(lineStart, operand.startOffset).toString()
-        val afterOperand = source.subSequence(operand.endOffset, lineEnd).toString()
+        val before = source.subSequence(lineStart, replacement.startOffset).toString()
+        val after = source.subSequence(replacement.endOffset, lineEnd).toString()
         return buildMap {
             for (definition in visible.equivalencesStartingWith(typedPrefix)) {
                 ProgressManager.checkCanceled()
-                val throughOperand = beforeOperand + definition.name
-                val tokens = expandedOperation(visible, throughOperand + afterOperand, allowIncompleteOperand = true)
+                val throughAlias = before + definition.name
+                val tokens = expandedOperation(visible, throughAlias + after, allowIncompleteOperand = true)
                     // A cyclic equivalence later on the line can prevent expansion of the full instruction.
-                    ?: afterOperand.takeIf(String::isNotEmpty)?.let { expandedOperation(visible, throughOperand, allowIncompleteOperand = true) }
+                    ?: after.takeIf(String::isNotEmpty)?.let { expandedOperation(visible, throughAlias, allowIncompleteOperand = true) }
                     ?: continue
-                val end = (1 until tokens.size()).firstOrNull { tokens[it].originalStartPos > throughOperand.length } ?: tokens.size()
+                val end = (0 until tokens.size()).firstOrNull { tokens[it].originalStartPos > throughAlias.length } ?: tokens.size()
                 if (accepts(tokens, end)) put(definition.name, definition.replacement)
             }
         }

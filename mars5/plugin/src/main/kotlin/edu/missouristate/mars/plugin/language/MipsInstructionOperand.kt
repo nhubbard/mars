@@ -15,6 +15,7 @@ import edu.missouristate.mars.mips.instructions.Instruction
 import edu.missouristate.mars.mips.instructions.InstructionDefaults
 import edu.missouristate.mars.mips.instructions.basic.InstrMfc0
 import edu.missouristate.mars.mips.instructions.basic.InstrMtc0
+import edu.missouristate.mars.plugin.MarsExecutionOptions
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.analysis.macroLineTokens
 
@@ -52,6 +53,27 @@ internal fun enabledInstructionFormats(name: String, allowPseudo: Boolean): List
     return if (allowPseudo) formats else formats.filterIsInstance<BasicInstruction>()
 }
 
+internal fun instructionHeadEquivalenceCompletions(
+    file: MipsFile, range: TextRange, prefix: String, options: MarsExecutionOptions,
+): Map<String, String> = file.project.service<MarsAnalysisService>().equivalenceCompletions(file, range, prefix) { tokens, end ->
+    if (end == 0 || tokens[0].type != TokenTypes.OPERATOR) return@equivalenceCompletions false
+    // A broken written operand should not hide aliases whose own operands already fit.
+    val checkedEnd = if ((end until tokens.size()).any { tokens[it].type == TokenTypes.ERROR }) end else tokens.size()
+    enabledInstructionFormats(tokens[0].value, options.allowPseudoInstructions).any { format ->
+        tokens.size() <= format.tokenList.size() &&
+            (checkedEnd == 1 || OperandFormat.matchesOperands(tokens, format, 1, checkedEnd, options.bareMachine)) &&
+            matchesAddressShape(tokens, format.tokenList, checkedEnd)
+    }
+}
+
+private val addressPunctuation = setOf(TokenTypes.LEFT_PAREN, TokenTypes.RIGHT_PAREN)
+
+private fun matchesAddressShape(tokens: TokenList, format: TokenList, first: Int = 1): Boolean = (first until tokens.size()).all { index ->
+    val actual = tokens[index].type
+    val expected = format[index].type
+    actual == expected || (actual !in addressPunctuation && expected !in addressPunctuation)
+}
+
 internal data class MipsParameterRow(val text: String, val ranges: List<TextRange>)
 
 internal fun renderInstructionExample(instruction: Instruction, bareMachine: Boolean): MipsParameterRow {
@@ -84,7 +106,7 @@ internal class MipsInstructionOperand private constructor(
     fun equivalenceCompletions(file: MipsFile, prefix: String, bareMachine: Boolean, replacementEnd: Int): Map<String, String> {
         if (formats.isEmpty()) return emptyMap()
         val operand = TextRange(startOffset, replacementEnd)
-        return file.project.service<MarsAnalysisService>().instructionEquivalenceCompletions(file, operand, prefix) { tokens, end ->
+        return file.project.service<MarsAnalysisService>().equivalenceCompletions(file, operand, prefix) { tokens, end ->
             !tokens.isEmpty && formats.any {
                 it.name.equals(tokens[0].value, ignoreCase = true) &&
                     tokens.size() <= it.tokenList.size() &&
@@ -95,8 +117,6 @@ internal class MipsInstructionOperand private constructor(
     }
 
     companion object {
-        private val addressPunctuation = setOf(TokenTypes.LEFT_PAREN, TokenTypes.RIGHT_PAREN)
-
         fun at(position: PsiElement, sourceFile: MipsFile, allowPseudo: Boolean = true): MipsInstructionOperand? {
             val instruction = operationOwner(position) ?: return null
             val prefix = instruction.node.chars.subSequence(0, position.textOffset - instruction.textOffset).toString()
@@ -108,12 +128,6 @@ internal class MipsInstructionOperand private constructor(
                 index < it.tokenList.size() && matchesAddressShape(tokens, it.tokenList)
             }
             return MipsInstructionOperand(index, formats, position.textOffset)
-        }
-
-        private fun matchesAddressShape(tokens: TokenList, format: TokenList, first: Int = 1): Boolean = (first until tokens.size()).all { index ->
-            val actual = tokens[index].type
-            val expected = format[index].type
-            actual == expected || (actual !in addressPunctuation && expected !in addressPunctuation)
         }
     }
 }
