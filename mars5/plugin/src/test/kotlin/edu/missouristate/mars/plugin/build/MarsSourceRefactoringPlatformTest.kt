@@ -5,7 +5,6 @@ import com.intellij.execution.configurations.ConfigurationTypeUtil
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.command.undo.UndoManager
-import com.intellij.openapi.components.PathMacroManager
 import com.intellij.openapi.components.service
 import com.intellij.openapi.ui.TestDialog
 import com.intellij.openapi.ui.TestDialogManager
@@ -21,6 +20,7 @@ import edu.missouristate.mars.plugin.language.MipsFileType
 import edu.missouristate.mars.plugin.run.MarsRunConfiguration
 import edu.missouristate.mars.plugin.run.MarsRunType
 import java.nio.file.Path
+import kotlin.io.path.invariantSeparatorsPathString
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -121,9 +121,9 @@ class MarsSourceRefactoringPlatformTest {
         withContext(Dispatchers.EDT) {
             val initial = source.virtualFile.toNioPath()
             val exception = handler.virtualFile.toNioPath()
-            val run = createRun("Application", stored(initial))
+            val run = createRun("Application", initial.toString())
             RenameProcessor(project, unrelated, "unused.s", false, false).run()
-            assertEquals(stored(initial), run.options.sourcePath)
+            assertEquals(initial.toString(), run.options.sourcePath)
             assertNull(settings.exceptionHandler)
 
             RenameProcessor(project, source, "renamed.asm", false, false).run()
@@ -161,7 +161,10 @@ class MarsSourceRefactoringPlatformTest {
         return run
     }
 
-    private fun stored(path: Path) = PathMacroManager.getInstance(project).collapsePath(path.toString())
+    private fun stored(path: Path): String {
+        val projectPath = Path.of(requireNotNull(project.basePath))
+        return "\$PROJECT_DIR\$/${projectPath.relativize(path).invariantSeparatorsPathString}"
+    }
 
     private fun withUndo(action: (UndoManager) -> Unit) {
         val undo = UndoManager.getInstance(project)

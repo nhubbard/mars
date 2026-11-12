@@ -38,6 +38,7 @@ import edu.missouristate.mars.plugin.run.MarsInputMode
 import edu.missouristate.mars.plugin.run.MarsRunConfiguration
 import edu.missouristate.mars.plugin.run.MarsRunConfigurationProducer
 import edu.missouristate.mars.plugin.run.MarsRunType
+import kotlin.io.path.invariantSeparatorsPathString
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -173,7 +174,7 @@ class MarsImportVenusPreferencesPlatformTest {
             val before = settings.getState()
             val tabSize = projectTabSize
             withDialog({ preview ->
-                assertTrue(preview.contains("Exception handler source  $handler → Off"))
+                assertTrue(preview.contains("Exception handler source  ${handler.invariantSeparatorsPathString} → Off"))
                 Messages.OK
             }) { action.actionPerformed(event(action)) }
             assertEquals(before.copy(exceptionHandler = null), settings.getState())
