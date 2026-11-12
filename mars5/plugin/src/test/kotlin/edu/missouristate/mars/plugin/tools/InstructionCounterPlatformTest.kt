@@ -54,6 +54,7 @@ import java.awt.event.ActionEvent
 import java.awt.event.FocusEvent
 import java.awt.event.KeyEvent
 import java.awt.event.MouseEvent
+import javax.accessibility.AccessibleState
 import javax.swing.JButton
 import javax.swing.JComboBox
 import javax.swing.JComponent
@@ -324,6 +325,24 @@ class InstructionCounterPlatformTest {
                 scroll.viewport.view.doLayout()
                 return scroll
             }
+            fun assertCollapsedSettings(panel: JComponent, title: String, settings: JButton, result: JComponent) {
+                val label = UIUtil.findComponentsOfType(panel, JLabel::class.java).single { it.text == title }
+                val section = label.accessibleContext
+                assertTrue(section.accessibleStateSet.contains(AccessibleState.COLLAPSED))
+                assertFalse(settings.isVisible)
+                val dock = layoutDock(panel, 280, 460)
+                val body = dock.viewport.view
+                fun resultTop() = SwingUtilities.convertPoint(result.parent, result.location, body).y
+                val collapsedTop = resultTop()
+                assertTrue(collapsedTop < dock.viewport.extentSize.height)
+                assertTrue(section.accessibleAction.doAccessibleAction(0))
+                assertTrue(settings.isVisible)
+                layoutDock(panel, 280, 460)
+                assertTrue(resultTop() > collapsedTop)
+                assertTrue(section.accessibleAction.doAccessibleAction(0))
+                assertFalse(settings.isVisible)
+                assertTrue(section.accessibleAction.doAccessibleAction(0))
+            }
             fun latestBranch() = UIUtil.findComponentsOfType(branches, JLabel::class.java)
                 .single { it.text == "Latest branch" }.labelFor as JEditorPane
             fun latestBranchText() = latestBranch().document.let { it.getText(0, it.length).trim() }
@@ -368,7 +387,14 @@ class InstructionCounterPlatformTest {
                 assertFalse(button("Apply and Reset", branches).isEnabled)
                 assertFalse(button("Apply and Clear", bitmap).isEnabled)
                 assertFalse(button("Apply and Reset", cache).isEnabled)
-                assertEquals(0, UIUtil.findComponentsOfType(cache, JBTable::class.java).single().rowCount)
+                val cacheTable = UIUtil.findComponentsOfType(cache, JBTable::class.java).single()
+                assertEquals(0, cacheTable.rowCount)
+                val cacheTableScroll = assertInstanceOf(JScrollPane::class.java,
+                    SwingUtilities.getAncestorOfClass(JScrollPane::class.java, cacheTable))
+                assertCollapsedSettings(cache, "Cache Settings", button("Apply and Reset", cache), cacheTableScroll)
+                for (panel in listOf(bitmap, references)) {
+                    assertCollapsedSettings(panel, "Display Settings", button("Apply and Clear", panel), canvas(panel))
+                }
                 val memoryDock = layoutDock(references, 280, 460)
                 val gridChoice = UIUtil.findComponentsOfType(references, JBCheckBox::class.java).single()
                 val gridBounds = SwingUtilities.convertRectangle(gridChoice.parent, gridChoice.bounds, memoryDock.viewport.view)

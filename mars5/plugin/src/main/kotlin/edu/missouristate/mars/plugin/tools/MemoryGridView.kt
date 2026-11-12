@@ -74,30 +74,32 @@ internal class MemoryGridView(
 
     val component = ScrollPaneFactory.createScrollPane(marsToolPanel {
         marsExecutionRow(selector.component)
-        row { cell(base).label(toolsMessages.getMessage("bitmap.base"), LabelPosition.TOP) }
-        row {
-            panel { row { cell(width).label(toolsMessages.getMessage("bitmap.width"), LabelPosition.TOP) } }
-            panel { row { cell(height).label(toolsMessages.getMessage("bitmap.height"), LabelPosition.TOP) } }
-        }
-        row {
-            panel { row { cell(unitWidth).label(toolsMessages.getMessage("bitmap.unitWidth"), LabelPosition.TOP) } }
-            panel { row { cell(unitHeight).label(toolsMessages.getMessage("bitmap.unitHeight"), LabelPosition.TOP) } }
-        }
-        reference?.let { controls ->
-            row(toolsMessages.getMessage("references.words")) { cell(controls.words) }
-            row { cell(controls.threshold).label(toolsMessages.getMessage("references.threshold"), LabelPosition.TOP) }
-                .topGap(TopGap.SMALL)
-            row {
-                cell(controls.color)
-                cell(controls.applyColor)
-            }
-            row { cell(controls.grid) }
-        }
-        row { cell(apply) }
         row {
             cell(toggle)
             cell(reset)
         }
+        collapsibleGroup(toolsMessages.getMessage("bitmap.configuration"), indent = false) {
+            row { cell(base).label(toolsMessages.getMessage("bitmap.base"), LabelPosition.TOP) }
+            row {
+                panel { row { cell(width).label(toolsMessages.getMessage("bitmap.width"), LabelPosition.TOP) } }
+                panel { row { cell(height).label(toolsMessages.getMessage("bitmap.height"), LabelPosition.TOP) } }
+            }
+            row {
+                panel { row { cell(unitWidth).label(toolsMessages.getMessage("bitmap.unitWidth"), LabelPosition.TOP) } }
+                panel { row { cell(unitHeight).label(toolsMessages.getMessage("bitmap.unitHeight"), LabelPosition.TOP) } }
+            }
+            reference?.let { controls ->
+                row(toolsMessages.getMessage("references.words")) { cell(controls.words) }
+                row { cell(controls.threshold).label(toolsMessages.getMessage("references.threshold"), LabelPosition.TOP) }
+                    .topGap(TopGap.SMALL)
+                row {
+                    cell(controls.color)
+                    cell(controls.applyColor)
+                }
+                row { cell(controls.grid) }
+            }
+            row { cell(apply) }
+        }.expanded = false
         row { cell(canvas).align(Align.FILL).resizableColumn() }.resizableRow()
         row { cell(inspection) }
         row { comment(toolsMessages.getMessage(mode.helpKey)).resizableColumn() }.layout(RowLayout.INDEPENDENT)

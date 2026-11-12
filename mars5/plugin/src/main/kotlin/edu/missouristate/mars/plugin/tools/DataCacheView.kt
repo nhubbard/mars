@@ -64,18 +64,20 @@ internal class DataCacheView(project: Project) : Disposable {
 
     val component = scrollableToolPanel(this, marsToolPanel {
         marsExecutionRow(selector.component)
-        row { cell(placement).label(toolsMessages.getMessage("cache.placement"), LabelPosition.TOP) }
-        row {
-            panel { row { cell(blocks).label(toolsMessages.getMessage("cache.blocks"), LabelPosition.TOP) } }
-            panel { row { cell(words).label(toolsMessages.getMessage("cache.words"), LabelPosition.TOP) } }
-        }.layout(RowLayout.INDEPENDENT)
-        row(toolsMessages.getMessage("cache.ways")) { cell(ways) }
-        row { cell(replacement).label(toolsMessages.getMessage("cache.replacement"), LabelPosition.TOP) }
-        row { cell(apply) }
         row {
             cell(toggle)
             cell(reset)
         }
+        collapsibleGroup(toolsMessages.getMessage("cache.configuration"), indent = false) {
+            row { cell(placement).label(toolsMessages.getMessage("cache.placement"), LabelPosition.TOP) }
+            row {
+                panel { row { cell(blocks).label(toolsMessages.getMessage("cache.blocks"), LabelPosition.TOP) } }
+                panel { row { cell(words).label(toolsMessages.getMessage("cache.words"), LabelPosition.TOP) } }
+            }.layout(RowLayout.INDEPENDENT)
+            row(toolsMessages.getMessage("cache.ways")) { cell(ways) }
+            row { cell(replacement).label(toolsMessages.getMessage("cache.replacement"), LabelPosition.TOP) }
+            row { cell(apply) }
+        }.expanded = false
         row { cell(summary) }.topGap(TopGap.SMALL)
         row { cell(traffic) }
         row {

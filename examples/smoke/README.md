@@ -69,8 +69,10 @@ which contains [torture.png](png-decoder/src/main/mips/torture.png). To try
 another PNG, pass its filename as the first program argument.
 
 1. Open **MARS Tools → Bitmap Display** and select the waiting execution.
-2. Set the base address to **Heap (0x10040000)**, the display width and height
-   to **1024**, and both unit dimensions to **2**. Click **Apply and Clear**.
+2. Expand **Display Settings**. Set the base address to **Heap (0x10040000)**,
+   the display width and height to **1024**, and both unit dimensions to **2**.
+   Click **Apply and Clear**, then collapse **Display Settings** to make room
+   for the bitmap.
 3. Click **Connect** if capture is off, then press Enter in the Run console.
    The program validates and decodes the PNG before writing the bitmap.
    The supplied image writes all 262,144 cells, covering the whole display.
