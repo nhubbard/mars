@@ -12,6 +12,7 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.util.TextRange
 import com.intellij.patterns.PlatformPatterns.psiElement
+import com.intellij.psi.SmartPointerManager
 import com.intellij.psi.tree.TokenSet
 import com.intellij.util.ProcessingContext
 import edu.missouristate.mars.assembler.RegisterNames
@@ -38,8 +39,14 @@ class MipsCompletionContributor : CompletionContributor(), DumbAware {
                 }
                 lookup.caseInsensitive().addAllElements(items)
                 val range = TextRange(position.textOffset, replacementEnd(parameters))
-                for ((name, replacement) in statementEquivalenceCompletions(file, range, prefix, options)) {
-                    lookup.addElement(equivalenceLookup(name, replacement))
+                val aliases = statementEquivalenceCompletions(file, range, prefix, options)
+                if (aliases.isNotEmpty()) {
+                    val site = SmartPointerManager.getInstance(file.project).createSmartPsiFileRangePointer(file, range)
+                    for ((name, replacement) in aliases) {
+                        val item = equivalenceLookup(name, replacement)
+                        item.putUserData(mipsStatementAliasSite, site)
+                        lookup.addElement(item)
+                    }
                 }
                 val analysis = file.project.service<MarsAnalysisService>()
                 val macros = analysis.macroCompletionSignatures(file, position.textOffset, prefix)

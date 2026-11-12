@@ -180,6 +180,74 @@ class MipsDocumentationPlatformTest {
     }
 
     @Test
+    fun `macro alias documentation previews the projected invocation and follows edits`() = timeoutRunBlocking<Unit> {
+        val current = project.get()
+        val entry = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("lookup.inc", ".macro emit (%one) # One operand\n.end_macro\n")
+            val source = """
+                .include "lookup.inc"
+                .macro emit (%left, %right) # Two <operands>
+                .end_macro
+                .macro emit (%a, %b, %c, %d) # Four operands
+                .end_macro
+                .eqv LOOP OTHER
+                .eqv OTHER LOOP
+                .eqv CALL emit
+                .eqv CALL_OTHER .word
+                row: CALL.old(7, 8)
+                nop
+            """.trimIndent()
+            fixture.addFileToProject("alias-doc.mars", source).virtualFile.also {
+                fixture.configureFromExistingVirtualFile(it)
+                fixture.editor.caretModel.moveToOffset(source.indexOf("CALL.old") + 2)
+            }
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(current)
+        val (call, other) = withContext(Dispatchers.EDT) {
+            val items = fixture.completeBasic().orEmpty()
+            items.single { it.lookupString == "CALL" } to items.single { it.lookupString == "CALL_OTHER" }
+        }
+        val provider = IdeDocumentationTargetProvider.getInstance(current)
+        val pointer = readAction {
+            assertTrue(provider.documentationTargets(fixture.editor, fixture.file, other).isEmpty())
+            val target = provider.documentationTargets(fixture.editor, fixture.file, call).single()
+            assertEquals("CALL", target.computePresentation().presentableText)
+            assertEquals(fixture.file.text.indexOf("emit (%left"), (target.navigatable as OpenFileDescriptor).offset)
+            target.createPointer()
+        }
+        val exact = computeDocumentationBlocking(pointer)?.html.orEmpty()
+        assertTrue("emit(%left, %right)" in exact && "Two &lt;operands&gt;" in exact)
+        assertTrue("One operand" !in exact && "Four operands" !in exact)
+        withContext(Dispatchers.EDT) {
+            fixture.lookup.hideLookup(false)
+            DumbModeTestUtils.runInDumbModeSynchronously(current) { assertNull(pointer.dereference()) }
+        }
+        suspend fun edit(from: String, to: String) = withContext(Dispatchers.EDT) {
+            val document = fixture.editor.document
+            val start = document.text.indexOf(from)
+            WriteCommandAction.runWriteCommandAction(current) { document.replaceString(start, start + from.length, to) }
+            PsiDocumentManager.getInstance(current).commitAllDocuments()
+        }
+        edit("(7, 8)", " 7, 8, 9")
+        val unfinished = computeDocumentationBlocking(pointer)?.html.orEmpty()
+        assertTrue("Four operands" in unfinished && "Two &lt;operands&gt;" !in unfinished)
+        edit(" 7, 8, 9", " 7, 8, 9, 10, 11")
+        assertNull(computeDocumentationBlocking(pointer))
+        edit(" 7, 8, 9, 10, 11", "")
+        edit(".eqv CALL emit", ".eqv CALL generated:")
+        edit("row: ", "")
+        assertNull(computeDocumentationBlocking(pointer))
+        edit(".eqv CALL generated:", ".eqv CALL LOOP")
+        assertNull(computeDocumentationBlocking(pointer))
+        edit(".eqv CALL LOOP\n", "")
+        assertNull(computeDocumentationBlocking(pointer))
+        edit(fixture.file.text, "nop\n")
+        assertNull(computeDocumentationBlocking(pointer))
+        withContext(Dispatchers.EDT) { WriteCommandAction.runWriteCommandAction(current) { entry.delete(this) } }
+        assertNull(computeDocumentationBlocking(pointer))
+    }
+
+    @Test
     fun `operation aliases show the core documentation and keep declaration navigation`() = timeoutRunBlocking<Unit> {
         val definitions = ".eqv DEFINE .eqv\nDEFINE OP DIV \$t0,\$t1\nDEFINE STORE .WoRd\n"
         withContext(Dispatchers.EDT) { fixture.addFileToProject("aliases.s", definitions) }

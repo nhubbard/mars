@@ -50,6 +50,7 @@ import edu.missouristate.mars.plugin.language.MipsTypes
 import edu.missouristate.mars.plugin.language.index.MipsDeclarationIndex
 import edu.missouristate.mars.plugin.language.index.MipsDeclarationSite
 import edu.missouristate.mars.plugin.language.index.MipsReferenceIndex
+import edu.missouristate.mars.plugin.language.matchesMacroCall
 import edu.missouristate.mars.plugin.language.operationHead
 import edu.missouristate.mars.plugin.language.operationOwner
 import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
@@ -450,6 +451,23 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         return prefix.macroOverloads(name).values
     }
 
+    internal fun macroAliasCompletionDefinitions(root: MipsFile, range: TextRange, name: String): Collection<MipsSourceEvent.Begin> {
+        if (DumbService.isDumb(project)) return emptyList()
+        val source = root.viewProvider.contents
+        val start = sourceLineStart(source, range.startOffset)
+        val end = CharArrayUtil.shiftForwardUntil(source, range.endOffset, "\r\n")
+        val visible = editorPrefix(root, start)
+        if (visible.equivalence(name) == null) return emptyList()
+        val before = source.subSequence(start, range.startOffset).toString()
+        val after = source.subSequence(range.endOffset, end).toString()
+        val (tokens, throughAlias) = expandCompletionAlias(visible, before + name, after, allowBrokenSuffix = true) ?: return emptyList()
+        if (throughAlias == 0 || tokens[0].type != TokenTypes.IDENTIFIER) return emptyList()
+        val overloads = visible.macroOverloads(tokens[0].value)
+        if (!matchesMacroCall(tokens, throughAlias, overloads.keys)) return emptyList()
+        val exact = overloads[tokens.macroArgumentCount()]
+        return if (exact == null) overloads.filterKeys { matchesMacroCall(tokens, throughAlias, setOf(it)) }.values else listOf(exact)
+    }
+
     internal fun completesDataHeadAsMacro(root: MipsFile, range: TextRange, name: String): Boolean {
         val source = root.viewProvider.contents
         val start = sourceLineStart(source, range.startOffset)
@@ -607,16 +625,22 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         return buildMap {
             for (definition in visible.equivalencesStartingWith(typedPrefix)) {
                 ProgressManager.checkCanceled()
-                val throughAlias = before + definition.name
-                val tokens = expandedOperation(visible, throughAlias + after, allowIncompleteOperand = true)
-                    // A cyclic equivalence later on the line can prevent expansion of the full instruction.
-                    ?: after.takeIf { allowBrokenSuffix && it.isNotEmpty() }
-                        ?.let { expandedOperation(visible, throughAlias, allowIncompleteOperand = true) }
-                    ?: continue
-                val end = (0 until tokens.size()).firstOrNull { tokens[it].originalStartPos > throughAlias.length } ?: tokens.size()
+                val (tokens, end) = expandCompletionAlias(visible, before + definition.name, after, allowBrokenSuffix) ?: continue
                 if (accepts(tokens, end, visible)) put(definition.name, definition.replacement)
             }
         }
+    }
+
+    private fun expandCompletionAlias(
+        visible: MipsSourceTimeline.Prefix, throughAlias: String, after: String, allowBrokenSuffix: Boolean,
+    ): Pair<TokenList, Int>? {
+        val tokens = expandedOperation(visible, throughAlias + after, allowIncompleteOperand = true)
+            // A cyclic equivalence later on the line can prevent expansion of the full instruction.
+            ?: after.takeIf { allowBrokenSuffix && it.isNotEmpty() }
+                ?.let { expandedOperation(visible, throughAlias, allowIncompleteOperand = true) }
+            ?: return null
+        val end = (0 until tokens.size()).firstOrNull { tokens[it].originalStartPos > throughAlias.length } ?: tokens.size()
+        return tokens to end
     }
 
     private fun isGeneratedMnemonicLabel(root: MipsFile, head: PsiElement): Boolean {

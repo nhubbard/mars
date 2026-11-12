@@ -71,7 +71,7 @@ internal fun statementEquivalenceCompletions(
     }
 }
 
-private fun matchesMacroCall(tokens: TokenList, end: Int, arities: Set<Int>): Boolean {
+internal fun matchesMacroCall(tokens: TokenList, end: Int, arities: Set<Int>): Boolean {
     if (arities.isEmpty() || (1 until end).any { tokens[it].type == TokenTypes.ERROR }) return false
     val arguments = tokens.macroArgumentCount()
     if (Macro.hasCallParentheses(tokens)) return arguments in arities

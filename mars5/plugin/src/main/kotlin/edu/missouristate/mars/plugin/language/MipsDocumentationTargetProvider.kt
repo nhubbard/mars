@@ -9,6 +9,7 @@ import com.intellij.lang.documentation.DocumentationMarkup.DEFINITION_START
 import com.intellij.model.Pointer
 import com.intellij.openapi.components.service
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
+import com.intellij.openapi.util.Key
 import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.platform.backend.documentation.DocumentationResult
@@ -19,6 +20,7 @@ import com.intellij.platform.backend.presentation.TargetPresentation
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.SmartPointerManager
+import com.intellij.psi.SmartPsiFileRange
 import com.intellij.psi.tree.TokenSet
 import com.intellij.psi.util.PsiUtilCore
 import edu.missouristate.mars.assembler.Directives
@@ -78,29 +80,35 @@ internal class MipsDocumentationTargetProvider : DocumentationTargetProvider, Lo
         when (val item = element.`object`) {
             is MipsCatalogEntry -> item
             is MipsMacroLookup -> macroLookupDocumentation(psiFile, offset, item.name)
-            else -> null
+            else -> element.getUserData(mipsStatementAliasSite)?.let { macroAliasLookupDocumentation(it, element.lookupString) }
         }
 
     private fun macroLookupDocumentation(file: PsiFile?, offset: Int, name: String): DocumentationTarget? {
         if (file !is MipsFile) return null
         val definitions = file.project.service<MarsAnalysisService>().macroCompletionDefinitions(file, offset, name)
-        return if (definitions.isEmpty()) null else MacroLookupDocumentation(file, offset, name, definitions)
+        if (definitions.isEmpty()) return null
+        val site = SmartPointerManager.getInstance(file.project).createSmartPsiFileRangePointer(file, TextRange.from(offset, 0))
+        return MacroLookupDocumentation(name, definitions, Pointer {
+            val start = site.psiRange?.startOffset ?: return@Pointer null
+            macroLookupDocumentation(site.element, start, name)
+        })
     }
 
-    private inner class MacroLookupDocumentation(
-        private val file: MipsFile,
-        private val offset: Int,
+    private fun macroAliasLookupDocumentation(site: SmartPsiFileRange, name: String): DocumentationTarget? {
+        val file = site.containingFile as? MipsFile ?: return null
+        val range = site.psiRange ?: return null
+        val definitions = file.project.service<MarsAnalysisService>()
+            .macroAliasCompletionDefinitions(file, TextRange.create(range), name)
+        if (definitions.isEmpty()) return null
+        return MacroLookupDocumentation(name, definitions, Pointer { macroAliasLookupDocumentation(site, name) })
+    }
+
+    private class MacroLookupDocumentation(
         private val name: String,
         private val definitions: Collection<MipsSourceEvent.Begin>,
+        private val pointer: Pointer<DocumentationTarget>,
     ) : DocumentationTarget {
-        override fun createPointer(): Pointer<DocumentationTarget> {
-            val site = SmartPointerManager.getInstance(file.project).createSmartPsiFileRangePointer(file, TextRange.from(offset, 0))
-            val macroName = name
-            return Pointer {
-                val start = site.psiRange?.startOffset ?: return@Pointer null
-                macroLookupDocumentation(site.element, start, macroName)
-            }
-        }
+        override fun createPointer(): Pointer<DocumentationTarget> = pointer
 
         override fun computePresentation(): TargetPresentation = TargetPresentation.builder(name).presentation()
 
@@ -113,7 +121,7 @@ internal class MipsDocumentationTargetProvider : DocumentationTargetProvider, Lo
         override fun computeDocumentation(): DocumentationResult = DocumentationResult.documentation(buildString {
             for (definition in definitions) {
                 val source = definition.header.containingFile.originalFile
-                val signature = definition.parameters.joinToString(prefix = "$name(", postfix = ")") { it.value }
+                val signature = definition.parameters.joinToString(prefix = "${definition.name}(", postfix = ")") { it.value }
                 appendMacroDocumentation(source, definition.nameOffset, signature)
             }
         })
@@ -181,6 +189,7 @@ internal class MipsDocumentationTargetProvider : DocumentationTargetProvider, Lo
 }
 
 internal data class MipsMacroLookup(val name: String)
+internal val mipsStatementAliasSite = Key.create<SmartPsiFileRange>("mars.statement.alias.completion.site")
 
 internal data class MipsCompletionTails(val symbolic: String, val numeric: String)
 
