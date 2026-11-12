@@ -131,7 +131,7 @@ class MipsEditorPlatformTest {
                 fixture.configureFromExistingVirtualFile(file.virtualFile)
                 assertSame(MipsFileType, fixture.file.fileType)
                 val editor = fixture.editor
-                val highlights = fixture.doHighlighting().filter { it.forcedTextAttributesKey == instructionMnemonicColor }
+                val highlights = fixture.highlightAfterMipsRefresh().filter { it.forcedTextAttributesKey == instructionMnemonicColor }
                 val expectedSpans = listOf("addiu", "LI", "c.eq.s", "s.s").map { mnemonic ->
                     val start = source.indexOf(" $mnemonic ") + 1
                     start until (start + mnemonic.length)
@@ -189,7 +189,7 @@ class MipsEditorPlatformTest {
         withContext(Dispatchers.EDT) {
             val file = fixture.file as MipsFile
             val source = file.text
-            val highlights = fixture.doHighlighting().filter { it.forcedTextAttributesKey == instructionMnemonicColor }
+            val highlights = fixture.highlightAfterMipsRefresh().filter { it.forcedTextAttributesKey == instructionMnemonicColor }
             val expected = listOf(
                 "addiu \$t0, \$zero, 7" to "addiu",
                 "syscall\nj COLON" to "syscall",
@@ -251,7 +251,7 @@ class MipsEditorPlatformTest {
         IndexingTestUtil.suspendUntilIndexesAreReady(current)
         withContext(Dispatchers.EDT) {
             val source = fixture.file.text
-            val highlights = fixture.doHighlighting()
+            val highlights = fixture.highlightAfterMipsRefresh()
             fun assertColor(context: String, key: TextAttributesKey, word: String = context.substringBefore(' ')) {
                 val start = source.indexOf(context) + context.indexOf(word)
                 assertTrue(start >= 0 && highlights.any {
@@ -314,7 +314,7 @@ class MipsEditorPlatformTest {
         IndexingTestUtil.suspendUntilIndexesAreReady(current)
         withContext(Dispatchers.EDT) {
             val file = fixture.file as MipsFile
-            val highlights = fixture.doHighlighting()
+            val highlights = fixture.highlightAfterMipsRefresh()
             fun color(context: String, word: String): TextAttributesKey? {
                 val start = source.indexOf(context) + context.indexOf(word)
                 return highlights.singleOrNull {
@@ -392,7 +392,7 @@ class MipsEditorPlatformTest {
         IndexingTestUtil.suspendUntilIndexesAreReady(current)
         withContext(Dispatchers.EDT) {
             val source = fixture.file.text
-            val highlights = fixture.doHighlighting()
+            val highlights = fixture.highlightAfterMipsRefresh()
             fun color(context: String, token: String): TextAttributesKey? {
                 val start = source.indexOf(context) + context.indexOf(token)
                 return highlights.singleOrNull { it.startOffset == start && it.endOffset == start + token.length &&
@@ -452,7 +452,7 @@ class MipsEditorPlatformTest {
             withContext(Dispatchers.EDT) { fixture.configureByText("alias-roles.asm", source) }
             IndexingTestUtil.suspendUntilIndexesAreReady(current)
             withContext(Dispatchers.EDT) {
-                val highlights = fixture.doHighlighting()
+                val highlights = fixture.highlightAfterMipsRefresh()
                 fun assertColor(line: String, word: String, expected: TextAttributesKey) {
                     val start = source.indexOf("\n$line") + 1 + line.indexOf(word)
                     assertEquals(listOf(expected), highlights.filter {
@@ -489,7 +489,7 @@ class MipsEditorPlatformTest {
                 -
             """.trimIndent())
             val source = fixture.file.text
-            val highlights = fixture.doHighlighting()
+            val highlights = fixture.highlightAfterMipsRefresh()
             fun hasHighlight(context: String, token: String, key: TextAttributesKey): Boolean {
                 val start = source.indexOf(context) + context.indexOf(token)
                 return highlights.any {

@@ -6,7 +6,6 @@ import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.components.service
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
-import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
@@ -82,7 +81,6 @@ class MipsMacroArityPlatformTest {
 
     @Test
     fun `included overloads and expanded call names use the physical alias range`() = timeoutRunBlocking<Unit> {
-        val current = project.get()
         val source = """
             .text
             .include "overloads.s"
@@ -111,7 +109,6 @@ class MipsMacroArityPlatformTest {
             fixture.addFileToProject("overloads.s", ".macro load (%first, %second)\nnop\n.end_macro\n")
             fixture.configureByText("aliases.asm", source)
         }
-        IndexingTestUtil.suspendUntilIndexesAreReady(current)
         withContext(Dispatchers.EDT) {
             assertEquals(
                 listOf(
@@ -123,7 +120,7 @@ class MipsMacroArityPlatformTest {
                 ),
                 warnings(),
             )
-            val macroColors = fixture.doHighlighting().filter { it.forcedTextAttributesKey == macroColor }
+            val macroColors = fixture.highlightAfterMipsRefresh().filter { it.forcedTextAttributesKey == macroColor }
                 .map { it.startOffset }.toSet()
             assertFalse(source.indexOf("CALL ()") in macroColors)
             assertFalse(source.indexOf("FULL 1") in macroColors)
@@ -136,7 +133,7 @@ class MipsMacroArityPlatformTest {
 
     private data class Warning(val offset: Int, val token: String, val message: String)
 
-    private fun warnings(): List<Warning> = fixture.doHighlighting()
+    private suspend fun warnings(): List<Warning> = fixture.highlightAfterMipsRefresh()
         .filter { it.severity == HighlightSeverity.WARNING }
         .mapNotNull { info ->
             val message = info.description ?: return@mapNotNull null
