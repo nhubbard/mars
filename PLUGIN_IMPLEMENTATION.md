@@ -3513,6 +3513,16 @@ The two IDE logs and the project hashes are under
 Both hosts exercised ZIP replacement on the same IDE build. Marketplace
 delivery and the remaining host matrix require separate qualification.
 
+The macOS replacement replay was repeated with the hit-count ZIP from
+`858b8d2a`. The baseline IDE saved an enabled line breakpoint with condition
+`$a0 != 0` and no custom breakpoint properties. The replacement restored the
+condition and line, supplied a hit interval of one, stopped at `src/console.s:4`,
+and printed `Hello from MARS!` after Resume. SHA-256 checks confirmed that the
+sources, ordered assembly settings, and shared Run configuration stayed
+byte-identical and that all eight installed JARs came from the qualified ZIP.
+The dialog screenshot, both launch logs, and project hashes are under
+`mars5/.gradle/release-host-checks/hit-interval-upgrade-fresh`.
+
 ### Live disable with a MARS editor open
 
 The packaged IntelliJ IDEA `IU-263.7307.200` replay on macOS opened a
