@@ -70,10 +70,12 @@ internal class MarsMemoryExportService(private val project: Project, private val
         options: MemoryExportOptions, output: Path, capture: MemoryExportCapture,
     ): String? = when (capture) {
         is MemoryExportCapture.Failed -> capture.message
-        is MemoryExportCapture.Ready -> withContext(Dispatchers.IO) { writeMemory(options, output, capture.snapshot) }
+        is MemoryExportCapture.Ready -> writeMemory(options, output, capture.snapshot)
     }
 
-    private suspend fun writeMemory(options: MemoryExportOptions, output: Path, snapshot: MemoryDumpSnapshot): String? {
+    private suspend fun writeMemory(
+        options: MemoryExportOptions, output: Path, snapshot: MemoryDumpSnapshot,
+    ): String? = withContext(Dispatchers.IO) {
         try {
             val temporary = Files.createTempFile(output.toAbsolutePath().parent, ".mars-memory-", ".tmp")
             try {
@@ -84,10 +86,10 @@ internal class MarsMemoryExportService(private val project: Project, private val
                 Files.deleteIfExists(temporary)
             }
         } catch (e: IOException) {
-            return messages.getMessage("export.io.error", output, e.localizedMessage)
+            return@withContext messages.getMessage("export.io.error", output, e.localizedMessage)
         }
         LocalFileSystem.getInstance().refreshNioFiles(listOf(output), true, false, null)
-        return null
+        null
     }
 }
 

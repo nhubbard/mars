@@ -2,18 +2,17 @@ package edu.missouristate.mars.plugin.build
 
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.command.WriteCommandAction
-import com.intellij.openapi.compiler.CompileContext
 import com.intellij.openapi.compiler.CompileScope
 import com.intellij.openapi.compiler.CompilerManager
-import com.intellij.openapi.compiler.CompilerMessage
 import com.intellij.openapi.compiler.CompilerMessageCategory
+import com.intellij.openapi.compiler.DummyCompileContext
 import com.intellij.openapi.components.service
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.progress.EmptyProgressIndicator
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.module.Module
+import com.intellij.openapi.util.Key
 import com.intellij.openapi.util.UserDataHolderBase
 import com.intellij.openapi.util.Computable
 import com.intellij.openapi.vfs.VirtualFile
@@ -150,15 +149,16 @@ class MarsCompilerPlatformTest {
         val line: Int, val column: Int, val navigatable: Navigatable?,
     )
 
-    private class RecordingContext(private val project: Project, private val scope: CompileScope) :
-        UserDataHolderBase(), CompileContext {
+    private class RecordingContext(project: Project, private val scope: CompileScope) : DummyCompileContext(project) {
         val messages = mutableListOf<Diagnostic>()
         var onMessage: () -> Unit = {}
         private val indicator = EmptyProgressIndicator()
-        override fun getProject() = project
+        private val userData = UserDataHolderBase()
         override fun getCompileScope() = scope
         override fun getProjectCompileScope() = scope
         override fun getProgressIndicator() = indicator
+        override fun <T> getUserData(key: Key<T>): T? = userData.getUserData(key)
+        override fun <T> putUserData(key: Key<T>, value: T?) = userData.putUserData(key, value)
         override fun addMessage(
             category: CompilerMessageCategory, message: String, url: String?, lineNum: Int, columnNum: Int,
             navigatable: Navigatable?, moduleNames: Collection<String>,
@@ -166,14 +166,5 @@ class MarsCompilerPlatformTest {
             onMessage()
             messages.add(Diagnostic(category, message, url, lineNum, columnNum, navigatable))
         }
-        override fun getMessages(category: CompilerMessageCategory): Array<CompilerMessage> = error("Unused")
-        override fun getMessageCount(category: CompilerMessageCategory?) = error("Unused")
-        override fun getModuleByFile(file: VirtualFile): Module = error("Unused")
-        override fun getModuleOutputDirectory(module: Module): VirtualFile? = error("Unused")
-        override fun getModuleOutputDirectoryForTests(module: Module): VirtualFile? = error("Unused")
-        override fun isMake() = error("Unused")
-        override fun isAutomake() = error("Unused")
-        override fun isRebuild() = error("Unused")
-        override fun isAnnotationProcessorsEnabled() = error("Unused")
     }
 }
