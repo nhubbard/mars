@@ -28,6 +28,7 @@ import edu.missouristate.mars.plugin.tools.KeyboardDisplayDevice.Options
 import java.awt.Dimension
 import java.awt.event.FocusEvent
 import java.awt.event.KeyEvent
+import javax.accessibility.AccessibleState
 import javax.swing.JButton
 import javax.swing.JComboBox
 import javax.swing.JLabel
@@ -137,6 +138,14 @@ class KeyboardDisplayPlatformTest {
             }
             withContext(Dispatchers.EDT) {
                 val keyboard = view.inputComponent
+                val settings = UIUtil.findComponentsOfType(view.component, JLabel::class.java)
+                    .single { it.text == "Terminal Settings" }.accessibleContext
+                assertTrue(settings.accessibleStateSet.contains(AccessibleState.COLLAPSED))
+                assertFalse(button("Resize and Reset").isVisible)
+                assertTrue(keyboard.isVisible)
+                assertTrue("Transmitter idle" in labels())
+                assertTrue(settings.accessibleAction.doAccessibleAction(0))
+                assertTrue(button("Resize and Reset").isVisible)
                 val fields = UIUtil.findComponentsOfType(view.component, JBTextField::class.java).filter { it !== keyboard }
                 val (columns, rows) = fields
                 assertTrue("Display · 80 × 24" in labels())

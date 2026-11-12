@@ -52,15 +52,17 @@ internal class BranchHistoryView(project: Project) : Disposable {
     val component = scrollableToolPanel(this, marsToolPanel {
         marsExecutionRow(selector.component)
         row {
-            panel { row { cell(size).label(toolsMessages.getMessage("branchHistory.size"), LabelPosition.TOP) } }
-            panel { row { cell(history).label(toolsMessages.getMessage("branchHistory.bits"), LabelPosition.TOP) } }
-        }.layout(RowLayout.INDEPENDENT)
-        row { cell(initialTaken) }
-        row { cell(apply) }
-        row {
             cell(toggle)
             cell(reset)
         }
+        collapsibleGroup(toolsMessages.getMessage("branchHistory.settings"), indent = false) {
+            row {
+                panel { row { cell(size).label(toolsMessages.getMessage("branchHistory.size"), LabelPosition.TOP) } }
+                panel { row { cell(history).label(toolsMessages.getMessage("branchHistory.bits"), LabelPosition.TOP) } }
+            }.layout(RowLayout.INDEPENDENT)
+            row { cell(initialTaken) }
+            row { cell(apply) }
+        }.expanded = false
         row {
             latest = text(toolsMessages.getMessage("branchHistory.latest.empty"))
                 .label(toolsMessages.getMessage("branchHistory.latest.label"), LabelPosition.TOP)

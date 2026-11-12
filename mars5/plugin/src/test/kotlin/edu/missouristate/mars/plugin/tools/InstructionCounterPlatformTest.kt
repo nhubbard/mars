@@ -380,6 +380,10 @@ class InstructionCounterPlatformTest {
                 assertTrue("No captured instructions" in xrayText())
                 assertFalse(button("Connect").isEnabled)
                 assertFalse(button("Reset").isEnabled)
+                val branchTable = UIUtil.findComponentsOfType(branches, JBTable::class.java).single()
+                val branchTableScroll = assertInstanceOf(JScrollPane::class.java,
+                    SwingUtilities.getAncestorOfClass(JScrollPane::class.java, branchTable))
+                assertCollapsedSettings(branches, "Prediction Settings", button("Apply and Reset", branches), branchTableScroll)
                 for (width in listOf(240, 610)) {
                     val dock = layoutDock(branches, width, 460)
                     assertCompactSettings(dock.viewport, "Table entries", "History bits")

@@ -81,21 +81,23 @@ internal class KeyboardDisplayView(project: Project) : Disposable {
             cell(keyboard).label(toolsMessages.getMessage("keyboardDisplay.input"), LabelPosition.TOP)
                 .align(AlignX.FILL).resizableColumn()
         }
-        row {
-            cell(delayMode).label(toolsMessages.getMessage("keyboardDisplay.delay.mode"), LabelPosition.TOP)
-            cell(instructions).label(toolsMessages.getMessage("keyboardDisplay.delay.instructions"), LabelPosition.TOP)
-        }.layout(RowLayout.INDEPENDENT).topGap(TopGap.SMALL)
-        row { cell(delayedOutput) }
-        row {
-            columns = intTextField(columnRange).columns(4)
-                .label(toolsMessages.getMessage("keyboardDisplay.columns"), LabelPosition.TOP).component
-            rows = intTextField(rowRange).columns(4)
-                .label(toolsMessages.getMessage("keyboardDisplay.rows"), LabelPosition.TOP).component
-        }.topGap(TopGap.SMALL)
-        row {
-            resize = button(toolsMessages.getMessage("keyboardDisplay.resize")) { resizeDisplay() }.component
-        }
         row { cell(remaining) }
+        collapsibleGroup(toolsMessages.getMessage("keyboardDisplay.settings"), indent = false) {
+            row {
+                cell(delayMode).label(toolsMessages.getMessage("keyboardDisplay.delay.mode"), LabelPosition.TOP)
+                cell(instructions).label(toolsMessages.getMessage("keyboardDisplay.delay.instructions"), LabelPosition.TOP)
+            }.layout(RowLayout.INDEPENDENT)
+            row { cell(delayedOutput) }
+            row {
+                columns = intTextField(columnRange).columns(4)
+                    .label(toolsMessages.getMessage("keyboardDisplay.columns"), LabelPosition.TOP).component
+                rows = intTextField(rowRange).columns(4)
+                    .label(toolsMessages.getMessage("keyboardDisplay.rows"), LabelPosition.TOP).component
+            }.layout(RowLayout.INDEPENDENT).topGap(TopGap.SMALL)
+            row {
+                resize = button(toolsMessages.getMessage("keyboardDisplay.resize")) { resizeDisplay() }.component
+            }
+        }.expanded = false
         row { comment(toolsMessages.getMessage("keyboardDisplay.help")).resizableColumn() }.layout(RowLayout.INDEPENDENT)
     }
     val component = scrollableToolPanel(this, controls, mapOf(editor.contentComponent to editor.component))
