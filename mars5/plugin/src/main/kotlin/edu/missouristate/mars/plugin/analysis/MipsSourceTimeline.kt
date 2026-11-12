@@ -4,6 +4,7 @@ import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
+import com.intellij.openapi.vfs.limits.FileSizeLimit
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiFileFactory
@@ -161,13 +162,13 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
             is MipsSourceEvent.Include -> {
                 val included = (resolveMipsInclude(event.literal, event.path) as? PsiFile)
                     ?.takeIf { visited.add(it.virtualFile.includeIdentity()) }
+                included?.let(dependencies::add)
                 val syntax = assemblySourceSyntax(included)
                 if (syntax == null) {
                     firstIncompleteInclude = minOf(firstIncompleteInclude, index)
                     continue
                 }
                 if (syntax.originalFile !is MipsFile) unindexedSources = true
-                dependencies.add(syntax.originalFile)
                 enter(syntax)
             }
         }
@@ -434,6 +435,9 @@ private fun VirtualFile.includeIdentity() = mipsIncludeDirectoryPath() to name
 
 internal fun assemblySourceSyntax(source: PsiFile?): MipsFile? {
     if (source == null || source.fileType.isBinary) return null
+    val file = source.viewProvider.virtualFile
+    // The document may only contain the editor preview. Build captures the full source separately.
+    if (FileSizeLimit.isTooLargeForContentLoading(file.length, file.extension)) return null
     if (source is MipsFile) return source
     return CachedValuesManager.getCachedValue(source) {
         val file = PsiFileFactory.getInstance(source.project)

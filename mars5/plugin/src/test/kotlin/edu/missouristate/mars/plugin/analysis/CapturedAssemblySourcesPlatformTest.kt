@@ -11,10 +11,12 @@ import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.openapi.vfs.limits.FileSizeLimit
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
+import com.intellij.psi.PsiManager
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import edu.missouristate.mars.api.InstructionSourceMap.Location
 import edu.missouristate.mars.plugin.MarsSessionService
+import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.run.MarsExecutionSources
 import java.nio.file.Files
 import kotlinx.coroutines.Dispatchers
@@ -100,6 +102,11 @@ class CapturedAssemblySourcesPlatformTest {
         val preview = readAction { checkNotNull(documents.getDocument(large)) }
         assertTrue(documents.isPartialPreviewOfALargeFile(preview))
         assertTrue(preview.lineCount < instructionLine)
+        readAction {
+            val file = VirtualFileManager.getInstance().findFileByNioPath(entry)!!
+            val syntax = PsiManager.getInstance(project.get()).findFile(file) as MipsFile
+            assertTrue(mipsSourceTimeline(syntax).hasIncompleteIncludes)
+        }
 
         val capture = captureAssemblySources(listOf(entry), null)
         assertTrue(capture.snapshot.texts().getValue(largePath).endsWith("\taddiu \$t1, \$zero, 8\nnop\n"))
@@ -146,6 +153,34 @@ class CapturedAssemblySourcesPlatformTest {
             }
         }
         assertFalse(largePath in unavailable.snapshot.texts())
+    }
+
+    @Test
+    fun `editor macro scope refreshes when an oversized include becomes fully readable`() = timeoutRunBlocking<Unit> {
+        val (entry, include) = withContext(Dispatchers.EDT) {
+            val entry = fixture.addFileToProject("scope.mars", ".macro emit\n.include \"closer.inc\"\nemit\n") as MipsFile
+            val include = fixture.tempDirFixture.createFile("closer.inc")
+            val size = FileSizeLimit.getContentLoadLimit("inc")
+            val oversized = ByteArray(size + 1) { ' '.code.toByte() }.apply { this[0] = '#'.code.toByte() }
+            Files.write(include.toNioPath(), oversized)
+            include.refresh(false, false)
+            entry to include
+        }
+        readAction {
+            val timeline = mipsSourceTimeline(entry)
+            assertTrue(timeline.hasIncompleteIncludes)
+            assertTrue(timeline.macroBoundaryProblems(entry).isEmpty())
+        }
+        withContext(Dispatchers.EDT) {
+            Files.writeString(include.toNioPath(), ".end_macro\n")
+            include.refresh(false, false)
+        }
+        readAction {
+            val timeline = mipsSourceTimeline(entry)
+            assertFalse(timeline.hasIncompleteIncludes)
+            assertTrue(timeline.macroBoundaryProblems(entry).isEmpty())
+            assertEquals(setOf(0), timeline.prefix(entry, entry.textLength).macroOverloads("emit").keys)
+        }
     }
 
     @Test
