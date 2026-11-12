@@ -1338,10 +1338,10 @@ Test sources and generated build output are excluded from this production invent
 | [kotlin/edu/missouristate/mars/simulator/Exceptions.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/simulator/Exceptions.kt) | C11 |
 | [kotlin/edu/missouristate/mars/simulator/ProgramArgumentList.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/simulator/ProgramArgumentList.kt) | C11 |
 | [java/edu/missouristate/mars/simulator/SimulatorEngine.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/simulator/SimulatorEngine.java) | R01 |
-| [java/edu/missouristate/mars/util/Binary.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/util/Binary.java) | C13 |
+| [kotlin/edu/missouristate/mars/util/Binary.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/util/Binary.kt) | C13 |
 | [java/edu/missouristate/mars/util/FilenameFinder.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/util/FilenameFinder.java) | C13 |
-| [java/edu/missouristate/mars/util/MemoryDump.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/util/MemoryDump.java) | C13 |
-| [java/edu/missouristate/mars/util/NumberDisplayBase.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/util/NumberDisplayBase.java) | C13 |
+| [kotlin/edu/missouristate/mars/util/MemoryDump.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/util/MemoryDump.kt) | C13 |
+| [kotlin/edu/missouristate/mars/util/NumberDisplayBase.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/util/NumberDisplayBase.kt) | C13 |
 | [java/edu/missouristate/mars/util/PropertiesFile.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/util/PropertiesFile.java) | C13 |
 
 ### cli: 2 source files
