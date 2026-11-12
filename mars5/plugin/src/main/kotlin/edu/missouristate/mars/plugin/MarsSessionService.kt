@@ -43,7 +43,7 @@ class MarsSessionService : Disposable {
 
     /** Routes core messages before a project console is attached. */
     private class ProjectFrontend : MarsGuiProxy {
-        override fun isGuiMode() = false
+        override val isGuiMode = false
 
         override fun postMessage(message: String) {
             Logger.getInstance(MarsSessionService::class.java).info(message)
