@@ -22,6 +22,7 @@ import edu.missouristate.mars.plugin.build.MarsAssemblySettings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -442,6 +443,51 @@ class MipsCompletionPlatformTest {
             val program = context.assemble(listOf(entry), null, true, false)
             val memory = context.memory
             assertEquals(program.machineList.last().address, memory.getWordNoNotify(memory.dataBaseAddress + Int.SIZE_BYTES))
+        }
+
+    @Test
+    fun `export completion offers eligible labels from the current assembly root`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val current = project.get()
+            val definitions = ".eqv EXPORT .globl\n.eqv ALREADY exportIncluded\nexportIncluded: nop\n"
+            val prefix = ".include \"exports.inc\"\n.extern exportExternal 4\n"
+            val labels = "\nexportLocal: nop\nexportSecond: nop\nadd.s: nop\n"
+            withContext(Dispatchers.EDT) {
+                fixture.addFileToProject("exports.inc", definitions)
+                fixture.addFileToProject("separate.mars", ".globl exportOther\nexportOther: nop\n")
+            }
+            IndexingTestUtil.suspendUntilIndexesAreReady(current)
+            val completed = withContext(Dispatchers.EDT) {
+                fun candidates(line: String): Set<String> {
+                    fixture.configureByText("export-completion.mars", prefix + line + labels)
+                    return fixture.completeBasic().orEmpty().map { it.lookupString }.toSet()
+                }
+                val expected = setOf("exportIncluded", "exportLocal", "exportSecond")
+                assertEquals(expected, candidates(".GlObL export<caret>"))
+                assertEquals(expected, candidates("marker: EXPORT export<caret>"))
+                assertEquals(expected - "exportIncluded", candidates(".globl ALREADY, export<caret>"))
+                assertEquals(expected, candidates("exportShadow: nop\n.eqv exportShadow 1\n.globl export<caret>"))
+                assertTrue(candidates(".globl 1, export<caret>").isEmpty())
+                assertTrue(candidates(".eqv FIRST SECOND\n.eqv SECOND FIRST\nEXPORT FIRST, export<caret>").isEmpty())
+                assertTrue(candidates(".eqv LABEL marker:\nLABEL export<caret>").isEmpty())
+                assertTrue("add.s" !in candidates(".globl ad<caret>"))
+                val file = fixture.configureByText("export-indexing.mars", prefix + ".globl export<caret>" + labels) as MipsFile
+                val head = file.findElementAt(prefix.length)!!
+                val operand = file.findElementAt(fixture.editor.caretModel.offset - 1)!!
+                DumbModeTestUtils.runInDumbModeSynchronously(current) {
+                    assertNull(current.service<MarsAnalysisService>().exportOperandsBefore(file, head, operand))
+                }
+                assertEquals(expected - "exportIncluded", candidates("EXPORT exportIncluded, export<caret>.old"))
+                fixture.lookup.setCurrentItem(fixture.lookup.items.single { it.lookupString == "exportSecond" })
+                fixture.finishLookup(Lookup.REPLACE_SELECT_CHAR)
+                assertEquals(prefix + "EXPORT exportIncluded, exportSecond" + labels, fixture.file.text)
+                fixture.file.text
+            }
+            directory.resolve("exports.inc").writeText(definitions)
+            val entry = directory.resolve("export-completion.mars").also { it.writeText(completed) }
+            val context = current.service<MarsSessionService>().context
+            context.assemble(listOf(entry), null, true, false)
+            assertEquals(setOf("exportExternal", "exportIncluded", "exportSecond"), context.symbolTable.allSymbols.map { it.name }.toSet())
         }
 
     @Test

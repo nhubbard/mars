@@ -205,7 +205,9 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
     }
 
     /** Joins physical and equivalence-generated names with the last compatible assembly. */
-    internal fun labelCompletionNames(root: MipsFile, position: PsiElement, prefix: String): Set<String> = buildSet {
+    internal fun labelCompletionNames(
+        root: MipsFile, position: PsiElement, prefix: String, forExport: Boolean = false,
+    ): Set<String> = buildSet {
         if (!DumbService.isDumb(project)) {
             val timeline = editorTimeline(root)
             val macro = timeline.macroAt(root, position.textOffset)
@@ -221,9 +223,13 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
                 ProgressManager.checkCanceled()
                 if (name.startsWith(prefix) && labels.any { it.macro == null || it.macro === macro }) add(name)
             }
-            timeline.externalStorage.keys.filterTo(this) { it.startsWith(prefix) }
+            if (!forExport) timeline.externalStorage.keys.filterTo(this) { it.startsWith(prefix) }
         }
-        addAll(builtLabelNames(root, position.textOffset + prefix.length, prefix))
+        addAll(builtLabelNames(root, position.textOffset + prefix.length, prefix, localOnly = forExport))
+        if (forExport) {
+            val visible = editorPrefix(root, sourceLineStart(position))
+            removeAll { visible.equivalence(it) != null }
+        }
     }
 
     internal fun labelTargets(
@@ -289,11 +295,13 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         return if (file is MipsFile) file.findElementAt(offset) else MipsIncludedDeclaration.at(file, offset)
     }
 
-    private fun builtLabelNames(root: MipsFile, offset: Int, prefix: String): List<String> =
-        fromAssemblySymbols(root) { snapshot, source -> builtLabelNames(snapshot, source, offset, prefix) }.orEmpty()
+    private fun builtLabelNames(root: MipsFile, offset: Int, prefix: String, localOnly: Boolean): List<String> =
+        fromAssemblySymbols(root) { snapshot, source -> builtLabelNames(snapshot, source, offset, prefix, localOnly) }.orEmpty()
 
-    private fun builtLabelNames(build: AssemblySymbols, activeSource: Path, offset: Int, prefix: String): List<String>? {
-        val names = build.matchingNames(activeSource, prefix)
+    private fun builtLabelNames(
+        build: AssemblySymbols, activeSource: Path, offset: Int, prefix: String, localOnly: Boolean,
+    ): List<String>? {
+        val names = build.matchingNames(activeSource, prefix, localOnly)
         if (names.isEmpty()) return null
         val valid = build.revisions.validateSourceDocuments { path, document, revision ->
             document.modificationStamp == revision ||
@@ -474,12 +482,6 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         if (DumbService.isDumb(project) || followingEquivalenceName(head) == null) return false
         val original = root.findElementAt(head.textOffset)
         return editorTimeline(root).unindexedLabels[head.text].orEmpty().any { it.site == original }
-    }
-
-    private fun expandedOperationAlias(root: MipsFile, head: PsiElement, source: String): TokenList? {
-        val prefix = leadingEquivalencePrefix(root, head) ?: return null
-        return expandedOperation(prefix, writtenOperationPrefix(head, source))
-            ?.takeUnless(TokenList::isEmpty)
     }
 
     /** An equivalence can put the mnemonic at the head itself or after a generated label. */
@@ -745,11 +747,19 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         return integerOperands && (macroHead || matchingMacro(prefix, tokens) == null)
     }
 
-    internal fun isAliasedExportOperand(root: MipsFile, head: PsiElement, operand: PsiElement): Boolean {
+    internal fun exportOperandsBefore(root: MipsFile, head: PsiElement, operand: PsiElement): TokenList? {
+        val prefix = if (Directives.matchDirective(head.text) == Directives.GLOBL) {
+            if (DumbService.isDumb(project)) return null
+            editorPrefix(root, sourceLineStart(head))
+        } else {
+            leadingEquivalencePrefix(root, head) ?: return null
+        }
         val source = root.viewProvider.contents.subSequence(head.textOffset, operand.textOffset).toString()
-        val tokens = expandedOperationAlias(root, head, source) ?: return false
-        return Directives.matchDirective(tokens[0].value) == Directives.GLOBL &&
-            (1 until tokens.size()).all { tokens[it].type == TokenTypes.IDENTIFIER }
+        val tokens = expandedOperation(prefix, writtenOperationPrefix(head, source)) ?: return null
+        return tokens.takeIf {
+            !it.isEmpty && Directives.matchDirective(it[0].value) == Directives.GLOBL &&
+                (1 until it.size()).all { index -> it[index].type == TokenTypes.IDENTIFIER }
+        }
     }
 
     private fun editorPrefix(file: MipsFile, offset: Int): MipsSourceTimeline.Prefix =

@@ -64,8 +64,8 @@ internal class AssemblySymbols(
         }
     }
 
-    fun matchingNames(source: Path, prefix: String): List<String> = buildList {
-        for (names in listOfNotNull(localNames[rootFor(source)], globalNames)) {
+    fun matchingNames(source: Path, prefix: String, localOnly: Boolean = false): List<String> = buildList {
+        for (names in listOfNotNull(localNames[rootFor(source)], globalNames.takeUnless { localOnly })) {
             addAll(names.tailSet(prefix).asSequence().takeWhile { it.startsWith(prefix) })
         }
     }

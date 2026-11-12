@@ -1069,6 +1069,8 @@ class MarsBuildPlatformTest {
             assertEquals(listOf("privateHelper"), symbols.matchingNames(helperPath, "private"))
             assertTrue(symbols.matchingNames(entry, "private").isEmpty())
             assertEquals(listOf("helper"), symbols.matchingNames(entry, "help"))
+            assertTrue(symbols.matchingNames(entry, "help", localOnly = true).isEmpty())
+            assertEquals(listOf("privateHelper"), symbols.matchingNames(helperPath, "private", localOnly = true))
             val created = withContext(Dispatchers.EDT) {
                 fixture.addFileToProject("project/beta.s", "beta: nop\n") as MipsFile
             }

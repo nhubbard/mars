@@ -144,7 +144,7 @@ internal class MipsSymbolToken(type: IElementType, text: CharSequence) : LeafPsi
         private fun labelUse(file: MipsFile, analysis: MarsAnalysisService): LabelUse? {
             val instructionLabel = label || aliasOperand && MipsInstructionOperand.at(element, file)?.acceptsLabel == true
             val exportsLabel = data == DataLabelOperand.EXPORT || aliasOperand && equivalence && !instructionLabel &&
-                analysis.isAliasedExportOperand(file, element.parent.parent.firstChild, element)
+                analysis.exportOperandsBefore(file, element.parent.parent.firstChild, element) != null
             return when {
                 exportsLabel -> LabelUse.EXPORT
                 instructionLabel || data?.isDataLabel(file, analysis, element) == true -> LabelUse.REFERENCE
@@ -172,6 +172,12 @@ internal class MipsSymbolToken(type: IElementType, text: CharSequence) : LeafPsi
 internal enum class DataLabelOperand {
     EXPORT, LIST, CANDIDATE;
 
+    fun exportHead(element: PsiElement): PsiElement? = when (this) {
+        EXPORT -> element.parent.parent.parent.parent.firstChild
+        LIST -> null
+        CANDIDATE -> element.parent.takeIf { PsiUtilCore.getElementType(it) == invocationToken }?.let { it.parent.firstChild }
+    }
+
     fun isDataLabel(file: MipsFile, analysis: MarsAnalysisService, element: PsiElement): Boolean {
         if (this == EXPORT || !analysis.hasIntegerDataList(file, element)) return false
         if (this == LIST) return true
@@ -182,7 +188,8 @@ internal enum class DataLabelOperand {
 
     companion object {
         private val candidateType = MipsTypes.psi("OPERATION_CANDIDATE")
-        private val candidateTypes = TokenSet.create(candidateType, MipsTypes.psi("INVOCATION_TOKEN"))
+        private val invocationToken = MipsTypes.psi("INVOCATION_TOKEN")
+        private val candidateTypes = TokenSet.create(candidateType, invocationToken)
         private val referenceType = MipsTypes.psi("REFERENCE_EXPR")
         private val operandType = MipsTypes.psi("OPERAND")
         private val repetitionType = MipsTypes.psi("REPETITION")

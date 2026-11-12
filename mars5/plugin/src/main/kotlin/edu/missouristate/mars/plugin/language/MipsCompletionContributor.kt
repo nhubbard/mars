@@ -55,8 +55,14 @@ class MipsCompletionContributor : CompletionContributor(), DumbAware {
                 if (operand != null) {
                     lookup.addAllElements(registerCandidates(operand.formats, operand.index, options.bareMachine).map(LookupElementBuilder::create))
                 }
-                if (operand?.acceptsLabel == true ||
-                    operand == null && DataLabelOperand.at(position)?.isDataLabel(root, analysis, position) == true) {
+                val data = if (operand == null) DataLabelOperand.at(position) else null
+                val export = data?.exportHead(position)?.let { analysis.exportOperandsBefore(root, it, position) }
+                if (export != null) {
+                    val written = (1 until export.size()).mapTo(HashSet()) { export[it].value }
+                    val names = analysis.labelCompletionNames(root, position, prefix, forExport = true)
+                        .filter { it !in written && TokenTypes.matchTokenType(it) == TokenTypes.IDENTIFIER }
+                    lookup.addAllElements(names.map(LookupElementBuilder::create))
+                } else if (operand?.acceptsLabel == true || data?.isDataLabel(root, analysis, position) == true) {
                     val names = analysis.labelCompletionNames(root, position, prefix)
                     lookup.addAllElements(names.map(LookupElementBuilder::create))
                 }
