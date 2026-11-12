@@ -1,7 +1,7 @@
 package edu.missouristate.mars.plugin.tools
 
 import edu.missouristate.mars.mips.hardware.AccessOrigin.duringExecution
-import edu.missouristate.mars.mips.hardware.Coprocessor0State.STATUS
+import edu.missouristate.mars.mips.hardware.Coprocessor0State.Companion.STATUS
 import edu.missouristate.mars.mips.hardware.MemoryAccessNotice
 import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.tools.KeyboardDisplayDevice.Delay
@@ -97,7 +97,7 @@ class KeyboardDisplayDeviceTest {
                 assertEquals(3, memory.getWord(start + 8))
                 assertEquals(0x80, session.pendingDeviceInterrupts())
                 session.setDeviceInterrupts(0x80, 0)
-                session.coprocessor0.getRegister(STATUS).setValue(2)
+                session.coprocessor0.getRegister(STATUS)!!.setValue(2)
                 device.configure(Options(instructions = 1, displayAfterDelay = false))
                 duringExecution<Unit, Exception> { memory.setByte(tx, 'D'.code) }
                 device.instructionCompleted(session)

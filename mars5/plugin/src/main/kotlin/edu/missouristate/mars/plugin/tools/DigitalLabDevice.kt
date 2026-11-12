@@ -3,7 +3,7 @@ package edu.missouristate.mars.plugin.tools
 import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.mips.hardware.AccessNotice.Companion.WRITE
 import edu.missouristate.mars.mips.hardware.AccessOrigin.EXECUTION
-import edu.missouristate.mars.mips.hardware.Coprocessor0State.STATUS
+import edu.missouristate.mars.mips.hardware.Coprocessor0State.Companion.STATUS
 import edu.missouristate.mars.mips.hardware.MemoryAccessNotice
 import edu.missouristate.mars.mips.hardware.MemoryState
 import java.util.function.Consumer
@@ -100,7 +100,7 @@ internal class DigitalLabDevice(private val connectAtLaunch: Boolean = false) {
             timerRemaining = timerPeriod
             interrupts = interrupts or timerInterrupt
         }
-        if (interrupts != 0 && session.coprocessor0.getRegister(STATUS).valueNoNotify and 2 == 0) {
+        if (interrupts != 0 && session.coprocessor0.getRegister(STATUS)!!.valueNoNotify and 2 == 0) {
             session.setDeviceInterrupts(interrupts, interrupts)
         }
     }

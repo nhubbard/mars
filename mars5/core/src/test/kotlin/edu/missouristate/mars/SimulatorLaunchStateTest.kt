@@ -59,11 +59,11 @@ class SimulatorLaunchStateTest {
                 arguments.storeProgramArguments(session)
                 val word = MemoryState.WORD_LENGTH_BYTES
                 val memory = session.memory
-                val argv = session.registerFile.getUserRegister("\$a1").getValueNoNotify()
-                val stack = session.registerFile.getUserRegister("\$sp").getValueNoNotify()
+                val argv = session.registerFile.getUserRegister("\$a1").valueNoNotify
+                val stack = session.registerFile.getUserRegister("\$sp").valueNoNotify
                 assertEquals(stack + word, argv)
                 assertEquals(expected.size, memory.getWord(stack))
-                assertEquals(expected.size, session.registerFile.getUserRegister("\$a0").getValueNoNotify())
+                assertEquals(expected.size, session.registerFile.getUserRegister("\$a0").valueNoNotify)
                 for ((index, argument) in expected.withIndex()) {
                     val start = memory.getWord(argv + index * word)
                     assertEquals(argument.map(Char::code) + 0, (0..argument.length).map { memory.getByte(start + it) })
@@ -78,7 +78,7 @@ class SimulatorLaunchStateTest {
         TestSessions.create().use { session ->
             val memory = session.memory
             memory.set(memory.stackBaseAddress, 0x5a, 1)
-            val stack = session.registerFile.getUserRegister("\$sp").getValueNoNotify()
+            val stack = session.registerFile.getUserRegister("\$sp").valueNoNotify
             ProgramArgumentList(arrayListOf("ignored"), 2).storeProgramArguments(session) {
                 error("Empty arguments must return before checking cancellation")
             }
@@ -88,8 +88,8 @@ class SimulatorLaunchStateTest {
                 }
             }
             assertEquals(0x5a, memory.getByte(memory.stackBaseAddress))
-            assertEquals(stack, session.registerFile.getUserRegister("\$sp").getValueNoNotify())
-            assertEquals(0, session.registerFile.getUserRegister("\$a0").getValueNoNotify())
+            assertEquals(stack, session.registerFile.getUserRegister("\$sp").valueNoNotify)
+            assertEquals(0, session.registerFile.getUserRegister("\$a0").valueNoNotify)
         }
     }
 }

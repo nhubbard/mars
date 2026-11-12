@@ -1,7 +1,7 @@
 package edu.missouristate.mars.mips.instructions.basic
 
-import edu.missouristate.mars.mips.hardware.Coprocessor0State.EXCEPTION_LEVEL
-import edu.missouristate.mars.mips.hardware.Coprocessor0State.STATUS
+import edu.missouristate.mars.mips.hardware.Coprocessor0State.Companion.EXCEPTION_LEVEL
+import edu.missouristate.mars.mips.hardware.Coprocessor0State.Companion.STATUS
 import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
 import edu.missouristate.mars.util.Binary

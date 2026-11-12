@@ -3,8 +3,8 @@ package edu.missouristate.mars.plugin.tools
 import edu.missouristate.mars.api.StopEvent
 import edu.missouristate.mars.ProcessingException
 import edu.missouristate.mars.mips.hardware.AccessOrigin.duringExecution
-import edu.missouristate.mars.mips.hardware.Coprocessor0State.CAUSE
-import edu.missouristate.mars.mips.hardware.Coprocessor0State.STATUS
+import edu.missouristate.mars.mips.hardware.Coprocessor0State.Companion.CAUSE
+import edu.missouristate.mars.mips.hardware.Coprocessor0State.Companion.STATUS
 import edu.missouristate.mars.mips.hardware.MemoryAccessNotice
 import edu.missouristate.mars.plugin.MarsSessionService
 import java.nio.file.Path
@@ -108,7 +108,7 @@ class DigitalLabDeviceTest {
                 val start = memory.memoryMapBaseAddress + 0x10
                 val lab = DigitalLabDevice(true)
                 lab.observe(session).use {
-                    if (masked) session.coprocessor0.getRegister(STATUS).setValue(2)
+                    if (masked) session.coprocessor0.getRegister(STATUS)!!.setValue(2)
                     duringExecution<Unit, Exception> { memory.setHalf(start + 2, 0x0181) }
                     repeat(29) { lab.instructionCompleted(session) }
                     assertEquals(1, lab.snapshot().timerRemaining)
@@ -118,7 +118,7 @@ class DigitalLabDeviceTest {
                     assertEquals(30, lab.snapshot().timerRemaining)
                     val stop = session.simulator().runAsync(1, null).get(5, TimeUnit.SECONDS)
                     assertEquals(if (masked) StopEvent.Reason.STEP_LIMIT else StopEvent.Reason.EXCEPTION, stop.reason())
-                    assertEquals(if (masked) 0 else 0xc00, session.coprocessor0.getRegister(CAUSE).valueNoNotify)
+                    assertEquals(if (masked) 0 else 0xc00, session.coprocessor0.getRegister(CAUSE)!!.valueNoNotify)
                 }
             }
         }
@@ -150,10 +150,10 @@ class DigitalLabDeviceTest {
                 step()
                 assertThrows(ProcessingException::class.java) { program.executeSessionInstruction() }
                 assertEquals(0, session.pendingDeviceInterrupts())
-                assertEquals(0x400, session.coprocessor0.getRegister(CAUSE).valueNoNotify)
+                assertEquals(0x400, session.coprocessor0.getRegister(CAUSE)!!.valueNoNotify)
                 session.backStepper.backStep()
                 assertEquals(0x100, session.pendingDeviceInterrupts())
-                assertEquals(0, session.coprocessor0.getRegister(CAUSE).valueNoNotify)
+                assertEquals(0, session.coprocessor0.getRegister(CAUSE)!!.valueNoNotify)
             }
         }
     }
