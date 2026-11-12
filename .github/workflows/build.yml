@@ -1,5 +1,13 @@
 name: Build
-on: [push, pull_request]
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      packaged_smoke:
+        description: Launch and test the packaged plugin on each host
+        type: boolean
+        default: true
 jobs:
   verify:
     runs-on: ${{ matrix.os }}
@@ -27,8 +35,21 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends libegl1 libgl1
+      - name: Install Linux display tools
+        if: runner.os == 'Linux' && inputs.packaged_smoke
+        run: sudo apt-get install -y --no-install-recommends dbus-x11 openbox xauth xvfb
       - name: Build and test MARS
+        if: ${{ !inputs.packaged_smoke }}
         run: ${{ matrix.gradle }} build :core:benchmarkClasses --no-daemon
+      - name: Build and run the packaged IDE smoke on Linux
+        if: runner.os == 'Linux' && inputs.packaged_smoke
+        run: |
+          dbus-run-session -- xvfb-run -a -s '-screen 0 1600x1000x24' \
+            sh -c 'openbox & exec "$@"' mars-smoke \
+            ./gradlew clean cleanSandbox build :core:benchmarkClasses runIde -PpackagedSmoke --no-daemon --max-workers=2
+      - name: Build and run the packaged IDE smoke
+        if: runner.os != 'Linux' && inputs.packaged_smoke
+        run: ${{ matrix.gradle }} clean cleanSandbox build :core:benchmarkClasses runIde -PpackagedSmoke --no-daemon --max-workers=2
       - run: java -jar cli/build/libs/cli-1.0-SNAPSHOT.jar --help
       - name: Verify IntelliJ plugin
         run: ${{ matrix.gradle }} :plugin:verifyPluginStructure :plugin:verifyPluginProjectConfiguration :plugin:verifyPlugin --no-daemon
@@ -36,6 +57,8 @@ jobs:
         run: ${{ matrix.gradle }} -p ../examples/smoke check --no-daemon
       - name: Record the verified plugin ZIP checksum
         shell: pwsh
+        env:
+          MARS_PACKAGED_SMOKE: ${{ inputs.packaged_smoke }}
         run: |
           $archives = @(Get-ChildItem plugin/build/distributions -Filter '*.zip' -File)
           if ($archives.Count -ne 1) {
@@ -43,7 +66,14 @@ jobs:
           }
           $archive = $archives[0]
           $checksum = (Get-FileHash -LiteralPath $archive.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
-          "$checksum  $($archive.Name)" | Set-Content -Encoding ascii (Join-Path $archive.DirectoryName 'SHA256SUMS')
+          $record = "$checksum  $($archive.Name)"
+          if ($env:MARS_PACKAGED_SMOKE -eq 'true') {
+            $evidence = @(Get-ChildItem .intellijPlatform/sandbox/plugin -Recurse -File -Filter 'packaged-smoke-SHA256SUMS')
+            if ($evidence.Count -ne 1 -or (Get-Content -Raw $evidence[0].FullName).Trim() -cne $record) {
+              throw "The verified ZIP differs from the archive used in the IntelliJ smoke replay."
+            }
+          }
+          $record | Set-Content -Encoding ascii (Join-Path $archive.DirectoryName 'SHA256SUMS')
       - name: Save the verified IntelliJ plugin
         uses: actions/upload-artifact@v4
         with:
@@ -66,3 +96,16 @@ jobs:
             examples/smoke/instruction-lab/build/instruction-catalog/coverage.tsv
             examples/smoke/instruction-lab/build/instruction-catalog/failures.txt
             examples/smoke/png-decoder/build/test-results/test/TEST-*.xml
+      - name: Save packaged IDE smoke evidence
+        if: ${{ !cancelled() && inputs.packaged_smoke }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: mars-packaged-smoke-${{ matrix.os }}-${{ github.sha }}
+          include-hidden-files: true
+          path: |
+            mars5/.intellijPlatform/sandbox/plugin/*/log_runIde/idea.log
+            mars5/.intellijPlatform/sandbox/plugin/*/log_runIde/packaged-smoke-complete.txt
+            mars5/.intellijPlatform/sandbox/plugin/*/log_runIde/packaged-smoke-SHA256SUMS
+            mars5/.intellijPlatform/sandbox/plugin/*/log_runIde/screenshots/
+            mars5/plugin/build/packaged-smoke/run.ok
+            mars5/plugin/build/packaged-smoke/debug.ok

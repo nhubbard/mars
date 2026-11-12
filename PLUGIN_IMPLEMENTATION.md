@@ -3173,7 +3173,14 @@ After the build, verifier, and smoke checks pass, each runner also uploads
 the installable ZIP and its `SHA256SUMS` in a
 `mars-plugin-<runner>-<commit>` artifact. Use the ZIP from that artifact
 for the packaged UI checks and record its checksum with the results.
-Packaged UI interaction and archive replacement are separate release checks.
+For a release candidate on GitHub, run the **Build** workflow manually with
+**Launch and test the packaged plugin on each host** enabled. The Linux job
+starts IntelliJ under Xvfb. All three jobs run the same packaged replay before
+verifying and uploading the ZIP. The checksum check ties each uploaded ZIP
+to its own replay, and the `mars-packaged-smoke-<runner>-<commit>` artifact
+contains the IDE log, screenshots, and Run and Debug outputs. Ordinary push
+and pull request builds run the headless checks. Archive replacement remains
+a separate release check.
 
 ### Packaged editor, Run, and Debug smoke
 
