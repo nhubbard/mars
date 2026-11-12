@@ -16,6 +16,7 @@ import com.intellij.ui.components.BrowserLink
 import com.intellij.ui.components.JBHtmlPane
 import com.intellij.ui.components.JBList
 import com.intellij.ui.components.JBScrollPane
+import com.intellij.ui.components.JBTextField
 import com.intellij.ui.dsl.builder.Align
 import com.intellij.ui.dsl.builder.AlignX
 import com.intellij.ui.dsl.builder.panel
@@ -94,6 +95,6 @@ internal class MarsReferenceDialog(project: Project?, initialTopic: MarsReferenc
 
     override fun createCenterPanel() = contents
     override fun createActions() = arrayOf(cancelAction)
-    override fun getPreferredFocusedComponent() = search.textEditor
+    override fun getPreferredFocusedComponent(): JBTextField? = search.textEditor
     override fun getDimensionServiceKey() = "Mars.Reference"
 }

@@ -27,7 +27,7 @@ class MipsReferenceIndex : FileBasedIndexExtension<String, List<MipsReferenceSit
     override fun getVersion(): Int = 31
     override fun dependsOnFileContent(): Boolean = true
     override fun getInputFilter() = DefaultFileTypeSpecificInputFilter(MipsFileType)
-    override fun getKeyDescriptor() = EnumeratorStringDescriptor.INSTANCE
+    override fun getKeyDescriptor(): EnumeratorStringDescriptor = EnumeratorStringDescriptor.INSTANCE
     override fun getValueExternalizer(): DataExternalizer<List<MipsReferenceSite>> = MipsReferenceExternalizer
 
     override fun getIndexer() = DataIndexer<String, List<MipsReferenceSite>, FileContent> { content ->

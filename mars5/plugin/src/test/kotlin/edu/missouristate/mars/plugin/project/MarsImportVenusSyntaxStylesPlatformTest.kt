@@ -175,6 +175,7 @@ class MarsImportVenusSyntaxStylesPlatformTest {
     @Test
     fun `a partial saved style works when a base scheme has no attributes for that token`() = timeoutRunBlocking<Unit> {
         withContext(Dispatchers.EDT) {
+            @Suppress("JavaDefaultMethodsNotOverriddenByDelegation")
             val base = object : EditorColorsScheme by colors.globalScheme {
                 override fun getAttributes(key: TextAttributesKey): TextAttributes? = null
             }

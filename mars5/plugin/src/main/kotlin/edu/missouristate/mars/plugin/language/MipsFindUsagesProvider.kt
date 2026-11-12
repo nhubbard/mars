@@ -5,6 +5,7 @@ import com.intellij.lang.HelpID
 import com.intellij.lang.cacheBuilder.DefaultWordsScanner
 import com.intellij.lang.findUsages.FindUsagesProvider
 import com.intellij.lexer.DelegateLexer
+import com.intellij.openapi.util.NlsSafe
 import com.intellij.platform.syntax.psi.lexer.LexerAdapter
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiNamedElement
@@ -39,9 +40,9 @@ internal class MipsFindUsagesProvider : FindUsagesProvider {
         return bundle.getMessage(key)
     }
 
-    override fun getDescriptiveName(element: PsiElement) = (element as? PsiNamedElement)?.name ?: element.text
+    override fun getDescriptiveName(element: PsiElement): @NlsSafe String = (element as? PsiNamedElement)?.name ?: element.text
 
-    override fun getNodeText(element: PsiElement, useFullName: Boolean) = getDescriptiveName(element)
+    override fun getNodeText(element: PsiElement, useFullName: Boolean): @NlsSafe String = getDescriptiveName(element)
 
     // IntelliJ's word search falls back to the whole spelling when it contains no identifier parts.
     private class UsageLexer : DelegateLexer(LexerAdapter(MipsLexer(), MipsTypes.converter)) {

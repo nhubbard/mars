@@ -9,6 +9,7 @@ import com.intellij.openapi.util.Key
 import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.patterns.PlatformPatterns
+import com.intellij.patterns.PsiElementPattern
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiManager
@@ -114,7 +115,7 @@ internal class MipsSymbolRenameProcessor : RenamePsiElementProcessor() {
 }
 
 internal class MipsSymbolRenameInputValidator : RenameInputValidator {
-    override fun getPattern() = PlatformPatterns.psiElement(MipsDeclaration::class.java)
+    override fun getPattern(): PsiElementPattern.Capture<MipsDeclaration?> = PlatformPatterns.psiElement(MipsDeclaration::class.java)
 
     override fun isInputValid(newName: String, element: PsiElement, context: ProcessingContext) =
         validSymbolName(newName, (element as MipsDeclaration).kind)

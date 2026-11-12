@@ -29,7 +29,7 @@ class MipsDeclarationIndex : FileBasedIndexExtension<String, List<MipsDeclaratio
     override fun getVersion(): Int = 34
     override fun dependsOnFileContent(): Boolean = true
     override fun getInputFilter() = DefaultFileTypeSpecificInputFilter(MipsFileType)
-    override fun getKeyDescriptor() = EnumeratorStringDescriptor.INSTANCE
+    override fun getKeyDescriptor(): EnumeratorStringDescriptor = EnumeratorStringDescriptor.INSTANCE
     override fun getValueExternalizer(): DataExternalizer<List<MipsDeclarationSite>> = MipsDeclarationExternalizer
 
     override fun getIndexer() = DataIndexer<String, List<MipsDeclarationSite>, FileContent> { content ->

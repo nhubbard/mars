@@ -73,6 +73,7 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.future.asDeferred
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.OutputStream
 import kotlin.io.path.invariantSeparatorsPathString
 
 @Service(Service.Level.PROJECT)
@@ -234,7 +235,7 @@ internal class MarsProcessHandler(
     override fun destroyProcessImpl() { execution.cancel() }
     override fun detachProcessImpl() = destroyProcessImpl()
     override fun detachIsDefault() = false
-    override fun getProcessInput() = consoleInput
+    override fun getProcessInput(): OutputStream? = consoleInput
 
     suspend fun runSlice(simulator: SimulatorEngine, steps: Long = 0, breakpoint: IntPredicate? = null): StopEvent =
         awaitSlice(simulator) {

@@ -335,7 +335,7 @@ internal class MarsMemoryEditDialog(project: Project, initialAddress: String) : 
     }
 
     val address get() = parseMemoryAddress(addressField.text)!!
-    val expression get() = valueField.text
+    val expression: String get() = valueField.text
 
     override fun createCenterPanel() = fields
     override fun getPreferredFocusedComponent() = valueField
