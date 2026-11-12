@@ -15,6 +15,7 @@ import edu.missouristate.mars.plugin.projectAbsolutePath
 import edu.missouristate.mars.plugin.run.MarsRunConfiguration
 import edu.missouristate.mars.plugin.run.MarsRunType
 import java.nio.file.Path
+import kotlin.io.path.invariantSeparatorsPathString
 
 /** Keeps configured inputs attached to files when IntelliJ refactors their paths. */
 internal class MarsSourceRefactoringListener : RefactoringElementListenerProvider {
@@ -53,7 +54,7 @@ private fun relocateInputs(project: Project, oldPath: Path, newPath: Path, direc
     fun relocated(stored: String): String {
         val path = projectAbsolutePath(project, stored) ?: return stored
         if (path != oldPath && !(directory && path.startsWith(oldPath))) return stored
-        return macros.collapsePath(newPath.resolve(oldPath.relativize(path)).toString())!!
+        return macros.collapsePath(newPath.resolve(oldPath.relativize(path)).invariantSeparatorsPathString)!!
     }
 
     val assembly = project.service<MarsAssemblySettings>()

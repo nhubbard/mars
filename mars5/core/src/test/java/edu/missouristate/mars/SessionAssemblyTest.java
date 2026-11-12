@@ -947,6 +947,29 @@ class SessionAssemblyTest {
   }
 
   @Test
+  void diskIncludesResolveParentsAfterFollowingDirectories() throws Exception {
+    var actual = Files.createDirectory(directory.resolve("actual"));
+    var nested = Files.createDirectory(actual.resolve("nested"));
+    Files.createSymbolicLink(directory.resolve("shortcut"), nested);
+    Files.writeString(actual.resolve("value.s"), ".eqv VALUE 7\n");
+    var regular = source("value.s", ".eqv VALUE 9\n");
+    var entry = source("main.s", ".include \"shortcut/../value.s\"\naddiu $t0, $zero, VALUE\n");
+
+    try (var session = session("Default")) {
+      var assembler = new SessionAssembler(session);
+      assertThat(assembler.assemble(List.of(entry)).succeeded()).isTrue();
+      assertThat(session.getProgram().getMachineList()).extracting(ProgramStatement::getBinaryStatement)
+          .containsExactly(0x24080007);
+
+      Files.writeString(entry, ".include \"value.s/../value.s\"\n");
+      assertThat(assembler.assemble(List.of(entry)).errors()).singleElement().satisfies(error -> {
+        assertThat(error.file()).isEqualTo(entry);
+        assertThat(error.message()).contains(regular.resolve("../value.s").toString());
+      });
+    }
+  }
+
+  @Test
   void diskIncludesReportTheDirectiveThatClosesACycle() throws Exception {
     var main = source("main.s", "# leading comment\n.include \"./main.s\"\n");
     try (var session = session("Default")) {

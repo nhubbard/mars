@@ -73,6 +73,7 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.future.asDeferred
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.io.path.invariantSeparatorsPathString
 
 @Service(Service.Level.PROJECT)
 internal class MarsRunService(private val project: Project, private val scope: CoroutineScope) : Disposable {
@@ -350,7 +351,7 @@ internal class MarsProcessHandler(
             val location = frame.location()
             val label = if (index == 0) "run.runtime.source" else "run.runtime.caller"
             view.print(runMessages.getMessage(label) + " ", ConsoleViewContentType.SYSTEM_OUTPUT)
-            view.printHyperlink("${location.file()}:${location.line()}", sources.hyperlink(project, location))
+            view.printHyperlink("${location.file().invariantSeparatorsPathString}:${location.line()}", sources.hyperlink(project, location))
             view.print("\n", ConsoleViewContentType.SYSTEM_OUTPUT)
         }
     }

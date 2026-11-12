@@ -32,6 +32,7 @@ import java.nio.file.InvalidPathException
 import java.nio.file.Path
 import java.util.prefs.BackingStoreException
 import java.util.prefs.Preferences
+import kotlin.io.path.invariantSeparatorsPathString
 
 internal val venusImportMessages = DynamicBundle(MarsImportVenusPreferencesAction::class.java, "messages.MarsBundle")
 private val messages get() = venusImportMessages
@@ -147,7 +148,7 @@ private class VenusPreferences(private val values: Map<String, String>, private 
         val handlerSetting = if (values["LoadExceptionHandler"].venusBoolean() == false) {
             null
         } else {
-            handler?.let { macros.collapsePath(it.toString()) } ?: assembly.exceptionHandler
+            handler?.let { macros.collapsePath(it.invariantSeparatorsPathString) } ?: assembly.exceptionHandler
         }
         val disabled = messages.getMessage("import.venus.disabled")
         change("import.venus.handler", macros.expandPath(assembly.exceptionHandler) ?: disabled, macros.expandPath(handlerSetting) ?: disabled)

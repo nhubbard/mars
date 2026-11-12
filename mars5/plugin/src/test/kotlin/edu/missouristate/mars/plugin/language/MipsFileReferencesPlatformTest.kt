@@ -361,8 +361,10 @@ class MipsFileReferencesPlatformTest {
     }
 
     @Test
-    fun `include identity collapses directory aliases and keeps different file names`(@TempDir directory: Path) =
+    fun `include identity collapses directory aliases and keeps different file names`(@TempDir temp: Path) =
         timeoutRunBlocking<Unit> {
+            // IntelliJ reports the long spelling of Windows temporary directories.
+            val directory = temp.toRealPath()
             val actual = Files.createDirectory(directory.resolve("actual"))
             val original = Files.writeString(actual.resolve("value.s"), ".include \"neighbor.s\"\n")
             val originalNeighbor = Files.writeString(actual.resolve("neighbor.s"), "addiu \$t0, \$zero, 7\n")
@@ -441,7 +443,7 @@ class MipsFileReferencesPlatformTest {
                 val error = capture.assembleIn(component).errors().single()
                 assertEquals(entry, error.file())
                 assertEquals(1, error.line())
-                assertTrue(error.message().contains(request))
+                assertTrue(error.message().contains(entry.parent.resolve(request).toString()))
                 assertEquals(disk, error)
             }
         }

@@ -170,7 +170,7 @@ public class MIPSprogram implements Program {
     }
     try {
       // Keep the final name. A file symlink's relative includes still start beside that link.
-      return path.getParent().toRealPath().resolve(path.getFileName());
+      return AssemblySourceReader.resolveIncludeDirectory(path.getParent()).resolve(path.getFileName());
     } catch (IOException unavailable) {
       // The source may have been removed since it was read.
       return path.normalize();
@@ -319,7 +319,8 @@ public class MIPSprogram implements Program {
 
   private Reader openSource(String file, boolean include) throws IOException {
     if (sourceSnapshot == null) {
-      return AssemblySourceReader.open(Path.of(file));
+      Path path = Path.of(file);
+      return include ? AssemblySourceReader.openIncluded(path) : AssemblySourceReader.open(path);
     }
     Path requested = Path.of(file);
     Path path = include

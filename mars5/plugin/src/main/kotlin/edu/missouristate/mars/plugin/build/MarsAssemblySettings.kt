@@ -37,6 +37,7 @@ import edu.missouristate.mars.plugin.projectFilePath
 import com.intellij.util.xmlb.annotations.XCollection
 import java.nio.file.Path
 import javax.swing.JCheckBox
+import kotlin.io.path.invariantSeparatorsPathString
 
 private const val MAX_BACKSTEP_LIMIT = 100_000
 
@@ -114,14 +115,17 @@ internal class MarsAssemblySettings(private val project: Project) :
 
     fun changeExceptionHandler(value: String) {
         val path = projectFilePath(project, value.trim())
-        val stored = PathMacroManager.getInstance(project).collapsePath(path?.toString())
+        val stored = PathMacroManager.getInstance(project).collapsePath(path?.invariantSeparatorsPathString)
         if (stored == getState().exceptionHandler) return
         change { it.copy(exceptionHandler = stored) }
     }
 
     fun changeSources(paths: List<String>) {
         val macros = PathMacroManager.getInstance(project)
-        val stored = paths.mapNotNull { macros.collapsePath(it) }.distinct()
+        val stored = paths.mapNotNull {
+            val path = projectFilePath(project, it)
+            macros.collapsePath(path?.invariantSeparatorsPathString ?: it)
+        }.distinct()
         if (stored == getState().sources) return
         change { it.copy(sources = stored) }
     }

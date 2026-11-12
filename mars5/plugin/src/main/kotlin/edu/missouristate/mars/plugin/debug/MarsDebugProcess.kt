@@ -69,6 +69,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.withContext
+import kotlin.io.path.invariantSeparatorsPathString
 
 private const val SOURCE_STEP_LIMIT = 256L
 private const val CALL_STEP_LIMIT = 100_000L
@@ -96,7 +97,7 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
     @Volatile private var simulator: SimulatorEngine? = null
     private val bindings = Any()
     private val entryPath = state.entry.normalize()
-    private val entry = entryPath.toString()
+    private val entry = entryPath.invariantSeparatorsPathString
     private val registeredLines = linkedSetOf<LineBreakpoint>()
     private val registeredAddresses = linkedSetOf<AddressBreakpoint>()
     private val registeredWatchpoints = linkedSetOf<MemoryWatchpoint>()

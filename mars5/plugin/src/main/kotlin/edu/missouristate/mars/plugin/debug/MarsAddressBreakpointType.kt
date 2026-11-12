@@ -8,6 +8,7 @@ import com.intellij.xdebugger.breakpoints.XBreakpointType
 import edu.missouristate.mars.mips.hardware.MemoryState
 import edu.missouristate.mars.plugin.run.runMessages
 import edu.missouristate.mars.util.Binary
+import com.intellij.openapi.util.io.FileUtil
 
 internal typealias AddressBreakpoint = XBreakpoint<MarsAddressBreakpointProperties>
 
@@ -40,5 +41,5 @@ internal class MarsAddressBreakpointProperties(
     }
 
     fun addressIn(entry: String): Int? =
-        address.takeIf { this.entry == entry && MemoryState.wordAligned(it) }
+        address.takeIf { FileUtil.pathsEqual(this.entry, entry) && MemoryState.wordAligned(it) }
 }

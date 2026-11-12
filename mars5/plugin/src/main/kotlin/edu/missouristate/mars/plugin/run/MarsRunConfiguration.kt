@@ -29,7 +29,6 @@ import com.intellij.ide.trustedProjects.TrustedProjects
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
-import com.intellij.openapi.components.PathMacroManager
 import com.intellij.openapi.components.service
 import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory
 import com.intellij.openapi.options.ConfigurationException
@@ -498,7 +497,7 @@ internal class MarsRunConfigurationProducer : LazyRunConfigurationProducer<MarsR
     override fun isConfigurationFromContext(configuration: MarsRunConfiguration, context: ConfigurationContext): Boolean {
         if (configuration.options.useProjectSources) return false
         val file = entryFile(context.psiLocation) ?: return false
-        return PathMacroManager.getInstance(configuration.project).expandPath(configuration.options.sourcePath) == file.path
+        return projectFilePath(configuration.project, configuration.options.sourcePath) == file.toNioPath().normalize()
     }
 
     private fun entryFile(element: PsiElement?) = (element?.containingFile as? MipsFile)?.virtualFile?.takeIf {
