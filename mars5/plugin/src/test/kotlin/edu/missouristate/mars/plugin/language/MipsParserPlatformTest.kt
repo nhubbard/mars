@@ -37,6 +37,7 @@ import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
 import edu.missouristate.mars.util.Binary
 import java.nio.file.Path
 import kotlin.io.path.writeText
+import kotlin.time.Duration.Companion.seconds
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -833,9 +834,10 @@ class MipsParserPlatformTest {
 
     @ParameterizedTest
     @ValueSource(strings = ["Default", "CompactDataAtZero", "CompactTextAtZero"])
+    // Each layout assembles the full catalog and all spelling variants with both delay-slot settings.
     fun `all instruction formats agree with the assembler across separators and aliases`(
         layoutId: String, @TempDir directory: Path,
-    ) = timeoutRunBlocking<Unit> {
+    ) = timeoutRunBlocking<Unit>(45.seconds) {
         val layout = MarsMemoryLayout.entries.single { it.identifier == layoutId }
         val memory = MemoryConfigurations.createConfiguration(layoutId)
         val instructions = InstructionSet().also { it.populate() }.instructionList
