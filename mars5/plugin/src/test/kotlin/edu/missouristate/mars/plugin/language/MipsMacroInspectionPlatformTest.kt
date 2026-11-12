@@ -427,6 +427,76 @@ class MipsMacroInspectionPlatformTest {
         }
 
     @Test
+    fun `commenting out macro closer text preserves the suffix and closes the macro`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val project = projectFixture.get()
+            val repaired = withContext(Dispatchers.EDT) {
+                val direct = ".macro emit\naddiu \$t0, \$zero, 7\n.end_macro st<caret>ray # keep\nemit\n"
+                val aliased = ".eqv CLOSE .end_macro\n.macro emit\naddiu \$t0, \$zero, 7\nCL<caret>OSE stray # keep\nemit\n"
+                listOf(direct, aliased).map { source ->
+                    fixture.configureByText("macro-tail.mars", source)
+                    assertTrue(errors().any { it.second == trailingCloseMessage })
+                    val action = fixture.availableIntentions.single { it.text == "Comment out text after .end_macro" }
+                    fixture.launchAction(action)
+                    val fixed = source.replace("<caret>", "").replace("stray", "# stray")
+                    assertEquals(fixed, fixture.editor.document.text)
+                    assertTrue(errors().isEmpty())
+                    val command = checkNotNull(action.asModCommandAction())
+                    val context = ActionContext.from(fixture.editor, fixture.file)
+                    assertEquals(null, command.getPresentation(context))
+                    assertTrue(command.perform(context).isEmpty)
+                    if (source == aliased) {
+                        WriteCommandAction.runWriteCommandAction(project) {
+                            val document = fixture.editor.document
+                            document.setText(fixed.replace(".eqv CLOSE .end_macro", ".eqv CLOSE .word").replace("# stray", "stray"))
+                        }
+                        PsiDocumentManager.getInstance(project).commitAllDocuments()
+                        assertEquals(null, command.getPresentation(context))
+                    }
+                    fixed
+                }
+            }
+            val context = project.service<MarsSessionService>().context
+            for ((index, source) in repaired.withIndex()) {
+                val entry = directory.resolve("tail-$index.mars").also { it.writeText(source) }
+                assertEquals(listOf(0x24080007), context.assemble(listOf(entry)).machineList.map { it.binaryStatement })
+            }
+        }
+
+    @Test
+    fun `macro closer tail quick fix requires a separate editable suffix in a known body`() = timeoutRunBlocking<Unit> {
+        val project = projectFixture.get()
+        withContext(Dispatchers.EDT) {
+            for (source in listOf(
+                ".end_macro ext<caret>ra\n",
+                ".macro emit\n.include \"missing.inc\"\n.end_macro ext<caret>ra\n",
+                ".macro emit\n.end_macro .inc<caret>lude \"unfinished\n",
+                ".eqv CLOSE .end_macro extra\n.macro emit\nCL<caret>OSE\n",
+            )) {
+                fixture.configureByText("macro-tail.mars", source)
+                errors()
+                assertTrue(fixture.availableIntentions.none { it.text == "Comment out text after .end_macro" }, source)
+            }
+            val source = ".macro emit\n.end_macro extra\n"
+            val shared = fixture.addFileToProject("shared.inc", source)
+            fixture.configureFromExistingVirtualFile(shared.virtualFile)
+            fixture.editor.caretModel.moveToOffset(source.indexOf("extra"))
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        val stale = withContext(Dispatchers.EDT) {
+            errors()
+            val action = fixture.availableIntentions.single { it.text == "Comment out text after .end_macro" }
+            fixture.addFileToProject("first.mars", ".include \"shared.inc\"\n")
+            fixture.addFileToProject("second.mars", ".include \"shared.inc\"\n")
+            checkNotNull(action.asModCommandAction())
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        withContext(Dispatchers.EDT) {
+            assertEquals(null, stale.getPresentation(ActionContext.from(fixture.editor, fixture.file)))
+        }
+    }
+
+    @Test
     fun `an unterminated include takes precedence over macro errors on its line and later lines`() = timeoutRunBlocking<Unit> {
         val source = """
             .eqv OPEN .macro

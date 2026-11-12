@@ -13,14 +13,25 @@ import com.intellij.openapi.progress.ProgressManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiErrorElement
 import com.intellij.psi.util.PsiTreeUtil
+import edu.missouristate.mars.ErrorList
+import edu.missouristate.mars.assembler.Directives
+import edu.missouristate.mars.assembler.Tokenizer
 import edu.missouristate.mars.plugin.analysis.MacroBoundaryProblem
 import edu.missouristate.mars.plugin.analysis.MacroBoundaryProblem.Kind
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
+import edu.missouristate.mars.plugin.analysis.discardTrailingComment
 import edu.missouristate.mars.plugin.analysis.mipsAssemblyRoots
+import edu.missouristate.mars.plugin.analysis.sourceLine
+import edu.missouristate.mars.plugin.analysis.sourceLineStart
 
 /** Reports macro expansion errors from the same timeline used for scope and navigation. */
 internal class MipsMacroDiagnosticAnnotator : Annotator {
     override fun annotate(element: PsiElement, holder: AnnotationHolder) {
+        if (element is PsiErrorElement && element.errorDescription == bundle.getMessage("syntax.macro.end.trailing")) {
+            holder.newSilentAnnotation(HighlightSeverity.INFORMATION).range(element.textRange)
+                .withFix(CommentAfterMacroEnd(element)).create()
+            return
+        }
         val file = element as? MipsFile ?: return
         val analysis = file.project.service<MarsAnalysisService>()
         val timeline = analysis.editorTimeline(file)
@@ -52,8 +63,42 @@ internal class MipsMacroDiagnosticAnnotator : Annotator {
             }
             val annotation = holder.newAnnotation(HighlightSeverity.ERROR, bundle.getMessage(message)).range(site.textRange)
             if (kind == Kind.MISSING_END) annotation.withFix(CloseUnterminatedMacro(site))
+            if (kind == Kind.TRAILING_TEXT) annotation.withFix(CommentAfterMacroEnd(site))
             annotation.create()
         }
+    }
+}
+
+private class CommentAfterMacroEnd(site: PsiElement) : PsiBasedModCommandAction<PsiElement>(site) {
+    override fun getFamilyName(): String = bundle.getMessage("syntax.macro.end.commentTail")
+
+    override fun getPresentation(context: ActionContext, element: PsiElement): Presentation? =
+        commentOffset(element)?.let { Presentation.of(familyName) }
+
+    override fun perform(context: ActionContext, element: PsiElement): ModCommand {
+        val offset = commentOffset(element) ?: return ModCommand.nop()
+        return ModCommand.psiUpdate(element.containingFile) { writable ->
+            writable.viewProvider.document!!.insertString(offset, "# ")
+        }
+    }
+
+    private fun commentOffset(element: PsiElement): Int? {
+        val file = element.containingFile as MipsFile
+        val analysis = file.project.service<MarsAnalysisService>()
+        if (!hasAssemblyEntry(file, analysis)) return null
+        val start = sourceLineStart(element)
+        val prefix = analysis.editorTimeline(file).prefix(file, start)
+        if (prefix.hasIncompleteIncludes || prefix.openMacro == null) return null
+        val line = sourceLine(element, fromLineStart = true)
+        if (Tokenizer().inspectInclude(line) != null) return null
+        val mapped = Tokenizer.tokenizeMappedLine(line, ErrorList(), { prefix.equivalence(it)?.replacement }, ProgressManager::checkCanceled)
+        val tokens = mapped.tokens()
+        tokens.discardTrailingComment()
+        if (tokens.size() < 2 || Directives.matchDirective(tokens[0].value) != Directives.END_MACRO) return null
+        val head = mapped.originalOffset(tokens[0].startPos - 1)
+        val tail = mapped.originalOffset(tokens[1].startPos - 1)
+        // When one alias supplies both tokens, commenting it out would also remove the closer.
+        return (start + tail).takeIf { tail > head }
     }
 }
 
