@@ -54,7 +54,8 @@ class MipsCompletionContributor : CompletionContributor(), DumbAware {
                 lookup.addAllElements(addresses.map(LookupElementBuilder::create))
                 for ((name, signatures) in macros) {
                     if (name in addresses) continue
-                    lookup.addElement(LookupElementBuilder.create(name).withTailText(signatures.joinToString(" / ", prefix = " "), true))
+                    lookup.addElement(LookupElementBuilder.create(MipsMacroLookup(name), name)
+                        .withTailText(signatures.joinToString(" / ", prefix = " "), true))
                 }
             }
         })

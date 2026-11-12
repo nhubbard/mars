@@ -12,6 +12,7 @@ import com.intellij.platform.backend.documentation.impl.computeDocumentationBloc
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
 import com.intellij.psi.PsiDocumentManager
+import com.intellij.testFramework.DumbModeTestUtils
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
@@ -111,6 +112,71 @@ class MipsDocumentationPlatformTest {
             target.createPointer()
         }
         assertEquals(direct, computeDocumentationBlocking(pointer)?.html)
+    }
+
+    @Test
+    fun `macro completion documents visible overloads and follows edits to their scope`() = timeoutRunBlocking<Unit> {
+        val current = project.get()
+        val includeText = ".macro emit (%one) # First <value>\n.end_macro\n"
+        val entry = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("lookup.inc", includeText)
+            val source = """
+                .include "lookup.inc"
+                .macro emit (%left, %right) # Both & more
+                .end_macro
+                .macro emitOther
+                .end_macro
+                em
+                nop
+            """.trimIndent()
+            fixture.addFileToProject("lookup.mars", source).virtualFile.also {
+                fixture.configureFromExistingVirtualFile(it)
+                fixture.editor.caretModel.moveToOffset(source.lastIndexOf("\nem") + "\nem".length)
+            }
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(current)
+        val (emit, other) = withContext(Dispatchers.EDT) {
+            val items = fixture.completeBasic().orEmpty()
+            items.single { it.lookupString == "emit" } to items.single { it.lookupString == "emitOther" }
+        }
+        val provider = IdeDocumentationTargetProvider.getInstance(current)
+        val pointer = readAction {
+            val target = provider.documentationTargets(fixture.editor, fixture.file, emit).single()
+            assertEquals("emit", target.computePresentation().presentableText)
+            assertNull(target.navigatable)
+            val single = provider.documentationTargets(fixture.editor, fixture.file, other).single()
+            val navigation = single.navigatable as OpenFileDescriptor
+            assertEquals(entry, navigation.file)
+            assertEquals(fixture.file.text.indexOf("emitOther"), navigation.offset)
+            target.createPointer()
+        }
+        val html = computeDocumentationBlocking(pointer)?.html.orEmpty()
+        assertTrue("emit(%one)" in html && "First &lt;value&gt;" in html)
+        assertTrue("emit(%left, %right)" in html && "Both &amp; more" in html)
+        withContext(Dispatchers.EDT) {
+            fixture.lookup.hideLookup(false)
+            DumbModeTestUtils.runInDumbModeSynchronously(current) {
+                assertNull(pointer.dereference())
+            }
+            WriteCommandAction.runWriteCommandAction(current) {
+                fixture.editor.document.insertString(fixture.file.text.lastIndexOf("\nem") + 1, ".eqv emit nop\n")
+            }
+            PsiDocumentManager.getInstance(current).commitAllDocuments()
+        }
+        assertNull(computeDocumentationBlocking(pointer))
+        withContext(Dispatchers.EDT) {
+            WriteCommandAction.runWriteCommandAction(current) { fixture.editor.document.setText("nop\n") }
+            PsiDocumentManager.getInstance(current).commitAllDocuments()
+        }
+        assertNull(computeDocumentationBlocking(pointer))
+        withContext(Dispatchers.EDT) {
+            WriteCommandAction.runWriteCommandAction(current) { entry.delete(this) }
+        }
+        assertNull(computeDocumentationBlocking(pointer))
+        withContext(Dispatchers.EDT) { fixture.configureByText("plain.txt", "em<caret>") }
+        readAction {
+            assertTrue(provider.documentationTargets(fixture.editor, fixture.file, emit).isEmpty())
+        }
     }
 
     @Test

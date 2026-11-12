@@ -443,6 +443,13 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
             }
     }
 
+    internal fun macroCompletionDefinitions(root: MipsFile, offset: Int, name: String): Collection<MipsSourceEvent.Begin> {
+        if (DumbService.isDumb(project)) return emptyList()
+        val prefix = editorPrefix(root, offset)
+        if (prefix.equivalence(name) != null) return emptyList()
+        return prefix.macroOverloads(name).values
+    }
+
     internal fun completesDataHeadAsMacro(root: MipsFile, range: TextRange, name: String): Boolean {
         val source = root.viewProvider.contents
         val start = sourceLineStart(source, range.startOffset)

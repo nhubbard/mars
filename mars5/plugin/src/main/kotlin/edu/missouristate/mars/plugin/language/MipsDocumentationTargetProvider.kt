@@ -27,6 +27,7 @@ import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.Instruction
 import edu.missouristate.mars.mips.instructions.InstructionDefaults
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
+import edu.missouristate.mars.plugin.analysis.MipsSourceEvent
 import java.util.TreeMap
 
 internal class MipsDocumentationTargetProvider : DocumentationTargetProvider, LookupElementDocumentationTargetProvider {
@@ -74,7 +75,49 @@ internal class MipsDocumentationTargetProvider : DocumentationTargetProvider, Lo
     }
 
     override fun documentationTarget(psiFile: PsiFile, element: LookupElement, offset: Int): DocumentationTarget? =
-        element.`object` as? MipsCatalogEntry
+        when (val item = element.`object`) {
+            is MipsCatalogEntry -> item
+            is MipsMacroLookup -> macroLookupDocumentation(psiFile, offset, item.name)
+            else -> null
+        }
+
+    private fun macroLookupDocumentation(file: PsiFile?, offset: Int, name: String): DocumentationTarget? {
+        if (file !is MipsFile) return null
+        val definitions = file.project.service<MarsAnalysisService>().macroCompletionDefinitions(file, offset, name)
+        return if (definitions.isEmpty()) null else MacroLookupDocumentation(file, offset, name, definitions)
+    }
+
+    private inner class MacroLookupDocumentation(
+        private val file: MipsFile,
+        private val offset: Int,
+        private val name: String,
+        private val definitions: Collection<MipsSourceEvent.Begin>,
+    ) : DocumentationTarget {
+        override fun createPointer(): Pointer<DocumentationTarget> {
+            val site = SmartPointerManager.getInstance(file.project).createSmartPsiFileRangePointer(file, TextRange.from(offset, 0))
+            val macroName = name
+            return Pointer {
+                val start = site.psiRange?.startOffset ?: return@Pointer null
+                macroLookupDocumentation(site.element, start, macroName)
+            }
+        }
+
+        override fun computePresentation(): TargetPresentation = TargetPresentation.builder(name).presentation()
+
+        override val navigatable: OpenFileDescriptor?
+            get() = definitions.singleOrNull()?.let {
+                val source = it.header.containingFile.originalFile
+                OpenFileDescriptor(source.project, source.viewProvider.virtualFile, it.nameOffset)
+            }
+
+        override fun computeDocumentation(): DocumentationResult = DocumentationResult.documentation(buildString {
+            for (definition in definitions) {
+                val source = definition.header.containingFile.originalFile
+                val signature = definition.parameters.joinToString(prefix = "$name(", postfix = ")") { it.value }
+                appendMacroDocumentation(source, definition.nameOffset, signature)
+            }
+        })
+    }
 
     private inner class MacroDocumentation(
         private val call: PsiElement,
@@ -111,6 +154,12 @@ internal class MipsDocumentationTargetProvider : DocumentationTargetProvider, Lo
             get() = OpenFileDescriptor(source.project, source.viewProvider.virtualFile, nameOffset)
 
         override fun computeDocumentation(): DocumentationResult = DocumentationResult.documentation(buildString {
+            appendMacroDocumentation(source, nameOffset, signature)
+        })
+    }
+
+    private companion object {
+        fun StringBuilder.appendMacroDocumentation(source: PsiFile, nameOffset: Int, signature: String) {
             append(DEFINITION_START).append(StringUtil.escapeXmlEntities(signature)).append(DEFINITION_END)
             val document = source.fileDocument
             val end = document.getLineEndOffset(document.getLineNumber(nameOffset))
@@ -118,10 +167,8 @@ internal class MipsDocumentationTargetProvider : DocumentationTargetProvider, Lo
             if (comment.isNotEmpty()) {
                 append(CONTENT_START).append(StringUtil.escapeXmlEntities(comment)).append(CONTENT_END)
             }
-        })
-    }
+        }
 
-    private companion object {
         val includeType = MipsTypes.psi("INCLUDE")
         val macroEndType = MipsTypes.psi("END_MACRO")
         val includeOwners = TokenSet.create(MipsTypes.psi("INCLUDE_LINE"), MipsTypes.psi("DIRECTIVE_STATEMENT"))
@@ -132,6 +179,8 @@ internal class MipsDocumentationTargetProvider : DocumentationTargetProvider, Lo
         )
     }
 }
+
+internal data class MipsMacroLookup(val name: String)
 
 internal data class MipsCompletionTails(val symbolic: String, val numeric: String)
 
