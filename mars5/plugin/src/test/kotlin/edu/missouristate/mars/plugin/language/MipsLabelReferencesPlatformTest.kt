@@ -195,7 +195,7 @@ class MipsLabelReferencesPlatformTest {
         directory.resolve("aliases.s").writeText(definitions)
         val entry = directory.resolve("entry.asm").also { it.writeText(include + branch.replace("<caret>", "")) }
         val program = project.get().service<MarsSessionService>().context.assemble(listOf(entry), null, true, false)
-        assertEquals(listOf(0x15000000, 0), program.machineList.map { it.binaryStatement })
+        assertEquals(listOf(0x15000000, 0), program.machineList!!.map { it.binaryStatement })
     }
 
     @Test
@@ -325,7 +325,7 @@ class MipsLabelReferencesPlatformTest {
         val entry = directory.resolve("entry.asm").also { it.writeText(includes + ".globl entry\nj entry\n") }
         val context = project.get().service<MarsSessionService>().context
         val program = context.assemble(listOf(entry), null, true, false)
-        assertEquals(0x24080007, program.machineList.first().binaryStatement)
+        assertEquals(0x24080007, program.machineList!!.first().binaryStatement)
         assertEquals(context.memory.textBaseAddress, context.symbolTable.getAddress("entry"))
     }
 

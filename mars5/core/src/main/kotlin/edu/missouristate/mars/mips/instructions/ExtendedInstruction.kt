@@ -173,7 +173,7 @@ open class ExtendedInstruction @JvmOverloads constructor(
             if (instruction.contains("S32")) number("S32", 32 - parseNumber(tokens[tokens.size() - 1].value))
             if (instruction.contains("LAB")) {
                 val label = tokens[tokens.size() - 1].value
-                val symbol = program.localSymbolTable.getSymbolGivenAddressLocalOrGlobal(label)
+                val symbol = program.localSymbolTable!!.getSymbolGivenAddressLocalOrGlobal(label)
                 if (symbol != null) instruction = instruction.replaceFirst("LAB", symbol.name)
             }
             return instruction

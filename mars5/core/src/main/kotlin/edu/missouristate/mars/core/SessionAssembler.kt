@@ -36,7 +36,7 @@ class SessionAssembler(private val session: MarsContext) : MarsAssembler {
 
     private inline fun assemble(assembleProgram: () -> MIPSprogram): AssemblyResult = try {
         val program = assembleProgram()
-        AssemblyResult(program, diagnostics(program.assemblyDiagnostics))
+        AssemblyResult(program, diagnostics(program.assemblyDiagnostics!!))
     } catch (error: ProcessingException) {
         AssemblyResult(null, diagnostics(error.errors()!!))
     }

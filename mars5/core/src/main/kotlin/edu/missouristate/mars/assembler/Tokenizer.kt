@@ -77,7 +77,7 @@ open class Tokenizer @JvmOverloads constructor(
     }
 
     private class IncludeFrame(val program: MIPSprogram) {
-        val lines = program.sourceList.listIterator()
+        val lines = program.sourceList!!.listIterator()
     }
 
     // Expand depth first and retain each line's original file and line number.
@@ -85,7 +85,7 @@ open class Tokenizer @JvmOverloads constructor(
         val pending = ArrayDeque<IncludeFrame>()
         pending.addLast(IncludeFrame(root))
         val includedPaths = HashSet<Path>()
-        val result = ArrayList<SourceLine>(root.sourceList.size)
+        val result = ArrayList<SourceLine>(root.sourceList!!.size)
         while (pending.isNotEmpty()) {
             val frame = pending.last()
             val program = frame.program
@@ -110,7 +110,7 @@ open class Tokenizer @JvmOverloads constructor(
             }
             // The assembly pass only sees the included lines.
             reportLexicalErrors(program, lineNumber, line, candidates!!)
-            val filename = resolveIncludePath(program.filename, path)
+            val filename = resolveIncludePath(program.filename!!, path)
             val included = program.createRelatedProgram()
             try {
                 included.readIncludedSource(filename, checkCancellation)

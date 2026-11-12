@@ -31,7 +31,7 @@ internal class SecondPassProcessor(
         val expander = PseudoInstructionExpander(context)
         for (program in programs) {
             if (errors.errorLimitExceeded()) break
-            for (statement in program.parsedList) {
+            for (statement in program.parsedList!!) {
                 checkCancellation.run()
                 statement.buildBasicStatementFromBasicInstruction(errors, symbolUses::record)
                 if (errors.errorsOccurred()) throw ProcessingException(errors)

@@ -120,10 +120,10 @@ class CapturedAssemblySourcesPlatformTest {
         component.context().use {
             val disk = component.assembler().assemble(listOf(entry))
             assertTrue(disk.succeeded(), disk.errors().toString())
-            val diskWords = it.program.machineList.map { statement -> statement.binaryStatement }
+            val diskWords = it.program.machineList!!.map { statement -> statement.binaryStatement }
             val captured = sources.assembleIn(component)
             assertTrue(captured.succeeded(), captured.errors().toString())
-            assertEquals(diskWords, it.program.machineList.map { statement -> statement.binaryStatement })
+            assertEquals(diskWords, it.program.machineList!!.map { statement -> statement.binaryStatement })
             assertEquals(0x2408002a, diskWords[2])
             val analysis = project.get().service<MarsAnalysisService>()
             analysis.publishBuiltSymbols(analysis.beginSymbolBuild(entry), sources, captured.program()!!.symbolMap())
@@ -325,7 +325,7 @@ class CapturedAssemblySourcesPlatformTest {
         component.context().use { session ->
             val result = capture.assembleIn(component)
             assertTrue(result.succeeded(), result.errors().toString())
-            val statements = session.program.machineList
+            val statements = session.program.machineList!!
             assertEquals(listOf(0, 0x24080007, 0x24090008, 0, 0, 0, 0), statements.dropLast(2).map { it.binaryStatement })
             val location = Location(largePath, instructionLine)
             assertEquals(location, result.program()!!.sourceMap().origins()[statements[1].address]?.location)
@@ -516,7 +516,7 @@ class CapturedAssemblySourcesPlatformTest {
         component.context().use { session ->
             val result = capture.assembleIn(component)
             assertTrue(result.succeeded(), result.errors().toString())
-            assertEquals(listOf(0x24080007, 0x24090002), session.program.machineList.map { it.binaryStatement })
+            assertEquals(listOf(0x24080007, 0x24090002), session.program.machineList!!.map { it.binaryStatement })
         }
     }
 

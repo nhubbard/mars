@@ -53,9 +53,9 @@ class Assembler(private val context: AssemblyContext) {
         for (program in programs) {
             checkCancellation.run()
             val entry = Path.of(program.filename).toAbsolutePath().normalize()
-            locals[entry] = definitions(program.localSymbolTable, checkCancellation)
-            macros[entry] = program.localMacroPool.definitions(checkCancellation)
-            equivalences[entry] = program.tokenizer.equivalenceOccurrences()
+            locals[entry] = definitions(program.localSymbolTable!!, checkCancellation)
+            macros[entry] = program.localMacroPool!!.definitions(checkCancellation)
+            equivalences[entry] = program.tokenizer!!.equivalenceOccurrences()
         }
         symbolMap = AssemblySymbolMap(
             locals, definitions(context.symbols(), checkCancellation), first.macroCalls, symbolUses.bindings(checkCancellation),

@@ -175,7 +175,7 @@ class ScavengerHuntDeviceTest {
             assertEquals(33, memory.getWord(playerBase + moveReady))
             step(session, 3)
             assertEquals(0xff, device.snapshot().game.round!!.players[0].color)
-            val submit = session.getProgram().localSymbolTable.getAddress("submit")
+            val submit = session.getProgram().localSymbolTable!!.getAddress("submit")
             assertEquals(BREAKPOINT, session.simulator().runUntilAsync(4000) { it == submit }.get(5, SECONDS).reason)
             val beforeTask = device.snapshot()
             val sorted = beforeTask.game.round!!.players[0].task.sorted()

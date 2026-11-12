@@ -368,7 +368,7 @@ class MipsFileReferencesPlatformTest {
         val path = psi.virtualFile.toNioPath()
         val component = MarsSessionService.createMarsComponent()
         val disk = MarsSessionService.createMarsComponent().context().use { session ->
-            session.assemble(listOf(path)).machineList.single().binaryStatement
+            session.assemble(listOf(path)).machineList!!.single().binaryStatement
         }
         component.context().use { session ->
             val capture = captureAssemblySources(listOf(path), null)
@@ -376,7 +376,7 @@ class MipsFileReferencesPlatformTest {
             val result = capture.assembleIn(component)
             assertTrue(result.succeeded(), result.errors().toString())
             assertEquals(0x24080007, disk)
-            assertEquals(disk, session.program.machineList.single().binaryStatement)
+            assertEquals(disk, session.program.machineList!!.single().binaryStatement)
         }
     }
 
@@ -414,7 +414,7 @@ class MipsFileReferencesPlatformTest {
                 val failure = assertThrows<ProcessingException> { session.assemble(listOf(duplicate)) }
                 assertTrue(failure.errors()!!.errorMessages.single().message!!.contains("Recursive include"))
                 assertEquals(listOf(0x24080007, 0x24080009),
-                    session.assemble(listOf(distinct)).machineList.map { it.binaryStatement })
+                    session.assemble(listOf(distinct)).machineList!!.map { it.binaryStatement })
             }
             val capture = captureAssemblySources(listOf(duplicate), null)
             assertEquals(capture.snapshot.includeIdentity(original), capture.snapshot.includeIdentity(folderAlias.resolve("value.s")),

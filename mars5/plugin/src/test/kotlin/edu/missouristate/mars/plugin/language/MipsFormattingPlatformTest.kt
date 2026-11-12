@@ -938,7 +938,7 @@ class MipsFormattingPlatformTest {
         return MarsSessionService.createMarsComponent().context().use { context ->
             val program = context.assemble(listOf(path), null, true, false)
             val memory = context.memory
-            program.machineList.map { it.binaryStatement } to List(dataBytes) { memory.getByte(memory.dataBaseAddress + it) }
+            program.machineList!!.map { it.binaryStatement } to List(dataBytes) { memory.getByte(memory.dataBaseAddress + it) }
         }
     }
 }

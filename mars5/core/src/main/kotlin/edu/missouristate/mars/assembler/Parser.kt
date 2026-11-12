@@ -57,7 +57,7 @@ internal class Parser(private val pass: FirstPassProcessor) {
         renamedLabels: Set<String>,
     ): ArrayList<ProgramStatement>? {
         val tokens = stripComment(tokenList)
-        val macroPool = pass.fileCurrentlyBeingAssembled.localMacroPool
+        val macroPool = pass.fileCurrentlyBeingAssembled.localMacroPool!!
         if (pass.inMacroSegment) {
             pass.detectLabels(tokens, macroPool.current)
         } else {
@@ -144,7 +144,7 @@ internal class Parser(private val pass: FirstPassProcessor) {
 
         try {
             val invocation = origin(physicalLine, caller)
-            val physicalLines = pass.fileCurrentlyBeingAssembled.sourceLineList
+            val physicalLines = pass.fileCurrentlyBeingAssembled.sourceLineList!!
             val call = SourceToken(invocation.location, operator.writtenOrigin().originalStartPos)
             val spelling = operator.equivalenceSource() ?: operator.diagnosticSite()
             val argumentColumns = (1 until tokens.size()).map { tokens[it].writtenOrigin().originalStartPos }
@@ -158,7 +158,7 @@ internal class Parser(private val pass: FirstPassProcessor) {
                 if (pass.errors.errorLimitExceeded()) break
                 val previousErrors = pass.errors.errorCount()
                 val expanded = macro.expandLine(line, tokens, counter, renamedLabels, pass.errors)
-                val expandedTokens = pass.fileCurrentlyBeingAssembled.tokenizer
+                val expandedTokens = pass.fileCurrentlyBeingAssembled.tokenizer!!
                     .tokenizeMacroLine(line, expanded, pass.errors, pass.checkCancellation)
                 if (pass.errors.errorCount() > previousErrors) continue
                 val substituted = expandedTokens.processedLine.ifEmpty { expanded.text }.trim { it <= ' ' }

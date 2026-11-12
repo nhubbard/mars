@@ -46,7 +46,7 @@ open class Macro {
     private val labels = ArrayList<String>()
 
     fun definitionSite(): SourceToken {
-        val header = program!!.sourceLineList[fromLine - 1]
+        val header = program!!.sourceLineList!![fromLine - 1]
         return SourceToken(Parser.origin(header, null).location, nameColumn)
     }
 
@@ -75,7 +75,7 @@ open class Macro {
     }
 
     fun expandLine(line: Int, args: TokenList, counter: Long, privateArguments: Set<String>, errors: ErrorList): ExpandedLine {
-        val tokens = program!!.tokenList[line - 1]
+        val tokens = program!!.tokenList!![line - 1]
         val source = StringBuilder(tokens.processedLine)
         var renamedLabels: HashSet<String>? = null
         val origins = TreeMap<Int, TokenOrigin>()

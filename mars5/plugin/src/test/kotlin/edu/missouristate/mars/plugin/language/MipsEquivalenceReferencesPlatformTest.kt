@@ -46,7 +46,7 @@ class MipsEquivalenceReferencesPlatformTest {
             val source = definition + shortForm + use
             val entry = directory.resolve("short-equivalence.asm").also { it.writeText(source) }
             val program = project.get().service<MarsSessionService>().context.assemble(listOf(entry), null, true, false)
-            assertEquals(listOf(0x24080007), program.machineList.map { it.binaryStatement })
+            assertEquals(listOf(0x24080007), program.machineList!!.map { it.binaryStatement })
 
             val alias = target(definition + shortForm.replace("DECLARE", "DEC<caret>LARE") + use)
             assertEquals("DECLARE", alias?.name)
@@ -129,7 +129,7 @@ class MipsEquivalenceReferencesPlatformTest {
         directory.resolve("definitions.s").writeText(definitions)
         val entry = directory.resolve("entry.asm").also { it.writeText(source.replace("<caret>", "")) }
         val program = project.get().service<MarsSessionService>().context.assemble(listOf(entry), null, true, false)
-        assertEquals(listOf(0x24080007), program.machineList.map { it.binaryStatement })
+        assertEquals(listOf(0x24080007), program.machineList!!.map { it.binaryStatement })
     }
 
     @Test
@@ -142,7 +142,7 @@ class MipsEquivalenceReferencesPlatformTest {
             val source = ".eqv DEFINE .eqv\n$macro$call$use"
             val entry = directory.resolve("entry.asm").also { it.writeText(source.replace("<caret>", "")) }
             val program = context.assemble(listOf(entry), null, true, false)
-            assertEquals(listOf(0, 0x24080007), program.machineList.map { it.binaryStatement })
+            assertEquals(listOf(0, 0x24080007), program.machineList!!.map { it.binaryStatement })
             val declaration = target(source)
             assertTrue(declaration?.inEntry == true)
             assertEquals(directive, declaration?.name)
@@ -170,7 +170,7 @@ class MipsEquivalenceReferencesPlatformTest {
                 val source = macro + use
                 val entry = directory.resolve("positional.asm").also { it.writeText(source.replace("<caret>", "")) }
                 val program = context.assemble(listOf(entry), null, true, false)
-                assertEquals(listOf(0x24080007), program.machineList.map { it.binaryStatement }, body)
+                assertEquals(listOf(0x24080007), program.machineList!!.map { it.binaryStatement }, body)
                 val declaration = target(source)
                 assertEquals(site, declaration?.name, body)
                 assertEquals(beforeBody.length + body.indexOf(site), declaration?.offset, body)
@@ -193,7 +193,7 @@ class MipsEquivalenceReferencesPlatformTest {
                 val source = "$before$line\n$use"
                 val entry = directory.resolve("definition.asm").also { it.writeText(source) }
                 val program = project.get().service<MarsSessionService>().context.assemble(listOf(entry), null, true, false)
-                assertEquals(listOf(0x24080007), program.machineList.map { it.binaryStatement })
+                assertEquals(listOf(0x24080007), program.machineList!!.map { it.binaryStatement })
                 for (value in Regex("VALUE").findAll(line)) {
                     val atValue = line.replaceRange(value.range.first, value.range.first, "<caret>")
                     assertNull(target("$before$atValue\n$use"), atValue)

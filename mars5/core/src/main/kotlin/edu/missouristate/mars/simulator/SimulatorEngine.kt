@@ -159,14 +159,14 @@ class SimulatorEngine(private val session: MarsContext) : MarsSimulator, AutoClo
                 if (hit) return Reason.BREAKPOINT
             }
             val result = current.executeSessionInstruction()
-            if (result.executed()) {
+            if (result.executed) {
                 steps++
                 stepCount++
                 if (instructionLimit > 0) instructionsRemaining--
-                val event = StepEvent(result.pc(), result.instruction(), stepCount, result.transfer(), result.branchOutcome())
+                val event = StepEvent(result.pc, result.instruction, stepCount, result.transfer, result.branchOutcome)
                 notifyListeners { it.onStep(event) }
             }
-            val stop = result.stopReason()
+            val stop = result.stopReason
             if (stop != null) return stop
             if (instructionLimitReached()) return Reason.INSTRUCTION_LIMIT
             if (request != Request.NONE) continue

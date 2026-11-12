@@ -96,7 +96,7 @@ class MipsSmartEnterPlatformTest {
             directory.resolve("addresses.inc").writeText(definitions)
             val entry = directory.resolve("addresses.mars").also { it.writeText(completed) }
             val context = current.service<MarsSessionService>().context
-            assertEquals(listOf(0x8fa80004.toInt(), 0), context.assemble(listOf(entry), null, false, false).machineList.map { it.binaryStatement })
+            assertEquals(listOf(0x8fa80004.toInt(), 0), context.assemble(listOf(entry), null, false, false).machineList!!.map { it.binaryStatement })
         }
 
     @Test
@@ -140,7 +140,7 @@ class MipsSmartEnterPlatformTest {
             directory.resolve("macros.inc").writeText(definitions)
             val entry = directory.resolve("macro-repair.mars").also { it.writeText(completed) }
             val context = current.service<MarsSessionService>().context
-            assertEquals(listOf(0x24080007, 0), context.assemble(listOf(entry)).machineList.map { it.binaryStatement })
+            assertEquals(listOf(0x24080007, 0), context.assemble(listOf(entry)).machineList!!.map { it.binaryStatement })
         }
 
     @Test
@@ -169,7 +169,7 @@ class MipsSmartEnterPlatformTest {
             directory.resolve("shared.inc").writeText(result)
             val entry = directory.resolve("valid.mars").also { it.writeText(valid) }
             val context = current.service<MarsSessionService>().context
-            assertEquals(listOf(0x24080007), context.assemble(listOf(entry)).machineList.map { it.binaryStatement })
+            assertEquals(listOf(0x24080007), context.assemble(listOf(entry)).machineList!!.map { it.binaryStatement })
         }
 
     @Test
@@ -208,7 +208,7 @@ class MipsSmartEnterPlatformTest {
                 Triple("stack.mars", stack, 0x8fa80004.toInt()), Triple("frame.mars", frame, 0x8fc80004.toInt()),
             )) {
                 val entry = directory.resolve(name).also { it.writeText(source) }
-                assertEquals(listOf(encoding), context.assemble(listOf(entry)).machineList.map { it.binaryStatement })
+                assertEquals(listOf(encoding), context.assemble(listOf(entry)).machineList!!.map { it.binaryStatement })
             }
         }
 

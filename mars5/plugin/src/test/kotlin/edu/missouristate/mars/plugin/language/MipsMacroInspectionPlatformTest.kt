@@ -283,7 +283,7 @@ class MipsMacroInspectionPlatformTest {
             val context = project.service<MarsSessionService>().context
             for ((index, source) in repaired.withIndex()) {
                 val entry = directory.resolve("unmatched-$index.mars").also { it.writeText(source) }
-                assertEquals(listOf(0, 0x08100000), context.assemble(listOf(entry)).machineList.map { it.binaryStatement })
+                assertEquals(listOf(0, 0x08100000), context.assemble(listOf(entry)).machineList!!.map { it.binaryStatement })
             }
         }
 
@@ -407,7 +407,7 @@ class MipsMacroInspectionPlatformTest {
             val invalidEntry = directory.resolve("invalid.asm").also { it.writeText(invalidSource) }
             val project = projectFixture.get()
             val context = project.service<MarsSessionService>().context
-            assertEquals(1, context.assemble(listOf(validEntry), null, true, false).machineList.size)
+            assertEquals(1, context.assemble(listOf(validEntry), null, true, false).machineList!!.size)
             val failure = assertThrows<ProcessingException> { context.assemble(listOf(invalidEntry), null, true, false) }
             assertEquals(
                 listOf(
@@ -515,7 +515,7 @@ class MipsMacroInspectionPlatformTest {
             directory.resolve("header.inc").writeText(header)
             val source = directory.resolve("entry.mars").also { it.writeText(completed + "emit(7)\n") }
             val context = project.service<MarsSessionService>().context
-            assertEquals(listOf(0x24080007), context.assemble(listOf(source)).machineList.map { it.binaryStatement })
+            assertEquals(listOf(0x24080007), context.assemble(listOf(source)).machineList!!.map { it.binaryStatement })
         }
 
     @Test
@@ -551,7 +551,7 @@ class MipsMacroInspectionPlatformTest {
             val context = project.service<MarsSessionService>().context
             for ((index, source) in repaired.withIndex()) {
                 val entry = directory.resolve("tail-$index.mars").also { it.writeText(source) }
-                assertEquals(listOf(0x24080007), context.assemble(listOf(entry)).machineList.map { it.binaryStatement })
+                assertEquals(listOf(0x24080007), context.assemble(listOf(entry)).machineList!!.map { it.binaryStatement })
             }
         }
 

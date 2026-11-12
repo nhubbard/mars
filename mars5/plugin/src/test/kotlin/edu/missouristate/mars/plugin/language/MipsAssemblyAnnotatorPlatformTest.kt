@@ -290,7 +290,7 @@ class MipsAssemblyAnnotatorPlatformTest {
         }
         IndexingTestUtil.suspendUntilIndexesAreReady(project)
         val program = project.service<MarsSessionService>().context.assemble(listOf(entry.toNioPath()))
-        assertEquals(listOf(0), program.machineList.map { it.binaryStatement })
+        assertEquals(listOf(0), program.machineList!!.map { it.binaryStatement })
         withContext(Dispatchers.EDT) {
             suspend fun errors() = fixture.highlightAfterMipsRefresh().filter { it.severity == HighlightSeverity.ERROR }
             assertTrue(errors().isEmpty())
@@ -323,7 +323,7 @@ class MipsAssemblyAnnotatorPlatformTest {
         }
         IndexingTestUtil.suspendUntilIndexesAreReady(project)
         val program = project.service<MarsSessionService>().context.assemble(listOf(entry.toNioPath()))
-        assertEquals(listOf(0), program.machineList.map { it.binaryStatement })
+        assertEquals(listOf(0), program.machineList!!.map { it.binaryStatement })
         withContext(Dispatchers.EDT) {
             suspend fun errors() = fixture.highlightAfterMipsRefresh().filter { it.severity == HighlightSeverity.ERROR }
             assertTrue(PsiTreeUtil.hasErrorElements(fixture.file))
@@ -353,7 +353,7 @@ class MipsAssemblyAnnotatorPlatformTest {
         }
         IndexingTestUtil.suspendUntilIndexesAreReady(project)
         val program = project.service<MarsSessionService>().context.assemble(listOf(entry.toNioPath()))
-        assertEquals(listOf(0), program.machineList.map { it.binaryStatement })
+        assertEquals(listOf(0), program.machineList!!.map { it.binaryStatement })
         withContext(Dispatchers.EDT) {
             suspend fun errors() = fixture.highlightAfterMipsRefresh().filter { it.severity == HighlightSeverity.ERROR }
             assertTrue(errors().isEmpty())
@@ -625,7 +625,7 @@ class MipsAssemblyAnnotatorPlatformTest {
         }
         IndexingTestUtil.suspendUntilIndexesAreReady(project)
         val program = project.service<MarsSessionService>().context.assemble(listOf(main.toNioPath()))
-        assertEquals(listOf(0), program.machineList.map { it.binaryStatement })
+        assertEquals(listOf(0), program.machineList!!.map { it.binaryStatement })
         withContext(Dispatchers.EDT) {
             suspend fun errors() = fixture.highlightAfterMipsRefresh().filter { it.severity == HighlightSeverity.ERROR }
             assertTrue(errors().isEmpty())

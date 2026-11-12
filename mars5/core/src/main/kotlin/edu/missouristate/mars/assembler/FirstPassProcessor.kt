@@ -99,11 +99,11 @@ internal class FirstPassProcessor(
             inMacroSegment = false
             autoAlign = true
             dataDirective = Directives.WORD
-            val symbols = program.localSymbolTable
+            val symbols = program.localSymbolTable!!
             symbols.clear()
             fileReferences.clear()
-            val lines = program.sourceLineList
-            val tokenLists = program.tokenList
+            val lines = program.sourceLineList!!
+            val tokenLists = program.tokenList!!
             val parsed = program.createParsedList()
             val macroPool = program.createMacroPool()
             for (index in tokenLists.indices) {
@@ -143,7 +143,7 @@ internal class FirstPassProcessor(
         tokens.remove(0)
         tokens.remove(0) // The colon shifted to the first position.
         if (token.type == TokenTypes.OPERATOR) token.type = TokenTypes.IDENTIFIER
-        fileCurrentlyBeingAssembled.localSymbolTable.addSymbol(
+        fileCurrentlyBeingAssembled.localSymbolTable!!.addSymbol(
             token, if (inDataSegment) dataAddress.get() else textAddress.get(),
             if (inDataSegment) Kind.DATA else Kind.TEXT, Parser.origin(physicalLine, caller),
             token.value in renamedLabels, errors,
@@ -179,7 +179,7 @@ internal class FirstPassProcessor(
             return
         }
         inMacroSegment = true
-        val pool = fileCurrentlyBeingAssembled.localMacroPool
+        val pool = fileCurrentlyBeingAssembled.localMacroPool!!
         pool.beginMacro(name)
         for (index in 2 until tokens.size()) {
             val argument = tokens[index]
@@ -203,7 +203,7 @@ internal class FirstPassProcessor(
             return
         }
         inMacroSegment = false
-        fileCurrentlyBeingAssembled.localMacroPool.commitMacro(token)
+        fileCurrentlyBeingAssembled.localMacroPool!!.commitMacro(token)
     }
 
     private fun applyDirective(
@@ -300,7 +300,7 @@ internal class FirstPassProcessor(
     }
 
     private fun transferGlobals() {
-        val local = fileCurrentlyBeingAssembled.localSymbolTable
+        val local = fileCurrentlyBeingAssembled.localSymbolTable!!
         val global = context.symbols()
         for (index in 0 until globalDeclarations.size()) {
             checkCancellation.run()
@@ -331,7 +331,7 @@ internal class FirstPassProcessor(
 
     fun matchInstruction(token: Token): ArrayList<Instruction>? {
         if (token.type != TokenTypes.OPERATOR) {
-            val message = if (token.sourceMIPSprogram!!.localMacroPool.matchesAnyMacroName(token.value)) {
+            val message = if (token.sourceMIPSprogram!!.localMacroPool!!.matchesAnyMacroName(token.value)) {
                 "forward reference or invalid parameters for macro \"$token\""
             } else {
                 "\"$token\" is not a recognized operator"
@@ -394,7 +394,7 @@ internal class FirstPassProcessor(
                 writeToDataSegment(value, length, token)
             }
             token.type == TokenTypes.IDENTIFIER -> {
-                val symbol = fileCurrentlyBeingAssembled.localSymbolTable.getSymbolLocalOrGlobal(token.value)
+                val symbol = fileCurrentlyBeingAssembled.localSymbolTable!!.getSymbolLocalOrGlobal(token.value)
                 if (symbol == null || symbol.address == SymbolTable.NOT_FOUND) {
                     val address = writeToDataSegment(0, length, token)
                     fileReferences.add(address, length, token)
@@ -505,7 +505,7 @@ internal class FirstPassProcessor(
         val remainder = address % boundary
         if (remainder == 0) return address
         val aligned = address + boundary - remainder
-        fileCurrentlyBeingAssembled.localSymbolTable.fixSymbolTableAddress(address, aligned)
+        fileCurrentlyBeingAssembled.localSymbolTable!!.fixSymbolTableAddress(address, aligned)
         return aligned
     }
 
