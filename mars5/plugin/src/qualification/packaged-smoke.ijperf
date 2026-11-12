@@ -1,0 +1,24 @@
+%waitForSmart
+%openFile -file entry.mars -timeout 45
+%runConfiguration -mode=TILL_TERMINATED|-configurationName=Release Run
+%waitForSmart
+%goto 4 10
+%action GotoDeclaration
+%assertCurrentFile routine.inc
+%assertCaretPosition 1 1
+%action Back
+%assertCurrentFile entry.mars
+%action ToggleTemporaryLineBreakpoint
+%debugRunConfiguration Release Debug, 45
+%assertCurrentFile entry.mars
+%debugStep INTO
+%delay 1000
+%assertCurrentFile routine.inc
+%debugStep OVER
+%takeScreenshot packaged-debug
+%action Resume
+%waitForNoDebugSessions 30000
+%action ActivateMARSToolsToolWindow
+%takeScreenshot packaged-tools
+%storeHighlightingResults packaged-smoke-complete
+%exitApp

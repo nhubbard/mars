@@ -1,4 +1,5 @@
 import java.security.MessageDigest
+import java.time.Duration
 import java.util.zip.ZipFile
 import javax.xml.XMLConstants
 import org.gradle.language.jvm.tasks.ProcessResources
@@ -9,6 +10,7 @@ import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 import org.jetbrains.intellij.platform.gradle.tasks.BuildPluginTask
 import org.jetbrains.intellij.platform.gradle.tasks.ComposedJarTask
 import org.jetbrains.intellij.platform.gradle.tasks.GenerateParserTask
+import org.jetbrains.intellij.platform.gradle.tasks.RunIdeTask
 import org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask.FailureLevel.COMPATIBILITY_PROBLEMS
 import org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask.FailureLevel.INTERNAL_API_USAGES
 import org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask.FailureLevel.OVERRIDE_ONLY_API_USAGES
@@ -205,8 +207,60 @@ tasks.jacocoTestCoverageVerification {
 tasks.check { dependsOn(tasks.jacocoTestCoverageVerification) }
 
 // A launch always verifies the plugin; callers clean the build and sandbox first.
-tasks.named("runIde") {
+tasks.named<RunIdeTask>("runIde") {
   dependsOn(tasks.check, ":core:check", ":cli:check", ":datapath:check", ":desktop:check", rootProject.tasks.named("check"))
+  if (providers.gradleProperty("packagedSmoke").isPresent) {
+    val scenario = layout.projectDirectory.dir("src/qualification")
+    val fixture = layout.buildDirectory.dir("packaged-smoke")
+    dependsOn(pluginArchive)
+    args(fixture.get().asFile.absolutePath)
+    systemProperty("testscript.filename", scenario.file("packaged-smoke.ijperf").asFile.absolutePath)
+    systemProperty("performance.plugin.playback.runner.useDirectActionCall", "true")
+    timeout.set(Duration.ofMinutes(5))
+
+    doFirst {
+      project.sync {
+        from(scenario.dir("project"))
+        into(fixture)
+      }
+      val archive = pluginArchive.get()
+      val plugins = sandboxPluginsDirectory.get().asFile
+      project.delete(plugins.resolve(archive.archiveBaseName.get()))
+      project.copy {
+        from(project.zipTree(archive.archiveFile.get().asFile))
+        into(plugins)
+      }
+      val options = sandboxConfigDirectory.dir("options").get().asFile
+      options.mkdirs()
+      val trustedPath = fixture.get().asFile.absolutePath
+        .replace("&", "&amp;").replace("<", "&lt;").replace("\"", "&quot;")
+      options.resolve("trusted-paths.xml").writeText("""
+        <application><component name="Trusted.Paths">
+          <option name="TRUSTED_PROJECT_PATHS"><map><entry key="$trustedPath" value="true" /></map></option>
+        </component></application>
+      """.trimIndent())
+      val log = sandboxLogDirectory.get().asFile
+      project.delete(log.resolve("packaged-smoke-complete.txt"))
+    }
+    doLast {
+      val log = sandboxLogDirectory.get().asFile
+      check(log.resolve("packaged-smoke-complete.txt").isFile) {
+        "IntelliJ did not finish the packaged smoke scenario. See $log."
+      }
+      val expected = "MARS packaged smoke\n".encodeToByteArray()
+      for (name in listOf("run.ok", "debug.ok")) {
+        val result = fixture.get().file(name).asFile
+        check(result.isFile && result.readBytes().contentEquals(expected)) {
+          "The MARS program did not write the expected result to $result."
+        }
+      }
+      val archive = pluginArchive.get().archiveFile.get().asFile
+      val checksum = MessageDigest.getInstance("SHA-256").digest(archive.readBytes())
+        .joinToString("") { "%02x".format(it) }
+      log.resolve("packaged-smoke-SHA256SUMS").writeText("$checksum  ${archive.name}\n")
+      logger.lifecycle("Packaged MARS smoke passed. IDE evidence is in $log.")
+    }
+  }
 }
 tasks.matching { it.name.startsWith("prepare") && it.name.contains("Sandbox") }.configureEach {
   mustRunAfter(tasks.named("cleanSandbox"))

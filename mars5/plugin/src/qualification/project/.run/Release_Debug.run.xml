@@ -1,0 +1,7 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Release Debug" type="MarsMipsRun" factoryName="MarsMipsRun">
+    <option name="sourcePath" value="$PROJECT_DIR$/entry.mars" />
+    <option name="programArguments" value="debug.ok" />
+    <method v="2" />
+  </configuration>
+</component>

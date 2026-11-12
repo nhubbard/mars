@@ -1,0 +1,9 @@
+.text
+.globl main
+main:
+    jal write_result
+    nop
+    li $v0, 10
+    syscall
+
+.include "routine.inc"

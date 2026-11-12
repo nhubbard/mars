@@ -3175,6 +3175,28 @@ the installable ZIP and its `SHA256SUMS` in a
 for the packaged UI checks and record its checksum with the results.
 Packaged UI interaction and archive replacement are separate release checks.
 
+### Packaged editor, Run, and Debug smoke
+
+On a graphical IntelliJ 2026.3 host, run from `mars5` with Java 25.
+
+```sh
+./gradlew clean cleanSandbox runIde -PpackagedSmoke
+```
+
+Use `gradlew.bat` on Windows. The launcher installs the built ZIP into the
+clean IDE and opens a fresh copy of the qualification project. IntelliJ runs
+the saved MARS configuration, navigates from a `.mars` file to a label in an
+`.inc` file, stops at a breakpoint, steps into the included routine, and
+resumes. The routine reads its output bytes from a nested `.s` include.
+The check requires both the Run and Debug executions to write those exact
+bytes and the IDE to finish the replay. IntelliJ saves the debugger and
+MARS Tools screenshots with its sandbox logs. A successful replay records the
+ZIP checksum beside the screenshots in `packaged-smoke-SHA256SUMS`.
+
+The first qualification run passed on Apple Silicon macOS with IntelliJ
+IDEA `IU-263.7307.200`. Plugin Verifier and both archive checks passed for
+the same ZIP.
+
 ### Java core coverage baseline
 
 The Java 25 core suite passed 1,270 Jupiter tests with JaCoCo 0.8.16
