@@ -1,5 +1,6 @@
 package edu.missouristate.mars.plugin.language
 
+import com.intellij.codeInsight.navigation.actions.GotoDeclarationAction
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.CommonDataKeys
@@ -39,6 +40,8 @@ import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 
 @TestApplication
 class MarsExpansionPlatformTest {
@@ -127,6 +130,63 @@ class MarsExpansionPlatformTest {
                 UiInterceptors.clear()
             }
         }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = ["defs.png", "defs.inc~"])
+    fun `expansion from a read-only include navigates current macro origins`(definitionName: String) = timeoutRunBlocking<Unit> {
+        val current = project.get()
+        val entryText = ".include \"$definitionName\"\n.text\nnop\n.include \"body.zip\"\n"
+        val call = "emit(0x12345678)\n"
+        val (defs, body) = withContext(Dispatchers.EDT) {
+            val defs = fixture.tempDirFixture.createFile(definitionName, ".macro emit (%value)\nli \$t0, %value\n.end_macro\n")
+            val body = fixture.tempDirFixture.createFile("body.zip", call)
+            val entry = fixture.addFileToProject("entry.mars", entryText)
+            fixture.configureFromExistingVirtualFile(entry.virtualFile)
+            defs to body
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(current)
+        val (definition, use) = withContext(Dispatchers.EDT) {
+            fun target(name: String) = GotoDeclarationAction.findTargetElement(current, fixture.editor, entryText.indexOf(name) + 1) as MipsFile
+            val definition = target(definitionName)
+            val use = target("body.zip")
+            fixture.openFileInEditor(use.virtualFile)
+            val action = ActionManager.getInstance().getAction("Mars.ShowExpansion")
+            val event = TestActionEvent.createTestEvent(action, SimpleDataContext.builder()
+                .add(CommonDataKeys.PROJECT, current)
+                .add(CommonDataKeys.PSI_FILE, use)
+                .add(CommonDataKeys.EDITOR, fixture.editor)
+                .build())
+            action.update(event)
+            assertTrue(event.presentation.isEnabledAndVisible)
+            definition to use
+        }
+        val preview = inspectExpansion(use, 1, call) as ExpansionPreview.Instructions
+        val origin = Location(defs.toNioPath(), 2)
+        val useLocation = Location(body.toNioPath(), 1)
+        assertEquals(listOf(0x00400004, 0x00400008), preview.rows.map(AssembledInstruction::address))
+        assertEquals(origin, preview.rows.first().origin().location())
+        assertEquals(useLocation, preview.rows.first().origin().caller().location())
+        val sources = MarsExecutionSources(preview.capture.sources)
+        readAction {
+            assertEquals(definition.virtualFile, sources.currentLineDescriptor(current, origin)?.file)
+            assertEquals(use.virtualFile, sources.currentLineDescriptor(current, useLocation)?.file)
+            assertNull(sources.currentLineDescriptor(current, Location(defs.toNioPath(), 99)))
+        }
+        withContext(Dispatchers.EDT) {
+            val step = instructionStep(current, fixture.editor, preview)
+            @Suppress("UNCHECKED_CAST")
+            val chain = step.onChosen(preview.rows.first(), true) as ListPopupStep<Origin>
+            chain.onChosen(chain.values.first(), true)
+            chain.finalRunnable!!.run()
+            val selected = FileEditorManager.getInstance(current).selectedTextEditor!!
+            assertEquals(definition.virtualFile, selected.virtualFile)
+            assertEquals(1, selected.caretModel.logicalPosition.line)
+            Files.writeString(defs.toNioPath(), "# changed\n", APPEND)
+            defs.refresh(false, false)
+            assertNull(sources.currentLineDescriptor(current, origin))
+        }
+        assertEquals(ExpansionPreview.Unavailable.CHANGED, preview.capture.expansionAt(use, 1))
     }
 
     @Test

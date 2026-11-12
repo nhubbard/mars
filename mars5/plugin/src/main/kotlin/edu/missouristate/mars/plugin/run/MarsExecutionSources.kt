@@ -6,11 +6,13 @@ import com.intellij.execution.filters.FileHyperlinkInfo
 import com.intellij.notebook.editor.BackedVirtualFile
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
+import com.intellij.openapi.fileTypes.FileTypeRegistry
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Key
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.psi.PsiManager
 import com.intellij.testFramework.ReadOnlyLightVirtualFile
 import com.intellij.util.text.CharArrayUtil
 import com.intellij.xdebugger.XDebuggerUtil
@@ -18,6 +20,8 @@ import com.intellij.xdebugger.XSourcePosition
 import com.intellij.xdebugger.XSourcePositionWrapper
 import edu.missouristate.mars.api.InstructionSourceMap.Location
 import edu.missouristate.mars.plugin.analysis.CapturedAssemblySources
+import edu.missouristate.mars.plugin.analysis.assemblySourceSyntax
+import edu.missouristate.mars.plugin.analysis.unresolvedAssemblySourceSyntax
 import edu.missouristate.mars.plugin.language.MipsFileType
 import edu.missouristate.mars.plugin.language.MipsLanguage
 import java.nio.file.Path
@@ -60,8 +64,12 @@ internal class MarsExecutionSources(private val capture: CapturedAssemblySources
     /** Navigates an assembly origin only while its source still matches the captured revision. */
     fun currentLineDescriptor(project: Project, location: Location): OpenFileDescriptor? {
         val path = location.file()
-        if (path in capture.diskSources) return null
         val file = LocalFileSystem.getInstance().findFileByNioFile(path) ?: return null
+        val line = location.line() - 1
+        if (path in capture.diskSources) {
+            if (!file.fileType.isBinary || file.modificationStamp != capture.revisions.getValue(path)) return null
+            return currentReadOnlyLine(project, file, path, texts.getValue(path), line)
+        }
         val documents = FileDocumentManager.getInstance()
         val document = if (file.fileType.isBinary) null else documents.getDocument(file)
         if (document == null) return null
@@ -71,11 +79,21 @@ internal class MarsExecutionSources(private val capture: CapturedAssemblySources
             else StringUtil.equals(document.immutableCharSequence, text)
         if (!current) return null
 
-        val line = location.line() - 1
-        if (line < document.lineCount) return OpenFileDescriptor(project, file, document.getLineStartOffset(line))
+        if (line < document.lineCount) {
+            if (FileTypeRegistry.getInstance().isFileIgnored(file)) return currentReadOnlyLine(project, file, path, text, line)
+            return OpenFileDescriptor(project, file, document.getLineStartOffset(line))
+        }
         if (!partial || line >= offsets(path, text).lineCount) return null
         val excerpt = excerptAt(path, text, line)
         return OpenFileDescriptor(project, excerpt, line - excerpt.firstLine, 0)
+    }
+
+    private fun currentReadOnlyLine(project: Project, file: VirtualFile, path: Path, text: String, line: Int): OpenFileDescriptor? {
+        if (line >= offsets(path, text).lineCount) return null
+        val physical = PsiManager.getInstance(project).findFile(file)
+        val syntax = if (physical == null) unresolvedAssemblySourceSyntax(project, file) else assemblySourceSyntax(physical)
+        val view = syntax?.virtualFile ?: excerptAt(path, text, line)
+        return OpenFileDescriptor(project, view, line - firstLine(view), 0)
     }
 
     fun position(location: Location): XSourcePosition {

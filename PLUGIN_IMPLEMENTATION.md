@@ -671,6 +671,13 @@ IntelliJ 2026.3 replay followed `entry.mars` through `bridge.png` to
 `body.zip`, verified the address `0x00400004`, and expanded the hint to
 the emitted `lui` and `ori` instructions.
 
+**Show MARS Expansion** also works in read-only include tabs with a known
+assembly entry. Its instruction rows show addresses and encodings. Select
+a row to follow the macro definition or call site. For a current ignored or
+binary-classified include, the action opens its read-only MIPS view.
+Oversized sources use a bounded excerpt, and changed origins require a
+fresh preview.
+
 ## Branch and call gutter navigation
 
 Click the gutter arrow on a symbolic branch, jump, or call to open its label.

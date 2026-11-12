@@ -31,6 +31,7 @@ import edu.missouristate.mars.api.AssemblySymbolMap.SourceToken
 import edu.missouristate.mars.api.InstructionSourceMap.Location
 import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.build.diagnosticEvent
+import edu.missouristate.mars.plugin.language.mipsAssemblySourceOrigin
 import edu.missouristate.mars.plugin.language.MipsDocumentationTargetProvider
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.MipsSymbolRenameProcessor
@@ -139,7 +140,9 @@ class CapturedAssemblySourcesPlatformTest {
             assertNotEquals(include, position.file)
             assertEquals(origin, execution.location(position.file, position.line))
             assertNull(execution.originalLine(position.file, position.line))
-            assertNull(execution.currentLineDescriptor(project.get(), origin))
+            val originView = checkNotNull(execution.currentLineDescriptor(project.get(), origin)).file
+            assertEquals(include, originView.mipsAssemblySourceOrigin)
+            assertFalse(originView.isWritable)
             assertEquals(main.virtualFile, execution.currentLineDescriptor(project.get(), Location(entry, 1))?.file)
             val macro = checkNotNull(main.findReferenceAt(main.text.indexOf("\nemit") + 1)?.resolve())
             assertEquals("emit", macro.text)
@@ -177,6 +180,7 @@ class CapturedAssemblySourcesPlatformTest {
             }
             readAction {
                 assertFalse(execution.isCurrent())
+                assertNull(execution.currentLineDescriptor(project.get(), origin))
                 assertFalse(execution.position(origin).file.isWritable)
                 assertFalse(sources.validateSourceDocuments { _, _, _ -> true })
                 val plainCapture = checkNotNull(collectEditorAssembly(main)).sources
@@ -232,6 +236,11 @@ class CapturedAssemblySourcesPlatformTest {
             analysis.publishBuiltSymbols(analysis.beginSymbolBuild(capture.source), capture.sources, result.program().symbolMap())
         }
         readAction {
+            val line = checkNotNull(MarsExecutionSources(capture.sources).currentLineDescriptor(
+                project.get(), Location(include.toNioPath(), 2),
+            ))
+            assertFalse(line.file.isWritable)
+            assertTrue(line.file.name.startsWith("large.png"))
             for (name in listOf("emit", "target")) {
                 val target = checkNotNull(main.findReferenceAt(main.text.indexOf(name))?.resolve())
                 assertEquals(name, target.text)

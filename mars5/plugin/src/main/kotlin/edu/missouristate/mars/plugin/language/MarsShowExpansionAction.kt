@@ -54,7 +54,8 @@ internal class MarsShowExpansionAction : AnAction() {
     private fun target(e: AnActionEvent): Pair<MipsFile, Editor>? {
         val file = e.getData(CommonDataKeys.PSI_FILE) as? MipsFile ?: return null
         val editor = e.getData(CommonDataKeys.EDITOR) ?: return null
-        return (file to editor).takeIf { file.viewProvider.virtualFile.isLocalSource() }
+        val view = file.viewProvider.virtualFile
+        return (file to editor).takeIf { (view.mipsAssemblySourceOrigin ?: view).isLocalSource() }
     }
 }
 
@@ -81,7 +82,7 @@ internal sealed interface ExpansionPreview {
 
 internal suspend fun inspectExpansion(file: MipsFile, line: Int, sourceText: CharSequence): ExpansionPreview {
     val smart = ReadConstraint.inSmartMode(file.project)
-    val capture = constrainedReadAction(smart) { collectEditorAssembly(file) } ?: return ExpansionPreview.Unavailable.ENTRY
+    val capture = constrainedReadAction(smart) { collectEditorAssembly(file, readOnlyInclude = true) } ?: return ExpansionPreview.Unavailable.ENTRY
     if (!StringUtil.equals(sourceText, capture.sources.snapshot.texts()[capture.source])) {
         return ExpansionPreview.Unavailable.CHANGED
     }
@@ -97,7 +98,7 @@ internal suspend fun EditorAssemblyCapture.expansionAt(file: MipsFile, line: Int
         result.program()?.instructionsAt(Location(source, line), cancellation::ensureActive)
     }
     val valid = constrainedReadAction(ReadConstraint.inSmartMode(file.project)) {
-        val current = collectEditorAssembly(file)
+        val current = collectEditorAssembly(file, readOnlyInclude = true)
         // A filesystem refresh can replace cached documents while preserving the assembled inputs.
         current?.let { Triple(it.options, it.sources.snapshot, it.sources.exceptionHandler) } ==
             Triple(options, sources.snapshot, sources.exceptionHandler)
