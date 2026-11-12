@@ -3328,6 +3328,17 @@ tasks. It includes the MARS include-graph test on a case-sensitive filesystem.
 The build log, exact commit, and reports are under
 `mars5/.gradle/release-host-checks/linux-x64-include-graph`.
 
+The packaged replay at `20273838` stopped before launching IntelliJ.
+Its emulated x64 platform suite ran 814 plugin tests and reported two
+failures. The Parameter Info fixture timed out during repeated hint requests,
+and the Branch History fixture reported that the latest-branch details
+extended past the dock viewport. The focused x64 retry of the split
+Parameter Info fixture passed all 19 tests in its class. The three split
+cases took 1.03 to 2.88 seconds each under the same 10-second test limit.
+Logs and Jupiter reports are under
+`mars5/.gradle/release-host-checks/linux-x64-packaged-smoke` and
+`mars5/.gradle/release-host-checks/linux-x64-parameter-info-retry`.
+
 For B06 launcher parity, the macOS and both Linux runs passed all 23
 `LauncherParityTest` cases. These launch the standalone and Venus
 distribution JARs with the same sources and compare project assembly,
