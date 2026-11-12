@@ -1048,11 +1048,11 @@ Test sources and generated build output are excluded from this production invent
 
 | Source | Mapping ID |
 | --- | --- |
-| [java/edu/missouristate/mars/ApplicationInfo.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/ApplicationInfo.java) | C01 |
-| [java/edu/missouristate/mars/ErrorList.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/ErrorList.java) | B02 |
-| [java/edu/missouristate/mars/ErrorMessage.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/ErrorMessage.java) | B02 |
+| [kotlin/edu/missouristate/mars/ApplicationInfo.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/ApplicationInfo.kt) | C01 |
+| [kotlin/edu/missouristate/mars/ErrorList.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/ErrorList.kt) | B02 |
+| [kotlin/edu/missouristate/mars/ErrorMessage.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/ErrorMessage.kt) | B02 |
 | [java/edu/missouristate/mars/MIPSprogram.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/MIPSprogram.java) | C03 |
-| [java/edu/missouristate/mars/ProcessingException.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/ProcessingException.java) | B02 |
+| [kotlin/edu/missouristate/mars/ProcessingException.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/ProcessingException.kt) | B02 |
 | [java/edu/missouristate/mars/ProgramStatement.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/ProgramStatement.java) | C03 |
 | [java/edu/missouristate/mars/Settings.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/Settings.java) | S01 |
 | [java/edu/missouristate/mars/api/AssemblyError.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/api/AssemblyError.java) | B02 |
@@ -1342,7 +1342,7 @@ Test sources and generated build output are excluded from this production invent
 | [java/edu/missouristate/mars/util/FilenameFinder.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/util/FilenameFinder.java) | C13 |
 | [kotlin/edu/missouristate/mars/util/MemoryDump.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/util/MemoryDump.kt) | C13 |
 | [kotlin/edu/missouristate/mars/util/NumberDisplayBase.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/util/NumberDisplayBase.kt) | C13 |
-| [java/edu/missouristate/mars/util/PropertiesFile.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/util/PropertiesFile.java) | C13 |
+| [kotlin/edu/missouristate/mars/util/PropertiesFile.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/util/PropertiesFile.kt) | C13 |
 
 ### cli: 2 source files
 

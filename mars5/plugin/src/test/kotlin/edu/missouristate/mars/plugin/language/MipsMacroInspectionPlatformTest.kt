@@ -153,7 +153,7 @@ class MipsMacroInspectionPlatformTest {
             val failure = assertThrows<ProcessingException> { context.assemble(listOf(entry), null, true, false) }
             assertEquals(
                 List(3) { "invalid text after .END_MACRO" },
-                failure.errors().errorMessages.map { it.message },
+                failure.errors()!!.errorMessages.map { it.message },
             )
             withContext(Dispatchers.EDT) { fixture.configureByText("bad-closers.asm", source) }
             IndexingTestUtil.suspendUntilIndexesAreReady(projectFixture.get())
@@ -238,7 +238,7 @@ class MipsMacroInspectionPlatformTest {
             val failure = assertThrows<ProcessingException> { context.assemble(listOf(entry), null, true, false) }
             assertEquals(
                 List(4) { ".END_MACRO without .MACRO" } + "Macro started but not ended (no .end_macro directive)",
-                failure.errors().errorMessages.map { it.message },
+                failure.errors()!!.errorMessages.map { it.message },
             )
             withContext(Dispatchers.EDT) { fixture.configureByText("boundaries.asm", source) }
             IndexingTestUtil.suspendUntilIndexesAreReady(projectFixture.get())
@@ -414,7 +414,7 @@ class MipsMacroInspectionPlatformTest {
                     "Invalid Macro name \"7\"", "\".macro\" directive requires at least one argument.",
                     "invalid text after .END_MACRO", "invalid text after .END_MACRO", "Invalid macro argument '7'",
                 ),
-                failure.errors().errorMessages.map { it.message },
+                failure.errors()!!.errorMessages.map { it.message },
             )
             val (valid, invalid) = withContext(Dispatchers.EDT) {
                 val shared = fixture.addFileToProject("shared.s", source)
@@ -682,7 +682,7 @@ class MipsMacroInspectionPlatformTest {
             val failure = assertThrows<ProcessingException> { context.assemble(listOf(entry), null, true, false) }
             assertEquals(
                 listOf(nestedMacroMessage, nestedMacroMessage, "Invalid Macro name \"7\"", "Invalid Macro name \"7\""),
-                failure.errors().errorMessages.map { it.message },
+                failure.errors()!!.errorMessages.map { it.message },
             )
             withContext(Dispatchers.EDT) { fixture.configureByText("nested.asm", "$source\nouter(7)\n") }
             IndexingTestUtil.suspendUntilIndexesAreReady(project)
@@ -769,7 +769,7 @@ class MipsMacroInspectionPlatformTest {
             assertEquals(
                 listOf("-7", "+", "+7", "-7", "-7", "-7").map { "Invalid Macro name \"$it\"" } +
                     "Invalid macro argument '+7'",
-                failure.errors().errorMessages.map { it.message },
+                failure.errors()!!.errorMessages.map { it.message },
             )
             withContext(Dispatchers.EDT) { fixture.configureByText("signed-macro-errors.mars", source) }
             IndexingTestUtil.suspendUntilIndexesAreReady(project)
@@ -815,7 +815,7 @@ class MipsMacroInspectionPlatformTest {
             val failure = assertThrows<ProcessingException> { context.assemble(listOf(entry), null, true, false) }
             assertEquals(
                 listOf("\".macro\" directive requires at least one argument.", "Invalid Macro name \"7\"", "Invalid Macro name \"\$t0\""),
-                failure.errors().errorMessages.map { it.message },
+                failure.errors()!!.errorMessages.map { it.message },
             )
             withContext(Dispatchers.EDT) { fixture.configureByText("bad-macro-names.asm", source) }
             IndexingTestUtil.suspendUntilIndexesAreReady(project)
@@ -884,7 +884,7 @@ class MipsMacroInspectionPlatformTest {
             val context = project.service<MarsSessionService>().context
             val failure = assertThrows<ProcessingException> { context.assemble(listOf(entry)) }
             assertEquals(listOf("rejected", "7", "-7").map { "Invalid macro argument '$it'" },
-                failure.errors().errorMessages.map { it.message })
+                failure.errors()!!.errorMessages.map { it.message })
             withContext(Dispatchers.EDT) { fixture.configureByText("first-invalid-formal.mars", source) }
             IndexingTestUtil.suspendUntilIndexesAreReady(project)
             withContext(Dispatchers.EDT) {

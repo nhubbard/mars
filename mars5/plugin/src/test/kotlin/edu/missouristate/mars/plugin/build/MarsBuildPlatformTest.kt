@@ -1689,7 +1689,7 @@ class MarsBuildPlatformTest {
                 val expected = try {
                     disk.assemble(listOf(entry))
                 } catch (failure: ProcessingException) {
-                    throw AssertionError(failure.errors().generateErrorReport(), failure)
+                    throw AssertionError(failure.errors()!!.generateErrorReport(), failure)
                 }
                 component.context().use { ide ->
                     val result = capture.assembleIn(component)
@@ -1736,7 +1736,7 @@ class MarsBuildPlatformTest {
             val malformedOnDisk = Files.write(entry.resolveSibling("malformed.mars"), malformedBytes)
             MarsSessionService.createMarsComponent().context().use { disk ->
                 val failure = assertThrows(ProcessingException::class.java) { disk.assemble(listOf(malformedOnDisk)) }
-                val diskDiagnostic = failure.errors().errorMessages.single()
+                val diskDiagnostic = failure.errors()!!.errorMessages.single()
                 assertEquals(diagnostic.line(), diskDiagnostic.line)
                 assertEquals(diagnostic.column(), diskDiagnostic.position)
                 assertEquals(diagnostic.message(), diskDiagnostic.message)

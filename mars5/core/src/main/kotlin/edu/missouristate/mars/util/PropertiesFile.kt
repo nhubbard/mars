@@ -1,7 +1,7 @@
-package edu.missouristate.mars.util;
+package edu.missouristate.mars.util
 
-import java.io.*;
-import java.util.*;
+import java.io.IOException
+import java.util.Properties
 
 /*
 Copyright (c) 2003-2006,  Pete Sanderson and Kenneth Vollmar
@@ -31,31 +31,18 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 (MIT license, http://www.opensource.org/licenses/mit-license.html)
  */
 
-/**
- * Provides means to work with ".properties" files which are used to store various MARS settings.
- *
- * @author Pete Sanderson
- * @version October 2006
- */
-public class PropertiesFile {
-
-  /**
-   * Produce Properties (a Hashtable) object containing key-value pairs from specified properties
-   * file. This may be used as an alternative to readPropertiesFile() which uses a different
-   * implementation.
-   *
-   * @param file Properties filename. Do NOT include the file extension as it is assumed to be
-   *     ".properties" and is added here.
-   * @return Properties (Hashtable) of key-value pairs read from the file.
-   */
-  public static Properties loadPropertiesFromFile(String file) {
-    Properties properties = new Properties();
-    try {
-      InputStream is = PropertiesFile.class.getResourceAsStream("/" + file + ".properties");
-      properties.load(is);
-    } catch (IOException | NullPointerException ignored) {
-    } // If it doesn't work, properties will be empty
-
-    return properties;
-  }
+/** Reads Java properties bundled on the application classpath. */
+open class PropertiesFile {
+    companion object {
+        @JvmStatic
+        fun loadPropertiesFromFile(file: String?): Properties {
+            val properties = Properties()
+            try {
+                PropertiesFile::class.java.getResourceAsStream("/$file.properties")?.use(properties::load)
+            } catch (_: IOException) {
+                // Retain properties read before the stream failed.
+            }
+            return properties
+        }
+    }
 }

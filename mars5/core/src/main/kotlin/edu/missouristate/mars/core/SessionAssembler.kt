@@ -38,7 +38,7 @@ class SessionAssembler(private val session: MarsContext) : MarsAssembler {
         val program = assembleProgram()
         AssemblyResult(program, diagnostics(program.assemblyDiagnostics))
     } catch (error: ProcessingException) {
-        AssemblyResult(null, diagnostics(error.errors()))
+        AssemblyResult(null, diagnostics(error.errors()!!))
     }
 
     private fun diagnostics(errors: ErrorList): List<AssemblyError> = errors.errorMessages.map { message ->

@@ -176,7 +176,7 @@ class MipsParserPlatformTest {
                 val entry = directory.resolve("invalid.asm").also { it.writeText("$line\nnop") }
                 val context = project.get().service<MarsSessionService>().context
                 val failure = assertThrows<ProcessingException> { context.assemble(listOf(entry), null, true, false) }
-                assertTrue(failure.errors().errorMessages.any { ".eqv directive" in it.message }, line)
+                assertTrue(failure.errors()!!.errorMessages.any { ".eqv directive" in it.message!! }, line)
                 readAction {
                     val file = PsiFileFactory.getInstance(project.get()).createFileFromText("invalid.asm", MipsFileType, "$line\nnop")
                     assertEquals(1, descendants(file.node, "EQUIVALENCE").count(), line)
@@ -253,7 +253,7 @@ class MipsParserPlatformTest {
         val program = try {
             context.assemble(listOf(entry), null, true, false)
         } catch (failure: ProcessingException) {
-            fail(failure.errors().errorMessages.joinToString("\n") { it.message }, failure)
+            fail(failure.errors()!!.errorMessages.joinToString("\n") { it.message.toString() }, failure)
         }
         assertEquals(listOf(expectedInstruction), program.machineList.map { it.binaryStatement })
     }
@@ -615,7 +615,7 @@ class MipsParserPlatformTest {
                 val entry = directory.resolve("bad-header.asm").also { it.writeText(source) }
                 val context = project.get().service<MarsSessionService>().context
                 val failure = assertThrows<ProcessingException> { context.assemble(listOf(entry), null, true, false) }
-                val diagnostics = failure.errors().errorMessages.map { it.message }
+                val diagnostics = failure.errors()!!.errorMessages.map { it.message }
                 val expected = if (name.isEmpty()) "\".MaCrO\" directive requires at least one argument." else "Invalid Macro name \"$name\""
                 assertEquals(listOf(expected), diagnostics, header)
 
@@ -665,7 +665,7 @@ class MipsParserPlatformTest {
             val entry = directory.resolve("unfinished.asm").also { it.writeText(source) }
             val context = project.get().service<MarsSessionService>().context
             val failure = assertThrows<ProcessingException> { context.assemble(listOf(entry), null, true, false) }
-            assertTrue(failure.errors().errorMessages.any { it.message.endsWith("Invalid language element: %") })
+            assertTrue(failure.errors()!!.errorMessages.any { it.message!!.endsWith("Invalid language element: %") })
             readAction {
                 val file = PsiFileFactory.getInstance(project.get()).createFileFromText("unfinished.asm", MipsFileType, source)
                 val percent = file.findElementAt(source.indexOf("%\n"))!!
@@ -690,7 +690,7 @@ class MipsParserPlatformTest {
         val entry = directory.resolve("nested.asm").also { it.writeText(source) }
         val context = project.get().service<MarsSessionService>().context
         val error = assertThrows<ProcessingException> { context.assemble(listOf(entry), null, true, false) }
-        val messages = error.errors().errorMessages.map { it.message }
+        val messages = error.errors()!!.errorMessages.map { it.message }
         assertTrue("Nested macros are not allowed" in messages, messages.toString())
         readAction {
             val openers = listOf(
@@ -991,7 +991,7 @@ class MipsParserPlatformTest {
                 val program = try {
                     context.assemble(listOf(entry), null, true, false)
                 } catch (failure: ProcessingException) {
-                    throw AssertionError("$layoutId, $name batch $batch\n${failure.errors().generateErrorReport()}", failure)
+                    throw AssertionError("$layoutId, $name batch $batch\n${failure.errors()!!.generateErrorReport()}", failure)
                 }
                 val origins = program.sourceMap().origins()
                 assertEquals(memory.textBaseAddress, program.machineList.first().address, name)
@@ -1104,7 +1104,7 @@ class MipsParserPlatformTest {
                 val program = try {
                     context.assemble(listOf(path), null, false, false)
                 } catch (failure: ProcessingException) {
-                    throw AssertionError("$name\n${failure.errors().generateErrorReport()}", failure)
+                    throw AssertionError("$name\n${failure.errors()!!.generateErrorReport()}", failure)
                 }
                 return program.machineList.map { it.binaryStatement }
             }
@@ -1403,7 +1403,7 @@ class MipsParserPlatformTest {
             entry.writeText(invalid)
             val diagnostics = assertThrows<ProcessingException> { context.assemble(listOf(entry), null, true, false) }
             for (spelling in malformed) {
-                assertTrue(diagnostics.errors().errorMessages.any { it.message.endsWith("Invalid language element: $spelling") })
+                assertTrue(diagnostics.errors()!!.errorMessages.any { it.message!!.endsWith("Invalid language element: $spelling") })
             }
             readAction {
                 val file = PsiFileFactory.getInstance(project.get()).createFileFromText("invalid-numbers.asm", MipsFileType, invalid)
@@ -1495,7 +1495,7 @@ class MipsParserPlatformTest {
         val entry = directory.resolve("detached-sign.mars").also { it.writeText(source) }
         val context = project.get().service<MarsSessionService>().context
         val failure = assertThrows<ProcessingException> { context.assemble(listOf(entry), null, true, false) }
-        val dataErrors = failure.errors().errorMessages.filter { it.line in 2..3 }
+        val dataErrors = failure.errors()!!.errorMessages.filter { it.line in 2..3 }
         assertEquals(listOf(2 to 7, 3 to 10), dataErrors.map { it.line to it.position })
         readAction {
             val file = PsiFileFactory.getInstance(project.get()).createFileFromText("detached-sign.mars", MipsFileType, source)
@@ -1787,7 +1787,7 @@ class MipsParserPlatformTest {
             assertEquals(listOf(0), program.machineList.map { it.binaryStatement })
             val warning = program.assemblyDiagnostics.errorMessages.single()
             assertTrue(warning.isWarning)
-            assertTrue(warning.message.contains("ignores the .set directive"))
+            assertTrue(warning.message!!.contains("ignores the .set directive"))
             readAction {
                 val file = assertParses(source)
                 assertEquals(listOf("entry:"), descendants(file.node, "LABEL").map { it.text }.toList())
@@ -1894,7 +1894,7 @@ class MipsParserPlatformTest {
             assertEquals(1.5f.toBits(), memory.getWordNoNotify(base + 16))
             assertEquals((2.25.toBits() ushr 32).toInt(), memory.getWordNoNotify(base + 28))
             assertTrue(program.assemblyDiagnostics.errorMessages.single().isWarning)
-            assertTrue(program.assemblyDiagnostics.errorMessages.single().message.contains(".set"))
+            assertTrue(program.assemblyDiagnostics.errorMessages.single().message!!.contains(".set"))
 
             readAction {
                 val directiveTypes = listOf("DIRECTIVE", "EQV", "MACRO", "END_MACRO", "INCLUDE", "SET", "SEGMENT", "EXTERN").map(MipsTypes::psi).toSet()

@@ -412,7 +412,7 @@ class MipsFileReferencesPlatformTest {
             val component = MarsSessionService.createMarsComponent()
             component.context().use { session ->
                 val failure = assertThrows<ProcessingException> { session.assemble(listOf(duplicate)) }
-                assertTrue(failure.errors().errorMessages.single().message.contains("Recursive include"))
+                assertTrue(failure.errors()!!.errorMessages.single().message!!.contains("Recursive include"))
                 assertEquals(listOf(0x24080007, 0x24080009),
                     session.assemble(listOf(distinct)).machineList.map { it.binaryStatement })
             }
