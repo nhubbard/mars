@@ -153,6 +153,14 @@ class MarsToolProviderPlatformTest {
         try {
             firstReady.await()
             secondReady.await()
+            withContext(Dispatchers.EDT) {
+                // Offer the runs to the tool after their setup instructions have executed.
+                val manager = ToolWindowManager.getInstance(project)
+                val toolId = DefaultRunExecutor.getRunExecutorInstance().toolWindowId
+                val window = manager.getToolWindow(toolId) ?: manager.registerToolWindow(RegisterToolWindowTask(toolId))
+                window.contentManager.addContent(first.second)
+                window.contentManager.addContent(second.second)
+            }
             checkUi {
                 assertEquals(2, selector().itemCount)
                 assertEquals("Observed instructions: 0", steps())
@@ -178,10 +186,12 @@ class MarsToolProviderPlatformTest {
             }
         } finally {
             withContext(NonCancellable + Dispatchers.EDT) {
-                first.first.destroyProcess()
-                second.first.destroyProcess()
-                first.second.manager?.removeContent(first.second, true)
-                second.second.manager?.removeContent(second.second, true)
+                for ((process, content) in listOf(first, second)) {
+                    process.destroyProcess()
+                    val manager = content.manager
+                    if (manager != null) manager.removeContent(content, true)
+                    else if (content.disposer != null) content.release()
+                }
                 tool.manager!!.removeContent(tool, true)
                 withForcedRespectIsShowingClientProperty { withShowingChanged { container.removeAll() } }
             }
@@ -211,13 +221,9 @@ class MarsToolProviderPlatformTest {
             executionId = id
             isActivateToolWindowWhenAdded = false
         }
-        val manager = ToolWindowManager.getInstance(project)
-        val toolId = DefaultRunExecutor.getRunExecutorInstance().toolWindowId
-        val window = manager.getToolWindow(toolId) ?: manager.registerToolWindow(RegisterToolWindowTask(toolId))
         val content = ContentFactory.getInstance().createContent(descriptor.component, descriptor.displayName, false)
         content.putUserData(RunContentDescriptor.DESCRIPTOR_KEY, descriptor)
         content.setDisposer(descriptor)
-        window.contentManager.addContent(content)
         process.startNotify()
         return process to content
     }
