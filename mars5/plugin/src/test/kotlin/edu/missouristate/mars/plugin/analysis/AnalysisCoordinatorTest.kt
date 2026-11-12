@@ -88,7 +88,10 @@ class AnalysisCoordinatorTest {
                 withTimeout(10_000.milliseconds) { task.join() }
                 assertTrue(task.isCancelled)
                 assertEquals(1, coordinator.snapshot.generation)
-                assertThrows<IllegalStateException> { coordinator.submit(emptyList()) }
+                assertThrows<IllegalStateException> {
+                    @Suppress("DeferredResultUnused")
+                    coordinator.submit(emptyList())
+                }
             } finally {
                 release.countDown()
                 coordinator.close()

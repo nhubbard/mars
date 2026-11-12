@@ -4481,7 +4481,9 @@ class MarsDebugPlatformTest {
                         releaseInspection.await()
                     }
                     inspecting.await()
-                    val queued = async(start = CoroutineStart.UNDISPATCHED) { pause.captureForExport(options) }
+                    val queued = this@timeoutRunBlocking.async(start = CoroutineStart.UNDISPATCHED) {
+                      pause.captureForExport(options)
+                    }
                     try {
                         withContext(Dispatchers.EDT) { debug.session.resume() }
                     } finally {

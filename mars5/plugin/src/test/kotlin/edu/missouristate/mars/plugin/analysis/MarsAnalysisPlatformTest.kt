@@ -41,7 +41,10 @@ class MarsAnalysisPlatformTest {
             service.dispose()
             service.dispose()
             assertTrue(scope.isActive)
-            assertThrows<IllegalStateException> { service.submit(emptyList()) }
+            assertThrows<IllegalStateException> {
+                @Suppress("DeferredResultUnused")
+                service.submit(emptyList())
+            }
         } finally {
             service.dispose()
             scope.cancel()
