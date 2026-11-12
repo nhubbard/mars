@@ -430,6 +430,43 @@ class MipsEditorPlatformTest {
     }
 
     @Test
+    fun `a leading integer data address uses the label color when the macro arity differs`() = timeoutRunBlocking<Unit> {
+        val current = project.get()
+        val source = """
+            .macro emit (%value)
+            .end_macro
+            .eqv CALL emit
+            .data
+            .word 0
+            emit 2 3
+            emit 7:2
+            CALL 9:2
+            CALL (42)
+            emit: .word 0
+            .text
+            emit 3 4
+        """.trimIndent()
+        withContext(Dispatchers.EDT) { fixture.configureByText("data-colors.mars", source) }
+        IndexingTestUtil.suspendUntilIndexesAreReady(current)
+        withContext(Dispatchers.EDT) {
+            val highlights = fixture.highlightAfterMipsRefresh()
+            fun colors(line: String): List<TextAttributesKey> {
+                val start = source.indexOf("\n$line") + 1
+                val end = start + line.substringBefore(' ').length
+                return highlights.filter {
+                    it.startOffset == start && it.endOffset == end && it.severity == HighlightSeverity.INFORMATION
+                }
+                    .mapNotNull { it.forcedTextAttributesKey }
+            }
+            assertEquals(listOf(labelColor), colors("emit 2 3"))
+            assertEquals(emptyList<TextAttributesKey>(), colors("emit 7:2"))
+            assertEquals(listOf(equivalenceColor), colors("CALL 9:2"))
+            assertEquals(listOf(macroColor), colors("CALL (42)"))
+            assertEquals(emptyList<TextAttributesKey>(), colors("emit 3 4"))
+        }
+    }
+
+    @Test
     fun `alias invocations use a single effective role and preserve the alias color for composite or unknown expansions`() =
         timeoutRunBlocking<Unit> {
             val current = project.get()

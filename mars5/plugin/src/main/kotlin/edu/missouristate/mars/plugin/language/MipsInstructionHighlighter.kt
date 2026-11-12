@@ -93,7 +93,7 @@ internal class MipsInstructionHighlighter : Annotator, DumbAware {
                 use != null && use.type == null -> equivalenceColor
                 analysis.isGeneratedLabel(file, head) -> labelColor
                 use != null -> equivalenceColor
-                else -> return
+                else -> (head as MipsSymbolToken).highlightingColor() ?: return
             }
             holder.color(head.textRange, color)
         }

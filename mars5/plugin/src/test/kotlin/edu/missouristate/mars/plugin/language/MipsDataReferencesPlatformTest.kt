@@ -81,6 +81,9 @@ class MipsDataReferencesPlatformTest {
         val suffix = "\ntarget: .word 1\n"
         assertEquals(SymbolKind.MACRO, target("${prefix}em<caret>it target$suffix"))
         assertNull(target("${prefix}emit tar<caret>get$suffix"))
+        val sharedName = "\nemit: .word 0\n"
+        assertEquals(SymbolKind.LABEL, target("${prefix}em<caret>it 2 3$sharedName"))
+        assertNull(target("${prefix}em<caret>it 7:2$sharedName"))
         assertNull(target("${prefix}unknown(tar<caret>get)$suffix"))
         assertNull(target("${prefix}.unknown tar<caret>get$suffix"))
         assertEquals(SymbolKind.LABEL, target(".data\n.word 0\nmissing, tar<caret>get$suffix"))
