@@ -484,16 +484,25 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
     }
 
     internal fun instructionEquivalenceCompletions(
-        root: MipsFile, head: PsiElement, source: String, typedPrefix: String, accepts: (TokenList) -> Boolean,
+        root: MipsFile, operand: TextRange, typedPrefix: String, accepts: (TokenList, Int) -> Boolean,
     ): Map<String, String> {
         if (DumbService.isDumb(project)) return emptyMap()
-        val visible = editorPrefix(root, sourceLineStart(head))
-        val beforeOperand = writtenOperationPrefix(head, source)
+        val source = root.viewProvider.contents
+        val lineStart = sourceLineStart(source, operand.startOffset)
+        val lineEnd = CharArrayUtil.shiftForwardUntil(source, operand.endOffset, "\r\n")
+        val visible = editorPrefix(root, lineStart)
+        val beforeOperand = source.subSequence(lineStart, operand.startOffset).toString()
+        val afterOperand = source.subSequence(operand.endOffset, lineEnd).toString()
         return buildMap {
             for (definition in visible.equivalencesStartingWith(typedPrefix)) {
                 ProgressManager.checkCanceled()
-                val tokens = expandedOperation(visible, beforeOperand + definition.name, allowIncompleteOperand = true) ?: continue
-                if (accepts(tokens)) put(definition.name, definition.replacement)
+                val throughOperand = beforeOperand + definition.name
+                val tokens = expandedOperation(visible, throughOperand + afterOperand, allowIncompleteOperand = true)
+                    // A cyclic equivalence later on the line can prevent expansion of the full instruction.
+                    ?: afterOperand.takeIf(String::isNotEmpty)?.let { expandedOperation(visible, throughOperand, allowIncompleteOperand = true) }
+                    ?: continue
+                val end = (1 until tokens.size()).firstOrNull { tokens[it].originalStartPos > throughOperand.length } ?: tokens.size()
+                if (accepts(tokens, end)) put(definition.name, definition.replacement)
             }
         }
     }

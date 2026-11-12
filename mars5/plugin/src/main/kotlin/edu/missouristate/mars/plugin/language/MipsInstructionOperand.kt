@@ -77,15 +77,19 @@ internal fun renderInstructionExample(instruction: Instruction, bareMachine: Boo
 }
 
 internal class MipsInstructionOperand private constructor(
-    val index: Int, val formats: List<Instruction>, private val head: PsiElement, private val beforeOperand: String,
+    val index: Int, val formats: List<Instruction>, private val startOffset: Int,
 ) {
     val acceptsLabel: Boolean get() = formats.any { it.tokenList[index].type == TokenTypes.IDENTIFIER }
 
-    fun equivalenceCompletions(file: MipsFile, prefix: String, bareMachine: Boolean): Map<String, String> {
+    fun equivalenceCompletions(file: MipsFile, prefix: String, bareMachine: Boolean, replacementEnd: Int): Map<String, String> {
         if (formats.isEmpty()) return emptyMap()
-        return file.project.service<MarsAnalysisService>().instructionEquivalenceCompletions(file, head, beforeOperand, prefix) { tokens ->
+        val operand = TextRange(startOffset, replacementEnd)
+        return file.project.service<MarsAnalysisService>().instructionEquivalenceCompletions(file, operand, prefix) { tokens, end ->
             !tokens.isEmpty && formats.any {
-                it.name.equals(tokens[0].value, ignoreCase = true) && OperandFormat.matchesOperands(tokens, it, index, bareMachine)
+                it.name.equals(tokens[0].value, ignoreCase = true) &&
+                    tokens.size() <= it.tokenList.size() &&
+                    OperandFormat.matchesOperands(tokens, it, index, end, bareMachine) &&
+                    matchesAddressShape(tokens, it.tokenList, end)
             }
         }
     }
@@ -103,10 +107,10 @@ internal class MipsInstructionOperand private constructor(
             val formats = enabledInstructionFormats(tokens[0].value, allowPseudo).filter {
                 index < it.tokenList.size() && matchesAddressShape(tokens, it.tokenList)
             }
-            return MipsInstructionOperand(index, formats, instruction.operationHead, prefix)
+            return MipsInstructionOperand(index, formats, position.textOffset)
         }
 
-        private fun matchesAddressShape(tokens: TokenList, format: TokenList): Boolean = (1 until tokens.size()).all { index ->
+        private fun matchesAddressShape(tokens: TokenList, format: TokenList, first: Int = 1): Boolean = (first until tokens.size()).all { index ->
             val actual = tokens[index].type
             val expected = format[index].type
             actual == expected || (actual !in addressPunctuation && expected !in addressPunctuation)

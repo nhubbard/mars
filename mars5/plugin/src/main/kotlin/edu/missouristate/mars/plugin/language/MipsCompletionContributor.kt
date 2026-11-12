@@ -55,7 +55,11 @@ class MipsCompletionContributor : CompletionContributor(), DumbAware {
                 val lookup = result.withPrefixMatcher(prefix)
                 if (operand != null) {
                     lookup.addAllElements(registerCandidates(operand.formats, operand.index, options.bareMachine).map(LookupElementBuilder::create))
-                    for ((name, replacement) in operand.equivalenceCompletions(root, prefix, options.bareMachine)) {
+                    val original = parameters.originalPosition
+                    val replacementEnd = if (original != null && operandOrContinuationPosition.accepts(original)) {
+                        original.textRange.endOffset
+                    } else position.textOffset
+                    for ((name, replacement) in operand.equivalenceCompletions(root, prefix, options.bareMachine, replacementEnd)) {
                         lookup.addElement(LookupElementBuilder.create(name).withTailText(" = " + replacement, true)
                             .withTypeText(messages.getMessage("colors.equivalence")))
                     }

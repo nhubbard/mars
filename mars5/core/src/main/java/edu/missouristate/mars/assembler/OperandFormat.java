@@ -48,14 +48,15 @@ public class OperandFormat {
     return tokenOperandMatch((TokenList) tokens.clone(), instruction, new ErrorList());
   }
 
-  /** Tests the supplied operand tokens from the given index, allowing an unfinished instruction. */
+  /** Tests operand tokens from {@code firstOperand} inclusive to {@code endOperand} exclusive. */
   public static boolean matchesOperands(
-      TokenList tokens, Instruction instruction, int firstOperand, boolean bareMachine) {
+      TokenList tokens, Instruction instruction, int firstOperand, int endOperand, boolean bareMachine) {
     return firstOperand >= 1
-        && firstOperand < tokens.size()
-        && tokens.size() <= instruction.getTokenList().size()
+        && firstOperand < endOperand
+        && endOperand <= tokens.size()
+        && endOperand <= instruction.getTokenList().size()
         && operandTypeCheck(
-            (TokenList) tokens.clone(), instruction, new ErrorList(), bareMachine, firstOperand);
+            (TokenList) tokens.clone(), instruction, new ErrorList(), bareMachine, firstOperand, endOperand);
   }
 
   /*
@@ -78,7 +79,7 @@ public class OperandFormat {
     if (!numOperandsCheck(candidateList, inst, errors)) {
       return false;
     }
-    return operandTypeCheck(candidateList, inst, errors, bareMachine, 1);
+    return operandTypeCheck(candidateList, inst, errors, bareMachine, 1, candidateList.size());
   }
 
   /*
@@ -127,10 +128,10 @@ public class OperandFormat {
 
   // Generate error message if operand is not of correct type for this operation & operand position
   private static boolean operandTypeCheck(
-      TokenList cand, Instruction spec, ErrorList errors, boolean bareMachine, int firstOperand) {
+      TokenList cand, Instruction spec, ErrorList errors, boolean bareMachine, int firstOperand, int endOperand) {
     Token candToken, specToken;
     TokenTypes candType, specType;
-    for (int i = firstOperand; i < cand.size(); i++) {
+    for (int i = firstOperand; i < endOperand; i++) {
       candToken = cand.get(i);
       specToken = spec.getTokenList().get(i);
       candType = candToken.getType();

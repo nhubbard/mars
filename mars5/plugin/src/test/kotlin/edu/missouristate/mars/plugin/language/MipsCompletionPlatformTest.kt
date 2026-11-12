@@ -537,7 +537,8 @@ class MipsCompletionPlatformTest {
                 val position = file.findElementAt(fixture.editor.caretModel.offset - 1)!!
                 DumbModeTestUtils.runInDumbModeSynchronously(current) {
                     val operand = requireNotNull(MipsInstructionOperand.at(position, file))
-                    assertTrue(operand.equivalenceCompletions(file, "ARG_", bareMachine = false).isEmpty())
+                    assertTrue(operand.equivalenceCompletions(file, "ARG_", bareMachine = false,
+                        replacementEnd = position.textRange.endOffset).isEmpty())
                     assertTrue(current.service<MarsAnalysisService>()
                         .labelCompletionNames(file, position, "ARG_", LabelCompletionContext.INSTRUCTION).isEmpty())
                 }
@@ -558,6 +559,47 @@ class MipsCompletionPlatformTest {
             val entry = directory.resolve("equivalence-completion.mars").also { it.writeText(completed) }
             val program = current.service<MarsSessionService>().context.assemble(listOf(entry), null, true, false)
             assertEquals(listOf(0x00094100, 0), program.machineList.map { it.binaryStatement })
+        }
+
+    @Test
+    fun `equivalence suggestions preserve already written operands and address punctuation`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val current = project.get()
+            val definitions = ".eqv TAIL_BASE \$sp\n.eqv TAIL_CLOSE \$sp)\n.eqv TAIL_REG \$t1\n" +
+                ".eqv TAIL_PAIR \$t1, 4\n.eqv TAIL_ADDR 4(\$sp)\n.eqv TAIL_OFFSET 4\n.eqv CLOSE )\n" +
+                ".eqv LOOP AGAIN\n.eqv AGAIN LOOP\n"
+            val include = ".include \"suffix.inc\"\n"
+            withContext(Dispatchers.EDT) { fixture.addFileToProject("suffix.inc", definitions) }
+            IndexingTestUtil.suspendUntilIndexesAreReady(current)
+            val completed = withContext(Dispatchers.EDT) {
+                fun aliases(line: String, newline: String = "\n"): Set<String> {
+                    fixture.configureByText("suffix-completion.mars", include + line + newline)
+                    return CodeInsightSettings.runWithTemporarySettings<_, Error> {
+                        it.AUTOCOMPLETE_ON_CODE_COMPLETION = false
+                        fixture.completeBasic().orEmpty().map { item -> item.lookupString }.filter { it.startsWith("TAIL_") }.toSet()
+                    }
+                }
+                val registers = setOf("TAIL_BASE", "TAIL_REG")
+                assertEquals(registers, aliases("lw \$t0, 4(TAIL_<caret>)"))
+                assertEquals(registers, aliases("lw \$t0, 4(TAIL_<caret> CLOSE"))
+                assertEquals(registers, aliases("lw \$t0, 4(<caret>)"))
+                assertEquals(registers + "TAIL_CLOSE", aliases("lw \$t0, 4(TAIL_<caret>", newline = ""))
+                assertEquals(registers + "TAIL_CLOSE", aliases("lw \$t0, 4(<caret>", newline = ""))
+                assertEquals(setOf("TAIL_OFFSET"), aliases("lw \$t0, TAIL_<caret>(\$sp)"))
+                assertEquals(registers, aliases("sll \$t0, TAIL_<caret>, 7"))
+                assertEquals(registers, aliases("sll \$t0, TAIL_<caret>, 0x"))
+                assertTrue(aliases("sll \$t0, TAIL_<caret>, )").isEmpty())
+                assertEquals(registers + "TAIL_PAIR", aliases("sll \$t0, TAIL_<caret>, LOOP"))
+                assertEquals(registers, aliases("lw \$t0, 4(TAIL_<caret>.old) # keep the suffix"))
+                fixture.lookup.setCurrentItem(fixture.lookup.items.single { it.lookupString == "TAIL_BASE" })
+                fixture.finishLookup(Lookup.REPLACE_SELECT_CHAR)
+                assertEquals(include + "lw \$t0, 4(TAIL_BASE) # keep the suffix\n", fixture.file.text)
+                fixture.file.text
+            }
+            directory.resolve("suffix.inc").writeText(definitions)
+            val entry = directory.resolve("suffix-completion.mars").also { it.writeText(completed) }
+            val program = current.service<MarsSessionService>().context.assemble(listOf(entry), null, true, false)
+            assertEquals(listOf(0x8fa80004.toInt()), program.machineList.map { it.binaryStatement })
         }
 
     @Test
