@@ -66,6 +66,7 @@ import javax.swing.JScrollPane
 import javax.swing.JSpinner
 import javax.swing.JTable
 import javax.swing.JToggleButton
+import javax.swing.JViewport
 import javax.swing.KeyStroke
 import javax.swing.SwingUtilities
 import kotlin.time.Duration.Companion.milliseconds
@@ -113,7 +114,8 @@ class InstructionCounterPlatformTest {
                 assertTrue(label.y >= body.insets.top)
                 assertTrue(selector.x >= body.insets.left)
                 assertTrue(selector.x + selector.width <= body.width - body.insets.right)
-                assertTrue(selector.width in JBUI.scale(112)..JBUI.scale(220))
+                val availableWidth = body.width - body.insets.left - body.insets.right
+                assertEquals(minOf(JBUI.scale(192), availableWidth), selector.width)
             }
         }
     }
@@ -322,6 +324,25 @@ class InstructionCounterPlatformTest {
                 scroll.viewport.view.doLayout()
                 return scroll
             }
+            fun assertCompactSettings(viewport: JViewport, firstName: String, secondName: String) {
+                val body = assertInstanceOf(JComponent::class.java, viewport.view)
+                fun setting(name: String): Pair<JLabel, JComboBox<*>> {
+                    val label = UIUtil.findComponentsOfType(body, JLabel::class.java).single { it.text == name }
+                    val combo = assertInstanceOf(JComboBox::class.java, label.labelFor)
+                    assertEquals(label.preferredSize.width, label.width)
+                    assertTrue(label.y + label.height <= combo.y)
+                    assertEquals(combo.preferredSize.width, combo.width)
+                    return label to combo
+                }
+                val (firstLabel, first) = setting(firstName)
+                val (secondLabel, second) = setting(secondName)
+                assertEquals(first.y, second.y)
+                assertTrue(maxOf(first.x + first.width, firstLabel.x + firstLabel.width) < second.x)
+                val rightEdge = maxOf(second.x + second.width, secondLabel.x + secondLabel.width)
+                assertTrue(rightEdge <= viewport.extentSize.width) {
+                    "$secondName ends at $rightEdge in a ${viewport.extentSize.width}-pixel viewport"
+                }
+            }
             withContext(Dispatchers.EDT) {
                 assertTrue("No MIPS executions" in xrayText())
                 assertTrue("No captured instructions" in xrayText())
@@ -371,6 +392,8 @@ class InstructionCounterPlatformTest {
                     viewport.doLayout()
                     val body = viewport.view
                     body.doLayout()
+                    assertCompactSettings(viewport, "Display width", "Display height")
+                    assertCompactSettings(viewport, "Unit width", "Unit height")
                     val grid = canvas(panel)
                     val gridBounds = SwingUtilities.convertRectangle(grid.parent, grid.bounds, body)
                     assertTrue(gridBounds.height >= JBUI.scale(128))
@@ -626,6 +649,7 @@ class InstructionCounterPlatformTest {
                 val percent = UIUtil.findComponentsOfType(cache, JBLabel::class.java).single { it.text == "50%" }
                 for (width in listOf(280, 610)) {
                     val dock = layoutDock(cache, width, 460)
+                    assertCompactSettings(dock.viewport, "Cache blocks", "Words per block")
                     assertEquals(percent.preferredSize.width, percent.width)
                     assertTrue(percent.x + percent.width <= hitRate.x)
                     assertTrue(hitRate.width in 1..hitRate.preferredSize.width)

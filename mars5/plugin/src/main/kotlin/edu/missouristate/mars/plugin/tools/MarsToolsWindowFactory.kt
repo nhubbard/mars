@@ -170,7 +170,7 @@ internal fun marsToolExecutions(project: Project): List<MarsToolRunContent> =
 internal class MarsToolExecutionSelector(private val project: Project, private val selectionChanged: () -> Unit) {
     private val selector = ComboBox<MarsToolRunContent>().apply {
         renderer = textListCellRenderer(toolsMessages.getMessage("counter.empty"), MarsToolRunContent::label)
-        setMinimumAndPreferredWidth(JBUI.scale(220))
+        setMinimumAndPreferredWidth(JBUI.scale(192))
         isUsePreferredSizeAsMinimum = false
         minimumSize = JBUI.size(112, 0)
         addActionListener { selectionChanged() }

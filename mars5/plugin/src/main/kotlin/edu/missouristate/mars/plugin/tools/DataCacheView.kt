@@ -66,8 +66,10 @@ internal class DataCacheView(project: Project) : Disposable {
     val component = scrollableToolPanel(this, marsToolPanel {
         marsExecutionRow(selector.component)
         row { cell(placement).label(toolsMessages.getMessage("cache.placement"), LabelPosition.TOP) }
-        row(toolsMessages.getMessage("cache.blocks")) { cell(blocks) }
-        row(toolsMessages.getMessage("cache.words")) { cell(words) }
+        row {
+            cell(blocks).label(toolsMessages.getMessage("cache.blocks"), LabelPosition.TOP)
+            cell(words).label(toolsMessages.getMessage("cache.words"), LabelPosition.TOP)
+        }
         row(toolsMessages.getMessage("cache.ways")) { cell(ways) }
         row { cell(replacement).label(toolsMessages.getMessage("cache.replacement"), LabelPosition.TOP) }
         row { cell(apply) }

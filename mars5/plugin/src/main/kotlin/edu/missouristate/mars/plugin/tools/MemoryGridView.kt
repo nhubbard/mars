@@ -73,10 +73,14 @@ internal class MemoryGridView(
     val component = ScrollPaneFactory.createScrollPane(marsToolPanel {
         marsExecutionRow(selector.component)
         row { cell(base).label(toolsMessages.getMessage("bitmap.base"), LabelPosition.TOP) }
-        row(toolsMessages.getMessage("bitmap.width")) { cell(width) }
-        row(toolsMessages.getMessage("bitmap.height")) { cell(height) }
-        row(toolsMessages.getMessage("bitmap.unitWidth")) { cell(unitWidth) }
-        row(toolsMessages.getMessage("bitmap.unitHeight")) { cell(unitHeight) }
+        row {
+            cell(width).label(toolsMessages.getMessage("bitmap.width"), LabelPosition.TOP)
+            cell(height).label(toolsMessages.getMessage("bitmap.height"), LabelPosition.TOP)
+        }
+        row {
+            cell(unitWidth).label(toolsMessages.getMessage("bitmap.unitWidth"), LabelPosition.TOP)
+            cell(unitHeight).label(toolsMessages.getMessage("bitmap.unitHeight"), LabelPosition.TOP)
+        }
         reference?.let { controls ->
             row(toolsMessages.getMessage("references.words")) { cell(controls.words) }
             row { cell(controls.threshold).label(toolsMessages.getMessage("references.threshold"), LabelPosition.TOP) }
