@@ -95,8 +95,14 @@ internal fun isDetachedDataRepeat(runtime: SyntaxGeneratedParserRuntime, level: 
     val start = builder.currentOffset
     val source = builder.text
     val end = CharArrayUtil.shiftForwardUntil(source, start, "\r\n")
-    return Tokenizer().tokenizeLine(1, source.subSequence(start, end).toString(), ErrorList(), false)
-        .hasNumericRepetitionShape()
+    val tokens = Tokenizer().tokenizeLine(1, source.subSequence(start, end).toString(), ErrorList(), false)
+    if (tokens.hasNumericRepetitionShape()) return true
+    val firstSubstitutable = (1 until tokens.size()).firstOrNull {
+        val type = tokens[it].type
+        type == TokenTypes.IDENTIFIER || type == TokenTypes.MACRO_PARAMETER
+    } ?: return false
+    // Only a substitution immediately after the sign could turn it into part of the value.
+    return firstSubstitutable > 1 || tokens[1].startPos > 2
 }
 
 /** MARS skips the definition when the physical line has fewer than three assembler tokens. */

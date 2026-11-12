@@ -797,6 +797,39 @@ class MipsParserPlatformTest {
             }
         }
 
+    @Test
+    fun `data repetition aliases preserve detached signs and adjacent signs keep their value`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            directory.resolve("repetitions.inc").writeText(".eqv REPEAT 7:2\n.eqv SUFFIX :2\n.eqv VALUE 5\n")
+            val source = """
+                .include "repetitions.inc"
+                .data
+                .word 0
+                + REPEAT
+                label: --3 SUFFIX
+                +VALUE
+                .macro fill (%value, %separator, %count)
+                -, %value %separator %count
+                .end_macro
+                fill(7, :, 2)
+                .text
+                nop
+            """.trimIndent()
+            assertAssembles(directory, source, expectedInstruction = 0)
+            val memory = project.get().service<MarsSessionService>().context.memory
+            val expected = listOf(0, 7, 7, -3, -3, 5, 7, 7)
+            assertEquals(expected, expected.indices.map { memory.getWordNoNotify(memory.dataBaseAddress + it * Int.SIZE_BYTES) })
+            readAction {
+                val file = assertParses(source)
+                assertEquals(listOf("+", "-", "-"), descendants(file.node, "DATA_REPEAT_PREFIX").map { it.text }.toList())
+                val first = descendants(file.node, "DATA_CONTINUATION").first()
+                assertEquals("REPEAT", descendants(first, "OPERAND").single().text)
+                assertEquals(listOf("+VALUE"), descendants(file.node, "UNARY_EXPR").map { it.text }.filter { it.startsWith('+') }.toList())
+                val incomplete = assertParses(".word 1\n+ 7\n- 8:VAL\n+VALUE\n")
+                assertEquals(listOf("-"), descendants(incomplete.node, "DATA_REPEAT_PREFIX").map { it.text }.toList())
+            }
+        }
+
     @ParameterizedTest
     @ValueSource(strings = ["Default", "CompactDataAtZero", "CompactTextAtZero"])
     fun `all instruction formats agree with the assembler across separators and aliases`(

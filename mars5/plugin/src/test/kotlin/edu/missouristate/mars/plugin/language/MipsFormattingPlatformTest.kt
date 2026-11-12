@@ -745,6 +745,34 @@ class MipsFormattingPlatformTest {
     }
 
     @Test
+    fun `formatting preserves repetition aliases and adjacent sign substitution`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val source = """
+                .eqv REPEAT 7:2
+                .eqv SUFFIX :2
+                .eqv VALUE 5
+                .data
+                 words :   .word  0
+                 +   REPEAT
+                 label   :    --3  SUFFIX
+                 +VALUE
+                .text
+                nop
+            """.trimIndent()
+            val formatted = withContext(Dispatchers.EDT) {
+                fixture.configureByText("repetitions.mars", source)
+                val result = reformat()
+                assertEquals(result, reformat())
+                result
+            }
+            assertTrue("+   REPEAT" in formatted, formatted)
+            assertTrue("label: --3 SUFFIX" in formatted, formatted)
+            assertTrue("+VALUE" in formatted, formatted)
+            assertEquals(assemble(directory.resolve("repetition-before.mars"), source),
+                assemble(directory.resolve("repetition-after.mars"), formatted))
+        }
+
+    @Test
     fun `formatting compact macro offsets keeps signed fields and normalizes commas`(@TempDir directory: Path) =
         timeoutRunBlocking<Unit> {
             val source = """
