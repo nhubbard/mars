@@ -21,6 +21,7 @@ import com.intellij.ui.content.ContentFactory
 import com.intellij.ui.dsl.builder.AlignX
 import com.intellij.ui.dsl.builder.LabelPosition
 import com.intellij.ui.dsl.builder.Panel
+import com.intellij.ui.dsl.builder.RowLayout
 import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.dsl.listCellRenderer.textListCellRenderer
 import com.intellij.ui.table.JBTable
@@ -203,7 +204,11 @@ private class InstructionCountsView(
     private val total = JBLabel()
     private val labels = categories.map { JBLabel() }
     private val bars = if (showBars) categories.map { key ->
-        JProgressBar(0, 100).apply { accessibleContext.accessibleName = toolsMessages.getMessage(key) }
+        JProgressBar(0, 100).apply {
+            preferredSize = preferredSize.apply { width = JBUI.scale(112) }
+            minimumSize = minimumSize.apply { width = 0 }
+            accessibleContext.accessibleName = toolsMessages.getMessage(key)
+        }
     } else emptyList()
     private val emptySnapshot = InstructionCountsSnapshot(false, List(categories.size) { 0L })
 
@@ -213,12 +218,12 @@ private class InstructionCountsView(
             cell(toggle)
             cell(reset)
         }
-        row(toolsMessages.getMessage("counter.total")) { cell(total) }
+        row(toolsMessages.getMessage("counter.total")) { cell(total) }.layout(RowLayout.INDEPENDENT)
         categories.forEachIndexed { index, key ->
             row(toolsMessages.getMessage(key)) {
                 cell(labels[index])
-                bars.getOrNull(index)?.let { cell(it).align(AlignX.FILL).resizableColumn() }
-            }
+                bars.getOrNull(index)?.let { cell(it).align(AlignX.LEFT).resizableColumn() }
+            }.layout(RowLayout.PARENT_GRID)
         }
         row { comment(toolsMessages.getMessage("counter.reverse.policy")) }
     }

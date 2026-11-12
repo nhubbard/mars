@@ -347,6 +347,16 @@ class InstructionCounterPlatformTest {
                 }
             }
             withContext(Dispatchers.EDT) {
+                for (width in listOf(240, 610)) {
+                    statistics.setSize(JBUI.size(width, 460))
+                    statistics.doLayout()
+                    val bars = UIUtil.findComponentsOfType(statistics, JProgressBar::class.java)
+                    assertEquals(1, bars.map { it.x }.distinct().size)
+                    assertTrue(bars.all { it.width in 1..it.preferredSize.width })
+                    assertTrue(bars.all { it.x + it.width <= statistics.width }) {
+                        "Progress bars ${bars.map { it.bounds }} exceed the ${statistics.width}-pixel panel"
+                    }
+                }
                 assertTrue("No MIPS executions" in xrayText())
                 assertTrue("No captured instructions" in xrayText())
                 assertFalse(button("Connect").isEnabled)
@@ -925,8 +935,11 @@ class InstructionCounterPlatformTest {
                     assertTrue(labPanels().any { it.toolTipText == "Left display (0x06)" })
                     val labels = UIUtil.findComponentsOfType(lab, JBLabel::class.java).map { it.text }
                     assertTrue(labels.containsAll(listOf(
-                        "Left display (0x06)", "Right display (0x3f)", "28 instructions until next interrupt",
+                        "Left · 0x06", "Right · 0x3f",
                     )))
+                    assertTrue(UIUtil.findComponentsOfType(lab, JEditorPane::class.java).any {
+                        it.document.getText(0, it.document.length).trim() == "Counter interrupt in 28 instructions"
+                    })
                 }
             }
             withContext(Dispatchers.EDT) {
@@ -952,6 +965,10 @@ class InstructionCounterPlatformTest {
                 val lastKey = UIUtil.findComponentsOfType(lab, JToggleButton::class.java).single { it.text == "F" }
                 val bounds = SwingUtilities.convertRectangle(lastKey.parent, lastKey.bounds, body)
                 assertTrue(bounds.width > 0 && bounds.height > 0)
+                assertEquals(viewport.extentSize.width, body.width)
+                assertTrue(bounds.x + bounds.width <= viewport.extentSize.width) {
+                    "Last keypad key at $bounds exceeds the ${viewport.extentSize.width}-pixel viewport"
+                }
                 assertFalse(viewport.viewRect.contains(bounds))
                 val focus = FocusEvent(lastKey, FocusEvent.FOCUS_GAINED)
                 lastKey.focusListeners.forEach { it.focusGained(focus) }
@@ -962,7 +979,7 @@ class InstructionCounterPlatformTest {
                 button("Reset", lab).doClick()
                 assertFalse(key.isSelected)
                 assertEquals("Right display (0x00)", right.toolTipText)
-                assertTrue(UIUtil.findComponentsOfType(lab, JBLabel::class.java).any { it.text == "Right display (0x00)" })
+                assertTrue(UIUtil.findComponentsOfType(lab, JBLabel::class.java).any { it.text == "Right · 0x00" })
                 button("Disconnect", lab).doClick()
                 assertFalse(key.isEnabled)
                 button("Connect", lab).doClick()
@@ -994,14 +1011,21 @@ class InstructionCounterPlatformTest {
                 }
             }
             withContext(Dispatchers.EDT) {
-                marsBot.setSize(JBUI.scale(330), JBUI.scale(460))
-                marsBot.doLayout()
-                val viewport = assertInstanceOf(JScrollPane::class.java, marsBot).viewport
-                viewport.doLayout()
-                viewport.view.doLayout()
-                val setRate = button("Set rate", marsBot)
-                val bounds = SwingUtilities.convertRectangle(setRate.parent, setRate.bounds, marsBot)
-                assertTrue(bounds.width > 0 && bounds.x + bounds.width <= marsBot.width)
+                for (width in listOf(240, 610)) {
+                    val viewport = layoutDock(marsBot, width, 460).viewport
+                    val setRate = button("Set rate", marsBot)
+                    val clock = robotClock()
+                    val gap = setRate.x - (clock.x + clock.width)
+                    // IntelliJ aligns the painted controls and includes extra space for focus in their bounds.
+                    assertTrue(gap in -JBUI.scale(16)..JBUI.scale(24)) {
+                        "Rate field at ${clock.bounds} is not adjacent to the button at ${setRate.bounds}"
+                    }
+                    assertTrue(clock.y < setRate.y + setRate.height && setRate.y < clock.y + clock.height)
+                    assertTrue(setRate.x + setRate.width <= viewport.extentSize.width) {
+                        "Rate button at ${setRate.bounds} exceeds the ${viewport.extentSize.width}-pixel viewport"
+                    }
+                    assertSame(clock, robotLabels().single { it.text == "Instructions per tick" }.labelFor)
+                }
                 robotClock().postActionEvent()
                 paintRobot(1, 1)
                 paintRobot(280, 180)

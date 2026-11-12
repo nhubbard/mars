@@ -2,19 +2,20 @@ package edu.missouristate.mars.plugin.tools
 
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.EDT
-import com.intellij.openapi.observable.util.whenFocusGained
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.text.StringUtil
 import com.intellij.ui.JBColor
-import com.intellij.ui.ScrollPaneFactory
 import com.intellij.ui.components.JBLabel
+import com.intellij.ui.dsl.builder.RowLayout
 import com.intellij.ui.dsl.builder.panel
+import com.intellij.util.ui.JBDimension
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.launchOnShow
 import java.awt.Dimension
 import java.awt.Graphics
 import java.awt.GridLayout
-import java.awt.Rectangle
 import javax.swing.JButton
+import javax.swing.JEditorPane
 import javax.swing.JPanel
 import javax.swing.JToggleButton
 import kotlinx.coroutines.Dispatchers
@@ -26,12 +27,15 @@ internal class DigitalLabView(project: Project) : Disposable {
     private val selector = MarsToolExecutionSelector(project, ::selectionChanged)
     private val toggle = JButton()
     private val reset = JButton(toolsMessages.getMessage("counter.reset"))
-    private val left = SevenSegment("digitalLab.left")
-    private val right = SevenSegment("digitalLab.right")
-    private val timer = JBLabel()
+    private val left = SevenSegment("digitalLab.left", "digitalLab.left.value")
+    private val right = SevenSegment("digitalLab.right", "digitalLab.right.value")
+    private lateinit var timer: JEditorPane
+    private var shownTimer: Int? = null
     private val keypad = JPanel(GridLayout(4, 4, JBUI.scale(4), JBUI.scale(4)))
     private val keys = List(16) { number ->
         JToggleButton(number.toString(16).uppercase()).apply {
+            preferredSize = JBDimension(40, 30)
+            minimumSize = JBDimension(40, 30)
             addActionListener {
                 selected!!.toggleKey(number)
                 render()
@@ -40,7 +44,7 @@ internal class DigitalLabView(project: Project) : Disposable {
         }
     }
 
-    val component = ScrollPaneFactory.createScrollPane(marsToolPanel {
+    val component = scrollableToolPanel(this, marsToolPanel {
         marsExecutionRow(selector.component)
         row {
             cell(toggle)
@@ -52,17 +56,12 @@ internal class DigitalLabView(project: Project) : Disposable {
             cell(right.component)
         }
         row { label(toolsMessages.getMessage("digitalLab.keypad")) }
-        row { cell(keypad) }
-        row(toolsMessages.getMessage("digitalLab.timer")) { cell(timer) }
-        row { comment(toolsMessages.getMessage("digitalLab.help"), maxLineLength = 42) }
-    }, true)
+        row { cell(keypad) }.layout(RowLayout.INDEPENDENT)
+        row { timer = text("").resizableColumn().component }.layout(RowLayout.INDEPENDENT)
+        row { comment(toolsMessages.getMessage("digitalLab.help")).resizableColumn() }.layout(RowLayout.INDEPENDENT)
+    }, emptyMap())
 
     init {
-        for (control in listOf(selector.component, toggle, reset) + keys) {
-            control.whenFocusGained(this) {
-                control.scrollRectToVisible(Rectangle(0, 0, control.width, control.height))
-            }
-        }
         toggle.addActionListener {
             val device = selected!!
             device.setConnected(!device.snapshot().connected)
@@ -109,8 +108,12 @@ internal class DigitalLabView(project: Project) : Disposable {
         left.showBits(snapshot?.left ?: 0)
         right.showBits(snapshot?.right ?: 0)
         val remaining = snapshot?.timerRemaining ?: 0
-        timer.text = if (remaining == 0) toolsMessages.getMessage("digitalLab.timer.off")
-        else toolsMessages.getMessage("digitalLab.timer.remaining", remaining)
+        if (remaining != shownTimer) {
+            shownTimer = remaining
+            val message = if (remaining == 0) toolsMessages.getMessage("digitalLab.timer.off")
+            else toolsMessages.getMessage("digitalLab.timer.remaining", remaining)
+            timer.text = StringUtil.escapeXmlEntities(message)
+        }
         for ((number, key) in keys.withIndex()) {
             key.isEnabled = toggle.isEnabled && connected
             key.isSelected = snapshot?.key == number
@@ -123,7 +126,7 @@ internal class DigitalLabView(project: Project) : Disposable {
     }
 }
 
-private class SevenSegment(private val messageKey: String) : JPanel() {
+private class SevenSegment(private val descriptionKey: String, private val valueKey: String) : JPanel() {
     private val valueLabel = JBLabel()
     private var bits = -1
     val component = panel {
@@ -140,8 +143,8 @@ private class SevenSegment(private val messageKey: String) : JPanel() {
         if (bits == value) return
         bits = value
         val hex = value.toString(16).padStart(2, '0')
-        val description = toolsMessages.getMessage(messageKey, hex)
-        valueLabel.text = description
+        val description = toolsMessages.getMessage(descriptionKey, hex)
+        valueLabel.text = toolsMessages.getMessage(valueKey, hex)
         getAccessibleContext().accessibleName = description
         toolTipText = description
         repaint()

@@ -3,11 +3,13 @@ package edu.missouristate.mars.plugin.tools
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.text.StringUtil
 import com.intellij.ui.JBColor
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBPanel
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.dsl.builder.Align
+import com.intellij.ui.dsl.builder.RowLayout
 import com.intellij.ui.table.JBTable
 import com.intellij.util.ui.JBDimension
 import com.intellij.util.ui.JBUI
@@ -23,6 +25,7 @@ import java.awt.Graphics
 import java.awt.Graphics2D
 import java.awt.RenderingHints
 import javax.swing.JButton
+import javax.swing.JEditorPane
 import javax.swing.JTable
 import javax.swing.table.AbstractTableModel
 import javax.swing.table.TableRowSorter
@@ -37,7 +40,7 @@ internal class ScavengerHuntView(project: Project) : Disposable {
     private val toggle = JButton()
     private val reset = JButton(toolsMessages.getMessage("counter.reset"))
     private val status = JBLabel()
-    private val diagnostic = JBLabel()
+    private lateinit var diagnostic: JEditorPane
     private val board = ScavengerHuntBoard()
     private val scoreboard = ScavengerScoreboard()
     private val table = JBTable(scoreboard).apply {
@@ -58,12 +61,12 @@ internal class ScavengerHuntView(project: Project) : Disposable {
             cell(reset)
         }
         row { cell(status) }
-        row { cell(diagnostic) }
+        row { diagnostic = text("").resizableColumn().component }.layout(RowLayout.INDEPENDENT)
         row { cell(board).align(Align.FILL).resizableColumn() }.resizableRow()
         row {
             cell(tableScroll).align(Align.FILL).resizableColumn()
         }.resizableRow()
-        row { comment(toolsMessages.getMessage("scavenger.ports"), maxLineLength = 24) }
+        row { comment(toolsMessages.getMessage("scavenger.ports")).resizableColumn() }.layout(RowLayout.INDEPENDENT)
     }, mapOf(table to tableScroll))
 
     init {
@@ -119,11 +122,14 @@ internal class ScavengerHuntView(project: Project) : Disposable {
                 toolsMessages.getMessage("scavenger.status", player, game.turnsRemaining)
             }
         }
-        diagnostic.text = snapshot?.diagnostic?.let {
+        val diagnosticText = snapshot?.diagnostic?.let {
             val reason = toolsMessages.getMessage("scavenger.rejection." + (it.rejection?.name ?: "FOREIGN_WRITE"))
             toolsMessages.getMessage("scavenger.diagnostic", it.address.toUInt().toString(16), reason)
-        }.orEmpty()
-        diagnostic.toolTipText = diagnostic.text
+        }
+        if (diagnosticText != diagnostic.toolTipText) {
+            diagnostic.text = StringUtil.escapeXmlEntities(diagnosticText.orEmpty())
+            diagnostic.toolTipText = diagnosticText
+        }
         val previousSelection = table.selectedRow
         scoreboard.show(round)
         val selection = table.selectedRow

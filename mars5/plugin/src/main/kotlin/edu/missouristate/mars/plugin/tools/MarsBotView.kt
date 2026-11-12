@@ -8,7 +8,7 @@ import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBPanel
 import com.intellij.ui.components.JBTextField
 import com.intellij.ui.dsl.builder.Align
-import com.intellij.ui.dsl.builder.LabelPosition
+import com.intellij.ui.dsl.builder.RowLayout
 import com.intellij.ui.dsl.builder.columns
 import com.intellij.ui.scale.JBUIScale
 import com.intellij.util.ui.JBUI
@@ -32,6 +32,7 @@ internal class MarsBotView(project: Project) : Disposable {
     private val selector = MarsToolExecutionSelector(project, ::render)
     private val toggle = JButton()
     private val reset = JButton(toolsMessages.getMessage("counter.reset"))
+    private val clockLabel = JBLabel(toolsMessages.getMessage("marsBot.clock"))
     private lateinit var clock: JBTextField
     private lateinit var applyClock: JButton
     private val status = JBLabel()
@@ -45,13 +46,15 @@ internal class MarsBotView(project: Project) : Disposable {
             cell(toggle)
             cell(reset)
         }
+        row { cell(clockLabel) }
         row {
-            clock = intTextField(instructionRange).columns(8)
-                .label(toolsMessages.getMessage("marsBot.clock"), LabelPosition.TOP).component
-        }
-        row {
+            clock = intTextField(instructionRange).columns(7).component.apply {
+                preferredSize = preferredSize.apply { width = width.coerceAtMost(JBUI.scale(100)) }
+                minimumSize = minimumSize.apply { width = JBUI.scale(72) }
+            }
+            clockLabel.labelFor = clock
             applyClock = button(toolsMessages.getMessage("marsBot.clock.apply")) { updateClock() }.component
-        }
+        }.layout(RowLayout.INDEPENDENT)
         row { cell(status) }
         row { cell(movement) }
         row { cell(ports) }

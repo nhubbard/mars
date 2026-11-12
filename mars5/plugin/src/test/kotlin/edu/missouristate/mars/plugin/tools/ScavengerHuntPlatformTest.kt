@@ -25,6 +25,7 @@ import java.awt.image.BufferedImage
 import java.awt.event.ActionEvent
 import java.awt.event.FocusEvent
 import javax.swing.JButton
+import javax.swing.JEditorPane
 import javax.swing.JComponent
 import javax.swing.JPanel
 import javax.swing.JScrollPane
@@ -95,6 +96,8 @@ class ScavengerHuntPlatformTest {
         fun huntButton(name: String) = button(hunt.component, name)
         fun botButton(name: String) = button(bot.component, name)
         fun labels() = UIUtil.findComponentsOfType(hunt.component, JBLabel::class.java).map { it.text }
+        fun diagnostic() = UIUtil.findComponentsOfType(hunt.component, JEditorPane::class.java)
+            .single { it.toolTipText?.startsWith("0x") == true }
         fun board() = UIUtil.findComponentsOfType(hunt.component, ScavengerHuntBoard::class.java).single()
         fun table() = UIUtil.findComponentsOfType(hunt.component, JBTable::class.java).single()
         fun layoutScoreboard(): JScrollPane {
@@ -206,7 +209,7 @@ class ScavengerHuntPlatformTest {
             process.processInput.write("x\n".toByteArray())
             waitFor {
                 assertTrue("Administrator   Turns remaining 0" in labels())
-                assertTrue("0xffffe004  Authentication failed" in labels())
+                assertEquals("0xffffe004  Authentication failed", diagnostic().toolTipText)
                 assertEquals(22, table().rowCount)
             }
             val viewport = withContext(Dispatchers.EDT) {
@@ -222,7 +225,11 @@ class ScavengerHuntPlatformTest {
             process.processInput.write("x\n".toByteArray())
             waitFor {
                 assertTrue("Player 0   Turns remaining 0" in labels())
-                assertTrue("0xffff8410  Write outside the active player region" in labels())
+                val diagnostic = diagnostic()
+                assertEquals("0xffff8410  Write outside the active player region", diagnostic.toolTipText)
+                val document = diagnostic.document
+                assertEquals("0xffff8410 Write outside the active player region",
+                    document.getText(0, document.length).trim())
                 val table = table()
                 assertEquals(21, table.selectedRow)
                 assertEquals(1, table.selectedColumn)
