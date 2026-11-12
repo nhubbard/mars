@@ -6,10 +6,12 @@ import com.intellij.execution.filters.FileHyperlinkInfo
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.Key
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.testFramework.ReadOnlyLightVirtualFile
+import com.intellij.util.text.CharArrayUtil
 import com.intellij.xdebugger.XDebuggerUtil
 import com.intellij.xdebugger.XSourcePosition
 import com.intellij.xdebugger.XSourcePositionWrapper
@@ -28,9 +30,11 @@ internal class MarsExecutionSources(private val capture: CapturedAssemblySources
         init { setFileType(MipsFileType) }
     }
 
+    private data class ExcerptStart(val path: Path, val offset: Int, val firstLine: Int, val prefix: String)
+
     private val snapshotOwner = Any()
     private val snapshots = ConcurrentHashMap<Path, CapturedFile>()
-    private val excerpts = ConcurrentHashMap<Pair<Path, Int>, CapturedFile>()
+    private val excerpts = ConcurrentHashMap<ExcerptStart, CapturedFile>()
     private val lineOffsets = ConcurrentHashMap<Path, LineOffsets>()
     private val texts = capture.snapshot.texts()
 
@@ -104,26 +108,48 @@ internal class MarsExecutionSources(private val capture: CapturedAssemblySources
         }
     }
 
-    /** Provides bounded source text when an IDE document preview ends before a declaration. */
-    fun excerptPosition(location: Location): Pair<VirtualFile, Int> {
-        val file = excerptAt(location.file(), texts.getValue(location.file()), location.line() - 1)
-        return file to (location.line() - 1 - file.firstLine)
+    /** Returns the declaration's offset inside bounded, read-only source text. */
+    fun excerptPosition(location: Location, column: Int?): Pair<VirtualFile, Int>? {
+        val path = location.file()
+        val text = texts.getValue(path)
+        val line = location.line() - 1
+        val offsets = offsets(path, text)
+        val lineStart = offsets.getLineStart(line)
+        val token = column?.let { lineStart + it - 1 } ?: CharArrayUtil.shiftForward(text, lineStart, " \t,")
+        if (token >= offsets.getLineEnd(line)) return null
+
+        val start = excerptStart(path, offsets, line)
+        if (token - start.offset >= EXCERPT_SIZE) {
+            // Begin at the declaration when a long line would use up its surrounding context.
+            return excerpt(ExcerptStart(path, token, line, ""), text) to 0
+        }
+        return excerpt(start, text) to
+            (token - start.offset + start.prefix.length)
     }
 
-    private fun excerptAt(path: Path, text: String, line: Int): CapturedFile {
-        val offsets = lineOffsets.computeIfAbsent(path) { LineOffsetsUtil.create(text) }
+    private fun offsets(path: Path, text: String): LineOffsets =
+        lineOffsets.computeIfAbsent(path) { LineOffsetsUtil.create(text) }
+
+    private fun excerptAt(path: Path, text: String, line: Int): CapturedFile =
+        excerpt(excerptStart(path, offsets(path, text), line), text)
+
+    private fun excerptStart(path: Path, offsets: LineOffsets, line: Int): ExcerptStart {
         val pageStart = offsets.getLineStart(line) / EXCERPT_SIZE * EXCERPT_SIZE
-        return excerpts.computeIfAbsent(path to pageStart) {
-            val first = offsets.getLineNumber(pageStart)
-            // The initial partial line is context only. Give it comment syntax.
-            val prefix = if (pageStart == offsets.getLineStart(first)) "" else "# "
-            val end = pageStart + minOf(text.length - pageStart, 2 * EXCERPT_SIZE)
-            CapturedFile(
-                path, first, snapshotOwner, runMessages.getMessage("run.source.excerpt", path.fileName, first + 1),
-                prefix + text.substring(pageStart, end),
-            )
-        }
+        val first = offsets.getLineNumber(pageStart)
+        // The initial partial line is context only. Give it comment syntax.
+        val prefix = if (pageStart == offsets.getLineStart(first)) "" else "# "
+        return ExcerptStart(path, pageStart, first, prefix)
     }
+
+    private fun excerpt(start: ExcerptStart, text: String): CapturedFile =
+        excerpts.computeIfAbsent(start) {
+            val end = it.offset + minOf(text.length - it.offset, 2 * EXCERPT_SIZE)
+            CapturedFile(
+                it.path, it.firstLine, snapshotOwner,
+                runMessages.getMessage("run.source.excerpt", it.path.fileName, it.firstLine + 1),
+                it.prefix + text.substring(it.offset, end),
+            ).apply { putUserData(excerptKey, true) }
+        }
 
     private fun matches(file: VirtualFile, path: Path, text: String): Boolean {
         val document = FileDocumentManager.getInstance().getCachedDocument(file)
@@ -132,7 +158,10 @@ internal class MarsExecutionSources(private val capture: CapturedAssemblySources
         return document.modificationStamp == capturedStamp || StringUtil.equals(document.immutableCharSequence, text)
     }
 
-    private companion object {
-        const val EXCERPT_SIZE = 32 * 1024
+    companion object {
+        private const val EXCERPT_SIZE = 32 * 1024
+        private val excerptKey = Key.create<Boolean>("mars.assembly.excerpt")
+
+        fun isExcerpt(file: VirtualFile): Boolean = file.getUserData(excerptKey) == true
     }
 }

@@ -28,6 +28,7 @@ import edu.missouristate.mars.plugin.analysis.mipsAssemblyRoots
 import edu.missouristate.mars.plugin.analysis.mipsSourceTimeline
 import edu.missouristate.mars.plugin.analysis.sourceLine
 import edu.missouristate.mars.plugin.analysis.sourceLineStart
+import edu.missouristate.mars.plugin.run.MarsExecutionSources
 
 /** Reports macro expansion errors from the same timeline used for scope and navigation. */
 internal class MipsMacroDiagnosticAnnotator : Annotator {
@@ -38,6 +39,8 @@ internal class MipsMacroDiagnosticAnnotator : Annotator {
             return
         }
         val file = element as? MipsFile ?: return
+        // A bounded source excerpt can begin or end inside a valid macro.
+        if (MarsExecutionSources.isExcerpt(file.viewProvider.virtualFile)) return
         val analysis = file.project.service<MarsAnalysisService>()
         val timeline = analysis.editorTimeline(file)
         val hasEntry by lazy(LazyThreadSafetyMode.NONE) {

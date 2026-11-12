@@ -1,5 +1,6 @@
 package edu.missouristate.mars.plugin.analysis
 
+import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.command.WriteCommandAction
@@ -85,9 +86,10 @@ class CapturedAssemblySourcesPlatformTest {
     fun `assembly follows includes and source locations beyond the IntelliJ file preview`() = timeoutRunBlocking<Unit> {
         val comment = "#" + " ".repeat(16_382)
         val diskLine = "$comment\r\n"
+        val padding = " ".repeat(72_000)
         val commentCount = FileSizeLimit.getContentLoadLimit("inc") / (diskLine.length * Char.SIZE_BYTES) + 1
         val (entry, large) = withContext(Dispatchers.EDT) {
-            val source = fixture.addFileToProject("entry.mars", ".include \"large.inc\"\nemit\nj target\n").virtualFile
+            val source = fixture.addFileToProject("entry.mars", ".include \"large.inc\"\nemit\npadded\nj target\nj farTarget\n").virtualFile
             fixture.addFileToProject("tail.s", "nop\n")
             val path = source.toNioPath().resolveSibling("large.inc")
             Files.newOutputStream(path).use { output ->
@@ -97,6 +99,7 @@ class CapturedAssemblySourcesPlatformTest {
                     writer.write(".include \"tail.s\"\r\n\taddiu \$t0, \$zero, 7\r\n")
                     writer.write("#" + " ".repeat(32_768) + "\r\n")
                     writer.write("\taddiu \$t1, \$zero, 8\r\n\ttarget: nop\r\n.macro emit # Macro documentation\r\nnop\r\n.end_macro\r\n")
+                    writer.write("${padding}farTarget: nop\r\n.macro ${padding}padded # Wide definition\r\nnop\r\n.end_macro\r\n")
                 }
             }
             source.toNioPath() to checkNotNull(VirtualFileManager.getInstance().refreshAndFindFileByNioPath(path))
@@ -121,13 +124,13 @@ class CapturedAssemblySourcesPlatformTest {
             val result = capture.assembleIn(component)
             assertTrue(result.succeeded(), result.errors().toString())
             val statements = session.program.machineList
-            assertEquals(listOf(0, 0x24080007, 0x24090008, 0, 0), statements.dropLast(1).map { it.binaryStatement })
+            assertEquals(listOf(0, 0x24080007, 0x24090008, 0, 0, 0, 0), statements.dropLast(2).map { it.binaryStatement })
             val location = Location(largePath, instructionLine)
             assertEquals(location, result.program().sourceMap().origins()[statements[1].address]?.location())
             val ide = project.get()
             val analysis = ide.service<MarsAnalysisService>()
             analysis.publishBuiltSymbols(analysis.beginSymbolBuild(entry), capture, result.program().symbolMap())
-            readAction {
+            val croppedMacro = readAction {
                 val main = PsiManager.getInstance(ide).findFile(VirtualFileManager.getInstance().findFileByNioPath(entry)!!) as MipsFile
                 val label = checkNotNull(main.findReferenceAt(main.text.indexOf("target"))?.resolve())
                 assertEquals("target", label.text)
@@ -143,6 +146,21 @@ class CapturedAssemblySourcesPlatformTest {
                 assertSame(excerptFile, documentationLink.file)
                 assertEquals(macro.textOffset, documentationLink.offset)
                 assertNull(analysis.sourceTokenPosition(SourceToken(Location(largePath, instructionLine + 3), 2)))
+                val wideLabel = checkNotNull(main.findReferenceAt(main.text.indexOf("farTarget"))?.resolve())
+                assertEquals("farTarget", wideLabel.text)
+                assertEquals(0, wideLabel.textOffset)
+                val wideExcerpt = wideLabel.containingFile.virtualFile
+                assertFalse(wideExcerpt.isWritable)
+                assertTrue(wideLabel.containingFile.textLength < padding.length)
+
+                val wideCall = main.text.indexOf("padded")
+                val wideMacro = checkNotNull(main.findReferenceAt(wideCall)?.resolve())
+                assertEquals("padded", wideMacro.text)
+                assertEquals(0, wideMacro.textOffset)
+                val wideDocs = MipsDocumentationTargetProvider().documentationTargets(main, wideCall).single()
+                val wideLink = assertInstanceOf(OpenFileDescriptor::class.java, wideDocs.navigatable)
+                assertSame(wideMacro.containingFile.virtualFile, wideLink.file)
+                assertEquals(0, wideLink.offset)
 
                 val sources = MarsExecutionSources(capture)
                 assertEquals(large, sources.position(Location(largePath, 1)).file)
@@ -169,15 +187,23 @@ class CapturedAssemblySourcesPlatformTest {
                 val nextExcerpt = checkNotNull(documents.getDocument(next.file))
                 assertTrue(nextExcerpt.text.startsWith("# "))
                 assertTrue(nextExcerpt.text.startsWith("\taddiu \$t1, \$zero, 8\n", nextExcerpt.getLineStartOffset(next.line)))
+                wideLink.file
+            }
+            withContext(Dispatchers.EDT) {
+                fixture.openFileInEditor(croppedMacro)
+                assertFalse(fixture.doHighlighting().any { it.severity == HighlightSeverity.ERROR })
             }
             val definition = result.program().symbolMap().locals().getValue(entry).getValue("target")
+            val wide = result.program().symbolMap().locals().getValue(entry).getValue("farTarget")
+            val withoutColumn = Definition(wide.address(), wide.kind(), wide.origin())
             val badColumn = Definition(definition.address(), definition.kind(), definition.origin(), definition.macroPrivate(), 100)
             analysis.publishBuiltSymbols(analysis.beginSymbolBuild(entry), capture,
-                AssemblySymbolMap(mapOf(entry to mapOf("target" to badColumn)), emptyMap()))
+                AssemblySymbolMap(mapOf(entry to mapOf("target" to badColumn, "farTarget" to withoutColumn)), emptyMap()))
             readAction {
                 val source = VirtualFileManager.getInstance().findFileByNioPath(entry)!!
                 val main = PsiManager.getInstance(ide).findFile(source) as MipsFile
                 assertNull(main.findReferenceAt(main.text.indexOf("target"))?.resolve())
+                assertEquals("farTarget", main.findReferenceAt(main.text.indexOf("farTarget"))?.resolve()?.text)
             }
         }
         val unavailable = readAction {

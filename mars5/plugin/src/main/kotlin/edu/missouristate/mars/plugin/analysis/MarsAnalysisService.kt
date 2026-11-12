@@ -396,9 +396,8 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         val offset = document.sourceOffset(location.line() - 1, column)
         if (offset != null) return manager.getPsiFile(document)?.let { it to offset }
         if (!FileDocumentManager.getInstance().isPartialPreviewOfALargeFile(document)) return null
-        val (excerpt, line) = sourceExcerpts.excerptPosition(location)
-        val file = PsiManager.getInstance(project).findFile(excerpt)!!
-        return file.fileDocument.sourceOffset(line, column)?.let { file to it }
+        val (excerpt, excerptOffset) = sourceExcerpts.excerptPosition(location, column) ?: return null
+        return PsiManager.getInstance(project).findFile(excerpt)!! to excerptOffset
     }
 
     private fun Document.sourceOffset(line: Int, column: Int?): Int? {
