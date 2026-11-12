@@ -34,16 +34,20 @@ internal class MipsSmartEnterProcessor : SmartEnterProcessor(), DumbAware {
             val head = operationOnLine(psiFile.findElementAt(first))?.operationHead ?: return false
 
             val end = operand.textRange.endOffset
-            val candidate = source.subSequence(head.textOffset, end).toString() + ")"
-            val completed = project.service<MarsAnalysisService>()
-                .editorInstructionTokens(psiFile as MipsFile, head, candidate) ?: return false
-            val options = project.service<MarsAssemblySettings>().executionOptions
-            if (enabledInstructionFormats(completed[0].value, options.allowPseudoInstructions).any { format ->
+            val written = source.subSequence(head.textOffset, end).toString()
+            val file = psiFile as MipsFile
+            val analysis = project.service<MarsAnalysisService>()
+            val completed = analysis.editorInstructionTokens(file, head, "$written)")
+            val canClose = if (completed == null) {
+                analysis.closesMacroInvocation(file, head, written)
+            } else {
+                val options = project.service<MarsAssemblySettings>().executionOptions
+                enabledInstructionFormats(completed[0].value, options.allowPseudoInstructions).any { format ->
                     completed.size() == format.tokenList.size() &&
                         OperandFormat.matchesOperands(completed, format, 1, completed.size(), options.bareMachine)
-                }) {
-                document.insertString(end, ")")
+                }
             }
+            if (canClose) document.insertString(end, ")")
         }
         // Keep the platform's normal Start New Line behavior after a repair.
         return false

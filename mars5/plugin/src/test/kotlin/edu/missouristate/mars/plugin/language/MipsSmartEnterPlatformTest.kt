@@ -8,6 +8,7 @@ import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
 import com.intellij.psi.PsiDocumentManager
+import com.intellij.testFramework.DumbModeTestUtils
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
@@ -95,6 +96,50 @@ class MipsSmartEnterPlatformTest {
             val entry = directory.resolve("addresses.mars").also { it.writeText(completed) }
             val context = current.service<MarsSessionService>().context
             assertEquals(listOf(0x8fa80004.toInt(), 0), context.assemble(listOf(entry), null, false, false).machineList.map { it.binaryStatement })
+        }
+
+    @Test
+    fun `complete statement closes macro wrappers only when they select a visible overload`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val current = project.get()
+            val definitions = ".eqv CALL emit\n.eqv WHOLE CALL(\$t0, 7\n.eqv OPEN_QUOTE \"text\n" +
+                ".macro emit (%dst, %value)\naddiu %dst, \$zero, %value\n.end_macro\n" +
+                ".macro empty\n.end_macro\n.macro quote (%value)\n.end_macro\n" +
+                ".macro dual (%value)\n.end_macro\n.macro dual (%raw, %value)\n.end_macro\n" +
+                ".macro three (%directive, %name, %value)\n.end_macro\n"
+            val include = ".include \"macros.inc\""
+            withContext(Dispatchers.EDT) { fixture.addFileToProject("macros.inc", definitions) }
+            IndexingTestUtil.suspendUntilIndexesAreReady(current)
+            val completed = withContext(Dispatchers.EDT) {
+                fun check(written: String, expected: String, tail: String = "tail: nop\n") {
+                    fixture.configureByText("macro-repair.mars", "$include\n$written\n$tail")
+                    complete()
+                    assertEquals(listOf(include, expected, "") + tail.lines(), lines(), written)
+                    assertEquals(2, fixture.editor.caretModel.logicalPosition.line)
+                }
+                check("emit(\$t0, 7<caret>", "emit(\$t0, 7)")
+                check("empty(<caret>", "empty()")
+                check("emit(\$t0<caret>", "emit(\$t0")
+                check("emit(\$t0)<caret>", "emit(\$t0)")
+                check("dual(7<caret>", "dual(7")
+                check("emit \$t0, 7<caret>", "emit \$t0, 7")
+                check("emit(\$t0, @<caret>", "emit(\$t0, @")
+                check("quote(OPEN_QUOTE \" ) # end\"<caret>", "quote(OPEN_QUOTE \" ) # end\"")
+                check("three(.eqv SIDE_EFFECT 7<caret>", "three(.eqv SIDE_EFFECT 7")
+                check("later(<caret>", "later(", ".macro later\n.end_macro\n")
+                fixture.configureByText("macro-repair.mars", "$include\n.macro wrapper\nemit(\$t0, 7<caret>\n.end_macro\n")
+                complete()
+                assertEquals(listOf(include, ".macro wrapper", "emit(\$t0, 7", "", ".end_macro", ""), lines())
+                fixture.configureByText("macro-repair.mars", "$include\nemit(\$t0, 7<caret>\n")
+                DumbModeTestUtils.runInDumbModeSynchronously(current) { complete() }
+                assertEquals(listOf(include, "emit(\$t0, 7", "", ""), lines())
+                check("entry: WHOLE<caret>  # preserve", "entry: WHOLE)  # preserve")
+                fixture.file.text
+            }
+            directory.resolve("macros.inc").writeText(definitions)
+            val entry = directory.resolve("macro-repair.mars").also { it.writeText(completed) }
+            val context = current.service<MarsSessionService>().context
+            assertEquals(listOf(0x24080007, 0), context.assemble(listOf(entry)).machineList.map { it.binaryStatement })
         }
 
     @Test

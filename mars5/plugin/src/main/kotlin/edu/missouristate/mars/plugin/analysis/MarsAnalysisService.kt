@@ -407,6 +407,25 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         return MacroInvocation(tokens, fullTokens, definitions.values.map { definition -> definition.parameters.map { it.value } })
     }
 
+    internal fun closesMacroInvocation(root: MipsFile, head: PsiElement, source: String): Boolean {
+        if (DumbService.isDumb(project)) return false
+        val prefix = editorPrefix(root, sourceLineStart(head))
+        if (prefix.openMacro != null) return false
+        val written = writtenOperationPrefix(head, source)
+        val errors = ErrorList()
+        val expanded = Tokenizer.expandLine("$written)", errors, { prefix.equivalence(it)?.replacement }, ProgressManager::checkCanceled)
+        // A positional .eqv can absorb the delimiter into its replacement text.
+        if (errors.errorsOccurred() || expanded.definition() != null) return false
+        val completed = expanded.tokens().operationTokens()
+        if (!Macro.hasCallParentheses(completed)) return false
+        val last = completed.size() - 1
+        // An alias can expose a comment that swallows the proposed delimiter.
+        if (completed[last].originalStartPos != written.length + 1 || prefix.matchingMacro(completed, 0) == null) return false
+        completed.remove(last)
+        // MARS can treat the opening parenthesis as an argument in an unwrapped call.
+        return !Macro.hasCallParentheses(completed) && prefix.matchingMacro(completed, 0) == null
+    }
+
     internal fun assembledMacroInvocation(root: MipsFile, head: PsiElement, caret: Int): AssembledMacroInvocation? {
         if (DumbService.isDumb(project)) return null
         val timeline = editorTimeline(root)
