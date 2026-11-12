@@ -1,12 +1,9 @@
 # MARS 5
 
-MARS 5 combines an independent assembler/simulator with a Kotlin IntelliJ plugin. Phase 2.5 has removed
-the deprecated global runtime and compatibility module. The independent core and CLI run without
-Venus, and the standalone desktop application now uses the same session-owned core.
-
-The Kotlin IntelliJ plugin provides MARS assembly editing, build diagnostics, native Run and Debug,
-and educational tools. The core is migrating from Java to Kotlin. The CLI and the Venus reference
-target remain Java. See the
+MARS 5 combines an independent assembler and simulator with a standalone CLI and a Kotlin IntelliJ
+plugin. The plugin provides MARS assembly editing, build diagnostics, native Run and Debug, and
+educational tools. The core is migrating from Java to Kotlin. The legacy Venus desktop target was
+retired. See the
 [IntelliJ component mapping](INTELLIJ_COMPONENT_MAPPING.md) for scope and release gates,
 the [plugin implementation notes](PLUGIN_IMPLEMENTATION.md) for usage and verification,
 and the [modernization plan](MODERNIZATION_PLAN.md) for the broader project.
@@ -15,8 +12,7 @@ and the [modernization plan](MODERNIZATION_PLAN.md) for the broader project.
 | --- | --- |
 | `mars5/core` | Independent assembler, simulator, hardware, undo, and frontend contracts |
 | `mars5/cli` | Standalone command-line launcher |
-| `mars5/datapath` | Compiled MIPS X-Ray diagram tables shared by both frontends |
-| `mars5/desktop` | Legacy Venus reference build, enabled only with `-PincludeVenus` |
+| `mars5/datapath` | Compiled MIPS X-Ray diagram tables for the IntelliJ plugin |
 | `mars5/plugin` | Kotlin IntelliJ plugin for editing, assembling, running, and debugging MIPS |
 
 Build with JDK 25 and the Gradle wrapper:
@@ -27,9 +23,6 @@ cd mars5
 java -jar cli/build/libs/cli-1.0-SNAPSHOT.jar --help
 java -jar cli/build/libs/cli-1.0-SNAPSHOT.jar path/to/program.s
 ```
-
-For parity checks against Venus during the migration, run
-`./gradlew -PincludeVenus :desktop:check` from `mars5`.
 
 The plugin targets IntelliJ IDEA 2026.3 (build 263) using Kotlin 2.4.21 and IntelliJ Platform
 Gradle Plugin 2.20.0. It uses the IDE's Kotlin runtime. Its ZIP is produced in

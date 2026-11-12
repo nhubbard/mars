@@ -54,8 +54,7 @@ val verifyNoLegacyRuntime = tasks.register("verifyNoLegacyRuntime") {
     fileTree("core/src") { include("**/*.java", "**/*.kt") },
     fileTree("cli/src") { include("**/*.java", "**/*.kt") },
     fileTree("plugin/src") { include("**/*.java", "**/*.kt") },
-    fileTree("plugin-jvm-compiler/src") { include("**/*.kt") },
-    fileTree("desktop/src") { include("**/*.java", "**/*.kt") }
+    fileTree("plugin-jvm-compiler/src") { include("**/*.kt") }
   )
   inputs.files(sources)
   doLast {

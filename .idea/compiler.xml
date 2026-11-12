@@ -31,7 +31,6 @@
           <entry name="$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.jetbrains/annotations/13.0/919f0dfe192fb4e063e7dacadee7f8bb9a2672a9/annotations-13.0.jar" />
         </processorPath>
         <module name="mars5.core.main" />
-        <module name="mars5.desktop.main" />
       </profile>
       <profile name="Gradle Imported" enabled="true">
         <outputRelativeToContentRoot value="true" />
@@ -56,9 +55,6 @@
       <module name="mars5.datapath" target="25" />
       <module name="mars5.datapath.main" target="25" />
       <module name="mars5.datapath.test" target="25" />
-      <module name="mars5.desktop" target="25" />
-      <module name="mars5.desktop.main" target="25" />
-      <module name="mars5.desktop.test" target="25" />
       <module name="mars5.main" target="25" />
       <module name="mars5.mars-cli.main" target="25" />
       <module name="mars5.mars-cli.test" target="25" />
@@ -88,9 +84,6 @@
       <module name="mars5.datapath" options="-Xlint:deprecation -Xlint:removal -Werror" />
       <module name="mars5.datapath.main" options="-Xlint:deprecation -Xlint:removal -Werror" />
       <module name="mars5.datapath.test" options="-Xlint:deprecation -Xlint:removal -Werror" />
-      <module name="mars5.desktop" options="-Xlint:deprecation -Xlint:removal -Werror" />
-      <module name="mars5.desktop.main" options="-Xlint:deprecation -Xlint:removal -Werror" />
-      <module name="mars5.desktop.test" options="-Xlint:deprecation -Xlint:removal -Werror" />
       <module name="mars5.plugin" options="-Xlint:deprecation -Xlint:removal -Werror" />
       <module name="mars5.plugin.main" options="-Xlint:deprecation -Xlint:removal -Werror" />
       <module name="mars5.plugin.parserGenerator" options="-Xlint:deprecation -Xlint:removal -Werror" />

@@ -18,6 +18,9 @@ dependencies {
 
 tasks.test {
   useJUnitPlatform()
+  val cliArchive = tasks.jar.flatMap { it.archiveFile }
+  inputs.file(cliArchive).withPathSensitivity(PathSensitivity.NONE)
+  systemProperty("mars.cli.jar", cliArchive.get().asFile.absolutePath)
 }
 
 tasks.jar {
