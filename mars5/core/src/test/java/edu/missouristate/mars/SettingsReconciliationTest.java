@@ -8,6 +8,7 @@ import edu.missouristate.mars.di.CoreModule;
 import edu.missouristate.mars.di.DaggerMarsComponent;
 import edu.missouristate.mars.di.MarsComponent;
 import edu.missouristate.mars.mips.hardware.Coprocessor0State;
+import edu.missouristate.mars.mips.hardware.MemoryConfigurations;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -77,6 +78,21 @@ class SettingsReconciliationTest {
   }
 
   @Test
+  void fontDefaultsAndSavedOverridesUseIndependentFields() {
+    var preferences = new MemoryPreferences();
+    var settings = new Settings(preferences);
+    var defaults = new Settings.FontSpec("Monospaced", "Plain", "12");
+    assertThat(settings.getFontSpec(Settings.EDITOR_FONT)).isEqualTo(defaults);
+    assertThat(settings.getDefaultFontSpec(Settings.EDITOR_FONT)).isEqualTo(defaults);
+
+    var saved = new Settings.FontSpec("Serif", "Bold", "18");
+    settings.setFontSpec(Settings.EDITOR_FONT, saved);
+    var reloaded = new Settings(preferences);
+    assertThat(reloaded.getFontSpec(Settings.EDITOR_FONT)).isEqualTo(saved);
+    assertThat(reloaded.getDefaultFontSpec(Settings.EDITOR_FONT)).isEqualTo(defaults);
+  }
+
+  @Test
   void daggerSharesOneSettingsOwnerPerGraph() {
     var first = component(new Settings(new MemoryPreferences()));
     var second = component(new Settings(new MemoryPreferences()));
@@ -101,9 +117,7 @@ class SettingsReconciliationTest {
     first.registerFile().setValue(33, 45);
     assertThat(second.registerFile().getValue(8)).isZero();
     assertThat(second.registerFile().getValue(33)).isZero();
-    var configuration =
-        edu.missouristate.mars.mips.hardware.MemoryConfigurations.createConfiguration(
-            "CompactDataAtZero");
+    var configuration = MemoryConfigurations.createConfiguration("CompactDataAtZero");
     assertThat(first.registerFile().getPC()).isEqualTo(configuration.getTextBaseAddress());
     assertThat(first.registerFile().getValue(28)).isEqualTo(configuration.getGlobalPointer());
     assertThat(first.registerFile().getValue(29)).isEqualTo(configuration.getStackPointer());

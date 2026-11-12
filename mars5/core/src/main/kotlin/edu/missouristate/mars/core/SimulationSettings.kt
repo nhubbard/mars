@@ -1,14 +1,14 @@
 package edu.missouristate.mars.core
 
 import edu.missouristate.mars.Settings
-import edu.missouristate.mars.Settings.BARE_MACHINE_ENABLED
-import edu.missouristate.mars.Settings.DELAYED_BRANCHING_ENABLED
-import edu.missouristate.mars.Settings.DISPLAY_ADDRESSES_IN_HEX
-import edu.missouristate.mars.Settings.DISPLAY_VALUES_IN_HEX
-import edu.missouristate.mars.Settings.EXTENDED_ASSEMBLER_ENABLED
-import edu.missouristate.mars.Settings.SELF_MODIFYING_CODE_ENABLED
-import edu.missouristate.mars.Settings.START_AT_MAIN
-import edu.missouristate.mars.Settings.WARNINGS_ARE_ERRORS
+import edu.missouristate.mars.Settings.Companion.BARE_MACHINE_ENABLED
+import edu.missouristate.mars.Settings.Companion.DELAYED_BRANCHING_ENABLED
+import edu.missouristate.mars.Settings.Companion.DISPLAY_ADDRESSES_IN_HEX
+import edu.missouristate.mars.Settings.Companion.DISPLAY_VALUES_IN_HEX
+import edu.missouristate.mars.Settings.Companion.EXTENDED_ASSEMBLER_ENABLED
+import edu.missouristate.mars.Settings.Companion.SELF_MODIFYING_CODE_ENABLED
+import edu.missouristate.mars.Settings.Companion.START_AT_MAIN
+import edu.missouristate.mars.Settings.Companion.WARNINGS_ARE_ERRORS
 import edu.missouristate.mars.api.MarsSettings
 import java.util.function.BooleanSupplier
 
