@@ -115,7 +115,7 @@ internal fun renderInstructionExample(instruction: Instruction, bareMachine: Boo
         text.append(example, previousEnd, start)
         val renderedStart = text.length
         if (bareMachine && token.type == TokenTypes.REGISTER_NAME) {
-            text.append('$').append(RegisterNames.integer(token.value).number)
+            text.append('$').append(RegisterNames.integer(token.value)!!.number)
         } else {
             text.append(example, start, end)
         }

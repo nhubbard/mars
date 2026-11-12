@@ -97,7 +97,7 @@ class MipsLexer(private val debuggerExpression: Boolean = false) : LexerBase() {
     private fun textOf(token: MipsToken): String = buffer.subSequence(token.start, token.end).toString()
 
     companion object {
-        private val includeName = Directives.INCLUDE.getName()
+        private val includeName = Directives.INCLUDE.name
         private val invalidDebuggerTokens = setOf(MipsTokenKind.COMMA, MipsTokenKind.COMMENT, MipsTokenKind.UNCLOSED_STRING)
         private val mnemonics: Set<String> by lazy {
             InstructionDefaults.get().instructionList.mapTo(TreeSet(String.CASE_INSENSITIVE_ORDER)) { it.name }

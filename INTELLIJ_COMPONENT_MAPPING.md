@@ -1074,22 +1074,22 @@ Test sources and generated build output are excluded from this production invent
 | [kotlin/edu/missouristate/mars/api/StopEvent.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/api/StopEvent.kt) | R01 |
 | [kotlin/edu/missouristate/mars/api/SyscallEnvironment.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/api/SyscallEnvironment.kt) | I01 |
 | [java/edu/missouristate/mars/assembler/Assembler.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/assembler/Assembler.java) | C02 |
-| [java/edu/missouristate/mars/assembler/DataTypes.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/assembler/DataTypes.java) | C02 |
-| [java/edu/missouristate/mars/assembler/Directives.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/assembler/Directives.java) | C02 |
+| [kotlin/edu/missouristate/mars/assembler/DataTypes.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/assembler/DataTypes.kt) | C02 |
+| [kotlin/edu/missouristate/mars/assembler/Directives.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/assembler/Directives.kt) | C02 |
 | [java/edu/missouristate/mars/assembler/FirstPassProcessor.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/assembler/FirstPassProcessor.java) | C02 |
 | [java/edu/missouristate/mars/assembler/Macro.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/assembler/Macro.java) | C03 |
 | [java/edu/missouristate/mars/assembler/MacroPool.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/assembler/MacroPool.java) | C03 |
-| [java/edu/missouristate/mars/assembler/OperandFormat.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/assembler/OperandFormat.java) | C02 |
+| [kotlin/edu/missouristate/mars/assembler/OperandFormat.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/assembler/OperandFormat.kt) | C02 |
 | [java/edu/missouristate/mars/assembler/Parser.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/assembler/Parser.java) | C02 |
 | [kotlin/edu/missouristate/mars/assembler/PseudoInstructionExpander.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/assembler/PseudoInstructionExpander.kt) | C03 |
-| [java/edu/missouristate/mars/assembler/RegisterNames.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/assembler/RegisterNames.java) | C02 |
+| [kotlin/edu/missouristate/mars/assembler/RegisterNames.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/assembler/RegisterNames.kt) | C02 |
 | [java/edu/missouristate/mars/assembler/SecondPassProcessor.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/assembler/SecondPassProcessor.java) | C02 |
-| [java/edu/missouristate/mars/assembler/SourceLine.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/assembler/SourceLine.java) | C03 |
-| [java/edu/missouristate/mars/assembler/Symbol.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/assembler/Symbol.java) | C03 |
-| [java/edu/missouristate/mars/assembler/SymbolTable.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/assembler/SymbolTable.java) | C03 |
-| [java/edu/missouristate/mars/assembler/Token.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/assembler/Token.java) | C02 |
-| [java/edu/missouristate/mars/assembler/TokenList.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/assembler/TokenList.java) | C02 |
-| [java/edu/missouristate/mars/assembler/TokenTypes.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/assembler/TokenTypes.java) | C02 |
+| [kotlin/edu/missouristate/mars/assembler/SourceLine.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/assembler/SourceLine.kt) | C03 |
+| [kotlin/edu/missouristate/mars/assembler/Symbol.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/assembler/Symbol.kt) | C03 |
+| [kotlin/edu/missouristate/mars/assembler/SymbolTable.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/assembler/SymbolTable.kt) | C03 |
+| [kotlin/edu/missouristate/mars/assembler/Token.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/assembler/Token.kt) | C02 |
+| [kotlin/edu/missouristate/mars/assembler/TokenList.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/assembler/TokenList.kt) | C02 |
+| [kotlin/edu/missouristate/mars/assembler/TokenTypes.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/assembler/TokenTypes.kt) | C02 |
 | [java/edu/missouristate/mars/assembler/Tokenizer.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/assembler/Tokenizer.java) | C02 |
 | [kotlin/edu/missouristate/mars/assembler/TranslationCode.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/assembler/TranslationCode.kt) | C02 |
 | [kotlin/edu/missouristate/mars/core/AssemblyContext.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/core/AssemblyContext.kt) | C02 |
@@ -1497,7 +1497,7 @@ Venus was retired after plugin qualification. These links point to the archived 
 | [AssemblySourceSnapshot.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/api/AssemblySourceSnapshot.kt) | B01, B04 |
 | [AssemblySymbolMap.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/api/AssemblySymbolMap.kt) | C03, V06 |
 | [InstructionSourceMap.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/api/InstructionSourceMap.kt) | C03, D01, D02 |
-| [AssemblySymbolUses.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/java/edu/missouristate/mars/assembler/AssemblySymbolUses.java) | C03, E07, E08 |
+| [AssemblySymbolUses.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/assembler/AssemblySymbolUses.kt) | C03, E07, E08 |
 | [AssemblyImage.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/core/AssemblyImage.kt) | B04, R05 |
 | [MemoryDumpSnapshot.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/mips/dump/MemoryDumpSnapshot.kt) | B05 |
 | [MemoryAddressRange.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/mips/hardware/MemoryAddressRange.kt) | B05, C09, D12 |

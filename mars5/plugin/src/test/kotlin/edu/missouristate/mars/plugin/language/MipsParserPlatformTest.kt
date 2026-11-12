@@ -1122,9 +1122,9 @@ class MipsParserPlatformTest {
                 val registers = registerTokens.map { row ->
                     row.map { token ->
                         if (token.type == TokenTypes.FP_REGISTER_NAME) {
-                            "\$f" + spelling(RegisterNames.floating(token.value).number)
+                            "\$f" + spelling(RegisterNames.floating(token.value)!!.number)
                         } else {
-                            "\$" + spelling(RegisterNames.integer(token.value).number)
+                            "\$" + spelling(RegisterNames.integer(token.value)!!.number)
                         }
                     }
                 }

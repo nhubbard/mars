@@ -252,7 +252,7 @@ internal fun mipsSourceEvents(file: MipsFile): List<MipsSourceEvent> = CachedVal
                     in operationOwners, dataContinuation -> add(MipsSourceEvent.OperationCandidate(element))
                     directiveStatement -> {
                         val directive = Directives.matchDirective(element.firstChild.text)
-                        if (directive in dataStateDirectives) add(MipsSourceEvent.DataDirective(element.textOffset, directive))
+                        if (directive in dataStateDirectives) add(MipsSourceEvent.DataDirective(element.textOffset, directive!!))
                         if (directive == Directives.EQV) add(MipsSourceEvent.OperationCandidate(element))
                     }
                     macroHeader -> writtenRejectedMacroHeader(element)?.let { add(it) }
