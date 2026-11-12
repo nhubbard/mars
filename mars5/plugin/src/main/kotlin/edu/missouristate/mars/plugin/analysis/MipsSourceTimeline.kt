@@ -1,6 +1,7 @@
 package edu.missouristate.mars.plugin.analysis
 
 import com.intellij.notebook.editor.BackedVirtualFile
+import com.intellij.openapi.editor.Document
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
@@ -176,7 +177,7 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
                     .mipsIncludeRequest(event.path)?.let(VirtualFileManager.getInstance()::findMipsIncludeFile)
                 val syntax = if (file != null && visited.add(file.includeIdentity())) {
                     if (included == null) {
-                        unresolvedAssemblySourceSyntax(entry.project, file, dependencies)
+                        unresolvedAssemblySourceSyntax(entry.project, file, dependencies::add)
                     } else {
                         dependencies.add(included)
                         // Binary PSI does not track a text document, so use the VFS content stamp.
@@ -487,14 +488,25 @@ internal fun assemblySourceSyntax(source: PsiFile?): MipsFile? {
     }
 }
 
-private fun unresolvedAssemblySourceSyntax(project: Project, file: VirtualFile, dependencies: MutableList<Any>): MipsFile? {
+internal fun unresolvedAssemblySourceSyntax(
+    project: Project, file: VirtualFile, onDependency: (Any) -> Unit = {},
+): MipsFile? {
     if (file.isDirectory) return null
-    dependencies.add(file)
+    onDependency(file)
     if (FileSizeLimit.isTooLargeForContentLoading(file.length, file.extension)) return null
-    val document = if (file.fileType.isBinary) null else FileDocumentManager.getInstance().getDocument(file)
-    document?.let(dependencies::add)
-    return readOnlyAssemblySource(project, file, document?.text)
+    // An ignored file has a project-specific view provider even when it has no PSI file.
+    val provider = PsiManager.getInstance(project).findViewProvider(file)!!
+    val source = CachedValuesManager.getManager(project).getCachedValue(provider) {
+        val document = if (file.fileType.isBinary) null else FileDocumentManager.getInstance().getDocument(file)
+        val syntax = readOnlyAssemblySource(project, file, document?.text)
+        CachedValueProvider.Result.create(UnresolvedSource(syntax, document),
+            listOfNotNull(file, document, ProjectRootModificationTracker.getInstance(project)))
+    }
+    source.document?.let(onDependency)
+    return source.syntax
 }
+
+private data class UnresolvedSource(val syntax: MipsFile?, val document: Document?)
 
 private fun readOnlyAssemblySource(project: Project, file: VirtualFile, documentText: String? = null): MipsFile? {
     val text = documentText ?: readDiskAssemblyText(file) ?: return null
@@ -508,7 +520,7 @@ internal class ReadOnlyAssemblySourceFile(private val origin: VirtualFile, text:
     override fun getOriginFile(): VirtualFile = origin
 }
 
-private fun MipsFile.assemblySourceOriginalFile(): VirtualFile =
+internal fun PsiFile.assemblySourceOriginalFile(): VirtualFile =
     BackedVirtualFile.getOriginFileIfBacked(originalFile.viewProvider.virtualFile)
 
 private fun MipsFile.isUnindexedAssemblySource(): Boolean =

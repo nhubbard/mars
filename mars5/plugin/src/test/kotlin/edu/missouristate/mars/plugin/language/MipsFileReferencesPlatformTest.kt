@@ -1,8 +1,10 @@
 package edu.missouristate.mars.plugin.language
 
 import com.intellij.codeInsight.lookup.Lookup
+import com.intellij.codeInsight.navigation.actions.GotoDeclarationAction
 import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.mock.MockVirtualFile
+import com.intellij.notebook.editor.BackedVirtualFile
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.command.WriteCommandAction
@@ -12,12 +14,14 @@ import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.vfs.VFileProperty
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
+import com.intellij.openapi.vfs.limits.FileSizeLimit
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
 import com.intellij.psi.ElementManipulators
 import com.intellij.psi.PsiDirectory
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiFileFactory
+import com.intellij.psi.PsiManager
 import com.intellij.psi.impl.include.FileIncludeInfo
 import com.intellij.psi.impl.include.FileIncludeManager
 import com.intellij.psi.util.PsiTreeUtil
@@ -36,15 +40,18 @@ import edu.missouristate.mars.plugin.analysis.inferredMipsAssemblyEntry
 import edu.missouristate.mars.plugin.analysis.mipsSourceTimeline
 import edu.missouristate.mars.plugin.language.psi.MipsStringLiteral
 import edu.missouristate.mars.plugin.language.references.MipsFileReferenceSet
+import edu.missouristate.mars.plugin.language.references.MipsIncludeNavigation
 import edu.missouristate.mars.plugin.language.references.resolveMipsDotSegment
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -82,6 +89,83 @@ class MipsFileReferencesPlatformTest {
             assertTrue(strings[2].references.isEmpty())
             assertNull(strings[2].reference)
             assertEquals(listOf("parts", "target.asm"), strings[0].references.map { it.canonicalText })
+        }
+    }
+
+    @Test
+    fun `Go to Declaration opens ignored includes without supplying a file rename target`() = timeoutRunBlocking<Unit> {
+        val source = """
+            .include "parts/bridge.inc~"
+            .include "normal.inc"
+            .include "later.inc~"
+            .include "oversized.inc~"
+            .include ""
+            .asciiz "parts/bridge.inc~"
+            li ${'$'}t0, VALUE
+        """.trimIndent()
+        val original = ".include \"nested.inc~\"\n.eqv VALUE 4\n"
+        val (entry, ignored, normal, nested) = withContext(Dispatchers.EDT) {
+            val ignored = fixture.tempDirFixture.createFile("parts/bridge.inc~", original)
+            val nested = fixture.tempDirFixture.createFile("parts/nested.inc~", "nop\n")
+            val oversized = fixture.tempDirFixture.createFile("oversized.inc~")
+            val comment = "#" + " ".repeat(16_382) + "\n"
+            Files.newBufferedWriter(oversized.toNioPath()).use { writer ->
+                repeat(FileSizeLimit.getContentLoadLimit(oversized.extension) / comment.length + 1) { writer.write(comment) }
+            }
+            oversized.refresh(false, false)
+            val normal = fixture.addFileToProject("normal.inc", "nop\n").virtualFile
+            val entry = fixture.addFileToProject("entry.mars", source)
+            fixture.configureFromExistingVirtualFile(entry.virtualFile)
+            listOf(entry.virtualFile, ignored, normal, nested)
+        }
+        val ide = project.get()
+        IndexingTestUtil.suspendUntilIndexesAreReady(ide)
+        val (view, ordinary) = withContext(Dispatchers.EDT) {
+            val handler = MipsIncludeNavigation()
+            fun target(offset: Int) = GotoDeclarationAction.findTargetElement(ide, fixture.editor, offset)
+            fun includeAt(offset: Int) = fixture.file.findElementAt(offset) as MipsStringLiteral
+            val offset = source.indexOf("bridge.inc~") + 1
+            val literal = includeAt(offset)
+            val backup = assertInstanceOf(MipsFile::class.java, target(offset))
+            assertSame(backup, target(offset))
+            assertSame(backup, target(source.lastIndexOf("VALUE") + 1)?.containingFile)
+            assertEquals(original, backup.text)
+            assertFalse(backup.virtualFile.isWritable)
+            assertEquals(ignored, BackedVirtualFile.getOriginFileIfBacked(backup.virtualFile))
+            assertNull(PsiManager.getInstance(ide).findFile(ignored))
+            assertNull(fixture.file.findReferenceAt(offset)?.resolve())
+            assertInstanceOf(PsiDirectory::class.java, target(source.indexOf("parts/") + 1))
+            val normalTarget = assertInstanceOf(MipsFile::class.java, target(source.indexOf("normal.inc") + 1))
+            assertEquals(normal, normalTarget.virtualFile)
+
+            assertNull(handler.getGotoDeclarationTargets(null, 0, fixture.editor))
+            val detached = PsiFileFactory.getInstance(ide).createFileFromText("detached.mars", MipsFileType, source)
+            assertNull(handler.getGotoDeclarationTargets(detached.findElementAt(offset), offset, fixture.editor))
+            assertNull(target(source.indexOf("oversized.inc~") + 1))
+            assertNull(handler.getGotoDeclarationTargets(literal, literal.textOffset + literal.textLength - 1, fixture.editor))
+            for (index in listOf(source.indexOf("\"\""), source.lastIndexOf("bridge.inc~"))) {
+                assertNull(handler.getGotoDeclarationTargets(includeAt(index), index, fixture.editor))
+            }
+            val later = source.indexOf("later.inc~") + 1
+            assertNull(target(later))
+            fixture.tempDirFixture.createFile("later.inc~", "nop\n")
+            assertEquals("nop\n", target(later)?.text)
+
+            fixture.openFileInEditor(backup.virtualFile)
+            val next = assertInstanceOf(MipsFile::class.java, target(original.indexOf("nested.inc~") + 1))
+            assertEquals(nested, BackedVirtualFile.getOriginFileIfBacked(next.virtualFile))
+
+            fixture.configureFromExistingVirtualFile(entry)
+            val revised = original.replace("VALUE 4", "VALUE 9")
+            Files.writeString(ignored.toNioPath(), revised)
+            ignored.refresh(false, false)
+            val updated = assertInstanceOf(MipsFile::class.java, target(offset))
+            assertEquals(revised, updated.text)
+            updated to normalTarget
+        }
+        readAction {
+            assertNotNull(view.navigationRequest())
+            assertNotNull(ordinary.navigationRequest())
         }
     }
 

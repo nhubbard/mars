@@ -697,9 +697,11 @@ Explicit includes that IntelliJ ignores or classifies as binary contribute edito
 through read-only MIPS PSI within IntelliJ's content-loading limit. The editor uses an
 available text document or the assembler's disk decoder. Nested includes resolve relative
 to the original directory. File and document changes invalidate the cached context.
-Completion and contextual highlighting can use these definitions, and Go to Declaration
-opens the captured MIPS text. Oversized files still participate in assembly and use
-assembled source locations for macro and label navigation.
+Completion and contextual highlighting can use these definitions. Go to Declaration on a
+symbol or on the filename of an ignored include opens the captured MIPS text. The filename
+action leaves the file outside IntelliJ's ordinary file references and refactoring scope.
+Oversized files still participate in assembly and use assembled source locations for macro
+and label navigation.
 
 ## Go to Declaration for macro calls
 
