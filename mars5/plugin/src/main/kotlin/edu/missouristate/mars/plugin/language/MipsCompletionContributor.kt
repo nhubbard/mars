@@ -74,7 +74,7 @@ class MipsCompletionContributor : CompletionContributor(), DumbAware {
                     lookup.addElement(equivalenceLookup(name, replacement))
                 }
                 if (export != null) {
-                    val written = (1 until export.size()).mapTo(HashSet()) { export[it].value }
+                    val written = analysis.writtenExportNames(root, range, export)
                     val names = analysis.labelCompletionNames(root, position, prefix, LabelCompletionContext.EXPORT)
                         .filter { it !in written && TokenTypes.matchTokenType(it) == TokenTypes.IDENTIFIER }
                     lookup.addAllElements(names.map(LookupElementBuilder::create))

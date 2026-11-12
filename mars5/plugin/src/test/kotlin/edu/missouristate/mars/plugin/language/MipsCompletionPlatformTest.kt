@@ -750,7 +750,8 @@ class MipsCompletionPlatformTest {
     fun `export completion offers eligible labels from the current assembly root`(@TempDir directory: Path) =
         timeoutRunBlocking<Unit> {
             val current = project.get()
-            val definitions = ".eqv EXPORT .globl\n.eqv ALREADY exportIncluded\nexportIncluded: nop\n"
+            val definitions = ".eqv EXPORT .globl\n.eqv ALREADY exportIncluded\n" +
+                ".eqv REST ALREADY, exportLocal\n.eqv LOOP AGAIN\n.eqv AGAIN LOOP\nexportIncluded: nop\n"
             val prefix = ".include \"exports.inc\"\n.extern exportExternal 4\n"
             val labels = "\nexportLocal: nop\nexportSecond: nop\nadd.s: nop\n"
             withContext(Dispatchers.EDT) {
@@ -761,12 +762,19 @@ class MipsCompletionPlatformTest {
             val completed = withContext(Dispatchers.EDT) {
                 fun candidates(line: String): Set<String> {
                     fixture.configureByText("export-completion.mars", prefix + line + labels)
-                    return fixture.completeBasic().orEmpty().map { it.lookupString }.toSet()
+                    return CodeInsightSettings.runWithTemporarySettings<_, Error> {
+                        it.AUTOCOMPLETE_ON_CODE_COMPLETION = false
+                        fixture.completeBasic().orEmpty().map { item -> item.lookupString }.toSet()
+                    }
                 }
                 val expected = setOf("exportIncluded", "exportLocal", "exportSecond")
                 assertEquals(expected, candidates(".GlObL export<caret>"))
                 assertEquals(expected, candidates("marker: EXPORT export<caret>"))
                 assertEquals(expected - "exportIncluded", candidates(".globl ALREADY, export<caret>"))
+                assertEquals(expected - "exportSecond", candidates(".globl export<caret>, exportSecond # existing"))
+                assertEquals(expected - "exportIncluded", candidates("marker: EXPORT export<caret>.old, ALREADY"))
+                assertEquals(expected - "exportLocal", candidates("EXPORT export<caret>, 0x, exportLocal"))
+                assertEquals(expected - "exportIncluded", candidates("EXPORT ALREADY, export<caret>, LOOP"))
                 assertEquals(expected, candidates("exportShadow: nop\n.eqv exportShadow 1\n.globl export<caret>"))
                 assertTrue(candidates(".globl 1, export<caret>").isEmpty())
                 assertTrue(candidates(".eqv FIRST SECOND\n.eqv SECOND FIRST\nEXPORT FIRST, export<caret>").isEmpty())
@@ -778,17 +786,18 @@ class MipsCompletionPlatformTest {
                 DumbModeTestUtils.runInDumbModeSynchronously(current) {
                     assertNull(current.service<MarsAnalysisService>().exportOperandsBefore(file, head, operand))
                 }
-                assertEquals(expected - "exportIncluded", candidates("EXPORT exportIncluded, export<caret>.old"))
+                assertEquals(setOf("exportSecond"), candidates("EXPORT export<caret>.old, REST"))
                 fixture.lookup.setCurrentItem(fixture.lookup.items.single { it.lookupString == "exportSecond" })
                 fixture.finishLookup(Lookup.REPLACE_SELECT_CHAR)
-                assertEquals(prefix + "EXPORT exportIncluded, exportSecond" + labels, fixture.file.text)
+                assertEquals(prefix + "EXPORT exportSecond, REST" + labels, fixture.file.text)
                 fixture.file.text
             }
             directory.resolve("exports.inc").writeText(definitions)
             val entry = directory.resolve("export-completion.mars").also { it.writeText(completed) }
             val context = current.service<MarsSessionService>().context
             context.assemble(listOf(entry), null, true, false)
-            assertEquals(setOf("exportExternal", "exportIncluded", "exportSecond"), context.symbolTable.allSymbols.map { it.name }.toSet())
+            assertEquals(setOf("exportExternal", "exportIncluded", "exportLocal", "exportSecond"),
+                context.symbolTable.allSymbols.map { it.name }.toSet())
         }
 
     @Test

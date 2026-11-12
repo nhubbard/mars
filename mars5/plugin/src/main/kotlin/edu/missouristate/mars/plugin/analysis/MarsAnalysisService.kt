@@ -876,6 +876,22 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         }
     }
 
+    internal fun writtenExportNames(root: MipsFile, operand: TextRange, preceding: TokenList): Set<String> {
+        val source = root.viewProvider.contents
+        val lineEnd = CharArrayUtil.shiftForwardUntil(source, operand.endOffset, "\r\n")
+        val expanded = if (operand.endOffset < lineEnd) {
+            val lineStart = sourceLineStart(source, operand.startOffset)
+            // A comma is ignored by the assembler and keeps the neighboring tokens separate.
+            val line = source.subSequence(lineStart, operand.startOffset).toString() + "," +
+                source.subSequence(operand.endOffset, lineEnd)
+            expandedOperation(editorPrefix(root, lineStart), line, allowIncompleteOperand = true)
+        } else null
+        val written = expanded ?: preceding
+        return (1 until written.size()).mapNotNullTo(HashSet()) { index ->
+            written[index].takeIf { it.type == TokenTypes.IDENTIFIER }?.value
+        }
+    }
+
     private fun editorPrefix(file: MipsFile, offset: Int): MipsSourceTimeline.Prefix =
         editorTimeline(file).prefix(file, offset)
 
