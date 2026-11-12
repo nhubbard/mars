@@ -146,6 +146,12 @@ public class TokenList implements Cloneable {
         && get(1).getType() == TokenTypes.COLON;
   }
 
+  /** Whether a directive or continuation has the four-token numeric repetition shape. */
+  public boolean hasNumericRepetitionShape() {
+    return (size() == 4 || size() == 5 && get(4).getType() == TokenTypes.COMMENT)
+        && get(2).getType() == TokenTypes.COLON;
+  }
+
   /**
    * Get a String representing the token list.
    *

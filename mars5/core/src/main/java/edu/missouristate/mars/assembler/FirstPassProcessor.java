@@ -568,7 +568,7 @@ final class FirstPassProcessor {
     int lengthInBytes = DataTypes.getLengthInBytes(directive);
 
     // Handle the "value : n" format, which replicates the value "n" times.
-    if (tokens.size() == 4 && tokens.get(2).getType() == TokenTypes.COLON) {
+    if (tokens.hasNumericRepetitionShape()) {
       Token valueToken = tokens.get(1);
       Token repetitionsToken = tokens.get(3);
       // DPS 15-jul-08, allow ":" for repetition for all numeric

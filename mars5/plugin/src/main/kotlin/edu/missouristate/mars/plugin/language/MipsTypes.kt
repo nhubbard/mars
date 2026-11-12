@@ -21,6 +21,7 @@ object MipsTypes {
         "BIT_AND_EXPR" to MipsSyntaxTypes.BIT_AND_EXPR,
         "SHIFT_EXPR" to MipsSyntaxTypes.SHIFT_EXPR,
         "DATA_CONTINUATION" to MipsSyntaxTypes.DATA_CONTINUATION,
+        "DATA_REPEAT_PREFIX" to MipsSyntaxTypes.DATA_REPEAT_PREFIX,
         "DEBUGGER_EXPRESSION" to MipsSyntaxTypes.DEBUGGER_EXPRESSION,
         "DIRECTIVE_STATEMENT" to MipsSyntaxTypes.DIRECTIVE_STATEMENT,
         "EQUIVALENCE" to MipsSyntaxTypes.EQUIVALENCE,

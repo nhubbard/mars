@@ -796,7 +796,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
                     else -> token.type == TokenTypes.QUOTED_STRING && token.hasClosingDoubleQuote()
                 }
             }
-            if ((integer || floating) && tokens.size() == 4 && tokens[2].type == TokenTypes.COLON) {
+            if ((integer || floating) && tokens.hasNumericRepetitionShape()) {
                 // The assembler recognizes the four-token repetition shape before it walks a numeric list.
                 acceptsValue(1, allowLabel = false) && TokenTypes.isIntegerTokenType(tokens[3].type) &&
                     Binary.stringToInt(tokens[3].value) > 0

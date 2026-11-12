@@ -761,6 +761,42 @@ class MipsParserPlatformTest {
         }
     }
 
+    @Test
+    fun `detached signs in data repetitions remain separate from the repeated value`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val source = """
+                .data
+                .word 0
+                + 7:2 # The first token is ignored by the four-token repetition form.
+                entry: -, -3 : 2
+                .float 0
+                + .5:2
+                .macro fill
+                .word 0
+                -, 3:2
+                .end_macro
+                fill
+                .text
+                nop
+            """.trimIndent()
+            assertAssembles(directory, source, expectedInstruction = 0)
+            val memory = project.get().service<MarsSessionService>().context.memory
+            val expected = listOf(0, 7, 7, -3, -3, 0f.toBits(), .5f.toBits(), .5f.toBits(), 0, 3, 3)
+            assertEquals(expected, expected.indices.map { memory.getWordNoNotify(memory.dataBaseAddress + it * Int.SIZE_BYTES) })
+            readAction {
+                val file = assertParses(source)
+                val repeated = descendants(file.node, "DATA_CONTINUATION").filter {
+                    descendants(it, "REPETITION").any()
+                }.toList()
+                assertEquals(listOf("+", "-", "+", "-"), repeated.map { it.firstChildNode.text })
+                assertEquals(listOf("7:2", "-3 : 2", ".5:2", "3:2"), repeated.map {
+                    descendants(it, "OPERAND").single().text
+                })
+                val ordinary = assertParses(".word +7:2\n-8:2\n+9\n")
+                assertEquals(listOf("+7:2", "-8:2", "+9"), descendants(ordinary.node, "OPERAND").map { it.text }.toList())
+            }
+        }
+
     @ParameterizedTest
     @ValueSource(strings = ["Default", "CompactDataAtZero", "CompactTextAtZero"])
     fun `all instruction formats agree with the assembler across separators and aliases`(

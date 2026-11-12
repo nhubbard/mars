@@ -87,6 +87,18 @@ internal fun startsSignedNumber(runtime: SyntaxGeneratedParserRuntime, level: In
     return builder.tokenType in signs && builder.signAttachesToNumber(builder.previousToken(separators))
 }
 
+/** A detached sign can precede the value and count in the assembler's continuation form. */
+@Suppress("UNUSED_PARAMETER")
+internal fun isDetachedDataRepeat(runtime: SyntaxGeneratedParserRuntime, level: Int): Boolean {
+    val builder = runtime.syntaxBuilder
+    if (builder.tokenType !in signs || builder.signTouchesNumber()) return false
+    val start = builder.currentOffset
+    val source = builder.text
+    val end = CharArrayUtil.shiftForwardUntil(source, start, "\r\n")
+    return Tokenizer().tokenizeLine(1, source.subSequence(start, end).toString(), ErrorList(), false)
+        .hasNumericRepetitionShape()
+}
+
 /** MARS skips the definition when the physical line has fewer than three assembler tokens. */
 @Suppress("UNUSED_PARAMETER")
 internal fun isShortEquivalence(runtime: SyntaxGeneratedParserRuntime, level: Int): Boolean {

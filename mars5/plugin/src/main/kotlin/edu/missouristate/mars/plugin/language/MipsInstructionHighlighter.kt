@@ -101,7 +101,7 @@ internal class MipsInstructionHighlighter : Annotator, DumbAware {
         val contextualDeclarations = setOf(SymbolKind.LABEL, SymbolKind.EXTERNAL)
         val macroParameter = MipsTypes.psi("MACRO_PARAMETER")
         val signs = TokenSet.create(MipsTypes.psi("PLUS"), MipsTypes.psi("MINUS"))
-        val uncoloredSigns = TokenSet.create(MipsTypes.psi("ADD_EXPR"), MipsTypes.psi("EXTERNAL_SIGNED_NAME"))
+        val uncoloredSigns = TokenSet.create(MipsTypes.psi("ADD_EXPR"), MipsTypes.psi("EXTERNAL_SIGNED_NAME"), MipsTypes.psi("DATA_REPEAT_PREFIX"))
         val number = MipsTypes.psi("NUMBER")
         val replacement = MipsTypes.psi("REPLACEMENT")
         val dollarWord = MipsTypes.psi("DOLLAR_WORD")
