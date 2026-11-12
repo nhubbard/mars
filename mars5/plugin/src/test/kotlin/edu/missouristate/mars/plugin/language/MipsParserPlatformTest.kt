@@ -1504,6 +1504,12 @@ class MipsParserPlatformTest {
             assertEquals(listOf("+", "7", "3", "-", "8", "\$t0", "\$zero", "+", "9"), operands)
             assertEquals(listOf("+", "-", "+"), PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java).map { it.text })
             assertEquals("next:", descendants(file.node, "LABEL").single().text)
+
+            val withLabel = PsiFileFactory.getInstance(project.get()).createFileFromText(
+                "detached-label.mars", MipsFileType, ".data\n.word -, target\ntarget: .word 1\n",
+            )
+            assertEquals(listOf("-", "target", "1"), descendants(withLabel.node, "OPERAND").map { it.text }.toList())
+            assertEquals("-", PsiTreeUtil.findChildrenOfType(withLabel, PsiErrorElement::class.java).single().text)
         }
     }
 

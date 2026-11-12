@@ -44,6 +44,17 @@ class MipsDataReferencesPlatformTest {
     }
 
     @Test
+    fun `a detached sign preserves navigation for the next integer data operand`() = timeoutRunBlocking<Unit> {
+        val prefix = ".data\n"
+        val suffix = "\ntarget: .word 1\n"
+        for (line in listOf(".word -, tar<caret>get", ".half + , tar<caret>get", ".byte 3, -,, tar<caret>get")) {
+            assertEquals(SymbolKind.LABEL, target(prefix + line + suffix), line)
+        }
+        assertNull(target(prefix + ".float -, tar<caret>get" + suffix))
+        assertNull(target(prefix + ".word -, tar<caret>get:2" + suffix))
+    }
+
+    @Test
     fun `aliased repetition punctuation does not make numeric slots into label references`() = timeoutRunBlocking<Unit> {
         val setup = ".eqv SUFFIX :2\n.eqv SEPARATOR :\n.eqv VALUE 7\n.eqv FIRST SECOND\n.eqv SECOND FIRST\n.data\n"
         val end = "\ntarget: .word 0\n"

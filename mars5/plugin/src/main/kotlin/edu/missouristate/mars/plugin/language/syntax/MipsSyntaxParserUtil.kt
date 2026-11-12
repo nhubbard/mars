@@ -48,6 +48,7 @@ private val spacing = setOf(WHITE_SPACE)
 private val separators = spacing + COMMA
 private val unfinishedIncludeRecoveryHeads = setOf(MACRO, END_MACRO, BAD_CHARACTER, UNCLOSED_CHARACTER, INVALID_CHARACTER)
 private val syntaxMessages = DynamicBundle(MipsScanner::class.java, "messages.MarsBundle")
+private const val detachedSignMessage = "syntax.operand.detached.sign"
 private val labelOffsetMnemonics by lazy {
     InstructionDefaults.get().instructionList.asSequence()
         .filter { it.tokenList.size() > 3 && it.tokenList[3].type == TokenTypes.PLUS }
@@ -57,9 +58,20 @@ private val labelOffsetMnemonics by lazy {
 /** Prefer raw substitution tokens when a complete structured operand list needs recovery. */
 internal fun parseCompleteOperands(runtime: SyntaxGeneratedParserRuntime, level: Int, parser: Parser): Boolean {
     val start = runtime.enter_section_(level, Modifiers._NONE_)
-    val complete = runtime.parseWithProtectedLastPos(level + 1, parser) && !runtime.syntaxBuilder.hasErrorsAfter(start)
+    val builder = runtime.syntaxBuilder
+    val complete = runtime.parseWithProtectedLastPos(level + 1, parser) &&
+        (!builder.hasErrorsAfter(start) || builder.hasOnlyDetachedSignErrors(start))
     runtime.exit_section_(level, start, complete, false, null)
     return complete
+}
+
+/** A comma already separates a stray sign from the next operand, even after substitution. */
+private fun SyntaxTreeBuilder.hasOnlyDetachedSignErrors(start: SyntaxTreeBuilder.Marker): Boolean {
+    val detached = syntaxMessages.getMessage(detachedSignMessage)
+    return productions.asReversed().asSequence().takeWhile { it !== start }.none {
+        val message = it.getErrorMessage()
+        message != null && message != detached
+    }
 }
 
 /** Apply the assembler's boundaries for address and signed operands. */
@@ -168,7 +180,7 @@ internal fun recoverInvalidOperandExpression(runtime: SyntaxGeneratedParserRunti
     if (builder.tokenType in signs && builder.rawLookup(if (builder.rawLookup(1) == WHITE_SPACE) 2 else 1) == COMMA) {
         val sign = builder.mark()
         builder.advanceLexer()
-        sign.error(syntaxMessages.getMessage("syntax.operand.invalid.token"))
+        sign.error(syntaxMessages.getMessage(detachedSignMessage))
         return true
     }
     return recoverBadOperandToken(runtime, level)
