@@ -1,4 +1,4 @@
-package edu.missouristate.mars.mips.instructions;
+package edu.missouristate.mars.mips.instructions
 
 /*
 Copyright (c) 2003-2006,  Pete Sanderson and Kenneth Vollmar
@@ -28,19 +28,10 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 (MIT license, http://www.opensource.org/licenses/mit-license.html)
  */
 
-/**
- * These are the MIPS-defined formats of basic machine instructions. The R-format indicates the
- * instruction works only with registers. The I-format indicates the instruction works with an
- * immediate value (e.g. constant). The J-format indicates this is a Jump instruction. The
- * I-branch-format is defined by me, not MIPS, to to indicate this is a Branch instruction,
- * specifically to distinguish immediate values used as target addresses.
- *
- * @author Pete Sanderson
- * @version August 2003
- */
-public enum BasicInstructionFormat {
-  R_FORMAT,
-  I_FORMAT,
-  I_BRANCH_FORMAT,
-  J_FORMAT
+/** The operand formats recognized by the assembler and decoder. */
+enum class BasicInstructionFormat {
+    R_FORMAT,
+    I_FORMAT,
+    I_BRANCH_FORMAT,
+    J_FORMAT,
 }

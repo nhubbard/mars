@@ -52,7 +52,7 @@ internal fun coprocessor0Operand(head: PsiElement): Int? {
 }
 
 internal fun enabledInstructionFormats(name: String, allowPseudo: Boolean): List<Instruction> {
-    val formats = InstructionDefaults.get().matchOperator(name)
+    val formats = InstructionDefaults.get().matchOperator(name).orEmpty()
     return if (allowPseudo) formats else formats.filterIsInstance<BasicInstruction>()
 }
 

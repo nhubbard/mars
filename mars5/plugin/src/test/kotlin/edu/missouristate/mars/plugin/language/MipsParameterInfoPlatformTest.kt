@@ -34,11 +34,16 @@ class MipsParameterInfoPlatformTest {
     private val fixture by codeInsightFixture(project)
 
     @Test
+    fun `unknown mnemonics have no enabled instruction forms`() {
+        assertTrue(enabledInstructionFormats("unknown_mnemonic", allowPseudo = true).isEmpty())
+    }
+
+    @Test
     fun `native parameter info presents every distinct basic and pseudo form`() = timeoutRunBlocking<Unit> {
         withContext(Dispatchers.EDT) {
             val hint = info("entry: DIV \$t0 \$t1, <caret>").orEmpty()
             val rows = hint.split("\n-\n")
-            val forms = InstructionDefaults.get().matchOperator("div").map { it.exampleFormat }.toSet()
+            val forms = checkNotNull(InstructionDefaults.get().matchOperator("div")).map { it.exampleFormat }.toSet()
             assertEquals(forms, rows.map { it.replace("<b>", "").replace("</b>", "") }.toSet())
             assertEquals(forms.size, rows.size)
             assertTrue("div \$t1,\$t2,<b>\$t3</b>" in rows, hint)

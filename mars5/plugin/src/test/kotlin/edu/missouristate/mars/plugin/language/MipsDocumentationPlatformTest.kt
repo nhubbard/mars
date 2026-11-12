@@ -34,7 +34,7 @@ class MipsDocumentationPlatformTest {
     @Test
     fun `quick documentation presents the core instruction examples and descriptions`() = timeoutRunBlocking<Unit> {
         val html = documentation("entry: DIV<caret> \$t0, \$t1, \$t2").orEmpty()
-        val forms = InstructionDefaults.get().matchOperator("div")
+        val forms = checkNotNull(InstructionDefaults.get().matchOperator("div"))
         for (instruction in forms) {
             assertTrue(StringUtil.escapeXmlEntities(instruction.exampleFormat) in html, html)
             assertTrue(StringUtil.escapeXmlEntities(instruction.description) in html, html)

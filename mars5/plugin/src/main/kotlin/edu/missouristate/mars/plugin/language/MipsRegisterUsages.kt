@@ -122,7 +122,7 @@ private fun projectedRegisters(
         tokens.remove(0)
     }
     if (tokens.isEmpty || prefix.operationType(tokens, 0) != TokenTypes.OPERATOR) return emptyList()
-    val form = InstructionDefaults.get().matchOperator(tokens[0].value).firstOrNull { OperandFormat.matches(tokens, it) }
+    val form = InstructionDefaults.get().matchOperator(tokens[0].value)?.firstOrNull { OperandFormat.matches(tokens, it) }
         ?: return emptyList()
     val operation = mapped.originalOffset(tokens[0].startPos - 1)
     val byOffset = LinkedHashMap<Int, MutableSet<RegisterId>>()

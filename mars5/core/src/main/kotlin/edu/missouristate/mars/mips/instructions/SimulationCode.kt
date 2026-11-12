@@ -1,6 +1,8 @@
-package edu.missouristate.mars.mips.instructions;
+package edu.missouristate.mars.mips.instructions
 
-import edu.missouristate.mars.*;
+import edu.missouristate.mars.ProcessingException
+import edu.missouristate.mars.ProgramStatement
+import edu.missouristate.mars.core.InstructionContext
 
 /*
 Copyright (c) 2003-2006,  Pete Sanderson and Kenneth Vollmar
@@ -30,17 +32,8 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 (MIT license, http://www.opensource.org/licenses/mit-license.html)
  */
 
-/**
- * Interface to represent the method for simulating the execution of a specific MIPS basic
- * instruction. It will be implemented by the anonymous class created in the last argument to the
- * BasicInstruction constructor.
- *
- * @author Pete Sanderson
- * @version August 2003
- */
-@FunctionalInterface
-public interface SimulationCode {
-  /** Executes an instruction using only the supplied session's state and I/O. */
-  void simulate(ProgramStatement statement, edu.missouristate.mars.core.InstructionContext context)
-      throws ProcessingException;
+/** Executes an instruction using the supplied session's state and I/O. */
+fun interface SimulationCode {
+    @Throws(ProcessingException::class)
+    fun simulate(statement: ProgramStatement, context: InstructionContext)
 }
