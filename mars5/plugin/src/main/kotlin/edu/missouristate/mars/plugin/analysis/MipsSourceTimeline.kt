@@ -201,6 +201,7 @@ internal class MipsSourceTimeline(
     private val firstIncompleteInclude: Int,
     val hasUnindexedSources: Boolean,
 ) {
+    val entryFile: MipsFile get() = files.values.first().file
     val hasIncompleteIncludes: Boolean get() = firstIncompleteInclude != Int.MAX_VALUE
     val hasQuotedEquivalence: Boolean by lazy { equivalences.values.any { '"' in it.definition.replacement } }
 

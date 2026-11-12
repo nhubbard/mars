@@ -1,6 +1,7 @@
 package edu.missouristate.mars.plugin.language
 
 import com.intellij.lang.annotation.HighlightSeverity
+import com.intellij.modcommand.ActionContext
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.command.WriteCommandAction
@@ -363,6 +364,67 @@ class MipsMacroInspectionPlatformTest {
         IndexingTestUtil.suspendUntilIndexesAreReady(projectFixture.get())
         withContext(Dispatchers.EDT) { assertTrue(errors().isEmpty()) }
     }
+
+    @Test
+    fun `missing macro closer quick fix appends once and invalidates stale actions`() = timeoutRunBlocking<Unit> {
+        val project = projectFixture.get()
+        withContext(Dispatchers.EDT) {
+            for (source in listOf("<caret>.macro emit\nnop\n", ".eqv OPEN .macro\n<caret>OPEN emit\nnop")) {
+                fixture.configureByText("missing-end.mars", source)
+                assertEquals(listOf(missingEndMessage), errors().map { it.second })
+                val action = fixture.availableIntentions.single { it.text == "Add .end_macro at end of file" }
+                fixture.launchAction(action)
+                assertEquals(source.replace("<caret>", "").trimEnd('\n') + "\n.end_macro\n", fixture.editor.document.text)
+                assertTrue(errors().isEmpty())
+                val context = ActionContext.from(fixture.editor, fixture.file)
+                val command = checkNotNull(action.asModCommandAction())
+                assertEquals(null, command.getPresentation(context))
+                assertTrue(command.perform(context).isEmpty)
+            }
+        }
+    }
+
+    @Test
+    fun `closing a macro from an included header appends to the entry after the body`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val project = projectFixture.get()
+            val body = ".include \"header.inc\"\naddiu \$t0, \$zero, %value"
+            val header = ".macro emit (%value)\n"
+            val (entry, other) = withContext(Dispatchers.EDT) {
+                val include = fixture.addFileToProject("header.inc", header)
+                val root = fixture.addFileToProject("entry.mars", body)
+                val alternative = fixture.addFileToProject("closed.mars", ".include \"header.inc\"\n.end_macro\n")
+                fixture.configureFromExistingVirtualFile(include.virtualFile)
+                fixture.editor.caretModel.moveToOffset(1)
+                root to alternative
+            }
+            IndexingTestUtil.suspendUntilIndexesAreReady(project)
+            val completed = withContext(Dispatchers.EDT) {
+                assertTrue(errors().isEmpty())
+                assertTrue(fixture.availableIntentions.none { it.text.startsWith("Add .end_macro") })
+                val settings = project.service<MarsAssemblySettings>()
+                settings.changeSources(listOf(entry.virtualFile.path))
+                assertEquals(listOf(".macro" to missingEndMessage), errors())
+                val action = fixture.availableIntentions.single { it.text == "Add .end_macro to entry.mars" }
+                val context = ActionContext.from(fixture.editor, fixture.file)
+                val command = checkNotNull(action.asModCommandAction())
+                settings.changeSources(emptyList())
+                assertEquals(null, command.getPresentation(context))
+                settings.changeSources(listOf(other.virtualFile.path))
+                assertEquals(null, command.getPresentation(context))
+                settings.changeSources(listOf(entry.virtualFile.path))
+                fixture.launchAction(action)
+                val document = PsiDocumentManager.getInstance(project).getDocument(entry)!!
+                assertEquals(body + "\n.end_macro\n", document.text)
+                assertEquals(header, fixture.editor.document.text)
+                assertTrue(errors().isEmpty())
+                document.text
+            }
+            directory.resolve("header.inc").writeText(header)
+            val source = directory.resolve("entry.mars").also { it.writeText(completed + "emit(7)\n") }
+            val context = project.service<MarsSessionService>().context
+            assertEquals(listOf(0x24080007), context.assemble(listOf(source)).machineList.map { it.binaryStatement })
+        }
 
     @Test
     fun `an unterminated include takes precedence over macro errors on its line and later lines`() = timeoutRunBlocking<Unit> {
