@@ -220,6 +220,10 @@ tasks.named<RunIdeTask>("runIde") {
     args(fixture.get().asFile.absolutePath)
     systemProperty("testscript.filename", scenario.file("packaged-smoke.ijperf").asFile.absolutePath)
     systemProperty("performance.plugin.playback.runner.useDirectActionCall", "true")
+    // Match IntelliJ IDE Starter's test policies in an unattended, disposable IDE.
+    systemProperty("jb.consents.confirmation.enabled", false)
+    systemProperty("jb.privacy.policy.text", "<!--999.999-->")
+    systemProperty("jb.privacy.policy.ai.assistant.text", "<!--999.999-->")
     timeout.set(Duration.ofMinutes(5))
 
     doFirst {

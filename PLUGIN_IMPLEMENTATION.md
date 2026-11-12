@@ -3119,9 +3119,9 @@ integration boundaries in the release build.
 | E11, W01–W02 | File and editing actions use IntelliJ's standard actions and keymaps. `MarsNewFilePlatformTest` verifies the MIPS-specific file creation path. The packaged Linux replay below verifies clipboard actions and saving. |
 | H01 | `MarsReferencePlatformTest` checks the offline catalog, inert archived help, packaged notices, search, and About. `MipsDocumentationPlatformTest` exercises Quick Documentation in the editor and completion popup. |
 
-The remaining release checks include the native host matrix, packaged UI
-checks for keyboard, hover, scaling, and high contrast, and final
-feature-by-feature acceptance. The packaged macOS install and archive
+The remaining release checks include the desktop operating system matrix,
+packaged UI checks for keyboard, hover, scaling, and high contrast, and
+final feature-by-feature acceptance. The packaged macOS install and archive
 replacement on macOS and Ubuntu ARM64 are recorded below.
 
 ### Packaged MIDI playback and Stop on macOS
@@ -3185,10 +3185,16 @@ under `mars5/.gradle/release-host-checks/linux-arm64-print`.
 ## IntelliJ plugin release preflight
 
 The GitHub Actions build runs the same Java 25 test, CLI smoke, plugin
-verification, and instruction lab checks on Linux, Apple Silicon macOS, and
-x64 Windows. Each runner uploads its Jupiter results, plugin coverage report,
-Java core coverage report, Plugin Verifier report, and the instruction lab's
-catalog execution and PNG decoder test reports.
+verification, and instruction lab checks on Linux, macOS, and Windows.
+The packaged replay qualifies IntelliJ integration on each operating system,
+including installation, the filesystem, native editor actions, and the UI
+toolkit. The candidate ZIP's eight JARs contain no native libraries. The
+plugin uses the host IntelliJ runtime, so each operating system needs a
+native replay on one architecture.
+Emulated runs are supplemental diagnostics. Each runner uploads its Jupiter
+results, plugin coverage report, Java core coverage report, Plugin Verifier
+report, and the instruction lab's catalog execution and PNG decoder test
+reports.
 After the build, verifier, and smoke checks pass, each runner also uploads
 the installable ZIP and its `SHA256SUMS` in a
 `mars-plugin-<runner>-<commit>` artifact. Use the ZIP from that artifact
@@ -3220,6 +3226,13 @@ bytes and the IDE to finish the replay. IntelliJ saves the debugger and
 MARS Tools screenshots with its sandbox logs. A successful replay records the
 ZIP checksum beside the screenshots in `packaged-smoke-SHA256SUMS`.
 
+Minimal Ubuntu test images need the `libegl1` and `libgl1` packages used
+by CI. IntelliJ's bundled Compose runtime loads these system libraries when
+it renders MARS tools. For unattended Linux runs, the workflow also provides
+an Xvfb display and the Openbox window manager.
+The opt-in replay uses IntelliJ IDE Starter's test policy settings so a
+fresh test instance can open the project without a first-run dialog.
+
 To replay a ZIP downloaded from CI, keep it outside Gradle's build directories
 and pass its path. This option also enables the packaged smoke scenario.
 
@@ -3235,6 +3248,17 @@ host results to the downloaded candidate.
 The first qualification run passed on Apple Silicon macOS with IntelliJ
 IDEA `IU-263.7307.200`. Plugin Verifier and both archive checks passed for
 the same ZIP.
+
+The ZIP built from `da42fc45` passed the packaged editor, Run, Debug, and
+MARS Tools replay on Apple Silicon macOS and Ubuntu 24.04 ARM64. The two
+replays recorded the same SHA-256, and Run and Debug produced byte-identical
+output across hosts. The Linux build ran 2,148 Jupiter tests and both plugin
+coverage gates. The macOS build verified that exact ZIP with Plugin Verifier,
+the CLI smoke check, and the instruction lab and PNG decoder tests. Logs,
+checksums, and screenshots are under
+`mars5/.gradle/release-host-checks/current-candidate-macos` and
+`mars5/.gradle/release-host-checks/linux-arm64-current-candidate`.
+The packaged Windows replay remains open.
 
 On the same host, the supplied-archive replay installed a ZIP with a distinct
 checksum and a filename containing spaces. All eight installed JARs matched
@@ -3323,7 +3347,6 @@ emulation on Apple Silicon. It passed all 2,014 tests, both coverage gates,
 the standalone CLI help check, and Plugin Verifier for `IU-263.7307.200`.
 The verifier found no internal API usage. Reports are under
 `mars5/.gradle/release-host-checks/linux-arm64/x64-retry-results`.
-Native x64 runner evidence remains part of the GitHub Actions matrix.
 
 The subsequent emulated Linux x64 run at `a4275f06` passed all 2,017
 Jupiter tests, both coverage gates, the CLI help check, and all three
@@ -3543,7 +3566,7 @@ Ultimate module in that instance. The full test run preceded these
 replay-only settings. The checkout revision, ZIP checksum, tests, verifier
 report, IDE log, and screenshots are under
 `mars5/.gradle/release-host-checks/linux-x64-live-reload-qualified`.
-Lifecycle checks on native x64 Linux hardware and Windows remain open.
+Lifecycle checks on Windows remain open.
 
 ### Reviewed API use in the 263 target
 

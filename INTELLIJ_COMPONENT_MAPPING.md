@@ -853,6 +853,8 @@ macro source maps, CP0/CP1 state, console transcripts, tool traces and visual pr
 The intended CI pipeline runs fast pure/engine tests, model tests, Run/Debug integration, coverage merge/gates,
 plugin packaging, descriptor validation and Plugin Verifier against the supported 263 build.
 Run packaged UI/host tests on supported platforms before release; preserve logs, screenshots and failing project fixtures.
+Qualify IntelliJ on each supported desktop operating system with one native architecture.
+Use the packaged replay to check installation, native filesystem behavior, and desktop UI integration.
 Use a separate upgrade job for future IntelliJ releases. That job informs migration and does not widen the declared compatibility range.
 
 Reject new project uses of deprecated/removal APIs, internal APIs, obsolete test frameworks and desktop dependencies.
