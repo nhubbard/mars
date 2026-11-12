@@ -102,12 +102,16 @@ internal class MarsExecutionSources(private val capture: CapturedAssemblySources
         return syntax?.virtualFile
     }
 
-    fun navigateTo(descriptor: OpenFileDescriptor, location: Location) {
-        if (descriptor.file.mipsAssemblySourceOrigin != null) {
+    fun rememberEntryFor(file: VirtualFile, location: Location) {
+        if (file.mipsAssemblySourceOrigin != null) {
             val root = capture.rootsBySource.getValue(location.file())
             // The editor rechecks this candidate against the current graph before using it.
-            LocalFileSystem.getInstance().findFileByNioFile(root)?.let(descriptor.file::rememberMipsAssemblyEntry)
+            LocalFileSystem.getInstance().findFileByNioFile(root)?.let(file::rememberMipsAssemblyEntry)
         }
+    }
+
+    fun navigateTo(descriptor: OpenFileDescriptor, location: Location) {
+        rememberEntryFor(descriptor.file, location)
         descriptor.navigate(true)
     }
 

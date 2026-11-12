@@ -158,8 +158,8 @@ class CapturedAssemblySourcesPlatformTest {
             assertTrue(excerpt.text.startsWith("destination", offset))
             assertFalse(excerpt.virtualFile.isWritable)
             val diagnostic = diagnosticEvent(project.get(), Any(), AssemblyError(path, 4, 1, "Test warning", true),
-                sources.revisions)
-            assertFalse(diagnostic is FileMessageEvent)
+                sources)
+            assertInstanceOf(FileMessageEvent::class.java, diagnostic)
             assertEquals("Test warning", diagnostic.message)
         }
 
@@ -242,6 +242,10 @@ class CapturedAssemblySourcesPlatformTest {
             assertFalse(line.file.isWritable)
             assertTrue(line.file.name.startsWith("large.png"))
             assertSame(line.file, sources.hyperlink(project.get(), location).descriptor?.file)
+            val diagnostic = diagnosticEvent(project.get(), Any(),
+                AssemblyError(location.file(), location.line(), 1, "Test warning", true), capture.sources, sources)
+            val link = assertInstanceOf(OpenFileDescriptor::class.java, diagnostic.getNavigatable(project.get()))
+            assertSame(line.file, link.file)
             for (name in listOf("emit", "target")) {
                 val target = checkNotNull(main.findReferenceAt(main.text.indexOf(name))?.resolve())
                 assertEquals(name, target.text)

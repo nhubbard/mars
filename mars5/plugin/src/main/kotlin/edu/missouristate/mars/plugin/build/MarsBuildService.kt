@@ -15,7 +15,6 @@ import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.progress.checkCanceled
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.platform.ide.progress.withBackgroundProgress
 import com.intellij.task.ProjectTaskRunner
 import com.intellij.task.TaskRunnerResults
@@ -23,6 +22,7 @@ import com.intellij.util.containers.SLRUMap
 import edu.missouristate.mars.api.AssemblyError
 import edu.missouristate.mars.api.AssemblySourceSnapshot
 import edu.missouristate.mars.api.AssemblySymbolMap
+import edu.missouristate.mars.api.InstructionSourceMap.Location
 import edu.missouristate.mars.core.AssemblyImage
 import edu.missouristate.mars.di.MarsComponent
 import edu.missouristate.mars.plugin.MarsExecutionOptions
@@ -32,6 +32,7 @@ import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.analysis.MipsAssemblyContextListener
 import edu.missouristate.mars.plugin.analysis.assembleIn
 import edu.missouristate.mars.plugin.analysis.captureBuildSources
+import edu.missouristate.mars.plugin.run.MarsExecutionSources
 import java.nio.file.Path
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -146,10 +147,8 @@ internal class MarsBuildService(private val project: Project, private val scope:
         var succeeded = false
         var reused = false
         try {
-            val completed = assembleAndReport(symbolBuild, assemble) { diagnostics, revisions ->
-                val events = readAction {
-                    diagnostics.map { diagnosticEvent(project, progress.id, it, revisions) }
-                }
+            val completed = assembleAndReport(symbolBuild, assemble) { diagnostics, capture ->
+                val events = readAction { diagnosticEvents(project, progress.id, diagnostics, capture) }
                 checkCanceled()
                 val view = project.getService(BuildViewManager::class.java)
                 for (event in events) {
@@ -169,7 +168,7 @@ internal class MarsBuildService(private val project: Project, private val scope:
     }
 
     internal suspend fun assembleForCompiler(
-        sources: MarsSourceSet, report: suspend (List<AssemblyError>, Map<Path, Long>) -> Unit,
+        sources: MarsSourceSet, report: suspend (List<AssemblyError>, CapturedAssemblySources) -> Unit,
     ): Boolean {
         val options = projectOptions
         val component = MarsSessionService.createMarsComponent()
@@ -189,7 +188,7 @@ internal class MarsBuildService(private val project: Project, private val scope:
 
     private suspend fun assembleAndReport(
         symbolBuild: MarsAnalysisService.SymbolBuild, assemble: suspend (CapturedAssemblySources) -> BuildOutput,
-        report: suspend (List<AssemblyError>, Map<Path, Long>) -> Unit,
+        report: suspend (List<AssemblyError>, CapturedAssemblySources) -> Unit,
     ): Pair<CapturedAssemblySources, BuildOutput> {
         val analysis = project.service<MarsAnalysisService>()
         val capture = captureBuildSources(symbolBuild.selection.sourceSet, project.service<MarsAssemblySettings>().exceptionHandler)
@@ -199,7 +198,7 @@ internal class MarsBuildService(private val project: Project, private val scope:
         project.messageBus.syncPublisher(MipsAssemblyContextListener.TOPIC).assemblyEntryChanged()
         val result = assemble(capture)
         checkCanceled()
-        report(result.diagnostics, capture.revisions)
+        report(result.diagnostics, capture)
         checkCanceled()
         result.symbols?.let { analysis.publishBuiltSymbols(symbolBuild, capture, it) }
         return capture to result
@@ -216,22 +215,36 @@ internal class MarsBuildService(private val project: Project, private val scope:
     }
 }
 
-/** Called under a read action so the stamp and position are checked against the same document. */
+/** Called under a read action so revisions and positions refer to the same document state. */
+internal fun diagnosticEvents(
+    project: Project, buildId: Any, diagnostics: List<AssemblyError>, capture: CapturedAssemblySources,
+): List<MessageEvent> {
+    val sources = MarsExecutionSources(capture)
+    return diagnostics.map { diagnosticEvent(project, buildId, it, capture, sources) }
+}
+
 internal fun diagnosticEvent(
-    project: Project, buildId: Any, diagnostic: AssemblyError, revisions: Map<Path, Long>,
+    project: Project, buildId: Any, diagnostic: AssemblyError, capture: CapturedAssemblySources,
+    sources: MarsExecutionSources = MarsExecutionSources(capture),
 ): MessageEvent {
     val kind = if (diagnostic.isWarning) MessageEvent.Kind.WARNING else MessageEvent.Kind.ERROR
     val builder = MessageEvent.builder(diagnostic.message(), kind).withParentId(buildId)
     val path = diagnostic.file() ?: return builder.build()
-    val file = VirtualFileManager.getInstance().findFileByNioPath(path)
-    val document = file?.takeUnless { it.fileType.isBinary }?.let(FileDocumentManager.getInstance()::getDocument)
+    if (diagnostic.line() < 1) return builder.withHint(path.toString()).build()
+    val location = Location(path, diagnostic.line())
+    val target = sources.currentLineDescriptor(project, location) ?: return builder.withHint(path.toString()).build()
+    val editorFile = target.file
+    val document = FileDocumentManager.getInstance().getDocument(editorFile)!!
     val line = diagnostic.line() - 1
-    if (document == null || document.modificationStamp != revisions[path] || line < 0 || line >= document.lineCount) {
+    // Live text positions carry an offset. Captured views carry an editor line, which may be relative to an excerpt.
+    if (target.line < 0 && document.modificationStamp != capture.revisions[path]) {
         return builder.withHint(path.toString()).build()
     }
-    val start = document.getLineStartOffset(line)
-    val column = (diagnostic.column() - 1).coerceIn(0, document.getLineEndOffset(line) - start)
+    val editorLine = target.line.takeIf { it >= 0 } ?: line
+    val start = document.getLineStartOffset(editorLine)
+    val column = (diagnostic.column() - 1).coerceIn(0, document.getLineEndOffset(editorLine) - start)
+    sources.rememberEntryFor(editorFile, location)
     return builder.withFilePosition(FilePosition(path, line, column))
-        .withNavigatable(OpenFileDescriptor(project, file, start + column))
+        .withNavigatable(OpenFileDescriptor(project, editorFile, start + column))
         .build()
 }

@@ -1191,7 +1191,11 @@ The core reports lexical errors on retained lines during assembly tokenization,
 after it knows their original file and line. An include line that gets replaced
 still reports malformed tokens from the prepass. This prevents the two passes
 from reporting the same token twice in IntelliJ Build. The diagnostic links
-to the original source, including unsaved includes.
+to the original source, including unsaved includes. For current ignored or
+binary-classified includes, the Build window and optional JVM compiler
+integration open a read-only MIPS view at the diagnostic token. Oversized
+sources use a bounded excerpt. A stale diagnostic remains visible as a
+message without a source link.
 
 The clean launch ran all 1,264 tests and loaded the plugin in the smoke project. The release ZIP
 passed its integrity check, and all six packaged JARs matched the sandbox JARs by SHA-256.

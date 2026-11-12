@@ -89,6 +89,8 @@ import edu.missouristate.mars.plugin.analysis.collectEditorAssembly
 import edu.missouristate.mars.plugin.language.MipsAssemblyAnnotator
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.MipsFileType
+import edu.missouristate.mars.plugin.language.mipsAssemblySourceEntries
+import edu.missouristate.mars.plugin.language.mipsAssemblySourceOrigin
 import java.awt.Component
 import java.nio.charset.Charset
 import java.nio.file.Files
@@ -116,6 +118,7 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.jdom.Element
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import org.junit.jupiter.params.provider.CsvSource
 
 @TestApplication
@@ -1806,6 +1809,50 @@ class MarsBuildPlatformTest {
         }
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = ["fault.png", "fault.inc~"])
+    fun `build errors open nested read-only includes at the assembled token`(name: String) = timeoutRunBlocking<Unit> {
+        val owner = Disposer.newDisposable()
+        try {
+            val events = recordBuildEvents(owner)
+            val source = "# explicit include\n\tj MISSING\n"
+            val (entry, include) = withContext(Dispatchers.EDT) {
+                val include = fixture.tempDirFixture.createFile(name, source)
+                fixture.tempDirFixture.createFile("bridge.zip", ".include \"$name\"\n")
+                val entry = fixture.addFileToProject("entry.mars", ".include \"bridge.zip\"\n").virtualFile
+                entry to include
+            }
+            val capture = captureAssemblySources(listOf(entry.toNioPath()), null)
+            invokeAction(entry)
+            val start = assertInstanceOf(StartBuildEvent::class.java, events.receive())
+            val error = assertInstanceOf(FileMessageEvent::class.java, events.receive())
+            assertEquals(start.id, error.parentId)
+            assertTrue(error.message.contains("MISSING"))
+            assertEquals(include.toNioPath(), error.filePosition.path)
+            assertEquals(1, error.filePosition.startLine)
+            assertEquals(3, error.filePosition.startColumn)
+            withContext(Dispatchers.EDT) {
+                val link = assertInstanceOf(OpenFileDescriptor::class.java, error.getNavigatable(project))
+                assertEquals(include, link.file.mipsAssemblySourceOrigin)
+                assertEquals(setOf(entry), link.file.mipsAssemblySourceEntries)
+                assertEquals(source.indexOf("MISSING"), link.offset)
+                assertFalse(link.file.isWritable)
+                link.navigate(true)
+                val editor = checkNotNull(FileEditorManager.getInstance(project).selectedTextEditor)
+                assertEquals(link.file, editor.virtualFile)
+                assertEquals(link.offset, editor.caretModel.offset)
+                Files.writeString(include.toNioPath(), "# revised\nnop\n")
+                include.refresh(false, false)
+                val stale = diagnosticEvent(project, start.id, AssemblyError(include.toNioPath(), 2, 4, "Old diagnostic", false), capture)
+                assertFalse(stale is FileMessageEvent)
+                assertNull(stale.getNavigatable(project))
+            }
+            assertInstanceOf(FailureResult::class.java, assertInstanceOf(FinishBuildEvent::class.java, events.receive()).result)
+        } finally {
+            Disposer.dispose(owner)
+        }
+    }
+
     @Test
     fun `build links a recursive include to the directive that closes the cycle`() = timeoutRunBlocking<Unit> {
         val disposable = Disposer.newDisposable()
@@ -2207,13 +2254,14 @@ class MarsBuildPlatformTest {
         val file = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("positions.asm", "nop\n").virtualFile
         }
+        val capture = captureAssemblySources(listOf(file.toNioPath()), null)
         readAction {
             val path = file.toNioPath()
             val document = FileDocumentManager.getInstance().getDocument(file)!!
             val stamps = mapOf(path to document.modificationStamp)
             val id = Any()
             val warning = AssemblyError(path, 1, 1, "Warning", true)
-            val fresh = diagnosticEvent(project, id, warning, stamps)
+            val fresh = diagnosticEvent(project, id, warning, capture)
             assertInstanceOf(FileMessageEvent::class.java, fresh)
             assertEquals("WARNING", fresh.kind.name)
             for ((diagnostic, revisions) in listOf(
@@ -2222,9 +2270,10 @@ class MarsBuildPlatformTest {
                 AssemblyError(path, 5, 1, "Past the last line", false) to stamps,
                 AssemblyError(path, 0, 0, "Unknown line", false) to stamps,
                 AssemblyError(path.resolveSibling("absent.s"), 1, 1, "Missing", false) to stamps,
+                AssemblyError(path.parent, 1, 1, "Directory", false) to stamps,
                 AssemblyError(null, 0, 0, "Unknown", false) to stamps,
             )) {
-                val event = diagnosticEvent(project, id, diagnostic, revisions)
+                val event = diagnosticEvent(project, id, diagnostic, capture.copy(revisions = revisions))
                 assertFalse(event is FileMessageEvent)
                 assertNull(event.getNavigatable(project))
                 assertEquals(diagnostic.message(), event.message)

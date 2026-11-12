@@ -12,10 +12,8 @@ class MarsCompilerAssembly private constructor(private val project: Project, pri
     val entries get() = sources.entries
 
     suspend fun assemble(buildId: Any, report: suspend (List<MessageEvent>) -> Unit): Boolean =
-        project.service<MarsBuildService>().assembleForCompiler(sources) { diagnostics, revisions ->
-            val messages = readAction {
-                diagnostics.map { diagnosticEvent(project, buildId, it, revisions) }
-            }
+        project.service<MarsBuildService>().assembleForCompiler(sources) { diagnostics, capture ->
+            val messages = readAction { diagnosticEvents(project, buildId, diagnostics, capture) }
             report(messages)
         }
 
