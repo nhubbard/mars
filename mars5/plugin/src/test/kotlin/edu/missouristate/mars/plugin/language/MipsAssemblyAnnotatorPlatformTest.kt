@@ -838,6 +838,25 @@ class MipsAssemblyAnnotatorPlatformTest {
     }
 
     @Test
+    fun `signed integer diagnostics highlight the full assembler operand in an included file`() = timeoutRunBlocking<Unit> {
+        val source = ".data\n\t.byte -129, +256\n"
+        withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("main.mars", ".include \"signed.inc\"\n.text\nnop\n")
+            val include = fixture.addFileToProject("signed.inc", source)
+            fixture.configureFromExistingVirtualFile(include.virtualFile)
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        withContext(Dispatchers.EDT) {
+            val warnings = fixture.highlightAfterMipsRefresh().filter {
+                it.severity == HighlightSeverity.WARNING && it.description?.contains("possibly truncated") == true
+            }
+            assertEquals(listOf("-129", "+256"), warnings.sortedBy { it.startOffset }.map {
+                source.substring(it.startOffset, it.endOffset)
+            })
+        }
+    }
+
+    @Test
     fun `editor diagnostic ranges handle absent positions and columns beyond the line`() = timeoutRunBlocking<Unit> {
         readAction {
             val document = EditorFactory.getInstance().createDocument("nop\nj label\n")
@@ -846,6 +865,11 @@ class MipsAssemblyAnnotatorPlatformTest {
             assertEquals(TextRange(4, 11), diagnosticRange(document, AssemblyError(null, 2, 50, "error", false)))
             assertNull(diagnosticRange(document, AssemblyError(null, 0, 0, "error", false)))
             assertNull(diagnosticRange(document, AssemblyError(null, 9, 1, "error", false)))
+            val signed = EditorFactory.getInstance().createDocument(".word label -7\n.double 1e-2\n")
+            assertEquals(TextRange(12, 13), diagnosticRange(signed, AssemblyError(null, 1, 13, "error", false)))
+            val exponentSign = signed.text.indexOf("-2")
+            assertEquals(TextRange(exponentSign, exponentSign + 1),
+                diagnosticRange(signed, AssemblyError(null, 2, exponentSign - signed.getLineStartOffset(1) + 1, "error", false)))
             val files = PsiFileFactory.getInstance(project)
             assertNull(annotator.collectInformation(files.createFileFromText("plain.txt", PlainTextFileType.INSTANCE, "")))
             assertNull(annotator.collectInformation(files.createFileFromText("light.asm", MipsFileType, "nop")))

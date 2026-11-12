@@ -9,12 +9,14 @@ import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiFile
 import edu.missouristate.mars.api.AssemblyError
+import edu.missouristate.mars.assembler.Tokenizer
 import edu.missouristate.mars.plugin.analysis.BackgroundAssemblyMemo
 import edu.missouristate.mars.plugin.analysis.BackgroundAssemblyOutcome
 import edu.missouristate.mars.plugin.analysis.EditorAssemblyCapture
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.analysis.collectEditorAssembly
 import edu.missouristate.mars.plugin.language.syntax.MipsScanner
+import edu.missouristate.mars.plugin.language.syntax.MipsTokenKind
 
 /** IntelliJ owns scheduling and cancellation. The assembler receives only captured source text. */
 internal class MipsAssemblyAnnotator : ExternalAnnotator<MipsAssemblyAnnotator.Input, MipsAssemblyAnnotator.Result>() {
@@ -78,5 +80,12 @@ internal fun diagnosticRange(document: Document, error: AssemblyError): TextRang
     val end = document.getLineEndOffset(line)
     val offset = start + (error.column() - 1).coerceIn(0, end - start)
     val token = MipsScanner.next(document.charsSequence, offset, end) ?: return TextRange(start, end)
+    if (token.kind == MipsTokenKind.PLUS || token.kind == MipsTokenKind.MINUS) {
+        // The lexer keeps signs separate. The assembler can attach one to a number.
+        val source = document.getText(TextRange(start, end))
+        val tokens = Tokenizer().tokenizeLine(null, error.line(), source, false)
+        val index = (0 until tokens.size()).firstOrNull { tokens[it].startPos == offset - start + 1 }
+        if (index != null) return TextRange(offset, start + tokens[index].endPos - 1)
+    }
     return TextRange(offset, token.end)
 }
