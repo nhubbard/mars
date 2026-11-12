@@ -1490,6 +1490,24 @@ class MipsParserPlatformTest {
     }
 
     @Test
+    fun `detached signs before commas keep following operands in their own slots`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+        val source = ".data\n.word + , 7\n.word 3, -, 8\n.text\naddiu \$t0, \$zero, +,, 9\nnext: nop\n"
+        val entry = directory.resolve("detached-sign.mars").also { it.writeText(source) }
+        val context = project.get().service<MarsSessionService>().context
+        val failure = assertThrows<ProcessingException> { context.assemble(listOf(entry), null, true, false) }
+        val dataErrors = failure.errors().errorMessages.filter { it.line in 2..3 }
+        assertEquals(listOf(2 to 7, 3 to 10), dataErrors.map { it.line to it.position })
+        readAction {
+            val file = PsiFileFactory.getInstance(project.get()).createFileFromText("detached-sign.mars", MipsFileType, source)
+            assertEquals(source, file.text)
+            val operands = descendants(file.node, "OPERAND").map { it.text }.toList()
+            assertEquals(listOf("+", "7", "3", "-", "8", "\$t0", "\$zero", "+", "9"), operands)
+            assertEquals(listOf("+", "-", "+"), PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java).map { it.text })
+            assertEquals("next:", descendants(file.node, "LABEL").single().text)
+        }
+    }
+
+    @Test
     fun `malformed offsets retain their address and base register in PSI`() = timeoutRunBlocking<Unit> {
         readAction {
             val source = "lw \$t0, -0x(\$sp)\nlw \$t1, 0x, (\$fp)\nnext: nop\n"

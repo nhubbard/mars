@@ -1438,7 +1438,8 @@ MARS accepts commas wherever it accepts a token delimiter. IntelliJ's syntax
 builder now skips them during grammar matching while the AST keeps distinct
 punctuation leaves and exact source text. A predicate on infix and postfix
 operators keeps a comma-delimited operand separate, including signed data
-values and parenthesized operands.
+values and parenthesized operands. A detached prefix sign before a comma
+gets its own error range, keeping the next value or register in its own operand.
 
 Commas around a label's plus and offset remain part of the address operand,
 including when an equivalence supplies the offset and a base register follows.

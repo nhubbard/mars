@@ -161,8 +161,18 @@ internal fun recoverBadIncludeToken(runtime: SyntaxGeneratedParserRuntime, level
 internal fun recoverBadOperandToken(runtime: SyntaxGeneratedParserRuntime, level: Int): Boolean =
     runtime.syntaxBuilder.recoverBadToken("syntax.operand.invalid.token")
 
-internal fun recoverInvalidOperandExpression(runtime: SyntaxGeneratedParserRuntime, level: Int): Boolean =
-    runtime.parserUserState !== DebuggerExpressionParsing && recoverBadOperandToken(runtime, level)
+internal fun recoverInvalidOperandExpression(runtime: SyntaxGeneratedParserRuntime, level: Int): Boolean {
+    if (runtime.parserUserState === DebuggerExpressionParsing) return false
+    val builder = runtime.syntaxBuilder
+    // Commas are trivia in the grammar. Keep a detached prefix sign from consuming the next operand.
+    if (builder.tokenType in signs && builder.rawLookup(if (builder.rawLookup(1) == WHITE_SPACE) 2 else 1) == COMMA) {
+        val sign = builder.mark()
+        builder.advanceLexer()
+        sign.error(syntaxMessages.getMessage("syntax.operand.invalid.token"))
+        return true
+    }
+    return recoverBadOperandToken(runtime, level)
+}
 
 private fun SyntaxTreeBuilder.recoverBadToken(messageKey: String): Boolean {
     val signed = tokenType in signs && lookAhead(1) == BAD_CHARACTER &&
