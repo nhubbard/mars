@@ -60,10 +60,6 @@ class MarsContext @Inject constructor(
     @Volatile var isClosing: Boolean = false
         private set
 
-    init {
-        settings.setBackstepStatus { program != null && backStepper.enabled() }
-    }
-
     /** Requests an interrupt to be handled at the next instruction boundary. */
     fun requestExternalInterrupt(cause: Int) {
         interrupt.set(cause)

@@ -32,13 +32,6 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /** The built-in memory layouts and their reset addresses. */
 open class MemoryConfigurations {
-    fun getDefaultDataSegmentLimitAddress(): Int = getDefaultConfiguration().dataSegmentLimitAddress
-    fun getDefaultTextLimitAddress(): Int = getDefaultConfiguration().textLimitAddress
-    fun getDefaultKernelDataSegmentLimitAddress(): Int = getDefaultConfiguration().kernelDataSegmentLimitAddress
-    fun getDefaultKernelTextLimitAddress(): Int = getDefaultConfiguration().kernelTextLimitAddress
-    fun getDefaultStackLimitAddress(): Int = getDefaultConfiguration().stackLimitAddress
-    fun getMemoryMapLimitAddress(): Int = getDefaultConfiguration().memoryMapLimitAddress
-
     companion object {
         private val configurationItemNames = arrayOf(
             ".text base address",
@@ -153,14 +146,6 @@ open class MemoryConfigurations {
             (layouts.firstOrNull { it.id == identifier } ?: layouts.first()).snapshot()
 
         @JvmStatic
-        fun buildConfigurationCollection() {
-            configurations
-        }
-
-        @JvmStatic
-        fun getConfigurationsIterator(): Iterator<MemoryConfiguration> = configurations.iterator()
-
-        @JvmStatic
         fun getConfigurationByName(name: String): MemoryConfiguration? =
             configurations.firstOrNull { it.configurationIdentifier() == name }
 
@@ -171,46 +156,9 @@ open class MemoryConfigurations {
         fun getDefaultTextBaseAddress(): Int = getDefaultConfiguration().textBaseAddress
 
         @JvmStatic
-        fun getDefaultDataSegmentBaseAddress(): Int = getDefaultConfiguration().dataSegmentBaseAddress
-
-        @JvmStatic
-        fun getDefaultExternBaseAddress(): Int = getDefaultConfiguration().externBaseAddress
-
-        @JvmStatic
         fun getDefaultGlobalPointer(): Int = getDefaultConfiguration().globalPointer
 
         @JvmStatic
-        fun getDefaultDataBaseAddress(): Int = getDefaultConfiguration().dataBaseAddress
-
-        @JvmStatic
-        fun getDefaultHeapBaseAddress(): Int = getDefaultConfiguration().heapBaseAddress
-
-        @JvmStatic
         fun getDefaultStackPointer(): Int = getDefaultConfiguration().stackPointer
-
-        @JvmStatic
-        fun getDefaultStackBaseAddress(): Int = getDefaultConfiguration().stackBaseAddress
-
-        @JvmStatic
-        fun getDefaultUserHighAddress(): Int = getDefaultConfiguration().userHighAddress
-
-        @JvmStatic
-        fun getDefaultKernelBaseAddress(): Int = getDefaultConfiguration().kernelBaseAddress
-
-        @JvmStatic
-        fun getDefaultKernelTextBaseAddress(): Int = getDefaultConfiguration().kernelTextBaseAddress
-
-        @JvmStatic
-        fun getDefaultExceptionHandlerAddress(): Int = getDefaultConfiguration().exceptionHandlerAddress
-
-        @JvmStatic
-        fun getDefaultKernelDataBaseAddress(): Int = getDefaultConfiguration().kernelDataBaseAddress
-
-        @JvmStatic
-        fun getDefaultMemoryMapBaseAddress(): Int = getDefaultConfiguration().memoryMapBaseAddress
-
-        @JvmStatic
-        fun getDefaultKernelHighAddress(): Int = getDefaultConfiguration().kernelHighAddress
-
     }
 }

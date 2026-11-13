@@ -1,7 +1,5 @@
 package edu.missouristate.mars.mips.instructions
 
-import java.util.Locale
-
 /*
 Copyright (c) 2003-2013,  Pete Sanderson and Kenneth Vollmar
 
@@ -68,12 +66,6 @@ open class InstructionSet {
 
     open fun matchOperator(name: String?): ArrayList<Instruction>? =
         forms.filterTo(ArrayList()) { it.name.equals(name, ignoreCase = true) }.takeIf { it.isNotEmpty() }
-
-    open fun prefixMatchOperator(name: String?): ArrayList<Instruction>? {
-        val locale = Locale.getDefault()
-        val prefix = name?.lowercase(locale) ?: return null
-        return instructionList.filterTo(ArrayList()) { it.name.lowercase(locale).startsWith(prefix) }.takeIf { it.isNotEmpty() }
-    }
 
     private data class MatchMap(val mask: Int, val instructions: Map<Int, BasicInstruction>)
 }

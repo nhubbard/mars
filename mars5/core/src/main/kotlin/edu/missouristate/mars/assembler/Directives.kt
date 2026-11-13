@@ -1,7 +1,5 @@
 package edu.missouristate.mars.assembler
 
-import java.util.Locale
-
 /*
 Copyright (c) 2003-2012,  Pete Sanderson and Kenneth Vollmar
 
@@ -64,14 +62,6 @@ class Directives private constructor(val name: String, val description: String) 
         @JvmStatic
         fun matchDirective(text: String): Directives? =
             directiveList.firstOrNull { text.equals(it.name, ignoreCase = true) }
-
-        @JvmStatic
-        fun prefixMatchDirectives(text: String): ArrayList<Directives>? {
-            val locale = Locale.getDefault()
-            val prefix = text.lowercase(locale)
-            return directiveList.filterTo(ArrayList()) { it.name.lowercase(locale).startsWith(prefix) }
-                .takeIf { it.isNotEmpty() }
-        }
 
         @JvmStatic
         fun getDirectiveList(): ArrayList<Directives> = directiveList

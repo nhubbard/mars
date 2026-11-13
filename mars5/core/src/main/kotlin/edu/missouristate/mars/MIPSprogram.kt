@@ -125,8 +125,6 @@ open class MIPSprogram @JvmOverloads constructor(
     open val backStepper: BackStepper?
         get() = if (session.program === this) assemblyBackStepper else null
 
-    open fun backSteppingEnabled(): Boolean = backStepper?.enabled() == true
-
     /** Returns a source line using one-based numbering. */
     open fun getSourceLine(line: Int): String? = if (line < 1) null else writtenLines!!.getOrNull(line - 1)
 

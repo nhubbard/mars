@@ -93,7 +93,6 @@ class PngDecoderTest {
         var settings = new Settings();
         settings.getSimulationSettings().setMemoryConfiguration("Default")
             .setDelayedBranchingEnabled(delayedBranches).setExtendedAssemblerEnabled(true);
-        settings.setBackstepStatus(() -> false);
         var output = new ByteArrayOutputStream();
         try (var session = DaggerMarsComponent.builder().coreModule(new CoreModule(settings, 32)).guiProxy(HEADLESS).build().context();
              var console = new PrintStream(output, true, StandardCharsets.UTF_8);

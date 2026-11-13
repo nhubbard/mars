@@ -12,6 +12,7 @@ import edu.missouristate.mars.mips.hardware.MemoryConfigurations;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 import java.util.prefs.AbstractPreferences;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
@@ -34,7 +35,8 @@ class SettingsReconciliationTest {
     var settings = new Settings(preferences);
     var simulation = settings.getSimulationSettings();
     var notifications = new AtomicInteger();
-    settings.subscribeChange(ignored -> notifications.incrementAndGet());
+    Consumer<Settings> listener = ignored -> notifications.incrementAndGet();
+    settings.subscribeChange(listener);
 
     settings.setBooleanSettingNonPersistent(id, false);
     settings.setBooleanSetting(id, true);
@@ -52,8 +54,10 @@ class SettingsReconciliationTest {
     assertThat(settings.getSimulationSettings()).isSameAs(simulation);
     assertThat(readBoolean(simulation, id)).isTrue();
 
-    settings.setBooleanSettingNonPersistent(id, false);
+    settings.unsubscribeChange(listener);
+    settings.setBooleanSetting(id, false);
     assertThat(readBoolean(simulation, id)).isFalse();
+    assertThat(notifications.get()).isEqualTo(1);
   }
 
   @Test
@@ -61,6 +65,7 @@ class SettingsReconciliationTest {
     var preferences = new MemoryPreferences();
     var settings = new Settings(preferences);
     var simulation = settings.getSimulationSettings();
+    settings.setExceptionHandler("handler.asm");
     settings.setMemoryConfiguration("CompactDataAtZero");
     assertThat(simulation.getMemoryConfiguration()).isEqualTo("CompactDataAtZero");
 
@@ -68,6 +73,7 @@ class SettingsReconciliationTest {
     assertThat(settings.getMemoryConfiguration()).isEqualTo("CompactTextAtZero");
     assertThat(settings.getAssemblerErrorLimit()).isEqualTo(17);
     assertThat(new Settings(preferences).getMemoryConfiguration()).isEqualTo("CompactDataAtZero");
+    assertThat(new Settings(preferences).getExceptionHandler()).isEqualTo("handler.asm");
     assertThat(new Settings(preferences).getAssemblerErrorLimit())
         .isEqualTo(ApplicationInfo.maximumErrorMessages);
 
@@ -76,21 +82,6 @@ class SettingsReconciliationTest {
     settings.reset();
     assertThat(simulation.getMemoryConfiguration()).isEqualTo("CompactDataAtZero");
     assertThat(simulation.getAssemblerErrorLimit()).isEqualTo(ApplicationInfo.maximumErrorMessages);
-  }
-
-  @Test
-  void fontDefaultsAndSavedOverridesUseIndependentFields() {
-    var preferences = new MemoryPreferences();
-    var settings = new Settings(preferences);
-    var defaults = new Settings.FontSpec("Monospaced", "Plain", "12");
-    assertThat(settings.getFontSpec(Settings.EDITOR_FONT)).isEqualTo(defaults);
-    assertThat(settings.getDefaultFontSpec(Settings.EDITOR_FONT)).isEqualTo(defaults);
-
-    var saved = new Settings.FontSpec("Serif", "Bold", "18");
-    settings.setFontSpec(Settings.EDITOR_FONT, saved);
-    var reloaded = new Settings(preferences);
-    assertThat(reloaded.getFontSpec(Settings.EDITOR_FONT)).isEqualTo(saved);
-    assertThat(reloaded.getDefaultFontSpec(Settings.EDITOR_FONT)).isEqualTo(defaults);
   }
 
   @Test

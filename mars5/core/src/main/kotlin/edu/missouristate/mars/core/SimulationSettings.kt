@@ -10,7 +10,6 @@ import edu.missouristate.mars.Settings.Companion.SELF_MODIFYING_CODE_ENABLED
 import edu.missouristate.mars.Settings.Companion.START_AT_MAIN
 import edu.missouristate.mars.Settings.Companion.WARNINGS_ARE_ERRORS
 import edu.missouristate.mars.api.MarsSettings
-import java.util.function.BooleanSupplier
 
 /** Live session settings with optional preference ownership and independent in-memory defaults. */
 class SimulationSettings : MarsSettings {
@@ -30,10 +29,6 @@ class SimulationSettings : MarsSettings {
 
     constructor(settings: Settings) {
         settingsOwner = settings
-    }
-
-    fun setBackstepStatus(status: BooleanSupplier?) {
-        settingsOwner?.setBackstepStatus(status)
     }
 
     fun displayAddressesInHex(): Boolean = settingsOwner?.getBooleanSetting(DISPLAY_ADDRESSES_IN_HEX) ?: true
