@@ -108,16 +108,20 @@ public final class MarsCli {
               simulationErrorExitCode = simulationStatus;
             } else if (arg.startsWith("$")) {
               report.requireRegister(arg, session);
-            } else if (!arg.startsWith("-") && Files.isRegularFile(Path.of(arg))) {
-              files.add(Path.of(arg));
-            } else if (number != null) {
-              maximumSteps = number;
-            } else if (MemoryAddressRange.hasAddressPrefix(arg)) {
-              report.addRange(arg);
-            } else if (arg.startsWith("-")) {
-              throw new IllegalArgumentException("Unknown option: " + arg);
-            } else if (!report.tryAddRegister(arg, session)) {
-              files.add(Path.of(arg));
+            } else {
+              boolean optionLike = arg.startsWith("-");
+              Path path = optionLike ? null : Path.of(arg);
+              if (path != null && Files.isRegularFile(path)) {
+                files.add(path);
+              } else if (number != null) {
+                maximumSteps = number;
+              } else if (MemoryAddressRange.hasAddressPrefix(arg)) {
+                report.addRange(arg);
+              } else if (optionLike) {
+                throw new IllegalArgumentException("Unknown option: " + arg);
+              } else if (!report.tryAddRegister(arg, session)) {
+                files.add(path);
+              }
             }
           }
         }

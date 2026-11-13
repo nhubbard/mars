@@ -23,6 +23,8 @@ final class CliMachineReport {
   boolean brief;
   boolean countInstructions;
 
+  // Both callers handle the failed lookup. A successful lookup records the selected register.
+  @SuppressWarnings("BooleanMethodIsAlwaysInverted")
   boolean tryAddRegister(String name, MarsContext session) {
     String label = name.startsWith("$") ? name : "$" + name;
     if (label.length() == 1 || label.equals("$f")) {
