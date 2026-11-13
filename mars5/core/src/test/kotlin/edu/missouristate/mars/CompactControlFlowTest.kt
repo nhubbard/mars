@@ -14,6 +14,49 @@ import org.junit.jupiter.params.provider.ValueSource
 class CompactControlFlowTest {
     @ParameterizedTest
     @ValueSource(booleans = [false, true])
+    fun `compare branches share encodings without changing the legacy branches`(delayed: Boolean, @TempDir directory: Path) {
+        val source = Files.writeString(directory.resolve("compare.s"), $$"""
+            bgezc $t0,back
+            addiu $t2,$t2,1
+            back: bltzc $t0,next
+            addiu $t3,$t3,1
+            next: bnec $t1,$t0,done
+            addiu $t4,$t4,1
+            done: nop
+        """.trimIndent())
+        TestSessions.create().use { machine ->
+            machine.settings.setDelayedBranchingEnabled(delayed)
+            val program = machine.assemble(listOf(source))
+            machine.editIntegerRegister(8, -1)
+            assertTrue(program.simulate(8))
+            assertEquals(listOf(1, 0, 0), (10..12).map(machine.registerFile::getValueNoNotify))
+            assertEquals(0x61090001, program.machineList!![4].binaryStatement)
+            assertEquals("blez", machine.instructionSet.findByBinaryCode(0x19000001)?.name)
+            assertEquals("bgtz", machine.instructionSet.findByBinaryCode(0x1d000001)?.name)
+            assertEquals("addi", machine.instructionSet.findByBinaryCode(0x212a0001)?.name)
+            val backward = ProgramStatement(0x5908fffe, machine.memory.textBaseAddress, machine.instructionSet)
+            assertEquals("bgezc", backward.instruction?.name)
+            assertEquals(8, backward.operands[0])
+            assertEquals(-2, backward.operands[1])
+        }
+    }
+
+    @Test
+    fun `compact register comparisons reject ambiguous register fields`(@TempDir directory: Path) {
+        val source = Files.writeString(directory.resolve("ambiguous.s"), $$"""
+            bgec $t1,$t1,done
+            bltuc $zero,$t2,done
+            bgtzc $zero,done
+            done: nop
+        """.trimIndent())
+        TestSessions.create().use { machine ->
+            val failure = assertThrows(ProcessingException::class.java) { machine.assemble(listOf(source)) }
+            assertEquals(3, failure.errors()!!.generateErrorReport().lineSequence().count { "distinct nonzero registers" in it })
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = [false, true])
     fun `compact zero branches use full operands and no delay slots`(delayed: Boolean, @TempDir directory: Path) {
         val source = Files.writeString(directory.resolve("zero.s"), $$"""
             beqzc $t0,skip

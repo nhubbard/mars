@@ -206,3 +206,12 @@ InstrRelease6Float	maxa.s $f2,$f4,$f6	4606209f
 InstrRelease6Float	maxa.d $f2,$f4,$f6	4626209f
 InstrCompactZeroBranch	beqzc $t1,label	d9200000
 InstrCompactZeroBranch	bnezc $t1,label	f9200000
+InstrCompactCompareBranch	blezc $t1,label	58090000
+InstrCompactCompareBranch	bgezc $t1,label	59290000
+InstrCompactCompareBranch	bgtzc $t1,label	5c090000
+InstrCompactCompareBranch	bltzc $t1,label	5d290000
+InstrCompactCompareBranch	bgec $t1,$t2,label	592a0000
+InstrCompactCompareBranch	bltc $t1,$t2,label	5d2a0000
+InstrCompactCompareBranch	bgeuc $t1,$t2,label	192a0000
+InstrCompactCompareBranch	bltuc $t1,$t2,label	1d2a0000
+InstrCompactCompareBranch	bnec $t1,$t2,label	612a0000

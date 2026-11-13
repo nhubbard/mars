@@ -50,11 +50,11 @@ open class InstructionSet {
         forms.addAll(loader.loadExtendedInstructions(this))
         forms.forEach { it.createExampleTokenList(this) }
 
-        val matchesByMask = HashMap<Int, HashMap<Int, BasicInstruction>>()
+        val matchesByMask = HashMap<Int, HashMap<Int, MutableList<BasicInstruction>>>()
         for (instruction in forms) {
             if (instruction is BasicInstruction) {
                 val matches = matchesByMask.getOrPut(instruction.opcodeMask) { HashMap() }
-                matches[instruction.opcodeMatch] = instruction
+                matches.getOrPut(instruction.opcodeMatch, ::ArrayList).add(instruction)
             }
         }
         // Decode the most specific mask first. Keep the original tie-breaking order.
@@ -67,8 +67,12 @@ open class InstructionSet {
 
     open fun findByBinaryCode(binaryInstr: Int): BasicInstruction? {
         for ((mask, matches) in opcodeMatchMaps) {
-            val instruction = matches[binaryInstr and mask]
-            if (instruction != null && instruction.acceptsEncoding(binaryInstr)) return instruction
+            val instructions = matches[binaryInstr and mask] ?: continue
+            // Preserve the existing last-registration precedence for identical masks.
+            for (index in instructions.lastIndex downTo 0) {
+                val instruction = instructions[index]
+                if (instruction.acceptsEncoding(binaryInstr)) return instruction
+            }
         }
         return null
     }
@@ -76,5 +80,5 @@ open class InstructionSet {
     open fun matchOperator(name: String?): ArrayList<Instruction>? =
         forms.filterTo(ArrayList()) { it.name.equals(name, ignoreCase = true) }.takeIf { it.isNotEmpty() }
 
-    private data class MatchMap(val mask: Int, val instructions: Map<Int, BasicInstruction>)
+    private data class MatchMap(val mask: Int, val instructions: Map<Int, List<BasicInstruction>>)
 }

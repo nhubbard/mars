@@ -185,6 +185,12 @@ class BasicInstructionSemanticsTest {
                 assertThat(s.registerFile.getValue(31)).isEqualTo(pc + 4);
               }
             };
+      } else if (base.equals("CompactCompareBranch")) {
+        String mnemonic = instruction.getName();
+        boolean zero = Set.of("blezc", "bgezc", "bgtzc", "bltzc").contains(mnemonic);
+        boolean taken = !Set.of("blezc", "bltzc", "bltc", "bltuc").contains(mnemonic);
+        operands = zero ? new int[] {2, 4} : new int[] {2, 4, 4};
+        verify = s -> assertThat(s.registerFile.getPC()).isEqualTo(pc + (taken ? 20 : 4));
       } else if (base.equals("CompactZeroBranch")) {
         registers.updateRegister(2, instruction.getName().equals("beqzc") ? 0 : 1);
         operands = new int[] {2, 4};
