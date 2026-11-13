@@ -56,7 +56,7 @@ class MarsReferencePlatformTest {
         assertTrue(credits.contains("Mohammad Sekhavat"))
         assertTrue(history.contains("Release 4.5"))
         val tags = Regex("<\\s*/?([a-z][a-z0-9]*)\\b", RegexOption.IGNORE_CASE)
-        val allowed = setOf("b", "br", "center", "em", "font", "h3", "h4", "hr", "i", "li", "p", "tt", "ul")
+        val allowed = setOf("b", "br", "code", "div", "em", "h3", "h4", "hr", "i", "li", "p", "small", "ul")
         assertTrue(tags.findAll(credits + history).all { it.groupValues[1].lowercase() in allowed })
         for ((title, filename) in mapOf(
             "Original MARS license" to "MARSlicense.txt",
