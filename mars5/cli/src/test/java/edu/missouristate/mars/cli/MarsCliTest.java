@@ -440,7 +440,7 @@ class MarsCliTest {
     Files.writeString(source, "li $a0,42\nli $v0,1\nsyscall\nloop: b loop\n");
     var output = new ByteArrayOutputStream() {
       @Override
-      public synchronized void write(@NotNull byte[] bytes, int start, int length) {
+      public synchronized void write(byte @NotNull [] bytes, int start, int length) {
         super.write(bytes, start, length);
         Thread.currentThread().interrupt();
       }
