@@ -251,7 +251,13 @@ open class ProgramStatement private constructor(
             values[0] = values[0] ushr 2
             insertBinaryCode(values[0], Instruction.operandMask[0], errors)
         } else {
-            for (index in 0 until numOperands) insertBinaryCode(values[index], Instruction.operandMask[index], errors)
+            val encoded = try {
+                basic.encodeOperands(values)
+            } catch (failure: IllegalArgumentException) {
+                errors.add(ErrorMessage(this, failure.message))
+                return
+            }
+            for (index in 0 until numOperands) insertBinaryCode(encoded[index], Instruction.operandMask[index], errors)
         }
         binaryStatement = Binary.binaryStringToInt(machineStatement!!)
     }
@@ -270,7 +276,7 @@ open class ProgramStatement private constructor(
     private fun decodeOperands(instruction: BasicInstruction, binary: Int, address: Int) {
         val mask = instruction.operationMask
         val values = operandValues!!
-        for (code in "fst") {
+        for (code in Instruction.operandMask) {
             val first = mask.indexOf(code)
             if (first < 0) continue
             val low = 31 - mask.lastIndexOf(code)
@@ -283,6 +289,7 @@ open class ProgramStatement private constructor(
             }
             values[numOperands++] = operand
         }
+        instruction.decodeOperands(values)
     }
 
     private fun describeDecodedInstruction(instruction: BasicInstruction) {

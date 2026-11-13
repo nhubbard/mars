@@ -59,6 +59,6 @@ abstract class Instruction(
         const val INSTRUCTION_LENGTH_BITS = 32
 
         /** Operand markers for the first, second, and third operands in an operation mask. */
-        @JvmField val operandMask = charArrayOf('f', 's', 't')
+        @JvmField val operandMask = charArrayOf('f', 's', 't', 'u')
     }
 }

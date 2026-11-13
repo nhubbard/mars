@@ -65,7 +65,7 @@ open class InstructionSet {
     open fun findByBinaryCode(binaryInstr: Int): BasicInstruction? {
         for ((mask, matches) in opcodeMatchMaps) {
             val instruction = matches[binaryInstr and mask]
-            if (instruction != null) return instruction
+            if (instruction != null && instruction.acceptsEncoding(binaryInstr)) return instruction
         }
         return null
     }

@@ -74,6 +74,9 @@ class BasicInstructionSemanticsTest {
             case "Sllv" -> 80;
             case "Srlv", "Srav" -> 1;
             case "Mul" -> 30;
+            case "Aui" -> 0x0004000a;
+            case "Rotr" -> 0xa0000000;
+            case "Rotrv" -> 0x40000001;
             case "Seleqz" -> 0;
             case "Selnez" -> 10;
             default -> null;
@@ -114,6 +117,19 @@ class BasicInstructionSemanticsTest {
         operands = new int[] {8, 2};
         registers.updateRegister(2, base.equals("Clo") ? 0xff000000 : 0x00ffffff);
         verify = s -> assertThat(s.registerFile.getValue(8)).isEqualTo(8);
+      } else if (Set.of("Align", "Lsa", "Ext", "Ins").contains(base)) {
+        registers.updateRegister(2, 0xaabbccdd);
+        registers.updateRegister(4, 0x11223344);
+        registers.updateRegister(8, 0x12345678);
+        boolean field = base.equals("Ext") || base.equals("Ins");
+        operands = field ? new int[] {8, 2, 4, 8} : new int[] {8, 2, 4, 2};
+        int expected = switch (base) {
+          case "Align" -> 0x3344aabb;
+          case "Lsa" -> 0xbc1166b8;
+          case "Ext" -> 0xcd;
+          default -> 0x12345dd8;
+        };
+        verify = s -> assertThat(s.registerFile.getValue(8)).isEqualTo(expected);
       } else if (Set.of("Bitswap", "Seb", "Seh", "Wsbh").contains(base)) {
         operands = new int[] {8, 2};
         registers.updateRegister(2, 0x0123a5e7);

@@ -8,8 +8,10 @@ import edu.missouristate.mars.mips.instructions.basic.InstrAddS
 import edu.missouristate.mars.mips.instructions.basic.InstrAddi
 import edu.missouristate.mars.mips.instructions.basic.InstrAddiu
 import edu.missouristate.mars.mips.instructions.basic.InstrAddu
+import edu.missouristate.mars.mips.instructions.basic.InstrAlign
 import edu.missouristate.mars.mips.instructions.basic.InstrAnd
 import edu.missouristate.mars.mips.instructions.basic.InstrAndi
+import edu.missouristate.mars.mips.instructions.basic.InstrAui
 import edu.missouristate.mars.mips.instructions.basic.InstrBc1f1
 import edu.missouristate.mars.mips.instructions.basic.InstrBc1f2
 import edu.missouristate.mars.mips.instructions.basic.InstrBc1t1
@@ -52,8 +54,10 @@ import edu.missouristate.mars.mips.instructions.basic.InstrDivD
 import edu.missouristate.mars.mips.instructions.basic.InstrDivS
 import edu.missouristate.mars.mips.instructions.basic.InstrDivu
 import edu.missouristate.mars.mips.instructions.basic.InstrEret
+import edu.missouristate.mars.mips.instructions.basic.InstrExt
 import edu.missouristate.mars.mips.instructions.basic.InstrFloorWD
 import edu.missouristate.mars.mips.instructions.basic.InstrFloorWS
+import edu.missouristate.mars.mips.instructions.basic.InstrIns
 import edu.missouristate.mars.mips.instructions.basic.InstrJ
 import edu.missouristate.mars.mips.instructions.basic.InstrJal
 import edu.missouristate.mars.mips.instructions.basic.InstrJalr1
@@ -65,6 +69,7 @@ import edu.missouristate.mars.mips.instructions.basic.InstrLdc1
 import edu.missouristate.mars.mips.instructions.basic.InstrLh
 import edu.missouristate.mars.mips.instructions.basic.InstrLhu
 import edu.missouristate.mars.mips.instructions.basic.InstrLl
+import edu.missouristate.mars.mips.instructions.basic.InstrLsa
 import edu.missouristate.mars.mips.instructions.basic.InstrLui
 import edu.missouristate.mars.mips.instructions.basic.InstrLw
 import edu.missouristate.mars.mips.instructions.basic.InstrLwc1
@@ -113,6 +118,8 @@ import edu.missouristate.mars.mips.instructions.basic.InstrNop
 import edu.missouristate.mars.mips.instructions.basic.InstrNor
 import edu.missouristate.mars.mips.instructions.basic.InstrOr
 import edu.missouristate.mars.mips.instructions.basic.InstrOri
+import edu.missouristate.mars.mips.instructions.basic.InstrRotr
+import edu.missouristate.mars.mips.instructions.basic.InstrRotrv
 import edu.missouristate.mars.mips.instructions.basic.InstrRoundWD
 import edu.missouristate.mars.mips.instructions.basic.InstrRoundWS
 import edu.missouristate.mars.mips.instructions.basic.InstrSb
@@ -240,6 +247,13 @@ internal val basicInstructionFactories: List<() -> BasicInstruction> = listOf(
     ::InstrSh,
     ::InstrClo,
     ::InstrClz,
+    ::InstrLsa,
+    ::InstrIns,
+    ::InstrExt,
+    ::InstrAlign,
+    ::InstrRotrv,
+    ::InstrRotr,
+    ::InstrAui,
     ::InstrBitswap,
     ::InstrSeb,
     ::InstrSeh,

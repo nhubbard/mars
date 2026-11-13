@@ -37,7 +37,7 @@ open class BasicInstruction(
     operMask: String,
     open val simulationCode: SimulationCode,
 ) : Instruction(example, description) {
-    /** Fixed bits are 0 or 1, operand bits are f/s/t, and ignored bits are c. */
+    /** Fixed bits are 0 or 1, operand bits are f/s/t/u, and ignored bits are c. */
     private val mask = operMask.replace(" ", "")
     open val operationMask: String get() = mask
 
@@ -52,6 +52,13 @@ open class BasicInstruction(
 
     /** The required bit values at the fixed positions. */
     open val opcodeMatch: Int = mask.replace(nonOne, "0").toLong(2).toInt()
+
+    /** Allows an instruction to encode fields that differ from its written operands. */
+    internal open fun encodeOperands(values: IntArray): IntArray = values
+
+    internal open fun decodeOperands(values: IntArray) = Unit
+
+    internal open fun acceptsEncoding(word: Int): Boolean = true
 
     private companion object {
         val fixedBit = Regex("[01]")

@@ -163,3 +163,10 @@ InstrSeh	seh $t1,$t2	7c0a4e20
 InstrWsbh	wsbh $t1,$t2	7c0a48a0
 InstrSeleqz	seleqz $t1,$t2,$t3	014b4835
 InstrSelnez	selnez $t1,$t2,$t3	014b4837
+InstrAui	aui $t1,$t2,100	3d490064
+InstrRotr	rotr $t1,$t2,10	002a4a82
+InstrRotrv	rotrv $t1,$t2,$t3	016a4846
+InstrAlign	align $t1,$t2,$t3,2	7d4b4aa0
+InstrLsa	lsa $t1,$t2,$t3,4	014b48c5
+InstrExt	ext $t1,$t2,4,8	7d493900
+InstrIns	ins $t1,$t2,4,8	7d495904
