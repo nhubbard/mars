@@ -1518,7 +1518,7 @@ No resource is discarded without checking its consumers and preserving the relev
 | [core/Config.properties](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/resources/Config.properties) | S07: retain and map typed defaults |
 | [core/PseudoOps.txt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/resources/PseudoOps.txt) | C04: retain canonical metadata |
 | [core/Settings.properties](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/resources/Settings.properties) | S07: retain and map typed defaults |
-| [core/edu/missouristate/mars/instructions/basic-instructions.list](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/resources/edu/missouristate/mars/instructions/basic-instructions.list) | C04: retain canonical metadata |
+| [BasicInstructionCatalog.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/kotlin/edu/missouristate/mars/mips/instructions/BasicInstructionCatalog.kt) | C04: retain canonical metadata |
 | [AluControlDatapath.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/datapath/src/main/java/edu/missouristate/mars/datapath/AluControlDatapath.java) | T12 compiled ALU control diagram |
 | [shared/MARSlicense.txt](/Users/nhubbard/IdeaProjects/mars-original/mars5/shared/MARSlicense.txt) | H01: preserve the original desktop license in the core and plugin distributions |
 | [MainDatapath.java](/Users/nhubbard/IdeaProjects/mars-original/mars5/datapath/src/main/java/edu/missouristate/mars/datapath/MainDatapath.java) | T12 compiled processor datapath and mnemonic lookups |

@@ -7,19 +7,7 @@ import java.util.StringTokenizer
 
 /** Loads the basic instruction catalog and pseudo-instruction templates. */
 class InstructionLoader {
-    fun loadBasicInstructions(): List<BasicInstruction> = try {
-        resource(BASIC).useLines { lines ->
-            copyOf(lines.filter { it.isNotBlank() && !it.startsWith("#") }.map { line ->
-                val type = Class.forName("edu.missouristate.mars.mips.instructions.basic." + line.trim { it <= ' ' })
-                    .asSubclass(BasicInstruction::class.java)
-                type.getDeclaredConstructor().newInstance()
-            }.toList())
-        }
-    } catch (failure: IOException) {
-        throw IllegalStateException("Unable to load basic instruction catalog", failure)
-    } catch (failure: ReflectiveOperationException) {
-        throw IllegalStateException("Unable to load basic instruction catalog", failure)
-    }
+    fun loadBasicInstructions(): List<BasicInstruction> = copyOf(basicInstructionFactories.map { it() })
 
     fun loadExtendedInstructions(owner: InstructionSet): List<ExtendedInstruction> = try {
         resource("/PseudoOps.txt").useLines { lines ->
@@ -67,9 +55,5 @@ class InstructionLoader {
         val input = InstructionLoader::class.java.getResourceAsStream(path)
             ?: throw IllegalStateException("Missing instruction resource: $path")
         return input.bufferedReader(Charsets.UTF_8)
-    }
-
-    private companion object {
-        const val BASIC = "/edu/missouristate/mars/instructions/basic-instructions.list"
     }
 }
