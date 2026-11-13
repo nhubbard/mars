@@ -68,6 +68,14 @@ trace an assembly-only invocation. Use `me` to keep trace output separate from p
 For embedding, use `MarsComponent.assembler()`, `simulator()`, `memory()`, and `registerFile()`;
 close the owning `MarsContext` when finished. The core has no desktop or IntelliJ dependency.
 
+## Grade assembly assignments
+
+Use `mars grade assignment1.kts submission.s` to run instructor-authored checks against a
+student's assembly. The [assignment example](examples/assignment) includes a Kotlin script,
+a sample submission, and an IntelliJ Run configuration. See the
+[assignment setup guide](examples/assignment/README.md) for Kotlin completion, grading from
+Gradle or GitHub Classroom, and checking script registration.
+
 ## Architecture target
 
 MARS32 is the default. Select **MARS64** under **Settings → Build, Execution, Deployment →

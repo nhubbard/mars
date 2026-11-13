@@ -12,20 +12,31 @@ kotlin {
 
 val marsCli = providers.gradleProperty("marsCliJar")
     .orElse("../../mars5/cli/build/libs/cli-1.0-SNAPSHOT.jar")
-val assignment = layout.projectDirectory.file("assignment1.kts")
-val submission = layout.projectDirectory.file("submission.s")
+val cliJar = file(marsCli.get())
+val assignment = file(providers.gradleProperty("assignment").getOrElse("assignment1.kts"))
+val submission = file(providers.gradleProperty("submission").getOrElse("submission.s"))
 
 dependencies {
-    implementation(files(marsCli))
+    implementation(files(cliJar))
+}
+
+val verifyMarsCli = tasks.register("verifyMarsCli") {
+    doLast {
+        check(cliJar.isFile) {
+            "MARS CLI JAR is missing at $cliJar. Build it from the MARS repository root " +
+                "with ./mars5/gradlew -p mars5 :cli:jar or set marsCliJar in gradle.properties."
+        }
+    }
 }
 
 tasks.register<JavaExec>("gradeAssignment") {
     group = "verification"
-    description = "Grades the sample assembly submission."
+    description = "Grades an assembly submission with a MARS Kotlin assignment."
+    dependsOn(verifyMarsCli)
     javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
-    classpath = files(marsCli)
+    classpath = files(cliJar)
     mainClass = "edu.missouristate.mars.cli.MarsCli"
-    args("grade", assignment.asFile.absolutePath, submission.asFile.absolutePath)
+    args("grade", assignment.absolutePath, submission.absolutePath)
 }
 
 tasks.check { dependsOn("gradeAssignment") }
