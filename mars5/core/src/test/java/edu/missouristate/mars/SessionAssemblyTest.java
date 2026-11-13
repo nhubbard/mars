@@ -14,6 +14,7 @@ import edu.missouristate.mars.api.InstructionSourceMap.Location;
 import edu.missouristate.mars.api.InstructionSourceMap.Origin;
 import edu.missouristate.mars.api.MarsGuiProxy;
 import edu.missouristate.mars.assembler.Assembler;
+import edu.missouristate.mars.assembler.Macro;
 import edu.missouristate.mars.assembler.SourceLine;
 import edu.missouristate.mars.assembler.SymbolTable;
 import edu.missouristate.mars.assembler.Token;
@@ -53,6 +54,19 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 class SessionAssemblyTest {
   @TempDir Path directory;
+
+  @Test
+  void macrosWithTheSameNameAndArityHaveEqualHashes() {
+    var first = new Macro();
+    first.setName("emit");
+    first.addArg("%value");
+    var second = new Macro();
+    second.setName("emit");
+    second.addArg("%other");
+
+    assertThat(first).isEqualTo(second).hasSameHashCodeAs(second);
+    assertThat(Set.of(first)).contains(second);
+  }
 
   @Test
   void twoProgramsAssembleAndRunWithoutGlobalSimulationObjects() throws Exception {

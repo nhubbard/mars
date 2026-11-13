@@ -53,7 +53,7 @@ open class Macro {
     override fun equals(other: Any?): Boolean =
         other is Macro && other.name == name && other.args.size == args.size
 
-    override fun hashCode(): Int = super.hashCode()
+    override fun hashCode(): Int = 31 * name.hashCode() + args.size
 
     open fun addArg(value: String) {
         args.add(value)
