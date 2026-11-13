@@ -162,7 +162,7 @@ open class ExtendedInstruction @JvmOverloads constructor(
                     val token = tokens[position].value
                     val integer = context.integerRegister(token)
                     if (integer != null) {
-                        if (integer.number >= 0) instruction = instruction.replace("NR$position", "\$${integer.number + 1}")
+                        if (integer.number >= 0) instruction = instruction.replace("NR$position", "$${integer.number + 1}")
                     } else {
                         val floating = context.floatingRegisterNumber(token)
                         if (floating >= 0) instruction = instruction.replace("NR$position", "\$f${floating + 1}")

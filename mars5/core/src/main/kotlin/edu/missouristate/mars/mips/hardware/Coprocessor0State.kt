@@ -34,10 +34,10 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /** Owns one simulation's interrupt and exception registers. */
 class Coprocessor0State {
     val registers = arrayOf(
-        Register("\$8 (vaddr)", VADDR, 0),
-        Register("\$12 (status)", STATUS, DEFAULT_STATUS_VALUE),
-        Register("\$13 (cause)", CAUSE, 0),
-        Register("\$14 (epc)", EPC, 0),
+        Register("$8 (vaddr)", VADDR, 0),
+        Register("$12 (status)", STATUS, DEFAULT_STATUS_VALUE),
+        Register("$13 (cause)", CAUSE, 0),
+        Register("$14 (epc)", EPC, 0),
     )
     private val registerEvents = EventEmitter<RegisterAccessNotice>()
 
@@ -82,7 +82,7 @@ class Coprocessor0State {
     /** An architectural register number does not correspond to its index in this array. */
     fun getRegisterPosition(register: Register?): Int = registers.indexOfFirst { it === register }
 
-    fun getRegister(name: String?): Register? = registers.firstOrNull { it.name == name || "\$${it.number}" == name }
+    fun getRegister(name: String?): Register? = registers.firstOrNull { it.name == name || "$${it.number}" == name }
 
     fun resetRegisters() {
         registers.forEach(Register::resetValue)

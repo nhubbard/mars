@@ -23,11 +23,11 @@ object RegisterNames {
 
     @JvmStatic
     fun integerSpellings(): List<String> =
-        copyOf(integerBank.registers.flatMap { listOf(it.name, "\$${it.number}") })
+        copyOf(integerBank.registers.flatMap { listOf(it.name, "$${it.number}") })
 
     @JvmStatic
     fun floatingSpellings(): List<String> = copyOf(floatBank.registers.map(Register::name))
 
     @JvmStatic
-    fun coprocessor0Spellings(): List<String> = copyOf(systemBank.registers.map { "\$${it.number}" })
+    fun coprocessor0Spellings(): List<String> = copyOf(systemBank.registers.map { "$${it.number}" })
 }
