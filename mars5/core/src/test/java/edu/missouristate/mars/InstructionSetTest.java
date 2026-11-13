@@ -26,15 +26,15 @@ class InstructionSetTest {
 
   @BeforeAll
   static void initMars() {
-    var set = TestSessions.create().instructionSet;
-    ArrayList<Instruction> raw = set.getInstructionList();
-    allInstructions = new ArrayList<>(raw);
+    try (var session = TestSessions.create()) {
+      allInstructions = new ArrayList<>(session.instructionSet.getInstructionList());
+    }
     basicInstructions = new ArrayList<>();
     extendedInstructions = new ArrayList<>();
-    for (Object o : raw) {
-      if (o instanceof BasicInstruction b) {
+    for (Instruction instruction : allInstructions) {
+      if (instruction instanceof BasicInstruction b) {
         basicInstructions.add(b);
-      } else if (o instanceof ExtendedInstruction e) {
+      } else if (instruction instanceof ExtendedInstruction e) {
         extendedInstructions.add(e);
       }
     }
