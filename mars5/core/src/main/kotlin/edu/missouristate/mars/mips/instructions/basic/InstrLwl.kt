@@ -17,6 +17,8 @@ open class InstrLwl : BasicInstruction(
         val operands = statement.operands
         try {
             val address = context.registerFile.getValue(operands[2]) + operands[1]
+            // The byte merge reassigns result on each pass.
+            @Suppress("CanBeVal")
             var result = context.registerFile.getValue(operands[0])
             for (index in 0..(address % WORD_LENGTH_BYTES)) {
                 result = Binary.setByte(result, 3 - index, context.memory().getByte(address - index))
