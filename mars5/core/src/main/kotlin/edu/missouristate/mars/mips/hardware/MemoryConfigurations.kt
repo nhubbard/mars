@@ -62,7 +62,7 @@ open class MemoryConfigurations {
             0x10000000, // Data Segment base address
             0x10000000, // .extern Base Address
             0x10008000, // Global pointer ($gp)
-            0x10010000, // .data base Address
+            0x10010000, // start of .data
             0x10040000, // heap base address
             0x7fffeffc, // stack pointer $sp (from SPIM not MIPS)
             0x7ffffffc, // stack base address
@@ -86,7 +86,7 @@ open class MemoryConfigurations {
             0x00000000, // Data Segment base address
             0x00001000, // .extern Base Address
             0x00001800, // Global pointer ($gp)
-            0x00000000, // .data base Address
+            0x00000000, // start of .data
             0x00002000, // heap base address
             0x00002ffc, // stack pointer $sp
             0x00002ffc, // stack base address
@@ -110,7 +110,7 @@ open class MemoryConfigurations {
             0x00001000, // Data Segment base address
             0x00001000, // .extern Base Address
             0x00001800, // Global pointer ($gp)
-            0x00002000, // .data base Address
+            0x00002000, // start of .data
             0x00003000, // heap base address
             0x00003ffc, // stack pointer $sp
             0x00003ffc, // stack base address

@@ -51,15 +51,9 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //  computers soundcard using classes and methods of the javax.sound.midi
 //  package.
 //
-//  Max Hailperin <max@gustavus.edu> changed the interface of the
-//  ToneGenerator class 2009-10-19 in order to
-//  (1) provide a reliable way to wait for the completion of a
-//       synchronous tone,
-//  and while he was at it,
-//  (2) improve the efficiency of asynchronous tones by using a thread
-//      pool executor, and
-//  (3) simplify the interface by removing all the unused versions
-//       that provided default values for various parameters
+//  Max Hailperin <max@gustavus.edu> updated ToneGenerator on 2009-10-19.
+//  The update added a reliable way to wait for synchronous tones.
+//  It moved asynchronous tones to a thread pool and removed unused overloads.
 /////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 

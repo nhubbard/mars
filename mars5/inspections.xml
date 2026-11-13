@@ -19,4 +19,12 @@
       </value>
     </option>
   </inspection_tool>
+  <!-- Preserve distributed licenses, original acknowledgements, and historical release notes. -->
+  <inspection_tool class="GrazieInspection" enabled="true" level="GRAMMAR_ERROR" enabled_by_default="true">
+    <scope name="MARS preserved prose" level="GRAMMAR_ERROR" enabled="false"/>
+  </inspection_tool>
+  <inspection_tool class="GrazieStyle" enabled="true" level="STYLE_SUGGESTION" enabled_by_default="true">
+    <!-- The catalog embeds the original MIT license as plain-text comments. -->
+    <scope name="MARS preserved style" level="STYLE_SUGGESTION" enabled="false"/>
+  </inspection_tool>
 </profile>

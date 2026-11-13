@@ -17,10 +17,13 @@ and the [modernization plan](MODERNIZATION_PLAN.md) for the broader project.
 
 For IntelliJ development, open the `mars5` directory as a Gradle project. IntelliJ generates its
 local project settings in the Git-ignored `.idea` directory.
-Import `mars5/inspections.xml` under **Settings → Editor → Inspections** to use the shared
-inspection profile. It accepts the Kotlin string forms used for literal MIPS registers and allows
-public experimental IntelliJ APIs on the pinned IDE. Internal API and scheduled-removal checks
-remain enabled.
+Copy `mars5/inspection-preserved-prose.xml` and `mars5/inspection-pseudo-op-license.xml`
+into `mars5/.idea/scopes/`, then import
+`mars5/inspections.xml` under **Settings → Editor → Inspections**. The scope keeps grammar and
+style suggestions out of the distributed licenses and historical help pages. It also preserves the
+license wording embedded in the pseudo-op catalog. The profile accepts
+the Kotlin string forms used for literal MIPS registers and allows public experimental IntelliJ
+APIs on the pinned IDE. Internal API and scheduled-removal checks remain enabled.
 
 Build with JDK 25 and the Gradle wrapper:
 

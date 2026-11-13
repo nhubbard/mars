@@ -1,0 +1,3 @@
+<component name="DependencyValidationManager">
+  <scope name="MARS preserved prose" pattern="file[mars5.plugin]:licenses/Apache-2.0.txt||file:plugin/licenses/Apache-2.0.txt||file:licenses/Apache-2.0.txt||file:shared/MARSlicense.txt||file:shared/help/Acknowledgements.html||file:shared/help/MarsHelpHistory.html"/>
+</component>
