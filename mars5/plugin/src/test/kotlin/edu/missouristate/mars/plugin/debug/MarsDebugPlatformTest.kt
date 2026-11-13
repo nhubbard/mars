@@ -55,7 +55,6 @@ import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.limits.FileSizeLimit
-import com.intellij.openapi.wm.RegisterToolWindowTask
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
@@ -4964,7 +4963,7 @@ class MarsDebugPlatformTest {
             val (view, content, other) = withContext(Dispatchers.EDT) {
                 val manager = ToolWindowManager.getInstance(project)
                 val id = DefaultDebugExecutor.getDebugExecutorInstance().toolWindowId
-                val window = manager.getToolWindow(id) ?: manager.registerToolWindow(RegisterToolWindowTask(id))
+                val window = manager.getToolWindow(id) ?: manager.registerToolWindow(id) { hideOnEmptyContent = false }
                 fun attach(handler: MarsProcessHandler, number: Long) =
                     RunContentDescriptor(null, handler, JPanel(), "Floating point test").let { descriptor ->
                         descriptor.executionId = number

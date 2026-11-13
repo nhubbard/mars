@@ -6,7 +6,6 @@ import com.intellij.openapi.application.EDT
 import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.util.Disposer
-import com.intellij.openapi.wm.RegisterToolWindowTask
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
@@ -118,7 +117,7 @@ class KeyboardDisplayPlatformTest {
             }
             val manager = ToolWindowManager.getInstance(project)
             val id = DefaultRunExecutor.getRunExecutorInstance().toolWindowId
-            val window = manager.getToolWindow(id) ?: manager.registerToolWindow(RegisterToolWindowTask(id))
+            val window = manager.getToolWindow(id) ?: manager.registerToolWindow(id) { hideOnEmptyContent = false }
             val content = ContentFactory.getInstance().createContent(descriptor.component, descriptor.displayName, false)
             content.putUserData(RunContentDescriptor.DESCRIPTOR_KEY, descriptor)
             content.setDisposer(descriptor)

@@ -5,7 +5,6 @@ import com.intellij.execution.ui.RunContentDescriptor
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.components.service
 import com.intellij.openapi.util.Disposer
-import com.intellij.openapi.wm.RegisterToolWindowTask
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
@@ -73,7 +72,7 @@ class MarsToolProviderPlatformTest {
         }
         val duplicates = listOf(provider("example.alpha", "Duplicate"), provider("", "Blank"))
         val manager = withContext(Dispatchers.EDT) {
-            ToolWindowManager.getInstance(project).registerToolWindow(RegisterToolWindowTask("Test MARS tools")).contentManager
+            ToolWindowManager.getInstance(project).registerToolWindow("Test MARS tools") { hideOnEmptyContent = false }.contentManager
         }
         try {
             withContext(Dispatchers.EDT) {
@@ -132,7 +131,7 @@ class MarsToolProviderPlatformTest {
     fun `registered intro example receives instructions from only the selected execution`() = timeoutRunBlocking(45.seconds) {
         val container = JPanel()
         val tool = withContext(Dispatchers.EDT) {
-            val window = ToolWindowManager.getInstance(project).registerToolWindow(RegisterToolWindowTask("Example MARS tools"))
+            val window = ToolWindowManager.getInstance(project).registerToolWindow("Example MARS tools") { hideOnEmptyContent = false }
             val manager = window.contentManager
             MarsToolExtensions(project, manager, window.disposable)
             manager.contents.single().also { tab ->
@@ -161,7 +160,7 @@ class MarsToolProviderPlatformTest {
                 // Offer the runs to the tool after their setup instructions have executed.
                 val manager = ToolWindowManager.getInstance(project)
                 val toolId = DefaultRunExecutor.getRunExecutorInstance().toolWindowId
-                val window = manager.getToolWindow(toolId) ?: manager.registerToolWindow(RegisterToolWindowTask(toolId))
+                val window = manager.getToolWindow(toolId) ?: manager.registerToolWindow(toolId) { hideOnEmptyContent = false }
                 window.contentManager.addContent(first.second)
                 window.contentManager.addContent(second.second)
             }

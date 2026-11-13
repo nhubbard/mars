@@ -15,7 +15,6 @@ import com.intellij.execution.ui.RunContentDescriptor
 import com.intellij.execution.ui.RunContentManager
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.editor.EditorFactory
-import com.intellij.openapi.wm.RegisterToolWindowTask
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
@@ -132,7 +131,7 @@ class InstructionCounterPlatformTest {
         val run = DefaultRunExecutor.getRunExecutorInstance()
         val debug = DefaultDebugExecutor.getDebugExecutorInstance()
         val container = JPanel()
-        val window = withContext(Dispatchers.EDT) { manager.registerToolWindow(RegisterToolWindowTask("MARS Tools")) }
+        val window = withContext(Dispatchers.EDT) { manager.registerToolWindow("MARS Tools") { hideOnEmptyContent = false } }
         val (panels, keyboardEditor) = withContext(Dispatchers.EDT) {
             val editorFactory = EditorFactory.getInstance()
             val existingEditors = editorFactory.allEditors.toSet()
@@ -258,7 +257,7 @@ class InstructionCounterPlatformTest {
         fun addExecutionContent(executor: Executor, descriptor: RunContentDescriptor) =
             ContentFactory.getInstance().createContent(descriptor.component, descriptor.displayName, false).also { content ->
                 val executionWindow = manager.getToolWindow(executor.toolWindowId)
-                    ?: manager.registerToolWindow(RegisterToolWindowTask(executor.toolWindowId))
+                    ?: manager.registerToolWindow(executor.toolWindowId) { hideOnEmptyContent = false }
                 content.putUserData(RunContentDescriptor.DESCRIPTOR_KEY, descriptor)
                 content.setDisposer(descriptor)
                 executionWindow.contentManager.addContent(content)
