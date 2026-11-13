@@ -1,5 +1,6 @@
 package edu.missouristate.mars;
 
+import static java.util.Objects.requireNonNull;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -321,7 +322,7 @@ class SessionBackStepperTest {
 
   private static ProgramStatement statement(BasicInstruction instruction, int... operands) {
     var statement = new ProgramStatement(null, "test", null, null, instruction, 0x400000, 1);
-    System.arraycopy(operands, 0, statement.getOperands(), 0, operands.length);
+    System.arraycopy(operands, 0, requireNonNull(statement.getOperands()), 0, operands.length);
     return statement;
   }
 

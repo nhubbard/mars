@@ -1,5 +1,6 @@
 package edu.missouristate.mars;
 
+import static java.util.Objects.requireNonNull;
 import static org.assertj.core.api.Assertions.*;
 
 import java.nio.charset.StandardCharsets;
@@ -61,7 +62,7 @@ class PseudoExpansionTest {
       for (var vector : vectors) {
         Files.writeString(source, ".text\n" + vector.example() + "\nlabel:\ntarget: nop\n");
         var program = session.assemble(List.of(source));
-        var machine = program.getMachineList();
+        var machine = requireNonNull(program.getMachineList());
         var words =
             machine.subList(0, machine.size() - 1).stream()
                 .map(ProgramStatement::getBinaryStatement)

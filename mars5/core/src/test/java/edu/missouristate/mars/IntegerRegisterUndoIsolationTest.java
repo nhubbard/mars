@@ -1,5 +1,6 @@
 package edu.missouristate.mars;
 
+import static java.util.Objects.requireNonNull;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import edu.missouristate.mars.core.MarsContext;
@@ -32,7 +33,7 @@ class IntegerRegisterUndoIsolationTest {
       var filenames = new ArrayList<String>();
       filenames.add(path);
       program.assemble(program.prepareFilesForAssembly(filenames, path, null), true, false);
-      var backStepper = program.getBackStepper();
+      var backStepper = requireNonNull(program.getBackStepper());
       int pc = machine.registerFile.getInitialProgramCounter();
       machine.registerFile.initializeProgramCounter(pc + 4);
       int previousT0 = machine.registerFile.getValue(8);
@@ -60,7 +61,7 @@ class IntegerRegisterUndoIsolationTest {
       machine.registerFile.initializeProgramCounter(pc + 4);
       var add = new InstrAddi();
       var statement = new ProgramStatement(null, "addi $t0,$zero,42", null, null, add, pc, 1);
-      System.arraycopy(new int[] {8, 0, 42}, 0, statement.getOperands(), 0, 3);
+      System.arraycopy(new int[] {8, 0, 42}, 0, requireNonNull(statement.getOperands()), 0, 3);
       add.getSimulationCode()
           .simulate(
               statement,

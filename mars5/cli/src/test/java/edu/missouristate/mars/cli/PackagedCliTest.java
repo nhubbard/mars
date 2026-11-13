@@ -320,6 +320,7 @@ class PackagedCliTest {
       arguments.add("a");
     }
     for (String descriptor : descriptors) {
+      Objects.requireNonNull(descriptor, "Expected a dump format descriptor");
       arguments.addAll(List.of("dump", ".text", descriptor, dump(descriptor).toString()));
     }
     arguments.addAll(List.of(

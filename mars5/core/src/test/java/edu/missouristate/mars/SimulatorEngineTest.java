@@ -1,5 +1,6 @@
 package edu.missouristate.mars;
 
+import static java.util.Objects.requireNonNull;
 import static org.assertj.core.api.Assertions.*;
 
 import edu.missouristate.mars.api.*;
@@ -36,7 +37,7 @@ class SimulatorEngineTest {
       assertThat(engine.state()).isEqualTo(SimulatorState.PAUSED);
       assertThat(session.registerFile.getValue(8)).isEqualTo(7);
       assertThat(events.getFirst())
-          .isEqualTo(new StepEvent(pc, session.memory.getStatement(pc).getBinaryStatement(), 1));
+          .isEqualTo(new StepEvent(pc, requireNonNull(session.memory.getStatement(pc)).getBinaryStatement(), 1));
       engine.backstepAsync().get(5, TimeUnit.SECONDS);
       assertThat(events.get(events.size() - 2)).isEqualTo(0L);
       assertThat(events.getLast()).isEqualTo(new StopEvent(StopEvent.Reason.BACKSTEP, 0));
@@ -187,7 +188,7 @@ class SimulatorEngineTest {
           .isInstanceOf(AddressErrorException.class);
       assertThatThrownBy(() -> session.editMemoryWord(0x20000000, 8))
           .isInstanceOf(AddressErrorException.class);
-      int originalInstruction = memory.inspectWord(memory.textBaseAddress);
+      int originalInstruction = requireNonNull(memory.inspectWord(memory.textBaseAddress));
       assertThatThrownBy(() -> session.editMemoryWord(memory.textBaseAddress, originalInstruction))
           .isInstanceOf(AddressErrorException.class);
       assertThat(session.backStepper.canBackstep()).isTrue();
@@ -270,7 +271,7 @@ class SimulatorEngineTest {
       engine.runAsync(1, null).get(5, TimeUnit.SECONDS);
       assertThat(events.get(events.size() - 2)).isEqualTo(
           new StepEvent(
-              entry, session.memory.getStatementNoNotify(entry).getBinaryStatement(), 4,
+              entry, requireNonNull(session.memory.getStatementNoNotify(entry)).getBinaryStatement(), 4,
               null, BranchOutcome.TAKEN));
     }
   }
@@ -494,7 +495,7 @@ class SimulatorEngineTest {
             .isInstanceOf(IllegalStateException.class);
         assertThatThrownBy(() -> session.assemble(List.of(directory.resolve("none"))))
             .isInstanceOf(IllegalStateException.class);
-        assertThatThrownBy(() -> session.getProgram().simulate(1))
+        assertThatThrownBy(() -> requireNonNull(session.getProgram()).simulate(1))
             .isInstanceOf(IllegalStateException.class);
         engine.pause();
       } finally {
@@ -554,7 +555,7 @@ class SimulatorEngineTest {
       Files.writeString(source, ".text\naddiu $t0,$zero,1\n");
       var success = assembler.assemble(List.of(source));
       assertThat(success.succeeded()).isTrue();
-      assertThat(success.program().instructionCount()).isEqualTo(1);
+      assertThat(requireNonNull(success.program()).instructionCount()).isEqualTo(1);
       Files.writeString(source, ".text\nunknown $t0\n");
       var failure = assembler.assemble(List.of(source));
       assertThat(failure.succeeded()).isFalse();

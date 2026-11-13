@@ -1,5 +1,6 @@
 package edu.missouristate.mars;
 
+import static java.util.Objects.requireNonNull;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import edu.missouristate.mars.core.MarsContext;
@@ -30,7 +31,7 @@ class Coprocessor0UndoIsolationTest {
       var filenames = new ArrayList<String>();
       filenames.add(path);
       program.assemble(program.prepareFilesForAssembly(filenames, path, null), true, false);
-      var backStepper = program.getBackStepper();
+      var backStepper = requireNonNull(program.getBackStepper());
       machine.registerFile.initializeProgramCounter(
           machine.registerFile.getInitialProgramCounter() + 4);
 

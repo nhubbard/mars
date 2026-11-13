@@ -1,5 +1,6 @@
 package edu.missouristate.mars.mips.hardware;
 
+import static java.util.Objects.requireNonNull;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
@@ -103,12 +104,12 @@ class MemoryStateTest {
     state.setWord(state.dataBaseAddress, code);
     var notices = new ArrayList<MemoryAccessNotice>();
     state.addObserver(notices::add);
-    assertThat(state.inspectInstruction(state.kernelTextBaseAddress).getBinaryStatement())
+    assertThat(requireNonNull(state.inspectInstruction(state.kernelTextBaseAddress)).getBinaryStatement())
         .isEqualTo(code);
     assertThat(state.inspectInstruction(state.textBaseAddress)).isNull();
     assertThat(state.inspectInstruction(state.dataBaseAddress)).isNull();
     settings.setSelfModifyingCodeEnabled(true);
-    var decoded = state.inspectInstruction(state.dataBaseAddress);
+    var decoded = requireNonNull(state.inspectInstruction(state.dataBaseAddress));
     assertThat(decoded.getBinaryStatement()).isEqualTo(code);
     assertThat(decoded.getInstructionOrigin()).isNull();
     assertThat(decoded.getPrintableBasicAssemblyStatement()).contains("addiu");
@@ -227,14 +228,15 @@ class MemoryStateTest {
         .isThrownBy(() -> first.setWord(address, 0x2408002a));
     settings.setSelfModifyingCodeEnabled(true);
     first.setWord(address, 0x2408002a);
-    assertThat(first.getStatement(address).getInstruction().getName()).isEqualTo("addiu");
-    assertThat(first.getStatement(address).getOperands()).startsWith(8, 0, 42);
+    var modified = requireNonNull(first.getStatement(address));
+    assertThat(requireNonNull(modified.getInstruction()).getName()).isEqualTo("addiu");
+    assertThat(modified.getOperands()).startsWith(8, 0, 42);
     assertThat(first.getWord(address)).isEqualTo(0x2408002a);
     assertThat(second.getStatement(address)).isNull();
     assertThatExceptionOfType(AddressErrorException.class)
         .isThrownBy(() -> second.setWord(address, 0x2408002a));
     first.setWord(first.dataBaseAddress, 0x24090063);
-    assertThat(first.getStatement(first.dataBaseAddress).getOperands()).startsWith(9, 0, 99);
+    assertThat(requireNonNull(first.getStatement(first.dataBaseAddress)).getOperands()).startsWith(9, 0, 99);
   }
 
   @Test

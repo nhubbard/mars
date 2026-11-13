@@ -1,5 +1,6 @@
 package edu.missouristate.mars;
 
+import static java.util.Objects.requireNonNull;
 import static org.assertj.core.api.Assertions.*;
 
 import edu.missouristate.mars.core.InstructionContext;
@@ -75,7 +76,7 @@ class FloatingPointEdgeTest {
               instruction,
               session.registerFile.getPC(),
               1);
-      System.arraycopy(operands, 0, statement.getOperands(), 0, operands.length);
+      System.arraycopy(operands, 0, requireNonNull(statement.getOperands()), 0, operands.length);
       context.execute(statement);
       if (comparison) {
         boolean expected =

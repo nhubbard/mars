@@ -1,5 +1,6 @@
 package edu.missouristate.mars;
 
+import static java.util.Objects.requireNonNull;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -25,7 +26,7 @@ class MemoryDumpTest {
         session.memory.setWord(start + offset, 0x41424344);
       }
       var output = directory.resolve("data.hex");
-      DumpFormatLoader.findByCommandDescriptor("HEX")
+      requireNonNull(DumpFormatLoader.findByCommandDescriptor("HEX"))
           .dumpMemoryRange(output.toFile(), start, start + 0x10000, session);
       var lines = Files.readAllLines(output);
       assertThat(lines).hasSize(16387);
@@ -42,7 +43,7 @@ class MemoryDumpTest {
     Files.writeString(source, ".data\n.word 1, 2, 3, 4, 5, 6, 7, 8, 9\n.text\nmain: addiu $t0, $zero, 7\n");
     try (var session = TestSessions.create()) {
       session.assemble(List.of(source));
-      var format = DumpFormatLoader.findByCommandDescriptor("SegmentWindow");
+      var format = requireNonNull(DumpFormatLoader.findByCommandDescriptor("SegmentWindow"));
       var output = directory.resolve("segment.txt");
       int data = session.memory.dataBaseAddress;
       format.dumpMemoryRange(output.toFile(), data, data + 8 * Integer.BYTES, session);
@@ -62,8 +63,8 @@ class MemoryDumpTest {
   void snapshotRetainsSourceAndMappedIoWithoutHoldingTheStoppedMachine() throws Exception {
     var source = directory.resolve("program.s");
     Files.writeString(source, ".text\nmain: addiu $t0, $zero, 7\n");
-    var listingFormat = DumpFormatLoader.findByCommandDescriptor("SegmentWindow");
-    var hexFormat = DumpFormatLoader.findByCommandDescriptor("HexText");
+    var listingFormat = requireNonNull(DumpFormatLoader.findByCommandDescriptor("SegmentWindow"));
+    var hexFormat = requireNonNull(DumpFormatLoader.findByCommandDescriptor("HexText"));
     MemoryDumpSnapshot listing;
     MemoryDumpSnapshot mmio;
     try (var session = TestSessions.create()) {
@@ -82,7 +83,7 @@ class MemoryDumpTest {
         })).isInstanceOf(CancellationException.class);
       }
       assertThat(notices).isEmpty();
-      var statement = session.memory.getStatementNoNotify(text);
+      var statement = requireNonNull(session.memory.getStatementNoNotify(text));
       statement.setBinaryStatement(0);
       statement.setSource("changed");
       session.memory.setWord(mapped, 0);

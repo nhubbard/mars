@@ -1,5 +1,6 @@
 package edu.missouristate.mars;
 
+import static java.util.Objects.requireNonNull;
 import static org.assertj.core.api.Assertions.*;
 
 import edu.missouristate.mars.core.*;
@@ -340,7 +341,7 @@ class BasicInstructionSemanticsTest {
       var statement =
           new ProgramStatement(
               null, instruction.getExampleFormat(), null, null, instruction, pc, 1);
-      System.arraycopy(operands, 0, statement.getOperands(), 0, operands.length);
+      System.arraycopy(operands, 0, requireNonNull(statement.getOperands()), 0, operands.length);
       if (exception == null) {
         context.execute(statement);
       } else {

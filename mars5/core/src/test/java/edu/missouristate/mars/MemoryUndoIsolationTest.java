@@ -1,8 +1,10 @@
 package edu.missouristate.mars;
 
+import static java.util.Objects.requireNonNull;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import edu.missouristate.mars.core.MarsContext;
+import edu.missouristate.mars.mips.hardware.MemoryConfigurations;
 import edu.missouristate.mars.core.SimulationSettings;
 import edu.missouristate.mars.mips.hardware.MemoryState;
 import edu.missouristate.mars.mips.instructions.basic.InstrSw;
@@ -40,12 +42,12 @@ class MemoryUndoIsolationTest {
       TestSessions.execution(machine).updateRegister(8, 0x76543210);
       TestSessions.execution(machine).updateRegister(9, address);
       machine.registerFile.initializeProgramCounter(machine.memory.textBaseAddress + 4);
-      var backStepper = program.getBackStepper();
+      var backStepper = requireNonNull(program.getBackStepper());
       machine.backStepper.clear();
       machine.backStepper.clear();
       var independent =
           new MemoryState(
-              edu.missouristate.mars.mips.hardware.MemoryConfigurations.createConfiguration(
+              MemoryConfigurations.createConfiguration(
                   "Default"),
               new SimulationSettings(),
               (binary, pc) -> new ProgramStatement(binary, pc, machine.instructionSet));
@@ -61,7 +63,7 @@ class MemoryUndoIsolationTest {
           var statement =
               new ProgramStatement(
                   null, "sw $t0,0($t1)", null, null, store, machine.memory.textBaseAddress, 1);
-          System.arraycopy(new int[] {8, 0, 9}, 0, statement.getOperands(), 0, 3);
+          System.arraycopy(new int[] {8, 0, 9}, 0, requireNonNull(statement.getOperands()), 0, 3);
           store
               .getSimulationCode()
               .simulate(
@@ -114,7 +116,7 @@ class MemoryUndoIsolationTest {
     try {
       var session =
           new MemoryState(
-              edu.missouristate.mars.mips.hardware.MemoryConfigurations.createConfiguration(
+              MemoryConfigurations.createConfiguration(
                   "CompactTextAtZero"),
               new SimulationSettings(),
               (binary, address) -> new ProgramStatement(binary, address, machine.instructionSet));
@@ -123,8 +125,7 @@ class MemoryUndoIsolationTest {
       var singleton = machine.memory;
       TestSessions.select(
           machine,
-          edu.missouristate.mars.mips.hardware.MemoryConfigurations.getConfigurationByName(
-              "CompactDataAtZero"));
+          requireNonNull(MemoryConfigurations.getConfigurationByName("CompactDataAtZero")));
       assertThat(machine.memory).isSameAs(singleton);
       assertThat(machine.memory.textBaseAddress).isEqualTo(0x3000);
       assertThat(machine.memory.dataBaseAddress).isZero();

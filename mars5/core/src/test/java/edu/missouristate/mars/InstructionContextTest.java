@@ -1,5 +1,6 @@
 package edu.missouristate.mars;
 
+import static java.util.Objects.requireNonNull;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -134,7 +135,7 @@ class InstructionContextTest {
         .isInstanceOfSatisfying(
             ProcessingException.class,
             error ->
-                assertThat(error.errors().generateErrorReport())
+                assertThat(requireNonNull(error.errors()).generateErrorReport())
                     .contains("0x00400100", "arithmetic overflow"));
     assertThat(context.coprocessor0.getValue(Coprocessor0State.CAUSE))
         .isEqualTo(Exceptions.ARITHMETIC_OVERFLOW_EXCEPTION << 2);
@@ -215,7 +216,7 @@ class InstructionContextTest {
 
   private static ProgramStatement statement(BasicInstruction instruction, int... operands) {
     var statement = new ProgramStatement(null, "test", null, null, instruction, BASE, 1);
-    System.arraycopy(operands, 0, statement.getOperands(), 0, operands.length);
+    System.arraycopy(operands, 0, requireNonNull(statement.getOperands()), 0, operands.length);
     return statement;
   }
 
@@ -234,7 +235,7 @@ class InstructionContextTest {
     assertThat(index).isBetween(0, code.size() - 1);
     var statement = code.get(index);
     context.registerFile.incrementPC();
-    ((BasicInstruction) statement.getInstruction())
+    ((BasicInstruction) requireNonNull(statement.getInstruction()))
         .getSimulationCode()
         .simulate(statement, context);
     context.completeInstruction();

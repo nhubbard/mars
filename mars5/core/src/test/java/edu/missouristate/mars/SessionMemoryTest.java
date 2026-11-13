@@ -1,5 +1,6 @@
 package edu.missouristate.mars;
 
+import static java.util.Objects.requireNonNull;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
@@ -25,8 +26,8 @@ class SessionMemoryTest {
     try (var session = component("Default").context()) {
       session.settings.setSelfModifyingCodeEnabled(true);
       session.memory.setWord(session.memory.textBaseAddress, 0x2408002a);
-      var statement = session.memory.getStatement(session.memory.textBaseAddress);
-      assertThat(statement.getInstruction().getName()).isEqualTo("addiu");
+      var statement = requireNonNull(session.memory.getStatement(session.memory.textBaseAddress));
+      assertThat(requireNonNull(statement.getInstruction()).getName()).isEqualTo("addiu");
       assertThat(statement.getPrintableBasicAssemblyStatement()).contains("addiu");
       var context = new InstructionContext(session, new RecordingEnvironment());
       context.execute(statement);
@@ -222,7 +223,7 @@ class SessionMemoryTest {
     var statement =
         new ProgramStatement(
             null, "test", null, null, instruction, context.memory().textBaseAddress, 1);
-    System.arraycopy(operands, 0, statement.getOperands(), 0, operands.length);
+    System.arraycopy(operands, 0, requireNonNull(statement.getOperands()), 0, operands.length);
     instruction.getSimulationCode().simulate(statement, context);
   }
 

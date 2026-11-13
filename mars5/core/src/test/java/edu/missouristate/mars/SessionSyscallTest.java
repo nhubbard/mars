@@ -1,5 +1,6 @@
 package edu.missouristate.mars;
 
+import static java.util.Objects.requireNonNull;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -72,7 +73,7 @@ class SessionSyscallTest {
       assertThat(b.readFromFile(3, bytes, 3)).isZero();
       second.close();
       assertThat(b.readFromFile(3, bytes, 3)).isEqualTo(-1);
-      assertThat(first.getProgram().simulate(20)).isTrue();
+      assertThat(requireNonNull(first.getProgram()).simulate(20)).isTrue();
     }
   }
 

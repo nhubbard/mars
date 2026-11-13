@@ -1,5 +1,6 @@
 package edu.missouristate.mars.mips.hardware;
 
+import static java.util.Objects.requireNonNull;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.ArrayList;
@@ -31,7 +32,7 @@ class Coprocessor0StateTest {
     var first = new Coprocessor0State();
     var second = new Coprocessor0State();
     String name = "$" + number;
-    var register = first.getRegister(name);
+    var register = requireNonNull(first.getRegister(name));
     assertThat(first.getRegister(register.getName())).isSameAs(register);
     assertThat(first.getNumber(name)).isEqualTo(number);
     assertThat(first.getNumber(register.getName())).isEqualTo(number);

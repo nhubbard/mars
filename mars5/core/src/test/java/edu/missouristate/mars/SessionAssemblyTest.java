@@ -1,5 +1,6 @@
 package edu.missouristate.mars;
 
+import static java.util.Objects.requireNonNull;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -120,14 +121,14 @@ class SessionAssemblyTest {
       assertThat(main).isEqualTo(builder.memory.textBaseAddress + 4);
       image = builder.captureAssemblyImage(neverCancelled);
       builder.memory.setWord(result, 99);
-      builder.memory.getStatementNoNotify(main).setBinaryStatement(0);
+      requireNonNull(builder.memory.getStatementNoNotify(main)).setBinaryStatement(0);
     }
     Files.delete(file);
 
     try (var first = session("Default"); var second = session("Default")) {
       first.loadAssemblyImage(image, neverCancelled);
       second.loadAssemblyImage(image, neverCancelled);
-      var installed = first.getProgram();
+      var installed = requireNonNull(first.getProgram());
       assertThat(installed.sourceMap()).isSameAs(original.sourceMap());
       assertThat(installed.symbolMap()).isSameAs(original.symbolMap());
       assertThat(first.memory.getConfiguration().configurationIdentifier()).isEqualTo(layout);
@@ -135,12 +136,12 @@ class SessionAssemblyTest {
       assertThat(first.registerFile.getProgramCounter()).isEqualTo(main);
       assertThat(first.symbolTable.getAddress("result")).isEqualTo(result);
       assertThat(first.memory.getWord(result)).isEqualTo(42);
-      assertThat(first.memory.getStatementNoNotify(main).getBinaryStatement()).isNotZero();
+      assertThat(requireNonNull(first.memory.getStatementNoNotify(main)).getBinaryStatement()).isNotZero();
       var macroSite = installed.sourceMap().origins().values().stream()
           .filter(origin -> origin.caller() != null).findFirst().orElseThrow();
       assertThat(installed.instructionsAt(macroSite.location(), neverCancelled))
           .isEqualTo(original.instructionsAt(macroSite.location(), neverCancelled));
-      var statement = installed.getMachineList().stream()
+      var statement = requireNonNull(installed.getMachineList()).stream()
           .filter(row -> row.getInstructionOrigin() == macroSite).findFirst().orElseThrow();
       assertThat(new ErrorMessage(statement, "failure").getFilename()).isEqualTo(file.toString());
 
@@ -190,8 +191,8 @@ class SessionAssemblyTest {
       var memory = session.memory;
       String argument = "x".repeat(memory.stackBaseAddress - memory.stackPointer - 1);
       new ProgramArgumentList(new String[] {argument}).storeProgramArguments(session);
-      int stack = session.registerFile.getUserRegister("$sp").getValueNoNotify();
-      int argv = session.registerFile.getUserRegister("$a1").getValueNoNotify();
+      int stack = requireNonNull(session.registerFile.getUserRegister("$sp")).getValueNoNotify();
+      int argv = requireNonNull(session.registerFile.getUserRegister("$a1")).getValueNoNotify();
       int string = memory.getWord(argv);
       assertThat(stack).isLessThan(memory.stackPointer);
       assertThat(memory.getWord(stack)).isEqualTo(1);
@@ -212,8 +213,8 @@ class SessionAssemblyTest {
       assertThatThrownBy(() -> new ProgramArgumentList(new String[] {argument}).storeProgramArguments(session))
           .isInstanceOf(IllegalArgumentException.class).hasMessage("Program arguments exceed session stack memory");
       assertThat(memory.getByte(memory.stackBaseAddress)).isEqualTo(0x5a);
-      assertThat(session.registerFile.getUserRegister("$sp").getValueNoNotify()).isEqualTo(memory.stackPointer);
-      assertThat(session.registerFile.getUserRegister("$a0").getValueNoNotify()).isZero();
+      assertThat(requireNonNull(session.registerFile.getUserRegister("$sp")).getValueNoNotify()).isEqualTo(memory.stackPointer);
+      assertThat(requireNonNull(session.registerFile.getUserRegister("$a0")).getValueNoNotify()).isZero();
     }
   }
 
@@ -335,7 +336,7 @@ class SessionAssemblyTest {
       var program = session.assemble(List.of(lead, library));
       int target = session.symbolTable.getAddress("target");
       assertThat(session.memory.getWord(session.symbolTable.getAddress("ptr"))).isEqualTo(target);
-      assertThat(program.getLocalSymbolTable().getAddressLocalOrGlobal("target")).isEqualTo(target);
+      assertThat(requireNonNull(program.getLocalSymbolTable()).getAddressLocalOrGlobal("target")).isEqualTo(target);
       assertThat(
               program
                   .getLocalSymbolTable()
@@ -351,7 +352,7 @@ class SessionAssemblyTest {
           .isInstanceOfSatisfying(
               ProcessingException.class,
               error ->
-                  assertThat(error.errors().generateErrorReport())
+                  assertThat(requireNonNull(error.errors()).generateErrorReport())
                       .contains("private_label", "not found"));
     }
   }
@@ -407,7 +408,7 @@ class SessionAssemblyTest {
 
     try (var machine = TestSessions.create()) {
       var program = machine.assemble(List.of(entry));
-      var instruction = program.getMachineList().getFirst();
+      var instruction = requireNonNull(program.getMachineList()).getFirst();
       assertThat(instruction.getBinaryStatement()).isEqualTo(0x24080007);
       assertThat(program.sourceMap().origins().get(instruction.getAddress()).location())
           .isEqualTo(new Location(entry, 4));
@@ -415,7 +416,7 @@ class SessionAssemblyTest {
       assertThat(machine.memory.getByte(data)).isEqualTo(0xe9);
       assertThat(machine.memory.getByte(data + 1)).isEqualTo(0xff);
       assertThat(machine.memory.getByte(data + 2)).isZero();
-      assertThat(program.getLocalSymbolTable().getAddressLocalOrGlobal("entrée"))
+      assertThat(requireNonNull(program.getLocalSymbolTable()).getAddressLocalOrGlobal("entrée"))
           .isEqualTo(instruction.getAddress());
 
       var empty = directory.resolve("empty.s");
@@ -467,7 +468,7 @@ class SessionAssemblyTest {
       var result = new SessionAssembler(session).assembleSnapshot(snapshot, handler, true, false);
       assertThat(result.errors()).isEmpty();
       assertThat(result.succeeded()).isTrue();
-      var program = session.getProgram();
+      var program = requireNonNull(session.getProgram());
       assertThat(result.program()).isSameAs(program);
       assertThat(program.getFilename()).isEqualTo(main.toString());
       assertThat(program.sourceMap().breakpoints())
@@ -518,7 +519,8 @@ class SessionAssemblyTest {
     try (var session = session("Default")) {
       var result = new SessionAssembler(session).assembleSnapshot(snapshot, null, true, false);
       assertThat(result.errors()).isEmpty();
-      var map = result.program().sourceMap();
+      var assembled = requireNonNull(result.program());
+      var map = assembled.sourceMap();
       int pc = session.memory.textBaseAddress;
       var includedCall = new Origin(new Location(calls, 2), null);
       var innerCall = new Origin(new Location(definitions, 6), includedCall);
@@ -527,7 +529,9 @@ class SessionAssemblyTest {
       assertThat(map.origins().get(pc + 4)).isSameAs(map.origins().get(pc));
       assertThat(map.origins().get(pc + 8)).isEqualTo(new Origin(new Location(definitions, 3), innerCall));
       assertThat(map.origins().get(pc + 12)).isEqualTo(new Origin(new Location(definitions, 7), includedCall));
-      assertThat(map.origins().get(pc + 16).caller().caller())
+      var expansion = requireNonNull(map.origins().get(pc + 16));
+      var caller = requireNonNull(expansion.caller());
+      assertThat(caller.caller())
           .isEqualTo(new Origin(new Location(main, 4), null));
       assertThat(map.origins().get(pc + 32)).isEqualTo(new Origin(new Location(plain, 1), null));
       assertThat(map.origins().get(pc + 36)).isEqualTo(new Origin(new Location(main, 6), null));
@@ -543,7 +547,7 @@ class SessionAssemblyTest {
       assertThatThrownBy(() -> map.origins().clear()).isInstanceOf(UnsupportedOperationException.class);
       assertThatThrownBy(() -> map.breakpoints().get(new Location(calls, 2)).clear())
           .isInstanceOf(UnsupportedOperationException.class);
-      var expanded = result.program().instructionsAt(new Location(calls, 2), () -> {});
+      var expanded = assembled.instructionsAt(new Location(calls, 2), () -> {});
       assertThat(expanded).extracting(instruction -> instruction.address())
           .containsExactly(pc, pc + 4, pc + 8, pc + 12);
       assertThat(expanded.getFirst().assembly()).startsWith("lui ");
@@ -551,13 +555,13 @@ class SessionAssemblyTest {
       assertThat(expanded.getFirst().origin()).isSameAs(map.origins().get(pc));
       assertThat(map.pseudoAddresses()).containsExactlyInAnyOrder(pc, pc + 4, pc + 16, pc + 20);
       assertThatThrownBy(() -> map.pseudoAddresses().clear()).isInstanceOf(UnsupportedOperationException.class);
-      assertThat(result.program().pseudoInstructions(() -> {})).containsExactly(
+      assertThat(assembled.pseudoInstructions(() -> {})).containsExactly(
           expanded.get(0), expanded.get(1),
-          result.program().instructionsAt(new Location(main, 4), () -> {}).get(0),
-          result.program().instructionsAt(new Location(main, 4), () -> {}).get(1));
-      assertThat(result.program().instructionsAt(new Location(definitions, 2), () -> {})).hasSize(4);
-      assertThat(result.program().instructionsAt(new Location(main, 1), () -> {})).isEmpty();
-      assertThatThrownBy(() -> result.program().instructionsAt(new Location(calls, 2), () -> {
+          assembled.instructionsAt(new Location(main, 4), () -> {}).get(0),
+          assembled.instructionsAt(new Location(main, 4), () -> {}).get(1));
+      assertThat(assembled.instructionsAt(new Location(definitions, 2), () -> {})).hasSize(4);
+      assertThat(assembled.instructionsAt(new Location(main, 1), () -> {})).isEmpty();
+      assertThatThrownBy(() -> assembled.instructionsAt(new Location(calls, 2), () -> {
         throw new CancellationException("stop inspection");
       })).isInstanceOf(CancellationException.class);
     }
@@ -599,7 +603,7 @@ class SessionAssemblyTest {
     try (var session = session("Default")) {
       var result = new SessionAssembler(session).assembleSnapshot(sources, null, true, false);
       assertThat(result.errors()).isEmpty();
-      var map = result.program().symbolMap();
+      var map = requireNonNull(result.program()).symbolMap();
       int text = session.memory.textBaseAddress;
       var firstCall = new Origin(new Location(main, 7), null);
       var secondCall = new Origin(new Location(main, 8), null);
@@ -683,18 +687,18 @@ class SessionAssemblyTest {
     try (var session = session("Default")) {
       var result = new SessionAssembler(session).assembleSnapshot(sources, null, true, false);
       assertThat(result.errors()).isEmpty();
-      assertThat(result.program().symbolMap().macros()).containsExactlyInAnyOrderEntriesOf(Map.of(
+      assertThat(requireNonNull(result.program()).symbolMap().macros()).containsExactlyInAnyOrderEntriesOf(Map.of(
           main, List.of(
               new MacroDefinition(new SourceToken(new Location(macros, 2), 8), "inner", List.of("%label")),
               new MacroDefinition(new SourceToken(new Location(macros, 5), 8), "branch", List.of("%label"))),
           other, List.of()));
-      var symbols = result.program().symbolMap();
+      var symbols = requireNonNull(result.program()).symbolMap();
       var target = new SymbolUse(new SourceToken(new Location(other, 2), 1), "target",
           symbols.globals().get("target").address());
       var alias = new SourceToken(new Location(main, 2), 6);
       var base = new SourceToken(new Location(macros, 1), 6);
       var invocation = new SourceToken(new Location(main, 7), 3);
-      assertThat(result.program().symbolMap().equivalences().get(main)).contains(
+      assertThat(requireNonNull(result.program()).symbolMap().equivalences().get(main)).contains(
           new EquivalenceOccurrence(alias, alias, alias, "TARGET", true),
           new EquivalenceOccurrence(base, base, base, "BASE", true),
           new EquivalenceOccurrence(invocation, invocation, alias, "TARGET", false),
@@ -729,7 +733,7 @@ class SessionAssemblyTest {
           new AssemblySourceSnapshot(List.of(file), Map.of(file, Files.readString(file))),
           null, true, false);
       assertThat(result.errors()).isEmpty();
-      var uses = result.program().symbolMap().symbolUses();
+      var uses = requireNonNull(result.program()).symbolMap().symbolUses();
       assertThat(uses.get(new SourceToken(new Location(file, 3), 16))).containsExactly(
           new SymbolUse(new SourceToken(new Location(file, 3), 1), "aligned", session.memory.dataBaseAddress + 4));
     }
@@ -766,10 +770,10 @@ class SessionAssemblyTest {
       int pc = session.memory.textBaseAddress;
       var original = program.sourceMap().origins().get(pc);
       assertThat(original).isEqualTo(new Origin(new Location(file, 2), null));
-      assertThat(session.memory.getStatementNoNotify(pc).getInstructionOrigin()).isSameAs(original);
+      assertThat(requireNonNull(session.memory.getStatementNoNotify(pc)).getInstructionOrigin()).isSameAs(original);
       session.settings.setSelfModifyingCodeEnabled(true);
       session.memory.setWord(pc, 0);
-      assertThat(session.memory.getStatementNoNotify(pc).getInstructionOrigin()).isNull();
+      assertThat(requireNonNull(session.memory.getStatementNoNotify(pc)).getInstructionOrigin()).isNull();
       assertThat(program.sourceMap().origins().get(pc)).isSameAs(original);
       assertThat(program.instructionsAt(original.location(), () -> {}).getFirst().encoding())
           .isEqualTo(0x24080001);
@@ -948,7 +952,7 @@ class SessionAssemblyTest {
       var assembler = new SessionAssembler(session);
       var result = assembler.assembleSnapshot(snapshot, null, true, false);
       assertThat(result.succeeded()).isTrue();
-      assertThat(session.getProgram().getMachineList()).extracting(ProgramStatement::getBinaryStatement)
+      assertThat(requireNonNull(session.getProgram()).getMachineList()).extracting(ProgramStatement::getBinaryStatement)
           .containsExactly(0x24080007, 0x24090002);
       assertThat(session.getProgram().getSourceLineList())
           .anySatisfy(line -> assertThat(line.getFilename()).isEqualTo(remote.toString()));
@@ -976,7 +980,7 @@ class SessionAssemblyTest {
     try (var session = session("Default")) {
       var assembler = new SessionAssembler(session);
       assertThat(assembler.assemble(List.of(entry)).succeeded()).isTrue();
-      assertThat(session.getProgram().getMachineList()).extracting(ProgramStatement::getBinaryStatement)
+      assertThat(requireNonNull(session.getProgram()).getMachineList()).extracting(ProgramStatement::getBinaryStatement)
           .containsExactly(0x24080007);
 
       Files.writeString(entry, ".include \"value.s/../value.s\"\n");
@@ -1025,7 +1029,7 @@ class SessionAssemblyTest {
     try (var session = session("Default")) {
       var result = new SessionAssembler(session).assemble(List.of(main));
       assertThat(result.succeeded()).isTrue();
-      assertThat(session.getProgram().getMachineList()).extracting(ProgramStatement::getBinaryStatement)
+      assertThat(requireNonNull(session.getProgram()).getMachineList()).extracting(ProgramStatement::getBinaryStatement)
           .containsExactly(0x24080007, 0x24090002);
     }
   }
@@ -1045,7 +1049,7 @@ class SessionAssemblyTest {
     try (var session = session("Default")) {
       var result = new SessionAssembler(session).assembleSnapshot(snapshot, null, true, false);
       assertThat(result.succeeded()).isTrue();
-      assertThat(session.getProgram().getMachineList()).extracting(ProgramStatement::getBinaryStatement)
+      assertThat(requireNonNull(session.getProgram()).getMachineList()).extracting(ProgramStatement::getBinaryStatement)
           .containsExactly(0x24080001, 0x24090002, 0x240a0003);
       assertThat(session.getProgram().getSourceLineList()).extracting(SourceLine::getFilename)
           .containsExactly(main.toString(), leaf.toString(), main.toString());
@@ -1349,7 +1353,9 @@ class SessionAssemblyTest {
         assertThat(session.memory.getWordNoNotify(session.memory.dataBaseAddress + i * 4))
             .isEqualTo(expected[i]);
       }
-      assertThat(session.getProgram().getSourceLineList().get(9).getSource())
+      var program = requireNonNull(session.getProgram());
+      var sourceLines = requireNonNull(program.getSourceLineList());
+      assertThat(sourceLines.get(9).getSource())
           .isEqualTo(".word 'A', '\\n', '\\101', '\\'', '\\\\', '鯉', 99, '\\0'");
     }
   }
@@ -1490,9 +1496,9 @@ class SessionAssemblyTest {
       second.settings.setDelayedBranchingEnabled(true);
       var plain = first.assemble(List.of(source));
       var delayed = second.assemble(List.of(source));
-      assertThat(delayed.getMachineList()).hasSize(plain.getMachineList().size() + 1);
-      assertThat(delayed.getLocalSymbolTable().getAddress("done"))
-          .isEqualTo(plain.getLocalSymbolTable().getAddress("done") + 4);
+      assertThat(delayed.getMachineList()).hasSize(requireNonNull(plain.getMachineList()).size() + 1);
+      assertThat(requireNonNull(delayed.getLocalSymbolTable()).getAddress("done"))
+          .isEqualTo(requireNonNull(plain.getLocalSymbolTable()).getAddress("done") + 4);
       var plainIo = new RecordingEnvironment();
       var delayedIo = new RecordingEnvironment();
       plain.setSyscallEnvironment(plainIo);
@@ -1515,8 +1521,8 @@ class SessionAssemblyTest {
           .isInstanceOfSatisfying(
               ProcessingException.class,
               error -> {
-                assertThat(error.errors().getErrorLimit()).isEqualTo(1);
-                assertThat(error.errors().getErrorMessages()).hasSize(2);
+                assertThat(requireNonNull(error.errors()).getErrorLimit()).isEqualTo(1);
+                assertThat(requireNonNull(error.errors()).getErrorMessages()).hasSize(2);
               });
       assertThat(second.getProgram()).isNull();
       assertThat(first.getProgram()).isSameAs(valid);
@@ -1526,15 +1532,15 @@ class SessionAssemblyTest {
       assertThatThrownBy(() -> second.assemble(List.of(invalid)))
           .isInstanceOfSatisfying(
               ProcessingException.class,
-              error -> assertThat(error.errors().getErrorMessages()).hasSize(4));
+              error -> assertThat(requireNonNull(error.errors()).getErrorMessages()).hasSize(4));
       var duplicate = source("duplicate.s", ".data\nitem: .word 1\nitem: .word 2\n");
       assertThatThrownBy(() -> second.assemble(List.of(duplicate)))
           .isInstanceOfSatisfying(
               ProcessingException.class,
               error -> {
-                assertThat(error.errors().generateErrorReport())
+                assertThat(requireNonNull(error.errors()).generateErrorReport())
                     .contains("already defined", "duplicate.s");
-                assertThat(error.errors().getErrorMessages().getFirst().getLine()).isEqualTo(3);
+                assertThat(requireNonNull(error.errors()).getErrorMessages().getFirst().getLine()).isEqualTo(3);
               });
     }
   }
@@ -1550,8 +1556,8 @@ class SessionAssemblyTest {
           .isInstanceOfSatisfying(
               ProcessingException.class,
               error -> {
-                assertThat(error.errors().getErrorLimit()).isEqualTo(2);
-                assertThat(error.errors().getErrorMessages()).satisfiesExactly(
+                assertThat(requireNonNull(error.errors()).getErrorLimit()).isEqualTo(2);
+                assertThat(requireNonNull(error.errors()).getErrorMessages()).satisfiesExactly(
                     first -> assertThat(first.getMessage()).endsWith("Invalid language element: 'ab'"),
                     second -> assertThat(second.getMessage()).endsWith("Invalid language element: 'cd'"),
                     limit -> assertThat(limit.getMessage()).isEqualTo("Error Limit of 2 exceeded."));
@@ -1570,7 +1576,7 @@ class SessionAssemblyTest {
       assertThatThrownBy(() -> strict.assemble(List.of(named)))
           .isInstanceOfSatisfying(
               ProcessingException.class,
-              error -> assertThat(error.errors().generateErrorReport()).contains("register number"));
+              error -> assertThat(requireNonNull(error.errors()).generateErrorReport()).contains("register number"));
       var numbered = source("numbered-registers.s", ".text\nadd $8, $9, $10\n");
       assertThat(strict.assemble(List.of(numbered)).getMachineList()).hasSize(1);
     }
