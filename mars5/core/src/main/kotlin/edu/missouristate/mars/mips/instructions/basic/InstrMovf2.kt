@@ -12,7 +12,7 @@ open class InstrMovf2 : BasicInstruction(
     { statement, context ->
         val operands = statement.operands
         if (context.coprocessor1.getConditionFlag(operands[2]) == 0) {
-            context.updateRegister(operands[0], context.registerFile.getValue(operands[1]))
+            context.updateLongRegister(operands[0], context.readIntegerOperand(operands[1]))
         }
     },
 )

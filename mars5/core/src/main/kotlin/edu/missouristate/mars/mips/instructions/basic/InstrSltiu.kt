@@ -11,8 +11,8 @@ open class InstrSltiu : BasicInstruction(
     "001011 sssss fffff tttttttttttttttt",
     { statement, context ->
         val operands = statement.operands
-        val left = context.registerFile.getValue(operands[1]).toUInt()
-        val right = operands[2].toShort().toInt().toUInt()
+        val left = context.readIntegerOperand(operands[1]).toULong()
+        val right = operands[2].toShort().toLong().toULong()
         context.updateRegister(operands[0], if (left < right) 1 else 0)
     },
 )

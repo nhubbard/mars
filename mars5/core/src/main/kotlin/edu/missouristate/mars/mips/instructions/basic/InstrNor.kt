@@ -10,8 +10,8 @@ open class InstrNor : BasicInstruction(
     "000000 sssss ttttt fffff 00000 100111",
     { statement, context ->
         val operands = statement.operands
-        val left = context.registerFile.getValue(operands[1])
-        val right = context.registerFile.getValue(operands[2])
-        context.updateRegister(operands[0], (left or right).inv())
+        val left = context.readIntegerOperand(operands[1])
+        val right = context.readIntegerOperand(operands[2])
+        context.updateLongRegister(operands[0], (left or right).inv())
     },
 )

@@ -10,8 +10,8 @@ open class InstrMovz : BasicInstruction(
     "000000 sssss ttttt fffff 00000 001010",
     { statement, context ->
         val operands = statement.operands
-        if (context.registerFile.getValue(operands[2]) == 0) {
-            context.updateRegister(operands[0], context.registerFile.getValue(operands[1]))
+        if (context.readIntegerOperand(operands[2]) == 0L) {
+            context.updateLongRegister(operands[0], context.readIntegerOperand(operands[1]))
         }
     },
 )

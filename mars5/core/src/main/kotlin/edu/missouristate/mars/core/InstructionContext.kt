@@ -4,6 +4,7 @@ import edu.missouristate.mars.ErrorList
 import edu.missouristate.mars.ProcessingException
 import edu.missouristate.mars.ProgramStatement
 import edu.missouristate.mars.api.MarsSettings
+import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.api.StepEvent.BranchOutcome
 import edu.missouristate.mars.api.StepEvent.Call
 import edu.missouristate.mars.api.StepEvent.ExceptionEntry
@@ -47,6 +48,11 @@ class InstructionContext(private val session: MarsContext, private val environme
     fun settings(): MarsSettings = session.settings
 
     fun environment(): SyscallEnvironment = environment
+
+    /** Read an operand of an instruction that uses the target's full integer register width. */
+    internal fun readIntegerOperand(number: Int): Long =
+        if (session.target == MarsTarget.MARS64) registerFile.getLongValue(number)
+        else registerFile.getValue(number).toLong()
 
     fun updateRegister(number: Int, value: Int): Int {
         if (number == 32) return setProgramCounter(value)

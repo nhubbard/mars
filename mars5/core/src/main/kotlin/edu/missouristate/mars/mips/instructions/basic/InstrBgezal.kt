@@ -12,7 +12,7 @@ open class InstrBgezal : BasicInstruction(
     "000001 fffff 10001 ssssssssssssssss",
     { statement, context ->
         val operands = statement.operands
-        if (context.registerFile.getValue(operands[0]) >= 0) {
+        if (context.readIntegerOperand(operands[0]) >= 0) {
             context.linkReturnAddress(31)
             context.branch(operands[1])
         }

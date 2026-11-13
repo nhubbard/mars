@@ -1,0 +1,107 @@
+package edu.missouristate.mars
+
+import edu.missouristate.mars.api.MarsTarget
+import java.nio.file.Files
+import java.nio.file.Path
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertThrows
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.io.TempDir
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.CsvSource
+import org.junit.jupiter.params.provider.EnumSource
+
+class IntegerOperandWidthTest {
+    @ParameterizedTest
+    @EnumSource(MarsTarget::class)
+    fun `logic and moves preserve the selected register width and reverse`(target: MarsTarget, @TempDir directory: Path) {
+        val file = Files.writeString(directory.resolve("logic.s"), $$"""
+            and $t0,$a0,$a1
+            or $t1,$a0,$a1
+            xor $t2,$a0,$a1
+            not $t3,$a0
+            andi $t4,$a0,0xffff
+            ori $t5,$a0,0xffff
+            xori $t6,$a0,0xffff
+            move $t7,$a0
+            movn $s0,$a0,$a1
+            movz $s1,$a0,$zero
+            seleqz $s2,$a0,$a1
+            selnez $s3,$a0,$a1
+        """.trimIndent())
+        TestSessions.create().use { machine ->
+            machine.selectTarget(target)
+            val program = machine.assemble(listOf(file))
+            val wide = target == MarsTarget.MARS64
+            val value = if (wide) 0x1_ffff_0001L else -65535L
+            val mask = if (wide) 0x3_0000_0000L else 0L
+            machine.editIntegerRegister(4, value)
+            machine.editIntegerRegister(5, mask)
+            machine.editIntegerRegister(19, value xor 1)
+            assertEquals(if (wide) "or" else "addu", program.machineList!![7].instruction?.name)
+            assertTrue(program.simulate(20))
+            val expected = listOf(
+                value and mask, value or mask, value xor mask, value.inv(),
+                1L, value or 0xffffL, value xor 0xffffL, value,
+                if (wide) value else 0L, value, if (wide) 0L else value, if (wide) value else 0L,
+            )
+            assertEquals(expected, (8..19).map(machine.registerFile::getLongValueNoNotify))
+            machine.backStepper.backStep()
+            assertEquals(value xor 1, machine.registerFile.getLongValueNoNotify(19))
+        }
+    }
+
+    @ParameterizedTest
+    @EnumSource(MarsTarget::class)
+    fun `signed and unsigned comparisons drive control flow at register width`(target: MarsTarget, @TempDir directory: Path) {
+        val file = Files.writeString(directory.resolve("branches.s"), $$"""
+            slt $t0,$a0,$zero
+            sltu $t1,$a0,$a1
+            slti $t2,$a0,-1
+            sltiu $t3,$a0,-1
+            beq $a0,$zero,equal
+            addiu $t4,$zero,1
+            equal: bne $a1,$zero,nonzero
+            addiu $t5,$zero,1
+            nonzero: bltz $a0,negative
+            addiu $t6,$zero,1
+            negative: bgez $a0,done
+            addiu $t7,$zero,1
+            done: nop
+        """.trimIndent())
+        TestSessions.create().use { machine ->
+            machine.selectTarget(target)
+            machine.settings.setDelayedBranchingEnabled(false)
+            val program = machine.assemble(listOf(file))
+            val wide = target == MarsTarget.MARS64
+            machine.editIntegerRegister(4, if (wide) Long.MIN_VALUE else 0L)
+            machine.editIntegerRegister(5, if (wide) -0x1_0000_0000L else 0L)
+            assertTrue(program.simulate(20))
+            val expected = if (wide) listOf(1, 1, 1, 1, 1, 0, 0, 1) else listOf(0, 0, 0, 1, 0, 1, 1, 0)
+            assertEquals(expected, (8..15).map(machine.registerFile::getValueNoNotify))
+        }
+    }
+
+    @ParameterizedTest
+    @CsvSource(
+        "teq \$a0,\$zero | false", "tne \$a0,\$zero | true", "teqi \$a0,0 | false", "tnei \$a0,0 | true",
+        "tge \$a0,\$zero | false", "tlt \$a0,\$zero | true", "tgei \$a0,-1 | false", "tlti \$a0,-1 | true",
+        "tgeu \$a0,\$zero | true", "tltu \$a0,\$zero | false", "tgeiu \$a0,-1 | false", "tltiu \$a0,-1 | true",
+        delimiter = '|',
+    )
+    fun `wide trap predicates use upper bits and sign extend immediates`(instruction: String, traps: Boolean, @TempDir directory: Path) {
+        val file = Files.writeString(directory.resolve("trap.s"), "$instruction\nnop\n")
+        TestSessions.create().use { machine ->
+            machine.selectTarget(MarsTarget.MARS64)
+            val program = machine.assemble(listOf(file))
+            machine.editIntegerRegister(4, Long.MIN_VALUE)
+            if (traps) {
+                val failure = assertThrows(ProcessingException::class.java) { program.simulate(1) }
+                assertTrue(failure.message!!.contains("trap"))
+            } else {
+                assertFalse(program.simulate(1))
+            }
+        }
+    }
+}

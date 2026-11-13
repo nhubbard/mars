@@ -11,7 +11,7 @@ open class InstrBltzal : BasicInstruction(
     "000001 fffff 10000 ssssssssssssssss",
     { statement, context ->
         val operands = statement.operands
-        if (context.registerFile.getValue(operands[0]) < 0) {
+        if (context.readIntegerOperand(operands[0]) < 0) {
             context.linkReturnAddress(31)
             context.branch(operands[1])
         }

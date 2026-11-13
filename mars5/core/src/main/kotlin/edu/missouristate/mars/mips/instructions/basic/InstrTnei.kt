@@ -13,8 +13,8 @@ open class InstrTnei : BasicInstruction(
     "000001 fffff 01110 ssssssssssssssss",
     { statement, context ->
         val operands = statement.operands
-        val left = context.registerFile.getValue(operands[0])
-        val right = operands[1].toShort().toInt()
+        val left = context.readIntegerOperand(operands[0])
+        val right = operands[1].toShort().toLong()
         if (left != right) {
             throw ProcessingException(context, statement, "trap", TRAP_EXCEPTION)
         }

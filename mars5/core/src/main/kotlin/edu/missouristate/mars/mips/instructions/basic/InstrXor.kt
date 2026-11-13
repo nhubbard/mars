@@ -10,8 +10,8 @@ open class InstrXor : BasicInstruction(
     "000000 sssss ttttt fffff 00000 100110",
     { statement, context ->
         val operands = statement.operands
-        val left = context.registerFile.getValue(operands[1])
-        val right = context.registerFile.getValue(operands[2])
-        context.updateRegister(operands[0], left xor right)
+        val left = context.readIntegerOperand(operands[1])
+        val right = context.readIntegerOperand(operands[2])
+        context.updateLongRegister(operands[0], left xor right)
     },
 )

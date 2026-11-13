@@ -13,8 +13,8 @@ open class InstrTgeu : BasicInstruction(
     "000000 fffff sssss ccccc ccccc 110001",
     { statement, context ->
         val operands = statement.operands
-        val left = context.registerFile.getValue(operands[0]).toUInt()
-        val right = context.registerFile.getValue(operands[1]).toUInt()
+        val left = context.readIntegerOperand(operands[0]).toULong()
+        val right = context.readIntegerOperand(operands[1]).toULong()
         if (left >= right) {
             throw ProcessingException(context, statement, "trap", TRAP_EXCEPTION)
         }

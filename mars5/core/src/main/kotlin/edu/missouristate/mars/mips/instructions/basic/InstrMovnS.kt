@@ -11,7 +11,7 @@ open class InstrMovnS : BasicInstruction(
     "010001 10000 ttttt sssss fffff 010011",
     { statement, context ->
         val operands = statement.operands
-        if (context.registerFile.getValue(operands[2]) != 0) {
+        if (context.readIntegerOperand(operands[2]) != 0L) {
             context.updateCoprocessor1(operands[0], context.coprocessor1.getValue(operands[1]))
         }
     },

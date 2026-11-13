@@ -11,8 +11,8 @@ open class InstrSlti : BasicInstruction(
     "001010 sssss fffff tttttttttttttttt",
     { statement, context ->
         val operands = statement.operands
-        val value = context.registerFile.getValue(operands[1])
-        val immediate = operands[2].toShort().toInt()
+        val value = context.readIntegerOperand(operands[1])
+        val immediate = operands[2].toShort().toLong()
         context.updateRegister(operands[0], if (value < immediate) 1 else 0)
     },
 )

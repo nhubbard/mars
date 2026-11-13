@@ -15,7 +15,7 @@ open class InstrMovzD : BasicInstruction(
         if (operands[0] % 2 == 1 || operands[1] % 2 == 1) {
             throw ProcessingException(context, statement, "both registers must be even-numbered")
         }
-        if (context.registerFile.getValue(operands[2]) == 0) {
+        if (context.readIntegerOperand(operands[2]) == 0L) {
             context.updateCoprocessor1(operands[0], context.coprocessor1.getValue(operands[1]))
             context.updateCoprocessor1(operands[0] + 1, context.coprocessor1.getValue(operands[1] + 1))
         }

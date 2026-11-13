@@ -10,6 +10,6 @@ open class InstrSlt : BasicInstruction(
     "000000 sssss ttttt fffff 00000 101010",
     { statement, context ->
         val operands = statement.operands
-        context.updateRegister(operands[0], if (context.registerFile.getValue(operands[1]) < context.registerFile.getValue(operands[2])) 1 else 0)
+        context.updateRegister(operands[0], if (context.readIntegerOperand(operands[1]) < context.readIntegerOperand(operands[2])) 1 else 0)
     },
 )

@@ -11,7 +11,7 @@ open class InstrBgez : BasicInstruction(
     "000001 fffff 00001 ssssssssssssssss",
     { statement, context ->
         val operands = statement.operands
-        if (context.registerFile.getValue(operands[0]) >= 0) {
+        if (context.readIntegerOperand(operands[0]) >= 0) {
             context.branch(operands[1])
         }
     },

@@ -12,8 +12,8 @@ open class InstrTne : BasicInstruction(
     "000000 fffff sssss ccccc ccccc 110110",
     { statement, context ->
         val operands = statement.operands
-        val left = context.registerFile.getValue(operands[0])
-        val right = context.registerFile.getValue(operands[1])
+        val left = context.readIntegerOperand(operands[0])
+        val right = context.readIntegerOperand(operands[1])
         if (left != right) {
             throw ProcessingException(context, statement, "trap", TRAP_EXCEPTION)
         }

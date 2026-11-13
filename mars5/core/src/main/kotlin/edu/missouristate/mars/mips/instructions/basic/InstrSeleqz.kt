@@ -10,8 +10,8 @@ class InstrSeleqz : BasicInstruction(
     "000000 sssss ttttt fffff 00000 110101",
     { statement, context ->
         val operands = statement.operands
-        val value = context.registerFile.getValue(operands[1])
-        val condition = context.registerFile.getValue(operands[2])
-        context.updateRegister(operands[0], if (condition == 0) value else 0)
+        val value = context.readIntegerOperand(operands[1])
+        val condition = context.readIntegerOperand(operands[2])
+        context.updateLongRegister(operands[0], if (condition == 0L) value else 0)
     },
 )

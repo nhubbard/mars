@@ -1,5 +1,6 @@
 package edu.missouristate.mars.mips.instructions
 
+import edu.missouristate.mars.api.MarsTarget
 import java.io.BufferedReader
 import java.io.IOException
 import java.util.List.copyOf
@@ -44,6 +45,9 @@ class InstructionLoader {
             }
         }
         val remaining = template.toString()
+        if (owner.target == MarsTarget.MARS64 && example.startsWith("move ")) {
+            return ExtendedInstruction(example, "or RG1, RG2, \$0", null, description, owner)
+        }
         return if (standard == null) {
             ExtendedInstruction(example, remaining, null, description, owner)
         } else {

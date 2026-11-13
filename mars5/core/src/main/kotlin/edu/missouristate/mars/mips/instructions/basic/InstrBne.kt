@@ -10,7 +10,7 @@ open class InstrBne : BasicInstruction(
     "000101 fffff sssss tttttttttttttttt",
     { statement, context ->
         val operands = statement.operands
-        if (context.registerFile.getValue(operands[0]) != context.registerFile.getValue(operands[1])) {
+        if (context.readIntegerOperand(operands[0]) != context.readIntegerOperand(operands[1])) {
             context.branch(operands[2])
         }
     },

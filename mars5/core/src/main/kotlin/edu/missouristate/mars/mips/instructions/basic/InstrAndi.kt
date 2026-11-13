@@ -10,8 +10,8 @@ open class InstrAndi : BasicInstruction(
     "001100 sssss fffff tttttttttttttttt",
     { statement, context ->
         val operands = statement.operands
-        val left = context.registerFile.getValue(operands[1])
-        val immediate = operands[2] and 0xffff
-        context.updateRegister(operands[0], left and immediate)
+        val left = context.readIntegerOperand(operands[1])
+        val immediate = operands[2].toLong() and 0xffff
+        context.updateLongRegister(operands[0], left and immediate)
     },
 )
