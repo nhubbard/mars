@@ -223,7 +223,7 @@ class MipsFormattingPlatformTest {
                 .text
                 nop
             """.trimIndent()
-            val include = Files.createDirectory(directory.resolve("library")).resolve("shared.s")
+            val include = withContext(Dispatchers.IO) { Files.createDirectory(directory.resolve("library")).resolve("shared.s") }
             include.writeText(body)
             val dataBefore = assemble(directory.resolve("data-before.asm"), dataEntry)
             val ignoredBefore = assemble(directory.resolve("ignored-before.asm"), ignoredEntry)

@@ -1043,7 +1043,7 @@ class MipsAssemblyAnnotatorPlatformTest {
         assertEquals(1, readAction { annotator.acceptResult(view, selectedResult).size })
 
         val revisedText = binaryText.replace("-129", "-130")
-        Files.writeString(physical.toNioPath(), revisedText)
+        withContext(Dispatchers.IO) { Files.writeString(physical.toNioPath(), revisedText) }
         val (revised, orphan) = withContext(Dispatchers.EDT) {
             physical.refresh(false, false)
             fixture.configureFromExistingVirtualFile(entry.virtualFile)

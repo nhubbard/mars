@@ -26,7 +26,7 @@ class AnalysisCoordinatorTest {
             }
             try {
                 val old = coordinator.submit(emptyList())
-                assertTrue(entered.await(10, TimeUnit.SECONDS))
+                withContext(Dispatchers.IO) { assertTrue(entered.await(10, TimeUnit.SECONDS)) }
                 val source = SourceId("file:///new.s")
                 val facts = mutableListOf<IndexContribution>(
                     IndexContribution.Declarations(source, 2, emptyList()),
@@ -82,7 +82,7 @@ class AnalysisCoordinatorTest {
             }
             try {
                 val task = coordinator.submit(emptyList())
-                assertTrue(entered.await(10, TimeUnit.SECONDS))
+                withContext(Dispatchers.IO) { assertTrue(entered.await(10, TimeUnit.SECONDS)) }
                 coordinator.close()
                 release.countDown()
                 withTimeout(10_000.milliseconds) { task.join() }

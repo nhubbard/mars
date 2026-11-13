@@ -38,6 +38,8 @@ import edu.missouristate.mars.util.Binary
 import java.nio.file.Path
 import kotlin.io.path.writeText
 import kotlin.time.Duration.Companion.seconds
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -1634,10 +1636,10 @@ class MipsParserPlatformTest {
             val expanded = program.machineList!!.first()
             assertEquals(0x24080007, expanded.binaryStatement)
             val origin = program.sourceMap().origins().getValue(expanded.address)
-            assertEquals(include.toRealPath(), origin.location.file().toRealPath())
+            withContext(Dispatchers.IO) { assertEquals(include.toRealPath(), origin.location.file().toRealPath()) }
             assertEquals(3, origin.location.line())
             val caller = requireNotNull(origin.caller)
-            assertEquals(entry.toRealPath(), caller.location.file().toRealPath())
+            withContext(Dispatchers.IO) { assertEquals(entry.toRealPath(), caller.location.file().toRealPath()) }
             assertEquals(6, caller.location.line())
             val base = context.memory.dataBaseAddress
             assertEquals(7, context.memory.getWordNoNotify(base))

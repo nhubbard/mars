@@ -3517,8 +3517,8 @@ class MarsDebugPlatformTest {
     @Suppress("UsePropertyAccessSyntax")
     fun `Symbols distinguishes identical names by assembly unit and handles unavailable definitions`(defaultProject: Boolean, @TempDir directory: Path) =
         timeoutRunBlocking {
-            val first = Files.writeString(Files.createDirectory(directory.resolve("first")).resolve("same.s"), "nop\n").toRealPath()
-            val second = Files.writeString(Files.createDirectory(directory.resolve("second")).resolve("same.s"), "nop\n").toRealPath()
+            val first = withContext(Dispatchers.IO) { Files.writeString(Files.createDirectory(directory.resolve("first")).resolve("same.s"), "nop\n").toRealPath() }
+            val second = withContext(Dispatchers.IO) { Files.writeString(Files.createDirectory(directory.resolve("second")).resolve("same.s"), "nop\n").toRealPath() }
             val files = withContext(Dispatchers.EDT) {
                 listOf(first, second).associateWith { requireNotNull(LocalFileSystem.getInstance().refreshAndFindFileByNioFile(it)) }
             }
@@ -3571,8 +3571,8 @@ class MarsDebugPlatformTest {
     @Test
     fun `captured positions recognize unopened files and reject a snapshot from another image`(@TempDir directory: Path) =
         timeoutRunBlocking {
-            val path = Files.writeString(directory.resolve("unopened.asm"), "nop\n").toRealPath()
-            val otherPath = Files.writeString(directory.resolve("unrelated.asm"), "nop\n").toRealPath()
+            val path = withContext(Dispatchers.IO) { Files.writeString(directory.resolve("unopened.asm"), "nop\n").toRealPath() }
+            val otherPath = withContext(Dispatchers.IO) { Files.writeString(directory.resolve("unrelated.asm"), "nop\n").toRealPath() }
             withContext(Dispatchers.EDT) {
                 val fs = LocalFileSystem.getInstance()
                 val file = requireNotNull(fs.refreshAndFindFileByNioFile(path))

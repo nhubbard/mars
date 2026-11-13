@@ -90,24 +90,24 @@ class MarsMemoryExportPlatformTest {
             val range = 0x10010000u..0x10010000u
             assertNull(export.export(entry, MemoryExportOptions(format, MemoryExportRegion.RANGE, range), output))
             val lineEnd = if (descriptor == "Binary") "" else HexFormat.of().formatHex(newline.toByteArray())
-            assertEquals(outputs.getValue(descriptor) + lineEnd, HexFormat.of().formatHex(Files.readAllBytes(output)), format.toString())
+            withContext(Dispatchers.IO) { assertEquals(outputs.getValue(descriptor) + lineEnd, HexFormat.of().formatHex(Files.readAllBytes(output)), format.toString()) }
         }
         val text = directory.resolve("text")
         assertNull(export.export(entry, MemoryExportOptions(format("HexText"), MemoryExportRegion.TEXT), text))
-        assertEquals("24080007$newline", Files.readString(text))
+        withContext(Dispatchers.IO) { assertEquals("24080007$newline", Files.readString(text)) }
         val listing = directory.resolve("listing")
         assertNull(export.export(entry, MemoryExportOptions(format("SegmentWindow"), MemoryExportRegion.TEXT), listing))
-        assertTrue(Files.readAllLines(listing).last().startsWith("0x00400000  0x24080007"))
+        withContext(Dispatchers.IO) { assertTrue(Files.readAllLines(listing).last().startsWith("0x00400000  0x24080007")) }
         val data = directory.resolve("data")
         assertNull(export.export(entry, MemoryExportOptions(format("HexText"), MemoryExportRegion.DATA), data))
-        assertEquals("41424344", Files.readAllLines(data).first())
+        withContext(Dispatchers.IO) { assertEquals("41424344", Files.readAllLines(data).first()) }
     }
 
     @Test
     fun `empty memory invalid ranges assembly failures and IO failures preserve the destination`() = timeoutRunBlocking {
         val entry = source("entry.s", ".text\nnop\n")
         val broken = source("broken.asm", ".text\nnot_an_instruction\n")
-        val destination = directory.resolve("existing").also { Files.writeString(it, "preserve") }
+        val destination = withContext(Dispatchers.IO) { directory.resolve("existing").also { Files.writeString(it, "preserve") } }
         val data = MemoryExportOptions(format("HexText"), MemoryExportRegion.DATA)
         val text = data.copy(region = MemoryExportRegion.TEXT)
         fun range(first: UInt, last: UInt) = data.copy(region = MemoryExportRegion.RANGE, range = first..last)
@@ -121,16 +121,16 @@ class MarsMemoryExportPlatformTest {
         )
         for ((source, options, expected) in cases) {
             assertTrue(export.export(source, options, destination)?.contains(expected) == true, expected)
-            assertEquals("preserve", Files.readString(destination))
+            withContext(Dispatchers.IO) { assertEquals("preserve", Files.readString(destination)) }
         }
-        val existingDirectory = Files.createDirectory(directory.resolve("occupied"))
+        val existingDirectory = withContext(Dispatchers.IO) { Files.createDirectory(directory.resolve("occupied")) }
         assertTrue(export.export(entry, text, existingDirectory)?.contains("Could not write") == true)
         assertTrue(Files.isDirectory(existingDirectory))
-        Files.list(directory).use { assertEquals(setOf(destination, existingDirectory), it.toList().toSet()) }
+        withContext(Dispatchers.IO) { Files.list(directory).use { assertEquals(setOf(destination, existingDirectory), it.toList().toSet()) } }
 
         val kernel = source("kernel.s", $$".ktext 0x80000180\naddiu $t0, $zero, 7\n")
         assertNull(export.export(kernel, range(0x80000180u, 0x80000180u), destination))
-        assertEquals(listOf("24080007"), Files.readAllLines(destination))
+        withContext(Dispatchers.IO) { assertEquals(listOf("24080007"), Files.readAllLines(destination)) }
     }
 
     @Test
@@ -209,7 +209,7 @@ class MarsMemoryExportPlatformTest {
                 ActionUtil.performAction(action, enabled)
             }
             assertEquals(NotificationType.INFORMATION, notifications.receive().type)
-            assertEquals(listOf(":0400000000000000FC", ":00000001FF"), Files.readAllLines(output))
+            withContext(Dispatchers.IO) { assertEquals(listOf(":0400000000000000FC", ":00000001FF"), Files.readAllLines(output)) }
 
             export.exportInBackground(entry, MemoryExportOptions(format("HEX"), MemoryExportRegion.DATA), output).join()
             val failure = notifications.receive()

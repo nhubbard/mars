@@ -939,7 +939,7 @@ class MarsBuildPlatformTest {
             val projectSources = MarsSourceSet(listOf(entry, kernel), MarsAssemblyMode.PROJECT)
             assertEquals(listOf(entry), captureBuildSources(projectSources, kernel).snapshot.entries())
             assertEquals(kernel, directory.rootsBySource[entry.resolveSibling("parts/body.s")])
-            assertEquals(".ktext 0x80000180\nnop\n", Files.readString(kernel))
+            withContext(Dispatchers.IO) { assertEquals(".ktext 0x80000180\nnop\n", Files.readString(kernel)) }
             val service = project.service<MarsBuildService>()
             service.assemble(MarsSourceSet(entry, MarsAssemblyMode.DIRECTORY))
             assertInstanceOf(SuccessResult::class.java, finish().result)
@@ -1024,7 +1024,7 @@ class MarsBuildPlatformTest {
         assertEquals(roots, capture.snapshot.entries())
         assertEquals(helperPath, capture.rootsBySource[entry.resolveSibling("shared/defs.s")])
         assertEquals(helperPath, capture.rootsBySource[entry.resolveSibling("shared/value.inc")])
-        assertEquals(".globl helper\nhelper: nop\n", Files.readString(helperPath))
+        withContext(Dispatchers.IO) { assertEquals(".globl helper\nhelper: nop\n", Files.readString(helperPath)) }
         val lifetime = Disposer.newDisposable()
         try {
             val events = recordBuildEvents(lifetime)
@@ -1684,8 +1684,8 @@ class MarsBuildPlatformTest {
                 assertEquals(normalizedInclude, includedSyntax.text)
                 assertTrue(PsiTreeUtil.findChildrenOfType(includedSyntax, PsiErrorElement::class.java).isEmpty())
             }
-            assertTrue(Files.readAllBytes(entry).contentEquals(entryBytes), "Opening the entry must preserve its bytes")
-            assertTrue(Files.readAllBytes(include).contentEquals(includeBytes), "Resolving the include must preserve its bytes")
+            withContext(Dispatchers.IO) { assertTrue(Files.readAllBytes(entry).contentEquals(entryBytes), "Opening the entry must preserve its bytes") }
+            withContext(Dispatchers.IO) { assertTrue(Files.readAllBytes(include).contentEquals(includeBytes), "Resolving the include must preserve its bytes") }
 
             val capture = captureAssemblySources(listOf(entry), null)
             assertEquals(
@@ -1739,9 +1739,9 @@ class MarsBuildPlatformTest {
             assertEquals(2, diagnostic.line)
             assertEquals("ignored: ".length + 1, diagnostic.column)
             assertTrue(diagnostic.message!!.endsWith("Invalid language element: 0xG"))
-            assertArrayEquals(entryBytes, Files.readAllBytes(entry), "Assembling the editor capture must preserve the original bytes")
+            withContext(Dispatchers.IO) { assertArrayEquals(entryBytes, Files.readAllBytes(entry), "Assembling the editor capture must preserve the original bytes") }
             val malformedBytes = hex.parseHex(entryBom) + malformed.replace("\n", "\r\n").toByteArray(Charset.forName(entryEncoding))
-            val malformedOnDisk = Files.write(entry.resolveSibling("malformed.mars"), malformedBytes)
+            val malformedOnDisk = withContext(Dispatchers.IO) { Files.write(entry.resolveSibling("malformed.mars"), malformedBytes) }
             MarsSessionService.createMarsComponent().context().use { disk ->
                 val failure = assertThrows(ProcessingException::class.java) { disk.assemble(listOf(malformedOnDisk)) }
                 val diskDiagnostic = failure.errors()!!.errorMessages.single()
@@ -1803,7 +1803,7 @@ class MarsBuildPlatformTest {
             withContext(Dispatchers.EDT) { edit(remote, ".eqv REMOTE 11\n.include \"next.s\"\n") }
             assertTrue(build.assemble(entry, component, activateBuildView = false))
             assertEquals(listOf(0x2408000b, 0x24090002, 0x240a0008), session.program!!.machineList!!.map { it.binaryStatement })
-            assertTrue(Files.readString(remote.toNioPath()).contains(".eqv REMOTE 7"))
+            withContext(Dispatchers.IO) { assertTrue(Files.readString(remote.toNioPath()).contains(".eqv REMOTE 7")) }
 
             val broken = withContext(Dispatchers.EDT) {
                 fixture.tempDirFixture.createFile("local/broken.asm", ".include \"value.s\"\n.include \"missing/../value.s\"\n")
@@ -1965,7 +1965,7 @@ class MarsBuildPlatformTest {
                 assertEquals(source.indexOf(line) + 2, link.offset)
             }
             assertInstanceOf(FailureResult::class.java, assertInstanceOf(FinishBuildEvent::class.java, events.receive()).result)
-            assertEquals(".data\n.asciiz \"saved\"\n", Files.readString(include.toNioPath()))
+            withContext(Dispatchers.IO) { assertEquals(".data\n.asciiz \"saved\"\n", Files.readString(include.toNioPath())) }
 
             withContext(Dispatchers.EDT) { edit(include, source.replace(line, "$line\"")) }
             invokeAction(main)
@@ -2009,7 +2009,7 @@ class MarsBuildPlatformTest {
             assertEquals(start.id, finish.id)
             assertInstanceOf(FailureResult::class.java, finish.result)
             assertSame(existingProgram, session.program)
-            assertEquals("nop\n", Files.readString(include.toNioPath()))
+            withContext(Dispatchers.IO) { assertEquals("nop\n", Files.readString(include.toNioPath())) }
 
             withContext(Dispatchers.EDT) { edit(include, "nop\n") }
             invokeAction(main)

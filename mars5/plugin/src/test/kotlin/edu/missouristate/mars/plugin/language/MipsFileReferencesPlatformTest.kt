@@ -384,21 +384,28 @@ class MipsFileReferencesPlatformTest {
     fun `include identity collapses directory aliases and keeps different file names`(@TempDir temp: Path) =
         timeoutRunBlocking {
             // IntelliJ reports the long spelling of Windows temporary directories.
-            val directory = temp.toRealPath()
-            val actual = Files.createDirectory(directory.resolve("actual"))
-            val original = Files.writeString(actual.resolve("value.s"), ".include \"neighbor.s\"\n")
-            val originalNeighbor = Files.writeString(actual.resolve("neighbor.s"), $$"addiu $t0, $zero, 7\n")
-            val aliasNeighbor = Files.writeString(directory.resolve("neighbor.s"), $$"addiu $t0, $zero, 9\n")
-            val folderAlias = Files.createSymbolicLink(directory.resolve("alias"), actual)
-            val fileAlias = Files.createSymbolicLink(directory.resolve("alternate.s"), original)
-            val duplicate = Files.writeString(directory.resolve("duplicate.asm"), """
-                .include "actual/value.s"
-                .include "alias/value.s"
-            """.trimIndent())
-            val distinct = Files.writeString(directory.resolve("distinct.asm"), """
-                .include "actual/value.s"
-                .include "alternate.s"
-            """.trimIndent())
+            data class IncludeFiles(
+                val original: Path, val originalNeighbor: Path, val aliasNeighbor: Path,
+                val folderAlias: Path, val fileAlias: Path, val duplicate: Path, val distinct: Path,
+            )
+            val (original, originalNeighbor, aliasNeighbor, folderAlias, fileAlias, duplicate, distinct) = withContext(Dispatchers.IO) {
+                val directory = temp.toRealPath()
+                val actual = Files.createDirectory(directory.resolve("actual"))
+                val original = Files.writeString(actual.resolve("value.s"), ".include \"neighbor.s\"\n")
+                val originalNeighbor = Files.writeString(actual.resolve("neighbor.s"), $$"addiu $t0, $zero, 7\n")
+                val aliasNeighbor = Files.writeString(directory.resolve("neighbor.s"), $$"addiu $t0, $zero, 9\n")
+                val folderAlias = Files.createSymbolicLink(directory.resolve("alias"), actual)
+                val fileAlias = Files.createSymbolicLink(directory.resolve("alternate.s"), original)
+                val duplicate = Files.writeString(directory.resolve("duplicate.asm"), """
+                    .include "actual/value.s"
+                    .include "alias/value.s"
+                """.trimIndent())
+                val distinct = Files.writeString(directory.resolve("distinct.asm"), """
+                    .include "actual/value.s"
+                    .include "alternate.s"
+                """.trimIndent())
+                IncludeFiles(original, originalNeighbor, aliasNeighbor, folderAlias, fileAlias, duplicate, distinct)
+            }
             val manager = VirtualFileManager.getInstance()
             val (duplicatePsi, distinctPsi) = withContext(Dispatchers.EDT) {
                 listOf(original, originalNeighbor, aliasNeighbor, folderAlias.resolve("value.s"), fileAlias)

@@ -78,8 +78,8 @@ class CapturedAssemblySourcesPlatformTest {
         assertEquals(capture.snapshot.texts().keys, capture.revisions.keys)
         assertEquals(mainText, capture.snapshot.texts()[entry])
         assertEquals(innerText, capture.snapshot.texts()[leaf])
-        assertEquals("nop\n", Files.readString(entry))
-        assertEquals(".eqv VALUE 1\n", Files.readString(leaf))
+        withContext(Dispatchers.IO) { assertEquals("nop\n", Files.readString(entry)) }
+        withContext(Dispatchers.IO) { assertEquals(".eqv VALUE 1\n", Files.readString(leaf)) }
 
         withContext(Dispatchers.EDT) { edit(inner, ".eqv VALUE 99\n") }
         val newer = captureAssemblySources(listOf(entry), handlerPath)

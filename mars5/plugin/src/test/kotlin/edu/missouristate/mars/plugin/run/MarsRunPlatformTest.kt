@@ -170,7 +170,7 @@ class MarsRunPlatformTest {
                     WriteCommandAction.runWriteCommandAction(project) { document.setText(body.replace("break BREAK_CODE", "nop")) }
                 }
             }
-            handler.processInput.write("0\n".toByteArray())
+            withContext(Dispatchers.IO) { handler.processInput.write("0\n".toByteArray()) }
             assertEquals(1, recording.exit.await())
             assertEquals(1, recording.stderr.toString().lineSequence().count { it.startsWith("MARS runtime error.") })
             assertTrue(recording.stderr.toString().contains("break instruction executed; code = 7."))
@@ -340,7 +340,7 @@ class MarsRunPlatformTest {
                 event.presentation.isEnabled = true
                 ActionUtil.performAction(originalAction, event)
             }
-            second.processInput.write("1\n".toByteArray())
+            withContext(Dispatchers.IO) { second.processInput.write("1\n".toByteArray()) }
             assertEquals(0, resetOutput.exit.await())
 
             withContext(Dispatchers.EDT) { ExecutionUtil.restart(reset) }
@@ -348,7 +348,7 @@ class MarsRunPlatformTest {
             builds.receive()
             pollAssertionsAsync(5.seconds, 10.milliseconds) { assertEquals("b8", rebuiltOutput.stdout.toString()) }
             assertNotSame(second.capturedProgram, third.capturedProgram)
-            third.processInput.write("1\n".toByteArray())
+            withContext(Dispatchers.IO) { third.processInput.write("1\n".toByteArray()) }
             assertEquals(0, rebuiltOutput.exit.await())
             assertEquals(second.instructionCounter.snapshot(), third.instructionCounter.snapshot())
         } finally {
@@ -522,7 +522,7 @@ class MarsRunPlatformTest {
             assertEquals(9, recording.exit.await())
             assertEquals("42", recording.stdout.toString())
             assertEquals("", recording.stderr.toString())
-            assertEquals(".eqv VALUE 1\n", Files.readString(include))
+            withContext(Dispatchers.IO) { assertEquals(".eqv VALUE 1\n", Files.readString(include)) }
         } finally {
             Disposer.dispose(disposable)
         }
@@ -741,7 +741,7 @@ class MarsRunPlatformTest {
             assertEquals(1, recording.exit.await())
             assertEquals("Stopped after reaching the instruction limit of 3.\n", recording.stderr.toString())
             assertEquals(3L, started.await().instructionCounter.snapshot().total)
-            assertEquals("0000002a", Files.readAllLines(dump).single())
+            withContext(Dispatchers.IO) { assertEquals("0000002a", Files.readAllLines(dump).single()) }
         } finally {
             withContext(Dispatchers.EDT) { Disposer.dispose(lifetime) }
         }
@@ -1091,7 +1091,7 @@ class MarsRunPlatformTest {
             }
             assertEquals(0, recording.exit.await())
             assertEquals("42", recording.stdout.toString())
-            assertEquals(".data\n.word 1\n", Files.readString(library))
+            withContext(Dispatchers.IO) { assertEquals(".data\n.word 1\n", Files.readString(library)) }
         } finally {
             Disposer.dispose(disposable)
         }
@@ -1136,7 +1136,7 @@ class MarsRunPlatformTest {
             assertEquals(9, recording.exit.await())
             assertEquals("42", recording.stdout.toString())
             assertEquals("", recording.stderr.toString())
-            assertEquals(".data\n.globl VALUE\nVALUE: .word 1\n", Files.readString(include))
+            withContext(Dispatchers.IO) { assertEquals(".data\n.globl VALUE\nVALUE: .word 1\n", Files.readString(include)) }
         } finally {
             Disposer.dispose(disposable)
         }
@@ -1658,9 +1658,9 @@ class MarsRunPlatformTest {
     @Test
     fun `configured dumps use final memory and independent failures preserve the program exit code`(@TempDir directory: Path) =
         timeoutRunBlocking {
-            val output = directory.resolve("saved.txt").also { Files.writeString(it, "old") }
+            val output = withContext(Dispatchers.IO) { directory.resolve("saved.txt").also { Files.writeString(it, "old") } }
             val binary = directory.resolve("word.bin")
-            val invalidRange = directory.resolve("unchanged").also { Files.writeString(it, "keep") }
+            val invalidRange = withContext(Dispatchers.IO) { directory.resolve("unchanged").also { Files.writeString(it, "keep") } }
             val missingParent = directory.resolve("absent/machine")
             val (include, nestedEmpty) = withContext(Dispatchers.EDT) {
                 val empty = fixture.addFileToProject("defs/empty.inc", "").virtualFile.toNioPath()
@@ -1689,11 +1689,11 @@ class MarsRunPlatformTest {
                 dumpState(binary, MemoryExportRegion.RANGE, 0x10010000, 0x10010000).apply { formatName = "Binary" },
             ))
             assertEquals(9, recording.exit.await())
-            assertEquals(listOf("0000002a"), Files.readAllLines(output))
-            assertArrayEquals(byteArrayOf(42, 0, 0, 0), Files.readAllBytes(binary))
-            assertEquals("keep", Files.readString(invalidRange))
-            assertEquals("", Files.readString(nestedEmpty))
-            assertEquals(".eqv EXIT_STATUS 9\n", Files.readString(include))
+            withContext(Dispatchers.IO) { assertEquals(listOf("0000002a"), Files.readAllLines(output)) }
+            withContext(Dispatchers.IO) { assertArrayEquals(byteArrayOf(42, 0, 0, 0), Files.readAllBytes(binary)) }
+            withContext(Dispatchers.IO) { assertEquals("keep", Files.readString(invalidRange)) }
+            withContext(Dispatchers.IO) { assertEquals("", Files.readString(nestedEmpty)) }
+            withContext(Dispatchers.IO) { assertEquals(".eqv EXIT_STATUS 9\n", Files.readString(include)) }
             val errors = recording.stderr.toString()
             assertTrue(errors.contains("program source file"), errors)
             assertTrue(errors.contains("outside the memory available"), errors)
@@ -1709,25 +1709,25 @@ class MarsRunPlatformTest {
             val (crashed, crashRecording) = run("break\n", listOf(dumpState(fault)))
             assertEquals(1, crashRecording.exit.await())
             assertEquals(1, crashed.exitCode)
-            assertEquals(listOf("0000000d"), Files.readAllLines(fault))
+            withContext(Dispatchers.IO) { assertEquals(listOf("0000000d"), Files.readAllLines(fault)) }
             assertTrue(crashRecording.stderr.toString().contains("MARS runtime error"))
 
             val cliff = directory.resolve("cliff.txt")
             assertEquals(0, runConfiguredDump("nop\n", listOf(dumpState(cliff))).exit.await())
-            assertEquals(listOf("00000000"), Files.readAllLines(cliff))
+            withContext(Dispatchers.IO) { assertEquals(listOf("00000000"), Files.readAllLines(cliff)) }
 
-            val untouched = directory.resolve("untouched.txt").also { Files.writeString(it, "keep") }
+            val untouched = withContext(Dispatchers.IO) { directory.resolve("untouched.txt").also { Files.writeString(it, "keep") } }
             assertEquals(1, runConfiguredDump("b missing\n", listOf(dumpState(untouched))).exit.await())
-            assertEquals("keep", Files.readString(untouched))
+            withContext(Dispatchers.IO) { assertEquals("keep", Files.readString(untouched)) }
             val (running, console) = run($$"li $v0, 1\nsyscall\nloop: b loop\nnop\n", listOf(dumpState(untouched)))
             console.output.await()
             withContext(Dispatchers.EDT) { running.destroyProcess() }
             assertEquals(130, console.exit.await())
-            assertEquals("keep", Files.readString(untouched))
+            withContext(Dispatchers.IO) { assertEquals("keep", Files.readString(untouched)) }
 
             val (_, bounded) = run("nop\nnop\n", listOf(dumpState(untouched)), limit = 1L)
             assertEquals(1, bounded.exit.await())
-            assertEquals("keep", Files.readString(untouched))
+            withContext(Dispatchers.IO) { assertEquals("keep", Files.readString(untouched)) }
         }
 
     private fun setDumpDialog(
