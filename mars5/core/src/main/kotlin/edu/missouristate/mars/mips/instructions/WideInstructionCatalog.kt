@@ -41,7 +41,7 @@ internal val wideInstructionFactories: List<() -> BasicInstruction> = listOf(
         ) { statement, context ->
             val (destination, offset, base) = statement.operands
             try {
-                val address = wideAddress(context.registerFile.getLongValue(base), offset, Int.SIZE_BYTES, ADDRESS_EXCEPTION_LOAD)
+                val address = context.effectiveAddress(base, offset, ADDRESS_EXCEPTION_LOAD)
                 val bits = context.memory().getWord(address).toUInt().toLong()
                 context.updateLongRegister(destination, bits)
             } catch (failure: AddressErrorException) {
@@ -56,7 +56,8 @@ internal val wideInstructionFactories: List<() -> BasicInstruction> = listOf(
         ) { statement, context ->
             val (destination, offset, base) = statement.operands
             try {
-                val address = wideAddress(context.registerFile.getLongValue(base), offset, Long.SIZE_BYTES, ADDRESS_EXCEPTION_LOAD)
+                val address = context.effectiveAddress(base, offset, ADDRESS_EXCEPTION_LOAD)
+                requireDoublewordAlignment(address, ADDRESS_EXCEPTION_LOAD)
                 val memory = context.memory()
                 val first = memory.getWord(address).toUInt().toLong()
                 val second = memory.getWord(address + Int.SIZE_BYTES).toUInt().toLong()
@@ -74,7 +75,8 @@ internal val wideInstructionFactories: List<() -> BasicInstruction> = listOf(
         ) { statement, context ->
             val (source, offset, base) = statement.operands
             try {
-                val address = wideAddress(context.registerFile.getLongValue(base), offset, Long.SIZE_BYTES, ADDRESS_EXCEPTION_STORE)
+                val address = context.effectiveAddress(base, offset, ADDRESS_EXCEPTION_STORE)
+                requireDoublewordAlignment(address, ADDRESS_EXCEPTION_STORE)
                 val value = context.registerFile.getLongValue(source)
                 val low = value.toInt()
                 val high = (value ushr Int.SIZE_BITS).toInt()
@@ -116,14 +118,10 @@ private fun wideShift(
     context.updateLongRegister(destination, operation(context.registerFile.getLongValue(source), base + shift))
 }
 
-@Throws(AddressErrorException::class)
-private fun wideAddress(base: Long, offset: Int, alignment: Int, exception: Int): Int {
-    val address = base + offset.toShort()
-    val low = address.toInt()
-    if ((address != low.toLong() && address != low.toUInt().toLong()) || low % alignment != 0) {
-        throw AddressErrorException("Address is misaligned or outside mapped memory", exception, low)
+private fun requireDoublewordAlignment(address: Int, exception: Int) {
+    if (address % Long.SIZE_BYTES != 0) {
+        throw AddressErrorException("address not aligned on doubleword boundary ", exception, address)
     }
-    return low
 }
 
 private fun wideVariableShift(

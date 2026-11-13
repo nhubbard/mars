@@ -26,6 +26,7 @@ import edu.missouristate.mars.mips.instructions.BasicInstructionFormat.I_BRANCH_
 import edu.missouristate.mars.mips.instructions.Instruction.Companion.INSTRUCTION_LENGTH
 import edu.missouristate.mars.mips.instructions.SyscallRegistry
 import edu.missouristate.mars.mips.instructions.syscalls.RandomStreams
+import edu.missouristate.mars.simulator.Exceptions.ADDRESS_EXCEPTION_LOAD
 import edu.missouristate.mars.simulator.Exceptions.RESERVED_INSTRUCTION_EXCEPTION
 import edu.missouristate.mars.util.Binary
 
@@ -54,6 +55,36 @@ class InstructionContext(private val session: MarsContext, private val environme
         if (session.target == MarsTarget.MARS64) registerFile.getLongValue(number)
         else registerFile.getValue(number).toLong()
 
+    /** Resolve a register-based address against the existing 32-bit memory map. */
+    internal fun effectiveAddress(register: Int, offset: Int, exception: Int = ADDRESS_EXCEPTION_LOAD): Int {
+        if (session.target == MarsTarget.MARS32) return registerFile.getValue(register) + offset
+        val address = registerFile.getLongValue(register) + offset.toShort()
+        val mapped = address.toInt()
+        if (address != mapped.toLong() && address != mapped.toUInt().toLong()) {
+            val hex = address.toULong().toString(16).padStart(16, '0')
+            throw AddressErrorException("Address 0x$hex is outside mapped memory; low word ", exception, mapped)
+        }
+        return mapped
+    }
+
+    internal fun registerJumpTarget(statement: ProgramStatement, register: Int, offset: Int = 0): Int =
+        try {
+            effectiveAddress(register, offset)
+        } catch (failure: AddressErrorException) {
+            throw ProcessingException(this, statement, failure)
+        }
+
+    internal fun jumpAndLinkRegister(statement: ProgramStatement, link: Int, source: Int) {
+        if (session.target == MarsTarget.MARS32) {
+            linkReturnAddress(link)
+            jump(registerFile.getValue(source))
+        } else {
+            val target = registerJumpTarget(statement, source)
+            linkReturnAddress(link)
+            jump(target)
+        }
+    }
+
     fun updateRegister(number: Int, value: Int): Int {
         if (number == 32) return setProgramCounter(value)
         return updateLongRegister(number, value.toLong()).toInt()
@@ -71,6 +102,12 @@ class InstructionContext(private val session: MarsContext, private val environme
         val previous = registerFile.setProgramCounter(value)
         if (session.backStepper.enabled()) session.backStepper.addPCRestore(previous)
         return previous
+    }
+
+    /** Save the address after the jump or its delay slot, as configured for this session. */
+    internal fun linkReturnAddress(register: Int) {
+        val delay = if (settings().isDelayedBranchingEnabled) INSTRUCTION_LENGTH else 0
+        link(register, registerFile.programCounter + delay)
     }
 
     /** Write the link register and record a call if the register accepts writes. */

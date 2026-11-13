@@ -6,6 +6,7 @@ import edu.missouristate.mars.mips.hardware.MemoryState.Companion.WORD_LENGTH_BY
 import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
 import edu.missouristate.mars.util.Binary
+import edu.missouristate.mars.simulator.Exceptions.ADDRESS_EXCEPTION_STORE
 
 open class InstrSwr : BasicInstruction(
     "swr \$t1,-100(\$t2)",
@@ -17,7 +18,7 @@ open class InstrSwr : BasicInstruction(
     { statement, context ->
         val operands = statement.operands
         try {
-            val address = context.registerFile.getValue(operands[2]) + operands[1]
+            val address = context.effectiveAddress(operands[2], operands[1], ADDRESS_EXCEPTION_STORE)
             val source = context.registerFile.getValue(operands[0])
             for (index in 0..(3 - (address % WORD_LENGTH_BYTES))) {
                 context.setMemoryByte(address + index, Binary.getByte(source, index))

@@ -13,7 +13,7 @@ open class InstrLb : BasicInstruction(
     { statement, context ->
         val operands = statement.operands
         try {
-            val address = context.registerFile.getValue(operands[2]) + operands[1].toShort().toInt()
+            val address = context.effectiveAddress(operands[2], operands[1].toShort().toInt())
             val value = context.memory().getByte(address).toByte().toInt()
             context.updateRegister(operands[0], value)
         } catch (failure: AddressErrorException) {

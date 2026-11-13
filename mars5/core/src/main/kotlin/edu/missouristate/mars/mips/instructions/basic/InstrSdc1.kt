@@ -18,13 +18,13 @@ open class InstrSdc1 : BasicInstruction(
         if (operands[0] % 2 == 1) {
             throw ProcessingException(context, statement, "first register must be even-numbered")
         }
-        if (!MemoryState.doublewordAligned(context.registerFile.getValue(operands[2]) + operands[1])) {
-            val failure = AddressErrorException("address not aligned on doubleword boundary ", ADDRESS_EXCEPTION_STORE, context.registerFile.getValue(operands[2]) + operands[1])
-            throw ProcessingException(context, statement, failure)
-        }
         try {
-            context.setMemoryWord(context.registerFile.getValue(operands[2]) + operands[1], context.coprocessor1.getValue(operands[0]))
-            context.setMemoryWord(context.registerFile.getValue(operands[2]) + operands[1] + 4, context.coprocessor1.getValue(operands[0] + 1))
+            val address = context.effectiveAddress(operands[2], operands[1], ADDRESS_EXCEPTION_STORE)
+            if (!MemoryState.doublewordAligned(address)) {
+                throw AddressErrorException("address not aligned on doubleword boundary ", ADDRESS_EXCEPTION_STORE, address)
+            }
+            context.setMemoryWord(address, context.coprocessor1.getValue(operands[0]))
+            context.setMemoryWord(address + 4, context.coprocessor1.getValue(operands[0] + 1))
         } catch (failure: AddressErrorException) {
             throw ProcessingException(context, statement, failure)
         }

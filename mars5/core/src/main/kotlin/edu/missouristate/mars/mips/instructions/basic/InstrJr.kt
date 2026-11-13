@@ -10,6 +10,6 @@ open class InstrJr : BasicInstruction(
     "000000 fffff 00000 00000 00000 001000",
     { statement, context ->
         val operands = statement.operands
-        context.jump(context.registerFile.getValue(operands[0]))
+        context.jump(context.registerJumpTarget(statement, operands[0]))
     },
 )

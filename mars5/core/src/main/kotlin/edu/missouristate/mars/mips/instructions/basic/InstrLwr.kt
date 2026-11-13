@@ -16,7 +16,7 @@ open class InstrLwr : BasicInstruction(
     { statement, context ->
         val operands = statement.operands
         try {
-            val address = context.registerFile.getValue(operands[2]) + operands[1]
+            val address = context.effectiveAddress(operands[2], operands[1])
             // The byte merge reassigns result on each pass.
             @Suppress("CanBeVal")
             var result = context.registerFile.getValue(operands[0])

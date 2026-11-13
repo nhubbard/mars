@@ -11,7 +11,6 @@ open class InstrJalr1 : BasicInstruction(
     "000000 sssss 00000 fffff 00000 001001",
     { statement, context ->
         val operands = statement.operands
-        context.linkReturnAddress(operands[0])
-        context.jump(context.registerFile.getValue(operands[1]))
+        context.jumpAndLinkRegister(statement, operands[0], operands[1])
     },
 )

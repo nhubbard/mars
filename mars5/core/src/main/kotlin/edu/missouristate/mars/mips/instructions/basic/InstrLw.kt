@@ -13,7 +13,7 @@ open class InstrLw : BasicInstruction(
     { statement, context ->
         val operands = statement.operands
         try {
-            val address = context.registerFile.getValue(operands[2]) + operands[1]
+            val address = context.effectiveAddress(operands[2], operands[1])
             val value = context.memory().getWord(address)
             context.updateRegister(operands[0], value)
         } catch (failure: AddressErrorException) {

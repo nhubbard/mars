@@ -83,8 +83,9 @@ MARS Assembly**, or pass `--target MARS64` to the CLI, to enable educational dou
 instructions. The debugger can inspect, edit, and reverse changes to the full integer registers.
 Word instructions such as `addiu` and `sll` use the low 32 bits and write sign-extended word
 results. Bitwise operations, comparisons, branches, and register moves use the selected target's
-integer register width. Memory uses the existing MARS address layouts. Use `.dword` for aligned
-64-bit constants and `ld` and `sd` to load and store them.
+integer register width. Memory uses the existing MARS address layouts. Register-based loads,
+stores, and jumps report an address error when the effective address falls outside the 32-bit
+map. Use `.dword` for aligned 64-bit constants and `ld` and `sd` to load and store them.
 
 The MARS32 catalog includes additional user-mode operations from the MIPS32 Release 6 reference,
 including bitfield extraction and insertion, rotates, scaled addressing, PC-relative addressing,

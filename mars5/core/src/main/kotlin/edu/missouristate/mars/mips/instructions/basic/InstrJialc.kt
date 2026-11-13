@@ -11,7 +11,7 @@ class InstrJialc : BasicInstruction(
     "111110 00000 fffff ssssssssssssssss",
     { statement, context ->
         val operands = statement.operands
-        val target = context.registerFile.getValue(operands[0]) + operands[1].toShort()
+        val target = context.registerJumpTarget(statement, operands[0], operands[1].toShort().toInt())
         context.compactTransfer(statement, target)
         context.link(31, statement.address + INSTRUCTION_LENGTH)
     },
