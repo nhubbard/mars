@@ -30,7 +30,7 @@ import kotlinx.coroutines.channels.SendChannel
 
 /** Captures the registers while the simulation is suspended. The UI only reads the captured values. */
 internal class MarsStackFrame(
-    position: XSourcePosition?,
+    @Volatile private var position: XSourcePosition?,
     machine: MarsContext,
     private val project: Project,
     private val localSymbols: Map<String, Definition>,
@@ -42,7 +42,6 @@ internal class MarsStackFrame(
 ) : XStackFrame() {
     private data class Snapshot(val evaluator: MarsExpressionEvaluator, val groups: XValueChildrenList)
     private val display = service<MarsDebuggerDisplaySettings>()
-    @Volatile private var position = position
     @Volatile private var snapshot = capture(machine)
 
     fun refresh(machine: MarsContext, position: XSourcePosition?) {
