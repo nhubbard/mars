@@ -15,6 +15,9 @@ and the [modernization plan](MODERNIZATION_PLAN.md) for the broader project.
 | `mars5/datapath` | Compiled MIPS X-Ray diagram tables for the IntelliJ plugin |
 | `mars5/plugin` | Kotlin IntelliJ plugin for editing, assembling, running, and debugging MIPS |
 
+For IntelliJ development, open the `mars5` directory as a Gradle project. IntelliJ generates its
+local project settings in the Git-ignored `.idea` directory.
+
 Build with JDK 25 and the Gradle wrapper:
 
 ```sh

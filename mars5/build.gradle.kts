@@ -1,6 +1,5 @@
 plugins {
   id("java")
-  id("idea")
   id("com.diffplug.spotless") version "8.11.0"
   id("org.jetbrains.intellij.platform") version "2.20.0" apply false
   kotlin("jvm") version "2.4.21" apply false
@@ -38,6 +37,15 @@ spotless {
   }
 }
 subprojects {
+  // The IntelliJ Platform Gradle plugin applies the IDEA model for IDE import.
+  // Keep Gradle from writing or deleting the old file-based project metadata.
+  val legacyIdeaTasks = setOf(
+    "idea", "ideaModule", "ideaProject", "ideaWorkspace", "openIdea",
+    "cleanIdea", "cleanIdeaModule", "cleanIdeaProject", "cleanIdeaWorkspace",
+  )
+  tasks.configureEach {
+    if (name in legacyIdeaTasks) enabled = false
+  }
   plugins.withId("java") {
     extensions.configure<JavaPluginExtension> {
       toolchain.languageVersion.set(JavaLanguageVersion.of(25))
