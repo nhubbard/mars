@@ -13,6 +13,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.prefs.AbstractPreferences;
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -234,15 +235,15 @@ class SettingsReconciliationTest {
           return false;
         }
 
-        public void postMessage(String message) {}
+        public void postMessage(@NotNull String message) {}
 
-        public void postRunMessage(String message) {}
+        public void postRunMessage(@NotNull String message) {}
 
-        public String readInput(int maxLength) {
+        public @NotNull String readInput(int maxLength) {
           return "";
         }
 
-        public String readInputWithPrompt(String prompt) {
+        public @NotNull String readInputWithPrompt(@NotNull String prompt) {
           return "";
         }
 

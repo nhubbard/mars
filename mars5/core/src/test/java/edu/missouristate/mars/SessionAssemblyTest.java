@@ -45,6 +45,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -1752,15 +1753,15 @@ class SessionAssemblyTest {
           return false;
         }
 
-        public void postMessage(String message) {}
+        public void postMessage(@NotNull String message) {}
 
-        public void postRunMessage(String message) {}
+        public void postRunMessage(@NotNull String message) {}
 
-        public String readInput(int maxLength) {
+        public @NotNull String readInput(int maxLength) {
           return "";
         }
 
-        public String readInputWithPrompt(String prompt) {
+        public @NotNull String readInputWithPrompt(@NotNull String prompt) {
           return "";
         }
 

@@ -16,6 +16,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Random;
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -358,15 +359,15 @@ class SessionSyscallTest {
                 return false;
               }
 
-              public void postMessage(String message) {}
+              public void postMessage(@NotNull String message) {}
 
-              public void postRunMessage(String message) {}
+              public void postRunMessage(@NotNull String message) {}
 
-              public String readInput(int maxLength) {
+              public @NotNull String readInput(int maxLength) {
                 return "";
               }
 
-              public String readInputWithPrompt(String prompt) {
+              public @NotNull String readInputWithPrompt(@NotNull String prompt) {
                 return "";
               }
 

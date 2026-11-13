@@ -22,6 +22,7 @@ dependencies {
   testImplementation(platform("org.junit:junit-bom:6.0.0"))
   testImplementation("org.junit.jupiter:junit-jupiter")
   testImplementation("org.assertj:assertj-core:3.27.7")
+  testCompileOnly("org.jetbrains:annotations:26.1.0")
   testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
@@ -55,6 +56,7 @@ val benchmark = sourceSets.create("benchmark")
 configurations[benchmark.implementationConfigurationName].extendsFrom(configurations.implementation.get())
 dependencies {
   add(benchmark.implementationConfigurationName, sourceSets.main.get().output)
+  add(benchmark.compileOnlyConfigurationName, "org.jetbrains:annotations:26.1.0")
   add(benchmark.implementationConfigurationName, "org.openjdk.jmh:jmh-core:1.37")
   add(benchmark.annotationProcessorConfigurationName, "org.openjdk.jmh:jmh-generator-annprocess:1.37")
 }

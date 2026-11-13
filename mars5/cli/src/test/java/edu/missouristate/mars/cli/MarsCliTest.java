@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import java.io.*;
 import java.nio.file.*;
 import java.util.List;
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -439,7 +440,7 @@ class MarsCliTest {
     Files.writeString(source, "li $a0,42\nli $v0,1\nsyscall\nloop: b loop\n");
     var output = new ByteArrayOutputStream() {
       @Override
-      public synchronized void write(byte[] bytes, int start, int length) {
+      public synchronized void write(@NotNull byte[] bytes, int start, int length) {
         super.write(bytes, start, length);
         Thread.currentThread().interrupt();
       }

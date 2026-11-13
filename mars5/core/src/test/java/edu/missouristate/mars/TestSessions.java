@@ -9,6 +9,7 @@ import edu.missouristate.mars.mips.hardware.MemoryConfiguration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.prefs.AbstractPreferences;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * Fresh, deterministic composition for characterization tests; no shared machine or preferences.
@@ -47,15 +48,15 @@ final class TestSessions {
           return false;
         }
 
-        public void postMessage(String text) {}
+        public void postMessage(@NotNull String text) {}
 
-        public void postRunMessage(String text) {}
+        public void postRunMessage(@NotNull String text) {}
 
-        public String readInput(int length) {
+        public @NotNull String readInput(int length) {
           return "";
         }
 
-        public String readInputWithPrompt(String prompt) {
+        public @NotNull String readInputWithPrompt(@NotNull String prompt) {
           return "";
         }
 

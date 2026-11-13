@@ -16,6 +16,7 @@ import edu.missouristate.mars.simulator.Exceptions;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -189,7 +190,7 @@ class InstructionContextTest {
     var syscall =
         new AbstractSyscall(123, "Legacy") {
           @Override
-          public void simulate(ProgramStatement statement, InstructionContext execution) {
+          public void simulate(ProgramStatement statement, @NotNull InstructionContext execution) {
             calls.incrementAndGet();
           }
         };

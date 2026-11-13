@@ -15,6 +15,7 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -456,7 +457,7 @@ class SimulatorEngineTest {
       var release = new CountDownLatch(1);
       var blocker =
           new SimulatorListener() {
-            public void onStep(StepEvent event) {
+            public void onStep(@NotNull StepEvent event) {
               entered.countDown();
               try {
                 if (!release.await(5, TimeUnit.SECONDS)) {
@@ -467,9 +468,9 @@ class SimulatorEngineTest {
               }
             }
 
-            public void onStop(StopEvent event) {}
+            public void onStop(@NotNull StopEvent event) {}
 
-            public void onError(ErrorEvent event) {}
+            public void onError(@NotNull ErrorEvent event) {}
           };
       engine.addListener(blocker);
       var run = engine.runAsync(0, null);
@@ -572,7 +573,7 @@ class SimulatorEngineTest {
       var rejected = new AtomicBoolean();
       engine.addListener(
           new SimulatorListener() {
-            public void onStep(StepEvent event) {
+            public void onStep(@NotNull StepEvent event) {
               try {
                 session.setMemoryConfiguration("Default");
               } catch (IllegalStateException expected) {
@@ -586,9 +587,9 @@ class SimulatorEngineTest {
               }
             }
 
-            public void onStop(StopEvent event) {}
+            public void onStop(@NotNull StopEvent event) {}
 
-            public void onError(ErrorEvent event) {}
+            public void onError(@NotNull ErrorEvent event) {}
           });
       var run = engine.runAsync(0, null);
       assertThat(entered.await(5, TimeUnit.SECONDS)).isTrue();
@@ -616,7 +617,7 @@ class SimulatorEngineTest {
 
   private static SimulatorListener listener(List<Object> events) {
     return new SimulatorListener() {
-      public void onStep(StepEvent event) {
+      public void onStep(@NotNull StepEvent event) {
         events.add(event);
       }
 
@@ -624,11 +625,11 @@ class SimulatorEngineTest {
         events.add(stepCount);
       }
 
-      public void onStop(StopEvent event) {
+      public void onStop(@NotNull StopEvent event) {
         events.add(event);
       }
 
-      public void onError(ErrorEvent event) {
+      public void onError(@NotNull ErrorEvent event) {
         events.add(event);
       }
     };

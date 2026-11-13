@@ -4,6 +4,7 @@ import edu.missouristate.mars.api.MarsGuiProxy;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import org.jetbrains.annotations.NotNull;
 
 /** MarsGuiProxy implementation for headless / command-line execution. */
 public final class HeadlessGuiProxy implements MarsGuiProxy {
@@ -16,17 +17,17 @@ public final class HeadlessGuiProxy implements MarsGuiProxy {
   }
 
   @Override
-  public void postMessage(String message) {
+  public void postMessage(@NotNull String message) {
     System.err.print(message);
   }
 
   @Override
-  public void postRunMessage(String message) {
+  public void postRunMessage(@NotNull String message) {
     System.out.print(message);
   }
 
   @Override
-  public String readInput(int maxLength) {
+  public @NotNull String readInput(int maxLength) {
     try {
       String line = stdin.readLine();
       if (line == null) {
@@ -39,7 +40,7 @@ public final class HeadlessGuiProxy implements MarsGuiProxy {
   }
 
   @Override
-  public String readInputWithPrompt(String prompt) {
+  public @NotNull String readInputWithPrompt(@NotNull String prompt) {
     System.err.print(prompt);
     return readInput(-1);
   }

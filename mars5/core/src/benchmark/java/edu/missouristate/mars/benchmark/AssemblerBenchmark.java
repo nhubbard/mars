@@ -7,6 +7,7 @@ import java.nio.file.*;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import org.openjdk.jmh.annotations.*;
+import org.jetbrains.annotations.NotNull;
 
 /** Repeatable assembly throughput measurement, separate from correctness tests. */
 @State(Scope.Thread)
@@ -26,15 +27,15 @@ public class AssemblerBenchmark {
                     return false;
                   }
 
-                  public void postMessage(String value) {}
+                  public void postMessage(@NotNull String value) {}
 
-                  public void postRunMessage(String value) {}
+                  public void postRunMessage(@NotNull String value) {}
 
-                  public String readInput(int length) {
+                  public @NotNull String readInput(int length) {
                     return "";
                   }
 
-                  public String readInputWithPrompt(String prompt) {
+                  public @NotNull String readInputWithPrompt(@NotNull String prompt) {
                     return "";
                   }
 

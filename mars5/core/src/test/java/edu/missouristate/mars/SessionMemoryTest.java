@@ -15,6 +15,7 @@ import edu.missouristate.mars.mips.instructions.BasicInstruction;
 import edu.missouristate.mars.mips.instructions.basic.*;
 import java.util.ArrayList;
 import java.util.List;
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 
 class SessionMemoryTest {
@@ -239,15 +240,15 @@ class SessionMemoryTest {
           return false;
         }
 
-        public void postMessage(String message) {}
+        public void postMessage(@NotNull String message) {}
 
-        public void postRunMessage(String message) {}
+        public void postRunMessage(@NotNull String message) {}
 
-        public String readInput(int maxLength) {
+        public @NotNull String readInput(int maxLength) {
           return "";
         }
 
-        public String readInputWithPrompt(String prompt) {
+        public @NotNull String readInputWithPrompt(@NotNull String prompt) {
           return "";
         }
 
