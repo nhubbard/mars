@@ -212,8 +212,38 @@ tasks.check { dependsOn(tasks.jacocoTestCoverageVerification) }
 // A launch always verifies the plugin; callers clean the build and sandbox first.
 tasks.named<RunIdeTask>("runIde") {
   dependsOn(tasks.check, ":core:check", ":cli:check", ":datapath:check", rootProject.tasks.named("check"))
+  val indexingBaseline = providers.gradleProperty("indexingBaseline").isPresent
   val suppliedArchive = providers.gradleProperty("packagedSmokeArchive").map { rootProject.file(it) }
-  if (providers.gradleProperty("packagedSmoke").isPresent || suppliedArchive.isPresent) {
+  val packagedSmoke = providers.gradleProperty("packagedSmoke").isPresent || suppliedArchive.isPresent
+  check(!indexingBaseline || !packagedSmoke) { "Choose either indexing playback or packaged smoke playback." }
+  if (indexingBaseline) {
+    val baseline = rootProject.layout.projectDirectory.dir(".gradle/indexing-baseline")
+    val scenario = baseline.file("indexing.ijperf").asFile
+    val completion = baseline.dir("completion").asFile
+    val indexingProject = baseline.dir("indexing-project").asFile
+    dependsOn(pluginArchive)
+    args(indexingProject.absolutePath)
+    systemProperty("testscript.filename", scenario.absolutePath)
+    systemProperty("completion.command.report.dir", completion.absolutePath)
+    systemProperty("idea.diagnostic.opentelemetry.file", "indexing-baseline-trace.json")
+    systemProperty("performance.plugin.playback.runner.useDirectActionCall", true)
+    // Match IntelliJ IDE Starter's test policies in an unattended, disposable IDE.
+    systemProperty("jb.consents.confirmation.enabled", false)
+    systemProperty("jb.privacy.policy.text", "<!--999.999-->")
+    doFirst {
+      check(scenario.isFile) { "Generate the indexing project with prepare_indexing_baseline.py first." }
+      project.delete(completion)
+      val archive = pluginArchive.get()
+      val plugins = sandboxPluginsDirectory.get().asFile
+      project.delete(plugins.resolve(archive.archiveBaseName.get()))
+      project.copy {
+        from(project.zipTree(archive.archiveFile.get().asFile))
+        into(plugins)
+      }
+      trustSandboxProject(sandboxConfigDirectory.dir("options").get().asFile, indexingProject)
+    }
+  }
+  if (packagedSmoke) {
     val scenario = layout.projectDirectory.dir("src/qualification")
     val fixture = layout.buildDirectory.dir("packaged-smoke")
     val candidate = suppliedArchive.orElse(pluginArchive.flatMap { it.archiveFile }.map { it.asFile })
@@ -251,15 +281,7 @@ tasks.named<RunIdeTask>("runIde") {
         from(project.zipTree(staged))
         into(plugins)
       }
-      val options = sandboxConfigDirectory.dir("options").get().asFile
-      options.mkdirs()
-      val trustedPath = fixture.get().asFile.absolutePath
-        .replace("&", "&amp;").replace("<", "&lt;").replace("\"", "&quot;")
-      options.resolve("trusted-paths.xml").writeText("""
-        <application><component name="Trusted.Paths">
-          <option name="TRUSTED_PROJECT_PATHS"><map><entry key="$trustedPath" value="true" /></map></option>
-        </component></application>
-      """.trimIndent())
+      trustSandboxProject(sandboxConfigDirectory.dir("options").get().asFile, fixture.get().asFile)
     }
     doLast {
       val log = sandboxLogDirectory.get().asFile
@@ -281,6 +303,17 @@ tasks.named<RunIdeTask>("runIde") {
     }
   }
 }
+fun trustSandboxProject(options: File, trustedProject: File) {
+  options.mkdirs()
+  val trustedPath = trustedProject.absolutePath
+    .replace("&", "&amp;").replace("<", "&lt;").replace("\"", "&quot;")
+  options.resolve("trusted-paths.xml").writeText("""
+    <application><component name="Trusted.Paths">
+      <option name="TRUSTED_PROJECT_PATHS"><map><entry key="$trustedPath" value="true" /></map></option>
+    </component></application>
+  """.trimIndent())
+}
+
 tasks.matching { it.name.startsWith("prepare") && it.name.contains("Sandbox") }.configureEach {
   mustRunAfter(tasks.named("cleanSandbox"))
 }
@@ -331,8 +364,7 @@ val verifyGeneratedParserCoverage = tasks.register("verifyGeneratedParserCoverag
     val parser = DocumentBuilderFactory.newDefaultInstance().apply {
       setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true)
       // JAXP identifies this parser feature by URI. The parser does not fetch it.
-      //noinspection HttpUrlsUsage
-      setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false)
+      setFeature(@Suppress("HttpUrlsUsage") "http://apache.org/xml/features/nonvalidating/load-external-dtd", false)
       setAttribute(XMLConstants.ACCESS_EXTERNAL_DTD, "")
       setAttribute(XMLConstants.ACCESS_EXTERNAL_SCHEMA, "")
       isXIncludeAware = false

@@ -3054,8 +3054,7 @@ IntelliJ instance.
 
 ```sh
 python3 plugin/performance/prepare_indexing_baseline.py
-./gradlew -I plugin/performance/indexing-baseline.init.gradle clean cleanSandbox runIde \
-  --args="$PWD/.gradle/indexing-baseline/indexing-project"
+./gradlew clean cleanSandbox runIde -PindexingBaseline
 ```
 
 The playback waits for smart mode, opens the root source, waits for editor
