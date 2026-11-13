@@ -178,3 +178,7 @@ InstrMuh	muh $t1,$t2,$t3	014b48d8
 InstrMuhu	muhu $t1,$t2,$t3	014b48d9
 InstrMod	mod $t1,$t2,$t3	014b48da
 InstrModu	modu $t1,$t2,$t3	014b48db
+InstrBc	bc target	c8000000
+InstrBalc	balc target	e8000000
+InstrJic	jic $t2,-100	d80aff9c
+InstrJialc	jialc $t2,-100	f80aff9c

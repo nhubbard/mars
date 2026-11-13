@@ -185,6 +185,15 @@ class BasicInstructionSemanticsTest {
                 assertThat(s.registerFile.getValue(31)).isEqualTo(pc + 4);
               }
             };
+      } else if (Set.of("Bc", "Balc", "Jic", "Jialc").contains(base)) {
+        boolean branch = base.equals("Bc") || base.equals("Balc");
+        boolean link = base.equals("Balc") || base.equals("Jialc");
+        registers.updateRegister(2, pc + 20);
+        operands = branch ? new int[] {4} : new int[] {2, -4};
+        verify = s -> {
+          assertThat(s.registerFile.getPC()).isEqualTo(pc + (branch ? 20 : 16));
+          assertThat(s.registerFile.getValue(31)).isEqualTo(link ? pc + 4 : 0);
+        };
       } else if (Set.of("J", "Jal", "Jr", "Jalr").contains(base)) {
         registers.updateRegister(2, pc + 32);
         operands =

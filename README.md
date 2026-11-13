@@ -74,7 +74,13 @@ MARS32 is the default. Select **MARS64** under **Settings → Build, Execution, 
 MARS Assembly**, or pass `--target MARS64` to the CLI, to enable educational doubleword
 instructions. The debugger can inspect, edit, and reverse changes to the full integer registers.
 Word instructions still use their MARS32 operands and write sign-extended word results. Memory
-uses the existing MARS address layouts, with aligned `ld` and `sd` for doubleword data.
+uses the existing MARS address layouts. Use `.dword` for aligned 64-bit constants and `ld` and
+`sd` to load and store them.
+
+The MARS32 catalog includes additional user-mode operations from the MIPS32 Release 6 reference,
+including bitfield extraction and insertion, rotates, scaled addressing, PC-relative addressing,
+and compact control transfers. `mod`, `modu`, `muh`, and `muhu` write their result to a general
+register. The historical `div`, `mul`, and `mulu` forms retain their original MARS behavior.
 
 ## UTF-8 assembly and console text
 

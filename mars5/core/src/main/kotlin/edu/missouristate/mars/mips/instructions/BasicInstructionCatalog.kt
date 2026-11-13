@@ -15,6 +15,8 @@ import edu.missouristate.mars.mips.instructions.basic.InstrAnd
 import edu.missouristate.mars.mips.instructions.basic.InstrAndi
 import edu.missouristate.mars.mips.instructions.basic.InstrAui
 import edu.missouristate.mars.mips.instructions.basic.InstrAuipc
+import edu.missouristate.mars.mips.instructions.basic.InstrBalc
+import edu.missouristate.mars.mips.instructions.basic.InstrBc
 import edu.missouristate.mars.mips.instructions.basic.InstrBc1f1
 import edu.missouristate.mars.mips.instructions.basic.InstrBc1f2
 import edu.missouristate.mars.mips.instructions.basic.InstrBc1t1
@@ -65,6 +67,8 @@ import edu.missouristate.mars.mips.instructions.basic.InstrJ
 import edu.missouristate.mars.mips.instructions.basic.InstrJal
 import edu.missouristate.mars.mips.instructions.basic.InstrJalr1
 import edu.missouristate.mars.mips.instructions.basic.InstrJalr2
+import edu.missouristate.mars.mips.instructions.basic.InstrJialc
+import edu.missouristate.mars.mips.instructions.basic.InstrJic
 import edu.missouristate.mars.mips.instructions.basic.InstrJr
 import edu.missouristate.mars.mips.instructions.basic.InstrLb
 import edu.missouristate.mars.mips.instructions.basic.InstrLbu
@@ -255,6 +259,10 @@ internal val basicInstructionFactories: List<() -> BasicInstruction> = listOf(
     ::InstrSh,
     ::InstrClo,
     ::InstrClz,
+    ::InstrJialc,
+    ::InstrJic,
+    ::InstrBalc,
+    ::InstrBc,
     ::InstrModu,
     ::InstrMod,
     ::InstrMuhu,

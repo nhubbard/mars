@@ -49,5 +49,9 @@ captured output. It enables console syscalls, heap allocation, and exit. File de
 dialogs, the clock, sleep, and random services are disabled for graded programs. Supply every
 permitted include with `--include path/to/header.inc` after the assembly entry paths.
 
+For a MARS64 exercise, import `edu.missouristate.mars.api.MarsTarget` and pass
+`target = MarsTarget.MARS64` to `case`. Use Kotlin `Long` values with `setRegister` and
+`expectRegister` to test all 64 bits.
+
 Keep assignment scripts in the instructor-controlled repository or fetch them from a trusted
 revision. A Kotlin assignment script runs with the privileges of the CLI process.
