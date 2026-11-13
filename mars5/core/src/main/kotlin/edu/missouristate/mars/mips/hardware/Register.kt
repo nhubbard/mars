@@ -33,8 +33,8 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /** A machine register whose reads and writes can be observed. */
 open class Register(open val name: String, open val number: Int, initial: Int) {
-    private var initialValue = initial
-    @Volatile private var currentValue = initial
+    private var initialValue = initial.toLong()
+    @Volatile private var currentValue = initial.toLong()
     private val events = EventEmitter<RegisterAccessNotice>()
 
     open fun addObserver(listener: Consumer<RegisterAccessNotice>) {
@@ -47,18 +47,28 @@ open class Register(open val name: String, open val number: Int, initial: Int) {
 
     @get:Synchronized
     open val value: Int
+        get() = longValue.toInt()
+
+    @get:Synchronized
+    internal val longValue: Long
         get() {
             notifyListeners(AccessNotice.READ)
             return currentValue
         }
 
     @get:Synchronized
-    open val valueNoNotify: Int get() = currentValue
+    open val valueNoNotify: Int get() = longValueNoNotify.toInt()
 
-    open val resetValue: Int get() = initialValue
+    @get:Synchronized
+    internal val longValueNoNotify: Long get() = currentValue
+
+    open val resetValue: Int get() = initialValue.toInt()
 
     @Synchronized
-    open fun setValue(value: Int): Int {
+    open fun setValue(value: Int): Int = setLongValue(value.toLong()).toInt()
+
+    @Synchronized
+    internal fun setLongValue(value: Long): Long {
         val previous = currentValue
         currentValue = value
         notifyListeners(AccessNotice.WRITE)
@@ -72,7 +82,7 @@ open class Register(open val name: String, open val number: Int, initial: Int) {
 
     @Synchronized
     open fun changeResetValue(value: Int) {
-        initialValue = value
+        initialValue = value.toLong()
     }
 
     private fun notifyListeners(type: Int) {

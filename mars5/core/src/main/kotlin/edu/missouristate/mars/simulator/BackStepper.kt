@@ -195,13 +195,13 @@ open class BackStepper(
 
     private fun restoreStep(step: BackStep) {
         val first = step.param1
-        val second = step.param2
+        val second = step.param2.toInt()
         when (step.action) {
             Action.MEMORY_RAW_WORD -> memory.setRawWord(first, second)
             Action.MEMORY_WORD -> memory.setWord(first, second)
             Action.MEMORY_HALF -> memory.setHalf(first, second)
             Action.MEMORY_BYTE -> memory.setByte(first, second)
-            Action.REGISTER -> registerFile.updateRegister(first, second)
+            Action.REGISTER -> registerFile.updateLongRegister(first, step.param2)
             Action.PC -> registerFile.setProgramCounter(first)
             Action.COPROCESSOR_0 -> coprocessor0.updateRegister(first, second)
             Action.COPROCESSOR_1 -> coprocessor1.updateRegister(first, second)
@@ -222,7 +222,12 @@ open class BackStepper(
 
     open fun addMemoryRestoreByte(address: Int, value: Int): Int = record(Action.MEMORY_BYTE, address, value)
 
-    open fun addRegisterFileRestore(register: Int, value: Int): Int = record(Action.REGISTER, register, value)
+    open fun addRegisterFileRestore(register: Int, value: Int): Int = addRegisterFileRestore(register, value.toLong()).toInt()
+
+    internal fun addRegisterFileRestore(register: Int, value: Long): Long {
+        backSteps.push(Action.REGISTER, pc(), register, value)
+        return value
+    }
 
     open fun addPCRestore(value: Int): Int {
         val address = if (activeFrame == 0L) value - INSTRUCTION_LENGTH else framePc
@@ -235,7 +240,7 @@ open class BackStepper(
     open fun addCoprocessor1Restore(register: Int, value: Int): Int = record(Action.COPROCESSOR_1, register, value)
 
     private fun record(action: Action, address: Int, value: Int): Int {
-        backSteps.push(action, pc(), address, value)
+        backSteps.push(action, pc(), address, value.toLong())
         return value
     }
 
@@ -276,10 +281,10 @@ open class BackStepper(
         var pc = 0
         var statement: ProgramStatement? = null
         var param1 = 0
-        var param2 = 0
+        var param2 = 0L
         var inDelaySlot = false
 
-        fun assign(action: Action, address: Int, first: Int, second: Int) {
+        fun assign(action: Action, address: Int, first: Int, second: Long) {
             this.action = action
             frame = activeFrame
             branch = frameBranch
@@ -366,7 +371,7 @@ open class BackStepper(
         }
 
         @Synchronized
-        fun push(action: Action, address: Int, first: Int = 0, second: Int = 0) {
+        fun push(action: Action, address: Int, first: Int = 0, second: Long = 0) {
             if (!engaged || (activeFrame != 0L && frameDiscarded)) return
             if (size == capacity && activeFrame != 0L) {
                 val oldestFrame = stack[oldest()].frame

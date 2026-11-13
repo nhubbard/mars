@@ -50,7 +50,11 @@ class InstructionContext(private val session: MarsContext, private val environme
 
     fun updateRegister(number: Int, value: Int): Int {
         if (number == 32) return setProgramCounter(value)
-        val previous = registerFile.updateRegister(number, value)
+        return updateLongRegister(number, value.toLong()).toInt()
+    }
+
+    internal fun updateLongRegister(number: Int, value: Long): Long {
+        val previous = registerFile.updateLongRegister(number, value)
         if (number != 0 && session.backStepper.enabled()) {
             session.backStepper.addRegisterFileRestore(number, previous)
         }

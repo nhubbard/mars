@@ -75,6 +75,12 @@ class IntegerRegisterFile(globalPointer: Int, stackPointer: Int, textBaseAddress
         return registerAt(number).setValue(value)
     }
 
+    internal fun updateLongRegister(number: Int, value: Long): Long {
+        checkRegisterNumber(number)
+        if (number == 0) return 0
+        return registerAt(number).setLongValue(value)
+    }
+
     fun updateRegister(name: String, value: Int) {
         if (name == "zero") {
             println("You can not change the value of the zero register.")
@@ -87,6 +93,16 @@ class IntegerRegisterFile(globalPointer: Int, stackPointer: Int, textBaseAddress
     override fun getValue(register: Int): Int {
         checkRegisterNumber(register)
         return registerAt(register).value
+    }
+
+    internal fun getLongValue(register: Int): Long {
+        checkRegisterNumber(register)
+        return registerAt(register).longValue
+    }
+
+    internal fun getLongValueNoNotify(register: Int): Long {
+        checkRegisterNumber(register)
+        return registerAt(register).longValueNoNotify
     }
 
     /** Read a register for inspection without emitting an access event. */
