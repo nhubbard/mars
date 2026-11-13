@@ -6,10 +6,15 @@ import edu.missouristate.mars.mips.instructions.BasicInstructionFormat.I_FORMAT
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat.R_FORMAT
 import edu.missouristate.mars.simulator.Exceptions.ADDRESS_EXCEPTION_LOAD
 import edu.missouristate.mars.simulator.Exceptions.ADDRESS_EXCEPTION_STORE
+import edu.missouristate.mars.simulator.Exceptions.ARITHMETIC_OVERFLOW_EXCEPTION
+import java.lang.Math.addExact
+import java.lang.Math.subtractExact
 
 /** Doubleword operations enabled by the educational MARS64 target. */
 internal val wideInstructionFactories: List<() -> BasicInstruction> = listOf(
+    { wideArithmetic("dadd", "Add doublewords and trap on signed overflow", "101100", ::addExact) },
     { wideArithmetic("daddu", "Add doublewords with wraparound", "101101", Long::plus) },
+    { wideArithmetic("dsub", "Subtract doublewords and trap on signed overflow", "101110", ::subtractExact) },
     { wideArithmetic("dsubu", "Subtract doublewords with wraparound", "101111", Long::minus) },
     {
         BasicInstruction(
@@ -26,6 +31,24 @@ internal val wideInstructionFactories: List<() -> BasicInstruction> = listOf(
     { wideShift("dsrl32", "Shift a doubleword right logically by 32 plus the immediate", "111110", 32, Long::ushr) },
     { wideShift("dsra", "Shift a doubleword right arithmetically", "111011", 0, Long::shr) },
     { wideShift("dsra32", "Shift a doubleword right arithmetically by 32 plus the immediate", "111111", 32, Long::shr) },
+    { wideVariableShift("dsllv", "Shift a doubleword left by a register count", "010100", Long::shl) },
+    { wideVariableShift("dsrlv", "Shift a doubleword right logically by a register count", "010110", Long::ushr) },
+    { wideVariableShift("dsrav", "Shift a doubleword right arithmetically by a register count", "010111", Long::shr) },
+    {
+        BasicInstruction(
+            "lwu \$t1,-100(\$t2)", "Load a word and zero-extend it to a doubleword",
+            I_FORMAT, "100111 ttttt fffff ssssssssssssssss",
+        ) { statement, context ->
+            val (destination, offset, base) = statement.operands
+            try {
+                val address = wideAddress(context.registerFile.getLongValue(base), offset, Int.SIZE_BYTES, ADDRESS_EXCEPTION_LOAD)
+                val bits = context.memory().getWord(address).toUInt().toLong()
+                context.updateLongRegister(destination, bits)
+            } catch (failure: AddressErrorException) {
+                throw ProcessingException(context, statement, failure)
+            }
+        }
+    },
     {
         BasicInstruction(
             "ld \$t1,-100(\$t2)", "Load an aligned doubleword",
@@ -33,7 +56,7 @@ internal val wideInstructionFactories: List<() -> BasicInstruction> = listOf(
         ) { statement, context ->
             val (destination, offset, base) = statement.operands
             try {
-                val address = wideAddress(context.registerFile.getLongValue(base), offset, ADDRESS_EXCEPTION_LOAD)
+                val address = wideAddress(context.registerFile.getLongValue(base), offset, Long.SIZE_BYTES, ADDRESS_EXCEPTION_LOAD)
                 val memory = context.memory()
                 val first = memory.getWord(address).toUInt().toLong()
                 val second = memory.getWord(address + Int.SIZE_BYTES).toUInt().toLong()
@@ -51,7 +74,7 @@ internal val wideInstructionFactories: List<() -> BasicInstruction> = listOf(
         ) { statement, context ->
             val (source, offset, base) = statement.operands
             try {
-                val address = wideAddress(context.registerFile.getLongValue(base), offset, ADDRESS_EXCEPTION_STORE)
+                val address = wideAddress(context.registerFile.getLongValue(base), offset, Long.SIZE_BYTES, ADDRESS_EXCEPTION_STORE)
                 val value = context.registerFile.getLongValue(source)
                 val low = value.toInt()
                 val high = (value ushr Int.SIZE_BITS).toInt()
@@ -76,7 +99,12 @@ private fun wideArithmetic(
 ) { statement, context ->
     val (destination, left, right) = statement.operands
     val registers = context.registerFile
-    context.updateLongRegister(destination, operation(registers.getLongValue(left), registers.getLongValue(right)))
+    val result = try {
+        operation(registers.getLongValue(left), registers.getLongValue(right))
+    } catch (_: ArithmeticException) {
+        throw ProcessingException(context, statement, "arithmetic overflow", ARITHMETIC_OVERFLOW_EXCEPTION)
+    }
+    context.updateLongRegister(destination, result)
 }
 
 private fun wideShift(
@@ -89,11 +117,21 @@ private fun wideShift(
 }
 
 @Throws(AddressErrorException::class)
-private fun wideAddress(base: Long, offset: Int, exception: Int): Int {
+private fun wideAddress(base: Long, offset: Int, alignment: Int, exception: Int): Int {
     val address = base + offset.toShort()
     val low = address.toInt()
-    if ((address != low.toLong() && address != low.toUInt().toLong()) || low % Long.SIZE_BYTES != 0) {
-        throw AddressErrorException("Doubleword address is misaligned or outside mapped memory", exception, low)
+    if ((address != low.toLong() && address != low.toUInt().toLong()) || low % alignment != 0) {
+        throw AddressErrorException("Address is misaligned or outside mapped memory", exception, low)
     }
     return low
+}
+
+private fun wideVariableShift(
+    name: String, description: String, function: String, operation: (Long, Int) -> Long,
+) = BasicInstruction(
+    "$name \$t1,\$t2,\$t3", description, R_FORMAT, "000000 ttttt sssss fffff 00000 $function",
+) { statement, context ->
+    val (destination, source, shift) = statement.operands
+    val registers = context.registerFile
+    context.updateLongRegister(destination, operation(registers.getLongValue(source), registers.getValue(shift)))
 }
