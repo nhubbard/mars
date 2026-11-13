@@ -31,6 +31,8 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /** Ordered instruction forms and their binary decoding tables. */
 open class InstructionSet {
+    internal var target = MarsTarget.MARS32
+        private set
     private val forms = ArrayList<Instruction>()
     open val instructionList: ArrayList<Instruction> get() = forms
     private lateinit var opcodeMatchMaps: List<MatchMap>
@@ -40,6 +42,7 @@ open class InstructionSet {
     }
 
     internal fun populate(target: MarsTarget) {
+        this.target = target
         forms.clear()
         val loader = InstructionLoader()
         forms.addAll(loader.loadBasicInstructions())

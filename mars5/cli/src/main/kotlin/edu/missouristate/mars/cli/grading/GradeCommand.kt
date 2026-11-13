@@ -2,6 +2,7 @@ package edu.missouristate.mars.cli.grading
 
 import edu.missouristate.mars.api.AssemblySourceReader
 import edu.missouristate.mars.api.AssemblySourceSnapshot
+import edu.missouristate.mars.api.MarsTarget
 import java.io.IOException
 import java.io.PrintStream
 import java.nio.file.Files
@@ -30,8 +31,9 @@ abstract class AssignmentScript(assignment: Assignment) {
         instructionLimit: Long = 100_000,
         input: String = "",
         utf8Text: Boolean = false,
+        target: MarsTarget = MarsTarget.MARS32,
         verify: AssemblyCase.() -> Unit,
-    ) = submission.case(name, instructionLimit, input, utf8Text, verify)
+    ) = submission.case(name, instructionLimit, input, utf8Text, target, verify)
 }
 
 object AssignmentCompilation : ScriptCompilationConfiguration({

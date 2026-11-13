@@ -9,6 +9,7 @@ import edu.missouristate.mars.api.AssemblySymbolMap.Kind
 import edu.missouristate.mars.api.AssemblySymbolMap.MacroCall
 import edu.missouristate.mars.api.AssemblySymbolMap.SourceToken
 import edu.missouristate.mars.api.InstructionSourceMap.Origin
+import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.core.AssemblyContext
 import edu.missouristate.mars.mips.hardware.AddressErrorException
 import edu.missouristate.mars.mips.instructions.Instruction
@@ -220,9 +221,13 @@ internal class FirstPassProcessor(
                     address.set(Binary.stringToInt(tokens[1].value))
                 }
             }
-            Directives.WORD, Directives.HALF, Directives.BYTE, Directives.FLOAT, Directives.DOUBLE -> {
+            Directives.WORD, Directives.DWORD, Directives.HALF, Directives.BYTE, Directives.FLOAT, Directives.DOUBLE -> {
                 dataDirective = directive
-                if (passesDataSegmentCheck(token) && tokens.size() > 1) storeNumeric(tokens, directive)
+                if (passesDataSegmentCheck(token)) {
+                    if (directive == Directives.DWORD && context.session.target != MarsTarget.MARS64) {
+                        errors.add(ErrorMessage(token, ".dword requires the MARS64 target"))
+                    } else if (tokens.size() > 1) storeNumeric(tokens, directive)
+                }
             }
             Directives.ASCII, Directives.ASCIIZ, Directives.UTF8, Directives.UTF8Z -> {
                 dataDirective = directive
@@ -319,7 +324,7 @@ internal class FirstPassProcessor(
 
     fun executeDirectiveContinuation(tokens: TokenList) {
         when (val directive = dataDirective) {
-            Directives.WORD, Directives.HALF, Directives.BYTE, Directives.FLOAT, Directives.DOUBLE ->
+            Directives.WORD, Directives.DWORD, Directives.HALF, Directives.BYTE, Directives.FLOAT, Directives.DOUBLE ->
                 if (!tokens.isEmpty) storeNumeric(tokens, directive)
             Directives.ASCII, Directives.ASCIIZ, Directives.UTF8, Directives.UTF8Z -> if (passesDataSegmentCheck(tokens[0])) storeStrings(tokens, directive)
             else -> Unit
@@ -343,11 +348,13 @@ internal class FirstPassProcessor(
 
     private fun storeNumeric(tokens: TokenList, directive: Directives) {
         if (!passesDataSegmentCheck(tokens[0])) return
+        val wide = directive == Directives.DWORD
+        if (wide && context.session.target != MarsTarget.MARS64) return
         val integer = Directives.isIntegerDirective(directive)
         if (tokens.hasNumericRepetitionShape()) {
             val value = tokens[1]
             val count = tokens[3]
-            val validValue = TokenTypes.isIntegerTokenType(value.type) || !integer && TokenTypes.isFloatingTokenType(value.type)
+            val validValue = wide || TokenTypes.isIntegerTokenType(value.type) || !integer && TokenTypes.isFloatingTokenType(value.type)
             if (!validValue || !TokenTypes.isIntegerTokenType(count.type)) {
                 errors.add(ErrorMessage(value, "malformed expression"))
                 return
@@ -360,7 +367,7 @@ internal class FirstPassProcessor(
             alignData(DataTypes.getLengthInBytes(directive))
             repeat(repetitions) {
                 checkCancellation.run()
-                if (integer) storeInteger(value, directive) else storeRealNumber(value, directive)
+                storeNumericValue(value, directive)
             }
             return
         }
@@ -369,8 +376,38 @@ internal class FirstPassProcessor(
         for (index in firstValue until tokens.size()) {
             checkCancellation.run()
             val token = tokens[index]
-            if (integer) storeInteger(token, directive) else storeRealNumber(token, directive)
+            storeNumericValue(token, directive)
         }
+    }
+
+    private fun storeNumericValue(token: Token, directive: Directives) {
+        when {
+            directive == Directives.DWORD -> storeDoubleword(token)
+            Directives.isIntegerDirective(directive) -> storeInteger(token, directive)
+            else -> storeRealNumber(token, directive)
+        }
+    }
+
+    private fun storeDoubleword(token: Token) {
+        val bits = try {
+            Binary.stringToDoubleword(token.value)
+        } catch (_: NumberFormatException) {
+            errors.add(ErrorMessage(token, "\"$token\" is not a valid 64-bit integer constant"))
+            return
+        }
+        alignData(Long.SIZE_BYTES)
+        val memory = context.memory()
+        val low = bits.toInt()
+        val high = (bits ushr Int.SIZE_BITS).toInt()
+        try {
+            val address = dataAddress.get()
+            memory.set(address, if (memory.byteOrder) low else high, Int.SIZE_BYTES)
+            memory.set(address + Int.SIZE_BYTES, if (memory.byteOrder) high else low, Int.SIZE_BYTES)
+        } catch (_: AddressErrorException) {
+            reportInvalidDataAddress(token)
+            return
+        }
+        dataAddress.increment(Long.SIZE_BYTES)
     }
 
     private fun storeInteger(token: Token, directive: Directives) {

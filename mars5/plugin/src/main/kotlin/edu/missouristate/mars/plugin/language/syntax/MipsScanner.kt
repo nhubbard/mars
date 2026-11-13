@@ -198,9 +198,11 @@ object MipsScanner {
             Binary.stringToInt(text)
             return true
         } catch (_: NumberFormatException) {
-            return text.toDoubleOrNull() != null
+            return text.toDoubleOrNull() != null || doublewordHex.matches(text)
         }
     }
+
+    private val doublewordHex = Regex("[+-]?0[xX][0-9a-fA-F]{16}")
 
     private fun continuesSignedExponent(source: CharSequence, position: Int, end: Int, markers: String = "eE"): Boolean =
         source[position - 1] in markers && position + 1 < end && source[position + 1].isDigit()

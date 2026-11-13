@@ -1913,7 +1913,10 @@ class MipsParserPlatformTest {
                 val parsed = listOf(entry, included).flatMap { text ->
                     SyntaxTraverser.astTraverser(assertParses(text).node).filterTypes { it in directiveTypes }.map { it.text }.toList()
                 }.toSet()
-                assertEquals(Directives.getDirectiveList().map { it.name }.toSet(), parsed)
+                val wide = ".data\n.dword 0x123456789abcdef0\n"
+                val directive = SyntaxTraverser.astTraverser(assertParses(wide).node).filterTypes { it in directiveTypes }
+                    .map { it.text }.toList()
+                assertEquals(Directives.getDirectiveList().map { it.name }.toSet(), parsed + directive)
             }
         }
     }

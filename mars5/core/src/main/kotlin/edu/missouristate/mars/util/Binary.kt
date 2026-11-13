@@ -117,6 +117,17 @@ open class Binary {
             parseHexBits(value, 16)
         }
 
+        /** Parse a doubleword, allowing an unsigned decimal or hexadecimal bit pattern. */
+        fun stringToDoubleword(value: String): Long = try {
+            stringToLong(value)
+        } catch (failure: NumberFormatException) {
+            val unsigned = value.removePrefix("+")
+            if (unsigned.startsWith('-')) throw failure
+            val hex = hasHexPrefix(unsigned)
+            val digits = if (hex) unsigned.substring(2) else unsigned
+            digits.toULongOrNull(if (hex) 16 else 10)?.toLong() ?: throw failure
+        }
+
         private fun parseHexBits(value: String, digits: Int): Long {
             if (value.length != digits + 2) throw NumberFormatException()
             var result = 0L

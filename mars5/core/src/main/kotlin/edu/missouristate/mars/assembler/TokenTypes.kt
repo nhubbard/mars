@@ -1,5 +1,6 @@
 package edu.missouristate.mars.assembler
 
+import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.mips.instructions.InstructionDefaults
 import edu.missouristate.mars.mips.instructions.InstructionSet
 import edu.missouristate.mars.util.Binary
@@ -48,6 +49,7 @@ enum class TokenTypes {
     INTEGER_16,
     INTEGER_16U,
     INTEGER_32,
+    INTEGER_64,
     REAL_NUMBER,
     QUOTED_STRING,
     PLUS,
@@ -90,6 +92,7 @@ enum class TokenTypes {
                     else -> INTEGER_32
                 }
             }
+            if (instructions.target == MarsTarget.MARS64 && hasDoublewordSpelling(value)) return INTEGER_64
             try {
                 parseDouble(value)
                 return REAL_NUMBER
@@ -114,8 +117,14 @@ enum class TokenTypes {
 
         @JvmStatic
         fun startsDataContinuation(type: TokenTypes?): Boolean =
-            type == PLUS || type == MINUS || type == QUOTED_STRING || type == IDENTIFIER ||
+            type == PLUS || type == MINUS || type == QUOTED_STRING || type == IDENTIFIER || type == INTEGER_64 ||
                 isIntegerTokenType(type) || isFloatingTokenType(type)
+
+        private fun hasDoublewordSpelling(value: String): Boolean {
+            val unsigned = value.removePrefix("-").removePrefix("+")
+            return unsigned.startsWith("0x", ignoreCase = true) && unsigned.length in 11..18 &&
+                unsigned.substring(2).all { it in '0'..'9' || it in 'a'..'f' || it in 'A'..'F' }
+        }
 
         @JvmStatic
         fun isValidIdentifier(value: String): Boolean {

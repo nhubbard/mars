@@ -192,7 +192,7 @@ private val sourceEventTypes = setOf(
 private val dataStateDirectives = setOf(
     Directives.DATA, Directives.KDATA, Directives.TEXT, Directives.KTEXT,
     Directives.WORD, Directives.HALF, Directives.BYTE, Directives.FLOAT, Directives.DOUBLE, Directives.ASCII, Directives.ASCIIZ,
-    Directives.UTF8, Directives.UTF8Z,
+    Directives.UTF8, Directives.UTF8Z, Directives.DWORD,
 )
 
 // In an open macro a label is part of the body, even before a closing directive.

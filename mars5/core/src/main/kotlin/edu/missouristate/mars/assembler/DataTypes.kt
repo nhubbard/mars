@@ -48,7 +48,7 @@ object DataTypes {
     @JvmStatic
     fun getLengthInBytes(directive: Directives?): Int = when (directive) {
         Directives.FLOAT -> FLOAT_SIZE
-        Directives.DOUBLE -> DOUBLE_SIZE
+        Directives.DOUBLE, Directives.DWORD -> DOUBLE_SIZE
         Directives.WORD -> WORD_SIZE
         Directives.HALF -> HALF_SIZE
         Directives.BYTE -> BYTE_SIZE

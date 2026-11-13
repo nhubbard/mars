@@ -106,6 +106,28 @@ class PackagedCliTest {
   }
 
   @Test
+  void kotlinAssignmentCanAssertFullMARS64Registers() throws Exception {
+    var script = source("assignment64.kts", """
+        import edu.missouristate.mars.api.MarsTarget
+
+        case("wide result", target = MarsTarget.MARS64) {
+            setRegister("a0", 0x100000000L)
+            runUntil("done")
+            expectRegister("v0", 0x100000003L)
+            runToExit()
+        }
+        """);
+    var entry = source("wide.s", """
+        daddiu $v0, $a0, 3
+        done: li $v0, 10
+        syscall
+        """);
+    var result = launch("grade", script.toString(), entry.toString());
+    assertEquals(0, result.status(), result.err());
+    assertTrue(result.out().contains("PASS wide result"), result.out());
+  }
+
+  @Test
   void gradingChecksStructureAndIntermediateStateAndIsolatesCases() throws Exception {
     var script = source("assignment1.kts", """
         case("double a word", instructionLimit = 8) {
