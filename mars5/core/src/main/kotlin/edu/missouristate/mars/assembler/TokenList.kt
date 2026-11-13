@@ -70,9 +70,5 @@ open class TokenList : Cloneable {
         for (token in tokens) append(token.toString()).append(' ')
     }
 
-    open fun toTypeString(): String = buildString {
-        for (token in tokens) append(token.type.toString()).append(' ')
-    }
-
     public override fun clone(): Any = (super.clone() as TokenList).also { it.tokens = ArrayList(tokens) }
 }

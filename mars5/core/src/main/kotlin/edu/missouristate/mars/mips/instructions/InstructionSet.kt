@@ -48,7 +48,7 @@ open class InstructionSet {
                 matches[instruction.opcodeMatch] = instruction
             }
         }
-        // Decode the most specific mask first. Keep the original mask tie break.
+        // Decode the most specific mask first. Keep the original tie-breaking order.
         opcodeMatchMaps = matchesByMask.map { (mask, matches) -> MatchMap(mask, matches) }
             .sortedWith { left, right ->
                 val specificity = right.mask.countOneBits() - left.mask.countOneBits()

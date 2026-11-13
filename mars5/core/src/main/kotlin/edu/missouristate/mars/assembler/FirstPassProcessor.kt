@@ -151,8 +151,7 @@ internal class FirstPassProcessor(
 
     fun executeDirective(tokens: TokenList, physicalLine: SourceLine, caller: Origin?, renamedLabels: Set<String>) {
         val token = tokens[0]
-        val directive = Directives.matchDirective(token.value)
-        when (directive) {
+        when (val directive = Directives.matchDirective(token.value)) {
             null -> errors.add(ErrorMessage(token, "\"$token\" directive is invalid or not implemented in MARS"))
             Directives.EQV -> Unit // Already processed by the tokenizer.
             Directives.MACRO -> beginMacro(tokens)
@@ -318,8 +317,7 @@ internal class FirstPassProcessor(
     }
 
     fun executeDirectiveContinuation(tokens: TokenList) {
-        val directive = dataDirective
-        when (directive) {
+        when (val directive = dataDirective) {
             Directives.WORD, Directives.HALF, Directives.BYTE, Directives.FLOAT, Directives.DOUBLE ->
                 if (!tokens.isEmpty) storeNumeric(tokens, directive)
             Directives.ASCII, Directives.ASCIIZ -> if (passesDataSegmentCheck(tokens[0])) storeStrings(tokens, directive)

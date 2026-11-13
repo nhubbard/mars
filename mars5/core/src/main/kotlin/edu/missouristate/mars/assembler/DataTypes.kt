@@ -36,8 +36,6 @@ object DataTypes {
     const val HALF_SIZE = 2
     const val BYTE_SIZE = 1
     const val CHAR_SIZE = 1
-    const val MAX_WORD_VALUE = Int.MAX_VALUE
-    const val MIN_WORD_VALUE = Int.MIN_VALUE
     const val MAX_HALF_VALUE = 32767
     const val MIN_HALF_VALUE = -32768
     const val MAX_UHALF_VALUE = 65535
@@ -47,7 +45,6 @@ object DataTypes {
     const val MAX_FLOAT_VALUE = 3.4028234663852886e38
     const val LOW_FLOAT_VALUE = -MAX_FLOAT_VALUE
     const val MAX_DOUBLE_VALUE = Double.MAX_VALUE
-    const val LOW_DOUBLE_VALUE = -MAX_DOUBLE_VALUE
 
     @JvmStatic
     fun getLengthInBytes(directive: Directives?): Int = when (directive) {

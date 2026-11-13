@@ -60,8 +60,6 @@ open class ErrorList @JvmOverloads constructor(private val sessionSettings: Mars
 
     open fun errorCount(): Int = errorCount
 
-    open fun warningCount(): Int = warningCount
-
     open fun errorLimitExceeded(): Boolean = errorCount > errorLimit
 
     open val errorLimit: Int get() = sessionSettings?.assemblerErrorLimit ?: ApplicationInfo.maximumErrorMessages

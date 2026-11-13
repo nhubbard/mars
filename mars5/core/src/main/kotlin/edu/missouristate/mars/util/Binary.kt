@@ -49,23 +49,9 @@ open class Binary {
         fun intToBinaryString(value: Int): String = intToBinaryString(value, Int.SIZE_BITS)
 
         @JvmStatic
-        fun longToBinaryString(value: Long, length: Int): String =
-            CharArray(length) { if (bitValue(value, length - 1 - it) == 1) '1' else '0' }.concatToString()
-
-        @JvmStatic
-        fun longToBinaryString(value: Long): String = longToBinaryString(value, Long.SIZE_BITS)
-
-        @JvmStatic
         fun binaryStringToInt(value: String): Int {
             var result = value[0] - '0'
             for (index in 1 until value.length) result = (result shl 1) or (value[index] - '0')
-            return result
-        }
-
-        @JvmStatic
-        fun binaryStringToLong(value: String): Long {
-            var result = (value[0] - '0').toLong()
-            for (index in 1 until value.length) result = (result shl 1) or (value[index] - '0').toLong()
             return result
         }
 
@@ -88,27 +74,7 @@ open class Binary {
         }
 
         @JvmStatic
-        fun hexStringToBinaryString(value: String): String = buildString {
-            val firstDigit = if (hasHexPrefix(value)) 2 else 0
-            for (index in firstDigit until value.length) {
-                val digit = asciiHexDigit(value[index])
-                if (digit >= 0) append(intToBinaryString(digit, 4))
-            }
-        }
-
-        @JvmStatic
-        fun binaryStringToHexDigit(value: String): Char {
-            if (value.length > 4) return '0'
-            var digit = 0
-            for (character in value) digit = (digit shl 1) or if (character == '1') 1 else 0
-            return HEX_DIGITS[digit]
-        }
-
-        @JvmStatic
         fun intToHexString(value: Int): String = "0x" + value.toUInt().toString(16).padStart(8, '0')
-
-        @JvmStatic
-        fun intToHalfHexString(value: Int): String = "0x" + (value and 0xffff).toString(16).padStart(4, '0')
 
         @JvmStatic
         fun longToHexString(value: Long): String = "0x" + value.toULong().toString(16).padStart(16, '0')
@@ -183,9 +149,6 @@ open class Binary {
 
         @JvmStatic
         fun bitValue(value: Int, bit: Int): Int = (value shr bit) and 1
-
-        @JvmStatic
-        fun bitValue(value: Long, bit: Int): Int = ((value shr bit) and 1L).toInt()
 
         @JvmStatic
         fun setBit(value: Int, bit: Int): Int = value or (1 shl bit)

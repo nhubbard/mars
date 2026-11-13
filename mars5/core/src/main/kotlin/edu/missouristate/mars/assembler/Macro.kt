@@ -59,9 +59,6 @@ open class Macro {
         args.add(value)
     }
 
-    open fun getSubstitutedLine(line: Int, args: TokenList, counter: Long, errors: ErrorList): String =
-        expandLine(line, args, counter, emptySet(), errors).text
-
     @JvmRecord
     data class TokenOrigin(val written: Token, val diagnostic: Token)
 

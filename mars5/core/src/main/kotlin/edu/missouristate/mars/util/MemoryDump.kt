@@ -1,6 +1,5 @@
 package edu.missouristate.mars.util
 
-import edu.missouristate.mars.mips.hardware.AddressErrorException
 import edu.missouristate.mars.mips.hardware.MemoryState
 
 /*
@@ -56,15 +55,5 @@ open class MemoryDump {
         @Suppress("unused", "RedundantSuppression")
         fun getLimitAddresses(segments: Array<String>?, memory: MemoryState): IntArray =
             intArrayOf(memory.textLimitAddress, memory.dataSegmentLimitAddress)
-
-        @JvmStatic
-        @Throws(AddressErrorException::class)
-        fun getAddressOfFirstNull(baseAddress: Int, limitAddress: Int, memory: MemoryState): Int {
-            var address = baseAddress
-            while (address < limitAddress && memory.getRawWordOrNull(address) != null) {
-                address += MemoryState.WORD_LENGTH_BYTES
-            }
-            return address
-        }
     }
 }

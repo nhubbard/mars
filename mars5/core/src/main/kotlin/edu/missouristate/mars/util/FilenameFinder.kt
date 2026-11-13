@@ -107,10 +107,6 @@ open class FilenameFinder {
             return names
         }
 
-        @JvmStatic
-        fun getFilenameList(loader: ClassLoader, directory: String, extensions: ArrayList<out String?>?): ArrayList<String> =
-            collectByExtension(extensions) { getFilenameList(loader, directory, it) }
-
         /** Lists matching immediate children of a filesystem directory by absolute path. */
         @JvmStatic
         fun getFilenameList(directory: String, extension: String?): ArrayList<String> {
@@ -124,17 +120,6 @@ open class FilenameFinder {
         @JvmStatic
         fun getFilenameList(directory: String, extensions: ArrayList<out String?>?): ArrayList<String> =
             collectByExtension(extensions) { getFilenameList(directory, it) }
-
-        /** Filters an explicit list and returns matching absolute paths. */
-        @JvmStatic
-        fun getFilenameList(names: ArrayList<String>, extension: String?): ArrayList<String> {
-            val filter = getFileFilter(stripLeadingDot(extension), "", false)
-            return names.mapToFiles(filter)
-        }
-
-        @JvmStatic
-        fun getFilenameList(names: ArrayList<String>, extensions: ArrayList<out String?>?): ArrayList<String> =
-            collectByExtension(extensions) { getFilenameList(names, it) }
 
         /** Returns the lowercase extension, excluding a leading or trailing dot. */
         @JvmStatic
@@ -190,8 +175,5 @@ open class FilenameFinder {
 
         private fun Array<File>.filterToPaths(filter: FileFilter): ArrayList<String> =
             mapNotNullTo(ArrayList()) { if (filter.accept(it)) it.absolutePath else null }
-
-        private fun ArrayList<String>.mapToFiles(filter: FileFilter): ArrayList<String> =
-            mapNotNullTo(ArrayList()) { name -> File(name).takeIf(filter::accept)?.absolutePath }
     }
 }

@@ -53,10 +53,7 @@ open class ExtendedInstruction @JvmOverloads constructor(
     constructor(example: String, translation: String?, description: String) :
         this(example, translation, null, description)
 
-    constructor(example: String, translation: String?) : this(example, translation, "")
-
     override val instructionLength: Int get() = getInstructionLength(false)
-    open val compactInstructionLength: Int get() = getCompactInstructionLength(false)
 
     open fun getInstructionLength(delayedBranching: Boolean): Int =
         expansionLength(standardTemplates, delayedBranching)

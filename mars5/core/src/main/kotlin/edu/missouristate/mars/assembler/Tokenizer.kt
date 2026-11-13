@@ -500,8 +500,6 @@ open class Tokenizer @JvmOverloads constructor(
         return true
     }
 
-    open fun getErrors(): ErrorList = errors
-
     private fun reportLexicalErrors(
         program: MIPSprogram?, line: Int, source: String, tokens: TokenList, originalTokens: TokenList? = null,
         expansion: Macro.ExpandedLine? = null,

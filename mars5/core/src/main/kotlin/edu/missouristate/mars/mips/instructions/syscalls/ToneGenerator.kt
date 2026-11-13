@@ -73,8 +73,6 @@ class ToneGenerator internal constructor(
         fun create(): Sequencer
     }
 
-    constructor() : this(Consumer { failure -> System.err.println("MARS MIDI playback failed. $failure") })
-
     constructor(reportFailure: Consumer<Exception>) : this(SequencerSource(MidiSystem::getSequencer), reportFailure)
 
     private var threadPool: ExecutorService? = null

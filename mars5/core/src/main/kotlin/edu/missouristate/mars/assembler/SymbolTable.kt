@@ -91,10 +91,6 @@ open class SymbolTable @JvmOverloads constructor(private val globalSymbols: Symb
     open fun getSymbolGivenAddressLocalOrGlobal(spelling: String): Symbol? =
         getSymbolGivenAddress(spelling) ?: globalSymbols?.getSymbolGivenAddress(spelling)
 
-    open val dataSymbols: ArrayList<Symbol> get() = table.filterTo(ArrayList()) { it.type }
-
-    open val textSymbols: ArrayList<Symbol> get() = table.filterTo(ArrayList()) { !it.type }
-
     open val allSymbols: ArrayList<Symbol> get() = ArrayList(table)
 
     open val size: Int get() = table.size

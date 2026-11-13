@@ -7,9 +7,7 @@ import edu.missouristate.mars.mips.hardware.MemoryState
 import edu.missouristate.mars.simulator.BackStepper
 
 /** Exposes memory through the frontend API and translates hardware address faults. */
-class MarsMemoryAdapter(private val memory: MemoryState, private val backStepper: BackStepper?) : MarsMemory {
-    constructor(memory: MemoryState) : this(memory, null)
-
+class MarsMemoryAdapter(private val memory: MemoryState, private val backStepper: BackStepper) : MarsMemory {
     @Throws(MemoryAccessException::class)
     override fun getWord(address: Int): Int = access { memory.getWord(address) }
 
@@ -25,7 +23,7 @@ class MarsMemoryAdapter(private val memory: MemoryState, private val backStepper
     override fun getByte(address: Int): Int = access { memory.getByte(address) }
 
     override fun clear() {
-        backStepper?.clear()
+        backStepper.clear()
         memory.clear()
     }
 

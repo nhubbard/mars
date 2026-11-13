@@ -155,8 +155,6 @@ open class ProgramStatement private constructor(
     /** Execution dispatches only decoded instructions. */
     internal val operands: IntArray get() = checkNotNull(getOperands())
 
-    open fun getOperand(index: Int): Int = if (index in 0 until numOperands) operandValues!![index] else -1
-
     private fun assemblyContext(): AssemblyContext =
         checkNotNull(sourceMIPSprogram) { "Source program is required for assembly" }.assemblyContext()
 

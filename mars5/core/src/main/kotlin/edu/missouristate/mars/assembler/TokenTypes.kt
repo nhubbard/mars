@@ -38,7 +38,6 @@ enum class TokenTypes {
     COMMENT,
     DIRECTIVE,
     OPERATOR,
-    DELIMITER,
     REGISTER_NAME,
     REGISTER_NUMBER,
     FP_REGISTER_NAME,
@@ -59,8 +58,6 @@ enum class TokenTypes {
     ;
 
     companion object {
-        const val TOKEN_DELIMITERS = "\t ,()"
-
         @JvmStatic
         @JvmOverloads
         fun matchTokenType(value: String, instructions: InstructionSet = InstructionDefaults.get()): TokenTypes {

@@ -40,9 +40,6 @@ open class Symbol internal constructor(
     private val macroPrivate: Boolean,
     private val column: Int?,
 ) {
-    constructor(name: String, address: Int, data: Boolean) :
-        this(name, address, if (data) Kind.DATA else Kind.TEXT, null, false, null)
-
     fun kind(): Kind = kind
 
     fun origin(): Origin? = origin
@@ -52,9 +49,4 @@ open class Symbol internal constructor(
     fun column(): Int? = column
 
     open val type: Boolean get() = kind != Kind.TEXT
-
-    companion object {
-        const val TEXT_SYMBOL = false
-        const val DATA_SYMBOL = true
-    }
 }

@@ -74,7 +74,7 @@ open class MemoryState(
 
     private var layout = configuration
     private var endian = LITTLE_ENDIAN
-    private var listeners = CopyOnWriteArrayList<MemoryListener>()
+    private val listeners = CopyOnWriteArrayList<MemoryListener>()
 
     private lateinit var dataBlockTable: WordMemorySegment
     private lateinit var kernelDataBlockTable: WordMemorySegment
@@ -328,13 +328,6 @@ open class MemoryState(
     }
 
     @Throws(AddressErrorException::class)
-    open fun getAddressOfFirstNull(baseAddress: Int, limitAddress: Int): Int {
-        var address = baseAddress
-        while (address < limitAddress && getRawWordOrNull(address) != null) address += WORD_LENGTH_BYTES
-        return address
-    }
-
-    @Throws(AddressErrorException::class)
     open fun getWord(address: Int): Int {
         checkAlignment(address, WORD_LENGTH_BYTES, FETCH_WORD_ALIGNMENT, ADDRESS_EXCEPTION_LOAD)
         return readBytes(address, WORD_LENGTH_BYTES, notify = true)
@@ -408,8 +401,6 @@ open class MemoryState(
 
     open fun inKernelDataSegment(address: Int): Boolean = address in kernelDataBaseAddress..<kernelDataSegmentLimitAddress
 
-    open fun inMemoryMapSegment(address: Int): Boolean = address in memoryMapBaseAddress..<kernelHighAddress
-
     // The stack grows down. Keep the lower boundary exclusive without offset arithmetic.
     @Suppress("ConvertTwoComparisonsToRangeCheck")
     private fun inStack(address: Int): Boolean = address > stackLimitAddress && address <= stackBaseAddress
@@ -447,10 +438,6 @@ open class MemoryState(
 
     open fun deleteObserver(callback: Consumer<MemoryAccessNotice>) {
         listeners.removeIf { it.callback === callback }
-    }
-
-    open fun deleteObservers() {
-        listeners = CopyOnWriteArrayList()
     }
 
     open fun countObservers(): Int = listeners.size
@@ -494,13 +481,5 @@ open class MemoryState(
 
         @JvmStatic
         fun doublewordAligned(address: Int): Boolean = address % (2 * WORD_LENGTH_BYTES) == 0
-
-        @JvmStatic
-        fun alignToWordBoundary(address: Int): Int {
-            val remainder = address % WORD_LENGTH_BYTES
-            if (remainder == 0) return address
-            val offset = WORD_LENGTH_BYTES - remainder
-            return if (address > 0) address + offset else address - offset
-        }
     }
 }
