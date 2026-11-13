@@ -271,6 +271,22 @@ class BasicInstructionSemanticsTest {
                             ? s.registerFile.getValue(8)
                             : s.coprocessor0.getValue(Coprocessor0State.EPC))
                     .isEqualTo(base.equals("Mfc0") ? 42 : 99);
+      } else if (base.equals("ClassS") || base.equals("ClassD")) {
+        operands = new int[] {2, 4};
+        floating.setRegisterPairToLong(4, 0x80000000ff800000L);
+        verify = s -> assertThat(s.coprocessor1.getValue(2)).isEqualTo(base.equals("ClassS") ? 4 : 16);
+      } else if (base.equals("Mfhc1") || base.equals("Mthc1")) {
+        operands = new int[] {8, 4};
+        registers.updateRegister(8, 99);
+        floating.setRegisterPairToLong(4, 0x0000002a12345678L);
+        verify = s -> {
+          assertThat(s.coprocessor1.getValue(4)).isEqualTo(0x12345678);
+          if (base.equals("Mfhc1")) {
+            assertThat(s.registerFile.getValue(8)).isEqualTo(42);
+          } else {
+            assertThat(s.coprocessor1.getValue(5)).isEqualTo(99);
+          }
+        };
       } else if (base.equals("Mfc1") || base.equals("Mtc1")) {
         operands = new int[] {8, 2};
         floating.setRegisterToInt(2, 42);

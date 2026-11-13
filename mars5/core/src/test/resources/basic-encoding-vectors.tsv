@@ -182,3 +182,7 @@ InstrBc	bc target	c8000000
 InstrBalc	balc target	e8000000
 InstrJic	jic $t2,-100	d80aff9c
 InstrJialc	jialc $t2,-100	f80aff9c
+InstrClassS	class.s $f2,$f4	4600209b
+InstrClassD	class.d $f2,$f4	4620209b
+InstrMfhc1	mfhc1 $t1,$f4	44692000
+InstrMthc1	mthc1 $t1,$f4	44e92000
