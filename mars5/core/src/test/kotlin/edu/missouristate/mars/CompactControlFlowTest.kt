@@ -1,5 +1,6 @@
 package edu.missouristate.mars
 
+import edu.missouristate.mars.api.MarsTarget
 import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -11,6 +12,44 @@ import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 
 class CompactControlFlowTest {
+    @ParameterizedTest
+    @ValueSource(booleans = [false, true])
+    fun `compact zero branches use full operands and no delay slots`(delayed: Boolean, @TempDir directory: Path) {
+        val source = Files.writeString(directory.resolve("zero.s"), $$"""
+            beqzc $t0,skip
+            addiu $t2,$t2,1
+            skip: bnezc $t0,done
+            addiu $t3,$t3,1
+            done: nop
+        """.trimIndent())
+        TestSessions.create().use { machine ->
+            machine.selectTarget(MarsTarget.MARS64)
+            machine.settings.setDelayedBranchingEnabled(delayed)
+            val program = machine.assemble(listOf(source))
+            assertEquals(0xd9000001.toInt(), program.machineList!![0].binaryStatement)
+            assertEquals(0xf9000001.toInt(), program.machineList!![2].binaryStatement)
+            machine.editIntegerRegister(8, 0x1_0000_0000L)
+            assertTrue(program.simulate(6))
+            assertEquals(1, machine.registerFile.getValue(10))
+            assertEquals(0, machine.registerFile.getValue(11))
+            repeat(2) { machine.backStepper.backStep() }
+            assertEquals(machine.memory.textBaseAddress + 8, machine.registerFile.getPC())
+            val decoded = ProgramStatement(0xf91ffffe.toInt(), machine.memory.textBaseAddress, machine.instructionSet)
+            assertEquals(-2, decoded.operands[1])
+            assertEquals("jic", machine.instructionSet.findByBinaryCode(0xd8080004.toInt())?.name)
+            assertEquals("jialc", machine.instructionSet.findByBinaryCode(0xf8080004.toInt())?.name)
+        }
+    }
+
+    @Test
+    fun `compact zero branches reject the register field reserved for indirect jumps`(@TempDir directory: Path) {
+        val source = Files.writeString(directory.resolve("reserved.s"), $$"beqzc $zero,target\ntarget: nop\n")
+        TestSessions.create().use { machine ->
+            val failure = assertThrows(ProcessingException::class.java) { machine.assemble(listOf(source)) }
+            assertTrue(failure.errors()!!.generateErrorReport().contains("requires a nonzero register number"))
+        }
+    }
+
     @ParameterizedTest
     @ValueSource(booleans = [false, true])
     fun `compact branches skip slots and preserve their call links`(delayed: Boolean, @TempDir directory: Path) {

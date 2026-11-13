@@ -143,12 +143,16 @@ class InstructionContext(private val session: MarsContext, private val environme
 
     /** Transfer control immediately, even when legacy branch delay slots are enabled. */
     internal fun compactTransfer(statement: ProgramStatement, target: Int, branch: Boolean = false) {
-        if (delayedBranch.isTriggered) {
-            throw ProcessingException(this, statement, "compact control transfer in a delay slot", RESERVED_INSTRUCTION_EXCEPTION)
-        }
+        checkCompactTransferSlot(statement)
         setProgramCounter(target)
         if (branch) lastBranchOutcome = BranchOutcome.TAKEN
         else if (lastTransfer == null) lastTransfer = Jump(target)
+    }
+
+    internal fun checkCompactTransferSlot(statement: ProgramStatement) {
+        if (delayedBranch.isTriggered) {
+            throw ProcessingException(this, statement, "compact control transfer in a delay slot", RESERVED_INSTRUCTION_EXCEPTION)
+        }
     }
 
     fun returnFromException() {

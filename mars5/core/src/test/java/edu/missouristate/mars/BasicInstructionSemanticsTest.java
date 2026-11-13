@@ -185,6 +185,10 @@ class BasicInstructionSemanticsTest {
                 assertThat(s.registerFile.getValue(31)).isEqualTo(pc + 4);
               }
             };
+      } else if (base.equals("CompactZeroBranch")) {
+        registers.updateRegister(2, instruction.getName().equals("beqzc") ? 0 : 1);
+        operands = new int[] {2, 4};
+        verify = s -> assertThat(s.registerFile.getPC()).isEqualTo(pc + 20);
       } else if (Set.of("Bc", "Balc", "Jic", "Jialc").contains(base)) {
         boolean branch = base.equals("Bc") || base.equals("Balc");
         boolean link = base.equals("Balc") || base.equals("Jialc");
@@ -271,6 +275,32 @@ class BasicInstructionSemanticsTest {
                             ? s.registerFile.getValue(8)
                             : s.coprocessor0.getValue(Coprocessor0State.EPC))
                     .isEqualTo(base.equals("Mfc0") ? 42 : 99);
+      } else if (base.equals("Release6Float")) {
+        boolean doubles = instruction.getName().endsWith(".d");
+        if (doubles) {
+          floating.setRegisterPairToDouble(2, -4.0);
+          floating.setRegisterPairToDouble(4, 2.0);
+          floating.setRegisterPairToDouble(8, 1.0);
+        } else {
+          floating.setRegisterToFloat(2, -4.0f);
+          floating.setRegisterToFloat(4, 2.0f);
+          floating.setRegisterToFloat(8, 1.0f);
+        }
+        double expected = switch (instruction.getName().split("\\.")[0]) {
+          case "sel", "seleqz", "min", "maxa" -> -4.0;
+          case "selnez" -> 0.0;
+          case "maddf" -> -7.0;
+          case "msubf" -> 9.0;
+          case "mina", "max" -> 2.0;
+          default -> throw new AssertionError(instruction.getName());
+        };
+        verify = s -> {
+          if (doubles) {
+            assertDouble(s, expected);
+          } else {
+            assertThat(s.coprocessor1.getFloatFromRegister(8)).isEqualTo((float) expected);
+          }
+        };
       } else if (base.equals("ClassS") || base.equals("ClassD")) {
         operands = new int[] {2, 4};
         floating.setRegisterPairToLong(4, 0x80000000ff800000L);

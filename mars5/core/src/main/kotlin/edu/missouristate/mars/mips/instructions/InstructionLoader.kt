@@ -1,6 +1,7 @@
 package edu.missouristate.mars.mips.instructions
 
 import edu.missouristate.mars.api.MarsTarget
+import edu.missouristate.mars.mips.instructions.basic.release6FloatFactories
 import java.io.BufferedReader
 import java.io.IOException
 import java.util.List.copyOf
@@ -8,7 +9,8 @@ import java.util.StringTokenizer
 
 /** Loads the basic instruction catalog and pseudo-instruction templates. */
 class InstructionLoader {
-    fun loadBasicInstructions(): List<BasicInstruction> = copyOf(basicInstructionFactories.map { it() })
+    fun loadBasicInstructions(): List<BasicInstruction> =
+        copyOf((basicInstructionFactories + release6FloatFactories).map { it() })
 
     fun loadExtendedInstructions(owner: InstructionSet): List<ExtendedInstruction> = try {
         pseudoOps().useLines { lines ->

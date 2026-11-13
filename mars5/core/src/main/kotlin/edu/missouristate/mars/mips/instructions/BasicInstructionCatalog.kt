@@ -48,6 +48,7 @@ import edu.missouristate.mars.mips.instructions.basic.InstrCeilWD
 import edu.missouristate.mars.mips.instructions.basic.InstrCeilWS
 import edu.missouristate.mars.mips.instructions.basic.InstrClassD
 import edu.missouristate.mars.mips.instructions.basic.InstrClassS
+import edu.missouristate.mars.mips.instructions.basic.InstrCompactZeroBranch
 import edu.missouristate.mars.mips.instructions.basic.InstrClo
 import edu.missouristate.mars.mips.instructions.basic.InstrClz
 import edu.missouristate.mars.mips.instructions.basic.InstrCvtDS
@@ -271,6 +272,8 @@ internal val basicInstructionFactories: List<() -> BasicInstruction> = listOf(
     ::InstrJic,
     ::InstrBalc,
     ::InstrBc,
+    { InstrCompactZeroBranch(true) },
+    { InstrCompactZeroBranch(false) },
     ::InstrModu,
     ::InstrMod,
     ::InstrMuhu,

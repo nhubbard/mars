@@ -91,6 +91,9 @@ The MARS32 catalog includes additional user-mode operations from the MIPS32 Rele
 including bitfield extraction and insertion, rotates, scaled addressing, PC-relative addressing,
 and compact control transfers. `mod`, `modu`, `muh`, and `muhu` write their result to a general
 register. The historical `div`, `mul`, and `mulu` forms retain their original MARS behavior.
+The floating-point catalog includes fused multiply-add and subtract, minimum and maximum by value
+or magnitude, and bit-controlled selection. These operations use the simulator's existing
+floating-point model, with round-to-nearest arithmetic and paired registers for doubles.
 
 ## UTF-8 assembly and console text
 
