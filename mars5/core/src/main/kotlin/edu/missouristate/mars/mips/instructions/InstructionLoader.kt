@@ -10,7 +10,7 @@ class InstructionLoader {
     fun loadBasicInstructions(): List<BasicInstruction> = copyOf(basicInstructionFactories.map { it() })
 
     fun loadExtendedInstructions(owner: InstructionSet): List<ExtendedInstruction> = try {
-        resource("/PseudoOps.txt").useLines { lines ->
+        pseudoOps().useLines { lines ->
             copyOf(lines.filterNot { it.isEmpty() || it.startsWith('#') || it.startsWith(' ') }
                 .map { parseTemplate(it, owner) }.toList())
         }
@@ -51,9 +51,9 @@ class InstructionLoader {
         }
     }
 
-    private fun resource(path: String): BufferedReader {
-        val input = InstructionLoader::class.java.getResourceAsStream(path)
-            ?: throw IllegalStateException("Missing instruction resource: $path")
+    private fun pseudoOps(): BufferedReader {
+        val input = InstructionLoader::class.java.getResourceAsStream("/PseudoOps.txt")
+            ?: throw IllegalStateException("Missing instruction resource: /PseudoOps.txt")
         return input.bufferedReader(Charsets.UTF_8)
     }
 }

@@ -23,7 +23,7 @@ class SessionMemoryTest {
   @Test
   void memoryAndDecoderCanStartWithoutGlobalSimulationObjects() throws Exception {
 
-    try (var session = component("Default").context()) {
+    try (var session = component().context()) {
       session.settings.setSelfModifyingCodeEnabled(true);
       session.memory.setWord(session.memory.textBaseAddress, 0x2408002a);
       var statement = requireNonNull(session.memory.getStatement(session.memory.textBaseAddress));
@@ -40,7 +40,7 @@ class SessionMemoryTest {
 
   @Test
   void interleavedProgramsFetchAndStoreInTheirOwnMemoryAndAllocateTheirOwnHeap() throws Exception {
-    try (var first = component("Default").context(); var second = component("Default").context()) {
+    try (var first = component().context(); var second = component().context()) {
       var firstContext = new InstructionContext(first, new RecordingEnvironment());
       var secondContext = new InstructionContext(second, new RecordingEnvironment());
       installProgram(first, 42);
@@ -73,7 +73,7 @@ class SessionMemoryTest {
 
   @Test
   void floatingPointLoadAndStoreUseTheInvocationsMemory() throws Exception {
-    try (var firstSession = component("Default").context(); var secondSession = component("Default").context()) {
+    try (var firstSession = component().context(); var secondSession = component().context()) {
       var first = new InstructionContext(firstSession, new RecordingEnvironment());
       var second = new InstructionContext(secondSession, new RecordingEnvironment());
       int address = first.memory().dataBaseAddress;
@@ -102,7 +102,7 @@ class SessionMemoryTest {
   void stringAndInputSyscallsUseTheOwnersMemoryAndEnvironment() throws Exception {
     var firstIo = new RecordingEnvironment();
     var secondIo = new RecordingEnvironment();
-    try (var firstSession = component("Default").context(); var secondSession = component("Default").context()) {
+    try (var firstSession = component().context(); var secondSession = component().context()) {
       var first = new InstructionContext(firstSession, firstIo);
       var second = new InstructionContext(secondSession, secondIo);
       int address = first.memory().dataBaseAddress;
@@ -131,7 +131,7 @@ class SessionMemoryTest {
 
   @Test
   void switchingSessionConfigurationResetsItsMemoryAndPointersOnly() throws Exception {
-    try (var first = component("Default").context(); var second = component("Default").context()) {
+    try (var first = component().context(); var second = component().context()) {
       first.memory.setWord(first.memory.dataBaseAddress, 42);
       second.memory.setWord(second.memory.dataBaseAddress, 99);
       second.memory.allocateBytesFromHeap(8);
@@ -152,7 +152,7 @@ class SessionMemoryTest {
 
   @Test
   void publicMemoryApiUsesTheSameStateAndTranslatesAddressErrors() throws Exception {
-    var component = component("Default");
+    var component = component();
     try (var session = component.context()) {
       var api = component.memory();
       var memory = session.memory;
@@ -173,9 +173,9 @@ class SessionMemoryTest {
     }
   }
 
-  private static MarsComponent component(String layout) {
+  private static MarsComponent component() {
     var settings = new Settings();
-    settings.getSimulationSettings().setMemoryConfiguration(layout);
+    settings.getSimulationSettings().setMemoryConfiguration("Default");
     return DaggerMarsComponent.builder()
         .coreModule(new CoreModule(settings))
         .guiProxy(NO_GUI)

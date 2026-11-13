@@ -42,7 +42,7 @@ class SettingsReconciliationTest {
     assertThat(notifications.get()).isEqualTo(1);
     assertThat(readBoolean(new Settings(preferences).getSimulationSettings(), id)).isTrue();
 
-    writeBoolean(simulation, id, false);
+    clearBoolean(simulation, id);
     assertThat(settings.getBooleanSetting(id)).isFalse();
     assertThat(notifications.get()).isEqualTo(1);
     // Session-only writes must not overwrite the saved GUI preference.
@@ -210,14 +210,14 @@ class SettingsReconciliationTest {
     };
   }
 
-  private static void writeBoolean(SimulationSettings settings, int id, boolean value) {
+  private static void clearBoolean(SimulationSettings settings, int id) {
     switch (id) {
-      case Settings.DELAYED_BRANCHING_ENABLED -> settings.setDelayedBranchingEnabled(value);
-      case Settings.SELF_MODIFYING_CODE_ENABLED -> settings.setSelfModifyingCodeEnabled(value);
-      case Settings.WARNINGS_ARE_ERRORS -> settings.setWarningsAreErrors(value);
-      case Settings.EXTENDED_ASSEMBLER_ENABLED -> settings.setExtendedAssemblerEnabled(value);
-      case Settings.START_AT_MAIN -> settings.setStartAtMainEnabled(value);
-      case Settings.BARE_MACHINE_ENABLED -> settings.setBareMachineEnabled(value);
+      case Settings.DELAYED_BRANCHING_ENABLED -> settings.setDelayedBranchingEnabled(false);
+      case Settings.SELF_MODIFYING_CODE_ENABLED -> settings.setSelfModifyingCodeEnabled(false);
+      case Settings.WARNINGS_ARE_ERRORS -> settings.setWarningsAreErrors(false);
+      case Settings.EXTENDED_ASSEMBLER_ENABLED -> settings.setExtendedAssemblerEnabled(false);
+      case Settings.START_AT_MAIN -> settings.setStartAtMainEnabled(false);
+      case Settings.BARE_MACHINE_ENABLED -> settings.setBareMachineEnabled(false);
       default -> throw new IllegalArgumentException();
     }
   }

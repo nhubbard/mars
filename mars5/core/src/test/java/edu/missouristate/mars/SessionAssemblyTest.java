@@ -4,6 +4,8 @@ import static java.util.Objects.requireNonNull;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import edu.missouristate.mars.api.AssembledInstruction;
+import edu.missouristate.mars.api.AssemblyError;
 import edu.missouristate.mars.api.AssemblySourceSnapshot;
 import edu.missouristate.mars.api.AssemblySymbolMap.Definition;
 import edu.missouristate.mars.api.AssemblySymbolMap.EquivalenceOccurrence;
@@ -197,8 +199,8 @@ class SessionAssemblyTest {
       assertThat(stack).isLessThan(memory.stackPointer);
       assertThat(memory.getWord(stack)).isEqualTo(1);
       assertThat(memory.getWord(argv + 4)).isZero();
-      assertThat(memory.getByte(string)).isEqualTo((int) 'x');
-      assertThat(memory.getByte(string + argument.length() - 1)).isEqualTo((int) 'x');
+      assertThat(memory.getByte(string)).isEqualTo('x');
+      assertThat(memory.getByte(string + argument.length() - 1)).isEqualTo('x');
       assertThat(memory.getByte(string + argument.length())).isZero();
     }
   }
@@ -548,7 +550,7 @@ class SessionAssemblyTest {
       assertThatThrownBy(() -> map.breakpoints().get(new Location(calls, 2)).clear())
           .isInstanceOf(UnsupportedOperationException.class);
       var expanded = assembled.instructionsAt(new Location(calls, 2), () -> {});
-      assertThat(expanded).extracting(instruction -> instruction.address())
+      assertThat(expanded).extracting(AssembledInstruction::address)
           .containsExactly(pc, pc + 4, pc + 8, pc + 12);
       assertThat(expanded.getFirst().assembly()).startsWith("lui ");
       assertThat(expanded.getFirst().encoding()).isEqualTo(0x3c011234);
@@ -837,7 +839,7 @@ class SessionAssemblyTest {
         assertThat(error.line()).isEqualTo(2);
         assertThat(error.message()).endsWith("Invalid language element: bad%name");
       });
-      assertThat(result.errors()).extracting(error -> error.column())
+      assertThat(result.errors()).extracting(AssemblyError::column)
           .containsExactly(1, directive.lastIndexOf("bad%name") + 1);
     }
   }
@@ -924,7 +926,7 @@ class SessionAssemblyTest {
       int base = session.memory.dataBaseAddress;
       String expected = "OKtail\"\0";
       for (int i = 0; i < expected.length(); i++) {
-        assertThat(session.memory.getByte(base + i)).isEqualTo((int) expected.charAt(i));
+        assertThat(session.memory.getByte(base + i)).isEqualTo(expected.charAt(i));
       }
     }
   }
@@ -1115,7 +1117,7 @@ class SessionAssemblyTest {
     assertThat(mapped.substitutionOffsets())
         .containsExactlyInAnyOrder(0, source.indexOf("OP"), source.indexOf("COUNT"));
     var tokens = IntStream.range(0, mapped.tokens().size()).mapToObj(mapped.tokens()::get).toList();
-    assertThat(tokens).extracting(token -> token.getValue())
+    assertThat(tokens).extracting(Token::getValue)
         .containsExactly("entry", ":", "addiu", "$t0", "$zero", "7");
     assertThat(tokens).extracting(token -> mapped.originalOffset(token.getStartPos() - 1))
         .containsExactly(0, 0, source.indexOf("OP"), source.indexOf("$t0"),
