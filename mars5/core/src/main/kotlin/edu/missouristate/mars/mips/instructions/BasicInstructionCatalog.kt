@@ -18,6 +18,7 @@ import edu.missouristate.mars.mips.instructions.basic.InstrBeq
 import edu.missouristate.mars.mips.instructions.basic.InstrBgez
 import edu.missouristate.mars.mips.instructions.basic.InstrBgezal
 import edu.missouristate.mars.mips.instructions.basic.InstrBgtz
+import edu.missouristate.mars.mips.instructions.basic.InstrBitswap
 import edu.missouristate.mars.mips.instructions.basic.InstrBlez
 import edu.missouristate.mars.mips.instructions.basic.InstrBltz
 import edu.missouristate.mars.mips.instructions.basic.InstrBltzal
@@ -117,6 +118,10 @@ import edu.missouristate.mars.mips.instructions.basic.InstrRoundWS
 import edu.missouristate.mars.mips.instructions.basic.InstrSb
 import edu.missouristate.mars.mips.instructions.basic.InstrSc
 import edu.missouristate.mars.mips.instructions.basic.InstrSdc1
+import edu.missouristate.mars.mips.instructions.basic.InstrSeb
+import edu.missouristate.mars.mips.instructions.basic.InstrSeh
+import edu.missouristate.mars.mips.instructions.basic.InstrSeleqz
+import edu.missouristate.mars.mips.instructions.basic.InstrSelnez
 import edu.missouristate.mars.mips.instructions.basic.InstrSh
 import edu.missouristate.mars.mips.instructions.basic.InstrSll
 import edu.missouristate.mars.mips.instructions.basic.InstrSllv
@@ -153,6 +158,7 @@ import edu.missouristate.mars.mips.instructions.basic.InstrTne
 import edu.missouristate.mars.mips.instructions.basic.InstrTnei
 import edu.missouristate.mars.mips.instructions.basic.InstrTruncWD
 import edu.missouristate.mars.mips.instructions.basic.InstrTruncWS
+import edu.missouristate.mars.mips.instructions.basic.InstrWsbh
 import edu.missouristate.mars.mips.instructions.basic.InstrXor
 import edu.missouristate.mars.mips.instructions.basic.InstrXori
 
@@ -234,6 +240,12 @@ internal val basicInstructionFactories: List<() -> BasicInstruction> = listOf(
     ::InstrSh,
     ::InstrClo,
     ::InstrClz,
+    ::InstrBitswap,
+    ::InstrSeb,
+    ::InstrSeh,
+    ::InstrWsbh,
+    ::InstrSeleqz,
+    ::InstrSelnez,
     ::InstrMfc0,
     ::InstrMtc0,
     ::InstrAddS,

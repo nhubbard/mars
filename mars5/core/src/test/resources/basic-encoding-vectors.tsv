@@ -156,3 +156,10 @@ InstrTltu	tltu $t1,$t2	012a0033
 InstrTlti	tlti $t1,-100	052aff9c
 InstrTltiu	tltiu $t1,-100	052bff9c
 InstrEret	eret	42000018
+# Additional encodings derived from the MIPS32 Release 6.04 manual.
+InstrBitswap	bitswap $t1,$t2	7c0a4820
+InstrSeb	seb $t1,$t2	7c0a4c20
+InstrSeh	seh $t1,$t2	7c0a4e20
+InstrWsbh	wsbh $t1,$t2	7c0a48a0
+InstrSeleqz	seleqz $t1,$t2,$t3	014b4835
+InstrSelnez	selnez $t1,$t2,$t3	014b4837

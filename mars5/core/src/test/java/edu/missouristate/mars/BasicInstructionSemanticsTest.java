@@ -10,11 +10,29 @@ import edu.missouristate.mars.simulator.Exceptions;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 /** Architectural test vectors: expected results are specified independently of instruction code. */
 class BasicInstructionSemanticsTest {
+  @Test
+  void conditionalSelectTestsAllBitsAndWritesZeroWhenFalse() throws Exception {
+    try (var session = TestSessions.create()) {
+      var registers = session.registerFile;
+      var context = new InstructionContext(session, session.syscallEnvironment);
+      registers.updateRegister(10, 0x89abcdef);
+      for (int condition : new int[] {0, Integer.MIN_VALUE}) {
+        registers.updateRegister(11, condition);
+        int pc = registers.getPC();
+        context.execute(new ProgramStatement(0x014b4835, pc, session.instructionSet));
+        assertThat(registers.getValue(9)).isEqualTo(condition == 0 ? 0x89abcdef : 0);
+        context.execute(new ProgramStatement(0x014b4837, pc + 4, session.instructionSet));
+        assertThat(registers.getValue(9)).isEqualTo(condition == 0 ? 0 : 0x89abcdef);
+      }
+    }
+  }
+
   static Stream<BasicInstruction> instructions() {
     return new InstructionLoader().loadBasicInstructions().stream();
   }
@@ -56,6 +74,8 @@ class BasicInstructionSemanticsTest {
             case "Sllv" -> 80;
             case "Srlv", "Srav" -> 1;
             case "Mul" -> 30;
+            case "Seleqz" -> 0;
+            case "Selnez" -> 10;
             default -> null;
           };
       if (result != null) {
@@ -94,6 +114,16 @@ class BasicInstructionSemanticsTest {
         operands = new int[] {8, 2};
         registers.updateRegister(2, base.equals("Clo") ? 0xff000000 : 0x00ffffff);
         verify = s -> assertThat(s.registerFile.getValue(8)).isEqualTo(8);
+      } else if (Set.of("Bitswap", "Seb", "Seh", "Wsbh").contains(base)) {
+        operands = new int[] {8, 2};
+        registers.updateRegister(2, 0x0123a5e7);
+        int expected = switch (base) {
+          case "Bitswap" -> 0x80c4a5e7;
+          case "Seb" -> 0xffffffe7;
+          case "Seh" -> 0xffffa5e7;
+          default -> 0x2301e7a5;
+        };
+        verify = s -> assertThat(s.registerFile.getValue(8)).isEqualTo(expected);
       } else if (Set.of("Movn", "Movz", "Movf", "Movt").contains(base)) {
         if (base.equals("Movz")) {
           registers.updateRegister(4, 0);
