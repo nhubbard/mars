@@ -912,7 +912,7 @@ class MipsCompletionPlatformTest {
                     return CodeInsightSettings.runWithTemporarySettings<_, Error> {
                         it.AUTOCOMPLETE_ON_CODE_COMPLETION = false
                         fixture.completeBasic().orEmpty().filter { item -> item.typeText() == "Equivalence" }
-                            .map { it.lookupString }.toSet()
+                            .map { item -> item.lookupString }.toSet()
                     }
                 }
                 val independent = setOf("EX_INCLUDED", "EX_GENERATED")
@@ -1017,7 +1017,7 @@ class MipsCompletionPlatformTest {
                     fixture.configureByText("suffix-completion.mars", include + line + newline)
                     return CodeInsightSettings.runWithTemporarySettings<_, Error> {
                         it.AUTOCOMPLETE_ON_CODE_COMPLETION = false
-                        fixture.completeBasic().orEmpty().map { item -> item.lookupString }.filter { it.startsWith("TAIL_") }.toSet()
+                        fixture.completeBasic().orEmpty().map { item -> item.lookupString }.filter { name -> name.startsWith("TAIL_") }.toSet()
                     }
                 }
                 val registers = setOf("TAIL_BASE", "TAIL_REG")

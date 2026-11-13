@@ -1525,7 +1525,7 @@ class MipsParserPlatformTest {
             assertEquals(source, file.text)
             val addresses = descendants(file.node, "ADDRESS_EXPR").toList()
             assertEquals(listOf($$"-0x($sp)", $$"0x, ($fp)"), addresses.map { it.text })
-            assertEquals(listOf($$"$sp", $$"$fp"), addresses.flatMap { descendants(it, "REGISTER").map { it.text }.toList() })
+            assertEquals(listOf($$"$sp", $$"$fp"), addresses.flatMap { address -> descendants(address, "REGISTER").map { it.text }.toList() })
             assertEquals(listOf("-0x", "0x"), PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java).map { it.text })
             assertEquals("next:", descendants(file.node, "LABEL").single().text)
         }

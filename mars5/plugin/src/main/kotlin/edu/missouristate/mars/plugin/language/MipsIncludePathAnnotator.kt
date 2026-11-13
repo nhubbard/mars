@@ -22,7 +22,7 @@ import edu.missouristate.mars.plugin.language.references.findMipsIncludeFile
 import edu.missouristate.mars.plugin.language.references.mipsIncludeRequest
 import java.nio.file.Path
 
-/** The include prepass examines the physical line before resolving symbols or choosing a build entry. */
+/** A prepass examines the physical line of an include directive before resolving symbols or choosing a build entry. */
 internal class MipsIncludePathAnnotator : Annotator, DumbAware {
     override fun annotate(element: PsiElement, holder: AnnotationHolder) {
         if (element.isUnterminatedInclude()) {
@@ -56,11 +56,10 @@ internal class MipsIncludePathAnnotator : Annotator, DumbAware {
         val ancestor = ancestors.map { it to files.findMipsIncludeFile(it) }
             // A missing directory before a dot segment must be resolved before creating files.
             .takeWhile { (path, file) -> file != null || path.fileName.toString() !in dotSegments }
-            .mapNotNull { (path, file) ->
+            .firstNotNullOfOrNull { (path, file) ->
                 if (file == null) missing.addFirst(path.fileName.toString())
                 file
             }
-            .firstOrNull()
         val directory = ancestor?.let(literal.manager::findDirectory) ?: return null
         val name = request.fileName.toString()
         try {

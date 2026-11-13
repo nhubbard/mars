@@ -194,7 +194,7 @@ private fun verifyRename(target: MipsDeclaration, newName: String, usages: Set<S
             null
         }
         SymbolKind.LABEL, SymbolKind.EXTERNAL -> before.labelDefinitions(oldName)
-            .filter { it.definition.writtenToken() == subject.site }.singleOrNull()
+            .singleOrNull { it.definition.writtenToken() == subject.site }
             ?: throw symbolRenameError("symbol.rename.scope")
     }
     val references = before.referenceSpellings(subject, declaration)
@@ -296,9 +296,9 @@ private fun verifyRename(target: MipsDeclaration, newName: String, usages: Set<S
 
 private fun AssemblySymbolMap.renameSubject(kind: SymbolKind, declaration: SourceToken, name: String): RenameSubject? {
     if (kind == SymbolKind.CONSTANT) {
-        val occurrence = equivalences().values.flatten().filter {
+        val occurrence = equivalences().values.flatten().singleOrNull {
             it.declaration && it.name == name && it.spelling == declaration
-        }.singleOrNull() ?: return null
+        } ?: return null
         return RenameSubject(kind, occurrence.definition!!, name)
     }
     if (kind != SymbolKind.EXTERNAL) return RenameSubject(kind, declaration, name)
