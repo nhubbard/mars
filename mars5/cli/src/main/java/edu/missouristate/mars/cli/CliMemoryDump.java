@@ -14,6 +14,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.Arrays;
+import java.util.Objects;
 
 record CliMemoryDump(String region, MemoryAddressRange range, DumpFormat format, Path output) {
   static CliMemoryDump parse(String region, String descriptor, String filename) {
@@ -33,7 +34,8 @@ record CliMemoryDump(String region, MemoryAddressRange range, DumpFormat format,
     int first;
     int last;
     if (range == null) {
-      Integer[] bounds = MemoryDump.getSegmentBounds(region, memory);
+      Integer[] bounds = Objects.requireNonNull(
+          MemoryDump.getSegmentBounds(region, memory), "Unknown memory segment: " + region);
       first = bounds[0];
       last = bounds[1] - MemoryState.WORD_LENGTH_BYTES;
     } else {

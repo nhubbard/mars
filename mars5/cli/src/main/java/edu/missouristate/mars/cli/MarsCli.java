@@ -115,7 +115,7 @@ public final class MarsCli {
               report.addRange(arg);
             } else if (arg.startsWith("-")) {
               throw new IllegalArgumentException("Unknown option: " + arg);
-            } else if (!report.addRegister(arg, session)) {
+            } else if (!report.tryAddRegister(arg, session)) {
               files.add(Path.of(arg));
             }
           }

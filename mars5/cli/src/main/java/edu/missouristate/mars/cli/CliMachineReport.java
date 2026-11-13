@@ -8,6 +8,7 @@ import edu.missouristate.mars.mips.hardware.Register;
 import edu.missouristate.mars.util.Binary;
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.Objects;
 
 /** Register and memory selections for one command-line invocation. */
 final class CliMachineReport {
@@ -22,7 +23,7 @@ final class CliMachineReport {
   boolean brief;
   boolean countInstructions;
 
-  boolean addRegister(String name, MarsContext session) {
+  boolean tryAddRegister(String name, MarsContext session) {
     String label = name.startsWith("$") ? name : "$" + name;
     if (label.length() == 1 || label.equals("$f")) {
       return false;
@@ -41,7 +42,7 @@ final class CliMachineReport {
   }
 
   void requireRegister(String name, MarsContext session) {
-    if (!addRegister(name, session)) {
+    if (!tryAddRegister(name, session)) {
       throw new IllegalArgumentException("Invalid register name: " + name);
     }
   }
@@ -101,9 +102,10 @@ final class CliMachineReport {
         out.print("Mem[" + Binary.intToHexString(wordAddress) + "]\t");
       }
       try {
-        Integer bits = memory.inTextSegment(wordAddress) || memory.inKernelTextSegment(wordAddress)
-            ? memory.getRawWordOrNull(wordAddress) : memory.getWordNoNotify(wordAddress);
-        out.print(formatWord(bits == null ? 0 : bits) + "\t");
+        int bits = memory.inTextSegment(wordAddress) || memory.inKernelTextSegment(wordAddress)
+            ? Objects.requireNonNullElse(memory.getRawWordOrNull(wordAddress), 0)
+            : memory.getWordNoNotify(wordAddress);
+        out.print(formatWord(bits) + "\t");
       } catch (AddressErrorException ignored) {
         out.print("Invalid address: " + wordAddress + "\t");
       }

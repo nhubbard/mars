@@ -277,12 +277,14 @@ class MarsCliTest {
 
     assertEquals(0, execute(new String[] {
         "hex", "--register", "t0", "$8", "f0", "$f1", "0x10010000-0x10010010",
-        "--memory-range", "0x00400000-0x00400000", source.toString()
+        "--memory-range", "0x00400000-0x00400000",
+        "--memory-range", "0x00400100-0x00400100", source.toString()
     }, output, error));
     assertEquals(List.of(
         "", "$t0\t0xfffffff9", "$8\t0xfffffff9", "$f0\t0x00000000\t0x3ff0000000000000",
         "$f1\t0x3ff00000", "Mem[0x10010000]\t0x00000001\t0x00000002\t0x00000003\t0x00000004\t",
-        "Mem[0x10010010]\t0x00000005\t", "Mem[0x00400000]\t0x2408fff9\t"
+        "Mem[0x10010010]\t0x00000005\t", "Mem[0x00400000]\t0x2408fff9\t",
+        "Mem[0x00400100]\t0x00000000\t"
     ), output.toString().lines().toList());
     assertEquals("", error.toString());
   }
