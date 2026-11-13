@@ -316,7 +316,7 @@ final class MainDatapath {
               new Wire("WRITING", false, 450, 420, 300, true,
                   List.of(101),
                   List.of(0xff0000, 0xff0000, 0x646464, 0xff0000, 0xff0000, 0xff0000))),
-          Map.ofEntries(
+          Map.<String, String>ofEntries(
               entry("001000", "addi"),
               entry("001001", "addiu"),
               entry("001010", "slti"),
