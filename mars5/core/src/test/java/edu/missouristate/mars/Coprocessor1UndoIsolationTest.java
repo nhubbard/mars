@@ -21,8 +21,6 @@ class Coprocessor1UndoIsolationTest {
   @ValueSource(ints = {0, 1, 2, 3, 4, 5, 6, 7})
   void facadePreservesRegisterAndConditionFlagBackstepping(int flag) throws Exception {
 
-    var previousProgram = machine.getProgram();
-    var previousSymbols = machine.symbolTable;
     int previousPc = machine.registerFile.getProgramCounter();
     int previousFlags = machine.coprocessor1.getConditionFlags();
     int[] previousValues = new int[32];

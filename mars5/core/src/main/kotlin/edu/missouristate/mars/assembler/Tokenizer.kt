@@ -272,7 +272,6 @@ open class Tokenizer @JvmOverloads constructor(
         checkCancellation.run()
         val tokens = TokenList()
         if (line.isEmpty()) return tokens
-        if (sourceProgram?.assemblyContext()?.debug() == true) println("source line --->$line<---")
         var position = 0
         var start = 0
         var quoted = false

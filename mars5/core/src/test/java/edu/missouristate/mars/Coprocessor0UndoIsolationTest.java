@@ -20,8 +20,6 @@ class Coprocessor0UndoIsolationTest {
   @ValueSource(ints = {8, 12, 13, 14})
   void facadePreservesBacksteppingAndNamedWritesRemainUnrecorded(int number) throws Exception {
 
-    var previousProgram = machine.getProgram();
-    var previousSymbols = machine.symbolTable;
     int previousPc = machine.registerFile.getProgramCounter();
     int previousValue = machine.coprocessor0.getValue(number);
     try {

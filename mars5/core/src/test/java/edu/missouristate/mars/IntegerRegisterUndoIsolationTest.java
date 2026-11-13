@@ -19,8 +19,6 @@ class IntegerRegisterUndoIsolationTest {
   @Test
   void facadePreservesBacksteppingWithoutRecordingIndependentInstanceWrites() throws Exception {
 
-    var previousProgram = machine.getProgram();
-    var previousSymbols = machine.symbolTable;
     int[] previousValues = new int[35];
     for (int i = 0; i < 35; i++) {
       previousValues[i] =

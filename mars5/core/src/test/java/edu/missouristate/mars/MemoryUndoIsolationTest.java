@@ -24,8 +24,6 @@ class MemoryUndoIsolationTest {
   @ValueSource(strings = {"word", "half", "byte", "raw", "instruction"})
   void legacyWritesKeepUndoHistoryWhileIndependentWritesDoNot(String operation) throws Exception {
 
-    var previousProgram = machine.getProgram();
-    var previousSymbols = machine.symbolTable;
     int previousPc = machine.registerFile.getProgramCounter();
     int previousT0 = machine.registerFile.getValue(8);
     int previousT1 = machine.registerFile.getValue(9);
@@ -107,7 +105,6 @@ class MemoryUndoIsolationTest {
   void legacyConfigurationAndHeapMirrorsStayCompatibleWithoutAffectingSessionMemory()
       throws Exception {
 
-    var previousProgram = machine.getProgram();
     var previousConfiguration = machine.memory.getConfiguration();
     int previousPc = machine.registerFile.getProgramCounter();
     int[] previousValues = new int[35];

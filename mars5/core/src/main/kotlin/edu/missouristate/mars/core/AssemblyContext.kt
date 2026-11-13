@@ -27,8 +27,6 @@ data class AssemblyContext(val session: MarsContext) {
 
     fun bareMachineEnabled(): Boolean = session.settings.isBareMachineEnabled
 
-    fun debug(): Boolean = false
-
     fun displayAddressesInHex(): Boolean = session.settings.displayAddressesInHex()
 
     fun tokenizer(program: MIPSprogram): Tokenizer = Tokenizer(program, instructions())

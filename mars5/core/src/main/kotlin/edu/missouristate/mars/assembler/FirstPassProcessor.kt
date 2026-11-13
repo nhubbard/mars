@@ -86,7 +86,6 @@ internal class FirstPassProcessor(
         context.symbols().clear()
         context.clearMemory()
         errors = context.newErrorList()
-        if (context.debug()) println("Assembler first pass begins:")
 
         for (program in programs) {
             checkCancellation.run()
@@ -153,7 +152,6 @@ internal class FirstPassProcessor(
     fun executeDirective(tokens: TokenList, physicalLine: SourceLine, caller: Origin?, renamedLabels: Set<String>) {
         val token = tokens[0]
         val directive = Directives.matchDirective(token.value)
-        if (context.debug()) println("line ${token.sourceLine} is directive $directive")
         when (directive) {
             null -> errors.add(ErrorMessage(token, "\"$token\" directive is invalid or not implemented in MARS"))
             Directives.EQV -> Unit // Already processed by the tokenizer.
