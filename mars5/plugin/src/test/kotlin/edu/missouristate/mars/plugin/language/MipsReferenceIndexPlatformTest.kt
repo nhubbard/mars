@@ -45,7 +45,7 @@ class MipsReferenceIndexPlatformTest {
     private val fixture by codeInsightFixture(project)
 
     @Test
-    fun `native index records unresolved symbol kinds offsets and physical macro ownership`() = timeoutRunBlocking<Unit> {
+    fun `native index records unresolved symbol kinds offsets and physical macro ownership`() = timeoutRunBlocking {
         val source = $$"""
             .eqv Alias .emit
             .eqv Literal NOP
@@ -128,7 +128,7 @@ class MipsReferenceIndexPlatformTest {
     }
 
     @Test
-    fun `references survive declaration changes and follow unsaved edits and file deletion`() = timeoutRunBlocking<Unit> {
+    fun `references survive declaration changes and follow unsaved edits and file deletion`() = timeoutRunBlocking {
         val project = project.get()
         val use = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("ignored.txt", "b remote\n")
@@ -187,7 +187,7 @@ class MipsReferenceIndexPlatformTest {
     }
 
     @Test
-    fun `project service joins exact names and kinds across the supplied native scope`() = timeoutRunBlocking<Unit> {
+    fun `project service joins exact names and kinds across the supplied native scope`() = timeoutRunBlocking {
         val project = project.get()
         val (label, macro, constant, branch, call) = withContext(Dispatchers.EDT) {
             listOf(
@@ -228,7 +228,7 @@ class MipsReferenceIndexPlatformTest {
     }
 
     @Test
-    fun `lookup can wait for smart mode or be cancelled while indexing`() = timeoutRunBlocking<Unit> {
+    fun `lookup can wait for smart mode or be cancelled while indexing`() = timeoutRunBlocking {
         val project = project.get()
         val file = withContext(Dispatchers.EDT) { fixture.addFileToProject("code.s", "entry: b entry\n").virtualFile }
         IndexingTestUtil.suspendUntilIndexesAreReady(project)

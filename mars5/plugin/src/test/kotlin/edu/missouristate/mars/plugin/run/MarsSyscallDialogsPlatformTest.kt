@@ -45,7 +45,7 @@ class MarsSyscallDialogsPlatformTest {
     private val project get() = projectFixture.get()
 
     @Test
-    fun `standard input choice persists and isolates simultaneous console and dialog launches`() = timeoutRunBlocking<Unit> {
+    fun `standard input choice persists and isolates simultaneous console and dialog launches`() = timeoutRunBlocking {
         val lifetime = Disposer.newDisposable()
         val handlers = mutableListOf<MarsProcessHandler>()
         val prompts = mutableListOf<String>()
@@ -161,7 +161,7 @@ class MarsSyscallDialogsPlatformTest {
 
     @ParameterizedTest
     @ValueSource(ints = [5, 8, 12])
-    fun `canceling standard input follows the existing end-of-input behavior`(syscall: Int) = timeoutRunBlocking<Unit> {
+    fun `canceling standard input follows the existing end-of-input behavior`(syscall: Int) = timeoutRunBlocking {
         try {
             withContext(Dispatchers.EDT) { interceptSyscallDialog { it.doCancelAction() } }
             val (_, recording) = run(
@@ -192,7 +192,7 @@ class MarsSyscallDialogsPlatformTest {
     }
 
     @Test
-    fun `MARS confirmation dialogs report Yes No and Cancel to the program`() = timeoutRunBlocking<Unit> {
+    fun `MARS confirmation dialogs report Yes No and Cancel to the program`() = timeoutRunBlocking {
         try {
             withContext(Dispatchers.EDT) {
                 for (button in listOf("Yes", "No", "Cancel")) {
@@ -230,7 +230,7 @@ class MarsSyscallDialogsPlatformTest {
     }
 
     @Test
-    fun `MARS input dialogs preserve typed values and cancellation status registers`() = timeoutRunBlocking<Unit> {
+    fun `MARS input dialogs preserve typed values and cancellation status registers`() = timeoutRunBlocking {
         try {
             withContext(Dispatchers.EDT) {
                 for (answer in listOf("42", "bad", "", null, "1.25", "2.5", "text")) {
@@ -313,7 +313,7 @@ class MarsSyscallDialogsPlatformTest {
     }
 
     @Test
-    fun `MARS messages display their severity and formatted argument in IntelliJ`() = timeoutRunBlocking<Unit> {
+    fun `MARS messages display their severity and formatted argument in IntelliJ`() = timeoutRunBlocking {
         val info = Messages.getInformationIcon()
         val messages = listOf(
             "Value: " to Messages.getErrorIcon(),
@@ -381,7 +381,7 @@ class MarsSyscallDialogsPlatformTest {
     }
 
     @Test
-    fun `a supplied MARS message title is displayed verbatim`() = timeoutRunBlocking<Unit> {
+    fun `a supplied MARS message title is displayed verbatim`() = timeoutRunBlocking {
         val execution = currentCoroutineContext().job
         try {
             withContext(Dispatchers.EDT) {
@@ -401,7 +401,7 @@ class MarsSyscallDialogsPlatformTest {
 
     @ParameterizedTest
     @ValueSource(booleans = [false, true])
-    fun `Stop or project closure dismisses the outstanding MARS dialog before termination`(closeProject: Boolean) = timeoutRunBlocking<Unit> {
+    fun `Stop or project closure dismisses the outstanding MARS dialog before termination`(closeProject: Boolean) = timeoutRunBlocking {
         val showing = CompletableDeferred<MarsSyscallDialog>()
         try {
             withContext(Dispatchers.EDT) { interceptSyscallDialog { showing.complete(it) } }

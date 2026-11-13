@@ -48,7 +48,7 @@ class MipsAddressInlayPlatformTest {
     private val refresh get() = project.service<MipsAssemblyInlayRefresh>()
 
     @Test
-    fun `native inline hints update after unsaved includes and assembly settings change`() = timeoutRunBlocking<Unit> {
+    fun `native inline hints update after unsaved includes and assembly settings change`() = timeoutRunBlocking {
         val source = """
             .data
             .include "pad.txt"
@@ -110,7 +110,7 @@ class MipsAddressInlayPlatformTest {
     }
 
     @Test
-    fun `address hints hide when no single assembly owns the include`() = timeoutRunBlocking<Unit> {
+    fun `address hints hide when no single assembly owns the include`() = timeoutRunBlocking {
         val file = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("part.s", "entry: nop\n").also { fixture.configureFromExistingVirtualFile(it.virtualFile) }
         }
@@ -128,7 +128,7 @@ class MipsAddressInlayPlatformTest {
     }
 
     @Test
-    fun `native pseudo expansions follow unsaved aliases and outer macro calls`() = timeoutRunBlocking<Unit> {
+    fun `native pseudo expansions follow unsaved aliases and outer macro calls`() = timeoutRunBlocking {
         val source = $$"""
             .include "values.txt"
             li $t0, 1
@@ -186,7 +186,7 @@ class MipsAddressInlayPlatformTest {
     }
 
     @Test
-    fun `nested read-only includes show addresses and expansions for the current entry and source`() = timeoutRunBlocking<Unit> {
+    fun `nested read-only includes show addresses and expansions for the current entry and source`() = timeoutRunBlocking {
         val entryText = ".eqv VALUE 0x12345678\n.text\nnop\n.include \"bridge.png\"\n"
         val bridgeText = ".include \"body.zip\"\n"
         val bodyText = $$"included: li $t0, VALUE\n"

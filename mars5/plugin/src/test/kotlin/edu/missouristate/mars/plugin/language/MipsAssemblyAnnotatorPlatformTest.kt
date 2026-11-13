@@ -69,7 +69,7 @@ class MipsAssemblyAnnotatorPlatformTest {
     private val annotator = MipsAssemblyAnnotator()
 
     @Test
-    fun `entry and include editors reuse one captured assembly until a source changes`() = timeoutRunBlocking<Unit> {
+    fun `entry and include editors reuse one captured assembly until a source changes`() = timeoutRunBlocking {
         val (main, include) = withContext(Dispatchers.EDT) {
             val part = fixture.addFileToProject("part.s", "j missing\n") as MipsFile
             val entry = fixture.addFileToProject("entry.s", ".set noat\n.include \"part.s\"\n") as MipsFile
@@ -106,7 +106,7 @@ class MipsAssemblyAnnotatorPlatformTest {
     }
 
     @Test
-    fun `background assembly follows option changes for the same selected entry`() = timeoutRunBlocking<Unit> {
+    fun `background assembly follows option changes for the same selected entry`() = timeoutRunBlocking {
         val file = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("delay-layout.asm", $$"""
                 .macro gen (%label)
@@ -164,7 +164,7 @@ class MipsAssemblyAnnotatorPlatformTest {
     }
 
     @Test
-    fun `background highlighting makes generated labels available without a build`() = timeoutRunBlocking<Unit> {
+    fun `background highlighting makes generated labels available without a build`() = timeoutRunBlocking {
         val source = ".include \"defs.s\"\nemit (generated)\nemit (generatedOther)\nj generated\n"
         val (entry, unrelated) = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("defs.s", ".macro emit (%entry)\n%entry: nop\n.end_macro\n")
@@ -217,7 +217,7 @@ class MipsAssemblyAnnotatorPlatformTest {
     }
 
     @Test
-    fun `background symbols respect ambiguity and refresh the selected entry`() = timeoutRunBlocking<Unit> {
+    fun `background symbols respect ambiguity and refresh the selected entry`() = timeoutRunBlocking {
         val selectedSource = "target: nop\n.include \"part.s\"\n"
         val (first, second) = withContext(Dispatchers.EDT) {
             val part = fixture.addFileToProject("part.s", "j target\n").virtualFile
@@ -249,7 +249,7 @@ class MipsAssemblyAnnotatorPlatformTest {
     }
 
     @Test
-    fun `native editor highlighting shows assembler errors and warnings and clears them on edits`() = timeoutRunBlocking<Unit> {
+    fun `native editor highlighting shows assembler errors and warnings and clears them on edits`() = timeoutRunBlocking {
         val source = ".set noat\n.include \"included.s\"\nj missing\n"
         val (main, include) = withContext(Dispatchers.EDT) {
             val entry = fixture.addFileToProject("entry.asm", source).virtualFile
@@ -279,7 +279,7 @@ class MipsAssemblyAnnotatorPlatformTest {
     }
 
     @Test
-    fun `syntax highlights follow the effective segment through includes and edits`() = timeoutRunBlocking<Unit> {
+    fun `syntax highlights follow the effective segment through includes and edits`() = timeoutRunBlocking {
         val source = $$"(\n)\n:\n$sp)\nlabel::suffix\n"
         val (entry, segment, body) = withContext(Dispatchers.EDT) {
             val mode = fixture.addFileToProject("segment.txt", ".eqv SWITCH .data\nSWITCH\n")
@@ -307,7 +307,7 @@ class MipsAssemblyAnnotatorPlatformTest {
     }
 
     @Test
-    fun `deferred macro operands follow an included opening through unsaved edits`() = timeoutRunBlocking<Unit> {
+    fun `deferred macro operands follow an included opening through unsaved edits`() = timeoutRunBlocking {
         val source = "4 : )\n.word )\nlabel: 6 : )\n"
         val (entry, opening, body) = withContext(Dispatchers.EDT) {
             val header = fixture.addFileToProject("opening.txt", ".macro dormant\n")
@@ -338,7 +338,7 @@ class MipsAssemblyAnnotatorPlatformTest {
     }
 
     @Test
-    fun `incomplete includes only invalidate macro syntax context after the include`() = timeoutRunBlocking<Unit> {
+    fun `incomplete includes only invalidate macro syntax context after the include`() = timeoutRunBlocking {
         val (entry, body) = withContext(Dispatchers.EDT) {
             val header = fixture.addFileToProject("entry.asm", """
                 .eqv OPEN .macro dormant
@@ -373,7 +373,7 @@ class MipsAssemblyAnnotatorPlatformTest {
     }
 
     @Test
-    fun `shared macro body diagnostics follow the selected entry and its current includes`() = timeoutRunBlocking<Unit> {
+    fun `shared macro body diagnostics follow the selected entry and its current includes`() = timeoutRunBlocking {
         val withoutBody = ".macro dormant\n.end_macro\nnop\n"
         val withBody = withoutBody.replace(".end_macro", ".include \"shared.s\"\n.end_macro")
         val (macro, topLevel) = withContext(Dispatchers.EDT) {
@@ -412,7 +412,7 @@ class MipsAssemblyAnnotatorPlatformTest {
     }
 
     @Test
-    fun `text includes with another file type supply live macro scope and navigation`() = timeoutRunBlocking<Unit> {
+    fun `text includes with another file type supply live macro scope and navigation`() = timeoutRunBlocking {
         val bridgeText = "destination: nop\n.macro outer\n.include \"leaf.s\"\n"
         val (entry, bridge, leaf) = withContext(Dispatchers.EDT) {
             val main = fixture.addFileToProject("entry.s", ".include \"bridge.java\"\n.end_macro\nj destination\n") as MipsFile
@@ -449,7 +449,7 @@ class MipsAssemblyAnnotatorPlatformTest {
     }
 
     @Test
-    fun `ignored includes contribute editor context to nested assembly sources`() = timeoutRunBlocking<Unit> {
+    fun `ignored includes contribute editor context to nested assembly sources`() = timeoutRunBlocking {
         val (entry, ignored, leaf) = withContext(Dispatchers.EDT) {
             val main = fixture.addFileToProject("entry.s", ".macro outer\n.end_macro\n.include \"bridge.inc~\"\n") as MipsFile
             val ignored = fixture.tempDirFixture.createFile("bridge.inc~", ".eqv SHIFT 4\n.include \"leaf.s\"\n")
@@ -489,7 +489,7 @@ class MipsAssemblyAnnotatorPlatformTest {
     }
 
     @Test
-    fun `read-only include views follow the name and file type of their original`() = timeoutRunBlocking<Unit> {
+    fun `read-only include views follow the name and file type of their original`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             val types = FileTypeManager.getInstance()
             val ignored = types.ignoredFilesList
@@ -523,7 +523,7 @@ class MipsAssemblyAnnotatorPlatformTest {
     }
 
     @Test
-    fun `ignored binary sources use the assembler decoder and oversized sources leave incomplete context`() = timeoutRunBlocking<Unit> {
+    fun `ignored binary sources use the assembler decoder and oversized sources leave incomplete context`() = timeoutRunBlocking {
         val types = FileTypeManager.getInstance()
         val ignored = types.ignoredFilesList
         try {
@@ -570,7 +570,7 @@ class MipsAssemblyAnnotatorPlatformTest {
     }
 
     @Test
-    fun `aliases in a binary-classified include participate in completion highlighting and navigation`() = timeoutRunBlocking<Unit> {
+    fun `aliases in a binary-classified include participate in completion highlighting and navigation`() = timeoutRunBlocking {
         val entry = $$".include \"parts/opaque.zip\"\nsll $t0, SOURCE, SHIFT\n"
         val definitions = ".include \"inner.inc\"\n.eqv SHIFT 4\n"
         val binary = withContext(Dispatchers.EDT) {
@@ -611,7 +611,7 @@ class MipsAssemblyAnnotatorPlatformTest {
     }
 
     @Test
-    fun `equivalence generated macros defer operands and retain boundary diagnostics`() = timeoutRunBlocking<Unit> {
+    fun `equivalence generated macros defer operands and retain boundary diagnostics`() = timeoutRunBlocking {
         val source = """
             .eqv OPEN .macro dormant
             .eqv CLOSE .end_macro
@@ -644,7 +644,7 @@ class MipsAssemblyAnnotatorPlatformTest {
     }
 
     @Test
-    fun `segment-dependent errors defer to assembly only when an entry is available`() = timeoutRunBlocking<Unit> {
+    fun `segment-dependent errors defer to assembly only when an entry is available`() = timeoutRunBlocking {
         val filter = MipsAssemblySyntaxErrorFilter()
         withContext(Dispatchers.EDT) {
             val source = ".data\n)\n# comment\n.word 1\n"
@@ -668,7 +668,7 @@ class MipsAssemblyAnnotatorPlatformTest {
     }
 
     @Test
-    fun `expanded macro segment switches decide syntax diagnostics on the following line`() = timeoutRunBlocking<Unit> {
+    fun `expanded macro segment switches decide syntax diagnostics on the following line`() = timeoutRunBlocking {
         val source = """
             .include "switches.txt"
             .text
@@ -696,7 +696,7 @@ class MipsAssemblyAnnotatorPlatformTest {
     }
 
     @Test
-    fun `only a consumed unfinished quote produces an editor error`() = timeoutRunBlocking<Unit> {
+    fun `only a consumed unfinished quote produces an editor error`() = timeoutRunBlocking {
         val unfinished = "\"data"
         val source = ".set \"ignored\n.data\n.asciiz $unfinished\n.text\nnext: nop\n"
         val main = withContext(Dispatchers.EDT) {
@@ -722,7 +722,7 @@ class MipsAssemblyAnnotatorPlatformTest {
     }
 
     @Test
-    fun `inherited circular equivalences highlight their physical use before a build`() = timeoutRunBlocking<Unit> {
+    fun `inherited circular equivalences highlight their physical use before a build`() = timeoutRunBlocking {
         val definitions = ".eqv OPERATION li\n.eqv FIRST SECOND\n.eqv SECOND FIRST + 1\n"
         val source = $$"\tOPERATION $t0, FIRST # original operand\n"
         val parent = withContext(Dispatchers.EDT) {
@@ -743,7 +743,7 @@ class MipsAssemblyAnnotatorPlatformTest {
     }
 
     @Test
-    fun `editor marks the invalid literal while assembly retains the error at its alias use`() = timeoutRunBlocking<Unit> {
+    fun `editor marks the invalid literal while assembly retains the error at its alias use`() = timeoutRunBlocking {
         val source = ".eqv BROKEN 'ab'\n.data\n.word BROKEN, 7\n"
         val file = withContext(Dispatchers.EDT) {
             val file = fixture.addFileToProject("characters.asm", source).virtualFile
@@ -765,7 +765,7 @@ class MipsAssemblyAnnotatorPlatformTest {
     }
 
     @Test
-    fun `unfinished include paths keep highlighting live and resolve when closed`() = timeoutRunBlocking<Unit> {
+    fun `unfinished include paths keep highlighting live and resolve when closed`() = timeoutRunBlocking {
         val (main, include) = withContext(Dispatchers.EDT) {
             val entry = fixture.addFileToProject("in-progress.asm", ".include \"\ntail: nop\n").virtualFile
             val part = fixture.addFileToProject("part.s", "target: nop\n").virtualFile
@@ -801,7 +801,7 @@ class MipsAssemblyAnnotatorPlatformTest {
     }
 
     @Test
-    fun `unterminated include paths are highlighted without an inferred assembly entry`() = timeoutRunBlocking<Unit> {
+    fun `unterminated include paths are highlighted without an inferred assembly entry`() = timeoutRunBlocking {
         val source = """
             prefix: .InClUdE ,, "unfinished path
             .eqv ALIAS .include "replacement path
@@ -834,7 +834,7 @@ class MipsAssemblyAnnotatorPlatformTest {
     }
 
     @Test
-    fun `physical missing includes are highlighted even with ambiguous entry and syntax errors`() = timeoutRunBlocking<Unit> {
+    fun `physical missing includes are highlighted even with ambiguous entry and syntax errors`() = timeoutRunBlocking {
         val shared = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("first.asm", ".include \"shared.s\"\n")
             fixture.addFileToProject("second.asm", ".include \"shared.s\"\n")
@@ -868,7 +868,7 @@ class MipsAssemblyAnnotatorPlatformTest {
     }
 
     @Test
-    fun `analysis follows unique or selected entries and rejects obsolete include results`() = timeoutRunBlocking<Unit> {
+    fun `analysis follows unique or selected entries and rejects obsolete include results`() = timeoutRunBlocking {
         val (main, other, dependency) = withContext(Dispatchers.EDT) {
             val first = fixture.addFileToProject("first.s", ".include \"dependency.s\"\n.include \"part.s\"\n").virtualFile
             val second = fixture.addFileToProject("second.s", "nop\n").virtualFile
@@ -939,7 +939,7 @@ class MipsAssemblyAnnotatorPlatformTest {
     }
 
     @Test
-    fun `rootless cycles highlight each participating path and respect the selected build`() = timeoutRunBlocking<Unit> {
+    fun `rootless cycles highlight each participating path and respect the selected build`() = timeoutRunBlocking {
         val (first, second, third) = withContext(Dispatchers.EDT) {
             val a = fixture.addFileToProject("a.asm", ".include \"b.s\"\n.include \"leaf.s\"\n.include \"missing.s\"\n")
             val b = fixture.addFileToProject("b.s", ".include \"c.s\"\n")
@@ -984,7 +984,7 @@ class MipsAssemblyAnnotatorPlatformTest {
 
     @ParameterizedTest
     @ValueSource(strings = ["nested.inc~", "nested.zip"])
-    fun `read-only include editors highlight the entry diagnostics for their displayed revision`(nestedName: String) = timeoutRunBlocking<Unit> {
+    fun `read-only include editors highlight the entry diagnostics for their displayed revision`(nestedName: String) = timeoutRunBlocking {
         val source = ".data\n.include \"defs.png\"\n.text\nnop\n"
         val binaryText = ".byte -129\n.include \"$nestedName\"\n"
         val nestedText = ".byte +256\n"
@@ -1065,7 +1065,7 @@ class MipsAssemblyAnnotatorPlatformTest {
     }
 
     @Test
-    fun `include navigation rechecks ambiguous and invalidated entry candidates`() = timeoutRunBlocking<Unit> {
+    fun `include navigation rechecks ambiguous and invalidated entry candidates`() = timeoutRunBlocking {
         val include = ".include \"shared.inc~\"\n"
         val offset = include.indexOf("shared.inc~") + 1
         val (first, second) = withContext(Dispatchers.EDT) {
@@ -1114,7 +1114,7 @@ class MipsAssemblyAnnotatorPlatformTest {
     }
 
     @Test
-    fun `signed integer diagnostics highlight the full assembler operand in an included file`() = timeoutRunBlocking<Unit> {
+    fun `signed integer diagnostics highlight the full assembler operand in an included file`() = timeoutRunBlocking {
         val source = ".data\n\t.byte -129, +256\n"
         withContext(Dispatchers.EDT) {
             fixture.addFileToProject("main.mars", ".include \"signed.inc\"\n.text\nnop\n")
@@ -1133,7 +1133,7 @@ class MipsAssemblyAnnotatorPlatformTest {
     }
 
     @Test
-    fun `editor diagnostic ranges handle absent positions and columns beyond the line`() = timeoutRunBlocking<Unit> {
+    fun `editor diagnostic ranges handle absent positions and columns beyond the line`() = timeoutRunBlocking {
         readAction {
             val document = EditorFactory.getInstance().createDocument("nop\nj label\n")
             val error = AssemblyError(null, 2, 3, "error", false)

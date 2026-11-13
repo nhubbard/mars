@@ -26,7 +26,7 @@ class MipsRegisterUsagesPlatformTest {
     private val fixture by codeInsightFixture(project)
 
     @Test
-    fun `native usage highlighting groups GPR aliases and excludes other banks and non operands`() = timeoutRunBlocking<Unit> {
+    fun `native usage highlighting groups GPR aliases and excludes other banks and non operands`() = timeoutRunBlocking {
         val source = $$"""
             .eqv TEMP $8
             .asciiz "$8"
@@ -58,7 +58,7 @@ class MipsRegisterUsagesPlatformTest {
     }
 
     @Test
-    fun `floating and CP0 occurrences stay in their own banks across unsaved edits`() = timeoutRunBlocking<Unit> {
+    fun `floating and CP0 occurrences stay in their own banks across unsaved edits`() = timeoutRunBlocking {
         val current = project.get()
         val source = $$"""
             mfc0 $8, $8
@@ -93,7 +93,7 @@ class MipsRegisterUsagesPlatformTest {
     }
 
     @Test
-    fun `equivalences project register identities to unambiguous written operands`() = timeoutRunBlocking<Unit> {
+    fun `equivalences project register identities to unambiguous written operands`() = timeoutRunBlocking {
         val current = project.get()
         val source = $$"""
             .include "values.txt"

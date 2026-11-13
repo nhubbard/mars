@@ -449,7 +449,7 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
     private suspend fun awaitCommand(pause: Suspension, machine: MarsContext): Command {
         val context = pause.context
         while (true) {
-            val command = select<Command?> {
+            val command = select {
                 pause.command.onAwait { it }
                 context.inspectionRequests.onReceive { inspect ->
                     inspect(machine.memory)
@@ -597,7 +597,7 @@ internal class MarsSuspendContext(
         lastMemoryWrite = machine.backStepper.previousMemoryWrite()
     }
 
-    val memoryExports = Channel<MemoryExportRequest>(16, onUndeliveredElement = MemoryExportRequest::unavailable)
+    val memoryExports = Channel(16, onUndeliveredElement = MemoryExportRequest::unavailable)
     val inspectionRequests = Channel<suspend (MemoryState) -> Unit>(16, onBufferOverflow = BufferOverflow.DROP_OLDEST)
     override fun getActiveExecutionStack() = stack
 }

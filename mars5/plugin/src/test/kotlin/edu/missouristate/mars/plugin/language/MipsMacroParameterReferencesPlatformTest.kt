@@ -28,7 +28,7 @@ class MipsMacroParameterReferencesPlatformTest {
     private val fixture by codeInsightFixture(project)
 
     @Test
-    fun `macro parameters navigate to the exact header tokens`() = timeoutRunBlocking<Unit> {
+    fun `macro parameters navigate to the exact header tokens`() = timeoutRunBlocking {
         val header = $$".macro emit ((%base, $value, %?name, %base))\n"
         val cases = listOf(
             $$"lw $t0, 4(%ba<caret>se)" to "%base",
@@ -48,7 +48,7 @@ class MipsMacroParameterReferencesPlatformTest {
     }
 
     @Test
-    fun `parameters before a malformed formal still resolve inside the macro`() = timeoutRunBlocking<Unit> {
+    fun `parameters before a malformed formal still resolve inside the macro`() = timeoutRunBlocking {
         val header = ".macro emit (%value, 7, %later)\n"
         configure($$"$${header}li $t0, %val<caret>ue\n.end_macro\n")
         assertEquals(header.indexOf("%value"), target()?.offset)
@@ -57,7 +57,7 @@ class MipsMacroParameterReferencesPlatformTest {
     }
 
     @Test
-    fun `aliased headers keep formals accepted before a lexical error`() = timeoutRunBlocking<Unit> {
+    fun `aliased headers keep formals accepted before a lexical error`() = timeoutRunBlocking {
         val definitions = ".eqv FORM %value\n.eqv OPEN .macro\n.eqv COMPLETE entry: .macro emit (FORM\n"
         val headers = mapOf(
             ".macro emit (FORM, @, %later)" to "FORM",
@@ -84,7 +84,7 @@ class MipsMacroParameterReferencesPlatformTest {
     }
 
     @Test
-    fun `a circular alias does not establish a partial macro scope`() = timeoutRunBlocking<Unit> {
+    fun `a circular alias does not establish a partial macro scope`() = timeoutRunBlocking {
         val definitions = ".eqv FIRST SECOND\n.eqv SECOND FIRST\n.eqv OPEN .macro\n" +
             ".eqv COMPLETE entry: .macro emit (%value, FIRST\n"
         for (header in listOf(".macro emit (%value, FIRST)", "OPEN emit (%value, FIRST)", "COMPLETE:)")) {
@@ -94,7 +94,7 @@ class MipsMacroParameterReferencesPlatformTest {
     }
 
     @Test
-    fun `included macro headers govern uses until their included closing boundary`() = timeoutRunBlocking<Unit> {
+    fun `included macro headers govern uses until their included closing boundary`() = timeoutRunBlocking {
         val header = ".macro emit (%value)\n"
         withContext(Dispatchers.EDT) {
             fixture.addFileToProject("parts/open.s", header)
@@ -116,7 +116,7 @@ class MipsMacroParameterReferencesPlatformTest {
     }
 
     @Test
-    fun `parameters navigate to written formals in a plain include`() = timeoutRunBlocking<Unit> {
+    fun `parameters navigate to written formals in a plain include`() = timeoutRunBlocking {
         val header = "# written header\n.macro emit (%value)\n"
         withContext(Dispatchers.EDT) { fixture.addFileToProject("header.txt", header) }
         configure($$".include \"header.txt\"\nli $t0, %val<caret>ue\n.end_macro\n")
@@ -124,7 +124,7 @@ class MipsMacroParameterReferencesPlatformTest {
     }
 
     @Test
-    fun `formals supplied by aliases navigate through their physical header and equivalences`() = timeoutRunBlocking<Unit> {
+    fun `formals supplied by aliases navigate through their physical header and equivalences`() = timeoutRunBlocking {
         val aliases = $$".eqv NAME emit\n.eqv FORMALS (%value)\n.eqv $SPIM $value\n"
         withContext(Dispatchers.EDT) { fixture.addFileToProject("aliases.s", aliases) }
         val include = ".include \"aliases.s\"\n"
@@ -142,7 +142,7 @@ class MipsMacroParameterReferencesPlatformTest {
     }
 
     @Test
-    fun `parameter lookup observes case scope token roles and indexing`() = timeoutRunBlocking<Unit> {
+    fun `parameter lookup observes case scope token roles and indexing`() = timeoutRunBlocking {
         val header = ".macro emit (%Value)\n"
         for (line in listOf($$"li $t0, %val<caret>ue", $$"li $t0, %<caret>", ".asciiz \"%Val<caret>ue\"", "# %Val<caret>ue")) {
             configure("$header$line\n.end_macro\n")
@@ -164,7 +164,7 @@ class MipsMacroParameterReferencesPlatformTest {
     }
 
     @Test
-    fun `parameters in an aliased macro body navigate to the exact written formal`() = timeoutRunBlocking<Unit> {
+    fun `parameters in an aliased macro body navigate to the exact written formal`() = timeoutRunBlocking {
         val aliases = ".eqv START .macro\n.eqv STOP .end_macro\n.eqv FULL .macro emit (%value)\n"
         val header = "START emit (%value)\n"
         val use = $$"li $t0, %val<caret>ue\n"
@@ -181,7 +181,7 @@ class MipsMacroParameterReferencesPlatformTest {
 
     @Test
     fun `parameters in an equivalence definition navigate and use the formal color`(@TempDir directory: Path) =
-        timeoutRunBlocking<Unit> {
+        timeoutRunBlocking {
             val header = $$".macro emit ($name, $value)\n"
             val definition = $$".eqv $name $value"
             val body = $$"\nli $t0, $name\n.end_macro\nemit(CONSTANT, 42)\n.eqv $outside $unbound\n"

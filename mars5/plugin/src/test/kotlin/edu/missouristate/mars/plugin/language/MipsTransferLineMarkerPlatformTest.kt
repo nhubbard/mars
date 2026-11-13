@@ -25,7 +25,7 @@ class MipsTransferLineMarkerPlatformTest {
     private val fixture by codeInsightFixture(project)
 
     @Test
-    fun `native gutter exposes concrete branch call and jump destinations`() = timeoutRunBlocking<Unit> {
+    fun `native gutter exposes concrete branch call and jump destinations`() = timeoutRunBlocking {
         val source = $$"""
             .include "targets.txt"
             .eqv DEST first
@@ -76,7 +76,7 @@ class MipsTransferLineMarkerPlatformTest {
     }
 
     @Test
-    fun `unsaved include edits refresh the gutter and stale navigation rechecks the label`() = timeoutRunBlocking<Unit> {
+    fun `unsaved include edits refresh the gutter and stale navigation rechecks the label`() = timeoutRunBlocking {
         val current = project.get()
         val include = withContext(Dispatchers.EDT) {
             val include = fixture.addFileToProject("targets.txt", ".eqv DEST first\nfirst: nop\nsecond: nop\n")
@@ -103,7 +103,7 @@ class MipsTransferLineMarkerPlatformTest {
     }
 
     @Test
-    fun `old gutter actions have no target while indexing or after source deletion`() = timeoutRunBlocking<Unit> {
+    fun `old gutter actions have no target while indexing or after source deletion`() = timeoutRunBlocking {
         val current = project.get()
         withContext(Dispatchers.EDT) {
             fixture.configureByText("entry.asm", "j target\nj target\ntarget: nop\n")

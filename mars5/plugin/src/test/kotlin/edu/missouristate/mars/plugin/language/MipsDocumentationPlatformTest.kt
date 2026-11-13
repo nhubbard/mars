@@ -32,7 +32,7 @@ class MipsDocumentationPlatformTest {
     private val fixture by codeInsightFixture(project)
 
     @Test
-    fun `quick documentation presents the core instruction examples and descriptions`() = timeoutRunBlocking<Unit> {
+    fun `quick documentation presents the core instruction examples and descriptions`() = timeoutRunBlocking {
         val html = documentation($$"entry: DIV<caret> $t0, $t1, $t2").orEmpty()
         val forms = checkNotNull(InstructionDefaults.get().matchOperator("div"))
         for (instruction in forms) {
@@ -43,7 +43,7 @@ class MipsDocumentationPlatformTest {
     }
 
     @Test
-    fun `syscall documentation covers every registered service and follows aliases and completion`() = timeoutRunBlocking<Unit> {
+    fun `syscall documentation covers every registered service and follows aliases and completion`() = timeoutRunBlocking {
         val html = documentation("sys<caret>call").orEmpty()
         val displayed = Regex("<p>(\\d+) (\\w+)</p></td>").findAll(html).map { it.groupValues[1].toInt() to it.groupValues[2] }.toList()
         val registered = SyscallRegistry().services().map { it.number to it.name }.sortedBy { it.first }
@@ -71,7 +71,7 @@ class MipsDocumentationPlatformTest {
     }
 
     @Test
-    fun `directive documentation uses the directive in its syntactic role`() = timeoutRunBlocking<Unit> {
+    fun `directive documentation uses the directive in its syntactic role`() = timeoutRunBlocking {
         for ((directive, source) in listOf(
             Directives.WORD to ".wo<caret>rd 1",
             Directives.DATA to ".D<caret>ATA",
@@ -89,7 +89,7 @@ class MipsDocumentationPlatformTest {
     }
 
     @Test
-    fun `catalog documentation stays off labels references comments and other languages`() = timeoutRunBlocking<Unit> {
+    fun `catalog documentation stays off labels references comments and other languages`() = timeoutRunBlocking {
         for (source in listOf("<caret>", "n<caret>op: nop", "b n<caret>op", "b .s<caret>et", ".eqv .s<caret>et 1",
             "emit .i<caret>nclude", "emit .end_ma<caret>cro", "# d<caret>iv", ".asciiz \"di<caret>v\"")) {
             assertNull(documentation(source), source)
@@ -98,7 +98,7 @@ class MipsDocumentationPlatformTest {
     }
 
     @Test
-    fun `completion documentation uses the same catalog target as the editor`() = timeoutRunBlocking<Unit> {
+    fun `completion documentation uses the same catalog target as the editor`() = timeoutRunBlocking {
         val direct = documentation($$"di<caret>v $t0, $t1")
         val item = withContext(Dispatchers.EDT) {
             fixture.configureByText("doc.asm", "di<caret>\n")
@@ -115,7 +115,7 @@ class MipsDocumentationPlatformTest {
     }
 
     @Test
-    fun `macro completion documents visible overloads and follows edits to their scope`() = timeoutRunBlocking<Unit> {
+    fun `macro completion documents visible overloads and follows edits to their scope`() = timeoutRunBlocking {
         val current = project.get()
         val includeText = ".macro emit (%one) # First <value>\n.end_macro\n"
         val entry = withContext(Dispatchers.EDT) {
@@ -180,7 +180,7 @@ class MipsDocumentationPlatformTest {
     }
 
     @Test
-    fun `macro alias documentation previews the projected invocation and follows edits`() = timeoutRunBlocking<Unit> {
+    fun `macro alias documentation previews the projected invocation and follows edits`() = timeoutRunBlocking {
         val current = project.get()
         val entry = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("lookup.inc", ".macro emit (%one) # One operand\n.end_macro\n")
@@ -249,7 +249,7 @@ class MipsDocumentationPlatformTest {
     }
 
     @Test
-    fun `catalog alias completion documents the effective operation and rechecks edits`() = timeoutRunBlocking<Unit> {
+    fun `catalog alias completion documents the effective operation and rechecks edits`() = timeoutRunBlocking {
         val current = project.get()
         val source = $$"""
             .eqv LAUNCH row: addiu $t0, $zero
@@ -284,7 +284,7 @@ class MipsDocumentationPlatformTest {
     }
 
     @Test
-    fun `operation aliases show the core documentation and keep declaration navigation`() = timeoutRunBlocking<Unit> {
+    fun `operation aliases show the core documentation and keep declaration navigation`() = timeoutRunBlocking {
         val definitions = $$".eqv DEFINE .eqv\nDEFINE OP DIV $t0,$t1\nDEFINE STORE .WoRd\n"
         withContext(Dispatchers.EDT) { fixture.addFileToProject("aliases.s", definitions) }
         val include = ".include \"aliases.s\"\n"
@@ -307,7 +307,7 @@ class MipsDocumentationPlatformTest {
     }
 
     @Test
-    fun `labels supplied by aliases leave documentation on the written operation`() = timeoutRunBlocking<Unit> {
+    fun `labels supplied by aliases leave documentation on the written operation`() = timeoutRunBlocking {
         val definitions = ".eqv LABEL entry:\n.eqv OP NEXT\n.eqv NEXT nop\n.eqv BOTH row: nop\n"
         val nop = documentation("n<caret>op")
         assertTrue("nop" in nop.orEmpty())
@@ -323,7 +323,7 @@ class MipsDocumentationPlatformTest {
     }
 
     @Test
-    fun `alias documentation is limited to operation heads with a catalog operation`() = timeoutRunBlocking<Unit> {
+    fun `alias documentation is limited to operation heads with a catalog operation`() = timeoutRunBlocking {
         val sources = listOf(
             ".eqv OP nop\nO<caret>P: nop",
           $$".eqv OP nop\nbeq $t0, $t1, O<caret>P",
@@ -339,7 +339,7 @@ class MipsDocumentationPlatformTest {
     }
 
     @Test
-    fun `macro documentation shows the selected overload and escapes the header comment`() = timeoutRunBlocking<Unit> {
+    fun `macro documentation shows the selected overload and escapes the header comment`() = timeoutRunBlocking {
         val definitions = """
             .eqv OPEN .macro
             .eqv TWO (%left, %right)
@@ -372,7 +372,7 @@ class MipsDocumentationPlatformTest {
     }
 
     @Test
-    fun `macro documentation follows edits and disappears when the invocation stops binding`() = timeoutRunBlocking<Unit> {
+    fun `macro documentation follows edits and disappears when the invocation stops binding`() = timeoutRunBlocking {
         val source = ".macro emit (%first)\n.end_macro\nentry: em<caret>it(1)\n"
         assertTrue("emit(%first)" in documentation(source).orEmpty())
         val current = project.get()
@@ -398,7 +398,7 @@ class MipsDocumentationPlatformTest {
     }
 
     @Test
-    fun `direct documentation follows an overload redefined in a plain include`() = timeoutRunBlocking<Unit> {
+    fun `direct documentation follows an overload redefined in a plain include`() = timeoutRunBlocking {
         val source = ".macro emit (%written)\n.end_macro\n.include \"signature.txt\"\nemit(7)\nnop\n"
         val included = "# plain text\n.macro emit (%actual) # <from include>\n.end_macro\n"
         val current = project.get()
@@ -435,7 +435,7 @@ class MipsDocumentationPlatformTest {
     }
 
     @Test
-    fun `nested documentation shows each selected definition and restores its own source pointer`() = timeoutRunBlocking<Unit> {
+    fun `nested documentation shows each selected definition and restores its own source pointer`() = timeoutRunBlocking {
         val source = """
             .macro outer
                 inner(7)

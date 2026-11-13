@@ -279,7 +279,7 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
                     .comment(runMessages.getMessage("run.working.directory.help"))
             }
             row(runMessages.getMessage("run.input.mode")) {
-                comboBox(MarsInputMode.entries, textListCellRenderer<MarsInputMode>("") { it.title })
+                comboBox(MarsInputMode.entries, textListCellRenderer("") { it.title })
                     .bindItem(::inputMode.toNullableProperty())
                     .comment(runMessages.getMessage("run.input.mode.help"))
             }

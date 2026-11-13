@@ -23,7 +23,7 @@ class MipsEditorConfigPlatformTest {
     private val fixture by codeInsightFixture(project)
 
     @Test
-    fun `native EditorConfig indentation is per file and respects the MARS language override`() = timeoutRunBlocking<Unit> {
+    fun `native EditorConfig indentation is per file and respects the MARS language override`() = timeoutRunBlocking {
         val current = project.get()
         withContext(Dispatchers.EDT) {
             val temporary = CodeStyleSettingsManager.getInstance(current).temporarySettings

@@ -22,7 +22,7 @@ class MipsBreadcrumbsPlatformTest {
     private val fixture by codeInsightFixture(project)
 
     @Test
-    fun `native collector follows written segments macro and label boundaries`() = timeoutRunBlocking<Unit> {
+    fun `native collector follows written segments macro and label boundaries`() = timeoutRunBlocking {
         val source = $$"""
             # outside all declarations
             start: nop
@@ -54,7 +54,7 @@ class MipsBreadcrumbsPlatformTest {
     }
 
     @Test
-    fun `native breadcrumb navigation and subsequent edits use current source offsets`() = timeoutRunBlocking<Unit> {
+    fun `native breadcrumb navigation and subsequent edits use current source offsets`() = timeoutRunBlocking {
         val current = project.get()
         val source = $$".text\nmain: nop\n    addiu $a0, $zero, 42\n"
         withContext(Dispatchers.EDT) { fixture.configureByText("entry.s", source) }

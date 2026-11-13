@@ -71,7 +71,7 @@ class MarsNewProjectWizardTest {
 
     @ParameterizedTest
     @ValueSource(booleans = [false, true])
-    fun `wizard creates a portable project and launches its starter`(separateLibrary: Boolean) = timeoutRunBlocking<Unit> {
+    fun `wizard creates a portable project and launches its starter`(separateLibrary: Boolean) = timeoutRunBlocking {
         val project = projectFixture.get()
         val root = Path.of(requireNotNull(project.basePath))
         val lifetime = Disposer.newDisposable()

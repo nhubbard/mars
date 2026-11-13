@@ -53,7 +53,7 @@ class KeyboardDisplayPlatformTest {
     private val fixture by codeInsightFixture(projectFixture)
 
     @Test
-    fun `tool panel reveals focused text fields outside the viewport`() = timeoutRunBlocking<Unit> {
+    fun `tool panel reveals focused text fields outside the viewport`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             val owner = Disposer.newDisposable()
             try {
@@ -81,7 +81,7 @@ class KeyboardDisplayPlatformTest {
     }
 
     @Test
-    fun `tool keyboard drives a real receiver and renders sequential and addressed output`() = timeoutRunBlocking<Unit>(20.seconds) {
+    fun `tool keyboard drives a real receiver and renders sequential and addressed output`() = timeoutRunBlocking(20.seconds) {
         val project = projectFixture.get()
         val (view, process, content) = withContext(Dispatchers.EDT) {
             val file = fixture.addFileToProject("terminal.asm", $$"""

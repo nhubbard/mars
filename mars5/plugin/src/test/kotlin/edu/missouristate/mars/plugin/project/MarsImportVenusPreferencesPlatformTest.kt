@@ -64,7 +64,7 @@ class MarsImportVenusPreferencesPlatformTest {
     private val runTemplate get() = (runManager.getConfigurationTemplate(runType).configuration as MarsRunConfiguration).options
 
     @Test
-    fun `registered action requires a project and never imports without confirmation`() = timeoutRunBlocking<Unit> {
+    fun `registered action requires a project and never imports without confirmation`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             val action = assertInstanceOf(
                 MarsImportVenusPreferencesAction::class.java, ActionManager.getInstance().getAction("Mars.ImportVenusPreferences"),
@@ -88,7 +88,7 @@ class MarsImportVenusPreferencesPlatformTest {
     }
 
     @Test
-    fun `preview shows current and imported values and changes only the selected project once`() = timeoutRunBlocking<Unit> {
+    fun `preview shows current and imported values and changes only the selected project once`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             val handler = fixture.addFileToProject("handler & startup.s", ".ktext 0x80000180\nnop\n").virtualFile.toNioPath()
             CodeStyle.dropTemporarySettings(project)
@@ -154,7 +154,7 @@ class MarsImportVenusPreferencesPlatformTest {
     }
 
     @Test
-    fun `classic Venus preferences can disable a handler and preserve unknown or unset settings`() = timeoutRunBlocking<Unit> {
+    fun `classic Venus preferences can disable a handler and preserve unknown or unset settings`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             val handler = fixture.addFileToProject("handler.asm", "nop\n").virtualFile.toNioPath()
             settings.changeExceptionHandler(handler.toString())
@@ -185,7 +185,7 @@ class MarsImportVenusPreferencesPlatformTest {
     }
 
     @Test
-    fun `earlier imports can add run defaults and new configurations inherit them`() = timeoutRunBlocking<Unit> {
+    fun `earlier imports can add run defaults and new configurations inherit them`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             val source = fixture.addFileToProject("main.asm", "nop\n")
             val saved = runManager.createConfiguration("Existing", runType)
@@ -232,7 +232,7 @@ class MarsImportVenusPreferencesPlatformTest {
     }
 
     @Test
-    fun `explicit Venus off values restore single-file assembly and console input`() = timeoutRunBlocking<Unit> {
+    fun `explicit Venus off values restore single-file assembly and console input`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             runTemplate.assembleDirectory = true
             runTemplate.inputMode = MarsInputMode.DIALOG
@@ -259,7 +259,7 @@ class MarsImportVenusPreferencesPlatformTest {
     @ParameterizedTest
     @NullSource
     @ValueSource(strings = ["relative.s", "\u0000", "missing"])
-    fun `unavailable handler values do not replace a configured handler`(source: String?) = timeoutRunBlocking<Unit> {
+    fun `unavailable handler values do not replace a configured handler`(source: String?) = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             val handler = fixture.addFileToProject("handler.asm", "nop\n").virtualFile.toNioPath()
             settings.changeExceptionHandler(handler.toString())
@@ -280,7 +280,7 @@ class MarsImportVenusPreferencesPlatformTest {
     }
 
     @Test
-    fun `tab-only imports refresh native MIPS code style without changing assembly`() = timeoutRunBlocking<Unit> {
+    fun `tab-only imports refresh native MIPS code style without changing assembly`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             CodeStyle.dropTemporarySettings(project)
             val root = MemoryPreferences()
@@ -294,7 +294,7 @@ class MarsImportVenusPreferencesPlatformTest {
     }
 
     @Test
-    fun `confirmation stops when project defaults changed since the preview`() = timeoutRunBlocking<Unit> {
+    fun `confirmation stops when project defaults changed since the preview`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             CodeStyle.dropTemporarySettings(project)
             val root = MemoryPreferences()
@@ -329,7 +329,7 @@ class MarsImportVenusPreferencesPlatformTest {
     }
 
     @Test
-    fun `missing preferences and read failures are reported without claiming the import`() = timeoutRunBlocking<Unit> {
+    fun `missing preferences and read failures are reported without claiming the import`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             val empty = MarsImportVenusPreferencesAction { MemoryPreferences() }
             withDialog({ info ->
@@ -348,7 +348,7 @@ class MarsImportVenusPreferencesPlatformTest {
     }
 
     @Test
-    fun `editor import previews IDE-wide changes and updates native editor defaults once`() = timeoutRunBlocking<Unit> {
+    fun `editor import previews IDE-wide changes and updates native editor defaults once`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             withEditorDefaults { editor, fonts, properties ->
                 val registered = assertInstanceOf(
@@ -397,7 +397,7 @@ class MarsImportVenusPreferencesPlatformTest {
     }
 
     @Test
-    fun `editor import can disable blinking without replacing the stored interval or font family`() = timeoutRunBlocking<Unit> {
+    fun `editor import can disable blinking without replacing the stored interval or font family`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             withEditorDefaults { editor, fonts, _ ->
                 val root = MemoryPreferences()
@@ -422,7 +422,7 @@ class MarsImportVenusPreferencesPlatformTest {
     }
 
     @Test
-    fun `invalid editor settings are ignored and the preview detects concurrent changes`() = timeoutRunBlocking<Unit> {
+    fun `invalid editor settings are ignored and the preview detects concurrent changes`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             withEditorDefaults { editor, fonts, properties ->
                 val root = MemoryPreferences()
@@ -459,7 +459,7 @@ class MarsImportVenusPreferencesPlatformTest {
     }
 
     @Test
-    fun `editor preference read failures leave the import available`() = timeoutRunBlocking<Unit> {
+    fun `editor preference read failures leave the import available`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             withEditorDefaults { _, _, _ ->
                 val action = MarsImportVenusEditorPreferencesAction { throw BackingStoreException("unavailable") }

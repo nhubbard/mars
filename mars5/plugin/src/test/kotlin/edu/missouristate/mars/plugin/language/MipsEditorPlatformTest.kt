@@ -69,7 +69,7 @@ class MipsEditorPlatformTest {
     private val fixture by codeInsightFixture(project)
 
     @Test
-    fun `open MARS editors release and recover language settings during plugin reload`() = timeoutRunBlocking<Unit> {
+    fun `open MARS editors release and recover language settings during plugin reload`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             val current = project.get()
             val style = CodeStyle.createTestSettings()
@@ -142,7 +142,7 @@ class MipsEditorPlatformTest {
     }
 
     @Test
-    fun `assembly editors highlight mnemonics only in instruction positions`() = timeoutRunBlocking<Unit> {
+    fun `assembly editors highlight mnemonics only in instruction positions`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             val source = $$"""
                 .text
@@ -184,7 +184,7 @@ class MipsEditorPlatformTest {
     }
 
     @Test
-    fun `only aliases supplying an instruction are colored as mnemonics`() = timeoutRunBlocking<Unit> {
+    fun `only aliases supplying an instruction are colored as mnemonics`() = timeoutRunBlocking {
         val current = project.get()
         withContext(Dispatchers.EDT) {
             fixture.addFileToProject("aliases.s", $$".eqv DEFINE .eqv\nDEFINE BRANCH bne $t0, $zero\n")
@@ -240,7 +240,7 @@ class MipsEditorPlatformTest {
     }
 
     @Test
-    fun `labels macros and equivalences use semantic colors in assembly editors`() = timeoutRunBlocking<Unit> {
+    fun `labels macros and equivalences use semantic colors in assembly editors`() = timeoutRunBlocking {
         val current = project.get()
         withContext(Dispatchers.EDT) {
             fixture.addFileToProject("definitions.s", $$"""
@@ -311,7 +311,7 @@ class MipsEditorPlatformTest {
     }
 
     @Test
-    fun `aliased macro headers color their written name and formals`() = timeoutRunBlocking<Unit> {
+    fun `aliased macro headers color their written name and formals`() = timeoutRunBlocking {
         val current = project.get()
         val source = $$"""
             .eqv OPEN .macro
@@ -366,7 +366,7 @@ class MipsEditorPlatformTest {
     }
 
     @Test
-    fun `macro arguments and aliases take the colors of their use sites`() = timeoutRunBlocking<Unit> {
+    fun `macro arguments and aliases take the colors of their use sites`() = timeoutRunBlocking {
         val current = project.get()
         withContext(Dispatchers.EDT) {
             fixture.configureByText("alias-colors.asm", $$"""
@@ -457,7 +457,7 @@ class MipsEditorPlatformTest {
     }
 
     @Test
-    fun `a leading integer data address uses the label color when the macro arity differs`() = timeoutRunBlocking<Unit> {
+    fun `a leading integer data address uses the label color when the macro arity differs`() = timeoutRunBlocking {
         val current = project.get()
         val source = """
             .macro emit (%value)
@@ -495,7 +495,7 @@ class MipsEditorPlatformTest {
 
     @Test
     fun `alias invocations use a single effective role and preserve the alias color for composite or unknown expansions`() =
-        timeoutRunBlocking<Unit> {
+        timeoutRunBlocking {
             val current = project.get()
             val source = $$"""
                 .eqv NAME actual
@@ -537,7 +537,7 @@ class MipsEditorPlatformTest {
         }
 
     @Test
-    fun `signed literals punctuation macro formals and equivalence replacements get visible styles`() = timeoutRunBlocking<Unit> {
+    fun `signed literals punctuation macro formals and equivalence replacements get visible styles`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             fixture.configureByText("punctuation.asm", $$"""
                 .eqv DISP -4
@@ -646,7 +646,7 @@ class MipsEditorPlatformTest {
     }
 
     @Test
-    fun `platform comment action toggles a MARS line without changing string hashes`() = timeoutRunBlocking<Unit> {
+    fun `platform comment action toggles a MARS line without changing string hashes`() = timeoutRunBlocking {
         // The editor fixture and its actions require model access on the UI thread.
         withContext(Dispatchers.EDT) {
             fixture.configureByText(MipsFileType, ".asciiz \"# message\"<caret>\n")
@@ -659,7 +659,7 @@ class MipsEditorPlatformTest {
     }
 
     @Test
-    fun `platform comment action toggles selected instructions and existing comments`() = timeoutRunBlocking<Unit> {
+    fun `platform comment action toggles selected instructions and existing comments`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             val source = $$"<selection>li $v0, 1\n# explain\nsyscall</selection>\n"
             fixture.configureByText(MipsFileType, source)
@@ -671,7 +671,7 @@ class MipsEditorPlatformTest {
     }
 
     @Test
-    fun `platform typing pairs parentheses skips an existing close and deletes an empty pair`() = timeoutRunBlocking<Unit> {
+    fun `platform typing pairs parentheses skips an existing close and deletes an empty pair`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             fixture.configureByText(MipsFileType, $$"lw $t0, 4<caret>")
             fixture.type('(')
@@ -684,7 +684,7 @@ class MipsEditorPlatformTest {
     }
 
     @Test
-    fun `platform quote typing pairs skips and deletes literal delimiters`() = timeoutRunBlocking<Unit> {
+    fun `platform quote typing pairs skips and deletes literal delimiters`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             for ((directive, quote, content) in listOf(
                 Triple(".include ", '"', "part.s"),
@@ -705,7 +705,7 @@ class MipsEditorPlatformTest {
     }
 
     @Test
-    fun `platform quote typing preserves escaped delimiters and comments`() = timeoutRunBlocking<Unit> {
+    fun `platform quote typing preserves escaped delimiters and comments`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             fixture.configureByText(MipsFileType, ".byte '\\<caret>'")
             fixture.type('\'')
@@ -726,7 +726,7 @@ class MipsEditorPlatformTest {
     }
 
     @Test
-    fun `native folding hides only the macro body and leaves its header and terminator visible`() = timeoutRunBlocking<Unit> {
+    fun `native folding hides only the macro body and leaves its header and terminator visible`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             val header = "macro_label: .MaCrO emit (%value) # signature"
             val body = $$"  # body comment\n  addiu $t0, $zero, %value"
@@ -752,7 +752,7 @@ class MipsEditorPlatformTest {
     }
 
     @Test
-    fun `native folding pairs aliased boundaries using the including entry`() = timeoutRunBlocking<Unit> {
+    fun `native folding pairs aliased boundaries using the including entry`() = timeoutRunBlocking {
         val current = project.get()
         val source = $$"OPEN emit (%dest) # header\n    addiu %dest, $zero, 7\nSTOP # closer\n"
         val documents = PsiDocumentManager.getInstance(current)
@@ -822,7 +822,7 @@ class MipsEditorPlatformTest {
 
     @Test
     fun `folding refreshes after an unopened include is created changed or deleted on disk`(@TempDir directory: Path) =
-        timeoutRunBlocking<Unit> {
+        timeoutRunBlocking {
             val current = project.get()
             val entry = directory.resolve("external-fold.asm")
             val alias = directory.resolve("aliases.s")
@@ -870,7 +870,7 @@ class MipsEditorPlatformTest {
         }
 
     @Test
-    fun `folding follows the selected assembly entry in a shared editor without source edits`() = timeoutRunBlocking<Unit> {
+    fun `folding follows the selected assembly entry in a shared editor without source edits`() = timeoutRunBlocking {
         val current = project.get()
         val source = "OPEN emit\n    nop\nSTOP\n"
         val (plainEntry, macroEntry) = withContext(Dispatchers.EDT) {
@@ -912,7 +912,7 @@ class MipsEditorPlatformTest {
     }
 
     @Test
-    fun `folding avoids pairing a macro with an extra terminator after an included close`() = timeoutRunBlocking<Unit> {
+    fun `folding avoids pairing a macro with an extra terminator after an included close`() = timeoutRunBlocking {
         val current = project.get()
         val source = ".macro emit\n  nop\n.include \"close.s\"\nother: nop\n.end_macro\n.macro local\n  nop\n.end_macro\n"
         withContext(Dispatchers.EDT) {
@@ -932,7 +932,7 @@ class MipsEditorPlatformTest {
     }
 
     @Test
-    fun `folding follows valid terminators after unsaved edits during indexing`() = timeoutRunBlocking<Unit> {
+    fun `folding follows valid terminators after unsaved edits during indexing`() = timeoutRunBlocking {
         val current = project.get()
         withContext(Dispatchers.EDT) {
             fixture.configureByText(PlainTextFileType.INSTANCE, ".macro ignored\nnop\n.end_macro")
@@ -961,7 +961,7 @@ class MipsEditorPlatformTest {
     }
 
     @Test
-    fun `platform matches nested parentheses and ignores parentheses in strings and comments`() = timeoutRunBlocking<Unit> {
+    fun `platform matches nested parentheses and ignores parentheses in strings and comments`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             val source = ".word <caret>(1+(2-3)) # )\n.asciiz \"(\"\n"
             fixture.configureByText(MipsFileType, source)

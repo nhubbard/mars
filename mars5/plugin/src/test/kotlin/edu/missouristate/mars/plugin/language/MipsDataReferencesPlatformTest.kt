@@ -29,7 +29,7 @@ class MipsDataReferencesPlatformTest {
     private val fixture by codeInsightFixture(project)
 
     @Test
-    fun `integer directives and export lists resolve forward labels`() = timeoutRunBlocking<Unit> {
+    fun `integer directives and export lists resolve forward labels`() = timeoutRunBlocking {
         for (use in listOf(".word 1, tar<caret>get", ".half tar<caret>get", ".byte tar<caret>get", ".GlObL other,,tar<caret>get")) {
             assertEquals(SymbolKind.LABEL, target(".data\n$use\nother: .word 0\ntarget: .word 1\n"), use)
         }
@@ -44,7 +44,7 @@ class MipsDataReferencesPlatformTest {
     }
 
     @Test
-    fun `a detached sign preserves navigation for the next integer data operand`() = timeoutRunBlocking<Unit> {
+    fun `a detached sign preserves navigation for the next integer data operand`() = timeoutRunBlocking {
         val prefix = ".data\n"
         val suffix = "\ntarget: .word 1\n"
         for (line in listOf(".word -, tar<caret>get", ".half + , tar<caret>get", ".byte 3, -,, tar<caret>get")) {
@@ -55,7 +55,7 @@ class MipsDataReferencesPlatformTest {
     }
 
     @Test
-    fun `aliased repetition punctuation does not make numeric slots into label references`() = timeoutRunBlocking<Unit> {
+    fun `aliased repetition punctuation does not make numeric slots into label references`() = timeoutRunBlocking {
         val setup = ".eqv SUFFIX :2\n.eqv SEPARATOR :\n.eqv VALUE 7\n.eqv FIRST SECOND\n.eqv SECOND FIRST\n.data\n"
         val end = "\ntarget: .word 0\n"
         for (use in listOf(".word tar<caret>get SUFFIX", ".word VALUE SEPARATOR tar<caret>get",
@@ -68,7 +68,7 @@ class MipsDataReferencesPlatformTest {
     }
 
     @Test
-    fun `continued lists follow the data state across include and macro boundaries`() = timeoutRunBlocking<Unit> {
+    fun `continued lists follow the data state across include and macro boundaries`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             fixture.addFileToProject("parts/setup.s", ".include \"mode.s\"\n")
             fixture.addFileToProject("parts/mode.s", ".kdata\n.half 1\n")
@@ -87,7 +87,7 @@ class MipsDataReferencesPlatformTest {
     }
 
     @Test
-    fun `macro calls take priority over continuations and invalid punctuation stays out of label binding`() = timeoutRunBlocking<Unit> {
+    fun `macro calls take priority over continuations and invalid punctuation stays out of label binding`() = timeoutRunBlocking {
         val prefix = ".macro emit (%x)\n.end_macro\n.data\n.word 0\n"
         val suffix = "\ntarget: .word 1\n"
         assertEquals(SymbolKind.MACRO, target("${prefix}em<caret>it target$suffix"))
@@ -101,7 +101,7 @@ class MipsDataReferencesPlatformTest {
     }
 
     @Test
-    fun `aliased segment and data directives bind operands and write the same addresses`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+    fun `aliased segment and data directives bind operands and write the same addresses`(@TempDir directory: Path) = timeoutRunBlocking {
         val definitions = """
             .eqv DEFINE .eqv
             DEFINE DATA_SEG .data
@@ -136,7 +136,7 @@ class MipsDataReferencesPlatformTest {
     }
 
     @Test
-    fun `aliased data state changes respect includes text switches and macro bodies`() = timeoutRunBlocking<Unit> {
+    fun `aliased data state changes respect includes text switches and macro bodies`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             fixture.addFileToProject("setup.s", """
                 .eqv KERNEL .kdata
@@ -159,7 +159,7 @@ class MipsDataReferencesPlatformTest {
     }
 
     @Test
-    fun `ambiguous candidates are checked after expansion before binding labels`() = timeoutRunBlocking<Unit> {
+    fun `ambiguous candidates are checked after expansion before binding labels`() = timeoutRunBlocking {
         val setup = ".eqv WORDS .word\n.eqv ALIGN .align\n.eqv OP nop\n.eqv FIRST SECOND\n.eqv SECOND FIRST\n.data\n"
         val label = "\ntarget: .word 1\n"
         for (line in listOf("WORDS tar<caret>get : 2", "ALIGN tar<caret>get", "OP tar<caret>get",
@@ -181,7 +181,7 @@ class MipsDataReferencesPlatformTest {
     }
 
     @Test
-    fun `the assembler stores the address identified by navigation`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+    fun `the assembler stores the address identified by navigation`(@TempDir directory: Path) = timeoutRunBlocking {
         val source = ".data\n.word 0\n.align 2\ntar<caret>get\n2, target\n.text\n.globl target\ntarget: nop\n"
         assertEquals(SymbolKind.LABEL, target(source))
         val context = project.get().service<MarsSessionService>().context

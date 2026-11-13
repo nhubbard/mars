@@ -36,7 +36,7 @@ class MipsMacroReferencesPlatformTest {
     private val fixture by codeInsightFixture(project)
 
     @Test
-    fun `navigation selects the latest closed definition with the same case and argument count`() = timeoutRunBlocking<Unit> {
+    fun `navigation selects the latest closed definition with the same case and argument count`() = timeoutRunBlocking {
         val first = ".macro emit\nnop\n.end_macro\n"
         val second = $$".macro emit ($arg)\nnop\n.end_macro\n"
         val newer = ".macro emit ((%replacement))\nnop\n.end_macro\n"
@@ -54,7 +54,7 @@ class MipsMacroReferencesPlatformTest {
     }
 
     @Test
-    fun `navigation follows the expanded operation token after a generated label`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+    fun `navigation follows the expanded operation token after a generated label`(@TempDir directory: Path) = timeoutRunBlocking {
         val definitions = $$".macro emit (%value)\naddiu $t0, $zero, 7\n.end_macro\n.eqv SEP :\n.eqv CALL emit\n"
         for (label in listOf("split", "addiu")) {
             val resolved = target("${definitions}$label SEP em<caret>it(7)\n")
@@ -74,7 +74,7 @@ class MipsMacroReferencesPlatformTest {
     }
 
     @Test
-    fun `macro arity follows chained equivalences and substituted parentheses`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+    fun `macro arity follows chained equivalences and substituted parentheses`(@TempDir directory: Path) = timeoutRunBlocking {
         val one = $$".macro emit (%x)\naddiu $t0, $zero, %x\n.end_macro\n"
         val two = $$".macro emit (%x,%y)\naddiu $t1, $zero, %y\n.end_macro\n"
         val definitions = one + two
@@ -96,7 +96,7 @@ class MipsMacroReferencesPlatformTest {
     }
 
     @Test
-    fun `macro arguments expand using definitions from earlier nested includes`() = timeoutRunBlocking<Unit> {
+    fun `macro arguments expand using definitions from earlier nested includes`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             fixture.addFileToProject("parts/arguments.s", ".eqv ARGS 1,,2\n")
             fixture.addFileToProject("parts/outer.s", ".include \"arguments.s\"\n")
@@ -110,7 +110,7 @@ class MipsMacroReferencesPlatformTest {
     }
 
     @Test
-    fun `macro calls use expanded headers and keep their physical targets`() = timeoutRunBlocking<Unit> {
+    fun `macro calls use expanded headers and keep their physical targets`() = timeoutRunBlocking {
         val aliases = ".eqv NAME emit\n.eqv FORMALS (%ignored,%value)\n"
         withContext(Dispatchers.EDT) {
             fixture.addFileToProject("aliases.s", aliases)
@@ -129,7 +129,7 @@ class MipsMacroReferencesPlatformTest {
     }
 
     @Test
-    fun `macro boundaries follow nested include order across physical files`() = timeoutRunBlocking<Unit> {
+    fun `macro boundaries follow nested include order across physical files`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             fixture.addFileToProject("parts/open.s", ".macro emit (%value)\nnop\n")
             fixture.addFileToProject("parts/close.s", ".end_macro\n")
@@ -145,7 +145,7 @@ class MipsMacroReferencesPlatformTest {
     }
 
     @Test
-    fun `aliased macro boundaries follow include order and navigate to their written name`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+    fun `aliased macro boundaries follow include order and navigate to their written name`(@TempDir directory: Path) = timeoutRunBlocking {
         val definitions = ".eqv START OPEN\n.eqv OPEN .MaCrO\n.eqv STOP .EnD_MaCrO\n"
         val header = "entry: START emit (%value)\n"
         val body = $$"addiu $t0, $zero, %value\n"
@@ -172,7 +172,7 @@ class MipsMacroReferencesPlatformTest {
     }
 
     @Test
-    fun `expanded macro boundaries honor labels and reject malformed substitutions`() = timeoutRunBlocking<Unit> {
+    fun `expanded macro boundaries honor labels and reject malformed substitutions`() = timeoutRunBlocking {
         val call = "em<caret>it(1)\n"
         val aliases = ".eqv START entry: .macro emit (%value)\n.eqv STOP .end_macro\n"
         val opening = aliases + "START\n"
@@ -187,7 +187,7 @@ class MipsMacroReferencesPlatformTest {
     }
 
     @Test
-    fun `generated equivalences bind both macro headers and call arity`() = timeoutRunBlocking<Unit> {
+    fun `generated equivalences bind both macro headers and call arity`() = timeoutRunBlocking {
         val declarations = ".eqv DEFINE .eqv\nDEFINE OPEN .macro\nDEFINE ARGS 1,2\n"
         val first = ".macro emit (%x)\n.end_macro\n"
         val second = "OPEN emit (%x,%y)\n.end_macro\n"
@@ -198,7 +198,7 @@ class MipsMacroReferencesPlatformTest {
     }
 
     @Test
-    fun `macro boundary facts stay tolerant around malformed headers and closing lines`() = timeoutRunBlocking<Unit> {
+    fun `macro boundary facts stay tolerant around malformed headers and closing lines`() = timeoutRunBlocking {
         val malformed = ".end_macro\n.asciiz \"data\"\n.macro nop\n.end_macro\n.macro invalid (ordinary)\n.end_macro\n"
         assertNull(target("$malformed.macro emit\n.end_macro extra\nem<caret>it\n"))
         assertNull(target(".macro emit (%value, 7)\n.end_macro\nem<caret>it(1)\n"))
@@ -207,7 +207,7 @@ class MipsMacroReferencesPlatformTest {
     }
 
     @Test
-    fun `a written macro opener can follow a terminator supplied by an include`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+    fun `a written macro opener can follow a terminator supplied by an include`(@TempDir directory: Path) = timeoutRunBlocking {
         val close = ".end_macro\n"
         val prefix = ".macro first\nnop\n.include \"close.s\"\n"
         val second = $$"label: .macro NAME (%value)\naddiu $t0, $zero, %value\n.end_macro\n"
@@ -222,7 +222,7 @@ class MipsMacroReferencesPlatformTest {
     }
 
     @Test
-    fun `macro binding follows unsaved edits to the included header`() = timeoutRunBlocking<Unit> {
+    fun `macro binding follows unsaved edits to the included header`() = timeoutRunBlocking {
         val current = project.get()
         val included = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("macros.s", ".macro emit (%x)\n.end_macro\n").virtualFile
@@ -239,7 +239,7 @@ class MipsMacroReferencesPlatformTest {
     }
 
     @Test
-    fun `macro lookup yields during indexing`() = timeoutRunBlocking<Unit> {
+    fun `macro lookup yields during indexing`() = timeoutRunBlocking {
         val current = project.get()
         withContext(Dispatchers.EDT) {
             fixture.configureByText("macro-call.asm", ".macro emit\n.end_macro\nem<caret>it\n")
@@ -258,7 +258,7 @@ class MipsMacroReferencesPlatformTest {
     }
 
     @Test
-    fun `a candidate that expands to a label alone has no macro operation`() = timeoutRunBlocking<Unit> {
+    fun `a candidate that expands to a label alone has no macro operation`() = timeoutRunBlocking {
         assertEquals(SymbolKind.CONSTANT, target(".eqv PREFIX row:\nPRE<caret>FIX\n")?.kind)
         readAction {
             val file = fixture.file as MipsFile
@@ -268,7 +268,7 @@ class MipsMacroReferencesPlatformTest {
     }
 
     @Test
-    fun `navigation reports each realized nested macro definition including empty expansions`() = timeoutRunBlocking<Unit> {
+    fun `navigation reports each realized nested macro definition including empty expansions`() = timeoutRunBlocking {
         val source = """
             .eqv NEW .macro inner
             .macro external

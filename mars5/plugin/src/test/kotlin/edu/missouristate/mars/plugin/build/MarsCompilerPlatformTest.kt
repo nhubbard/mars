@@ -44,7 +44,7 @@ class MarsCompilerPlatformTest {
     private val project get() = projectFixture.get()
 
     @Test
-    fun `optional compiler task assembles an in-scope ordered unit once and reports native diagnostics`() = timeoutRunBlocking<Unit> {
+    fun `optional compiler task assembles an in-scope ordered unit once and reports native diagnostics`() = timeoutRunBlocking {
         val compiler = CompilerManager.getInstance(project)
         val task = compiler.beforeTasks.filterIsInstance<MarsCompilerTask>().single()
         val settings = project.service<MarsAssemblySettings>()

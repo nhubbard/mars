@@ -36,7 +36,7 @@ class MarsSourceRefactoringPlatformTest {
     private val settings get() = project.service<MarsAssemblySettings>()
 
     @Test
-    fun `native directory rename updates ordered inputs handler and explicit run paths with undo and redo`() = timeoutRunBlocking<Unit> {
+    fun `native directory rename updates ordered inputs handler and explicit run paths with undo and redo`() = timeoutRunBlocking {
         val (first, handler, sibling) = withContext(Dispatchers.EDT) {
             Triple(fixture.addFileToProject("app/start.asm", "nop\n"), fixture.addFileToProject("app/handler.txt", ".ktext\nnop\n"),
                 fixture.addFileToProject("app-other/last.asm", "nop\n"))
@@ -77,7 +77,7 @@ class MarsSourceRefactoringPlatformTest {
     }
 
     @Test
-    fun `native file moves update the configured input and preserve later settings edits on undo`() = timeoutRunBlocking<Unit> {
+    fun `native file moves update the configured input and preserve later settings edits on undo`() = timeoutRunBlocking {
         val (source, fallback) = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("src/entry.asm", "nop\n") to fixture.addFileToProject("destination/fallback.asm", "nop\n")
         }
@@ -112,7 +112,7 @@ class MarsSourceRefactoringPlatformTest {
     }
 
     @Test
-    fun `native file rename follows a run-only source and an assembly-only handler`() = timeoutRunBlocking<Unit> {
+    fun `native file rename follows a run-only source and an assembly-only handler`() = timeoutRunBlocking {
         val (source, handler, unrelated) = withContext(Dispatchers.EDT) {
             Triple(fixture.addFileToProject("entry.asm", "nop\n"), fixture.addFileToProject("handler.txt", ".ktext\nnop\n"),
                 fixture.addFileToProject("other.s", "nop\n"))
@@ -137,7 +137,7 @@ class MarsSourceRefactoringPlatformTest {
     }
 
     @Test
-    fun `listener accepts only physical file system items`() = timeoutRunBlocking<Unit> {
+    fun `listener accepts only physical file system items`() = timeoutRunBlocking {
         readAction {
             val listener = MarsSourceRefactoringListener()
             val factory = PsiFileFactory.getInstance(project)

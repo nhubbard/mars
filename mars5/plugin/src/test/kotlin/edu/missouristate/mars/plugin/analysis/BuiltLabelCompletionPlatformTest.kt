@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test
 @TestApplication
 class BuiltLabelCompletionPlatformTest {
     @Test
-    fun `a build survives only changes to the current ordinary instruction line`() = timeoutRunBlocking<Unit> {
+    fun `a build survives only changes to the current ordinary instruction line`() = timeoutRunBlocking {
         val cases = listOf(
             Triple("nop\nj old\nnop", "nop\nj gen<caret>\nnop", true),
             Triple("nop", "nop\nj gen<caret>", true),

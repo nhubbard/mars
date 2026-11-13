@@ -29,7 +29,7 @@ class MipsSmartEnterPlatformTest {
     private val fixture by codeInsightFixture(project)
 
     @Test
-    fun `complete statement closes a physical include and starts a new line in one edit`() = timeoutRunBlocking<Unit> {
+    fun `complete statement closes a physical include and starts a new line in one edit`() = timeoutRunBlocking {
         val current = project.get()
         withContext(Dispatchers.EDT) {
             val source = "prefix: .include ,, \"values # one.s  \ntail: nop\n"
@@ -46,7 +46,7 @@ class MipsSmartEnterPlatformTest {
     }
 
     @Test
-    fun `complete statement closes matching basic and extended memory operands before comments`() = timeoutRunBlocking<Unit> {
+    fun `complete statement closes matching basic and extended memory operands before comments`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             val cases = listOf(
                 $$"mark: lw $t0, -4($sp<caret>  # keep me" to $$"mark: lw $t0, -4($sp)  # keep me",
@@ -64,7 +64,7 @@ class MipsSmartEnterPlatformTest {
 
     @Test
     fun `complete statement repairs effective memory instructions from included aliases`(@TempDir directory: Path) =
-        timeoutRunBlocking<Unit> {
+        timeoutRunBlocking {
             val current = project.get()
             val definitions = $$".eqv LOAD lw\n.eqv BASE $sp\n.eqv OFFSET 4(\n" +
                 $$".eqv CLOSED $sp)\n.eqv WHOLE LOAD $t0, OFFSET BASE\n.eqv INVALID $f0\n"
@@ -101,7 +101,7 @@ class MipsSmartEnterPlatformTest {
 
     @Test
     fun `complete statement closes macro wrappers only when they select a visible overload`(@TempDir directory: Path) =
-        timeoutRunBlocking<Unit> {
+        timeoutRunBlocking {
             val current = project.get()
             val definitions = $$".eqv CALL emit\n.eqv WHOLE CALL($t0, 7\n.eqv OPEN_QUOTE \"text\n" +
                 $$".macro emit (%dst, %value)\naddiu %dst, $zero, %value\n.end_macro\n" +
@@ -147,7 +147,7 @@ class MipsSmartEnterPlatformTest {
 
     @Test
     fun `complete statement preserves a valid macro invocation in another entry`(@TempDir directory: Path) =
-        timeoutRunBlocking<Unit> {
+        timeoutRunBlocking {
             val current = project.get()
             val incomplete = ".macro emit (%value)\n.end_macro\n.include \"shared.inc\"\n"
             val valid = $$".macro emit (%raw, %value)\naddiu $t0, $zero, %value\n.end_macro\n.include \"shared.inc\"\n"
@@ -176,7 +176,7 @@ class MipsSmartEnterPlatformTest {
 
     @Test
     fun `complete statement repairs a shared operand when every entry agrees`(@TempDir directory: Path) =
-        timeoutRunBlocking<Unit> {
+        timeoutRunBlocking {
             val current = project.get()
             val stack = $$".eqv FETCH lw\n.eqv BASE $sp\n.include \"operand.inc\"\n"
             val frame = stack.replace($$"$sp", $$"$fp")
@@ -215,7 +215,7 @@ class MipsSmartEnterPlatformTest {
         }
 
     @Test
-    fun `complete statement leaves source alone when no safe delimiter is missing`() = timeoutRunBlocking<Unit> {
+    fun `complete statement leaves source alone when no safe delimiter is missing`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             for (source in listOf(
                 "<caret>",

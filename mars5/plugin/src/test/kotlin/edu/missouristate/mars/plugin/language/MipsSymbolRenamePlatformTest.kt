@@ -68,7 +68,7 @@ class MipsSymbolRenamePlatformTest {
 
     @Test
     fun `Find Usages shows off-preview assembly bindings as read-only results and Rename reports the incomplete file`() =
-        timeoutRunBlocking<Unit> {
+        timeoutRunBlocking {
             val source = ".eqv VALUE 1\ntarget: nop\nj target\n.include \"large.inc\"\n"
             val (entry, large) = withContext(Dispatchers.EDT) {
                 val entry = fixture.addFileToProject("entry.mars", source)
@@ -154,7 +154,7 @@ class MipsSymbolRenamePlatformTest {
         }
 
     @Test
-    fun `native rename finds nested include references before highlighting and after unsaved edits`() = timeoutRunBlocking<Unit> {
+    fun `native rename finds nested include references before highlighting and after unsaved edits`() = timeoutRunBlocking {
         val source = ".data\ntarget: .word 42\n.text\n.include \"lib/wrapper.txt\"\n"
         val plainText = ".data\n.word target, target # target\n.asciiz \"target\"\n.text\n.include \"tail.s\"\n"
         val tailText = $$"lw $a0, target # target\n"
@@ -204,7 +204,7 @@ class MipsSymbolRenamePlatformTest {
     }
 
     @Test
-    fun `native rename verifies instruction data and forwarded uses across includes and supports undo`() = timeoutRunBlocking<Unit> {
+    fun `native rename verifies instruction data and forwarded uses across includes and supports undo`() = timeoutRunBlocking {
         val source = $$"""
             .data
             target: .word target
@@ -265,7 +265,7 @@ class MipsSymbolRenamePlatformTest {
     }
 
     @Test
-    fun `native rename follows a macro overload through nested calls and aliases`() = timeoutRunBlocking<Unit> {
+    fun `native rename follows a macro overload through nested calls and aliases`() = timeoutRunBlocking {
         val library = $$"""
             .macro emit
                 nop
@@ -317,7 +317,7 @@ class MipsSymbolRenamePlatformTest {
     }
 
     @Test
-    fun `native rename can rename a committed macro without call sites`() = timeoutRunBlocking<Unit> {
+    fun `native rename can rename a committed macro without call sites`() = timeoutRunBlocking {
         val source = ".macro idle\nnop\n.end_macro\nnop\n"
         val file = withContext(Dispatchers.EDT) { fixture.configureByText("entry.asm", source) }
         IndexingTestUtil.suspendUntilIndexesAreReady(project)
@@ -336,7 +336,7 @@ class MipsSymbolRenamePlatformTest {
     }
 
     @Test
-    fun `rename refuses a forwarded spelling shared by two macro overloads`() = timeoutRunBlocking<Unit> {
+    fun `rename refuses a forwarded spelling shared by two macro overloads`() = timeoutRunBlocking {
         val source = $$"""
             .macro emit
                 nop
@@ -362,7 +362,7 @@ class MipsSymbolRenamePlatformTest {
     }
 
     @Test
-    fun `rename refuses macro declarations compiled into several assembly entries`() = timeoutRunBlocking<Unit> {
+    fun `rename refuses macro declarations compiled into several assembly entries`() = timeoutRunBlocking {
         val definitions = withContext(Dispatchers.EDT) {
             val library = fixture.addFileToProject("library.s", ".macro emit\nnop\n.end_macro\n")
             val first = fixture.addFileToProject("first.asm", ".include \"library.s\"\nemit\n")
@@ -380,7 +380,7 @@ class MipsSymbolRenamePlatformTest {
     }
 
     @Test
-    fun `label rename refuses to also rename an unrelated alias-defined macro`() = timeoutRunBlocking<Unit> {
+    fun `label rename refuses to also rename an unrelated alias-defined macro`() = timeoutRunBlocking {
         val source = ".eqv ALIAS target\ntarget: nop\nj ALIAS\n.macro ALIAS\nnop\n.end_macro\n"
         val file = withContext(Dispatchers.EDT) { fixture.configureByText("entry.asm", source) }
         IndexingTestUtil.suspendUntilIndexesAreReady(project)
@@ -392,7 +392,7 @@ class MipsSymbolRenamePlatformTest {
     }
 
     @Test
-    fun `native equivalence rename updates repeated definitions and the realized links in alias chains`() = timeoutRunBlocking<Unit> {
+    fun `native equivalence rename updates repeated definitions and the realized links in alias chains`() = timeoutRunBlocking {
         val definitions = ".eqv BASE 42 # BASE\n"
         val aliases = $$".eqv BASE 42\n.eqv VIA BASE\n.eqv LOAD li $a0, VIA\n"
         val source = $$"""
@@ -438,7 +438,7 @@ class MipsSymbolRenamePlatformTest {
     }
 
     @Test
-    fun `native equivalence rename can start at an identical repeated declaration`() = timeoutRunBlocking<Unit> {
+    fun `native equivalence rename can start at an identical repeated declaration`() = timeoutRunBlocking {
         val source = $$".eqv BASE 42\n.eqv BASE 42\nli $t0, BASE\n"
         val file = withContext(Dispatchers.EDT) { fixture.configureByText("entry.asm", source) }
         IndexingTestUtil.suspendUntilIndexesAreReady(project)
@@ -451,7 +451,7 @@ class MipsSymbolRenamePlatformTest {
     }
 
     @Test
-    fun `rename rejects alias declarations shared by independent entry tokenizers`() = timeoutRunBlocking<Unit> {
+    fun `rename rejects alias declarations shared by independent entry tokenizers`() = timeoutRunBlocking {
         val definitions = withContext(Dispatchers.EDT) {
             val definitions = fixture.addFileToProject("defs.s", ".eqv BASE 42\n")
             val first = fixture.addFileToProject("first.asm", $$".include \"defs.s\"\nli $t0, BASE\n")
@@ -468,7 +468,7 @@ class MipsSymbolRenamePlatformTest {
     }
 
     @Test
-    fun `rename detects a changed alias binding even when both assemblies emit identical code`() = timeoutRunBlocking<Unit> {
+    fun `rename detects a changed alias binding even when both assemblies emit identical code`() = timeoutRunBlocking {
         val original = ".eqv BASE 1\n.include \"shared.txt\"\nnop\n"
         val first = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("shared.txt", ".set BASE\n")
@@ -489,7 +489,7 @@ class MipsSymbolRenamePlatformTest {
     }
 
     @Test
-    fun `native rename follows separate tokens in a macro-produced replacement`() = timeoutRunBlocking<Unit> {
+    fun `native rename follows separate tokens in a macro-produced replacement`() = timeoutRunBlocking {
         val source = """
             BASE: nop
             j BASE
@@ -524,7 +524,7 @@ class MipsSymbolRenamePlatformTest {
     }
 
     @Test
-    fun `rename refuses an alias whose use is a synthesized hygienic name`() = timeoutRunBlocking<Unit> {
+    fun `rename refuses an alias whose use is a synthesized hygienic name`() = timeoutRunBlocking {
         val source = """
             BASE_M0: nop
             j BASE_M0
@@ -549,7 +549,7 @@ class MipsSymbolRenamePlatformTest {
     }
 
     @Test
-    fun `native rename from a repeated extern updates its allocation aliases and cross-file operands`() = timeoutRunBlocking<Unit> {
+    fun `native rename from a repeated extern updates its allocation aliases and cross-file operands`() = timeoutRunBlocking {
         val application =
           $$".include \"allocation.txt\"\n.include \"repeat.s\"\n.data\n.word $buffer\n.text\nla $t0, CELL\n"
         val allocation = $$".extern $buffer 4\n.eqv CELL $buffer # $buffer\n"
@@ -587,7 +587,7 @@ class MipsSymbolRenamePlatformTest {
     }
 
     @Test
-    fun `native rename edits the whole signed extern in MARS and plain text sources`() = timeoutRunBlocking<Unit> {
+    fun `native rename edits the whole signed extern in MARS and plain text sources`() = timeoutRunBlocking {
         val entry = ".extern -42, 4\n.include \"repeat.txt\"\n.include \"repeat.inc\"\n.data\n.word -42\n.text\nnop\n"
         val (file, plain, include) = withContext(Dispatchers.EDT) {
             val plain = fixture.addFileToProject("repeat.txt", ".extern -42, 8\n")
@@ -624,7 +624,7 @@ class MipsSymbolRenamePlatformTest {
     }
 
     @Test
-    fun `native rename from a numeric repeat preserves data matching a character extern`() = timeoutRunBlocking<Unit> {
+    fun `native rename from a numeric repeat preserves data matching a character extern`() = timeoutRunBlocking {
         val source = ".extern 'A', 4\n.extern 65, 8\n.extern 'A', 16\n.data\n.word 65, 'A'\n.text\nnop\n"
         val file = withContext(Dispatchers.EDT) { fixture.configureByText("entry.mars", source) }
         IndexingTestUtil.suspendUntilIndexesAreReady(project)
@@ -643,7 +643,7 @@ class MipsSymbolRenamePlatformTest {
     }
 
     @Test
-    fun `rename refuses a signed extern assembled from a macro parameter and separate sign`() = timeoutRunBlocking<Unit> {
+    fun `rename refuses a signed extern assembled from a macro parameter and separate sign`() = timeoutRunBlocking {
         val source = ".extern -42, 4\n.macro repeat (%number)\n.extern -%number, 8\n.end_macro\nrepeat(42)\nnop\n"
         val file = withContext(Dispatchers.EDT) { fixture.configureByText("entry.mars", source) }
         IndexingTestUtil.suspendUntilIndexesAreReady(project)
@@ -657,7 +657,7 @@ class MipsSymbolRenamePlatformTest {
     }
 
     @Test
-    fun `native rename from an allocating extern keeps repeated declarations tied to it`() = timeoutRunBlocking<Unit> {
+    fun `native rename from an allocating extern keeps repeated declarations tied to it`() = timeoutRunBlocking {
         val source =
           $$".extern storage 4\n.extern storage 32\n.extern next_cell 4\nla $t0, storage\nla $t1, next_cell\n"
         val file = withContext(Dispatchers.EDT) { fixture.configureByText("entry.asm", source) }
@@ -671,7 +671,7 @@ class MipsSymbolRenamePlatformTest {
     }
 
     @Test
-    fun `rename treats an extern of a preceding export as a use of that export`() = timeoutRunBlocking<Unit> {
+    fun `rename treats an extern of a preceding export as a use of that export`() = timeoutRunBlocking {
         val export = ".data\n.globl storage\nstorage: .word 1\n"
         val consumer = $$".extern storage 4\n.text\nla $t0, storage\n"
         val (provider, user) = withContext(Dispatchers.EDT) {
@@ -692,7 +692,7 @@ class MipsSymbolRenamePlatformTest {
     }
 
     @Test
-    fun `rename requires a realized written extern allocation`() = timeoutRunBlocking<Unit> {
+    fun `rename requires a realized written extern allocation`() = timeoutRunBlocking {
         val cases = listOf(
             ".macro idle\n.extern storage 8\n.end_macro\nnop\n",
             ".extern storage 4\n.macro idle\n.extern storage 8\n.end_macro\nnop\n",
@@ -711,7 +711,7 @@ class MipsSymbolRenamePlatformTest {
     }
 
     @Test
-    fun `native rename preserves a same-name local when renaming a project export`() = timeoutRunBlocking<Unit> {
+    fun `native rename preserves a same-name local when renaming a project export`() = timeoutRunBlocking {
         val application = ".text\njal target # target\n"
         val library = $$".text\n.globl target\ntarget: jr $ra\n"
         val data = ".data\n.word target\n"
@@ -747,7 +747,7 @@ class MipsSymbolRenamePlatformTest {
     }
 
     @Test
-    fun `native rename resolves the export from a directory assembly`() = timeoutRunBlocking<Unit> {
+    fun `native rename resolves the export from a directory assembly`() = timeoutRunBlocking {
         val (entry, provider) = withContext(Dispatchers.EDT) {
             val entry = fixture.addFileToProject("entry.asm", "jal target\n")
             val provider = fixture.addFileToProject("library.s", $$".globl target\ntarget: jr $ra\n")
@@ -766,7 +766,7 @@ class MipsSymbolRenamePlatformTest {
     }
 
     @Test
-    fun `rename rejects a declaration shared by multiple local symbol tables`() = timeoutRunBlocking<Unit> {
+    fun `rename rejects a declaration shared by multiple local symbol tables`() = timeoutRunBlocking {
         val shared = withContext(Dispatchers.EDT) {
             val shared = fixture.addFileToProject("shared.s", "target: nop\n")
             val first = fixture.addFileToProject("first.asm", ".include \"shared.s\"\n")
@@ -783,7 +783,7 @@ class MipsSymbolRenamePlatformTest {
     }
 
     @Test
-    fun `rename refuses to edit a source assembled under two physical aliases`() = timeoutRunBlocking<Unit> {
+    fun `rename refuses to edit a source assembled under two physical aliases`() = timeoutRunBlocking {
         val library = withContext(Dispatchers.EDT) {
             val library = fixture.addFileToProject("library.s", "target: nop\nj target\n")
             val original = library.virtualFile.toNioPath()
@@ -803,7 +803,7 @@ class MipsSymbolRenamePlatformTest {
     }
 
     @Test
-    fun `rename rejects indirect generated conflicting and behavior-changing edits`() = timeoutRunBlocking<Unit> {
+    fun `rename rejects indirect generated conflicting and behavior-changing edits`() = timeoutRunBlocking {
         val cases = listOf(
             Triple("target: nop\n", "main", "ordinary MARS identifier"),
             Triple("target: nop\n", "nop", "ordinary MARS identifier"),
@@ -846,7 +846,7 @@ class MipsSymbolRenamePlatformTest {
     }
 
     @Test
-    fun `native rename edits the written replacement for chained equivalences and forwarded arguments`() = timeoutRunBlocking<Unit> {
+    fun `native rename edits the written replacement for chained equivalences and forwarded arguments`() = timeoutRunBlocking {
         val source = $$"""
             .include "aliases.txt"
             .data
@@ -890,7 +890,7 @@ class MipsSymbolRenamePlatformTest {
     }
 
     @Test
-    fun `rename refuses an equivalence replacement that also binds a different label`() = timeoutRunBlocking<Unit> {
+    fun `rename refuses an equivalence replacement that also binds a different label`() = timeoutRunBlocking {
         val export = ".globl target\ntarget: nop\n"
         val entry = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("aliases.txt", ".eqv DEST target\n")
@@ -911,7 +911,7 @@ class MipsSymbolRenamePlatformTest {
     }
 
     @Test
-    fun `rename distinguishes labels with different names at one written location`() = timeoutRunBlocking<Unit> {
+    fun `rename distinguishes labels with different names at one written location`() = timeoutRunBlocking {
         val (shared, direct) = withContext(Dispatchers.EDT) {
             val shared = fixture.addFileToProject("shared.s", "target: nop\n")
             val direct = fixture.addFileToProject("direct.asm", ".include \"shared.s\"\nj target\n")
@@ -931,7 +931,7 @@ class MipsSymbolRenamePlatformTest {
     }
 
     @Test
-    fun `native rename verifies application edits with a configured exception handler`() = timeoutRunBlocking<Unit> {
+    fun `native rename verifies application edits with a configured exception handler`() = timeoutRunBlocking {
         val application = $$".text\nj target\ntarget: teq $zero, $zero\n"
         val exceptionCode = ".ktext 0x80000180\ntarget: nop\nj target\n"
         val (entry, handler) = withContext(Dispatchers.EDT) {
@@ -964,7 +964,7 @@ class MipsSymbolRenamePlatformTest {
     }
 
     @Test
-    fun `rename refuses a cross-entry reference in a nested handler include`() = timeoutRunBlocking<Unit> {
+    fun `rename refuses a cross-entry reference in a nested handler include`() = timeoutRunBlocking {
         val (entry, operand) = withContext(Dispatchers.EDT) {
             val handler = fixture.addFileToProject("handler.s", ".include \"bridge.txt\"\n")
             fixture.addFileToProject("bridge.txt", ".include \"operand.txt\"\n")
@@ -985,7 +985,7 @@ class MipsSymbolRenamePlatformTest {
     }
 
     @Test
-    fun `rename requires an exclusive assembly graph with supported file types`() = timeoutRunBlocking<Unit> {
+    fun `rename requires an exclusive assembly graph with supported file types`() = timeoutRunBlocking {
         val (foreign, shared, hidden, independent) = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("body.xml", "nop\n")
             val foreign = fixture.addFileToProject("foreign.asm", ".include \"body.xml\"\ntarget: nop\n")
@@ -1011,7 +1011,7 @@ class MipsSymbolRenamePlatformTest {
     }
 
     @Test
-    fun `rename rejects an otherwise verified usage in a shared include`() = timeoutRunBlocking<Unit> {
+    fun `rename rejects an otherwise verified usage in a shared include`() = timeoutRunBlocking {
         val (entry, shared) = withContext(Dispatchers.EDT) {
             val shared = fixture.addFileToProject("shared.s", "j target\n")
             fixture.addFileToProject("other.asm", "target: nop\n.include \"shared.s\"\n")
@@ -1026,7 +1026,7 @@ class MipsSymbolRenamePlatformTest {
     }
 
     @Test
-    fun `rename rejects a plain-text usage shared through another plain include`() = timeoutRunBlocking<Unit> {
+    fun `rename rejects a plain-text usage shared through another plain include`() = timeoutRunBlocking {
         val entry = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("bridge.txt", ".include \"shared.txt\"\n")
             fixture.addFileToProject("shared.txt", "j target\n")
@@ -1046,7 +1046,7 @@ class MipsSymbolRenamePlatformTest {
     }
 
     @Test
-    fun `rename rejects incomplete preview and source changes after validation`() = timeoutRunBlocking<Unit> {
+    fun `rename rejects incomplete preview and source changes after validation`() = timeoutRunBlocking {
         val source = ".include \"used.s\"\ntarget: nop\nj target\n"
         val (root, included, outside) = withContext(Dispatchers.EDT) {
             val part = fixture.addFileToProject("used.s", "nop\n")

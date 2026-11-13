@@ -196,7 +196,7 @@ class MarsDebugPlatformTest {
     private val breakpointType get() = XDebuggerUtil.getInstance().findBreakpointType(MarsLineBreakpointType::class.java)
 
     @Test
-    fun `native watchpoint dialog validates and saves inclusive unsigned addresses`() = timeoutRunBlocking<Unit> {
+    fun `native watchpoint dialog validates and saves inclusive unsigned addresses`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             val type = XDebuggerUtil.getInstance().findBreakpointType(MarsMemoryWatchpointType::class.java)
             assertTrue(type.isAddBreakpointButtonVisible)
@@ -257,7 +257,7 @@ class MarsDebugPlatformTest {
 
     @ParameterizedTest
     @EnumSource(MemoryWatchMode::class)
-    internal fun `native memory watchpoints stop after overlapping accesses from the program`(mode: MemoryWatchMode) = timeoutRunBlocking<Unit> {
+    internal fun `native memory watchpoints stop after overlapping accesses from the program`(mode: MemoryWatchMode) = timeoutRunBlocking {
         val type = XDebuggerUtil.getInstance().findBreakpointType(MarsMemoryWatchpointType::class.java)
         val manager = debugger.breakpointManager
         val address = 0x10010000
@@ -312,7 +312,7 @@ class MarsDebugPlatformTest {
 
     @ParameterizedTest
     @ValueSource(booleans = [false, true])
-    fun `Debug reaches a separate exception handler using unsaved editor text`(beforeLaunch: Boolean) = timeoutRunBlocking<Unit> {
+    fun `Debug reaches a separate exception handler using unsaved editor text`(beforeLaunch: Boolean) = timeoutRunBlocking {
         val (main, kernel) = withContext(Dispatchers.EDT) {
             val main = fixture.addFileToProject("exception/main.asm", "break\nnop\n").virtualFile
             val kernel = fixture.addFileToProject("exception/kernel/handler.s", ".ktext 0x80000180\nnop\n").virtualFile
@@ -337,7 +337,7 @@ class MarsDebugPlatformTest {
 
     @ParameterizedTest
     @ValueSource(booleans = [false, true])
-    fun `Debug stops in another assembly source and resolves its own data symbols`(orderedProject: Boolean) = timeoutRunBlocking<Unit> {
+    fun `Debug stops in another assembly source and resolves its own data symbols`(orderedProject: Boolean) = timeoutRunBlocking {
         val (main, sibling) = withContext(Dispatchers.EDT) {
             val main = fixture.addFileToProject("directory/main.asm", $$"""
                 jal sibling
@@ -373,7 +373,7 @@ class MarsDebugPlatformTest {
     }
 
     @Test
-    fun `the interactive sort example parses and runs in the native debugger`() = timeoutRunBlocking<Unit> {
+    fun `the interactive sort example parses and runs in the native debugger`() = timeoutRunBlocking {
         val (entry, macros) = withContext(Dispatchers.EDT) {
             fun source(name: String) = fixture.addFileToProject(name,
                 requireNotNull(javaClass.getResourceAsStream("/debug-sort/$name")).bufferedReader().use { it.readText() },
@@ -415,7 +415,7 @@ class MarsDebugPlatformTest {
     }
 
     @Test
-    fun `native debugger stops in an include before its syscall and steps and runs to the cursor`() = timeoutRunBlocking<Unit> {
+    fun `native debugger stops in an include before its syscall and steps and runs to the cursor`() = timeoutRunBlocking {
         val (entry, include) = withContext(Dispatchers.EDT) {
             val main = fixture.addFileToProject("main.s", ".include \"print.s\"\nnop\nnop\n").virtualFile
             val body = fixture.addFileToProject("print.s", $$"li $a0, 42\nli $v0, 1\nsyscall\nnop\n").virtualFile
@@ -496,7 +496,7 @@ class MarsDebugPlatformTest {
     }
 
     @Test
-    fun `one breakpoint in a macro body stops at each expansion`() = timeoutRunBlocking<Unit> {
+    fun `one breakpoint in a macro body stops at each expansion`() = timeoutRunBlocking {
         val (entry, definitions) = withContext(Dispatchers.EDT) {
             val main = fixture.addFileToProject("macros.s", ".include \"defs.s\"\nemit (42)\nemit (43)\n").virtualFile
             val macros = fixture.addFileToProject("defs.s", $$"""
@@ -524,7 +524,7 @@ class MarsDebugPlatformTest {
 
     @Test
     fun `a macro parameter supplied through an alias binds a native breakpoint when used as an instruction`() =
-        timeoutRunBlocking<Unit> {
+        timeoutRunBlocking {
             val entry = withContext(Dispatchers.EDT) {
                 val source = fixture.addFileToProject("parameter-operation.asm", $$"""
                     .eqv HEAD %operation
@@ -553,7 +553,7 @@ class MarsDebugPlatformTest {
         }
 
     @Test
-    fun `aliased instructions and macro calls bind native breakpoints to their machine code`() = timeoutRunBlocking<Unit> {
+    fun `aliased instructions and macro calls bind native breakpoints to their machine code`() = timeoutRunBlocking {
         val (entry, definitions) = withContext(Dispatchers.EDT) {
             val definitions = fixture.addFileToProject("aliases.s", $$"""
                 .eqv DEFINE .eqv
@@ -610,7 +610,7 @@ class MarsDebugPlatformTest {
     }
 
     @Test
-    fun `data continuations are not breakpoint sites while matching macros still bind`() = timeoutRunBlocking<Unit> {
+    fun `data continuations are not breakpoint sites while matching macros still bind`() = timeoutRunBlocking {
         val (entry, instructionLine) = withContext(Dispatchers.EDT) {
             val source = $$"""
                 .macro emit (%value)
@@ -655,7 +655,7 @@ class MarsDebugPlatformTest {
     }
 
     @Test
-    fun `shared data rows keep provisional breakpoints until an assembly entry is selected`() = timeoutRunBlocking<Unit> {
+    fun `shared data rows keep provisional breakpoints until an assembly entry is selected`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             val first = fixture.addFileToProject("first.mars", ".include \"shared.inc\"\n").virtualFile
             val second = fixture.addFileToProject("second.mars", """
@@ -676,7 +676,7 @@ class MarsDebugPlatformTest {
     }
 
     @Test
-    fun `incomplete or unavailable alias context keeps breakpoint placement provisional`() = timeoutRunBlocking<Unit> {
+    fun `incomplete or unavailable alias context keeps breakpoint placement provisional`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             val file = fixture.addFileToProject("provisional.s", """
                 .eqv FIRST SECOND
@@ -706,7 +706,7 @@ class MarsDebugPlatformTest {
 
     @ParameterizedTest
     @ValueSource(booleans = [false, true])
-    fun `suspension tolerates an instruction pointer without an assembled source line`(invalidAddress: Boolean) = timeoutRunBlocking<Unit> {
+    fun `suspension tolerates an instruction pointer without an assembled source line`(invalidAddress: Boolean) = timeoutRunBlocking {
         val source = withContext(Dispatchers.EDT) {
             val assembly = if (invalidAddress) $$"jr $zero\n" else "nop\n"
             fixture.addFileToProject("missing.s", assembly).virtualFile.also { addBreakpoint(it, 0) }
@@ -729,7 +729,7 @@ class MarsDebugPlatformTest {
     }
 
     @Test
-    fun `late debugger commands cannot replace an accepted step or advance a later suspension`() = timeoutRunBlocking<Unit> {
+    fun `late debugger commands cannot replace an accepted step or advance a later suspension`() = timeoutRunBlocking {
         val source = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("late-commands.asm", "nop\nnop\nnop\n").virtualFile.also {
                 addBreakpoint(it, 0)
@@ -786,7 +786,7 @@ class MarsDebugPlatformTest {
     }
 
     @Test
-    fun `source steps group pseudo instructions and distinguish consecutive macro expansions`() = timeoutRunBlocking<Unit> {
+    fun `source steps group pseudo instructions and distinguish consecutive macro expansions`() = timeoutRunBlocking {
         val (entry, macros) = withContext(Dispatchers.EDT) {
             val macro = fixture.addFileToProject("step-macros.s",
               $$".macro load (%value)\nli $t1, %value\n.end_macro\n"
@@ -848,7 +848,7 @@ class MarsDebugPlatformTest {
     }
 
     @Test
-    fun `source stepping visits a configured branch delay slot before the target`() = timeoutRunBlocking<Unit> {
+    fun `source stepping visits a configured branch delay slot before the target`() = timeoutRunBlocking {
         val file = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("debug-delay.s", $$"b target\nli $t0, 7\nli $t0, 9\ntarget: nop\n")
                 .virtualFile.also { addBreakpoint(it, 0) }
@@ -876,7 +876,7 @@ class MarsDebugPlatformTest {
     }
 
     @Test
-    fun `step over a recursive call stops after all matching returns`() = timeoutRunBlocking<Unit> {
+    fun `step over a recursive call stops after all matching returns`() = timeoutRunBlocking {
         val file = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("step-over-recursion.s", $$"""
                 li $a0, 2
@@ -916,7 +916,7 @@ class MarsDebugPlatformTest {
 
     @ParameterizedTest
     @ValueSource(booleans = [false, true])
-    fun `step over respects delay slots custom links and enabled breakpoints`(breakInsideCall: Boolean) = timeoutRunBlocking<Unit> {
+    fun `step over respects delay slots custom links and enabled breakpoints`(breakInsideCall: Boolean) = timeoutRunBlocking {
         val file = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("step-over-link.s", $$"""
                 la $t0, callee
@@ -954,7 +954,7 @@ class MarsDebugPlatformTest {
 
     @ParameterizedTest
     @ValueSource(booleans = [false, true])
-    fun `step out tracks repeated recursive return addresses and restores a caller on backstep`(wholeSource: Boolean) = timeoutRunBlocking<Unit> {
+    fun `step out tracks repeated recursive return addresses and restores a caller on backstep`(wholeSource: Boolean) = timeoutRunBlocking {
         val file = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("step-out-recursion.s", $$"""
                 li $a0, 2
@@ -1004,7 +1004,7 @@ class MarsDebugPlatformTest {
     }
 
     @Test
-    fun `step out stops at a trap and can still return to the caller after eret`() = timeoutRunBlocking<Unit> {
+    fun `step out stops at a trap and can still return to the caller after eret`() = timeoutRunBlocking {
         val file = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("step-out-trap.s", $$"""
                 jal callee
@@ -1052,7 +1052,7 @@ class MarsDebugPlatformTest {
     }
 
     @Test
-    fun `deep caller stacks deliver multiple batches and keep executable data addresses`() = timeoutRunBlocking<Unit> {
+    fun `deep caller stacks deliver multiple batches and keep executable data addresses`() = timeoutRunBlocking {
         val file = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("deep-callers.s", $$"""
                 .data
@@ -1096,7 +1096,7 @@ class MarsDebugPlatformTest {
 
     @ParameterizedTest
     @ValueSource(booleans = [false, true])
-    fun `step over stops at an exception handler or reports an unhandled fault`(hasHandler: Boolean) = timeoutRunBlocking<Unit> {
+    fun `step over stops at an exception handler or reports an unhandled fault`(hasHandler: Boolean) = timeoutRunBlocking {
         val file = withContext(Dispatchers.EDT) {
             val handler = if (hasHandler) ".ktext 0x80000180\nhandler: nop\n" else ""
             fixture.addFileToProject("step-over-trap.s", "jal callee\nnop\ncallee: break\n$handler")
@@ -1114,7 +1114,7 @@ class MarsDebugPlatformTest {
     }
 
     @Test
-    fun `step over groups a pseudo instruction and follows a jump without a call`() = timeoutRunBlocking<Unit> {
+    fun `step over groups a pseudo instruction and follows a jump without a call`() = timeoutRunBlocking {
         val file = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("step-over-pseudo.s", $$"li $t0, 0x12345678\nj end\nnop\nend: nop\n")
                 .virtualFile.also { addBreakpoint(it, 0) }
@@ -1137,7 +1137,7 @@ class MarsDebugPlatformTest {
     }
 
     @Test
-    fun `debugging inherits project self modifying code and steps the rewritten instruction without stale source`() = timeoutRunBlocking<Unit> {
+    fun `debugging inherits project self modifying code and steps the rewritten instruction without stale source`() = timeoutRunBlocking {
         val file = withContext(Dispatchers.EDT) {
             project.service<MarsAssemblySettings>().changeSelfModifyingCode(true)
             fixture.addFileToProject("debug-patch.s", $$"""
@@ -1185,7 +1185,7 @@ class MarsDebugPlatformTest {
 
     @ParameterizedTest
     @ValueSource(booleans = [false, true])
-    fun `source steps keep included statements and repeated macro calls separate`(macro: Boolean) = timeoutRunBlocking<Unit> {
+    fun `source steps keep included statements and repeated macro calls separate`(macro: Boolean) = timeoutRunBlocking {
         val bodyLine = if (macro) 1 else 0
         val secondLine = 1
         val afterLine = if (macro) 3 else 1
@@ -1242,7 +1242,7 @@ class MarsDebugPlatformTest {
     }
 
     @Test
-    fun `source step stops on another execution of a single line loop`() = timeoutRunBlocking<Unit> {
+    fun `source step stops on another execution of a single line loop`() = timeoutRunBlocking {
         val file = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("step-loop.s", "loop: b loop\n").virtualFile.also { addBreakpoint(it, 0) }
         }
@@ -1280,7 +1280,7 @@ class MarsDebugPlatformTest {
     }
 
     @Test
-    fun `native Variables tree renders coherent CPU and coprocessor values from each suspension`() = timeoutRunBlocking<Unit> {
+    fun `native Variables tree renders coherent CPU and coprocessor values from each suspension`() = timeoutRunBlocking {
         val source = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("registers.s", $$"""
                 $入口: addiu $0x8, $zero, -2
@@ -1401,7 +1401,7 @@ class MarsDebugPlatformTest {
     }
 
     @Test
-    fun `Quick Evaluate supplies native expression ranges and reads the right register bank`() = timeoutRunBlocking<Unit> {
+    fun `Quick Evaluate supplies native expression ranges and reads the right register bank`() = timeoutRunBlocking {
         val (source, unrelated, unfinished) = withContext(Dispatchers.EDT) {
             val source = fixture.addFileToProject("quick-evaluate.mars", $$"""
                 .data
@@ -1490,7 +1490,7 @@ class MarsDebugPlatformTest {
     }
 
     @Test
-    fun `Quick Evaluate follows operands in the loaded macro expansion`() = timeoutRunBlocking<Unit> {
+    fun `Quick Evaluate follows operands in the loaded macro expansion`() = timeoutRunBlocking {
         val (source, library) = withContext(Dispatchers.EDT) {
             val source = fixture.addFileToProject("expanded.mars", $$"""
                 .eqv TARGET $t0
@@ -1593,7 +1593,7 @@ class MarsDebugPlatformTest {
     }
 
     @Test
-    fun `Quick Evaluate uses the assembled label binding in the editor source`() = timeoutRunBlocking<Unit> {
+    fun `Quick Evaluate uses the assembled label binding in the editor source`() = timeoutRunBlocking {
         val (main, sibling, include) = withContext(Dispatchers.EDT) {
             val main = fixture.addFileToProject("bindings/main.mars", $$"""
                 .data
@@ -1691,7 +1691,7 @@ class MarsDebugPlatformTest {
     }
 
     @Test
-    fun `keyboard and display attach before the first debug instruction and rewind with the session`() = timeoutRunBlocking<Unit> {
+    fun `keyboard and display attach before the first debug instruction and rewind with the session`() = timeoutRunBlocking {
         val source = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("terminal-debug.asm", $$"""
                 lui $t0, 0xffff
@@ -1736,7 +1736,7 @@ class MarsDebugPlatformTest {
     }
 
     @Test
-    fun `MarsBot position and pen trail rewind through native Debug`() = timeoutRunBlocking<Unit> {
+    fun `MarsBot position and pen trail rewind through native Debug`() = timeoutRunBlocking {
         val source = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("mars-bot-debug.asm", $$"""
                 lui $t0, 0xffff
@@ -1782,7 +1782,7 @@ class MarsDebugPlatformTest {
     }
 
     @Test
-    fun `Scavenger Hunt reset and memory rewind together through Debug`() = timeoutRunBlocking<Unit> {
+    fun `Scavenger Hunt reset and memory rewind together through Debug`() = timeoutRunBlocking {
         val source = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("hunt-debug.asm", $$"""
                 lui $t0, 0xffff
@@ -1835,7 +1835,7 @@ class MarsDebugPlatformTest {
     }
 
     @Test
-    fun `Digital Lab keypad input reaches the machine and backstep restores the previous latch`() = timeoutRunBlocking<Unit> {
+    fun `Digital Lab keypad input reaches the machine and backstep restores the previous latch`() = timeoutRunBlocking {
         val source = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("digital-lab-debug.asm", $$"""
                 lui $t0, 0xffff
@@ -1892,7 +1892,7 @@ class MarsDebugPlatformTest {
     }
 
     @Test
-    fun `memory watches read the current suspension across a store and backstep`() = timeoutRunBlocking<Unit> {
+    fun `memory watches read the current suspension across a store and backstep`() = timeoutRunBlocking {
         val source = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("watch-memory.asm", $$"""
                 .data
@@ -1989,7 +1989,7 @@ class MarsDebugPlatformTest {
         }
         val requests = watchMemoryRequests()
         var unavailable = false
-        assertTrue(requests.trySend(WatchMemoryRequest({ fail<Unit>("Cancelled request ran") }, { unavailable = true })).isSuccess)
+        assertTrue(requests.trySend(WatchMemoryRequest({ fail("Cancelled request ran") }, { unavailable = true })).isSuccess)
         requests.cancel()
         assertTrue(unavailable)
     }
@@ -2049,7 +2049,7 @@ class MarsDebugPlatformTest {
     }
 
     @Test
-    fun `native Variables edits refresh the pause and reject stale register modifiers`() = timeoutRunBlocking<Unit> {
+    fun `native Variables edits refresh the pause and reject stale register modifiers`() = timeoutRunBlocking {
         val source = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("edit-register.s", $$"""
                 .data
@@ -2112,7 +2112,7 @@ class MarsDebugPlatformTest {
     }
 
     @Test
-    fun `native Coprocessor 0 edits update watches and execution without writing CPU registers`() = timeoutRunBlocking<Unit> {
+    fun `native Coprocessor 0 edits update watches and execution without writing CPU registers`() = timeoutRunBlocking {
         val source = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("edit-cp0.s", $$"""
                 addiu $t0, $zero, 7
@@ -2159,7 +2159,7 @@ class MarsDebugPlatformTest {
     }
 
     @Test
-    fun `native FPU edits keep single registers pairs and condition flags coherent`() = timeoutRunBlocking<Unit> {
+    fun `native FPU edits keep single registers pairs and condition flags coherent`() = timeoutRunBlocking {
         val source = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("edit-cp1.s", $$"""
                 addiu $t0, $zero, 7
@@ -2226,7 +2226,7 @@ class MarsDebugPlatformTest {
     }
 
     @Test
-    fun `a full or expired register edit queue reports all undelivered requests`() = timeoutRunBlocking<Unit> {
+    fun `a full or expired register edit queue reports all undelivered requests`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             val requests = machineEditRequests()
             val modifier = RegisterModifier(RegisterBank.CPU, 8, { "0x00000000" }, requests) { true }
@@ -2255,7 +2255,7 @@ class MarsDebugPlatformTest {
     }
 
     @Test
-    fun `new Debug sessions honor the project backstep history limit`() = timeoutRunBlocking<Unit> {
+    fun `new Debug sessions honor the project backstep history limit`() = timeoutRunBlocking {
         val settings = project.service<MarsAssemblySettings>()
         val source = withContext(Dispatchers.EDT) {
             settings.changeBackstepLimit(2)
@@ -2288,7 +2288,7 @@ class MarsDebugPlatformTest {
     }
 
     @Test
-    fun `native toolbar backstep restores the preceding instruction and refreshes Variables`() = timeoutRunBlocking<Unit> {
+    fun `native toolbar backstep restores the preceding instruction and refreshes Variables`() = timeoutRunBlocking {
         val source = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("undo.s", $$"li $a0, 7\nli $v0, 1\nsyscall\nnop\n").virtualFile.also {
                 addBreakpoint(it, 0)
@@ -2356,7 +2356,7 @@ class MarsDebugPlatformTest {
     }
 
     @Test
-    fun `Debug Memory edits the selected pause and rejects a dialog completed after resume`() = timeoutRunBlocking<Unit> {
+    fun `Debug Memory edits the selected pause and rejects a dialog completed after resume`() = timeoutRunBlocking {
         val source = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("memory-edit.s", $$"""
                 .data
@@ -2453,7 +2453,7 @@ class MarsDebugPlatformTest {
     }
 
     @Test
-    fun `editing executable memory refreshes disassembly and drops stale source for the paused instruction`() = timeoutRunBlocking<Unit> {
+    fun `editing executable memory refreshes disassembly and drops stale source for the paused instruction`() = timeoutRunBlocking {
         val source = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("edit-instruction.s", $$"li $a0, 0\naddiu $a0, $a0, 2\nli $v0, 1\nsyscall\n")
                 .virtualFile.also { addBreakpoint(it, 1) }
@@ -2513,7 +2513,7 @@ class MarsDebugPlatformTest {
     }
 
     @Test
-    fun `Debug Memory reads the active suspension and refreshes after a store and backstep`() = timeoutRunBlocking<Unit> {
+    fun `Debug Memory reads the active suspension and refreshes after a store and backstep`() = timeoutRunBlocking {
         val source = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("memory.s", $$"""
                 .data
@@ -2652,7 +2652,7 @@ class MarsDebugPlatformTest {
     }
 
     @Test
-    fun `Debug Memory highlights the newest recorded write and restores the previous write on backstep`() = timeoutRunBlocking<Unit> {
+    fun `Debug Memory highlights the newest recorded write and restores the previous write on backstep`() = timeoutRunBlocking {
         val source = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("last-memory-write.asm", $$"""
                 .data
@@ -2808,7 +2808,7 @@ class MarsDebugPlatformTest {
     }
 
     @Test
-    fun `Debug terminates at the instruction budget across a breakpoint and backstep`() = timeoutRunBlocking<Unit> {
+    fun `Debug terminates at the instruction budget across a breakpoint and backstep`() = timeoutRunBlocking {
         val file = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("limited.asm", $$"loop: addiu $t0, $t0, 1\nj loop\n")
                 .virtualFile.also { addBreakpoint(it, 1) }
@@ -2830,7 +2830,7 @@ class MarsDebugPlatformTest {
     }
 
     @Test
-    fun `Debug stops at global main before executing any instruction from its prepared image`() = timeoutRunBlocking<Unit> {
+    fun `Debug stops at global main before executing any instruction from its prepared image`() = timeoutRunBlocking {
         val file = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("debug-main.asm",
               $$"nop\nli $v0, 10\nsyscall\n.globl main\nmain: li $t0, 42\nli $v0, 10\nsyscall\n"
@@ -2851,7 +2851,7 @@ class MarsDebugPlatformTest {
     }
 
     @Test
-    fun `Debug writes relative files in the configured working directory after resume`() = timeoutRunBlocking<Unit> {
+    fun `Debug writes relative files in the configured working directory after resume`() = timeoutRunBlocking {
         val (file, output) = withContext(Dispatchers.EDT) {
             val source = fixture.addFileToProject("debug-working-dir.asm", $$"""
                 .data
@@ -2883,7 +2883,7 @@ class MarsDebugPlatformTest {
     }
 
     @Test
-    fun `Debug exposes the launch speed and can change it while paused`() = timeoutRunBlocking<Unit> {
+    fun `Debug exposes the launch speed and can change it while paused`() = timeoutRunBlocking {
         val file = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("debug-speed.asm", $$"nop\nli $v0, 10\nsyscall\n")
                 .virtualFile.also { addBreakpoint(it, 0) }
@@ -2907,7 +2907,7 @@ class MarsDebugPlatformTest {
     }
 
     @Test
-    fun `Debug sees the argument frame at the first instruction in compact memory`() = timeoutRunBlocking<Unit> {
+    fun `Debug sees the argument frame at the first instruction in compact memory`() = timeoutRunBlocking {
         val file = withContext(Dispatchers.EDT) {
             project.service<MarsAssemblySettings>().changeMemoryLayout(MarsMemoryLayout.TEXT_AT_ZERO)
             fixture.addFileToProject("argv.asm", "nop\n").virtualFile.also { addBreakpoint(it, 0) }
@@ -2929,7 +2929,7 @@ class MarsDebugPlatformTest {
 
     @ParameterizedTest
     @ValueSource(strings = ["CompactDataAtZero", "CompactTextAtZero"])
-    fun `Debug keeps the captured compact memory layout when project settings change`(identifier: String) = timeoutRunBlocking<Unit> {
+    fun `Debug keeps the captured compact memory layout when project settings change`(identifier: String) = timeoutRunBlocking {
         val settings = project.service<MarsAssemblySettings>()
         val layout = MemoryConfigurations.createConfiguration(identifier)
         val file = withContext(Dispatchers.EDT) {
@@ -2956,7 +2956,7 @@ class MarsDebugPlatformTest {
     }
 
     @Test
-    fun `assembling another opened file leaves the paused machine intact`() = timeoutRunBlocking<Unit> {
+    fun `assembling another opened file leaves the paused machine intact`() = timeoutRunBlocking {
         val (entry, other) = withContext(Dispatchers.EDT) {
             val entry = fixture.addFileToProject("paused.asm", $$"li $t0, 42\nnop\n").virtualFile
             val other = fixture.addFileToProject("other.asm", $$"li $t0, 99\n") as MipsFile
@@ -2987,7 +2987,7 @@ class MarsDebugPlatformTest {
     }
 
     @Test
-    fun `Debug Symbols lists the loaded labels and navigates to their original source`() = timeoutRunBlocking<Unit> {
+    fun `Debug Symbols lists the loaded labels and navigates to their original source`() = timeoutRunBlocking {
         val includedText = """
             .extern externalSlot, 4
             .data
@@ -3135,7 +3135,7 @@ class MarsDebugPlatformTest {
     }
 
     @Test
-    fun `Symbols opens live code and exact data addresses without moving the PC`() = timeoutRunBlocking<Unit> {
+    fun `Symbols opens live code and exact data addresses without moving the PC`() = timeoutRunBlocking {
         val source = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("symbol-addresses.asm", $$"""
                 $${'\t'}.extern externalSlot, 4
@@ -3276,7 +3276,7 @@ class MarsDebugPlatformTest {
     }
 
     @Test
-    fun `Debugger address display updates existing views and preserves machine state`() = timeoutRunBlocking<Unit> {
+    fun `Debugger address display updates existing views and preserves machine state`() = timeoutRunBlocking {
         val file = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("display-addresses.asm", $$"""
                 .kdata
@@ -3384,7 +3384,7 @@ class MarsDebugPlatformTest {
     }
 
     @Test
-    fun `Debugger value display reformats captured register and memory words independently of addresses`() = timeoutRunBlocking<Unit> {
+    fun `Debugger value display reformats captured register and memory words independently of addresses`() = timeoutRunBlocking {
         val source = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("display-values.asm", $$"""
                 .data
@@ -3498,7 +3498,7 @@ class MarsDebugPlatformTest {
     @ParameterizedTest
     @ValueSource(booleans = [true, false])
     fun `Symbols distinguishes identical names by assembly unit and handles unavailable definitions`(defaultProject: Boolean, @TempDir directory: Path) =
-        timeoutRunBlocking<Unit> {
+        timeoutRunBlocking {
             val first = Files.writeString(Files.createDirectory(directory.resolve("first")).resolve("same.s"), "nop\n").toRealPath()
             val second = Files.writeString(Files.createDirectory(directory.resolve("second")).resolve("same.s"), "nop\n").toRealPath()
             val files = withContext(Dispatchers.EDT) {
@@ -3552,7 +3552,7 @@ class MarsDebugPlatformTest {
 
     @Test
     fun `captured positions recognize unopened files and reject a snapshot from another image`(@TempDir directory: Path) =
-        timeoutRunBlocking<Unit> {
+        timeoutRunBlocking {
             val path = Files.writeString(directory.resolve("unopened.asm"), "nop\n").toRealPath()
             val otherPath = Files.writeString(directory.resolve("unrelated.asm"), "nop\n").toRealPath()
             withContext(Dispatchers.EDT) {
@@ -3586,7 +3586,7 @@ class MarsDebugPlatformTest {
         }
 
     @Test
-    fun `large source excerpts set native breakpoints and run to the original line`() = timeoutRunBlocking<Unit> {
+    fun `large source excerpts set native breakpoints and run to the original line`() = timeoutRunBlocking {
         val action = ActionManager.getInstance().getAction("Mars.ToggleOriginalBreakpoint")
         assertEquals(ActionUpdateThread.BGT, action.actionUpdateThread)
         fun event(editor: Editor? = null, includeProject: Boolean = true): AnActionEvent {
@@ -3676,7 +3676,7 @@ class MarsDebugPlatformTest {
     }
 
     @Test
-    fun `Debug shows the assembled include and runs to a cursor in the captured text`() = timeoutRunBlocking<Unit> {
+    fun `Debug shows the assembled include and runs to a cursor in the captured text`() = timeoutRunBlocking {
         val body = $$"nop\naddiu $t0, $zero, 42\nnop\n"
         val (source, include) = withContext(Dispatchers.EDT) {
             val entry = fixture.addFileToProject("captured.asm", ".include \"captured-body.s\"\nnop\n").virtualFile
@@ -3727,7 +3727,7 @@ class MarsDebugPlatformTest {
 
     @ParameterizedTest
     @ValueSource(strings = ["debug-body.png", "debug-body.inc~"])
-    fun `read-only include tabs set persistent breakpoints and run to the cursor`(name: String) = timeoutRunBlocking<Unit> {
+    fun `read-only include tabs set persistent breakpoints and run to the cursor`(name: String) = timeoutRunBlocking {
         val action = ActionManager.getInstance().getAction("Mars.ToggleOriginalBreakpoint")
         val entryText = ".include \"$name\"\nnop\n"
         val (entry, include, view) = withContext(Dispatchers.EDT) {
@@ -3803,7 +3803,7 @@ class MarsDebugPlatformTest {
     }
 
     @Test
-    fun `Disassembly restores layout and sort without changing selected instruction actions`() = timeoutRunBlocking<Unit> {
+    fun `Disassembly restores layout and sort without changing selected instruction actions`() = timeoutRunBlocking {
         val source = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("disassembly-layout.asm", $$"entry: nop\nnext: nop\nli $v0, 10\nsyscall\n").virtualFile
                 .also { addBreakpoint(it, 0) }
@@ -3920,7 +3920,7 @@ class MarsDebugPlatformTest {
     }
 
     @Test
-    fun `Disassembly marks the pending delay slot and follows the last executed address across backsteps`() = timeoutRunBlocking<Unit> {
+    fun `Disassembly marks the pending delay slot and follows the last executed address across backsteps`() = timeoutRunBlocking {
         val source = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("execution-markers.asm", $$"""
                 b far
@@ -4020,7 +4020,7 @@ class MarsDebugPlatformTest {
     }
 
     @Test
-    fun `Variables highlights written register banks and restores their presentation on backstep`() = timeoutRunBlocking<Unit> {
+    fun `Variables highlights written register banks and restores their presentation on backstep`() = timeoutRunBlocking {
         val source = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("register-highlights.asm", $$"""
                 addiu $t0, $zero, 2
@@ -4102,7 +4102,7 @@ class MarsDebugPlatformTest {
     }
 
     @Test
-    fun `native Disassembly shows live code follows PC and navigates to source`() = timeoutRunBlocking<Unit> {
+    fun `native Disassembly shows live code follows PC and navigates to source`() = timeoutRunBlocking {
         val (source, fragment) = withContext(Dispatchers.EDT) {
             val fragment = fixture.addFileToProject("disassembly-body.s", $$"li $t1, 0x240b0043\n").virtualFile
             val entry = fixture.addFileToProject("disassembly.s", $$"""
@@ -4251,7 +4251,7 @@ class MarsDebugPlatformTest {
     }
 
     @Test
-    fun `address breakpoints persist by entry and stop in code without source`() = timeoutRunBlocking<Unit> {
+    fun `address breakpoints persist by entry and stop in code without source`() = timeoutRunBlocking {
         val type = XDebuggerUtil.getInstance().findBreakpointType(MarsAddressBreakpointType::class.java)
         val source = withContext(Dispatchers.EDT) {
             val other = fixture.addFileToProject("other.s", "nop\n").virtualFile
@@ -4407,7 +4407,7 @@ class MarsDebugPlatformTest {
 
     @Test
     fun `Debug Memory exports each pause and rejects a dialog completed after resume`(@TempDir directory: Path) =
-        timeoutRunBlocking<Unit> {
+        timeoutRunBlocking {
             val file = exportDebugProgram()
             val output = directory.resolve("paused.hex")
             val finalDump = directory.resolve("finished.hex")
@@ -4487,7 +4487,7 @@ class MarsDebugPlatformTest {
 
     @Test
     fun `the debugger can resume during export IO and discards requests queued for an old pause`(@TempDir directory: Path) =
-        timeoutRunBlocking<Unit> {
+        timeoutRunBlocking {
             val file = exportDebugProgram()
             val releaseWriter = CountDownLatch(1)
             val writing = CompletableDeferred<Unit>()
@@ -4581,7 +4581,7 @@ class MarsDebugPlatformTest {
     }
 
     @Test
-    fun `debugger editor highlights comparison and bit operators with the expression lexer`() = timeoutRunBlocking<Unit> {
+    fun `debugger editor highlights comparison and bit operators with the expression lexer`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             val source = $$"(~$t0 >>> 7 & 8 ^ 1 | 2) != (3 < 4)"
             val expression = XDebuggerUtil.getInstance().createExpression(source, null, null, EvaluationMode.EXPRESSION)
@@ -4607,7 +4607,7 @@ class MarsDebugPlatformTest {
     }
 
     @Test
-    fun `native conditions and log expressions use the machine state before the instruction`() = timeoutRunBlocking<Unit> {
+    fun `native conditions and log expressions use the machine state before the instruction`() = timeoutRunBlocking {
         val source = $$"""
             .data
             flag: .word 0
@@ -4687,7 +4687,7 @@ class MarsDebugPlatformTest {
     }
 
     @Test
-    fun `ClearScreen removes earlier output from the native Debug console`() = timeoutRunBlocking<Unit> {
+    fun `ClearScreen removes earlier output from the native Debug console`() = timeoutRunBlocking {
         val source = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("debug-clear.asm", $$"""
                 .data
@@ -4720,7 +4720,7 @@ class MarsDebugPlatformTest {
     }
 
     @Test
-    fun `native logpoint continues and a disabled breakpoint can be enabled again`() = timeoutRunBlocking<Unit> {
+    fun `native logpoint continues and a disabled breakpoint can be enabled again`() = timeoutRunBlocking {
         val source = withContext(Dispatchers.EDT) {
             val file = fixture.addFileToProject("loop.s", $$"nop\nli $v0, 1\nsyscall\nloop: b loop\nnop\n").virtualFile
             val log = addBreakpoint(file, 0)
@@ -4764,7 +4764,7 @@ class MarsDebugPlatformTest {
     @ValueSource(booleans = [false, true])
     fun `native dependent breakpoints arm after their trigger and honor the leave enabled option`(
         leaveEnabled: Boolean,
-    ) = timeoutRunBlocking<Unit> {
+    ) = timeoutRunBlocking {
         val source = withContext(Dispatchers.EDT) {
             val file = fixture.addFileToProject("dependent-breakpoint.mars", $$"""
                 .text
@@ -4810,7 +4810,7 @@ class MarsDebugPlatformTest {
     @ValueSource(booleans = [false, true])
     fun `native instruction breakpoint counts matching hits within each debug session`(
         addressBreakpoint: Boolean,
-    ) = timeoutRunBlocking<Unit> {
+    ) = timeoutRunBlocking {
         val source = withContext(Dispatchers.EDT) {
             val file = fixture.addFileToProject("breakpoint-hits.mars", $$"""
                 .text
@@ -4889,7 +4889,7 @@ class MarsDebugPlatformTest {
     @ValueSource(booleans = [false, true])
     fun `coincident instruction breakpoints count the same visit before selecting a suspension`(
         editInterval: Boolean,
-    ) = timeoutRunBlocking<Unit> {
+    ) = timeoutRunBlocking {
         val (source, address) = withContext(Dispatchers.EDT) {
             val file = fixture.addFileToProject("coincident-breakpoints.mars", $$"""
                 .text
@@ -4925,7 +4925,7 @@ class MarsDebugPlatformTest {
     }
 
     @Test
-    fun `floating point tool edits only the selected paused register and refreshes the debugger`() = timeoutRunBlocking<Unit> {
+    fun `floating point tool edits only the selected paused register and refreshes the debugger`() = timeoutRunBlocking {
         val file = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("float-tool.asm",
               $$"lui $t0, 0x3fc0\nmtc1 $t0, $f0\nmfc1 $t1, $f0\nli $v0, 5\nsyscall\n"

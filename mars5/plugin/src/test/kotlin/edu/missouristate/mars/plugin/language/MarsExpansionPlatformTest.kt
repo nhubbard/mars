@@ -52,7 +52,7 @@ class MarsExpansionPlatformTest {
     private val fixture by codeInsightFixture(project)
 
     @Test
-    fun `editor action lists nested emitted instructions from unsaved sources and navigates each frame`() = timeoutRunBlocking<Unit> {
+    fun `editor action lists nested emitted instructions from unsaved sources and navigates each frame`() = timeoutRunBlocking {
         val current = project.get()
         val (definition, entry) = withContext(Dispatchers.EDT) {
             val definition = fixture.addFileToProject("macros.s", $$"""
@@ -137,7 +137,7 @@ class MarsExpansionPlatformTest {
 
     @ParameterizedTest
     @ValueSource(strings = ["defs.png", "defs.inc~"])
-    fun `expansion from a read-only include navigates current macro origins`(definitionName: String) = timeoutRunBlocking<Unit> {
+    fun `expansion from a read-only include navigates current macro origins`(definitionName: String) = timeoutRunBlocking {
         val current = project.get()
         val entryText = $$".eqv DEST $t0\n.include \"bridge.zip\"\n.text\nnop\n.include \"body.zip\"\n"
         val definitionText = ".macro emit (%value)\nli DEST, %value\n.end_macro\n"
@@ -212,7 +212,7 @@ class MarsExpansionPlatformTest {
 
     @Test
     fun `expansion navigates to a macro instruction beyond a large include preview and rejects stale source`() =
-        timeoutRunBlocking<Unit> {
+        timeoutRunBlocking {
             val current = project.get()
             val text = ".include \"large.inc\"\n.text\nemit\n"
             val padding = "#" + " ".repeat(4094) + "\n"
@@ -257,7 +257,7 @@ class MarsExpansionPlatformTest {
         }
 
     @Test
-    fun `empty failed stale and ambiguous requests yield distinct results`() = timeoutRunBlocking<Unit> {
+    fun `empty failed stale and ambiguous requests yield distinct results`() = timeoutRunBlocking {
         val current = project.get()
         val (file, text) = withContext(Dispatchers.EDT) {
             val source = fixture.addFileToProject("shared.s", "# comment\nunknown_instruction\n")

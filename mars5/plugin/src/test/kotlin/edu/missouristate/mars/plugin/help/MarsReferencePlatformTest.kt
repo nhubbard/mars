@@ -69,7 +69,7 @@ class MarsReferencePlatformTest {
     }
 
     @Test
-    fun `About shows the installed version and opens the reference card only when requested`() = timeoutRunBlocking<Unit> {
+    fun `About shows the installed version and opens the reference card only when requested`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             val lifetime = Disposer.newDisposable()
             val opened = mutableListOf<String>()
@@ -97,7 +97,7 @@ class MarsReferencePlatformTest {
     }
 
     @Test
-    fun `registered Help action opens the reference and searches offline without a project`() = timeoutRunBlocking<Unit> {
+    fun `registered Help action opens the reference and searches offline without a project`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             inspectDialog("Mars.OpenReference") { dialog ->
                 val content = dialog.contents

@@ -23,7 +23,7 @@ class MarsMidiPlatformTest {
     private val projectFixture = projectFixture()
 
     @Test
-    fun `a completed synchronous MIDI tone returns to the program`() = timeoutRunBlocking<Unit> {
+    fun `a completed synchronous MIDI tone returns to the program`() = timeoutRunBlocking {
         val execution = Job()
         val calls = mutableListOf<Tone>()
         try {

@@ -64,7 +64,7 @@ class MipsFileReferencesPlatformTest {
     private val fixture by codeInsightFixture(project)
 
     @Test
-    fun `native caret references navigate include path segments and ignore other strings`() = timeoutRunBlocking<Unit> {
+    fun `native caret references navigate include path segments and ignore other strings`() = timeoutRunBlocking {
         val files = withContext(Dispatchers.EDT) {
             val target = fixture.addFileToProject("parts/target.asm", "target: nop\n")
             val source = fixture.addFileToProject("main.asm", ".include \"parts/target.asm\"\n.asciiz \"parts/target.asm\"\n.include \"\"\n")
@@ -94,7 +94,7 @@ class MipsFileReferencesPlatformTest {
     }
 
     @Test
-    fun `Go to Declaration opens ignored includes without supplying a file rename target`() = timeoutRunBlocking<Unit> {
+    fun `Go to Declaration opens ignored includes without supplying a file rename target`() = timeoutRunBlocking {
         val source = $$"""
             .include "parts/bridge.inc~"
             .include "normal.inc"
@@ -173,7 +173,7 @@ class MipsFileReferencesPlatformTest {
 
     @Test
     fun `Go to Declaration opens binary classified include text as MIPS and keeps the physical file reference`() =
-        timeoutRunBlocking<Unit> {
+        timeoutRunBlocking {
             val source = $$".include \"parts/opaque.png\"\n.include \"parts/plain.txt\"\nli $t0, VALUE\n"
             val definitions = ".include \"nested.inc\"\n.eqv VALUE 7\n"
             val (binary, ordinary, nested) = withContext(Dispatchers.EDT) {
@@ -208,7 +208,7 @@ class MipsFileReferencesPlatformTest {
 
     @Test
     fun `include paths hidden by a malformed character recover references and update highlighting after edits`() =
-        timeoutRunBlocking<Unit> {
+        timeoutRunBlocking {
             val source = $$"'a#xx .include,, \"part.s\"\nli $t0, COUNT\n"
             val target = withContext(Dispatchers.EDT) {
                 val included = fixture.addFileToProject("part.s", ".eqv COUNT 42\n")
@@ -249,7 +249,7 @@ class MipsFileReferencesPlatformTest {
         }
 
     @Test
-    fun `native file references preserve raw spaces question marks unicode and repeated separators`() = timeoutRunBlocking<Unit> {
+    fun `native file references preserve raw spaces question marks unicode and repeated separators`() = timeoutRunBlocking {
         val files = withContext(Dispatchers.EDT) {
             val filename = if (SystemInfoRt.isWindows) " target #é.asm" else " target?é.asm "
             val raw = fixture.addFileToProject(filename, "target: nop\n")
@@ -280,7 +280,7 @@ class MipsFileReferencesPlatformTest {
     }
 
     @Test
-    fun `Windows include paths preserve written ranges for relative drive and UNC paths`() = timeoutRunBlocking<Unit> {
+    fun `Windows include paths preserve written ranges for relative drive and UNC paths`() = timeoutRunBlocking {
         data class Include(val path: String, val absolute: Boolean, val segments: List<String>)
 
         val includes = listOf(
@@ -319,7 +319,7 @@ class MipsFileReferencesPlatformTest {
     }
 
     @Test
-    fun `POSIX include paths preserve literal backslashes and slash roots`() = timeoutRunBlocking<Unit> {
+    fun `POSIX include paths preserve literal backslashes and slash roots`() = timeoutRunBlocking {
         readAction {
             val paths = listOf("""parts\child.s""", "/parts//child.s")
             val file = PsiFileFactory.getInstance(project.get()).createFileFromText(
@@ -339,7 +339,7 @@ class MipsFileReferencesPlatformTest {
     @Test
     fun `include navigation and assembly stay at the root when following a symlink and parent segment`(
         @TempDir outsideProject: Path,
-    ) = timeoutRunBlocking<Unit> {
+    ) = timeoutRunBlocking {
         val (psi, target) = withContext(Dispatchers.EDT) {
             val directory = Files.createDirectory(outsideProject.resolve("actual"))
             val included = Files.writeString(directory.resolve("value.s"), ".eqv COUNT 7\n")
@@ -382,7 +382,7 @@ class MipsFileReferencesPlatformTest {
 
     @Test
     fun `include identity collapses directory aliases and keeps different file names`(@TempDir temp: Path) =
-        timeoutRunBlocking<Unit> {
+        timeoutRunBlocking {
             // IntelliJ reports the long spelling of Windows temporary directories.
             val directory = temp.toRealPath()
             val actual = Files.createDirectory(directory.resolve("actual"))
@@ -439,7 +439,7 @@ class MipsFileReferencesPlatformTest {
         }
 
     @Test
-    fun `include dot segments cannot traverse a regular file`() = timeoutRunBlocking<Unit> {
+    fun `include dot segments cannot traverse a regular file`() = timeoutRunBlocking {
         val decoy = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("value.s", "nop\n")
             fixture.addFileToProject("decoy.s", "nop\n") as MipsFile
@@ -486,7 +486,7 @@ class MipsFileReferencesPlatformTest {
     }
 
     @Test
-    fun `unresolved native reference resolves after target creation without source edits`() = timeoutRunBlocking<Unit> {
+    fun `unresolved native reference resolves after target creation without source edits`() = timeoutRunBlocking {
         val source = withContext(Dispatchers.EDT) { fixture.addFileToProject("main.asm", ".include \"later.asm\"\n") }
         IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
         val reference = readAction {
@@ -499,7 +499,7 @@ class MipsFileReferencesPlatformTest {
     }
 
     @Test
-    fun `platform filename completion supplies and inserts include path candidates`() = timeoutRunBlocking<Unit> {
+    fun `platform filename completion supplies and inserts include path candidates`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             fixture.addFileToProject("parts/target.asm", "target: nop\n")
             fixture.addFileToProject("parts/tangent.s", "tangent: nop\n")
@@ -516,7 +516,7 @@ class MipsFileReferencesPlatformTest {
     }
 
     @Test
-    fun `unterminated include paths keep native filename completion without adding an include edge`() = timeoutRunBlocking<Unit> {
+    fun `unterminated include paths keep native filename completion without adding an include edge`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             fixture.addFileToProject("parts/target.asm", "target: nop\n")
             fixture.addFileToProject("parts/tangent.s", "tangent: nop\n")
@@ -544,7 +544,7 @@ class MipsFileReferencesPlatformTest {
     }
 
     @Test
-    fun `native rename updates include paths in statements macros and replacement text only`() = timeoutRunBlocking<Unit> {
+    fun `native rename updates include paths in statements macros and replacement text only`() = timeoutRunBlocking {
         val files = withContext(Dispatchers.EDT) {
             val target = fixture.addFileToProject("parts/target.asm", "target: nop\n")
             val source = fixture.addFileToProject("main.asm", """
@@ -582,7 +582,7 @@ class MipsFileReferencesPlatformTest {
     }
 
     @Test
-    fun `native move rewrites relative includes through the registered element manipulator`() = timeoutRunBlocking<Unit> {
+    fun `native move rewrites relative includes through the registered element manipulator`() = timeoutRunBlocking {
         val files = withContext(Dispatchers.EDT) {
             val target = fixture.addFileToProject("parts/target.asm", "target: nop\n")
             val source = fixture.addFileToProject("src/main.asm", ".include \"../parts/target.asm\"\n.include \"${target.virtualFile.path}\"\n")
@@ -602,7 +602,7 @@ class MipsFileReferencesPlatformTest {
     }
 
     @Test
-    fun `registered string manipulator preserves literal content and rejects malformed replacements`() = timeoutRunBlocking<Unit> {
+    fun `registered string manipulator preserves literal content and rejects malformed replacements`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             for (bad in listOf("early\"quote.asm", "line\nbreak.asm")) {
                 val file = fixture.configureByText(MipsFileType, ".include \"old.asm\"\n")
@@ -626,7 +626,7 @@ class MipsFileReferencesPlatformTest {
     }
 
     @Test
-    fun `native reference sets support empty and root path boundaries`() = timeoutRunBlocking<Unit> {
+    fun `native reference sets support empty and root path boundaries`() = timeoutRunBlocking {
         readAction {
             val rootPaths = if (SystemInfoRt.isWindows) listOf("C:/", "//") else listOf("/", "//")
             for (path in listOf("") + rootPaths) {

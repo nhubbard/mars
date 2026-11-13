@@ -26,7 +26,7 @@ class MipsIncludeQuickFixPlatformTest {
     private val fixture by codeInsightFixture(project)
 
     @Test
-    fun `quick fix previews repairs and undoes a physical include shared by two entries`() = timeoutRunBlocking<Unit> {
+    fun `quick fix previews repairs and undoes a physical include shared by two entries`() = timeoutRunBlocking {
         val current = project.get()
         val path = "values # one.s"
         val unfinished = "prefix: .InClUdE ,, \"$path\ntail: nop\n"
@@ -62,7 +62,7 @@ class MipsIncludeQuickFixPlatformTest {
     }
 
     @Test
-    fun `quick fix inserts only one quote at the end of the literal`() = timeoutRunBlocking<Unit> {
+    fun `quick fix inserts only one quote at the end of the literal`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             for ((written, closed) in listOf(
                 ".include \"<caret>" to ".include \"\"",
@@ -79,7 +79,7 @@ class MipsIncludeQuickFixPlatformTest {
     }
 
     @Test
-    fun `create include quick fix uses the directory the assembler resolves`() = timeoutRunBlocking<Unit> {
+    fun `create include quick fix uses the directory the assembler resolves`() = timeoutRunBlocking {
         val name = "values # one.s"
         val text = ".include \"shortcut/../$name\"\nnop\n"
         val entry = withContext(Dispatchers.EDT) {
@@ -106,7 +106,7 @@ class MipsIncludeQuickFixPlatformTest {
     }
 
     @Test
-    fun `create include quick fix creates missing folders below the resolved ancestor`() = timeoutRunBlocking<Unit> {
+    fun `create include quick fix creates missing folders below the resolved ancestor`() = timeoutRunBlocking {
         val path = "missing/nested/new.s"
         val source = ".include \"$path\"\nnop\n"
         withContext(Dispatchers.EDT) {
@@ -126,7 +126,7 @@ class MipsIncludeQuickFixPlatformTest {
     }
 
     @Test
-    fun `create include quick fix rejects paths without a safe directory`() = timeoutRunBlocking<Unit> {
+    fun `create include quick fix rejects paths without a safe directory`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             fixture.tempDirFixture.createFile("existing.s", "nop\n")
             fixture.tempDirFixture.findOrCreateDir("directory")
@@ -148,7 +148,7 @@ class MipsIncludeQuickFixPlatformTest {
     }
 
     @Test
-    fun `ordinary strings unused operands and comments do not get the include fix`() = timeoutRunBlocking<Unit> {
+    fun `ordinary strings unused operands and comments do not get the include fix`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             fixture.addFileToProject("part.s", "nop\n")
             for (line in listOf(

@@ -118,7 +118,7 @@ class IndexSnapshotTest {
     fun `input mutation cannot change contributions snapshots scopes or query results`() {
         val defs = mutableListOf(declaration(a))
         val refs = mutableListOf(reference(a))
-        val facts = mutableListOf<IndexContribution>(
+        val facts = mutableListOf(
             IndexContribution.Declarations(a, 1, defs),
             IndexContribution.References(a, 1, refs),
         )

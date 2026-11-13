@@ -39,7 +39,7 @@ class MipsParameterInfoPlatformTest {
     }
 
     @Test
-    fun `native parameter info presents every distinct basic and pseudo form`() = timeoutRunBlocking<Unit> {
+    fun `native parameter info presents every distinct basic and pseudo form`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             val hint = info($$"entry: DIV $t0 $t1, <caret>").orEmpty()
             val rows = hint.split("\n-\n")
@@ -53,7 +53,7 @@ class MipsParameterInfoPlatformTest {
     }
 
     @Test
-    fun `parameter info shows only supported forms when pseudo instructions are disabled`() = timeoutRunBlocking<Unit> {
+    fun `parameter info shows only supported forms when pseudo instructions are disabled`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             project.get().service<MarsAssemblySettings>().changeAssemblerOptions(false, warningsAreErrors = false)
             assertEquals($$"div $t1,<b>$t2</b>", info($$"div $t0, <caret>"))
@@ -64,7 +64,7 @@ class MipsParameterInfoPlatformTest {
     }
 
     @Test
-    fun `bare-machine parameter info renders numeric registers and preserves operand highlights`() = timeoutRunBlocking<Unit> {
+    fun `bare-machine parameter info renders numeric registers and preserves operand highlights`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             val settings = project.get().service<MarsAssemblySettings>()
             settings.changeBareMachine(true)
@@ -90,7 +90,7 @@ class MipsParameterInfoPlatformTest {
     }
 
     @Test
-    fun `current token follows separators and incomplete memory addresses`() = timeoutRunBlocking<Unit> {
+    fun `current token follows separators and incomplete memory addresses`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             assertEquals($$"sll <b>$t1</b>,$t2,10", info("sll<caret>"))
             assertEquals($$"sll <b>$t1</b>,$t2,10", info($$"sll $t<caret>0, $t1, 4"))
@@ -104,7 +104,7 @@ class MipsParameterInfoPlatformTest {
     }
 
     @Test
-    fun `parameter info stays off comments and noninstruction text`() = timeoutRunBlocking<Unit> {
+    fun `parameter info stays off comments and noninstruction text`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             for (source in listOf("   <caret>", "\u000c<caret>", "@<caret>", $$"a<caret>dd $t0", "entry: <caret>", ".word <caret>1",
               $$"custom $t0 <caret>", $$"add $t0, $t1 # <caret>comment"
@@ -124,7 +124,7 @@ class MipsParameterInfoPlatformTest {
     }
 
     @Test
-    fun `parameter info counts operands after an aliased mnemonic`() = timeoutRunBlocking<Unit> {
+    fun `parameter info counts operands after an aliased mnemonic`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             val include = includeAliases($$"SHIFT SLL $t0", $$"DIVIDE div $t0,$t1")
             assertEquals($$"sll $t1,<b>$t2</b>,10", info("${include}entry: SHIFT<caret>"))
@@ -136,7 +136,7 @@ class MipsParameterInfoPlatformTest {
     }
 
     @Test
-    fun `parameter info follows expanded registers and relative addresses`() = timeoutRunBlocking<Unit> {
+    fun `parameter info follows expanded registers and relative addresses`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             val include = includeAliases($$"LOAD lw $t0", "OFFSET -4(", $$"REGS $t0,$t1")
             val addressHint = info($$"lw $t0, -4(<caret>")
@@ -150,7 +150,7 @@ class MipsParameterInfoPlatformTest {
     }
 
     @Test
-    fun `parameter info follows aliased label prefixes and separators`() = timeoutRunBlocking<Unit> {
+    fun `parameter info follows aliased label prefixes and separators`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             val include = includeAliases("PREFIX row:", "SEP :")
             val shiftHint = info($$"sll $t0, <caret>")
@@ -162,7 +162,7 @@ class MipsParameterInfoPlatformTest {
     }
 
     @Test
-    fun `parameter info excludes unresolved and noninstruction aliases`() = timeoutRunBlocking<Unit> {
+    fun `parameter info excludes unresolved and noninstruction aliases`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             for (source in listOf(
                 ".eqv WORDS .word\nWORDS <caret>1",
@@ -180,7 +180,7 @@ class MipsParameterInfoPlatformTest {
     }
 
     @Test
-    fun `macro hints follow raw arguments and optional SPIM parentheses`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+    fun `macro hints follow raw arguments and optional SPIM parentheses`(@TempDir directory: Path) = timeoutRunBlocking {
         val definition = $$"""
             .macro emit (%ignored, $value)
               addiu $t0, $zero, $value
@@ -210,7 +210,7 @@ class MipsParameterInfoPlatformTest {
     }
 
     @Test
-    fun `native parameter info distinguishes a repetition from a matching macro`() = timeoutRunBlocking<Unit> {
+    fun `native parameter info distinguishes a repetition from a matching macro`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             val setup = ".macro emit (%one)\n.end_macro\n.data\n.word 0\n"
             assertNull(info(setup + "emit <caret>7:2"))
@@ -220,7 +220,7 @@ class MipsParameterInfoPlatformTest {
     }
 
     @Test
-    fun `parameter info counts later operands after malformed tokens without expanding a cycle`() = timeoutRunBlocking<Unit> {
+    fun `parameter info counts later operands after malformed tokens without expanding a cycle`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             val definition = ".macro emit (%first, %second, %third)\nnop\n.end_macro\n"
             val second = "emit (%first, <b>%second</b>, %third)"
@@ -241,7 +241,7 @@ class MipsParameterInfoPlatformTest {
     }
 
     @Test
-    fun `macro hints follow included redefinitions aliases and edits`() = timeoutRunBlocking<Unit> {
+    fun `macro hints follow included redefinitions aliases and edits`() = timeoutRunBlocking {
         val current = project.get()
         withContext(Dispatchers.EDT) {
             val include = fixture.addFileToProject("macros.s", ".macro emit (%stale)\n.end_macro\n")
@@ -279,7 +279,7 @@ class MipsParameterInfoPlatformTest {
     }
 
     @Test
-    fun `direct hints use live signatures from plain includes even when a call is incomplete`() = timeoutRunBlocking<Unit> {
+    fun `direct hints use live signatures from plain includes even when a call is incomplete`() = timeoutRunBlocking {
         val source = """
             .macro emit (%written, %obsolete)
             .end_macro
@@ -309,7 +309,7 @@ class MipsParameterInfoPlatformTest {
     }
 
     @Test
-    fun `nested hints use the selected definitions and discard stale rows after an edit`() = timeoutRunBlocking<Unit> {
+    fun `nested hints use the selected definitions and discard stale rows after an edit`() = timeoutRunBlocking {
         val source = """
             .eqv CALL inner
             .eqv ARG 1
@@ -352,7 +352,7 @@ class MipsParameterInfoPlatformTest {
     }
 
     @Test
-    fun `nested hints use the realized operation and avoid guessing within a multi argument alias`() = timeoutRunBlocking<Unit> {
+    fun `nested hints use the realized operation and avoid guessing within a multi argument alias`() = timeoutRunBlocking {
         val source = """
             .eqv ARGS 3, 4
             .macro outer (%operation)
@@ -375,7 +375,7 @@ class MipsParameterInfoPlatformTest {
     }
 
     @Test
-    fun `a substituted label separator moves the nested hint to the actual call token`() = timeoutRunBlocking<Unit> {
+    fun `a substituted label separator moves the nested hint to the actual call token`() = timeoutRunBlocking {
         val source = """
             .macro outer (%separator)
                 row %separator inner 7  # leave a caret position after the argument
@@ -396,7 +396,7 @@ class MipsParameterInfoPlatformTest {
     }
 
     @Test
-    fun `a nested call can realize both wrapped and raw argument lists`() = timeoutRunBlocking<Unit> {
+    fun `a nested call can realize both wrapped and raw argument lists`() = timeoutRunBlocking {
         val source = """
             .macro outer (%operation, %first)
                 %operation %first 7 )
@@ -419,7 +419,7 @@ class MipsParameterInfoPlatformTest {
     }
 
     @Test
-    fun `popup updates reject stale instruction forms after unsaved include edits`() = timeoutRunBlocking<Unit> {
+    fun `popup updates reject stale instruction forms after unsaved include edits`() = timeoutRunBlocking {
         val current = project.get()
         withContext(Dispatchers.EDT) {
             val include = fixture.addFileToProject("aliases.s", $$".eqv SHIFT sll $t0\n")

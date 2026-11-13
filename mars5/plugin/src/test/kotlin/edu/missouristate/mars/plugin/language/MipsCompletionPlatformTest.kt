@@ -42,7 +42,7 @@ class MipsCompletionPlatformTest {
 
     @ParameterizedTest
     @ValueSource(booleans = [true, false])
-    fun `statement heads offer enabled catalog instructions and directives once`(allowPseudo: Boolean) = timeoutRunBlocking<Unit> {
+    fun `statement heads offer enabled catalog instructions and directives once`(allowPseudo: Boolean) = timeoutRunBlocking {
         IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
         val instructions = InstructionDefaults.get().instructionList
         val directives = Directives.getDirectiveList().map { it.name }
@@ -66,7 +66,7 @@ class MipsCompletionPlatformTest {
     }
 
     @Test
-    fun `bare-machine mnemonic completion shows numeric instruction examples`() = timeoutRunBlocking<Unit> {
+    fun `bare-machine mnemonic completion shows numeric instruction examples`() = timeoutRunBlocking {
         IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
         withContext(Dispatchers.EDT) {
             val settings = project.get().service<MarsAssemblySettings>()
@@ -88,7 +88,7 @@ class MipsCompletionPlatformTest {
 
     @Test
     fun `statement completion offers instruction aliases that fit written operands and project settings`(@TempDir directory: Path) =
-        timeoutRunBlocking<Unit> {
+        timeoutRunBlocking {
             val current = project.get()
             val definitions = $$".eqv RUN_OP sll\n.eqv RUN_ONE RUN_OP $t0,\n.eqv RUN_NUMBERED sll $8,\n" +
                 $$".eqv RUN_PAIR sll $t0, $t1,\n.eqv RUN_ALL sll $t0, $t1, 4\n.eqv RUN_BAD sll $f0,\n" +
@@ -138,7 +138,7 @@ class MipsCompletionPlatformTest {
 
     @Test
     fun `statement completion offers expanded directives handled by the assembler`(@TempDir directory: Path) =
-        timeoutRunBlocking<Unit> {
+        timeoutRunBlocking {
             val current = project.get()
             val definitions = ".eqv DIRECT_WORD .WoRd\n.eqv DIRECT_VALUES DIRECT_WORD 7,\n" +
                 ".eqv DIRECT_INCLUDE .include\n.eqv DIRECT_UNKNOWN .unknown\n.eqv DIRECT_DEFINE .eqv\n" +
@@ -175,7 +175,7 @@ class MipsCompletionPlatformTest {
 
     @Test
     fun `statement completion offers macro aliases with compatible call arity`(@TempDir directory: Path) =
-        timeoutRunBlocking<Unit> {
+        timeoutRunBlocking {
             val current = project.get()
             val definitions = $$".macro emit\n.end_macro\n.macro emit (%dst, %amount)\nsll %dst, $t1, %amount\n.end_macro\n" +
                 $$".eqv CALL_OP emit\n.eqv CALL_FIRST CALL_OP $t0\n.eqv CALL_WRAPPED emit($t0, 4)\n" +
@@ -215,7 +215,7 @@ class MipsCompletionPlatformTest {
         }
 
     @Test
-    fun `catalog completion inserts a dotted mnemonic after a label and a directive inside a macro`() = timeoutRunBlocking<Unit> {
+    fun `catalog completion inserts a dotted mnemonic after a label and a directive inside a macro`() = timeoutRunBlocking {
         IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
         withContext(Dispatchers.EDT) {
             fixture.configureByText("completion.asm", $$"entry: C.<caret>eq.s $f0, $f2\n")
@@ -236,7 +236,7 @@ class MipsCompletionPlatformTest {
     }
 
     @Test
-    fun `macro completion displays the visible overloads and inserts the call name`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+    fun `macro completion displays the visible overloads and inserts the call name`(@TempDir directory: Path) = timeoutRunBlocking {
         val include = $$"""
             .macro emit (%obsolete)
               addiu $t0, $zero, 1
@@ -284,7 +284,7 @@ class MipsCompletionPlatformTest {
     }
 
     @Test
-    fun `completion reads nested plain includes and refreshes their signatures after an edit`() = timeoutRunBlocking<Unit> {
+    fun `completion reads nested plain includes and refreshes their signatures after an edit`() = timeoutRunBlocking {
         val source = ".include \"lib/wrapper.txt\"\nj generated\n.data\n.word COUNT, storage\n.text\nem<caret>\n"
         val definitions = """
             .eqv NAME emit
@@ -329,7 +329,7 @@ class MipsCompletionPlatformTest {
 
     @Test
     fun `macro formal completion replaces the whole token after an aliased included header`(@TempDir directory: Path) =
-        timeoutRunBlocking<Unit> {
+        timeoutRunBlocking {
             val current = project.get()
             val definitions = ".eqv OPEN .macro\n.eqv FORMALS (%value, %valueMore)\nOPEN emit FORMALS\n"
             val source = $$".include \"formals.s\"\naddiu $t0, $zero, %va<caret>lueSuffix\n.end_macro\nemit(7, 0)\n"
@@ -352,7 +352,7 @@ class MipsCompletionPlatformTest {
         }
 
     @Test
-    fun `formal suggestions follow token context case and macro scope`() = timeoutRunBlocking<Unit> {
+    fun `formal suggestions follow token context case and macro scope`() = timeoutRunBlocking {
         val current = project.get()
         val formals = setOf("%value", "%valueMore", $$"$destination", $$"$distance")
         val header = ".macro emit (${formals.joinToString()})\n"
@@ -398,7 +398,7 @@ class MipsCompletionPlatformTest {
     }
 
     @Test
-    fun `macro suggestions honor case active aliases and incomplete definitions`() = timeoutRunBlocking<Unit> {
+    fun `macro suggestions honor case active aliases and incomplete definitions`() = timeoutRunBlocking {
         val current = project.get()
         IndexingTestUtil.suspendUntilIndexesAreReady(current)
         withContext(Dispatchers.EDT) {
@@ -436,7 +436,7 @@ class MipsCompletionPlatformTest {
 
     @ParameterizedTest
     @ValueSource(booleans = [false, true])
-    fun `register completion follows the operand format register bank and bare-machine mode`(bareMachine: Boolean) = timeoutRunBlocking<Unit> {
+    fun `register completion follows the operand format register bank and bare-machine mode`(bareMachine: Boolean) = timeoutRunBlocking {
         IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
         withContext(Dispatchers.EDT) {
             project.get().service<MarsAssemblySettings>().changeBareMachine(bareMachine)
@@ -481,7 +481,7 @@ class MipsCompletionPlatformTest {
 
     @Test
     fun `completion follows operands and punctuation from unsaved included equivalences`(@TempDir directory: Path) =
-        timeoutRunBlocking<Unit> {
+        timeoutRunBlocking {
             val current = project.get()
             val aliases = $$".eqv ADDRESS OFFSET\n.eqv OFFSET -4(\n.eqv DEST $f0\n.eqv PAIR $t0, $t1\n"
             val prefix = ".include \"outer.s\"\n"
@@ -520,7 +520,7 @@ class MipsCompletionPlatformTest {
         }
 
     @Test
-    fun `completion follows malformed operands in instruction aliases`() = timeoutRunBlocking<Unit> {
+    fun `completion follows malformed operands in instruction aliases`() = timeoutRunBlocking {
         IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
         withContext(Dispatchers.EDT) {
             val labels = "\ntarget: nop\ntarget2: nop\n"
@@ -542,7 +542,7 @@ class MipsCompletionPlatformTest {
 
     @Test
     fun `integer data completion follows includes aliases and continuation lines`(@TempDir directory: Path) =
-        timeoutRunBlocking<Unit> {
+        timeoutRunBlocking {
             val current = project.get()
             val setup = ".data\n.eqv WORDS .word\n.eqv SUFFIX :2\n.eqv SEPARATOR :\n.word 0\n"
             val prefix = ".include \"setup.inc\"\n"
@@ -581,7 +581,7 @@ class MipsCompletionPlatformTest {
         }
 
     @Test
-    fun `integer data completion uses spellings the assembler can consume as addresses`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+    fun `integer data completion uses spellings the assembler can consume as addresses`(@TempDir directory: Path) = timeoutRunBlocking {
         val current = project.get()
         IndexingTestUtil.suspendUntilIndexesAreReady(current)
         val completed = withContext(Dispatchers.EDT) {
@@ -617,7 +617,7 @@ class MipsCompletionPlatformTest {
 
     @Test
     fun `a shared macro and label name completes as the role selected by the written arguments`(@TempDir directory: Path) =
-        timeoutRunBlocking<Unit> {
+        timeoutRunBlocking {
             val current = project.get()
             IndexingTestUtil.suspendUntilIndexesAreReady(current)
             val definitions = $$"""
@@ -665,7 +665,7 @@ class MipsCompletionPlatformTest {
 
     @Test
     fun `integer data operands complete aliases without changing written values`(@TempDir directory: Path) =
-        timeoutRunBlocking<Unit> {
+        timeoutRunBlocking {
             val current = project.get()
             val definitions = ".eqv WORDS .word\n.eqv VALUE_NUM 3\n.eqv VALUE_ZERO 0\n.eqv VALUE_NEG -2\n" +
                 ".eqv VALUE_LIST VALUE_NUM, 8\n.eqv VALUE_SYMBOL target\n.eqv VALUE_DOTTED .local\n" +
@@ -730,7 +730,7 @@ class MipsCompletionPlatformTest {
 
     @Test
     fun `data lists complete real and quoted equivalences using the active directive`(@TempDir directory: Path) =
-        timeoutRunBlocking<Unit> {
+        timeoutRunBlocking {
             val current = project.get()
             val definitions = ".eqv REALS .float\n.eqv STRINGS .asciiz\n.eqv VAL_INT 3\n.eqv VAL_REAL -1.5\n" +
                 ".eqv VAL_MIX VAL_REAL, 2.25\n.eqv VAL_WIDE 1.0e40\n.eqv VAL_HEX 0x10\n" +
@@ -783,7 +783,7 @@ class MipsCompletionPlatformTest {
 
     @Test
     fun `directive operands complete addresses and nonnegative sizes in the assembler slots`(@TempDir directory: Path) =
-        timeoutRunBlocking<Unit> {
+        timeoutRunBlocking {
             val current = project.get()
             val definitions = ".eqv RESERVE .space\n.eqv STORAGE .extern first\n.eqv SELECT_TEXT .text\n" +
                 ".eqv SIZE_OK 4\n.eqv SIZE_CHAIN SIZE_OK\n.eqv SIZE_ZERO 0\n.eqv SIZE_HEX 0x10\n" +
@@ -834,7 +834,7 @@ class MipsCompletionPlatformTest {
 
     @Test
     fun `export completion offers eligible labels from the current assembly root`(@TempDir directory: Path) =
-        timeoutRunBlocking<Unit> {
+        timeoutRunBlocking {
             val current = project.get()
             val definitions = ".eqv EXPORT .globl\n.eqv ALREADY exportIncluded\n" +
                 ".eqv REST ALREADY, exportLocal\n.eqv LOOP AGAIN\n.eqv AGAIN LOOP\nexportIncluded: nop\n"
@@ -888,7 +888,7 @@ class MipsCompletionPlatformTest {
 
     @Test
     fun `export completion offers aliases whose expanded labels are local and distinct`(@TempDir directory: Path) =
-        timeoutRunBlocking<Unit> {
+        timeoutRunBlocking {
             val current = project.get()
             val definitions = ".eqv EXPORT .globl\n.eqv EX_FIRST alpha\n.eqv EX_SECOND beta\n" +
                 ".eqv EX_PAIR EX_FIRST, beta\n.eqv EX_CHAIN EX_PAIR\n.eqv EX_DUP alpha, alpha\n" +
@@ -933,7 +933,7 @@ class MipsCompletionPlatformTest {
 
     @Test
     fun `instruction completion offers equivalences that fit the assembler operand format`(@TempDir directory: Path) =
-        timeoutRunBlocking<Unit> {
+        timeoutRunBlocking {
             val current = project.get()
             val definitions = $$"""
                 .eqv ARG_REG $t1
@@ -1000,7 +1000,7 @@ class MipsCompletionPlatformTest {
 
     @Test
     fun `equivalence suggestions preserve already written operands and address punctuation`(@TempDir directory: Path) =
-        timeoutRunBlocking<Unit> {
+        timeoutRunBlocking {
             val current = project.get()
             val definitions = $$".eqv TAIL_BASE $sp\n.eqv TAIL_CLOSE $sp)\n.eqv TAIL_REG $t1\n" +
                 $$".eqv TAIL_PAIR $t1, 4\n.eqv TAIL_ADDR 4($sp)\n.eqv TAIL_OFFSET 4\n.eqv CLOSE )\n" +
@@ -1040,7 +1040,7 @@ class MipsCompletionPlatformTest {
         }
 
     @Test
-    fun `register insertion replaces the complete token and preserves the address punctuation`() = timeoutRunBlocking<Unit> {
+    fun `register insertion replaces the complete token and preserves the address punctuation`() = timeoutRunBlocking {
         IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
         withContext(Dispatchers.EDT) {
             fixture.configureByText("registers.asm", $$"lw $t0, 4($t<caret>8)\n")
@@ -1052,7 +1052,7 @@ class MipsCompletionPlatformTest {
     }
 
     @Test
-    fun `label completion follows current and included files and replaces a dotted target`() = timeoutRunBlocking<Unit> {
+    fun `label completion follows current and included files and replaces a dotted target`() = timeoutRunBlocking {
         val current = project.get()
         val included = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("parts/inner.s", "Target.nested: nop\n.include \"outer.s\"\n")
@@ -1093,7 +1093,7 @@ class MipsCompletionPlatformTest {
     }
 
     @Test
-    fun `labels inside macros stay in their physical macro scope`() = timeoutRunBlocking<Unit> {
+    fun `labels inside macros stay in their physical macro scope`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             fixture.addFileToProject("macro-part.s", $$"injectedLabel: nop\n$includedParameterLabel: nop\n")
             fixture.addFileToProject("macro-extra.txt",
@@ -1130,7 +1130,7 @@ class MipsCompletionPlatformTest {
     }
 
     @Test
-    fun `indexed label completion resumes when indexing finishes`() = timeoutRunBlocking<Unit> {
+    fun `indexed label completion resumes when indexing finishes`() = timeoutRunBlocking {
         val current = project.get()
         withContext(Dispatchers.EDT) {
             fixture.addFileToProject("targets.s", "targetOne: nop\ntargetTwo: nop\n")
@@ -1149,7 +1149,7 @@ class MipsCompletionPlatformTest {
     }
 
     @Test
-    fun `completion exposes expanded labels and hides the replaced spelling`() = timeoutRunBlocking<Unit> {
+    fun `completion exposes expanded labels and hides the replaced spelling`() = timeoutRunBlocking {
         val current = project.get()
         withContext(Dispatchers.EDT) {
             fixture.configureByText("expanded-labels.asm", $$"""
@@ -1203,7 +1203,7 @@ class MipsCompletionPlatformTest {
     }
 
     @Test
-    fun `catalog heads do not complete in comments strings operands or declaration names`() = timeoutRunBlocking<Unit> {
+    fun `catalog heads do not complete in comments strings operands or declaration names`() = timeoutRunBlocking {
         IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
         withContext(Dispatchers.EDT) {
             val sources = listOf("# <caret>", ".asciiz \"<caret>\"", "b <caret>", "<caret>: nop",

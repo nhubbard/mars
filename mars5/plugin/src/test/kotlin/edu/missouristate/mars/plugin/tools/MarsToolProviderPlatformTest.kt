@@ -47,7 +47,7 @@ class MarsToolProviderPlatformTest {
     private val project get() = projectFixture.get()
 
     @Test
-    fun `native content loads on selection and dynamic provider removal disposes it`() = timeoutRunBlocking<Unit> {
+    fun `native content loads on selection and dynamic provider removal disposes it`() = timeoutRunBlocking {
         val loaded = mutableListOf<String>()
         val disposed = mutableListOf<String>()
         var cancel = true
@@ -125,7 +125,7 @@ class MarsToolProviderPlatformTest {
     }
 
     @Test
-    fun `registered intro example receives instructions from only the selected execution`() = timeoutRunBlocking<Unit>(45.seconds) {
+    fun `registered intro example receives instructions from only the selected execution`() = timeoutRunBlocking(45.seconds) {
         val container = JPanel()
         val tool = withContext(Dispatchers.EDT) {
             val window = ToolWindowManager.getInstance(project).registerToolWindow(RegisterToolWindowTask("Example MARS tools"))

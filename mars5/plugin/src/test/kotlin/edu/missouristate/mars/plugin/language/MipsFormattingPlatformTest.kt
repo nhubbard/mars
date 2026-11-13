@@ -35,7 +35,7 @@ class MipsFormattingPlatformTest {
     private val fixture by codeInsightFixture(project)
 
     @Test
-    fun `reformat normalizes native syntax and preserves machine words and data`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+    fun `reformat normalizes native syntax and preserves machine words and data`(@TempDir directory: Path) = timeoutRunBlocking {
         val source = $$"""
               .eqv    OFFSET -4
              .eqv OP   addiu  $t0,   $t0,  1
@@ -105,7 +105,7 @@ class MipsFormattingPlatformTest {
 
     @Test
     fun `reformat separates punctuation names from the extern directive and size`(@TempDir directory: Path) =
-        timeoutRunBlocking<Unit> {
+        timeoutRunBlocking {
             val source = """
                 .extern)4
                 .extern  :  4
@@ -138,7 +138,7 @@ class MipsFormattingPlatformTest {
 
     @Test
     fun `reformat preserves written whitespace inside a string opened by an equivalence`(@TempDir directory: Path) =
-        timeoutRunBlocking<Unit> {
+        timeoutRunBlocking {
             val source = """
                 .eqv HEAD OPEN
                 .eqv OPEN "x
@@ -171,7 +171,7 @@ class MipsFormattingPlatformTest {
 
     @Test
     fun `reformat preserves replacement whitespace when a macro operand defines an equivalence`(@TempDir directory: Path) =
-        timeoutRunBlocking<Unit> {
+        timeoutRunBlocking {
             val source = $$"""
                 .eqv DEFINE .eqv
                 .eqv OPEN "z
@@ -198,7 +198,7 @@ class MipsFormattingPlatformTest {
 
     @Test
     fun `reformat preserves data for every entry that uses a shared include`(@TempDir directory: Path) =
-        timeoutRunBlocking<Unit> {
+        timeoutRunBlocking {
             val dataEntry = """
                 .eqv STORE .asciiz
                 .eqv DEFINE .eqv
@@ -261,7 +261,7 @@ class MipsFormattingPlatformTest {
 
     @Test
     fun `reformat preserves expanded string data from an ignored include`(@TempDir directory: Path) =
-        timeoutRunBlocking<Unit> {
+        timeoutRunBlocking {
             val definitions = ".eqv HEAD \"x\n"
             val source = """
                 .data
@@ -296,7 +296,7 @@ class MipsFormattingPlatformTest {
 
     @Test
     fun `reformat preserves strings opened by equivalences declared after a macro body`(@TempDir directory: Path) =
-        timeoutRunBlocking<Unit> {
+        timeoutRunBlocking {
             val source = """
                 .eqv WRITE .asciiz
                 .data
@@ -329,7 +329,7 @@ class MipsFormattingPlatformTest {
 
     @Test
     fun `reformat preserves strings opened by equivalences created during macro expansion`(@TempDir directory: Path) =
-        timeoutRunBlocking<Unit> {
+        timeoutRunBlocking {
             val source = """
                 .eqv ALIAS HEAD
                 .data
@@ -361,7 +361,7 @@ class MipsFormattingPlatformTest {
 
     @Test
     fun `reformat preserves text that a macro formal can place inside a string`(@TempDir directory: Path) =
-        timeoutRunBlocking<Unit> {
+        timeoutRunBlocking {
             val source = $$"""
                 .data
                 .macro append (%open)
@@ -399,7 +399,7 @@ class MipsFormattingPlatformTest {
         }
 
     @Test
-    fun `reformat uses the substituted operation at alias call sites without changing assembly`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+    fun `reformat uses the substituted operation at alias call sites without changing assembly`(@TempDir directory: Path) = timeoutRunBlocking {
         val source = $$"""
             .eqv LOAD lw
             .eqv CALL emit
@@ -444,7 +444,7 @@ class MipsFormattingPlatformTest {
     }
 
     @Test
-    fun `aliases that complete an operand expose its safe spacing boundaries`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+    fun `aliases that complete an operand expose its safe spacing boundaries`(@TempDir directory: Path) = timeoutRunBlocking {
         val source = $$"""
             .eqv OPEN (
             .eqv CLOSE )
@@ -489,7 +489,7 @@ class MipsFormattingPlatformTest {
     }
 
     @Test
-    fun `complete operands use expanded address and group roles when spacing parentheses`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+    fun `complete operands use expanded address and group roles when spacing parentheses`(@TempDir directory: Path) = timeoutRunBlocking {
         val source = $$"""
             .eqv LOAD lw
             .eqv DEST $t0
@@ -530,7 +530,7 @@ class MipsFormattingPlatformTest {
     }
 
     @Test
-    fun `operand aliases that leave invalid or incomplete syntax keep their internal spacing`() = timeoutRunBlocking<Unit> {
+    fun `operand aliases that leave invalid or incomplete syntax keep their internal spacing`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             val source = $$"""
                 .eqv OFFSET 4
@@ -558,7 +558,7 @@ class MipsFormattingPlatformTest {
     }
 
     @Test
-    fun `expanded labels and directives set the margin without rewriting aliases`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+    fun `expanded labels and directives set the margin without rewriting aliases`(@TempDir directory: Path) = timeoutRunBlocking {
         val source = $$"""
             .eqv DATA .data
             .eqv TEXT .text
@@ -599,7 +599,7 @@ class MipsFormattingPlatformTest {
     }
 
     @Test
-    fun `macro indentation follows effective boundaries inside and outside physical macro blocks`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+    fun `macro indentation follows effective boundaries inside and outside physical macro blocks`(@TempDir directory: Path) = timeoutRunBlocking {
         val source = $$"""
             .eqv OPEN .macro
             .eqv CLOSE .end_macro
@@ -652,7 +652,7 @@ class MipsFormattingPlatformTest {
     }
 
     @Test
-    fun `an included body takes its indentation from the enclosing entry macro`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+    fun `an included body takes its indentation from the enclosing entry macro`(@TempDir directory: Path) = timeoutRunBlocking {
         val entry = ".eqv OPEN .macro\n.eqv STOP .end_macro\n.text\nOPEN emit\n.include \"macro-body.s\"\n    emit\n"
         val body = "inside :   nop\nsecond :  nop\n    STOP\n    outside :   nop\n  nop\n"
         val current = project.get()
@@ -681,7 +681,7 @@ class MipsFormattingPlatformTest {
     }
 
     @Test
-    fun `an invalid macro name leaves following labels at the margin`() = timeoutRunBlocking<Unit> {
+    fun `an invalid macro name leaves following labels at the margin`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             fixture.configureByText("invalid-macro.asm", ".macro nop\nlabel :    nop\n.end_macro\nnext: nop\n")
             assertEquals(".macro nop\nlabel: nop\n.end_macro\nnext: nop\n", reformat())
@@ -689,7 +689,7 @@ class MipsFormattingPlatformTest {
     }
 
     @Test
-    fun `a header written with an alias preserves physical indentation when its expansion is rejected`() = timeoutRunBlocking<Unit> {
+    fun `a header written with an alias preserves physical indentation when its expansion is rejected`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             val header = ".eqv NAME nop\n.macro NAME\n"
             fixture.configureByText("aliased-macro-name.asm", header + "label :    nop\n.end_macro\nnext: nop\n")
@@ -698,7 +698,7 @@ class MipsFormattingPlatformTest {
     }
 
     @Test
-    fun `an incomplete aliased closer keeps the macro body indented`() = timeoutRunBlocking<Unit> {
+    fun `an incomplete aliased closer keeps the macro body indented`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             val header = ".eqv OPEN .macro\n.eqv STOP .end_macro\nOPEN emit\n"
             fixture.configureByText("incomplete-macro.asm", header + "STOP stray\ninside: nop\n.end_macro\n    outside: nop\n")
@@ -707,7 +707,7 @@ class MipsFormattingPlatformTest {
     }
 
     @Test
-    fun `selection formatting respects project indent size and preserves malformed lines`() = timeoutRunBlocking<Unit> {
+    fun `selection formatting respects project indent size and preserves malformed lines`() = timeoutRunBlocking {
         val current = project.get()
         withContext(Dispatchers.EDT) {
             val source = $$".text\nstart :   nop\n   lw $t0,4($sp\n  addiu $t0 , $zero , 1\nnext :    nop\n"
@@ -748,7 +748,7 @@ class MipsFormattingPlatformTest {
     }
 
     @Test
-    fun `formatting preserves signed limits and separate macro sign arguments`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+    fun `formatting preserves signed limits and separate macro sign arguments`(@TempDir directory: Path) = timeoutRunBlocking {
         val source = """
             .eqv WORDS 1,   -0x080000000
             .data
@@ -779,7 +779,7 @@ class MipsFormattingPlatformTest {
 
     @Test
     fun `formatting preserves repetition aliases and adjacent sign substitution`(@TempDir directory: Path) =
-        timeoutRunBlocking<Unit> {
+        timeoutRunBlocking {
             val source = """
                 .eqv REPEAT 7:2
                 .eqv SUFFIX :2
@@ -807,7 +807,7 @@ class MipsFormattingPlatformTest {
 
     @Test
     fun `formatting follows expanded repetition without changing written aliases or macro calls`(@TempDir directory: Path) =
-        timeoutRunBlocking<Unit> {
+        timeoutRunBlocking {
             val source = """
                 .eqv PAD 99
                 .eqv COLON :
@@ -855,7 +855,7 @@ class MipsFormattingPlatformTest {
 
     @Test
     fun `formatting compact macro offsets keeps signed fields and normalizes commas`(@TempDir directory: Path) =
-        timeoutRunBlocking<Unit> {
+        timeoutRunBlocking {
             val source = $$"""
                 .macro compact (%out,%label,%base)
                 la %out,%label+4
@@ -892,7 +892,7 @@ class MipsFormattingPlatformTest {
         }
 
     @Test
-    fun `formatting preserves unjoined signs and can recover around broken syntax`() = timeoutRunBlocking<Unit> {
+    fun `formatting preserves unjoined signs and can recover around broken syntax`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             val source = $$"""
                 .data

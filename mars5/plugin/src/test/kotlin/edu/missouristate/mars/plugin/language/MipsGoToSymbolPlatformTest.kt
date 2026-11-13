@@ -41,7 +41,7 @@ class MipsGoToSymbolPlatformTest {
         get() = ChooseByNameContributor.SYMBOL_EP_NAME.extensionList.filterIsInstance<MipsGoToSymbolContributor>().single()
 
     @Test
-    fun `registered symbol search opens exact identifiers and retains all matching kinds`() = timeoutRunBlocking<Unit> {
+    fun `registered symbol search opens exact identifiers and retains all matching kinds`() = timeoutRunBlocking {
         val source = "shared: nop\n.macro shared\n.end_macro\nignored: .include \"other.asm\"\n.eqv shared 3\n.eqv\n.eqv 7 8\n"
         val (first, second) = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("definitions.asm", source) to
@@ -105,7 +105,7 @@ class MipsGoToSymbolPlatformTest {
     }
 
     @Test
-    fun `search resolves expanded labels in included files and removes rewritten declarations`() = timeoutRunBlocking<Unit> {
+    fun `search resolves expanded labels in included files and removes rewritten declarations`() = timeoutRunBlocking {
         val source = "OPEN: .ascii \"ignored\"\n.text\nORIGINAL: nop\nPREFIX nop\n"
         val (body, entry) = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("other-symbol.asm", "generated: nop\n")
@@ -172,7 +172,7 @@ class MipsGoToSymbolPlatformTest {
     }
 
     @Test
-    fun `search finds expanded macros and equivalences at their written origins`() = timeoutRunBlocking<Unit> {
+    fun `search finds expanded macros and equivalences at their written origins`() = timeoutRunBlocking {
         val source = """
             .macro WRITTEN
             .end_macro
@@ -226,7 +226,7 @@ class MipsGoToSymbolPlatformTest {
     }
 
     @Test
-    fun `symbol search uses the effective external reservation names`() = timeoutRunBlocking<Unit> {
+    fun `symbol search uses the effective external reservation names`() = timeoutRunBlocking {
         val current = project.get()
         val source = $$"""
             .extern STORAGE SIZE
@@ -270,7 +270,7 @@ class MipsGoToSymbolPlatformTest {
     }
 
     @Test
-    fun `percent external names resolve according to the effective macro scope`() = timeoutRunBlocking<Unit> {
+    fun `percent external names resolve according to the effective macro scope`() = timeoutRunBlocking {
         val (literal, macroBody) = withContext(Dispatchers.EDT) {
             val literal = fixture.addFileToProject("literal.mars", ".extern %storage, 4\n")
             val body = fixture.addFileToProject("reserve.inc", ".extern %slot, 4\n")
@@ -297,7 +297,7 @@ class MipsGoToSymbolPlatformTest {
     }
 
     @Test
-    fun `symbol search recovers a local alias in a rootless include cycle`() = timeoutRunBlocking<Unit> {
+    fun `symbol search recovers a local alias in a rootless include cycle`() = timeoutRunBlocking {
         val file = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("cycle-b.s", ".include \"cycle-a.asm\"\n")
             fixture.addFileToProject("cycle-a.asm", ".eqv OLD recovered\n.include \"cycle-b.s\"\nOLD: nop\n")
@@ -316,7 +316,7 @@ class MipsGoToSymbolPlatformTest {
     }
 
     @Test
-    fun `search discovers scoped declarations in plain includes across assembly roots`() = timeoutRunBlocking<Unit> {
+    fun `search discovers scoped declarations in plain includes across assembly roots`() = timeoutRunBlocking {
         val current = project.get()
         val source = """
             # Plain include
@@ -399,7 +399,7 @@ class MipsGoToSymbolPlatformTest {
     }
 
     @Test
-    fun `search follows configured text sources and their preprocessing context`() = timeoutRunBlocking<Unit> {
+    fun `search follows configured text sources and their preprocessing context`() = timeoutRunBlocking {
         val current = project.get()
         val entryText = ".eqv LABEL expandedLabel\nentryLabel: nop\n.include \"included.s\"\n"
         val (entry, included, handler) = withContext(Dispatchers.EDT) {
@@ -448,7 +448,7 @@ class MipsGoToSymbolPlatformTest {
     }
 
     @Test
-    fun `search uses edited identifiers and removes deleted files`() = timeoutRunBlocking<Unit> {
+    fun `search uses edited identifiers and removes deleted files`() = timeoutRunBlocking {
         val file = withContext(Dispatchers.EDT) { fixture.addFileToProject("changing.asm", "before: nop\n") }
         IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
         val scope = GlobalSearchScope.projectScope(project.get())

@@ -41,7 +41,7 @@ class MipsFindUsagesPlatformTest {
     private val fixture by codeInsightFixture(project)
 
     @Test
-    fun `native usage search resolves nested includes externals and macro overloads`() = timeoutRunBlocking<Unit> {
+    fun `native usage search resolves nested includes externals and macro overloads`() = timeoutRunBlocking {
         val source = $$"""
             .include "parts/outer.s"
             j .target.label
@@ -91,7 +91,7 @@ class MipsFindUsagesPlatformTest {
     }
 
     @Test
-    fun `native usage search finds labels consisting entirely of periods`() = timeoutRunBlocking<Unit> {
+    fun `native usage search finds labels consisting entirely of periods`() = timeoutRunBlocking {
         val source = ".: nop\n..: nop\nj .\nj ..\n"
         val file = withContext(Dispatchers.EDT) {
             val entry = fixture.addFileToProject("periods.s", source)
@@ -105,7 +105,7 @@ class MipsFindUsagesPlatformTest {
     }
 
     @Test
-    fun `native usage search distinguishes macro-local labels from a same-named outer label`() = timeoutRunBlocking<Unit> {
+    fun `native usage search distinguishes macro-local labels from a same-named outer label`() = timeoutRunBlocking {
         val source = """
             target: nop
             .macro emit
@@ -138,7 +138,7 @@ class MipsFindUsagesPlatformTest {
     }
 
     @Test
-    fun `native usage search resolves written and aliased macro formals across includes`() = timeoutRunBlocking<Unit> {
+    fun `native usage search resolves written and aliased macro formals across includes`() = timeoutRunBlocking {
         val header = $$".macro emit (%?, $value, FORMALS, %?, BROKEN)\n"
         val entry = $$"""
             .eqv FORMALS (%first, %second)
@@ -191,7 +191,7 @@ class MipsFindUsagesPlatformTest {
     }
 
     @Test
-    fun `native usage search joins realized macro calls from current assemblies`() = timeoutRunBlocking<Unit> {
+    fun `native usage search joins realized macro calls from current assemblies`() = timeoutRunBlocking {
         val left = """
             .include "defs.s"
             .eqv CALL inner
@@ -263,7 +263,7 @@ class MipsFindUsagesPlatformTest {
     }
 
     @Test
-    fun `native label usage search finds assembled aliases and forwarded arguments`() = timeoutRunBlocking<Unit> {
+    fun `native label usage search finds assembled aliases and forwarded arguments`() = timeoutRunBlocking {
         val source = """
             .include "defs.s"
             .eqv DEST target
@@ -321,7 +321,7 @@ class MipsFindUsagesPlatformTest {
     }
 
     @Test
-    fun `native usage search respects the directory assembly inputs and assembler policy`() = timeoutRunBlocking<Unit> {
+    fun `native usage search respects the directory assembly inputs and assembler policy`() = timeoutRunBlocking {
         val source = ".include \"parts/defs.s\"\n.eqv CALL inner\n.macro outer\nCALL\n.end_macro\nouter\nnop\n"
         val current = project.get()
         val (entry, definitions) = withContext(Dispatchers.EDT) {

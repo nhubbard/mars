@@ -61,7 +61,7 @@ class MarsMemoryExportPlatformTest {
     lateinit var directory: Path
 
     @Test
-    fun `all six formats export unsaved included data as exact bytes`() = timeoutRunBlocking<Unit> {
+    fun `all six formats export unsaved included data as exact bytes`() = timeoutRunBlocking {
         val entry = withContext(Dispatchers.EDT) {
             val include = fixture.addFileToProject("words.s", ".word 0\n").virtualFile
             val source = fixture.addFileToProject("entry.asm",
@@ -101,7 +101,7 @@ class MarsMemoryExportPlatformTest {
     }
 
     @Test
-    fun `empty memory invalid ranges assembly failures and IO failures preserve the destination`() = timeoutRunBlocking<Unit> {
+    fun `empty memory invalid ranges assembly failures and IO failures preserve the destination`() = timeoutRunBlocking {
         val entry = source("entry.s", ".text\nnop\n")
         val broken = source("broken.asm", ".text\nnot_an_instruction\n")
         val destination = directory.resolve("existing").also { Files.writeString(it, "preserve") }
@@ -131,7 +131,7 @@ class MarsMemoryExportPlatformTest {
     }
 
     @Test
-    fun `registered Build action validates addresses and respects both dialog cancellations`() = timeoutRunBlocking<Unit> {
+    fun `registered Build action validates addresses and respects both dialog cancellations`() = timeoutRunBlocking {
         val entry = source("entry.s", ".text\nnop\n")
         val file = withContext(Dispatchers.EDT) { fixture.findFileInTempDir("entry.s") }
         val nonSource = withContext(Dispatchers.EDT) { fixture.addFileToProject("plain.txt", "").virtualFile }

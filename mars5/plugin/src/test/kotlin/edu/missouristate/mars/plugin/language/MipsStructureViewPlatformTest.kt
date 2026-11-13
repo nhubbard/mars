@@ -43,7 +43,7 @@ class MipsStructureViewPlatformTest {
     private val fixture by codeInsightFixture(project)
 
     @Test
-    fun `native structure lists declarations in source order and groups macro-local labels`() = timeoutRunBlocking<Unit> {
+    fun `native structure lists declarations in source order and groups macro-local labels`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             fixture.configureByText("outline.asm", $$"""
                 .eqv SIZE 4
@@ -95,7 +95,7 @@ class MipsStructureViewPlatformTest {
     }
 
     @Test
-    fun `outline shows effective macro names and their local declarations in the including entry`() = timeoutRunBlocking<Unit> {
+    fun `outline shows effective macro names and their local declarations in the including entry`() = timeoutRunBlocking {
         val current = project.get()
         val source = """
             EXTERNAL: nop
@@ -164,7 +164,7 @@ class MipsStructureViewPlatformTest {
     }
 
     @Test
-    fun `outline shows expanded labels in source order and omits labels replaced by directives`() = timeoutRunBlocking<Unit> {
+    fun `outline shows expanded labels in source order and omits labels replaced by directives`() = timeoutRunBlocking {
         val current = project.get()
         val source = """
             .eqv OPEN .data
@@ -221,7 +221,7 @@ class MipsStructureViewPlatformTest {
     }
 
     @Test
-    fun `outline shows effective external names and groups macro reservations`() = timeoutRunBlocking<Unit> {
+    fun `outline shows effective external names and groups macro reservations`() = timeoutRunBlocking {
         val current = project.get()
         val source = """
             RESERVE foreign 4
@@ -271,7 +271,7 @@ class MipsStructureViewPlatformTest {
     }
 
     @Test
-    fun `outline shows generated equivalences and navigates to their written directive`() = timeoutRunBlocking<Unit> {
+    fun `outline shows generated equivalences and navigates to their written directive`() = timeoutRunBlocking {
         val current = project.get()
         val source = """
             MAKE FIRST 7
@@ -331,7 +331,7 @@ class MipsStructureViewPlatformTest {
     }
 
     @Test
-    fun `open outline receives updates when the selected assembly changes without source edits`() = timeoutRunBlocking<Unit> {
+    fun `open outline receives updates when the selected assembly changes without source edits`() = timeoutRunBlocking {
         val current = project.get()
         val source = "OPEN emit\nbody: nop\nCLOSE\n"
         val (macroEntry, plainEntry) = withContext(Dispatchers.EDT) {
@@ -375,7 +375,7 @@ class MipsStructureViewPlatformTest {
     }
 
     @Test
-    fun `outline follows unsaved edits while indexing and releases removed declarations`() = timeoutRunBlocking<Unit> {
+    fun `outline follows unsaved edits while indexing and releases removed declarations`() = timeoutRunBlocking {
         val current = project.get()
         withContext(Dispatchers.EDT) {
             val text = PsiFileFactory.getInstance(current).createFileFromText("notes.txt", PlainTextFileType.INSTANCE, "text")

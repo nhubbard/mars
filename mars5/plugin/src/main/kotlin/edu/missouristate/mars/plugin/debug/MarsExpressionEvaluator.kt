@@ -330,7 +330,7 @@ internal class MarsExpressionEvaluator(
         )
         // Every signed MIPS word is exactly representable as a Double. Mixed comparisons use
         // the decoded floating-point value, including IEEE NaN and signed-zero semantics.
-        val binaryOperations = mapOf<String, (Scalar, Scalar) -> Scalar?>(
+        val binaryOperations = mapOf(
             "+" to { a, b -> a + b },
             "-" to { a, b -> a + b.negated() },
             "==" to { a, b -> truth(a.number == b.number) },

@@ -25,7 +25,7 @@ class MipsMacroArityPlatformTest {
     private val fixture by codeInsightFixture(project)
 
     @Test
-    fun `uses only closed overloads visible at the call and updates after header edits`() = timeoutRunBlocking<Unit> {
+    fun `uses only closed overloads visible at the call and updates after header edits`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             val inspection = MipsMacroArityInspection()
             assertTrue(inspection.runForWholeFile(), "A changed overload must refresh later calls")
@@ -82,7 +82,7 @@ class MipsMacroArityPlatformTest {
     }
 
     @Test
-    fun `included overloads and expanded call names use the physical alias range`() = timeoutRunBlocking<Unit> {
+    fun `included overloads and expanded call names use the physical alias range`() = timeoutRunBlocking {
         val source = """
             .text
             .include "overloads.s"
@@ -134,7 +134,7 @@ class MipsMacroArityPlatformTest {
     }
 
     @Test
-    fun `macro hints yield to valid data continuations when no overload matches`() = timeoutRunBlocking<Unit> {
+    fun `macro hints yield to valid data continuations when no overload matches`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             fixture.enableInspections(MipsMacroArityInspection::class.java)
             val source = """

@@ -126,7 +126,7 @@ class MarsRunPlatformTest {
     @CsvSource("false, fault-body.s", "true, fault-body.s", "false, fault-body.png", "true, fault-body.inc~")
     fun `runtime errors link to the loaded instruction and each macro caller in Run and Debug`(
         debug: Boolean, faultName: String,
-    ) = timeoutRunBlocking<Unit> {
+    ) = timeoutRunBlocking {
         val lifetime = Disposer.newDisposable()
         val started = CompletableDeferred<Triple<MarsProcessHandler, Recording, ConsoleViewImpl>>()
         val body = ".macro inner\nbreak BREAK_CODE\n.end_macro\n"
@@ -239,7 +239,7 @@ class MarsRunPlatformTest {
 
     @ParameterizedTest
     @ValueSource(booleans = [false, true])
-    fun `Reset restarts the captured image and Rerun assembles current sources and options`(debug: Boolean) = timeoutRunBlocking<Unit> {
+    fun `Reset restarts the captured image and Rerun assembles current sources and options`(debug: Boolean) = timeoutRunBlocking {
         val manager = ExecutionManager.getInstance(project) as ExecutionManagerImpl
         val previous = manager.forceCompilationInTests
         val lifetime = Disposer.newDisposable()
@@ -354,7 +354,7 @@ class MarsRunPlatformTest {
 
     @ParameterizedTest
     @ValueSource(strings = ["run", "assembly-error", "assembly-cancelled", "later-task-fails"])
-    fun `native Before Launch assembles once and discards the image if startup is blocked`(scenario: String) = timeoutRunBlocking<Unit> {
+    fun `native Before Launch assembles once and discards the image if startup is blocked`(scenario: String) = timeoutRunBlocking {
         val manager = ExecutionManager.getInstance(project) as ExecutionManagerImpl
         val previous = manager.forceCompilationInTests
         val disposable = Disposer.newDisposable()
@@ -450,7 +450,7 @@ class MarsRunPlatformTest {
     }
 
     @Test
-    fun `a disposed launch rejects a completed assembly and a disposed service rejects new work`() = timeoutRunBlocking<Unit> {
+    fun `a disposed launch rejects a completed assembly and a disposed service rejects new work`() = timeoutRunBlocking {
         val entry = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("disposed-launch.asm", "nop\n").virtualFile.toNioPath()
         }
@@ -474,7 +474,7 @@ class MarsRunPlatformTest {
     }
 
     @Test
-    fun `native Run uses the unsaved include and preserves exit status`() = timeoutRunBlocking<Unit> {
+    fun `native Run uses the unsaved include and preserves exit status`() = timeoutRunBlocking {
         val disposable = Disposer.newDisposable()
         val recording = Recording()
         try {
@@ -517,7 +517,7 @@ class MarsRunPlatformTest {
     }
 
     @Test
-    fun `Run inherits or overrides the global main preference without changing its assembly image`() = timeoutRunBlocking<Unit> {
+    fun `Run inherits or overrides the global main preference without changing its assembly image`() = timeoutRunBlocking {
         val lifetime = Disposer.newDisposable()
         val settings = project.getService(MarsAssemblySettings::class.java)
         val build = project.getService(MarsBuildService::class.java)
@@ -597,7 +597,7 @@ class MarsRunPlatformTest {
     }
 
     @Test
-    fun `Run working directory resolves project macros for file syscalls and preserves source includes`() = timeoutRunBlocking<Unit> {
+    fun `Run working directory resolves project macros for file syscalls and preserves source includes`() = timeoutRunBlocking {
         val lifetime = Disposer.newDisposable()
         val default = Recording()
         val custom = Recording()
@@ -682,7 +682,7 @@ class MarsRunPlatformTest {
     }
 
     @Test
-    fun `native Run persists validates and enforces an instruction budget`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+    fun `native Run persists validates and enforces an instruction budget`(@TempDir directory: Path) = timeoutRunBlocking {
         val lifetime = Disposer.newDisposable()
         val recording = Recording()
         val started = CompletableDeferred<MarsProcessHandler>()
@@ -736,7 +736,7 @@ class MarsRunPlatformTest {
     }
 
     @Test
-    fun `Run speed persists and the native toolbar controls only its own running process`() = timeoutRunBlocking<Unit> {
+    fun `Run speed persists and the native toolbar controls only its own running process`() = timeoutRunBlocking {
         val lifetime = Disposer.newDisposable()
         val handlers = mutableListOf<MarsProcessHandler>()
         try {
@@ -828,7 +828,7 @@ class MarsRunPlatformTest {
     }
 
     @Test
-    fun `native Run preserves quoted empty and single-byte program arguments`() = timeoutRunBlocking<Unit> {
+    fun `native Run preserves quoted empty and single-byte program arguments`() = timeoutRunBlocking {
         val lifetime = Disposer.newDisposable()
         val first = Recording()
         val second = Recording()
@@ -905,7 +905,7 @@ class MarsRunPlatformTest {
     }
 
     @Test
-    fun `oversized arguments fail before any compact program instruction runs`() = timeoutRunBlocking<Unit> {
+    fun `oversized arguments fail before any compact program instruction runs`() = timeoutRunBlocking {
         val file = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("oversized.s", "nop\n").virtualFile
         }
@@ -923,7 +923,7 @@ class MarsRunPlatformTest {
 
     @ParameterizedTest
     @ValueSource(booleans = [false, true])
-    fun `Run and Debug resolve the current project assembler error limit`(debug: Boolean) = timeoutRunBlocking<Unit> {
+    fun `Run and Debug resolve the current project assembler error limit`(debug: Boolean) = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             val source = fixture.addFileToProject("limit.asm", "nop\n").virtualFile
             val settings = project.service<MarsAssemblySettings>()
@@ -1009,7 +1009,7 @@ class MarsRunPlatformTest {
     }
 
     @Test
-    fun `native Run uses the stored project entry and assembles unsaved sources in order`() = timeoutRunBlocking<Unit> {
+    fun `native Run uses the stored project entry and assembles unsaved sources in order`() = timeoutRunBlocking {
         val disposable = Disposer.newDisposable()
         val recording = Recording()
         try {
@@ -1084,7 +1084,7 @@ class MarsRunPlatformTest {
     }
 
     @Test
-    fun `native Run links an unsaved sibling when directory mode is enabled`() = timeoutRunBlocking<Unit> {
+    fun `native Run links an unsaved sibling when directory mode is enabled`() = timeoutRunBlocking {
         val disposable = Disposer.newDisposable()
         val recording = Recording()
         try {
@@ -1127,7 +1127,7 @@ class MarsRunPlatformTest {
     }
 
     @Test
-    fun `native Run inherits project delay slots and honors an explicit override`() = timeoutRunBlocking<Unit> {
+    fun `native Run inherits project delay slots and honors an explicit override`() = timeoutRunBlocking {
         val file = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("delay.asm", $$"""
                 li $a0, 1
@@ -1171,7 +1171,7 @@ class MarsRunPlatformTest {
     }
 
     @Test
-    fun `legacy Run XML preserves booleans and new configurations keep inherited defaults on reload`() = timeoutRunBlocking<Unit> {
+    fun `legacy Run XML preserves booleans and new configurations keep inherited defaults on reload`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             val source = fixture.addFileToProject("migration.asm", "nop\n").virtualFile
             val settings = project.service<MarsAssemblySettings>()
@@ -1217,7 +1217,7 @@ class MarsRunPlatformTest {
 
     @ParameterizedTest
     @ValueSource(booleans = [false, true])
-    fun `native Run echoes clears and exits the shipped MMIO terminal example`(delayed: Boolean) = timeoutRunBlocking<Unit> {
+    fun `native Run echoes clears and exits the shipped MMIO terminal example`(delayed: Boolean) = timeoutRunBlocking {
         val disposable = Disposer.newDisposable()
         val recording = Recording()
         val process = CompletableDeferred<MarsProcessHandler>()
@@ -1268,7 +1268,7 @@ class MarsRunPlatformTest {
     }
 
     @Test
-    fun `native Run draws the MarsBot sample with the panel closed`() = timeoutRunBlocking<Unit> {
+    fun `native Run draws the MarsBot sample with the panel closed`() = timeoutRunBlocking {
         val disposable = Disposer.newDisposable()
         val recording = Recording()
         val process = CompletableDeferred<MarsProcessHandler>()
@@ -1306,7 +1306,7 @@ class MarsRunPlatformTest {
     }
 
     @Test
-    fun `native Run plays the Scavenger Hunt sample with the panel closed`() = timeoutRunBlocking<Unit> {
+    fun `native Run plays the Scavenger Hunt sample with the panel closed`() = timeoutRunBlocking {
         val disposable = Disposer.newDisposable()
         val recording = Recording()
         val process = CompletableDeferred<MarsProcessHandler>()
@@ -1345,7 +1345,7 @@ class MarsRunPlatformTest {
     }
 
     @Test
-    fun `Scavenger Hunt requires the default project memory layout`() = timeoutRunBlocking<Unit> {
+    fun `Scavenger Hunt requires the default project memory layout`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             val settings = project.getService(MarsAssemblySettings::class.java)
             val source = fixture.addFileToProject("entry.s", "nop\n")
@@ -1364,7 +1364,7 @@ class MarsRunPlatformTest {
     }
 
     @Test
-    fun `configuration serializes a source path and rejects invalid or unsafe launches`() = timeoutRunBlocking<Unit> {
+    fun `configuration serializes a source path and rejects invalid or unsafe launches`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             val source = fixture.addFileToProject("entry.s", "nop\n")
             val config = type.createTemplateConfiguration(project)
@@ -1521,7 +1521,7 @@ class MarsRunPlatformTest {
 
     @Test
     fun `native run settings add edit remove and round trip memory dump rows`(@TempDir directory: Path) =
-        timeoutRunBlocking<Unit> {
+        timeoutRunBlocking {
             withContext(Dispatchers.EDT) {
                 val source = fixture.addFileToProject("dump-settings.s", "nop").virtualFile
                 val config = type.createTemplateConfiguration(project)
@@ -1604,7 +1604,7 @@ class MarsRunPlatformTest {
 
     @Test
     fun `stored after-run dump settings validate formats ranges and destinations before launch`(@TempDir directory: Path) =
-        timeoutRunBlocking<Unit> {
+        timeoutRunBlocking {
             withContext(Dispatchers.EDT) {
                 val file = fixture.addFileToProject("validation.s", "nop").virtualFile.toNioPath()
                 val config = type.createTemplateConfiguration(project)
@@ -1641,7 +1641,7 @@ class MarsRunPlatformTest {
 
     @Test
     fun `configured dumps use final memory and independent failures preserve the program exit code`(@TempDir directory: Path) =
-        timeoutRunBlocking<Unit> {
+        timeoutRunBlocking {
             val output = directory.resolve("saved.txt").also { Files.writeString(it, "old") }
             val binary = directory.resolve("word.bin")
             val invalidRange = directory.resolve("unchanged").also { Files.writeString(it, "keep") }
@@ -1688,7 +1688,7 @@ class MarsRunPlatformTest {
 
     @Test
     fun `post-run dumps support runtime faults and cliff termination while failed assembly and Stop preserve files`(@TempDir directory: Path) =
-        timeoutRunBlocking<Unit> {
+        timeoutRunBlocking {
             val fault = directory.resolve("fault.txt")
             val (crashed, crashRecording) = run("break\n", listOf(dumpState(fault)))
             assertEquals(1, crashRecording.exit.await())
@@ -1763,7 +1763,7 @@ class MarsRunPlatformTest {
     }
 
     @Test
-    fun `run reports assembly errors runtime exceptions and ordinary cliff termination`() = timeoutRunBlocking<Unit> {
+    fun `run reports assembly errors runtime exceptions and ordinary cliff termination`() = timeoutRunBlocking {
         val cases = listOf(
             Triple("b missing\n", 1, "Assembly failed"),
             Triple("break\n", 1, "MARS runtime error"),
@@ -1780,7 +1780,7 @@ class MarsRunPlatformTest {
     }
 
     @Test
-    fun `relative file syscalls route raw bytes to the matching console streams`() = timeoutRunBlocking<Unit> {
+    fun `relative file syscalls route raw bytes to the matching console streams`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) { fixture.addFileToProject("input.txt", "µ") }
         val (_, recording) = run(
           $$"""
@@ -1813,7 +1813,7 @@ class MarsRunPlatformTest {
     }
 
     @Test
-    fun `stop and detach wait for the owned simulation to stop`() = timeoutRunBlocking<Unit> {
+    fun `stop and detach wait for the owned simulation to stop`() = timeoutRunBlocking {
         for (detach in listOf(false, true)) {
             val (handler, recording) = run($$"li $a0, 7\nli $v0, 1\nsyscall\nloop: b loop\nnop\n")
             recording.output.await()
@@ -1828,7 +1828,7 @@ class MarsRunPlatformTest {
 
     @ParameterizedTest
     @ValueSource(strings = ["UTF-8", "UTF-16"])
-    fun `typed console input reaches the line and raw descriptor syscalls`(encoding: String) = timeoutRunBlocking<Unit> {
+    fun `typed console input reaches the line and raw descriptor syscalls`(encoding: String) = timeoutRunBlocking {
         val encodingManager = EncodingManager.getInstance()
         val previousEncoding = withContext(Dispatchers.EDT) {
             encodingManager.defaultCharsetName.also { encodingManager.defaultCharsetName = encoding }
@@ -1898,7 +1898,7 @@ class MarsRunPlatformTest {
     }
 
     @Test
-    fun `native Run console preserves every line of a sustained output burst`() = timeoutRunBlocking<Unit> {
+    fun `native Run console preserves every line of a sustained output burst`() = timeoutRunBlocking {
         val lineCount = 4_096
         val recording = Recording()
         val (handler, console) = withContext(Dispatchers.EDT) {
@@ -1954,7 +1954,7 @@ class MarsRunPlatformTest {
     }
 
     @Test
-    fun `ClearScreen drops deferred output and preserves submitted input and other Run consoles`() = timeoutRunBlocking<Unit> {
+    fun `ClearScreen drops deferred output and preserves submitted input and other Run consoles`() = timeoutRunBlocking {
         val lifetime = Disposer.newDisposable()
         val handlers = mutableListOf<MarsProcessHandler>()
         try {
@@ -2029,7 +2029,7 @@ class MarsRunPlatformTest {
     }
 
     @Test
-    fun `Stop releases the simulator during a long MARS sleep`() = timeoutRunBlocking<Unit> {
+    fun `Stop releases the simulator during a long MARS sleep`() = timeoutRunBlocking {
         val (handler, recording) = run($$"li $a0, 60000\nli $v0, 32\nsyscall\nli $a0, 42\nli $v0, 1\nsyscall\n")
         try {
             pollAssertionsAsync(5.seconds, 10.milliseconds) {
@@ -2049,7 +2049,7 @@ class MarsRunPlatformTest {
     }
 
     @Test
-    fun `MARS sleep resumes normally and keeps the error for negative durations`() = timeoutRunBlocking<Unit> {
+    fun `MARS sleep resumes normally and keeps the error for negative durations`() = timeoutRunBlocking {
         val (_, complete) = run($$"li $a0, 10\nli $v0, 32\nsyscall\nli $a0, 42\nli $v0, 1\nsyscall\nli $v0, 10\nsyscall\n")
         assertEquals(0, complete.exit.await())
         assertEquals("42", complete.stdout.toString())
@@ -2060,7 +2060,7 @@ class MarsRunPlatformTest {
     }
 
     @Test
-    fun `stop releases a syscall blocked on console input`() = timeoutRunBlocking<Unit> {
+    fun `stop releases a syscall blocked on console input`() = timeoutRunBlocking {
         val (handler, recording) = run($$"li $v0, 5\nsyscall\n")
         try {
             pollAssertionsAsync(5.seconds, 10.milliseconds) {
@@ -2080,7 +2080,7 @@ class MarsRunPlatformTest {
     }
 
     @Test
-    fun `instruction counter records repeat executions and retains counts across backstep`() = timeoutRunBlocking<Unit> {
+    fun `instruction counter records repeat executions and retains counts across backstep`() = timeoutRunBlocking {
         val entry = withContext(Dispatchers.EDT) { fixture.addFileToProject("loop.asm", "again: j again\n").virtualFile }
         val handler = project.getService(MarsRunService::class.java).createProcess(entry.toNioPath(), memoryDumps = emptyList()) { machine, _ ->
             val simulator = machine.simulator()

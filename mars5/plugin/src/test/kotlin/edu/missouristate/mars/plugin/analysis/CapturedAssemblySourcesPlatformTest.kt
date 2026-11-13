@@ -55,7 +55,7 @@ class CapturedAssemblySourcesPlatformTest {
     private val fixture by codeInsightFixture(project)
 
     @Test
-    fun `captures uncommitted entry and transitive include documents before assembly`() = timeoutRunBlocking<Unit> {
+    fun `captures uncommitted entry and transitive include documents before assembly`() = timeoutRunBlocking {
         val include = if (SystemInfoRt.isWindows) "/parts/outer.txt" else "./parts/outer.txt"
         val mainText = $$".include \"$$include\"\nli $t0, VALUE\n"
         val innerText = ".eqv VALUE 42\n"
@@ -96,7 +96,7 @@ class CapturedAssemblySourcesPlatformTest {
     }
 
     @Test
-    fun `binary-classified include uses disk source text and invalidates after a VFS refresh`() = timeoutRunBlocking<Unit> {
+    fun `binary-classified include uses disk source text and invalidates after a VFS refresh`() = timeoutRunBlocking {
         val (main, include) = withContext(Dispatchers.EDT) {
             val main = fixture.addFileToProject("entry.mars", ".include \"payload.png\"\nemit\nj destination\nj raw_target\n") as MipsFile
             fixture.addFileToProject("tail.inc", "destination: nop\n")
@@ -213,7 +213,7 @@ class CapturedAssemblySourcesPlatformTest {
     }
 
     @Test
-    fun `oversized binary include keeps assembled macro and label navigation`() = timeoutRunBlocking<Unit> {
+    fun `oversized binary include keeps assembled macro and label navigation`() = timeoutRunBlocking {
         val (main, include) = withContext(Dispatchers.EDT) {
             val file = fixture.addFileToProject("entry.mars", ".include \"large.png\"\nemit\nj target\n") as MipsFile
             val path = file.virtualFile.toNioPath().resolveSibling("large.png")
@@ -258,7 +258,7 @@ class CapturedAssemblySourcesPlatformTest {
     }
 
     @Test
-    fun `disk include removed before reading is reported at its include site`() = timeoutRunBlocking<Unit> {
+    fun `disk include removed before reading is reported at its include site`() = timeoutRunBlocking {
         val (main, include) = withContext(Dispatchers.EDT) {
             val main = fixture.addFileToProject("entry.mars", ".include \"gone.png\"\n")
             val path = main.virtualFile.toNioPath().resolveSibling("gone.png")
@@ -286,7 +286,7 @@ class CapturedAssemblySourcesPlatformTest {
     }
 
     @Test
-    fun `assembly follows includes and source locations beyond the IntelliJ file preview`() = timeoutRunBlocking<Unit> {
+    fun `assembly follows includes and source locations beyond the IntelliJ file preview`() = timeoutRunBlocking {
         val comment = "#" + " ".repeat(16_382)
         val diskLine = "$comment\r\n"
         val padding = " ".repeat(72_000)
@@ -418,7 +418,7 @@ class CapturedAssemblySourcesPlatformTest {
     }
 
     @Test
-    fun `editor macro scope refreshes when an oversized include becomes fully readable`() = timeoutRunBlocking<Unit> {
+    fun `editor macro scope refreshes when an oversized include becomes fully readable`() = timeoutRunBlocking {
         val (entry, include) = withContext(Dispatchers.EDT) {
             val entry = fixture.addFileToProject("scope.mars", ".macro emit\n.include \"closer.inc\"\nemit\n") as MipsFile
             val include = fixture.tempDirFixture.createFile("closer.inc")
@@ -446,7 +446,7 @@ class CapturedAssemblySourcesPlatformTest {
     }
 
     @Test
-    fun `a directory alias back to the entry closes the cycle without scanning the entry again`() = timeoutRunBlocking<Unit> {
+    fun `a directory alias back to the entry closes the cycle without scanning the entry again`() = timeoutRunBlocking {
         val (main, outer) = withContext(Dispatchers.EDT) {
             val entry = fixture.addFileToProject("source/main.asm", ".include \"../parts/outer.s\"\n").virtualFile
             val part = fixture.addFileToProject("parts/outer.s", "nop\n").virtualFile
@@ -472,7 +472,7 @@ class CapturedAssemblySourcesPlatformTest {
     }
 
     @Test
-    fun `the first alias in assembly order supplies transitive includes before a duplicate is reported`() = timeoutRunBlocking<Unit> {
+    fun `the first alias in assembly order supplies transitive includes before a duplicate is reported`() = timeoutRunBlocking {
         val main = withContext(Dispatchers.EDT) {
             val entry = fixture.addFileToProject(
                 "main.asm", ".include \"branch.s\"\n.include \"source/shared.s\"\n",
@@ -497,7 +497,7 @@ class CapturedAssemblySourcesPlatformTest {
     }
 
     @Test
-    fun `separately selected directory aliases retain each entry's unsaved source and include set`() = timeoutRunBlocking<Unit> {
+    fun `separately selected directory aliases retain each entry's unsaved source and include set`() = timeoutRunBlocking {
         val (main, alias) = withContext(Dispatchers.EDT) {
             val entry = fixture.addFileToProject("source/main.asm", ".include \"saved.s\"\n").virtualFile
             fixture.addFileToProject("source/saved.s", $$"addiu $t0, $zero, 7\n")
@@ -522,7 +522,7 @@ class CapturedAssemblySourcesPlatformTest {
     }
 
     @Test
-    fun `captures only reachable files and leaves include failures for assembler diagnostics`() = timeoutRunBlocking<Unit> {
+    fun `captures only reachable files and leaves include failures for assembler diagnostics`() = timeoutRunBlocking {
         val main = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("ignored.txt", "nop\n")
             fixture.addFileToProject("parts/filler.txt", "nop\n")

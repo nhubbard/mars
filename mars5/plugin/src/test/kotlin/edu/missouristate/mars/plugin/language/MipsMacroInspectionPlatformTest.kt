@@ -39,7 +39,7 @@ class MipsMacroInspectionPlatformTest {
     private val fixture by codeInsightFixture(projectFixture)
 
     @Test
-    fun `uninvoked macros diagnose duplicate formals and unknown parameters at their source tokens`() = timeoutRunBlocking<Unit> {
+    fun `uninvoked macros diagnose duplicate formals and unknown parameters at their source tokens`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             val inspection = MipsMacroParameterInspection()
             assertTrue(inspection.runForWholeFile(), "Header edits must refresh diagnostics throughout the macro")
@@ -79,7 +79,7 @@ class MipsMacroInspectionPlatformTest {
     }
 
     @Test
-    fun `alias generated parameters point to the original alias and ignore invalid expansions`() = timeoutRunBlocking<Unit> {
+    fun `alias generated parameters point to the original alias and ignore invalid expansions`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             fixture.enableInspections(MipsMacroParameterInspection::class.java)
             val source = $$"""
@@ -119,7 +119,7 @@ class MipsMacroInspectionPlatformTest {
     }
 
     @Test
-    fun `the include prepass discards written macro parameter candidates on the replaced line`() = timeoutRunBlocking<Unit> {
+    fun `the include prepass discards written macro parameter candidates on the replaced line`() = timeoutRunBlocking {
         val source = $$".macro emit (%value)\n%discarded: .include \"body.s\"\nli $t0, %missing\n.end_macro\n"
         val project = projectFixture.get()
         withContext(Dispatchers.EDT) {
@@ -135,7 +135,7 @@ class MipsMacroInspectionPlatformTest {
 
     @Test
     fun `a malformed expanded closer reports its written token and leaves the macro open`(@TempDir directory: Path) =
-        timeoutRunBlocking<Unit> {
+        timeoutRunBlocking {
             val source = $$"""
                 .eqv CLOSE .EnD_MaCrO
                 .eqv BAD .end_macro extra
@@ -175,7 +175,7 @@ class MipsMacroInspectionPlatformTest {
         }
 
     @Test
-    fun `a shared malformed closer waits for the selected entry`() = timeoutRunBlocking<Unit> {
+    fun `a shared malformed closer waits for the selected entry`() = timeoutRunBlocking {
         val current = projectFixture.get()
         val entry = withContext(Dispatchers.EDT) {
             val first = fixture.addFileToProject("first.asm", ".include \"shared-close.s\"\n")
@@ -193,7 +193,7 @@ class MipsMacroInspectionPlatformTest {
     }
 
     @Test
-    fun `a malformed alias closer waits for an unresolved earlier include`() = timeoutRunBlocking<Unit> {
+    fun `a malformed alias closer waits for an unresolved earlier include`() = timeoutRunBlocking {
         val source = ".include \"pending.s\"\n.eqv STOP .end_macro\n.macro emit\nSTOP extra\n.end_macro\n"
         withContext(Dispatchers.EDT) {
             fixture.addFileToProject("entry.asm", source).also { fixture.configureFromExistingVirtualFile(it.virtualFile) }
@@ -208,7 +208,7 @@ class MipsMacroInspectionPlatformTest {
     }
 
     @Test
-    fun `an included text file with another file type preserves later macro diagnostics`() = timeoutRunBlocking<Unit> {
+    fun `an included text file with another file type preserves later macro diagnostics`() = timeoutRunBlocking {
         val source = ".include \"foreign.xml\"\n.eqv STOP .end_macro\n.macro emit\nSTOP extra\n.end_macro\n"
         withContext(Dispatchers.EDT) {
             fixture.addFileToProject("foreign.xml", "# MARS text in a file with an XML extension\n")
@@ -220,7 +220,7 @@ class MipsMacroInspectionPlatformTest {
 
     @Test
     fun `unmatched closers and the unclosed opener point to their written tokens`(@TempDir directory: Path) =
-        timeoutRunBlocking<Unit> {
+        timeoutRunBlocking {
             val source = $$"""
                 .eqv OPEN .macro
                 .eqv STOP .end_macro
@@ -260,7 +260,7 @@ class MipsMacroInspectionPlatformTest {
 
     @Test
     fun `commenting out an unmatched macro closer preserves a separately written label`(@TempDir directory: Path) =
-        timeoutRunBlocking<Unit> {
+        timeoutRunBlocking {
             val project = projectFixture.get()
             val repaired = withContext(Dispatchers.EDT) {
                 val direct = "  .end_<caret>macro # keep\ntarget: nop\nj target\n"
@@ -288,7 +288,7 @@ class MipsMacroInspectionPlatformTest {
         }
 
     @Test
-    fun `an unmatched closer fix cannot discard a label supplied by the same alias`() = timeoutRunBlocking<Unit> {
+    fun `an unmatched closer fix cannot discard a label supplied by the same alias`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             for (source in listOf(
                 ".eqv CLOSE target: .end_macro\nCL<caret>OSE\n",
@@ -302,7 +302,7 @@ class MipsMacroInspectionPlatformTest {
     }
 
     @Test
-    fun `an unmatched closer fix checks other entries sharing the included source`() = timeoutRunBlocking<Unit> {
+    fun `an unmatched closer fix checks other entries sharing the included source`() = timeoutRunBlocking {
         val project = projectFixture.get()
         val includeLine = ".include \"shared-end.inc\"\n"
         val matched = ".macro emit\n$includeLine"
@@ -347,7 +347,7 @@ class MipsMacroInspectionPlatformTest {
     }
 
     @Test
-    fun `an invalid expanded label does not expose a trailing closer as an operation`() = timeoutRunBlocking<Unit> {
+    fun `an invalid expanded label does not expose a trailing closer as an operation`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             fixture.configureByText("not-closers.asm", """
                 .eqv NUMBER 7
@@ -366,7 +366,7 @@ class MipsMacroInspectionPlatformTest {
     }
 
     @Test
-    fun `macro boundaries follow the selected entry through includes`() = timeoutRunBlocking<Unit> {
+    fun `macro boundaries follow the selected entry through includes`() = timeoutRunBlocking {
         val current = projectFixture.get()
         val (valid, open) = withContext(Dispatchers.EDT) {
             val opener = fixture.addFileToProject("opener.s", ".macro emit\nnop\n")
@@ -389,7 +389,7 @@ class MipsMacroInspectionPlatformTest {
 
     @Test
     fun `labeled macro syntax is checked only when the selected entry executes the directive`(@TempDir directory: Path) =
-        timeoutRunBlocking<Unit> {
+        timeoutRunBlocking {
             val source = """
                 .eqv LABEL alias_tail
                 bad: .macro 7
@@ -442,7 +442,7 @@ class MipsMacroInspectionPlatformTest {
         }
 
     @Test
-    fun `a pending include can supply either macro boundary`() = timeoutRunBlocking<Unit> {
+    fun `a pending include can supply either macro boundary`() = timeoutRunBlocking {
         val source = ".include \"start.s\"\n.end_macro\n.macro second\n.include \"finish.s\"\n"
         withContext(Dispatchers.EDT) {
             fixture.addFileToProject("entry.asm", source).also { fixture.configureFromExistingVirtualFile(it.virtualFile) }
@@ -458,7 +458,7 @@ class MipsMacroInspectionPlatformTest {
     }
 
     @Test
-    fun `missing macro closer quick fix appends once and invalidates stale actions`() = timeoutRunBlocking<Unit> {
+    fun `missing macro closer quick fix appends once and invalidates stale actions`() = timeoutRunBlocking {
         val project = projectFixture.get()
         withContext(Dispatchers.EDT) {
             for (source in listOf("<caret>.macro emit\nnop\n", ".eqv OPEN .macro\n<caret>OPEN emit\nnop")) {
@@ -478,7 +478,7 @@ class MipsMacroInspectionPlatformTest {
 
     @Test
     fun `closing a macro from an included header appends to the entry after the body`(@TempDir directory: Path) =
-        timeoutRunBlocking<Unit> {
+        timeoutRunBlocking {
             val project = projectFixture.get()
             val body = $$".include \"header.inc\"\naddiu $t0, $zero, %value"
             val header = ".macro emit (%value)\n"
@@ -520,7 +520,7 @@ class MipsMacroInspectionPlatformTest {
 
     @Test
     fun `commenting out macro closer text preserves the suffix and closes the macro`(@TempDir directory: Path) =
-        timeoutRunBlocking<Unit> {
+        timeoutRunBlocking {
             val project = projectFixture.get()
             val repaired = withContext(Dispatchers.EDT) {
                 val direct = $$".macro emit\naddiu $t0, $zero, 7\n.end_macro st<caret>ray # keep\nemit\n"
@@ -557,7 +557,7 @@ class MipsMacroInspectionPlatformTest {
         }
 
     @Test
-    fun `macro closer tail quick fix requires a separate editable suffix in a known body`() = timeoutRunBlocking<Unit> {
+    fun `macro closer tail quick fix requires a separate editable suffix in a known body`() = timeoutRunBlocking {
         val project = projectFixture.get()
         withContext(Dispatchers.EDT) {
             for (source in listOf(
@@ -604,7 +604,7 @@ class MipsMacroInspectionPlatformTest {
     }
 
     @Test
-    fun `an unterminated include takes precedence over macro errors on its line and later lines`() = timeoutRunBlocking<Unit> {
+    fun `an unterminated include takes precedence over macro errors on its line and later lines`() = timeoutRunBlocking {
         val source = """
             .eqv OPEN .macro
             .end_macro
@@ -637,7 +637,7 @@ class MipsMacroInspectionPlatformTest {
     }
 
     @Test
-    fun `an unterminated include in a dependency suppresses later macro errors in the entry`() = timeoutRunBlocking<Unit> {
+    fun `an unterminated include in a dependency suppresses later macro errors in the entry`() = timeoutRunBlocking {
         val project = projectFixture.get()
         val dependency = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("ordinary.s", "nop\n")
@@ -659,7 +659,7 @@ class MipsMacroInspectionPlatformTest {
 
     @Test
     fun `nested openers report their written tokens without replacing the outer macro`(@TempDir directory: Path) =
-        timeoutRunBlocking<Unit> {
+        timeoutRunBlocking {
             val source = $$"""
                 .eqv OPEN .macro
                 .eqv LABEL inside_alias
@@ -711,7 +711,7 @@ class MipsMacroInspectionPlatformTest {
         }
 
     @Test
-    fun `a shared opener is nested only in the entry that opens a macro before including it`() = timeoutRunBlocking<Unit> {
+    fun `a shared opener is nested only in the entry that opens a macro before including it`() = timeoutRunBlocking {
         val current = projectFixture.get()
         val (standalone, nested) = withContext(Dispatchers.EDT) {
             val inner = fixture.addFileToProject("inner.s", ".macro emit (9)\nnop\n")
@@ -732,7 +732,7 @@ class MipsMacroInspectionPlatformTest {
     }
 
     @Test
-    fun `a pending include can close the macro before a suspected nested opener`() = timeoutRunBlocking<Unit> {
+    fun `a pending include can close the macro before a suspected nested opener`() = timeoutRunBlocking {
         val source = ".macro outer\n.include \"closer.s\"\n.macro next\nnop\n.end_macro\n"
         withContext(Dispatchers.EDT) {
             fixture.addFileToProject("entry.asm", source).also { fixture.configureFromExistingVirtualFile(it.virtualFile) }
@@ -748,7 +748,7 @@ class MipsMacroInspectionPlatformTest {
 
     @Test
     fun `macro diagnostics mark the full signed token or its written aliases`(@TempDir directory: Path) =
-        timeoutRunBlocking<Unit> {
+        timeoutRunBlocking {
             val source = """
                 .eqv OPEN .macro
                 .eqv SIGNED -7
@@ -784,7 +784,7 @@ class MipsMacroInspectionPlatformTest {
         }
 
     @Test
-    fun `missing macro names mark the directive before comments and at the end of the file`() = timeoutRunBlocking<Unit> {
+    fun `missing macro names mark the directive before comments and at the end of the file`() = timeoutRunBlocking {
         val source = ".MaCrO,, # keep\nnop\n.eqv OPEN .macro\nOPEN # keep\nnop\n.macro"
         val expected = listOf(".MaCrO", "OPEN", ".macro").map { it to "Expected a macro name" }
         withContext(Dispatchers.EDT) {
@@ -797,7 +797,7 @@ class MipsMacroInspectionPlatformTest {
 
     @Test
     fun `expanded openers diagnose missing and invalid names at the original tokens`(@TempDir directory: Path) =
-        timeoutRunBlocking<Unit> {
+        timeoutRunBlocking {
             val source = $$"""
                 .eqv OPEN .macro
                 .eqv BAD_NAME 7
@@ -845,7 +845,7 @@ class MipsMacroInspectionPlatformTest {
         }
 
     @Test
-    fun `a shared macro name uses the alias from the selected assembly entry`() = timeoutRunBlocking<Unit> {
+    fun `a shared macro name uses the alias from the selected assembly entry`() = timeoutRunBlocking {
         val current = projectFixture.get()
         val (valid, invalid) = withContext(Dispatchers.EDT) {
             val valid = fixture.addFileToProject("valid.asm", ".eqv NAME emit\n.include \"shared.s\"\n")
@@ -870,7 +870,7 @@ class MipsMacroInspectionPlatformTest {
 
     @Test
     fun `the first rejected formal takes precedence over a later parser error`(@TempDir directory: Path) =
-        timeoutRunBlocking<Unit> {
+        timeoutRunBlocking {
             val source = """
                 .eqv FORM 7
                 .eqv SEVEN 7
@@ -911,7 +911,7 @@ class MipsMacroInspectionPlatformTest {
         }
 
     @Test
-    fun `an earlier unresolved include leaves the physical formal diagnostic available`() = timeoutRunBlocking<Unit> {
+    fun `an earlier unresolved include leaves the physical formal diagnostic available`() = timeoutRunBlocking {
         val source = ".include \"formals.inc\"\n.macro emit (FORM, 9)\nnop\n.end_macro\n"
         val project = projectFixture.get()
         withContext(Dispatchers.EDT) {
@@ -930,7 +930,7 @@ class MipsMacroInspectionPlatformTest {
     }
 
     @Test
-    fun `an unresolved include can change whether a header is nested`() = timeoutRunBlocking<Unit> {
+    fun `an unresolved include can change whether a header is nested`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             val source = ".macro outer\n.include \"missing.inc\"\n.macro inner (9)\n.end_macro\n"
             fixture.configureByText("nested-invalid-formal.mars", source)
@@ -940,7 +940,7 @@ class MipsMacroInspectionPlatformTest {
     }
 
     @Test
-    fun `invalid expanded formals point to their written tokens and refresh after edits`() = timeoutRunBlocking<Unit> {
+    fun `invalid expanded formals point to their written tokens and refresh after edits`() = timeoutRunBlocking {
         val source = $$"""
             .eqv FORMS %kept, 7, 8
             .macro emit (FORMS)
@@ -977,7 +977,7 @@ class MipsMacroInspectionPlatformTest {
     }
 
     @Test
-    fun `a lexical error on a generated header gets one diagnostic`() = timeoutRunBlocking<Unit> {
+    fun `a lexical error on a generated header gets one diagnostic`() = timeoutRunBlocking {
         val source = $$".eqv OPEN .macro\n.eqv FORM %value\nOPEN emit (FORM, @)\nli $t0, %value\n.end_macro\n"
         withContext(Dispatchers.EDT) { fixture.configureByText("bad-generated-formal.asm", source) }
         IndexingTestUtil.suspendUntilIndexesAreReady(projectFixture.get())
@@ -988,7 +988,7 @@ class MipsMacroInspectionPlatformTest {
     }
 
     @Test
-    fun `a shared macro header waits for an entry before diagnosing its expanded formal`() = timeoutRunBlocking<Unit> {
+    fun `a shared macro header waits for an entry before diagnosing its expanded formal`() = timeoutRunBlocking {
         val current = projectFixture.get()
         val (valid, invalid) = withContext(Dispatchers.EDT) {
             val first = fixture.addFileToProject("valid.asm", ".eqv FORM %value\n.include \"shared.s\"\n")
@@ -1022,7 +1022,7 @@ class MipsMacroInspectionPlatformTest {
         .map { fixture.file.text.substring(it.startOffset, it.endOffset) to it.description.orEmpty() }
 
     @Test
-    fun `included body uses the enclosing macro from the inferred and selected assembly entry`() = timeoutRunBlocking<Unit> {
+    fun `included body uses the enclosing macro from the inferred and selected assembly entry`() = timeoutRunBlocking {
         val project = projectFixture.get()
         val (entry, body) = withContext(Dispatchers.EDT) {
             fixture.enableInspections(MipsMacroParameterInspection::class.java)

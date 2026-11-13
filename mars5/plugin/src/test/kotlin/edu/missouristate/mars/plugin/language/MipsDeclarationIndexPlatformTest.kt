@@ -32,7 +32,7 @@ class MipsDeclarationIndexPlatformTest {
     private val fixture by codeInsightFixture(project)
 
     @Test
-    fun `native index records all declaration kinds duplicates and macro ownership`() = timeoutRunBlocking<Unit> {
+    fun `native index records all declaration kinds duplicates and macro ownership`() = timeoutRunBlocking {
         val source = $$"""
             .EqV shared 7
             ,,shared,, :,, nop
@@ -102,7 +102,7 @@ class MipsDeclarationIndexPlatformTest {
     }
 
     @Test
-    fun `only includes recognized by the assembler seed expanded symbol searches`() = timeoutRunBlocking<Unit> {
+    fun `only includes recognized by the assembler seed expanded symbol searches`() = timeoutRunBlocking {
         val recognized = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("recognized.s", "'abcde.include \"part.s\" \"unused suffix").virtualFile.also {
                 fixture.addFileToProject("hidden.s", "'a .include \"part.s\"")
@@ -130,7 +130,7 @@ class MipsDeclarationIndexPlatformTest {
     }
 
     @Test
-    fun `native index follows unsaved documents deletion and file type filtering`() = timeoutRunBlocking<Unit> {
+    fun `native index follows unsaved documents deletion and file type filtering`() = timeoutRunBlocking {
         val file = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("ignored.txt", "ignored: nop\n")
             fixture.addFileToProject("empty.asm", "# empty\n.eqv\n")
@@ -177,7 +177,7 @@ class MipsDeclarationIndexPlatformTest {
     }
 
     @Test
-    fun `native query scopes separate files with the same declaration name`() = timeoutRunBlocking<Unit> {
+    fun `native query scopes separate files with the same declaration name`() = timeoutRunBlocking {
         val files = withContext(Dispatchers.EDT) {
             listOf(
                 fixture.addFileToProject("first.asm", "main: nop\n").virtualFile,

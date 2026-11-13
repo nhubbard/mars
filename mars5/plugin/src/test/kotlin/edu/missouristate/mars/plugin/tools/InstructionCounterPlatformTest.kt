@@ -102,7 +102,7 @@ class InstructionCounterPlatformTest {
     private val fixture by codeInsightFixture(projectFixture)
 
     @Test
-    fun `tool execution selectors keep their labels above them and fit narrow docks`() = timeoutRunBlocking<Unit> {
+    fun `tool execution selectors keep their labels above them and fit narrow docks`() = timeoutRunBlocking {
         val project = projectFixture.get()
         withContext(Dispatchers.EDT) {
             val selector = MarsToolExecutionSelector(project) {}.component
@@ -125,7 +125,7 @@ class InstructionCounterPlatformTest {
 
     @OptIn(ExperimentalComposeUiApi::class, ExperimentalJewelApi::class)
     @Test
-    fun `MARS Tools selects native executions and controls their counters independently`() = timeoutRunBlocking<Unit>(45.seconds) {
+    fun `MARS Tools selects native executions and controls their counters independently`() = timeoutRunBlocking(45.seconds) {
         val project = projectFixture.get()
         val manager = ToolWindowManager.getInstance(project)
         val run = DefaultRunExecutor.getRunExecutorInstance()

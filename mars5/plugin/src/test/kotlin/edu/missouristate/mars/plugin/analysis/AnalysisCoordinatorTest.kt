@@ -11,7 +11,7 @@ import kotlin.time.Duration.Companion.milliseconds
 
 class AnalysisCoordinatorTest {
     @Test
-    fun `new request cancels old computation and publishes only new input`() = runBlocking<Unit> {
+    fun `new request cancels old computation and publishes only new input`() = runBlocking {
         Executors.newSingleThreadExecutor().asCoroutineDispatcher().use { dispatcher ->
             val scope = CoroutineScope(SupervisorJob() + dispatcher)
             val entered = CountDownLatch(1)
@@ -48,7 +48,7 @@ class AnalysisCoordinatorTest {
     }
 
     @Test
-    fun `failed analysis preserves published result and propagates failure`() = runBlocking<Unit> {
+    fun `failed analysis preserves published result and propagates failure`() = runBlocking {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
         var fail = false
         val expected = IllegalArgumentException("bad producer")

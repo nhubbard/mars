@@ -34,7 +34,7 @@ class MipsLabelReferencesPlatformTest {
     private val fixture by codeInsightFixture(project)
 
     @Test
-    fun `go to declaration finds a nested include and skips an unrelated export`() = timeoutRunBlocking<Unit> {
+    fun `go to declaration finds a nested include and skips an unrelated export`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             fixture.addFileToProject("parts/outer.s", ".include \"inner.s\"\n")
             fixture.addFileToProject("parts/inner.s", "target.label: nop\n")
@@ -53,7 +53,7 @@ class MipsLabelReferencesPlatformTest {
     }
 
     @Test
-    fun `go to declaration uses the physical offset of a forward label in a plain include`() = timeoutRunBlocking<Unit> {
+    fun `go to declaration uses the physical offset of a forward label in a plain include`() = timeoutRunBlocking {
         val current = project.get()
         val contents = "# plain source\n    target.label: nop\n"
         val include = withContext(Dispatchers.EDT) {
@@ -82,7 +82,7 @@ class MipsLabelReferencesPlatformTest {
     }
 
     @Test
-    fun `macro local labels shadow outer labels including when introduced by an include`() = timeoutRunBlocking<Unit> {
+    fun `macro local labels shadow outer labels including when introduced by an include`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             fixture.addFileToProject("inner.s", "target: nop\n")
             fixture.addFileToProject("outer.s", ".include \"inner.s\"\n")
@@ -105,7 +105,7 @@ class MipsLabelReferencesPlatformTest {
     }
 
     @Test
-    fun `ambiguous labels remain separate targets and unmatched names remain unresolved`() = timeoutRunBlocking<Unit> {
+    fun `ambiguous labels remain separate targets and unmatched names remain unresolved`() = timeoutRunBlocking {
         configure("same: nop\nb sa<caret>me\nsame: nop\n")
         readAction {
             val reference = referenceAtCaret() as PsiPolyVariantReference
@@ -119,7 +119,7 @@ class MipsLabelReferencesPlatformTest {
     }
 
     @Test
-    fun `indexed label candidates keep include order and reflect unsaved edits`() = timeoutRunBlocking<Unit> {
+    fun `indexed label candidates keep include order and reflect unsaved edits`() = timeoutRunBlocking {
         val current = project.get()
         val first = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("a.s", "target: nop\n")
@@ -141,7 +141,7 @@ class MipsLabelReferencesPlatformTest {
     }
 
     @Test
-    fun `label binding follows assembler operand formats`() = timeoutRunBlocking<Unit> {
+    fun `label binding follows assembler operand formats`() = timeoutRunBlocking {
         configure($$"nop: nop\nlw $t0, n<caret>op+4($sp)\n")
         readAction { assertEquals(0, referenceAtCaret()?.resolve()?.textOffset) }
         configure($$"target: nop\n.eqv PAIR $t0, $t1\nentry: beq PAIR, tar<caret>get\n")
@@ -163,7 +163,7 @@ class MipsLabelReferencesPlatformTest {
     }
 
     @Test
-    fun `direct label resolution avoids active equivalence and macro parameter substitutions`() = timeoutRunBlocking<Unit> {
+    fun `direct label resolution avoids active equivalence and macro parameter substitutions`() = timeoutRunBlocking {
         configure("target: nop\n.eqv target somewhere\nb tar<caret>get\n")
         readAction { assertEquals(SymbolKind.CONSTANT, (referenceAtCaret()?.resolve() as MipsDeclaration).kind) }
         configure("target: nop\nb tar<caret>get\n.eqv target somewhere\n")
@@ -173,7 +173,7 @@ class MipsLabelReferencesPlatformTest {
     }
 
     @Test
-    fun `aliased instructions resolve label slots after expanding earlier operands`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+    fun `aliased instructions resolve label slots after expanding earlier operands`(@TempDir directory: Path) = timeoutRunBlocking {
         val definitions = $$".eqv DEFINE .eqv\nDEFINE BRANCH bne $t0, $zero\n"
         val include = ".include \"aliases.s\"\n"
         withContext(Dispatchers.EDT) { fixture.addFileToProject("aliases.s", definitions) }
@@ -199,7 +199,7 @@ class MipsLabelReferencesPlatformTest {
     }
 
     @Test
-    fun `label navigation and usage search survive malformed earlier operands`() = timeoutRunBlocking<Unit> {
+    fun `label navigation and usage search survive malformed earlier operands`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) { fixture.addFileToProject("target.inc", "target: nop\n") }
         configure(
           $$"""
@@ -227,7 +227,7 @@ class MipsLabelReferencesPlatformTest {
     }
 
     @Test
-    fun `label aliases resolve to the written source before assembly`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+    fun `label aliases resolve to the written source before assembly`(@TempDir directory: Path) = timeoutRunBlocking {
         val aliases = ".eqv DEFINE .eqv\nDEFINE PREFIX generated:\nDEFINE ORIGINAL renamed\n"
         val body = "PREFIX nop\nORIGINAL: nop\n"
         val include = ".include \"aliases.s\"\n.include \"body.s\"\n"
@@ -263,7 +263,7 @@ class MipsLabelReferencesPlatformTest {
 
     @Test
     fun `a written label can expand into a data directive and replace its suffix`(@TempDir directory: Path) =
-        timeoutRunBlocking<Unit> {
+        timeoutRunBlocking {
             for (replacement in listOf(".data", "renamed: .data")) {
                 val header = ".eqv OPEN $replacement\n"
                 val line = "OPEN: .ascii \"ignored\"\n"
@@ -298,7 +298,7 @@ class MipsLabelReferencesPlatformTest {
         }
 
     @Test
-    fun `a separator alias declares the written label before assembly`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+    fun `a separator alias declares the written label before assembly`(@TempDir directory: Path) = timeoutRunBlocking {
         val definitions = ".eqv SEP :\n"
         val body = $$"entry, SEP, addiu $t0, $zero, 7\naddiu SEP nop\n"
         val includes = ".include \"definitions.s\"\n.include \"body.s\"\n"
@@ -331,7 +331,7 @@ class MipsLabelReferencesPlatformTest {
     }
 
     @Test
-    fun `generated macro labels shadow outer labels only within their own expansion scope`() = timeoutRunBlocking<Unit> {
+    fun `generated macro labels shadow outer labels only within their own expansion scope`() = timeoutRunBlocking {
         val aliases = ".eqv INNER same:\n.eqv HIDDEN hidden:\n.eqv OPEN .macro emit\n.eqv CLOSE .end_macro\n"
         withContext(Dispatchers.EDT) { fixture.addFileToProject("body.s", "INNER nop\nHIDDEN nop\n") }
         val body = "${aliases}same: nop\nOPEN\n.include \"body.s\"\n"
@@ -344,7 +344,7 @@ class MipsLabelReferencesPlatformTest {
     }
 
     @Test
-    fun `written labels follow expanded macro boundaries across included files`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+    fun `written labels follow expanded macro boundaries across included files`(@TempDir directory: Path) = timeoutRunBlocking {
         val definitions = "same: nop\nhidden: nop\n"
         withContext(Dispatchers.EDT) { fixture.addFileToProject("macro-body.s", definitions) }
         val prefix = ".eqv OPEN .macro emit\n.eqv CLOSE .end_macro\nsame: nop\n"
@@ -367,7 +367,7 @@ class MipsLabelReferencesPlatformTest {
     }
 
     @Test
-    fun `written labels survive failed substitutions and definitions that block expansion`() = timeoutRunBlocking<Unit> {
+    fun `written labels survive failed substitutions and definitions that block expansion`() = timeoutRunBlocking {
         configure("""
             .eqv physical expanded
             physical: .eqv LIMIT 7

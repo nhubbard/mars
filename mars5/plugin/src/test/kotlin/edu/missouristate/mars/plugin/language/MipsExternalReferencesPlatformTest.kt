@@ -34,7 +34,7 @@ class MipsExternalReferencesPlatformTest {
     private val fixture by codeInsightFixture(project)
 
     @Test
-    fun `extern names receive declaration highlighting across the whole written name`() = timeoutRunBlocking<Unit> {
+    fun `extern names receive declaration highlighting across the whole written name`() = timeoutRunBlocking {
         val names = listOf($$"$t0", ".word", ".set", ")", "+9", "\"slot name\"", "'A'", ".include")
         val source = names.joinToString("\n", postfix = "\n") { ".extern $it, 4" }
         configure(source)
@@ -45,7 +45,7 @@ class MipsExternalReferencesPlatformTest {
     }
 
     @Test
-    fun `first valid external storage wins in expanded include order`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+    fun `first valid external storage wins in expanded include order`(@TempDir directory: Path) = timeoutRunBlocking {
         val source = ".eqv DEFINE .eqv\nDEFINE SIZE 4\n.data\n.word sha<caret>red\n.include \"parts.s\"\n.extern shared 12\n.extern next 4\n.extern ) 4\n"
         val included = ".extern shared SIZE\n"
         withContext(Dispatchers.EDT) { fixture.addFileToProject("parts.s", included) }
@@ -62,7 +62,7 @@ class MipsExternalReferencesPlatformTest {
     }
 
     @Test
-    fun `local labels shadow external storage and exports require a local label`() = timeoutRunBlocking<Unit> {
+    fun `local labels shadow external storage and exports require a local label`() = timeoutRunBlocking {
         val source = $$".extern shared 4\n.data\nshared: .word 0\n.text\nla $t0, sha<caret>red\n"
         assertEquals(source.indexOf("shared:"), target(source)?.offset)
         assertNull(target(".extern shared 4\n.globl sha<caret>red\n"))
@@ -77,7 +77,7 @@ class MipsExternalReferencesPlatformTest {
     @Test
     fun `external operands bind macro formals and keep storage names out of the outline until expansion`(
         @TempDir directory: Path,
-    ) = timeoutRunBlocking<Unit> {
+    ) = timeoutRunBlocking {
         val source = $$"""
             .eqv RESERVE .extern
             .eqv NAME $slot
@@ -135,7 +135,7 @@ class MipsExternalReferencesPlatformTest {
     }
 
     @Test
-    fun `only active external storage participates in operand completion`() = timeoutRunBlocking<Unit> {
+    fun `only active external storage participates in operand completion`() = timeoutRunBlocking {
         configure(
           $$"""
             .macro unused
@@ -172,7 +172,7 @@ class MipsExternalReferencesPlatformTest {
     }
 
     @Test
-    fun `aliased external storage and exports match the assembler symbol table`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+    fun `aliased external storage and exports match the assembler symbol table`(@TempDir directory: Path) = timeoutRunBlocking {
         val aliases = """
             .eqv DEFINE .eqv
             DEFINE RESERVE .extern
@@ -229,7 +229,7 @@ class MipsExternalReferencesPlatformTest {
 
     @Test
     fun `equivalence expansions expose external names with the assembler spelling`(@TempDir directory: Path) =
-        timeoutRunBlocking<Unit> {
+        timeoutRunBlocking {
             val source = """
                 .eqv PUNCT )
                 .eqv CHARACTER 'A'
@@ -262,7 +262,7 @@ class MipsExternalReferencesPlatformTest {
         }
 
     @Test
-    fun `completion includes only valid external aliases outside macro bodies`() = timeoutRunBlocking<Unit> {
+    fun `completion includes only valid external aliases outside macro bodies`() = timeoutRunBlocking {
         configure(
           $$"""
             .eqv RESERVE .extern

@@ -55,7 +55,7 @@ class MarsNewFilePlatformTest {
         "explicit.mars, MIPS Source, explicit.mars",
     )
     fun `native New action creates opens and assembles each source type`(name: String, kind: String, expected: String) =
-        timeoutRunBlocking<Unit> {
+        timeoutRunBlocking {
             val file = withContext(Dispatchers.EDT) {
                 val directory = fixture.addFileToProject("src/existing.asm", "nop\n").containingDirectory
                 val view = DirectoryView(directory)
@@ -79,7 +79,7 @@ class MarsNewFilePlatformTest {
         }
 
     @Test
-    fun `include files use the MARS parser and file icon and can be created with the native New action`() = timeoutRunBlocking<Unit> {
+    fun `include files use the MARS parser and file icon and can be created with the native New action`() = timeoutRunBlocking {
         val entry = withContext(Dispatchers.EDT) {
             val directory = fixture.addFileToProject("src/main.mars", ".include \"library.inc\"\nnop\n").containingDirectory
             val view = DirectoryView(directory)
@@ -100,7 +100,7 @@ class MarsNewFilePlatformTest {
     }
 
     @Test
-    fun `native action is unavailable without a directory and protects existing files`() = timeoutRunBlocking<Unit> {
+    fun `native action is unavailable without a directory and protects existing files`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             val unavailable = event(DataContext.EMPTY_CONTEXT)
             action.update(unavailable)

@@ -48,7 +48,7 @@ class ScavengerHuntPlatformTest {
     private val fixture by codeInsightFixture(projectFixture)
 
     @Test
-    fun `short tool docks reveal the MarsBot rate and Scavenger Hunt scoreboard on focus`() = timeoutRunBlocking<Unit> {
+    fun `short tool docks reveal the MarsBot rate and Scavenger Hunt scoreboard on focus`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             val project = projectFixture.get()
             val bot = MarsBotView(project)
@@ -86,7 +86,7 @@ class ScavengerHuntPlatformTest {
     }
 
     @Test
-    fun `tool window shows live scores and prevents conflicting attachments`() = timeoutRunBlocking<Unit>(20.seconds) {
+    fun `tool window shows live scores and prevents conflicting attachments`() = timeoutRunBlocking(20.seconds) {
         val project = projectFixture.get()
         val hunt = withContext(Dispatchers.EDT) { ScavengerHuntView(project) }
         val bot = withContext(Dispatchers.EDT) { MarsBotView(project) }

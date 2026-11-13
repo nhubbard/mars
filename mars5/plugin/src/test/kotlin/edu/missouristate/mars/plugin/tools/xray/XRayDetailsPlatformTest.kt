@@ -54,7 +54,7 @@ class XRayDetailsPlatformTest {
     }
 
     @Test
-    fun `only unloading MARS hides its visible X-Ray tool window`() = timeoutRunBlocking<Unit> {
+    fun `only unloading MARS hides its visible X-Ray tool window`() = timeoutRunBlocking {
         val current = project.get()
         withContext(Dispatchers.EDT) {
             var visible = true
@@ -82,7 +82,7 @@ class XRayDetailsPlatformTest {
     }
 
     @Test
-    fun `disposing X-Ray detaches its Compose host from the tool window`() = timeoutRunBlocking<Unit> {
+    fun `disposing X-Ray detaches its Compose host from the tool window`() = timeoutRunBlocking {
         val current = project.get()
         withContext(Dispatchers.EDT) {
             val view = XRayView(current)
@@ -96,7 +96,7 @@ class XRayDetailsPlatformTest {
 
     @OptIn(ExperimentalComposeUiApi::class, ExperimentalJewelApi::class)
     @Test
-    fun `X-Ray exposes complete instruction and signal text to Compose accessibility`() = timeoutRunBlocking<Unit>(20.seconds) {
+    fun `X-Ray exposes complete instruction and signal text to Compose accessibility`() = timeoutRunBlocking(20.seconds) {
         withContext(Dispatchers.EDT) {
             val empty = toolsMessages.getMessage("xray.noSteps")
             val description = mutableStateOf(empty)
@@ -123,7 +123,7 @@ class XRayDetailsPlatformTest {
 
     @OptIn(ExperimentalComposeUiApi::class, ExperimentalJewelApi::class)
     @Test
-    fun `the schematic can be measured at zero width before the tool window opens`() = timeoutRunBlocking<Unit>(20.seconds) {
+    fun `the schematic can be measured at zero width before the tool window opens`() = timeoutRunBlocking(20.seconds) {
         withContext(Dispatchers.EDT) {
             val frame = mutableStateOf(XRaySchematicFrame(XRayUnit.DATAPATH))
             val schematic = xRaySchematicContent(frame, mutableIntStateOf(0)) { error("The hidden schematic cannot be activated") }
@@ -142,7 +142,7 @@ class XRayDetailsPlatformTest {
 
     @OptIn(ExperimentalComposeUiApi::class, ExperimentalJewelApi::class)
     @Test
-    fun `schematics draw live signals and expose the drill-down controls`() = timeoutRunBlocking<Unit>(30.seconds) {
+    fun `schematics draw live signals and expose the drill-down controls`() = timeoutRunBlocking(30.seconds) {
         withContext(Dispatchers.EDT) {
             val main = XRayUnit.DATAPATH
             val frame = mutableStateOf(XRaySchematicFrame(main))

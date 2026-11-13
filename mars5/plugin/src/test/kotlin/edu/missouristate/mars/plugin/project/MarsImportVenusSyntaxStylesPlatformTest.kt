@@ -58,7 +58,7 @@ class MarsImportVenusSyntaxStylesPlatformTest {
     private val marker = "mars.venus.syntax.styles.imported"
 
     @Test
-    fun `syntax import previews all Venus categories and creates a separate MIPS color scheme once`() = timeoutRunBlocking<Unit> {
+    fun `syntax import previews all Venus categories and creates a separate MIPS color scheme once`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             withSchemes {
                 val registered = assertInstanceOf(
@@ -125,7 +125,7 @@ class MarsImportVenusSyntaxStylesPlatformTest {
     }
 
     @Test
-    fun `syntax preview rejects stale schemes and reports empty or unreadable preferences`() = timeoutRunBlocking<Unit> {
+    fun `syntax preview rejects stale schemes and reports empty or unreadable preferences`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             withSchemes {
                 val root = MemoryPreferences()
@@ -173,7 +173,7 @@ class MarsImportVenusSyntaxStylesPlatformTest {
     }
 
     @Test
-    fun `a partial saved style works when a base scheme has no attributes for that token`() = timeoutRunBlocking<Unit> {
+    fun `a partial saved style works when a base scheme has no attributes for that token`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             @Suppress("JavaDefaultMethodsNotOverriddenByDelegation")
             val base = object : EditorColorsScheme by colors.globalScheme {
@@ -194,7 +194,7 @@ class MarsImportVenusSyntaxStylesPlatformTest {
     }
 
     @Test
-    fun `machine styles migrate saved colors and font styles into a separate scheme`() = timeoutRunBlocking<Unit> {
+    fun `machine styles migrate saved colors and font styles into a separate scheme`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             withSchemes {
                 val marker = "mars.venus.machine.styles.v2.imported"
@@ -246,7 +246,7 @@ class MarsImportVenusSyntaxStylesPlatformTest {
     }
 
     @Test
-    fun `earlier machine imports can add the register style to the active scheme`() = timeoutRunBlocking<Unit> {
+    fun `earlier machine imports can add the register style to the active scheme`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             withSchemes {
                 val oldKey = "mars.venus.machine.styles.imported"

@@ -128,7 +128,7 @@ class MarsBuildPlatformTest {
     private val project get() = projectFixture.get()
 
     @Test
-    fun `native build task batches report failures and assemble duplicate requests once`() = timeoutRunBlocking<Unit> {
+    fun `native build task batches report failures and assemble duplicate requests once`() = timeoutRunBlocking {
         val (first, broken, last) = withContext(Dispatchers.EDT) {
             fun task(name: String, source: String): MarsBuildTask =
                 MarsBuildTask(MarsSourceSet(fixture.addFileToProject(name, source).virtualFile.toNioPath()))
@@ -170,7 +170,7 @@ class MarsBuildPlatformTest {
     }
 
     @Test
-    fun `opening project entries and includes debounces one assembly and warms the launch image`() = timeoutRunBlocking<Unit> {
+    fun `opening project entries and includes debounces one assembly and warms the launch image`() = timeoutRunBlocking {
         val settings = project.service<MarsAssemblySettings>()
         val request = FileEditorOpenRequest.withFocus(false)
         val (entry, include, library) = withContext(Dispatchers.EDT) {
@@ -229,7 +229,7 @@ class MarsBuildPlatformTest {
     }
 
     @Test
-    fun `opening a file respects scope and trust and reports assembly failures without activating Build`() = timeoutRunBlocking<Unit> {
+    fun `opening a file respects scope and trust and reports assembly failures without activating Build`() = timeoutRunBlocking {
         val settings = project.service<MarsAssemblySettings>()
         val request = FileEditorOpenRequest.withFocus(false)
         val editors = FileEditorManager.getInstance(project)
@@ -315,7 +315,7 @@ class MarsBuildPlatformTest {
     }
 
     @Test
-    fun `launch reuses a successful build with current diagnostic positions and rebuild replaces it`() = timeoutRunBlocking<Unit> {
+    fun `launch reuses a successful build with current diagnostic positions and rebuild replaces it`() = timeoutRunBlocking {
         val (entry, include) = withContext(Dispatchers.EDT) {
             val main = fixture.addFileToProject("cached.asm", $$".include \"value.s\"\nli $t0, VALUE\n").virtualFile
             val value = fixture.addFileToProject("value.s", ".set noat\n.eqv VALUE 42\n").virtualFile
@@ -370,7 +370,7 @@ class MarsBuildPlatformTest {
     }
 
     @Test
-    fun `launch image changes with source ordering include paths handler and execution options`() = timeoutRunBlocking<Unit> {
+    fun `launch image changes with source ordering include paths handler and execution options`() = timeoutRunBlocking {
         val (entry, include, handler) = withContext(Dispatchers.EDT) {
             val main = fixture.addFileToProject("project/cached.asm", ".include \"body.inc\"\nnop\n").virtualFile
             val body = fixture.addFileToProject("project/body.inc", "nop\n").virtualFile
@@ -410,7 +410,7 @@ class MarsBuildPlatformTest {
     }
 
     @Test
-    fun `native build task cancellation reports aborted and stops the batch`() = timeoutRunBlocking<Unit> {
+    fun `native build task cancellation reports aborted and stops the batch`() = timeoutRunBlocking {
         val (first, last) = withContext(Dispatchers.EDT) {
             fun task(name: String, source: String) =
                 MarsBuildTask(MarsSourceSet(fixture.addFileToProject(name, source).virtualFile.toNioPath()))
@@ -433,7 +433,7 @@ class MarsBuildPlatformTest {
     }
 
     @Test
-    fun `ordered project sources persist and update assembly and editor analysis`() = timeoutRunBlocking<Unit> {
+    fun `ordered project sources persist and update assembly and editor analysis`() = timeoutRunBlocking {
         val (main, alpha, zulu) = withContext(Dispatchers.EDT) {
             val main = fixture.addFileToProject("app/main.asm", $$"la $t0, fromAlpha\nla $t1, fromZulu\n") as MipsFile
             val alpha = fixture.addFileToProject("lib-a/alpha.s", ".eqv NUMBER 7\n.include \"shared.s\"\n.globl fromAlpha\nfromAlpha: nop\n") as MipsFile
@@ -571,7 +571,7 @@ class MarsBuildPlatformTest {
     }
 
     @Test
-    fun `project memory layout persists and invalidates cached images and editor diagnostics`() = timeoutRunBlocking<Unit> {
+    fun `project memory layout persists and invalidates cached images and editor diagnostics`() = timeoutRunBlocking {
         val (main, fixed) = withContext(Dispatchers.EDT) {
             val main = fixture.addFileToProject("layout.asm", ".data\nvalue: .word 42\n.text\nstart: nop\n")
             val fixed = fixture.addFileToProject("compact-only.asm", ".text 0x3000\nfixed: nop\n") as MipsFile
@@ -635,7 +635,7 @@ class MarsBuildPlatformTest {
     }
 
     @Test
-    fun `assembler policy persists and changes native build and editor diagnostics`() = timeoutRunBlocking<Unit> {
+    fun `assembler policy persists and changes native build and editor diagnostics`() = timeoutRunBlocking {
         val file = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("policy.asm", $$"""
                 .data
@@ -735,7 +735,7 @@ class MarsBuildPlatformTest {
     }
 
     @Test
-    fun `backstep limit validates and persists without invalidating assembly`() = timeoutRunBlocking<Unit> {
+    fun `backstep limit validates and persists without invalidating assembly`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             val settings = project.service<MarsAssemblySettings>()
             for (invalid in listOf(0, 100_001)) {
@@ -770,7 +770,7 @@ class MarsBuildPlatformTest {
     }
 
     @Test
-    fun `assembler error limit validates persists and refreshes Build and editor diagnostics`() = timeoutRunBlocking<Unit> {
+    fun `assembler error limit validates persists and refreshes Build and editor diagnostics`() = timeoutRunBlocking {
         val file = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("error-limit.asm", (0..7).joinToString("\n", postfix = "\n") { ".byte 'ab'" }) as MipsFile
         }
@@ -837,7 +837,7 @@ class MarsBuildPlatformTest {
     }
 
     @Test
-    fun `project execution defaults persist and bare machine updates Build and editor diagnostics`() = timeoutRunBlocking<Unit> {
+    fun `project execution defaults persist and bare machine updates Build and editor diagnostics`() = timeoutRunBlocking {
         val (named, numeric) = withContext(Dispatchers.EDT) {
             val named = fixture.addFileToProject("named.s", $$"addiu $t0,$zero,7\n") as MipsFile
             val numeric = fixture.addFileToProject("numeric.s", $$"addiu $8,$0,7\n") as MipsFile
@@ -885,7 +885,7 @@ class MarsBuildPlatformTest {
     }
 
     @Test
-    fun `project settings select a single exception handler and invalidate stale analysis and builds`() = timeoutRunBlocking<Unit> {
+    fun `project settings select a single exception handler and invalidate stale analysis and builds`() = timeoutRunBlocking {
         val (main, handler) = withContext(Dispatchers.EDT) {
             val main = fixture.addFileToProject("trap/main.asm", $$"la $t0, trapEntry\nnop\n") as MipsFile
             val handler = fixture.addFileToProject("trap/handler.asm", ".ktext 0x80000180\nnop\n") as MipsFile
@@ -993,7 +993,7 @@ class MarsBuildPlatformTest {
     }
 
     @Test
-    fun `directory assembly captures sibling documents in deterministic order and shares their analysis`() = timeoutRunBlocking<Unit> {
+    fun `directory assembly captures sibling documents in deterministic order and shares their analysis`() = timeoutRunBlocking {
         val (main, helper, last) = withContext(Dispatchers.EDT) {
             val main = fixture.addFileToProject("project/main.asm", ".text\n.globl entry\nentry: nop\n") as MipsFile
             val last = fixture.addFileToProject("project/zulu.s", ".eqv NUMBER 11\n.include \"shared/defs.s\"\n.text\nzulu: nop\n") as MipsFile
@@ -1108,7 +1108,7 @@ class MarsBuildPlatformTest {
     }
 
     @Test
-    fun `directory assembly includes dotfiles only by name or with a real assembly extension`() = timeoutRunBlocking<Unit> {
+    fun `directory assembly includes dotfiles only by name or with a real assembly extension`() = timeoutRunBlocking {
         val (entry, include, sibling) = withContext(Dispatchers.EDT) {
             val entry = fixture.addFileToProject("dotfiles/main.asm", $$".include \".asm\"\naddiu $t0,$zero,VALUE\n")
             val include = fixture.addFileToProject("dotfiles/.asm", ".eqv VALUE 7\n")
@@ -1128,7 +1128,7 @@ class MarsBuildPlatformTest {
     }
 
     @Test
-    fun `an included file uses earlier definitions in the selected entry even after a failed build`() = timeoutRunBlocking<Unit> {
+    fun `an included file uses earlier definitions in the selected entry even after a failed build`() = timeoutRunBlocking {
         val source = $$"""
             li $t0, %value
             li $t1, COUNT
@@ -1231,7 +1231,7 @@ class MarsBuildPlatformTest {
     }
 
     @Test
-    fun `an included data continuation inherits the inferred and selected entry segment and list`() = timeoutRunBlocking<Unit> {
+    fun `an included data continuation inherits the inferred and selected entry segment and list`() = timeoutRunBlocking {
         val (entry, data) = withContext(Dispatchers.EDT) {
             val data = fixture.addFileToProject("values.s", "value\n").virtualFile
             val entry = fixture.addFileToProject("entry.s", """
@@ -1258,7 +1258,7 @@ class MarsBuildPlatformTest {
     }
 
     @Test
-    fun `choosing a containing entry changes navigation and completion in a shared include`() = timeoutRunBlocking<Unit> {
+    fun `choosing a containing entry changes navigation and completion in a shared include`() = timeoutRunBlocking {
         val source = "j selectedName\n"
         val (first, second, shared) = withContext(Dispatchers.EDT) {
             val shared = fixture.addFileToProject("parts/shared.s", source).virtualFile
@@ -1335,7 +1335,7 @@ class MarsBuildPlatformTest {
     }
 
     @Test
-    fun `containing entry menu follows only MIPS roots and handles cycles and indexing`() = timeoutRunBlocking<Unit> {
+    fun `containing entry menu follows only MIPS roots and handles cycles and indexing`() = timeoutRunBlocking {
         val (payload, entry, cycle) = withContext(Dispatchers.EDT) {
             val payload = fixture.addFileToProject("payload.txt", "nop\n").virtualFile
             val entry = fixture.addFileToProject("entry.s", ".include \"payload.txt\"\n").virtualFile
@@ -1381,7 +1381,7 @@ class MarsBuildPlatformTest {
     )
 
     @Test
-    fun `completion keeps generated names while typing a direct instruction operand`() = timeoutRunBlocking<Unit> {
+    fun `completion keeps generated names while typing a direct instruction operand`() = timeoutRunBlocking {
         val source = $$"""
             .include "macro.s"
             emit (generatedOne)
@@ -1447,7 +1447,7 @@ class MarsBuildPlatformTest {
     }
 
     @Test
-    fun `successful assembly navigates generated labels until a captured include changes`() = timeoutRunBlocking<Unit> {
+    fun `successful assembly navigates generated labels until a captured include changes`() = timeoutRunBlocking {
         val disposable = Disposer.newDisposable()
         try {
             val events = recordBuildEvents(disposable)
@@ -1521,7 +1521,7 @@ class MarsBuildPlatformTest {
     }
 
     @Test
-    fun `assembled targets observe committed PSI file type and the latest build request`() = timeoutRunBlocking<Unit> {
+    fun `assembled targets observe committed PSI file type and the latest build request`() = timeoutRunBlocking {
         val (entry, other, include) = withContext(Dispatchers.EDT) {
             val main = fixture.addFileToProject("entry.asm", ".include \"macro.s\"\nemit (generated)\nj generated\n")
             val unrelated = fixture.addFileToProject("other.asm", "j generated\n")
@@ -1639,7 +1639,7 @@ class MarsBuildPlatformTest {
     fun `Unicode files with mixed line endings assemble with the same image and source map from disk and IntelliJ`(
         entryBom: String, entryEncoding: String, includeBom: String, includeEncoding: String, includeExtension: String,
     ) =
-        timeoutRunBlocking<Unit> {
+        timeoutRunBlocking {
             val includeName = "pièce.$includeExtension"
             val prelude = $$"ignored: lw $t0,0($sp"
             val entryText = $$"\r\n$$prelude .include \"$$includeName\"\r\n.text\r\nentrée: assign($t0)\r\n"
@@ -1745,7 +1745,7 @@ class MarsBuildPlatformTest {
         }
 
     @Test
-    fun `build and include navigation follow a symlink before resolving a parent segment`() = timeoutRunBlocking<Unit> {
+    fun `build and include navigation follow a symlink before resolving a parent segment`() = timeoutRunBlocking {
         val source = $$"""
             .include "shortcut/../value.s"
             .include "value.s"
@@ -1970,7 +1970,7 @@ class MarsBuildPlatformTest {
     }
 
     @Test
-    fun `registered action assembles unsaved sources and reports clickable diagnostics`() = timeoutRunBlocking<Unit> {
+    fun `registered action assembles unsaved sources and reports clickable diagnostics`() = timeoutRunBlocking {
         val disposable = Disposer.newDisposable()
         try {
             val events = recordBuildEvents(disposable)
@@ -2167,7 +2167,7 @@ class MarsBuildPlatformTest {
     }
 
     @Test
-    fun `action only accepts valid local MIPS sources`() = timeoutRunBlocking<Unit> {
+    fun `action only accepts valid local MIPS sources`() = timeoutRunBlocking {
         val (text, removed) = withContext(Dispatchers.EDT) {
             val text = fixture.addFileToProject("sample.txt", "nop\n").virtualFile
             val removed = fixture.addFileToProject("removed.s", "nop\n").virtualFile
@@ -2207,7 +2207,7 @@ class MarsBuildPlatformTest {
     }
 
     @Test
-    fun `cancellation emits a single skipped finish after start`() = timeoutRunBlocking<Unit> {
+    fun `cancellation emits a single skipped finish after start`() = timeoutRunBlocking {
         val disposable = Disposer.newDisposable()
         try {
             val entry = withContext(Dispatchers.EDT) {
@@ -2231,7 +2231,7 @@ class MarsBuildPlatformTest {
     }
 
     @Test
-    fun `cancelled build coroutine stops repeated data writes inside the assembler`() = timeoutRunBlocking<Unit> {
+    fun `cancelled build coroutine stops repeated data writes inside the assembler`() = timeoutRunBlocking {
         val entry = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("repeat.asm", ".data\n.word 7:200\n.text\nnop\n").virtualFile.toNioPath()
         }
@@ -2251,7 +2251,7 @@ class MarsBuildPlatformTest {
     }
 
     @Test
-    fun `unavailable or stale diagnostic positions remain messages without misleading links`() = timeoutRunBlocking<Unit> {
+    fun `unavailable or stale diagnostic positions remain messages without misleading links`() = timeoutRunBlocking {
         val file = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("positions.asm", "nop\n").virtualFile
         }

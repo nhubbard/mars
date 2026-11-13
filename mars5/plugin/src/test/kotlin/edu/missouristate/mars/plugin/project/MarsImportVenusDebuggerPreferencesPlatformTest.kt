@@ -56,7 +56,7 @@ class MarsImportVenusDebuggerPreferencesPlatformTest {
     private val importedOrderKey = DISASSEMBLY_LAYOUT_PREFIX + "importedOrder"
 
     @Test
-    fun `debugger import previews both scopes and updates open Symbols views in the current project`() = timeoutRunBlocking<Unit> {
+    fun `debugger import previews both scopes and updates open Symbols views in the current project`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             withDefaults {
                 val registered = assertInstanceOf(MarsImportVenusDebuggerPreferencesAction::class.java,
@@ -122,7 +122,7 @@ class MarsImportVenusDebuggerPreferencesPlatformTest {
     }
 
     @Test
-    fun `earlier debugger imports can add a valid Disassembly order independently`() = timeoutRunBlocking<Unit> {
+    fun `earlier debugger imports can add a valid Disassembly order independently`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             withDefaults {
                 appProperties.setValue(numberMarker, true)
@@ -162,7 +162,7 @@ class MarsImportVenusDebuggerPreferencesPlatformTest {
     }
 
     @Test
-    fun `earlier debugger imports can add write highlighting independently`() = timeoutRunBlocking<Unit> {
+    fun `earlier debugger imports can add write highlighting independently`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             withDefaults {
                 appProperties.setValue(numberMarker, true)
@@ -202,7 +202,7 @@ class MarsImportVenusDebuggerPreferencesPlatformTest {
         "4, NAME, false", "5, NAME, false", "6, NAME, true", "7, NAME, true",
     )
     fun `Venus sort state restores the matching primary column and direction`(state: Int, column: String, descending: Boolean) =
-        timeoutRunBlocking<Unit> {
+        timeoutRunBlocking {
             withContext(Dispatchers.EDT) {
                 withDefaults {
                     appProperties.setValue(numberMarker, true)
@@ -230,7 +230,7 @@ class MarsImportVenusDebuggerPreferencesPlatformTest {
         }
 
     @Test
-    fun `numeric-only imports preserve the project sort and ignore invalid or omitted values`() = timeoutRunBlocking<Unit> {
+    fun `numeric-only imports preserve the project sort and ignore invalid or omitted values`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             withDefaults {
                 val root = MemoryPreferences()
@@ -259,7 +259,7 @@ class MarsImportVenusDebuggerPreferencesPlatformTest {
     }
 
     @Test
-    fun `debugger import detects stale settings and leaves the action available after read errors`() = timeoutRunBlocking<Unit> {
+    fun `debugger import detects stale settings and leaves the action available after read errors`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             withDefaults {
                 val unreadable = MarsImportVenusDebuggerPreferencesAction { throw BackingStoreException("unavailable") }

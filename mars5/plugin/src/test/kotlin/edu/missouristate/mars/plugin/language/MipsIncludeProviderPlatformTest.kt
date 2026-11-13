@@ -75,7 +75,7 @@ class MipsIncludeProviderPlatformTest {
     }
 
     @Test
-    fun `Windows include keys match directory separators and case without rewriting source paths`() = timeoutRunBlocking<Unit> {
+    fun `Windows include keys match directory separators and case without rewriting source paths`() = timeoutRunBlocking {
         val path = """Parts\CHILD.s"""
         val source = ".include \"$path\""
         val file = LightVirtualFile("entry.s", MipsFileType, source)
@@ -119,7 +119,7 @@ class MipsIncludeProviderPlatformTest {
     }
 
     @Test
-    fun `shared include index resolves both graph directions and terminates recursive traversal`() = timeoutRunBlocking<Unit> {
+    fun `shared include index resolves both graph directions and terminates recursive traversal`() = timeoutRunBlocking {
         val files = withContext(Dispatchers.EDT) {
             val child = if (SystemInfoRt.isWindows) """parts\CHILD.asm""" else "parts/child.asm"
             listOf(
@@ -139,7 +139,7 @@ class MipsIncludeProviderPlatformTest {
     }
 
     @Test
-    fun `shared include index resolves an absolute path with spaces and unicode without a relative alias`() = timeoutRunBlocking<Unit> {
+    fun `shared include index resolves an absolute path with spaces and unicode without a relative alias`() = timeoutRunBlocking {
         val files = withContext(Dispatchers.EDT) {
             val target = fixture.addFileToProject("names/with spaces#é.s", "target: nop\n").virtualFile
             val source = fixture.addFileToProject(
@@ -156,7 +156,7 @@ class MipsIncludeProviderPlatformTest {
     }
 
     @Test
-    fun `shared include index agrees with the target directory case sensitivity in both directions`() = timeoutRunBlocking<Unit> {
+    fun `shared include index agrees with the target directory case sensitivity in both directions`() = timeoutRunBlocking {
         val (target, exact, alternate) = withContext(Dispatchers.EDT) {
             val target = fixture.addFileToProject("MixedCase.s", "target: nop\n").virtualFile
             val exact = fixture.addFileToProject("exact.asm", ".include \"MixedCase.s\"\n").virtualFile
@@ -178,7 +178,7 @@ class MipsIncludeProviderPlatformTest {
     }
 
     @Test
-    fun `native resolution and reverse index find newly created targets and follow unsaved edits`() = timeoutRunBlocking<Unit> {
+    fun `native resolution and reverse index find newly created targets and follow unsaved edits`() = timeoutRunBlocking {
         val source = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("main.asm", ".include \"missing.asm\"\n")
         }

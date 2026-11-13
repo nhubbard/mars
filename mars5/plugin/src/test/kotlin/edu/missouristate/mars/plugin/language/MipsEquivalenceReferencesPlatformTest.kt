@@ -39,7 +39,7 @@ class MipsEquivalenceReferencesPlatformTest {
 
     @Test
     fun `a short equivalence can acquire its definition from a prior alias`(@TempDir directory: Path) =
-        timeoutRunBlocking<Unit> {
+        timeoutRunBlocking {
             val definition = ".eqv DECLARE VALUE 7\n"
             val shortForm = ".eqv DECLARE\n"
             val use = $$"addiu $t0, $zero, VALUE\n"
@@ -58,7 +58,7 @@ class MipsEquivalenceReferencesPlatformTest {
         }
 
     @Test
-    fun `go to declaration reaches the first definition in include expansion order`() = timeoutRunBlocking<Unit> {
+    fun `go to declaration reaches the first definition in include expansion order`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             fixture.addFileToProject("parts/outer.s", ".include \"inner.s\"\n.eqv COUNT 4\n")
             fixture.addFileToProject("parts/inner.s", ".eqv COUNT 4\n")
@@ -73,7 +73,7 @@ class MipsEquivalenceReferencesPlatformTest {
     }
 
     @Test
-    fun `equivalence lookup terminates on include cycles and waits for the index`() = timeoutRunBlocking<Unit> {
+    fun `equivalence lookup terminates on include cycles and waits for the index`() = timeoutRunBlocking {
         val current = project.get()
         withContext(Dispatchers.EDT) {
             fixture.addFileToProject("cycle.s", ".include \"cycle.s\"\n.eqv COUNT 4\n")
@@ -92,7 +92,7 @@ class MipsEquivalenceReferencesPlatformTest {
     }
 
     @Test
-    fun `equivalences bind in immediate segment macro argument and operation positions`() = timeoutRunBlocking<Unit> {
+    fun `equivalences bind in immediate segment macro argument and operation positions`() = timeoutRunBlocking {
         for ((source, name) in listOf(
             $$".eqv VALUE 4\nsll $t0, $t1, VA<caret>LUE\n" to "VALUE",
             ".eqv BASE 0x10010000\n.data BA<caret>SE\n" to "BASE",
@@ -111,7 +111,7 @@ class MipsEquivalenceReferencesPlatformTest {
     }
 
     @Test
-    fun `generated equivalences follow physical include order and use the first valid definition`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+    fun `generated equivalences follow physical include order and use the first valid definition`(@TempDir directory: Path) = timeoutRunBlocking {
         val generator = ".eqv DEFINE .eqv\n.eqv MAKE DEFINE\n"
         val definitions = "start: MAKE COUNT 7\nMAKE LIMIT COUNT\n"
         val include = ".include \"definitions.s\"\n"
@@ -133,7 +133,7 @@ class MipsEquivalenceReferencesPlatformTest {
     }
 
     @Test
-    fun `macro operands that record equivalences are visible after the call`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+    fun `macro operands that record equivalences are visible after the call`(@TempDir directory: Path) = timeoutRunBlocking {
         val macro = ".macro discard (%first, %directive, %name, %value)\nnop\n.end_macro\n"
         val use = $$"addiu $t0, $zero, CO<caret>UNT\n"
         val context = project.get().service<MarsSessionService>().context
@@ -153,7 +153,7 @@ class MipsEquivalenceReferencesPlatformTest {
 
     @Test
     fun `third token equivalences in unused macro bodies are visible in later source`(@TempDir directory: Path) =
-        timeoutRunBlocking<Unit> {
+        timeoutRunBlocking {
             val aliases = ".eqv DEFINE .eqv\n.eqv WHOLE .eqv COUNT 7\n.eqv PREFIX 2 .eqv COUNT 7\n"
             val beforeBody = aliases + ".macro unused\n"
             val use = $$"addiu $t0, $zero, CO<caret>UNT\n"
@@ -184,7 +184,7 @@ class MipsEquivalenceReferencesPlatformTest {
 
     @Test
     fun `references follow actual substitutions when a line defines an equivalence`(@TempDir directory: Path) =
-        timeoutRunBlocking<Unit> {
+        timeoutRunBlocking {
             val definitions = ".eqv VALUE 7\n.eqv MAKE .eqv\n"
             val macro = ".macro discard (%first, %directive, %name, %value)\n.end_macro\n"
             for (line in listOf("MAKE RESULT VALUE", "discard VALUE .eqv RESULT VALUE")) {
@@ -213,7 +213,7 @@ class MipsEquivalenceReferencesPlatformTest {
         }
 
     @Test
-    fun `generated lookups refresh when an include appears or its unsaved PSI changes`() = timeoutRunBlocking<Unit> {
+    fun `generated lookups refresh when an include appears or its unsaved PSI changes`() = timeoutRunBlocking {
         val current = project.get()
         val source = $$".eqv DEFINE .eqv\n.include \"late.s\"\nli $t0, CO<caret>UNT\n"
         assertNull(target(source))
@@ -233,7 +233,7 @@ class MipsEquivalenceReferencesPlatformTest {
     }
 
     @Test
-    fun `included sources follow a unique entry before assembly and respect explicit entry selection`() = timeoutRunBlocking<Unit> {
+    fun `included sources follow a unique entry before assembly and respect explicit entry selection`() = timeoutRunBlocking {
         val current = project.get()
         val source = $$"li $t0, VALUE\n"
         val include = ".include \"part.s\"\n"

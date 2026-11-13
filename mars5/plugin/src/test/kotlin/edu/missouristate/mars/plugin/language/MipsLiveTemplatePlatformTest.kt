@@ -22,7 +22,7 @@ class MipsLiveTemplatePlatformTest {
     private val fixture by codeInsightFixture(project)
 
     @Test
-    fun `native Tab expands macro template with editable name and parameter and positions the caret in the body`() = timeoutRunBlocking<Unit> {
+    fun `native Tab expands macro template with editable name and parameter and positions the caret in the body`() = timeoutRunBlocking {
         IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
         withContext(Dispatchers.EDT) {
             fixture.configureByText("main.asm", "mipsmacro<caret>\n")
@@ -40,7 +40,7 @@ class MipsLiveTemplatePlatformTest {
     }
 
     @Test
-    fun `entry equivalence and syscall templates insert MARS source`() = timeoutRunBlocking<Unit> {
+    fun `entry equivalence and syscall templates insert MARS source`() = timeoutRunBlocking {
         IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
         withContext(Dispatchers.EDT) {
             fixture.configureByText("main.s", "mipsentry<caret>\n")
@@ -69,7 +69,7 @@ class MipsLiveTemplatePlatformTest {
     }
 
     @Test
-    fun `template contexts follow statement lines and physical macro scope`() = timeoutRunBlocking<Unit> {
+    fun `template contexts follow statement lines and physical macro scope`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             val statement = MipsStatementTemplateContext()
             val topLevel = MipsTopLevelTemplateContext()

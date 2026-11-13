@@ -34,7 +34,7 @@ class MipsMacroFormalRenamePlatformTest {
     private val fixture by codeInsightFixture(project)
 
     @Test
-    fun `native rename rewrites one parameter across includes and supports undo and redo`() = timeoutRunBlocking<Unit> {
+    fun `native rename rewrites one parameter across includes and supports undo and redo`() = timeoutRunBlocking {
         val rootText = $$"""
             .eqv REG $a0
             .macro emit (%value)
@@ -105,7 +105,7 @@ class MipsMacroFormalRenamePlatformTest {
     }
 
     @Test
-    fun `rename refuses ambiguous headers references and new token boundaries`() = timeoutRunBlocking<Unit> {
+    fun `rename refuses ambiguous headers references and new token boundaries`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) { fixture.addFileToProject("plain-body.txt", $$"li $a0, %arg\n") }
         val cases = listOf(
             Triple(".macro emit (%arg)\n.end_macro", "%", "Enter one MARS macro parameter"),
