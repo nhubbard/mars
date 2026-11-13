@@ -286,6 +286,8 @@ class CapturedAssemblySourcesPlatformTest {
     }
 
     @Test
+    // Inspect the documentation target's navigation descriptor without opening another editor.
+    @Suppress("OverrideOnly")
     fun `assembly follows includes and source locations beyond the IntelliJ file preview`() = timeoutRunBlocking {
         val comment = "#" + " ".repeat(16_382)
         val diskLine = "$comment\r\n"

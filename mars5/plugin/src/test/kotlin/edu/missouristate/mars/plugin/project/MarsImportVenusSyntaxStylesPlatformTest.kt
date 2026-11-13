@@ -53,7 +53,7 @@ import java.util.prefs.BackingStoreException
 class MarsImportVenusSyntaxStylesPlatformTest {
     private val projectFixture = codeInsightProjectFixture()
     private val project get() = projectFixture.get()
-    private val colors get() = EditorColorsManager.getInstance() as EditorColorsManagerImpl
+    private val colors get() = EditorColorsManager.getInstance()
     private val properties get() = PropertiesComponent.getInstance()
     private val marker = "mars.venus.syntax.styles.imported"
 
@@ -165,7 +165,7 @@ class MarsImportVenusSyntaxStylesPlatformTest {
                     assertEquals(2, count)
                     properties.unsetValue(marker)
                     colors.setGlobalScheme(base)
-                    colors.getScheme("MARS Venus")?.let(colors::removeScheme)
+                    colors.getScheme("MARS Venus")?.let(::removeTestScheme)
                 }
                 assertTrue(event(action).also(action::update).presentation.isEnabledAndVisible)
             }
@@ -288,6 +288,12 @@ class MarsImportVenusSyntaxStylesPlatformTest {
         }
     }
 
+    // The public manager supports adding schemes. The fixture must also remove what it creates.
+    @Suppress("UnstableApiUsage")
+    private fun removeTestScheme(scheme: EditorColorsScheme) {
+        (colors as EditorColorsManagerImpl).removeScheme(scheme)
+    }
+
     private fun withSchemes(operation: () -> Unit) {
         val base = colors.globalScheme
         val before = colors.allSchemes.toSet()
@@ -298,7 +304,7 @@ class MarsImportVenusSyntaxStylesPlatformTest {
         } finally {
             properties.setValue(marker, oldMarker)
             colors.setGlobalScheme(base)
-            colors.allSchemes.filterNot { it in before }.forEach(colors::removeScheme)
+            colors.allSchemes.filterNot { it in before }.forEach(::removeTestScheme)
         }
     }
 

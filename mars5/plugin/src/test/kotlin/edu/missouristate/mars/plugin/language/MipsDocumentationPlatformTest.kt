@@ -27,6 +27,9 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 @TestApplication
+// IntelliJ's own quick-documentation tests use the headless documentation engine.
+// These tests also inspect provider callbacks to verify pointers and navigation after edits.
+@Suppress("UnstableApiUsage", "OverrideOnly")
 class MipsDocumentationPlatformTest {
     private val project = codeInsightProjectFixture()
     private val fixture by codeInsightFixture(project)
