@@ -2073,6 +2073,52 @@ class MarsDebugPlatformTest {
     }
 
     @Test
+    fun `Debug watches and Backstep expose exact UTF-8 syscall bytes`() = timeoutRunBlocking {
+        val settings = project.service<MarsAssemblySettings>()
+        val original = settings.utf8Text
+        try {
+            val source = withContext(Dispatchers.EDT) {
+                settings.changeUtf8Text(true)
+                fixture.addFileToProject("utf8-debug.mars", $$"""
+                    .data
+                    message: .utf8z "é"
+                    buffer: .byte 88, 88, 88, 88
+                    .text
+                    la $a0,buffer
+                    li $a1,4
+                    li $v0,8
+                    syscall
+                    nop
+                """.trimIndent()).virtualFile.also { addBreakpoint(it, 7) }
+            }
+            withDebug(source) { debug ->
+                debug.assertPausedAt(source, 7)
+                val process = assertInstanceOf(MarsProcessHandler::class.java, debug.session.debugProcess.processHandler)
+                withContext(Dispatchers.IO) { process.processInput.write("é💡\n".encodeToByteArray()) }
+                withContext(Dispatchers.EDT) { debug.session.stepInto() }
+                debug.assertPausedAt(source, 8)
+                withContext(Dispatchers.EDT) {
+                    val frame = requireNotNull(debug.session.currentStackFrame)
+                    for ((expression, expected) in listOf(
+                        "byte(message)" to "0x000000c3", "byte(message+1)" to "0x000000a9", "byte(message+2)" to "0x00000000",
+                        "byte(buffer)" to "0x000000c3", "byte(buffer+1)" to "0x000000a9",
+                        "byte(buffer+2)" to "0x00000000", "byte(buffer+3)" to "0x00000058",
+                    )) assertEquals(expected, evaluate(debug.session, frame, expression), expression)
+                    val (action, event) = backstepAction(debug.session)
+                    ActionUtil.performAction(action, event)
+                }
+                debug.assertPausedAt(source, 7)
+                withContext(Dispatchers.EDT) {
+                    val frame = requireNotNull(debug.session.currentStackFrame)
+                    for (index in 0..3) assertEquals("0x00000058", evaluate(debug.session, frame, "byte(buffer+$index)"))
+                }
+            }
+        } finally {
+            withContext(Dispatchers.EDT) { settings.changeUtf8Text(original) }
+        }
+    }
+
+    @Test
     fun `MARS64 Variables show the full register and reverse a narrow write`() = timeoutRunBlocking {
         val settings = project.service<MarsAssemblySettings>()
         val display = service<MarsDebuggerDisplaySettings>()
