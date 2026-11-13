@@ -174,7 +174,7 @@ class MipsCompletionContributor : CompletionContributor(), DumbAware {
             ?.let { it.textRange.endOffset } ?: parameters.position.textOffset
 
         fun equivalenceLookup(name: String, replacement: String): LookupElementBuilder =
-            LookupElementBuilder.create(name).withTailText(" = " + replacement, true)
+            LookupElementBuilder.create(name).withTailText(" = $replacement", true)
                 .withTypeText(messages.getMessage("colors.equivalence"))
 
         fun registerCandidates(formats: List<Instruction>, index: Int, bareMachine: Boolean): Set<String> = buildSet {

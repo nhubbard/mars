@@ -28,7 +28,7 @@ object MipsScanner {
     }
 
     fun next(source: CharSequence, start: Int, end: Int = source.length, debuggerExpression: Boolean = false): MipsToken? {
-        require(start >= 0 && start <= end && end <= source.length) { "Invalid scanning range" }
+        require(start in 0..end && end <= source.length) { "Invalid scanning range" }
         if (start == end) return null
         val first = source[start]
         var position = start + 1

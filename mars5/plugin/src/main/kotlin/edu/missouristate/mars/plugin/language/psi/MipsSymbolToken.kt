@@ -172,7 +172,7 @@ internal enum class DataLabelOperand {
     fun exportHead(element: PsiElement): PsiElement? = when (this) {
         EXPORT -> element.parent.parent.parent.parent.firstChild
         LIST -> null
-        CANDIDATE -> element.parent.takeIf { PsiUtilCore.getElementType(it) == invocationToken }?.let { it.parent.firstChild }
+        CANDIDATE -> element.parent.takeIf { PsiUtilCore.getElementType(it) == invocationToken }?.parent?.firstChild
     }
 
     fun isDataLabel(file: MipsFile, analysis: MarsAnalysisService, element: PsiElement): Boolean {

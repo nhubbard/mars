@@ -17,7 +17,7 @@ internal fun runSpeedTitle(rate: Float) =
 internal class MarsRunSpeedAction(private val handler: MarsProcessHandler) : ComboBoxAction(), DumbAware {
     init {
         val title = runMessages.getMessage("run.speed.title")
-        setPopupTitle(title)
+        setPopupTitle(runMessages.getMessage("run.speed.popup"))
         templatePresentation.text = title
         templatePresentation.description = title
     }

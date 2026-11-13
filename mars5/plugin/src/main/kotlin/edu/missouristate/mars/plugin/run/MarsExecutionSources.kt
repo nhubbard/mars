@@ -169,7 +169,7 @@ internal class MarsExecutionSources(private val capture: CapturedAssemblySources
 
     private fun firstLine(file: VirtualFile): Int = (file as? CapturedFile)?.firstLine ?: 0
 
-    private fun pathOf(file: VirtualFile) = file.fileSystem.getNioPath(file)?.let { it.toAbsolutePath().normalize() }
+    private fun pathOf(file: VirtualFile) = file.fileSystem.getNioPath(file)?.toAbsolutePath()?.normalize()
 
     private fun fileAt(location: Location, consoleProject: Project? = null): VirtualFile {
         val path = location.file()

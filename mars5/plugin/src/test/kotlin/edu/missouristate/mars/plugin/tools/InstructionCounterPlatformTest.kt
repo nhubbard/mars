@@ -1082,7 +1082,7 @@ class InstructionCounterPlatformTest {
             withContext(Dispatchers.EDT) {
                 for (width in listOf(240, 610)) {
                     val viewport = layoutDock(marsBot, width, 460).viewport
-                    val setRate = button("Set rate", marsBot)
+                    val setRate = button("Set Rate", marsBot)
                     val clock = robotClock()
                     val gap = setRate.x - (clock.x + clock.width)
                     // IntelliJ aligns the painted controls and includes extra space for focus in their bounds.
@@ -1142,7 +1142,7 @@ class InstructionCounterPlatformTest {
                 robotClock().text = "0"
                 robotClock().postActionEvent()
                 robotClock().text = "1000001"
-                button("Set rate", marsBot).doClick()
+                button("Set Rate", marsBot).doClick()
                 assertEquals(64, robot.snapshot().instructionsPerTick)
                 robotClock().text = "1"
                 robotClock().postActionEvent()

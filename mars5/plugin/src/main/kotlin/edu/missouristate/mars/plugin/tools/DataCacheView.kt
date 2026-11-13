@@ -204,7 +204,7 @@ internal class DataCacheView(project: Project) : Disposable {
 
         override fun getColumnName(column: Int) = toolsMessages.getMessage("cache.column.${columns[column]}")
         override fun getColumnCount() = columns.size
-        override fun getRowCount() = snapshot?.let { it.blocks.size } ?: 0
+        override fun getRowCount() = snapshot?.blocks?.size ?: 0
         override fun getValueAt(rowIndex: Int, columnIndex: Int): String {
             val state = snapshot!!
             val block = state.blocks[rowIndex]

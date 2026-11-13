@@ -73,7 +73,7 @@ class ScavengerHuntPlatformTest {
                     assertTrue(viewport.viewRect.y <= bounds.y)
                     assertTrue(viewport.viewRect.maxY >= minOf(bounds.maxY, bounds.minY + viewport.height))
                 }
-                val rate = UIUtil.findComponentsOfType(bot.component, JButton::class.java).single { it.text == "Set rate" }
+                val rate = UIUtil.findComponentsOfType(bot.component, JButton::class.java).single { it.text == "Set Rate" }
                 val table = UIUtil.findComponentsOfType(hunt.component, JBTable::class.java).single()
                 val scoreboard = SwingUtilities.getAncestorOfClass(JScrollPane::class.java, table) as JScrollPane
                 reveal(bot.component, rate)

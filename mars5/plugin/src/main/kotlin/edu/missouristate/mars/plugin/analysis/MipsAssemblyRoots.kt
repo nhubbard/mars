@@ -45,7 +45,7 @@ internal fun inferredMipsAssemblyRoot(file: MipsFile): VirtualFile? {
 }
 
 internal fun inferredMipsAssemblyEntry(file: MipsFile): Path? =
-    inferredMipsAssemblyRoot(file)?.let { it.toNioPath().toAbsolutePath().normalize() }
+    inferredMipsAssemblyRoot(file)?.toNioPath()?.toAbsolutePath()?.normalize()
 
 /** In a graph without an entry, an outgoing edge to an ancestor closes a cycle. */
 internal fun closesRootlessMipsIncludeCycle(file: MipsFile, literal: MipsStringLiteral, path: String): Boolean {

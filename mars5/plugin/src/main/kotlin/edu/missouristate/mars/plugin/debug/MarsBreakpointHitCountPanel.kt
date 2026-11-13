@@ -16,7 +16,10 @@ internal class MarsBreakpointHitCountPanel<B : XBreakpoint<*>> : XBreakpointCust
     private val content = panel {
         row(runMessages.getMessage("debug.breakpoint.hit.interval")) {
             interval = spinner(1..Int.MAX_VALUE).component
-            label(runMessages.getMessage("debug.breakpoint.hit.interval.hits"))
+            // This suffix follows the number in the sentence.
+            @Suppress("DialogTitleCapitalization")
+            val suffix = runMessages.getMessage("debug.breakpoint.hit.interval.hits")
+            label(suffix)
         }
     }
 
