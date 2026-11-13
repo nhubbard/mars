@@ -1646,7 +1646,7 @@ class MipsParserPlatformTest {
             readAction {
                 val libraryRoot = assertParses(library, include.fileName.toString()).node
                 assertEquals("٧", descendants(libraryRoot, "REPLACEMENT").single().text)
-                assertEquals("$量", descendants(libraryRoot, "MACRO_PARAMETER").single().text)
+                assertEquals("\$量", descendants(libraryRoot, "MACRO_PARAMETER").single().text)
                 val root = assertParses(source, entry.fileName.toString()).node
                 assertEquals(".include \"常用.inc\"", descendants(root, "INCLUDE_LINE").single().text)
                 assertEquals(listOf(".數據:", "入口:"), descendants(root, "LABEL").map { it.text }.toList())
