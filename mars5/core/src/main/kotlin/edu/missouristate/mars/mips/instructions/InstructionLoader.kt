@@ -24,6 +24,13 @@ class InstructionLoader {
     private fun parseTemplate(line: String, owner: InstructionSet): ExtendedInstruction {
         val tokens = StringTokenizer(line, "\t")
         val example = tokens.nextToken()
+        if (owner.target == MarsTarget.MARS64) {
+            val mnemonic = example.substringBefore(' ')
+            when (mnemonic) {
+                "ld", "sd" -> return wideMemoryTemplate(owner, mnemonic, example)
+                "move" -> return ExtendedInstruction(example, "or RG1, RG2, \$0", null, "Copy an integer register", owner)
+            }
+        }
         var description = ""
         var standard: String? = null
         var template = StringBuilder()
@@ -45,14 +52,27 @@ class InstructionLoader {
             }
         }
         val remaining = template.toString()
-        if (owner.target == MarsTarget.MARS64 && example.startsWith("move ")) {
-            return ExtendedInstruction(example, "or RG1, RG2, \$0", null, description, owner)
-        }
         return if (standard == null) {
             ExtendedInstruction(example, remaining, null, description, owner)
         } else {
             ExtendedInstruction(example, standard, remaining, description, owner)
         }
+    }
+
+    private fun wideMemoryTemplate(owner: InstructionSet, mnemonic: String, example: String): ExtendedInstruction {
+        val setup = when (example.substringAfter(',')) {
+            "-100(\$t2)" -> "$mnemonic RG1, VL2(RG4)"
+            "100000" -> "lui \$1, VH2\n$mnemonic RG1, VL2(\$1)"
+            "label" -> "lui \$1, LH2\n$mnemonic RG1, LL2(\$1)"
+            "label+100000" -> "lui \$1, LHPA\n$mnemonic RG1, LLP(\$1)"
+            "(\$t2)" -> "$mnemonic RG1, 0(RG3)"
+            "100000(\$t2)" -> "lui \$1, VH2\ndaddu \$1, \$1, RG4\n$mnemonic RG1, VL2(\$1)"
+            "label(\$t2)" -> "lui \$1, LH2\ndaddu \$1, \$1, RG4\n$mnemonic RG1, LL2(\$1)"
+            "label+100000(\$t2)" -> "lui \$1, LHPA\ndaddu \$1, \$1, RG6\n$mnemonic RG1, LLP(\$1)"
+            else -> error("Unknown doubleword operand form: $example")
+        }
+        val description = if (mnemonic == "ld") "Load an aligned doubleword" else "Store an aligned doubleword"
+        return ExtendedInstruction(example, setup, null, description, owner)
     }
 
     private fun pseudoOps(): BufferedReader {

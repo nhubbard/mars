@@ -2,6 +2,7 @@ package edu.missouristate.mars
 
 import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.mips.hardware.Coprocessor0State.Companion.CAUSE
+import edu.missouristate.mars.mips.hardware.MemoryState
 import edu.missouristate.mars.simulator.Exceptions.ADDRESS_EXCEPTION_LOAD
 import edu.missouristate.mars.simulator.Exceptions.ADDRESS_EXCEPTION_STORE
 import java.nio.file.Files
@@ -15,6 +16,39 @@ import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 
 class MarsAddressWidthTest {
+    @ParameterizedTest
+    @ValueSource(booleans = [MemoryState.LITTLE_ENDIAN, MemoryState.BIG_ENDIAN])
+    fun `doubleword address forms use one full register in MARS64`(littleEndian: Boolean, @TempDir directory: Path) {
+        val source = Files.writeString(directory.resolve("wide-memory.s"), $$"""
+            .data
+            cell: .dword 0x123456789abcdef0
+            copy: .dword 0
+            .text
+            ld $t0,cell
+            sd $t0,cell+8($zero)
+            la $a0,copy
+            ld $t2,($a0)
+            ld $t3,copy($zero)
+            ld $t4,cell+8
+            ld $t5,0x10010008
+            ld $t6,65544($a1)
+        """.trimIndent())
+        TestSessions.create().use { machine ->
+            machine.selectTarget(MarsTarget.MARS64)
+            machine.memory.byteOrder = littleEndian
+            val program = machine.assemble(listOf(source))
+            assertEquals(6, program.machineList!!.count { it.instruction?.name == "ld" })
+            assertEquals(1, program.machineList!!.count { it.instruction?.name == "sd" })
+            machine.editIntegerRegister(5, machine.memory.dataBaseAddress - 65536)
+            machine.editIntegerRegister(9, 42)
+            assertTrue(program.simulate(30))
+            for (register in listOf(8, 10, 11, 12, 13, 14)) {
+                assertEquals(0x1234_5678_9abc_def0L, machine.registerFile.getLongValueNoNotify(register), "register $register")
+            }
+            assertEquals(42L, machine.registerFile.getLongValueNoNotify(9))
+        }
+    }
+
     @ParameterizedTest
     @ValueSource(strings = [
         "lb \$t0,0(\$a0)", "lbu \$t0,0(\$a0)", "lh \$t0,0(\$a0)", "lhu \$t0,0(\$a0)",
