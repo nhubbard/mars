@@ -53,6 +53,8 @@ class XRayDetailsPlatformTest {
     }
 
     @Test
+    // Simulate plugin lifecycle callbacks with the loaded plugin descriptors in the headless IDE.
+    @Suppress("UnstableApiUsage")
     fun `only unloading MARS hides its visible X-Ray tool window`() = timeoutRunBlocking {
         val current = project.get()
         withContext(Dispatchers.EDT) {

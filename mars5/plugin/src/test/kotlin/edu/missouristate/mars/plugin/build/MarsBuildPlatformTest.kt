@@ -438,6 +438,8 @@ class MarsBuildPlatformTest {
     }
 
     @Test
+    // Intercept the native chooser while retaining the platform factory's other behavior.
+    @Suppress("UnstableApiUsage")
     fun `ordered project sources persist and update assembly and editor analysis`() = timeoutRunBlocking {
         val (main, alpha, zulu) = withContext(Dispatchers.EDT) {
             val main = fixture.addFileToProject("app/main.asm", $$"la $t0, fromAlpha\nla $t1, fromZulu\n") as MipsFile

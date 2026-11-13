@@ -113,6 +113,8 @@ class MarsNewFilePlatformTest {
         }
     }
 
+    // Supply IntelliJ's template dialog answers in the headless action fixture.
+    @Suppress("UnstableApiUsage")
     private fun context(view: DirectoryView, name: String, kind: String): DataContext = SimpleDataContext.builder()
         .add(CommonDataKeys.PROJECT, project)
         .add(LangDataKeys.IDE_VIEW, view)

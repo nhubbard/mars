@@ -69,6 +69,8 @@ class MipsEditorPlatformTest {
     private val fixture by codeInsightFixture(project)
 
     @Test
+    // Simulate plugin lifecycle callbacks with the loaded plugin descriptors in the headless IDE.
+    @Suppress("UnstableApiUsage")
     fun `open MARS editors release and recover language settings during plugin reload`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             val current = project.get()

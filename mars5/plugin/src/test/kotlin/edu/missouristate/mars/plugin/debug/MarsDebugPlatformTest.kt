@@ -196,6 +196,8 @@ class MarsDebugPlatformTest {
     private val breakpointType get() = XDebuggerUtil.getInstance().findBreakpointType(MarsLineBreakpointType::class.java)
 
     @Test
+    // Exercise the intercepted dialog's validation and confirmation without showing a window.
+    @Suppress("UnstableApiUsage")
     fun `native watchpoint dialog validates and saves inclusive unsigned addresses`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             val type = XDebuggerUtil.getInstance().findBreakpointType(MarsMemoryWatchpointType::class.java)
@@ -1676,6 +1678,8 @@ class MarsDebugPlatformTest {
         }
     }
 
+    // Use the platform debugger's test-only access to the native variables tree or breakpoint manager.
+    @Suppress("UnstableApiUsage")
     private suspend fun evaluate(session: XDebugSession, frame: XStackFrame, expression: String): String {
         val tree = XDebuggerTree(
             project, session.debugProcess.editorsProvider, frame.sourcePosition, XDebuggerActions.VARIABLES_TREE_POPUP_GROUP, null,
@@ -2009,6 +2013,8 @@ class MarsDebugPlatformTest {
             values.associate { requireNotNull(it.name) to requireNotNull(it.rawValue) }
         }
 
+    // Use the platform debugger's test-only access to the native variables tree or breakpoint manager.
+    @Suppress("UnstableApiUsage")
     private suspend fun callerFields(session: XDebugSession, frame: XStackFrame, count: Int): Map<String, String> {
         val tree = XDebuggerTree(
             project, session.debugProcess.editorsProvider, frame.sourcePosition, XDebuggerActions.VARIABLES_TREE_POPUP_GROUP, null,
@@ -2028,6 +2034,8 @@ class MarsDebugPlatformTest {
     private fun frameLabel(frame: XStackFrame): String =
         SimpleColoredComponent().also(frame::customizePresentation).toString()
 
+    // Use the platform debugger's test-only access to the native variables tree or breakpoint manager.
+    @Suppress("UnstableApiUsage")
     private suspend fun <T> inspectRegisterNodes(
         session: XDebugSession, frame: XStackFrame, inspect: suspend (List<XValueNodeImpl>) -> T,
     ): T {
@@ -2368,6 +2376,8 @@ class MarsDebugPlatformTest {
     }
 
     @Test
+    // Exercise the intercepted dialog's validation and confirmation without showing a window.
+    @Suppress("UnstableApiUsage")
     fun `Debug Memory edits the selected pause and rejects a dialog completed after resume`() = timeoutRunBlocking {
         val source = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("memory-edit.s", $$"""
@@ -2516,6 +2526,8 @@ class MarsDebugPlatformTest {
             override fun doIntercept(component: MarsMemoryEditDialog) = action(component)
         })
 
+    // Exercise the intercepted dialog's validation and confirmation without showing a window.
+    @Suppress("UnstableApiUsage")
     private fun finishMemoryEdit(dialog: MarsMemoryEditDialog, address: String, expression: String) {
         val (addressField, valueField) = UIUtil.findComponentsOfType(dialog.fields, JTextField::class.java)
         addressField.text = address
@@ -4024,7 +4036,7 @@ class MarsDebugPlatformTest {
     }
 
     private fun withHighlightScheme(configure: (EditorColorsScheme) -> Unit, verify: () -> Unit) {
-        val manager = EditorColorsManager.getInstance() as EditorColorsManagerImpl
+        val manager = EditorColorsManager.getInstance()
         val previous = manager.globalScheme
         val scheme = previous.clone() as EditorColorsScheme
         scheme.name = "MARS Machine Highlights Test"
@@ -4035,7 +4047,9 @@ class MarsDebugPlatformTest {
             verify()
         } finally {
             manager.setGlobalScheme(previous)
-            manager.removeScheme(scheme)
+            // The public manager does not expose scheme removal for fixture cleanup.
+            @Suppress("UnstableApiUsage")
+            (manager as EditorColorsManagerImpl).removeScheme(scheme)
         }
     }
 
@@ -4578,6 +4592,8 @@ class MarsDebugPlatformTest {
         }
     }
 
+    // Exercise the intercepted dialog's validation and confirmation without showing a window.
+    @Suppress("UnstableApiUsage")
     private fun selectExportDataWord(dialog: MarsMemoryExportDialog) {
         val (region, format) = UIUtil.findComponentsOfType(dialog.fields, JComboBox::class.java)
         region.selectedItem = MemoryExportRegion.RANGE
@@ -4784,6 +4800,8 @@ class MarsDebugPlatformTest {
 
     @ParameterizedTest(name = "leave dependent breakpoint enabled = {0}")
     @ValueSource(booleans = [false, true])
+    // Use the platform debugger's test-only access to the native variables tree or breakpoint manager.
+    @Suppress("UnstableApiUsage")
     fun `native dependent breakpoints arm after their trigger and honor the leave enabled option`(
         leaveEnabled: Boolean,
     ) = timeoutRunBlocking {
