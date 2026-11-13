@@ -12,6 +12,8 @@ import kotlin.script.experimental.api.ScriptCompilationConfiguration
 import kotlin.script.experimental.api.ScriptDiagnostic
 import kotlin.script.experimental.api.ScriptEvaluationConfiguration
 import kotlin.script.experimental.api.constructorArgs
+import kotlin.script.experimental.api.filePathPattern
+import kotlin.script.experimental.api.isStandalone
 import kotlin.script.experimental.api.valueOrNull
 import kotlin.script.experimental.host.toScriptSource
 import kotlin.script.experimental.jvm.dependenciesFromCurrentContext
@@ -33,6 +35,8 @@ abstract class AssignmentScript(assignment: Assignment) {
 }
 
 object AssignmentCompilation : ScriptCompilationConfiguration({
+    filePathPattern("""(?:.*[/\\])?assignment[0-9]+\.kts""")
+    isStandalone(true)
     jvm { dependenciesFromCurrentContext(wholeClasspath = true) }
 })
 

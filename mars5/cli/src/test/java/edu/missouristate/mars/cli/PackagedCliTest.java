@@ -10,6 +10,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
+import java.util.zip.ZipFile;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -76,6 +77,15 @@ class PackagedCliTest {
     assertEquals(0, standalone.status());
     assertEquals(flag.equals("d") ? "42" : "", standalone.out().strip());
     assertEquals(flag.equals("d") ? 4 : flag.equals("a") ? 0 : 3, phaseLines(standalone).size());
+  }
+
+  @Test
+  void graderJarRegistersItsKotlinScriptTemplate() throws Exception {
+    try (var jar = new ZipFile(System.getProperty("mars.cli.jar"))) {
+      var name = "edu.missouristate.mars.cli.grading.AssignmentScript";
+      assertNotNull(jar.getEntry("META-INF/kotlin/script/templates/" + name + ".classname"));
+      assertNotNull(jar.getEntry(name.replace('.', '/') + ".class"));
+    }
   }
 
   @Test

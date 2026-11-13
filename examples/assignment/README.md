@@ -8,6 +8,24 @@ java -jar mars5/cli/build/libs/cli-1.0-SNAPSHOT.jar grade \
   examples/assignment/assignment1.kts examples/assignment/submission.s
 ```
 
+## Edit assignments in IntelliJ
+
+1. Build the CLI JAR using the command above.
+2. Open `examples/assignment` as a Gradle project in IntelliJ IDEA with the Kotlin plugin
+   enabled and JDK 25 selected for Gradle. Sync the project so Kotlin can discover the MARS
+   script definition in the CLI JAR. You can point a copy of the project at another CLI JAR
+   by setting `marsCliJar` to its absolute path in `gradle.properties`.
+3. Open `assignment1.kts`. Use names such as `assignment2.kts` and `assignment12.kts` for
+   automatic editor discovery. If prompted, load the script configuration. The **MARS
+   assignment** definition supplies the `case` receiver for Kotlin completion and type checking.
+4. Run the `gradeAssignment` task from the Gradle tool window. Kotlin's generic script launcher
+   lacks the submitted sources that the MARS grading command supplies.
+
+From the repository root, the same task is available as
+`./mars5/gradlew -p examples/assignment gradeAssignment`.
+
+## Grade submissions
+
 Use the same command in GitHub Classroom with your instructor-owned script and the student's
 assembly path. Exit status 0 means all cases passed, 1 means at least one case failed, and 2 means
 the command or assignment script needs attention. Each case produces a named result.

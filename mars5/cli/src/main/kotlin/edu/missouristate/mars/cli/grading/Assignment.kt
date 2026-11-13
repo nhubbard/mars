@@ -1,3 +1,5 @@
+@file:Suppress("unused")
+
 package edu.missouristate.mars.cli.grading
 
 import edu.missouristate.mars.ProcessingException
@@ -44,7 +46,7 @@ class Assignment internal constructor(
             DaggerMarsComponent.builder().guiProxy(HeadlessGuiProxy()).build().context().use { machine ->
                 machine.settings.isUtf8TextEnabled = utf8Text
                 var assemblyChecks = 0
-                val program = machine.assembleSnapshot(submission, null, true, false) {
+                val program = machine.assembleSnapshot(submission, null, extended = true, warnings = false) {
                     if (++assemblyChecks > 1_000_000) throw AssemblyLimitReached()
                 }
                 val captured = ByteArrayOutputStream()
