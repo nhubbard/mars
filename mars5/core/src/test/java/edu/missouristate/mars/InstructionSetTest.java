@@ -50,8 +50,8 @@ class InstructionSetTest {
     // Pin the exact count so accidental addition or deletion is immediately visible.
     // Adjust this value only when intentionally adding or removing basic instructions.
     Assertions.assertThat(basicInstructions)
-        .as("Expected exactly 168 basic instructions; adjust if intentionally changed")
-        .hasSize(168);
+        .as("Expected exactly 176 basic instructions; adjust if intentionally changed")
+        .hasSize(176);
   }
 
   @Test

@@ -170,3 +170,11 @@ InstrAlign	align $t1,$t2,$t3,2	7d4b4aa0
 InstrLsa	lsa $t1,$t2,$t3,4	014b48c5
 InstrExt	ext $t1,$t2,4,8	7d493900
 InstrIns	ins $t1,$t2,4,8	7d495904
+InstrAddiupc	addiupc $t1,-100	ed27ffe7
+InstrAluipc	aluipc $t1,-100	ed3fff9c
+InstrAuipc	auipc $t1,-100	ed3eff9c
+InstrLwpc	lwpc $t1,-100	ed2fffe7
+InstrMuh	muh $t1,$t2,$t3	014b48d8
+InstrMuhu	muhu $t1,$t2,$t3	014b48d9
+InstrMod	mod $t1,$t2,$t3	014b48da
+InstrModu	modu $t1,$t2,$t3	014b48db

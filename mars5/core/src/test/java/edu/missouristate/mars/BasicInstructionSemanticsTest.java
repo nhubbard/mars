@@ -113,6 +113,28 @@ class BasicInstructionSemanticsTest {
       } else if (base.equals("Lui")) {
         operands = new int[] {8, 0xabcd};
         verify = s -> assertThat(s.registerFile.getValue(8)).isEqualTo(0xabcd0000);
+      } else if (Set.of("Muh", "Muhu", "Mod", "Modu").contains(base)) {
+        registers.updateRegister(2, -10);
+        registers.updateRegister(4, 3);
+        int expected = switch (base) {
+          case "Muh", "Mod" -> -1;
+          case "Muhu" -> 2;
+          default -> 0;
+        };
+        verify = s -> {
+          assertThat(s.registerFile.getValue(8)).isEqualTo(expected);
+          assertThat(s.registerFile.getValue(33)).isEqualTo(1);
+          assertThat(s.registerFile.getValue(34)).isEqualTo(2);
+        };
+      } else if (Set.of("Addiupc", "Auipc", "Aluipc", "Lwpc").contains(base)) {
+        operands = new int[] {8, base.equals("Lwpc") ? 0 : -4};
+        int expected = switch (base) {
+          case "Addiupc" -> pc - 4;
+          case "Auipc" -> pc - 0x40000;
+          case "Aluipc" -> (pc - 0x40000) & 0xffff0000;
+          default -> 0;
+        };
+        verify = s -> assertThat(s.registerFile.getValue(8)).isEqualTo(expected);
       } else if (Set.of("Clo", "Clz").contains(base)) {
         operands = new int[] {8, 2};
         registers.updateRegister(2, base.equals("Clo") ? 0xff000000 : 0x00ffffff);
