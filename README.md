@@ -17,6 +17,10 @@ and the [modernization plan](MODERNIZATION_PLAN.md) for the broader project.
 
 For IntelliJ development, open the `mars5` directory as a Gradle project. IntelliJ generates its
 local project settings in the Git-ignored `.idea` directory.
+Import `mars5/inspections.xml` under **Settings → Editor → Inspections** to use the shared
+inspection profile. It accepts the Kotlin string forms used for literal MIPS registers and allows
+public experimental IntelliJ APIs on the pinned IDE. Internal API and scheduled-removal checks
+remain enabled.
 
 Build with JDK 25 and the Gradle wrapper:
 
