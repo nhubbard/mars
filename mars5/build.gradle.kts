@@ -35,7 +35,11 @@ spotless {
   java {
     googleJavaFormat()
   }
+  kotlin {
+    ktfmt()
+  }
 }
+
 subprojects {
   // The IntelliJ Platform Gradle plugin applies the IDEA model for IDE import.
   // Keep Gradle from writing or deleting the old file-based project metadata.
@@ -74,4 +78,5 @@ val verifyNoLegacyRuntime = tasks.register("verifyNoLegacyRuntime") {
     }
   }
 }
+
 tasks.check { dependsOn(verifyNoLegacyRuntime) }
