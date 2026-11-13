@@ -134,7 +134,10 @@ public final class MarsCli {
               case TOKENIZING -> "--------  TOKENIZING BEGINS  -----------";
               case ASSEMBLING -> "--------  ASSEMBLY BEGINS  -----------";
             }));
-      error.print(program.getAssemblyDiagnostics().generateWarningReport());
+      var diagnostics = program.getAssemblyDiagnostics();
+      if (diagnostics != null) {
+        error.print(diagnostics.generateWarningReport());
+      }
       try {
         int status = 0;
         if (!assembleOnly) {
@@ -171,7 +174,12 @@ public final class MarsCli {
         }
       }
     } catch (ProcessingException failure) {
-      error.print(failure.errors().generateErrorAndWarningReport());
+      var diagnostics = failure.errors();
+      if (diagnostics != null) {
+        error.print(diagnostics.generateErrorAndWarningReport());
+      } else {
+        error.println(Objects.requireNonNullElse(failure.getMessage(), "MARS processing failed."));
+      }
       return simulating ? simulationErrorExitCode : assemblyErrorExitCode;
     } catch (IllegalArgumentException | IllegalStateException failure) {
       error.println(failure.getMessage());
