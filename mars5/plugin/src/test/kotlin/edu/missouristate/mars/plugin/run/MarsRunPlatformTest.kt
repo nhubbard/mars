@@ -64,6 +64,7 @@ import com.intellij.psi.PsiFileFactory
 import com.intellij.psi.PsiManager
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.testFramework.LightVirtualFile
+import com.intellij.testFramework.TrustedProjectsTestUtil
 import com.intellij.testFramework.TestActionEvent
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
@@ -1507,15 +1508,13 @@ class MarsRunPlatformTest {
             assertThrows<ExecutionException> { restored.getState(executor, environment) }
             restored.options.sourcePath = source.virtualFile.path
 
-            val trustProperty = TrustedProjects.TRUST_HEADLESS_DISABLED_PROPERTY
-            val previous = System.getProperty(trustProperty)
-            System.setProperty(trustProperty, "false")
-            try {
-                TrustedProjects.setProjectTrusted(project, false)
-                assertThrows<ExecutionException> { restored.getState(executor, environment) }
-            } finally {
-                TrustedProjects.setProjectTrusted(project, true)
-                if (previous == null) System.clearProperty(trustProperty) else System.setProperty(trustProperty, previous)
+            TrustedProjectsTestUtil.withTrustedProjectsCheckEnabled {
+                try {
+                    TrustedProjects.setProjectTrusted(project, false)
+                    assertThrows<ExecutionException> { restored.getState(executor, environment) }
+                } finally {
+                    TrustedProjects.setProjectTrusted(project, true)
+                }
             }
 
             val producer = RunConfigurationProducer.getInstance(MarsRunConfigurationProducer::class.java)

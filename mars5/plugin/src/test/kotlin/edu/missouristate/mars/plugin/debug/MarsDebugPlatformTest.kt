@@ -4948,7 +4948,8 @@ class MarsDebugPlatformTest {
 
     @Test
     // Kotlin exposes the reported Java setters as read-only properties.
-    @Suppress("UsePropertyAccessSyntax")
+    // Exercise launchOnShow headlessly and keep Java setters whose Kotlin properties are read-only.
+    @Suppress("UsePropertyAccessSyntax", "UnstableApiUsage")
     fun `floating point tool edits only the selected paused register and refreshes the debugger`() = timeoutRunBlocking {
         val file = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("float-tool.asm",

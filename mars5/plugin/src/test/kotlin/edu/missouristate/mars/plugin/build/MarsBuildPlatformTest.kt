@@ -61,6 +61,7 @@ import com.intellij.task.ProjectTaskRunner
 import com.intellij.task.impl.ProjectTaskList
 import com.intellij.testFramework.DumbModeTestUtils
 import com.intellij.testFramework.IndexingTestUtil
+import com.intellij.testFramework.TrustedProjectsTestUtil
 import com.intellij.testFramework.LightVirtualFile
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.fixtures.impl.CodeInsightTestFixtureImpl
@@ -271,8 +272,8 @@ class MarsBuildPlatformTest {
                 settings.changeAssembleOnOpen(false)
             }
             expectQuiet("disabled after queuing")
-            val trustProperty = TrustedProjects.TRUST_HEADLESS_DISABLED_PROPERTY
-            val previous = System.setProperty(trustProperty, "false")
+            val trustCheck = Disposer.newDisposable()
+            TrustedProjectsTestUtil.enableTrustedProjectsCheck(trustCheck)
             try {
                 withContext(Dispatchers.EDT) {
                     settings.changeAssembleOnOpen(true)
@@ -281,11 +282,14 @@ class MarsBuildPlatformTest {
                 }
                 expectQuiet("untrusted project")
             } finally {
-                if (previous == null) System.clearProperty(trustProperty) else System.setProperty(trustProperty, previous)
+                try {
+                    withContext(Dispatchers.EDT) { TrustedProjects.setProjectTrusted(project, true) }
+                } finally {
+                    Disposer.dispose(trustCheck)
+                }
             }
 
             val (ambiguous, broken) = withContext(Dispatchers.EDT) {
-                TrustedProjects.setProjectTrusted(project, true)
                 fixture.addFileToProject("one.asm", ".include \"shared.s\"\n")
                 fixture.addFileToProject("two.asm", ".include \"shared.s\"\n")
                 val ambiguous = fixture.addFileToProject("shared.s", "nop\n").virtualFile
