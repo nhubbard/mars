@@ -83,7 +83,7 @@ internal class MipsParameterInfoHandler : ParameterInfoHandler<PsiElement, MipsP
         val fullCount = fullTokens?.size() ?: 0
         if (wrapped && tokens.size() == fullCount && last.type == TokenTypes.RIGHT_PAREN) return null
         // A trailing comma in an unfinished call signals another argument in the wrapper.
-        // Otherwise an unmatched opening parenthesis can itself be an argument if the raw arity matches.
+        // Otherwise, an unmatched opening parenthesis can itself be an argument if the raw arity matches.
         val openingWrapper = tokens.size() > 1 && tokens[1].type == TokenTypes.LEFT_PAREN &&
             (wrapped || fullTokens?.processedLine?.trimEnd()?.endsWith(',') == true ||
                 parameters.none { it.size + 1 == fullCount })

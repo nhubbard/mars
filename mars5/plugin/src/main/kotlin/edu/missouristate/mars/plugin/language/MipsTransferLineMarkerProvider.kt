@@ -32,7 +32,7 @@ internal class MipsTransferLineMarkerProvider : RelatedItemLineMarkerProvider() 
         val transfer = transferAt(head) ?: return
         if (transfer.targets.isEmpty()) return
         val pointer = SmartPointerManager.createPointer(head)
-        result.add(NavigationGutterIconBuilder.create(icon, name)
+        result.add(NavigationGutterIconBuilder.create(icon, bundle.getMessage("gutter.transfer.popup"))
             .setTooltipText(bundle.getMessage("gutter.transfer.tooltip", transfer.label))
             .setPopupTitle(bundle.getMessage("gutter.transfer.popup"))
             .setEmptyPopupText(bundle.getMessage("gutter.transfer.unavailable"))

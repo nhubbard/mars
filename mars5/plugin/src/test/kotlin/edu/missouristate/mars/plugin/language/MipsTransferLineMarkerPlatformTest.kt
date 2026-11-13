@@ -26,6 +26,7 @@ class MipsTransferLineMarkerPlatformTest {
 
     @Test
     fun `native gutter exposes concrete branch call and jump destinations`() = timeoutRunBlocking {
+        assertEquals("MARS branch and call targets", MipsTransferLineMarkerProvider().name)
         val source = $$"""
             .include "targets.txt"
             .eqv DEST first

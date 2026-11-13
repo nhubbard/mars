@@ -18,7 +18,7 @@ internal interface InstructionCounts {
     fun reset()
 }
 
-/** Counts forward simulator events. Undo keeps past events, and executing an instruction again counts again. */
+/** Counts forward simulator events. Undo retains earlier events. Re-executing an instruction adds another event. */
 internal class InstructionCounter : InstructionCounts {
     data class Snapshot(val connected: Boolean, val r: Long, val i: Long, val j: Long, val other: Long) {
         val total = r + i + j + other

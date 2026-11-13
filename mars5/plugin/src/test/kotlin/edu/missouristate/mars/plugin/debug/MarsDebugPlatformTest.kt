@@ -4043,10 +4043,10 @@ class MarsDebugPlatformTest {
         configure(scheme)
         manager.addColorScheme(scheme)
         try {
-            manager.setGlobalScheme(scheme)
+            @Suppress("UsePropertyAccessSyntax") manager.setGlobalScheme(scheme)
             verify()
         } finally {
-            manager.setGlobalScheme(previous)
+            @Suppress("UsePropertyAccessSyntax") manager.setGlobalScheme(previous)
             // The public manager does not expose scheme removal for fixture cleanup.
             @Suppress("UnstableApiUsage")
             (manager as EditorColorsManagerImpl).removeScheme(scheme)

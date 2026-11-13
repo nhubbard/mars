@@ -127,7 +127,7 @@ class MipsCompletionContributor : CompletionContributor(), DumbAware {
     override fun beforeCompletion(context: CompletionInitializationContext) {
         val previous = context.file.findElementAt(context.startOffset - 1) ?: return
         if (previous.isUnterminatedInclude()) {
-            // Balance the path in IntelliJ's completion copy so native file references provide the variants.
+            // Close the quoted path in IntelliJ's completion copy so file references can supply suggestions.
             context.dummyIdentifier = DUMMY_IDENTIFIER_TRIMMED + "\""
         }
     }

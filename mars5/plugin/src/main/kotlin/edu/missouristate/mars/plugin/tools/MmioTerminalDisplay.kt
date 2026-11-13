@@ -33,8 +33,7 @@ internal class MmioTerminalDisplay private constructor(
 
     fun transmit(word: Int): MmioTerminalDisplay {
         val (columns, rows) = geometry
-        val character = (word and 0xff).toChar()
-        return when (character) {
+        return when (val character = (word and 0xff).toChar()) {
             '\u000c' -> if (cursor == null) MmioTerminalDisplay(geometry) else addressed(blank(), 0)
             '\u0007' -> {
                 val column = (word ushr 20).coerceAtMost(columns - 1)

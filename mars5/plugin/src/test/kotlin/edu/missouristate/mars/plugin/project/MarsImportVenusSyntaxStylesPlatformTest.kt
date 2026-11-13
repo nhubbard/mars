@@ -72,7 +72,7 @@ class MarsImportVenusSyntaxStylesPlatformTest {
                 withDialog({ Messages.CANCEL }) { registered.actionPerformed(event(registered)) }
 
                 val base = addScheme("Venus import test source")
-                colors.setGlobalScheme(base)
+                @Suppress("UsePropertyAccessSyntax") colors.setGlobalScheme(base)
                 val collision = addScheme("MARS Venus")
                 val retained = TextAttributes(null, Color.YELLOW, Color.RED, EffectType.WAVE_UNDERSCORE, Font.BOLD)
                 base.setAttributes(instructionMnemonicColor, retained)
@@ -147,10 +147,10 @@ class MarsImportVenusSyntaxStylesPlatformTest {
                 val base = addScheme("Venus stale source")
                 val other = addScheme("Venus other source")
                 saved.put("SyntaxStyleColor_1", "0x00012345")
-                colors.setGlobalScheme(base)
+                @Suppress("UsePropertyAccessSyntax") colors.setGlobalScheme(base)
                 for (change in listOf(
                     { properties.setValue(marker, true) },
-                    { colors.setGlobalScheme(other) },
+                    { @Suppress("UsePropertyAccessSyntax") colors.setGlobalScheme(other) },
                     {
                         addScheme("MARS Venus")
                         Unit
@@ -164,7 +164,7 @@ class MarsImportVenusSyntaxStylesPlatformTest {
                     }) { action.actionPerformed(event(action)) }
                     assertEquals(2, count)
                     properties.unsetValue(marker)
-                    colors.setGlobalScheme(base)
+                    @Suppress("UsePropertyAccessSyntax") colors.setGlobalScheme(base)
                     colors.getScheme("MARS Venus")?.let(::removeTestScheme)
                 }
                 assertTrue(event(action).also(action::update).presentation.isEnabledAndVisible)
@@ -258,7 +258,7 @@ class MarsImportVenusSyntaxStylesPlatformTest {
                     properties.unsetValue(newKey)
                     val base = addScheme("Prior MARS scheme")
                     base.setAttributes(MarsMachineHighlight.WRITE.colorKey, TextAttributes().apply { foregroundColor = Color.CYAN })
-                    colors.setGlobalScheme(base)
+                    @Suppress("UsePropertyAccessSyntax") colors.setGlobalScheme(base)
                     val root = MemoryPreferences()
                     root.node("mars").apply {
                         put("DataSegmentHighlightForeground", "0x00ff1234")
@@ -303,7 +303,7 @@ class MarsImportVenusSyntaxStylesPlatformTest {
             operation()
         } finally {
             properties.setValue(marker, oldMarker)
-            colors.setGlobalScheme(base)
+            @Suppress("UsePropertyAccessSyntax") colors.setGlobalScheme(base)
             colors.allSchemes.filterNot { it in before }.forEach(::removeTestScheme)
         }
     }

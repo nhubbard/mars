@@ -382,8 +382,7 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
                 } finally {
                     stepOver?.let(engine::removeListener)
                 }
-                val reason: StopEvent.Reason = event.reason
-                when (reason) {
+                when (val reason: StopEvent.Reason = event.reason) {
                     StopEvent.Reason.BREAKPOINT, StopEvent.Reason.PAUSE, StopEvent.Reason.STEP_LIMIT -> {
                         val reached = if (reason == StopEvent.Reason.BREAKPOINT) hits + watchpointHits else watchpointHits.toList()
                         watchpointHits.clear()

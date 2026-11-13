@@ -104,8 +104,7 @@ internal class MarsBotDevice(private val connectAtLaunch: Boolean = false) {
         if (!connected || notice.origin() != EXECUTION || notice.accessType != WRITE) return
         val source = memory!!
         val addresses = ports!!
-        val address = notice.address and -4
-        when (address) {
+        when (val address = notice.address and -4) {
             addresses.heading -> world = world.copy(heading = Math.floorMod(source.getWordNoNotify(address), 360))
             addresses.pen -> when (source.getWordNoNotify(address)) {
                 0 -> world = world.copy(penDown = false)
