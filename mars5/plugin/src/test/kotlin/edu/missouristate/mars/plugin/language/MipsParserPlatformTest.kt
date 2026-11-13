@@ -78,7 +78,7 @@ class MipsParserPlatformTest {
             val context = project.get().service<MarsSessionService>().context
             val memory = context.memory
             assertEquals(listOf(1, 42, 43), (0..2).map { memory.getWordNoNotify(memory.dataBaseAddress + it * Int.SIZE_BYTES) })
-            assertThrows<ProcessingException> { context.assemble(listOf(entry), null, true, false) }
+            assertThrows<ProcessingException> { context.assemble(listOf(entry), null, extended = true, warnings = false) }
 
             readAction {
                 val file = assertParses(source)
@@ -176,7 +176,7 @@ class MipsParserPlatformTest {
             for (line in listOf(".eqv UNSET # comment", "label: .eqv", ".eqv - 7", ".eqv - 7 8")) {
                 val entry = directory.resolve("invalid.asm").also { it.writeText("$line\nnop") }
                 val context = project.get().service<MarsSessionService>().context
-                val failure = assertThrows<ProcessingException> { context.assemble(listOf(entry), null, true, false) }
+                val failure = assertThrows<ProcessingException> { context.assemble(listOf(entry), null, extended = true, warnings = false) }
                 assertTrue(failure.errors()!!.errorMessages.any { ".eqv directive" in it.message!! }, line)
                 readAction {
                     val file = PsiFileFactory.getInstance(project.get()).createFileFromText("invalid.asm", MipsFileType, "$line\nnop")
@@ -252,7 +252,7 @@ class MipsParserPlatformTest {
         val entry = directory.resolve("entry.asm").also { it.writeText(source) }
         val context = project.get().service<MarsSessionService>().context
         val program = try {
-            context.assemble(listOf(entry), null, true, false)
+            context.assemble(listOf(entry), null, extended = true, warnings = false)
         } catch (failure: ProcessingException) {
             fail(failure.errors()!!.errorMessages.joinToString("\n") { it.message.toString() }, failure)
         }
@@ -615,7 +615,7 @@ class MipsParserPlatformTest {
                 val source = "$header\n$body"
                 val entry = directory.resolve("bad-header.asm").also { it.writeText(source) }
                 val context = project.get().service<MarsSessionService>().context
-                val failure = assertThrows<ProcessingException> { context.assemble(listOf(entry), null, true, false) }
+                val failure = assertThrows<ProcessingException> { context.assemble(listOf(entry), null, extended = true, warnings = false) }
                 val diagnostics = failure.errors()!!.errorMessages.map { it.message }
                 val expected = if (name.isEmpty()) "\".MaCrO\" directive requires at least one argument." else "Invalid Macro name \"$name\""
                 assertEquals(listOf(expected), diagnostics, header)
@@ -665,7 +665,7 @@ class MipsParserPlatformTest {
             val source = $$".macro emit (%value)\nli $t0, %\nbody: nop\n.end_macro\nemit(7)"
             val entry = directory.resolve("unfinished.asm").also { it.writeText(source) }
             val context = project.get().service<MarsSessionService>().context
-            val failure = assertThrows<ProcessingException> { context.assemble(listOf(entry), null, true, false) }
+            val failure = assertThrows<ProcessingException> { context.assemble(listOf(entry), null, extended = true, warnings = false) }
             assertTrue(failure.errors()!!.errorMessages.any { it.message!!.endsWith("Invalid language element: %") })
             readAction {
                 val file = PsiFileFactory.getInstance(project.get()).createFileFromText("unfinished.asm", MipsFileType, source)
@@ -690,7 +690,7 @@ class MipsParserPlatformTest {
         """.trimIndent()
         val entry = directory.resolve("nested.asm").also { it.writeText(source) }
         val context = project.get().service<MarsSessionService>().context
-        val error = assertThrows<ProcessingException> { context.assemble(listOf(entry), null, true, false) }
+        val error = assertThrows<ProcessingException> { context.assemble(listOf(entry), null, extended = true, warnings = false) }
         val messages = error.errors()!!.errorMessages.map { it.message }
         assertTrue("Nested macros are not allowed" in messages, messages.toString())
         readAction {
@@ -991,7 +991,7 @@ class MipsParserPlatformTest {
                 val source = (prefix + examples).joinToString("\n", postfix = "\n")
                 val entry = directory.resolve("$name-$batch.asm").also { it.writeText(source) }
                 val program = try {
-                    context.assemble(listOf(entry), null, true, false)
+                    context.assemble(listOf(entry), null, extended = true, warnings = false)
                 } catch (failure: ProcessingException) {
                     throw AssertionError("$layoutId, $name batch $batch\n${failure.errors()!!.generateErrorReport()}", failure)
                 }
@@ -1104,7 +1104,7 @@ class MipsParserPlatformTest {
             fun assemble(name: String, source: String): List<Int> {
                 val path = directory.resolve(name).also { it.writeText(source) }
                 val program = try {
-                    context.assemble(listOf(path), null, false, false)
+                    context.assemble(listOf(path), null, extended = false, warnings = false)
                 } catch (failure: ProcessingException) {
                     throw AssertionError("$name\n${failure.errors()!!.generateErrorReport()}", failure)
                 }
@@ -1182,7 +1182,7 @@ class MipsParserPlatformTest {
         val context = project.get().service<MarsSessionService>().context
         fun assemble(text: String): List<Int> {
             val entry = directory.resolve("addresses.asm").also { it.writeText(header + text + "\n") }
-            return context.assemble(listOf(entry), null, true, false).machineList!!.map { it.binaryStatement }
+            return context.assemble(listOf(entry), null, extended = true, warnings = false).machineList!!.map { it.binaryStatement }
         }
         assertEquals(assemble(canonical), assemble(alternate))
         readAction {
@@ -1231,7 +1231,7 @@ class MipsParserPlatformTest {
         val context = project.get().service<MarsSessionService>().context
         fun assemble(lines: List<String>): List<Int> {
             val entry = directory.resolve("label-offsets.asm").also { it.writeText(header + lines.joinToString("\n", postfix = "\n")) }
-            return context.assemble(listOf(entry), null, true, false).machineList!!.map { it.binaryStatement }
+            return context.assemble(listOf(entry), null, extended = true, warnings = false).machineList!!.map { it.binaryStatement }
         }
         assertEquals(assemble(canonical), assemble(alternate))
         readAction {
@@ -1268,7 +1268,7 @@ class MipsParserPlatformTest {
             val context = project.get().service<MarsSessionService>().context
             fun assemble(text: String): List<Int> {
                 val entry = directory.resolve("adjacent-offset.asm").also { it.writeText(text) }
-                return context.assemble(listOf(entry), null, true, false).machineList!!.map { it.binaryStatement }
+                return context.assemble(listOf(entry), null, extended = true, warnings = false).machineList!!.map { it.binaryStatement }
             }
             val spaced = source.replace("%label+4", "%label + 4").replace("%label,+4", "%label, + 4")
             assertEquals(assemble(spaced), assemble(source))
@@ -1328,7 +1328,7 @@ class MipsParserPlatformTest {
             val context = project.get().service<MarsSessionService>().context
             fun assemble(text: String): List<Int> {
                 val entry = directory.resolve("signed-register-alias.asm").also { it.writeText("$definitions\n$text\n") }
-                return context.assemble(listOf(entry), null, true, false).machineList!!.map { it.binaryStatement }
+                return context.assemble(listOf(entry), null, extended = true, warnings = false).machineList!!.map { it.binaryStatement }
             }
             assertEquals(assemble(canonical), assemble(aliases))
             val memory = context.memory
@@ -1382,7 +1382,7 @@ class MipsParserPlatformTest {
             val valid = ".data\n.word ${wordSpellings.joinToString()}\n.double ${doubleSpellings.joinToString()}\n.text\nnop\n"
             val entry = directory.resolve("number-spellings.asm").also { it.writeText(valid) }
             val context = project.get().service<MarsSessionService>().context
-            val program = context.assemble(listOf(entry), null, true, false)
+            val program = context.assemble(listOf(entry), null, extended = true, warnings = false)
             assertEquals(listOf(0), program.machineList!!.map { it.binaryStatement })
             val memory = context.memory
             val base = memory.dataBaseAddress
@@ -1403,7 +1403,7 @@ class MipsParserPlatformTest {
             val malformed = listOf("0xG", "0x", "1oops", "1e", "0b101", "0x123456789")
             val invalid = ".data\n.word ${malformed.joinToString()}\n.text\nnext: nop\n"
             entry.writeText(invalid)
-            val diagnostics = assertThrows<ProcessingException> { context.assemble(listOf(entry), null, true, false) }
+            val diagnostics = assertThrows<ProcessingException> { context.assemble(listOf(entry), null, extended = true, warnings = false) }
             for (spelling in malformed) {
                 assertTrue(diagnostics.errors()!!.errorMessages.any { it.message!!.endsWith("Invalid language element: $spelling") })
             }
@@ -1496,7 +1496,7 @@ class MipsParserPlatformTest {
         val source = $$".data\n.word + , 7\n.word 3, -, 8\n.text\naddiu $t0, $zero, +,, 9\nnext: nop\n"
         val entry = directory.resolve("detached-sign.mars").also { it.writeText(source) }
         val context = project.get().service<MarsSessionService>().context
-        val failure = assertThrows<ProcessingException> { context.assemble(listOf(entry), null, true, false) }
+        val failure = assertThrows<ProcessingException> { context.assemble(listOf(entry), null, extended = true, warnings = false) }
         val dataErrors = failure.errors()!!.errorMessages.filter { it.line in 2..3 }
         assertEquals(listOf(2 to 7, 3 to 10), dataErrors.map { it.line to it.position })
         readAction {
@@ -1592,7 +1592,7 @@ class MipsParserPlatformTest {
         """.trimIndent()
         val entry = directory.resolve("dotted-names.asm").also { it.writeText(source) }
         val context = project.get().service<MarsSessionService>().context
-        val program = context.assemble(listOf(entry), null, true, false)
+        val program = context.assemble(listOf(entry), null, extended = true, warnings = false)
         assertEquals(0x24080007, program.machineList!!.first().binaryStatement)
         val memory = context.memory
         val base = memory.dataBaseAddress
@@ -1630,7 +1630,7 @@ class MipsParserPlatformTest {
             val entry = directory.resolve("入口.mars").also { it.writeText(source) }
             val include = directory.resolve("常用.inc").also { it.writeText(library) }
             val context = project.get().service<MarsSessionService>().context
-            val program = context.assemble(listOf(entry), null, true, false)
+            val program = context.assemble(listOf(entry), null, extended = true, warnings = false)
             val expanded = program.machineList!!.first()
             assertEquals(0x24080007, expanded.binaryStatement)
             val origin = program.sourceMap().origins().getValue(expanded.address)
@@ -1786,7 +1786,7 @@ class MipsParserPlatformTest {
         for (directive in listOf(".SeT ), :, (, +", ".set", ".set noat", ".set: nop", ".eqv OPTION .set\nOPTION ), :")) {
             val source = "$directive # ignored by the assembler\nentry: nop\n"
             val path = directory.resolve("set.asm").also { it.writeText(source) }
-            val program = context.assemble(listOf(path), null, true, false)
+            val program = context.assemble(listOf(path), null, extended = true, warnings = false)
             assertEquals(listOf(0), program.machineList!!.map { it.binaryStatement })
             val warning = program.assemblyDiagnostics!!.errorMessages.single()
             assertTrue(warning.isWarning)
@@ -1822,7 +1822,7 @@ class MipsParserPlatformTest {
         """.trimIndent() + "\n"
         val context = project.get().service<MarsSessionService>().context
         val path = directory.resolve("segments.asm").also { it.writeText(source) }
-        val program = context.assemble(listOf(path), null, true, false)
+        val program = context.assemble(listOf(path), null, extended = true, warnings = false)
         val memory = context.memory
         assertEquals(
             listOf(memory.textBaseAddress + 32, memory.kernelTextBaseAddress + 32),
@@ -1882,7 +1882,7 @@ class MipsParserPlatformTest {
         for ((entry, included) in listOf(source to data, withSeparators(source) to withSeparators(data))) {
             directory.resolve("data.s").writeText(included)
             val file = directory.resolve("entry.asm").also { it.writeText(entry) }
-            val program = context.assemble(listOf(file), null, true, false)
+            val program = context.assemble(listOf(file), null, extended = true, warnings = false)
             val memory = context.memory
             val base = memory.dataBaseAddress
             assertEquals(listOf(memory.textBaseAddress, memory.kernelTextBaseAddress), program.machineList!!.map { it.address })
@@ -1915,7 +1915,7 @@ class MipsParserPlatformTest {
         val source = names.joinToString("\n", postfix = "\n.text\nmain: nop\n") { ".extern $it, 4" }
         val entry = directory.resolve("extern.mars").also { it.writeText(source) }
         val context = project.get().service<MarsSessionService>().context
-        context.assemble(listOf(entry), null, true, false)
+        context.assemble(listOf(entry), null, extended = true, warnings = false)
         val base = context.memory.externBaseAddress
         assertEquals(listOf(base, base + 4, base + 8), names.map(context.symbolTable::getAddress))
 
@@ -1944,7 +1944,7 @@ class MipsParserPlatformTest {
         val source = lines.joinToString("") + ".text\nmain: nop\n"
         val entry = directory.resolve("extern.mars").also { it.writeText(source) }
         val context = project.get().service<MarsSessionService>().context
-        context.assemble(listOf(entry), null, true, false)
+        context.assemble(listOf(entry), null, extended = true, warnings = false)
         val base = context.memory.externBaseAddress
         assertEquals(names.indices.map { base + 4 * it }, names.map(context.symbolTable::getAddress))
 
@@ -2129,7 +2129,7 @@ class MipsParserPlatformTest {
         }
         sources.forEach { (name, source) -> directory.resolve(name).writeText(source) }
         val program = project.get().service<MarsSessionService>().context
-            .assemble(listOf(directory.resolve("workbench.asm")), null, true, false)
+            .assemble(listOf(directory.resolve("workbench.asm")), null, extended = true, warnings = false)
         assertTrue(program.instructionCount() > 0)
         assertTrue(program.sourceMap().origins().values.any { it.location.file().fileName.toString() == "bit_algorithms.s" })
     }
@@ -2156,10 +2156,10 @@ class MipsParserPlatformTest {
             }
             for ((name, text) in originals + renamed) directory.resolve(name).writeText(text)
             val context = project.get().service<MarsSessionService>().context
-            val originalProgram = context.assemble(listOf(directory.resolve("viewer.asm")), null, true, false)
+            val originalProgram = context.assemble(listOf(directory.resolve("viewer.asm")), null, extended = true, warnings = false)
             val expected = originalProgram.machineList!!.map { it.address to it.binaryStatement }
             assertTrue(expected.size > 500, "The full decoder and both included libraries must assemble")
-            val renamedProgram = context.assemble(listOf(directory.resolve("viewer.mars")), null, true, false)
+            val renamedProgram = context.assemble(listOf(directory.resolve("viewer.mars")), null, extended = true, warnings = false)
             assertEquals(expected, renamedProgram.machineList!!.map { it.address to it.binaryStatement })
             val origins = renamedProgram.sourceMap().origins().values.map { it.location }
             assertEquals(renamed.keys, origins.map { it.file().fileName.toString() }.toSet())
@@ -2191,7 +2191,7 @@ class MipsParserPlatformTest {
             }
             val source = cases.joinToString("\n", prefix = ".text\n", postfix = "\n") { it.first }
             val entry = directory.resolve("address-offsets.asm").also { it.writeText(source) }
-            val program = project.get().service<MarsSessionService>().context.assemble(listOf(entry), null, true, false)
+            val program = project.get().service<MarsSessionService>().context.assemble(listOf(entry), null, extended = true, warnings = false)
             val sourceMap = program.sourceMap()
             val byLine = program.machineList!!.groupBy { sourceMap.origins().getValue(it.address).location.line() }
             assertEquals((2..cases.size + 1).toSet(), byLine.keys)

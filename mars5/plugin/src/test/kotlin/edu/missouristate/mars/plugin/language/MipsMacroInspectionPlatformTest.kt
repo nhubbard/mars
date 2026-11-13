@@ -150,7 +150,7 @@ class MipsMacroInspectionPlatformTest {
             """.trimIndent()
             val entry = directory.resolve("bad-closers.asm").also { it.writeText(source.replace("emit(42)\n", "")) }
             val context = projectFixture.get().service<MarsSessionService>().context
-            val failure = assertThrows<ProcessingException> { context.assemble(listOf(entry), null, true, false) }
+            val failure = assertThrows<ProcessingException> { context.assemble(listOf(entry), null, extended = true, warnings = false) }
             assertEquals(
                 List(3) { "invalid text after .END_MACRO" },
                 failure.errors()!!.errorMessages.map { it.message },
@@ -235,7 +235,7 @@ class MipsMacroInspectionPlatformTest {
             """.trimIndent()
             val entry = directory.resolve("boundaries.asm").also { it.writeText(source) }
             val context = projectFixture.get().service<MarsSessionService>().context
-            val failure = assertThrows<ProcessingException> { context.assemble(listOf(entry), null, true, false) }
+            val failure = assertThrows<ProcessingException> { context.assemble(listOf(entry), null, extended = true, warnings = false) }
             assertEquals(
                 List(4) { ".END_MACRO without .MACRO" } + "Macro started but not ended (no .end_macro directive)",
                 failure.errors()!!.errorMessages.map { it.message },
@@ -407,8 +407,8 @@ class MipsMacroInspectionPlatformTest {
             val invalidEntry = directory.resolve("invalid.asm").also { it.writeText(invalidSource) }
             val project = projectFixture.get()
             val context = project.service<MarsSessionService>().context
-            assertEquals(1, context.assemble(listOf(validEntry), null, true, false).machineList!!.size)
-            val failure = assertThrows<ProcessingException> { context.assemble(listOf(invalidEntry), null, true, false) }
+            assertEquals(1, context.assemble(listOf(validEntry), null, extended = true, warnings = false).machineList!!.size)
+            val failure = assertThrows<ProcessingException> { context.assemble(listOf(invalidEntry), null, extended = true, warnings = false) }
             assertEquals(
                 listOf(
                     "Invalid Macro name \"7\"", "\".macro\" directive requires at least one argument.",
@@ -679,7 +679,7 @@ class MipsMacroInspectionPlatformTest {
             val entry = directory.resolve("nested.asm").also { it.writeText(source) }
             val project = projectFixture.get()
             val context = project.service<MarsSessionService>().context
-            val failure = assertThrows<ProcessingException> { context.assemble(listOf(entry), null, true, false) }
+            val failure = assertThrows<ProcessingException> { context.assemble(listOf(entry), null, extended = true, warnings = false) }
             assertEquals(
                 listOf(nestedMacroMessage, nestedMacroMessage, "Invalid Macro name \"7\"", "Invalid Macro name \"7\""),
                 failure.errors()!!.errorMessages.map { it.message },
@@ -812,7 +812,7 @@ class MipsMacroInspectionPlatformTest {
             val entry = directory.resolve("bad-macro-names.asm").also { it.writeText(source) }
             val project = projectFixture.get()
             val context = project.service<MarsSessionService>().context
-            val failure = assertThrows<ProcessingException> { context.assemble(listOf(entry), null, true, false) }
+            val failure = assertThrows<ProcessingException> { context.assemble(listOf(entry), null, extended = true, warnings = false) }
             assertEquals(
                 listOf("\".macro\" directive requires at least one argument.", "Invalid Macro name \"7\"",
                   $$"Invalid Macro name \"$t0\""

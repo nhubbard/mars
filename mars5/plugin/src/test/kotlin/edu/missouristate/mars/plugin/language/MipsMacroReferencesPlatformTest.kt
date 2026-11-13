@@ -69,7 +69,7 @@ class MipsMacroReferencesPlatformTest {
         val source = directory.resolve("shifted.asm").also {
             it.writeText("${definitions}split SEP emit(7)\naddiu SEP CALL(7)\n")
         }
-        val program = project.get().service<MarsSessionService>().context.assemble(listOf(source), null, true, false)
+        val program = project.get().service<MarsSessionService>().context.assemble(listOf(source), null, extended = true, warnings = false)
         assertEquals(listOf(0x24080007, 0x24080007), program.machineList!!.map { it.binaryStatement })
     }
 
@@ -90,7 +90,7 @@ class MipsMacroReferencesPlatformTest {
         val context = project.get().service<MarsSessionService>().context
         for ((source, encoding) in listOf(twoArguments to 0x24090002, oneArgument to 0x24080001)) {
             val entry = directory.resolve("macro.asm").also { it.writeText(source.replace("<caret>", "")) }
-            val program = context.assemble(listOf(entry), null, true, false)
+            val program = context.assemble(listOf(entry), null, extended = true, warnings = false)
             assertEquals(listOf(encoding), program.machineList!!.map { it.binaryStatement })
         }
     }
@@ -167,7 +167,7 @@ class MipsMacroReferencesPlatformTest {
             directory.resolve(name).writeText(text)
         }
         val entry = directory.resolve("entry.asm").also { it.writeText("$include$close${call.replace("<caret>", "")}") }
-        val program = project.get().service<MarsSessionService>().context.assemble(listOf(entry), null, true, false)
+        val program = project.get().service<MarsSessionService>().context.assemble(listOf(entry), null, extended = true, warnings = false)
         assertEquals(listOf(0x24080007), program.machineList!!.map { it.binaryStatement })
     }
 
@@ -217,7 +217,7 @@ class MipsMacroReferencesPlatformTest {
         assertEquals(Target("macro-call.asm", source.lastIndexOf("NAME"), SymbolKind.MACRO), target(source + call))
         directory.resolve("close.s").writeText(close)
         val entry = directory.resolve("entry.asm").also { it.writeText(source + call.replace("<caret>", "")) }
-        val program = project.get().service<MarsSessionService>().context.assemble(listOf(entry), null, true, false)
+        val program = project.get().service<MarsSessionService>().context.assemble(listOf(entry), null, extended = true, warnings = false)
         assertEquals(listOf(0x24080007), program.machineList!!.map { it.binaryStatement })
     }
 

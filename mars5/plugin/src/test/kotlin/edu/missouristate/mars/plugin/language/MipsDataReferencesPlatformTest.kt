@@ -126,7 +126,7 @@ class MipsDataReferencesPlatformTest {
         directory.resolve("directives.s").writeText(definitions)
         val entry = directory.resolve("entry.asm").also { it.writeText(source) }
         val context = project.get().service<MarsSessionService>().context
-        context.assemble(listOf(entry), null, true, false)
+        context.assemble(listOf(entry), null, extended = true, warnings = false)
         val memory = context.memory
         val address = context.symbolTable.getAddress("target")
         assertEquals(memory.textBaseAddress, address)
@@ -186,7 +186,7 @@ class MipsDataReferencesPlatformTest {
         assertEquals(SymbolKind.LABEL, target(source))
         val context = project.get().service<MarsSessionService>().context
         val entry = directory.resolve("data.asm").also { it.writeText(source.replace("<caret>", "")) }
-        context.assemble(listOf(entry), null, true, false)
+        context.assemble(listOf(entry), null, extended = true, warnings = false)
         val memory = context.memory
         val address = context.symbolTable.getAddress("target")
         assertEquals(memory.textBaseAddress, address)

@@ -667,9 +667,9 @@ class MarsBuildPlatformTest {
         }.filterIsInstance<FileMessageEvent>()
         try {
             val unbuilt = annotator.doAnnotate(readAction { requireNotNull(annotator.collectInformation(file)) })
-            withContext(Dispatchers.EDT) { settings.changeAssemblerOptions(true, true) }
+            withContext(Dispatchers.EDT) { settings.changeAssemblerOptions(allowPseudoInstructions = true, warningsAreErrors = true) }
             readAction { assertTrue(annotator.acceptResult(file, unbuilt).isEmpty()) }
-            withContext(Dispatchers.EDT) { settings.changeAssemblerOptions(true, false) }
+            withContext(Dispatchers.EDT) { settings.changeAssemblerOptions(allowPseudoInstructions = true, warningsAreErrors = false) }
             assertFalse(build().hasErrors())
             assertEquals(setOf("generated"), generatedLabels())
             val warning = diagnostics().single()
@@ -721,7 +721,7 @@ class MarsBuildPlatformTest {
             assertEquals(warning.message, strict.diagnostics.single().message)
             assertEquals(1, readAction { annotator.acceptResult(file, strict).size })
 
-            withContext(Dispatchers.EDT) { settings.changeAssemblerOptions(false, true) }
+            withContext(Dispatchers.EDT) { settings.changeAssemblerOptions(allowPseudoInstructions = false, warningsAreErrors = true) }
             readAction { assertTrue(annotator.acceptResult(file, strict).isEmpty()) }
             val basicOnly = annotator.doAnnotate(readAction { requireNotNull(annotator.collectInformation(file)) })
             assertEquals(2, basicOnly.diagnostics.size)
@@ -1607,7 +1607,7 @@ class MarsBuildPlatformTest {
         val changed = AssemblySourceSnapshot(listOf(path), capture.snapshot.texts() + (includePath to changedText))
         val changedComponent = MarsSessionService.createMarsComponent()
         val changedResult = changedComponent.context().use {
-            changedComponent.assembler().assembleSnapshot(changed, null, true, false)
+            changedComponent.assembler().assembleSnapshot(changed, null, extendedAssemblerEnabled = true, warningsAreErrors = false)
         }
         assertTrue(changedResult.succeeded())
         withContext(Dispatchers.EDT) {

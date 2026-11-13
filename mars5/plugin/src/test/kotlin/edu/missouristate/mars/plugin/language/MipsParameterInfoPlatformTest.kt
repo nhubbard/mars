@@ -205,7 +205,7 @@ class MipsParameterInfoPlatformTest {
         val entry = directory.resolve("entry.asm").also {
             it.writeText(definition + "emit (+, 7)\nemit ( 8\nemit -9\n")
         }
-        val program = project.get().service<MarsSessionService>().context.assemble(listOf(entry), null, true, false)
+        val program = project.get().service<MarsSessionService>().context.assemble(listOf(entry), null, extended = true, warnings = false)
         assertEquals(listOf(0x24080007, 0x24080008, 0x24080009), program.machineList!!.map { it.binaryStatement })
     }
 

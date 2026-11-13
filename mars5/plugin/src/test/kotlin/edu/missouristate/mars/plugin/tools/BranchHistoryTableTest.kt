@@ -32,7 +32,7 @@ class BranchHistoryTableTest {
         assertEquals(Row(listOf(false, false), false, 1, 4), result.rows[1])
         assertEquals(20.0, result.rows[1].precision)
         assertEquals(0.0, result.rows[0].precision)
-        assertEquals(Observation(pc, 0x1000fffe, pc - 4, 1, true, false), result.recent.last())
+        assertEquals(Observation(pc, 0x1000fffe, pc - 4, 1, predictedTaken = true, taken = false), result.recent.last())
     }
 
     @Test

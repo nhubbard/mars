@@ -53,7 +53,7 @@ class MipsExternalReferencesPlatformTest {
         val entry = directory.resolve("entry.s").also { it.writeText(source.replace("<caret>", "")) }
         directory.resolve("parts.s").writeText(included)
         val context = project.get().service<MarsSessionService>().context
-        context.assemble(listOf(entry), null, true, false)
+        context.assemble(listOf(entry), null, extended = true, warnings = false)
         val base = context.memory.externBaseAddress
         assertEquals(base, context.symbolTable.getAddress("shared"))
         assertEquals(base + 4, context.symbolTable.getAddress("next"))
@@ -96,7 +96,7 @@ class MipsExternalReferencesPlatformTest {
         val project = project.get()
         val entry = directory.resolve("extern.asm").also { it.writeText(source) }
         val context = project.service<MarsSessionService>().context
-        context.assemble(listOf(entry), null, true, false)
+        context.assemble(listOf(entry), null, extended = true, warnings = false)
         val memory = context.memory
         assertEquals(memory.externBaseAddress, context.symbolTable.getAddress("payload"))
         assertEquals(memory.externBaseAddress + 4, context.symbolTable.getAddress("second"))
@@ -217,7 +217,7 @@ class MipsExternalReferencesPlatformTest {
         directory.resolve("storage.s").writeText(storage)
         val entry = directory.resolve("entry.asm").also { it.writeText(source) }
         val context = project.get().service<MarsSessionService>().context
-        context.assemble(listOf(entry), null, true, false)
+        context.assemble(listOf(entry), null, extended = true, warnings = false)
         val memory = context.memory
         assertEquals(memory.externBaseAddress, context.symbolTable.getAddress("shared"))
         assertEquals(memory.externBaseAddress + 4, context.symbolTable.getAddress("bundled"))
@@ -245,7 +245,7 @@ class MipsExternalReferencesPlatformTest {
             val names = listOf(")", "65", "\"slot name\"", "ordinary")
             val entry = directory.resolve("expanded-extern.mars").also { it.writeText(source) }
             val context = project.get().service<MarsSessionService>().context
-            context.assemble(listOf(entry), null, true, false)
+            context.assemble(listOf(entry), null, extended = true, warnings = false)
             val base = context.memory.externBaseAddress
             assertEquals(names.indices.map { base + 4 * it }, names.map(context.symbolTable::getAddress))
 

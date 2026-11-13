@@ -187,7 +187,7 @@ class MipsMacroParameterReferencesPlatformTest {
             val body = $$"\nli $t0, $name\n.end_macro\nemit(CONSTANT, 42)\n.eqv $outside $unbound\n"
             val source = header + definition + body
             val entry = directory.resolve("macro-equivalence.asm").also { it.writeText(source) }
-            val program = project.get().service<MarsSessionService>().context.assemble(listOf(entry), null, true, false)
+            val program = project.get().service<MarsSessionService>().context.assemble(listOf(entry), null, extended = true, warnings = false)
             assertEquals(listOf(0x2408002a), program.machineList!!.map { it.binaryStatement })
             configure(source)
             for (formal in listOf($$"$name", $$"$value")) {

@@ -132,7 +132,7 @@ class MipsCompletionPlatformTest {
             }
             directory.resolve("heads.inc").writeText(definitions)
             val entry = directory.resolve("head-completion.mars").also { it.writeText(completed) }
-            val program = current.service<MarsSessionService>().context.assemble(listOf(entry), null, false, false)
+            val program = current.service<MarsSessionService>().context.assemble(listOf(entry), null, extended = false, warnings = false)
             assertEquals(listOf(0x00094100), program.machineList!!.map { it.binaryStatement })
         }
 
@@ -169,7 +169,7 @@ class MipsCompletionPlatformTest {
             }
             directory.resolve("directives.inc").writeText(definitions)
             val entry = directory.resolve("directive-aliases.mars").also { it.writeText(completed) }
-            val program = current.service<MarsSessionService>().context.assemble(listOf(entry), null, true, false)
+            val program = current.service<MarsSessionService>().context.assemble(listOf(entry), null, extended = true, warnings = false)
             assertEquals(listOf(0x00094100), program.machineList!!.map { it.binaryStatement })
         }
 
@@ -210,7 +210,7 @@ class MipsCompletionPlatformTest {
             }
             directory.resolve("macro-aliases.inc").writeText(definitions)
             val entry = directory.resolve("macro-alias-completion.mars").also { it.writeText(completed) }
-            val program = current.service<MarsSessionService>().context.assemble(listOf(entry), null, true, false)
+            val program = current.service<MarsSessionService>().context.assemble(listOf(entry), null, extended = true, warnings = false)
             assertEquals(listOf(0x00094100), program.machineList!!.map { it.binaryStatement })
         }
 
@@ -279,7 +279,7 @@ class MipsCompletionPlatformTest {
 
         directory.resolve("macros.s").writeText(include)
         val entry = directory.resolve("entry.asm").also { it.writeText(completed) }
-        val program = current.service<MarsSessionService>().context.assemble(listOf(entry), null, true, false)
+        val program = current.service<MarsSessionService>().context.assemble(listOf(entry), null, extended = true, warnings = false)
         assertEquals(listOf(0x24080007), program.machineList!!.map { it.binaryStatement })
     }
 
@@ -347,7 +347,7 @@ class MipsCompletionPlatformTest {
             }
             directory.resolve("formals.s").writeText(definitions)
             val entry = directory.resolve("entry.asm").also { it.writeText(completed) }
-            val program = current.service<MarsSessionService>().context.assemble(listOf(entry), null, true, false)
+            val program = current.service<MarsSessionService>().context.assemble(listOf(entry), null, extended = true, warnings = false)
             assertEquals(listOf(0x24080007), program.machineList!!.map { it.binaryStatement })
         }
 
@@ -515,7 +515,7 @@ class MipsCompletionPlatformTest {
             directory.resolve("outer.s").writeText(".include \"aliases.s\"\n")
             directory.resolve("aliases.s").writeText(aliases)
             val entry = directory.resolve("entry.asm").also { it.writeText(completed) }
-            val program = current.service<MarsSessionService>().context.assemble(listOf(entry), null, true, false)
+            val program = current.service<MarsSessionService>().context.assemble(listOf(entry), null, extended = true, warnings = false)
             assertEquals(listOf(0xc640fffc.toInt()), program.machineList!!.map { it.binaryStatement })
         }
 
@@ -575,7 +575,7 @@ class MipsCompletionPlatformTest {
             directory.resolve("setup.inc").writeText(setup)
             val entry = directory.resolve("data-completion.mars").also { it.writeText(completed) }
             val context = current.service<MarsSessionService>().context
-            val program = context.assemble(listOf(entry), null, true, false)
+            val program = context.assemble(listOf(entry), null, extended = true, warnings = false)
             val memory = context.memory
             assertEquals(program.machineList!!.last().address, memory.getWordNoNotify(memory.dataBaseAddress + Int.SIZE_BYTES))
         }
@@ -610,7 +610,7 @@ class MipsCompletionPlatformTest {
         }
         val entry = directory.resolve("data-address-spellings.mars").also { it.writeText(completed) }
         val context = current.service<MarsSessionService>().context
-        val program = context.assemble(listOf(entry), null, true, false)
+        val program = context.assemble(listOf(entry), null, extended = true, warnings = false)
         val memory = context.memory
         assertEquals(program.machineList!!.first().address, memory.getWordNoNotify(memory.dataBaseAddress + Int.SIZE_BYTES))
     }
@@ -655,11 +655,11 @@ class MipsCompletionPlatformTest {
             }
             val context = current.service<MarsSessionService>().context
             val dataEntry = directory.resolve("data.mars").also { it.writeText(completed.first) }
-            assertTrue(context.assemble(listOf(dataEntry), null, true, false).machineList!!.isEmpty())
+            assertTrue(context.assemble(listOf(dataEntry), null, extended = true, warnings = false).machineList!!.isEmpty())
             val memory = context.memory
             assertEquals(context.symbolTable.getAddress("shared"), memory.getWordNoNotify(memory.dataBaseAddress + Int.SIZE_BYTES))
             val macroEntry = directory.resolve("call.mars").also { it.writeText(completed.second) }
-            val program = context.assemble(listOf(macroEntry), null, true, false)
+            val program = context.assemble(listOf(macroEntry), null, extended = true, warnings = false)
             assertEquals(listOf(0x24080002), program.machineList!!.map { it.binaryStatement })
         }
 
@@ -723,7 +723,7 @@ class MipsCompletionPlatformTest {
             directory.resolve("values.inc").writeText(definitions)
             val entry = directory.resolve("data-aliases.mars").also { it.writeText(completed) }
             val context = current.service<MarsSessionService>().context
-            context.assemble(listOf(entry), null, true, false)
+            context.assemble(listOf(entry), null, extended = true, warnings = false)
             val memory = context.memory
             assertEquals(listOf(2, 3, 8, 9), List(4) { memory.getWordNoNotify(memory.dataBaseAddress + it * Int.SIZE_BYTES) })
         }
@@ -773,7 +773,7 @@ class MipsCompletionPlatformTest {
             directory.resolve("real-and-string.inc").writeText(definitions)
             val entry = directory.resolve("real-and-string.mars").also { it.writeText(completed) }
             val context = current.service<MarsSessionService>().context
-            context.assemble(listOf(entry), null, true, false)
+            context.assemble(listOf(entry), null, extended = true, warnings = false)
             val memory = context.memory
             val base = memory.dataBaseAddress
             assertEquals((-1.5f).toBits(), memory.getWordNoNotify(base))
@@ -828,7 +828,7 @@ class MipsCompletionPlatformTest {
             directory.resolve("sizes.inc").writeText(definitions)
             val entry = directory.resolve("directive-sizes.mars").also { it.writeText(completed) }
             val context = current.service<MarsSessionService>().context
-            context.assemble(listOf(entry), null, true, false)
+            context.assemble(listOf(entry), null, extended = true, warnings = false)
             assertEquals(23, context.memory.getWordNoNotify(context.memory.dataBaseAddress + 20))
         }
 
@@ -881,7 +881,7 @@ class MipsCompletionPlatformTest {
             directory.resolve("exports.inc").writeText(definitions)
             val entry = directory.resolve("export-completion.mars").also { it.writeText(completed) }
             val context = current.service<MarsSessionService>().context
-            context.assemble(listOf(entry), null, true, false)
+            context.assemble(listOf(entry), null, extended = true, warnings = false)
             assertEquals(setOf("exportExternal", "exportIncluded", "exportLocal", "exportSecond"),
                 context.symbolTable.allSymbols.map { it.name }.toSet())
         }
@@ -927,7 +927,7 @@ class MipsCompletionPlatformTest {
             directory.resolve("export-aliases.inc").writeText(definitions)
             val entry = directory.resolve("export-aliases.mars").also { it.writeText(completed) }
             val context = current.service<MarsSessionService>().context
-            context.assemble(listOf(entry), null, true, false)
+            context.assemble(listOf(entry), null, extended = true, warnings = false)
             assertEquals(setOf("storage", "alpha", "beta", "gamma"), context.symbolTable.allSymbols.map { it.name }.toSet())
         }
 
@@ -994,7 +994,7 @@ class MipsCompletionPlatformTest {
             }
             directory.resolve("operands.inc").writeText(definitions)
             val entry = directory.resolve("equivalence-completion.mars").also { it.writeText(completed) }
-            val program = current.service<MarsSessionService>().context.assemble(listOf(entry), null, true, false)
+            val program = current.service<MarsSessionService>().context.assemble(listOf(entry), null, extended = true, warnings = false)
             assertEquals(listOf(0x00094100, 0), program.machineList!!.map { it.binaryStatement })
         }
 
@@ -1035,7 +1035,7 @@ class MipsCompletionPlatformTest {
             }
             directory.resolve("suffix.inc").writeText(definitions)
             val entry = directory.resolve("suffix-completion.mars").also { it.writeText(completed) }
-            val program = current.service<MarsSessionService>().context.assemble(listOf(entry), null, true, false)
+            val program = current.service<MarsSessionService>().context.assemble(listOf(entry), null, extended = true, warnings = false)
             assertEquals(listOf(0x8fa80004.toInt()), program.machineList!!.map { it.binaryStatement })
         }
 

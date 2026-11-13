@@ -194,7 +194,7 @@ class MipsLabelReferencesPlatformTest {
 
         directory.resolve("aliases.s").writeText(definitions)
         val entry = directory.resolve("entry.asm").also { it.writeText(include + branch.replace("<caret>", "")) }
-        val program = project.get().service<MarsSessionService>().context.assemble(listOf(entry), null, true, false)
+        val program = project.get().service<MarsSessionService>().context.assemble(listOf(entry), null, extended = true, warnings = false)
         assertEquals(listOf(0x15000000, 0), program.machineList!!.map { it.binaryStatement })
     }
 
@@ -256,7 +256,7 @@ class MipsLabelReferencesPlatformTest {
         directory.resolve("body.s").writeText(body)
         val entry = directory.resolve("entry.asm").also { it.writeText("${include}.globl generated, renamed\nj generated\n") }
         val context = project.get().service<MarsSessionService>().context
-        context.assemble(listOf(entry), null, true, false)
+        context.assemble(listOf(entry), null, extended = true, warnings = false)
         assertEquals(context.memory.textBaseAddress, context.symbolTable.getAddress("generated"))
         assertEquals(context.memory.textBaseAddress + 4, context.symbolTable.getAddress("renamed"))
     }
@@ -289,7 +289,7 @@ class MipsLabelReferencesPlatformTest {
                 }
                 val context = project.get().service<MarsSessionService>().context
                 val entry = directory.resolve("label-alias.asm").also { it.writeText(source) }
-                context.assemble(listOf(entry), null, true, false)
+                context.assemble(listOf(entry), null, extended = true, warnings = false)
                 val memory = context.memory
                 val base = memory.dataBaseAddress
                 assertEquals(base + 4, memory.getWordNoNotify(base))
@@ -325,7 +325,7 @@ class MipsLabelReferencesPlatformTest {
         directory.resolve("body.s").writeText(body)
         val entry = directory.resolve("entry.asm").also { it.writeText(includes + ".globl entry\nj entry\n") }
         val context = project.get().service<MarsSessionService>().context
-        val program = context.assemble(listOf(entry), null, true, false)
+        val program = context.assemble(listOf(entry), null, extended = true, warnings = false)
         assertEquals(0x24080007, program.machineList!!.first().binaryStatement)
         assertEquals(context.memory.textBaseAddress, context.symbolTable.getAddress("entry"))
     }
@@ -362,7 +362,7 @@ class MipsLabelReferencesPlatformTest {
         directory.resolve("macro-body.s").writeText(definitions)
         val file = directory.resolve("entry.asm").also { it.writeText(entry.replace("<caret>", "")) }
         val context = project.get().service<MarsSessionService>().context
-        context.assemble(listOf(file), null, true, false)
+        context.assemble(listOf(file), null, extended = true, warnings = false)
         assertEquals(context.memory.textBaseAddress + 4, context.symbolTable.getAddress("public"))
     }
 

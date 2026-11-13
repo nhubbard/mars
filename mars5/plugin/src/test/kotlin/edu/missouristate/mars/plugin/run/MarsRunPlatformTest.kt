@@ -951,7 +951,7 @@ class MarsRunPlatformTest {
                 val source = fixture.addFileToProject("policy.asm",
                   $$".data\n.byte 300\n.text\nli $a0, 42\nli $v0, 1\nsyscall\nli $v0, 10\nsyscall\n"
                 )
-                project.getService(MarsAssemblySettings::class.java).changeAssemblerOptions(false, true)
+                project.getService(MarsAssemblySettings::class.java).changeAssemblerOptions(allowPseudoInstructions = false, warningsAreErrors = true)
                 source.virtualFile.path
             }
             suspend fun launch(pseudo: ProjectOptionOverride, warnings: ProjectOptionOverride): Recording {

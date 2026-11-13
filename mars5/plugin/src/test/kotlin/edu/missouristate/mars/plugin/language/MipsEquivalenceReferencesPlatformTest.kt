@@ -45,7 +45,7 @@ class MipsEquivalenceReferencesPlatformTest {
             val use = $$"addiu $t0, $zero, VALUE\n"
             val source = definition + shortForm + use
             val entry = directory.resolve("short-equivalence.asm").also { it.writeText(source) }
-            val program = project.get().service<MarsSessionService>().context.assemble(listOf(entry), null, true, false)
+            val program = project.get().service<MarsSessionService>().context.assemble(listOf(entry), null, extended = true, warnings = false)
             assertEquals(listOf(0x24080007), program.machineList!!.map { it.binaryStatement })
 
             val alias = target(definition + shortForm.replace("DECLARE", "DEC<caret>LARE") + use)
@@ -128,7 +128,7 @@ class MipsEquivalenceReferencesPlatformTest {
 
         directory.resolve("definitions.s").writeText(definitions)
         val entry = directory.resolve("entry.asm").also { it.writeText(source.replace("<caret>", "")) }
-        val program = project.get().service<MarsSessionService>().context.assemble(listOf(entry), null, true, false)
+        val program = project.get().service<MarsSessionService>().context.assemble(listOf(entry), null, extended = true, warnings = false)
         assertEquals(listOf(0x24080007), program.machineList!!.map { it.binaryStatement })
     }
 
@@ -141,7 +141,7 @@ class MipsEquivalenceReferencesPlatformTest {
             val call = "discard ignored $directive COUNT 7\n"
             val source = ".eqv DEFINE .eqv\n$macro$call$use"
             val entry = directory.resolve("entry.asm").also { it.writeText(source.replace("<caret>", "")) }
-            val program = context.assemble(listOf(entry), null, true, false)
+            val program = context.assemble(listOf(entry), null, extended = true, warnings = false)
             assertEquals(listOf(0, 0x24080007), program.machineList!!.map { it.binaryStatement })
             val declaration = target(source)
             assertTrue(declaration?.inEntry == true)
@@ -169,7 +169,7 @@ class MipsEquivalenceReferencesPlatformTest {
                 val macro = "$beforeBody$body\n.end_macro\n"
                 val source = macro + use
                 val entry = directory.resolve("positional.asm").also { it.writeText(source.replace("<caret>", "")) }
-                val program = context.assemble(listOf(entry), null, true, false)
+                val program = context.assemble(listOf(entry), null, extended = true, warnings = false)
                 assertEquals(listOf(0x24080007), program.machineList!!.map { it.binaryStatement }, body)
                 val declaration = target(source)
                 assertEquals(site, declaration?.name, body)
@@ -192,7 +192,7 @@ class MipsEquivalenceReferencesPlatformTest {
                 val use = $$"addiu $t0, $zero, RESULT\n"
                 val source = "$before$line\n$use"
                 val entry = directory.resolve("definition.asm").also { it.writeText(source) }
-                val program = project.get().service<MarsSessionService>().context.assemble(listOf(entry), null, true, false)
+                val program = project.get().service<MarsSessionService>().context.assemble(listOf(entry), null, extended = true, warnings = false)
                 assertEquals(listOf(0x24080007), program.machineList!!.map { it.binaryStatement })
                 for (value in Regex("VALUE").findAll(line)) {
                     val atValue = line.replaceRange(value.range.first, value.range.first, "<caret>")

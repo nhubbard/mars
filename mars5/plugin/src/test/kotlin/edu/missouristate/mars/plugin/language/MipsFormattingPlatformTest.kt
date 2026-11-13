@@ -940,7 +940,7 @@ class MipsFormattingPlatformTest {
     private fun assemble(path: Path, source: String, dataBytes: Int = 48): Pair<List<Int>, List<Int>> {
         path.writeText(source)
         return MarsSessionService.createMarsComponent().context().use { context ->
-            val program = context.assemble(listOf(path), null, true, false)
+            val program = context.assemble(listOf(path), null, extended = true, warnings = false)
             val memory = context.memory
             program.machineList!!.map { it.binaryStatement } to List(dataBytes) { memory.getByte(memory.dataBaseAddress + it) }
         }

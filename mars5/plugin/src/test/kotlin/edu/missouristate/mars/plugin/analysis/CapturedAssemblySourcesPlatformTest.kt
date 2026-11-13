@@ -88,7 +88,7 @@ class CapturedAssemblySourcesPlatformTest {
         assertFalse(capture.revisions[leaf] == newer.revisions[leaf])
 
         val context = project.get().getService(MarsSessionService::class.java).context
-        val program = context.assembleSnapshot(capture.snapshot, capture.exceptionHandler, true, false)
+        val program = context.assembleSnapshot(capture.snapshot, capture.exceptionHandler, extended = true, warnings = false)
         assertEquals(2, program.instructionCount())
         assertTrue(program.simulate(5))
         assertEquals(42, context.registerFile.getValue(8))

@@ -96,7 +96,7 @@ class MipsSmartEnterPlatformTest {
             directory.resolve("addresses.inc").writeText(definitions)
             val entry = directory.resolve("addresses.mars").also { it.writeText(completed) }
             val context = current.service<MarsSessionService>().context
-            assertEquals(listOf(0x8fa80004.toInt(), 0), context.assemble(listOf(entry), null, false, false).machineList!!.map { it.binaryStatement })
+            assertEquals(listOf(0x8fa80004.toInt(), 0), context.assemble(listOf(entry), null, extended = false, warnings = false).machineList!!.map { it.binaryStatement })
         }
 
     @Test

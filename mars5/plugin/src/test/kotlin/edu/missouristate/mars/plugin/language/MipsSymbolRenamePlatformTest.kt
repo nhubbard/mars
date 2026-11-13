@@ -89,7 +89,7 @@ class MipsSymbolRenamePlatformTest {
             val capture = captureAssemblySources(listOf(path), null)
             val component = MarsSessionService.createMarsComponent()
             val symbols = component.context().use {
-                val result = component.assembler().assembleSnapshot(capture.snapshot, null, true, false)
+                val result = component.assembler().assembleSnapshot(capture.snapshot, null, extendedAssemblerEnabled = true, warningsAreErrors = false)
                 assertTrue(result.succeeded(), result.errors().toString())
                 result.program()!!.symbolMap()
             }
