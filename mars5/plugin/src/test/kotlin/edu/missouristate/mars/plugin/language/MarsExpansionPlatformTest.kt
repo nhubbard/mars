@@ -79,17 +79,19 @@ class MarsExpansionPlatformTest {
             val action = ActionManager.getInstance().getAction("Mars.ShowExpansion")
             assertEquals(ActionUpdateThread.BGT, action.actionUpdateThread)
             val disabled = TestActionEvent.createTestEvent(action, DataContext.EMPTY_CONTEXT)
-            action.update(disabled)
+            ActionUtil.updateAction(action, disabled)
             assertFalse(disabled.presentation.isEnabled)
-            action.actionPerformed(disabled)
+            // Simulate dispatch after the action context has changed.
+            disabled.presentation.isEnabled = true
+            ActionUtil.performAction(action, disabled)
             val noEditor = TestActionEvent.createTestEvent(action, SimpleDataContext.builder()
                 .add(CommonDataKeys.PSI_FILE, fixture.file).build())
-            action.update(noEditor)
+            ActionUtil.updateAction(action, noEditor)
             assertFalse(noEditor.presentation.isEnabled)
             val lightFile = PsiFileFactory.getInstance(current).createFileFromText("light.asm", MipsFileType, "nop")
             val nonLocal = TestActionEvent.createTestEvent(action, SimpleDataContext.builder()
                 .add(CommonDataKeys.PSI_FILE, lightFile).add(CommonDataKeys.EDITOR, fixture.editor).build())
-            action.update(nonLocal)
+            ActionUtil.updateAction(action, nonLocal)
             assertFalse(nonLocal.presentation.isEnabled)
             val context = SimpleDataContext.builder()
                 .add(CommonDataKeys.PROJECT, current)
@@ -97,7 +99,7 @@ class MarsExpansionPlatformTest {
                 .add(CommonDataKeys.EDITOR, fixture.editor)
                 .build()
             val event = TestActionEvent.createTestEvent(action, context)
-            action.update(event)
+            ActionUtil.updateAction(action, event)
             assertTrue(event.presentation.isEnabled)
             UiInterceptors.register(object : UiInterceptors.UiInterceptor<ListPopup>(ListPopup::class.java) {
                 override fun doIntercept(component: ListPopup) {
@@ -160,7 +162,7 @@ class MarsExpansionPlatformTest {
                 .add(CommonDataKeys.PSI_FILE, use)
                 .add(CommonDataKeys.EDITOR, fixture.editor)
                 .build())
-            action.update(event)
+            ActionUtil.updateAction(action, event)
             assertTrue(event.presentation.isEnabledAndVisible)
             use
         }

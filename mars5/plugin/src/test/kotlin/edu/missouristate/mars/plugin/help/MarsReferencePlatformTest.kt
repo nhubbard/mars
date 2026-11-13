@@ -8,6 +8,7 @@ import com.intellij.openapi.actionSystem.ActionPlaces
 import com.intellij.openapi.actionSystem.ActionUiKind
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.DataContext
+import com.intellij.openapi.actionSystem.ex.ActionUtil
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.extensions.PluginId
@@ -146,7 +147,7 @@ class MarsReferencePlatformTest {
         })
         try {
             val event = AnActionEvent.createEvent(action, DataContext.EMPTY_CONTEXT, null, ActionPlaces.MAIN_MENU, ActionUiKind.NONE, null)
-            action.actionPerformed(event)
+            ActionUtil.performAction(action, event)
             assertTrue(inspected)
         } finally {
             UiInterceptors.clear()

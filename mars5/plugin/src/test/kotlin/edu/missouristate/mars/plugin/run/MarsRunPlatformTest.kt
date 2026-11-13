@@ -44,6 +44,7 @@ import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.actionSystem.ToggleAction
+import com.intellij.openapi.actionSystem.ex.ActionUtil
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.components.service
@@ -294,9 +295,11 @@ class MarsRunPlatformTest {
                         if (env.runProfile !== config) return
                         val action = resetAction(env)
                         val event = TestActionEvent.createTestEvent(action)
-                        action.update(event)
+                        ActionUtil.updateAction(action, event)
                         assertFalse(event.presentation.isEnabled)
-                        action.actionPerformed(event)
+                        // Simulate dispatch after the action context has changed.
+                        event.presentation.isEnabled = true
+                        ActionUtil.performAction(action, event)
                         val recording = Recording()
                         handler.addProcessListener(recording)
                         check(starts.trySend(Triple(env, handler as MarsProcessHandler, recording)).isSuccess)
@@ -315,10 +318,10 @@ class MarsRunPlatformTest {
                 val document = requireNotNull(FileDocumentManager.getInstance().getDocument(data))
                 WriteCommandAction.runWriteCommandAction(project) { document.setText(".data\nvalue: .word 8\n") }
                 config.options.programArguments = "b"
-                action.update(event)
+                ActionUtil.updateAction(action, event)
                 assertTrue(event.presentation.isEnabled)
                 assertEquals(ActionUpdateThread.EDT, action.actionUpdateThread)
-                action.actionPerformed(event)
+                ActionUtil.performAction(action, event)
                 action
             }
             assertEquals(130, firstOutput.exit.await())
@@ -331,9 +334,11 @@ class MarsRunPlatformTest {
                 // Unit-test mode does not show or replace run content tabs.
                 Disposer.dispose(original)
                 val event = TestActionEvent.createTestEvent(originalAction)
-                originalAction.update(event)
+                ActionUtil.updateAction(originalAction, event)
                 assertFalse(event.presentation.isEnabled)
-                originalAction.actionPerformed(event)
+                // Simulate dispatch after the action context has changed.
+                event.presentation.isEnabled = true
+                ActionUtil.performAction(originalAction, event)
             }
             second.processInput.write("1\n".toByteArray())
             assertEquals(0, resetOutput.exit.await())
@@ -1051,7 +1056,7 @@ class MarsRunPlatformTest {
                     assertFalse(field.isEnabled)
                     val add = requireNotNull(ToolbarDecorator.findAddButton(form))
                     interceptMemoryExportDialog { it.doCancelAction() }
-                    add.actionPerformed(TestActionEvent.createTestEvent(add))
+                    ActionUtil.performAction(add, TestActionEvent.createTestEvent(add))
                     editor.applyTo(config)
                     assertTrue(config.options.useProjectSources)
                     assertThrows<RuntimeConfigurationError> { config.checkConfiguration() }
@@ -1060,7 +1065,7 @@ class MarsRunPlatformTest {
                     project.getService(MarsAssemblySettings::class.java)
                         .changeSources(listOf(source.virtualFile.path, library.path, early.path))
                     interceptMemoryExportDialog { it.doCancelAction() }
-                    add.actionPerformed(TestActionEvent.createTestEvent(add))
+                    ActionUtil.performAction(add, TestActionEvent.createTestEvent(add))
                 } finally {
                     Disposer.dispose(editor)
                 }
@@ -1545,8 +1550,8 @@ class MarsRunPlatformTest {
                     val add = ToolbarDecorator.findAddButton(form)!!
                     val edit = ToolbarDecorator.findEditButton(form)!!
                     val remove = ToolbarDecorator.findRemoveButton(form)!!
-                    fun addRow() = add.actionPerformed(TestActionEvent.createTestEvent(add))
-                    fun editRow() = edit.actionPerformed(TestActionEvent.createTestEvent(edit))
+                    fun addRow() = ActionUtil.performAction(add, TestActionEvent.createTestEvent(add))
+                    fun editRow() = ActionUtil.performAction(edit, TestActionEvent.createTestEvent(edit))
                     val first = directory.resolve("first.hex")
                     val second = directory.resolve("second.bin")
                     val edited = directory.resolve("edited.bin")
@@ -1598,7 +1603,7 @@ class MarsRunPlatformTest {
                     assertEquals(listOf("Binary", "Binary"), restored.options.memoryDumps.map { it.formatName })
                     editor.resetFrom(restored)
                     list.selectedIndex = 0
-                    remove.actionPerformed(TestActionEvent.createTestEvent(remove))
+                    ActionUtil.performAction(remove, TestActionEvent.createTestEvent(remove))
                     editor.applyTo(restored)
                     assertEquals(listOf(second), restored.options.memoryDumps.map { it.resolve(project)?.output })
                     assertEquals(2, config.options.memoryDumps.size)

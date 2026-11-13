@@ -23,6 +23,7 @@ import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.impl.SimpleDataContext
+import com.intellij.openapi.actionSystem.ex.ActionUtil
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.readAction
@@ -453,13 +454,17 @@ class MarsBuildPlatformTest {
             val unrelated = withContext(Dispatchers.EDT) {
                 assertEquals(ActionUpdateThread.BGT, action.actionUpdateThread)
                 val empty = event(context)
-                action.update(empty)
+                ActionUtil.updateAction(action, empty)
                 assertFalse(empty.presentation.isEnabled)
-                action.actionPerformed(empty)
+                // Simulate dispatch after the action context has changed.
+                empty.presentation.isEnabled = true
+                ActionUtil.performAction(action, empty)
                 val noProject = event(DataContext.EMPTY_CONTEXT)
-                action.update(noProject)
+                ActionUtil.updateAction(action, noProject)
                 assertFalse(noProject.presentation.isEnabled)
-                action.actionPerformed(noProject)
+                // Simulate dispatch after the action context has changed.
+                noProject.presentation.isEnabled = true
+                ActionUtil.performAction(action, noProject)
 
                 val binary = fixture.addFileToProject("image.png", "").virtualFile
                 ApplicationManager.getApplication().replaceService(FileChooserFactory::class.java, object : FileChooserFactoryImpl() {
@@ -478,10 +483,10 @@ class MarsBuildPlatformTest {
                     val up = requireNotNull(ToolbarDecorator.findUpButton(form))
                     page.reset()
                     assertFalse(page.isModified)
-                    add.actionPerformed(TestActionEvent.createTestEvent(add))
+                    ActionUtil.performAction(add, TestActionEvent.createTestEvent(add))
                     assertEquals(3, list.model.size)
                     assertTrue(page.isModified)
-                    up.actionPerformed(TestActionEvent.createTestEvent(up))
+                    ActionUtil.performAction(up, TestActionEvent.createTestEvent(up))
                     page.apply()
                     assertEquals(paths, settings.projectSources)
                     settings.changeSources(paths.map { it.toString() })
@@ -513,9 +518,9 @@ class MarsBuildPlatformTest {
             }
             withContext(Dispatchers.EDT) {
                 val build = event(context)
-                action.update(build)
+                ActionUtil.updateAction(action, build)
                 assertTrue(build.presentation.isEnabled)
-                action.actionPerformed(build)
+                ActionUtil.performAction(action, build)
             }
             var buildEvent = events.receive()
             while (buildEvent !is FinishBuildEvent) buildEvent = events.receive()
@@ -1033,9 +1038,9 @@ class MarsBuildPlatformTest {
                 val action = ActionManager.getInstance().getAction("Mars.AssembleDirectory")
                 assertInstanceOf(MarsAssembleDirectoryAction::class.java, action)
                 val event = AnActionEvent.createEvent(action, context, null, ActionPlaces.UNKNOWN, ActionUiKind.NONE, null)
-                action.update(event)
+                ActionUtil.updateAction(action, event)
                 assertTrue(event.presentation.isEnabledAndVisible)
-                action.actionPerformed(event)
+                ActionUtil.performAction(action, event)
             }
             var event = events.receive()
             while (event !is FinishBuildEvent) event = events.receive()
@@ -1278,7 +1283,7 @@ class MarsBuildPlatformTest {
             val events = recordBuildEvents(disposable)
             fun target() = GotoDeclarationAction.findTargetElement(project, fixture.editor, fixture.editor.caretModel.offset)
             suspend fun choose(action: AnAction, entry: VirtualFile) {
-                withContext(Dispatchers.EDT) { action.actionPerformed(event(action, project, shared)) }
+                withContext(Dispatchers.EDT) { ActionUtil.performAction(action, event(action, project, shared)) }
                 val start = assertInstanceOf(StartBuildEvent::class.java, events.receive())
                 assertEquals("Assemble ${entry.name}", start.buildDescriptor.title)
                 assertInstanceOf(SuccessResult::class.java, assertInstanceOf(FinishBuildEvent::class.java, events.receive()).result)

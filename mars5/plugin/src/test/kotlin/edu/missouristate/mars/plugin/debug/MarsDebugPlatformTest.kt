@@ -33,6 +33,7 @@ import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.actionSystem.ToggleAction
 import com.intellij.openapi.actionSystem.impl.SimpleDataContext
+import com.intellij.openapi.actionSystem.ex.ActionUtil
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.application.WriteAction
@@ -759,7 +760,9 @@ class MarsDebugPlatformTest {
                     session.resume()
                     val (action, event) = backstepAction(session)
                     assertFalse(event.presentation.isEnabled)
-                    action.actionPerformed(event)
+                    // Simulate dispatch after the action context has changed.
+                    event.presentation.isEnabled = true
+                    ActionUtil.performAction(action, event)
                     assertFalse(session.isSuspended)
                 }
             } finally {
@@ -811,7 +814,7 @@ class MarsDebugPlatformTest {
                 val (action, event) = toolbarAction(debug.session, "Step Instruction")
                 assertEquals(ActionUpdateThread.BGT, action.actionUpdateThread)
                 assertTrue(event.presentation.isEnabled)
-                action.actionPerformed(event)
+                ActionUtil.performAction(action, event)
             }
             debug.assertPausedAt(entry, 1)
             withContext(Dispatchers.EDT) {
@@ -824,7 +827,7 @@ class MarsDebugPlatformTest {
                   $$"$t0"
                 ))
                 val (action, event) = toolbarAction(debug.session, "Step Instruction")
-                action.actionPerformed(event)
+                ActionUtil.performAction(action, event)
             }
             debug.assertPausedAt(macros, 1)
             withContext(Dispatchers.EDT) {
@@ -992,7 +995,7 @@ class MarsDebugPlatformTest {
             withContext(Dispatchers.EDT) {
                 val (action, event) = if (wholeSource) toolbarAction(debug.session, "Backstep Source Statement") else backstepAction(debug.session)
                 assertTrue(event.presentation.isEnabled)
-                action.actionPerformed(event)
+                ActionUtil.performAction(action, event)
             }
             debug.assertPausedAt(file, 11)
             val rewound = debug.frames(1).single()
@@ -1166,7 +1169,7 @@ class MarsDebugPlatformTest {
                   $$"$t2"
                 ))
                 val (action, event) = toolbarAction(debug.session, "Backstep Source Statement")
-                action.actionPerformed(event)
+                ActionUtil.performAction(action, event)
             }
             assertNull(debug.nextPosition())
             withContext(Dispatchers.EDT) {
@@ -1174,7 +1177,7 @@ class MarsDebugPlatformTest {
                 assertEquals("0x00000000", evaluate(debug.session, frame, $$"$t2"))
                 assertEquals("0x240a002a", evaluate(debug.session, frame, "word(pc)"))
                 val (action, event) = toolbarAction(debug.session, "Backstep Source Statement")
-                action.actionPerformed(event)
+                ActionUtil.performAction(action, event)
             }
             debug.assertPausedAt(file, 2)
             withContext(Dispatchers.EDT) {
@@ -1206,7 +1209,9 @@ class MarsDebugPlatformTest {
             val (action, event) = withContext(Dispatchers.EDT) {
                 val result = toolbarAction(debug.session, "Backstep Source Statement")
                 assertFalse(result.second.presentation.isEnabled)
-                result.first.actionPerformed(result.second)
+                // Simulate dispatch after the action context has changed.
+                result.second.presentation.isEnabled = true
+                ActionUtil.performAction(result.first, result.second)
                 assertTrue(debug.session.isSuspended)
                 debug.session.setBreakpointMuted(true)
                 debug.session.stepInto()
@@ -1223,9 +1228,9 @@ class MarsDebugPlatformTest {
                 Triple(bodyLine, "0x00400000", "0x00000000"),
             )) {
                 withContext(Dispatchers.EDT) {
-                    action.update(event)
+                    ActionUtil.updateAction(action, event)
                     assertTrue(event.presentation.isEnabled)
-                    action.actionPerformed(event)
+                    ActionUtil.performAction(action, event)
                 }
                 debug.assertPausedAt(include, line)
                 withContext(Dispatchers.EDT) {
@@ -1235,7 +1240,7 @@ class MarsDebugPlatformTest {
                 }
             }
             withContext(Dispatchers.EDT) {
-                action.update(event)
+                ActionUtil.updateAction(action, event)
                 assertFalse(event.presentation.isEnabled)
                 debug.session.resume()
             }
@@ -1258,7 +1263,7 @@ class MarsDebugPlatformTest {
             withContext(Dispatchers.EDT) {
                 val (action, event) = backstepAction(debug.session)
                 assertTrue(event.presentation.isEnabled)
-                action.actionPerformed(event)
+                ActionUtil.performAction(action, event)
             }
             debug.assertPausedAt(file, 0)
             withContext(Dispatchers.EDT) {
@@ -1730,7 +1735,7 @@ class MarsDebugPlatformTest {
             assertEquals("A", terminal.snapshot().display.text)
             withContext(Dispatchers.EDT) {
                 val (action, event) = backstepAction(debug.session)
-                action.actionPerformed(event)
+                ActionUtil.performAction(action, event)
             }
             debug.assertPausedAt(source, 3)
             assertEquals("", terminal.snapshot().display.text)
@@ -1773,7 +1778,7 @@ class MarsDebugPlatformTest {
                 val frame = requireNotNull(debug.session.currentStackFrame)
                 assertEquals("0x00000001", evaluate(debug.session, frame, "word(0xffff8030)"))
                 val (action, event) = backstepAction(debug.session)
-                action.actionPerformed(event)
+                ActionUtil.performAction(action, event)
             }
             debug.assertPausedAt(source, 6)
             assertEquals(before.world, robot.snapshot().world)
@@ -1827,7 +1832,7 @@ class MarsDebugPlatformTest {
                 val frame = requireNotNull(debug.session.currentStackFrame)
                 assertEquals("0x000003e7", evaluate(debug.session, frame, "word(0xffffe004)"))
                 val (action, event) = backstepAction(debug.session)
-                action.actionPerformed(event)
+                ActionUtil.performAction(action, event)
             }
             debug.assertPausedAt(source, 7)
             assertEquals(started, process.scavengerHuntSnapshot())
@@ -1872,13 +1877,13 @@ class MarsDebugPlatformTest {
                 val frame = requireNotNull(debug.session.currentStackFrame)
                 assertEquals("0x00000042", evaluate(debug.session, frame, $$"$t2"))
                 val (action, event) = backstepAction(debug.session)
-                action.actionPerformed(event)
+                ActionUtil.performAction(action, event)
             }
             debug.assertPausedAt(source, 3)
             assertEquals(6, process.digitalLab.snapshot().key)
             withContext(Dispatchers.EDT) {
                 val (action, event) = toolbarAction(debug.session, "Backstep Source Statement")
-                action.actionPerformed(event)
+                ActionUtil.performAction(action, event)
             }
             debug.assertPausedAt(source, 2)
             assertNull(process.digitalLab.snapshot().key)
@@ -1967,7 +1972,7 @@ class MarsDebugPlatformTest {
                 assertEquals("Memory is unavailable for this debugger frame.", evaluate(debug.session, before, "word(buffer)"))
                 assertEquals("0x10010000", evaluate(debug.session, before, "buffer"))
                 val (action, event) = backstepAction(debug.session)
-                action.actionPerformed(event)
+                ActionUtil.performAction(action, event)
             }
             debug.assertPausedAt(source, 6)
             assertEquals(0xff223344.toInt(), display.snapshot().frame.image!!.getRGB(0, 0))
@@ -2278,7 +2283,7 @@ class MarsDebugPlatformTest {
                     withContext(Dispatchers.EDT) {
                         val (action, event) = backstepAction(debug.session)
                         assertTrue(event.presentation.isEnabled)
-                        action.actionPerformed(event)
+                        ActionUtil.performAction(action, event)
                     }
                     debug.assertPausedAt(source, line)
                 }
@@ -2309,7 +2314,9 @@ class MarsDebugPlatformTest {
                 val (action, event) = result
                 assertEquals(ActionUpdateThread.BGT, action.actionUpdateThread)
                 assertFalse(event.presentation.isEnabled)
-                action.actionPerformed(event)
+                // Simulate dispatch after the action context has changed.
+                event.presentation.isEnabled = true
+                ActionUtil.performAction(action, event)
                 assertTrue(debug.session.isSuspended)
                 debug.session.runToPosition(XDebuggerUtil.getInstance().createPosition(source, 3)!!, false)
                 result
@@ -2319,16 +2326,16 @@ class MarsDebugPlatformTest {
             assertEquals(listOf(1L, 2L, 3L), process.xray.snapshot().map { it.stepCount })
             for (line in 2 downTo 0) {
                 withContext(Dispatchers.EDT) {
-                    action.update(event)
+                    ActionUtil.updateAction(action, event)
                     assertTrue(event.presentation.isEnabled)
-                    action.actionPerformed(event)
+                    ActionUtil.performAction(action, event)
                 }
                 debug.assertPausedAt(source, line)
                 assertEquals("7", debug.stdout.toString())
                 assertEquals(line, process.xray.snapshot().size)
             }
             withContext(Dispatchers.EDT) {
-                action.update(event)
+                ActionUtil.updateAction(action, event)
                 assertFalse(event.presentation.isEnabled)
                 val values = registerValues(debug.session, requireNotNull(debug.session.currentStackFrame))
                 assertEquals("0x00000000", values[$$"$a0"])
@@ -2347,7 +2354,7 @@ class MarsDebugPlatformTest {
         session.debugProcess.registerAdditionalActions(DefaultActionGroup(), toolbar, DefaultActionGroup())
         val action = toolbar.getChildren(ActionManager.getInstance()).single { it.templatePresentation.text == text }
         val event = AnActionEvent.createEvent(action, DataContext.EMPTY_CONTEXT, null, ActionPlaces.DEBUGGER_TOOLBAR, ActionUiKind.TOOLBAR, null)
-        action.update(event)
+        ActionUtil.updateAction(action, event)
         return action to event
     }
 
@@ -2638,7 +2645,7 @@ class MarsDebugPlatformTest {
                 assertMemory(table, "0x10010000", "42 00 7f ff", "B...")
                 withContext(Dispatchers.EDT) {
                     val (action, event) = backstepAction(debug.session)
-                    action.actionPerformed(event)
+                    ActionUtil.performAction(action, event)
                 }
                 debug.assertPausedAt(source, 6)
                 assertMemory(table, "0x10010000", "41 00 7f ff", "A...")
@@ -2779,7 +2786,7 @@ class MarsDebugPlatformTest {
                 assertWrite("Last write at 0x10010105 (1 byte)", listOf("34"), listOf("0x00003434"))
                 withContext(Dispatchers.EDT) {
                     val (action, event) = backstepAction(debug.session)
-                    action.actionPerformed(event)
+                    ActionUtil.performAction(action, event)
                 }
                 debug.assertPausedAt(source, 9)
                 assertWrite("Last write at 0x10010104 (2 bytes)", listOf("34", "12"), listOf("0x00001234"))
@@ -2824,7 +2831,7 @@ class MarsDebugPlatformTest {
             val process = assertInstanceOf(MarsProcessHandler::class.java, debug.session.debugProcess.processHandler)
             withContext(Dispatchers.EDT) {
                 val (action, event) = backstepAction(debug.session)
-                action.actionPerformed(event)
+                ActionUtil.performAction(action, event)
             }
             debug.assertPausedAt(file, 0)
             withContext(Dispatchers.EDT) { debug.session.resume() }
@@ -2903,8 +2910,8 @@ class MarsDebugPlatformTest {
                 assertEquals("Speed: 0.05 instr/s", event.presentation.text)
                 val choices = speed.createPopupActionGroup(JPanel(), DataContext.EMPTY_CONTEXT).getChildren(ActionManager.getInstance())
                 val unlimited = choices.single { it.templatePresentation.text == "Unlimited" }
-                unlimited.actionPerformed(event)
-                action.update(event)
+                ActionUtil.performAction(unlimited, event)
+                ActionUtil.updateAction(action, event)
                 assertEquals("Speed: Unlimited", event.presentation.text)
                 debug.session.resume()
             }
@@ -3608,7 +3615,7 @@ class MarsDebugPlatformTest {
             return AnActionEvent.createEvent(action, data.build(), null, ActionPlaces.EDITOR_POPUP, ActionUiKind.POPUP, null)
         }
         fun available(event: AnActionEvent): Boolean {
-            action.update(event)
+            ActionUtil.updateAction(action, event)
             return event.presentation.isEnabledAndVisible
         }
         val editors = EditorFactory.getInstance()
@@ -3631,7 +3638,7 @@ class MarsDebugPlatformTest {
             try {
                 assertFalse(available(event(scratch)))
                 assertFalse(available(event(live)))
-                action.actionPerformed(event(live))
+                ActionUtil.performAction(action, event(live))
             } finally {
                 editors.releaseEditor(live)
                 editors.releaseEditor(scratch)
@@ -3657,7 +3664,7 @@ class MarsDebugPlatformTest {
                     editor.caretModel.moveToOffset(document.getLineStartOffset(targetLine))
                     assertTrue(available(event(editor)))
                     val manager = debugger.breakpointManager
-                    action.actionPerformed(event(editor))
+                    ActionUtil.performAction(action, event(editor))
                     val breakpoint = manager.findBreakpointsAtLine(breakpointType, include, breakpointLine).single()
                     assertEquals(include.url, breakpoint.fileUrl)
                     assertEquals(breakpointLine, breakpoint.line)
@@ -3673,7 +3680,7 @@ class MarsDebugPlatformTest {
                 val editor = editors.createEditor(document, project, excerpt, true)
                 try {
                     editor.caretModel.moveToOffset(document.getLineStartOffset(targetLine))
-                    action.actionPerformed(event(editor))
+                    ActionUtil.performAction(action, event(editor))
                     assertTrue(debugger.breakpointManager.findBreakpointsAtLine(breakpointType, include, breakpointLine).isEmpty())
                     debug.session.runToPosition(XDebuggerUtil.getInstance().createPosition(excerpt, targetLine + 1)!!, false)
                 } finally {
@@ -3731,7 +3738,7 @@ class MarsDebugPlatformTest {
                     document.setText(body)
                 }
                 val (action, event) = backstepAction(debug.session)
-                action.actionPerformed(event)
+                ActionUtil.performAction(action, event)
             }
             debug.assertPausedAt(include, 1)
             withContext(Dispatchers.EDT) { debug.session.resume() }
@@ -3762,19 +3769,19 @@ class MarsDebugPlatformTest {
         }
         withContext(Dispatchers.EDT) {
             val comment = event(0)
-            action.update(comment)
+            ActionUtil.updateAction(action, comment)
             assertFalse(comment.presentation.isEnabledAndVisible)
             val instruction = event(1)
-            action.update(instruction)
+            ActionUtil.updateAction(action, instruction)
             assertTrue(instruction.presentation.isEnabledAndVisible)
             assertFalse(breakpointType.canPutAt(view, 1, project))
-            action.actionPerformed(instruction)
+            ActionUtil.performAction(action, instruction)
             val manager = debugger.breakpointManager
             assertEquals(include.url, manager.findBreakpointsAtLine(breakpointType, include, 1).single().fileUrl)
             assertTrue(manager.findBreakpointsAtLine(breakpointType, view, 1).isEmpty())
-            action.actionPerformed(instruction)
+            ActionUtil.performAction(action, instruction)
             assertTrue(manager.findBreakpointsAtLine(breakpointType, include, 1).isEmpty())
-            action.actionPerformed(instruction)
+            ActionUtil.performAction(action, instruction)
         }
         withDebug(entry) { debug ->
             val first = requireNotNull(debug.nextPosition())
@@ -3797,7 +3804,7 @@ class MarsDebugPlatformTest {
             Files.writeString(include.toNioPath(), "# replaced\nnop\nnop\nnop\n")
             include.refresh(false, false)
             val stale = event(1)
-            action.update(stale)
+            ActionUtil.updateAction(action, stale)
             assertFalse(stale.presentation.isEnabledAndVisible)
         }
         val updatedSources = MarsExecutionSources(captureAssemblySources(listOf(entry.toNioPath()), null))
@@ -3808,10 +3815,10 @@ class MarsDebugPlatformTest {
                 file.setLength(FileSizeLimit.getContentLoadLimit(include.extension).toLong() + 1)
             }
             include.refresh(false, false)
-            action.update(stale)
+            ActionUtil.updateAction(action, stale)
             assertFalse(stale.presentation.isEnabledAndVisible)
             WriteAction.run<RuntimeException> { include.delete(this) }
-            action.update(stale)
+            ActionUtil.updateAction(action, stale)
             assertFalse(stale.presentation.isEnabledAndVisible)
         }
     }
@@ -4004,7 +4011,7 @@ class MarsDebugPlatformTest {
                 repeat(2) { index ->
                     withContext(Dispatchers.EDT) {
                         val (action, event) = backstepAction(debug.session)
-                        action.actionPerformed(event)
+                        ActionUtil.performAction(action, event)
                     }
                     debug.assertPausedAt(source, 1 - index)
                     if (index == 0) assertMarkers(slot, true, delay) else assertMarkers(branch, false, emptyMap())
@@ -4108,7 +4115,7 @@ class MarsDebugPlatformTest {
             assertHighlighted("hi", "lo", $$"$14 (epc)", "FCC", $$"$f2", $$"$f3", $$"$f2/$f3")
             withContext(Dispatchers.EDT) {
                 val (action, event) = backstepAction(debug.session)
-                action.actionPerformed(event)
+                ActionUtil.performAction(action, event)
             }
             debug.assertPausedAt(source, 7)
             assertHighlighted("hi", "lo", $$"$14 (epc)", "FCC", $$"$f1", $$"$f0/$f1")
@@ -4204,7 +4211,7 @@ class MarsDebugPlatformTest {
                 }
                 withContext(Dispatchers.EDT) {
                     val (action, event) = backstepAction(debug.session)
-                    action.actionPerformed(event)
+                    ActionUtil.performAction(action, event)
                 }
                 debug.assertPausedAt(source, 5)
                 pollAssertionsAsync(3.seconds, 10.milliseconds) {
@@ -4758,7 +4765,9 @@ class MarsDebugPlatformTest {
                 assertFalse(backstepAction(debug.session).second.presentation.isEnabled)
                 val (action, event) = toolbarAction(debug.session, "Step Instruction")
                 assertFalse(event.presentation.isEnabled)
-                action.actionPerformed(event)
+                // Simulate dispatch after the action context has changed.
+                event.presentation.isEnabled = true
+                ActionUtil.performAction(action, event)
             }
             withContext(Dispatchers.EDT) { debug.session.pause() }
             debug.assertPausedAt(source.first, 3)

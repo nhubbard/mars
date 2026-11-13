@@ -12,6 +12,7 @@ import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.actionSystem.impl.SimpleDataContext
+import com.intellij.openapi.actionSystem.ex.ActionUtil
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.readAction
@@ -141,16 +142,20 @@ class MarsMemoryExportPlatformTest {
         assertEquals(ActionUpdateThread.BGT, action.actionUpdateThread)
         val enabled = event(action, project, file)
         readAction {
-            action.update(enabled)
+            ActionUtil.updateAction(action, enabled)
             assertTrue(enabled.presentation.isEnabledAndVisible)
         }
         for (event in listOf(event(action, null, file), event(action, project, null),
             event(action, project, nonSource), event(action, project, LightVirtualFile("loose.s")))) {
             readAction {
-                action.update(event)
+                ActionUtil.updateAction(action, event)
                 assertFalse(event.presentation.isEnabledAndVisible)
             }
-            withContext(Dispatchers.EDT) { action.actionPerformed(event) }
+            // Simulate dispatch after the action context has changed.
+            withContext(Dispatchers.EDT) {
+                event.presentation.isEnabled = true
+                ActionUtil.performAction(action, event)
+            }
         }
 
         val disposable = Disposer.newDisposable()
@@ -174,14 +179,14 @@ class MarsMemoryExportPlatformTest {
                 }
 
                 interceptMemoryExportDialog { it.doCancelAction() }
-                action.actionPerformed(enabled)
+                ActionUtil.performAction(action, enabled)
                 assertFalse(saved)
 
                 interceptMemoryExportDialog {
                     assertTrue(it.performValidateAll().isEmpty())
                     it.performOKAction()
                 }
-                action.actionPerformed(enabled)
+                ActionUtil.performAction(action, enabled)
                 assertTrue(saved)
                 assertFalse(Files.exists(output))
 
@@ -201,7 +206,7 @@ class MarsMemoryExportPlatformTest {
                     assertTrue(dialog.performValidateAll().isEmpty())
                     dialog.performOKAction()
                 }
-                action.actionPerformed(enabled)
+                ActionUtil.performAction(action, enabled)
             }
             assertEquals(NotificationType.INFORMATION, notifications.receive().type)
             assertEquals(listOf(":0400000000000000FC", ":00000001FF"), Files.readAllLines(output))
