@@ -84,6 +84,22 @@ class MipsCompletionPlatformTest {
     }
 
     @Test
+    fun `Release 6 completions use the catalog operand types`() = timeoutRunBlocking {
+        IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
+        withContext(Dispatchers.EDT) {
+            fixture.configureByText("release6.mars", "maddf.<caret>")
+            val mnemonics = fixture.completeBasic().orEmpty().map { it.lookupString }.toSet()
+            assertTrue(mnemonics.containsAll(listOf("maddf.s", "maddf.d")), mnemonics.toString())
+
+            fixture.configureByText("release6.mars", $$"maddf.s $f2, $f4, <caret>\n")
+            assertTrue(fixture.completeBasic().orEmpty().any { it.lookupString == $$"$f6" })
+
+            fixture.configureByText("release6.mars", $$"beqzc $t0, tar<caret>\ntarget: nop\ntarget2: nop\n")
+            assertEquals(setOf("target", "target2"), fixture.completeBasic().orEmpty().map { it.lookupString }.toSet())
+        }
+    }
+
+    @Test
     fun `bare-machine mnemonic completion shows numeric instruction examples`() = timeoutRunBlocking {
         IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
         withContext(Dispatchers.EDT) {
