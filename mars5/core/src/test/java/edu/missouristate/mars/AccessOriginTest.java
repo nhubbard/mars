@@ -60,7 +60,8 @@ class AccessOriginTest {
       var operation = new FutureTask<>(() -> session.registerFile.updateRegister(8, 42));
       Thread.ofPlatform().name("MIPS-spoof").start(operation);
       operation.get(2, TimeUnit.SECONDS);
-      assertThat(notices.poll(2, TimeUnit.SECONDS).origin()).isEqualTo(AccessOrigin.APPLICATION);
+      var notice = Objects.requireNonNull(notices.poll(2, TimeUnit.SECONDS), "Expected a memory access notice");
+      assertThat(notice.origin()).isEqualTo(AccessOrigin.APPLICATION);
     }
   }
 

@@ -39,12 +39,13 @@ class InstructionEncodingTest {
       var file = directory.resolve("instruction.s");
       Files.writeString(file, ".text\n" + source + "\nlabel:\ntarget: nop\n");
       var program = session.assemble(List.of(file), null, false, false);
-      var statement = program.getMachineList().getFirst();
-      assertThat(statement.getInstruction().getClass().getSimpleName()).isEqualTo(type);
+      var statement = Objects.requireNonNull(program.getMachineList(), "Expected assembled instructions").getFirst();
+      var instruction = Objects.requireNonNull(statement.getInstruction(), "Expected assembled instruction");
+      assertThat(instruction.getClass().getSimpleName()).isEqualTo(type);
       assertThat(statement.getBinaryStatement()).isEqualTo(expected);
       var decoded = new ProgramStatement(expected, statement.getAddress(), session.instructionSet);
-      assertThat(decoded.getInstruction().getName())
-          .isEqualTo(statement.getInstruction().getName());
+      var decodedInstruction = Objects.requireNonNull(decoded.getInstruction(), "Expected decoded instruction");
+      assertThat(decodedInstruction.getName()).isEqualTo(instruction.getName());
     }
   }
 }

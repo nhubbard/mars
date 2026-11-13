@@ -32,7 +32,7 @@ class SyscallContractTest {
                   (proxy, method, args) -> {
                     if (method.getDeclaringClass() == Object.class) {
                       return switch (method.getName()) {
-                        case "equals" -> proxy == args[0];
+                        case "equals" -> proxy == Objects.requireNonNull(args)[0];
                         case "hashCode" -> System.identityHashCode(proxy);
                         case "toString" -> "Test syscall environment";
                         default -> throw new AssertionError(method);
@@ -51,13 +51,13 @@ class SyscallContractTest {
                       case "currentTimeMillis" -> wallTime;
                       case "openFile" -> 3;
                       case "readFromFile" -> {
-                        var buffer = (byte[]) args[1];
+                        var buffer = (byte[]) Objects.requireNonNull(args)[1];
                         buffer[0] = 1;
                         buffer[1] = 2;
                         buffer[2] = 3;
                         yield 3;
                       }
-                      case "writeToFile" -> args[2];
+                      case "writeToFile" -> Objects.requireNonNull(args)[2];
                       default -> null;
                     };
                   });
@@ -114,7 +114,7 @@ class SyscallContractTest {
       }
       session.randomStreams.setSeed(1, 123);
       int heap = session.memory.heapAddress;
-      var service = session.syscalls.findByNumber(number);
+      var service = Objects.requireNonNull(session.syscalls.findByNumber(number), "Missing syscall " + number);
       if (number == 10 || number == 17) {
         var failure = catchThrowable(() -> service.simulate(null, context));
         assertThat(failure).isInstanceOf(ProcessingException.class);
@@ -209,8 +209,9 @@ class SyscallContractTest {
   void mutableServiceNumbersAreNotSharedAcrossSessions() {
     var first = new SyscallRegistry();
     var second = new SyscallRegistry();
-    first.findByNumber(1).setNumber(101);
-    assertThat(second.findByNumber(1).getNumber()).isEqualTo(1);
+    Objects.requireNonNull(first.findByNumber(1), "Missing PrintInt").setNumber(101);
+    var unchanged = Objects.requireNonNull(second.findByNumber(1), "Missing PrintInt");
+    assertThat(unchanged.getNumber()).isEqualTo(1);
     assertThat(first.services()).hasSize(40);
   }
 }

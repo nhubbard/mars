@@ -2,13 +2,13 @@ package edu.missouristate.mars.cli;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import edu.missouristate.mars.mips.dump.DumpFormat;
 import edu.missouristate.mars.mips.dump.DumpFormatLoader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -312,7 +312,9 @@ class PackagedCliTest {
             syscall
             """);
     var descriptors =
-        DumpFormatLoader.FORMATS.stream().map(DumpFormat::getCommandDescriptor).toList();
+        DumpFormatLoader.FORMATS.stream()
+            .map(format -> Objects.requireNonNull(format.getCommandDescriptor(), format.getDescription()))
+            .toList();
     var arguments = new ArrayList<>(List.of("nc", "me"));
     if (assembleOnly) {
       arguments.add("a");
