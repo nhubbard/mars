@@ -489,7 +489,7 @@ internal fun assemblySourceSyntax(source: PsiFile?): MipsFile? {
                 val copy = PsiFileFactory.getInstance(source.project)
                     .createFileFromText(source.name, MipsFileType, source.viewProvider.contents.toString()) as MipsFile
                 // FileReferenceSet resolves relative paths against the original physical file.
-                copy.setOriginalFile(source)
+                copy.originalFile = source
                 copy
             }
         }

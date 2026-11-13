@@ -98,7 +98,7 @@ class ToneGenerator internal constructor(
             openSequencer().use { player ->
                 if (Thread.currentThread().isInterrupted) return
                 val sequence = Sequence(Sequence.PPQ, 1)
-                player.setTempoInMPQ(TEMPO.toFloat())
+                player.tempoInMPQ = TEMPO.toFloat()
                 val track = sequence.createTrack()
                 track.add(MidiEvent(ShortMessage(ShortMessage.PROGRAM_CHANGE, DEFAULT_CHANNEL, instrument.toInt(), 0), 0))
                 track.add(MidiEvent(ShortMessage(ShortMessage.NOTE_ON, DEFAULT_CHANNEL, pitch.toInt(), volume.toInt()), 0))

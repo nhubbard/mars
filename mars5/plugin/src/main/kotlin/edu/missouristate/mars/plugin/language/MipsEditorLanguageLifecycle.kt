@@ -34,7 +34,7 @@ internal class MipsEditorLanguageLifecycle : DynamicPluginListener {
                 )
                 if (!loaded) {
                     // The inspection renderer retains the languages for its last highlighting pass.
-                    (editor.markupModel as EditorMarkupModel).setErrorStripeRenderer(null)
+                    (editor.markupModel as EditorMarkupModel).errorStripeRenderer = null
                 }
             }
             if (!loaded) {

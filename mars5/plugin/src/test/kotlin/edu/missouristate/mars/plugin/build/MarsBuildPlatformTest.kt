@@ -1428,7 +1428,7 @@ class MarsBuildPlatformTest {
             val partial = source.substring(0, originalOperand) + "genOld"
             change(main, partial)
             assertEquals(names, candidates(originalOperand + 3))
-            fixture.lookup.setCurrentItem(fixture.lookup.items.single { it.lookupString == "generatedOne" })
+            fixture.lookup.currentItem = fixture.lookup.items.single { it.lookupString == "generatedOne" }
             fixture.finishLookup(Lookup.REPLACE_SELECT_CHAR)
             assertEquals(source, fixture.editor.document.text)
 

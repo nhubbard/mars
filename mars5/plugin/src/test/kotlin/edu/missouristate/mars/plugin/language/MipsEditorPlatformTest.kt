@@ -88,7 +88,7 @@ class MipsEditorPlatformTest {
                     override fun getStatus() = AnalyzerStatus.EMPTY
                     override fun dispose() = Unit
                 }
-                markup.setErrorStripeRenderer(renderer)
+                markup.errorStripeRenderer = renderer
                 editor.caretModel.moveToOffset(6)
                 val javaFile = fixture.addFileToProject("Lifecycle.java", "class Lifecycle {}")
                 val manager = FileEditorManager.getInstance(current)

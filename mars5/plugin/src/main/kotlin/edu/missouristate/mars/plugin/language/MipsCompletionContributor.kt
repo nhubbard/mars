@@ -135,7 +135,7 @@ class MipsCompletionContributor : CompletionContributor(), DumbAware {
     override fun duringCompletion(context: CompletionInitializationContext) {
         val token = context.file.findElementAt(context.startOffset) ?: return
         if (statementHead.accepts(token) || operandOrContinuationPosition.accepts(token) || macroParameterPosition.accepts(token)) {
-            context.setReplacementOffset(token.textRange.endOffset)
+            context.replacementOffset = token.textRange.endOffset
         }
     }
 

@@ -66,8 +66,8 @@ internal class MarsImportVenusEditorPreferencesAction(
                 val effectiveFamilies = preferences.effectiveFontFamilies
                 preferences.setRealFontFamilies(listOf(updated.fontFamily) + realFamilies.drop(1).filterNot { it == updated.fontFamily })
                 preferences.setEffectiveFontFamilies(listOf(updated.fontFamily) + effectiveFamilies.drop(1).filterNot { it == updated.fontFamily })
-                preferences.setRegularSubFamily(null)
-                preferences.setBoldSubFamily(null)
+                preferences.regularSubFamily = null
+                preferences.boldSubFamily = null
                 preferences.setCharacterVariants(emptySet())
             }
             preferences.setTemplateFontSize(updated.fontSize)

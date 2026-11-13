@@ -491,7 +491,7 @@ class MarsImportVenusPreferencesPlatformTest {
             fonts.update(FontPreferencesImpl().apply {
                 register("Dialog", 12)
                 register("Monospaced", 12)
-                setRegularSubFamily("Regular")
+                regularSubFamily = "Regular"
                 lineSpacing = 1.5f
             })
             operation(editor, fonts, properties)

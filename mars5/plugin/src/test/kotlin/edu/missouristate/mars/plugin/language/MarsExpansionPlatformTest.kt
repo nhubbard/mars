@@ -248,7 +248,7 @@ class MarsExpansionPlatformTest {
                 val selected = FileEditorManager.getInstance(current).selectedTextEditor!!
                 assertFalse(checkNotNull(selected.virtualFile).isWritable)
                 val line = selected.document.getLineNumber(selected.caretModel.offset)
-                assertTrue(selected.document.getText().startsWith($$"li $t0, 0x12345678", selected.document.getLineStartOffset(line)))
+                assertTrue(selected.document.text.startsWith($$"li $t0, 0x12345678", selected.document.getLineStartOffset(line)))
 
                 Files.writeString(include.toNioPath(), "# changed\n", APPEND)
                 include.refresh(false, false)

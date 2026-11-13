@@ -36,7 +36,7 @@ internal class MarsExecutionSources(private val capture: CapturedAssemblySources
     private open class CapturedFile(
         val pathInImage: Path, val firstLine: Int, val owner: Any, name: String, text: String,
     ) : ReadOnlyLightVirtualFile(name, MipsLanguage, text) {
-        init { setFileType(MipsFileType) }
+        init { fileType = MipsFileType }
     }
 
     private class BackedExcerpt(

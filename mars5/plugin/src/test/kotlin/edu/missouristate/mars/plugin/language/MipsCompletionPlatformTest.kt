@@ -125,7 +125,7 @@ class MipsCompletionPlatformTest {
                 assertEquals(setOf("RUN_ONE", "RUN_NUMBERED"), aliases($$"entry: RUN_<caret>.old $t1, 4"))
                 val selected = fixture.lookup.items.single { it.lookupString == "RUN_ONE" }
                 assertEquals($$" = RUN_OP $t0", LookupElementPresentation().also(selected::renderElement).tailText)
-                fixture.lookup.setCurrentItem(selected)
+                fixture.lookup.currentItem = selected
                 fixture.finishLookup(Lookup.REPLACE_SELECT_CHAR)
                 assertEquals(include + $$"entry: RUN_ONE $t1, 4" + suffix, fixture.file.text)
                 fixture.file.text
@@ -162,7 +162,7 @@ class MipsCompletionPlatformTest {
                 assertEquals(setOf("DIRECT_VALUES"), aliases("values: DIRECT_V<caret>.old 9"))
                 val selected = fixture.lookup.items.single { it.lookupString == "DIRECT_VALUES" }
                 assertEquals(" = DIRECT_WORD 7", LookupElementPresentation().also(selected::renderElement).tailText)
-                fixture.lookup.setCurrentItem(selected)
+                fixture.lookup.currentItem = selected
                 fixture.finishLookup(Lookup.REPLACE_SELECT_CHAR)
                 assertEquals(before + "values: DIRECT_VALUES 9" + after, fixture.file.text)
                 fixture.file.text
@@ -203,7 +203,7 @@ class MipsCompletionPlatformTest {
                 assertEquals(setOf("CALL_OP", "CALL_FIRST", "CALL_OPEN"), aliases("entry: CALL_<caret>.old, 4"))
                 val selected = fixture.lookup.items.single { it.lookupString == "CALL_FIRST" }
                 assertEquals($$" = CALL_OP $t0", LookupElementPresentation().also(selected::renderElement).tailText)
-                fixture.lookup.setCurrentItem(selected)
+                fixture.lookup.currentItem = selected
                 fixture.finishLookup(Lookup.REPLACE_SELECT_CHAR)
                 assertEquals(include + "entry: CALL_FIRST, 4" + suffix, fixture.file.text)
                 fixture.file.text
@@ -223,13 +223,13 @@ class MipsCompletionPlatformTest {
             val example = InstructionDefaults.get().instructionList.first { it.name == "c.eq.s" }.exampleFormat
             val presentation = LookupElementPresentation().also(instruction::renderElement)
             assertEquals(example.removePrefix("c.eq.s"), presentation.tailText)
-            fixture.lookup.setCurrentItem(instruction)
+            fixture.lookup.currentItem = instruction
             fixture.finishLookup(Lookup.REPLACE_SELECT_CHAR)
             assertEquals($$"entry: c.eq.s $f0, $f2\n", fixture.file.text)
 
             fixture.configureByText("completion.asm", ".macro emit\n  .A<caret>\n.end_macro\n")
             val directive = fixture.completeBasic().orEmpty().single { it.lookupString == ".asciiz" }
-            fixture.lookup.setCurrentItem(directive)
+            fixture.lookup.currentItem = directive
             fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR)
             assertEquals(".macro emit\n  .asciiz\n.end_macro\n", fixture.file.text)
         }
@@ -272,7 +272,7 @@ class MipsCompletionPlatformTest {
             val item = choices.single { it.lookupString == "emit" }
             val presentation = LookupElementPresentation().also(item::renderElement)
             assertEquals($$" (%value) / (%left, $right)", presentation.tailText)
-            fixture.lookup.setCurrentItem(item)
+            fixture.lookup.currentItem = item
             fixture.finishLookup(Lookup.REPLACE_SELECT_CHAR)
             fixture.file.text.also { assertEquals(source.replace("em<caret>itTail", "emit"), it) }
         }
@@ -341,7 +341,7 @@ class MipsCompletionPlatformTest {
             val completed = withContext(Dispatchers.EDT) {
                 val choices = fixture.completeBasic().orEmpty().filter { it.lookupString.startsWith('%') }
                 assertEquals(setOf("%value", "%valueMore"), choices.map { it.lookupString }.toSet())
-                fixture.lookup.setCurrentItem(choices.single { it.lookupString == "%value" })
+                fixture.lookup.currentItem = choices.single { it.lookupString == "%value" }
                 fixture.finishLookup(Lookup.REPLACE_SELECT_CHAR)
                 fixture.file.text.also { assertEquals(source.replace("%va<caret>lueSuffix", "%value"), it) }
             }
@@ -428,7 +428,7 @@ class MipsCompletionPlatformTest {
             val dollarCall = $$".macro $emitDollar\n.end_macro\n.macro $emitOther\n.end_macro\n$em<caret>\n"
             fixture.configureByText("macro-dollar.asm", dollarCall)
             val dollarMacro = fixture.completeBasic().orEmpty().single { it.lookupString == $$"$emitDollar" }
-            fixture.lookup.setCurrentItem(dollarMacro)
+            fixture.lookup.currentItem = dollarMacro
             fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR)
             assertEquals(dollarCall.replace($$"$em<caret>", $$"$emitDollar"), fixture.file.text)
         }
@@ -495,7 +495,7 @@ class MipsCompletionPlatformTest {
                 fixture.configureByText("operand-aliases.asm", source)
                 val registers = fixture.completeBasic().orEmpty().filter { it.lookupString.startsWith('$') }
                 assertEquals(((0..7).map { $$"$s$$it" } + $$"$sp").toSet(), registers.map { it.lookupString }.toSet())
-                fixture.lookup.setCurrentItem(registers.single { it.lookupString == $$"$s2" })
+                fixture.lookup.currentItem = registers.single { it.lookupString == $$"$s2" }
                 fixture.finishLookup(Lookup.REPLACE_SELECT_CHAR)
                 assertEquals(source.replace($$"$s<caret>9", $$"$s2"), fixture.file.text)
                 val completed = fixture.file.text
@@ -530,7 +530,7 @@ class MipsCompletionPlatformTest {
             }
             val branch = $$".eqv BR beq\nBR $t0, 0x, tar<caret>" + labels
             assertEquals(setOf("target", "target2"), candidates(branch))
-            fixture.lookup.setCurrentItem(fixture.lookup.items.single { it.lookupString == "target" })
+            fixture.lookup.currentItem = fixture.lookup.items.single { it.lookupString == "target" }
             fixture.finishLookup(Lookup.REPLACE_SELECT_CHAR)
             assertEquals(branch.replace("tar<caret>", "target"), fixture.file.text)
             assertEquals(setOf("target", "target2"), candidates($$".eqv REG $t0\nbeq REG, 0x, tar<caret>" + labels))
@@ -567,7 +567,7 @@ class MipsCompletionPlatformTest {
                     assertTrue(candidates(line).isEmpty(), line)
                 }
                 assertEquals(expected, candidates("WORDS target<caret>.old"))
-                fixture.lookup.setCurrentItem(fixture.lookup.items.single { it.lookupString == "targetTwo" })
+                fixture.lookup.currentItem = fixture.lookup.items.single { it.lookupString == "targetTwo" }
                 fixture.finishLookup(Lookup.REPLACE_SELECT_CHAR)
                 assertEquals(prefix + "WORDS targetTwo" + labels, fixture.file.text)
                 fixture.file.text
@@ -603,7 +603,7 @@ class MipsCompletionPlatformTest {
             assertTrue(items(".word .lo<caret>").any { it.lookupString == ".local" })
             assertTrue(items("<caret>targetPlain 2 3").none { it.lookupString == ".local" })
             items("target<caret> 2 3")
-            fixture.lookup.setCurrentItem(fixture.lookup.items.single { it.lookupString == "targetPlain" })
+            fixture.lookup.currentItem = fixture.lookup.items.single { it.lookupString == "targetPlain" }
             fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR)
             assertEquals(definitions + "targetPlain 2 3\n", fixture.file.text)
             fixture.file.text
@@ -645,11 +645,11 @@ class MipsCompletionPlatformTest {
                 assertTrue(!current.service<MarsAnalysisService>().completesDataHeadAsMacro(cycle, range, "shared"))
                 val label = choices("sha<caret> 7").single()
                 assertNull(LookupElementPresentation().also(label::renderElement).tailText)
-                fixture.lookup.setCurrentItem(label)
+                fixture.lookup.currentItem = label
                 fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR)
                 val dataSource = fixture.file.text
                 val call = choices("sha<caret> PAIR").single()
-                fixture.lookup.setCurrentItem(call)
+                fixture.lookup.currentItem = call
                 fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR)
                 dataSource to fixture.file.text
             }
@@ -715,7 +715,7 @@ class MipsCompletionPlatformTest {
                 assertEquals(setOf("VALUE_LIST"), aliases("slot: WORDS 2, VALUE_L<caret>.old, 9"))
                 val selected = fixture.lookup.items.single { it.lookupString == "VALUE_LIST" }
                 assertEquals(" = VALUE_NUM, 8", LookupElementPresentation().also(selected::renderElement).tailText)
-                fixture.lookup.setCurrentItem(selected)
+                fixture.lookup.currentItem = selected
                 fixture.finishLookup(Lookup.REPLACE_SELECT_CHAR)
                 assertEquals(before + "slot: WORDS 2, VALUE_LIST, 9" + after, fixture.file.text)
                 fixture.file.text
@@ -765,7 +765,7 @@ class MipsCompletionPlatformTest {
                 assertTrue(aliases(".asciiz VAL_<caret>, \"unfinished").isEmpty())
                 assertTrue(aliases(".ascii VAL_<caret>", include + ".text\n").isEmpty())
                 assertEquals(setOf("VAL_QUOTES"), aliases(".float VAL_MIX\nlabel: STRINGS VAL_Q<caret>.old, \"Z\""))
-                fixture.lookup.setCurrentItem(fixture.lookup.items.single { it.lookupString == "VAL_QUOTES" })
+                fixture.lookup.currentItem = fixture.lookup.items.single { it.lookupString == "VAL_QUOTES" }
                 fixture.finishLookup(Lookup.REPLACE_SELECT_CHAR)
                 assertEquals(before + ".float VAL_MIX\nlabel: STRINGS VAL_QUOTES, \"Z\"" + after, fixture.file.text)
                 fixture.file.text
@@ -820,7 +820,7 @@ class MipsCompletionPlatformTest {
                 assertTrue(aliases(".extern 0x SIZE_<caret>").isEmpty())
                 val source = ".data SIZE_ADDRESS\nslot: RESERVE SIZE_CH<caret>.old\nmarker: .word 23\n.text\nnop"
                 assertEquals(setOf("SIZE_CHAIN"), aliases(source))
-                fixture.lookup.setCurrentItem(fixture.lookup.items.single { it.lookupString == "SIZE_CHAIN" })
+                fixture.lookup.currentItem = fixture.lookup.items.single { it.lookupString == "SIZE_CHAIN" }
                 fixture.finishLookup(Lookup.REPLACE_SELECT_CHAR)
                 assertEquals(include + source.replace("SIZE_CH<caret>.old", "SIZE_CHAIN") + "\n.eqv SIZE_LATE 8\n", fixture.file.text)
                 fixture.file.text
@@ -873,7 +873,7 @@ class MipsCompletionPlatformTest {
                     assertNull(current.service<MarsAnalysisService>().exportOperandsBefore(file, head, operand))
                 }
                 assertEquals(setOf("exportSecond"), candidates("EXPORT export<caret>.old, REST"))
-                fixture.lookup.setCurrentItem(fixture.lookup.items.single { it.lookupString == "exportSecond" })
+                fixture.lookup.currentItem = fixture.lookup.items.single { it.lookupString == "exportSecond" }
                 fixture.finishLookup(Lookup.REPLACE_SELECT_CHAR)
                 assertEquals(prefix + "EXPORT exportSecond, REST" + labels, fixture.file.text)
                 fixture.file.text
@@ -919,7 +919,7 @@ class MipsCompletionPlatformTest {
                 assertTrue(aliases($$".globl EX_<caret>, $t0").isEmpty())
                 assertTrue(aliases(".globl EX_<caret>, LOOP").isEmpty())
                 assertEquals(setOf("EX_PAIR"), aliases("EXPORT EX_P<caret>.old, gamma"))
-                fixture.lookup.setCurrentItem(fixture.lookup.items.single { it.lookupString == "EX_PAIR" })
+                fixture.lookup.currentItem = fixture.lookup.items.single { it.lookupString == "EX_PAIR" }
                 fixture.finishLookup(Lookup.REPLACE_SELECT_CHAR)
                 assertEquals(prefix + "EXPORT EX_PAIR, gamma" + suffix, fixture.file.text)
                 fixture.file.text
@@ -987,7 +987,7 @@ class MipsCompletionPlatformTest {
                 assertEquals(setOf("ARG_REG", "ARG_NUMBERED", "ARG_PAIR"), aliases($$"sll $t0, ARG_<caret>.old"))
                 val pair = fixture.lookup.items.single { it.lookupString == "ARG_PAIR" }
                 assertEquals($$" = $t1, 4", LookupElementPresentation().also(pair::renderElement).tailText)
-                fixture.lookup.setCurrentItem(pair)
+                fixture.lookup.currentItem = pair
                 fixture.finishLookup(Lookup.REPLACE_SELECT_CHAR)
                 assertEquals(include + $$"sll $t0, ARG_PAIR" + suffix, fixture.file.text)
                 fixture.file.text
@@ -1028,7 +1028,7 @@ class MipsCompletionPlatformTest {
                 assertTrue(aliases($$"sll $t0, TAIL_<caret>, )").isEmpty())
                 assertEquals(registers + "TAIL_PAIR", aliases($$"sll $t0, TAIL_<caret>, LOOP"))
                 assertEquals(registers, aliases($$"lw $t0, 4(TAIL_<caret>.old) # keep the suffix"))
-                fixture.lookup.setCurrentItem(fixture.lookup.items.single { it.lookupString == "TAIL_BASE" })
+                fixture.lookup.currentItem = fixture.lookup.items.single { it.lookupString == "TAIL_BASE" }
                 fixture.finishLookup(Lookup.REPLACE_SELECT_CHAR)
                 assertEquals(include + $$"lw $t0, 4(TAIL_BASE) # keep the suffix\n", fixture.file.text)
                 fixture.file.text
@@ -1045,7 +1045,7 @@ class MipsCompletionPlatformTest {
         withContext(Dispatchers.EDT) {
             fixture.configureByText("registers.asm", $$"lw $t0, 4($t<caret>8)\n")
             val item = fixture.completeBasic().orEmpty().single { it.lookupString == $$"$t2" }
-            fixture.lookup.setCurrentItem(item)
+            fixture.lookup.currentItem = item
             fixture.finishLookup(Lookup.REPLACE_SELECT_CHAR)
             assertEquals($$"lw $t0, 4($t2)\n", fixture.file.text)
         }
@@ -1086,7 +1086,7 @@ class MipsCompletionPlatformTest {
             assertEquals(setOf("Target.local", "Target.nested", "Target.updated", "Target.plain", "Target.effective"),
                 matches.filterNot { it.typeText() == "Equivalence" }.map { it.lookupString }.toSet())
             assertTrue("target.lowercase" !in fixture.lookupElementStrings.orEmpty())
-            fixture.lookup.setCurrentItem(matches.single { it.lookupString == "Target.updated" })
+            fixture.lookup.currentItem = matches.single { it.lookupString == "Target.updated" }
             fixture.finishLookup(Lookup.REPLACE_SELECT_CHAR)
             assertTrue(fixture.file.text.contains($$"entry: beq $t0, $zero, Target.updated\n"))
         }

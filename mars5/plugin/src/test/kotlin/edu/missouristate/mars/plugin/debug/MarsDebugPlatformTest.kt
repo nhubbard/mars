@@ -897,7 +897,7 @@ class MarsDebugPlatformTest {
             """.trimIndent()).virtualFile.also {
                 addBreakpoint(it, 1)
                 val logpoint = addBreakpoint(it, 10)
-                WriteAction.run<RuntimeException> { logpoint.setSuspendPolicy(SuspendPolicy.NONE) }
+                WriteAction.run<RuntimeException> { logpoint.suspendPolicy = SuspendPolicy.NONE }
             }
         }
         withDebug(file) { debug ->

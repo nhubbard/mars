@@ -108,7 +108,7 @@ class InstructionCounterPlatformTest {
             val body = marsToolPanel { marsExecutionRow(selector) }
             val label = UIUtil.findComponentsOfType(body, JLabel::class.java).single { it.labelFor === selector }
             for (width in listOf(180, 640)) {
-                body.setSize(JBUI.size(width, 120))
+                body.size = JBUI.size(width, 120)
                 body.doLayout()
                 assertTrue(label.y + label.height <= selector.y)
                 assertTrue(label.y >= body.insets.top)
@@ -320,7 +320,7 @@ class InstructionCounterPlatformTest {
             }
             fun layoutDock(panel: JComponent, width: Int, height: Int): JScrollPane {
                 val scroll = assertInstanceOf(JScrollPane::class.java, panel)
-                scroll.setSize(JBUI.size(width, height))
+                scroll.size = JBUI.size(width, height)
                 scroll.doLayout()
                 scroll.viewport.doLayout()
                 scroll.viewport.view.doLayout()
@@ -373,7 +373,7 @@ class InstructionCounterPlatformTest {
             }
             withContext(Dispatchers.EDT) {
                 for (width in listOf(240, 610)) {
-                    statistics.setSize(JBUI.size(width, 460))
+                    statistics.size = JBUI.size(width, 460)
                     statistics.doLayout()
                     val bars = UIUtil.findComponentsOfType(statistics, JProgressBar::class.java)
                     assertEquals(1, bars.map { it.x }.distinct().size)
