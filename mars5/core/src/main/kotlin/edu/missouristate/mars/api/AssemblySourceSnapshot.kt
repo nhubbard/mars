@@ -68,7 +68,7 @@ class AssemblySourceSnapshot @JvmOverloads constructor(
     override fun hashCode(): Int {
         var result = entries.hashCode()
         result = 31 * result + texts.hashCode()
-        result = 31 * result + (resolvedIncludes?.hashCode() ?: 0)
+        result = 31 * result + resolvedIncludes.hashCode()
         return 31 * result + includeIdentities.hashCode()
     }
 

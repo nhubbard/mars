@@ -112,7 +112,7 @@ class AssemblySymbolMap @JvmOverloads constructor(
             result = 31 * result + parameters.hashCode()
             result = 31 * result + argumentColumns.hashCode()
             result = 31 * result + (closingParenthesisColumn ?: 0)
-            return 31 * result + (spelling?.hashCode() ?: 0)
+            return 31 * result + spelling.hashCode()
         }
 
         override fun toString(): String =

@@ -2,6 +2,7 @@ package edu.missouristate.mars;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import edu.missouristate.mars.core.MarsContext;
 import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -18,7 +19,7 @@ import org.junit.jupiter.params.provider.MethodSource;
  * here.
  */
 class AssemblerSmokeTest {
-  private edu.missouristate.mars.core.MarsContext machine = TestSessions.create();
+  private final MarsContext machine = TestSessions.create();
 
   @org.junit.jupiter.api.AfterEach
   void closeMachine() {

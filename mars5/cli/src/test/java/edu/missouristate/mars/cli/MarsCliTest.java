@@ -450,6 +450,8 @@ class MarsCliTest {
       assertEquals(130, execute(new String[] {"--max-steps", "40", source.toString()}, output, error));
       assertTrue(Thread.currentThread().isInterrupted());
     } finally {
+      // Clear the interrupt before JUnit reuses the test thread.
+      //noinspection ResultOfMethodCallIgnored
       Thread.interrupted();
     }
     assertEquals("42", output.toString());

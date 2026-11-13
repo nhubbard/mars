@@ -2,6 +2,7 @@ package edu.missouristate.mars;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import edu.missouristate.mars.core.MarsContext;
 import edu.missouristate.mars.mips.hardware.Coprocessor1State;
 import edu.missouristate.mars.mips.instructions.basic.InstrAddS;
 import java.util.ArrayList;
@@ -9,7 +10,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 class Coprocessor1UndoIsolationTest {
-  private edu.missouristate.mars.core.MarsContext machine = TestSessions.create();
+  private final MarsContext machine = TestSessions.create();
 
   @org.junit.jupiter.api.AfterEach
   void closeMachine() {

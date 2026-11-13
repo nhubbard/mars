@@ -96,12 +96,14 @@ class SettingsReconciliationTest {
   void daggerSharesOneSettingsOwnerPerGraph() {
     var first = component(new Settings(new MemoryPreferences()));
     var second = component(new Settings(new MemoryPreferences()));
-    assertThat(first.context().settings).isSameAs(first.settings().getSimulationSettings());
-    assertThat(first.simulationSettings()).isSameAs(first.context().settings);
-    first.context().settings.setDelayedBranchingEnabled(true);
-    second.context().settings.setDelayedBranchingEnabled(false);
-    assertThat(first.settings().getBooleanSetting(Settings.DELAYED_BRANCHING_ENABLED)).isTrue();
-    assertThat(second.settings().getBooleanSetting(Settings.DELAYED_BRANCHING_ENABLED)).isFalse();
+    try (var firstContext = first.context(); var secondContext = second.context()) {
+      assertThat(firstContext.settings).isSameAs(first.settings().getSimulationSettings());
+      assertThat(first.simulationSettings()).isSameAs(firstContext.settings);
+      firstContext.settings.setDelayedBranchingEnabled(true);
+      secondContext.settings.setDelayedBranchingEnabled(false);
+      assertThat(first.settings().getBooleanSetting(Settings.DELAYED_BRANCHING_ENABLED)).isTrue();
+      assertThat(second.settings().getBooleanSetting(Settings.DELAYED_BRANCHING_ENABLED)).isFalse();
+    }
   }
 
   @Test
@@ -112,47 +114,53 @@ class SettingsReconciliationTest {
     secondSettings.getSimulationSettings().setMemoryConfiguration("Default");
     var first = component(firstSettings);
     var second = component(secondSettings);
-    assertThat(first.registerFile()).isSameAs(first.context().registerFile);
-    first.registerFile().setValue(8, 123);
-    first.registerFile().setValue(33, 45);
-    assertThat(second.registerFile().getValue(8)).isZero();
-    assertThat(second.registerFile().getValue(33)).isZero();
-    var configuration = MemoryConfigurations.createConfiguration("CompactDataAtZero");
-    assertThat(first.registerFile().getPC()).isEqualTo(configuration.getTextBaseAddress());
-    assertThat(first.registerFile().getValue(28)).isEqualTo(configuration.getGlobalPointer());
-    assertThat(first.registerFile().getValue(29)).isEqualTo(configuration.getStackPointer());
-    assertThat(first.registerFile().getPC()).isNotEqualTo(second.registerFile().getPC());
-    first.registerFile().reset();
-    assertThat(first.registerFile().getValue(8)).isZero();
+    try (var firstContext = first.context(); var secondContext = second.context()) {
+      assertThat(first.registerFile()).isSameAs(firstContext.registerFile);
+      first.registerFile().setValue(8, 123);
+      first.registerFile().setValue(33, 45);
+      assertThat(secondContext.registerFile.getValue(8)).isZero();
+      assertThat(secondContext.registerFile.getValue(33)).isZero();
+      var configuration = MemoryConfigurations.createConfiguration("CompactDataAtZero");
+      assertThat(first.registerFile().getPC()).isEqualTo(configuration.getTextBaseAddress());
+      assertThat(first.registerFile().getValue(28)).isEqualTo(configuration.getGlobalPointer());
+      assertThat(first.registerFile().getValue(29)).isEqualTo(configuration.getStackPointer());
+      assertThat(first.registerFile().getPC()).isNotEqualTo(secondContext.registerFile.getPC());
+      first.registerFile().reset();
+      assertThat(first.registerFile().getValue(8)).isZero();
+    }
   }
 
   @Test
   void daggerOwnsIndependentCoprocessor0State() {
     var first = component(new Settings(new MemoryPreferences()));
     var second = component(new Settings(new MemoryPreferences()));
-    assertThat(first.context().coprocessor0).isNotSameAs(second.context().coprocessor0);
-    first.context().coprocessor0.updateRegister(12, 42);
-    assertThat(second.context().coprocessor0.getValue(12))
-        .isEqualTo(Coprocessor0State.DEFAULT_STATUS_VALUE);
-    first.context().coprocessor0.resetRegisters();
-    assertThat(first.context().coprocessor0.getValue(12))
-        .isEqualTo(Coprocessor0State.DEFAULT_STATUS_VALUE);
+    try (var firstContext = first.context(); var secondContext = second.context()) {
+      assertThat(firstContext.coprocessor0).isNotSameAs(secondContext.coprocessor0);
+      firstContext.coprocessor0.updateRegister(12, 42);
+      assertThat(secondContext.coprocessor0.getValue(12))
+          .isEqualTo(Coprocessor0State.DEFAULT_STATUS_VALUE);
+      firstContext.coprocessor0.resetRegisters();
+      assertThat(firstContext.coprocessor0.getValue(12))
+          .isEqualTo(Coprocessor0State.DEFAULT_STATUS_VALUE);
+    }
   }
 
   @Test
   void daggerOwnsIndependentCoprocessor1RegistersAndFlags() {
     var first = component(new Settings(new MemoryPreferences()));
     var second = component(new Settings(new MemoryPreferences()));
-    assertThat(first.context().coprocessor1).isNotSameAs(second.context().coprocessor1);
-    first.context().coprocessor1.updateRegister(12, 42);
-    first.context().coprocessor1.setConditionFlag(7);
-    assertThat(second.context().coprocessor1.getValue(12)).isZero();
-    assertThat(second.context().coprocessor1.getConditionFlag(7)).isZero();
-    second.context().coprocessor1.updateRegister(12, 99);
-    first.context().coprocessor1.resetRegisters();
-    assertThat(first.context().coprocessor1.getValue(12)).isZero();
-    assertThat(first.context().coprocessor1.getConditionFlags()).isZero();
-    assertThat(second.context().coprocessor1.getValue(12)).isEqualTo(99);
+    try (var firstContext = first.context(); var secondContext = second.context()) {
+      assertThat(firstContext.coprocessor1).isNotSameAs(secondContext.coprocessor1);
+      firstContext.coprocessor1.updateRegister(12, 42);
+      firstContext.coprocessor1.setConditionFlag(7);
+      assertThat(secondContext.coprocessor1.getValue(12)).isZero();
+      assertThat(secondContext.coprocessor1.getConditionFlag(7)).isZero();
+      secondContext.coprocessor1.updateRegister(12, 99);
+      firstContext.coprocessor1.resetRegisters();
+      assertThat(firstContext.coprocessor1.getValue(12)).isZero();
+      assertThat(firstContext.coprocessor1.getConditionFlags()).isZero();
+      assertThat(secondContext.coprocessor1.getValue(12)).isEqualTo(99);
+    }
   }
 
   @Test
@@ -160,19 +168,21 @@ class SettingsReconciliationTest {
     var settings = new Settings(new MemoryPreferences());
 
     var component = component(settings);
-    component.context().settings.setAssemblerErrorLimit(3).setWarningsAreErrors(true);
-    var errors = new ErrorList(settings.getSimulationSettings());
-    assertThat(errors.getErrorLimit()).isEqualTo(3);
-    for (int i = 0; i < 6; i++) {
-      errors.add(new ErrorMessage((MIPSprogram) null, i + 1, 1, "Invalid instruction"));
+    try (var context = component.context()) {
+      context.settings.setAssemblerErrorLimit(3).setWarningsAreErrors(true);
+      var errors = new ErrorList(settings.getSimulationSettings());
+      assertThat(errors.getErrorLimit()).isEqualTo(3);
+      for (int i = 0; i < 6; i++) {
+        errors.add(new ErrorMessage(null, i + 1, 1, "Invalid instruction"));
+      }
+      assertThat(errors.errorLimitExceeded()).isTrue();
+      assertThat(errors.getErrorMessages()).hasSize(4);
+      assertThat(errors.getErrorMessages().get(3).getMessage())
+          .isEqualTo("Error Limit of 3 exceeded.");
+      assertThat(settings.getBooleanSetting(Settings.WARNINGS_ARE_ERRORS)).isTrue();
+      settings.setBooleanSettingNonPersistent(Settings.WARNINGS_ARE_ERRORS, false);
+      assertThat(context.settings.isWarningsAreErrors()).isFalse();
     }
-    assertThat(errors.errorLimitExceeded()).isTrue();
-    assertThat(errors.getErrorMessages()).hasSize(4);
-    assertThat(errors.getErrorMessages().get(3).getMessage())
-        .isEqualTo("Error Limit of 3 exceeded.");
-    assertThat(settings.getBooleanSetting(Settings.WARNINGS_ARE_ERRORS)).isTrue();
-    settings.setBooleanSettingNonPersistent(Settings.WARNINGS_ARE_ERRORS, false);
-    assertThat(component.context().settings.isWarningsAreErrors()).isFalse();
   }
 
   @Test

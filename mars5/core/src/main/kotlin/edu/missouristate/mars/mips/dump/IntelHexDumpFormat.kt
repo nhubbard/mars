@@ -35,6 +35,6 @@ open class IntelHexDumpFormat : AbstractDumpFormat("Intel hex format", "HEX", "W
     }
 
     private companion object {
-        val hex = HexFormat.of().withUpperCase()
+        val hex: HexFormat = HexFormat.of().withUpperCase()
     }
 }

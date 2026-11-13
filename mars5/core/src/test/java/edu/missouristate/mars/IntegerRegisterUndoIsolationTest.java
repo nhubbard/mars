@@ -2,13 +2,14 @@ package edu.missouristate.mars;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import edu.missouristate.mars.core.MarsContext;
 import edu.missouristate.mars.mips.hardware.IntegerRegisterFile;
 import edu.missouristate.mars.mips.instructions.basic.InstrAddi;
 import java.util.ArrayList;
 import org.junit.jupiter.api.Test;
 
 class IntegerRegisterUndoIsolationTest {
-  private edu.missouristate.mars.core.MarsContext machine = TestSessions.create();
+  private final MarsContext machine = TestSessions.create();
 
   @org.junit.jupiter.api.AfterEach
   void closeMachine() {

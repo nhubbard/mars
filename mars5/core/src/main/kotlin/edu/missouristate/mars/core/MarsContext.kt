@@ -2,7 +2,6 @@ package edu.missouristate.mars.core
 
 import edu.missouristate.mars.MIPSprogram
 import edu.missouristate.mars.ProcessingException
-import edu.missouristate.mars.ProgramStatement
 import edu.missouristate.mars.api.AssemblySourceSnapshot
 import edu.missouristate.mars.api.MarsGuiProxy
 import edu.missouristate.mars.api.SessionSyscallEnvironment

@@ -1,6 +1,5 @@
 package edu.missouristate.mars.mips.instructions
 
-import edu.missouristate.mars.mips.instructions.Instruction.Companion.INSTRUCTION_LENGTH
 import edu.missouristate.mars.MIPSprogram
 import edu.missouristate.mars.assembler.TokenList
 import edu.missouristate.mars.util.Binary

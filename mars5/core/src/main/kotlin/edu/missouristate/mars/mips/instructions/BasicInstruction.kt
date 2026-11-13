@@ -1,6 +1,5 @@
 package edu.missouristate.mars.mips.instructions
 
-import edu.missouristate.mars.mips.instructions.Instruction.Companion.INSTRUCTION_LENGTH_BITS
 
 /*
 Copyright (c) 2003-2013,  Pete Sanderson and Kenneth Vollmar

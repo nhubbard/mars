@@ -580,7 +580,7 @@ class SimulatorEngineTest {
               }
               entered.countDown();
               try {
-                release.await(5, TimeUnit.SECONDS);
+                assertThat(release.await(5, TimeUnit.SECONDS)).isTrue();
               } catch (InterruptedException failure) {
                 Thread.currentThread().interrupt();
               }

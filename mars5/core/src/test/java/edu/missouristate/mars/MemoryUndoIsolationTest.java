@@ -2,6 +2,7 @@ package edu.missouristate.mars;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import edu.missouristate.mars.core.MarsContext;
 import edu.missouristate.mars.core.SimulationSettings;
 import edu.missouristate.mars.mips.hardware.MemoryState;
 import edu.missouristate.mars.mips.instructions.basic.InstrSw;
@@ -12,7 +13,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 class MemoryUndoIsolationTest {
-  private edu.missouristate.mars.core.MarsContext machine = TestSessions.create();
+  private final MarsContext machine = TestSessions.create();
 
   @org.junit.jupiter.api.AfterEach
   void closeMachine() {

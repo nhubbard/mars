@@ -24,6 +24,8 @@ class ToneGeneratorTest {
   void synchronousToneWaitsForTheTrackAndClosesTheSequencer() throws Exception {
     var device = new RecordingSequencer();
     var failures = new ArrayList<Exception>();
+    // The worker may be waiting for a MIDI callback, so cleanup must interrupt it.
+    @SuppressWarnings("resource")
     var executor = Executors.newSingleThreadExecutor();
     try (var generator = new ToneGenerator(device::proxy, failures::add)) {
       var tone = executor.submit(() -> generator.generateToneSynchronously((byte) 65, 120, (byte) 8, (byte) 90));
@@ -54,6 +56,8 @@ class ToneGeneratorTest {
       assertThat(device.closed.getCount()).isZero();
       assertThat(failures).isEmpty();
     } finally {
+      // Clear the interrupt before JUnit reuses the test thread.
+      //noinspection ResultOfMethodCallIgnored
       Thread.interrupted();
     }
   }

@@ -30,6 +30,14 @@ class SyscallContractTest {
                   SyscallEnvironment.class.getClassLoader(),
                   new Class<?>[] {SyscallEnvironment.class},
                   (proxy, method, args) -> {
+                    if (method.getDeclaringClass() == Object.class) {
+                      return switch (method.getName()) {
+                        case "equals" -> proxy == args[0];
+                        case "hashCode" -> System.identityHashCode(proxy);
+                        case "toString" -> "Test syscall environment";
+                        default -> throw new AssertionError(method);
+                      };
+                    }
                     calls.add(
                         method.getName() + Arrays.toString(args == null ? new Object[0] : args));
                     return switch (method.getName()) {

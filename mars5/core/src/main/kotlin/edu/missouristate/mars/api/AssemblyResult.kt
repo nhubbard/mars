@@ -15,7 +15,7 @@ class AssemblyResult(private val program: Program?, errors: List<AssemblyError>)
     override fun equals(other: Any?): Boolean =
         other is AssemblyResult && program == other.program && errors == other.errors
 
-    override fun hashCode(): Int = 31 * (program?.hashCode() ?: 0) + errors.hashCode()
+    override fun hashCode(): Int = 31 * program.hashCode() + errors.hashCode()
 
     override fun toString(): String = "AssemblyResult[program=$program, errors=$errors]"
 }

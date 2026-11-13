@@ -2,6 +2,7 @@ package edu.missouristate.mars;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import edu.missouristate.mars.core.MarsContext;
 import edu.missouristate.mars.mips.hardware.AddressErrorException;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -14,7 +15,7 @@ import org.junit.jupiter.api.Test;
  * machine.memory.java into focused segment classes) cannot silently change boundary behavior.
  */
 class MemoryTest {
-  private edu.missouristate.mars.core.MarsContext machine = TestSessions.create();
+  private final MarsContext machine = TestSessions.create();
 
   @org.junit.jupiter.api.AfterEach
   void closeMachine() {
