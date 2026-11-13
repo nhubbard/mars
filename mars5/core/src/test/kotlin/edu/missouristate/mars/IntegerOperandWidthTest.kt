@@ -29,6 +29,10 @@ class IntegerOperandWidthTest {
             movz $s1,$a0,$zero
             seleqz $s2,$a0,$a1
             selnez $s3,$a0,$a1
+            seq $s4,$a1,$zero
+            sne $s5,$a1,$zero
+            seq $s6,$a1,0
+            sne $s7,$a1,0
         """.trimIndent())
         TestSessions.create().use { machine ->
             machine.selectTarget(target)
@@ -40,14 +44,16 @@ class IntegerOperandWidthTest {
             machine.editIntegerRegister(5, mask)
             machine.editIntegerRegister(19, value xor 1)
             assertEquals(if (wide) "or" else "addu", program.machineList!![7].instruction?.name)
-            assertTrue(program.simulate(20))
+            val instructionsAfterSelect = program.machineList!!.size - 12
+            assertTrue(program.simulate(30))
             val expected = listOf(
                 value and mask, value or mask, value xor mask, value.inv(),
                 1L, value or 0xffffL, value xor 0xffffL, value,
                 if (wide) value else 0L, value, if (wide) 0L else value, if (wide) value else 0L,
+                if (wide) 0L else 1L, if (wide) 1L else 0L, if (wide) 0L else 1L, if (wide) 1L else 0L,
             )
-            assertEquals(expected, (8..19).map(machine.registerFile::getLongValueNoNotify))
-            machine.backStepper.backStep()
+            assertEquals(expected, (8..23).map(machine.registerFile::getLongValueNoNotify))
+            repeat(instructionsAfterSelect + 1) { machine.backStepper.backStep() }
             assertEquals(value xor 1, machine.registerFile.getLongValueNoNotify(19))
         }
     }

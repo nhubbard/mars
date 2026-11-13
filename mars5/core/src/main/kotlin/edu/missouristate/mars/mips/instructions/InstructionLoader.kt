@@ -26,8 +26,9 @@ class InstructionLoader {
     private fun parseTemplate(line: String, owner: InstructionSet): ExtendedInstruction {
         val tokens = StringTokenizer(line, "\t")
         val example = tokens.nextToken()
-        if (owner.target == MarsTarget.MARS64) {
-            val mnemonic = example.substringBefore(' ')
+        val mnemonic = example.substringBefore(' ')
+        val wide = owner.target == MarsTarget.MARS64
+        if (wide) {
             when (mnemonic) {
                 "ld", "sd" -> return wideMemoryTemplate(owner, mnemonic, example)
                 "move" -> return ExtendedInstruction(example, "or RG1, RG2, \$0", null, "Copy an integer register", owner)
@@ -48,7 +49,12 @@ class InstructionLoader {
                     template = StringBuilder()
                 }
                 else -> {
-                    template.append(token)
+                    val instruction = if (wide && (mnemonic == "seq" || mnemonic == "sne") && token.startsWith("subu ")
+                    ) {
+                        // An equality test must detect a difference anywhere in the register.
+                        token.replaceFirst("subu ", "xor ")
+                    } else token
+                    template.append(instruction)
                     if (tokens.hasMoreTokens()) template.append('\n')
                 }
             }
