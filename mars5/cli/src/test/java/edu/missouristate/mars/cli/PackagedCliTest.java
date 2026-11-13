@@ -79,6 +79,23 @@ class PackagedCliTest {
   }
 
   @Test
+  void educationalWideTargetIsExplicitAndReportsFullWidthRegisters() throws Exception {
+    var entry = source("wide.s", """
+        daddiu $t0, $zero, 1
+        dsll32 $t0, $t0, 0
+        daddiu $t0, $t0, -1
+        li $v0, 10
+        syscall
+        """);
+    var narrow = launch(entry.toString());
+    assertEquals(1, narrow.status());
+    assertTrue(narrow.err().contains("daddiu"), narrow.err());
+    var wide = launch("--target", "mars64", "--register", "t0", entry.toString());
+    assertEquals(0, wide.status(), wide.err());
+    assertTrue(wide.out().contains("$t0\t0x00000000ffffffff"), wide.out());
+  }
+
+  @Test
   void gradingChecksStructureAndIntermediateStateAndIsolatesCases() throws Exception {
     var script = source("assignment1.kts", """
         case("double a word", instructionLimit = 8) {

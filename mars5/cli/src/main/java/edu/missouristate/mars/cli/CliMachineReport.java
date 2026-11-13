@@ -1,5 +1,6 @@
 package edu.missouristate.mars.cli;
 
+import edu.missouristate.mars.api.MarsTarget;
 import edu.missouristate.mars.core.MarsContext;
 import edu.missouristate.mars.mips.hardware.AddressErrorException;
 import edu.missouristate.mars.mips.hardware.MemoryAddressRange;
@@ -79,6 +80,14 @@ final class CliMachineReport {
     Register register = selection.register();
     int bits = register.getValue();
     if (!selection.floating()) {
+      if (session.getTarget() == MarsTarget.MARS64) {
+        long wide = session.registerFile.getLongValueNoNotify(register.getNumber());
+        return switch (format) {
+          case HEX -> Binary.longToHexString(wide);
+          case DECIMAL -> Long.toString(wide);
+          case ASCII -> Binary.intToAscii(Binary.highOrderLongToInt(wide)) + Binary.intToAscii(bits);
+        };
+      }
       return formatWord(bits);
     }
     String value = format == Format.DECIMAL ? Float.toString(Float.intBitsToFloat(bits)) : formatWord(bits);

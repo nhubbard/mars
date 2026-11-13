@@ -1,5 +1,6 @@
 package edu.missouristate.mars.mips.instructions
 
+import edu.missouristate.mars.api.MarsTarget
 /*
 Copyright (c) 2003-2013,  Pete Sanderson and Kenneth Vollmar
 
@@ -35,9 +36,14 @@ open class InstructionSet {
     private lateinit var opcodeMatchMaps: List<MatchMap>
 
     open fun populate() {
+        populate(MarsTarget.MARS32)
+    }
+
+    internal fun populate(target: MarsTarget) {
         forms.clear()
         val loader = InstructionLoader()
         forms.addAll(loader.loadBasicInstructions())
+        if (target == MarsTarget.MARS64) forms.addAll(wideInstructionFactories.map { it() })
         forms.addAll(loader.loadExtendedInstructions(this))
         forms.forEach { it.createExampleTokenList(this) }
 

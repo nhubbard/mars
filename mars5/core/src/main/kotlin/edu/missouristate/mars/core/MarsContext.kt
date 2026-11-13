@@ -4,6 +4,7 @@ import edu.missouristate.mars.MIPSprogram
 import edu.missouristate.mars.ProcessingException
 import edu.missouristate.mars.api.AssemblySourceSnapshot
 import edu.missouristate.mars.api.MarsGuiProxy
+import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.api.SessionSyscallEnvironment
 import edu.missouristate.mars.api.SimulatorState
 import edu.missouristate.mars.assembler.SymbolTable
@@ -56,6 +57,8 @@ class MarsContext @Inject constructor(
     private val executionLock = ReentrantLock()
     @Volatile private var controller: SimulatorEngine? = null
     @Volatile var program: MIPSprogram? = null
+        private set
+    var target: MarsTarget = MarsTarget.MARS32
         private set
     @Volatile var isClosing: Boolean = false
         private set
@@ -188,6 +191,18 @@ class MarsContext @Inject constructor(
         claimStoppedSession().use { setMemoryConfigurationStopped(identifier) }
     }
 
+    /** Changing the target resets the previous program and its hardware state. */
+    fun selectTarget(target: MarsTarget) {
+        claimStoppedSession().use { selectTargetStopped(target) }
+    }
+
+    private fun selectTargetStopped(target: MarsTarget) {
+        if (this.target == target) return
+        setMemoryConfigurationStopped(settings.memoryConfiguration)
+        instructionSet.populate(target)
+        this.target = target
+    }
+
     private fun setMemoryConfigurationStopped(identifier: String?) {
         val configuration = MemoryConfigurations.createConfiguration(identifier)
         syscallEnvironment.close()
@@ -260,7 +275,7 @@ class MarsContext @Inject constructor(
         }
         checkCancellation.run()
         AssemblyImage(
-            current.filename!!, memory.getConfiguration().configurationIdentifier()!!, registerFile.programCounter,
+            current.filename!!, memory.getConfiguration().configurationIdentifier()!!, target, registerFile.programCounter,
             instructions, memory.captureData(checkCancellation), current.sourceMap(), current.symbolMap(),
         )
     }
@@ -275,6 +290,7 @@ class MarsContext @Inject constructor(
 
     private fun loadAssemblyImage(image: AssemblyImage, checkCancellation: Runnable, entryAddress: IntSupplier) {
         claimStoppedSession().use {
+            selectTargetStopped(image.target)
             val instructions = image.instructions.mapTo(ArrayList(image.instructions.size)) {
                 checkCancellation.run()
                 it.load(instructionSet, settings)

@@ -2,6 +2,7 @@ package edu.missouristate.mars.cli;
 
 import edu.missouristate.mars.ApplicationInfo;
 import edu.missouristate.mars.ProcessingException;
+import edu.missouristate.mars.api.MarsTarget;
 import edu.missouristate.mars.api.SessionSyscallEnvironment;
 import edu.missouristate.mars.cli.grading.GradeCommand;
 import edu.missouristate.mars.di.DaggerMarsComponent;
@@ -76,6 +77,14 @@ public final class MarsCli {
           case "--start-at-main", "sm" -> session.settings.setStartAtMainEnabled(true);
           case "--no-pseudo", "np", "ne" -> session.settings.setExtendedAssemblerEnabled(false);
           case "--utf8-text" -> session.settings.setUtf8TextEnabled(true);
+          case "--target" -> {
+            var target = requiredValue(arguments, ++i, "target");
+            switch (target.toUpperCase(Locale.ROOT)) {
+              case "MARS32" -> session.selectTarget(MarsTarget.MARS32);
+              case "MARS64" -> session.selectTarget(MarsTarget.MARS64);
+              default -> throw new IllegalArgumentException("Unknown target: " + target + ". Use MARS32 or MARS64.");
+            }
+          }
           case "--warnings-as-errors", "we" -> session.settings.setWarningsAreErrors(true);
           case "--messages-to-stderr", "me" -> reportOutput = error;
           case "--brief", "b" -> report.brief = true;
@@ -248,6 +257,7 @@ public final class MarsCli {
       --start-at-main        Start at the exported main label (sm)
       --no-pseudo            Accept basic instructions only (np)
       --utf8-text            Use UTF-8 text for .ascii, .asciiz, and console string syscalls
+      --target TARGET        Select MARS32 (default) or educational MARS64
       --warnings-as-errors   Fail assembly on warnings (we)
       --memory LAYOUT        Default, CompactDataAtZero, or CompactTextAtZero (mc)
       --dump REGION FORMAT FILE   Export .text, .data, or an inclusive word range (dump)

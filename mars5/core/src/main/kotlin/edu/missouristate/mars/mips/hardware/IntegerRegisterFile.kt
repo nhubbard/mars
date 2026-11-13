@@ -100,7 +100,8 @@ class IntegerRegisterFile(globalPointer: Int, stackPointer: Int, textBaseAddress
         return registerAt(register).longValue
     }
 
-    internal fun getLongValueNoNotify(register: Int): Long {
+    /** Inspect the full integer register value without emitting an access event. */
+    fun getLongValueNoNotify(register: Int): Long {
         checkRegisterNumber(register)
         return registerAt(register).longValueNoNotify
     }
