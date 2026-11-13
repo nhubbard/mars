@@ -41,7 +41,7 @@ object OperandFormat {
 
     @JvmStatic
     fun matchesOperands(tokens: TokenList, instruction: Instruction, firstOperand: Int, endOperand: Int, bareMachine: Boolean): Boolean =
-        firstOperand >= 1 && firstOperand < endOperand && endOperand <= tokens.size() && endOperand <= instruction.tokenList.size() &&
+        firstOperand in 1..<endOperand && endOperand <= tokens.size() && endOperand <= instruction.tokenList.size() &&
             operandTypeCheck(tokens.clone() as TokenList, instruction, ErrorList(), bareMachine, firstOperand, endOperand)
 
     @JvmStatic

@@ -16,9 +16,8 @@ class CoreSessionIntegrationTest {
   @TempDir Path directory;
 
   static Stream<Path> corpus() throws Exception {
-    try (var paths =
-        Files.list(
-            Path.of(CoreSessionIntegrationTest.class.getResource("/testPrograms").toURI()))) {
+    var resources = Objects.requireNonNull(CoreSessionIntegrationTest.class.getResource("/testPrograms"), "testPrograms");
+    try (var paths = Files.list(Path.of(resources.toURI()))) {
       return paths.filter(path -> path.toString().endsWith(".asm")).sorted().toList().stream();
     }
   }

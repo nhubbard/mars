@@ -16,7 +16,8 @@ class InstructionEncodingTest {
 
   static Stream<Arguments> vectors() throws Exception {
     try (var input =
-        InstructionEncodingTest.class.getResourceAsStream("/basic-encoding-vectors.tsv")) {
+        Objects.requireNonNull(
+            InstructionEncodingTest.class.getResourceAsStream("/basic-encoding-vectors.tsv"), "basic-encoding-vectors.tsv")) {
       return new String(input.readAllBytes(), StandardCharsets.UTF_8)
               .lines()
               .filter(line -> !line.startsWith("#") && !line.isBlank())

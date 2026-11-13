@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import edu.missouristate.mars.core.MarsContext;
 import java.net.URISyntaxException;
 import java.nio.file.Path;
+import java.util.Objects;
 import java.util.ArrayList;
 import java.util.stream.Stream;
 import org.assertj.core.api.Assertions;
@@ -93,11 +94,8 @@ class AssemblerSmokeTest {
   }
 
   static String resourcePath(String filename) throws URISyntaxException {
-    return Path.of(
-            AssemblerSmokeTest.class
-                .getClassLoader()
-                .getResource("testPrograms/" + filename)
-                .toURI())
-        .toString();
+    var resource = "/testPrograms/" + filename;
+    var url = Objects.requireNonNull(AssemblerSmokeTest.class.getResource(resource), resource);
+    return Path.of(url.toURI()).toString();
   }
 }

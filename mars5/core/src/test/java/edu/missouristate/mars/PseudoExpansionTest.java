@@ -22,7 +22,8 @@ class PseudoExpansionTest {
   static Stream<Arguments> configurations() throws Exception {
     var groups = new LinkedHashMap<String, List<Vector>>();
     try (var input =
-        PseudoExpansionTest.class.getResourceAsStream("/pseudo-expansion-vectors.tsv")) {
+        Objects.requireNonNull(
+            PseudoExpansionTest.class.getResourceAsStream("/pseudo-expansion-vectors.tsv"), "pseudo-expansion-vectors.tsv")) {
       new String(input.readAllBytes(), StandardCharsets.UTF_8)
           .lines()
           .filter(line -> !line.startsWith("#") && !line.isBlank())

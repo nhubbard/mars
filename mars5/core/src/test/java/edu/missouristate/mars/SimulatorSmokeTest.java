@@ -6,6 +6,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.net.URISyntaxException;
 import java.nio.file.Path;
+import java.util.Objects;
 import java.util.ArrayList;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.AfterEach;
@@ -171,11 +172,8 @@ class SimulatorSmokeTest {
   }
 
   static String resourcePath(String filename) throws URISyntaxException {
-    return Path.of(
-            SimulatorSmokeTest.class
-                .getClassLoader()
-                .getResource("testPrograms/" + filename)
-                .toURI())
-        .toString();
+    var resource = "/testPrograms/" + filename;
+    var url = Objects.requireNonNull(SimulatorSmokeTest.class.getResource(resource), resource);
+    return Path.of(url.toURI()).toString();
   }
 }
