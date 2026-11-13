@@ -44,7 +44,6 @@ object DataTypes {
     const val MIN_BYTE_VALUE = -128
     const val MAX_FLOAT_VALUE = 3.4028234663852886e38
     const val LOW_FLOAT_VALUE = -MAX_FLOAT_VALUE
-    const val MAX_DOUBLE_VALUE = Double.MAX_VALUE
 
     @JvmStatic
     fun getLengthInBytes(directive: Directives?): Int = when (directive) {

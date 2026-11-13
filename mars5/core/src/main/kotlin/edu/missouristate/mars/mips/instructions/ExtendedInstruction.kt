@@ -50,9 +50,6 @@ open class ExtendedInstruction @JvmOverloads constructor(
     open val basicIntructionTemplateList: ArrayList<String>? get() = standardTemplates
     open val compactBasicIntructionTemplateList: ArrayList<String>? get() = compactTemplates
 
-    constructor(example: String, translation: String?, description: String) :
-        this(example, translation, null, description)
-
     override val instructionLength: Int get() = getInstructionLength(false)
 
     open fun getInstructionLength(delayedBranching: Boolean): Int =
