@@ -48,12 +48,12 @@ open class MemoryDump {
         fun getSegmentNames(): Array<String> = segmentNames
 
         @JvmStatic
-        @Suppress("UNUSED_PARAMETER")
+        @Suppress("unused", "RedundantSuppression")
         fun getBaseAddresses(segments: Array<String>?, memory: MemoryState): IntArray =
             intArrayOf(memory.textBaseAddress, memory.dataBaseAddress)
 
         @JvmStatic
-        @Suppress("UNUSED_PARAMETER")
+        @Suppress("unused", "RedundantSuppression")
         fun getLimitAddresses(segments: Array<String>?, memory: MemoryState): IntArray =
             intArrayOf(memory.textLimitAddress, memory.dataSegmentLimitAddress)
 

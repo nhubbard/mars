@@ -112,6 +112,8 @@ open class SymbolTable @JvmOverloads constructor(private val globalSymbols: Symb
     companion object {
         const val NOT_FOUND = -1
 
+        // Java and Kotlin callers share the same reserved entry label.
+        @Suppress("SameReturnValue")
         @JvmStatic
         fun getStartLabel(): String = "main"
     }

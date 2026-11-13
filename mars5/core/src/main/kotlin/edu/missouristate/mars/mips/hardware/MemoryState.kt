@@ -161,10 +161,10 @@ open class MemoryState(
         heapAddress = heapBaseAddress
         textBlockTable = TextMemorySegment(BLOCK_TABLE_LENGTH)
         kernelTextBlockTable = TextMemorySegment(BLOCK_TABLE_LENGTH)
-        dataBlockTable = WordMemorySegment(BLOCK_TABLE_LENGTH, false, { byteOrder })
-        kernelDataBlockTable = WordMemorySegment(BLOCK_TABLE_LENGTH, false, { byteOrder })
-        stackBlockTable = WordMemorySegment(BLOCK_TABLE_LENGTH, true, { byteOrder })
-        memoryMapBlockTable = WordMemorySegment(MMIO_TABLE_LENGTH, false, { byteOrder })
+        dataBlockTable = WordMemorySegment(BLOCK_TABLE_LENGTH, false) { byteOrder }
+        kernelDataBlockTable = WordMemorySegment(BLOCK_TABLE_LENGTH, false) { byteOrder }
+        stackBlockTable = WordMemorySegment(BLOCK_TABLE_LENGTH, true) { byteOrder }
+        memoryMapBlockTable = WordMemorySegment(MMIO_TABLE_LENGTH, false) { byteOrder }
     }
 
     /** Reserve word-aligned heap storage and return its starting address. */
@@ -410,6 +410,8 @@ open class MemoryState(
 
     open fun inMemoryMapSegment(address: Int): Boolean = address in memoryMapBaseAddress..<kernelHighAddress
 
+    // The stack grows down. Keep the lower boundary exclusive without offset arithmetic.
+    @Suppress("ConvertTwoComparisonsToRangeCheck")
     private fun inStack(address: Int): Boolean = address > stackLimitAddress && address <= stackBaseAddress
 
     private fun inMappedStorage(address: Int): Boolean = address in memoryMapBaseAddress..<memoryMapLimitAddress

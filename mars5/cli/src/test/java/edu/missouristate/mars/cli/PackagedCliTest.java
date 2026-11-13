@@ -21,7 +21,7 @@ class PackagedCliTest {
 
   @Test
   void showsHelpAndRunsQuietly() throws Exception {
-    var help = launch("", "h");
+    var help = launch("h");
     assertEquals(0, help.status());
     assertTrue(help.out().contains("Usage:"));
     assertTrue(help.out().contains("dump"));
@@ -47,7 +47,7 @@ class PackagedCliTest {
         """);
     assertProgramResult(List.of("nc", file.toString(), "pa", "me", "nc"), "", 0, "menc");
 
-    var counted = launch("", "ic", file.toString(), "pa", "ME", "NC");
+    var counted = launch("ic", file.toString(), "pa", "ME", "NC");
     assertEquals(0, counted.status(), counted.err());
     assertEquals("", counted.err());
     assertEquals(List.of("MENC", "9"), counted.out().stripTrailing().lines().toList());
@@ -56,7 +56,7 @@ class PackagedCliTest {
   @Test
   void dumpFilenamesThatLookLikeOutputFlagsStayFilenames() throws Exception {
     Path file = source("dump-flags.s", "nop\n");
-    var result = launch("", "ad",
+    var result = launch("ad",
         "dump", ".text", "HexText", "me",
         "dump", ".text", "HexText", "nc", file.toString());
     assertEquals(0, result.status(), result.err());
@@ -219,7 +219,7 @@ class PackagedCliTest {
     Path assembly = source("assembly-error.s", "bogus\n");
     Path simulation = source("simulation-error.s", "li $v0,999\nsyscall\n");
     for (Path file : List.of(assembly, simulation)) {
-      var result = launch("", "nc", "me", file.toString());
+      var result = launch("nc", "me", file.toString());
       assertEquals(1, result.status());
       assertTrue(result.err().startsWith("Error"));
     }
@@ -357,7 +357,7 @@ class PackagedCliTest {
     assertEquals(List.of("Mem[0x7ffffffc]\t0x00000000\t0x241a0007", "Mem[0xfffffffc]\t0x00000000"),
         standalone.err().lines().filter(line -> !line.isBlank()).map(String::stripTrailing).toList());
     for (String range : List.of("0x80000000-0x7ffffffc", "4294967296-4294967296", "0x80000001-0x80000004")) {
-      var failure = launch("", "nc", "me", range, file.toString());
+      var failure = launch("nc", "me", range, file.toString());
       assertEquals(2, failure.status(), range);
       assertTrue(failure.err().contains(range), failure.err());
     }
@@ -374,7 +374,7 @@ class PackagedCliTest {
     Path existing = Files.writeString(dump("existing"), "previous successful dump\n");
     Path missing = dump("missing");
     for (int status : List.of(19, 0)) {
-      var result = launch("", "nc", "me", "ae" + status,
+      var result = launch("nc", "me", "ae" + status,
           "dump", ".data", "HexText", existing.toString(),
           "dump", ".data", "HexText", missing.toString(), file.toString());
       assertEquals(status, result.status(), result.err());
@@ -396,7 +396,7 @@ class PackagedCliTest {
         syscall
         """);
     Path output = dump("simulation");
-    var result = launch("", "nc", "me", "se23",
+    var result = launch("nc", "me", "se23",
         "dump", "0x10010000-0x10010000", "HexText", output.toString(), file.toString());
     assertEquals(23, result.status(), result.err());
     assertTrue(result.err().contains("syscall"), result.err());
@@ -449,8 +449,8 @@ class PackagedCliTest {
     return directory.resolve("dump-" + descriptor);
   }
 
-  private Result launch(String input, String... arguments) throws Exception {
-    return launch(input, List.of(arguments));
+  private Result launch(String... arguments) throws Exception {
+    return launch("", List.of(arguments));
   }
 
   private Result launch(String input, List<String> arguments) throws Exception {

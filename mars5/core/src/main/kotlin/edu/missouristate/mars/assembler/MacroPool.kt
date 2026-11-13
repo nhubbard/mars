@@ -56,7 +56,7 @@ open class MacroPool(private val program: MIPSprogram) {
         current = null
     }
 
-    @Suppress("UNUSED_PARAMETER")
+    @Suppress("unused", "RedundantSuppression")
     open fun getMatchingMacro(tokens: TokenList, callerLine: Int): Macro? {
         if (tokens.isEmpty) return null
         var result: Macro? = null

@@ -122,15 +122,15 @@ class SimulatorEngineTest {
           session.coprocessor1, session.delayedBranch, 1);
       var restored = new ArrayList<Integer>();
       var value = new AtomicInteger();
-      try (var first = history.addInstructionCheckpoint(() -> {
+      try (var _ = history.addInstructionCheckpoint(() -> {
              int previous = value.get();
              return () -> {
                assertThat(session.registerFile.getPC()).isEqualTo(pc);
                restored.add(previous);
              };
            });
-           var skipped = history.addInstructionCheckpoint(() -> null);
-           var second = history.addInstructionCheckpoint(() -> () -> restored.add(-1))) {
+           var _ = history.addInstructionCheckpoint(() -> null);
+           var _ = history.addInstructionCheckpoint(() -> () -> restored.add(-1))) {
         history.beginInstruction(pc, statement);
         history.endInstruction();
         value.set(7);

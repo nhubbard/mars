@@ -43,14 +43,14 @@ open class ProcessingException private constructor(
 ) : Exception(message) {
     constructor(errors: ErrorList?) : this(errors, null, null)
 
-    @Suppress("UNUSED_PARAMETER")
+    @Suppress("unused", "RedundantSuppression")
     constructor(errors: ErrorList?, addressError: AddressErrorException?) : this(errors)
 
     constructor() : this(null)
 
     constructor(statement: ProgramStatement, message: String?) : this(ErrorList(), statement, statement.address, message)
 
-    @Suppress("UNUSED_PARAMETER")
+    @Suppress("unused", "RedundantSuppression")
     constructor(statement: ProgramStatement, message: String?, cause: Int) : this(statement, message)
 
     constructor(statement: ProgramStatement, error: AddressErrorException) : this(statement, error.message)

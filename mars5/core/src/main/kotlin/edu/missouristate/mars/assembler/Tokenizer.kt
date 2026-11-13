@@ -54,7 +54,7 @@ open class Tokenizer @JvmOverloads constructor(
     private val equivalenceOccurrences = HashSet<EquivalenceOccurrence>()
 
     @Throws(ProcessingException::class)
-    open fun tokenize(program: MIPSprogram): ArrayList<TokenList> = tokenize(program, {})
+    open fun tokenize(program: MIPSprogram): ArrayList<TokenList> = tokenize(program) {}
 
     @Throws(ProcessingException::class)
     open fun tokenize(program: MIPSprogram, checkCancellation: Runnable): ArrayList<TokenList> {
@@ -136,7 +136,7 @@ open class Tokenizer @JvmOverloads constructor(
 
     /** The path is absent when the opening quote is unfinished. */
     open fun inspectInclude(sourceLine: String): IncludePath? {
-        val candidates = scanPossibleInclude(sourceProgram, 1, sourceLine, {}) ?: return null
+        val candidates = scanPossibleInclude(sourceProgram, 1, sourceLine) {} ?: return null
         val index = firstIncludePathIndex(candidates)
         if (index < 0) return null
         val token = candidates[index]

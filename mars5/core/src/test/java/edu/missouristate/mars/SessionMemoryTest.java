@@ -159,6 +159,7 @@ class SessionMemoryTest {
       int address = memory.dataBaseAddress;
       api.setWord(address, 0x1234abcd);
       assertThat(memory.getWord(address)).isEqualTo(0x1234abcd);
+      assertThat(api.getWord(address)).isEqualTo(0x1234abcd);
       assertThat(api.getHalfWord(address)).isEqualTo(0xabcd);
       assertThat(api.getByte(address)).isEqualTo(0xcd);
       assertThatExceptionOfType(MemoryAccessException.class)

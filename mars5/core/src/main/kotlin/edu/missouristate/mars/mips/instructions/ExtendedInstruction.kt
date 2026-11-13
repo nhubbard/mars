@@ -70,7 +70,7 @@ open class ExtendedInstruction @JvmOverloads constructor(
         hasLabelBranch(compactTemplates)
 
     private fun hasLabelBranch(templates: List<String>?): Boolean =
-        templates?.any { it.trimEnd { Character.isWhitespace(it) }.endsWith(" LAB") } == true
+        templates?.any { template -> template.trimEnd { Character.isWhitespace(it) }.endsWith(" LAB") } == true
 
     private fun expansionLength(templates: List<String>?, delayedBranching: Boolean): Int =
         INSTRUCTION_LENGTH * (templates?.count { delayedBranching || !it.contains("DBNOP") } ?: 0)

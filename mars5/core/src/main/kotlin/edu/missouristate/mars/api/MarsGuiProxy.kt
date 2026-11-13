@@ -2,6 +2,8 @@ package edu.missouristate.mars.api
 
 /** Thread-safe console and input services provided by the CLI or IntelliJ frontend. */
 interface MarsGuiProxy {
+    // Third-party frontends can choose to handle exit status themselves.
+    @get:Suppress("SameReturnValue")
     val isGuiMode: Boolean
 
     /** Post to the assembler and simulator messages console. */

@@ -147,6 +147,8 @@ class SimulatorEngine(private val session: MarsContext) : MarsSimulator, AutoClo
         completion.complete(event)
     }
 
+    // A nonpositive step budget means execution is unlimited.
+    @Suppress("ConvertTwoComparisonsToRangeCheck")
     private fun executeInstructions(
         current: MIPSprogram, maximumSteps: Long, points: IntArray?, shouldBreak: IntPredicate?,
     ): Reason {
@@ -257,7 +259,7 @@ class SimulatorEngine(private val session: MarsContext) : MarsSimulator, AutoClo
             if (stepCount > 0) stepCount--
             if (!wholeSource) return
             val earlier = history.previousInstruction()
-            if (instruction == null || instruction.instructionOrigin == null || earlier == null ||
+            if (instruction?.instructionOrigin == null || earlier == null ||
                 earlier.instructionOrigin !== instruction.instructionOrigin ||
                 compareUnsigned(earlier.address, instruction.address) >= 0
             ) return

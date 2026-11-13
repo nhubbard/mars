@@ -18,6 +18,7 @@ import java.util.*;
 public final class MarsCli {
   private MarsCli() {}
 
+  @SuppressWarnings("UnnecessaryModifier") // Keep the public JVM entry point callable from existing launchers.
   public static void main(String[] arguments) {
     System.exit(execute(arguments, System.in, System.out, System.err));
   }

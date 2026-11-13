@@ -132,7 +132,7 @@ open class MIPSprogram @JvmOverloads constructor(
 
     @Throws(ProcessingException::class)
     open fun readSource(file: String) {
-        readSource(file, {})
+        readSource(file) {}
     }
 
     @Throws(ProcessingException::class)
@@ -194,7 +194,7 @@ open class MIPSprogram @JvmOverloads constructor(
     @Throws(ProcessingException::class)
     open fun prepareFilesForAssembly(
         filenames: ArrayList<String>, leadFilename: String?, exceptionHandler: String?,
-    ): ArrayList<MIPSprogram> = prepareFilesForAssembly(filenames, leadFilename, exceptionHandler, {})
+    ): ArrayList<MIPSprogram> = prepareFilesForAssembly(filenames, leadFilename, exceptionHandler) {}
 
     @Throws(ProcessingException::class)
     open fun prepareFilesForAssembly(
@@ -220,7 +220,7 @@ open class MIPSprogram @JvmOverloads constructor(
 
     @Throws(ProcessingException::class)
     open fun assemble(programs: ArrayList<MIPSprogram>?, extended: Boolean, warnings: Boolean): ErrorList =
-        assemble(programs, extended, warnings, {})
+        assemble(programs, extended, warnings) {}
 
     @Throws(ProcessingException::class)
     open fun assemble(
@@ -353,6 +353,8 @@ open class MIPSprogram @JvmOverloads constructor(
         return ExecutionStep(pc, statement.binaryStatement, true, null, execution.lastTransfer(), execution.lastBranchOutcome())
     }
 
+    // A nonpositive limit means execution is unlimited.
+    @Suppress("ConvertTwoComparisonsToRangeCheck")
     private fun simulateSession(breakPoints: IntArray?, maxSteps: Int, instructionCount: LongConsumer?): Boolean =
         session.claimStoppedSession().use {
             var steps = 0L

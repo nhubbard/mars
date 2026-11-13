@@ -75,7 +75,8 @@ class MemoryDumpTest {
       var notices = new ArrayList<MemoryAccessNotice>();
       session.memory.addObserver(notices::add, text, text);
       session.memory.addObserver(notices::add, mapped, mapped);
-      try (var lease = session.claimStoppedSession()) {
+      // Hold the stopped-session lease for all snapshot reads.
+      try (var _ = session.claimStoppedSession()) {
         listing = listingFormat.capture(session, text, text, () -> {});
         mmio = hexFormat.capture(session, mapped, mapped, () -> {});
         assertThatThrownBy(() -> hexFormat.capture(session, mapped, mapped, () -> {

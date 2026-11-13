@@ -91,7 +91,7 @@ class MemoryUndoIsolationTest {
     var history = machine.backStepper;
     var execution = TestSessions.execution(machine);
     history.beginInstruction(pc, new ProgramStatement(0, pc, machine.instructionSet));
-    execution.setMemoryRawWord(address, 42);
+    assertThat(execution.setMemoryRawWord(address, 42)).isEqualTo(0);
     history.endInstruction();
     execution.setMemoryWord(address + Integer.BYTES, 99);
 
