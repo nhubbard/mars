@@ -35,7 +35,7 @@ without Venus. Keep them visible when extending the corresponding subsystem:
 - Add property/fuzz tests for arbitrary instruction operands, all combinations of mixed unaligned
   word operations and every named memory address around all layout boundaries. Current deterministic
   vectors and selected boundary tests establish the modernization gate, not exhaustive ISA proof.
-- Expand invalid/cancelled dialog input, host I/O failure, and unusual Unicode input cases beyond
+- Expand invalid or canceled dialog input, host I/O failure, and unusual Unicode input cases beyond
   the existing positive service vectors and file/console failure checks.
 - Run interactive Venus smoke tests on supported desktop platforms and physical MIDI-provider tests
   separately. Automated tests verify the frontend adapters and MIDI routing without opening windows

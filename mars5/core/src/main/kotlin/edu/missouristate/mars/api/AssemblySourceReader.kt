@@ -56,7 +56,7 @@ object AssemblySourceReader {
             if (segment == "." || segment == "..") {
                 if (!Files.isDirectory(prefix)) throw NotDirectoryException(prefix.toString())
                 if (segment == "..") {
-                    // Resolve the directory before walking up, even on hosts that normalize ".." first.
+                    // Resolve the directory before walking up, even on hosts that normalize parent segments first.
                     val directory = prefix.toRealPath()
                     prefix = directory.parent ?: directory
                 }
