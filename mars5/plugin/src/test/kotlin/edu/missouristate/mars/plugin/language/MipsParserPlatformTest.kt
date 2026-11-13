@@ -965,7 +965,7 @@ class MipsParserPlatformTest {
         val macroOperandCalls = tokens.mapIndexed { index, row ->
             row.drop(1).filter { it.type !in punctuation }.joinToString(",", prefix = "operands_$index(", postfix = ")") { it.value }
         }
-        val macroOperandDefinitions = listOf("%", $$"$").map { sigil ->
+        val macroOperandDefinitions = listOf("%", "$").map { sigil ->
             tokens.flatMapIndexed { index, row ->
                 val parameters = ArrayList<String>()
                 val body = row.drop(1).joinToString(separator, prefix = row.first().value + separator) { token ->
@@ -1126,7 +1126,7 @@ class MipsParserPlatformTest {
                         if (token.type == TokenTypes.FP_REGISTER_NAME) {
                             $$"$f" + spelling(RegisterNames.floating(token.value)!!.number)
                         } else {
-                            $$"$" + spelling(RegisterNames.integer(token.value)!!.number)
+                            "$" + spelling(RegisterNames.integer(token.value)!!.number)
                         }
                     }
                 }
@@ -1646,7 +1646,7 @@ class MipsParserPlatformTest {
             readAction {
                 val libraryRoot = assertParses(library, include.fileName.toString()).node
                 assertEquals("٧", descendants(libraryRoot, "REPLACEMENT").single().text)
-                assertEquals($$"$量", descendants(libraryRoot, "MACRO_PARAMETER").single().text)
+                assertEquals("$量", descendants(libraryRoot, "MACRO_PARAMETER").single().text)
                 val root = assertParses(source, entry.fileName.toString()).node
                 assertEquals(".include \"常用.inc\"", descendants(root, "INCLUDE_LINE").single().text)
                 assertEquals(listOf(".數據:", "入口:"), descendants(root, "LABEL").map { it.text }.toList())

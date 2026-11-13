@@ -534,7 +534,7 @@ class MipsCompletionPlatformTest {
             fixture.finishLookup(Lookup.REPLACE_SELECT_CHAR)
             assertEquals(branch.replace("tar<caret>", "target"), fixture.file.text)
             assertEquals(setOf("target", "target2"), candidates($$".eqv REG $t0\nbeq REG, 0x, tar<caret>" + labels))
-            assertEquals(setOf($$"$8", $$"$12", $$"$13", $$"$14"), candidates($$".eqv TRANSFER mtc0\nTRANSFER 0x, $<caret>\n"))
+            assertEquals(setOf($$"$8", $$"$12", $$"$13", $$"$14"), candidates(".eqv TRANSFER mtc0\nTRANSFER 0x, $<caret>\n"))
             assertTrue(candidates($$".eqv BR beq\n.eqv FIRST SECOND\n.eqv SECOND FIRST\nBR FIRST, $t0, tar<caret>" + labels)
                 .none { it.startsWith("target") })
         }

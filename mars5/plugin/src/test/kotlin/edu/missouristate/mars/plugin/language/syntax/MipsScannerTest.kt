@@ -171,7 +171,7 @@ class MipsScannerTest {
             ".double 0x1p2, 1e2, 2147483648",
             ".word 0xG, 0x, 1oops, 1e, 0b101, 0x123456789",
           $$".macro emit (%value!@?, $argument)",
-          $$".macro emit (%, %!, %%, %value-7, $)",
+          ".macro emit (%, %!, %%, %value-7, $)",
         )) {
             val assembly = tokenizer.tokenizeLine(1, source, ErrorList(), false)
             val tokens = MipsScanner.scan(source).filter { it.kind !in setOf(MipsTokenKind.SPACE, MipsTokenKind.COMMA) }
