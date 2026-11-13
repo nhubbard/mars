@@ -3,6 +3,7 @@ package edu.missouristate.mars.mips.instructions.basic
 import edu.missouristate.mars.ProcessingException
 import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
+import kotlin.math.sqrt
 
 open class InstrSqrtD : BasicInstruction(
     "sqrt.d \$f2,\$f4",
@@ -16,6 +17,6 @@ open class InstrSqrtD : BasicInstruction(
             throw ProcessingException(context, statement, "both registers must be even-numbered")
         }
         val value = context.readDoubleOperand(operands[1])
-        context.writeDoubleResult(operands[0], if (value < 0.0) Double.NaN else Math.sqrt(value))
+        context.writeDoubleResult(operands[0], if (value < 0.0) Double.NaN else sqrt(value))
     },
 )

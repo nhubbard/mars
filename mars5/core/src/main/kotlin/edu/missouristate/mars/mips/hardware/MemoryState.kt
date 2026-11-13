@@ -400,19 +400,19 @@ open class MemoryState(
         return statement
     }
 
-    open fun inTextSegment(address: Int): Boolean = address >= textBaseAddress && address < textLimitAddress
+    open fun inTextSegment(address: Int): Boolean = address in textBaseAddress..<textLimitAddress
 
-    open fun inKernelTextSegment(address: Int): Boolean = address >= kernelTextBaseAddress && address < kernelTextLimitAddress
+    open fun inKernelTextSegment(address: Int): Boolean = address in kernelTextBaseAddress..<kernelTextLimitAddress
 
-    open fun inDataSegment(address: Int): Boolean = address >= dataSegmentBaseAddress && address < dataSegmentLimitAddress
+    open fun inDataSegment(address: Int): Boolean = address in dataSegmentBaseAddress..<dataSegmentLimitAddress
 
-    open fun inKernelDataSegment(address: Int): Boolean = address >= kernelDataBaseAddress && address < kernelDataSegmentLimitAddress
+    open fun inKernelDataSegment(address: Int): Boolean = address in kernelDataBaseAddress..<kernelDataSegmentLimitAddress
 
-    open fun inMemoryMapSegment(address: Int): Boolean = address >= memoryMapBaseAddress && address < kernelHighAddress
+    open fun inMemoryMapSegment(address: Int): Boolean = address in memoryMapBaseAddress..<kernelHighAddress
 
     private fun inStack(address: Int): Boolean = address > stackLimitAddress && address <= stackBaseAddress
 
-    private fun inMappedStorage(address: Int): Boolean = address >= memoryMapBaseAddress && address < memoryMapLimitAddress
+    private fun inMappedStorage(address: Int): Boolean = address in memoryMapBaseAddress..<memoryMapLimitAddress
 
     open fun addObserver(callback: Consumer<MemoryAccessNotice>) {
         try {

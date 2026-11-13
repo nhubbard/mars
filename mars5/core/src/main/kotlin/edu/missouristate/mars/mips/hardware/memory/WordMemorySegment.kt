@@ -1,6 +1,5 @@
 package edu.missouristate.mars.mips.hardware.memory
 
-import java.util.Arrays
 import java.util.function.BooleanSupplier
 
 /** Sparse word storage shared by data, kernel, stack, and MMIO segments. */
@@ -24,7 +23,7 @@ class WordMemorySegment(blocks: Int, private val descending: Boolean, private va
             if (blocks.size != other.blocks.size) return false
             for (index in blocks.indices) {
                 checkCancellation.run()
-                if (!Arrays.equals(blocks[index], other.blocks[index])) return false
+                if (!blocks[index].contentEquals(other.blocks[index])) return false
             }
             return true
         }

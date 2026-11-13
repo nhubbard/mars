@@ -3,6 +3,7 @@ package edu.missouristate.mars.mips.instructions.basic
 import edu.missouristate.mars.ProcessingException
 import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
+import kotlin.math.ceil
 
 open class InstrCeilWD : BasicInstruction(
     "ceil.w.d \$f1,\$f2",
@@ -19,7 +20,7 @@ open class InstrCeilWD : BasicInstruction(
         val result = if (!value.isFinite() || value < Int.MIN_VALUE.toDouble() || value > Int.MAX_VALUE.toDouble()) {
             Int.MAX_VALUE
         } else {
-            Math.ceil(value).toInt()
+            ceil(value).toInt()
         }
         context.updateCoprocessor1(operands[0], result)
     },

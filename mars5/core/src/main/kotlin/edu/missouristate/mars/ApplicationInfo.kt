@@ -6,19 +6,21 @@ import java.util.regex.Pattern
 
 /** Application defaults shared by the assembler, simulator, and frontends. */
 object ApplicationInfo {
-    private const val configPropertiesFile = "Config"
+    private const val CONFIG_PROPERTIES_FILE = "Config"
+    // Retain the published field name for Java and Kotlin clients.
+    @Suppress("ConstPropertyName")
     const val version = "4.6"
 
     private val spaces = Pattern.compile(" +")
 
-    @JvmField val fileExtensions: ArrayList<String> = tokenize(getPropertyEntry(configPropertiesFile, "Extensions"))
+    @JvmField val fileExtensions: ArrayList<String> = tokenize(getPropertyEntry(CONFIG_PROPERTIES_FILE, "Extensions"))
     @JvmField val maximumErrorMessages = integerProperty("ErrorLimit", 200)
     @JvmField val maximumBacksteps = integerProperty("BackstepLimit", 1_000)
     @JvmField val ASCII_NON_PRINT = getAsciiNonPrint()
     @JvmField val ASCII_TABLE = getAsciiStrings()
 
     @JvmStatic
-    fun getAsciiNonPrint(): String = when (val placeholder = getPropertyEntry(configPropertiesFile, "AsciiNonPrint")) {
+    fun getAsciiNonPrint(): String = when (val placeholder = getPropertyEntry(CONFIG_PROPERTIES_FILE, "AsciiNonPrint")) {
         null -> "."
         "space" -> " "
         else -> placeholder
@@ -27,7 +29,7 @@ object ApplicationInfo {
     @JvmStatic
     fun getAsciiStrings(): Array<String> {
         val placeholder = getAsciiNonPrint()
-        val table = spaces.split(getPropertyEntry(configPropertiesFile, "AsciiTable"))
+        val table = spaces.split(getPropertyEntry(CONFIG_PROPERTIES_FILE, "AsciiTable"))
         var longest = 0
         for (index in table.indices) {
             var cell = table[index]
@@ -45,7 +47,7 @@ object ApplicationInfo {
     }
 
     private fun integerProperty(name: String, default: Int): Int =
-        getPropertyEntry(configPropertiesFile, name)?.toIntOrNull() ?: default
+        getPropertyEntry(CONFIG_PROPERTIES_FILE, name)?.toIntOrNull() ?: default
 
     private fun tokenize(value: String?): ArrayList<String> {
         val values = ArrayList<String>()

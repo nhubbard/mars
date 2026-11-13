@@ -39,7 +39,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 open class Binary {
     companion object {
-        private const val hexDigits = "0123456789abcdef"
+        private const val HEX_DIGITS = "0123456789abcdef"
 
         @JvmStatic
         fun intToBinaryString(value: Int, length: Int): String =
@@ -82,7 +82,7 @@ open class Binary {
                     if (position < 0) break
                     if (value[position--] == '1') nibble = nibble or (1 shl bit)
                 }
-                result[digit] = hexDigits[nibble]
+                result[digit] = HEX_DIGITS[nibble]
             }
             return result.concatToString()
         }
@@ -101,7 +101,7 @@ open class Binary {
             if (value.length > 4) return '0'
             var digit = 0
             for (character in value) digit = (digit shl 1) or if (character == '1') 1 else 0
-            return hexDigits[digit]
+            return HEX_DIGITS[digit]
         }
 
         @JvmStatic

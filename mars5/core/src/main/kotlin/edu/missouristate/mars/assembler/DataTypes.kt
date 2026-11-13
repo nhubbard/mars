@@ -66,6 +66,8 @@ object DataTypes {
         else -> false
     }
 
+    // An unordered NaN has no overflow or underflow.
+    @Suppress("ConvertTwoComparisonsToRangeCheck")
     @JvmStatic
     fun outOfRange(directive: Directives?, value: Double): Boolean =
         directive == Directives.FLOAT && (value < LOW_FLOAT_VALUE || value > MAX_FLOAT_VALUE)

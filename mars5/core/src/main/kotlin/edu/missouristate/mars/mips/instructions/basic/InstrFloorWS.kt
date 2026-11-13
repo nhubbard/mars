@@ -2,6 +2,7 @@ package edu.missouristate.mars.mips.instructions.basic
 
 import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
+import kotlin.math.floor
 
 open class InstrFloorWS : BasicInstruction(
     "floor.w.s \$f0,\$f1",
@@ -15,7 +16,7 @@ open class InstrFloorWS : BasicInstruction(
         val result = if (!value.isFinite() || value < Int.MIN_VALUE.toFloat() || value > Int.MAX_VALUE.toFloat()) {
             Int.MAX_VALUE
         } else {
-            Math.floor(value.toDouble()).toInt()
+            floor(value.toDouble()).toInt()
         }
         context.updateCoprocessor1(operands[0], result)
     },

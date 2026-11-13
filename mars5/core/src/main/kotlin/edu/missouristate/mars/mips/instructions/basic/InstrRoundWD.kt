@@ -3,6 +3,7 @@ package edu.missouristate.mars.mips.instructions.basic
 import edu.missouristate.mars.ProcessingException
 import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
+import kotlin.math.roundToInt
 
 open class InstrRoundWD : BasicInstruction(
     "round.w.d \$f1,\$f2",
@@ -25,7 +26,7 @@ open class InstrRoundWD : BasicInstruction(
             if (value - below == above - value) {
                 if (above % 2 == 0) above else below
             } else {
-                Math.round(value).toInt()
+                value.roundToInt()
             }
         }
         context.updateCoprocessor1(operands[0], result)

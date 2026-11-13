@@ -2,6 +2,7 @@ package edu.missouristate.mars.mips.instructions.basic
 
 import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
+import kotlin.math.sqrt
 
 open class InstrSqrtS : BasicInstruction(
     "sqrt.s \$f0,\$f1",
@@ -12,7 +13,7 @@ open class InstrSqrtS : BasicInstruction(
     { statement, context ->
         val operands = statement.operands
         val value = Float.fromBits(context.coprocessor1.getValue(operands[1]))
-        val result = if (value < 0.0f) Float.NaN else Math.sqrt(value.toDouble()).toFloat()
+        val result = if (value < 0.0f) Float.NaN else sqrt(value.toDouble()).toFloat()
         context.updateCoprocessor1(operands[0], result.toBits())
     },
 )

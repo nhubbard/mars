@@ -32,6 +32,8 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /** All formats supported by the standalone CLI and IntelliJ. */
 object DumpFormatLoader {
+    // Keep the shared format catalog immutable for Java callers as well.
+    @Suppress("ReplaceJavaStaticMethodWithKotlinAnalog")
     @JvmField
     val FORMATS: List<DumpFormat> = of(
         AsciiTextDumpFormat(), BinaryDumpFormat(), BinaryTextDumpFormat(), HexTextDumpFormat(),
