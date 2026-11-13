@@ -69,15 +69,6 @@ class IntegerRegisterFile(globalPointer: Int, stackPointer: Int, textBaseAddress
         registerEvents.unsubscribe(listener)
     }
 
-    fun showRegisters() {
-        for (register in registers) {
-            println("Name: ${register.name}")
-            println("Number: ${register.number}")
-            println("Value: ${register.value}")
-            println()
-        }
-    }
-
     fun updateRegister(number: Int, value: Int): Int {
         checkRegisterNumber(number)
         if (number == 0) return 0

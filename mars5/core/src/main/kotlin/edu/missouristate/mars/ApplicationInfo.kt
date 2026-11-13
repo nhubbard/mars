@@ -8,16 +8,10 @@ import java.util.regex.Pattern
 object ApplicationInfo {
     private const val configPropertiesFile = "Config"
     const val version = "4.6"
-    const val imagesPath = "/images/"
-    const val helpPath = "/help/"
-    const val userInputAlert = "**** user input : "
-    const val copyrightYears = "2003-2014"
-    const val copyrightHolders = "Pete Sanderson and Kenneth Vollmar"
 
     private val spaces = Pattern.compile(" +")
 
     @JvmField val fileExtensions: ArrayList<String> = tokenize(getPropertyEntry(configPropertiesFile, "Extensions"))
-    @JvmField val maximumMessageCharacters = integerProperty("MessageLimit", 1_000_000)
     @JvmField val maximumErrorMessages = integerProperty("ErrorLimit", 200)
     @JvmField val maximumBacksteps = integerProperty("BackstepLimit", 1_000)
     @JvmField val ASCII_NON_PRINT = getAsciiNonPrint()
@@ -53,16 +47,13 @@ object ApplicationInfo {
     private fun integerProperty(name: String, default: Int): Int =
         getPropertyEntry(configPropertiesFile, name)?.toIntOrNull() ?: default
 
-    private fun tokenize(value: String?, delimiters: String? = null): ArrayList<String> {
+    private fun tokenize(value: String?): ArrayList<String> {
         val values = ArrayList<String>()
         if (value == null) return values
-        val tokens = if (delimiters == null) StringTokenizer(value) else StringTokenizer(value, delimiters)
+        val tokens = StringTokenizer(value)
         while (tokens.hasMoreTokens()) values.add(tokens.nextToken())
         return values
     }
-
-    @JvmStatic
-    fun getExternalTools(): ArrayList<String> = tokenize(getPropertyEntry(configPropertiesFile, "ExternalTools"), ";")
 
     @JvmStatic
     fun getPropertyEntry(propertiesFile: String?, propertyName: String): String? =

@@ -53,16 +53,6 @@ class Coprocessor0State {
         registerEvents.unsubscribe(listener)
     }
 
-    /** Print the register values for debugging. */
-    fun showRegisters() {
-        for (register in registers) {
-            println("Name: ${register.name}")
-            println("Number: ${register.number}")
-            println("Value: ${register.value}")
-            println()
-        }
-    }
-
     fun updateRegister(name: String?, value: Int): Int {
         val register = getRegister(name) ?: return 0
         // Named updates emit the same read followed by write that existing observers see.

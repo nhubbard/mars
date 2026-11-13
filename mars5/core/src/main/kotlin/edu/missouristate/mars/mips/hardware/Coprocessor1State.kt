@@ -51,15 +51,6 @@ class Coprocessor1State {
         registerEvents.unsubscribe(listener)
     }
 
-    fun showRegisters() {
-        for (register in registers) {
-            println("Name: ${register.name}")
-            println("Number: ${register.number}")
-            println("Value: ${register.value}")
-            println()
-        }
-    }
-
     fun setRegisterToFloat(register: String?, value: Float) = setRegisterToFloat(getRegisterNumber(register), value)
 
     fun setRegisterToFloat(register: Int, value: Float) = setRegisterToInt(register, value.toRawBits())

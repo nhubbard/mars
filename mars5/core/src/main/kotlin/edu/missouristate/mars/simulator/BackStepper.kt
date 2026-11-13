@@ -249,11 +249,6 @@ open class BackStepper(
         return flag
     }
 
-    open fun addDoNothing(pc: Int): Int {
-        if (backSteps.empty() || backSteps.peek().pc != pc) backSteps.push(Action.DO_NOTHING, pc)
-        return 0
-    }
-
     open fun addHeapRestore(address: Int) {
         backSteps.push(Action.HEAP, pc(), address)
     }
