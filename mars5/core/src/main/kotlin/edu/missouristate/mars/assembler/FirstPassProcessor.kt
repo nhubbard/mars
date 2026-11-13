@@ -13,6 +13,7 @@ import edu.missouristate.mars.core.AssemblyContext
 import edu.missouristate.mars.mips.hardware.AddressErrorException
 import edu.missouristate.mars.mips.instructions.Instruction
 import edu.missouristate.mars.util.Binary
+import java.nio.charset.CharacterCodingException
 import kotlin.math.pow
 
 /*
@@ -223,7 +224,7 @@ internal class FirstPassProcessor(
                 dataDirective = directive
                 if (passesDataSegmentCheck(token) && tokens.size() > 1) storeNumeric(tokens, directive)
             }
-            Directives.ASCII, Directives.ASCIIZ -> {
+            Directives.ASCII, Directives.ASCIIZ, Directives.UTF8, Directives.UTF8Z -> {
                 dataDirective = directive
                 if (passesDataSegmentCheck(token)) storeStrings(tokens, directive)
             }
@@ -320,7 +321,7 @@ internal class FirstPassProcessor(
         when (val directive = dataDirective) {
             Directives.WORD, Directives.HALF, Directives.BYTE, Directives.FLOAT, Directives.DOUBLE ->
                 if (!tokens.isEmpty) storeNumeric(tokens, directive)
-            Directives.ASCII, Directives.ASCIIZ -> if (passesDataSegmentCheck(tokens[0])) storeStrings(tokens, directive)
+            Directives.ASCII, Directives.ASCIIZ, Directives.UTF8, Directives.UTF8Z -> if (passesDataSegmentCheck(tokens[0])) storeStrings(tokens, directive)
             else -> Unit
         }
     }
@@ -428,24 +429,37 @@ internal class FirstPassProcessor(
                 errors.add(ErrorMessage(token, "Unterminated string literal"))
                 continue
             }
-            val quote = token.value
-            var position = 1
-            while (position < quote.lastIndex) {
-                var character = quote[position++]
-                if (character == '\\') {
-                    character = when (val escaped = quote[position++]) {
-                        'n' -> '\n'
-                        't' -> '\t'
-                        'r' -> '\r'
-                        'b' -> '\b'
-                        'f' -> '\u000c'
-                        '0' -> '\u0000'
-                        else -> escaped
-                    }
+            val string = unescapeString(token.value)
+            if (directive == Directives.UTF8 || directive == Directives.UTF8Z || context.settings().isUtf8TextEnabled) {
+                val encoded = try {
+                    string.encodeToByteArray(throwOnInvalidSequence = true)
+                } catch (_: CharacterCodingException) {
+                    errors.add(ErrorMessage(token, "Invalid Unicode in UTF-8 string literal"))
+                    continue
                 }
-                storeCharacter(character.code, token)
+                for (byte in encoded) storeCharacter(byte.toUByte().toInt(), token)
+            } else {
+                for (character in string) storeCharacter(character.code, token)
             }
-            if (directive == Directives.ASCIIZ) storeCharacter(0, token)
+            if (directive == Directives.ASCIIZ || directive == Directives.UTF8Z) storeCharacter(0, token)
+        }
+    }
+
+    private fun unescapeString(quote: String): String = buildString(quote.length - 2) {
+        var position = 1
+        while (position < quote.lastIndex) {
+            val character = quote[position++]
+            append(if (character == '\\') {
+                when (val escaped = quote[position++]) {
+                    'n' -> '\n'
+                    't' -> '\t'
+                    'r' -> '\r'
+                    'b' -> '\b'
+                    'f' -> '\u000c'
+                    '0' -> '\u0000'
+                    else -> escaped
+                }
+            } else character)
         }
     }
 

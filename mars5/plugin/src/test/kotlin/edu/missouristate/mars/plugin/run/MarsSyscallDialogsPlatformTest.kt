@@ -19,6 +19,7 @@ import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.testFramework.junit5.fixture.projectFixture
 import com.intellij.ui.UiInterceptors
 import com.intellij.util.ui.UIUtil
+import edu.missouristate.mars.plugin.MarsExecutionOptions
 import java.awt.event.ActionEvent
 import java.nio.file.Files
 import java.nio.file.Path
@@ -186,6 +187,45 @@ class MarsSyscallDialogsPlatformTest {
                 val name = if (syscall == 5) "integer" else "char"
                 assertTrue(recording.stderr.toString().contains("invalid $name input (syscall $syscall)"))
             }
+        } finally {
+            withContext(Dispatchers.EDT) { UiInterceptors.clear() }
+        }
+    }
+
+    @Test
+    fun `UTF-8 input dialog reports byte capacity and preserves whole code points`() = timeoutRunBlocking {
+        try {
+            withContext(Dispatchers.EDT) {
+                interceptSyscallDialog { dialog ->
+                    assertEquals("Enter text for a UTF-8 buffer with up to 5 payload bytes (syscall 8).", dialog.messageText())
+                    UIUtil.findComponentsOfType(dialog.fields, JTextField::class.java).single().text = "🐟é"
+                    dialog.clickButton("OK")
+                }
+            }
+            val path = writeSource(
+                $$"""
+                    .data
+                    buffer: .space 6
+                    .text
+                    la $a0, buffer
+                    li $a1, 6
+                    li $v0, 8
+                    syscall
+                    li $v0, 4
+                    syscall
+                    li $v0, 10
+                    syscall
+                """.trimIndent(),
+            )
+            val recording = Recording()
+            val handler = project.service<MarsRunService>().createProcess(
+                path, MarsExecutionOptions(utf8Text = true), emptyList(), inputMode = MarsInputMode.DIALOG,
+            )
+            handler.addProcessListener(recording)
+            withContext(Dispatchers.EDT) { handler.startNotify() }
+            assertEquals(0, recording.exit.await())
+            assertEquals("🐟", recording.stdout.toString())
+            assertEquals("", recording.stderr.toString())
         } finally {
             withContext(Dispatchers.EDT) { UiInterceptors.clear() }
         }

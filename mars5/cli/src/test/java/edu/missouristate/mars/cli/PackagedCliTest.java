@@ -79,6 +79,45 @@ class PackagedCliTest {
   }
 
   @Test
+  void utf8TextModePrintsUnicodeAndTruncatesInputAtAByteBoundary() throws Exception {
+    Path file = source("unicode.mars", """
+        .data
+        greeting: .asciiz "鯉: "
+        buffer: .byte 99, 99, 99, 99, 99, 99
+        .text
+        la $a0, greeting
+        li $v0, 4
+        syscall
+        la $a0, buffer
+        li $a1, 6
+        li $v0, 8
+        syscall
+        li $v0, 4
+        syscall
+        li $v0, 10
+        syscall
+        """);
+    assertProgramResult(List.of("--utf8-text", file.toString()), "é🐟X\n", 0, "鯉: é");
+    assertProgramResult(List.of("--utf8-text", file.toString()), "🐟X\n", 0, "鯉: 🐟X");
+    assertProgramResult(List.of("--utf8-text", file.toString()), "é\n", 0, "鯉: é");
+  }
+
+  @Test
+  void legacyTextModeKeepsOneByteStrings() throws Exception {
+    Path file = source("legacy.mars", """
+        .data
+        greeting: .asciiz "é"
+        .text
+        la $a0, greeting
+        li $v0, 4
+        syscall
+        li $v0, 10
+        syscall
+        """);
+    assertProgramResult(List.of(file.toString()), "", 0, "é");
+  }
+
+  @Test
   void projectModeCombinesSiblingAndExplicitSourcesWithInputAndArguments() throws Exception {
     Path main =
         source(

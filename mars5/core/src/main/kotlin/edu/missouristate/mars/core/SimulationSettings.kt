@@ -14,6 +14,8 @@ import edu.missouristate.mars.api.MarsSettings
 /** Live session settings with optional preference ownership and independent in-memory defaults. */
 class SimulationSettings : MarsSettings {
     private val settingsOwner: Settings?
+    override var isUtf8TextEnabled: Boolean = false
+
     private var memoryLayout: String? = "Default"
     private var delayedBranching = false
     private var selfModifyingCode = false

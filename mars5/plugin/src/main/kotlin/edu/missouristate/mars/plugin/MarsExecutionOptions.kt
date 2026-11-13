@@ -22,6 +22,7 @@ internal data class MarsExecutionOptions(
     val warningsAreErrors: Boolean = false,
     val memoryLayout: MarsMemoryLayout = MarsMemoryLayout.DEFAULT,
     val bareMachine: Boolean = false,
+    val utf8Text: Boolean = false,
     val assemblerErrorLimit: Int = ApplicationInfo.maximumErrorMessages,
 ) {
     fun applyForAssembly(session: MarsContext) {
@@ -32,6 +33,7 @@ internal data class MarsExecutionOptions(
     }
 
     fun applyTo(settings: SimulationSettings) {
+        settings.isUtf8TextEnabled = utf8Text
         settings.setDelayedBranchingEnabled(delayedBranching)
         settings.setSelfModifyingCodeEnabled(selfModifyingCode)
         settings.setExtendedAssemblerEnabled(allowPseudoInstructions)

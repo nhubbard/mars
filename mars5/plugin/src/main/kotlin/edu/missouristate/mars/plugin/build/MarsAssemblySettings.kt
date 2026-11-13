@@ -58,6 +58,7 @@ internal class MarsAssemblySettings(private val project: Project) :
         @JvmField var memoryLayout: String = MarsMemoryLayout.DEFAULT.identifier,
         @JvmField var delayedBranching: Boolean = false,
         @JvmField var selfModifyingCode: Boolean = false,
+        @JvmField var utf8Text: Boolean = false,
         @JvmField var bareMachine: Boolean = false,
         @JvmField var assemblerErrorLimit: Int = ApplicationInfo.maximumErrorMessages,
         @JvmField var backstepLimit: Int = ApplicationInfo.maximumBacksteps,
@@ -70,6 +71,7 @@ internal class MarsAssemblySettings(private val project: Project) :
     val startAtMain get() = getState().startAtMain
     val delayedBranching get() = getState().delayedBranching
     val selfModifyingCode get() = getState().selfModifyingCode
+    val utf8Text get() = getState().utf8Text
     val bareMachine get() = getState().bareMachine
     val memoryLayout get() = MarsMemoryLayout.fromIdentifier(getState().memoryLayout)
     val assemblerErrorLimit get() = getState().assemblerErrorLimit.takeIf { it > 0 } ?: ApplicationInfo.maximumErrorMessages
@@ -82,6 +84,7 @@ internal class MarsAssemblySettings(private val project: Project) :
             warningsAreErrors = it.warningsAreErrors,
             memoryLayout = MarsMemoryLayout.fromIdentifier(it.memoryLayout),
             bareMachine = it.bareMachine,
+            utf8Text = it.utf8Text,
             assemblerErrorLimit = assemblerErrorLimit,
         )
     }
@@ -148,6 +151,10 @@ internal class MarsAssemblySettings(private val project: Project) :
 
     fun changeSelfModifyingCode(value: Boolean) {
         updateState { it.copy(selfModifyingCode = value) }
+    }
+
+    fun changeUtf8Text(value: Boolean) {
+        if (utf8Text != value) change { it.copy(utf8Text = value) }
     }
 
     fun changeBareMachine(value: Boolean) {
@@ -266,6 +273,10 @@ internal class MarsAssemblyConfigurable(private val project: Project) :
             row {
                 checkBox(messages.getMessage("run.bare.machine"))
                     .bindSelected({ settings.bareMachine }, settings::changeBareMachine)
+            }
+            row {
+                checkBox(messages.getMessage("build.settings.utf8"))
+                    .bindSelected({ settings.utf8Text }, settings::changeUtf8Text)
             }
             row(messages.getMessage("build.settings.error.limit")) {
                 intTextField(1..Int.MAX_VALUE)

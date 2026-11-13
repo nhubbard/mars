@@ -11,6 +11,9 @@ interface SyscallEnvironment {
     /** Read a line without its trailing newline. Return null at end of input. */
     fun readString(maxLength: Int): String?
 
+    /** Read a line for a UTF-8 destination. The simulator applies the byte limit. */
+    fun readUtf8String(maxBytes: Int): String? = readString(maxBytes)
+
     fun readInt(): Int
     fun readFloat(): Float
     fun readDouble(): Double

@@ -4438,9 +4438,10 @@ class MarsDebugPlatformTest {
             val memory = machine.memory
             memory.byteOrder = MemoryState.BIG_ENDIAN
             memory.setWord(memory.dataBaseAddress, 0x41424300)
+            memory.setWord(memory.dataBaseAddress + 4, 0xf09f909f.toInt())
             val row = memoryPage(memory, memory.dataBaseAddress.toLong()).first()
-            assertTrue(row.bytes.startsWith("41 42 43 00"), row.bytes)
-            assertTrue(row.characters.startsWith("ABC."), row.characters)
+            assertTrue(row.bytes.startsWith("41 42 43 00 f0 9f 90 9f"), row.bytes)
+            assertTrue(row.characters.startsWith("ABC....."), row.characters)
         }
     }
 

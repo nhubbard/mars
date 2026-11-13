@@ -71,6 +71,7 @@ public final class MarsCli {
           case "--self-modifying-code", "smc" -> session.settings.setSelfModifyingCodeEnabled(true);
           case "--start-at-main", "sm" -> session.settings.setStartAtMainEnabled(true);
           case "--no-pseudo", "np", "ne" -> session.settings.setExtendedAssemblerEnabled(false);
+          case "--utf8-text" -> session.settings.setUtf8TextEnabled(true);
           case "--warnings-as-errors", "we" -> session.settings.setWarningsAreErrors(true);
           case "--messages-to-stderr", "me" -> reportOutput = error;
           case "--brief", "b" -> report.brief = true;
@@ -241,6 +242,7 @@ public final class MarsCli {
       --self-modifying-code  Allow writes to text and execution from data (smc)
       --start-at-main        Start at the exported main label (sm)
       --no-pseudo            Accept basic instructions only (np)
+      --utf8-text            Use UTF-8 text for .ascii, .asciiz, and console string syscalls
       --warnings-as-errors   Fail assembly on warnings (we)
       --memory LAYOUT        Default, CompactDataAtZero, or CompactTextAtZero (mc)
       --dump REGION FORMAT FILE   Export .text, .data, or an inclusive word range (dump)

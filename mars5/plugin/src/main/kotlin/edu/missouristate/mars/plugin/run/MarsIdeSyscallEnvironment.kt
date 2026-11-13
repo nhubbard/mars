@@ -69,6 +69,7 @@ internal class MarsSyscallDialogs(
             ReadKind.INTEGER -> "run.input.integer"
             ReadKind.FLOAT -> "run.input.float"
             ReadKind.DOUBLE -> "run.input.double"
+            ReadKind.UTF8_STRING -> "run.input.utf8.string"
             ReadKind.STRING -> "run.input.string"
             ReadKind.CHARACTER -> "run.input.character"
         }

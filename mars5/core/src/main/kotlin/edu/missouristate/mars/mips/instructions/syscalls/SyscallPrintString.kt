@@ -4,6 +4,7 @@ import edu.missouristate.mars.ProcessingException
 import edu.missouristate.mars.ProgramStatement
 import edu.missouristate.mars.core.InstructionContext
 import edu.missouristate.mars.mips.hardware.AddressErrorException
+import java.io.ByteArrayOutputStream
 
 /*
 Copyright (c) 2003-2006,  Pete Sanderson and Kenneth Vollmar
@@ -37,6 +38,23 @@ open class SyscallPrintString : AbstractSyscall(4, "PrintString") {
     @Throws(ProcessingException::class)
     override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
         var address = context.registerFile.getValue(4)
+        if (context.settings().isUtf8TextEnabled) {
+            val bytes = ByteArrayOutputStream()
+            try {
+                val memory = context.memory()
+                while (true) {
+                    val byte = memory.getByte(address++)
+                    if (byte == 0) break
+                    bytes.write(byte)
+                }
+            } catch (failure: AddressErrorException) {
+                throw ProcessingException(context, statement, failure)
+            } finally {
+                // Preserve the readable prefix if simulated memory faults.
+                context.environment().printString(bytes.toByteArray().decodeToString())
+            }
+            return
+        }
         try {
             // Emit each character before reading the next address so a fault preserves partial output.
             while (true) {

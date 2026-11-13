@@ -698,6 +698,8 @@ class MarsBuildPlatformTest {
                     val choices = UIUtil.findComponentsOfType(panel, JCheckBox::class.java).associateBy { it.text }
                     val pseudo = choices.getValue("Allow pseudo-instructions")
                     val warnings = choices.getValue("Treat assembler warnings as errors")
+                    val utf8 = choices.getValue("Use UTF-8 for string directives and console string syscalls")
+                    assertFalse(utf8.isSelected)
                     assertTrue(pseudo.isSelected)
                     assertFalse(warnings.isSelected)
                     assertFalse(configurable.isModified)
@@ -707,16 +709,24 @@ class MarsBuildPlatformTest {
                     configurable.apply()
                     assertEquals(MarsExecutionOptions(warningsAreErrors = true), settings.executionOptions)
                     pseudo.isSelected = false
+                    utf8.isSelected = true
                     assertTrue(configurable.isModified)
                     configurable.apply()
                     val persisted = XmlSerializer.serialize(settings.getState())
                     settings.loadState(XmlSerializer.deserialize(persisted, MarsAssemblySettings.Settings::class.java))
-                    assertEquals(MarsExecutionOptions(allowPseudoInstructions = false, warningsAreErrors = true), settings.executionOptions)
+                    assertEquals(MarsExecutionOptions(allowPseudoInstructions = false, warningsAreErrors = true, utf8Text = true), settings.executionOptions)
                     configurable.reset()
+                    assertTrue(utf8.isSelected)
+                    utf8.isSelected = false
                     assertFalse(pseudo.isSelected)
                     assertTrue(warnings.isSelected)
                     pseudo.isSelected = true
                     configurable.apply()
+                    assertFalse(settings.utf8Text)
+                    settings.changeUtf8Text(false)
+                    assertFalse(configurable.isModified)
+                    pseudo.isSelected = false
+                    assertTrue(configurable.isModified)
                 } finally {
                     configurable.disposeUIResources()
                 }

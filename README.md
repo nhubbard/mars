@@ -68,6 +68,19 @@ trace an assembly-only invocation. Use `me` to keep trace output separate from p
 For embedding, use `MarsComponent.assembler()`, `simulator()`, `memory()`, and `registerFile()`;
 close the owning `MarsContext` when finished. The core has no desktop or IntelliJ dependency.
 
+## UTF-8 assembly and console text
+
+Use `.utf8 "こんにちは"` to emit UTF-8 bytes, or `.utf8z "こんにちは"` to add a zero byte
+after each string. Both directives are available in every project. To also encode `.ascii` and
+`.asciiz` as UTF-8 and use UTF-8 in console string syscalls 4 and 8, pass `--utf8-text` to the
+CLI or enable **Use UTF-8 for string directives and console string syscalls** under
+**Settings → Build, Execution, Deployment → MARS Assembly**. Existing projects keep their
+original byte encoding by default.
+
+In UTF-8 mode, syscall 8 interprets `$a1` as a buffer size in bytes, including the final zero.
+It writes only whole UTF-8 code points and adds a newline when the entire line and the newline
+fit. Use byte loads and stores when examining or copying an encoded string.
+
 The original project description follows.
 
 MARS (official) MIPS Assembler and Runtime Simulator

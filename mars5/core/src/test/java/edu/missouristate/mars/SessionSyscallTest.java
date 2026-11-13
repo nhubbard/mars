@@ -136,6 +136,44 @@ class SessionSyscallTest {
   }
 
   @Test
+  void utf8StringInputWritesByteSizedBuffersAndReversesThoseBytes() throws Exception {
+    var source = directory.resolve("utf8.s");
+    Files.writeString(source, """
+        .data
+        buffer: .byte 88, 88, 88, 88, 88, 88
+        .text
+        syscall
+        """);
+    try (var session = session()) {
+      session.settings.setUtf8TextEnabled(true);
+      var program = session.assemble(List.of(source));
+      int buffer = program.symbolMap().locals().get(source).get("buffer").address();
+      var input = new ByteArrayInputStream("ignored\n鯉\n".getBytes(StandardCharsets.UTF_8));
+      try (var io = new SessionSyscallEnvironment(session.memory, input, System.out, System.err)) {
+        program.setSyscallEnvironment(io);
+        session.registerFile.updateRegister(2, 8);
+        session.registerFile.updateRegister(4, buffer);
+        session.registerFile.updateRegister(5, Integer.MIN_VALUE);
+        program.simulateStepAtPC();
+        assertThat(session.memory.getByte(buffer)).isEqualTo(88);
+        session.backStepper.backStep();
+        session.registerFile.updateRegister(5, 6);
+        program.simulateStepAtPC();
+        assertThat(session.memory.getByte(buffer)).isEqualTo(0xe9);
+        assertThat(session.memory.getByte(buffer + 1)).isEqualTo(0xaf);
+        assertThat(session.memory.getByte(buffer + 2)).isEqualTo(0x89);
+        assertThat(session.memory.getByte(buffer + 3)).isEqualTo('\n');
+        assertThat(session.memory.getByte(buffer + 4)).isZero();
+        assertThat(session.memory.getByte(buffer + 5)).isEqualTo(88);
+        session.backStepper.backStep();
+        for (int offset = 0; offset < 6; offset++) {
+          assertThat(session.memory.getByte(buffer + offset)).isEqualTo(88);
+        }
+      }
+    }
+  }
+
+  @Test
   void textInputPreservesUtf16ByteOrderAcrossRawReadsAndPartialEof() throws Exception {
     try (var session = session()) {
       var bytes = new ByteArrayOutputStream();

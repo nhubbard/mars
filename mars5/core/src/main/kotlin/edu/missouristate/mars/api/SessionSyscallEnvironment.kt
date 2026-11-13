@@ -32,7 +32,7 @@ class SessionSyscallEnvironment @JvmOverloads constructor(
 ) : SyscallEnvironment, AutoCloseable {
     constructor(memory: MemoryState) : this(memory, System.`in`, System.out, System.err)
 
-    enum class ReadKind { INTEGER, FLOAT, DOUBLE, STRING, CHARACTER }
+    enum class ReadKind { INTEGER, FLOAT, DOUBLE, STRING, UTF8_STRING, CHARACTER }
 
     /** Supplies typed reads without changing descriptor 0. Returns null on end of input. */
     fun interface TextInput {
@@ -118,6 +118,8 @@ class SessionSyscallEnvironment @JvmOverloads constructor(
 
     override fun readString(maxLength: Int): String? =
         textInput.read(ReadKind.STRING, maxLength)?.let { it.substring(0, maxLength.coerceIn(0, it.length)) }
+
+    override fun readUtf8String(maxBytes: Int): String? = textInput.read(ReadKind.UTF8_STRING, maxBytes)
 
     // Java String.trim() only removes characters through U+0020.
     private fun numericInput(kind: ReadKind): String = textInput.read(kind, -1).orEmpty().trim { it <= ' ' }

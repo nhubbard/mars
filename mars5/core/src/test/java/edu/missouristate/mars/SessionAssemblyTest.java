@@ -932,6 +932,53 @@ class SessionAssemblyTest {
   }
 
   @Test
+  void utf8DirectivesStoreEncodedBytesAndAdvanceLabelsByByteLength() throws Exception {
+    var entry = directory.resolve("strings.s");
+    Files.writeString(entry, """
+        .data
+        start: .utf8 "é", "🐟"
+          "\\n"
+        tail: .UTF8Z "鯉", ""
+        old: .asciiz "é"
+        stop: .byte 1
+        .text
+        nop
+        """);
+
+    try (var machine = TestSessions.create()) {
+      var program = machine.assemble(List.of(entry));
+      var symbols = requireNonNull(program.getLocalSymbolTable());
+      int base = machine.memory.dataBaseAddress;
+      assertThat(symbols.getAddress("start")).isEqualTo(base);
+      assertThat(symbols.getAddress("tail")).isEqualTo(base + 7);
+      assertThat(symbols.getAddress("old")).isEqualTo(base + 12);
+      assertThat(symbols.getAddress("stop")).isEqualTo(base + 14);
+
+      int[] expected = {0xc3, 0xa9, 0xf0, 0x9f, 0x90, 0x9f, 10, 0xe9, 0xaf, 0x89, 0, 0, 0xe9, 0, 1};
+      for (int i = 0; i < expected.length; i++) {
+        assertThat(machine.memory.getByte(base + i)).isEqualTo(expected[i]);
+      }
+    }
+  }
+
+  @Test
+  void utf8RejectsAnUnpairedSurrogateInCapturedSource() {
+    var entry = directory.resolve("strings.s");
+    var source = ".data\n.utf8z \"" + Character.MIN_HIGH_SURROGATE + "\"\n";
+    try (var machine = TestSessions.create()) {
+      var result = new SessionAssembler(machine).assembleSnapshot(
+          new AssemblySourceSnapshot(List.of(entry), Map.of(entry, source)), null, true, false);
+      assertThat(result.succeeded()).isFalse();
+      assertThat(result.errors()).singleElement().satisfies(error -> {
+        assertThat(error.file()).isEqualTo(entry);
+        assertThat(error.line()).isEqualTo(2);
+        assertThat(error.column()).isEqualTo(8);
+        assertThat(error.message()).isEqualTo("Invalid Unicode in UTF-8 string literal");
+      });
+    }
+  }
+
+  @Test
   void capturedIncludeRequestsKeepDistinctFilesystemTargets() {
     var main = directory.resolve("main.s");
     var local = directory.resolve("value.s");

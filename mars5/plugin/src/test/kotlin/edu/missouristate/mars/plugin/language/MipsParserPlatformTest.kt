@@ -1882,6 +1882,8 @@ class MipsParserPlatformTest {
             .word WORD_VALUE
             .float 1.5
             .double 2.25
+            .utf8 "é"
+            .utf8z "鯉"
         """.trimIndent()
         fun withSeparators(text: String) = text.lineSequence().joinToString("\n") { ",,${it.replaceFirst(" ", ",,")},," }
         val context = project.get().service<MarsSessionService>().context
@@ -1902,6 +1904,7 @@ class MipsParserPlatformTest {
             assertEquals(7, memory.getWordNoNotify(base + 12))
             assertEquals(1.5f.toBits(), memory.getWordNoNotify(base + 16))
             assertEquals((2.25.toBits() ushr 32).toInt(), memory.getWordNoNotify(base + 28))
+            assertEquals(listOf(0xc3, 0xa9, 0xe9, 0xaf, 0x89, 0), (32..37).map { memory.getByte(base + it) })
             assertTrue(program.assemblyDiagnostics!!.errorMessages.single().isWarning)
             assertTrue(program.assemblyDiagnostics!!.errorMessages.single().message!!.contains(".set"))
 

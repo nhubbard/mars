@@ -38,7 +38,12 @@ open class SyscallReadString : AbstractSyscall(8, "ReadString") {
     @Throws(ProcessingException::class)
     override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
         val address = context.registerFile.getValue(4)
-        val requestedLength = context.registerFile.getValue(5) - 1
+        val capacity = context.registerFile.getValue(5)
+        if (context.settings().isUtf8TextEnabled) {
+            readUtf8(statement, context, address, capacity)
+            return
+        }
+        val requestedLength = capacity - 1
         val maxLength = requestedLength.coerceAtLeast(0)
         val input = context.environment().readString(maxLength).orEmpty()
         var length = minOf(maxLength, input.length)
@@ -53,6 +58,23 @@ open class SyscallReadString : AbstractSyscall(8, "ReadString") {
             if (requestedLength >= 0) {
                 context.setMemoryByte(address + length, 0)
             }
+        } catch (failure: AddressErrorException) {
+            throw ProcessingException(context, statement, failure)
+        }
+    }
+
+    private fun readUtf8(statement: ProgramStatement?, context: InstructionContext, address: Int, capacity: Int) {
+        val maxBytes = if (capacity > 0) capacity - 1 else 0
+        val input = context.environment().readUtf8String(maxBytes).orEmpty()
+        if (capacity <= 0) return
+        val bytes = input.encodeToByteArray()
+        var length = minOf(bytes.size, maxBytes)
+        // A continuation byte at the cut means the previous code point did not fit.
+        while (length < bytes.size && (bytes[length].toInt() and 0xc0) == 0x80) length--
+        try {
+            for (index in 0 until length) context.setMemoryByte(address + index, bytes[index].toInt())
+            if (bytes.size < maxBytes) context.setMemoryByte(address + length++, '\n'.code)
+            context.setMemoryByte(address + length, 0)
         } catch (failure: AddressErrorException) {
             throw ProcessingException(context, statement, failure)
         }
