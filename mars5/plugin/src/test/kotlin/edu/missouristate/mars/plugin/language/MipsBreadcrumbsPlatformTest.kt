@@ -54,6 +54,8 @@ class MipsBreadcrumbsPlatformTest {
     }
 
     @Test
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     fun `native breadcrumb navigation and subsequent edits use current source offsets`() = timeoutRunBlocking {
         val current = project.get()
         val source = $$".text\nmain: nop\n    addiu $a0, $zero, 42\n"

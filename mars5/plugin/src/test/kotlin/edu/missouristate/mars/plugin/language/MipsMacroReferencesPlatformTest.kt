@@ -222,6 +222,8 @@ class MipsMacroReferencesPlatformTest {
     }
 
     @Test
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     fun `macro binding follows unsaved edits to the included header`() = timeoutRunBlocking {
         val current = project.get()
         val included = withContext(Dispatchers.EDT) {

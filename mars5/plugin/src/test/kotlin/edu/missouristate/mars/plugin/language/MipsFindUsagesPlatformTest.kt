@@ -264,6 +264,8 @@ class MipsFindUsagesPlatformTest {
     }
 
     @Test
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     fun `native label usage search finds assembled aliases and forwarded arguments`() = timeoutRunBlocking {
         val source = """
             .include "defs.s"

@@ -238,5 +238,5 @@ class MipsSmartEnterPlatformTest {
 
     private fun complete() = fixture.performEditorAction(ACTION_EDITOR_COMPLETE_STATEMENT)
 
-    private fun lines() = fixture.editor.document.text.lines().map { if (it.isBlank()) "" else it }
+    private fun lines() = fixture.editor.document.text.lines().map { it.ifBlank { "" } }
 }

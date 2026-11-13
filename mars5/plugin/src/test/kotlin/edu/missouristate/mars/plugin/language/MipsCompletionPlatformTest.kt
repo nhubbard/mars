@@ -284,6 +284,8 @@ class MipsCompletionPlatformTest {
     }
 
     @Test
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     fun `completion reads nested plain includes and refreshes their signatures after an edit`() = timeoutRunBlocking {
         val source = ".include \"lib/wrapper.txt\"\nj generated\n.data\n.word COUNT, storage\n.text\nem<caret>\n"
         val definitions = """
@@ -480,6 +482,8 @@ class MipsCompletionPlatformTest {
     }
 
     @Test
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     fun `completion follows operands and punctuation from unsaved included equivalences`(@TempDir directory: Path) =
         timeoutRunBlocking {
             val current = project.get()
@@ -1052,6 +1056,8 @@ class MipsCompletionPlatformTest {
     }
 
     @Test
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     fun `label completion follows current and included files and replaces a dotted target`() = timeoutRunBlocking {
         val current = project.get()
         val included = withContext(Dispatchers.EDT) {

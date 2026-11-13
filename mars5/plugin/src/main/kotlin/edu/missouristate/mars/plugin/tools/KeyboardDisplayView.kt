@@ -205,6 +205,8 @@ internal class KeyboardDisplayView(project: Project) : Disposable {
         displayed = display
         val caret = display.caretOffset
         editor.settings.isUseSoftWraps = caret == null
+        // Kotlin exposes Document.text as read-only because the setter accepts CharSequence.
+        @Suppress("UsePropertyAccessSyntax")
         document.setText(StringUtil.convertLineSeparators(display.text))
         editor.caretModel.moveToOffset(caret ?: document.textLength)
         editor.scrollingModel.scrollToCaret(ScrollType.MAKE_VISIBLE)

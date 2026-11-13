@@ -139,6 +139,8 @@ class MarsCompilerPlatformTest {
         assertNull(diagnostic.navigatable)
     }
 
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     private fun edit(file: VirtualFile, text: String) {
         val document = requireNotNull(FileDocumentManager.getInstance().getDocument(file))
         WriteCommandAction.runWriteCommandAction(project) { document.setText(text) }

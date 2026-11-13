@@ -124,6 +124,8 @@ class InstructionCounterPlatformTest {
 
     @OptIn(ExperimentalJewelApi::class)
     @Test
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     fun `MARS Tools selects native executions and controls their counters independently`() = timeoutRunBlocking(45.seconds) {
         val project = projectFixture.get()
         val manager = ToolWindowManager.getInstance(project)

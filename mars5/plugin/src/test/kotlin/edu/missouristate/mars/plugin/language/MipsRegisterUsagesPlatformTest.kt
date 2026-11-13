@@ -58,6 +58,8 @@ class MipsRegisterUsagesPlatformTest {
     }
 
     @Test
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     fun `floating and CP0 occurrences stay in their own banks across unsaved edits`() = timeoutRunBlocking {
         val current = project.get()
         val source = $$"""
@@ -93,6 +95,8 @@ class MipsRegisterUsagesPlatformTest {
     }
 
     @Test
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     fun `equivalences project register identities to unambiguous written operands`() = timeoutRunBlocking {
         val current = project.get()
         val source = $$"""

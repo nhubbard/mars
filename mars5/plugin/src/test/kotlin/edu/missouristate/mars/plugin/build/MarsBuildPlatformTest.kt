@@ -1521,6 +1521,8 @@ class MarsBuildPlatformTest {
     }
 
     @Test
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     fun `assembled targets observe committed PSI file type and the latest build request`() = timeoutRunBlocking {
         val (entry, other, include) = withContext(Dispatchers.EDT) {
             val main = fixture.addFileToProject("entry.asm", ".include \"macro.s\"\nemit (generated)\nj generated\n")
@@ -2300,6 +2302,8 @@ class MarsBuildPlatformTest {
         return AnActionEvent.createEvent(action, context, null, ActionPlaces.MAIN_MENU, ActionUiKind.NONE, null)
     }
 
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     private fun edit(file: VirtualFile, text: String) {
         val document = FileDocumentManager.getInstance().getDocument(file)!!
         WriteCommandAction.runWriteCommandAction(project) { document.setText(text) }

@@ -542,6 +542,8 @@ class CapturedAssemblySourcesPlatformTest {
         assertEquals(capture.snapshot.texts().keys, capture.revisions.keys)
     }
 
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     private fun edit(file: VirtualFile, text: String) {
         val document = FileDocumentManager.getInstance().getDocument(file)!!
         WriteCommandAction.runWriteCommandAction(project.get()) { document.setText(text) }

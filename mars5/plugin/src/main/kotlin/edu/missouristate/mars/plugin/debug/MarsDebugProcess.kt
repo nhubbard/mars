@@ -159,11 +159,15 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
             val view = MarsMemoryView(session, entryPath)
             val content = ui.createContent("MarsMipsMemory", view.component, runMessages.getMessage("debug.memory"), null, view.addressField)
             content.isCloseable = false
+            // Kotlin exposes this Java accessor as a read-only property.
+            @Suppress("UsePropertyAccessSyntax")
             content.setDisposer(view)
             ui.addContent(content, 2, PlaceInGrid.center, false)
             val disassembly = MarsDisassemblyView(session, entry, ::sourcePosition)
             val listing = ui.createContent("MarsMipsDisassembly", disassembly.component, runMessages.getMessage("debug.disassembly"), null, disassembly.focus)
             listing.isCloseable = false
+            // Kotlin exposes this Java accessor as a read-only property.
+            @Suppress("UsePropertyAccessSyntax")
             listing.setDisposer(disassembly)
             ui.addContent(listing, 3, PlaceInGrid.center, false)
             val symbols = MarsSymbolsView(session.project, loadedSymbols)
@@ -181,6 +185,8 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
             }
             val labels = ui.createContent("MarsMipsSymbols", symbols.component, runMessages.getMessage("debug.symbols"), null, symbols.focus)
             labels.isCloseable = false
+            // Kotlin exposes this Java accessor as a read-only property.
+            @Suppress("UsePropertyAccessSyntax")
             labels.setDisposer(symbols)
             ui.addContent(labels, 4, PlaceInGrid.center, false)
             val refreshVariables = {

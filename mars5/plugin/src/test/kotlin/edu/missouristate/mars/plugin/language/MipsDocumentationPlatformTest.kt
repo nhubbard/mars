@@ -115,6 +115,8 @@ class MipsDocumentationPlatformTest {
     }
 
     @Test
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     fun `macro completion documents visible overloads and follows edits to their scope`() = timeoutRunBlocking {
         val current = project.get()
         val includeText = ".macro emit (%one) # First <value>\n.end_macro\n"
@@ -398,6 +400,8 @@ class MipsDocumentationPlatformTest {
     }
 
     @Test
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     fun `direct documentation follows an overload redefined in a plain include`() = timeoutRunBlocking {
         val source = ".macro emit (%written)\n.end_macro\n.include \"signature.txt\"\nemit(7)\nnop\n"
         val included = "# plain text\n.macro emit (%actual) # <from include>\n.end_macro\n"

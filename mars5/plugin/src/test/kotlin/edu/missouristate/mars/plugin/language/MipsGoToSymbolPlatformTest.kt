@@ -105,6 +105,8 @@ class MipsGoToSymbolPlatformTest {
     }
 
     @Test
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     fun `search resolves expanded labels in included files and removes rewritten declarations`() = timeoutRunBlocking {
         val source = "OPEN: .ascii \"ignored\"\n.text\nORIGINAL: nop\nPREFIX nop\n"
         val (body, entry) = withContext(Dispatchers.EDT) {
@@ -172,6 +174,8 @@ class MipsGoToSymbolPlatformTest {
     }
 
     @Test
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     fun `search finds expanded macros and equivalences at their written origins`() = timeoutRunBlocking {
         val source = """
             .macro WRITTEN
@@ -316,6 +320,8 @@ class MipsGoToSymbolPlatformTest {
     }
 
     @Test
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     fun `search discovers scoped declarations in plain includes across assembly roots`() = timeoutRunBlocking {
         val current = project.get()
         val source = """
@@ -448,6 +454,8 @@ class MipsGoToSymbolPlatformTest {
     }
 
     @Test
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     fun `search uses edited identifiers and removes deleted files`() = timeoutRunBlocking {
         val file = withContext(Dispatchers.EDT) { fixture.addFileToProject("changing.asm", "before: nop\n") }
         IndexingTestUtil.suspendUntilIndexesAreReady(project.get())

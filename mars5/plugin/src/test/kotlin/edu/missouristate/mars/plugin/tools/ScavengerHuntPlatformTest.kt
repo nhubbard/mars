@@ -86,6 +86,8 @@ class ScavengerHuntPlatformTest {
     }
 
     @Test
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     fun `tool window shows live scores and prevents conflicting attachments`() = timeoutRunBlocking(20.seconds) {
         val project = projectFixture.get()
         val hunt = withContext(Dispatchers.EDT) { ScavengerHuntView(project) }

@@ -178,6 +178,8 @@ class MipsIncludeProviderPlatformTest {
     }
 
     @Test
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     fun `native resolution and reverse index find newly created targets and follow unsaved edits`() = timeoutRunBlocking {
         val source = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("main.asm", ".include \"missing.asm\"\n")

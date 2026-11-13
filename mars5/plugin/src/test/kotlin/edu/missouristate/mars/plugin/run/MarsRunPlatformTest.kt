@@ -123,6 +123,8 @@ class MarsRunPlatformTest {
 
     @ParameterizedTest
     @CsvSource("false, fault-body.s", "true, fault-body.s", "false, fault-body.png", "true, fault-body.inc~")
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     fun `runtime errors link to the loaded instruction and each macro caller in Run and Debug`(
         debug: Boolean, faultName: String,
     ) = timeoutRunBlocking {
@@ -238,6 +240,8 @@ class MarsRunPlatformTest {
 
     @ParameterizedTest
     @ValueSource(booleans = [false, true])
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     fun `Reset restarts the captured image and Rerun assembles current sources and options`(debug: Boolean) = timeoutRunBlocking {
         val manager = ExecutionManager.getInstance(project) as ExecutionManagerImpl
         val previous = manager.forceCompilationInTests
@@ -405,6 +409,8 @@ class MarsRunPlatformTest {
                 project.getService(MarsRunService::class.java)
                 project.messageBus.syncPublisher(ExecutionManager.EXECUTION_TOPIC).processNotStarted(executor.id, environment)
                 project.messageBus.connect(disposable).subscribe(ExecutionManager.EXECUTION_TOPIC, object : ExecutionListener {
+                    // Kotlin exposes the reported Java setters as read-only properties.
+                    @Suppress("UsePropertyAccessSyntax")
                     override fun processStarting(executorId: String, env: ExecutionEnvironment) {
                         if (env !== environment) return
                         val document = requireNotNull(FileDocumentManager.getInstance().getDocument(file))
@@ -473,6 +479,8 @@ class MarsRunPlatformTest {
     }
 
     @Test
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     fun `native Run uses the unsaved include and preserves exit status`() = timeoutRunBlocking {
         val disposable = Disposer.newDisposable()
         val recording = Recording()
@@ -1008,6 +1016,8 @@ class MarsRunPlatformTest {
     }
 
     @Test
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     fun `native Run uses the stored project entry and assembles unsaved sources in order`() = timeoutRunBlocking {
         val disposable = Disposer.newDisposable()
         val recording = Recording()
@@ -1083,6 +1093,8 @@ class MarsRunPlatformTest {
     }
 
     @Test
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     fun `native Run links an unsaved sibling when directory mode is enabled`() = timeoutRunBlocking {
         val disposable = Disposer.newDisposable()
         val recording = Recording()

@@ -55,6 +55,8 @@ internal class MarsToolsWindowFactory : ToolWindowFactory, DumbAware {
         fun <T : Disposable> addView(name: String, component: (T) -> JComponent, create: () -> T) {
             addTab(name) { content ->
                 val view = create()
+                // Kotlin exposes this Java accessor as a read-only property.
+                @Suppress("UsePropertyAccessSyntax")
                 content.setDisposer(view)
                 content.component = component(view)
             }
@@ -87,8 +89,12 @@ internal class MarsToolsWindowFactory : ToolWindowFactory, DumbAware {
         addView("digitalLab.name", DigitalLabView::component) { DigitalLabView(project) }
         addTab("keyboardDisplay.name") { content ->
             val view = KeyboardDisplayView(project)
+            // Kotlin exposes this Java accessor as a read-only property.
+            @Suppress("UsePropertyAccessSyntax")
             content.setDisposer(view)
             content.component = view.component
+            // Kotlin exposes this Java accessor as a read-only property.
+            @Suppress("UsePropertyAccessSyntax")
             content.setPreferredFocusableComponent(view.inputComponent)
         }
         addView("marsBot.name", MarsBotView::component) { MarsBotView(project) }

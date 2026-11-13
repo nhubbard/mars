@@ -48,6 +48,8 @@ class MipsAddressInlayPlatformTest {
     private val refresh get() = project.service<MipsAssemblyInlayRefresh>()
 
     @Test
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     fun `native inline hints update after unsaved includes and assembly settings change`() = timeoutRunBlocking {
         val source = """
             .data
@@ -128,6 +130,8 @@ class MipsAddressInlayPlatformTest {
     }
 
     @Test
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     fun `native pseudo expansions follow unsaved aliases and outer macro calls`() = timeoutRunBlocking {
         val source = $$"""
             .include "values.txt"
@@ -186,6 +190,8 @@ class MipsAddressInlayPlatformTest {
     }
 
     @Test
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     fun `nested read-only includes show addresses and expansions for the current entry and source`() = timeoutRunBlocking {
         val entryText = ".eqv VALUE 0x12345678\n.text\nnop\n.include \"bridge.png\"\n"
         val bridgeText = ".include \"body.zip\"\n"

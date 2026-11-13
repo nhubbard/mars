@@ -128,6 +128,8 @@ class MipsReferenceIndexPlatformTest {
     }
 
     @Test
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     fun `references survive declaration changes and follow unsaved edits and file deletion`() = timeoutRunBlocking {
         val project = project.get()
         val use = withContext(Dispatchers.EDT) {

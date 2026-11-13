@@ -95,6 +95,8 @@ class MipsStructureViewPlatformTest {
     }
 
     @Test
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     fun `outline shows effective macro names and their local declarations in the including entry`() = timeoutRunBlocking {
         val current = project.get()
         val source = """
@@ -164,6 +166,8 @@ class MipsStructureViewPlatformTest {
     }
 
     @Test
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     fun `outline shows expanded labels in source order and omits labels replaced by directives`() = timeoutRunBlocking {
         val current = project.get()
         val source = """
@@ -271,6 +275,8 @@ class MipsStructureViewPlatformTest {
     }
 
     @Test
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     fun `outline shows generated equivalences and navigates to their written directive`() = timeoutRunBlocking {
         val current = project.get()
         val source = """
@@ -375,6 +381,8 @@ class MipsStructureViewPlatformTest {
     }
 
     @Test
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     fun `outline follows unsaved edits while indexing and releases removed declarations`() = timeoutRunBlocking {
         val current = project.get()
         withContext(Dispatchers.EDT) {

@@ -47,6 +47,8 @@ class MarsToolProviderPlatformTest {
     private val project get() = projectFixture.get()
 
     @Test
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     fun `native content loads on selection and dynamic provider removal disposes it`() = timeoutRunBlocking {
         val loaded = mutableListOf<String>()
         val disposed = mutableListOf<String>()
@@ -125,6 +127,8 @@ class MarsToolProviderPlatformTest {
     }
 
     @Test
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     fun `registered intro example receives instructions from only the selected execution`() = timeoutRunBlocking(45.seconds) {
         val container = JPanel()
         val tool = withContext(Dispatchers.EDT) {
@@ -198,6 +202,8 @@ class MarsToolProviderPlatformTest {
         }
     }
 
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     private fun execution(id: Long, ready: CompletableDeferred<Unit>): Pair<MarsProcessHandler, Content> {
         val file = fixture.addFileToProject("intro-$id.asm", $$"""
             li $v0, 12

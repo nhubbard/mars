@@ -61,6 +61,8 @@ class MarsMemoryExportPlatformTest {
     lateinit var directory: Path
 
     @Test
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     fun `all six formats export unsaved included data as exact bytes`() = timeoutRunBlocking {
         val entry = withContext(Dispatchers.EDT) {
             val include = fixture.addFileToProject("words.s", ".word 0\n").virtualFile

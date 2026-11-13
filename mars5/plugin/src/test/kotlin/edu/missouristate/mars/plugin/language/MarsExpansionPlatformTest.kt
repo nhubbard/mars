@@ -257,6 +257,8 @@ class MarsExpansionPlatformTest {
         }
 
     @Test
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     fun `empty failed stale and ambiguous requests yield distinct results`() = timeoutRunBlocking {
         val current = project.get()
         val (file, text) = withContext(Dispatchers.EDT) {

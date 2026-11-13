@@ -213,6 +213,8 @@ class MipsEquivalenceReferencesPlatformTest {
         }
 
     @Test
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     fun `generated lookups refresh when an include appears or its unsaved PSI changes`() = timeoutRunBlocking {
         val current = project.get()
         val source = $$".eqv DEFINE .eqv\n.include \"late.s\"\nli $t0, CO<caret>UNT\n"
@@ -233,6 +235,8 @@ class MipsEquivalenceReferencesPlatformTest {
     }
 
     @Test
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     fun `included sources follow a unique entry before assembly and respect explicit entry selection`() = timeoutRunBlocking {
         val current = project.get()
         val source = $$"li $t0, VALUE\n"

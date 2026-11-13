@@ -449,6 +449,8 @@ class MipsAssemblyAnnotatorPlatformTest {
     }
 
     @Test
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     fun `ignored includes contribute editor context to nested assembly sources`() = timeoutRunBlocking {
         val (entry, ignored, leaf) = withContext(Dispatchers.EDT) {
             val main = fixture.addFileToProject("entry.s", ".macro outer\n.end_macro\n.include \"bridge.inc~\"\n") as MipsFile
@@ -489,6 +491,8 @@ class MipsAssemblyAnnotatorPlatformTest {
     }
 
     @Test
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     fun `read-only include views follow the name and file type of their original`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             val types = FileTypeManager.getInstance()
@@ -1152,6 +1156,8 @@ class MipsAssemblyAnnotatorPlatformTest {
         }
     }
 
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     private fun edit(file: VirtualFile, text: String) {
         val document = FileDocumentManager.getInstance().getDocument(file)!!
         WriteCommandAction.runWriteCommandAction(project) { document.setText(text) }

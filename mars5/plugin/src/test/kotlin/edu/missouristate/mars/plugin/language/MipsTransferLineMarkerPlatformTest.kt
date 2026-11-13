@@ -76,6 +76,8 @@ class MipsTransferLineMarkerPlatformTest {
     }
 
     @Test
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     fun `unsaved include edits refresh the gutter and stale navigation rechecks the label`() = timeoutRunBlocking {
         val current = project.get()
         val include = withContext(Dispatchers.EDT) {

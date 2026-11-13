@@ -130,6 +130,8 @@ class MipsDeclarationIndexPlatformTest {
     }
 
     @Test
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     fun `native index follows unsaved documents deletion and file type filtering`() = timeoutRunBlocking {
         val file = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("ignored.txt", "ignored: nop\n")

@@ -134,6 +134,8 @@ class MipsMacroInspectionPlatformTest {
     }
 
     @Test
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     fun `a malformed expanded closer reports its written token and leaves the macro open`(@TempDir directory: Path) =
         timeoutRunBlocking {
             val source = $$"""
@@ -219,6 +221,8 @@ class MipsMacroInspectionPlatformTest {
     }
 
     @Test
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     fun `unmatched closers and the unclosed opener point to their written tokens`(@TempDir directory: Path) =
         timeoutRunBlocking {
             val source = $$"""
@@ -302,6 +306,8 @@ class MipsMacroInspectionPlatformTest {
     }
 
     @Test
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     fun `an unmatched closer fix checks other entries sharing the included source`() = timeoutRunBlocking {
         val project = projectFixture.get()
         val includeLine = ".include \"shared-end.inc\"\n"
@@ -518,6 +524,8 @@ class MipsMacroInspectionPlatformTest {
         }
 
     @Test
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     fun `commenting out macro closer text preserves the suffix and closes the macro`(@TempDir directory: Path) =
         timeoutRunBlocking {
             val project = projectFixture.get()
@@ -603,6 +611,8 @@ class MipsMacroInspectionPlatformTest {
     }
 
     @Test
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     fun `an unterminated include takes precedence over macro errors on its line and later lines`() = timeoutRunBlocking {
         val source = """
             .eqv OPEN .macro
@@ -657,6 +667,8 @@ class MipsMacroInspectionPlatformTest {
     }
 
     @Test
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     fun `nested openers report their written tokens without replacing the outer macro`(@TempDir directory: Path) =
         timeoutRunBlocking {
             val source = $$"""
@@ -795,6 +807,8 @@ class MipsMacroInspectionPlatformTest {
     }
 
     @Test
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     fun `expanded openers diagnose missing and invalid names at the original tokens`(@TempDir directory: Path) =
         timeoutRunBlocking {
             val source = $$"""
@@ -868,6 +882,8 @@ class MipsMacroInspectionPlatformTest {
     }
 
     @Test
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     fun `the first rejected formal takes precedence over a later parser error`(@TempDir directory: Path) =
         timeoutRunBlocking {
             val source = """
@@ -939,6 +955,8 @@ class MipsMacroInspectionPlatformTest {
     }
 
     @Test
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     fun `invalid expanded formals point to their written tokens and refresh after edits`() = timeoutRunBlocking {
         val source = $$"""
             .eqv FORMS %kept, 7, 8

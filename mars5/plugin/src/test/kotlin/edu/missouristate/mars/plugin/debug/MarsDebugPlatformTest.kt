@@ -312,6 +312,8 @@ class MarsDebugPlatformTest {
 
     @ParameterizedTest
     @ValueSource(booleans = [false, true])
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     fun `Debug reaches a separate exception handler using unsaved editor text`(beforeLaunch: Boolean) = timeoutRunBlocking {
         val (main, kernel) = withContext(Dispatchers.EDT) {
             val main = fixture.addFileToProject("exception/main.asm", "break\nnop\n").virtualFile
@@ -1490,6 +1492,8 @@ class MarsDebugPlatformTest {
     }
 
     @Test
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     fun `Quick Evaluate follows operands in the loaded macro expansion`() = timeoutRunBlocking {
         val (source, library) = withContext(Dispatchers.EDT) {
             val source = fixture.addFileToProject("expanded.mars", $$"""
@@ -1593,6 +1597,8 @@ class MarsDebugPlatformTest {
     }
 
     @Test
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     fun `Quick Evaluate uses the assembled label binding in the editor source`() = timeoutRunBlocking {
         val (main, sibling, include) = withContext(Dispatchers.EDT) {
             val main = fixture.addFileToProject("bindings/main.mars", $$"""
@@ -2532,7 +2538,7 @@ class MarsDebugPlatformTest {
         withDebug(source) { debug ->
             debug.assertPausedAt(source, 3)
             val disposable = Disposer.newDisposable()
-            var afterDisposal: () -> Unit = {}
+            val afterDisposal: () -> Unit
             try {
                 val (table, field, panel) = withContext(Dispatchers.EDT) {
                     val layout = RunnerLayoutUi.Factory.getInstance(project).create("MarsMemoryTest", "Debug", "MIPS", disposable)
@@ -2987,6 +2993,8 @@ class MarsDebugPlatformTest {
     }
 
     @Test
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     fun `Debug Symbols lists the loaded labels and navigates to their original source`() = timeoutRunBlocking {
         val includedText = """
             .extern externalSlot, 4
@@ -3135,6 +3143,8 @@ class MarsDebugPlatformTest {
     }
 
     @Test
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     fun `Symbols opens live code and exact data addresses without moving the PC`() = timeoutRunBlocking {
         val source = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("symbol-addresses.asm", $$"""
@@ -3497,6 +3507,8 @@ class MarsDebugPlatformTest {
 
     @ParameterizedTest
     @ValueSource(booleans = [true, false])
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     fun `Symbols distinguishes identical names by assembly unit and handles unavailable definitions`(defaultProject: Boolean, @TempDir directory: Path) =
         timeoutRunBlocking {
             val first = Files.writeString(Files.createDirectory(directory.resolve("first")).resolve("same.s"), "nop\n").toRealPath()
@@ -3676,6 +3688,8 @@ class MarsDebugPlatformTest {
     }
 
     @Test
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     fun `Debug shows the assembled include and runs to a cursor in the captured text`() = timeoutRunBlocking {
         val body = $$"nop\naddiu $t0, $zero, 42\nnop\n"
         val (source, include) = withContext(Dispatchers.EDT) {
@@ -4925,6 +4939,8 @@ class MarsDebugPlatformTest {
     }
 
     @Test
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     fun `floating point tool edits only the selected paused register and refreshes the debugger`() = timeoutRunBlocking {
         val file = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("float-tool.asm",

@@ -241,6 +241,8 @@ class MipsParameterInfoPlatformTest {
     }
 
     @Test
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     fun `macro hints follow included redefinitions aliases and edits`() = timeoutRunBlocking {
         val current = project.get()
         withContext(Dispatchers.EDT) {
@@ -279,6 +281,8 @@ class MipsParameterInfoPlatformTest {
     }
 
     @Test
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     fun `direct hints use live signatures from plain includes even when a call is incomplete`() = timeoutRunBlocking {
         val source = """
             .macro emit (%written, %obsolete)
@@ -419,6 +423,8 @@ class MipsParameterInfoPlatformTest {
     }
 
     @Test
+    // Kotlin exposes the reported Java setters as read-only properties.
+    @Suppress("UsePropertyAccessSyntax")
     fun `popup updates reject stale instruction forms after unsaved include edits`() = timeoutRunBlocking {
         val current = project.get()
         withContext(Dispatchers.EDT) {
