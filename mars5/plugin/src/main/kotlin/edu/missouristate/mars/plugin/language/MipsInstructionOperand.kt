@@ -6,6 +6,7 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.tree.TokenSet
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.util.elementType
+import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.assembler.Directives
 import edu.missouristate.mars.assembler.Macro
 import edu.missouristate.mars.assembler.OperandFormat
@@ -51,8 +52,9 @@ internal fun coprocessor0Operand(head: PsiElement): Int? {
     return head.textOffset + tokens[COPROCESSOR0_REGISTER_INDEX].startPos - 1
 }
 
-internal fun enabledInstructionFormats(name: String, allowPseudo: Boolean): List<Instruction> {
-    val formats = InstructionDefaults.get().matchOperator(name).orEmpty()
+internal fun enabledInstructionFormats(name: String, allowPseudo: Boolean, target: MarsTarget = MarsTarget.MARS32): List<Instruction> {
+    val catalog = if (target == MarsTarget.MARS64) InstructionDefaults.editorCatalog() else InstructionDefaults.get()
+    val formats = catalog.matchOperator(name).orEmpty()
     return if (allowPseudo) formats else formats.filterIsInstance<BasicInstruction>()
 }
 
@@ -86,7 +88,7 @@ internal fun matchesMacroCall(tokens: TokenList, end: Int, arities: Set<Int>): B
 private fun matchesInstructionHead(tokens: TokenList, end: Int, options: MarsExecutionOptions): Boolean {
     // A broken written operand should not hide aliases whose own operands already fit.
     val checkedEnd = if ((end until tokens.size()).any { tokens[it].type == TokenTypes.ERROR }) end else tokens.size()
-    return enabledInstructionFormats(tokens[0].value, options.allowPseudoInstructions).any { format ->
+    return enabledInstructionFormats(tokens[0].value, options.allowPseudoInstructions, options.target).any { format ->
         tokens.size() <= format.tokenList.size() &&
             (checkedEnd == 1 || OperandFormat.matchesOperands(tokens, format, 1, checkedEnd, options.bareMachine)) &&
             matchesAddressShape(tokens, format.tokenList, checkedEnd)
@@ -144,14 +146,14 @@ internal class MipsInstructionOperand private constructor(
     }
 
     companion object {
-        fun at(position: PsiElement, sourceFile: MipsFile, allowPseudo: Boolean = true): MipsInstructionOperand? {
+        fun at(position: PsiElement, sourceFile: MipsFile, allowPseudo: Boolean = true, target: MarsTarget = MarsTarget.MARS32): MipsInstructionOperand? {
             val instruction = operationOwner(position) ?: return null
             val prefix = instruction.node.chars.subSequence(0, position.textOffset - instruction.textOffset).toString()
             // Navigation and completion use the operand slot while the instruction is being edited.
             val tokens = sourceFile.project.service<MarsAnalysisService>()
                 .editorInstructionTokens(sourceFile, instruction.operationHead, prefix, allowIncompleteOperand = true) ?: return null
             val index = tokens.size()
-            val formats = enabledInstructionFormats(tokens[0].value, allowPseudo).filter {
+            val formats = enabledInstructionFormats(tokens[0].value, allowPseudo, target).filter {
                 index < it.tokenList.size() && matchesAddressShape(tokens, it.tokenList)
             }
             return MipsInstructionOperand(index, formats, position.textOffset)

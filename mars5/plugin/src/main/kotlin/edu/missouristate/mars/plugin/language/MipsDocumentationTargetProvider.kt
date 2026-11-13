@@ -23,11 +23,13 @@ import com.intellij.psi.SmartPointerManager
 import com.intellij.psi.SmartPsiFileRange
 import com.intellij.psi.tree.TokenSet
 import com.intellij.psi.util.PsiUtilCore
+import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.assembler.Directives
 import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.Instruction
 import edu.missouristate.mars.mips.instructions.InstructionDefaults
+import edu.missouristate.mars.mips.instructions.InstructionSet
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.analysis.MipsSourceEvent
 import edu.missouristate.mars.plugin.analysis.macroArgumentCount
@@ -247,9 +249,12 @@ internal class MipsCatalogEntry(
 }
 
 internal object MipsDocumentationCatalog {
-    private val byName by lazy {
+    private val byName by lazy { catalog(InstructionDefaults.get()) }
+    private val wide by lazy { catalog(InstructionDefaults.editorCatalog()) }
+
+    private fun catalog(instructionsForTarget: InstructionSet) =
         TreeMap<String, MipsCatalogEntry>(String.CASE_INSENSITIVE_ORDER).apply {
-            for ((name, instructions) in InstructionDefaults.get().instructionList.groupBy { it.name }) {
+            for ((name, instructions) in instructionsForTarget.instructionList.groupBy { it.name }) {
                 val forms = instructions.map { it.exampleFormat to it.description }.distinct()
                 val tails = completionTails(instructions.first())
                 val basicTails = instructions.firstOrNull { it is BasicInstruction }?.let(::completionTails)
@@ -263,14 +268,15 @@ internal object MipsDocumentationCatalog {
                 put(name, MipsCatalogEntry(name, tails, tails, listOf(name to description)))
             }
         }
-    }
-
     val entries: Collection<MipsCatalogEntry> get() = byName.values
+
+    fun entries(target: MarsTarget): Collection<MipsCatalogEntry> =
+        if (target == MarsTarget.MARS64) wide.values else entries
 
     private fun completionTails(instruction: Instruction) = MipsCompletionTails(
         instruction.exampleFormat.removePrefix(instruction.name),
         renderInstructionExample(instruction, bareMachine = true).text.removePrefix(instruction.name),
     )
 
-    operator fun get(name: String): MipsCatalogEntry = byName.getValue(name)
+    operator fun get(name: String): MipsCatalogEntry = wide.getValue(name)
 }

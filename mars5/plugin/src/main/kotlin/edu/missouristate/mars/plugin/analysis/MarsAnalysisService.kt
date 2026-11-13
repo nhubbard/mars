@@ -33,6 +33,7 @@ import edu.missouristate.mars.api.AssemblySymbolMap.Kind
 import edu.missouristate.mars.api.AssemblySymbolMap.MacroCall
 import edu.missouristate.mars.api.AssemblySymbolMap.SourceToken
 import edu.missouristate.mars.api.InstructionSourceMap.Location
+import edu.missouristate.mars.mips.instructions.InstructionDefaults
 import edu.missouristate.mars.assembler.DataTypes
 import edu.missouristate.mars.assembler.Directives
 import edu.missouristate.mars.assembler.Macro
@@ -530,7 +531,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         // An alias can expose a comment or quote that swallows the proposed delimiter.
         if (completed[last].originalStartPos != written.length + 1) return false
         if (completed[0].type == TokenTypes.OPERATOR) {
-            return enabledInstructionFormats(completed[0].value, options.allowPseudoInstructions).any { format ->
+            return enabledInstructionFormats(completed[0].value, options.allowPseudoInstructions, options.target).any { format ->
                 completed.size() == format.tokenList.size() &&
                     OperandFormat.matchesOperands(completed, format, 1, completed.size(), options.bareMachine)
             }
@@ -624,7 +625,8 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         val prefix = if (head.elementType != mnemonicType || isGeneratedMnemonicLabel(root, head)) {
             leadingEquivalencePrefix(root, head) ?: return null
         } else {
-            val written = Tokenizer().tokenizeLine(1, source, ErrorList(), false).also { it.processedLine = source }
+            val written = Tokenizer(instructions = InstructionDefaults.editorCatalog())
+                .tokenizeLine(1, source, ErrorList(), false).also { it.processedLine = source }
             val operands = 1 until written.size()
             if (operands.none { written[it].type == TokenTypes.IDENTIFIER } || DumbService.isDumb(project)) return written
             val visible = editorPrefix(root, sourceLineStart(head))

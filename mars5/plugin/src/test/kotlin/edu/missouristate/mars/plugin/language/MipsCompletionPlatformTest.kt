@@ -23,6 +23,7 @@ import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.analysis.LabelCompletionContext
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.build.MarsAssemblySettings
+import edu.missouristate.mars.api.MarsTarget
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -39,6 +40,23 @@ import kotlin.io.path.writeText
 class MipsCompletionPlatformTest {
     private val project = codeInsightProjectFixture()
     private val fixture by codeInsightFixture(project)
+
+    @Test
+    fun `wide mnemonics appear in completion only for MARS64`() = timeoutRunBlocking {
+        IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
+        withContext(Dispatchers.EDT) {
+            val settings = project.get().service<MarsAssemblySettings>()
+            for (target in MarsTarget.entries) {
+                settings.changeTarget(target)
+                fixture.configureByText("wide.s", "dadd<caret>\n")
+                val matches = fixture.completeBasic().orEmpty().map { it.lookupString }
+                assertEquals(target == MarsTarget.MARS64, "daddu" in matches || "daddiu" in matches)
+                fixture.configureByText("wide.s", $$"daddu $t0, <caret>\n")
+                assertEquals(target == MarsTarget.MARS64, fixture.completeBasic().orEmpty().any { it.lookupString == $$"$t1" })
+            }
+            settings.changeTarget(MarsTarget.MARS32)
+        }
+    }
 
     @ParameterizedTest
     @ValueSource(booleans = [true, false])

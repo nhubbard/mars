@@ -3,6 +3,7 @@ package edu.missouristate.mars.plugin.debug
 import com.intellij.xdebugger.XExpression
 import com.intellij.xdebugger.frame.XValueModifier
 import com.intellij.xdebugger.frame.XValueModifier.XModificationCallback
+import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.mips.hardware.AddressErrorException
 import edu.missouristate.mars.mips.hardware.Coprocessor1State.Companion.CONDITION_FLAG_MASK
@@ -27,7 +28,7 @@ internal data class MemoryWordEditRequest(
 
     override suspend fun apply(machine: MarsContext, evaluator: MarsExpressionEvaluator): Result<Boolean> {
         val value = evaluator.evaluateStopped(expression, machine.memory).getOrElse { return Result.failure(it) }
-        val bits = value.wordBits ?: return Result.failure(IllegalArgumentException(runMessages.getMessage("debug.memory.edit.word")))
+        val bits = value.addressBits ?: return Result.failure(IllegalArgumentException(runMessages.getMessage("debug.memory.edit.word")))
         return try {
             Result.success(machine.editMemoryWord(address, bits))
         } catch (error: AddressErrorException) {
@@ -47,7 +48,7 @@ internal data class RegisterEditRequest(
     override suspend fun apply(machine: MarsContext, evaluator: MarsExpressionEvaluator): Result<Boolean> {
         val bits = resolveBits(machine, evaluator).getOrElse { return Result.failure(it) }
         val changed = when (bank) {
-            RegisterBank.CPU -> machine.editIntegerRegister(register, bits.toInt())
+            RegisterBank.CPU -> machine.editIntegerRegister(register, bits)
             RegisterBank.COPROCESSOR_0 -> machine.editCoprocessor0Register(register, bits.toInt())
             RegisterBank.FPU_SINGLE -> machine.editCoprocessor1Register(register, bits.toInt())
             RegisterBank.FPU_DOUBLE -> machine.editCoprocessor1Pair(register, bits)
@@ -59,7 +60,10 @@ internal data class RegisterEditRequest(
     private suspend fun resolveBits(machine: MarsContext, evaluator: MarsExpressionEvaluator): Result<Long> {
         if (bank == RegisterBank.FPU_SINGLE || bank == RegisterBank.FPU_DOUBLE) return floatingBits(machine, evaluator)
         val value = evaluator.evaluateStopped(expression, machine.memory).getOrElse { return Result.failure(it) }
-        val bits = value.wordBits
+        if (bank == RegisterBank.CPU && machine.target == MarsTarget.MARS64) {
+            return value.integerBits?.let { Result.success(it) } ?: invalid("debug.register.edit.doubleword")
+        }
+        val bits = value.addressBits
         return when {
             bits == null -> invalid("debug.register.edit.word")
             bank == RegisterBank.FPU_FLAGS && bits !in 0..CONDITION_FLAG_MASK -> invalid("debug.register.edit.flags")

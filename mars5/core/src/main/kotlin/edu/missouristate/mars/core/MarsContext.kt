@@ -113,14 +113,18 @@ class MarsContext @Inject constructor(
     }
 
     /** Changes a writable CPU register and establishes a new undo baseline. */
-    fun editIntegerRegister(number: Int, bits: Int): Boolean {
+    fun editIntegerRegister(number: Int, bits: Int): Boolean = editIntegerRegister(number, bits.toLong())
+
+    /** Changes a writable CPU register, including its upper bits on MARS64. */
+    fun editIntegerRegister(number: Int, bits: Long): Boolean {
         require(number >= 1 &&
             (number <= 31 || number == IntegerRegisterFile.HI_REGISTER || number == IntegerRegisterFile.LO_REGISTER)
         ) { "Register is not editable: $number" }
         claimStoppedSession().use {
-            if (registerFile.getValueNoNotify(number) == bits) return false
+            require(target == MarsTarget.MARS64 || bits == bits.toInt().toLong()) { "Register value does not fit MARS32" }
+            if (registerFile.getLongValueNoNotify(number) == bits) return false
             backStepper.clear()
-            registerFile.updateRegister(number, bits)
+            registerFile.updateLongRegister(number, bits)
             return true
         }
     }

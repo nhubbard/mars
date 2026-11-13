@@ -34,7 +34,7 @@ class MipsCompletionContributor : CompletionContributor(), DumbAware {
                 val prefix = prefix(parameters)
                 val lookup = result.withPrefixMatcher(prefix)
                 val options = file.project.service<MarsAssemblySettings>().executionOptions
-                val items = MipsDocumentationCatalog.entries.mapNotNull { entry ->
+                val items = MipsDocumentationCatalog.entries(options.target).mapNotNull { entry ->
                     val tail = entry.completionTail(options.allowPseudoInstructions, options.bareMachine)
                     tail?.let { LookupElementBuilder.create(entry, entry.name).withTailText(it, true) }
                 }
@@ -74,7 +74,7 @@ class MipsCompletionContributor : CompletionContributor(), DumbAware {
                 val options = root.project.service<MarsAssemblySettings>().executionOptions
                 val atHead = statementHead.accepts(position)
                 val operand = if (!atHead) {
-                    MipsInstructionOperand.at(position, root, options.allowPseudoInstructions)
+                    MipsInstructionOperand.at(position, root, options.allowPseudoInstructions, options.target)
                 } else null
                 val analysis = root.project.service<MarsAnalysisService>()
                 val prefix = prefix(parameters)

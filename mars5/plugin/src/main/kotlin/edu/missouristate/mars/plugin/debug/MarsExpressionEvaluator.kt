@@ -42,6 +42,7 @@ import edu.missouristate.mars.plugin.language.operationOnLine
 import edu.missouristate.mars.plugin.language.syntax.DebuggerExpressionParsing
 import edu.missouristate.mars.plugin.run.runMessages
 import edu.missouristate.mars.util.Binary
+import edu.missouristate.mars.api.MarsTarget
 import kotlinx.coroutines.channels.SendChannel
 
 /** An evaluator captures scalar values and delegates memory reads to the owner of its suspension. */
@@ -53,12 +54,13 @@ internal class MarsExpressionEvaluator(
     private val loadedSymbols: LoadedSymbols,
     private val watchRequests: SendChannel<WatchMemoryRequest>,
 ) : XDebuggerEvaluator() {
+    private val wide = machine.target == MarsTarget.MARS64
     private val expandedOperands = machine.memory.sourceStatement(machine.registerFile.programCounterRegister.valueNoNotify)
         ?.sourceOperands.orEmpty()
     private val registers = buildMap<String, Scalar> {
         val cpu = machine.registerFile
         for (register in cpu.registers) {
-            put(register.name, Word(register.valueNoNotify))
+            put(register.name, if (wide) Doubleword(cpu.getLongValueNoNotify(register.number)) else Word(register.valueNoNotify))
         }
         put("pc", Word(cpu.programCounterRegister.valueNoNotify))
         put("hi", Word(cpu.getValueNoNotify(HI_REGISTER)))
@@ -200,7 +202,9 @@ internal class MarsExpressionEvaluator(
             // The expression lexer already determined the numeric boundary, including hexadecimal exponents.
             val value = node.text
             val type = TokenTypes.matchTokenType(value)
+            val bits = if (wide) runCatching { Binary.stringToLong(value) }.getOrNull() else null
             when {
+                bits != null -> Immediate(Doubleword(bits))
                 TokenTypes.isIntegerTokenType(type) -> Immediate(Word(Binary.stringToInt(value)))
                 TokenTypes.isFloatingTokenType(type) -> Immediate(Real(value.toDouble()))
                 else -> null
@@ -214,7 +218,13 @@ internal class MarsExpressionEvaluator(
             when {
                 value == null -> signedWord(operator, operand)
                 operator.elementType == minusType -> value.map(Scalar::negated)
-                operator.elementType == bitNotType -> value.map { (it as? Word)?.let { word -> Word(word.bits.inv()) } }
+                operator.elementType == bitNotType -> value.map {
+                    when (it) {
+                        is Word -> Word(it.bits.inv())
+                        is Doubleword -> Doubleword(it.bits.inv())
+                        is Real -> null
+                    }
+                }
                 else -> value
             }
         }
@@ -252,8 +262,8 @@ internal class MarsExpressionEvaluator(
         val value = evaluateNode(address) ?: return null
         return ReadMemory { memory ->
             val resolved = value.resolve(memory).getOrElse { return@ReadMemory Result.failure(it) }
-            val location = resolved as? Word ?: return@ReadMemory invalidMemory()
-            width.inspect(memory, location.bits)?.let { Result.success(Word(it)) } ?: invalidMemory()
+            val location = resolved.addressBits ?: return@ReadMemory invalidMemory()
+            width.inspect(memory, location)?.let { Result.success(Word(it)) } ?: invalidMemory()
         }
     }
 
@@ -285,19 +295,39 @@ internal class MarsExpressionEvaluator(
 
     sealed interface Scalar {
         val number: Double
-        val wordBits: Int? get() = (this as? Word)?.bits
+        val integerBits: Long? get() = when (this) {
+            is Word -> bits.toLong()
+            is Doubleword -> bits
+            is Real -> null
+        }
+        val addressBits: Int? get() = integerBits?.let { bits ->
+            bits.toInt().takeIf { bits == it.toLong() || bits == it.toUInt().toLong() }
+        }
         val singleBits: Int get() = (this as? Real)?.bits ?: number.toFloat().toRawBits()
         fun negated(): Scalar
         fun display(): String
 
-        operator fun plus(other: Scalar): Scalar =
-            if (this is Word && other is Word) Word(bits + other.bits) else Real(number + other.number)
+        operator fun plus(other: Scalar): Scalar {
+            val left = integerBits
+            val right = other.integerBits
+            return when {
+                this is Word && other is Word -> Word(bits + other.bits)
+                left != null && right != null -> Doubleword(left + right)
+                else -> Real(number + other.number)
+            }
+        }
     }
 
     private data class Word(val bits: Int) : Scalar {
         override val number: Double get() = bits.toDouble()
         override fun negated() = Word(-bits)
         override fun display() = Binary.intToHexString(bits)
+    }
+
+    private data class Doubleword(val bits: Long) : Scalar {
+        override val number: Double get() = bits.toDouble()
+        override fun negated() = Doubleword(-bits)
+        override fun display() = Binary.longToHexString(bits)
     }
 
     private data class Real(override val number: Double, val bits: Int? = null) : Scalar {
@@ -333,24 +363,36 @@ internal class MarsExpressionEvaluator(
         val binaryOperations = mapOf(
             "+" to { a, b -> a + b },
             "-" to { a, b -> a + b.negated() },
-            "==" to { a, b -> truth(a.number == b.number) },
-            "!=" to { a, b -> truth(a.number != b.number) },
-            "<" to { a, b -> truth(a.number < b.number) },
-            "<=" to { a, b -> truth(a.number <= b.number) },
-            ">" to { a, b -> truth(a.number > b.number) },
-            ">=" to { a, b -> truth(a.number >= b.number) },
-            "|" to wordOperation(Int::or),
-            "^" to wordOperation(Int::xor),
-            "&" to wordOperation(Int::and),
-            "<<" to wordOperation(Int::shl),
-            ">>" to wordOperation(Int::shr),
-            ">>>" to wordOperation(Int::ushr),
+            "==" to comparison({ a, b -> a == b }, { a, b -> a == b }),
+            "!=" to comparison({ a, b -> a != b }, { a, b -> a != b }),
+            "<" to comparison({ a, b -> a < b }, { a, b -> a < b }),
+            "<=" to comparison({ a, b -> a <= b }, { a, b -> a <= b }),
+            ">" to comparison({ a, b -> a > b }, { a, b -> a > b }),
+            ">=" to comparison({ a, b -> a >= b }, { a, b -> a >= b }),
+            "|" to integerOperation(Int::or, Long::or),
+            "^" to integerOperation(Int::xor, Long::xor),
+            "&" to integerOperation(Int::and, Long::and),
+            "<<" to integerOperation(Int::shl) { a, b -> a shl b.toInt() },
+            ">>" to integerOperation(Int::shr) { a, b -> a shr b.toInt() },
+            ">>>" to integerOperation(Int::ushr) { a, b -> a ushr b.toInt() },
         )
 
         private fun tokenSet(vararg names: String) = TokenSet.create(*names.map(MipsTypes::psi).toTypedArray())
 
-        private fun wordOperation(operation: (Int, Int) -> Int): (Scalar, Scalar) -> Scalar? = { a, b ->
-            if (a is Word && b is Word) Word(operation(a.bits, b.bits)) else null
+        private fun integerOperation(word: (Int, Int) -> Int, doubleword: (Long, Long) -> Long): (Scalar, Scalar) -> Scalar? = { a, b ->
+            val left = a.integerBits
+            val right = b.integerBits
+            when {
+                a is Word && b is Word -> Word(word(a.bits, b.bits))
+                left != null && right != null -> Doubleword(doubleword(left, right))
+                else -> null
+            }
+        }
+
+        private fun comparison(integer: (Long, Long) -> Boolean, real: (Double, Double) -> Boolean): (Scalar, Scalar) -> Scalar = { a, b ->
+            val left = a.integerBits
+            val right = b.integerBits
+            truth(if (left != null && right != null) integer(left, right) else real(a.number, b.number))
         }
 
         private fun expressionValue(value: Scalar?): Result<Scalar> =

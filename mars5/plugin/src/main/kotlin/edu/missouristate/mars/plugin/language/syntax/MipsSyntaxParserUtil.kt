@@ -50,7 +50,7 @@ private val unfinishedIncludeRecoveryHeads = setOf(MACRO, END_MACRO, BAD_CHARACT
 private val syntaxMessages = DynamicBundle(MipsScanner::class.java, "messages.MarsBundle")
 private const val detachedSignMessage = "syntax.operand.detached.sign"
 private val labelOffsetMnemonics by lazy {
-    InstructionDefaults.get().instructionList.asSequence()
+    InstructionDefaults.editorCatalog().instructionList.asSequence()
         .filter { it.tokenList.size() > 3 && it.tokenList[3].type == TokenTypes.PLUS }
         .mapTo(TreeSet(String.CASE_INSENSITIVE_ORDER)) { it.name }
 }

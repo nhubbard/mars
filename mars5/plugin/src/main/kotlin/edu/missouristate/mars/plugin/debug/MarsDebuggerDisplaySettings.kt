@@ -12,6 +12,7 @@ import com.intellij.openapi.project.DumbAwareToggleAction
 import com.intellij.util.messages.Topic
 import com.intellij.util.ui.UIUtil
 import edu.missouristate.mars.plugin.run.runMessages
+import edu.missouristate.mars.util.Binary
 import edu.missouristate.mars.util.NumberDisplayBase.formatNumber
 import edu.missouristate.mars.util.NumberDisplayBase.formatUnsignedInteger
 import edu.missouristate.mars.util.NumberDisplayBase.getBase
@@ -36,6 +37,7 @@ internal class MarsDebuggerDisplaySettings :
 
     fun formatAddress(address: Int) = formatUnsignedInteger(address, getBase(hexAddresses))
     fun formatValue(bits: Int) = formatNumber(bits, getBase(hexValues))
+    fun formatWideValue(bits: Long) = if (hexValues) Binary.longToHexString(bits) else bits.toString()
     fun formatUnsignedValue(bits: Int) = formatUnsignedInteger(bits, getBase(hexValues))
 
     fun setHexAddresses(selected: Boolean) {

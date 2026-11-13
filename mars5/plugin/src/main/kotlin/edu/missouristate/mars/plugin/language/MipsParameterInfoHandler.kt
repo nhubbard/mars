@@ -71,7 +71,7 @@ internal class MipsParameterInfoHandler : ParameterInfoHandler<PsiElement, MipsP
         val last = tokens[count - 1]
         val next = count == 1 || last.endPos - 1 < tokens.processedLine.length ||
             last.type in operandPrefixes || atHeadEnd
-        val rows = enabledInstructionFormats(tokens[0].value, options.allowPseudoInstructions)
+        val rows = enabledInstructionFormats(tokens[0].value, options.allowPseudoInstructions, options.target)
             .map { renderInstructionExample(it, options.bareMachine) }.distinct()
         return Hint(rows, if (next) count - 1 else count - 2).takeIf { rows.isNotEmpty() }
     }

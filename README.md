@@ -68,6 +68,14 @@ trace an assembly-only invocation. Use `me` to keep trace output separate from p
 For embedding, use `MarsComponent.assembler()`, `simulator()`, `memory()`, and `registerFile()`;
 close the owning `MarsContext` when finished. The core has no desktop or IntelliJ dependency.
 
+## Architecture target
+
+MARS32 is the default. Select **MARS64** under **Settings → Build, Execution, Deployment →
+MARS Assembly**, or pass `--target MARS64` to the CLI, to enable educational doubleword
+instructions. The debugger can inspect, edit, and reverse changes to the full integer registers.
+Word instructions still use their MARS32 operands and write sign-extended word results. Memory
+uses the existing MARS address layouts, with aligned `ld` and `sd` for doubleword data.
+
 ## UTF-8 assembly and console text
 
 Use `.utf8 "こんにちは"` to emit UTF-8 bytes, or `.utf8z "こんにちは"` to add a zero byte

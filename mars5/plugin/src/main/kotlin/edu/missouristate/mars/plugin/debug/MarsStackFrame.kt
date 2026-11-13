@@ -13,6 +13,7 @@ import com.intellij.xdebugger.frame.XValueNode
 import com.intellij.xdebugger.frame.XValuePlace
 import com.intellij.xdebugger.frame.presentation.XValuePresentation
 import edu.missouristate.mars.api.AssemblySymbolMap.Definition
+import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.mips.hardware.Coprocessor1State.Companion.CONDITION_FLAG_MASK
 import edu.missouristate.mars.mips.hardware.IntegerRegisterFile.Companion.HI_REGISTER
@@ -56,15 +57,23 @@ internal class MarsStackFrame(
 
     private fun registerGroups(machine: MarsContext) = XValueChildrenList().apply {
         val cpu = machine.registerFile
+        val wide = machine.target == MarsTarget.MARS64
         val writes = machine.backStepper.previousRegisterWrites()
         fun written(bank: RegisterWriteBank, number: Int) = RegisterWrite(bank, number) in writes
         addTopGroup(RegisterGroup("debug.registers.cpu", XValueChildrenList().apply {
             val pc = cpu.programCounterRegister.valueNoNotify
             add(RegisterValue(cpu.programCounterRegister.name) { display.formatUnsignedValue(pc) })
             cpu.registers.forEach {
-                val bits = it.valueNoNotify
-                add(if (it.number == 0) RegisterValue(it.name) { display.formatValue(bits) }
-                else editableWord(CPU, it.name, bits, it.number, written(RegisterWriteBank.CPU, it.number)))
+                if (wide) {
+                    val bits = cpu.getLongValueNoNotify(it.number)
+                    val format = { display.formatWideValue(bits) }
+                    add(if (it.number == 0) RegisterValue(it.name, format = format)
+                    else editableValue(CPU, it.number, it.name, written(RegisterWriteBank.CPU, it.number), format, format))
+                } else {
+                    val bits = it.valueNoNotify
+                    add(if (it.number == 0) RegisterValue(it.name) { display.formatValue(bits) }
+                    else editableWord(CPU, it.name, bits, it.number, written(RegisterWriteBank.CPU, it.number)))
+                }
             }
             add(editableWord(CPU, "hi", cpu.getValueNoNotify(HI_REGISTER), HI_REGISTER, written(RegisterWriteBank.CPU, HI_REGISTER)))
             add(editableWord(CPU, "lo", cpu.getValueNoNotify(LO_REGISTER), LO_REGISTER, written(RegisterWriteBank.CPU, LO_REGISTER)))

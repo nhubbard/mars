@@ -113,6 +113,7 @@ import edu.missouristate.mars.api.AssemblySymbolMap.Definition
 import edu.missouristate.mars.api.AssemblySymbolMap.Kind
 import edu.missouristate.mars.api.InstructionSourceMap.Location
 import edu.missouristate.mars.api.InstructionSourceMap.Origin
+import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.mips.dump.DumpFormat
 import edu.missouristate.mars.mips.dump.DumpFormatLoader
 import edu.missouristate.mars.mips.dump.MemoryDumpSnapshot
@@ -2069,6 +2070,98 @@ class MarsDebugPlatformTest {
         node.childCount
         pollAssertionsAsync(3.seconds, 10.milliseconds) { assertEquals(expected, node.loadedChildren.size) }
         return node.loadedChildren
+    }
+
+    @Test
+    fun `MARS64 Variables show the full register and reverse a narrow write`() = timeoutRunBlocking {
+        val settings = project.service<MarsAssemblySettings>()
+        val display = service<MarsDebuggerDisplaySettings>()
+        val originalDisplay = display.getState().copy()
+        try {
+            val source = withContext(Dispatchers.EDT) {
+                assertEquals(MarsTarget.MARS32, settings.target)
+                settings.changeTarget(MarsTarget.MARS64)
+                settings.changeTarget(MarsTarget.MARS64)
+                display.setHexValues(true)
+                fixture.addFileToProject("wide.mars", $$"""
+                    .text
+                    daddiu $t0, $zero, 1
+                    dsll32 $t0, $t0, 0
+                    addiu $t0, $t0, 7
+                    nop
+                """.trimIndent()).virtualFile.also { addBreakpoint(it, 3) }
+            }
+            withDebug(source) { debug ->
+                suspend fun registerValue() = withContext(Dispatchers.EDT) {
+                    inspectRegisterNodes(debug.session, requireNotNull(debug.session.currentStackFrame)) { nodes ->
+                        requireNotNull(nodes.single { it.name == "\$t0" }.rawValue)
+                    }
+                }
+                debug.assertPausedAt(source, 3)
+                assertEquals("0x0000000100000000", registerValue())
+                withContext(Dispatchers.EDT) {
+                    val frame = requireNotNull(debug.session.currentStackFrame)
+                    for ((expression, expected) in listOf(
+                        "\$t0" to "0x0000000100000000",
+                        "\$t0 + 1" to "0x0000000100000001",
+                        "~\$t0" to "0xfffffffeffffffff",
+                        "\$t0 | 1" to "0x0000000100000001",
+                        "\$t0 ^ 1" to "0x0000000100000001",
+                        "\$t0 & 1" to "0x0000000000000000",
+                        "-\$t0" to "0xffffffff00000000",
+                        "1 << 32" to "0x0000000100000000",
+                        "\$t0 >> 32" to "0x0000000000000001",
+                        "-1 >>> 63" to "0x0000000000000001",
+                        "0x20000000000000 == 0x20000000000001" to "0x00000000",
+                        "0x20000000000000 == 0x20000000000000" to "0x00000001",
+                        "1 != 2" to "0x00000001",
+                        "1 != 1" to "0x00000000",
+                        "1 < 2" to "0x00000001",
+                        "2 < 1" to "0x00000000",
+                        "1 <= 2" to "0x00000001",
+                        "2 <= 1" to "0x00000000",
+                        "2 > 1" to "0x00000001",
+                        "1 > 2" to "0x00000000",
+                        "2 >= 1" to "0x00000001",
+                        "1 >= 2" to "0x00000000",
+                        "1.5 != 1" to "0x00000001",
+                        "1.5 < 2" to "0x00000001",
+                        "2.5 <= 2" to "0x00000000",
+                        "1 + 0.5" to "1.5",
+                        "word(\$t0)" to "The memory address is invalid, unaligned, or unavailable.",
+                        "word(0x10010000)" to "0x00000000",
+                        "word(0x80400000)" to "The memory address is invalid, unaligned, or unavailable.",
+                        "word(0xffffffff80400000)" to "The memory address is invalid, unaligned, or unavailable.",
+                    )) assertEquals(expected, evaluate(debug.session, frame, expression), expression)
+                }
+                withContext(Dispatchers.EDT) { debug.session.stepInto() }
+                debug.assertPausedAt(source, 4)
+                assertEquals("0x0000000000000007", registerValue())
+                withContext(Dispatchers.EDT) {
+                    display.setHexValues(false)
+                    val (action, event) = backstepAction(debug.session)
+                    ActionUtil.performAction(action, event)
+                }
+                debug.assertPausedAt(source, 3)
+                assertEquals("4294967296", registerValue())
+                withContext(Dispatchers.EDT) {
+                    val frame = requireNotNull(debug.session.currentStackFrame)
+                    val modifier = inspectRegisterNodes(debug.session, frame) { nodes ->
+                        requireNotNull(nodes.single { it.name == "\$t0" }.valueContainer.modifier)
+                    }
+                    assertEquals("Enter a 64-bit integer value.", editValue(modifier, "1.5"))
+                    assertNull(editValue(modifier, "0x1234567880000000"))
+                }
+                assertEquals("1311768467015204864", registerValue())
+                withContext(Dispatchers.EDT) { debug.session.resume() }
+                assertEquals(0, debug.exit.await())
+            }
+        } finally {
+            withContext(Dispatchers.EDT) {
+                settings.changeTarget(MarsTarget.MARS32)
+                display.loadState(originalDisplay)
+            }
+        }
     }
 
     @Test
