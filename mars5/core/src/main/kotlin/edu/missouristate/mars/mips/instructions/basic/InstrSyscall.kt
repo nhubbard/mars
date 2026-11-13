@@ -14,6 +14,9 @@ open class InstrSyscall : BasicInstruction(
         val number = context.registerFile.getValue(2)
         val service = context.syscalls().findByNumber(number)
             ?: throw ProcessingException(context, statement, "invalid or unimplemented syscall service: $number ", SYSCALL_EXCEPTION)
+        if (!context.environment().allowsSyscall(number)) {
+            throw ProcessingException(context, statement, "syscall $number is disabled by the host", SYSCALL_EXCEPTION)
+        }
         service.simulate(statement, context)
     },
 )

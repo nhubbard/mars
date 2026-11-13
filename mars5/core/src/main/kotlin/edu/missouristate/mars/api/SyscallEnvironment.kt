@@ -2,6 +2,9 @@ package edu.missouristate.mars.api
 
 /** Console, file, process, and device services used by syscalls on the simulator thread. */
 interface SyscallEnvironment {
+    /** Permits hosts to restrict a service before it reads or allocates simulated data. */
+    fun allowsSyscall(number: Int): Boolean = true
+
     fun printString(s: String?)
     fun printInt(value: Int)
     fun printFloat(value: Float)

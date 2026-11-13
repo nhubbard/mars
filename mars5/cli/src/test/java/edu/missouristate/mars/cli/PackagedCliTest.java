@@ -79,6 +79,107 @@ class PackagedCliTest {
   }
 
   @Test
+  void gradingChecksStructureAndIntermediateStateAndIsolatesCases() throws Exception {
+    var script = source("assignment1.kts", """
+        case("double a word", instructionLimit = 8) {
+            requireTextLabel("double")
+            requireDataLabel("cell")
+            setWord("cell", 21)
+            startAt("double")
+            runUntil("combine")
+            expectRegister("t0", 21)
+            step()
+            expectRegister("a0", 42)
+            runToExit()
+            expectOutput("42")
+        }
+        case("UTF-8 fixture", input = "é\\n", utf8Text = true) {
+            startAt("read_input")
+            runToExit(3)
+            expectBytes("buffer", 0xc3, 0xa9, 10, 0)
+        }
+        case("fresh machine") {
+            expectWord("cell", 0)
+            expectRegister("t0", 0)
+        }
+        case("missing structure") {
+            requireTextLabel("missing")
+        }
+        case("instruction budget across slices", instructionLimit = 2) {
+            startAt("loop")
+            step()
+            runToExit()
+        }
+        case("file access") {
+            startAt("file_access")
+            runToExit()
+        }
+        """);
+    var entry = source("grading.s", """
+        .include "storage.inc"
+        .text
+        double: lw $t0, cell
+        combine: addu $a0, $t0, $t0
+        li $v0, 1
+        syscall
+        li $v0, 10
+        syscall
+        loop: j loop
+        file_access: li $v0, 13
+        syscall
+        read_input: la $a0, buffer
+        li $a1, 4
+        li $v0, 8
+        syscall
+        li $a0, 3
+        li $v0, 17
+        syscall
+        """);
+    var include = source("storage.inc", ".data\ncell: .word 0\nbuffer: .space 4\n");
+    var result = launch("grade", script.toString(), entry.toString(), "--include", include.toString());
+    assertEquals(1, result.status(), result.err());
+    assertTrue(result.out().contains("PASS double a word\nPASS UTF-8 fixture\nPASS fresh machine\n"), result.out());
+    assertTrue(result.out().contains("FAIL missing structure: Missing label: missing"), result.out());
+    assertTrue(result.out().contains("FAIL instruction budget across slices: Expected execution to reach NORMAL_EXIT, stopped at INSTRUCTION_LIMIT"), result.out());
+    assertTrue(result.out().contains("syscall 13 is disabled by the host"), result.out());
+
+    var withoutInclude = launch("grade", script.toString(), entry.toString());
+    assertEquals(1, withoutInclude.status(), withoutInclude.err());
+    assertTrue(withoutInclude.out().contains("storage.inc"), withoutInclude.out());
+  }
+
+  @Test
+  void gradingReportsScriptErrorsWithASeparateExitCode() throws Exception {
+    var script = source("assignment2.kts", "case(\"broken\") { missingFunction() }\n");
+    var entry = source("entry.s", "nop\n");
+    var result = launch("grade", script.toString(), entry.toString());
+    assertEquals(2, result.status(), result.err());
+    assertTrue(result.err().contains("missingFunction"), result.err());
+  }
+
+  @Test
+  void gradingBoundsAssemblerExpansionAndProgramOutput() throws Exception {
+    var script = source("assignment3.kts", "case(\"bounded\") { runToExit() }\n");
+    var largeData = source("large.s", ".data\n.byte 1:2000000\n.text\nnop\n");
+    var assemblyLimit = launch("grade", script.toString(), largeData.toString());
+    assertEquals(1, assemblyLimit.status(), assemblyLimit.err());
+    assertTrue(assemblyLimit.out().contains("Submission exceeds the assembly work limit"), assemblyLimit.out());
+
+    var largeOutput = source("output.s", """
+        .data
+        message: .asciiz "abcdefghijklmnopqrstuvwxyz0123456789"
+        .text
+        la $a0, message
+        li $v0, 4
+        loop: syscall
+        j loop
+        """);
+    var outputLimit = launch("grade", script.toString(), largeOutput.toString());
+    assertEquals(1, outputLimit.status(), outputLimit.err());
+    assertTrue(outputLimit.out().contains("Program output exceeds 64 KiB"), outputLimit.out());
+  }
+
+  @Test
   void utf8TextModePrintsUnicodeAndTruncatesInputAtAByteBoundary() throws Exception {
     Path file = source("unicode.mars", """
         .data

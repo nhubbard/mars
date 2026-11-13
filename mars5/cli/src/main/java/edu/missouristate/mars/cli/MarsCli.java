@@ -3,6 +3,7 @@ package edu.missouristate.mars.cli;
 import edu.missouristate.mars.ApplicationInfo;
 import edu.missouristate.mars.ProcessingException;
 import edu.missouristate.mars.api.SessionSyscallEnvironment;
+import edu.missouristate.mars.cli.grading.GradeCommand;
 import edu.missouristate.mars.di.DaggerMarsComponent;
 import edu.missouristate.mars.mips.dump.DumpFormat;
 import edu.missouristate.mars.mips.dump.DumpFormatLoader;
@@ -26,6 +27,9 @@ public final class MarsCli {
   /** Executes one independent invocation without exiting the host process. */
   public static int execute(
       String[] arguments, InputStream input, PrintStream output, PrintStream error) {
+    if (arguments.length > 0 && arguments[0].equals("grade")) {
+      return GradeCommand.execute(Arrays.copyOfRange(arguments, 1, arguments.length), output, error);
+    }
     int assemblyErrorExitCode = 1;
     int simulationErrorExitCode = 1;
     boolean simulating = false;
@@ -235,6 +239,7 @@ public final class MarsCli {
   private static String usage() {
     return """
     Usage: mars [options] source.s [more sources.s] [-- program arguments]
+           mars grade assignment.kts source.s [more sources.s] [--include header.inc]...
       --assemble-only       Assemble without running (a)
       --trace-phases        Show tokenization, assembly, and simulation phases (d, ad, da)
       --project             Assemble sources beside the first file and any additional files (p)
