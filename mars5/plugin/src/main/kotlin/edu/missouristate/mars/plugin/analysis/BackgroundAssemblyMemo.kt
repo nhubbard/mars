@@ -48,6 +48,8 @@ internal class BackgroundAssemblyMemo {
 }
 
 private fun Program.pseudoExpansions(): Map<Path, Map<Int, List<String>>> = buildMap<Path, MutableMap<Int, MutableList<String>>> {
+    // The instruction fields used here are at the end of the record.
+    @Suppress("DestructuringDeclaration")
     for (instruction in pseudoInstructions(ProgressManager::checkCanceled)) {
         ProgressManager.checkCanceled()
         // Macro arguments are concrete at the outermost invocation, not in the macro definition.

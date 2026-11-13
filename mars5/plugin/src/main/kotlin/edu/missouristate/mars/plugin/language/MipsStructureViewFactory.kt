@@ -127,16 +127,20 @@ private class MipsStructureNode(
         val labels = timeline.generatedLabelsIn(file).groupBy { it.macro?.header?.takeIf { header -> header in macros } }
         val externals = timeline.expandedExternalsIn(file).values.groupBy { localMacroHeader(it.offset) }
         val equivalences = timeline.generatedEquivalencesIn(file).values.groupBy { localMacroHeader(it.offset) }
-        fun declarationNodes(header: PsiElement?) = labels[header].orEmpty().map { label ->
-            label.site.textOffset to MipsStructureNode(label.site, label.name, emptyList(), AllIcons.Nodes.Bookmark)
-        } + externals[header].orEmpty().map { external ->
-            external.offset to MipsStructureNode(external.site, external.name, emptyList(), AllIcons.Nodes.Field)
-        } + equivalences[header].orEmpty().map { equivalence ->
-            // The platform identifies outline rows by their PSI value. A single alias can
-            // introduce both a label and a constant, so use its statement node for the constant.
-            val site = equivalence.site
-            val anchor = if (site in timeline.generatedLabelSites) site.parent else site
-            equivalence.offset to MipsStructureNode(anchor, equivalence.name, emptyList(), AllIcons.Nodes.Constant)
+        fun declarationNodes(header: PsiElement?) = buildList {
+            labels[header].orEmpty().mapTo(this) { label ->
+                label.site.textOffset to MipsStructureNode(label.site, label.name, emptyList(), AllIcons.Nodes.Bookmark)
+            }
+            externals[header].orEmpty().mapTo(this) { external ->
+                external.offset to MipsStructureNode(external.site, external.name, emptyList(), AllIcons.Nodes.Field)
+            }
+            equivalences[header].orEmpty().mapTo(this) { equivalence ->
+                // The platform identifies outline rows by their PSI value. A single alias can
+                // introduce both a label and a constant, so use its statement node for the constant.
+                val site = equivalence.site
+                val anchor = if (site in timeline.generatedLabelSites) site.parent else site
+                equivalence.offset to MipsStructureNode(anchor, equivalence.name, emptyList(), AllIcons.Nodes.Constant)
+            }
         }
         fun children(header: PsiElement): List<StructureViewTreeElement> {
             val declarations = groups[header].orEmpty().map { it.textOffset to MipsStructureNode(it, effectiveChildren = emptyList()) }
@@ -149,7 +153,11 @@ private class MipsStructureNode(
             val name = file.findElementAt(macro.nameOffset)!!
             macro.nameOffset to MipsStructureNode(name, macro.name, children(macro.header))
         }
-        return (writtenNodes + expandedNodes + declarationNodes(null)).sortedBy { it.first }.map { it.second }
+        return buildList {
+            addAll(writtenNodes)
+            addAll(expandedNodes)
+            addAll(declarationNodes(null))
+        }.sortedBy { it.first }.map { it.second }
     }
 
     private fun writtenChildren(item: PsiElement): List<MipsDeclaration> {

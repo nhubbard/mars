@@ -42,9 +42,9 @@ class MarsReferencePlatformTest {
         for (entry in MipsDocumentationCatalog.entries) {
             assertEquals(entry.referenceHtml(), topics.getValue(entry.name).html())
         }
-        for (entry in MipsSyscallDocumentation.entries) {
-            val title = "Syscall ${entry.number} · ${entry.name}"
-            assertTrue(topics.getValue(title).matches(listOf(entry.name)))
+        for ((number, name) in MipsSyscallDocumentation.entries) {
+            val title = "Syscall $number · $name"
+            assertTrue(topics.getValue(title).matches(listOf(name)))
         }
         assertEquals(MipsDocumentationCatalog.entries.size + MipsSyscallDocumentation.entries.size + 12, topics.size)
     }

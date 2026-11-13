@@ -46,13 +46,13 @@ internal object MarsReferenceCatalog {
             for (entry in MipsDocumentationCatalog.entries) {
                 add(MarsReferenceTopic(entry.name, entry.searchText, entry::referenceHtml))
             }
-            for (entry in MipsSyscallDocumentation.entries) {
-                val title = referenceMessages.getMessage("reference.syscall.title", entry.number, entry.name)
-                add(MarsReferenceTopic(title, "${entry.arguments} ${entry.result}") {
-                    val arguments = escapeXmlEntities(referenceMessages.getMessage("documentation.syscalls.arguments"))
-                    val result = escapeXmlEntities(referenceMessages.getMessage("documentation.syscalls.result"))
-                    "<p><b>$arguments</b> ${escapeXmlEntities(entry.arguments)}</p>" +
-                        "<p><b>$result</b> ${escapeXmlEntities(entry.result)}</p>"
+            for ((number, name, arguments, result) in MipsSyscallDocumentation.entries) {
+                val title = referenceMessages.getMessage("reference.syscall.title", number, name)
+                add(MarsReferenceTopic(title, "$arguments $result") {
+                    val argumentsLabel = escapeXmlEntities(referenceMessages.getMessage("documentation.syscalls.arguments"))
+                    val resultLabel = escapeXmlEntities(referenceMessages.getMessage("documentation.syscalls.result"))
+                    "<p><b>$argumentsLabel</b> ${escapeXmlEntities(arguments)}</p>" +
+                        "<p><b>$resultLabel</b> ${escapeXmlEntities(result)}</p>"
                 })
             }
         }

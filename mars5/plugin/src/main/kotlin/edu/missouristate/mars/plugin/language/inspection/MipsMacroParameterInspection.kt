@@ -54,10 +54,9 @@ internal class MipsMacroParameterInspection : LocalInspectionTool() {
         if (duplicates.isEmpty()) return
 
         val reported = HashSet<Pair<Int, String>>()
-        for (token in duplicates) {
-            val offset = token.offset
-            if (reported.add(offset to token.value)) {
-                holder.registerProblem(file.findElementAt(offset)!!, messages.getMessage("inspection.macro.duplicate", token.value))
+        for ((name, offset) in duplicates) {
+            if (reported.add(offset to name)) {
+                holder.registerProblem(file.findElementAt(offset)!!, messages.getMessage("inspection.macro.duplicate", name))
             }
         }
     }

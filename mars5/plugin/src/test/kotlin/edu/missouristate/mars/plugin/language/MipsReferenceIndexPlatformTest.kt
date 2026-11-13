@@ -83,9 +83,11 @@ class MipsReferenceIndexPlatformTest {
             val macro = source.indexOf(".macro")
             val operandKinds = listOf(SymbolKind.LABEL, SymbolKind.EXTERNAL, SymbolKind.CONSTANT)
             assertEquals(
-                operandKinds.map { MipsReferenceSite(it, source.indexOf("Shared+"), macro) } +
-                    SymbolKind.entries.map { MipsReferenceSite(it, source.indexOf("Shared,"), -1) } +
-                    operandKinds.map { MipsReferenceSite(it, source.lastIndexOf("Shared"), -1) },
+                buildList {
+                    operandKinds.mapTo(this) { MipsReferenceSite(it, source.indexOf("Shared+"), macro) }
+                    SymbolKind.entries.mapTo(this) { MipsReferenceSite(it, source.indexOf("Shared,"), -1) }
+                    operandKinds.mapTo(this) { MipsReferenceSite(it, source.lastIndexOf("Shared"), -1) }
+                },
                 sites("Shared"),
             )
             assertEquals(
@@ -98,9 +100,11 @@ class MipsReferenceIndexPlatformTest {
                 sites("NOP"),
             )
             assertEquals(
-                SymbolKind.entries.map { MipsReferenceSite(it, source.indexOf(".emit"), -1) } +
-                    MipsReferenceSite(SymbolKind.CONSTANT, source.indexOf(".emit ("), macro) +
-                    SymbolKind.entries.map { MipsReferenceSite(it, source.indexOf(".emit("), -1) },
+                buildList {
+                    SymbolKind.entries.mapTo(this) { MipsReferenceSite(it, source.indexOf(".emit"), -1) }
+                    add(MipsReferenceSite(SymbolKind.CONSTANT, source.indexOf(".emit ("), macro))
+                    SymbolKind.entries.mapTo(this) { MipsReferenceSite(it, source.indexOf(".emit("), -1) }
+                },
                 sites(".emit"),
             )
             assertEquals(listOf(MipsReferenceSite(SymbolKind.CONSTANT, source.indexOf("FORMALS"), macro)), sites("FORMALS"))

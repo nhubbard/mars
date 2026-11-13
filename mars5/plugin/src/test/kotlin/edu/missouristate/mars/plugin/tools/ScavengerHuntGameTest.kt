@@ -145,7 +145,11 @@ class ScavengerHuntGameTest {
         assertSame(painted, rejected.game)
         val wrongOrder = List(TASK_SIZE) { -it }
         assertEquals(Rejection.INVALID_TASK, painted.completeTask(wrongOrder).rejection)
-        val signedSorted = listOf(Int.MIN_VALUE) + List(TASK_SIZE - 2) { -1 } + Int.MAX_VALUE
+        val signedSorted = buildList {
+            add(Int.MIN_VALUE)
+            repeat(TASK_SIZE - 2) { add(-1) }
+            add(Int.MAX_VALUE)
+        }
         val completed = painted.completeTask(signedSorted)
         assertNull(completed.rejection)
         val next = completed.game.round!!

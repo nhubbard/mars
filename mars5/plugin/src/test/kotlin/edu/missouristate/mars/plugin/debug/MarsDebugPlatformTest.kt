@@ -2051,7 +2051,12 @@ class MarsDebugPlatformTest {
             assertTrue(cp0.valueContainer.isRestoreExpansion)
             val floating = children(cp1, 34)
             val pairs = assertInstanceOf(XValueGroupNodeImpl::class.java, floating.last())
-            val nodes = children(cpu, 35) + children(cp0, 4) + floating.dropLast(1) + children(pairs, 16)
+            val nodes = buildList {
+                addAll(children(cpu, 35))
+                addAll(children(cp0, 4))
+                addAll(floating.dropLast(1))
+                addAll(children(pairs, 16))
+            }
             val values = nodes.map { assertInstanceOf(XValueNodeImpl::class.java, it) }
             pollAssertionsAsync(3.seconds, 10.milliseconds) { assertTrue(values.all { it.isComputed }) }
             return inspect(values)

@@ -105,8 +105,8 @@ internal fun xRaySchematicContent(
             for (node in schematic.nodes) {
                 if (node.label.isNotEmpty()) SchematicNodeLabel(node, factor, openUnit)
             }
-            for (port in schematic.ports) {
-                Text(port.label, Modifier.offset((port.x * factor).dp, (port.y * factor).dp),
+            for ((x, y, label) in schematic.ports) {
+                Text(label, Modifier.offset((x * factor).dp, (y * factor).dp),
                     fontSize = (17 * factor).sp, fontWeight = FontWeight.SemiBold)
             }
             frame.instruction?.let { instruction ->

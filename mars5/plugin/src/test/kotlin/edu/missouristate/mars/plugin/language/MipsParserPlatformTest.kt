@@ -1112,7 +1112,11 @@ class MipsParserPlatformTest {
                 }
                 return program.machineList!!.map { it.binaryStatement }
             }
-            fun source(lines: List<String>) = (listOf(".text") + labels.map { "$it:" } + lines).joinToString("\n", postfix = "\n")
+            fun source(lines: List<String>) = buildList {
+                add(".text")
+                labels.mapTo(this) { "$it:" }
+                addAll(lines)
+            }.joinToString("\n", postfix = "\n")
 
             MarsExecutionOptions(allowPseudoInstructions = false).applyForAssembly(context)
             val canonical = assemble("canonical.asm", source(instructions.map { it.exampleFormat }))

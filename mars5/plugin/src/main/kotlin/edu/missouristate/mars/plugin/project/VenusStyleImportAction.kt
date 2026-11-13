@@ -59,6 +59,8 @@ internal abstract class VenusStyleImportAction(
         }
         val scheme = base.clone() as AbstractColorsScheme
         scheme.name = schemeName
+        // Keep the private label component outside this operation.
+        @Suppress("DestructuringDeclaration")
         for (change in changes) scheme.setAttributes(change.key, change.after)
         scheme.setSaveNeeded(true)
         colors.addColorScheme(scheme)

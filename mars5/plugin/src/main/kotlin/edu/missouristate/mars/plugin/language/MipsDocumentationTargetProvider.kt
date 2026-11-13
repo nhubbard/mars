@@ -142,10 +142,10 @@ internal class MipsDocumentationTargetProvider : DocumentationTargetProvider, Lo
             }
 
         override fun computeDocumentation(): DocumentationResult = DocumentationResult.documentation(buildString {
-            for (definition in definitions) {
-                val source = definition.header.containingFile.originalFile
-                val signature = definition.parameters.joinToString(prefix = "${definition.name}(", postfix = ")") { it.value }
-                appendMacroDocumentation(source, definition.nameOffset, signature)
+            for ((header, name, offset, _, parameters) in definitions) {
+                val source = header.containingFile.originalFile
+                val signature = parameters.joinToString(prefix = "$name(", postfix = ")") { it.value }
+                appendMacroDocumentation(source, offset, signature)
             }
         })
     }

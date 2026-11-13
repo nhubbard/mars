@@ -48,13 +48,15 @@ internal val xRaySchematics = mapOf(
         IntOffset(330, 400), IntOffset(330, 467), IntOffset(350, 359), IntOffset(498, 77),
         IntOffset(498, 121), IntOffset(528, 380), IntOffset(537, 401), IntOffset(601, 121), IntOffset(694, 364),
     )),
-    REGISTERS to XRaySchematic(IntSize(800, 480), listOf(
-        XRayNode(111, 92, 123, 153, "Write\ndecoder"),
-        XRayNode(666, 94, 72, 174, "Read\nMUX", XRayShape.OVAL),
-        XRayNode(666, 291, 72, 175, "Read\nMUX", XRayShape.OVAL),
-    ) + (listOf("Register 1", "Register 2", "…", "Register 31", "Register 32").mapIndexed { index, label ->
-        XRayNode(377, 105 + index * 30, 143, 30, label)
-    }) + List(5) { index -> XRayNode(314, 99 + index * 31, 25, 24, "", XRayShape.AND) }, listOf(
+    REGISTERS to XRaySchematic(IntSize(800, 480), buildList {
+        add(XRayNode(111, 92, 123, 153, "Write\ndecoder"))
+        add(XRayNode(666, 94, 72, 174, "Read\nMUX", XRayShape.OVAL))
+        add(XRayNode(666, 291, 72, 175, "Read\nMUX", XRayShape.OVAL))
+        listOf("Register 1", "Register 2", "…", "Register 31", "Register 32").mapIndexedTo(this) { index, label ->
+            XRayNode(377, 105 + index * 30, 143, 30, label)
+        }
+        repeat(5) { index -> add(XRayNode(314, 99 + index * 31, 25, 24, "", XRayShape.AND)) }
+    }, listOf(
         XRayPort(6, 44, "Read address 1"), XRayPort(6, 251, "Read address 2"),
         XRayPort(6, 323, "Write address"), XRayPort(6, 405, "Write data"),
         XRayPort(322, 8, "Write enable"),

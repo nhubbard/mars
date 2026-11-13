@@ -235,7 +235,7 @@ private fun verifyRename(target: MipsDeclaration, newName: String, usages: Set<S
         before.labelDefinitions(oldName).mapNotNullTo(this) { it.definition.writtenToken() }
         for ((site, bindings) in before.symbolUses()) {
             ProgressManager.checkCanceled()
-            for (binding in bindings) if (binding.name == oldName) add(binding.equivalenceSource ?: site)
+            for ((_, name, _, spelling) in bindings) if (name == oldName) add(spelling ?: site)
         }
         macroDefinitions.mapTo(this, MacroDefinition::site)
         for ((site, calls) in before.macroCalls()) {
@@ -243,9 +243,9 @@ private fun verifyRename(target: MipsDeclaration, newName: String, usages: Set<S
             for (call in calls) if (call.name() == oldName) add(call.spelling() ?: site)
         }
         for (occurrences in before.equivalences().values) {
-            for (occurrence in occurrences) {
+            for ((_, spelling, _, name) in occurrences) {
                 ProgressManager.checkCanceled()
-                if (occurrence.name == oldName) occurrence.spelling?.let(::add)
+                if (name == oldName) spelling?.let(::add)
             }
         }
         removeAll(sites.keys)
@@ -317,15 +317,15 @@ private fun AssemblySymbolMap.referenceSpellings(subject: RenameSubject, declara
             for (call in calls) if (subject.matches(call.definition(), call.name())) add(call.spelling() ?: site)
         }
         SymbolKind.CONSTANT -> for (occurrences in equivalences().values) {
-            for (occurrence in occurrences) {
+            for ((_, spelling, definition, name) in occurrences) {
                 ProgressManager.checkCanceled()
-                if (subject.matches(occurrence.definition, occurrence.name)) occurrence.spelling?.let(::add)
+                if (subject.matches(definition, name)) spelling?.let(::add)
             }
         }
         SymbolKind.LABEL, SymbolKind.EXTERNAL -> {
             for ((site, bindings) in symbolUses()) {
                 ProgressManager.checkCanceled()
-                for (binding in bindings) if (subject.matches(binding.definition, binding.name)) add(binding.equivalenceSource ?: site)
+                for ((definition, name, _, spelling) in bindings) if (subject.matches(definition, name)) add(spelling ?: site)
             }
             // A repeat can initiate .extern Rename, so the allocation belongs in its preview.
             add(subject.site)

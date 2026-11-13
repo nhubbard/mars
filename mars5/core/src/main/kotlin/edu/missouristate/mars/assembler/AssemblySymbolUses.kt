@@ -15,11 +15,10 @@ internal class AssemblySymbolUses {
         val result = HashMap<SourceToken, Set<SymbolUse>>()
         bindings.forEach { (site, uses) ->
             val detached = HashSet<SymbolUse>()
-            for (use in uses) {
+            for ((target, equivalenceSource) in uses) {
                 checkCancellation.run()
-                val target = use.target
                 val definition = SourceToken(target.origin()!!.location, target.column()!!)
-                detached.add(SymbolUse(definition, target.name, target.address, use.equivalenceSource))
+                detached.add(SymbolUse(definition, target.name, target.address, equivalenceSource))
             }
             result[site] = detached
         }

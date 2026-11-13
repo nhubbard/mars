@@ -185,7 +185,7 @@ internal class MarsToolExecutionSelector(private val project: Project, private v
         minimumSize = JBUI.size(112, 0)
         addActionListener { selectionChanged() }
     }
-    val component: JComponent get() = selector
+    val component: JComponent = selector
     val process: MarsProcessHandler? get() = (selector.selectedItem as MarsToolRunContent?)?.process
     private var executions = emptyList<MarsToolRunContent>()
 

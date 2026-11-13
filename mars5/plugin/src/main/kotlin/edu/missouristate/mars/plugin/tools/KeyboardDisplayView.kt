@@ -53,7 +53,7 @@ internal class KeyboardDisplayView(project: Project) : Disposable {
         emptyText.text = toolsMessages.getMessage("keyboardDisplay.input.placeholder")
         accessibleContext.accessibleName = toolsMessages.getMessage("keyboardDisplay.input")
     }
-    val inputComponent: JComponent get() = keyboard
+    val inputComponent: JComponent = keyboard
     private val delayMode = ComboBox(Delay.entries.toTypedArray()).apply {
         renderer = textListCellRenderer("") { toolsMessages.getMessage("keyboardDisplay.delay.${it.name.lowercase()}") }
     }

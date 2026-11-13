@@ -1329,6 +1329,7 @@ class SessionAssemblyTest {
   }
 
   @Test
+  @SuppressWarnings("ExtractMethodRecommender") // Keep this scenario’s source and assertions together.
   void equivalencesPreserveCharacterLiteralSpellingBeforeRetokenizing() throws Exception {
     var main = directory.resolve("main.s");
     var source = """
@@ -1363,6 +1364,7 @@ class SessionAssemblyTest {
   }
 
   @Test
+  @SuppressWarnings("ExtractMethodRecommender") // Keep this scenario’s source and assertions together.
   void macroSubstitutionRewritesOnlyTheParsedTokenSpans() throws Exception {
     var main = directory.resolve("main.s");
     var source = """
@@ -1413,6 +1415,7 @@ class SessionAssemblyTest {
   }
 
   @Test
+  @SuppressWarnings("ExtractMethodRecommender") // Keep this scenario’s source and assertions together.
   void cancellationAtAnySnapshotCheckpointPropagatesAndReleasesTheSession() throws Exception {
     var main = directory.resolve("main.s");
     var definitions = directory.resolve("defs.s");

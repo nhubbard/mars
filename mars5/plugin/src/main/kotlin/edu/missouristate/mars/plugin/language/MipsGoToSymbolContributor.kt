@@ -146,16 +146,16 @@ internal class MipsGoToSymbolContributor : ChooseByNameContributorEx {
 
     private fun MipsSourceTimeline.expandedSymbolsIn(file: MipsFile): Sequence<ContextualSymbol> = sequence {
         val source = file.originalFile
-        for (label in generatedLabelsIn(file)) {
-            yield(ContextualSymbol(label.name, source, label.site.textOffset, AllIcons.Nodes.Bookmark))
+        for ((name, site) in generatedLabelsIn(file)) {
+            yield(ContextualSymbol(name, source, site.textOffset, AllIcons.Nodes.Bookmark))
         }
-        for (macro in localMacros(file).values) {
-            if (macro.name != (macro.header as? MipsDeclaration)?.name) {
-                yield(ContextualSymbol(macro.name, source, macro.nameOffset, AllIcons.Nodes.Function))
+        for ((header, name, offset) in localMacros(file).values) {
+            if (name != (header as? MipsDeclaration)?.name) {
+                yield(ContextualSymbol(name, source, offset, AllIcons.Nodes.Function))
             }
         }
-        for (equivalence in generatedEquivalencesIn(file).values) {
-            yield(ContextualSymbol(equivalence.name, source, equivalence.site.textOffset, AllIcons.Nodes.Constant))
+        for ((site, name) in generatedEquivalencesIn(file).values) {
+            yield(ContextualSymbol(name, source, site.textOffset, AllIcons.Nodes.Constant))
         }
         for (external in expandedExternalsIn(file).values) {
             yield(ContextualSymbol(external.name, source, external.offset, AllIcons.Nodes.Field))

@@ -268,10 +268,10 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
                     matches.addAll(listOfNotNull(MipsDeclaration.findAt(file, site.offset, name)))
                 }
             }
-            for (label in timeline.unindexedLabels[name].orEmpty()) {
+            for ((_, site, owner) in timeline.unindexedLabels[name].orEmpty()) {
                 ProgressManager.checkCanceled()
-                if (label.macro == null) outer.add(label.site.writtenDeclarationAt())
-                else if (label.macro === macro) local.add(label.site.writtenDeclarationAt())
+                if (owner == null) outer.add(site.writtenDeclarationAt())
+                else if (owner === macro) local.add(site.writtenDeclarationAt())
             }
             if (local.isNotEmpty()) return local
             if (outer.isNotEmpty()) return outer
@@ -649,10 +649,10 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         val before = source.subSequence(lineStart, replacement.startOffset).toString()
         val after = source.subSequence(replacement.endOffset, lineEnd).toString()
         return buildMap {
-            for (definition in visible.equivalencesStartingWith(typedPrefix)) {
+            for ((_, name, replacement) in visible.equivalencesStartingWith(typedPrefix)) {
                 ProgressManager.checkCanceled()
-                val (tokens, end) = expandCompletionAlias(visible, before + definition.name, after, allowBrokenSuffix) ?: continue
-                if (accepts(tokens, end, visible)) put(definition.name, definition.replacement)
+                val (tokens, end) = expandCompletionAlias(visible, before + name, after, allowBrokenSuffix) ?: continue
+                if (accepts(tokens, end, visible)) put(name, replacement)
             }
         }
     }
@@ -1127,9 +1127,9 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
             val declarations = buildList {
                 index.processValues(MipsDeclarationIndex.NAME, key.name, null, { file, sites ->
                     val source = SourceId(file.url)
-                    for (site in sites) {
+                    for ((kind, offset, macroOffset) in sites) {
                         ProgressManager.checkCanceled()
-                        if (site.kind == key.kind) add(IndexedSymbolSite(source, site.offset, site.macroOffset))
+                        if (kind == key.kind) add(IndexedSymbolSite(source, offset, macroOffset))
                     }
                     true
                 }, scope)
@@ -1137,9 +1137,9 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
             val references = buildList {
                 index.processValues(MipsReferenceIndex.NAME, key.name, null, { file, sites ->
                     val source = SourceId(file.url)
-                    for (site in sites) {
+                    for ((kind, offset, macroOffset) in sites) {
                         ProgressManager.checkCanceled()
-                        if (site.kind == key.kind) add(IndexedSymbolSite(source, site.offset, site.macroOffset))
+                        if (kind == key.kind) add(IndexedSymbolSite(source, offset, macroOffset))
                     }
                     true
                 }, scope)

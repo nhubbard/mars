@@ -58,13 +58,13 @@ private object AddressCollector : OwnBypassCollector {
         val mips = file as MipsFile
         val snapshot = mips.currentAssemblyHints() ?: return
         val document = PsiDocumentManager.getInstance(file.project).getDocument(mips)!!
-        for (hint in snapshot.addresses) {
+        for ((line, column, name, address) in snapshot.addresses) {
             ProgressManager.checkCanceled()
-            val offset = document.getLineStartOffset(hint.line - 1) + hint.column - 1
-            val declaration = MipsDeclaration.findAt(mips, offset, hint.name) ?: continue
+            val offset = document.getLineStartOffset(line - 1) + column - 1
+            val declaration = MipsDeclaration.findAt(mips, offset, name) ?: continue
             val position = InlineInlayPosition(declaration.textRange.endOffset, relatedToPrevious = true)
             sink.addPresentation(position, tooltip = bundle.getMessage("inlay.address.tooltip"), hintFormat = HintFormat.default) {
-                text(Binary.intToHexString(hint.address))
+                text(Binary.intToHexString(address))
             }
         }
     }

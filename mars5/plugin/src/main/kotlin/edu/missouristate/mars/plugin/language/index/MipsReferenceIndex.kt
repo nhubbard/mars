@@ -80,10 +80,10 @@ class MipsReferenceIndex : FileBasedIndexExtension<String, List<MipsReferenceSit
 internal object MipsReferenceExternalizer : DataExternalizer<List<MipsReferenceSite>> {
     override fun save(out: DataOutput, value: List<MipsReferenceSite>) {
         out.writeInt(value.size)
-        for (site in value) {
-            out.writeByte(site.kind.ordinal)
-            out.writeInt(site.offset)
-            out.writeInt(site.macroOffset)
+        for ((kind, offset, macroOffset) in value) {
+            out.writeByte(kind.ordinal)
+            out.writeInt(offset)
+            out.writeInt(macroOffset)
         }
     }
 
