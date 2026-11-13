@@ -1,6 +1,5 @@
 package edu.missouristate.mars.plugin.tools
 
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.ImageComposeScene
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.PointerButton
@@ -123,7 +122,7 @@ class InstructionCounterPlatformTest {
 
     private fun paneText(pane: JEditorPane) = pane.document.let { it.getText(0, it.length).trim() }
 
-    @OptIn(ExperimentalComposeUiApi::class, ExperimentalJewelApi::class)
+    @OptIn(ExperimentalJewelApi::class)
     @Test
     fun `MARS Tools selects native executions and controls their counters independently`() = timeoutRunBlocking(45.seconds) {
         val project = projectFixture.get()

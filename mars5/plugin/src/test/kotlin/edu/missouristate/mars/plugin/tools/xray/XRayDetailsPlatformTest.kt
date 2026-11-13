@@ -4,7 +4,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.ImageComposeScene
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.SemanticsActions
@@ -94,7 +93,7 @@ class XRayDetailsPlatformTest {
         }
     }
 
-    @OptIn(ExperimentalComposeUiApi::class, ExperimentalJewelApi::class)
+    @OptIn(ExperimentalJewelApi::class)
     @Test
     fun `X-Ray exposes complete instruction and signal text to Compose accessibility`() = timeoutRunBlocking(20.seconds) {
         withContext(Dispatchers.EDT) {
@@ -121,7 +120,7 @@ class XRayDetailsPlatformTest {
     private fun SemanticsNode.text(): List<String> =
         config.getOrNull(SemanticsProperties.Text).orEmpty().map { it.text } + children.flatMap { it.text() }
 
-    @OptIn(ExperimentalComposeUiApi::class, ExperimentalJewelApi::class)
+    @OptIn(ExperimentalJewelApi::class)
     @Test
     fun `the schematic can be measured at zero width before the tool window opens`() = timeoutRunBlocking(20.seconds) {
         withContext(Dispatchers.EDT) {
@@ -140,7 +139,7 @@ class XRayDetailsPlatformTest {
         }
     }
 
-    @OptIn(ExperimentalComposeUiApi::class, ExperimentalJewelApi::class)
+    @OptIn(ExperimentalJewelApi::class)
     @Test
     fun `schematics draw live signals and expose the drill-down controls`() = timeoutRunBlocking(30.seconds) {
         withContext(Dispatchers.EDT) {

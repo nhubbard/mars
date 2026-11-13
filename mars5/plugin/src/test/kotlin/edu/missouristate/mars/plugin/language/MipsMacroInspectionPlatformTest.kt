@@ -459,7 +459,6 @@ class MipsMacroInspectionPlatformTest {
 
     @Test
     fun `missing macro closer quick fix appends once and invalidates stale actions`() = timeoutRunBlocking {
-        val project = projectFixture.get()
         withContext(Dispatchers.EDT) {
             for (source in listOf("<caret>.macro emit\nnop\n", ".eqv OPEN .macro\n<caret>OPEN emit\nnop")) {
                 fixture.configureByText("missing-end.mars", source)

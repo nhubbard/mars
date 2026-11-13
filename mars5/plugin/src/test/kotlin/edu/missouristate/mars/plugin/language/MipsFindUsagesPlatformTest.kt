@@ -31,6 +31,7 @@ import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -81,7 +82,7 @@ class MipsFindUsagesPlatformTest {
             assertEquals(names, targets.map(LanguageFindUsages::getDescriptiveName))
             assertEquals(names, targets.map { LanguageFindUsages.getNodeText(it, false) })
             assertTrue(targets.all(LanguageFindUsages::canFindUsagesFor))
-            assertNotNull(LanguageFindUsages.getHelpId(targets.first()))
+            assertNull(LanguageFindUsages.getHelpId(targets.first()))
         }
         val sites = listOf("LIMIT", $$"$buffer", ".target.label", "emit()", $$"emit($t0)")
         for ((target, site) in targets.zip(sites)) {
@@ -165,7 +166,7 @@ class MipsFindUsagesPlatformTest {
         val formals = readAction {
             PsiTreeUtil.findChildrenOfType(headerFile, MipsMacroFormal::class.java).sortedBy { it.textOffset }
         }
-        val (operation, value, aliases, duplicate, invalid) = formals
+        val (operation, value, aliases, duplicate) = formals
         val operationUse = entry.indexOf("%?(")
         val firstUse = operationUse + "%?(".length
         val secondUse = entry.indexOf("%second", entry.indexOf("li "))

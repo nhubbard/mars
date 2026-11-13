@@ -11,7 +11,7 @@ import com.intellij.ide.wizard.NewProjectWizardChainStep.Companion.nextStep
 import com.intellij.ide.wizard.NewProjectWizardStep
 import com.intellij.ide.wizard.RootNewProjectWizardStep
 import com.intellij.ide.wizard.runAfterOpened
-import com.intellij.openapi.application.invokeAndWaitIfNeeded
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.runWriteAction
 import com.intellij.openapi.components.service
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
@@ -58,7 +58,7 @@ internal class MarsNewProjectWizard : GeneratorNewProjectWizard {
         override fun setupProject(project: Project) {
             val root = Path.of(base.path, base.name)
             val sources = writeStarterSources(root, separateLibrary)
-            invokeAndWaitIfNeeded {
+            ApplicationManager.getApplication().invokeAndWait {
                 val module = runWriteAction {
                     ModuleManager.getInstance(project).newModule(root.resolve(".idea").resolve("${base.name}.iml"), GeneralModuleType.TYPE_ID)
                 }

@@ -1,7 +1,6 @@
 package edu.missouristate.mars.plugin.language
 
 import com.intellij.DynamicBundle
-import com.intellij.lang.HelpID
 import com.intellij.lang.cacheBuilder.DefaultWordsScanner
 import com.intellij.lang.findUsages.FindUsagesProvider
 import com.intellij.lexer.DelegateLexer
@@ -27,7 +26,8 @@ internal class MipsFindUsagesProvider : FindUsagesProvider {
         else -> (psiElement as? MipsDeclaration)?.name != null
     }
 
-    override fun getHelpId(psiElement: PsiElement) = HelpID.FIND_OTHER_USAGES
+    // The platform dialog supplies its generic Find Usages topic when no language-specific topic exists.
+    override fun getHelpId(psiElement: PsiElement): String? = null
 
     override fun getType(element: PsiElement): String {
         val key = when ((element as? MipsDeclaration)?.kind) {
