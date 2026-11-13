@@ -16,6 +16,67 @@ import org.junit.jupiter.params.provider.ValueSource
 
 class MarsTargetTest {
     @Test
+    fun `wide multiplication division rotations and leading counts match machine encodings`(@TempDir directory: Path) {
+        val source = Files.writeString(directory.resolve("wide-integer.s"), $$"""
+            drotr $8,$4,1
+            drotr32 $9,$4,0
+            drotrv $10,$4,$5
+            dclz $11,$4
+            dclo $12,$4
+            dmul $15,$4,$5
+            dmuh $16,$4,$5
+            dmulu $17,$4,$5
+            dmuhu $18,$4,$5
+            ddiv $19,$4,$5
+            ddivu $20,$4,$5
+            dmod $21,$4,$5
+            dmodu $22,$4,$5
+        """.trimIndent())
+        val words = listOf(
+            0x0024407a, 0x0024483e, 0x00a45056, 0x00805852, 0x00806053,
+            0x0085789c, 0x008580dc, 0x0085889d, 0x008590dd, 0x0085989e, 0x0085a09f, 0x0085a8de, 0x0085b0df,
+        )
+        TestSessions.create().use { machine ->
+            assertThrows(ProcessingException::class.java) { machine.assemble(listOf(source)) }
+            words.forEach { assertNull(machine.instructionSet.findByBinaryCode(it)) }
+            machine.selectTarget(MarsTarget.MARS64)
+            val program = machine.assemble(listOf(source))
+            assertEquals(words, program.machineList!!.map { it.binaryStatement })
+            assertEquals(
+                Files.readAllLines(source).map { it.substringBefore(' ') },
+                words.map { machine.instructionSet.findByBinaryCode(it)?.name },
+            )
+            machine.editIntegerRegister(4, 0xfedc_ba09_8765_4321uL.toLong())
+            machine.editIntegerRegister(5, 3)
+            machine.editIntegerRegister(22, 0x1_0000_0000L)
+            assertTrue(program.simulate(20))
+            val expected = mapOf(
+                8 to 0xff6e_5d04_c3b2_a190uL.toLong(), 9 to 0x8765_4321_fedc_ba09uL.toLong(),
+                10 to 0x3fdb_9741_30ec_a864L, 11 to 0L, 12 to 7L,
+                15 to 0xfc96_2e1c_962f_c963uL.toLong(), 16 to -1L, 17 to 0xfc96_2e1c_962f_c963uL.toLong(),
+                18 to 2L, 19 to -27_328_714_370_159_690L, 20 to 6_121_585_976_866_357_515L, 21 to -1L, 22 to 0L,
+            )
+            for ((register, result) in expected) assertEquals(result, machine.registerFile.getLongValueNoNotify(register), "register $register")
+            machine.backStepper.backStep()
+            assertEquals(0x1_0000_0000L, machine.registerFile.getLongValueNoNotify(22))
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = ["ddiv", "ddivu", "dmod", "dmodu"])
+    fun `wide division by zero reports a trap without storing`(mnemonic: String, @TempDir directory: Path) {
+        val source = Files.writeString(directory.resolve("zero-divisor.s"), "$mnemonic \$t0,\$a0,\$zero\n")
+        TestSessions.create().use { machine ->
+            machine.selectTarget(MarsTarget.MARS64)
+            val program = machine.assemble(listOf(source))
+            machine.editIntegerRegister(8, Long.MIN_VALUE)
+            val failure = assertThrows(ProcessingException::class.java) { program.simulate(1) }
+            assertTrue(failure.message!!.contains("division by zero"))
+            assertEquals(Long.MIN_VALUE, machine.registerFile.getLongValueNoNotify(8))
+        }
+    }
+
+    @Test
     fun `wide shifts and zero extending loads use all register bits`(@TempDir directory: Path) {
         val source = Files.writeString(directory.resolve("operations.s"), $$"""
             .data
