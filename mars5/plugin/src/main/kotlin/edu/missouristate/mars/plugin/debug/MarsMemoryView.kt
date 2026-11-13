@@ -65,7 +65,7 @@ internal fun memoryPage(memory: MemoryState, address: Long): List<MemoryRow> {
         val words = List(BYTES_PER_ROW / Int.SIZE_BYTES) { memory.inspectWord(start + it * Int.SIZE_BYTES) }
         val bytes = List(BYTES_PER_ROW) { index ->
             val offset = index % Int.SIZE_BYTES
-            val shift = Byte.SIZE_BITS * if (memory.byteOrder == MemoryState.LITTLE_ENDIAN) offset else Int.SIZE_BYTES - 1 - offset
+            val shift = Byte.SIZE_BITS * if (memory.byteOrder) offset else Int.SIZE_BYTES - 1 - offset
             words[index / Int.SIZE_BYTES]?.let { it ushr shift and 0xff }
         }
         MemoryRow(

@@ -234,7 +234,7 @@ class MipsAddressInlayPlatformTest {
                     val documents = FileDocumentManager.getInstance()
                     documents.saveDocument(documents.getDocument(entry.virtualFile)!!)
                 }
-                Files.writeString(body.toNioPath(), "nop\n" + bodyText)
+                Files.writeString(body.toNioPath(), "nop\n$bodyText")
                 withContext(Dispatchers.EDT) { body.refresh(false, false) }
                 IndexingTestUtil.suspendUntilIndexesAreReady(project)
                 withContext(Dispatchers.EDT) {

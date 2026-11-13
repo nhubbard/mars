@@ -169,7 +169,7 @@ class ScavengerHuntPlatformTest {
             process.setMarsBotConnected(true)
             process.resetScavengerHunt()
             assertNull(process.scavengerHuntSnapshot())
-            val descriptor = RunContentDescriptor(null, process, JPanel(), "Hunt sample").apply {
+            val descriptor = RunContentDescriptor(null, process, JPanel(), "Hunt Sample").apply {
                 executionId = 1
                 isActivateToolWindowWhenAdded = false
             }

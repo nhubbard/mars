@@ -199,7 +199,7 @@ class MipsParameterInfoPlatformTest {
             assertEquals(first, info(definition + "entry: emit:<caret> 7"))
             assertEquals(second, info(definition + "entry: emit: <caret>7"))
             assertEquals(second, info(definition + "emit (+, <caret>bad%"))
-            assertEquals($$"emit (%ignored, $value)", info(definition + ".eqv CLOSE )\nemit (+, 7 C<caret>LOSE"))
+            assertEquals($$"emit (%ignored, $value)", info("$definition.eqv CLOSE )\nemit (+, 7 C<caret>LOSE"))
             assertNull(info(definition + "emit (+, 7)<caret>"))
         }
         val entry = directory.resolve("entry.asm").also {
@@ -215,7 +215,7 @@ class MipsParameterInfoPlatformTest {
             val setup = ".macro emit (%one)\n.end_macro\n.data\n.word 0\n"
             assertNull(info(setup + "emit <caret>7:2"))
             assertEquals("emit (<b>%one</b>)", info(setup + "emit <caret>7"))
-            assertEquals("emit (<b>%one</b>)", info(setup + ".text\nemit <caret>7:2"))
+            assertEquals("emit (<b>%one</b>)", info("$setup.text\nemit <caret>7:2"))
         }
     }
 
@@ -229,7 +229,7 @@ class MipsParameterInfoPlatformTest {
             assertEquals(second, info(definition + $$"emit(0x, $t<caret>0, target)"))
             assertEquals(third, info(definition + $$"emit(0x, $t0, <caret>target)"))
             assertEquals(third, info(definition + $$"emit(0x, $t0, <caret>"))
-            assertEquals(third, info(definition + $$".eqv CALL emit\nCALL(0x, $t0, <caret>target)"))
+            assertEquals(third, info($$"$$definition.eqv CALL emit\nCALL(0x, $t0, <caret>target)"))
             assertNull(info(definition + $$"emit(0x, $t0, target)<caret>"))
             assertEquals(
               $$"sll $t1,$t2,<b>10</b>",
@@ -460,9 +460,10 @@ class MipsParameterInfoPlatformTest {
     }
 
     private fun includeAliases(vararg definitions: String): String {
+        val filename = "aliases.s"
         val aliases = definitions.joinToString("\n", prefix = ".eqv DEFINE .eqv\n", postfix = "\n") { "DEFINE $it" }
-        fixture.addFileToProject("aliases.s", aliases)
-        return ".include \"aliases.s\"\n"
+        fixture.addFileToProject(filename, aliases)
+        return ".include \"$filename\"\n"
     }
 
     private fun info(source: String): String? {

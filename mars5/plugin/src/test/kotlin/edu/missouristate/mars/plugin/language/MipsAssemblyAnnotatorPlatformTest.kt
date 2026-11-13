@@ -332,7 +332,7 @@ class MipsAssemblyAnnotatorPlatformTest {
             assertTrue(errors().isNotEmpty())
             edit(opening, ".macro dormant\n")
             assertTrue(errors().isEmpty())
-            edit(body, source + ".word @\n")
+            edit(body, "$source.word @\n")
             assertTrue(errors().any { it.startOffset >= source.length })
         }
     }
@@ -360,7 +360,7 @@ class MipsAssemblyAnnotatorPlatformTest {
             for (include in listOf(".include \"missing.s\"", ".include \"unfinished")) {
                 val first = ".word )\n.word @\n"
                 val afterInclude = first.length + include.length + 1
-                edit(body, first + include + "\n.word )\n")
+                edit(body, "$first$include\n.word )\n")
                 val highlights = errors()
                 assertTrue(highlights.none { it.startOffset < ".word )\n".length }, highlights.toString())
                 assertTrue(highlights.any { it.startOffset in ".word )\n".length until first.length }, highlights.toString())

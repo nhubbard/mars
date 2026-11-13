@@ -141,8 +141,8 @@ class MipsScannerTest {
                     assertEquals(MipsTokenKind.WORD, MipsScanner.scan(source)[2].kind)
                 }
             }
-            assertEquals(MipsTokenKind.NEWLINE, MipsScanner.scan("#x" + newline)[1].kind)
-            assertEquals(MipsTokenKind.NEWLINE, MipsScanner.scan(" " + newline)[1].kind)
+            assertEquals(MipsTokenKind.NEWLINE, MipsScanner.scan("#x$newline")[1].kind)
+            assertEquals(MipsTokenKind.NEWLINE, MipsScanner.scan(" $newline")[1].kind)
         }
         for (source in listOf("1-2", "label+4", "1e-x", "name+ 2")) {
             assertEquals(3, MipsScanner.scan(source).count { it.kind != MipsTokenKind.SPACE }, source)

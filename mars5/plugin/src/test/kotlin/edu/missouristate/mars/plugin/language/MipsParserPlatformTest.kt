@@ -1053,7 +1053,7 @@ class MipsParserPlatformTest {
                     val end = start + operand.textLength
                     val first = fields.indexOfFirst { it.startOffset == start }
                     val last = fields.indexOfFirst { it.endOffset == end }
-                    assertTrue(first >= 0 && last >= first, "Operand '${operand.text}' cuts a field in '${instruction.text}'")
+                    assertTrue(first in 0..last, "Operand '${operand.text}' cuts a field in '${instruction.text}'")
                     first..last
                 }
             }
@@ -2074,7 +2074,7 @@ class MipsParserPlatformTest {
               $$"add $t0,+", "bad @ token", ".eqv @", ".eqv -0xG", ".eqv ,,, 7 8", ".macro foo (1", ".macro 7",
                 ".word 1 != 2", ".word 1 <= 2", ".word (1+2)",
                 ".word 1 | 2", ".word 1 ^ 2", ".word 1 & 2", ".word ~1", ".word 1 << 2", ".word 1 >>> 2")) {
-                val text = broken + "\nnext: nop\n"
+                val text = "$broken\nnext: nop\n"
                 val file = PsiFileFactory.getInstance(project.get()).createFileFromText("broken.asm", MipsFileType, text)
                 assertEquals(text, file.text)
                 assertTrue(PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java).isNotEmpty(), broken)

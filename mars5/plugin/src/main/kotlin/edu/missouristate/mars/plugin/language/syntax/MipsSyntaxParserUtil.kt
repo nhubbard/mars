@@ -74,8 +74,11 @@ private fun SyntaxTreeBuilder.hasOnlyDetachedSignErrors(start: SyntaxTreeBuilder
     }
 }
 
+// Grammar-Kit passes a recursion level to every external rule, including rules that check tokens directly.
+// IntelliJ 263 checks unused parameters globally and cannot reproduce those findings in its per-file suppression audit.
+
 /** Apply the assembler's boundaries for address and signed operands. */
-@Suppress("UNUSED_PARAMETER")
+@Suppress("unused", "RedundantSuppression")
 internal fun continueOperand(runtime: SyntaxGeneratedParserRuntime, level: Int): Boolean {
     val builder = runtime.syntaxBuilder
     if (builder.eof()) return false
@@ -98,14 +101,14 @@ internal fun continueOperand(runtime: SyntaxGeneratedParserRuntime, level: Int):
 }
 
 /** Keep a signed number together in raw macro and equivalence tokens. */
-@Suppress("UNUSED_PARAMETER")
+@Suppress("unused", "RedundantSuppression")
 internal fun startsSignedNumber(runtime: SyntaxGeneratedParserRuntime, level: Int): Boolean {
     val builder = runtime.syntaxBuilder
     return builder.tokenType in signs && builder.signAttachesToNumber(builder.previousToken(separators))
 }
 
 /** A literal or detached sign can occupy the ignored first token of a continued numeric repetition. */
-@Suppress("UNUSED_PARAMETER")
+@Suppress("unused", "RedundantSuppression")
 internal fun isDataRepeatPrefix(runtime: SyntaxGeneratedParserRuntime, level: Int): Boolean {
     val builder = runtime.syntaxBuilder
     if (builder.tokenType !in repeatPrefixes) return false
@@ -127,7 +130,7 @@ internal fun isDataRepeatPrefix(runtime: SyntaxGeneratedParserRuntime, level: In
 }
 
 /** MARS skips the definition when the physical line has fewer than three assembler tokens. */
-@Suppress("UNUSED_PARAMETER")
+@Suppress("unused", "RedundantSuppression")
 internal fun isShortEquivalence(runtime: SyntaxGeneratedParserRuntime, level: Int): Boolean {
     val builder = runtime.syntaxBuilder
     // Count the whole line only for plausible short forms. The assembler can join a sign
@@ -145,7 +148,7 @@ internal fun isShortEquivalence(runtime: SyntaxGeneratedParserRuntime, level: In
 private fun SyntaxElementType?.endsLine() = this == null || this == NEWLINE
 
 /** Use the prepass's line, or recover an unfinished path before a malformed prefix consumes it. */
-@Suppress("UNUSED_PARAMETER")
+@Suppress("unused", "RedundantSuppression")
 internal fun isIncludeLine(runtime: SyntaxGeneratedParserRuntime, level: Int): Boolean {
     val builder = runtime.syntaxBuilder
     val start = builder.currentOffset
@@ -164,12 +167,12 @@ internal fun inspectMipsInclude(source: CharSequence, start: Int, end: Int): Tok
 }
 
 /** Report the invalid token without losing the path or resuming normal statement parsing. */
-@Suppress("UNUSED_PARAMETER")
+@Suppress("unused", "RedundantSuppression")
 internal fun recoverBadIncludeToken(runtime: SyntaxGeneratedParserRuntime, level: Int): Boolean =
     runtime.syntaxBuilder.recoverBadToken("syntax.include.invalid.token")
 
 /** Keep the following operand or replacement token available while the bad token is being edited. */
-@Suppress("UNUSED_PARAMETER")
+@Suppress("unused", "RedundantSuppression")
 internal fun recoverBadOperandToken(runtime: SyntaxGeneratedParserRuntime, level: Int): Boolean =
     runtime.syntaxBuilder.recoverBadToken("syntax.operand.invalid.token")
 
@@ -198,7 +201,7 @@ private fun SyntaxTreeBuilder.recoverBadToken(messageKey: String): Boolean {
 }
 
 /** Report a rejected header and leave the following line in its original scope. */
-@Suppress("UNUSED_PARAMETER")
+@Suppress("unused", "RedundantSuppression")
 internal fun recoverMissingMacroName(runtime: SyntaxGeneratedParserRuntime, level: Int): Boolean {
     val builder = runtime.syntaxBuilder
     if (builder.tokenType != MACRO || !builder.lookAhead(1).endsLine()) return false
@@ -210,20 +213,23 @@ internal fun recoverMissingMacroName(runtime: SyntaxGeneratedParserRuntime, leve
     return true
 }
 
-@Suppress("UNUSED_PARAMETER")
+// The generated parser requires a Boolean and this recovery always commits.
+@Suppress("unused", "SameReturnValue", "RedundantSuppression")
 internal fun recoverInvalidMacroName(runtime: SyntaxGeneratedParserRuntime, level: Int): Boolean {
     runtime.syntaxBuilder.recoverMacroTail("syntax.macro.name.invalid")
     return true
 }
 
 /** The rejected formal ends parameter collection, but the valid name still opens the body. */
-@Suppress("UNUSED_PARAMETER")
+// The generated parser requires a Boolean and this recovery always commits.
+@Suppress("unused", "SameReturnValue", "RedundantSuppression")
 internal fun recoverInvalidMacroFormal(runtime: SyntaxGeneratedParserRuntime, level: Int): Boolean {
     runtime.syntaxBuilder.recoverMacroTail("syntax.macro.formal.invalid")
     return true
 }
 
-@Suppress("UNUSED_PARAMETER")
+// The generated parser requires a Boolean and this recovery always commits.
+@Suppress("unused", "SameReturnValue", "RedundantSuppression")
 internal fun recoverMalformedMacroEnd(runtime: SyntaxGeneratedParserRuntime, level: Int): Boolean {
     runtime.syntaxBuilder.recoverMacroTail("syntax.macro.end.trailing")
     return true
@@ -245,7 +251,7 @@ private fun SyntaxTreeBuilder.recoverMacroTail(messageKey: String) {
 }
 
 /** Retain the broken literal and keep parsing the other operands on the line. */
-@Suppress("UNUSED_PARAMETER")
+@Suppress("unused", "RedundantSuppression")
 internal fun recoverCharacterLiteral(runtime: SyntaxGeneratedParserRuntime, level: Int): Boolean {
     val builder = runtime.syntaxBuilder
     val message = when (builder.tokenType) {
@@ -260,7 +266,7 @@ internal fun recoverCharacterLiteral(runtime: SyntaxGeneratedParserRuntime, leve
 }
 
 /** Discard a malformed statement head through the physical end of its line. */
-@Suppress("UNUSED_PARAMETER")
+@Suppress("unused", "RedundantSuppression")
 internal fun recoverStatement(runtime: SyntaxGeneratedParserRuntime, level: Int): Boolean {
     val builder = runtime.syntaxBuilder
     if (builder.eof() || builder.tokenType == NEWLINE) return false

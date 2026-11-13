@@ -693,7 +693,7 @@ class MipsFormattingPlatformTest {
         withContext(Dispatchers.EDT) {
             val header = ".eqv NAME nop\n.macro NAME\n"
             fixture.configureByText("aliased-macro-name.asm", header + "label :    nop\n.end_macro\nnext: nop\n")
-            assertEquals(header + "    label: nop\n.end_macro\nnext: nop\n", reformat())
+            assertEquals("$header    label: nop\n.end_macro\nnext: nop\n", reformat())
         }
     }
 
@@ -702,7 +702,7 @@ class MipsFormattingPlatformTest {
         withContext(Dispatchers.EDT) {
             val header = ".eqv OPEN .macro\n.eqv STOP .end_macro\nOPEN emit\n"
             fixture.configureByText("incomplete-macro.asm", header + "STOP stray\ninside: nop\n.end_macro\n    outside: nop\n")
-            assertEquals(header + "    STOP stray\n    inside: nop\n.end_macro\noutside: nop\n", reformat())
+            assertEquals("$header    STOP stray\n    inside: nop\n.end_macro\noutside: nop\n", reformat())
         }
     }
 

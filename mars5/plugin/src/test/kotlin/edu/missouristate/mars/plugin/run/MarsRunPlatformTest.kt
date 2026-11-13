@@ -391,7 +391,7 @@ class MarsRunPlatformTest {
                     val later = object : BeforeRunTask<BeforeRunTask<*>>(laterId) {}.apply { isEnabled = true }
                     val rejection = object : BeforeRunTaskProvider<BeforeRunTask<*>>() {
                         override fun getId() = laterId
-                        override fun getName() = "Reject launch"
+                        override fun getName() = "Reject Launch"
                         override fun createTask(runConfiguration: RunConfiguration) = later
                         override fun executeTask(
                             context: DataContext, configuration: RunConfiguration, environment: ExecutionEnvironment, task: BeforeRunTask<*>,

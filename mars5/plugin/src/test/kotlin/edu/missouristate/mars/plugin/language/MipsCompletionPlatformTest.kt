@@ -532,14 +532,14 @@ class MipsCompletionPlatformTest {
                 fixture.configureByText("incomplete-alias.mars", source)
                 return fixture.completeBasic().orEmpty().map { it.lookupString }.toSet()
             }
-            val branch = $$".eqv BR beq\nBR $t0, 0x, tar<caret>" + labels
+            val branch = $$".eqv BR beq\nBR $t0, 0x, tar<caret>$$labels"
             assertEquals(setOf("target", "target2"), candidates(branch))
             fixture.lookup.currentItem = fixture.lookup.items.single { it.lookupString == "target" }
             fixture.finishLookup(Lookup.REPLACE_SELECT_CHAR)
             assertEquals(branch.replace("tar<caret>", "target"), fixture.file.text)
-            assertEquals(setOf("target", "target2"), candidates($$".eqv REG $t0\nbeq REG, 0x, tar<caret>" + labels))
+            assertEquals(setOf("target", "target2"), candidates($$".eqv REG $t0\nbeq REG, 0x, tar<caret>$$labels"))
             assertEquals(setOf($$"$8", $$"$12", $$"$13", $$"$14"), candidates(".eqv TRANSFER mtc0\nTRANSFER 0x, $<caret>\n"))
-            assertTrue(candidates($$".eqv BR beq\n.eqv FIRST SECOND\n.eqv SECOND FIRST\nBR FIRST, $t0, tar<caret>" + labels)
+            assertTrue(candidates($$".eqv BR beq\n.eqv FIRST SECOND\n.eqv SECOND FIRST\nBR FIRST, $t0, tar<caret>$$labels")
                 .none { it.startsWith("target") })
         }
     }
@@ -676,7 +676,7 @@ class MipsCompletionPlatformTest {
                 $$".eqv VALUE_FLOAT 1.5\n.eqv VALUE_REG $t0\n.eqv VALUE_TEXT \"text\"\n" +
                 ".eqv VALUE_LABEL generated:\n.eqv VALUE_MACRO emit\n.macro emit\n.end_macro\n"
             val include = ".include \"values.inc\"\n"
-            val before = include + ".data\n"
+            val before = "$include.data\n"
             val after = "\n.text\ntarget: nop\n.local: nop\nemit: nop\n.eqv VALUE_LATE 4\n"
             withContext(Dispatchers.EDT) { fixture.addFileToProject("values.inc", definitions) }
             IndexingTestUtil.suspendUntilIndexesAreReady(current)
@@ -709,8 +709,8 @@ class MipsCompletionPlatformTest {
                 assertTrue(aliases($$".word VALUE_<caret>, $t0").isEmpty())
                 assertEquals(integers + setOf("VALUE_LIST", "VALUE_FLOAT", "VALUE_MACRO"), aliases(".float 0\nVALUE_<caret>"))
                 assertTrue(aliases(".set VALUE_<caret>").isEmpty())
-                assertTrue(aliases(".word VALUE_<caret>", include + ".text\n").isEmpty())
-                val unindexed = fixture.configureByText("data-indexing.mars", before + ".word VALUE_" + after) as MipsFile
+                assertTrue(aliases(".word VALUE_<caret>", "$include.text\n").isEmpty())
+                val unindexed = fixture.configureByText("data-indexing.mars", "$before.word VALUE_$after") as MipsFile
                 val range = unindexed.findElementAt(before.length + ".word ".length)!!.textRange
                 DumbModeTestUtils.runInDumbModeSynchronously(current) {
                     assertTrue(current.service<MarsAnalysisService>()
@@ -741,7 +741,7 @@ class MipsCompletionPlatformTest {
                 $$".eqv VAL_REG $t0\n.eqv VAL_ZERO 0\n.eqv VAL_LABEL target\n" +
                 ".eqv VAL_STRING \"A\\n\"\n.eqv VAL_QUOTES VAL_STRING, \"B\"\n.eqv VAL_OPEN \"unfinished\n"
             val include = ".include \"real-and-string.inc\"\n"
-            val before = include + ".data\n"
+            val before = "$include.data\n"
             val after = "\n.text\ntarget: nop\n.eqv VAL_LATE 4.5\n"
             withContext(Dispatchers.EDT) { fixture.addFileToProject("real-and-string.inc", definitions) }
             IndexingTestUtil.suspendUntilIndexesAreReady(current)
@@ -767,11 +767,11 @@ class MipsCompletionPlatformTest {
                 assertEquals(strings, aliases("label: STRINGS VAL_<caret>"))
                 assertTrue(aliases(".ascii VAL_<caret>:2").isEmpty())
                 assertTrue(aliases(".asciiz VAL_<caret>, \"unfinished").isEmpty())
-                assertTrue(aliases(".ascii VAL_<caret>", include + ".text\n").isEmpty())
+                assertTrue(aliases(".ascii VAL_<caret>", "$include.text\n").isEmpty())
                 assertEquals(setOf("VAL_QUOTES"), aliases(".float VAL_MIX\nlabel: STRINGS VAL_Q<caret>.old, \"Z\""))
                 fixture.lookup.currentItem = fixture.lookup.items.single { it.lookupString == "VAL_QUOTES" }
                 fixture.finishLookup(Lookup.REPLACE_SELECT_CHAR)
-                assertEquals(before + ".float VAL_MIX\nlabel: STRINGS VAL_QUOTES, \"Z\"" + after, fixture.file.text)
+                assertEquals("$before.float VAL_MIX\nlabel: STRINGS VAL_QUOTES, \"Z\"$after", fixture.file.text)
                 fixture.file.text
             }
             directory.resolve("real-and-string.inc").writeText(definitions)
@@ -798,7 +798,7 @@ class MipsCompletionPlatformTest {
             IndexingTestUtil.suspendUntilIndexesAreReady(current)
             val completed = withContext(Dispatchers.EDT) {
                 fun aliases(source: String): Set<String> {
-                    fixture.configureByText("directive-sizes.mars", include + source + "\n.eqv SIZE_LATE 8\n")
+                    fixture.configureByText("directive-sizes.mars", "$include$source\n.eqv SIZE_LATE 8\n")
                     return CodeInsightSettings.runWithTemporarySettings<_, Error> {
                         it.AUTOCOMPLETE_ON_CODE_COMPLETION = false
                         fixture.completeBasic().orEmpty().filter { item -> item.typeText() == "Equivalence" }
@@ -870,7 +870,7 @@ class MipsCompletionPlatformTest {
                 assertTrue(candidates(".eqv FIRST SECOND\n.eqv SECOND FIRST\nEXPORT FIRST, export<caret>").isEmpty())
                 assertTrue(candidates(".eqv LABEL marker:\nLABEL export<caret>").isEmpty())
                 assertTrue("add.s" !in candidates(".globl ad<caret>"))
-                val file = fixture.configureByText("export-indexing.mars", prefix + ".globl export<caret>" + labels) as MipsFile
+                val file = fixture.configureByText("export-indexing.mars", "$prefix.globl export<caret>$labels") as MipsFile
                 val head = file.findElementAt(prefix.length)!!
                 val operand = file.findElementAt(fixture.editor.caretModel.offset - 1)!!
                 DumbModeTestUtils.runInDumbModeSynchronously(current) {

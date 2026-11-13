@@ -203,7 +203,7 @@ class MarsMemoryExportPlatformTest {
                     last.text = "0x00400001"
                     assertEquals(last, dialog.performValidateAll().single().component)
                     last.text = "0"
-                    assertTrue(dialog.performValidateAll().single().message.contains("at or after"))
+                    assertTrue(dialog.performValidateAll().single().message.contains(@Suppress("DialogTitleCapitalization") "at or after"))
                     last.text = "4194304"
                     assertTrue(dialog.performValidateAll().isEmpty())
                     dialog.performOKAction()
@@ -251,7 +251,7 @@ internal fun replaceMemoryExportSaveDialog(
     ApplicationManager.getApplication().replaceService(FileChooserFactory::class.java, object : FileChooserFactoryImpl() {
         override fun createSaveFileDialog(descriptor: FileSaverDescriptor, project: Project?): FileSaverDialog =
             object : FileSaverDialog {
-                override fun save(baseDir: VirtualFile?, filename: String?): VirtualFileWrapper? =
+                override fun save(baseDir: VirtualFile?, filename: String?): Nothing =
                     error("Expected a NIO base directory")
 
                 override fun save(baseDir: Path?, filename: String?): VirtualFileWrapper? =

@@ -169,9 +169,13 @@ class MipsCompletionContributor : CompletionContributor(), DumbAware {
             return position.text.substring(0, parameters.offset - position.textOffset)
         }
 
-        fun replacementEnd(parameters: CompletionParameters): Int = parameters.originalPosition
-            ?.takeIf { statementHead.accepts(it) || operandOrContinuationPosition.accepts(it) }
-            ?.let { it.textRange.endOffset } ?: parameters.position.textOffset
+        fun replacementEnd(parameters: CompletionParameters): Int {
+            val original = parameters.originalPosition
+            if (original != null && (statementHead.accepts(original) || operandOrContinuationPosition.accepts(original))) {
+                return original.textRange.endOffset
+            }
+            return parameters.position.textOffset
+        }
 
         fun equivalenceLookup(name: String, replacement: String): LookupElementBuilder =
             LookupElementBuilder.create(name).withTailText(" = $replacement", true)

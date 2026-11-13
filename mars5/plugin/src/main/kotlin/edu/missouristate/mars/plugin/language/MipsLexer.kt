@@ -82,13 +82,10 @@ class MipsLexer(private val debuggerExpression: Boolean = false) : LexerBase() {
             } else {
                 MipsSyntaxTypes.REGISTER
             }
-            MipsTokenKind.WORD -> {
-                val text = textOf(current)
-                when {
-                    text == "NaN" || text == "Infinity" -> MipsSyntaxTypes.NUMBER
-                    text in mnemonics -> MipsSyntaxTypes.MNEMONIC
-                    else -> MipsSyntaxTypes.WORD
-                }
+            MipsTokenKind.WORD -> when (textOf(current)) {
+                "NaN", "Infinity" -> MipsSyntaxTypes.NUMBER
+                in mnemonics -> MipsSyntaxTypes.MNEMONIC
+                else -> MipsSyntaxTypes.WORD
             }
             else -> MipsTypes.syntax.getValue(current.kind.name)
         }

@@ -323,7 +323,7 @@ class MipsLabelReferencesPlatformTest {
 
         directory.resolve("definitions.s").writeText(definitions)
         directory.resolve("body.s").writeText(body)
-        val entry = directory.resolve("entry.asm").also { it.writeText(includes + ".globl entry\nj entry\n") }
+        val entry = directory.resolve("entry.asm").also { it.writeText("$includes.globl entry\nj entry\n") }
         val context = project.get().service<MarsSessionService>().context
         val program = context.assemble(listOf(entry), null, extended = true, warnings = false)
         assertEquals(0x24080007, program.machineList!!.first().binaryStatement)

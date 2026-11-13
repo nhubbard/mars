@@ -155,7 +155,7 @@ class MipsEquivalenceReferencesPlatformTest {
     fun `third token equivalences in unused macro bodies are visible in later source`(@TempDir directory: Path) =
         timeoutRunBlocking {
             val aliases = ".eqv DEFINE .eqv\n.eqv WHOLE .eqv COUNT 7\n.eqv PREFIX 2 .eqv COUNT 7\n"
-            val beforeBody = aliases + ".macro unused\n"
+            val beforeBody = "$aliases.macro unused\n"
             val use = $$"addiu $t0, $zero, CO<caret>UNT\n"
             val context = project.get().service<MarsSessionService>().context
             for ((body, site) in listOf(

@@ -50,8 +50,8 @@ class MipsDataReferencesPlatformTest {
         for (line in listOf(".word -, tar<caret>get", ".half + , tar<caret>get", ".byte 3, -,, tar<caret>get")) {
             assertEquals(SymbolKind.LABEL, target(prefix + line + suffix), line)
         }
-        assertNull(target(prefix + ".float -, tar<caret>get" + suffix))
-        assertNull(target(prefix + ".word -, tar<caret>get:2" + suffix))
+        assertNull(target("$prefix.float -, tar<caret>get$suffix"))
+        assertNull(target("$prefix.word -, tar<caret>get:2$suffix"))
     }
 
     @Test
@@ -62,8 +62,8 @@ class MipsDataReferencesPlatformTest {
             ".word 0\n99, tar<caret>get SUFFIX", "row: .word tar<caret>get SUFFIX")) {
             assertNull(target(setup + use + end), use)
         }
-        assertEquals(SymbolKind.CONSTANT, target(setup + ".word VA<caret>LUE SUFFIX" + end))
-        assertEquals(SymbolKind.LABEL, target(setup + ".word tar<caret>get FIRST" + end))
+        assertEquals(SymbolKind.CONSTANT, target("$setup.word VA<caret>LUE SUFFIX$end"))
+        assertEquals(SymbolKind.LABEL, target("$setup.word tar<caret>get FIRST$end"))
         assertEquals(SymbolKind.LABEL, target(setup + "row: .word tar<caret>get, 2" + end))
     }
 

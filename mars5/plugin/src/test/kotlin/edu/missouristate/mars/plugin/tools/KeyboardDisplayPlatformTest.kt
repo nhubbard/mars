@@ -112,7 +112,7 @@ class KeyboardDisplayPlatformTest {
                 UIUtil.dispatchAllInvocationEvents()
             }
             val process = project.service<MarsRunService>().createProcess(file.toNioPath(), memoryDumps = emptyList())
-            val descriptor = RunContentDescriptor(null, process, JPanel(), "Terminal sample").apply {
+            val descriptor = RunContentDescriptor(null, process, JPanel(), "Terminal Sample").apply {
                 executionId = 1
                 isActivateToolWindowWhenAdded = false
             }

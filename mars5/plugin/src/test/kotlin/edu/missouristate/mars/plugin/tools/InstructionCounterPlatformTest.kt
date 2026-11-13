@@ -271,7 +271,7 @@ class InstructionCounterPlatformTest {
             val process = project.getService(MarsRunService::class.java).createProcess(
                 file.toNioPath(), memoryDumps = emptyList(), captureBitmap = captureGrids, captureReferences = captureGrids,
             )
-            val descriptor = RunContentDescriptor(null, process, JPanel(), "Counter sample").apply {
+            val descriptor = RunContentDescriptor(null, process, JPanel(), "Counter Sample").apply {
                 executionId = number
                 isActivateToolWindowWhenAdded = false
             }
@@ -674,7 +674,7 @@ class InstructionCounterPlatformTest {
                 @Suppress("UNCHECKED_CAST")
                 val combo = selector as JComboBox<Any>
                 val display = combo.renderer.getListCellRendererComponent(JList(), combo.selectedItem, -1, false, false)
-                assertEquals("Counter sample (#2)", display.accessibleContext.accessibleName)
+                assertEquals("Counter Sample (#2)", display.accessibleContext.accessibleName)
                 button("Disconnect").doClick()
                 button("Reset").doClick()
                 assertEquals("Connect", button("Connect").text)

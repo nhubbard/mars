@@ -512,7 +512,7 @@ class MipsMacroInspectionPlatformTest {
                 settings.changeSources(listOf(entry.virtualFile.path))
                 fixture.launchAction(action)
                 val document = PsiDocumentManager.getInstance(project).getDocument(entry)!!
-                assertEquals(body + "\n.end_macro\n", document.text)
+                assertEquals("$body\n.end_macro\n", document.text)
                 assertEquals(header, fixture.editor.document.text)
                 assertTrue(errors().isEmpty())
                 document.text

@@ -218,7 +218,7 @@ class MarsDebugPlatformTest {
                     last.text = "4294967296"
                     assertSame(last, dialog.performValidateAll().single().component)
                     last.text = "0"
-                    assertTrue(dialog.performValidateAll().single().message.contains("at or after"))
+                    assertTrue(dialog.performValidateAll().single().message.contains(@Suppress("DialogTitleCapitalization") "at or after"))
                     last.text = "4294967295"
                     @Suppress("UNCHECKED_CAST")
                     val modes = UIUtil.findComponentsOfType(dialog.fields, JComboBox::class.java).single() as JComboBox<MemoryWatchMode>
@@ -2428,7 +2428,7 @@ class MarsDebugPlatformTest {
                         assertSame(value, dialog.getPreferredFocusedComponent())
                         assertSame(value, dialog.performValidateAll().single().component)
                         address.text = "0x10010001"
-                        assertTrue(dialog.performValidateAll().single().message.contains("word-aligned"))
+                        assertTrue(dialog.performValidateAll().single().message.contains(@Suppress("DialogTitleCapitalization") "word-aligned"))
                         address.text = "0x100000000"
                         assertSame(address, dialog.performValidateAll().single().component)
                         dialog.doCancelAction()
@@ -2915,7 +2915,7 @@ class MarsDebugPlatformTest {
         withDebug(file, { runSpeed = 0.05f }) { debug ->
             debug.assertPausedAt(file, 0)
             withContext(Dispatchers.EDT) {
-                val (action, event) = toolbarAction(debug.session, "Run speed")
+                val (action, event) = toolbarAction(debug.session, "Run Speed")
                 val speed = assertInstanceOf(MarsRunSpeedAction::class.java, action)
                 assertTrue(event.presentation.isEnabled)
                 assertEquals("Speed: 0.05 instr/s", event.presentation.text)
@@ -3109,9 +3109,9 @@ class MarsDebugPlatformTest {
                     assertEquals(formattingCopy, documents.getFile(copy))
                     WriteAction.run<RuntimeException> {
                         detached.setText("edited")
-                        copy.setText("# formatting copy\n" + includedText)
+                        copy.setText("# formatting copy\n$includedText")
                         other.setText("nop\nnop\n")
-                        body.setText("# edit\n" + includedText)
+                        body.setText("# edit\n$includedText")
                     }
                     body
                 }
@@ -4984,7 +4984,7 @@ class MarsDebugPlatformTest {
                 val id = DefaultDebugExecutor.getDebugExecutorInstance().toolWindowId
                 val window = manager.getToolWindow(id) ?: manager.registerToolWindow(id) { hideOnEmptyContent = false }
                 fun attach(handler: MarsProcessHandler, number: Long) =
-                    RunContentDescriptor(null, handler, JPanel(), "Floating point test").let { descriptor ->
+                    RunContentDescriptor(null, handler, JPanel(), "Floating Point Test").let { descriptor ->
                         descriptor.executionId = number
                         ContentFactory.getInstance().createContent(descriptor.component, descriptor.displayName, false).also {
                             it.putUserData(RunContentDescriptor.DESCRIPTOR_KEY, descriptor)
@@ -5087,7 +5087,7 @@ class MarsDebugPlatformTest {
             withContext(Dispatchers.EDT) {
                 val config = ConfigurationTypeUtil.findConfigurationType(MarsRunType::class.java).createTemplateConfiguration(project)
                 config.options.sourcePath = file.path
-                config.options.configure()
+                configure(config.options)
                 if (beforeLaunch) {
                     manager.forceCompilationInTests = true
                     config.beforeRunTasks = listOf(MarsBeforeLaunchTask().apply { isEnabled = true })

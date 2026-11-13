@@ -200,7 +200,7 @@ class MipsMacroArityPlatformTest {
         .filter { it.severity == HighlightSeverity.WARNING }
         .mapNotNull { info ->
             val message = info.description ?: return@mapNotNull null
-            if (!message.contains("has no overload for an argument count")) return@mapNotNull null
+            if (!message.contains(@Suppress("DialogTitleCapitalization") "has no overload for an argument count")) return@mapNotNull null
             Warning(info.startOffset, fixture.file.text.substring(info.startOffset, info.endOffset), message)
         }
         .sortedBy(Warning::offset)
