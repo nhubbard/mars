@@ -63,6 +63,7 @@ import com.intellij.psi.PsiErrorElement
 import com.intellij.psi.PsiFileFactory
 import com.intellij.psi.PsiManager
 import com.intellij.psi.util.PsiTreeUtil
+import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.LightVirtualFile
 import com.intellij.testFramework.TrustedProjectsTestUtil
 import com.intellij.testFramework.TestActionEvent
@@ -184,6 +185,7 @@ class MarsRunPlatformTest {
                     assertTrue(text.contains("Called from ${entry.path}:6\n"), text)
                 }
             }
+            if (readOnly) IndexingTestUtil.suspendUntilIndexesAreReady(project, 5.seconds)
             withContext(Dispatchers.EDT) {
                 val consoleEditor = console.editor!!
                 val links = EditorHyperlinkSupport.get(consoleEditor)
