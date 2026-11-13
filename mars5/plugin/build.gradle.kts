@@ -311,6 +311,7 @@ sourceSets.named("test") {
 
 // Keep generated code in the raw report. Only the exact reviewed defensive outcomes are exempt.
 val verifyGeneratedParserCoverage = tasks.register("verifyGeneratedParserCoverage") {
+  description = "Verify coverage of the generated MIPS parser against its reviewed branch ledger."
   dependsOn(tasks.jacocoTestReport)
   val ledger = layout.projectDirectory.file("coverage/generated-parser-branches.tsv")
   val source = layout.buildDirectory.file("generated/sources/mips/kotlin/edu/missouristate/mars/plugin/language/parser/MipsParser.kt")
@@ -329,6 +330,8 @@ val verifyGeneratedParserCoverage = tasks.register("verifyGeneratedParserCoverag
     }
     val parser = DocumentBuilderFactory.newDefaultInstance().apply {
       setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true)
+      // JAXP identifies this parser feature by URI. The parser does not fetch it.
+      //noinspection HttpUrlsUsage
       setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false)
       setAttribute(XMLConstants.ACCESS_EXTERNAL_DTD, "")
       setAttribute(XMLConstants.ACCESS_EXTERNAL_SCHEMA, "")
