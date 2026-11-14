@@ -13,6 +13,34 @@ import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 
 class PcRelativeInstructionTest {
+    @Test
+    fun `shared PC relative forms use Release 6 words and sign extend word loads in MARS64`(@TempDir directory: Path) {
+        val source = Files.writeString(directory.resolve("shared-pc.s"), $$"""
+            addiupc $8,-4
+            lwpc $9,12
+            auipc $10,1
+            aluipc $11,-1
+            sd $zero,0($zero)
+        """.trimIndent())
+        TestSessions.create().use { machine ->
+            machine.selectTarget(MarsTarget.MARS64)
+            val program = machine.assemble(listOf(source), null, false, false)
+            val instructions = program.machineList!!
+            val words = listOf(0xed07_ffffu, 0xed28_0003u, 0xed5e_0001u, 0xed7f_ffffu, 0xfc00_0000u)
+            assertEquals(words.map { it.toInt() }, instructions.map(ProgramStatement::binaryStatement))
+            for (statement in instructions.take(4)) {
+                val decoded = ProgramStatement(statement.binaryStatement, statement.address, machine.instructionSet)
+                assertEquals(statement.instruction?.name, decoded.instruction?.name)
+            }
+            program.simulate(4)
+            val start = instructions.first().address.toLong()
+            assertEquals(start - 4, machine.registerFile.getLongValueNoNotify(8))
+            assertEquals(words.last().toInt().toLong(), machine.registerFile.getLongValueNoNotify(9))
+            assertEquals(start + 8 + 0x10000, machine.registerFile.getLongValueNoNotify(10))
+            assertEquals((start + 12 - 0x10000) and -0x10000L, machine.registerFile.getLongValueNoNotify(11))
+        }
+    }
+
     @ParameterizedTest
     @ValueSource(booleans = [MemoryState.LITTLE_ENDIAN, MemoryState.BIG_ENDIAN])
     fun `wide PC relative loads align the base and preserve unsigned bits`(littleEndian: Boolean, @TempDir directory: Path) {

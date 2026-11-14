@@ -11,18 +11,18 @@ add.d	fd, fs, ft	53	audit
 add.ps	fd, fs, ft	53	removed
 addi	rt, rs, immediate	55	removed
 addiu	rt, rs, immediate	56	audit
-addiupc	rs,immediate	57	audit
+addiupc	rs,immediate	57	implemented
 addu	rd, rs, rt	58	audit
 align	rd,rs,rt,bp	59	audit
 dalign	rd,rs,rt,bp	59	implemented
-aluipc	rs,immediate	64	audit
+aluipc	rs,immediate	64	implemented
 and	rd, rs, rt	65	audit
 andi	rt, rs, immediate	66	audit
 aui	rt, rs immediate	67	audit
 daui	rt, rs immediate	67	implemented
 dahi	rs, rs immediate	67	implemented
 dati	rs, rs immediate	67	implemented
-auipc	rs, immediate	69	audit
+auipc	rs, immediate	69	implemented
 b	offset	70	idiom-audit
 bal	offset	71	implemented
 balc	offset	73	audit
@@ -284,7 +284,7 @@ lwc2	rt, offset(base)	325	audit
 lwe	rt, offset(base)	327	audit
 lwl	rt, offset(base)	330	removed
 lwle	rt, offset(base)	333	removed
-lwpc	rs, offset	335	audit
+lwpc	rs, offset	335	implemented
 lwr	rt, offset(base)	337	removed
 lwre	rt, offset(base)	339	removed
 lwu	rt, offset(base)	343	audit
