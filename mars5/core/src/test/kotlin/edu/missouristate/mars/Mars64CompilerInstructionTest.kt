@@ -1,6 +1,7 @@
 package edu.missouristate.mars
 
 import edu.missouristate.mars.api.MarsTarget
+import edu.missouristate.mars.mips.hardware.MemoryState
 import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -10,6 +11,35 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 
 class Mars64CompilerInstructionTest {
+    @Test
+    fun `common data and global directive spellings match the canonical MARS directives`(@TempDir directory: Path) {
+        val file = Files.writeString(directory.resolve("aliases.mars"), """
+            .data
+            .global values
+            values:
+            .2byte 7
+            .short 8
+            .4byte 9
+            .long 10
+            .8byte 11
+            .quad 12
+            .asciz "two"
+            .string "three"
+            .text
+            nop
+        """.trimIndent())
+        TestSessions.create().use { machine ->
+            machine.selectTarget(MarsTarget.MARS64)
+            val memory = machine.memory
+            memory.byteOrder = MemoryState.LITTLE_ENDIAN
+            val program = machine.assemble(listOf(file))
+            val base = memory.dataBaseAddress
+            assertEquals(base.toLong(), program.symbolMap().globals().getValue("values").addressBits)
+            assertEquals(listOf(0x00080007, 9, 10, 0, 11, 0, 12, 0), (0 until 8).map { memory.getWordNoNotify(base + it * 4) })
+            assertEquals("two\u0000three\u0000".toList().map(Char::code), (32..41).map { memory.getByte(base + it) })
+        }
+    }
+
     @Test
     fun `unmodified freestanding Clang output runs with a MARS64 caller`(@TempDir directory: Path) {
         val callee = directory.resolve("rotate-sum.s")

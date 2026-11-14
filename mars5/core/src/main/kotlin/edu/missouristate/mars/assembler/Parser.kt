@@ -107,6 +107,11 @@ internal class Parser(private val pass: FirstPassProcessor) {
 
         val matches = pass.matchInstruction(operator) ?: return ArrayList()
         if (pass.context.session.target == MarsTarget.MARS64) {
+            val removedOperandForm = release6DivOperandMigration(tokens)
+            if (removedOperandForm != null) {
+                pass.errors.add(ErrorMessage(operator, removedOperandForm))
+                return null
+            }
             if (!parseAddressRelocations(tokens, pass.numericLabels, pass.errors)) return null
             bindNumericReferences(tokens, matches)
         }

@@ -10,6 +10,25 @@ import org.junit.jupiter.api.io.TempDir
 
 class Release6MigrationTest {
     @Test
+    fun `legacy two-operand divides explain the quotient and remainder instruction forms`(@TempDir directory: Path) {
+        val source = Files.writeString(directory.resolve("divides.mars"), $$"""
+            div $8,$9
+            DIVU $8,$9
+            ddiv $8,$9
+            ddivu $8,$9
+        """.trimIndent())
+        TestSessions.create().use { machine ->
+            machine.selectTarget(MarsTarget.MARS64)
+            val failure = assertThrows(ProcessingException::class.java) { machine.assemble(listOf(source)) }
+            val diagnostics = failure.errors()!!.generateErrorReport()
+            for ((divide, remainder) in listOf("div" to "mod", "divu" to "modu", "ddiv" to "dmod", "ddivu" to "dmodu")) {
+                assertTrue("Release 6 removed the two-operand $divide form" in diagnostics)
+                assertTrue("or $remainder for the remainder" in diagnostics)
+            }
+        }
+    }
+
+    @Test
     fun `removed branch and floating forms offer specific migration advice`(@TempDir directory: Path) {
         val source = Files.writeString(directory.resolve("removed.s"), $$"""
             .eqv LIKELY beql

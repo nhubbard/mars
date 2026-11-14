@@ -42,6 +42,16 @@ fun release6Migration(mnemonic: String): String? {
     }
 }
 
+internal fun release6DivOperandMigration(tokens: TokenList): String? {
+    val mnemonic = tokens[0].value.lowercase()
+    if (mnemonic !in removedTwoOperandDivides || tokens.size() != 3 ||
+        RegisterNames.integer(tokens[1].value) == null || RegisterNames.integer(tokens[2].value) == null) return null
+    val remainder = mnemonic.replace("div", "mod")
+    return "Release 6 removed the two-operand $mnemonic form. Use $mnemonic with an explicit destination for the quotient, or $remainder for the remainder."
+}
+
+private val removedTwoOperandDivides = setOf("div", "divu", "ddiv", "ddivu")
+
 private val floatingConditions = setOf(
     "f", "un", "eq", "ueq", "olt", "ult", "ole", "ule", "sf", "ngle", "seq", "ngl", "lt", "nge", "le", "ngt",
 )

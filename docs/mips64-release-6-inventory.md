@@ -116,7 +116,8 @@ linker or loader.
 `.p2align` accepts a power-of-two exponent, and `.balign` accepts a positive
 byte boundary. Both accept an optional fill byte in data and emit whole
 `nop` instructions in text. Neither crosses the current segment's bounds.
-`.8byte` is another spelling of `.dword`.
+The assembler also accepts `.global`, `.2byte`, `.short`, `.4byte`, `.long`,
+`.8byte`, `.quad`, `.asciz`, and `.string`.
 
 The `%lo`, `%hi`, `%higher`, and `%highest` operators resolve a label and an
 optional integer addend into a 16-bit machine field. They can be used with
@@ -221,8 +222,8 @@ or PC-relative immediate in this table is the displacement as written to LLVM.
 - **Integer multiply and divide.** MARS64 uses the register-result word forms
   in Appendix A.4 Table A.26 and excludes the legacy HI/LO native forms.
   MARS32 retains its existing behavior. MARS64 defines a trap on division
-  by zero, and the inventory still tracks source migration guidance for
-  removed forms.
+  by zero. The old two-operand divide spellings direct users to explicit
+  quotient or remainder destination registers.
 - **Compact control flow.** Tests cover overlapping encodings, link values,
   both branch paths, and forbidden-slot behavior. MARS64 assigns the
   `addi` primary opcode to `beqc`, `beqzalc`, and `bovc`. The same words

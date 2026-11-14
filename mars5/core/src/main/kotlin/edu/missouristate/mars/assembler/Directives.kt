@@ -67,6 +67,10 @@ class Directives private constructor(val name: String, val description: String) 
             .map { directive(it, "Compiler metadata accepted by the MARS64 assembler") }.toSet()
 
         private val objectAttributes = setOf("@function", "@object", "@progbits", "@nobits")
+        private val aliases = mapOf(
+            ".global" to GLOBL, ".2byte" to HALF, ".short" to HALF, ".4byte" to WORD, ".long" to WORD,
+            ".8byte" to DWORD, ".quad" to DWORD, ".asciz" to ASCIIZ, ".string" to ASCIIZ,
+        )
 
         fun isObjectAttribute(value: String): Boolean = value in objectAttributes
 
@@ -85,7 +89,7 @@ class Directives private constructor(val name: String, val description: String) 
 
         @JvmStatic
         fun matchDirective(text: String): Directives? =
-            if (text.equals(".8byte", ignoreCase = true)) DWORD else directiveList.firstOrNull { text.equals(it.name, ignoreCase = true) }
+            aliases[text.lowercase()] ?: directiveList.firstOrNull { text.equals(it.name, ignoreCase = true) }
 
         @JvmStatic
         fun getDirectiveList(): ArrayList<Directives> = directiveList
