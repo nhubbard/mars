@@ -168,6 +168,11 @@ or PC-relative immediate in this table is the displacement as written to LLVM.
   encodings. Both link past the delay slot. The old register-conditional
   `bgezal` and `bltzal` forms are removed. `sigrie` signals a reserved
   instruction exception and carries a 16-bit software code.
+  The six removed immediate traps (`teqi`, `tnei`, `tgei`, `tgeiu`, `tlti`,
+  and `tltiu`) remain as pseudos. Each loads a sign-extended 16-bit
+  immediate into the assembler temporary `$at` and uses the corresponding
+  native register trap. Use an explicit scratch register if the source
+  operand is `$at`, or if the comparison must fit in a single delay slot.
 - **CRC.** MARS64 includes all eight optional `crc32*` and `crc32c*` forms.
   They consume the low byte, halfword, word, or doubleword of the message
   register, update the accumulator in place, and sign-extend the result.

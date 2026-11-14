@@ -102,12 +102,33 @@ class IntegerOperandWidthTest {
             machine.selectTarget(MarsTarget.MARS64)
             val program = machine.assemble(listOf(file))
             machine.editIntegerRegister(4, Long.MIN_VALUE)
+            val operations = program.machineList!!.dropLast(1)
+            val mnemonic = instruction.substringBefore(' ')
+            val immediate = instruction.substringAfter(',').toIntOrNull()
+            if (immediate != null) {
+                val native = mnemonic.removeSuffix("iu").let { if (it != mnemonic) it + "u" else it.removeSuffix("i") }
+                assertEquals(listOf("daddiu", native), operations.map { it.instruction?.name })
+                val trapSelector = mapOf("tgei" to 8, "tgeiu" to 9, "tlti" to 10, "tltiu" to 11, "teqi" to 12, "tnei" to 14)
+                val oldWord = 0x04800000 or (trapSelector.getValue(mnemonic) shl 16) or (immediate and 0xffff)
+                assertTrue(machine.instructionSet.findByBinaryCode(oldWord)?.name != mnemonic)
+            }
             if (traps) {
-                val failure = assertThrows(ProcessingException::class.java) { program.simulate(1) }
+                val failure = assertThrows(ProcessingException::class.java) { program.simulate(operations.size) }
                 assertTrue(failure.message!!.contains("trap"))
             } else {
-                assertFalse(program.simulate(1))
+                assertFalse(program.simulate(operations.size))
             }
+        }
+    }
+
+    @ParameterizedTest
+    @CsvSource("\$at", "\$1")
+    fun `immediate trap rejects an operand that would be overwritten by expansion`(register: String, @TempDir directory: Path) {
+        val file = Files.writeString(directory.resolve("trap.s"), "teqi $register,0\n")
+        TestSessions.create().use { machine ->
+            machine.selectTarget(MarsTarget.MARS64)
+            val failure = assertThrows(ProcessingException::class.java) { machine.assemble(listOf(file)) }
+            assertTrue(failure.errors()!!.generateErrorReport().contains("Use a different temporary and a register trap"))
         }
     }
 }

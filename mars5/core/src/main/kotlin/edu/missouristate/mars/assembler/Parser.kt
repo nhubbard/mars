@@ -9,6 +9,7 @@ import edu.missouristate.mars.api.InstructionSourceMap.Location
 import edu.missouristate.mars.api.InstructionSourceMap.Origin
 import edu.missouristate.mars.api.InstructionSourceMap.SourceOperand
 import edu.missouristate.mars.mips.instructions.ExtendedInstruction
+import edu.missouristate.mars.mips.instructions.Release6ImmediateTrap
 import edu.missouristate.mars.mips.instructions.Instruction
 import edu.missouristate.mars.mips.instructions.basic.InstrMfc0
 import edu.missouristate.mars.mips.instructions.basic.InstrMtc0
@@ -108,6 +109,10 @@ internal class Parser(private val pass: FirstPassProcessor) {
             pass.errors.add(ErrorMessage(operator, "Extended (pseudo) instruction or format not permitted.  See Settings."))
         }
         if (!OperandFormat.tokenOperandMatch(tokens, instruction, pass.errors, pass.context.bareMachineEnabled())) return null
+        if (instruction is Release6ImmediateTrap && RegisterNames.integer(tokens[1].value)?.number == 1) {
+            pass.errors.add(ErrorMessage(tokens[1], "This immediate trap uses \$at. Use a different temporary and a register trap."))
+            return null
+        }
 
         val instructionOrigin = origin(physicalLine, caller)
         val statement = ProgramStatement(

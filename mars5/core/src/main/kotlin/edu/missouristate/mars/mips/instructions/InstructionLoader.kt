@@ -17,14 +17,19 @@ class InstructionLoader {
 
     fun loadExtendedInstructions(owner: InstructionSet): List<ExtendedInstruction> = try {
         pseudoOps().useLines { lines ->
-            copyOf(lines.filterNot { it.isEmpty() || it.startsWith('#') || it.startsWith(' ') }
-                .mapNotNull { parseTemplate(it, owner) }.toList())
+            val templates = lines.filterNot { it.isEmpty() || it.startsWith('#') || it.startsWith(' ') }
+                .mapNotNull { parseTemplate(it, owner) }.toMutableList()
+            if (owner.target == MarsTarget.MARS64) templates.addAll(release6TrapTemplates(owner))
+            copyOf(templates)
         }
     } catch (failure: IOException) {
         throw IllegalStateException("Unable to load pseudo-instruction templates", failure)
     } catch (failure: RuntimeException) {
         throw IllegalStateException("Unable to load pseudo-instruction templates", failure)
     }
+
+    private fun release6TrapTemplates(owner: InstructionSet): List<ExtendedInstruction> =
+        listOf("teq", "tge", "tgeu", "tlt", "tltu", "tne").map { Release6ImmediateTrap(it, owner) }
 
     private fun parseTemplate(line: String, owner: InstructionSet): ExtendedInstruction? {
         val tokens = StringTokenizer(line, "\t")
@@ -153,3 +158,9 @@ class InstructionLoader {
         return input.bufferedReader(Charsets.UTF_8)
     }
 }
+
+internal class Release6ImmediateTrap(operation: String, owner: InstructionSet) : ExtendedInstruction(
+    "${if (operation.endsWith('u')) operation.dropLast(1) + "iu" else operation + "i"} \$t1,-100",
+    "daddiu \$at, \$zero, VL2\n$operation RG1, \$at", null,
+    "Trap after comparing against a signed 16-bit immediate. Uses \$at as a temporary.", owner,
+)
