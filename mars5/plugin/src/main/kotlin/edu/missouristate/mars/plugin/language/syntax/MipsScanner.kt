@@ -209,7 +209,7 @@ object MipsScanner {
         }
     }
 
-    private val doublewordHex = Regex("[+-]?0[xX][0-9a-fA-F]{16}")
+    private val doublewordHex = Regex("[+-]?0[xX][0-9a-fA-F]{9,16}")
 
     private fun continuesSignedExponent(source: CharSequence, position: Int, end: Int, markers: String = "eE"): Boolean =
         source[position - 1] in markers && position + 1 < end && source[position + 1].isDigit()

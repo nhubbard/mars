@@ -52,6 +52,19 @@ class MipsParserPlatformTest {
     private val project = projectFixture()
 
     @Test
+    fun `FIR example parses and highlights unpadded 64-bit segment addresses as numbers`() = timeoutRunBlocking {
+        val text = checkNotNull(javaClass.getResourceAsStream("/mars64/fir.mars")).bufferedReader().use { it.readText() }
+        readAction {
+            val file = assertParses(text, "fir.mars")
+            for (address in listOf("0x100000000", "0x100400000")) {
+                val literal = file.findElementAt(text.indexOf(address))!!
+                assertEquals(MipsTypes.psi("NUMBER"), literal.node.elementType)
+                assertEquals(address, literal.text)
+            }
+        }
+    }
+
+    @Test
     fun `decimal labels parse without consuming data repetitions or hexadecimal operands`() = timeoutRunBlocking {
         readAction {
             val source = $$"""
@@ -1477,18 +1490,19 @@ class MipsParserPlatformTest {
                 assertEquals(wordSpellings + doubleSpellings, descendants(file.node, "LITERAL_EXPR").map { it.text }.toList())
             }
 
-            val malformed = listOf("0xG", "0x", "1oops", "1e", "0b101", "0x123456789")
-            val invalid = ".data\n.word ${malformed.joinToString()}\n.text\nnext: nop\n"
+            val malformed = listOf("0xG", "0x", "1oops", "1e", "0b101", "0x12345678901234567")
+            val wide = "0x123456789"
+            val invalid = ".data\n.word ${(malformed + wide).joinToString()}\n.text\nnext: nop\n"
             entry.writeText(invalid)
             val diagnostics = assertThrows<ProcessingException> { context.assemble(listOf(entry), null, extended = true, warnings = false) }
-            for (spelling in malformed) {
+            for (spelling in malformed + wide) {
                 assertTrue(diagnostics.errors()!!.errorMessages.any { it.message!!.endsWith("Invalid language element: $spelling") })
             }
             readAction {
                 val file = PsiFileFactory.getInstance(project.get()).createFileFromText("invalid-numbers.asm", MipsFileType, invalid)
                 assertEquals(invalid, file.text)
                 assertEquals(malformed, descendants(file.node, "BAD_CHARACTER").map { it.text }.toList())
-                assertTrue(descendants(file.node, "LITERAL_EXPR").none())
+                assertEquals(listOf(wide), descendants(file.node, "LITERAL_EXPR").map { it.text }.toList())
                 assertEquals("next:", descendants(file.node, "LABEL").single().text)
                 assertEquals("nop", descendants(file.node, "OPERATION").single().text)
             }

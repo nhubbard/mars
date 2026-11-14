@@ -40,6 +40,8 @@ class MipsScannerTest {
             ".5e-2" to MipsTokenKind.NUMBER, "1.0E+5" to MipsTokenKind.NUMBER,
             ".1_count" to MipsTokenKind.DIRECTIVE, ".5e" to MipsTokenKind.DIRECTIVE, ".5f" to MipsTokenKind.NUMBER,
             "0x1e" to MipsTokenKind.NUMBER, "0XFF" to MipsTokenKind.NUMBER,
+            "0x100000000" to MipsTokenKind.NUMBER, "0x100400000" to MipsTokenKind.NUMBER,
+            "0X10000000000000000" to MipsTokenKind.BAD_CHARACTER,
             "\"# not a comment\"" to MipsTokenKind.STRING, "'a'" to MipsTokenKind.CHARACTER,
             "\"open" to MipsTokenKind.UNCLOSED_STRING, "'open" to MipsTokenKind.UNCLOSED_CHARACTER,
             "," to MipsTokenKind.COMMA, ":" to MipsTokenKind.COLON,
@@ -171,7 +173,7 @@ class MipsScannerTest {
             ".double \u000c1.5, \u000bNaN, \u000b1.25\u000c",
             ".word 0X80000000, 0xffffffff, 4294967295, 077, 09, ١٢",
             ".double 0x1p2, 1e2, 2147483648",
-            ".word 0xG, 0x, 1oops, 1e, 0b101, 0x123456789",
+            ".word 0xG, 0x, 1oops, 1e, 0b101, 0x12345678901234567",
           $$".macro emit (%value!@?, $argument)",
           ".macro emit (%, %!, %%, %value-7, $)",
         )) {
@@ -191,7 +193,7 @@ class MipsScannerTest {
         val unsignedWord = "0xffffffff"
         val cases = listOf(
             "-$minimum" to MipsTokenKind.NUMBER,
-            "head -$minimum" to MipsTokenKind.BAD_CHARACTER,
+            "head -$minimum" to MipsTokenKind.NUMBER,
             "head, ( -$minimum" to MipsTokenKind.NUMBER,
             "head\n-$minimum" to MipsTokenKind.NUMBER,
             ".word +$unsignedWord" to MipsTokenKind.BAD_CHARACTER,
@@ -206,7 +208,9 @@ class MipsScannerTest {
             assertEquals(magnitude, MipsScanner.next(source, magnitude.start), source)
             val line = source.substringAfterLast('\n')
             val tokens = Tokenizer().tokenizeLine(1, line, ErrorList(), false)
-            assertEquals(kind == MipsTokenKind.BAD_CHARACTER, tokens[tokens.size() - 1].type == TokenTypes.ERROR, source)
+            // The target-neutral editor accepts the padded hex; the MARS32 assembler rejects its detached form.
+            val legacyError = kind == MipsTokenKind.BAD_CHARACTER || source == "head -$minimum"
+            assertEquals(legacyError, tokens[tokens.size() - 1].type == TokenTypes.ERROR, source)
         }
     }
 
