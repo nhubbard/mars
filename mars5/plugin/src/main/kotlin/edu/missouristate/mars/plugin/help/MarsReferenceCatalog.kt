@@ -13,7 +13,14 @@ import org.jetbrains.annotations.Nls
 private val guides = DynamicBundle(MarsReferenceCatalog::class.java, "messages.MarsReference")
 internal val referenceMessages = DynamicBundle(MarsReferenceCatalog::class.java, "messages.MarsBundle")
 
-internal class MarsReferenceTopic(val title: @Nls String, private val searchText: String, val html: () -> @Nls String) {
+internal class MarsReferenceTopic(
+    @param:Nls @get:Nls val title: String,
+    private val searchText: String,
+    private val renderHtml: () -> String,
+) {
+    @Nls
+    fun html(): String = renderHtml()
+
     fun matches(words: List<String>): Boolean = words.all {
         title.contains(it, ignoreCase = true) || searchText.contains(it, ignoreCase = true)
     }
