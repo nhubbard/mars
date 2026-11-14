@@ -179,15 +179,15 @@ private class VectorRegisterValue(name: String, private val bits: VectorRegister
             val label = runMessages.getMessage("debug.registers.vector.integer.lanes", width)
             values.add(RegisterValue(label) {
                 (0 until 128 / width).joinToString(", ", "[", "]") { index ->
-                    "0x" + bits.lane(index, width).toULong().toString(16).padStart(width / 4, '0')
+                    "0x" + bits.unsignedLane(index, width).toULong().toString(16).padStart(width / 4, '0')
                 }
             })
         }
         values.add(RegisterValue(runMessages.getMessage("debug.registers.vector.float.lanes", 32)) {
-            (0 until 4).joinToString(", ", "[", "]") { Float.fromBits(bits.lane(it, 32).toInt()).toString() }
+            (0 until 4).joinToString(", ", "[", "]") { Float.fromBits(bits.unsignedLane(it, 32).toInt()).toString() }
         })
         values.add(RegisterValue(runMessages.getMessage("debug.registers.vector.float.lanes", 64)) {
-            (0 until 2).joinToString(", ", "[", "]") { Double.fromBits(bits.lane(it, 64)).toString() }
+            (0 until 2).joinToString(", ", "[", "]") { Double.fromBits(bits.unsignedLane(it, 64)).toString() }
         })
         node.setAlreadySorted(true)
         node.addChildren(values, true)

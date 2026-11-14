@@ -170,7 +170,7 @@ class AssemblyCase internal constructor(
     }
 
     fun expectVectorLane(register: String, lane: Int, width: Int, expected: Long) {
-        val actual = vector(register).lane(lane, width)
+        val actual = vector(register).unsignedLane(lane, width)
         requireCase(actual == expected) { "Expected $register lane $lane ($width bits) = $expected, got $actual" }
     }
 
