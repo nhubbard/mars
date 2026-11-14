@@ -19,7 +19,10 @@ class InstructionLoader {
         pseudoOps().useLines { lines ->
             val templates = lines.filterNot { it.isEmpty() || it.startsWith('#') || it.startsWith(' ') }
                 .mapNotNull { parseTemplate(it, owner) }.toMutableList()
-            if (owner.target == MarsTarget.MARS64) templates.addAll(release6TrapTemplates(owner))
+            if (owner.target == MarsTarget.MARS64) {
+                templates.addAll(release6TrapTemplates(owner))
+                templates.addAll(release6CompactBranchAliases(owner))
+            }
             copyOf(templates)
         }
     } catch (failure: IOException) {
@@ -30,6 +33,14 @@ class InstructionLoader {
 
     private fun release6TrapTemplates(owner: InstructionSet): List<ExtendedInstruction> =
         listOf("teq", "tge", "tgeu", "tlt", "tltu", "tne").map { Release6ImmediateTrap(it, owner) }
+
+    private fun release6CompactBranchAliases(owner: InstructionSet): List<ExtendedInstruction> =
+        mapOf("bgtc" to "bltc", "blec" to "bgec", "bgtuc" to "bltuc", "bleuc" to "bgeuc").map { (alias, form) ->
+            ExtendedInstruction(
+                "$alias \$t1,\$t2,label", "$form RG2, RG1, LAB", null,
+                "Compact comparison branch. Assembles as $form with operands reversed.", owner,
+            )
+        }
 
     private fun parseTemplate(line: String, owner: InstructionSet): ExtendedInstruction? {
         val tokens = StringTokenizer(line, "\t")

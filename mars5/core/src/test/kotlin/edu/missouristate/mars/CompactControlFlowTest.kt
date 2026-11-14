@@ -14,6 +14,29 @@ import org.junit.jupiter.params.provider.ValueSource
 
 class CompactControlFlowTest {
     @ParameterizedTest
+    @CsvSource("bgtc,bltc,5dec0001,2,1", "blec,bgec,59ec0001,1,2",
+        "bgtuc,bltuc,1dec0001,-1,1", "bleuc,bgeuc,19ec0001,1,-1")
+    fun `reversed compact branch aliases emit one native instruction without a delay slot`(
+        alias: String, native: String, encoding: String, left: Long, right: Long, @TempDir directory: Path,
+    ) {
+        val source = Files.writeString(directory.resolve("alias.s"), "${alias} \$12,\$15,target\nnop\ntarget: nop\n")
+        TestSessions.create().use { machine ->
+            machine.selectTarget(MarsTarget.MARS64)
+            for (taken in listOf(true, false)) {
+                val program = machine.assemble(listOf(source))
+                val statements = program.machineList!!
+                assertEquals(3, statements.size)
+                assertEquals(native, statements.first().instruction?.name)
+                assertEquals(encoding.toUInt(16).toInt(), statements.first().binaryStatement)
+                machine.editIntegerRegister(12, if (taken) left else right)
+                machine.editIntegerRegister(15, if (taken) right else left)
+                program.simulate(1)
+                assertEquals(statements[if (taken) 2 else 1].address, machine.registerFile.programCounter)
+            }
+        }
+    }
+
+    @ParameterizedTest
     @ValueSource(strings = ["j target", "bnezalc \$9,target", "beq \$zero,\$9,target", "jalr \$31,\$9", "eret"])
     fun `only a fallthrough compact branch creates a forbidden slot and backstep restores it`(
         transfer: String, @TempDir directory: Path,

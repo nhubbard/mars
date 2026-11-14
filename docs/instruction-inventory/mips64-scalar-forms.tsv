@@ -64,10 +64,10 @@ bltc	rs, rt, offset	104	implemented
 bgec	rs, rt, offset	104	implemented
 bltuc	rs, rt, offset	104	implemented
 bgeuc	rs, rt, offset	104	implemented
-bgtc	rs, rt, offset	104	idiom-audit
-blec	rs, rt, offset	104	idiom-audit
-bgtuc	rs, rt, offset	104	idiom-audit
-bleuc	rs, rt, offset	104	idiom-audit
+bgtc	rs, rt, offset	104	implemented-alias
+blec	rs, rt, offset	104	implemented-alias
+bgtuc	rs, rt, offset	104	implemented-alias
+bleuc	rs, rt, offset	104	implemented-alias
 bltzc	rs, offset	104	implemented
 blezc	rs, offset	104	implemented
 bgezc	rs, offset	104	implemented
