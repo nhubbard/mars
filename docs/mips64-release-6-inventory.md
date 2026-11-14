@@ -187,6 +187,10 @@ or PC-relative immediate in this table is the displacement as written to LLVM.
   still decode as `addi` in MARS32.
   `bgtc`, `blec`, `bgtuc`, and `bleuc` are assembler aliases. Each emits one
   native compact branch with its register operands reversed.
+  `jrc` and `jalrc` emit `jic` and `jialc` with a zero offset.
+- **Doubleword shifts and rotates.** The unsuffixed `dsll`, `dsrl`, `dsra`,
+  and `drotr` source forms accept counts 0–63 and select the matching encoding.
+  Their explicit `32` forms take the encoded count 0–31.
 - **Delayed control flow.** MARS64 executes the architectural delay slot for
   `beq`, `bne`, `bgez`, `bgtz`, `blez`, `bltz`, `j`, and `jal`. An untaken
   branch still reserves its delay slot. `jal` links to the second instruction

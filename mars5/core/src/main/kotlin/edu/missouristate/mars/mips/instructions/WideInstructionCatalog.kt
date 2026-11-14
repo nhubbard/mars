@@ -71,17 +71,17 @@ internal val wideInstructionFactories: List<() -> BasicInstruction> = listOf(
             context.updateLongRegister(destination, context.registerFile.getLongValue(source) + immediate.toShort())
         }
     },
-    { wideShift("dsll", "Shift a doubleword left", "111000", 0, Long::shl) },
-    { wideShift("dsll32", "Shift a doubleword left by 32 plus the immediate", "111100", 32, Long::shl) },
-    { wideShift("dsrl", "Shift a doubleword right logically", "111010", 0, Long::ushr) },
-    { wideShift("dsrl32", "Shift a doubleword right logically by 32 plus the immediate", "111110", 32, Long::ushr) },
-    { wideShift("dsra", "Shift a doubleword right arithmetically", "111011", 0, Long::shr) },
-    { wideShift("dsra32", "Shift a doubleword right arithmetically by 32 plus the immediate", "111111", 32, Long::shr) },
+    { WideImmediateShift("dsll", "Shift a doubleword left", "111000", 0, Long::shl, highFunction = "111100") },
+    { WideImmediateShift("dsll32", "Shift a doubleword left by 32 plus the immediate", "111100", 32, Long::shl) },
+    { WideImmediateShift("dsrl", "Shift a doubleword right logically", "111010", 0, Long::ushr, highFunction = "111110") },
+    { WideImmediateShift("dsrl32", "Shift a doubleword right logically by 32 plus the immediate", "111110", 32, Long::ushr) },
+    { WideImmediateShift("dsra", "Shift a doubleword right arithmetically", "111011", 0, Long::shr, highFunction = "111111") },
+    { WideImmediateShift("dsra32", "Shift a doubleword right arithmetically by 32 plus the immediate", "111111", 32, Long::shr) },
     { wideVariableShift("dsllv", "Shift a doubleword left by a register count", "010100", Long::shl) },
     { wideVariableShift("dsrlv", "Shift a doubleword right logically by a register count", "010110", Long::ushr) },
     { wideVariableShift("dsrav", "Shift a doubleword right arithmetically by a register count", "010111", Long::shr) },
-    { wideShift("drotr", "Rotate a doubleword right", "111010", 0, Long::rotateRight, "00001") },
-    { wideShift("drotr32", "Rotate a doubleword right by 32 plus the immediate", "111110", 32, Long::rotateRight, "00001") },
+    { WideImmediateShift("drotr", "Rotate a doubleword right", "111010", 0, Long::rotateRight, "00001", "111110") },
+    { WideImmediateShift("drotr32", "Rotate a doubleword right by 32 plus the immediate", "111110", 32, Long::rotateRight, "00001") },
     { wideVariableShift("drotrv", "Rotate a doubleword right by a register count", "010110", Long::rotateRight, "00001") },
     { wideCount("dclz", "Count leading zero bits in a doubleword", "010010", Long::countLeadingZeroBits) },
     { wideCount("dclo", "Count leading one bits in a doubleword", "010011") { it.inv().countLeadingZeroBits() } },
@@ -505,17 +505,27 @@ private fun wideArithmetic(
     context.updateLongRegister(destination, result)
 }
 
-private fun wideShift(
+private class WideImmediateShift(
     name: String, description: String, function: String, base: Int, operation: (Long, Int) -> Long,
-    modifier: String = "00000",
-) = BasicInstruction(
-    "$name \$t1,\$t2,10", description, R_FORMAT, "000000 $modifier sssss fffff ttttt $function",
-) { statement, context ->
-    val (destination, source, shift) = statement.operands
-    context.updateLongRegister(destination, operation(context.registerFile.getLongValue(source), base + shift))
+    modifier: String = "00000", highFunction: String? = null,
+) : BasicInstruction(
+    "$name \$t1,\$t2,${if (highFunction == null) 10 else 57}", description, R_FORMAT,
+    "000000 $modifier sssss fffff ttttt $function",
+    { statement, context ->
+        val (destination, source, shift) = statement.operands
+        context.updateLongRegister(destination, operation(context.registerFile.getLongValue(source), base + shift))
+    },
+) {
+    private val highMask = highFunction?.let { operationMask.dropLast(6) + it }
+
+    override fun encodeOperands(values: IntArray): IntArray {
+        val maximum = if (highMask == null) 31 else 63
+        require(values[2] in 0..maximum) { "$name shift count must be from 0 through $maximum" }
+        return values.copyOf().also { it[2] = values[2] and 31 }
+    }
+
+    override fun encodingMask(values: IntArray): String = if (values[2] >= 32) checkNotNull(highMask) else operationMask
 }
-
-
 
 private fun wideVariableShift(
     name: String, description: String, function: String, operation: (Long, Int) -> Long,

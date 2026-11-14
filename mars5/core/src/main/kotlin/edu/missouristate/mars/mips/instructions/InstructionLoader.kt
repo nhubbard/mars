@@ -23,7 +23,7 @@ class InstructionLoader {
                 templates.add(wideConstantTemplate(owner, "dli \$t1,0x123456789abcdef0"))
                 templates.add(wideConstantTemplate(owner, "dla \$t1,label"))
                 templates.addAll(release6TrapTemplates(owner))
-                templates.addAll(release6CompactBranchAliases(owner))
+                templates.addAll(release6CompactAliases(owner))
                 for ((mnemonic, operation) in wideMemoryOperations) {
                     val register = if (operation in floatingMemoryOperations) "\$f2" else "\$t1"
                     templates.add(WideAddressMemory("$mnemonic $register,0x100000000", operation, 0, false, owner))
@@ -46,13 +46,16 @@ class InstructionLoader {
     private fun release6TrapTemplates(owner: InstructionSet): List<ExtendedInstruction> =
         listOf("teq", "tge", "tgeu", "tlt", "tltu", "tne").map { Release6ImmediateTrap(it, owner) }
 
-    private fun release6CompactBranchAliases(owner: InstructionSet): List<ExtendedInstruction> =
+    private fun release6CompactAliases(owner: InstructionSet): List<ExtendedInstruction> =
         mapOf("bgtc" to "bltc", "blec" to "bgec", "bgtuc" to "bltuc", "bleuc" to "bgeuc").map { (alias, form) ->
             ExtendedInstruction(
                 "$alias \$t1,\$t2,label", "$form RG2, RG1, LAB", null,
                 "Compact comparison branch. Assembles as $form with operands reversed.", owner,
             )
-        }
+        } + listOf(
+            ExtendedInstruction("jrc \$t1", "jic RG1, 0", null, "Jump to a register without a delay slot", owner),
+            ExtendedInstruction("jalrc \$t1", "jialc RG1, 0", null, "Call a register without a delay slot", owner),
+        )
 
     private fun parseTemplate(line: String, owner: InstructionSet): ExtendedInstruction? {
         val tokens = StringTokenizer(line, "\t")
