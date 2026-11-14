@@ -6,6 +6,22 @@ word per form. Execution conformance and the complete scalar and MSA
 inventories are still open. See the [implementation plan](mips64-source-compatibility.md)
 for the intended coverage.
 
+## Reference indexes
+
+- [Scalar section index](instruction-inventory/mips64-scalar-sections.tsv)
+  tracks all 307 entries in the Volume II-A section 3.2 table of contents.
+- [Scalar operand forms](instruction-inventory/mips64-scalar-forms.tsv)
+  lists 425 explicitly tagged forms, including 112 tagged as removed.
+  Generic condition notation, untagged aliases, and privilege and operand
+  constraints still need review against the instruction descriptions.
+  The table of contents and instruction descriptions use different page
+  numbers in this copy. The operand table uses the printed description pages.
+- [MSA forms](instruction-inventory/mips64-msa-forms.tsv) lists all 531
+  concrete forms in the SIMD reference's Format blocks, including the
+  scalar LSA and DLSA cross-references and four MIPS64-specific vector forms.
+  The table records the documented operands, availability, and reference
+  page. Execution semantics and encoding verification remain open.
+
 ## Current MARS64 forms
 
 All 30 example words below are in the

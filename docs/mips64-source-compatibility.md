@@ -90,7 +90,8 @@ source stepping wherever a migration pseudo expands to multiple instructions.
 
 ### 1. Inventory and conformance fixtures
 
-Build a checked-in matrix from Volume II-A and the MSA reference. Track one row per
+Expand the [checked-in instruction inventory](mips64-release-6-inventory.md)
+from Volume II-A and the MSA reference. Track one row per
 instruction form where operands, encodings, availability, or behavior differ. Record
 the reference, target, implementation status, and test evidence for syntax, encoding,
 execution, and debugger integration where relevant. Keep pseudo-instructions and

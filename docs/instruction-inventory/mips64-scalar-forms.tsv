@@ -1,0 +1,429 @@
+# MD00087 revision 6.06, explicitly tagged Format rows in section 3.2.
+# This is a source index. Expand generic condition/format notation and audit operand constraints and untagged forms against the diagrams.
+# Page numbers are the printed instruction-description pages, not the table of contents numbers.
+# mnemonic or group	operands	page	Release 6 audit status
+abs.s	fd, fs	50	audit
+abs.d	fd, fs	50	audit
+abs.ps	fd, fs	50	removed
+add	rd, rs, rt	52	audit
+add.s	fd, fs, ft	53	audit
+add.d	fd, fs, ft	53	audit
+add.ps	fd, fs, ft	53	removed
+addi	rt, rs, immediate	55	removed
+addiu	rt, rs, immediate	56	audit
+addiupc	rs,immediate	57	audit
+addu	rd, rs, rt	58	audit
+align	rd,rs,rt,bp	59	audit
+dalign	rd,rs,rt,bp	59	audit
+aluipc	rs,immediate	64	audit
+and	rd, rs, rt	65	audit
+andi	rt, rs, immediate	66	audit
+aui	rt, rs immediate	67	audit
+daui	rt, rs immediate	67	audit
+dahi	rs, rs immediate	67	audit
+dati	rs, rs immediate	67	audit
+auipc	rs, immediate	69	audit
+b	offset	70	idiom-audit
+bal	offset	71	idiom-audit
+balc	offset	73	audit
+bc	offset	74	audit
+bc1eqz	ft, offset	75	audit
+bc1nez	ft, offset	75	audit
+bc1f	offset (cc = 0 implied)	77	removed
+bc1f	cc, offset	77	removed
+bc1fl	offset (cc = 0 implied)	79	removed
+bc1fl	cc, offset	79	removed
+bc1t	offset (cc = 0 implied)	81	removed
+bc1t	cc, offset	81	removed
+bc1tl	offset (cc = 0 implied)	83	removed
+bc1tl	cc, offset	83	removed
+bc2eqz	ct, offset	85	audit
+bc2nez	ct, offset	85	audit
+bc2f	offset (cc = 0 implied)	87	removed
+bc2f	cc, offset	87	removed
+bc2fl	offset (cc = 0 implied)	88	removed
+bc2fl	cc, offset	88	removed
+bc2t	offset (cc = 0 implied)	90	removed
+bc2t	cc, offset	90	removed
+bc2tl	offset (cc = 0 implied)	91	removed
+bc2tl	cc, offset	91	removed
+beq	rs, rt, offset	93	audit
+beql	rs, rt, offset	94	removed
+bgez	rs, offset	96	audit
+bgezal	rs, offset	97	removed
+blezalc	rt, offset	98	audit
+bgezalc	rt, offset	98	audit
+bgtzalc	rt, offset	98	audit
+bltzalc	rt, offset	98	audit
+beqzalc	rt, offset	98	audit
+bnezalc	rt, offset	98	audit
+bgezall	rs, offset	101	removed
+b<cond>c	rs, rt, offset	103	audit
+bgezl	rs, offset	107	removed
+bgtz	rs, offset	109	audit
+bgtzl	rs, offset	110	removed
+bitswap	rd,rt	112	audit
+dbitswap	rd,rt	112	audit
+blez	rs, offset	114	audit
+blezl	rs, offset	115	removed
+bltz	rs, offset	117	audit
+bltzal	rs, offset	118	removed
+bltzall	rs, offset	119	removed
+bltzl	rs, offset	121	removed
+bne	rs, rt, offset	123	audit
+bnel	rs, rt, offset	124	removed
+bovc	rs,rt,offset	126	audit
+bnvc	rs,rt,offset	126	audit
+break		128	audit
+c.cond.s	fs, ft (cc = 0 implied)	129	removed
+c.cond.d	fs, ft (cc = 0 implied)	129	removed
+c.cond.ps	fs, ft(cc = 0 implied)	129	removed
+c.cond.s	cc, fs, ft	129	removed
+c.cond.d	cc, fs, ft	129	removed
+c.cond.ps	cc, fs, ft	129	removed
+cache	op, offset(base)	134	audit
+ceil.l.s		147	audit
+ceil.l.d		147	audit
+ceil.w.s		149	audit
+ceil.w.d		149	audit
+cfc1	rt, fs	151	audit
+cfc2	rt, Impl	153	audit
+class.s	fd,fs	154	audit
+class.d	fd,fs	154	audit
+clo	rd, rs	156	audit
+clz	rd, rs	157	audit
+cmp.condn.s	fd, fs, ft	158	audit
+cmp.condn.d	fd, fs, ft	158	audit
+cop2	func	163	audit
+crc32b	rt, rs, rt	165	audit
+crc32h	rt, rs, rt	165	audit
+crc32w	rt, rs, rt	165	audit
+crc32d	rt, rs, rt	165	audit
+crc32cb	rt, rs, rt	168	audit
+crc32ch	rt, rs, rt	168	audit
+crc32cw	rt, rs, rt	168	audit
+crc32cd	rt, rs, rt	168	audit
+ctc1	rt, fs	171	audit
+ctc2	rt, Impl	174	audit
+cvt.d.s	fd, fs	175	audit
+cvt.d.w	fd, fs	175	audit
+cvt.d.l	fd, fs	175	audit
+cvt.l.s	fd, fs	176	audit
+cvt.l.d	fd, fs	176	audit
+cvt.s.pl	fd, fs	181	removed
+cvt.s.pu	fd, fs	182	removed
+cvt.s.d	fd, fs	180	audit
+cvt.s.w	fd, fs	180	audit
+cvt.s.l	fd, fs	180	audit
+cvt.w.s	fd, fs	183	audit
+cvt.w.d	fd, fs	183	audit
+dadd	rd, rs, rt	185	audit
+daddi	rt, rs, immediate	186	removed
+daddiu	rt, rs, immediate	187	audit
+daddu	rd, rs, rt	188	audit
+dclo	rd, rs	189	audit
+dclz	rd, rs	190	audit
+ddiv	rs, rt	191	removed
+ddivu	rs, rt	192	removed
+deret		193	audit
+di		201	audit
+di	rt	201	audit
+dins	rt, rs, pos, size	203	audit
+div	rs, rt	209	removed
+div	rd,rs,rt	212	audit
+mod	rd,rs,rt	212	audit
+divu	rd,rs,rt	212	audit
+modu	rd,rs,rt	212	audit
+ddiv	rd,rs,rt	212	audit
+dmod	rd,rs,rt	212	audit
+ddivu	rd,rs,rt	212	audit
+dmodu	rd,rs,rt	212	audit
+div.s	fd, fs, ft	211	audit
+div.d	fd, fs, ft	211	audit
+divu	rs, rt	215	removed
+dmfc0	rt, rd	216	audit
+dmfc0	rt, rd, sel	216	audit
+dmfc1	rt,fs	217	audit
+dmfc2	rt, rd	218	audit
+dmfc2,	rt, rd, sel	218	audit
+dmtc0	rt, rd	219	audit
+dmtc0	rt, rd, sel	219	audit
+dmtc1	rt, fs	220	audit
+dmtc2	rt,Impl	221	audit
+dmtc2	rt, Impl, sel	221	audit
+dmult	rs, rt	222	removed
+dmultu	rs, rt	223	removed
+drotr	rd, rt, sa	224	audit
+drotr32	rd, rt, sa	225	audit
+drotrv	rd, rt, rs	226	audit
+dsbh	rd, rt	227	audit
+dshd	rd, rt	229	audit
+dsll	rd, rt, sa	231	audit
+dsll32	rd, rt, sa	232	audit
+dsllv	rd, rt, rs	233	audit
+dsra	rd, rt, sa	234	audit
+dsra32	rd, rt, sa	235	audit
+dsrav	rd, rt, rs	236	audit
+dsrl	rd, rt, sa	237	audit
+dsrl32	rd, rt, sa	238	audit
+dsrlv	rd, rt, rs	239	audit
+dsub	rd, rs, rt	240	audit
+dsubu	rd, rs, rt	241	audit
+dvp	rt	242	audit
+ehb		245	idiom-audit
+ei		246	audit
+ei	rt	246	audit
+eret		248	audit
+eretnc		250	audit
+evp	rt	252	audit
+floor.l.s	fd, fs	256	audit
+floor.l.d	fd, fs	256	audit
+floor.w.s		258	audit
+floor.w.d		258	audit
+ginvi	rs	260	audit
+ginvt	rs, type	262	audit
+j	target	268	audit
+jal	target	269	audit
+jalr	rs (rd = 31 implied)	271	audit
+jalr	rd, rs	271	audit
+jalr.hb	rs (rd = 31 implied)	273	audit
+jalr.hb	rd, rs	273	audit
+jalx	target	276	removed
+jialc	rt, offset	278	audit
+jic	rt, offset	280	audit
+jr	rs	281	audit
+jr.hb	rs	283	audit
+lb	rt, offset(base)	286	audit
+lbe	rt, offset(base)	287	audit
+lbu	rt, offset(base)	288	audit
+lbue	rt, offset(base)	289	audit
+ld	rt, offset(base)	290	audit
+ldc1	ft, offset(base)	291	audit
+ldc2	rt, offset(base)	292	audit
+ldpc	rs, offset	296	audit
+ldxc1	fd, index(base)	299	removed
+lh	rt, offset(base)	301	audit
+lhe	rt, offset(base)	302	audit
+lhu	rt, offset(base)	304	audit
+lhue	rt, offset(base)	305	audit
+ll	rt, offset(base)	307	audit
+lld	rt, offset(base)	309	audit
+lle	rt, offset(base)	314	audit
+lldp	rt, rd, (base)	312	audit
+llwp	rt, rd, (base)	316	audit
+llwpe	rt, rd, (base)	318	audit
+lsa	rd,rs,rt,sa	320	audit
+dlsa	rd,rs,rt,sa	320	audit
+lui	rt, immediate	321	idiom-audit
+luxc1	fd, index(base)	322	removed
+lw	rt, offset(base)	323	audit
+lwc1	ft, offset(base)	324	audit
+lwc2	rt, offset(base)	325	audit
+lwe	rt, offset(base)	327	audit
+lwpc	rs, offset	335	audit
+lwre	rt, offset(base)	339	removed
+lwu	rt, offset(base)	343	audit
+lwupc	rs, offset	344	audit
+lwxc1	fd, index(base)	345	removed
+madd	rs, rt	346	removed
+madd.s	fd, fr, fs, ft	347	removed
+madd.d	fd, fr, fs, ft	347	removed
+madd.ps	fd, fr, fs, ft	347	removed
+maddf.s	fd, fs, ft	349	audit
+maddf.d	fd, fs, ft	349	audit
+msubf.s	fd, fs, ft	349	audit
+msubf.d	fd, fs, ft	349	audit
+maddu	rs, rt	351	removed
+max.s	fd,fs,ft	352	audit
+max.d	fd,fs,ft	352	audit
+maxa.s	fd,fs,ft	352	audit
+maxa.d	fd,fs,ft	352	audit
+min.s	fd,fs,ft	352	audit
+min.d	fd,fs,ft	352	audit
+mina.s	fd,fs,ft	352	audit
+mina.d	fd,fs,ft	352	audit
+mfc0	rt, rd	356	audit
+mfc0	rt, rd, sel	356	audit
+mfc1	rt, fs	357	audit
+mfc2	rt, Impl	358	audit
+mfc2,	rt, Impl, sel	358	audit
+mfhc0	rt, rd	359	audit
+mfhc0	rt, rd, sel	359	audit
+mfhc1	rt, fs	361	audit
+mfhc2	rt, Impl	362	audit
+mfhc2,	rt, rd, sel	362	audit
+mfhi		363	removed
+mflo	rd	364	removed
+mov.s	fd, fs	365	audit
+mov.d	fd, fs	365	audit
+mov.ps	fd, fs	365	removed
+movf	rd, rs, cc	367	removed
+movf.s	fd, fs, cc	368	removed
+movf.d	fd, fs, cc	368	removed
+movf.ps	fd, fs, cc	368	removed
+movn	rd, rs, rt	370	removed
+movn.s	fd, fs, rt	371	removed
+movn.d	fd, fs, rt	371	removed
+movn.ps	fd, fs, rt	371	removed
+movt	rd, rs, cc	373	removed
+movt.s	fd, fs, cc	374	removed
+movt.d	fd, fs, cc	374	removed
+movt.ps	fd, fs, cc	374	removed
+movz	rd, rs, rt	376	removed
+movz.s	fd, fs, rt	377	removed
+movz.d	fd, fs, rt	377	removed
+movz.ps	fd, fs, rt	377	removed
+msub	rs, rt	379	removed
+msub.s	fd, fr, fs, ft	380	removed
+msub.d	fd, fr, fs, ft	380	removed
+msub.ps	fd, fr, fs, ft	380	removed
+msubu	rs, rt	382	removed
+mtc0	rt, rd	383	audit
+mtc0	rt, rd, sel	383	audit
+mtc1	rt, fs	385	audit
+mtc2	rt, Impl	386	audit
+mtc2	rt, Impl, sel	386	audit
+mthc0	rt, rd	387	audit
+mthc0	rt, rd, sel	387	audit
+mthc1	rt, fs	389	audit
+mthc2	rt, Impl	390	audit
+mthc2	rt, Impl, sel	390	audit
+mthi	rs	391	removed
+mtlo	rs	392	removed
+mul	rd, rs, rt	393	removed
+mul	rd,rs,rt	397	audit
+muh	rd,rs,rt	397	audit
+mulu	rd,rs,rt	397	audit
+muhu	rd,rs,rt	397	audit
+dmul	rd,rs,rt	397	audit
+dmuh	rd,rs,rt	397	audit
+dmulu	rd,rs,rt	397	audit
+dmuhu	rd,rs,rt	397	audit
+mul.s	fd, fs, ft	395	audit
+mul.d	fd, fs, ft	395	audit
+mul.ps	fd, fs, ft	395	removed
+mult	rs, rt	400	removed
+multu	rs, rt	402	removed
+nal		404	idiom-audit
+neg.s	fd, fs	405	audit
+neg.d	fd, fs	405	audit
+neg.ps	fd, fs	405	removed
+nmadd.s	fd, fr, fs, ft	407	removed
+nmadd.d	fd, fr, fs, ft	407	removed
+nmadd.ps	fd, fr, fs, ft	407	removed
+nmsub.s	fd, fr, fs, ft	409	removed
+nmsub.d	fd, fr, fs, ft	409	removed
+nmsub.ps	fd, fr, fs, ft	409	removed
+nop		411	idiom-audit
+nor	rd, rs, rt	412	audit
+or	rd, rs, rt	413	audit
+ori	rt, rs, immediate	414	audit
+pause		415	audit
+pll.ps	fd, fs, ft	417	removed
+plu.ps	fd, fs, ft	418	removed
+pref	hint,offset(base)	419	audit
+prefe	hint,offset(base)	423	audit
+prefx	hint, index(base)	428	removed
+pul.ps	fd, fs, ft	430	removed
+puu.ps	fd, fs, ft	431	removed
+rdhwr	rt,rd,sel	432	audit
+rdpgpr	rd, rt	435	audit
+recip.s		436	audit
+recip.d		436	audit
+rint.fmt		438	audit
+rint.s	fd,fs	438	audit
+rint.d	fd,fs	438	audit
+rotr	rd, rt, sa	440	audit
+rotrv	rd, rt, rs	441	audit
+round.l.s		442	audit
+round.l.d		442	audit
+round.w.s		444	audit
+round.w.d		444	audit
+rsqrt.s		446	audit
+rsqrt.d		446	audit
+sb	rt, offset(base)	448	audit
+sbe	rt, offset(base)	449	audit
+sc	rt, offset(base)	450	audit
+scd	rt, offset(base)	454	audit
+scdp	rt, rd, (base)	458	audit
+sce	rt, offset(base)	461	audit
+scwp	rt, rd, (base)	465	audit
+scwpe	rt, rd, (base)	469	audit
+sd	rt, offset(base)	472	audit
+sdbbp	code	473	audit
+sdc1	ft, offset(base)	474	audit
+sdc2	rt, offset(base)	475	audit
+sdl	rt, offset(base)	477	removed
+sdr	rt, offset(base)	479	removed
+sdxc1	fs, index(base)	481	removed
+seb	rd, rt	483	audit
+seh	rd, rt	485	audit
+sel.s	fd,fs,ft	487	audit
+sel.d	fd,fs,ft	487	audit
+seleqz	rd,rs,rt	489	audit
+selnez	rd,rs,rt	489	audit
+seleqz.s	fd,fs,ft	491	audit
+seleqz.d	fd,fs,ft	491	audit
+selnez.s	fd,fs,ft	491	audit
+selnez.d	fd,fs,ft	491	audit
+sh	rt, offset(base)	493	audit
+she	rt, offset(base)	494	audit
+sigrie	code	496	audit
+sll	rd, rt, sa	497	audit
+sllv	rd, rt, rs	498	audit
+slt	rd, rs, rt	499	audit
+slti	rt, rs, immediate	500	audit
+sltiu	rt, rs, immediate	501	audit
+sltu	rd, rs, rt	502	audit
+sqrt.s	fd, fs	503	audit
+sqrt.d	fd, fs	503	audit
+sra	rd, rt, sa	504	audit
+srav	rd, rt, rs	505	audit
+srl	rd, rt, sa	506	audit
+srlv	rd, rt, rs	507	audit
+ssnop		508	idiom-audit
+sub	rd, rs, rt	509	audit
+sub.s	fd, fs, ft	510	audit
+sub.d	fd, fs, ft	510	audit
+sub.ps	fd, fs, ft	510	removed
+subu	rd, rs, rt	512	audit
+suxc1	fs, index(base)	513	removed
+sw	rt, offset(base)	514	audit
+swc2	rt, offset(base)	516	audit
+swe	rt, offset(base)	518	audit
+swl	rt, offset(base)	520	removed
+swle	rt, offset(base)	522	removed
+swr	rt, offset(base)	525	removed
+swre	rt, offset(base)	527	removed
+swxc1	fs, index(base)	530	removed
+sync	(stype = 0 implied)	531	audit
+sync	stype	531	audit
+synci	offset(base)	537	audit
+syscall		540	audit
+teq	rs, rt	541	audit
+teqi	rs, immediate	542	removed
+tge	rs, rt	543	audit
+tgei	rs, immediate	544	removed
+tgeiu	rs, immediate	545	removed
+tgeu	rs, rt	546	audit
+tlbinv		547	audit
+tlbinvf		550	audit
+tlbp		552	audit
+tlbr		553	audit
+tlbwi		555	audit
+tlbwr		557	audit
+tlt	rs, rt	559	audit
+tlti	rs, immediate	560	removed
+tltiu	rs, immediate	561	removed
+tltu	rs, rt	562	audit
+tne	rs, rt	563	audit
+tnei	rs, immediate	564	removed
+trunc.l.s	fd, fs	565	audit
+trunc.l.d	fd, fs	565	audit
+trunc.w.s	fd, fs	567	audit
+trunc.w.d	fd, fs	567	audit
+wait		569	audit
+wrpgpr	rd, rt	571	audit
+wsbh	rd, rt	572	audit
+xor	rd, rs, rt	574	audit
+xori	rt, rs, immediate	575	audit
