@@ -1,0 +1,68 @@
+# Eight outputs of an eight-tap FIR filter, with a scalar reference.
+# Select MARS64 and start at the exported main label.
+.data 0x100000000
+samples: .half -6,2,7,-3,14,9,-8,5,12,-4,3,-9,6,10,-2
+taps:    .half 1,-2,3,-4,4,-3,2,-1
+output:  .word 0,0,0,0,0,0,0,0
+passed:  .asciiz "MSA FIR matches the scalar reference\n"
+failed:  .asciiz "MSA FIR mismatch\n"
+
+.text 0x100400000
+.globl main
+main:
+    dla $s0,samples
+    dla $s1,taps
+    dla $s2,output
+    addiu $s3,$zero,8
+    ld.h $w0,0($s1)
+
+next_sample:
+    # Four widened signed dot products, one for each pair of halfwords.
+    ld.h $w1,0($s0)
+    dotp_s.w $w2,$w1,$w0
+    copy_s.w $s4,$w2[0]
+    copy_s.w $t0,$w2[1]
+    copy_s.w $t1,$w2[2]
+    copy_s.w $t2,$w2[3]
+    daddu $s4,$s4,$t0
+    daddu $s4,$s4,$t1
+    daddu $s4,$s4,$t2
+
+    move $a0,$s0
+    move $a1,$s1
+    balc scalar_sample
+    bnec $s4,$v0,mismatch
+    sw $s4,0($s2)
+    daddiu $s0,$s0,2
+    daddiu $s2,$s2,4
+    addiu $s3,$s3,-1
+    bnezc $s3,next_sample
+
+    dla $a0,passed
+    addiu $v0,$zero,4
+    syscall
+    addiu $v0,$zero,10
+    syscall
+
+mismatch:
+    dla $a0,failed
+    addiu $v0,$zero,4
+    syscall
+    addiu $a0,$zero,1
+    addiu $v0,$zero,17
+    syscall
+
+scalar_sample:
+    addiu $t0,$zero,8
+    or $v0,$zero,$zero
+next_tap:
+    lh $t1,0($a0)
+    lh $t2,0($a1)
+    dmul $t3,$t1,$t2
+    daddu $v0,$v0,$t3
+    daddiu $a0,$a0,2
+    daddiu $a1,$a1,2
+    addiu $t0,$t0,-1
+    bnezc $t0,next_tap
+    nop
+    jic $ra,0
