@@ -15,6 +15,38 @@ import org.junit.jupiter.params.provider.ValueSource
 class Mars64ScalarArithmeticTest {
     @ParameterizedTest
     @ValueSource(booleans = [false, true])
+    fun `sign and classification instructions are bit operations even for signaling NaNs`(double: Boolean, @TempDir directory: Path) {
+        val format = if (double) "d" else "s"
+        val source = Files.writeString(directory.resolve("sign.s"), $$"""
+            ctc1 $8,$31
+            abs.$$format $f3,$f5
+            neg.$$format $f3,$f5
+            mov.$$format $f3,$f5
+            class.$$format $f3,$f5
+        """.trimIndent())
+        TestSessions.create().use { machine ->
+            machine.selectTarget(MarsTarget.MARS64)
+            val program = machine.assemble(listOf(source), null, false, false)
+            val base = if (double) 0x462028c0 else 0x460028c0
+            assertEquals(listOf(5, 7, 6, 27).map { base or it }, program.machineList!!.drop(1).map(ProgramStatement::binaryStatement))
+            val fpu = machine.coprocessor1
+            val signaling = if (double) 0x7ff0_0000_0000_0123L else 0x7f80_0123L
+            val negative = signaling or if (double) Long.MIN_VALUE else (1L shl 31)
+            val status = (INVALID_OPERATION shl 7) or (DIVIDE_BY_ZERO shl 12) or (INEXACT shl 2)
+            machine.editIntegerRegister(8, status)
+            machine.editCoprocessor1Pair(5, negative)
+            program.simulate(1)
+            val original = fpu.floatingStatus
+            for (expected in listOf(signaling, signaling, negative, 1L)) {
+                program.simulate(1)
+                assertEquals(expected, fpu.getDoublewordNoNotify(3))
+                assertEquals(original, fpu.floatingStatus)
+            }
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = [false, true])
     fun `extrema preserve the first NaN payload and prefer numbers when invalid is masked`(double: Boolean, @TempDir directory: Path) {
         val format = if (double) "d" else "s"
         val source = Files.writeString(directory.resolve("extrema.s"), $$"""

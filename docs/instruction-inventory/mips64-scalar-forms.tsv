@@ -2,8 +2,8 @@
 # This is a source index. Expand generic condition/format notation and audit operand constraints and untagged forms against the diagrams.
 # Page numbers are the printed instruction-description pages, not the table of contents numbers.
 # mnemonic or group	operands	page	Release 6 audit status
-abs.s	fd, fs	50	audit
-abs.d	fd, fs	50	audit
+abs.s	fd, fs	50	implemented
+abs.d	fd, fs	50	implemented
 abs.ps	fd, fs	50	removed
 add	rd, rs, rt	52	audit
 add.s	fd, fs, ft	53	implemented
@@ -103,8 +103,8 @@ ceil.w.s	fd, fs	149	implemented
 ceil.w.d	fd, fs	149	implemented
 cfc1	rt, fs	151	implemented
 cfc2	rt, Impl	153	requires-cop2
-class.s	fd,fs	154	audit
-class.d	fd,fs	154	audit
+class.s	fd,fs	154	implemented
+class.d	fd,fs	154	implemented
 clo	rd, rs	156	audit
 clz	rd, rs	157	audit
 cmp.af.s	fd, fs, ft	158	implemented
@@ -319,8 +319,8 @@ mfhc2	rt, Impl	362	requires-cop2
 mfhc2	rt, rd, sel	362	requires-cop2
 mfhi		363	removed
 mflo	rd	364	removed
-mov.s	fd, fs	365	audit
-mov.d	fd, fs	365	audit
+mov.s	fd, fs	365	implemented
+mov.d	fd, fs	365	implemented
 mov.ps	fd, fs	365	removed
 movf	rd, rs, cc	367	removed
 movf.s	fd, fs, cc	368	removed
@@ -370,8 +370,8 @@ mul.ps	fd, fs, ft	395	removed
 mult	rs, rt	400	removed
 multu	rs, rt	402	removed
 nal		404	implemented
-neg.s	fd, fs	405	audit
-neg.d	fd, fs	405	audit
+neg.s	fd, fs	405	implemented
+neg.d	fd, fs	405	implemented
 neg.ps	fd, fs	405	removed
 nmadd.s	fd, fr, fs, ft	407	removed
 nmadd.d	fd, fr, fs, ft	407	removed
