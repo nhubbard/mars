@@ -1,0 +1,33 @@
+# One LLVM 23.1.5 encoding probe per current MARS64-only native form.
+# llvm-mc -triple=mips64 -mcpu=mips64r6 -show-encoding, with .set noreorder and .set nomacro.
+# source	word
+dadd $9,$10,$11	014b482c
+daddu $9,$10,$11	014b482d
+dsub $9,$10,$11	014b482e
+dsubu $9,$10,$11	014b482f
+daddiu $9,$10,-100	6549ff9c
+dmul $9,$10,$11	014b489c
+dmuh $9,$10,$11	014b48dc
+dmulu $9,$10,$11	014b489d
+dmuhu $9,$10,$11	014b48dd
+ddiv $9,$10,$11	014b489e
+ddivu $9,$10,$11	014b489f
+dmod $9,$10,$11	014b48de
+dmodu $9,$10,$11	014b48df
+dsll $9,$10,10	000a4ab8
+dsll32 $9,$10,10	000a4abc
+dsrl $9,$10,10	000a4aba
+dsrl32 $9,$10,10	000a4abe
+dsra $9,$10,10	000a4abb
+dsra32 $9,$10,10	000a4abf
+dsllv $9,$10,$11	016a4814
+dsrlv $9,$10,$11	016a4816
+dsrav $9,$10,$11	016a4817
+drotr $9,$10,10	002a4aba
+drotr32 $9,$10,10	002a4abe
+drotrv $9,$10,$11	016a4856
+dclz $9,$10	01404852
+dclo $9,$10	01404853
+lwu $9,-100($10)	9d49ff9c
+ld $9,-100($10)	dd49ff9c
+sd $9,-100($10)	fd49ff9c
