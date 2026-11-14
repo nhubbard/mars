@@ -90,4 +90,61 @@ class Mars64VectorFloatingTest {
             }
         }
     }
+    @ParameterizedTest
+    @ValueSource(strings = ["w", "d"])
+    fun `extrema select numeric values and order signed zero and equal magnitudes`(suffix: String, @TempDir directory: Path) {
+        val names = listOf("fmin", "fmin_a", "fmax", "fmax_a")
+        val file = Files.writeString(directory.resolve("extrema.s"), names.joinToString("\n") {
+            $$"$$it.$$suffix $w31,$w3,$w5"
+        })
+        val double = suffix == "d"
+        fun bits(value: Double): Long = if (double) value.toRawBits()
+            else value.toFloat().toRawBits().toUInt().toLong().let { it or (it shl 32) }
+        TestSessions.create().use { session ->
+            session.selectTarget(MarsTarget.MARS64)
+            val program = session.assemble(listOf(file), null, false, false)
+            val fpu = session.coprocessor1
+            val expected = listOf(-0.0 to -2.0, -0.0 to -2.0, 0.0 to 2.0, 0.0 to 2.0)
+            for ((i, pair) in expected.withIndex()) {
+                assertEquals(0x7b051fdb + (i shl 22) + if (double) 0x200000 else 0,
+                    program.machineList!![i].binaryStatement)
+                fpu.updateVector(3, VectorRegister(bits(-0.0), bits(-2.0)))
+                fpu.updateVector(5, VectorRegister(bits(0.0), bits(2.0)))
+                program.simulate(1)
+                assertEquals(VectorRegister(bits(pair.first), bits(pair.second)), fpu.readVector(31))
+                session.backStepper.backStep()
+                fpu.updateVector(3, VectorRegister(bits(Double.NaN), bits(Double.NaN)))
+                val signaling = if (double) 0x7ff0000000000123L else 0x7f8001237f800123L
+                fpu.updateVector(5, VectorRegister(bits(2.0), signaling))
+                program.simulate(1)
+                val quiet = if (double) 0x0008000000000000L else 0x0040000000400000L
+                assertEquals(VectorRegister(bits(2.0), signaling or quiet), fpu.readVector(31))
+                assertEquals(0x10040, fpu.msaStatus)
+            }
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = ["w", "d"])
+    fun `vector round to integral uses MSACSR and preserves negative zero`(suffix: String, @TempDir directory: Path) {
+        val file = Files.writeString(directory.resolve("round.s"), List(4) { $$"frint.$$suffix $w31,$w3" }.joinToString("\n"))
+        val double = suffix == "d"
+        fun bits(value: Double): Long = if (double) value.toRawBits()
+            else value.toFloat().toRawBits().toUInt().toLong().let { it or (it shl 32) }
+        TestSessions.create().use { session ->
+            session.selectTarget(MarsTarget.MARS64)
+            val program = session.assemble(listOf(file), null, false, false)
+            val word = if (double) 0x7b2d1fde else 0x7b2c1fde
+            assertEquals(word, program.machineList!!.first().binaryStatement)
+            val fpu = session.coprocessor1
+            fpu.updateVector(3, VectorRegister(bits(-0.5), bits(2.5)))
+            for ((mode, result) in listOf(-0.0 to 2.0, -0.0 to 2.0, -0.0 to 3.0, -1.0 to 2.0).withIndex()) {
+                fpu.updateMsaStatus(mode)
+                program.simulate(1)
+                assertEquals(VectorRegister(bits(result.first), bits(result.second)), fpu.readVector(31))
+                assertEquals(mode or 0x1004, fpu.msaStatus)
+            }
+        }
+    }
+
 }

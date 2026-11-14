@@ -1,11 +1,17 @@
 package edu.missouristate.mars.mips.instructions
 
+import edu.missouristate.mars.ProgramStatement
+import edu.missouristate.mars.core.InstructionContext
 import edu.missouristate.mars.mips.hardware.Coprocessor1State.Companion.CAUSE_MASK
 import edu.missouristate.mars.mips.hardware.Coprocessor1State.Companion.FLUSH_SUBNORMALS
+import edu.missouristate.mars.mips.hardware.Coprocessor1State.Companion.INEXACT
 import edu.missouristate.mars.mips.hardware.Coprocessor1State.Companion.INVALID_OPERATION
 import edu.missouristate.mars.mips.hardware.Coprocessor1State.Companion.MSA_NON_TRAPPING
+import edu.missouristate.mars.mips.hardware.VectorRegister
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat.R_FORMAT
 import edu.missouristate.mars.mips.instructions.basic.floatingClass
+import edu.missouristate.mars.mips.instructions.basic.roundIntegral
+import kotlin.math.abs
 
 internal fun msaFloatingCompareInstructions(): List<BasicInstruction> = buildList {
     for ((format, suffix) in "wd".withIndex()) {
@@ -21,6 +27,10 @@ internal fun msaFloatingCompareInstructions(): List<BasicInstruction> = buildLis
                 floatingClass(value, if (bits == 32) 23 else 52, if (bits == 32) 8 else 11).toLong()
             })
         })
+        add(roundingInstruction(format, suffix))
+        for ((index, name) in listOf("fmin", "fmin_a", "fmax", "fmax_a").withIndex()) {
+            add(extremumInstruction(name, index, format, suffix))
+        }
         for (signaling in listOf(false, true)) {
             for ((opcode, name) in listOf("af", "un", "eq", "ueq", "lt", "ult", "le", "ule").withIndex()) {
                 add(compare(name, opcode, format, suffix, signaling, complement = false))
@@ -35,10 +45,7 @@ internal fun msaFloatingCompareInstructions(): List<BasicInstruction> = buildLis
 private fun compare(name: String, predicate: Int, format: Int, suffix: Char, signaling: Boolean, complement: Boolean): BasicInstruction {
     val field = ((if (signaling) 16 else 0) + predicate * 2 + format).toString(2).padStart(5, '0')
     val function = if (complement) "011100" else "011010"
-    val bits = 32 shl format
-    val exponent = if (format == 0) 0x7f800000L else 0x7ff0000000000000L
-    val quiet = if (format == 0) 1L shl 22 else 1L shl 51
-    val fraction = (quiet shl 1) - 1
+    val precision = MsaPrecision(format)
     val mnemonic = "f${if (signaling) 's' else 'c'}$name.$suffix"
     return BasicInstruction(
         "$mnemonic \$w1,\$w2,\$w3", "Compare floating-point elements and write truth masks",
@@ -48,38 +55,116 @@ private fun compare(name: String, predicate: Int, format: Int, suffix: Char, sig
         val fpu = context.coprocessor1
         val a = fpu.readVector(source)
         val b = fpu.readVector(target)
-        val status = fpu.msaStatus
-        val flush = status and FLUSH_SUBNORMALS != 0
-        val encodeException = status and MSA_NON_TRAPPING != 0 && status and (INVALID_OPERATION shl 7) != 0
-        var causes = 0
-        fun number(raw: Long): Double {
-            if (flush && raw and exponent == 0L) return 0.0
-            return if (format == 0) Float.fromBits(raw.toInt()).toDouble() else Double.fromBits(raw)
-        }
-        fun isNan(raw: Long) = raw and exponent == exponent && raw and fraction != 0L
-        val result = mapLanes(bits) lane@{ half, shift ->
-            val left = element(half(a), shift, bits)
-            val right = element(half(b), shift, bits)
-            val leftNan = isNan(left)
-            val rightNan = isNan(right)
-            val unordered = leftNan || rightNan
-            val invalid = (signaling && unordered) || (leftNan && left and quiet == 0L) || (rightNan && right and quiet == 0L)
-            if (invalid && encodeException) return@lane exponent or INVALID_OPERATION.toLong()
-            if (invalid) causes = INVALID_OPERATION
+        context.writeFloatingVector(statement, destination, precision) { half, shift, status ->
+            val left = element(half(a), shift, precision.bits)
+            val right = element(half(b), shift, precision.bits)
+            val unordered = precision.isNan(left) || precision.isNan(right)
+            val invalid = (signaling && unordered) || precision.isSignaling(left) || precision.isSignaling(right)
             val relation = if (unordered) 1 else {
-                val x = number(left)
-                val y = number(right)
+                val x = precision.number(precision.flush(left, status))
+                val y = precision.number(precision.flush(right, status))
                 when {
                     x < y -> 4
                     x == y -> 2
                     else -> 0
                 }
             }
-            if ((relation and predicate != 0) != complement) -1L else 0L
+            FloatingLane(if ((relation and predicate != 0) != complement) -1L else 0L, if (invalid) INVALID_OPERATION else 0)
         }
-        val updated = (status and CAUSE_MASK.inv()) or (causes shl 12)
-        val trapped = ((updated ushr 7) and causes) != 0
-        context.writeMsaStatus(statement, if (trapped) updated else updated or (causes shl 2))
-        context.updateVectorRegister(destination, result)
+    }
+}
+
+private class MsaPrecision(format: Int) {
+    val bits = 32 shl format
+    val exponent = if (format == 0) 0x7f800000L else 0x7ff0000000000000L
+    val quiet = if (format == 0) 1L shl 22 else 1L shl 51
+    private val fraction = (quiet shl 1) - 1
+    private val sign = 1L shl (bits - 1)
+
+    fun isNan(raw: Long) = raw and exponent == exponent && raw and fraction != 0L
+    fun isSignaling(raw: Long) = isNan(raw) && raw and quiet == 0L
+    fun number(raw: Long) = if (bits == 32) Float.fromBits(raw.toInt()).toDouble() else Double.fromBits(raw)
+    fun raw(value: Double) = if (bits == 32) value.toFloat().toRawBits().toUInt().toLong() else value.toRawBits()
+
+    fun flush(raw: Long, status: Int): Long =
+        if (status and FLUSH_SUBNORMALS != 0 && raw and exponent == 0L) raw and sign else raw
+}
+
+private data class FloatingLane(val bits: Long, val causes: Int = 0)
+
+private inline fun InstructionContext.writeFloatingVector(
+    statement: ProgramStatement, destination: Int, precision: MsaPrecision,
+    evaluate: (half: (VectorRegister) -> Long, shift: Int, status: Int) -> FloatingLane,
+) {
+    val status = coprocessor1.msaStatus
+    val enabled = ((status ushr 7) and 0x1f) or 0x20
+    val nonTrapping = status and MSA_NON_TRAPPING != 0
+    var causes = 0
+    val result = mapLanes(precision.bits) { half, shift ->
+        val lane = evaluate(half, shift, status)
+        if (nonTrapping && lane.causes and enabled != 0) precision.exponent or lane.causes.toLong()
+        else {
+            causes = causes or lane.causes
+            lane.bits
+        }
+    }
+    val updated = (status and CAUSE_MASK.inv()) or (causes shl 12)
+    writeMsaStatus(statement, if (causes and enabled != 0) updated else updated or (causes shl 2))
+    updateVectorRegister(destination, result)
+}
+
+private fun roundingInstruction(format: Int, suffix: Char): BasicInstruction {
+    val precision = MsaPrecision(format)
+    return BasicInstruction(
+        "frint.$suffix \$w1,\$w2", "Round each floating-point element to an integral value",
+        R_FORMAT, "011110 11001 0110$format sssss fffff 011110",
+    ) { statement, context ->
+        val (destination, source) = statement.operands
+        val input = context.coprocessor1.readVector(source)
+        context.writeFloatingVector(statement, destination, precision) { half, shift, status ->
+            val raw = element(half(input), shift, precision.bits)
+            if (precision.isNan(raw)) {
+                FloatingLane(raw or precision.quiet, if (precision.isSignaling(raw)) INVALID_OPERATION else 0)
+            } else {
+                val rounded = roundIntegral(precision.number(precision.flush(raw, status)), status and 3)
+                FloatingLane(precision.raw(rounded), if (rounded != precision.number(raw)) INEXACT else 0)
+            }
+        }
+    }
+}
+
+private fun extremumInstruction(name: String, index: Int, format: Int, suffix: Char): BasicInstruction {
+    val precision = MsaPrecision(format)
+    val field = (24 + index * 2 + format).toString(2)
+    val minimum = index < 2
+    val magnitude = index and 1 != 0
+    return BasicInstruction(
+        "$name.$suffix \$w1,\$w2,\$w3", "Select an extremum from corresponding floating-point elements",
+        R_FORMAT, "011110 $field ttttt sssss fffff 011011",
+    ) { statement, context ->
+        val (destination, source, target) = statement.operands
+        val fpu = context.coprocessor1
+        val left = fpu.readVector(source)
+        val right = fpu.readVector(target)
+        context.writeFloatingVector(statement, destination, precision) { half, shift, status ->
+            val rawA = element(half(left), shift, precision.bits)
+            val rawB = element(half(right), shift, precision.bits)
+            val a = precision.flush(rawA, status)
+            val b = precision.flush(rawB, status)
+            val inexact = if (a != rawA || b != rawB) INEXACT else 0
+            when {
+                precision.isSignaling(a) -> FloatingLane(a or precision.quiet, INVALID_OPERATION or inexact)
+                precision.isSignaling(b) -> FloatingLane(b or precision.quiet, INVALID_OPERATION or inexact)
+                precision.isNan(b) -> FloatingLane(a, inexact)
+                precision.isNan(a) -> FloatingLane(b, inexact)
+                else -> {
+                    val x = precision.number(a)
+                    val y = precision.number(b)
+                    val comparison = if (magnitude) abs(x).compareTo(abs(y)) else 0
+                    val order = if (comparison == 0) x.compareTo(y) else comparison
+                    FloatingLane(if (if (minimum) order <= 0 else order >= 0) a else b, inexact)
+                }
+            }
+        }
     }
 }

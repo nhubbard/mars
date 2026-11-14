@@ -59,7 +59,7 @@ private fun fixedPointConversion(name: String, operation: Int, double: Boolean, 
     }
 }
 
-private fun roundIntegral(value: Double, mode: Int): Double = when (mode) {
+internal fun roundIntegral(value: Double, mode: Int): Double = when (mode) {
     0 -> Math.rint(value)
     1 -> truncate(value)
     2 -> ceil(value)
