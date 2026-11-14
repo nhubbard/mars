@@ -41,9 +41,6 @@ internal class MarsAddressBreakpointProperties(
         hitInterval = state.hitInterval
     }
 
-    fun addressIn(entry: String): Int? =
-        if (wideAddress == null) addressBitsIn(entry)?.toInt() else null
-
     fun addressBitsIn(entry: String): Long? =
         (wideAddress ?: address.toUInt().toLong()).takeIf { FileUtil.pathsEqual(this.entry, entry) && it and 3L == 0L }
 }

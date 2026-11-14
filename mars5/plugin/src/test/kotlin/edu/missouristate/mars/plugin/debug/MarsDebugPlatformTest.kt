@@ -2183,6 +2183,24 @@ class MarsDebugPlatformTest {
                     assertEquals("0x0000000100400000", evaluate(debug.session, frame, "pc"))
                     assertEquals("0x0000000100000000", evaluate(debug.session, frame, "cell"))
                     assertEquals("0x12345678", evaluate(debug.session, frame, "word(cell)"))
+                    assertEquals(runMessages.getMessage("debug.evaluate.memory.invalid"),
+                        evaluate(debug.session, frame, "word(0x200000000)"))
+                    assertEquals(runMessages.getMessage("debug.evaluate.memory.invalid"),
+                        evaluate(debug.session, frame, "word(-0x200000000)"))
+                    inspectRegisterNodes(debug.session, frame) { values ->
+                        assertEquals("0x0000000100400000", values.single { it.name == "pc" }.rawValue)
+                    }
+                    val caller = MarsCallerFrame(DebuggerCallStack.CallerSite(1, 0x1_0040_0000L, null, null), null)
+                    assertTrue(frameLabel(caller).contains("0x0000000100400000"))
+                    val evaluator = assertInstanceOf(MarsExpressionEvaluator::class.java, frame.evaluator)
+                    MarsSessionService.createMarsComponent().context().use { machine ->
+                        val cases = listOf("-2147483649" to null, "-2147483648" to Int.MIN_VALUE,
+                            "0xffffffff" to -1, "0x100000000" to null)
+                        for ((expression, expected) in cases) {
+                            val value = evaluator.evaluateStopped(expression, machine.memory).getOrThrow()
+                            assertEquals(expected, value.wordBits, expression)
+                        }
+                    }
                 }
                 withContext(Dispatchers.EDT) { debug.session.stepOver(false) }
                 debug.assertPausedAt(file, 5)
@@ -2193,16 +2211,43 @@ class MarsDebugPlatformTest {
                     ActionUtil.performAction(action, event)
                 }
                 debug.assertPausedAt(file, 5)
-                withContext(Dispatchers.EDT) {
-                    val type = XDebuggerUtil.getInstance().findBreakpointType(MarsAddressBreakpointType::class.java)
-                    val address = 0x1_0040_0024L
-                    val properties = MarsAddressBreakpointProperties(file.toNioPath().toString(), address.toInt(), wideAddress = address)
-                    debugger.breakpointManager.addBreakpoint(type, properties)
-                    debug.session.resume()
+                val disposable = Disposer.newDisposable()
+                try {
+                    val (table, toggle) = withContext(Dispatchers.EDT) {
+                        val layout = RunnerLayoutUi.Factory.getInstance(project).create("MarsHighAddressTest", "Debug", "MIPS", disposable)
+                        debug.session.debugProcess.createTabLayouter().registerAdditionalContent(layout)
+                        val memory = requireNotNull(layout.findContent("MarsMipsMemory")).component
+                        val field = requireNotNull(UIUtil.findComponentOfType(memory, JBTextField::class.java))
+                        field.text = "0x200000000"
+                        field.postActionEvent()
+                        assertTrue(UIUtil.findComponentsOfType(memory, JBLabel::class.java).any { it.text?.startsWith("Enter an address from 0 through") == true })
+                        val listing = requireNotNull(layout.findContent("MarsMipsDisassembly")).component
+                        val rows = requireNotNull(UIUtil.findComponentOfType(listing, JBTable::class.java))
+                        val button = UIUtil.findComponentsOfType(listing, JButton::class.java).single { it.text == "Toggle Address Breakpoint" }
+                        rows to button
+                    }
+                    val address = "0x0000000100400024"
+                    pollAssertionsAsync(3.seconds, 10.milliseconds) {
+                        withContext(Dispatchers.EDT) {
+                            assertTrue((0 until table.rowCount).any { table.getValueAt(it, 1) == address })
+                        }
+                    }
+                    withContext(Dispatchers.EDT) {
+                        val row = (0 until table.rowCount).single { table.getValueAt(it, 1) == address }
+                        table.setRowSelectionInterval(row, row)
+                        assertTrue(toggle.isEnabled)
+                        toggle.doClick(0)
+                        val type = XDebuggerUtil.getInstance().findBreakpointType(MarsAddressBreakpointType::class.java)
+                        val point = debugger.breakpointManager.getBreakpoints(type).single()
+                        assertEquals(0x1_0040_0024L, point.properties?.addressBitsIn(file.toNioPath().toString()))
+                        debug.session.resume()
+                    }
+                    debug.assertPausedAt(file, 7)
+                    withContext(Dispatchers.EDT) { debug.session.resume() }
+                    assertEquals(0, debug.exit.await())
+                } finally {
+                    withContext(Dispatchers.EDT) { Disposer.dispose(disposable) }
                 }
-                debug.assertPausedAt(file, 7)
-                withContext(Dispatchers.EDT) { debug.session.resume() }
-                assertEquals(0, debug.exit.await())
             }
         } finally {
             withContext(Dispatchers.EDT) { settings.changeTarget(original) }
@@ -2976,6 +3021,12 @@ class MarsDebugPlatformTest {
                     debug.session.resume()
                     assertFalse(field.isEnabled)
                     assertFalse(regions.isEnabled)
+                    field.postActionEvent()
+                    // A page action can have been queued before the suspension ended.
+                    val next = buttons.getValue("Next Page")
+                    for (listener in next.actionListeners) {
+                        listener.actionPerformed(ActionEvent(next, ActionEvent.ACTION_PERFORMED, next.actionCommand))
+                    }
                     regions.selectedItem = MemoryRegion.HEAP
                     assertNull(regions.selectedItem)
                     assertEquals("0x10010000", table.getValueAt(0, 0))
@@ -3715,6 +3766,9 @@ class MarsDebugPlatformTest {
                     assertEquals("0x00000000", instructions.getValueAt(pc, 2))
                     assertSame(context, debug.session.suspendContext)
                     assertEquals("4294967295", display.formatAddress(-1))
+                    assertEquals("4294967295", display.formatAddress(0xffff_ffffL))
+                    assertEquals("4294967296", display.formatAddress(0x1_0000_0000L))
+                    assertEquals("9223372036854775808", display.formatAddress(Long.MIN_VALUE))
                     val xml = XmlSerializer.serialize(display.getState())
                     assertFalse(XmlSerializer.deserialize(xml, MarsDebuggerDisplaySettings.Settings::class.java).hexAddresses)
                     field.text = "0xffffffff"
@@ -4230,7 +4284,7 @@ class MarsDebugPlatformTest {
                         toggle.doClick(0)
                         val type = XDebuggerUtil.getInstance().findBreakpointType(MarsAddressBreakpointType::class.java)
                         val point = debugger.breakpointManager.getBreakpoints(type).single()
-                        assertEquals(0x00400004, point.properties?.addressIn(source.toNioPath().toString()))
+                        assertEquals(0x00400004L, point.properties?.addressBitsIn(source.toNioPath().toString()))
                         toggle.doClick(0)
                     }
                     pollAssertionsAsync(3.seconds, 10.milliseconds) {
@@ -4762,6 +4816,8 @@ class MarsDebugPlatformTest {
             assertEquals(0xffff_fffcL, last.last().address)
             assertEquals(listOf(last.last()), last.filter(DisassemblyRow::current))
             assertTrue(disassemblyWindow(machine.memory, 0xffff_ffffL).isEmpty())
+            assertTrue(disassemblyWindow(machine.memory, -4).isEmpty())
+            assertTrue(disassemblyWindow(machine.memory, 0x1_0000_0000L).isEmpty())
         }
     }
 
@@ -4774,6 +4830,8 @@ class MarsDebugPlatformTest {
             memory.byteOrder = MemoryState.BIG_ENDIAN
             assertEquals(high, parseMemoryAddress("0x100000000", memory.highestInspectableAddress))
             assertNull(parseMemoryAddress("0x100000000"))
+            assertNull(parseMemoryAddress("-1", memory.highestInspectableAddress))
+            assertNull(memory.sourceStatement(high))
             assertTrue(machine.editMemoryWord(high, 0x41424344))
             assertFalse(machine.editMemoryWord(high, 0x41424344))
             val row = memoryPage(memory, high).first()

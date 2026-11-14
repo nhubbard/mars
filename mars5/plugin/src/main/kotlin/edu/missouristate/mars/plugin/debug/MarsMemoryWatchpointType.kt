@@ -83,7 +83,7 @@ internal class MarsMemoryWatchpointProperties(
 internal data class MemoryWatchRange(val first: Long, val last: Long, val mode: MemoryWatchMode) {
     fun overlaps(access: MemoryAccessNotice): Boolean {
         val start = access.addressBits
-        return mode.accepts(access.accessType) && start in 0..last && first - start < access.length
+        return mode.accepts(access.accessType) && start.toULong() <= last.toULong() && first - start < access.length
     }
 }
 

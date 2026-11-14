@@ -305,8 +305,8 @@ internal class MarsExpressionEvaluator(
             is Doubleword -> bits
             is Real -> null
         }
-        val addressBits: Int? get() = integerBits?.let { bits ->
-            bits.toInt().takeIf { bits == it.toLong() || bits == it.toUInt().toLong() }
+        val wordBits: Int? get() = integerBits?.let { bits ->
+            bits.toInt().takeIf { bits in Int.MIN_VALUE.toLong()..UInt.MAX_VALUE.toLong() }
         }
         val singleBits: Int get() = (this as? Real)?.bits ?: number.toFloat().toRawBits()
         fun negated(): Scalar

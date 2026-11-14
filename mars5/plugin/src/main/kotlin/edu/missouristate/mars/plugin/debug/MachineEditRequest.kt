@@ -28,7 +28,7 @@ internal data class MemoryWordEditRequest(
 
     override suspend fun apply(machine: MarsContext, evaluator: MarsExpressionEvaluator): Result<Boolean> {
         val value = evaluator.evaluateStopped(expression, machine.memory).getOrElse { return Result.failure(it) }
-        val bits = value.addressBits ?: return Result.failure(IllegalArgumentException(runMessages.getMessage("debug.memory.edit.word")))
+        val bits = value.wordBits ?: return Result.failure(IllegalArgumentException(runMessages.getMessage("debug.memory.edit.word")))
         return try {
             Result.success(machine.editMemoryWord(address, bits))
         } catch (error: AddressErrorException) {
@@ -63,7 +63,7 @@ internal data class RegisterEditRequest(
         if (bank == RegisterBank.CPU && machine.target == MarsTarget.MARS64) {
             return value.integerBits?.let { Result.success(it) } ?: invalid("debug.register.edit.doubleword")
         }
-        val bits = value.addressBits
+        val bits = value.wordBits
         return when {
             bits == null -> invalid("debug.register.edit.word")
             bank == RegisterBank.FPU_FLAGS && bits !in 0..CONDITION_FLAG_MASK -> invalid("debug.register.edit.flags")
