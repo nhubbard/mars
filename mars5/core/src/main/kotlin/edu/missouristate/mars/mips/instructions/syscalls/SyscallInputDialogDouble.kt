@@ -38,7 +38,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 open class SyscallInputDialogDouble : AbstractSyscall(53, "InputDialogDouble") {
     @Throws(ProcessingException::class)
     override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
-        val message = context.readSyscallString(statement, context.registerFile.getValue(4))
+        val message = context.readSyscallString(statement, context.effectiveAddress(4, 0))
         val input = context.environment().showInputDialog(message)
         try {
             context.setRegisterPairToDouble(0, 0.0)

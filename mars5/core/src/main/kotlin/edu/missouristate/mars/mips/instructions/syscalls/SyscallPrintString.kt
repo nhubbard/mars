@@ -37,13 +37,13 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 open class SyscallPrintString : AbstractSyscall(4, "PrintString") {
     @Throws(ProcessingException::class)
     override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
-        var address = context.registerFile.getValue(4)
+        var address = context.effectiveAddress(4, 0)
         if (context.settings().isUtf8TextEnabled) {
             val bytes = ByteArrayOutputStream()
             try {
                 val memory = context.memory()
                 while (true) {
-                    val byte = memory.getByte(address++)
+                    val byte = memory.readData(address++, 1)
                     if (byte == 0) break
                     bytes.write(byte)
                 }
@@ -58,7 +58,7 @@ open class SyscallPrintString : AbstractSyscall(4, "PrintString") {
         try {
             // Emit each character before reading the next address so a fault preserves partial output.
             while (true) {
-                val character = context.memory().getByte(address++).toChar()
+                val character = context.memory().readData(address++, 1).toChar()
                 if (character == '\u0000') break
                 context.environment().printChar(character)
             }

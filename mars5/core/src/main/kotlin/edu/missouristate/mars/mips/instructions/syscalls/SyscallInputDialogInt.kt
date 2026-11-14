@@ -36,7 +36,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 open class SyscallInputDialogInt : AbstractSyscall(51, "InputDialogInt") {
     @Throws(ProcessingException::class)
     override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
-        val message = context.readSyscallString(statement, context.registerFile.getValue(4))
+        val message = context.readSyscallString(statement, context.effectiveAddress(4, 0))
         val input = context.environment().showInputDialog(message)
         val value = try {
             input?.let(Integer::parseInt)

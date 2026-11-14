@@ -35,7 +35,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 open class SyscallMessageDialogInt : AbstractSyscall(56, "MessageDialogInt") {
     @Throws(ProcessingException::class)
     override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
-        val message = context.readSyscallString(statement, context.registerFile.getValue(4))
+        val message = context.readSyscallString(statement, context.effectiveAddress(4, 0))
         val value = context.registerFile.getValue(5)
         context.environment().showMessageDialog(message + value, null, 1)
     }

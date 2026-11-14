@@ -36,7 +36,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 open class SyscallInputDialogFloat : AbstractSyscall(52, "InputDialogFloat") {
     @Throws(ProcessingException::class)
     override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
-        val message = context.readSyscallString(statement, context.registerFile.getValue(4))
+        val message = context.readSyscallString(statement, context.effectiveAddress(4, 0))
         val input = context.environment().showInputDialog(message)
         context.setRegisterToFloat(0, 0f)
         val status = when {

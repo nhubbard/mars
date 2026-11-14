@@ -36,15 +36,15 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 open class SyscallWrite : AbstractSyscall(15, "Write") {
     @Throws(ProcessingException::class)
     override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
-        val address = context.registerFile.getValue(5)
+        val address = context.effectiveAddress(5, 0)
         val length = context.registerFile.getValue(6)
         val buffer = ByteArray(context.registerFile.getValue(6) + 1)
         try {
             // The service reads one byte past the requested range, then passes a zero-terminated buffer.
-            var byte = context.memory().getByte(address).toByte()
+            var byte = context.memory().readData(address, 1).toByte()
             for (index in 0 until length) {
                 buffer[index] = byte
-                byte = context.memory().getByte(address + index + 1).toByte()
+                byte = context.memory().readData(address + index + 1, 1).toByte()
             }
             buffer[length.coerceAtLeast(0)] = 0
         } catch (failure: AddressErrorException) {

@@ -228,6 +228,35 @@ class PackagedCliTest {
   }
 
   @Test
+  void mips64StringSyscallsUseHighBuffers() throws Exception {
+    var script = source("high string checks.kts", """
+        import edu.missouristate.mars.api.MarsTarget
+
+        case("high text", target = MarsTarget.MARS64, utf8Text = true, input = "é\\n") {
+            runToExit()
+            expectOutput("é\\n")
+            expectBytes("buffer", 0xc3, 0xa9, 10, 0)
+        }
+        """);
+    var entry = source("high-string.mars", """
+        .data 0x100000000
+        buffer: .space 8
+        .text
+            dla $a0,buffer
+            addiu $a1,$zero,8
+            addiu $v0,$zero,8
+            syscall
+            addiu $v0,$zero,4
+            syscall
+            addiu $v0,$zero,10
+            syscall
+        """);
+    var result = launch("grade", script.toString(), entry.toString());
+    assertEquals(0, result.status(), result.err() + result.out());
+    assertTrue(result.out().contains("PASS high text"), result.out());
+  }
+
+  @Test
   void kotlinAssignmentCanStartStepAndInspectMemoryAboveFourGiB() throws Exception {
     var script = source("high-address checks.kts", """
         import edu.missouristate.mars.api.MarsTarget

@@ -37,9 +37,9 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 open class SyscallInputDialogString : AbstractSyscall(54, "InputDialogString") {
     @Throws(ProcessingException::class)
     override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
-        val message = context.readSyscallString(statement, context.registerFile.getValue(4))
+        val message = context.readSyscallString(statement, context.effectiveAddress(4, 0))
         val input = context.environment().showInputDialog(message)
-        val address = context.registerFile.getValue(5)
+        val address = context.effectiveAddress(5, 0)
         val maxLength = context.registerFile.getValue(6)
         try {
             val status = when {
@@ -47,12 +47,12 @@ open class SyscallInputDialogString : AbstractSyscall(54, "InputDialogString") {
                 input.isEmpty() -> -3
                 else -> {
                     for (index in 0 until minOf(input.length, maxLength - 1)) {
-                        context.setMemoryByte(address + index, input[index].code)
+                        context.storeData(address + index, 1, input[index].code)
                     }
                     if (input.length < maxLength - 1) {
-                        context.setMemoryByte(address + minOf(input.length, maxLength - 2), '\n'.code)
+                        context.storeData(address + minOf(input.length, maxLength - 2), 1, '\n'.code)
                     }
-                    context.setMemoryByte(address + minOf(input.length + 1, maxLength - 1), 0)
+                    context.storeData(address + minOf(input.length + 1, maxLength - 1), 1, 0)
                     if (input.length > maxLength - 1) -4 else 0
                 }
             }

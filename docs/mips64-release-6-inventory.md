@@ -91,6 +91,10 @@ The memory browser can edit high data words, and watchpoints can stop on high
 data accesses. Explicit CLI and IntelliJ memory dump ranges accept high
 addresses. Segment listings retain those addresses, and Intel HEX uses
 offsets from the beginning of the requested range.
+The grading DSL can start or stop at a high label and read or write high
+data. MARS syscall arguments that are pointers to strings or buffers
+preserve the full register value. The syscall numbers and numeric
+arguments retain the educational MARS ABI.
 
 `mfc0` sign-extends its word result. `mtc0` preserves the full source value
 when writing an educational address register. For both forms, reserved or

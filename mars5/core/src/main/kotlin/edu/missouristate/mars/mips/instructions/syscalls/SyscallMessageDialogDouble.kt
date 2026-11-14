@@ -37,7 +37,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 open class SyscallMessageDialogDouble : AbstractSyscall(58, "MessageDialogDouble") {
     @Throws(ProcessingException::class)
     override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
-        val message = context.readSyscallString(statement, context.registerFile.getValue(4))
+        val message = context.readSyscallString(statement, context.effectiveAddress(4, 0))
         try {
             val value = context.coprocessor1.getDoubleFromRegisterPair("\$f12")
             context.environment().showMessageDialog(message + value, null, 1)
