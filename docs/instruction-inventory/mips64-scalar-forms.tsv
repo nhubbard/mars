@@ -391,7 +391,8 @@ prefe	hint,offset(base)	423	requires-eva
 prefx	hint, index(base)	428	removed
 pul.ps	fd, fs, ft	430	removed
 puu.ps	fd, fs, ft	431	removed
-rdhwr	rt,rd,sel	432	audit
+rdhwr	rt, rd (sel = 0 implied)	432	implemented-subset
+rdhwr	rt, rd, sel	432	implemented-subset
 rdpgpr	rd, rt	435	requires-privileged-platform
 recip.s	fd, fs	436	implemented
 recip.d	fd, fs	436	implemented
@@ -445,7 +446,7 @@ sra	rd, rt, sa	504	audit
 srav	rd, rt, rs	505	audit
 srl	rd, rt, sa	506	audit
 srlv	rd, rt, rs	507	audit
-ssnop		508	idiom-audit
+ssnop		508	implemented
 sub	rd, rs, rt	509	audit
 sub.s	fd, fs, ft	510	implemented
 sub.d	fd, fs, ft	510	implemented

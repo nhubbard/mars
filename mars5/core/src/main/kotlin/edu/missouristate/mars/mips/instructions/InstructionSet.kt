@@ -8,6 +8,7 @@ import edu.missouristate.mars.mips.instructions.basic.release6RoundingInstructio
 import edu.missouristate.mars.mips.instructions.basic.release6BarrierInstructions
 import edu.missouristate.mars.mips.instructions.basic.release6FloatingCompareInstructions
 import edu.missouristate.mars.mips.instructions.basic.release6FloatingConversions
+import edu.missouristate.mars.mips.instructions.basic.release6HardwareReads
 import edu.missouristate.mars.mips.instructions.basic.release6ScalarArithmetic
 import edu.missouristate.mars.mips.instructions.basic.release6ScalarRoots
 /*
@@ -60,6 +61,7 @@ open class InstructionSet {
             forms.addAll(wideInstructionFactories.map { it() })
             forms.add(InstrRelease6Pref())
             forms.addAll(release6BarrierInstructions())
+            forms.addAll(release6HardwareReads())
             forms.addAll(msaRegisterInstructions())
             forms.addAll(msaIntegerInstructions())
             forms.addAll(msaBitInstructions())

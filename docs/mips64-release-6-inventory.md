@@ -182,6 +182,10 @@ or PC-relative immediate in this table is the displacement as written to LLVM.
   synchronous in the simulator. The hazard-barrier jumps still execute an
   architectural delay slot. Tests exercise writing and executing a new
   instruction with the existing opt-in setting and restoring it on backstep.
+  `ssnop` retains its distinct encoding and acts as `nop`. `rdhwr` exposes
+  CPU number zero, synchronization step zero, and available paired LL/SC.
+  Hardware counters, the OS thread-local pointer, and other register or
+  selector combinations raise a reserved-instruction exception.
 - **Remaining scalar and optional families.** Expand Volume II-A by operand
   form and classify shared integer, COP1, memory, system, and optional forms.
   Track removed and privileged forms separately from missing user-mode
