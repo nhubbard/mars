@@ -372,9 +372,8 @@ rdhwr	rt,rd,sel	432	audit
 rdpgpr	rd, rt	435	audit
 recip.s		436	audit
 recip.d		436	audit
-rint.fmt		438	audit
-rint.s	fd,fs	438	audit
-rint.d	fd,fs	438	audit
+rint.s	fd, fs	438	implemented
+rint.d	fd, fs	438	implemented
 rotr	rd, rt, sa	440	audit
 rotrv	rd, rt, rs	441	audit
 round.l.s	fd, fs	442	implemented

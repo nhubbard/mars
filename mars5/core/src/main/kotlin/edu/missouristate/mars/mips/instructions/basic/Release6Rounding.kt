@@ -11,7 +11,9 @@ import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.truncate
 
-internal fun release6FixedPointConversions(): List<BasicInstruction> = buildList {
+internal fun release6RoundingInstructions(): List<BasicInstruction> = buildList {
+    add(roundToIntegral(double = false))
+    add(roundToIntegral(double = true))
     for ((name, operation) in listOf("round" to 8, "trunc" to 9, "ceil" to 10, "floor" to 11, "cvt" to 37)) {
         for (double in listOf(false, true)) {
             add(fixedPointConversion(name, operation, double, longword = false))
@@ -38,12 +40,7 @@ private fun fixedPointConversion(name: String, operation: Int, double: Boolean, 
         val minNormal = if (double) DOUBLE_MIN_NORMAL else FLOAT_MIN_NORMAL.toDouble()
         val value = if (status and FLUSH_SUBNORMALS != 0 && input > -minNormal && input < minNormal) 0.0 else input
         val mode = if (name == "cvt") status and 3 else operation - 8
-        val rounded = when (mode) {
-            0 -> Math.rint(value)
-            1 -> truncate(value)
-            2 -> ceil(value)
-            else -> floor(value)
-        }
+        val rounded = roundIntegral(value, mode)
         val invalid = rounded.isNaN() || rounded < -limit || rounded >= limit
         val causes = when {
             invalid -> INVALID_OPERATION
@@ -60,4 +57,41 @@ private fun fixedPointConversion(name: String, operation: Int, double: Boolean, 
         if (longword) context.updateCoprocessor1Doubleword(destination, result)
         else context.updateCoprocessor1(destination, result.toInt())
     }
+}
+
+private fun roundIntegral(value: Double, mode: Int): Double = when (mode) {
+    0 -> Math.rint(value)
+    1 -> truncate(value)
+    2 -> ceil(value)
+    else -> floor(value)
+}
+
+private fun roundToIntegral(double: Boolean) = BasicInstruction(
+    "rint.${if (double) "d" else "s"} \$f2,\$f4",
+    "Round a floating-point value to an integral value in the same format",
+    R_FORMAT, "010001 ${if (double) "10001" else "10000"} 00000 sssss fffff 011010",
+) { statement, context ->
+    val (destination, source) = statement.operands
+    val fpu = context.coprocessor1
+    val status = fpu.floatingStatus
+    val bits = if (double) fpu.getLongFromRegisterPair(source) else fpu.getValue(source).toLong()
+    val input = if (double) Double.fromBits(bits) else Float.fromBits(bits.toInt()).toDouble()
+    val quietBit = if (double) 1L shl 51 else 1L shl 22
+    val minNormal = if (double) DOUBLE_MIN_NORMAL else FLOAT_MIN_NORMAL.toDouble()
+    val result: Long
+    val causes: Int
+    if (input.isNaN()) {
+        causes = if (bits and quietBit == 0L) INVALID_OPERATION else 0
+        result = bits or quietBit
+    } else {
+        val value = if (status and FLUSH_SUBNORMALS != 0 && input > -minNormal && input < minNormal) {
+            Math.copySign(0.0, input)
+        } else input
+        val rounded = roundIntegral(value, status and 3)
+        causes = if (rounded == value) 0 else INEXACT
+        result = if (double) rounded.toRawBits() else rounded.toFloat().toRawBits().toLong()
+    }
+    context.recordFloatingExceptions(statement, causes)
+    if (double) context.updateCoprocessor1Doubleword(destination, result)
+    else context.updateCoprocessor1(destination, result.toInt())
 }

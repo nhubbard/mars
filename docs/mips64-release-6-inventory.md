@@ -11,7 +11,7 @@ for the intended coverage.
 - [Scalar section index](instruction-inventory/mips64-scalar-sections.tsv)
   tracks all 307 entries in the Volume II-A section 3.2 table of contents.
 - [Scalar operand forms](instruction-inventory/mips64-scalar-forms.tsv)
-  lists 467 forms, including 112 tagged as removed and the 44 scalar comparison forms.
+  lists 466 forms, including 112 tagged as removed and the 44 scalar comparison forms.
   Generic condition notation, untagged aliases, and privilege and operand
   constraints still need review against the instruction descriptions.
   The table of contents and instruction descriptions use different page
@@ -116,7 +116,8 @@ or PC-relative immediate in this table is the displacement as written to LLVM.
   enable aliases. FIR is read-only and FCCR is reserved. The fixed-point
   conversions `cvt`, `round`, `trunc`, `ceil`, and `floor` support both
   result widths, with FCSR-selected or instruction-selected rounding and
-  invalid and inexact exceptions. Rounding and exceptions for arithmetic
+  invalid and inexact exceptions. `rint.s` and `rint.d` round to integral
+  values without changing their format. Rounding and exceptions for other arithmetic
   and conversions into floating-point formats are still open.
   [MIPS64 FPU programming model](https://s3-eu-west-1.amazonaws.com/downloads-mips/documents/MD00083-2B-MIPS64INT-AFP-06.01.pdf)
 - **REGIMM.** MARS64 supports `bal` and `nal` at the retained zero-source

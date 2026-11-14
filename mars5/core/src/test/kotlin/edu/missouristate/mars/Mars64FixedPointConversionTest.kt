@@ -53,6 +53,44 @@ class Mars64FixedPointConversionTest {
 
     @ParameterizedTest
     @ValueSource(booleans = [false, true])
+    fun `round to integral keeps signed zero and quiets a signaling NaN`(double: Boolean, @TempDir directory: Path) {
+        val format = if (double) "d" else "s"
+        val source = Files.writeString(directory.resolve("rint.s"), $$"""
+            rint.$$format $f31,$f3
+            ctc1 $8,$31
+            rint.$$format $f31,$f3
+            rint.$$format $f31,$f3
+            rint.$$format $f31,$f3
+        """.trimIndent())
+        TestSessions.create().use { session ->
+            session.selectTarget(MarsTarget.MARS64)
+            val program = session.assemble(listOf(source), null, false, false)
+            val fpu = session.coprocessor1
+            val word = if (double) 0x46201fda else 0x46001fda
+            assertEquals(word, program.machineList!!.first().binaryStatement)
+            fun bits(value: Double): Long = if (double) value.toRawBits() else value.toFloat().toRawBits().toUInt().toLong()
+            session.editCoprocessor1Pair(3, bits(-0.5))
+            session.editIntegerRegister(8, 3)
+            program.simulate(1)
+            assertEquals(bits(-0.0), fpu.getDoublewordNoNotify(31))
+            program.simulate(2)
+            assertEquals(bits(-1.0), fpu.getDoublewordNoNotify(31))
+            assertEquals(0x000c1007, fpu.floatingStatus)
+            val signaling = if (double) 0x7ff0_0000_0000_0123L else 0x7f80_0123L
+            val quiet = signaling or (if (double) 1L shl 51 else 1L shl 22)
+            session.editCoprocessor1Pair(3, signaling)
+            program.simulate(1)
+            assertEquals(quiet, fpu.getDoublewordNoNotify(31))
+            assertEquals(0x000d0047, fpu.floatingStatus)
+            session.editCoprocessor1Pair(3, bits(Double.POSITIVE_INFINITY))
+            program.simulate(1)
+            assertEquals(bits(Double.POSITIVE_INFINITY), fpu.getDoublewordNoNotify(31))
+            assertEquals(0x000c0047, fpu.floatingStatus)
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = [false, true])
     fun `conversion handles limits and NaNs and an inexact trap suppresses the result`(longword: Boolean, @TempDir directory: Path) {
         val prefix = if (longword) "cvt.l.d" else "cvt.w.d"
         val limit = if (longword) 9_223_372_036_854_775_808.0 else 2_147_483_648.0
