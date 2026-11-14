@@ -29,7 +29,9 @@ for the intended coverage.
   element widths, either byte order, and unaligned addresses in ordinary
   storage within the current memory map. Integer vector arithmetic,
   multiply-accumulate, comparisons, shifts, and bit counts execute at all
-  four element widths. See the MSA forms table for individual status.
+  four element widths. Integer vector division and remainder return zero
+  for lanes with a zero divisor, a deterministic choice for the result the
+  ISA leaves unpredictable. See the MSA forms table for individual status.
 
 ## Current MARS64 forms
 

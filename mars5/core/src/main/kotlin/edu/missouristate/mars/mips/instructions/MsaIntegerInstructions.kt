@@ -14,6 +14,8 @@ internal fun msaIntegerInstructions(): List<BasicInstruction> =
         IntegerOperation.entries.map { integerInstruction(it, format, suffix) } +
             WideArithmetic.entries.map { wideArithmetic(it, format, suffix) } +
             immediateOperations.map { immediateInstruction(it.first, it.second, format, suffix) } + shifts + listOf(
+            saturateInstruction(format, suffix, signed = true),
+            saturateInstruction(format, suffix, signed = false),
             countInstruction("pcnt", "001", formatField, suffix, bits) { it.countOneBits() },
             countInstruction("nlzc", "011", formatField, suffix, bits) { it.countLeadingZeroBits() - (64 - bits) },
             countInstruction("nloc", "010", formatField, suffix, bits) {
@@ -35,6 +37,12 @@ private enum class IntegerOperation(
     MULTIPLY("mulv", 0, 18, apply = { a, b, _ -> a * b }),
     MULTIPLY_ADD("maddv", 1, 18, accumulate = true, apply = { a, b, d -> d + a * b }),
     MULTIPLY_SUBTRACT("msubv", 2, 18, accumulate = true, apply = { a, b, d -> d - a * b }),
+    DIVIDE_SIGNED("div_s", 4, 18, signed = true, apply = { a, b, _ -> if (b == 0L) 0L else a / b }),
+    DIVIDE_UNSIGNED("div_u", 5, 18, apply = { a, b, _ -> if (b == 0L) 0L else (a.toULong() / b.toULong()).toLong() }),
+    REMAINDER_SIGNED("mod_s", 6, 18, signed = true, apply = { a, b, _ -> if (b == 0L) 0L else a % b }),
+    REMAINDER_UNSIGNED("mod_u", 7, 18, apply = { a, b, _ -> if (b == 0L) 0L else (a.toULong() % b.toULong()).toLong() }),
+    MAX_ABSOLUTE("max_a", 6, 14, signed = true, apply = { a, b, _ -> if (abs(a).toULong() > abs(b).toULong()) a else b }),
+    MIN_ABSOLUTE("min_a", 7, 14, signed = true, apply = { a, b, _ -> if (abs(a).toULong() < abs(b).toULong()) a else b }),
     MAX_SIGNED("max_s", 2, 14, signed = true, apply = { a, b, _ -> maxOf(a, b) }),
     MAX_UNSIGNED("max_u", 3, 14, apply = { a, b, _ -> maxOf(a.toULong(), b.toULong()).toLong() }),
     MIN_SIGNED("min_s", 4, 14, signed = true, apply = { a, b, _ -> minOf(a, b) }),
@@ -257,3 +265,29 @@ private fun countInstruction(name: String, opcode: String, format: String, suffi
 
 
 internal fun msaBitImmediateField(format: Int): String = "1".repeat(3 - format) + "0" + "t".repeat(3 + format)
+
+private fun saturateInstruction(format: Int, suffix: Char, signed: Boolean): BasicInstruction {
+    val bits = Byte.SIZE_BITS shl format
+    val opcode = if (signed) "000" else "001"
+    val name = if (signed) "sat_s" else "sat_u"
+    return object : BasicInstruction(
+        "$name.$suffix \$w1,\$w2,${bits - 1}", "Saturate each vector element to the selected bit width",
+        R_FORMAT, "011110 $opcode${msaBitImmediateField(format)} sssss fffff 001010",
+        { statement, context ->
+            val (destination, source, position) = statement.operands
+            val value = context.coprocessor1.readVector(source)
+            val maxSigned = Long.MAX_VALUE ushr (63 - position)
+            val maxUnsigned = ULong.MAX_VALUE shr (63 - position)
+            context.updateVectorRegister(destination, mapLanes(bits) { half, shift ->
+                val lane = element(half(value), shift, bits, signed)
+                if (signed) lane.coerceIn(-maxSigned - 1, maxSigned)
+                else minOf(lane.toULong(), maxUnsigned).toLong()
+            })
+        },
+    ) {
+        override fun encodeOperands(values: IntArray): IntArray {
+            require(values[2] in 0 until bits) { "Saturation bit position must be between 0 and ${bits - 1}" }
+            return values
+        }
+    }
+}

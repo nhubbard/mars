@@ -9,7 +9,10 @@ import edu.missouristate.mars.simulator.Exceptions.ADDRESS_EXCEPTION_LOAD
 import edu.missouristate.mars.simulator.Exceptions.ADDRESS_EXCEPTION_STORE
 
 internal fun msaRegisterInstructions(): List<BasicInstruction> = buildList {
-    for ((format, suffix) in "bhwd".withIndex()) add(fillVector(format, suffix))
+    for ((format, suffix) in "bhwd".withIndex()) {
+        add(fillVector(format, suffix))
+        add(loadImmediate(format, suffix))
+    }
     add(BasicInstruction(
         "move.v \$w1,\$w2", "Copy a 128-bit vector register",
         R_FORMAT, "011110 00101 11110 sssss fffff 011001",
@@ -21,6 +24,7 @@ internal fun msaRegisterInstructions(): List<BasicInstruction> = buildList {
         add(elementTransfer(suffix, format, "copy_s", "0010"))
         if (format < 3) add(elementTransfer(suffix, format, "copy_u", "0011"))
         add(elementTransfer(suffix, format, "insert", "0100"))
+        add(elementTransfer(suffix, format, "insve", "0101"))
         add(vectorMemory(suffix, format, store = false))
         add(vectorMemory(suffix, format, store = true))
     }
@@ -60,14 +64,19 @@ private fun vectorLogic(mnemonic: String, opcode: String, apply: (Long, Long) ->
 
 
 private fun elementTransfer(suffix: Char, format: Int, mnemonic: String, operation: String): BasicInstruction {
-    val insert = mnemonic == "insert"
+    val insert = mnemonic == "insert" || mnemonic == "insve"
+    val vectorInsert = mnemonic == "insve"
     val signed = mnemonic == "copy_s"
     val bits = Byte.SIZE_BITS shl format
     val mask = (ULong.MAX_VALUE shr (Long.SIZE_BITS - bits)).toLong()
     val laneCount = 128 / bits
     val selector = "1".repeat(format) + "00" + (if (insert) "s" else "t").repeat(4 - format)
     val fields = if (insert) "ttttt fffff" else "sssss fffff"
-    val example = if (insert) "\$w1[0],\$t2" else "\$t1,\$w2[0]"
+    val example = when {
+        vectorInsert -> "\$w1[0],\$w2[0]"
+        insert -> "\$w1[0],\$t2"
+        else -> "\$t1,\$w2[0]"
+    }
     val laneOperand = if (insert) 1 else 2
     return object : BasicInstruction(
         "$mnemonic.$suffix $example", "Transfer one vector element between a vector and CPU register",
@@ -81,7 +90,9 @@ private fun elementTransfer(suffix: Char, format: Int, mnemonic: String, operati
             val vector = context.coprocessor1.readVector(if (insert) destination else sourceOrLane)
             val half = if (high) vector.high else vector.low
             if (insert) {
-                val element = context.registerFile.getLongValue(laneOrSource) and mask
+                val source = if (vectorInsert) context.coprocessor1.readVector(laneOrSource).low
+                else context.registerFile.getLongValue(laneOrSource)
+                val element = source and mask
                 val updated = (half and (mask shl shift).inv()) or (element shl shift)
                 context.updateVectorRegister(destination, if (high) vector.copy(high = updated) else vector.copy(low = updated))
             } else {
@@ -94,8 +105,13 @@ private fun elementTransfer(suffix: Char, format: Int, mnemonic: String, operati
     ) {
         override fun encodeOperands(values: IntArray): IntArray {
             require(values[laneOperand] in 0 until laneCount) { "Vector lane must be between 0 and ${laneCount - 1}" }
+            require(!vectorInsert || values[3] == 0) { "INSVE source lane must be zero" }
             return values
         }
+
+        override fun encodedOperandCount(sourceCount: Int) = if (vectorInsert) 3 else sourceCount
+
+        override fun decodedOperandCount(encodedCount: Int) = if (vectorInsert) 4 else encodedCount
     }
 }
 
@@ -148,6 +164,28 @@ private fun vectorMemory(suffix: Char, format: Int, store: Boolean): BasicInstru
 
         override fun decodeOperands(values: IntArray) {
             values[1] = ((values[1] shl 22) shr 22) * width
+        }
+    }
+}
+
+private fun loadImmediate(format: Int, suffix: Char): BasicInstruction {
+    val bits = Byte.SIZE_BITS shl format
+    val field = format.toString(2).padStart(2, '0')
+    return object : BasicInstruction(
+        "ldi.$suffix \$w1,-512", "Broadcast a signed immediate into every vector element",
+        R_FORMAT, "011110 110$field ssssssssss fffff 000111",
+        { statement, context ->
+            val (destination, value) = statement.operands
+            context.updateVectorRegister(destination, mapLanes(bits) { _, _ -> value.toLong() })
+        },
+    ) {
+        override fun encodeOperands(values: IntArray): IntArray {
+            require(values[1] in -512..511) { "Vector immediate must be between -512 and 511" }
+            return values
+        }
+
+        override fun decodeOperands(values: IntArray) {
+            values[1] = (values[1] shl 22) shr 22
         }
     }
 }
