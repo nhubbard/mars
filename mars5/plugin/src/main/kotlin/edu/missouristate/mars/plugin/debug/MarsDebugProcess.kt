@@ -176,11 +176,11 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
             symbols.bindAddressInspection(session) { definition ->
                 when (definition.kind) {
                     Kind.TEXT -> {
-                        disassembly.showAddress(definition.address)
+                        disassembly.showAddress(memoryAddress(definition.addressBits))
                         ui.selectAndFocus(listing, true, true)
                     }
                     Kind.DATA, Kind.EXTERNAL -> {
-                        view.showAddress(definition.address)
+                        view.showAddress(memoryAddress(definition.addressBits))
                         ui.selectAndFocus(content, true, true)
                     }
                 }
@@ -299,8 +299,9 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
             }
         }
         for (breakpoint in registeredAddresses) {
-            val address = breakpoint.properties?.addressIn(entry)?.toLong() ?: continue
-            next.getOrPut(address) { mutableListOf() }.add(breakpoint)
+            val address = breakpoint.properties?.addressBitsIn(entry) ?: continue
+            val pc = if (address <= UInt.MAX_VALUE.toLong()) address.toInt().toLong() else address
+            next.getOrPut(pc) { mutableListOf() }.add(breakpoint)
         }
         addresses = next
         val nextWatchpoints = buildMap {
@@ -536,7 +537,8 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
         MarsSuspendContext(
             frame,
             machine.backStepper.canBackstep(),
-            MemoryRegion.entries.associateWith { it.address(machine).toUInt().toLong() },
+            MemoryRegion.entries.associateWith { it.address(machine) },
+            machine.memory.highestInspectableAddress,
             ExecutionMarkers.capture(machine),
             machine.backStepper.previousMemoryWrite(),
             number,
@@ -573,6 +575,7 @@ internal class MarsSuspendContext(
     val frame: MarsStackFrame,
     canBackstep: Boolean,
     memoryRegions: Map<MemoryRegion, Long>,
+    val highestInspectableAddress: Long,
     executionMarkers: ExecutionMarkers,
     lastMemoryWrite: MemoryWrite?,
     val number: Long,
@@ -598,7 +601,7 @@ internal class MarsSuspendContext(
         frame.refresh(machine, position)
         sourceStep = step
         canBackstep = machine.backStepper.canBackstep()
-        memoryRegions = MemoryRegion.entries.associateWith { it.address(machine).toUInt().toLong() }
+        memoryRegions = MemoryRegion.entries.associateWith { it.address(machine) }
         executionMarkers = ExecutionMarkers.capture(machine)
         lastMemoryWrite = machine.backStepper.previousMemoryWrite()
     }

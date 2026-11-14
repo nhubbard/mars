@@ -438,6 +438,30 @@ open class MemoryState(
         return readBytes(address, WORD_LENGTH_BYTES, notify = false)
     }
 
+    val highestInspectableAddress: Long
+        get() = if (wideDataEnabled) WIDE_TEXT_BASE + SEGMENT_BYTES - 1 else UInt.MAX_VALUE.toLong()
+
+    /** Inspect a mapped word by its complete address without emitting an access event. */
+    fun inspectWord(address: Long): Int? {
+        val narrow = address.toInt()
+        if (address == narrow.toLong() || address == narrow.toUInt().toLong()) return inspectWord(narrow)
+        if (address and 3L != 0L) return null
+        if (inWideText(address)) return getStatementNoNotify(address)?.binaryStatement
+        return if (wideDataEnabled && address in WIDE_DATA_BASE..<WIDE_DATA_BASE + SEGMENT_BYTES) {
+            readData(address, WORD_LENGTH_BYTES)
+        } else null
+    }
+
+    fun inspectInstruction(address: Long): ProgramStatement? {
+        val narrow = address.toInt()
+        if (address == narrow.toLong() || address == narrow.toUInt().toLong()) return inspectInstruction(narrow)
+        if (address and 3L != 0L) return null
+        if (inWideText(address)) return getStatementNoNotify(address)
+        if (!settings.isSelfModifyingCodeEnabled) return null
+        val word = inspectWord(address) ?: return null
+        return checkNotNull(wideInstructionDecoder)(word, address)
+    }
+
     /** Inspect an aligned mapped word without notifying observers or enabling self-modifying code. */
     @Throws(AddressErrorException::class)
     open fun inspectWord(address: Int): Int? {

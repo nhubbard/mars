@@ -37,6 +37,10 @@ internal class MarsDebuggerDisplaySettings :
     val highlightRegisterWrites get() = getState().highlightRegisterWrites
 
     fun formatAddress(address: Int) = formatUnsignedInteger(address, getBase(hexAddresses))
+    fun formatAddress(address: Long): String =
+        if (address in Int.MIN_VALUE.toLong()..UInt.MAX_VALUE.toLong()) formatAddress(address.toInt())
+        else if (hexAddresses) Binary.longToHexString(address) else address.toULong().toString()
+
     fun formatValue(bits: Int) = formatNumber(bits, getBase(hexValues))
     fun formatWideValue(bits: Long) = if (hexValues) Binary.longToHexString(bits) else bits.toString()
     fun formatUnsignedValue(bits: Int) = formatUnsignedInteger(bits, getBase(hexValues))

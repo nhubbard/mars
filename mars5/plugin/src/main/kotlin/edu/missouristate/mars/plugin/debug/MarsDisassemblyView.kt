@@ -95,7 +95,7 @@ internal data class ExecutionMarkers(val nextIsDelaySlot: Boolean = false, val p
 
 internal data class DisassemblyRow(
     val current: Boolean,
-    val address: Int,
+    val address: Long,
     val word: String,
     val instruction: String,
     val location: Location?,
@@ -106,21 +106,21 @@ internal data class DisassemblyRow(
 internal fun disassemblyWindow(
     memory: MemoryState, pc: Long, center: Long = pc, markers: ExecutionMarkers = ExecutionMarkers(),
 ): List<DisassemblyRow> {
-    if (!MemoryState.wordAligned(center.toInt())) return emptyList()
+    if (center !in 0..memory.highestInspectableAddress || center and 3L != 0L) return emptyList()
     val start = (center - 4 * Int.SIZE_BYTES).coerceAtLeast(0)
-    val end = (center + 11 * Int.SIZE_BYTES).coerceAtMost(0xffff_fffcL)
+    val end = (center + 11 * Int.SIZE_BYTES).coerceAtMost(memory.highestInspectableAddress and -4L)
     val count = ((end - start) / Int.SIZE_BYTES + 1).toInt()
     return List(count) { index ->
         val address = start + index * Int.SIZE_BYTES
-        val statement = memory.inspectInstruction(address.toInt())
+        val statement = memory.inspectInstruction(address)
         DisassemblyRow(
             address == pc,
-            address.toInt(),
+            address,
             statement?.let { Binary.intToHexString(it.binaryStatement) } ?: "—",
             statement?.printableBasicAssemblyStatement?.trimEnd() ?: "—",
             statement?.instructionOrigin?.location,
             address == pc && markers.nextIsDelaySlot,
-            markers.previous?.takeIf { it.address == address.toInt() },
+            markers.previous?.takeIf { memoryAddress(it.addressBits) == address },
         )
     }
 }
@@ -138,10 +138,10 @@ internal class MarsDisassemblyView(
     private val lastExecuted = JButton(runMessages.getMessage("debug.disassembly.last.executed"))
     private val openSource = JButton(runMessages.getMessage("debug.disassembly.open.source")).apply { isEnabled = false }
     private val toggleBreakpoint = JButton(runMessages.getMessage("debug.disassembly.breakpoint.toggle")).apply { isEnabled = false }
-    private var breakpoints = emptyMap<Int, AddressBreakpoint>()
+    private var breakpoints = emptyMap<Long, AddressBreakpoint>()
     private val model = ListTableModel<DisassemblyRow>(
         column(MarsDisassemblyColumn.PC) { if (it.current) "▶" else "" },
-        sortableColumn(MarsDisassemblyColumn.ADDRESS, { display.formatAddress(it.address) }, compareBy { it.address.toUInt() }),
+        sortableColumn(MarsDisassemblyColumn.ADDRESS, { display.formatAddress(it.address) }, compareBy { it.address }),
         sortableColumn(MarsDisassemblyColumn.WORD, DisassemblyRow::word),
         sortableColumn(MarsDisassemblyColumn.INSTRUCTION, DisassemblyRow::instruction),
         sortableColumn(MarsDisassemblyColumn.SOURCE, ::sourceLabel),
@@ -179,7 +179,7 @@ internal class MarsDisassemblyView(
     }
     private var target: Location? = null
     private var browsedAddress: Pair<Long, Long>? = null
-    private var previousAddress: Int? = null
+    private var previousAddress: Long? = null
     private var displayedAddresses: Pair<Long, Long?>? = null
     private val revision = AtomicLong()
     @Volatile private var disposed = false
@@ -290,9 +290,9 @@ internal class MarsDisassemblyView(
         }
     }
 
-    fun showAddress(address: Int) {
+    fun showAddress(address: Long) {
         val context = session.suspendContext as? MarsSuspendContext ?: return
-        browsedAddress = context.number to address.toUInt().toLong()
+        browsedAddress = context.number to address
         refresh()
     }
 
@@ -311,7 +311,7 @@ internal class MarsDisassemblyView(
         table.clearSelection()
         model.items = emptyList()
         val context = session.suspendContext as? MarsSuspendContext
-        previousAddress = context?.executionMarkers?.previous?.address
+        previousAddress = context?.executionMarkers?.previous?.addressBits?.let(::memoryAddress)
         lastExecuted.isEnabled = previousAddress != null
         if (context == null) {
             followPc.isEnabled = false
@@ -332,7 +332,7 @@ internal class MarsDisassemblyView(
             withContext(Dispatchers.EDT) {
                 if (request == revision.get()) {
                     model.items = rows
-                    val selected = rows.firstOrNull { it.address == center.toInt() }
+                    val selected = rows.firstOrNull { it.address == center }
                     if (selected != null) {
                         table.setSelection(listOf(selected))
                         val visible = table.visibleRect
@@ -353,9 +353,9 @@ internal class MarsDisassemblyView(
             return
         }
         val (pc, browsed) = addresses
-        val pcText = display.formatAddress(pc.toInt())
+        val pcText = display.formatAddress(pc)
         status.text = if (browsed == null) runMessages.getMessage("debug.disassembly.current", pcText)
-        else runMessages.getMessage("debug.disassembly.browsing", display.formatAddress(browsed.toInt()), pcText)
+        else runMessages.getMessage("debug.disassembly.browsing", display.formatAddress(browsed), pcText)
     }
 
     private fun updateSelection() {
@@ -367,12 +367,12 @@ internal class MarsDisassemblyView(
 
     private fun reloadBreakpoints() {
         breakpoints = breakpointManager.getBreakpoints(breakpointType).mapNotNull { breakpoint ->
-            breakpoint.properties?.addressIn(entry)?.let { it to breakpoint }
+            breakpoint.properties?.addressBitsIn(entry)?.let { it to breakpoint }
         }.toMap()
         table.repaint()
     }
 
-    private fun breakpointIcon(address: Int): Icon? {
+    private fun breakpointIcon(address: Long): Icon? {
         val breakpoint = breakpoints[address] ?: return null
         return when {
             !breakpoint.isEnabled -> breakpointType.disabledIcon
@@ -385,8 +385,8 @@ internal class MarsDisassemblyView(
     private fun toggleSelectedBreakpoint() {
         val address = table.selectedObject!!.address
         WriteAction.run<RuntimeException> {
-            val existing = breakpointManager.getBreakpoints(breakpointType).firstOrNull { it.properties?.addressIn(entry) == address }
-            if (existing == null) breakpointManager.addBreakpoint(breakpointType, MarsAddressBreakpointProperties(entry, address))
+            val existing = breakpointManager.getBreakpoints(breakpointType).firstOrNull { it.properties?.addressBitsIn(entry) == address }
+            if (existing == null) breakpointManager.addBreakpoint(breakpointType, MarsAddressBreakpointProperties(entry, address.toInt(), wideAddress = address.takeIf { it > UInt.MAX_VALUE.toLong() }))
             else breakpointManager.removeBreakpoint(existing)
         }
     }

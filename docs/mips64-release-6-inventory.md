@@ -85,8 +85,10 @@ high data and text regions. High text runs with the default execution
 permissions. `la` and `dla` can load a full-width label address,
 `dli` loads a full-width constant, and `.dword label` stores a full-width
 address, including forward references. The assembler's source map
-preserves these addresses. The IntelliJ memory browser and breakpoints
-still use 32-bit addresses.
+preserves these addresses. IntelliJ source and address breakpoints,
+stepping, disassembly, and the memory browser use the full address.
+The memory browser can edit high data words. Memory watchpoints and
+memory dumps still use the classroom address range.
 
 `mfc0` sign-extends its word result. `mtc0` preserves the full source value
 when writing an educational address register. For both forms, reserved or

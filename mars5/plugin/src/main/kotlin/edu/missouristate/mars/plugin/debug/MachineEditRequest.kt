@@ -20,7 +20,7 @@ internal interface MachineEditRequest {
 }
 
 internal data class MemoryWordEditRequest(
-    val address: Int,
+    val address: Long,
     val expression: String,
     override val callback: XModificationCallback,
 ) : MachineEditRequest {

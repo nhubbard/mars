@@ -41,27 +41,28 @@ import kotlinx.coroutines.withContext
 private const val BYTES_PER_ROW = 16
 private const val ROWS_PER_PAGE = 16
 private const val BYTES_PER_PAGE = BYTES_PER_ROW * ROWS_PER_PAGE
-private const val ADDRESS_SPACE = 0x1_0000_0000L
-private const val LAST_ROW = ADDRESS_SPACE - BYTES_PER_ROW
 private val hex = HexFormat.of()
 
-internal data class MemoryRow(val address: Int, val bytes: String, val characters: String, val words: List<Int?>)
+internal fun memoryAddress(bits: Long): Long =
+    if (bits == bits.toInt().toLong()) bits.toUInt().toLong() else bits
 
-internal enum class MemoryRegion(val label: String, val address: (MarsContext) -> Int) {
-    PC("debug.memory.region.pc", { it.registerFile.programCounterRegister.valueNoNotify }),
-    TEXT("debug.memory.region.text", { it.memory.textBaseAddress }),
-    DATA("debug.memory.region.data", { it.memory.dataBaseAddress }),
-    HEAP("debug.memory.region.heap", { it.memory.heapBaseAddress }),
-    STACK("debug.memory.region.stack", { it.registerFile.getValueNoNotify(STACK_POINTER_REGISTER) }),
-    KERNEL_TEXT("debug.memory.region.ktext", { it.memory.kernelTextBaseAddress }),
-    KERNEL_DATA("debug.memory.region.kdata", { it.memory.kernelDataBaseAddress }),
-    MMIO("debug.memory.region.mmio", { it.memory.memoryMapBaseAddress }),
+internal data class MemoryRow(val address: Long, val bytes: String, val characters: String, val words: List<Int?>)
+
+internal enum class MemoryRegion(val label: String, val address: (MarsContext) -> Long) {
+    PC("debug.memory.region.pc", { memoryAddress(it.registerFile.programCounterBits) }),
+    TEXT("debug.memory.region.text", { it.memory.textBaseAddress.toUInt().toLong() }),
+    DATA("debug.memory.region.data", { it.memory.dataBaseAddress.toUInt().toLong() }),
+    HEAP("debug.memory.region.heap", { it.memory.heapBaseAddress.toUInt().toLong() }),
+    STACK("debug.memory.region.stack", { memoryAddress(it.registerFile.getLongValueNoNotify(STACK_POINTER_REGISTER)) }),
+    KERNEL_TEXT("debug.memory.region.ktext", { it.memory.kernelTextBaseAddress.toUInt().toLong() }),
+    KERNEL_DATA("debug.memory.region.kdata", { it.memory.kernelDataBaseAddress.toUInt().toLong() }),
+    MMIO("debug.memory.region.mmio", { it.memory.memoryMapBaseAddress.toUInt().toLong() }),
 }
 
 internal fun memoryPage(memory: MemoryState, address: Long): List<MemoryRow> {
-    val rowCount = minOf(ROWS_PER_PAGE.toLong(), (ADDRESS_SPACE - address) / BYTES_PER_ROW).toInt()
-    return List(rowCount) { row ->
-        val start = (address + row * BYTES_PER_ROW).toInt()
+    val rowCount = minOf(ROWS_PER_PAGE.toLong(), (memory.highestInspectableAddress + 1 - address) / BYTES_PER_ROW).toInt()
+    return List(rowCount.coerceAtLeast(0)) { row ->
+        val start = address + row * BYTES_PER_ROW
         val words = List(BYTES_PER_ROW / Int.SIZE_BYTES) { memory.inspectWord(start + it * Int.SIZE_BYTES) }
         val bytes = List(BYTES_PER_ROW) { index ->
             val offset = index % Int.SIZE_BYTES
@@ -159,7 +160,7 @@ internal class MarsMemoryView(private val session: XDebugSession, private val en
         next.addActionListener { move(BYTES_PER_PAGE) }
         export.addActionListener { exportSuspension() }
         edit.addActionListener { editSuspension() }
-        lastWrite.addActionListener { showAddress(displayedWrite!!.address) }
+        lastWrite.addActionListener { showAddress(displayedWrite!!.addressBits) }
         regions.addItemListener { event ->
             if (event.stateChange == ItemEvent.SELECTED) {
                 regions.selectedItem = null
@@ -173,7 +174,7 @@ internal class MarsMemoryView(private val session: XDebugSession, private val en
             override fun sessionStopped() = refreshOnEdt()
             override fun settingsChanged() = UIUtil.invokeLaterIfNeeded {
                 val context = session.suspendContext as? MarsSuspendContext
-                if (context != null && context.lastMemoryWrite?.takeIf { it.addressBits in 0..<ADDRESS_SPACE } != displayedWrite) refresh()
+                if (context != null && context.lastMemoryWrite != displayedWrite) refresh()
             }
         }, this)
         refresh()
@@ -190,12 +191,12 @@ internal class MarsMemoryView(private val session: XDebugSession, private val en
 
     private fun editSuspension() {
         val suspension = session.suspendContext as? MarsSuspendContext ?: return
-        val dialog = MarsMemoryEditDialog(session.project, addressField.text)
+        val dialog = MarsMemoryEditDialog(session.project, addressField.text, suspension.highestInspectableAddress)
         dialog.show()
         if (!dialog.isOK) return
 
         val target = dialog.address
-        val request = MemoryWordEditRequest(target.toInt(), dialog.expression, object : XModificationCallback {
+        val request = MemoryWordEditRequest(target, dialog.expression, object : XModificationCallback {
             override fun valueModified() {
                 session.rebuildViews()
                 jumpTo(target)
@@ -213,20 +214,22 @@ internal class MarsMemoryView(private val session: XDebugSession, private val en
     private fun refreshOnEdt() = UIUtil.invokeLaterIfNeeded { refresh() }
 
     private fun move(delta: Int) {
-        jumpTo((pageStart(address!!) + delta).coerceIn(0L, LAST_ROW))
+        val context = session.suspendContext as? MarsSuspendContext ?: return
+        jumpTo((pageStart(address!!) + delta).coerceIn(0L, pageStart(context.highestInspectableAddress)))
     }
 
     private fun navigate() {
-        val parsed = parseMemoryAddress(addressField.text)
+        val context = session.suspendContext as? MarsSuspendContext ?: return
+        val parsed = parseMemoryAddress(addressField.text, context.highestInspectableAddress)
         if (parsed == null) {
             revision++
-            status.text = runMessages.getMessage("debug.memory.invalid")
+            status.text = invalidMemoryAddress(context.highestInspectableAddress)
             return
         }
         jumpTo(parsed)
     }
 
-    fun showAddress(target: Int) = jumpTo(target.toUInt().toLong())
+    fun showAddress(target: Long) = jumpTo(target)
 
     private fun jumpTo(target: Long) {
         address = target
@@ -236,7 +239,7 @@ internal class MarsMemoryView(private val session: XDebugSession, private val en
     private fun pageStart(target: Long) = target / BYTES_PER_ROW * BYTES_PER_ROW
 
     private fun renderAddress(target: Long) {
-        renderedAddress = display.formatAddress(target.toInt())
+        renderedAddress = display.formatAddress(target)
         addressField.text = renderedAddress
     }
 
@@ -259,12 +262,13 @@ internal class MarsMemoryView(private val session: XDebugSession, private val en
             return
         }
 
-        val target = address ?: context.memoryRegions.getValue(MemoryRegion.DATA)
+        val target = (address ?: context.memoryRegions.getValue(MemoryRegion.DATA))
+            .coerceIn(0, context.highestInspectableAddress)
         address = target
         val start = pageStart(target)
         renderAddress(target)
         previous.isEnabled = start > 0
-        next.isEnabled = start < LAST_ROW
+        next.isEnabled = start < pageStart(context.highestInspectableAddress)
         status.text = displayedSuspension?.let { runMessages.getMessage("debug.memory.loading.last", it) }
             ?: runMessages.getMessage("debug.memory.loading")
         context.inspectionRequests.trySend { memory ->
@@ -272,7 +276,7 @@ internal class MarsMemoryView(private val session: XDebugSession, private val en
             val write = context.lastMemoryWrite
             withContext(Dispatchers.EDT) {
                 if (request == revision) {
-                    displayedWrite = write?.takeIf { it.addressBits in 0..<ADDRESS_SPACE }
+                    displayedWrite = write
                     lastWrite.isEnabled = displayedWrite != null
                     renderWriteStatus()
                     model.items = rows
@@ -285,7 +289,7 @@ internal class MarsMemoryView(private val session: XDebugSession, private val en
 
     private fun renderWriteStatus() {
         writeStatus.text = displayedWrite?.let {
-            runMessages.getMessage("debug.memory.last.write.status", display.formatAddress(it.address), it.length)
+            runMessages.getMessage("debug.memory.last.write.status", display.formatAddress(it.addressBits), it.length)
         }.orEmpty()
     }
 
@@ -297,8 +301,8 @@ internal class MarsMemoryView(private val session: XDebugSession, private val en
                 append(text)
                 return
             }
-            val start = model.getItem(table.convertRowIndexToModel(row)).address.toUInt().toLong()
-            val writeStart = write.address.toUInt().toLong()
+            val start = model.getItem(table.convertRowIndexToModel(row)).address
+            val writeStart = write.addressBits
             val writeEnd = writeStart + write.length
             val highlight = MarsMachineHighlight.WRITE.tableStyle()
             for ((index, token) in text.split(separator).withIndex()) {
@@ -321,7 +325,7 @@ internal class MarsMemoryView(private val session: XDebugSession, private val en
         }
 }
 
-internal class MarsMemoryEditDialog(project: Project, initialAddress: String) : DialogWrapper(project) {
+internal class MarsMemoryEditDialog(project: Project, initialAddress: String, private val highestAddress: Long) : DialogWrapper(project) {
     private val addressField = JBTextField(initialAddress, 16)
     private val valueField = JBTextField(20)
     val fields = panel {
@@ -334,18 +338,22 @@ internal class MarsMemoryEditDialog(project: Project, initialAddress: String) : 
         init()
     }
 
-    val address get() = parseMemoryAddress(addressField.text)!!
+    val address get() = parseMemoryAddress(addressField.text, highestAddress)!!
     val expression: String get() = valueField.text
 
     override fun createCenterPanel() = fields
     override fun getPreferredFocusedComponent() = valueField
 
     override fun doValidate(): ValidationInfo? {
-        val address = parseMemoryAddress(addressField.text)
-            ?: return ValidationInfo(runMessages.getMessage("debug.memory.invalid"), addressField)
+        val address = parseMemoryAddress(addressField.text, highestAddress)
+            ?: return ValidationInfo(invalidMemoryAddress(highestAddress), addressField)
         if (!MemoryState.wordAligned(address.toInt())) {
             return ValidationInfo(runMessages.getMessage("debug.memory.edit.alignment"), addressField)
         }
         return if (valueField.text.isBlank()) ValidationInfo(runMessages.getMessage("debug.memory.edit.word"), valueField) else null
     }
 }
+
+private fun invalidMemoryAddress(highestAddress: Long): String =
+    if (highestAddress == UInt.MAX_VALUE.toLong()) runMessages.getMessage("debug.memory.invalid")
+    else runMessages.getMessage("debug.memory.invalid.wide", hex.toHexDigits(highestAddress))

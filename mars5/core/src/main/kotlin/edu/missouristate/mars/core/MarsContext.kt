@@ -25,6 +25,7 @@ import edu.missouristate.mars.mips.hardware.Register
 import edu.missouristate.mars.mips.instructions.InstructionSet
 import edu.missouristate.mars.mips.instructions.SyscallRegistry
 import edu.missouristate.mars.mips.instructions.syscalls.RandomStreams
+import edu.missouristate.mars.simulator.Exceptions.ADDRESS_EXCEPTION_STORE
 import edu.missouristate.mars.simulator.BackStepper
 import edu.missouristate.mars.simulator.DelayedBranchState
 import edu.missouristate.mars.simulator.SimulatorEngine
@@ -210,6 +211,21 @@ class MarsContext @Inject constructor(
                 memory.inTextSegment(address) && !settings.isSelfModifyingCodeEnabled
             if (!protectedText && memory.inspectWord(address) == bits) return false
             memory.setWord(address, bits)
+            backStepper.clear()
+            return true
+        }
+    }
+
+    @Throws(AddressErrorException::class)
+    fun editMemoryWord(address: Long, bits: Int): Boolean {
+        val narrow = address.toInt()
+        if (address == narrow.toLong() || address == narrow.toUInt().toLong()) return editMemoryWord(narrow, bits)
+        claimStoppedSession().use {
+            if (address and 3L != 0L) {
+                throw AddressErrorException("store address not aligned on word boundary ", ADDRESS_EXCEPTION_STORE, address)
+            }
+            if (!memory.inWideText(address) && memory.inspectWord(address) == bits) return false
+            memory.writeData(address, Int.SIZE_BYTES, bits)
             backStepper.clear()
             return true
         }

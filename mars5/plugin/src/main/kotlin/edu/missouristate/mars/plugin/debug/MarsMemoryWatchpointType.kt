@@ -88,9 +88,10 @@ internal data class MemoryWatchRange(val first: Long, val last: Long, val mode: 
     }
 }
 
-internal fun parseMemoryAddress(text: String): Long? {
+internal fun parseMemoryAddress(text: String, highestAddress: Long = UInt.MAX_VALUE.toLong()): Long? {
     val value = text.trim()
-    return (if (value.startsWith("0x", ignoreCase = true)) value.substring(2).toUIntOrNull(16) else value.toUIntOrNull())?.toLong()
+    return (if (value.startsWith("0x", ignoreCase = true)) value.substring(2).toLongOrNull(16) else value.toLongOrNull())
+        ?.takeIf { it in 0..highestAddress }
 }
 
 internal class MarsMemoryWatchpointDialog(project: Project) : DialogWrapper(project) {

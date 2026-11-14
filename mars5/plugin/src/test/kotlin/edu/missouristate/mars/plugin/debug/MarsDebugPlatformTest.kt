@@ -2151,6 +2151,14 @@ class MarsDebugPlatformTest {
                     ActionUtil.performAction(action, event)
                 }
                 debug.assertPausedAt(file, 3)
+                withContext(Dispatchers.EDT) {
+                    val type = XDebuggerUtil.getInstance().findBreakpointType(MarsAddressBreakpointType::class.java)
+                    val address = 0x1_0040_0024L
+                    val properties = MarsAddressBreakpointProperties(file.toNioPath().toString(), address.toInt(), wideAddress = address)
+                    debugger.breakpointManager.addBreakpoint(type, properties)
+                    debug.session.resume()
+                }
+                debug.assertPausedAt(file, 5)
                 withContext(Dispatchers.EDT) { debug.session.resume() }
                 assertEquals(0, debug.exit.await())
             }
@@ -4705,12 +4713,31 @@ class MarsDebugPlatformTest {
     fun `disassembly window stays within the unsigned address space`() {
         MarsSessionService.createMarsComponent().context().use { machine ->
             val first = disassemblyWindow(machine.memory, 0)
-            assertEquals(0, first.first().address)
+            assertEquals(0L, first.first().address)
             assertEquals(listOf(first.first()), first.filter(DisassemblyRow::current))
             val last = disassemblyWindow(machine.memory, 0xffff_fffcL)
-            assertEquals(0xffff_fffcu.toInt(), last.last().address)
+            assertEquals(0xffff_fffcL, last.last().address)
             assertEquals(listOf(last.last()), last.filter(DisassemblyRow::current))
             assertTrue(disassemblyWindow(machine.memory, 0xffff_ffffL).isEmpty())
+        }
+    }
+
+    @Test
+    fun `memory page displays and edits high data without aliasing low memory`() {
+        MarsSessionService.createMarsComponent().context().use { machine ->
+            machine.selectTarget(MarsTarget.MARS64)
+            val high = 0x1_0000_0000L
+            val memory = machine.memory
+            memory.byteOrder = MemoryState.BIG_ENDIAN
+            assertEquals(high, parseMemoryAddress("0x100000000", memory.highestInspectableAddress))
+            assertNull(parseMemoryAddress("0x100000000"))
+            assertTrue(machine.editMemoryWord(high, 0x41424344))
+            assertFalse(machine.editMemoryWord(high, 0x41424344))
+            val row = memoryPage(memory, high).first()
+            assertEquals(high, row.address)
+            assertTrue(row.bytes.startsWith("41 42 43 44"), row.bytes)
+            assertTrue(row.characters.startsWith("ABCD"), row.characters)
+            assertNull(memory.inspectWord(0))
         }
     }
 
