@@ -1282,9 +1282,9 @@ class MarsDebugPlatformTest {
         component.context().use { context ->
             val memory = context.memory
             val origin = Origin(Location(Path.of("source.s"), 1), null)
-            val step = SourceStep(memory.textBaseAddress, origin)
-            assertTrue(step.reached(memory, memory.textBaseAddress + 1))
-            assertTrue(step.reached(memory, memory.kernelTextBaseAddress))
+            val step = SourceStep(memory.textBaseAddress.toLong(), origin)
+            assertTrue(step.reached(memory, memory.textBaseAddress.toLong() + 1))
+            assertTrue(step.reached(memory, memory.kernelTextBaseAddress.toLong()))
         }
     }
 
@@ -2119,6 +2119,43 @@ class MarsDebugPlatformTest {
             }
         } finally {
             withContext(Dispatchers.EDT) { settings.changeUtf8Text(original) }
+        }
+    }
+
+    @Test
+    fun `source breakpoints and step over preserve addresses above four GiB`() = timeoutRunBlocking {
+        val settings = project.service<MarsAssemblySettings>()
+        val original = settings.target
+        try {
+            val file = withContext(Dispatchers.EDT) {
+                settings.changeTarget(MarsTarget.MARS64)
+                fixture.addFileToProject("high-debug.mars", $$"""
+                    .text 0x100400000
+                    .globl main
+                    main: balc callee
+                    dli $t0,0x123456789abcdef0
+                    li $v0,10
+                    syscall
+                    callee: addiu $t1,$zero,42
+                    jic $ra,0
+                """.trimIndent()).virtualFile.also { addBreakpoint(it, 2) }
+            }
+            withDebug(file, { startAtMain = ProjectOptionOverride.ENABLED }) { debug ->
+                debug.assertPausedAt(file, 2)
+                withContext(Dispatchers.EDT) { debug.session.stepOver(false) }
+                debug.assertPausedAt(file, 3)
+                withContext(Dispatchers.EDT) { debug.session.stepInto() }
+                debug.assertPausedAt(file, 4)
+                withContext(Dispatchers.EDT) {
+                    val (action, event) = backstepAction(debug.session)
+                    ActionUtil.performAction(action, event)
+                }
+                debug.assertPausedAt(file, 3)
+                withContext(Dispatchers.EDT) { debug.session.resume() }
+                assertEquals(0, debug.exit.await())
+            }
+        } finally {
+            withContext(Dispatchers.EDT) { settings.changeTarget(original) }
         }
     }
 

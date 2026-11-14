@@ -487,7 +487,7 @@ open class MemoryState(
         return address
     }
 
-    internal fun getStatementNoNotify(address: Long): ProgramStatement? = fetchInstruction(address, notify = false)
+    fun getStatementNoNotify(address: Long): ProgramStatement? = fetchInstruction(address, notify = false)
 
     internal fun fetchInstruction(address: Long, notify: Boolean = true): ProgramStatement? {
         val mapped = checkInstructionAddress(address)
@@ -519,7 +519,7 @@ open class MemoryState(
         setAssemblyData(address + Int.SIZE_BYTES, if (byteOrder) high else low, Int.SIZE_BYTES)
     }
 
-    internal fun inWideText(address: Long): Boolean =
+    fun inWideText(address: Long): Boolean =
         wideDataEnabled && address in WIDE_TEXT_BASE..<WIDE_TEXT_BASE + SEGMENT_BYTES
 
     internal fun setAssemblyData(address: Long, value: Int, size: Int) {

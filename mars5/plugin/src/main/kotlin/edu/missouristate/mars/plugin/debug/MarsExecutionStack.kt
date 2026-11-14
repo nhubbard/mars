@@ -49,7 +49,7 @@ internal class MarsCallerFrame(private val site: CallerSite, private val positio
 
     override fun customizePresentation(component: ColoredTextContainer) {
         val location = position?.let { runMessages.getMessage("debug.frame.source", it.file.name, (it.line + 1).toString()) }
-            ?: Binary.intToHexString(site.pc)
+            ?: formatCodeAddress(site.pc)
         val key = if (site.call == null) "debug.frame.interrupted" else "debug.frame.caller"
         component.append(runMessages.getMessage(key, location), REGULAR_ATTRIBUTES)
         component.setIcon(AllIcons.Debugger.Frame)
@@ -59,11 +59,14 @@ internal class MarsCallerFrame(private val site: CallerSite, private val positio
         val call = site.call
         val values = XValueChildrenList()
         val addressKey = if (call == null) "debug.frame.interrupted.address" else "debug.frame.call.address"
-        values.add(RegisterValue(runMessages.getMessage(addressKey)) { Binary.intToHexString(site.pc) })
+        values.add(RegisterValue(runMessages.getMessage(addressKey)) { formatCodeAddress(site.pc) })
         if (call != null) {
-            values.add(RegisterValue(runMessages.getMessage("debug.frame.return.address")) { Binary.intToHexString(call.returnAddress) })
+            values.add(RegisterValue(runMessages.getMessage("debug.frame.return.address")) { formatCodeAddress(call.returnAddressBits) })
             values.add(RegisterValue(runMessages.getMessage("debug.frame.link.register")) { $$"$$${call.linkRegister}" })
         }
         node.addChildren(values, true)
     }
 }
+
+private fun formatCodeAddress(address: Long): String =
+    if (address == address.toInt().toLong()) Binary.intToHexString(address.toInt()) else Binary.longToHexString(address)

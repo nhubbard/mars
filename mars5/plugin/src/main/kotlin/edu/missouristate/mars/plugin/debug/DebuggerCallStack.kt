@@ -12,13 +12,13 @@ import edu.missouristate.mars.api.StopEvent
 
 /** Tracks observed calls on the simulator worker and is read after the worker has suspended. */
 internal class DebuggerCallStack(
-    private val undoCapacity: Int, private val sourceAt: (Int) -> Origin?,
+    private val undoCapacity: Int, private val sourceAt: (Long) -> Origin?,
 ) : SimulatorListener {
     data class StepOutTarget(val depth: Int, val handlerDepth: Int)
-    data class CallerSite(val id: Long, val pc: Int, val origin: Origin?, val call: Call?)
+    data class CallerSite(val id: Long, val pc: Long, val origin: Origin?, val call: Call?)
 
     private class Frame(val parent: Frame?, val site: CallerSite) {
-        val returnAddress = site.call?.returnAddress
+        val returnAddress = site.call?.returnAddressBits
         val depth: Int = (parent?.depth ?: 0) + 1
         val handlerDepth: Int = if (returnAddress == null) depth else parent?.handlerDepth ?: 0
     }
@@ -45,10 +45,10 @@ internal class DebuggerCallStack(
     override fun onStep(event: StepEvent) {
         val before = head
         head = when (val transfer = event.transfer) {
-            is Call -> Frame(before, CallerSite(++nextId, event.pc, sourceAt(event.pc), transfer))
-            ExceptionEntry.INSTANCE -> Frame(before, CallerSite(++nextId, event.pc, sourceAt(event.pc), null))
+            is Call -> Frame(before, CallerSite(++nextId, event.pcBits, sourceAt(event.pcBits), transfer))
+            ExceptionEntry.INSTANCE -> Frame(before, CallerSite(++nextId, event.pcBits, sourceAt(event.pcBits), null))
             ExceptionReturn.INSTANCE -> generateSequence(before, Frame::parent).firstOrNull { it.returnAddress == null }?.parent
-            is Jump -> if (before != null && before.returnAddress == transfer.target) before.parent else before
+            is Jump -> if (before != null && before.returnAddress == transfer.targetBits) before.parent else before
             else -> before
         }
         if (head === before) return

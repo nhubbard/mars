@@ -13,6 +13,21 @@ import org.junit.jupiter.api.Test
 
 class DebuggerCallStackTest {
     @Test
+    fun `a low address cannot match a high return address`() {
+        val calls = DebuggerCallStack(4) { null }
+        val caller = 0x1_0040_0000L
+        val returnAddress = caller + 4
+        calls.onStep(StepEvent(caller.toInt(), 0, 1, Call(31, returnAddress.toInt(), returnAddress), pcBits = caller))
+        assertEquals(caller, calls.callers().single().pc)
+        calls.onStep(StepEvent(0, 0, 2, Jump(returnAddress.toInt())))
+        assertEquals(caller, calls.callers().single().pc)
+        calls.onStep(StepEvent(4, 0, 3, Jump(returnAddress.toInt(), returnAddress)))
+        assertNull(calls.stepOutTarget())
+        calls.onBackstep(2)
+        assertEquals(caller, calls.callers().single().pc)
+    }
+
+    @Test
     fun `undo retains bounded frame changes and restores exception boundaries`() {
         val calls = DebuggerCallStack(2) { null }
         calls.onStep(StepEvent(8, 0, 1))

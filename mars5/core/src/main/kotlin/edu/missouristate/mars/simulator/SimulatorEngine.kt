@@ -17,6 +17,7 @@ import java.util.concurrent.Executors
 import java.util.concurrent.locks.LockSupport
 import java.util.function.DoubleSupplier
 import java.util.function.IntPredicate
+import java.util.function.LongPredicate
 
 /** Runs instructions, undo, and callbacks for one session on a dedicated worker. */
 class SimulatorEngine(private val session: MarsContext) : MarsSimulator, AutoCloseable {
@@ -86,10 +87,16 @@ class SimulatorEngine(private val session: MarsContext) : MarsSimulator, AutoClo
 
     /** Check the predicate on the worker before each instruction, including the first. */
     fun runUntilAsync(maximumSteps: Long, shouldBreak: IntPredicate): CompletableFuture<StopEvent> =
+        runUntilAddressAsync(maximumSteps) { address ->
+            address == address.toInt().toLong() && shouldBreak.test(address.toInt())
+        }
+
+    /** Check all program counter bits before executing each instruction. */
+    fun runUntilAddressAsync(maximumSteps: Long, shouldBreak: LongPredicate): CompletableFuture<StopEvent> =
         startAsync(maximumSteps, null, shouldBreak)
 
     @Synchronized
-    private fun startAsync(maximumSteps: Long, points: IntArray?, shouldBreak: IntPredicate?): CompletableFuture<StopEvent> {
+    private fun startAsync(maximumSteps: Long, points: IntArray?, shouldBreak: LongPredicate?): CompletableFuture<StopEvent> {
         checkReady()
         val current = checkNotNull(session.program) { "No program assembled" }
         if (current !== program) {
@@ -116,7 +123,7 @@ class SimulatorEngine(private val session: MarsContext) : MarsSimulator, AutoClo
     }
 
     private fun execute(
-        current: MIPSprogram, maximumSteps: Long, points: IntArray?, shouldBreak: IntPredicate?,
+        current: MIPSprogram, maximumSteps: Long, points: IntArray?, shouldBreak: LongPredicate?,
         completion: CompletableFuture<StopEvent>,
     ) {
         worker = Thread.currentThread()
@@ -150,13 +157,13 @@ class SimulatorEngine(private val session: MarsContext) : MarsSimulator, AutoClo
     // A nonpositive step budget means execution is unlimited.
     @Suppress("ConvertTwoComparisonsToRangeCheck")
     private fun executeInstructions(
-        current: MIPSprogram, maximumSteps: Long, points: IntArray?, shouldBreak: IntPredicate?,
+        current: MIPSprogram, maximumSteps: Long, points: IntArray?, shouldBreak: LongPredicate?,
     ): Reason {
         var steps = 0L
         while (true) {
             if (request != Request.NONE) return if (request == Request.STOP) Reason.STOP_REQUEST else Reason.PAUSE
-            if (shouldBreak != null && session.registerFile.programCounterBits == session.registerFile.getPC().toLong()) {
-                val hit = shouldBreak.test(session.registerFile.getPC())
+            if (shouldBreak != null) {
+                val hit = shouldBreak.test(session.registerFile.programCounterBits)
                 if (request != Request.NONE) continue
                 if (hit) return Reason.BREAKPOINT
             }

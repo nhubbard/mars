@@ -55,7 +55,7 @@ internal class MarsExpressionEvaluator(
     private val watchRequests: SendChannel<WatchMemoryRequest>,
 ) : XDebuggerEvaluator() {
     private val wide = machine.target == MarsTarget.MARS64
-    private val expandedOperands = machine.memory.sourceStatement(machine.registerFile.programCounterRegister.valueNoNotify)
+    private val expandedOperands = machine.memory.sourceStatement(machine.registerFile.programCounterBits)
         ?.sourceOperands.orEmpty()
     private val registers = buildMap<String, Scalar> {
         val cpu = machine.registerFile

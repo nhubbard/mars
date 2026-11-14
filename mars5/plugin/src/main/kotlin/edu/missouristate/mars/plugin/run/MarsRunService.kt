@@ -62,7 +62,7 @@ import java.nio.channels.Pipe
 import java.nio.charset.CodingErrorAction.REPLACE
 import java.nio.file.Path
 import java.util.concurrent.CompletableFuture
-import java.util.function.IntPredicate
+import java.util.function.LongPredicate
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -237,9 +237,9 @@ internal class MarsProcessHandler(
     override fun detachIsDefault() = false
     override fun getProcessInput(): OutputStream = consoleInput
 
-    suspend fun runSlice(simulator: SimulatorEngine, steps: Long = 0, breakpoint: IntPredicate? = null): StopEvent =
+    suspend fun runSlice(simulator: SimulatorEngine, steps: Long = 0, breakpoint: LongPredicate? = null): StopEvent =
         awaitSlice(simulator) {
-            if (breakpoint == null) simulator.runAsync(steps, null) else simulator.runUntilAsync(steps, breakpoint)
+            if (breakpoint == null) simulator.runAsync(steps, null) else simulator.runUntilAddressAsync(steps, breakpoint)
         }
 
     suspend fun backstepSlice(simulator: SimulatorEngine, wholeSource: Boolean) {

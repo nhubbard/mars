@@ -103,7 +103,7 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
     private data class HitProgress(val interval: Int, val hits: Int)
     private val hitProgress = mutableMapOf<XBreakpoint<*>, HitProgress>()
     private var boundMachine: MarsContext? = null
-    @Volatile private var addresses = emptyMap<Int, List<XBreakpoint<*>>>()
+    @Volatile private var addresses = emptyMap<Long, List<XBreakpoint<*>>>()
     @Volatile private var watchpoints = emptyMap<MemoryWatchpoint, MemoryWatchRange>()
     // Written on the simulator worker and drained when its slice completes.
     private val watchpointHits = linkedSetOf<MemoryWatchpoint>()
@@ -275,7 +275,7 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
     internal fun originalBreakpointLine(file: VirtualFile, line: Int): Pair<VirtualFile, Location>? = synchronized(bindings) {
         val machine = boundMachine ?: return@synchronized null
         val target = sources.originalLine(file, line) ?: return@synchronized null
-        target.takeIf { machine.program!!.sourceMap().breakpoints().containsKey(target.second) }
+        target.takeIf { machine.program!!.sourceMap().breakpointsByAddress.containsKey(target.second) }
     }
 
     private fun rejectCommand(message: String, context: MarsSuspendContext) {
@@ -286,11 +286,11 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
     private fun updateBindings() {
         val machine = boundMachine ?: return
         val map = machine.program!!.sourceMap()
-        val next = mutableMapOf<Int, MutableList<XBreakpoint<*>>>()
+        val next = mutableMapOf<Long, MutableList<XBreakpoint<*>>>()
         for (breakpoint in registeredLines) {
             val file = VirtualFileManager.getInstance().findFileByUrl(breakpoint.fileUrl)
             val location = file?.let { sources.location(it, breakpoint.line) }
-            val points = location?.let { map.breakpoints()[it] }.orEmpty()
+            val points = location?.let { map.breakpointsByAddress[it] }.orEmpty()
             if (points.isEmpty()) {
                 session.setBreakpointInvalid(breakpoint, runMessages.getMessage("debug.breakpoint.no.code"))
             } else {
@@ -299,7 +299,7 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
             }
         }
         for (breakpoint in registeredAddresses) {
-            val address = breakpoint.properties?.addressIn(entry) ?: continue
+            val address = breakpoint.properties?.addressIn(entry)?.toLong() ?: continue
             next.getOrPut(address) { mutableListOf() }.add(breakpoint)
         }
         addresses = next
@@ -348,7 +348,7 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
                     continue
                 }
                 val target = command.target
-                val targets = target?.let { map.breakpoints()[it] }.orEmpty()
+                val targets = target?.let { map.breakpointsByAddress[it] }.orEmpty()
                 var skip = skipFirst
                 var hits = emptyList<XBreakpoint<*>>()
                 var stepOrTargetReached = false
@@ -486,7 +486,7 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
         }
         if (changed) {
             machine.claimStoppedSession().use {
-                val pc = machine.registerFile.getPC()
+                val pc = machine.registerFile.programCounterBits
                 val origin = machine.memory.sourceStatement(pc)?.instructionOrigin
                 context.refresh(machine, sourcePosition(origin), origin?.let { SourceStep(pc, it) })
             }
@@ -517,7 +517,7 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
         machine: MarsContext, stepOutTarget: DebuggerCallStack.StepOutTarget?,
         callers: Sequence<CallerSite>, frameScope: CoroutineScope,
     ): MarsSuspendContext = machine.claimStoppedSession().use {
-        val pc = machine.registerFile.programCounterRegister.valueNoNotify
+        val pc = machine.registerFile.programCounterBits
         val statement = machine.memory.sourceStatement(pc)
         val origin = statement?.instructionOrigin
         val program = machine.program!!
@@ -608,23 +608,23 @@ internal class MarsSuspendContext(
     override fun getActiveExecutionStack() = stack
 }
 
-internal data class SourceStep(private val start: Int, private val origin: Origin) {
+internal data class SourceStep(private val start: Long, private val origin: Origin) {
     // A loop back to the same address is a new execution of the source statement.
-    fun reached(memory: MemoryState, pc: Int): Boolean = pc == start || memory.sourceStatement(pc)?.instructionOrigin !== origin
+    fun reached(memory: MemoryState, pc: Long): Boolean = pc == start || memory.sourceStatement(pc)?.instructionOrigin !== origin
 }
 
 // The simulator worker owns this state for one Step Over command, including across logpoints.
 private class StepOver(private val source: SourceStep?) : SimulatorListener {
-    private val returnAddresses = ArrayDeque<Int>()
+    private val returnAddresses = ArrayDeque<Long>()
     private var enteredHandler = false
     private var returned = false
 
     override fun onStep(event: StepEvent) {
         when (val transfer = event.transfer ?: return) {
-            is Call -> returnAddresses.addLast(transfer.returnAddress)
+            is Call -> returnAddresses.addLast(transfer.returnAddressBits)
             is ExceptionEntry -> enteredHandler = true
             is ExceptionReturn -> Unit
-            is Jump -> if (returnAddresses.lastOrNull() == transfer.target) {
+            is Jump -> if (returnAddresses.lastOrNull() == transfer.targetBits) {
                 returnAddresses.removeLast()
                 returned = returnAddresses.isEmpty()
             }
@@ -634,13 +634,15 @@ private class StepOver(private val source: SourceStep?) : SimulatorListener {
     override fun onStop(event: StopEvent) = Unit
     override fun onError(event: ErrorEvent) = Unit
 
-    fun reached(memory: MemoryState, pc: Int): Boolean {
+    fun reached(memory: MemoryState, pc: Long): Boolean {
         return enteredHandler || returned || (returnAddresses.isEmpty() && source?.reached(memory, pc) != false)
     }
 }
 
-internal fun MemoryState.sourceStatement(pc: Int): ProgramStatement? {
+internal fun MemoryState.sourceStatement(pc: Long): ProgramStatement? {
     // Data-segment execution and rewritten instructions have no assembled source position.
-    if (!MemoryState.wordAligned(pc) || !(inTextSegment(pc) || inKernelTextSegment(pc))) return null
+    if (pc and 3L != 0L) return null
+    val narrow = pc.toInt()
+    if (!inWideText(pc) && (pc != narrow.toLong() || !(inTextSegment(narrow) || inKernelTextSegment(narrow)))) return null
     return getStatementNoNotify(pc)
 }
