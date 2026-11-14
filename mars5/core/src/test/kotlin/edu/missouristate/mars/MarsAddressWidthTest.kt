@@ -52,10 +52,10 @@ class MarsAddressWidthTest {
     @ParameterizedTest
     @ValueSource(strings = [
         "lb \$t0,0(\$a0)", "lbu \$t0,0(\$a0)", "lh \$t0,0(\$a0)", "lhu \$t0,0(\$a0)",
-        "lw \$t0,0(\$a0)", "lwu \$t0,0(\$a0)", "ll \$t0,0(\$a0)", "lwl \$t0,0(\$a0)", "lwr \$t0,0(\$a0)",
+        "lw \$t0,0(\$a0)", "lwu \$t0,0(\$a0)", "ll \$t0,0(\$a0)", "ulw \$t0,1(\$a0)", "ulhu \$t0,1(\$a0)",
         "ld \$t0,0(\$a0)", "lwc1 \$f0,0(\$a0)", "ldc1 \$f0,0(\$a0)",
-        "sb \$t0,0(\$a0)", "sh \$t0,0(\$a0)", "sw \$t0,0(\$a0)", "sc \$t0,0(\$a0)", "swl \$t0,0(\$a0)",
-        "swr \$t0,0(\$a0)", "sd \$t0,0(\$a0)", "swc1 \$f0,0(\$a0)", "sdc1 \$f0,0(\$a0)",
+        "sb \$t0,0(\$a0)", "sh \$t0,0(\$a0)", "sw \$t0,0(\$a0)", "sc \$t0,0(\$a0)", "usw \$t0,1(\$a0)",
+        "ush \$t0,1(\$a0)", "sd \$t0,0(\$a0)", "swc1 \$f0,0(\$a0)", "sdc1 \$f0,0(\$a0)",
     ])
     fun `unmapped high bits cannot alias mapped data`(instruction: String, @TempDir directory: Path) {
         val source = Files.writeString(directory.resolve("data.s"), ".data\n.word 42,0\n.text\n$instruction\n")
@@ -67,8 +67,9 @@ class MarsAddressWidthTest {
             machine.editIntegerRegister(4, unmapped)
             machine.editIntegerRegister(8, 99)
             val failure = assertThrows(ProcessingException::class.java) { program.simulate(1) }
-            assertTrue(failure.message!!.contains("0x" + unmapped.toString(16).padStart(16, '0') + " is outside mapped memory"))
-            val expectedCause = if (instruction.startsWith('s')) ADDRESS_EXCEPTION_STORE else ADDRESS_EXCEPTION_LOAD
+            val effectiveAddress = unmapped + if (instruction.startsWith('u')) 1 else 0
+            assertTrue(failure.message!!.contains("0x" + effectiveAddress.toString(16).padStart(16, '0') + " is outside mapped memory"))
+            val expectedCause = if (instruction.removePrefix("u").startsWith('s')) ADDRESS_EXCEPTION_STORE else ADDRESS_EXCEPTION_LOAD
             assertEquals(expectedCause, (machine.coprocessor0.getValue(CAUSE) ushr 2) and 31)
             assertEquals(42, machine.memory.getWord(mapped))
             assertEquals(99, machine.registerFile.getValue(8))
