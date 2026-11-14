@@ -16,6 +16,7 @@
   ]]></description>
   <resource-bundle>messages.MarsBundle</resource-bundle>
   <depends>com.intellij.modules.platform</depends>
+  <depends optional="true" config-file="edu.missouristate.mars-withKotlin.xml">org.jetbrains.kotlin</depends>
   <content>
     <module name="mars.jvm.compiler" loading="optional"/>
   </content>

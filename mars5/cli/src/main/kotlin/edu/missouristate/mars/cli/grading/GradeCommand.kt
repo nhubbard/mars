@@ -37,7 +37,8 @@ abstract class AssignmentScript(assignment: Assignment) {
 }
 
 object AssignmentCompilation : ScriptCompilationConfiguration({
-    filePathPattern("""(?:.*[/\\])?assignment[0-9]+\.kts""")
+    // Leave Gradle and Kotlin main scripts with their dedicated definitions.
+    filePathPattern("""(?:.*[/\\])?(?![^/\\]*\.(?:gradle|main)\.kts$)[^/\\]+\.kts""")
     isStandalone(true)
 })
 

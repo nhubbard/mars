@@ -5,13 +5,14 @@
 1. With JDK 25, build the CLI from the repository root with
    `./mars5/gradlew -p mars5 :cli:jar`.
 2. Open **the `examples/assignment` directory** as its own Gradle project. Keep the Kotlin
-   plugin enabled and use JDK 25 for the project SDK and Gradle JVM. Sync Gradle to put the
-   CLI JAR on the project's library classpath. For a copy of the example, set `marsCliJar`
+   plugin enabled and use JDK 25 for the project SDK and Gradle JVM. Sync Gradle to set up
+   the grading task. For a copy of the example, set `marsCliJar`
    in `gradle.properties` to the absolute path to your built CLI JAR.
 3. Open [`assignment1.kts`](assignment1.kts) and load the script configuration if prompted.
    The **MARS assignment** Kotlin script definition supplies completion, navigation, and type
-   checking for `case` and its assertions. Keep new scripts at the project root and use
-   numbered filenames such as `assignment2.kts` or `assignment12.kts`.
+   checking for `case` and its assertions. Assignment scripts can use any ordinary `.kts`
+   filename, such as `linked-list.kts`. The `.gradle.kts` and `.main.kts` suffixes keep their
+   dedicated Kotlin definitions.
 4. Select **Grade MARS assignment** in the Run menu. The shared configuration runs
    `gradeAssignment` with `assignment1.kts` and `submission.s`. The Kotlin script editor
    handles authoring, and the Gradle configuration supplies the submission to the MARS grader.
@@ -27,10 +28,11 @@ choose different files with Gradle properties. Relative paths are resolved from 
 
 ## Check script registration
 
-If `case` is unresolved, open **Settings → Languages & Frameworks → Kotlin → Kotlin Scripting**.
-Confirm that **MARS assignment** is enabled and its source is **Marker file**. Check the Gradle
-project's JAR path, sync Gradle, and use **Reload definitions**. In the script editor, use
-**Reload script configuration** to refresh the file.
+With the MARS MIPS and Kotlin plugins enabled, IntelliJ registers **MARS assignment**
+automatically, including in projects without Gradle. If you previously added the CLI JAR
+manually, you can remove those custom entries from **Settings → Languages & Frameworks →
+Kotlin → Kotlin Scripting**. Use **Reload definitions** there and **Reload script
+configuration** in the editor if IntelliJ has cached an earlier configuration.
 
 IntelliJ distinguishes a missing JAR marker from a definition that the current project has
 yet to load. The CLI build packages the marker and tests that it reaches the finished JAR.
@@ -41,12 +43,12 @@ jar tf mars5/cli/build/libs/cli-1.0-SNAPSHOT.jar |
   grep -Fx 'META-INF/kotlin/script/templates/edu.missouristate.mars.cli.grading.AssignmentScript.classname'
 ```
 
-IntelliJ discovers the *assignment definition* from the MARS CLI JAR. In projects without it as a
-dependency, add the built CLI JAR under **Definition classpath** and enter
+Without the MARS plugin, IntelliJ can also discover the definition from a Gradle project
+library dependency on the MARS CLI JAR. To configure it manually, add the built CLI JAR
+under **Definition classpath** and enter
 `edu.missouristate.mars.cli.grading.AssignmentScript` under **Definition classes** in Kotlin
 Scripting settings. Rebuild the JAR if you updated MARS since the last build. Then reload
-definitions and the script configuration. The filename must match `assignment<number>.kts`
-for editor discovery.
+definitions and the script configuration.
 
 ## Grade submissions
 

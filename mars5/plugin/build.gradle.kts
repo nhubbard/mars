@@ -39,6 +39,7 @@ dependencies {
     exclude(group = "org.jetbrains.kotlin", module = "kotlin-stdlib")
   }
   implementation(project(":datapath"))
+  implementation(project(path = ":cli", configuration = "assignmentDefinition"))
   testCompileOnly(project(":plugin-jvm-compiler"))
   intellijPlatform {
     if (localIdePath.isPresent) {
@@ -49,12 +50,16 @@ dependencies {
     bundledModule("intellij.platform.buildView")
     bundledModule("intellij.platform.debugger")
     bundledPlugin("com.intellij.modules.compose")
+    bundledModule("kotlin.scripting")
+    bundledModule("intellij.libraries.kotlinc.kotlin.scripting.common")
     bundledModule("intellij.platform.jewel.ideLafBridge")
     bundledModule("intellij.platform.jewel.ui")
     bundledModule("intellij.libraries.compose.foundation.desktop")
     bundledModule("intellij.libraries.compose.runtime.desktop")
     pluginModule(project(":plugin-jvm-compiler"))
     testBundledPlugin("com.intellij.java")
+    testBundledPlugin("org.jetbrains.kotlin")
+    testBundledModule("intellij.libraries.kotlinc.kotlin.scripting.compiler.impl")
     testBundledPlugin("org.editorconfig.editorconfigjetbrains")
     testBundledModule("intellij.platform.debugger.impl.ui")
     testBundledModule("intellij.platform.debugger.impl.shared")
@@ -130,12 +135,14 @@ val verifyPluginNotices = tasks.register("verifyPluginNotices") {
   val pluginJarName = tasks.named<ComposedJarTask>("composedJar").flatMap { it.archiveFileName }
   val coreJarName = project(":core").tasks.named<Jar>("jar").flatMap { it.archiveFileName }
   val datapathJarName = project(":datapath").tasks.named<Jar>("jar").flatMap { it.archiveFileName }
+  val assignmentJarName = project(":cli").tasks.named<Jar>("assignmentDefinitionJar").flatMap { it.archiveFileName }
   inputs.file(archiveFile)
   inputs.files(distributionNotices)
   inputs.property("archiveRoot", archiveRoot)
   inputs.property("pluginJarName", pluginJarName)
   inputs.property("coreJarName", coreJarName)
   inputs.property("datapathJarName", datapathJarName)
+  inputs.property("assignmentJarName", assignmentJarName)
   doLast {
     val root = archiveRoot.get()
     ZipFile(archiveFile.get().asFile).use { zip ->
@@ -150,10 +157,16 @@ val verifyPluginNotices = tasks.register("verifyPluginNotices") {
       check(zip.getEntry("${libraryPrefix}modules/mars.jvm.compiler.jar") != null) {
         "The optional JVM compiler module must have its own JAR"
       }
+      check(zip.getEntry(libraryPrefix + assignmentJarName.get()) != null) {
+        "The Kotlin script definition must be available as a separate JAR"
+      }
       val bundledJars = zip.entries().asSequence()
         .filter { it.name.startsWith(libraryPrefix) && it.name.endsWith(".jar") }
         .map { it.name.substringAfterLast('/') }
-        .toSet() - setOf(pluginJarName.get(), coreJarName.get(), datapathJarName.get(), "mars.jvm.compiler.jar")
+        .toSet() - setOf(
+          pluginJarName.get(), coreJarName.get(), datapathJarName.get(),
+          assignmentJarName.get(), "mars.jvm.compiler.jar",
+        )
       val documentedJars = thirdPartyNotices.asFile.useLines { lines ->
         lines.filter { it.startsWith("JAR ") }.map { it.removePrefix("JAR ") }.toSet()
       }

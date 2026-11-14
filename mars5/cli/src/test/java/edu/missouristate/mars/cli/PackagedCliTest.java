@@ -145,7 +145,7 @@ class PackagedCliTest {
 
   @Test
   void gradingChecksStructureAndIntermediateStateAndIsolatesCases() throws Exception {
-    var script = source("assignment1.kts", """
+    var script = source("linked-list checks.kts", """
         case("double a word", instructionLimit = 8) {
             requireTextLabel("double")
             requireDataLabel("cell")

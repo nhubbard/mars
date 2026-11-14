@@ -46,3 +46,20 @@ tasks.jar {
   exclude("module-info.class", "META-INF/versions/**/module-info.class")
   duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
+
+// IntelliJ supplies the Kotlin scripting host. Share the DSL and its discovery marker
+// with the plugin without shipping the CLI entry point or a second Kotlin compiler.
+val assignmentDefinitionJar = tasks.register<Jar>("assignmentDefinitionJar") {
+  archiveBaseName.set("mars-assignment-definition")
+  from(sourceSets.main.map { it.output })
+  include(
+    "edu/missouristate/mars/cli/grading/**",
+    "edu/missouristate/mars/cli/HeadlessGuiProxy.class",
+    "META-INF/kotlin/script/templates/**",
+  )
+  exclude("edu/missouristate/mars/cli/grading/GradeCommand*.class")
+}
+
+configurations.consumable("assignmentDefinition") {
+  outgoing.artifact(assignmentDefinitionJar)
+}
