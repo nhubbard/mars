@@ -4,6 +4,8 @@ import edu.missouristate.mars.api.MarsTarget
 import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotEquals
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -11,6 +13,37 @@ import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 
 class Mars64UnalignedMemoryTest {
+    @Test
+    fun `aliases expand to ordinary accesses in Release 6 and legacy merge forms stay in MARS32`(@TempDir directory: Path) {
+        val source = Files.writeString(directory.resolve("aliases.s"), $$"""
+            ulw $9,32767($8)
+            usw $9,1($8)
+            ulh $10,($8)
+            ulhu $11,-1($8)
+            ush $10,3($8)
+        """.trimIndent())
+        val legacy = mapOf(
+            "lwl" to 0x88280000.toInt(), "lwr" to 0x98280000.toInt(),
+            "swl" to 0xa8280000.toInt(), "swr" to 0xb8280000.toInt(),
+        )
+        TestSessions.create().use { session ->
+            val original = session.assemble(listOf(source), null, true, false).machineList!!
+            assertEquals(listOf("lwl", "lwr", "swl", "swr"), original.mapNotNull { it.instruction?.name }.filter { it in legacy })
+            for ((mnemonic, word) in legacy) {
+                assertEquals(mnemonic, session.instructionSet.findByBinaryCode(word)?.name)
+            }
+
+            session.selectTarget(MarsTarget.MARS64)
+            val statements = session.assemble(listOf(source), null, true, false).machineList!!
+            assertEquals(listOf("lw", "sw", "lh", "lhu", "sh"), statements.map { it.instruction?.name })
+            assertEquals(32767, statements.first().binaryStatement and 0xffff)
+            for ((mnemonic, word) in legacy) {
+                assertNull(session.instructionSet.matchOperator(mnemonic))
+                assertNotEquals(mnemonic, session.instructionSet.findByBinaryCode(word)?.name)
+            }
+        }
+    }
+
     @ParameterizedTest
     @ValueSource(booleans = [true, false])
     fun `ordinary scalar loads and stores support unaligned data in either byte order`(little: Boolean, @TempDir directory: Path) {

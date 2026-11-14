@@ -34,6 +34,9 @@ class InstructionLoader {
         if (wide) {
             when (mnemonic) {
                 "ld", "sd" -> return wideMemoryTemplate(owner, mnemonic, example)
+                "ulw", "usw", "ulh", "ulhu", "ush" ->
+                    return wideMemoryTemplate(owner, mnemonic.removePrefix("u"), example)
+                "lwl", "lwr", "swl", "swr" -> return null
                 "move" -> return ExtendedInstruction(example, "or RG1, RG2, \$0", null, "Copy an integer register", owner)
                 "mul", "mulu", "div", "divu", "rem", "remu" -> return wideWordArithmeticTemplate(owner, mnemonic, example)
                 "mulo", "mulou", "mfc1.d", "mtc1.d" -> return null
@@ -130,9 +133,13 @@ class InstructionLoader {
             "100000(\$t2)" -> "lui \$1, VH2\ndaddu \$1, \$1, RG4\n$mnemonic RG1, VL2(\$1)"
             "label(\$t2)" -> "lui \$1, LH2\ndaddu \$1, \$1, RG4\n$mnemonic RG1, LL2(\$1)"
             "label+100000(\$t2)" -> "lui \$1, LHPA\ndaddu \$1, \$1, RG6\n$mnemonic RG1, LLP(\$1)"
-            else -> error("Unknown doubleword operand form: $example")
+            else -> error("Unknown memory operand form: $example")
         }
-        val description = if (mnemonic == "ld") "Load a doubleword" else "Store a doubleword"
+        val description = when (mnemonic) {
+            "ld" -> "Load a doubleword"
+            "sd" -> "Store a doubleword"
+            else -> "Alias for $mnemonic, which also accepts unaligned addresses"
+        }
         return ExtendedInstruction(example, setup, null, description, owner)
     }
 

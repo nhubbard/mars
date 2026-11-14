@@ -113,6 +113,7 @@ open class InstructionSet {
             "addi", "mul", "div", "divu", "mult", "multu", "madd", "maddu", "msub", "msubu",
             "mfhi", "mflo", "mthi", "mtlo",
             "ll", "sc", "bc1f", "bc1t", "bltzal", "bgezal",
+            "lwl", "lwr", "swl", "swr",
             "round.w.s", "round.w.d", "trunc.w.s", "trunc.w.d",
             "ceil.w.s", "ceil.w.d", "floor.w.s", "floor.w.d", "cvt.w.s", "cvt.w.d",
             "cvt.s.d", "cvt.s.w", "cvt.d.s", "cvt.d.w",

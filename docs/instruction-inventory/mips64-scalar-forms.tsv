@@ -282,7 +282,10 @@ lw	rt, offset(base)	323	audit
 lwc1	ft, offset(base)	324	audit
 lwc2	rt, offset(base)	325	audit
 lwe	rt, offset(base)	327	audit
+lwl	rt, offset(base)	330	removed
+lwle	rt, offset(base)	333	removed
 lwpc	rs, offset	335	audit
+lwr	rt, offset(base)	337	removed
 lwre	rt, offset(base)	339	removed
 lwu	rt, offset(base)	343	audit
 lwupc	rs, offset	344	implemented

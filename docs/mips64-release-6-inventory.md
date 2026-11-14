@@ -11,7 +11,7 @@ for the intended coverage.
 - [Scalar section index](instruction-inventory/mips64-scalar-sections.tsv)
   tracks all 307 entries in the Volume II-A section 3.2 table of contents.
 - [Scalar operand forms](instruction-inventory/mips64-scalar-forms.tsv)
-  lists concrete forms, including 112 tagged as removed and 44 scalar comparison forms.
+  lists concrete forms, including 115 tagged as removed and 44 scalar comparison forms.
   Generic condition notation, untagged aliases, and privilege and operand
   constraints still need review against the instruction descriptions.
   The table of contents and instruction descriptions use different page
@@ -108,7 +108,11 @@ or PC-relative immediate in this table is the displacement as written to LLVM.
   for doubleword reservations. Ordinary scalar halfword, word, and
   doubleword loads and stores may cross word boundaries. Linked and
   conditional accesses still require natural alignment. The address map
-  remains 32-bit.
+  remains 32-bit. The `ulw`, `usw`, `ulh`, `ulhu`, and `ush` pseudos use
+  the corresponding ordinary memory instruction on MARS64. For a legacy
+  left/right pair that loads or stores a complete unaligned word, use
+  `lw` or `sw` at the address of the first byte. Code that uses a single
+  merge instruction to preserve selected bytes needs an explicit sequence.
 - **Scalar FPR layout.** MARS64 uses one 64-bit register per scalar FPR,
   including odd-numbered registers. Double-precision operations, doubleword
   loads and stores, and `dmfc1`/`dmtc1` use the full register. `mfc1` and
