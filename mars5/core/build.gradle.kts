@@ -37,7 +37,7 @@ tasks.test {
 
 tasks.processTestResources {
   from(rootProject.layout.projectDirectory.dir("../docs/instruction-inventory")) {
-    include("mips64-msa-forms.tsv")
+    include("mips64-msa-forms.tsv", "mips64-scalar-forms.tsv")
   }
 }
 

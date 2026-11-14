@@ -1,19 +1,20 @@
 # MIPS64 Release 6 instruction inventory
 
-This inventory starts with the 30 native forms present in the original MARS64
-baseline and encoding probes for 24 additional scalar forms. “Encoding checked” means one independently assembled
-word per form. The MSA forms are cataloged below. Scalar classification
-and execution conformance remain in progress. See the [implementation plan](mips64-source-compatibility.md)
-for the intended coverage.
+The tables below record which Release 6 forms MARS64 implements and which
+depend on hardware outside the simulator. An encoding check compares one
+example word per form with LLVM or the instruction reference. Execution tests
+are separate and exercise instruction families, operand edges, and state changes.
+See the [implementation plan](mips64-source-compatibility.md) for the intended coverage.
 
 ## Reference indexes
 
 - [Scalar section index](instruction-inventory/mips64-scalar-sections.tsv)
   tracks all 307 entries in the Volume II-A section 3.2 table of contents.
 - [Scalar operand forms](instruction-inventory/mips64-scalar-forms.tsv)
-  lists concrete forms, including 115 tagged as removed and 44 scalar comparison forms.
-  Generic condition notation, untagged aliases, and privilege and operand
-  constraints still need review against the instruction descriptions.
+  lists 328 supported forms, including aliases and educational subsets, 115
+  removed forms, and 52 forms that need unavailable hardware. A Jupiter test
+  checks all 328 example encodings against LLVM 23.1.5 or the reference
+  diagrams for compare conditions and paired atomics LLVM omits.
   The table of contents and instruction descriptions use different page
   numbers in this copy. The operand table uses the printed description pages.
 - [MSA forms](instruction-inventory/mips64-msa-forms.tsv) lists all 531
@@ -33,7 +34,7 @@ for the intended coverage.
   for lanes with a zero divisor, a deterministic choice for the result the
   ISA leaves unpredictable. See the MSA forms table for individual status.
 
-## Current MARS64 forms
+## Original MARS64 encoding baseline
 
 All 30 example words below are in the
 [encoding fixture](../mars5/core/src/test/resources/mars64-basic-encoding-vectors.tsv).
@@ -172,7 +173,7 @@ or PC-relative immediate in this table is the displacement as written to LLVM.
 | `bovc $9,$10,4` | `21490001` | Compact overflow branch, opcode reused from ADDI |
 | `bnvc $9,$10,4` | `61490001` | Compact overflow branch, opcode reused from DADDI |
 
-## Shared forms and encoding conflicts to audit next
+## Release 6 behavior and compatibility details
 
 - **Integer multiply and divide.** MARS64 uses the register-result word forms
   in Appendix A.4 Table A.26 and excludes the legacy HI/LO native forms.
@@ -194,8 +195,8 @@ or PC-relative immediate in this table is the displacement as written to LLVM.
   Tables A.27 and A.28, plus word `ll`/`sc` and the Release 6 encodings
   for doubleword reservations. Ordinary scalar halfword, word, and
   doubleword loads and stores may cross word boundaries. Linked and
-  conditional accesses still require natural alignment. The address map
-  remains 32-bit. The `ulw`, `usw`, `ulh`, `ulhu`, and `ush` pseudos use
+  conditional accesses still require natural alignment. Both can use the
+  mapped MARS64 data region above 4 GiB. The `ulw`, `usw`, `ulh`, `ulhu`, and `ush` pseudos use
   the corresponding ordinary memory instruction on MARS64. For a legacy
   left/right pair that loads or stores a complete unaligned word, use
   `lw` or `sw` at the address of the first byte. Code that uses a single
@@ -258,12 +259,6 @@ or PC-relative immediate in this table is the displacement as written to LLVM.
   CPU number zero, synchronization step zero, and available paired LL/SC.
   Hardware counters, the OS thread-local pointer, and other register or
   selector combinations raise a reserved-instruction exception.
-- **Remaining scalar and optional families.** Expand Volume II-A by operand
-  form and classify shared integer, COP1, memory, system, and optional forms.
-  Track removed and privileged forms separately from missing user-mode
-  instructions. Inventory MSA from its own reference, including every
-  supported lane width, control-state effect, and scalar register alias.
-
 ## Reproduce a probe
 
 Run LLVM's MIPS assembler with a single source form to get the instruction

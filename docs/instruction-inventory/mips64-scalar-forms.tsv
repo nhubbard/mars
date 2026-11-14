@@ -1,34 +1,35 @@
 # MD00087 revision 6.06, explicitly tagged Format rows in section 3.2.
 # This is a source index. Expand generic condition/format notation and audit operand constraints and untagged forms against the diagrams.
 # Page numbers are the printed instruction-description pages, not the table of contents numbers.
-# mnemonic or group	operands	page	Release 6 audit status
-abs.s	fd, fs	50	implemented
-abs.d	fd, fs	50	implemented
+# Expected words from LLVM 23.1.5, big-endian MIPS64 Release 6 with +crc, or from Volume II-A for paired LL/SC and CMP conditions that LLVM omits.
+# mnemonic or group	operands	page	Release 6 audit status	Example source	Expected word
+abs.s	fd, fs	50	implemented	abs.s $f9,$f10	46005245
+abs.d	fd, fs	50	implemented	abs.d $f9,$f10	46205245
 abs.ps	fd, fs	50	removed
-add	rd, rs, rt	52	implemented
-add.s	fd, fs, ft	53	implemented
-add.d	fd, fs, ft	53	implemented
+add	rd, rs, rt	52	implemented	add $9,$10,$11	014b4820
+add.s	fd, fs, ft	53	implemented	add.s $f9,$f10,$f11	460b5240
+add.d	fd, fs, ft	53	implemented	add.d $f9,$f10,$f11	462b5240
 add.ps	fd, fs, ft	53	removed
 addi	rt, rs, immediate	55	removed
-addiu	rt, rs, immediate	56	implemented
-addiupc	rs,immediate	57	implemented
-addu	rd, rs, rt	58	implemented
-align	rd,rs,rt,bp	59	implemented
-dalign	rd,rs,rt,bp	59	implemented
-aluipc	rs,immediate	64	implemented
-and	rd, rs, rt	65	implemented
-andi	rt, rs, immediate	66	implemented
-aui	rt, rs immediate	67	implemented
-daui	rt, rs immediate	67	implemented
-dahi	rs, rs immediate	67	implemented
-dati	rs, rs immediate	67	implemented
-auipc	rs, immediate	69	implemented
-b	offset	70	implemented
-bal	offset	71	implemented
-balc	offset	73	implemented
-bc	offset	74	implemented
-bc1eqz	ft, offset	75	implemented
-bc1nez	ft, offset	75	implemented
+addiu	rt, rs, immediate	56	implemented	addiu $11,$10,3	254b0003
+addiupc	rs,immediate	57	implemented	addiupc $10,8	ed400002
+addu	rd, rs, rt	58	implemented	addu $9,$10,$11	014b4821
+align	rd,rs,rt,bp	59	implemented	align $9,$10,$11,2	7d4b4aa0
+dalign	rd,rs,rt,bp	59	implemented	dalign $9,$10,$11,2	7d4b4aa4
+aluipc	rs,immediate	64	implemented	aluipc $10,3	ed5f0003
+and	rd, rs, rt	65	implemented	and $9,$10,$11	014b4824
+andi	rt, rs, immediate	66	implemented	andi $11,$10,3	314b0003
+aui	rt, rs immediate	67	implemented	aui $11,$10,3	3d4b0003
+daui	rt, rs immediate	67	implemented	daui $11,$10,3	754b0003
+dahi	rs, rs immediate	67	implemented	dahi $10,$10,3	05460003
+dati	rs, rs immediate	67	implemented	dati $10,$10,3	055e0003
+auipc	rs, immediate	69	implemented	auipc $10,3	ed5e0003
+b	offset	70	implemented	b target	10000135
+bal	offset	71	implemented	bal target	04110134
+balc	offset	73	implemented	balc target	e8000133
+bc	offset	74	implemented	bc target	c8000132
+bc1eqz	ft, offset	75	implemented	bc1eqz $f11,target	452b0131
+bc1nez	ft, offset	75	implemented	bc1nez $f11,target	45ab0130
 bc1f	offset (cc = 0 implied)	77	removed
 bc1f	cc, offset	77	removed
 bc1fl	offset (cc = 0 implied)	79	removed
@@ -47,51 +48,51 @@ bc2t	offset (cc = 0 implied)	90	removed
 bc2t	cc, offset	90	removed
 bc2tl	offset (cc = 0 implied)	91	removed
 bc2tl	cc, offset	91	removed
-beq	rs, rt, offset	93	implemented
+beq	rs, rt, offset	93	implemented	beq $10,$11,target	114b012f
 beql	rs, rt, offset	94	removed
-bgez	rs, offset	96	implemented
+bgez	rs, offset	96	implemented	bgez $10,target	0541012e
 bgezal	rs, offset	97	removed
-blezalc	rt, offset	98	implemented
-bgezalc	rt, offset	98	implemented
-bgtzalc	rt, offset	98	implemented
-bltzalc	rt, offset	98	implemented
-beqzalc	rt, offset	98	implemented
-bnezalc	rt, offset	98	implemented
+blezalc	rt, offset	98	implemented	blezalc $11,target	180b012d
+bgezalc	rt, offset	98	implemented	bgezalc $11,target	196b012c
+bgtzalc	rt, offset	98	implemented	bgtzalc $11,target	1c0b012b
+bltzalc	rt, offset	98	implemented	bltzalc $11,target	1d6b012a
+beqzalc	rt, offset	98	implemented	beqzalc $11,target	200b0129
+bnezalc	rt, offset	98	implemented	bnezalc $11,target	600b0128
 bgezall	rs, offset	101	removed
-beqc	rs, rt, offset	103	implemented
-bnec	rs, rt, offset	103	implemented
-bltc	rs, rt, offset	104	implemented
-bgec	rs, rt, offset	104	implemented
-bltuc	rs, rt, offset	104	implemented
-bgeuc	rs, rt, offset	104	implemented
-bgtc	rs, rt, offset	104	implemented-alias
-blec	rs, rt, offset	104	implemented-alias
-bgtuc	rs, rt, offset	104	implemented-alias
-bleuc	rs, rt, offset	104	implemented-alias
-bltzc	rs, offset	104	implemented
-blezc	rs, offset	104	implemented
-bgezc	rs, offset	104	implemented
-bgtzc	rs, offset	104	implemented
-beqzc	rs, offset	104	implemented
-bnezc	rs, offset	104	implemented
+beqc	rs, rt, offset	103	implemented	beqc $10,$11,target	214b0127
+bnec	rs, rt, offset	103	implemented	bnec $10,$11,target	614b0126
+bltc	rs, rt, offset	104	implemented	bltc $10,$11,target	5d4b0125
+bgec	rs, rt, offset	104	implemented	bgec $10,$11,target	594b0124
+bltuc	rs, rt, offset	104	implemented	bltuc $10,$11,target	1d4b0123
+bgeuc	rs, rt, offset	104	implemented	bgeuc $10,$11,target	194b0122
+bgtc	rs, rt, offset	104	implemented-alias	bgtc $10,$11,target	5d6a0121
+blec	rs, rt, offset	104	implemented-alias	blec $10,$11,target	596a0120
+bgtuc	rs, rt, offset	104	implemented-alias	bgtuc $10,$11,target	1d6a011f
+bleuc	rs, rt, offset	104	implemented-alias	bleuc $10,$11,target	196a011e
+bltzc	rs, offset	104	implemented	bltzc $10,target	5d4a011d
+blezc	rs, offset	104	implemented	blezc $10,target	580a011c
+bgezc	rs, offset	104	implemented	bgezc $10,target	594a011b
+bgtzc	rs, offset	104	implemented	bgtzc $10,target	5c0a011a
+beqzc	rs, offset	104	implemented	beqzc $10,target	d9400119
+bnezc	rs, offset	104	implemented	bnezc $10,target	f9400118
 bgezl	rs, offset	107	removed
-bgtz	rs, offset	109	implemented
+bgtz	rs, offset	109	implemented	bgtz $10,target	1d400117
 bgtzl	rs, offset	110	removed
-bitswap	rd,rt	112	implemented
-dbitswap	rd,rt	112	implemented
-blez	rs, offset	114	implemented
+bitswap	rd,rt	112	implemented	bitswap $9,$11	7c0b4820
+dbitswap	rd,rt	112	implemented	dbitswap $9,$11	7c0b4824
+blez	rs, offset	114	implemented	blez $10,target	19400114
 blezl	rs, offset	115	removed
-bltz	rs, offset	117	implemented
+bltz	rs, offset	117	implemented	bltz $10,target	05400113
 bltzal	rs, offset	118	removed
 bltzall	rs, offset	119	removed
 bltzl	rs, offset	121	removed
-bne	rs, rt, offset	123	implemented
+bne	rs, rt, offset	123	implemented	bne $10,$11,target	154b0112
 bnel	rs, rt, offset	124	removed
-bovc	rs,rt,offset	126	implemented
-bnvc	rs,rt,offset	126	implemented
-break		128	implemented
-break	code	128	implemented
-break	code, subcode	128	implemented
+bovc	rs,rt,offset	126	implemented	bovc $12,$11,target	218b0111
+bnvc	rs,rt,offset	126	implemented	bnvc $12,$11,target	618b0110
+break		128	implemented	break	0000000d
+break	code	128	implemented	break 4	0004000d
+break	code, subcode	128	implemented	break 4,7	000401cd
 c.cond.s	fs, ft (cc = 0 implied)	129	removed
 c.cond.d	fs, ft (cc = 0 implied)	129	removed
 c.cond.ps	fs, ft(cc = 0 implied)	129	removed
@@ -99,232 +100,232 @@ c.cond.s	cc, fs, ft	129	removed
 c.cond.d	cc, fs, ft	129	removed
 c.cond.ps	cc, fs, ft	129	removed
 cache	op, offset(base)	134	requires-privileged-platform
-ceil.l.s	fd, fs	147	implemented
-ceil.l.d	fd, fs	147	implemented
-ceil.w.s	fd, fs	149	implemented
-ceil.w.d	fd, fs	149	implemented
-cfc1	rt, fs	151	implemented
+ceil.l.s	fd, fs	147	implemented	ceil.l.s $f9,$f10	4600524a
+ceil.l.d	fd, fs	147	implemented	ceil.l.d $f9,$f10	4620524a
+ceil.w.s	fd, fs	149	implemented	ceil.w.s $f9,$f10	4600524e
+ceil.w.d	fd, fs	149	implemented	ceil.w.d $f9,$f10	4620524e
+cfc1	rt, fs	151	implemented	cfc1 $11,$31	444bf800
 cfc2	rt, Impl	153	requires-cop2
-class.s	fd,fs	154	implemented
-class.d	fd,fs	154	implemented
-clo	rd, rs	156	implemented
-clz	rd, rs	157	implemented
-cmp.af.s	fd, fs, ft	158	implemented
-cmp.af.d	fd, fs, ft	158	implemented
-cmp.un.s	fd, fs, ft	158	implemented
-cmp.un.d	fd, fs, ft	158	implemented
-cmp.eq.s	fd, fs, ft	158	implemented
-cmp.eq.d	fd, fs, ft	158	implemented
-cmp.ueq.s	fd, fs, ft	158	implemented
-cmp.ueq.d	fd, fs, ft	158	implemented
-cmp.olt.s	fd, fs, ft	158	implemented
-cmp.olt.d	fd, fs, ft	158	implemented
-cmp.ult.s	fd, fs, ft	158	implemented
-cmp.ult.d	fd, fs, ft	158	implemented
-cmp.ole.s	fd, fs, ft	158	implemented
-cmp.ole.d	fd, fs, ft	158	implemented
-cmp.ule.s	fd, fs, ft	158	implemented
-cmp.ule.d	fd, fs, ft	158	implemented
-cmp.saf.s	fd, fs, ft	158	implemented
-cmp.saf.d	fd, fs, ft	158	implemented
-cmp.sub.s	fd, fs, ft	158	implemented
-cmp.sub.d	fd, fs, ft	158	implemented
-cmp.seq.s	fd, fs, ft	158	implemented
-cmp.seq.d	fd, fs, ft	158	implemented
-cmp.sueq.s	fd, fs, ft	158	implemented
-cmp.sueq.d	fd, fs, ft	158	implemented
-cmp.slt.s	fd, fs, ft	158	implemented
-cmp.slt.d	fd, fs, ft	158	implemented
-cmp.sult.s	fd, fs, ft	158	implemented
-cmp.sult.d	fd, fs, ft	158	implemented
-cmp.sle.s	fd, fs, ft	158	implemented
-cmp.sle.d	fd, fs, ft	158	implemented
-cmp.sule.s	fd, fs, ft	158	implemented
-cmp.sule.d	fd, fs, ft	158	implemented
-cmp.or.s	fd, fs, ft	158	implemented
-cmp.or.d	fd, fs, ft	158	implemented
-cmp.une.s	fd, fs, ft	158	implemented
-cmp.une.d	fd, fs, ft	158	implemented
-cmp.ne.s	fd, fs, ft	158	implemented
-cmp.ne.d	fd, fs, ft	158	implemented
-cmp.sor.s	fd, fs, ft	158	implemented
-cmp.sor.d	fd, fs, ft	158	implemented
-cmp.sune.s	fd, fs, ft	158	implemented
-cmp.sune.d	fd, fs, ft	158	implemented
-cmp.sne.s	fd, fs, ft	158	implemented
-cmp.sne.d	fd, fs, ft	158	implemented
+class.s	fd,fs	154	implemented	class.s $f9,$f10	4600525b
+class.d	fd,fs	154	implemented	class.d $f9,$f10	4620525b
+clo	rd, rs	156	implemented	clo $9,$10	01404851
+clz	rd, rs	157	implemented	clz $9,$10	01404850
+cmp.af.s	fd, fs, ft	158	implemented	cmp.af.s $f9,$f10,$f11	468b5240
+cmp.af.d	fd, fs, ft	158	implemented	cmp.af.d $f9,$f10,$f11	46ab5240
+cmp.un.s	fd, fs, ft	158	implemented	cmp.un.s $f9,$f10,$f11	468b5241
+cmp.un.d	fd, fs, ft	158	implemented	cmp.un.d $f9,$f10,$f11	46ab5241
+cmp.eq.s	fd, fs, ft	158	implemented	cmp.eq.s $f9,$f10,$f11	468b5242
+cmp.eq.d	fd, fs, ft	158	implemented	cmp.eq.d $f9,$f10,$f11	46ab5242
+cmp.ueq.s	fd, fs, ft	158	implemented	cmp.ueq.s $f9,$f10,$f11	468b5243
+cmp.ueq.d	fd, fs, ft	158	implemented	cmp.ueq.d $f9,$f10,$f11	46ab5243
+cmp.olt.s	fd, fs, ft	158	implemented	cmp.olt.s $f9,$f10,$f11	468b5244
+cmp.olt.d	fd, fs, ft	158	implemented	cmp.olt.d $f9,$f10,$f11	46ab5244
+cmp.ult.s	fd, fs, ft	158	implemented	cmp.ult.s $f9,$f10,$f11	468b5245
+cmp.ult.d	fd, fs, ft	158	implemented	cmp.ult.d $f9,$f10,$f11	46ab5245
+cmp.ole.s	fd, fs, ft	158	implemented	cmp.ole.s $f9,$f10,$f11	468b5246
+cmp.ole.d	fd, fs, ft	158	implemented	cmp.ole.d $f9,$f10,$f11	46ab5246
+cmp.ule.s	fd, fs, ft	158	implemented	cmp.ule.s $f9,$f10,$f11	468b5247
+cmp.ule.d	fd, fs, ft	158	implemented	cmp.ule.d $f9,$f10,$f11	46ab5247
+cmp.saf.s	fd, fs, ft	158	implemented	cmp.saf.s $f9,$f10,$f11	468b5248
+cmp.saf.d	fd, fs, ft	158	implemented	cmp.saf.d $f9,$f10,$f11	46ab5248
+cmp.sub.s	fd, fs, ft	158	implemented	cmp.sub.s $f9,$f10,$f11	468b5249
+cmp.sub.d	fd, fs, ft	158	implemented	cmp.sub.d $f9,$f10,$f11	46ab5249
+cmp.seq.s	fd, fs, ft	158	implemented	cmp.seq.s $f9,$f10,$f11	468b524a
+cmp.seq.d	fd, fs, ft	158	implemented	cmp.seq.d $f9,$f10,$f11	46ab524a
+cmp.sueq.s	fd, fs, ft	158	implemented	cmp.sueq.s $f9,$f10,$f11	468b524b
+cmp.sueq.d	fd, fs, ft	158	implemented	cmp.sueq.d $f9,$f10,$f11	46ab524b
+cmp.slt.s	fd, fs, ft	158	implemented	cmp.slt.s $f9,$f10,$f11	468b524c
+cmp.slt.d	fd, fs, ft	158	implemented	cmp.slt.d $f9,$f10,$f11	46ab524c
+cmp.sult.s	fd, fs, ft	158	implemented	cmp.sult.s $f9,$f10,$f11	468b524d
+cmp.sult.d	fd, fs, ft	158	implemented	cmp.sult.d $f9,$f10,$f11	46ab524d
+cmp.sle.s	fd, fs, ft	158	implemented	cmp.sle.s $f9,$f10,$f11	468b524e
+cmp.sle.d	fd, fs, ft	158	implemented	cmp.sle.d $f9,$f10,$f11	46ab524e
+cmp.sule.s	fd, fs, ft	158	implemented	cmp.sule.s $f9,$f10,$f11	468b524f
+cmp.sule.d	fd, fs, ft	158	implemented	cmp.sule.d $f9,$f10,$f11	46ab524f
+cmp.or.s	fd, fs, ft	158	implemented	cmp.or.s $f9,$f10,$f11	468b5251
+cmp.or.d	fd, fs, ft	158	implemented	cmp.or.d $f9,$f10,$f11	46ab5251
+cmp.une.s	fd, fs, ft	158	implemented	cmp.une.s $f9,$f10,$f11	468b5252
+cmp.une.d	fd, fs, ft	158	implemented	cmp.une.d $f9,$f10,$f11	46ab5252
+cmp.ne.s	fd, fs, ft	158	implemented	cmp.ne.s $f9,$f10,$f11	468b5253
+cmp.ne.d	fd, fs, ft	158	implemented	cmp.ne.d $f9,$f10,$f11	46ab5253
+cmp.sor.s	fd, fs, ft	158	implemented	cmp.sor.s $f9,$f10,$f11	468b5259
+cmp.sor.d	fd, fs, ft	158	implemented	cmp.sor.d $f9,$f10,$f11	46ab5259
+cmp.sune.s	fd, fs, ft	158	implemented	cmp.sune.s $f9,$f10,$f11	468b525a
+cmp.sune.d	fd, fs, ft	158	implemented	cmp.sune.d $f9,$f10,$f11	46ab525a
+cmp.sne.s	fd, fs, ft	158	implemented	cmp.sne.s $f9,$f10,$f11	468b525b
+cmp.sne.d	fd, fs, ft	158	implemented	cmp.sne.d $f9,$f10,$f11	46ab525b
 cop2	func	163	requires-cop2
-crc32b	rt, rs, rt	165	implemented
-crc32h	rt, rs, rt	165	implemented
-crc32w	rt, rs, rt	165	implemented
-crc32d	rt, rs, rt	165	implemented
-crc32cb	rt, rs, rt	168	implemented
-crc32ch	rt, rs, rt	168	implemented
-crc32cw	rt, rs, rt	168	implemented
-crc32cd	rt, rs, rt	168	implemented
-ctc1	rt, fs	171	implemented
+crc32b	rt, rs, rt	165	implemented	crc32b $9,$9,$9	7d29000f
+crc32h	rt, rs, rt	165	implemented	crc32h $9,$9,$9	7d29004f
+crc32w	rt, rs, rt	165	implemented	crc32w $9,$9,$9	7d29008f
+crc32d	rt, rs, rt	165	implemented	crc32d $9,$9,$9	7d2900cf
+crc32cb	rt, rs, rt	168	implemented	crc32cb $9,$9,$9	7d29010f
+crc32ch	rt, rs, rt	168	implemented	crc32ch $9,$9,$9	7d29014f
+crc32cw	rt, rs, rt	168	implemented	crc32cw $9,$9,$9	7d29018f
+crc32cd	rt, rs, rt	168	implemented	crc32cd $9,$9,$9	7d2901cf
+ctc1	rt, fs	171	implemented	ctc1 $11,$31	44cbf800
 ctc2	rt, Impl	174	requires-cop2
-cvt.d.s	fd, fs	175	implemented
-cvt.d.w	fd, fs	175	implemented
-cvt.d.l	fd, fs	175	implemented
-cvt.l.s	fd, fs	176	implemented
-cvt.l.d	fd, fs	176	implemented
+cvt.d.s	fd, fs	175	implemented	cvt.d.s $f9,$f10	46005261
+cvt.d.w	fd, fs	175	implemented	cvt.d.w $f9,$f10	46805261
+cvt.d.l	fd, fs	175	implemented	cvt.d.l $f9,$f10	46a05261
+cvt.l.s	fd, fs	176	implemented	cvt.l.s $f9,$f10	46005265
+cvt.l.d	fd, fs	176	implemented	cvt.l.d $f9,$f10	46205265
 cvt.s.pl	fd, fs	181	removed
 cvt.s.pu	fd, fs	182	removed
-cvt.s.d	fd, fs	180	implemented
-cvt.s.w	fd, fs	180	implemented
-cvt.s.l	fd, fs	180	implemented
-cvt.w.s	fd, fs	183	implemented
-cvt.w.d	fd, fs	183	implemented
-dadd	rd, rs, rt	185	implemented
+cvt.s.d	fd, fs	180	implemented	cvt.s.d $f9,$f10	46205260
+cvt.s.w	fd, fs	180	implemented	cvt.s.w $f9,$f10	46805260
+cvt.s.l	fd, fs	180	implemented	cvt.s.l $f9,$f10	46a05260
+cvt.w.s	fd, fs	183	implemented	cvt.w.s $f9,$f10	46005264
+cvt.w.d	fd, fs	183	implemented	cvt.w.d $f9,$f10	46205264
+dadd	rd, rs, rt	185	implemented	dadd $9,$10,$11	014b482c
 daddi	rt, rs, immediate	186	removed
-daddiu	rt, rs, immediate	187	implemented
-daddu	rd, rs, rt	188	implemented
-dclo	rd, rs	189	implemented
-dclz	rd, rs	190	implemented
+daddiu	rt, rs, immediate	187	implemented	daddiu $11,$10,3	654b0003
+daddu	rd, rs, rt	188	implemented	daddu $9,$10,$11	014b482d
+dclo	rd, rs	189	implemented	dclo $9,$10	01404853
+dclz	rd, rs	190	implemented	dclz $9,$10	01404852
 ddiv	rs, rt	191	removed
 ddivu	rs, rt	192	removed
 deret		193	requires-ejtag
-di		201	implemented-subset
-di	rt	201	implemented-subset
-dext	rt, rs, pos, size	195	implemented
-dextm	rt, rs, pos, size	197	implemented
-dextu	rt, rs, pos, size	199	implemented
-dins	rt, rs, pos, size	203	implemented
-dinsm	rt, rs, pos, size	205	implemented
-dinsu	rt, rs, pos, size	207	implemented
+di		201	implemented-subset	di	41606000
+di	rt	201	implemented-subset	di $11	416b6000
+dext	rt, rs, pos, size	195	implemented	dext $11,$10,1,8	7d4b3843
+dextm	rt, rs, pos, size	197	implemented	dextm $11,$10,1,40	7d4b3841
+dextu	rt, rs, pos, size	199	implemented	dextu $11,$10,33,8	7d4b3842
+dins	rt, rs, pos, size	203	implemented	dins $11,$10,1,8	7d4b4047
+dinsm	rt, rs, pos, size	205	implemented	dinsm $11,$10,1,40	7d4b4045
+dinsu	rt, rs, pos, size	207	implemented	dinsu $11,$10,33,8	7d4b4046
 div	rs, rt	209	removed
-div	rd,rs,rt	212	implemented
-mod	rd,rs,rt	212	implemented
-divu	rd,rs,rt	212	implemented
-modu	rd,rs,rt	212	implemented
-ddiv	rd,rs,rt	212	implemented
-dmod	rd,rs,rt	212	implemented
-ddivu	rd,rs,rt	212	implemented
-dmodu	rd,rs,rt	212	implemented
-div.s	fd, fs, ft	211	implemented
-div.d	fd, fs, ft	211	implemented
+div	rd,rs,rt	212	implemented	div $9,$10,$11	014b489a
+mod	rd,rs,rt	212	implemented	mod $9,$10,$11	014b48da
+divu	rd,rs,rt	212	implemented	divu $9,$10,$11	014b489b
+modu	rd,rs,rt	212	implemented	modu $9,$10,$11	014b48db
+ddiv	rd,rs,rt	212	implemented	ddiv $9,$10,$11	014b489e
+dmod	rd,rs,rt	212	implemented	dmod $9,$10,$11	014b48de
+ddivu	rd,rs,rt	212	implemented	ddivu $9,$10,$11	014b489f
+dmodu	rd,rs,rt	212	implemented	dmodu $9,$10,$11	014b48df
+div.s	fd, fs, ft	211	implemented	div.s $f9,$f10,$f11	460b5243
+div.d	fd, fs, ft	211	implemented	div.d $f9,$f10,$f11	462b5243
 divu	rs, rt	215	removed
-dmfc0	rt, rd	216	implemented-subset
-dmfc0	rt, rd, sel	216	implemented-subset
-dmfc1	rt,fs	217	implemented
+dmfc0	rt, rd	216	implemented-subset	dmfc0 $11,$8	402b4000
+dmfc0	rt, rd, sel	216	implemented-subset	dmfc0 $11,$8,0	402b4000
+dmfc1	rt,fs	217	implemented	dmfc1 $11,$f10	442b5000
 dmfc2	rt, rd	218	requires-cop2
 dmfc2	rt, rd, sel	218	requires-cop2
-dmtc0	rt, rd	219	implemented-subset
-dmtc0	rt, rd, sel	219	implemented-subset
-dmtc1	rt, fs	220	implemented
+dmtc0	rt, rd	219	implemented-subset	dmtc0 $11,$8	40ab4000
+dmtc0	rt, rd, sel	219	implemented-subset	dmtc0 $11,$8,0	40ab4000
+dmtc1	rt, fs	220	implemented	dmtc1 $11,$f10	44ab5000
 dmtc2	rt,Impl	221	requires-cop2
 dmtc2	rt, Impl, sel	221	requires-cop2
 dmult	rs, rt	222	removed
 dmultu	rs, rt	223	removed
-drotr	rd, rt, sa	224	implemented
-drotr32	rd, rt, sa	225	implemented
-drotrv	rd, rt, rs	226	implemented
-dsbh	rd, rt	227	implemented
-dshd	rd, rt	229	implemented
-dsll	rd, rt, sa	231	implemented
-dsll32	rd, rt, sa	232	implemented
-dsllv	rd, rt, rs	233	implemented
-dsra	rd, rt, sa	234	implemented
-dsra32	rd, rt, sa	235	implemented
-dsrav	rd, rt, rs	236	implemented
-dsrl	rd, rt, sa	237	implemented
-dsrl32	rd, rt, sa	238	implemented
-dsrlv	rd, rt, rs	239	implemented
-dsub	rd, rs, rt	240	implemented
-dsubu	rd, rs, rt	241	implemented
-dvp		242	implemented
-dvp	rt	242	implemented
-ehb		245	implemented
-ei		246	implemented-subset
-ei	rt	246	implemented-subset
-eret		248	implemented-subset
-eretnc		250	implemented-subset
-evp		252	implemented
-evp	rt	252	implemented
-floor.l.s	fd, fs	256	implemented
-floor.l.d	fd, fs	256	implemented
-floor.w.s	fd, fs	258	implemented
-floor.w.d	fd, fs	258	implemented
+drotr	rd, rt, sa	224	implemented	drotr $9,$11,2	002b48ba
+drotr32	rd, rt, sa	225	implemented	drotr32 $9,$11,2	002b48be
+drotrv	rd, rt, rs	226	implemented	drotrv $9,$11,$10	014b4856
+dsbh	rd, rt	227	implemented	dsbh $9,$11	7c0b48a4
+dshd	rd, rt	229	implemented	dshd $9,$11	7c0b4964
+dsll	rd, rt, sa	231	implemented	dsll $9,$11,2	000b48b8
+dsll32	rd, rt, sa	232	implemented	dsll32 $9,$11,2	000b48bc
+dsllv	rd, rt, rs	233	implemented	dsllv $9,$11,$10	014b4814
+dsra	rd, rt, sa	234	implemented	dsra $9,$11,2	000b48bb
+dsra32	rd, rt, sa	235	implemented	dsra32 $9,$11,2	000b48bf
+dsrav	rd, rt, rs	236	implemented	dsrav $9,$11,$10	014b4817
+dsrl	rd, rt, sa	237	implemented	dsrl $9,$11,2	000b48ba
+dsrl32	rd, rt, sa	238	implemented	dsrl32 $9,$11,2	000b48be
+dsrlv	rd, rt, rs	239	implemented	dsrlv $9,$11,$10	014b4816
+dsub	rd, rs, rt	240	implemented	dsub $9,$10,$11	014b482e
+dsubu	rd, rs, rt	241	implemented	dsubu $9,$10,$11	014b482f
+dvp		242	implemented	dvp	41600024
+dvp	rt	242	implemented	dvp $11	416b0024
+ehb		245	implemented	ehb	000000c0
+ei		246	implemented-subset	ei	41606020
+ei	rt	246	implemented-subset	ei $11	416b6020
+eret		248	implemented-subset	eret	42000018
+eretnc		250	implemented-subset	eretnc	42000058
+evp		252	implemented	evp	41600004
+evp	rt	252	implemented	evp $11	416b0004
+floor.l.s	fd, fs	256	implemented	floor.l.s $f9,$f10	4600524b
+floor.l.d	fd, fs	256	implemented	floor.l.d $f9,$f10	4620524b
+floor.w.s	fd, fs	258	implemented	floor.w.s $f9,$f10	4600524f
+floor.w.d	fd, fs	258	implemented	floor.w.d $f9,$f10	4620524f
 ginvi	rs	260	requires-privileged-platform
 ginvt	rs, type	262	requires-privileged-platform
-j	target	268	implemented
-jal	target	269	implemented
-jalr	rs (rd = 31 implied)	271	implemented
-jalr	rd, rs	271	implemented
-jalr.hb	rs (rd = 31 implied)	273	implemented
-jalr.hb	rd, rs	273	implemented
+j	target	268	implemented	j target	08100148
+jal	target	269	implemented	jal target	0c100148
+jalr	rs (rd = 31 implied)	271	implemented	jalr $10	0140f809
+jalr	rd, rs	271	implemented	jalr $9,$10	01404809
+jalr.hb	rs (rd = 31 implied)	273	implemented	jalr.hb $10	0140fc09
+jalr.hb	rd, rs	273	implemented	jalr.hb $9,$10	01404c09
 jalx	target	276	removed
-jialc	rt, offset	278	implemented
-jic	rt, offset	280	implemented
-jr	rs	281	implemented
-jr.hb	rs	283	implemented
-lb	rt, offset(base)	286	implemented
+jialc	rt, offset	278	implemented	jialc $11,8	f80b0008
+jic	rt, offset	280	implemented	jic $11,8	d80b0008
+jr	rs	281	implemented	jr $10	01400009
+jr.hb	rs	283	implemented	jr.hb $10	01400409
+lb	rt, offset(base)	286	implemented	lb $11,8($12)	818b0008
 lbe	rt, offset(base)	287	requires-eva
-lbu	rt, offset(base)	288	implemented
+lbu	rt, offset(base)	288	implemented	lbu $11,8($12)	918b0008
 lbue	rt, offset(base)	289	requires-eva
-ld	rt, offset(base)	290	implemented
-ldc1	ft, offset(base)	291	implemented
+ld	rt, offset(base)	290	implemented	ld $11,8($12)	dd8b0008
+ldc1	ft, offset(base)	291	implemented	ldc1 $f11,8($12)	d58b0008
 ldc2	rt, offset(base)	292	requires-cop2
-ldpc	rs, offset	296	implemented
+ldpc	rs, offset	296	implemented	ldpc $10,8	ed580001
 ldxc1	fd, index(base)	299	removed
-lh	rt, offset(base)	301	implemented
+lh	rt, offset(base)	301	implemented	lh $11,8($12)	858b0008
 lhe	rt, offset(base)	302	requires-eva
-lhu	rt, offset(base)	304	implemented
+lhu	rt, offset(base)	304	implemented	lhu $11,8($12)	958b0008
 lhue	rt, offset(base)	305	requires-eva
-ll	rt, offset(base)	307	implemented
-lld	rt, offset(base)	309	implemented
+ll	rt, offset(base)	307	implemented	ll $11,8($12)	7d8b0436
+lld	rt, offset(base)	309	implemented	lld $11,8($12)	7d8b0437
 lle	rt, offset(base)	314	requires-eva
-lldp	rt, rd, (base)	312	implemented
-llwp	rt, rd, (base)	316	implemented
+lldp	rt, rd, (base)	312	implemented	lldp $11,$9,($12)	7d8b4877
+llwp	rt, rd, (base)	316	implemented	llwp $11,$9,($12)	7d8b4876
 llwpe	rt, rd, (base)	318	requires-eva
-lsa	rd,rs,rt,sa	320	implemented
-dlsa	rd,rs,rt,sa	320	implemented
-lui	rt, immediate	321	implemented
+lsa	rd,rs,rt,sa	320	implemented	lsa $9,$10,$11,2	014b4845
+dlsa	rd,rs,rt,sa	320	implemented	dlsa $9,$10,$11,2	014b4855
+lui	rt, immediate	321	implemented	lui $11,3	3c0b0003
 luxc1	fd, index(base)	322	removed
-lw	rt, offset(base)	323	implemented
-lwc1	ft, offset(base)	324	implemented
+lw	rt, offset(base)	323	implemented	lw $11,8($12)	8d8b0008
+lwc1	ft, offset(base)	324	implemented	lwc1 $f11,8($12)	c58b0008
 lwc2	rt, offset(base)	325	requires-cop2
 lwe	rt, offset(base)	327	requires-eva
 lwl	rt, offset(base)	330	removed
 lwle	rt, offset(base)	333	removed
-lwpc	rs, offset	335	implemented
+lwpc	rs, offset	335	implemented	lwpc $10,8	ed480002
 lwr	rt, offset(base)	337	removed
 lwre	rt, offset(base)	339	removed
-lwu	rt, offset(base)	343	implemented
-lwupc	rs, offset	344	implemented
+lwu	rt, offset(base)	343	implemented	lwu $11,8($12)	9d8b0008
+lwupc	rs, offset	344	implemented	lwupc $10,8	ed500002
 lwxc1	fd, index(base)	345	removed
 madd	rs, rt	346	removed
 madd.s	fd, fr, fs, ft	347	removed
 madd.d	fd, fr, fs, ft	347	removed
 madd.ps	fd, fr, fs, ft	347	removed
-maddf.s	fd, fs, ft	349	implemented
-maddf.d	fd, fs, ft	349	implemented
-msubf.s	fd, fs, ft	349	implemented
-msubf.d	fd, fs, ft	349	implemented
+maddf.s	fd, fs, ft	349	implemented	maddf.s $f9,$f10,$f11	460b5258
+maddf.d	fd, fs, ft	349	implemented	maddf.d $f9,$f10,$f11	462b5258
+msubf.s	fd, fs, ft	349	implemented	msubf.s $f9,$f10,$f11	460b5259
+msubf.d	fd, fs, ft	349	implemented	msubf.d $f9,$f10,$f11	462b5259
 maddu	rs, rt	351	removed
-max.s	fd,fs,ft	352	implemented
-max.d	fd,fs,ft	352	implemented
-maxa.s	fd,fs,ft	352	implemented
-maxa.d	fd,fs,ft	352	implemented
-min.s	fd,fs,ft	352	implemented
-min.d	fd,fs,ft	352	implemented
-mina.s	fd,fs,ft	352	implemented
-mina.d	fd,fs,ft	352	implemented
-mfc0	rt, rd	356	implemented-subset
-mfc0	rt, rd, sel	356	implemented-subset
-mfc1	rt, fs	357	implemented
+max.s	fd,fs,ft	352	implemented	max.s $f9,$f10,$f11	460b525e
+max.d	fd,fs,ft	352	implemented	max.d $f9,$f10,$f11	462b525e
+maxa.s	fd,fs,ft	352	implemented	maxa.s $f9,$f10,$f11	460b525f
+maxa.d	fd,fs,ft	352	implemented	maxa.d $f9,$f10,$f11	462b525f
+min.s	fd,fs,ft	352	implemented	min.s $f9,$f10,$f11	460b525c
+min.d	fd,fs,ft	352	implemented	min.d $f9,$f10,$f11	462b525c
+mina.s	fd,fs,ft	352	implemented	mina.s $f9,$f10,$f11	460b525d
+mina.d	fd,fs,ft	352	implemented	mina.d $f9,$f10,$f11	462b525d
+mfc0	rt, rd	356	implemented-subset	mfc0 $11,$8	400b4000
+mfc0	rt, rd, sel	356	implemented-subset	mfc0 $11,$8,0	400b4000
+mfc1	rt, fs	357	implemented	mfc1 $11,$f10	440b5000
 mfc2	rt, Impl	358	requires-cop2
 mfc2	rt, Impl, sel	358	requires-cop2
 mfhc0	rt, rd	359	requires-cp0-mvh
 mfhc0	rt, rd, sel	359	requires-cp0-mvh
-mfhc1	rt, fs	361	implemented
+mfhc1	rt, fs	361	implemented	mfhc1 $11,$f10	446b5000
 mfhc2	rt, Impl	362	requires-cop2
 mfhc2	rt, rd, sel	362	requires-cop2
 mfhi		363	removed
 mflo	rd	364	removed
-mov.s	fd, fs	365	implemented
-mov.d	fd, fs	365	implemented
+mov.s	fd, fs	365	implemented	mov.s $f9,$f10	46005246
+mov.d	fd, fs	365	implemented	mov.d $f9,$f10	46205246
 mov.ps	fd, fs	365	removed
 movf	rd, rs, cc	367	removed
 movf.s	fd, fs, cc	368	removed
@@ -347,35 +348,35 @@ msub.s	fd, fr, fs, ft	380	removed
 msub.d	fd, fr, fs, ft	380	removed
 msub.ps	fd, fr, fs, ft	380	removed
 msubu	rs, rt	382	removed
-mtc0	rt, rd	383	implemented-subset
-mtc0	rt, rd, sel	383	implemented-subset
-mtc1	rt, fs	385	implemented
+mtc0	rt, rd	383	implemented-subset	mtc0 $11,$8	408b4000
+mtc0	rt, rd, sel	383	implemented-subset	mtc0 $11,$8,0	408b4000
+mtc1	rt, fs	385	implemented	mtc1 $11,$f10	448b5000
 mtc2	rt, Impl	386	requires-cop2
 mtc2	rt, Impl, sel	386	requires-cop2
 mthc0	rt, rd	387	requires-cp0-mvh
 mthc0	rt, rd, sel	387	requires-cp0-mvh
-mthc1	rt, fs	389	implemented
+mthc1	rt, fs	389	implemented	mthc1 $11,$f10	44eb5000
 mthc2	rt, Impl	390	requires-cop2
 mthc2	rt, Impl, sel	390	requires-cop2
 mthi	rs	391	removed
 mtlo	rs	392	removed
 mul	rd, rs, rt	393	removed
-mul	rd,rs,rt	397	implemented
-muh	rd,rs,rt	397	implemented
-mulu	rd,rs,rt	397	implemented
-muhu	rd,rs,rt	397	implemented
-dmul	rd,rs,rt	397	implemented
-dmuh	rd,rs,rt	397	implemented
-dmulu	rd,rs,rt	397	implemented
-dmuhu	rd,rs,rt	397	implemented
-mul.s	fd, fs, ft	395	implemented
-mul.d	fd, fs, ft	395	implemented
+mul	rd,rs,rt	397	implemented	mul $9,$10,$11	014b4898
+muh	rd,rs,rt	397	implemented	muh $9,$10,$11	014b48d8
+mulu	rd,rs,rt	397	implemented	mulu $9,$10,$11	014b4899
+muhu	rd,rs,rt	397	implemented	muhu $9,$10,$11	014b48d9
+dmul	rd,rs,rt	397	implemented	dmul $9,$10,$11	014b489c
+dmuh	rd,rs,rt	397	implemented	dmuh $9,$10,$11	014b48dc
+dmulu	rd,rs,rt	397	implemented	dmulu $9,$10,$11	014b489d
+dmuhu	rd,rs,rt	397	implemented	dmuhu $9,$10,$11	014b48dd
+mul.s	fd, fs, ft	395	implemented	mul.s $f9,$f10,$f11	460b5242
+mul.d	fd, fs, ft	395	implemented	mul.d $f9,$f10,$f11	462b5242
 mul.ps	fd, fs, ft	395	removed
 mult	rs, rt	400	removed
 multu	rs, rt	402	removed
-nal		404	implemented
-neg.s	fd, fs	405	implemented
-neg.d	fd, fs	405	implemented
+nal		404	implemented	nal	04100000
+neg.s	fd, fs	405	implemented	neg.s $f9,$f10	46005247
+neg.d	fd, fs	405	implemented	neg.d $f9,$f10	46205247
 neg.ps	fd, fs	405	removed
 nmadd.s	fd, fr, fs, ft	407	removed
 nmadd.d	fd, fr, fs, ft	407	removed
@@ -383,81 +384,81 @@ nmadd.ps	fd, fr, fs, ft	407	removed
 nmsub.s	fd, fr, fs, ft	409	removed
 nmsub.d	fd, fr, fs, ft	409	removed
 nmsub.ps	fd, fr, fs, ft	409	removed
-nop		411	implemented
-nor	rd, rs, rt	412	implemented
-or	rd, rs, rt	413	implemented
-ori	rt, rs, immediate	414	implemented
-pause		415	implemented-subset
+nop		411	implemented	nop	00000000
+nor	rd, rs, rt	412	implemented	nor $9,$10,$11	014b4827
+or	rd, rs, rt	413	implemented	or $9,$10,$11	014b4825
+ori	rt, rs, immediate	414	implemented	ori $11,$10,3	354b0003
+pause		415	implemented-subset	pause	00000140
 pll.ps	fd, fs, ft	417	removed
 plu.ps	fd, fs, ft	418	removed
-pref	hint,offset(base)	419	implemented
+pref	hint,offset(base)	419	implemented	pref 1,8($12)	7d810435
 prefe	hint,offset(base)	423	requires-eva
 prefx	hint, index(base)	428	removed
 pul.ps	fd, fs, ft	430	removed
 puu.ps	fd, fs, ft	431	removed
-rdhwr	rt, rd (sel = 0 implied)	432	implemented-subset
-rdhwr	rt, rd, sel	432	implemented-subset
+rdhwr	rt, rd (sel = 0 implied)	432	implemented-subset	rdhwr $11,$1	7c0b083b
+rdhwr	rt, rd, sel	432	implemented-subset	rdhwr $11,$1,0	7c0b083b
 rdpgpr	rd, rt	435	requires-privileged-platform
-recip.s	fd, fs	436	implemented
-recip.d	fd, fs	436	implemented
-rint.s	fd, fs	438	implemented
-rint.d	fd, fs	438	implemented
-rotr	rd, rt, sa	440	implemented
-rotrv	rd, rt, rs	441	implemented
-round.l.s	fd, fs	442	implemented
-round.l.d	fd, fs	442	implemented
-round.w.s	fd, fs	444	implemented
-round.w.d	fd, fs	444	implemented
-rsqrt.s	fd, fs	446	implemented
-rsqrt.d	fd, fs	446	implemented
-sb	rt, offset(base)	448	implemented
+recip.s	fd, fs	436	implemented	recip.s $f9,$f10	46005255
+recip.d	fd, fs	436	implemented	recip.d $f9,$f10	46205255
+rint.s	fd, fs	438	implemented	rint.s $f9,$f10	4600525a
+rint.d	fd, fs	438	implemented	rint.d $f9,$f10	4620525a
+rotr	rd, rt, sa	440	implemented	rotr $9,$11,2	002b4882
+rotrv	rd, rt, rs	441	implemented	rotrv $9,$11,$10	014b4846
+round.l.s	fd, fs	442	implemented	round.l.s $f9,$f10	46005248
+round.l.d	fd, fs	442	implemented	round.l.d $f9,$f10	46205248
+round.w.s	fd, fs	444	implemented	round.w.s $f9,$f10	4600524c
+round.w.d	fd, fs	444	implemented	round.w.d $f9,$f10	4620524c
+rsqrt.s	fd, fs	446	implemented	rsqrt.s $f9,$f10	46005256
+rsqrt.d	fd, fs	446	implemented	rsqrt.d $f9,$f10	46205256
+sb	rt, offset(base)	448	implemented	sb $11,8($12)	a18b0008
 sbe	rt, offset(base)	449	requires-eva
-sc	rt, offset(base)	450	implemented
-scd	rt, offset(base)	454	implemented
-scdp	rt, rd, (base)	458	implemented
+sc	rt, offset(base)	450	implemented	sc $11,8($12)	7d8b0426
+scd	rt, offset(base)	454	implemented	scd $11,8($12)	7d8b0427
+scdp	rt, rd, (base)	458	implemented	scdp $11,$9,($12)	7d8b4867
 sce	rt, offset(base)	461	requires-eva
-scwp	rt, rd, (base)	465	implemented
+scwp	rt, rd, (base)	465	implemented	scwp $11,$9,($12)	7d8b4866
 scwpe	rt, rd, (base)	469	requires-eva
-sd	rt, offset(base)	472	implemented
+sd	rt, offset(base)	472	implemented	sd $11,8($12)	fd8b0008
 sdbbp	code	473	requires-ejtag
-sdc1	ft, offset(base)	474	implemented
+sdc1	ft, offset(base)	474	implemented	sdc1 $f11,8($12)	f58b0008
 sdc2	rt, offset(base)	475	requires-cop2
 sdl	rt, offset(base)	477	removed
 sdr	rt, offset(base)	479	removed
 sdxc1	fs, index(base)	481	removed
-seb	rd, rt	483	implemented
-seh	rd, rt	485	implemented
-sel.s	fd,fs,ft	487	implemented
-sel.d	fd,fs,ft	487	implemented
-seleqz	rd,rs,rt	489	implemented
-selnez	rd,rs,rt	489	implemented
-seleqz.s	fd,fs,ft	491	implemented
-seleqz.d	fd,fs,ft	491	implemented
-selnez.s	fd,fs,ft	491	implemented
-selnez.d	fd,fs,ft	491	implemented
-sh	rt, offset(base)	493	implemented
+seb	rd, rt	483	implemented	seb $9,$11	7c0b4c20
+seh	rd, rt	485	implemented	seh $9,$11	7c0b4e20
+sel.s	fd,fs,ft	487	implemented	sel.s $f9,$f10,$f11	460b5250
+sel.d	fd,fs,ft	487	implemented	sel.d $f9,$f10,$f11	462b5250
+seleqz	rd,rs,rt	489	implemented	seleqz $9,$10,$11	014b4835
+selnez	rd,rs,rt	489	implemented	selnez $9,$10,$11	014b4837
+seleqz.s	fd,fs,ft	491	implemented	seleqz.s $f9,$f10,$f11	460b5254
+seleqz.d	fd,fs,ft	491	implemented	seleqz.d $f9,$f10,$f11	462b5254
+selnez.s	fd,fs,ft	491	implemented	selnez.s $f9,$f10,$f11	460b5257
+selnez.d	fd,fs,ft	491	implemented	selnez.d $f9,$f10,$f11	462b5257
+sh	rt, offset(base)	493	implemented	sh $11,8($12)	a58b0008
 she	rt, offset(base)	494	requires-eva
-sigrie	code	496	implemented
-sll	rd, rt, sa	497	implemented
-sllv	rd, rt, rs	498	implemented
-slt	rd, rs, rt	499	implemented
-slti	rt, rs, immediate	500	implemented
-sltiu	rt, rs, immediate	501	implemented
-sltu	rd, rs, rt	502	implemented
-sqrt.s	fd, fs	503	implemented
-sqrt.d	fd, fs	503	implemented
-sra	rd, rt, sa	504	implemented
-srav	rd, rt, rs	505	implemented
-srl	rd, rt, sa	506	implemented
-srlv	rd, rt, rs	507	implemented
-ssnop		508	implemented
-sub	rd, rs, rt	509	implemented
-sub.s	fd, fs, ft	510	implemented
-sub.d	fd, fs, ft	510	implemented
+sigrie	code	496	implemented	sigrie 4	04170004
+sll	rd, rt, sa	497	implemented	sll $9,$11,2	000b4880
+sllv	rd, rt, rs	498	implemented	sllv $9,$11,$10	014b4804
+slt	rd, rs, rt	499	implemented	slt $9,$10,$11	014b482a
+slti	rt, rs, immediate	500	implemented	slti $11,$10,3	294b0003
+sltiu	rt, rs, immediate	501	implemented	sltiu $11,$10,3	2d4b0003
+sltu	rd, rs, rt	502	implemented	sltu $9,$10,$11	014b482b
+sqrt.s	fd, fs	503	implemented	sqrt.s $f9,$f10	46005244
+sqrt.d	fd, fs	503	implemented	sqrt.d $f9,$f10	46205244
+sra	rd, rt, sa	504	implemented	sra $9,$11,2	000b4883
+srav	rd, rt, rs	505	implemented	srav $9,$11,$10	014b4807
+srl	rd, rt, sa	506	implemented	srl $9,$11,2	000b4882
+srlv	rd, rt, rs	507	implemented	srlv $9,$11,$10	014b4806
+ssnop		508	implemented	ssnop	00000040
+sub	rd, rs, rt	509	implemented	sub $9,$10,$11	014b4822
+sub.s	fd, fs, ft	510	implemented	sub.s $f9,$f10,$f11	460b5241
+sub.d	fd, fs, ft	510	implemented	sub.d $f9,$f10,$f11	462b5241
 sub.ps	fd, fs, ft	510	removed
-subu	rd, rs, rt	512	implemented
+subu	rd, rs, rt	512	implemented	subu $9,$10,$11	014b4823
 suxc1	fs, index(base)	513	removed
-sw	rt, offset(base)	514	implemented
+sw	rt, offset(base)	514	implemented	sw $11,8($12)	ad8b0008
 swc2	rt, offset(base)	516	requires-cop2
 swe	rt, offset(base)	518	requires-eva
 swl	rt, offset(base)	520	removed
@@ -465,35 +466,35 @@ swle	rt, offset(base)	522	removed
 swr	rt, offset(base)	525	removed
 swre	rt, offset(base)	527	removed
 swxc1	fs, index(base)	530	removed
-sync	(stype = 0 implied)	531	implemented
-sync	stype	531	implemented
-synci	offset(base)	537	implemented
-syscall		540	implemented
-syscall	code	540	implemented
-teq	rs, rt	541	implemented
+sync	(stype = 0 implied)	531	implemented	sync	0000000f
+sync	stype	531	implemented	sync 0	0000000f
+synci	offset(base)	537	implemented	synci 8($12)	059f0008
+syscall		540	implemented	syscall	0000000c
+syscall	code	540	implemented	syscall 4	0000010c
+teq	rs, rt	541	implemented	teq $10,$11	014b0034
 teqi	rs, immediate	542	removed
-tge	rs, rt	543	implemented
+tge	rs, rt	543	implemented	tge $10,$11	014b0030
 tgei	rs, immediate	544	removed
 tgeiu	rs, immediate	545	removed
-tgeu	rs, rt	546	implemented
+tgeu	rs, rt	546	implemented	tgeu $10,$11	014b0031
 tlbinv		547	requires-privileged-platform
 tlbinvf		550	requires-privileged-platform
 tlbp		552	requires-privileged-platform
 tlbr		553	requires-privileged-platform
 tlbwi		555	requires-privileged-platform
 tlbwr		557	requires-privileged-platform
-tlt	rs, rt	559	implemented
+tlt	rs, rt	559	implemented	tlt $10,$11	014b0032
 tlti	rs, immediate	560	removed
 tltiu	rs, immediate	561	removed
-tltu	rs, rt	562	implemented
-tne	rs, rt	563	implemented
+tltu	rs, rt	562	implemented	tltu $10,$11	014b0033
+tne	rs, rt	563	implemented	tne $10,$11	014b0036
 tnei	rs, immediate	564	removed
-trunc.l.s	fd, fs	565	implemented
-trunc.l.d	fd, fs	565	implemented
-trunc.w.s	fd, fs	567	implemented
-trunc.w.d	fd, fs	567	implemented
+trunc.l.s	fd, fs	565	implemented	trunc.l.s $f9,$f10	46005249
+trunc.l.d	fd, fs	565	implemented	trunc.l.d $f9,$f10	46205249
+trunc.w.s	fd, fs	567	implemented	trunc.w.s $f9,$f10	4600524d
+trunc.w.d	fd, fs	567	implemented	trunc.w.d $f9,$f10	4620524d
 wait		569	requires-privileged-platform
 wrpgpr	rd, rt	571	requires-privileged-platform
-wsbh	rd, rt	572	implemented
-xor	rd, rs, rt	574	implemented
-xori	rt, rs, immediate	575	implemented
+wsbh	rd, rt	572	implemented	wsbh $9,$11	7c0b48a0
+xor	rd, rs, rt	574	implemented	xor $9,$10,$11	014b4826
+xori	rt, rs, immediate	575	implemented	xori $11,$10,3	394b0003
