@@ -44,7 +44,7 @@ fields on decode, and that the same raw word has no MARS32 decoding. The current
 MARS64 assembles and executes all six doubleword bitfield forms, as well as
 `dlsa`, `dalign`, `dbitswap`, `dsbh`, `dshd`, `dahi`, `dati`, `daui`, `ldpc`, and `lwupc`.
 Plain `dext` and `dins` choose their machine forms from the field size and
-position. MARS64 also implements `bnvc` and five compact conditional
+position. MARS64 also implements `beqc`, `bovc`, `bnvc`, and six compact conditional
 branch-and-link forms. An untaken compact branch makes the next instruction
 a forbidden slot for control transfers. Backstep restores that state. Register numbers and immediates
 below are LLVM assembler input, and the hex values are instruction words in architectural bit order. A branch
@@ -84,9 +84,9 @@ or PC-relative immediate in this table is the displacement as written to LLVM.
   separately and defer compatibility translations until the native set is ready.
 - **Compact control flow.** Expand each operand constraint in Table A.29.
   Check overlapping encodings using raw words, then audit link values, taken
-  and untaken paths, and forbidden-slot behavior. `beqc` and `bovc` use
-  the old `addi` primary opcode. The presence of that legacy instruction
-  in MARS64 makes decoding the same words a migration risk.
+  and untaken paths, and forbidden-slot behavior. MARS64 now assigns the
+  `addi` primary opcode to `beqc`, `beqzalc`, and `bovc`. The same words
+  still decode as `addi` in MARS32.
 - **PC-relative and memory operations.** Audit the entire family in
   Tables A.27 and A.28, plus word `ll`/`sc` and the Release 6 encodings
   for doubleword reservations. Keep immediate scaling and alignment

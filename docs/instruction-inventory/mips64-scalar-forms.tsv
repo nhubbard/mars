@@ -55,7 +55,7 @@ blezalc	rt, offset	98	implemented
 bgezalc	rt, offset	98	implemented
 bgtzalc	rt, offset	98	implemented
 bltzalc	rt, offset	98	implemented
-beqzalc	rt, offset	98	audit
+beqzalc	rt, offset	98	implemented
 bnezalc	rt, offset	98	implemented
 bgezall	rs, offset	101	removed
 b<cond>c	rs, rt, offset	103	audit
@@ -72,7 +72,7 @@ bltzall	rs, offset	119	removed
 bltzl	rs, offset	121	removed
 bne	rs, rt, offset	123	audit
 bnel	rs, rt, offset	124	removed
-bovc	rs,rt,offset	126	audit
+bovc	rs,rt,offset	126	implemented
 bnvc	rs,rt,offset	126	implemented
 break		128	audit
 c.cond.s	fs, ft (cc = 0 implied)	129	removed

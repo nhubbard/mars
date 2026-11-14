@@ -89,14 +89,24 @@ internal enum class CompactComparison(
     GEU("bgeuc", "000110", RegisterFields.PAIR, "Branch immediately if the first unsigned register is at least the second", test = { a, b -> a.toULong() >= b.toULong() }),
     LTU("bltuc", "000111", RegisterFields.PAIR, "Branch immediately if the first unsigned register is less than the second", test = { a, b -> a.toULong() < b.toULong() }),
     NE("bnec", "011000", RegisterFields.ORDERED_PAIR, "Branch immediately if two registers are unequal", test = { a, b -> a != b }),
+    EQ("beqc", "001000", RegisterFields.ORDERED_PAIR, "Branch immediately if two registers are equal", wideOnly = true, test = { a, b -> a == b }),
     LEZ_LINK("blezalc", "000110", RegisterFields.ZERO_LEFT, "Link and branch if the register is at most zero", link = true, wideOnly = true, test = { a, _ -> a <= 0 }),
     GEZ_LINK("bgezalc", "000110", RegisterFields.REPEATED, "Link and branch if the register is at least zero", link = true, wideOnly = true, test = { a, _ -> a >= 0 }),
     GTZ_LINK("bgtzalc", "000111", RegisterFields.ZERO_LEFT, "Link and branch if the register is positive", link = true, wideOnly = true, test = { a, _ -> a > 0 }),
     LTZ_LINK("bltzalc", "000111", RegisterFields.REPEATED, "Link and branch if the register is negative", link = true, wideOnly = true, test = { a, _ -> a < 0 }),
     NEZ_LINK("bnezalc", "011000", RegisterFields.ZERO_LEFT, "Link and branch if the register is nonzero", link = true, wideOnly = true, test = { a, _ -> a != 0L }),
+    EZ_LINK("beqzalc", "001000", RegisterFields.ZERO_LEFT, "Link and branch if the register is zero", link = true, wideOnly = true, test = { a, _ -> a == 0L }),
+    OVERFLOW(
+        "bovc", "001000", RegisterFields.OVERFLOW_PAIR,
+        "Branch if either operand or their sum overflows a signed word", wideOnly = true,
+        test = ::wordAddOverflows,
+    ),
     NO_OVERFLOW(
         "bnvc", "011000", RegisterFields.OVERFLOW_PAIR,
         "Branch if both operands and their sum fit a signed word", wideOnly = true,
-        test = { a, b -> a == a.toInt().toLong() && b == b.toInt().toLong() && a + b in Int.MIN_VALUE.toLong()..Int.MAX_VALUE.toLong() },
+        test = { a, b -> !wordAddOverflows(a, b) },
     ),
 }
+
+private fun wordAddOverflows(a: Long, b: Long): Boolean =
+    a != a.toInt().toLong() || b != b.toInt().toLong() || a + b !in Int.MIN_VALUE.toLong()..Int.MAX_VALUE.toLong()

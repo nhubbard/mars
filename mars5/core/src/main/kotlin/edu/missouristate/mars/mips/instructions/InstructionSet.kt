@@ -3,6 +3,7 @@ package edu.missouristate.mars.mips.instructions
 import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.mips.instructions.basic.CompactComparison
 import edu.missouristate.mars.mips.instructions.basic.InstrCompactCompareBranch
+import edu.missouristate.mars.mips.instructions.basic.InstrAddi
 /*
 Copyright (c) 2003-2013,  Pete Sanderson and Kenneth Vollmar
 
@@ -47,7 +48,8 @@ open class InstructionSet {
         this.target = target
         forms.clear()
         val loader = InstructionLoader()
-        forms.addAll(loader.loadBasicInstructions())
+        val common = loader.loadBasicInstructions()
+        forms.addAll(if (target == MarsTarget.MARS64) common.filterNot { it is InstrAddi } else common)
         if (target == MarsTarget.MARS64) {
             forms.addAll(wideInstructionFactories.map { it() })
             forms.addAll(CompactComparison.entries.filter { it.wideOnly }.map(::InstrCompactCompareBranch))

@@ -52,11 +52,7 @@ class InstructionLoader {
                     template = StringBuilder()
                 }
                 else -> {
-                    val instruction = if (wide && (mnemonic == "seq" || mnemonic == "sne") && token.startsWith("subu ")
-                    ) {
-                        // An equality test must detect a difference anywhere in the register.
-                        token.replaceFirst("subu ", "xor ")
-                    } else token
+                    val instruction = if (wide) wideTemplateInstruction(mnemonic, token) else token
                     template.append(instruction)
                     if (tokens.hasMoreTokens()) template.append('\n')
                 }
@@ -68,6 +64,22 @@ class InstructionLoader {
         } else {
             ExtendedInstruction(example, standard, remaining, description, owner)
         }
+    }
+
+    private fun wideTemplateInstruction(mnemonic: String, token: String): String = when {
+        (mnemonic == "seq" || mnemonic == "sne") && token.startsWith("subu ") -> {
+            // An equality test must detect a difference anywhere in the register.
+            token.replaceFirst("subu ", "xor ")
+        }
+        token.startsWith("addi ") -> {
+            val (destination, source, immediate) = token.removePrefix("addi ").split(", ")
+            when {
+                mnemonic == "la" -> "daddiu $destination, $source, $immediate"
+                source == "\$0" -> "addiu $destination, $source, $immediate"
+                else -> "addiu \$1, \$0, $immediate\nadd $destination, $source, \$1"
+            }
+        }
+        else -> token
     }
 
     private fun wideMemoryTemplate(owner: InstructionSet, mnemonic: String, example: String): ExtendedInstruction {

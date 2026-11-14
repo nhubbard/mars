@@ -65,7 +65,7 @@ class CompactControlFlowTest {
     @CsvSource(
         "blezalc,18090001,-1,1", "bgezalc,19290001,1,-1",
         "bgtzalc,1c090001,1,0", "bltzalc,1d290001,-1,0",
-        "bnezalc,60090001,4294967296,0",
+        "bnezalc,60090001,4294967296,0", "beqzalc,20090001,0,4294967296",
     )
     fun `wide compact conditional calls write the link on either path`(
         mnemonic: String, encoding: String, taken: Long, untaken: Long, @TempDir directory: Path,
@@ -90,6 +90,49 @@ class CompactControlFlowTest {
                 assertEquals(0x1_0000_0000L, machine.registerFile.getLongValueNoNotify(31))
                 assertEquals(statement.address, machine.registerFile.programCounter)
             }
+        }
+    }
+
+    @ParameterizedTest
+    @CsvSource(
+        "beqc,212a0001,4294967296,4294967296,true", "beqc,212a0001,4294967296,0,false",
+        "bovc,21490001,2147483647,1,true", "bovc,21490001,4294967296,0,true",
+        "bovc,21490001,1,2,false",
+    )
+    fun `MARS64 decodes the reclaimed ADDI opcode as compact branches`(
+        mnemonic: String, encoding: String, left: Long, right: Long, taken: Boolean, @TempDir directory: Path,
+    ) {
+        val source = Files.writeString(directory.resolve("pop10.s"), "$mnemonic \$9,\$10,target\nnop\ntarget: nop\n")
+        val word = encoding.toUInt(16).toInt()
+        TestSessions.create().use { machine ->
+            assertEquals("addi", machine.instructionSet.findByBinaryCode(word)?.name)
+            machine.selectTarget(MarsTarget.MARS64)
+            assertEquals(mnemonic, machine.instructionSet.findByBinaryCode(word)?.name)
+            val program = machine.assemble(listOf(source), null, false, false)
+            val branch = program.machineList!!.first()
+            assertEquals(word, branch.binaryStatement)
+            machine.editIntegerRegister(9, left)
+            machine.editIntegerRegister(10, right)
+            program.simulate(1)
+            assertEquals(branch.address + if (taken) 8 else 4, machine.registerFile.programCounter)
+        }
+    }
+
+    @Test
+    fun `wide inherited pseudos no longer emit the reclaimed ADDI opcode`(@TempDir directory: Path) {
+        val source = Files.writeString(directory.resolve("pseudo.s"), $$"""
+            add $9,$10,-100
+            la $11,($12)
+        """.trimIndent())
+        TestSessions.create().use { machine ->
+            machine.selectTarget(MarsTarget.MARS64)
+            val program = machine.assemble(listOf(source))
+            assertEquals(listOf("addiu", "add", "daddiu"), program.machineList!!.map { it.instruction?.name })
+            machine.editIntegerRegister(10, 110)
+            machine.editIntegerRegister(12, 0x1_0000_0000)
+            program.simulate(3)
+            assertEquals(10L, machine.registerFile.getLongValueNoNotify(9))
+            assertEquals(0x1_0000_0000L, machine.registerFile.getLongValueNoNotify(11))
         }
     }
 
