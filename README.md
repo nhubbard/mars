@@ -93,9 +93,14 @@ and its historical HI/LO arithmetic. MARS64 uses the Release 6 encodings for `be
 use the three-register `mul`, `mulu`, `div`, and `divu` forms. They write a sign-extended
 word result to the destination register. Use `muh` or `muhu` for the high product word and
 `mod` or `modu` for the remainder. MARS64 reports a trap on division by zero.
-The floating-point catalog includes fused multiply-add and subtract, minimum and maximum by value
-or magnitude, and bit-controlled selection. These operations use the simulator's existing
-floating-point model, with round-to-nearest arithmetic and paired registers for doubles.
+MARS64 executes architectural delay slots for delayed branches and jumps. Compact control
+transfers have no delay slot. Ordinary scalar loads and stores support unaligned data in
+both byte orders. The `ulw`, `usw`, `ulh`, `ulhu`, and `ush` aliases use those same instructions.
+MARS64 provides 32 individually addressable 64-bit floating-point registers and supports
+FCSR rounding and exceptions for scalar arithmetic. MSA vector instructions use 32 128-bit
+registers whose low halves share storage with the scalar registers. MARS32 uses paired
+registers for doubles. See the [Release 6 inventory](docs/mips64-release-6-inventory.md)
+for the status of specific instruction forms and the current compatibility limits.
 
 ## UTF-8 assembly and console text
 
