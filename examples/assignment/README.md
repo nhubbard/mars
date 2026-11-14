@@ -84,7 +84,10 @@ permitted include with `--include path/to/header.inc` after the assembly entry p
 
 For a MARS64 exercise, import `edu.missouristate.mars.api.MarsTarget` and pass
 `target = MarsTarget.MARS64` to `case`. Use Kotlin `Long` values with `setRegister` and
-`expectRegister` to test all 64 bits.
+`expectRegister` to test all 64 bits. Use `expectVector("w0", low = 1L, high = 2L)`
+to check both halves of an MSA register, or `expectVectorLane("w0", lane = 1, width = 64, expected = 2L)`
+to check a specific lane. Lane zero starts at the least-significant bits of `low`.
+Widths of 8, 16, and 32 compare unsigned values. A width of 64 compares raw `Long` bits.
 
 Keep assignment scripts in the instructor-controlled repository or fetch them from a trusted
 revision. A Kotlin assignment script runs with the privileges of the CLI process.

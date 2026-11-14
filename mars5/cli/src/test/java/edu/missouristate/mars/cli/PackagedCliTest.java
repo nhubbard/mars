@@ -167,11 +167,18 @@ class PackagedCliTest {
             setRegister("a0", 0x100000000L)
             runUntil("done")
             expectRegister("v0", 0x100000003L)
+            expectVector("w1", low = -1L, high = 0L)
+            expectVectorLane("${'$'}w1", lane = 7, width = 8, expected = 255)
+            expectVectorLane("w1", lane = 8, width = 8, expected = 0)
+            expectVectorLane("w1", lane = 0, width = 64, expected = -1L)
             runToExit()
         }
         """);
     var entry = source("wide.s", """
         daddiu $v0, $a0, 3
+        ldi.d $w1,0
+        daddiu $t0,$zero,-1
+        dmtc1 $t0,$f1
         done: li $v0, 10
         syscall
         """);

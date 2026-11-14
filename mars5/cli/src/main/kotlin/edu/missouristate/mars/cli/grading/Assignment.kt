@@ -13,10 +13,12 @@ import edu.missouristate.mars.api.StepEvent
 import edu.missouristate.mars.api.StopEvent
 import edu.missouristate.mars.api.StopEvent.Reason
 import edu.missouristate.mars.api.SyscallEnvironment
+import edu.missouristate.mars.assembler.RegisterNames
 import edu.missouristate.mars.cli.HeadlessGuiProxy
 import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.di.DaggerMarsComponent
 import edu.missouristate.mars.mips.hardware.AddressErrorException
+import edu.missouristate.mars.mips.hardware.VectorRegister
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.OutputStream
@@ -158,6 +160,25 @@ class AssemblyCase internal constructor(
     fun expectRegister(register: String, expected: Long) {
         val actual = machine.registerFile.getLongValueNoNotify(registerNumber(register))
         requireCase(actual == expected) { "Expected $register = $expected, got $actual" }
+    }
+
+    /** Check the raw register halves, with lane zero in [low]. */
+    fun expectVector(register: String, low: Long, high: Long) {
+        val expected = VectorRegister(low, high)
+        val actual = vector(register)
+        requireCase(actual == expected) { "Expected $register = ${expected.toHexString()}, got ${actual.toHexString()}" }
+    }
+
+    fun expectVectorLane(register: String, lane: Int, width: Int, expected: Long) {
+        val actual = vector(register).lane(lane, width)
+        requireCase(actual == expected) { "Expected $register lane $lane ($width bits) = $expected, got $actual" }
+    }
+
+    private fun vector(register: String): VectorRegister {
+        requireCase(machine.target == MarsTarget.MARS64) { "Vector registers require MARS64" }
+        val name = "\$${register.removePrefix("\$")}"
+        val number = RegisterNames.vector(name) ?: throw CaseFailure("Unknown vector register $register")
+        return machine.coprocessor1.getVectorNoNotify(number)
     }
 
     fun expectWord(label: String, expected: Int, offset: Int = 0) {
