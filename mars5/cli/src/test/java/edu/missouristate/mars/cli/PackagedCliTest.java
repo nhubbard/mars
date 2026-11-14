@@ -122,6 +122,29 @@ class PackagedCliTest {
   }
 
   @Test
+  void runsAnMsaLoadComputeAndStoreProgram() throws Exception {
+    var entry = source("vector.s", """
+        .data
+        input: .word 1, 2, 3, 4
+        output: .space 16
+        .text
+        la $t0,input
+        ld.w $w1,0($t0)
+        slli.w $w1,$w1,1
+        addv.w $w2,$w1,$w1
+        st.w $w2,16($t0)
+        lw $a0,24($t0)
+        li $v0,1
+        syscall
+        li $v0,10
+        syscall
+        """);
+    var run = launch("nc", "--target", "mars64", entry.toString());
+    assertEquals(0, run.status(), run.err());
+    assertEquals("12", run.out().strip());
+  }
+
+  @Test
   void reportsBothPrecisionsForAnOddMARS64FloatingRegister() throws Exception {
     var entry = source("wide-fpu.s", """
         lui $t0, 0x4004
