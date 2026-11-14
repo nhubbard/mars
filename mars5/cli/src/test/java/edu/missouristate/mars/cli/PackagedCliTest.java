@@ -122,6 +122,20 @@ class PackagedCliTest {
   }
 
   @Test
+  void reportsBothPrecisionsForAnOddMARS64FloatingRegister() throws Exception {
+    var entry = source("wide-fpu.s", """
+        lui $t0, 0x4004
+        dsll32 $t0, $t0, 0
+        dmtc1 $t0, $f31
+        li $v0, 10
+        syscall
+        """);
+    var wide = launch("--target", "mars64", "--register", "f31", entry.toString());
+    assertEquals(0, wide.status(), wide.err());
+    assertTrue(wide.out().contains("$f31\t0x00000000\t0x4004000000000000"), wide.out());
+  }
+
+  @Test
   void kotlinAssignmentCanAssertFullMARS64Registers() throws Exception {
     var script = source("assignment64.kts", """
         import edu.missouristate.mars.api.MarsTarget

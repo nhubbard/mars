@@ -12,7 +12,7 @@ open class InstrCvtDS : BasicInstruction(
     "010001 10000 00000 sssss fffff 100001",
     { statement, context ->
         val operands = statement.operands
-        if (operands[0] % 2 == 1) {
+        if (!context.coprocessor1.hasWideRegisters && (operands[0] % 2 == 1)) {
             throw ProcessingException(context, statement, "first register must be even-numbered")
         }
         context.writeDoubleResult(operands[0], Float.fromBits(context.coprocessor1.getValue(operands[1])).toDouble())

@@ -34,6 +34,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /** Owns one simulation's floating-point registers, condition flags, and access listeners. */
 class Coprocessor1State {
+    internal var hasWideRegisters = false
     val registers = Array(32) { Register("\$f$it", it, 0) }
     private val condition = Register("cf", registers.size, 0)
     private val registerEvents = EventEmitter<RegisterAccessNotice>()
@@ -58,7 +59,7 @@ class Coprocessor1State {
     fun setRegisterToInt(register: String?, value: Int) = setRegisterToInt(getRegisterNumber(register), value)
 
     fun setRegisterToInt(register: Int, value: Int) {
-        registers.getOrNull(register)?.setValue(value)
+        updateRegister(register, value)
     }
 
     @Throws(InvalidRegisterAccessException::class)
@@ -67,9 +68,13 @@ class Coprocessor1State {
     @Throws(InvalidRegisterAccessException::class)
     fun setRegisterPairToDouble(register: String?, value: Double) = setRegisterPairToDouble(getRegisterNumber(register), value)
 
-    /** The even register holds the low word. Observers see the odd register accessed first. */
+    /** In MARS32 the even register holds the low word and the high word is written first. */
     @Throws(InvalidRegisterAccessException::class)
     fun setRegisterPairToLong(register: Int, value: Long) {
+        if (hasWideRegisters) {
+            updateLongRegister(register, value)
+            return
+        }
         checkEvenRegister(register)
         registers[register + 1].setValue(Binary.highOrderLongToInt(value))
         registers[register].setValue(Binary.lowOrderLongToInt(value))
@@ -94,6 +99,7 @@ class Coprocessor1State {
 
     @Throws(InvalidRegisterAccessException::class)
     fun getLongFromRegisterPair(register: Int): Long {
+        if (hasWideRegisters) return registers[register].longValue
         checkEvenRegister(register)
         return Binary.twoIntsToLong(registers[register + 1].value, registers[register].value)
     }
@@ -105,7 +111,21 @@ class Coprocessor1State {
         if (register % 2 != 0) throw InvalidRegisterAccessException()
     }
 
-    fun updateRegister(number: Int, value: Int): Int = registers.firstOrNull { it.number == number }?.setValue(value) ?: 0
+    fun getDoublewordNoNotify(number: Int): Long {
+        if (hasWideRegisters) return registers[number].longValueNoNotify
+        checkEvenRegister(number)
+        return Binary.twoIntsToLong(registers[number + 1].valueNoNotify, registers[number].valueNoNotify)
+    }
+
+    internal fun updateLongRegister(number: Int, value: Long): Long = registers[number].setLongValue(value)
+
+    fun updateRegister(number: Int, value: Int): Int = updateLowWord(number, value).toInt()
+
+    internal fun updateLowWord(number: Int, value: Int): Long {
+        val register = registers.getOrNull(number) ?: return 0L
+        if (!hasWideRegisters) return register.setValue(value).toLong()
+        return register.setLongValue((register.longValueNoNotify and -0x1_0000_0000L) or value.toUInt().toLong())
+    }
 
     fun getValue(number: Int): Int = registers[number].value
 

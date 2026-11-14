@@ -204,7 +204,11 @@ open class BackStepper(
             Action.REGISTER -> registerFile.updateLongRegister(first, step.param2)
             Action.PC -> registerFile.setProgramCounter(first)
             Action.COPROCESSOR_0 -> coprocessor0.updateRegister(first, second)
-            Action.COPROCESSOR_1 -> coprocessor1.updateRegister(first, second)
+            Action.COPROCESSOR_1 -> if (coprocessor1.hasWideRegisters) {
+                coprocessor1.updateLongRegister(first, step.param2)
+            } else {
+                coprocessor1.updateRegister(first, second)
+            }
             Action.CONDITION_CLEAR -> coprocessor1.clearConditionFlag(first)
             Action.CONDITION_SET -> coprocessor1.setConditionFlag(first)
             Action.HEAP -> memory.heapAddress = first
@@ -238,6 +242,10 @@ open class BackStepper(
     open fun addCoprocessor0Restore(register: Int, value: Int): Int = record(Action.COPROCESSOR_0, register, value)
 
     open fun addCoprocessor1Restore(register: Int, value: Int): Int = record(Action.COPROCESSOR_1, register, value)
+
+    internal fun addCoprocessor1Restore(register: Int, value: Long) {
+        backSteps.push(Action.COPROCESSOR_1, pc(), register, value)
+    }
 
     private fun record(action: Action, address: Int, value: Int): Int {
         backSteps.push(action, pc(), address, value.toLong())

@@ -24,6 +24,8 @@ import java.lang.Math.unsignedMultiplyHigh
 
 /** Doubleword operations enabled by the educational MARS64 target. */
 internal val wideInstructionFactories: List<() -> BasicInstruction> = listOf(
+    { doublewordFloatingMove(toFloatingPoint = false) },
+    { doublewordFloatingMove(toFloatingPoint = true) },
     { linkedMemoryInstruction("ll", Int.SIZE_BYTES, store = false, "110110") },
     { linkedMemoryInstruction("sc", Int.SIZE_BYTES, store = true, "100110") },
     { linkedMemoryInstruction("lld", Long.SIZE_BYTES, store = false, "110111") },
@@ -304,7 +306,21 @@ private fun pairedLinkedMemoryInstruction(name: String, elementSize: Int, store:
         }
     }
 
-private fun InstructionContext.storeDoubleword(address: Int, value: Long) {
+private fun doublewordFloatingMove(toFloatingPoint: Boolean) = BasicInstruction(
+    if (toFloatingPoint) "dmtc1 \$t1,\$f2" else "dmfc1 \$t1,\$f2",
+    if (toFloatingPoint) "Copy a CPU doubleword to a floating-point register"
+    else "Copy a floating-point doubleword to a CPU register",
+    R_FORMAT, "010001 ${if (toFloatingPoint) "00101" else "00001"} fffff sssss 00000000000",
+) { statement, context ->
+    val (cpuRegister, floatingRegister) = statement.operands
+    if (toFloatingPoint) {
+        context.updateCoprocessor1Doubleword(floatingRegister, context.registerFile.getLongValue(cpuRegister))
+    } else {
+        context.updateLongRegister(cpuRegister, context.coprocessor1.getLongFromRegisterPair(floatingRegister))
+    }
+}
+
+internal fun InstructionContext.storeDoubleword(address: Int, value: Long) {
     val low = value.toInt()
     val high = (value ushr Int.SIZE_BITS).toInt()
     val littleEndian = memory().byteOrder
@@ -353,7 +369,7 @@ private fun pcRelativeWideLoad(doubleword: Boolean): PcRelativeWordInstruction =
         displacementShift = if (doubleword) 3 else 2,
     ) {}
 
-private inline fun readDoubleword(memory: MemoryState, address: Int, readWord: (Int) -> Int): Long {
+internal inline fun readDoubleword(memory: MemoryState, address: Int, readWord: (Int) -> Int): Long {
     val first = readWord(address).toUInt().toLong()
     val second = readWord(address + Int.SIZE_BYTES).toUInt().toLong()
     return if (memory.byteOrder) (second shl Int.SIZE_BITS) or first else (first shl Int.SIZE_BITS) or second

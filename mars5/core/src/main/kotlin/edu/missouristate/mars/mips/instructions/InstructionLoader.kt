@@ -36,7 +36,7 @@ class InstructionLoader {
                 "ld", "sd" -> return wideMemoryTemplate(owner, mnemonic, example)
                 "move" -> return ExtendedInstruction(example, "or RG1, RG2, \$0", null, "Copy an integer register", owner)
                 "mul", "mulu", "div", "divu", "rem", "remu" -> return wideWordArithmeticTemplate(owner, mnemonic, example)
-                "mulo", "mulou" -> return null
+                "mulo", "mulou", "mfc1.d", "mtc1.d" -> return null
             }
         }
         var description = ""
@@ -62,6 +62,10 @@ class InstructionLoader {
         }
         if (wide && (mnemonic == "ll" || mnemonic == "sc")) {
             description = if (mnemonic == "ll") "Load and reserve a word" else "Store a word if its reservation is held"
+        }
+        if (wide && mnemonic in doublewordFloatingMemoryPseudos) {
+            description = if (mnemonic == "ldc1" || mnemonic == "l.d") "Load a floating-point doubleword"
+            else "Store a floating-point doubleword"
         }
         val remaining = template.toString()
         return if (standard == null) {
@@ -99,7 +103,8 @@ class InstructionLoader {
             val base = token.substringAfter('(').substringBefore(')')
             if (offset == "0") token else "daddiu \$1, $base, $offset\n$mnemonic $register,0(\$1)"
         }
-        (mnemonic == "ll" || mnemonic == "sc") && token.startsWith("addu ") -> token.replaceFirst("addu ", "daddu ")
+        token.startsWith("addu ") && (mnemonic == "ll" || mnemonic == "sc" || mnemonic in doublewordFloatingMemoryPseudos) ->
+            token.replaceFirst("addu ", "daddu ")
         (mnemonic == "seq" || mnemonic == "sne") && token.startsWith("subu ") -> {
             // An equality test must detect a difference anywhere in the register.
             token.replaceFirst("subu ", "xor ")
@@ -129,6 +134,10 @@ class InstructionLoader {
         }
         val description = if (mnemonic == "ld") "Load an aligned doubleword" else "Store an aligned doubleword"
         return ExtendedInstruction(example, setup, null, description, owner)
+    }
+
+    private companion object {
+        val doublewordFloatingMemoryPseudos = setOf("ldc1", "sdc1", "l.d", "s.d")
     }
 
     private fun pseudoOps(): BufferedReader {

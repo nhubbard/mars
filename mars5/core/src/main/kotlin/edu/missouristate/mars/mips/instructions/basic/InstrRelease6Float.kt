@@ -20,15 +20,14 @@ internal class InstrRelease6Float(operation: Release6FloatOperation, double: Boo
         val (destination, left, right) = statement.operands
         val fpu = context.coprocessor1
         if (double) {
-            if ((destination or left or right) and 1 != 0) {
+            if (!context.coprocessor1.hasWideRegisters && ((destination or left or right) and 1 != 0)) {
                 throw ProcessingException(context, statement, "all registers must be even-numbered")
             }
             val bits = operation.apply(
                 fpu.getLongFromRegisterPair(left), fpu.getLongFromRegisterPair(right),
                 if (operation.usesDestination) fpu.getLongFromRegisterPair(destination) else 0L, double = true,
             )
-            context.updateCoprocessor1(destination + 1, (bits ushr Int.SIZE_BITS).toInt())
-            context.updateCoprocessor1(destination, bits.toInt())
+            context.writeDoubleBits(destination, bits)
         } else {
             val bits = operation.apply(
                 fpu.getValue(left).toLong(), fpu.getValue(right).toLong(),

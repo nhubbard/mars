@@ -12,7 +12,7 @@ open class InstrSubD : BasicInstruction(
     "010001 10001 ttttt sssss fffff 000001",
     { statement, context ->
         val operands = statement.operands
-        if (operands[0] % 2 == 1 || operands[1] % 2 == 1 || operands[2] % 2 == 1) {
+        if (!context.coprocessor1.hasWideRegisters && (operands[0] % 2 == 1 || operands[1] % 2 == 1 || operands[2] % 2 == 1)) {
             throw ProcessingException(context, statement, "all registers must be even-numbered")
         }
         val left = context.readDoubleOperand(operands[1])

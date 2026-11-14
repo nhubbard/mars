@@ -91,15 +91,14 @@ final class CliMachineReport {
       return formatWord(bits);
     }
     String value = format == Format.DECIMAL ? Float.toString(Float.intBitsToFloat(bits)) : formatWord(bits);
-    if (register.getNumber() % 2 != 0) {
+    if (session.getTarget() == MarsTarget.MARS32 && register.getNumber() % 2 != 0) {
       return value;
     }
-    int high = session.coprocessor1.getIntFromRegister(register.getNumber() + 1);
-    long pair = Binary.twoIntsToLong(high, bits);
+    long doubleword = session.coprocessor1.getDoublewordNoNotify(register.getNumber());
     return value + "\t" + switch (format) {
-      case HEX -> Binary.longToHexString(pair);
-      case DECIMAL -> Double.toString(Double.longBitsToDouble(pair));
-      case ASCII -> Binary.intToAscii(high) + Binary.intToAscii(bits);
+      case HEX -> Binary.longToHexString(doubleword);
+      case DECIMAL -> Double.toString(Double.longBitsToDouble(doubleword));
+      case ASCII -> Binary.intToAscii(Binary.highOrderLongToInt(doubleword)) + Binary.intToAscii(bits);
     };
   }
 

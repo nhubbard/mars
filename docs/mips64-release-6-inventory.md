@@ -97,6 +97,14 @@ or PC-relative immediate in this table is the displacement as written to LLVM.
   Tables A.27 and A.28, plus word `ll`/`sc` and the Release 6 encodings
   for doubleword reservations. Keep immediate scaling and alignment
   constraints in the inventory alongside instruction words.
+- **Scalar FPR layout.** MARS64 uses one 64-bit register per scalar FPR,
+  including odd-numbered registers. Double-precision operations, doubleword
+  loads and stores, and `dmfc1`/`dmtc1` use the full register. `mfc1` and
+  `mfhc1` sign-extend their selected word into the destination GPR. The
+  simulator preserves the upper word on a word-sized FPR write, giving a
+  deterministic result where the ISA leaves it unpredictable. MARS32 keeps
+  its even/odd register pairs. The MARS32 `mfc1.d` and `mtc1.d` pseudos
+  transfer between two GPRs and two FPRs and are excluded from MARS64.
 - **Remaining scalar and optional families.** Expand Volume II-A by operand
   form and classify shared integer, COP1, memory, system, and optional forms.
   Track removed and privileged forms separately from missing user-mode

@@ -5,6 +5,7 @@ import edu.missouristate.mars.util.Binary
 
 /** Reads the high word first, preserving the order of the register access events. */
 internal fun InstructionContext.readDoubleOperand(register: Int): Double {
+    if (coprocessor1.hasWideRegisters) return Double.fromBits(coprocessor1.getLongFromRegisterPair(register))
     val high = coprocessor1.getValue(register + 1)
     val low = coprocessor1.getValue(register)
     return Double.fromBits(Binary.twoIntsToLong(high, low))
@@ -12,7 +13,23 @@ internal fun InstructionContext.readDoubleOperand(register: Int): Double {
 
 /** Arithmetic results use canonical NaNs. Register moves copy the original words. */
 internal fun InstructionContext.writeDoubleResult(register: Int, value: Double) {
-    val bits = value.toBits()
+    writeDoubleBits(register, value.toBits())
+}
+
+internal fun InstructionContext.copyDoubleword(destination: Int, source: Int) {
+    if (coprocessor1.hasWideRegisters) {
+        updateCoprocessor1Doubleword(destination, coprocessor1.getLongFromRegisterPair(source))
+    } else {
+        updateCoprocessor1(destination, coprocessor1.getValue(source))
+        updateCoprocessor1(destination + 1, coprocessor1.getValue(source + 1))
+    }
+}
+
+internal fun InstructionContext.writeDoubleBits(register: Int, bits: Long) {
+    if (coprocessor1.hasWideRegisters) {
+        updateCoprocessor1Doubleword(register, bits)
+        return
+    }
     updateCoprocessor1(register + 1, Binary.highOrderLongToInt(bits))
     updateCoprocessor1(register, Binary.lowOrderLongToInt(bits))
 }

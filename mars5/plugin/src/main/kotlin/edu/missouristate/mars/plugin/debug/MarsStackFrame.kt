@@ -96,20 +96,20 @@ internal class MarsStackFrame(
                     formatFloating(Float.fromBits(bits).toString(), hex)
                 })
             }
-            val pairs = XValueChildrenList()
-            for ((index, pair) in registers.chunked(2).withIndex()) {
-                val (lowRegister, highRegister) = pair
-                val (lowName, low) = lowRegister
-                val (highName, high) = highRegister
-                val bits = Binary.twoIntsToLong(high, low)
+            val doublewords = XValueChildrenList()
+            val step = if (wide) 1 else 2
+            for (number in registers.indices step step) {
+                val name = if (wide) registers[number].first else "${registers[number].first}/${registers[number + 1].first}"
+                val bits = fpu.getDoublewordNoNotify(number)
                 val hex = Binary.longToHexString(bits)
-                val number = index * 2
-                val written = written(RegisterWriteBank.COPROCESSOR_1, number) || written(RegisterWriteBank.COPROCESSOR_1, number + 1)
-                pairs.add(editableValue(FPU_DOUBLE, number, "$lowName/$highName", written, { hex }) {
+                val changed = written(RegisterWriteBank.COPROCESSOR_1, number) ||
+                    (!wide && written(RegisterWriteBank.COPROCESSOR_1, number + 1))
+                doublewords.add(editableValue(FPU_DOUBLE, number, name, changed, { hex }) {
                     formatFloating(Double.fromBits(bits).toString(), hex)
                 })
             }
-            addBottomGroup(RegisterGroup("debug.registers.double", pairs))
+            val groupKey = if (wide) "debug.registers.double.wide" else "debug.registers.double"
+            addBottomGroup(RegisterGroup(groupKey, doublewords))
         }))
     }
 

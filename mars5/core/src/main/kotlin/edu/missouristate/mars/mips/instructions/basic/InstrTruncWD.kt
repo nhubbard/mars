@@ -12,7 +12,7 @@ open class InstrTruncWD : BasicInstruction(
     "010001 10001 00000 sssss fffff 001101",
     { statement, context ->
         val operands = statement.operands
-        if (operands[1] % 2 == 1) {
+        if (!context.coprocessor1.hasWideRegisters && (operands[1] % 2 == 1)) {
             throw ProcessingException(context, statement, "second register must be even-numbered")
         }
         val value = context.readDoubleOperand(operands[1])

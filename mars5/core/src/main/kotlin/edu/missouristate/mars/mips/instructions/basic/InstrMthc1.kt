@@ -11,7 +11,14 @@ class InstrMthc1 : BasicInstruction(
     "010001 00111 fffff sssss 00000000000",
     { statement, context ->
         val (source, destination) = statement.operands
-        if (destination % 2 != 0) throw ProcessingException(context, statement, "FPU register must be even-numbered")
-        context.updateCoprocessor1(destination + 1, context.registerFile.getValue(source))
+        val fpu = context.coprocessor1
+        val high = context.registerFile.getValue(source)
+        if (fpu.hasWideRegisters) {
+            val low = fpu.getLongFromRegisterPair(destination).toUInt().toLong()
+            context.updateCoprocessor1Doubleword(destination, (high.toLong() shl Int.SIZE_BITS) or low)
+        } else {
+            if (destination % 2 != 0) throw ProcessingException(context, statement, "FPU register must be even-numbered")
+            context.updateCoprocessor1(destination + 1, high)
+        }
     },
 )

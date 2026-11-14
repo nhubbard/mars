@@ -12,12 +12,11 @@ open class InstrMovfD1 : BasicInstruction(
     "010001 10001 000 00 sssss fffff 010001",
     { statement, context ->
         val operands = statement.operands
-        if (operands[0] % 2 == 1 || operands[1] % 2 == 1) {
+        if (!context.coprocessor1.hasWideRegisters && (operands[0] % 2 == 1 || operands[1] % 2 == 1)) {
             throw ProcessingException(context, statement, "both registers must be even-numbered")
         }
         if (context.coprocessor1.getConditionFlag(0) == 0) {
-            context.updateCoprocessor1(operands[0], context.coprocessor1.getValue(operands[1]))
-            context.updateCoprocessor1(operands[0] + 1, context.coprocessor1.getValue(operands[1] + 1))
+            context.copyDoubleword(operands[0], operands[1])
         }
     },
 )

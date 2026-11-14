@@ -23,7 +23,6 @@ import edu.missouristate.mars.mips.instructions.syscalls.RandomStreams
 import edu.missouristate.mars.simulator.BackStepper
 import edu.missouristate.mars.simulator.DelayedBranchState
 import edu.missouristate.mars.simulator.SimulatorEngine
-import edu.missouristate.mars.util.Binary
 import java.nio.file.Path
 import java.util.Objects
 import java.util.concurrent.atomic.AtomicInteger
@@ -146,17 +145,23 @@ class MarsContext @Inject constructor(
 
     fun editCoprocessor1Register(number: Int, bits: Int): Boolean {
         val registers = coprocessor1.registers
-        return editRegister(registers[Objects.checkIndex(number, registers.size)], bits)
+        Objects.checkIndex(number, registers.size)
+        claimStoppedSession().use {
+            if (registers[number].valueNoNotify == bits) return false
+            backStepper.clear()
+            coprocessor1.updateRegister(number, bits)
+            return true
+        }
     }
 
     @Throws(InvalidRegisterAccessException::class)
     fun editCoprocessor1Pair(number: Int, bits: Long): Boolean {
         val registers = coprocessor1.registers
-        require(number >= 0 && number < registers.lastIndex && number % 2 == 0) {
-            "Coprocessor 1 register pair is not implemented: $number"
+        require(number in registers.indices && (coprocessor1.hasWideRegisters || number % 2 == 0)) {
+            "Coprocessor 1 doubleword register is not implemented: $number"
         }
         claimStoppedSession().use {
-            val current = Binary.twoIntsToLong(registers[number + 1].valueNoNotify, registers[number].valueNoNotify)
+            val current = coprocessor1.getDoublewordNoNotify(number)
             if (current == bits) return false
             backStepper.clear()
             coprocessor1.setRegisterPairToLong(number, bits)
@@ -215,6 +220,8 @@ class MarsContext @Inject constructor(
         setMemoryConfigurationStopped(settings.memoryConfiguration)
         instructionSet.populate(target)
         this.target = target
+        coprocessor1.hasWideRegisters = target == MarsTarget.MARS64
+        coprocessor1.resetRegisters()
     }
 
     private fun setMemoryConfigurationStopped(identifier: String?) {

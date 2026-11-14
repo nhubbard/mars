@@ -2051,12 +2051,13 @@ class MarsDebugPlatformTest {
             assertFalse(cp1.valueContainer.isAutoExpand)
             assertTrue(cp0.valueContainer.isRestoreExpansion)
             val floating = children(cp1, 34)
-            val pairs = assertInstanceOf(XValueGroupNodeImpl::class.java, floating.last())
+            val doublewords = assertInstanceOf(XValueGroupNodeImpl::class.java, floating.last())
+            val doublewordCount = if (project.service<MarsAssemblySettings>().target == MarsTarget.MARS64) 32 else 16
             val nodes = buildList {
                 addAll(children(cpu, 35))
                 addAll(children(cp0, 4))
                 addAll(floating.dropLast(1))
-                addAll(children(pairs, 16))
+                addAll(children(doublewords, doublewordCount))
             }
             val values = nodes.map { assertInstanceOf(XValueNodeImpl::class.java, it) }
             pollAssertionsAsync(3.seconds, 10.milliseconds) { assertTrue(values.all { it.isComputed }) }
@@ -2393,6 +2394,52 @@ class MarsDebugPlatformTest {
                 debug.session.resume()
             }
             assertEquals(0, debug.exit.await())
+        }
+    }
+
+    @Test
+    fun `MARS64 Variables show and edit odd double-precision registers`() = timeoutRunBlocking {
+        val settings = project.service<MarsAssemblySettings>()
+        val display = service<MarsDebuggerDisplaySettings>()
+        val originalDisplay = display.getState().copy()
+        val originalTarget = settings.target
+        try {
+            val source = withContext(Dispatchers.EDT) {
+                settings.changeTarget(MarsTarget.MARS64)
+                display.setHexValues(true)
+                fixture.addFileToProject("wide-fpu.mars", $$"""
+                    dmtc1 $zero,$f31
+                    dmfc1 $t0,$f31
+                    nop
+                """.trimIndent()).virtualFile.also { addBreakpoint(it, 1) }
+            }
+            withDebug(source) { debug ->
+                debug.assertPausedAt(source, 1)
+                withContext(Dispatchers.EDT) {
+                    val frame = requireNotNull(debug.session.currentStackFrame)
+                    val modifiers = inspectRegisterNodes(debug.session, frame) { nodes ->
+                        nodes.filter { it.name == "\$f31" }.map { requireNotNull(it.valueContainer.modifier) }
+                    }
+                    val (single, doubleword) = modifiers
+                    assertEquals("0x00000000", single.initialValueEditorText)
+                    assertEquals("0x0000000000000000", doubleword.initialValueEditorText)
+                    assertNull(editValue(doubleword, "0x4004000000000000"))
+                    assertEquals("2.5 (0x4004000000000000)", registerValues(debug.session, frame)["\$f31"])
+                    debug.session.stepInto()
+                }
+                debug.assertPausedAt(source, 2)
+                withContext(Dispatchers.EDT) {
+                    val frame = requireNotNull(debug.session.currentStackFrame)
+                    assertEquals("0x4004000000000000", registerValues(debug.session, frame)["\$t0"])
+                    debug.session.resume()
+                }
+                assertEquals(0, debug.exit.await())
+            }
+        } finally {
+            withContext(Dispatchers.EDT) {
+                settings.changeTarget(originalTarget)
+                display.loadState(originalDisplay)
+            }
         }
     }
 

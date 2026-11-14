@@ -11,11 +11,10 @@ class InstrClassD : BasicInstruction(
     "010001 10001 00000 sssss fffff 011011",
     { statement, context ->
         val (destination, source) = statement.operands
-        if (destination % 2 != 0 || source % 2 != 0) {
+        if (!context.coprocessor1.hasWideRegisters && (destination % 2 != 0 || source % 2 != 0)) {
             throw ProcessingException(context, statement, "both registers must be even-numbered")
         }
         val bits = context.coprocessor1.getLongFromRegisterPair(source)
-        context.updateCoprocessor1(destination + 1, 0)
-        context.updateCoprocessor1(destination, floatingClass(bits, 52, 11))
+        context.writeDoubleBits(destination, floatingClass(bits, 52, 11).toLong())
     },
 )

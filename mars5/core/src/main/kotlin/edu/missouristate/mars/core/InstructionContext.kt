@@ -175,11 +175,17 @@ class InstructionContext(private val session: MarsContext, private val environme
     }
 
     fun updateCoprocessor1(number: Int, value: Int): Int {
-        val previous = coprocessor1.updateRegister(number, value)
+        val previous = coprocessor1.updateLowWord(number, value)
         if (number in 0..31 && session.backStepper.enabled()) {
-            session.backStepper.addCoprocessor1Restore(number, previous)
+            if (coprocessor1.hasWideRegisters) session.backStepper.addCoprocessor1Restore(number, previous)
+            else session.backStepper.addCoprocessor1Restore(number, previous.toInt())
         }
-        return previous
+        return previous.toInt()
+    }
+
+    internal fun updateCoprocessor1Doubleword(number: Int, value: Long) {
+        val previous = coprocessor1.updateLongRegister(number, value)
+        if (session.backStepper.enabled()) session.backStepper.addCoprocessor1Restore(number, previous)
     }
 
     fun setConditionFlag(flag: Int): Int = recordConditionFlag(flag, coprocessor1.setConditionFlag(flag))
@@ -246,6 +252,10 @@ class InstructionContext(private val session: MarsContext, private val environme
 
     @Throws(InvalidRegisterAccessException::class)
     fun setRegisterPairToDouble(number: Int, value: Double) {
+        if (coprocessor1.hasWideRegisters) {
+            updateCoprocessor1Doubleword(number, value.toRawBits())
+            return
+        }
         if (number % 2 != 0) throw InvalidRegisterAccessException()
         if (number < 0 || number >= coprocessor1.registers.size - 1) throw ArrayIndexOutOfBoundsException(number)
         val bits = value.toRawBits()

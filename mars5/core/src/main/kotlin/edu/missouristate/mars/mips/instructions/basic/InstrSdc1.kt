@@ -5,6 +5,7 @@ import edu.missouristate.mars.mips.hardware.AddressErrorException
 import edu.missouristate.mars.mips.hardware.MemoryState
 import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
+import edu.missouristate.mars.mips.instructions.storeDoubleword
 import edu.missouristate.mars.simulator.Exceptions.ADDRESS_EXCEPTION_STORE
 
 open class InstrSdc1 : BasicInstruction(
@@ -15,7 +16,7 @@ open class InstrSdc1 : BasicInstruction(
     "111101 ttttt fffff ssssssssssssssss",
     { statement, context ->
         val operands = statement.operands
-        if (operands[0] % 2 == 1) {
+        if (!context.coprocessor1.hasWideRegisters && (operands[0] % 2 == 1)) {
             throw ProcessingException(context, statement, "first register must be even-numbered")
         }
         try {
@@ -23,8 +24,13 @@ open class InstrSdc1 : BasicInstruction(
             if (!MemoryState.doublewordAligned(address)) {
                 throw AddressErrorException("address not aligned on doubleword boundary ", ADDRESS_EXCEPTION_STORE, address)
             }
-            context.setMemoryWord(address, context.coprocessor1.getValue(operands[0]))
-            context.setMemoryWord(address + 4, context.coprocessor1.getValue(operands[0] + 1))
+            val fpu = context.coprocessor1
+            if (fpu.hasWideRegisters) {
+                context.storeDoubleword(address, fpu.getLongFromRegisterPair(operands[0]))
+            } else {
+                context.setMemoryWord(address, fpu.getValue(operands[0]))
+                context.setMemoryWord(address + 4, fpu.getValue(operands[0] + 1))
+            }
         } catch (failure: AddressErrorException) {
             throw ProcessingException(context, statement, failure)
         }

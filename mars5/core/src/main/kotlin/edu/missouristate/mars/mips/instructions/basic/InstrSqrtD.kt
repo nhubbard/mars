@@ -13,7 +13,7 @@ open class InstrSqrtD : BasicInstruction(
     "010001 10001 00000 sssss fffff 000100",
     { statement, context ->
         val operands = statement.operands
-        if (operands[0] % 2 == 1 || operands[1] % 2 == 1 || operands[2] % 2 == 1) {
+        if (!context.coprocessor1.hasWideRegisters && (operands[0] % 2 == 1 || operands[1] % 2 == 1 || operands[2] % 2 == 1)) {
             throw ProcessingException(context, statement, "both registers must be even-numbered")
         }
         val value = context.readDoubleOperand(operands[1])

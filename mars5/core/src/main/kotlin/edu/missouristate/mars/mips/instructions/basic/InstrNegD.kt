@@ -12,11 +12,16 @@ open class InstrNegD : BasicInstruction(
     "010001 10001 00000 sssss fffff 000111",
     { statement, context ->
         val operands = statement.operands
-        if (operands[0] % 2 == 1 || operands[1] % 2 == 1) {
+        if (!context.coprocessor1.hasWideRegisters && (operands[0] % 2 == 1 || operands[1] % 2 == 1)) {
             throw ProcessingException(context, statement, "both registers must be even-numbered")
         }
-        val high = context.coprocessor1.getValue(operands[1] + 1)
-        context.updateCoprocessor1(operands[0] + 1, high xor Int.MIN_VALUE)
-        context.updateCoprocessor1(operands[0], context.coprocessor1.getValue(operands[1]))
+        if (context.coprocessor1.hasWideRegisters) {
+            val bits = context.coprocessor1.getLongFromRegisterPair(operands[1])
+            context.updateCoprocessor1Doubleword(operands[0], bits xor Long.MIN_VALUE)
+        } else {
+            val high = context.coprocessor1.getValue(operands[1] + 1)
+            context.updateCoprocessor1(operands[0] + 1, high xor Int.MIN_VALUE)
+            context.updateCoprocessor1(operands[0], context.coprocessor1.getValue(operands[1]))
+        }
     },
 )
