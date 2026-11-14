@@ -61,4 +61,39 @@ class Mars64VectorWideningTest {
             assertThrows(ProcessingException::class.java) { session.assemble(listOf(file), null, false, false) }
         }
     }
+    @ParameterizedTest
+    @ValueSource(strings = ["h", "w"])
+    fun `fixed point multiply rounds after accumulation and saturates at the lane bounds`(suffix: String, @TempDir directory: Path) {
+        val bits = if (suffix == "h") 16 else 32
+        val scale = 1L shl (bits - 1)
+        val mask = -1L ushr (64 - bits)
+        val cases = listOf(
+            Triple("mul_q", 0x79051fdc, listOf(scale - 1, 0L)),
+            Triple("mulr_q", 0x7b051fdc, listOf(scale - 1, 1L)),
+            Triple("madd_q", 0x79451fdc, listOf(scale - 1, 3L)),
+            Triple("maddr_q", 0x7b451fdc, listOf(scale - 1, 4L)),
+            Triple("msub_q", 0x79851fdc, listOf(-scale, 2L)),
+            Triple("msubr_q", 0x7b851fdc, listOf(-scale, 3L)),
+        )
+        val file = Files.writeString(directory.resolve("fixed.s"), cases.joinToString("\n") { (name) ->
+            $$"$$name.$$suffix $w31,$w3,$w5"
+        })
+        fun fill(value: Long): Long =
+            (0 until 64 step bits).fold(0L) { acc, shift -> acc or ((value and mask) shl shift) }
+        TestSessions.create().use { session ->
+            session.selectTarget(MarsTarget.MARS64)
+            val program = session.assemble(listOf(file), null, false, false)
+            val fpu = session.coprocessor1
+            fpu.updateVector(3, VectorRegister(fill(-scale), fill(1)))
+            fpu.updateVector(5, VectorRegister(fill(-scale), fill(scale / 2)))
+            for ((index, case) in cases.withIndex()) {
+                val (name, word, output) = case
+                assertEquals(word + if (bits == 32) (1 shl 21) else 0, program.machineList!![index].binaryStatement, name)
+                fpu.updateVector(31, VectorRegister(fill(-1), fill(3)))
+                program.simulate(1)
+                assertEquals(VectorRegister(fill(output[0]), fill(output[1])), fpu.readVector(31), name)
+            }
+        }
+    }
+
 }

@@ -55,3 +55,38 @@ private fun wideningInstruction(operation: WideningOperation, format: Int, signe
         })
     }
 }
+
+internal fun msaFixedPointInstructions(): List<BasicInstruction> = buildList {
+    for ((format, suffix) in "hw".withIndex()) {
+        val bits = 16 shl format
+        for ((operation, names) in listOf("mul_q" to "mulr_q", "madd_q" to "maddr_q", "msub_q" to "msubr_q").withIndex()) {
+            add(fixedPointInstruction(names.first, suffix, bits, format, operation, rounded = false))
+            add(fixedPointInstruction(names.second, suffix, bits, format, operation, rounded = true))
+        }
+    }
+}
+
+private fun fixedPointInstruction(
+    name: String, suffix: Char, bits: Int, format: Int, operation: Int, rounded: Boolean,
+): BasicInstruction {
+    val field = ((if (rounded) 24 else 8) + operation * 2 + format).toString(2).padStart(5, '0')
+    val maximum = (1L shl (bits - 1)) - 1
+    val minimum = -maximum - 1
+    val rounding = if (rounded) 1L shl (bits - 2) else 0L
+    return BasicInstruction(
+        "$name.$suffix \$w1,\$w2,\$w3", "Multiply signed fixed-point elements with saturation",
+        R_FORMAT, "011110 $field ttttt sssss fffff 011100",
+    ) { statement, context ->
+        val (destination, source, target) = statement.operands
+        val fpu = context.coprocessor1
+        val left = fpu.readVector(source)
+        val right = fpu.readVector(target)
+        val previous = if (operation == 0) VectorRegister(0, 0) else fpu.readVector(destination)
+        context.updateVectorRegister(destination, mapLanes(bits) { half, shift ->
+            val product = element(half(left), shift, bits, signed = true) * element(half(right), shift, bits, signed = true)
+            val accumulator = element(half(previous), shift, bits, signed = true) shl (bits - 1)
+            val sum = accumulator + if (operation == 2) -product else product
+            ((sum + rounding) shr (bits - 1)).coerceIn(minimum, maximum)
+        })
+    }
+}
