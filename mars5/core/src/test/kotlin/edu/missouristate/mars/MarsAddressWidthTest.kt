@@ -18,6 +18,53 @@ import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 
 class MarsAddressWidthTest {
+    @ParameterizedTest
+    @ValueSource(booleans = [MemoryState.LITTLE_ENDIAN, MemoryState.BIG_ENDIAN])
+    fun `assembly places source and label fixups above four GiB`(littleEndian: Boolean, @TempDir directory: Path) {
+        val source = Files.writeString(directory.resolve("wide-layout.s"), $$"""
+            .data 0x100000000
+            entry_ptr: .dword main
+            cell: .dword 0x0123456789abcdef
+            .text 0x100400000
+            .globl main
+            main: dla $a0,cell
+            la $a1,entry_ptr
+            ld $t0,0($a0)
+            ld $t1,0($a1)
+            dli $t2,81985529216486895
+            beq $t0,$t2,matched
+            nop
+            break
+            matched: j done
+            addiu $t3,$zero,1
+            break
+            done: nop
+        """.trimIndent())
+        val entry = 0x1_0040_0000L
+        TestSessions.create().use { machine ->
+            machine.selectTarget(MarsTarget.MARS64)
+            machine.settings.setStartAtMainEnabled(true)
+            machine.memory.byteOrder = littleEndian
+            val program = machine.assemble(listOf(source))
+            assertEquals(entry, machine.registerFile.programCounterBits)
+            assertEquals(entry, program.symbolMap().globals().getValue("main").addressBits)
+            assertEquals(entry, program.sourceMap().originsByAddress.keys.min())
+            assertTrue(program.sourceMap().breakpointsByAddress.values.any { entry in it })
+            assertEquals(entry, program.pseudoInstructions {}.first().addressBits)
+            val image = machine.captureAssemblyImage {}
+            assertTrue(program.simulate(40))
+            assertEquals(0x0123_4567_89ab_cdefL, machine.registerFile.getLongValueNoNotify(8))
+            assertEquals(entry, machine.registerFile.getLongValueNoNotify(9))
+            assertEquals(1L, machine.registerFile.getLongValueNoNotify(11))
+            TestSessions.create().use { restored ->
+                restored.loadAssemblyImage(image) {}
+                assertEquals(entry, restored.registerFile.programCounterBits)
+                assertTrue(restored.program!!.simulate(40))
+                assertEquals(entry, restored.registerFile.getLongValueNoNotify(9))
+            }
+        }
+    }
+
     @Test
     fun `opt-in generated code preserves wide PC links branches and EPC`(@TempDir directory: Path) {
         val source = Files.writeString(directory.resolve("generated.s"), $$"""
@@ -248,7 +295,7 @@ class MarsAddressWidthTest {
         TestSessions.create().use { machine ->
             machine.selectTarget(MarsTarget.MARS64)
             val program = machine.assemble(listOf(source))
-            machine.editIntegerRegister(4, 0x1_0000_0000L + machine.memory.textBaseAddress)
+            machine.editIntegerRegister(4, 0x2_0000_0000L + machine.memory.textBaseAddress)
             machine.editIntegerRegister(31, 0x2_0000_0000L)
             val failure = assertThrows(ProcessingException::class.java) { program.simulate(1) }
             assertTrue(failure.message!!.contains("outside mapped memory"))

@@ -81,6 +81,7 @@ open class MemoryState(
     internal var wideDataEnabled = false
     internal var wideInstructionDecoder: ((Int, Long) -> ProgramStatement)? = null
     private lateinit var wideData: WordMemorySegment
+    private lateinit var wideText: TextMemorySegment
 
     /** Linked operations use aligned ordinary storage in the single-core simulator. */
     internal fun checkLinkedAccess(address: Long, size: Int, exception: Int) {
@@ -259,6 +260,7 @@ open class MemoryState(
         kernelDataBlockTable = WordMemorySegment(BLOCK_TABLE_LENGTH, false) { byteOrder }
         stackBlockTable = WordMemorySegment(BLOCK_TABLE_LENGTH, true) { byteOrder }
         memoryMapBlockTable = WordMemorySegment(MMIO_TABLE_LENGTH, false) { byteOrder }
+        wideText = TextMemorySegment(BLOCK_TABLE_LENGTH)
         wideData = WordMemorySegment(BLOCK_TABLE_LENGTH, false) { byteOrder }
     }
 
@@ -477,6 +479,7 @@ open class MemoryState(
     internal fun checkInstructionAddress(address: Long): Long {
         val narrow = address.toInt()
         if (address == narrow.toLong() || address == narrow.toUInt().toLong()) return narrow.toLong()
+        if (inWideText(address)) return address
         wideDataOffset(address, WORD_LENGTH_BYTES, ADDRESS_EXCEPTION_LOAD)
         if (!settings.isSelfModifyingCodeEnabled) {
             throw AddressErrorException("Effective address is outside mapped memory: ", ADDRESS_EXCEPTION_LOAD, address)
@@ -494,7 +497,34 @@ open class MemoryState(
         if (mapped % WORD_LENGTH_BYTES != 0L) {
             throw AddressErrorException("fetch address for text segment not aligned to word boundary ", ADDRESS_EXCEPTION_LOAD, mapped)
         }
+        if (inWideText(mapped)) return wideText.read(((mapped - WIDE_TEXT_BASE) / WORD_LENGTH_BYTES).toInt())
         return checkNotNull(wideInstructionDecoder)(readData(mapped, WORD_LENGTH_BYTES), mapped)
+    }
+
+    internal fun setStatement(address: Long, statement: ProgramStatement) {
+        if (address == address.toInt().toLong()) {
+            setStatement(address.toInt(), statement)
+        } else if (inWideText(address) && address % WORD_LENGTH_BYTES == 0L) {
+            wideText.store(((address - WIDE_TEXT_BASE) / WORD_LENGTH_BYTES).toInt(), statement)
+        } else {
+            throw AddressErrorException("Invalid text segment address ", ADDRESS_EXCEPTION_STORE, address)
+        }
+    }
+
+    internal fun setAssemblyDoubleword(address: Long, bits: Long) {
+        if (address != address.toInt().toLong()) wideDataOffset(address, Long.SIZE_BYTES, ADDRESS_EXCEPTION_STORE)
+        val low = bits.toInt()
+        val high = (bits ushr Int.SIZE_BITS).toInt()
+        setAssemblyData(address, if (byteOrder) low else high, Int.SIZE_BYTES)
+        setAssemblyData(address + Int.SIZE_BYTES, if (byteOrder) high else low, Int.SIZE_BYTES)
+    }
+
+    internal fun inWideText(address: Long): Boolean =
+        wideDataEnabled && address in WIDE_TEXT_BASE..<WIDE_TEXT_BASE + SEGMENT_BYTES
+
+    internal fun setAssemblyData(address: Long, value: Int, size: Int) {
+        if (address == address.toInt().toLong()) set(address.toInt(), value, size)
+        else writeData(address, size, value)
     }
 
     private fun readStatement(address: Int, notify: Boolean, instructionFetch: Boolean): ProgramStatement? {
@@ -579,6 +609,7 @@ open class MemoryState(
         const val LITTLE_ENDIAN = true
         const val BIG_ENDIAN = false
         internal const val WIDE_DATA_BASE = 0x1_0000_0000L
+        internal const val WIDE_TEXT_BASE = 0x1_0040_0000L
 
         private const val BLOCK_LENGTH_WORDS = 1024
         private const val BLOCK_TABLE_LENGTH = 1024

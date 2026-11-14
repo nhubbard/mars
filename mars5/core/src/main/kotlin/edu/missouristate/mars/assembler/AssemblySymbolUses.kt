@@ -18,7 +18,7 @@ internal class AssemblySymbolUses {
             for ((target, equivalenceSource) in uses) {
                 checkCancellation.run()
                 val definition = SourceToken(target.origin()!!.location, target.column()!!)
-                detached.add(SymbolUse(definition, target.name, target.address, equivalenceSource))
+                detached.add(SymbolUse(definition, target.name, target.address, equivalenceSource, target.addressBits))
             }
             result[site] = detached
         }

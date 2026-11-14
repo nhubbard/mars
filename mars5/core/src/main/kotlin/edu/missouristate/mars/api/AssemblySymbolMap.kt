@@ -75,6 +75,7 @@ class AssemblySymbolMap @JvmOverloads constructor(
         val name: String,
         val address: Int,
         val equivalenceSource: SourceToken? = null,
+        val addressBits: Long = address.toLong(),
     )
 
     /** One realized macro call and its one-based argument columns. */
@@ -146,6 +147,7 @@ class AssemblySymbolMap @JvmOverloads constructor(
         val origin: Origin?,
         val macroPrivate: Boolean = false,
         val column: Int? = null,
+        val addressBits: Long = address.toLong(),
     )
 
     enum class Kind {

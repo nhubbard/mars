@@ -12,7 +12,7 @@ import edu.missouristate.mars.core.AssemblyContext
 import edu.missouristate.mars.mips.hardware.AddressErrorException
 import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.util.NumberDisplayBase
-import java.lang.Integer.compareUnsigned
+import edu.missouristate.mars.util.Binary
 import java.util.Collections.newSetFromMap
 import java.util.IdentityHashMap
 
@@ -27,7 +27,7 @@ internal class SecondPassProcessor(
     @Throws(ProcessingException::class)
     fun process(programs: ArrayList<MIPSprogram>, errors: ErrorList, warningsAreErrors: Boolean): Result {
         val machine = ArrayList<ProgramStatement>()
-        val pseudoAddresses = HashSet<Int>()
+        val pseudoAddresses = HashSet<Long>()
         val expander = PseudoInstructionExpander(context)
         for (program in programs) {
             if (errors.errorLimitExceeded()) break
@@ -40,21 +40,21 @@ internal class SecondPassProcessor(
                 } else {
                     for (generated in expander.expand(statement, program, errors)) {
                         checkCancellation.run()
-                        pseudoAddresses.add(generated.address)
+                        pseudoAddresses.add(generated.addressBits)
                         machine.add(generated)
                     }
                 }
             }
         }
 
-        val origins = HashMap<Int, Origin>()
-        val breakpoints = HashMap<Location, MutableList<Int>>()
+        val origins = HashMap<Long, Origin>()
+        val breakpoints = HashMap<Location, MutableList<Long>>()
         val seen = newSetFromMap(IdentityHashMap<Origin, Boolean>())
         for (statement in machine) {
             checkCancellation.run()
             if (errors.errorLimitExceeded()) break
             statement.buildMachineStatementFromBasicStatement(errors)
-            val address = statement.address
+            val address = statement.addressBits
             val origin = statement.instructionOrigin!!
             origins[address] = origin
             // Record the first emitted address for each occurrence before sorting by address.
@@ -66,17 +66,17 @@ internal class SecondPassProcessor(
             try {
                 context.memory().setStatement(address, statement)
             } catch (error: AddressErrorException) {
-                errors.add(ErrorMessage(statement.originalTokenList!![0], "Invalid address for text segment: ${error.address}"))
+                errors.add(ErrorMessage(statement.originalTokenList!![0], "Invalid address for text segment: ${error.addressBits}"))
             }
         }
 
         machine.sortWith { first, second ->
             checkCancellation.run()
-            compareUnsigned(first.address, second.address)
+            first.addressBits.toULong().compareTo(second.addressBits.toULong())
         }
         checkDuplicateAddresses(machine, errors)
         if (errors.errorsOccurred() || errors.warningsOccurred() && warningsAreErrors) throw ProcessingException(errors)
-        return Result(machine, InstructionSourceMap(origins, breakpoints, pseudoAddresses))
+        return Result(machine, InstructionSourceMap.fromAddressBits(origins, breakpoints, pseudoAddresses))
     }
 
     private fun checkDuplicateAddresses(instructions: List<ProgramStatement>, errors: ErrorList) {
@@ -84,9 +84,13 @@ internal class SecondPassProcessor(
             checkCancellation.run()
             val first = instructions[index]
             val second = instructions[index + 1]
-            if (first.address == second.address) {
-                val address = NumberDisplayBase.formatUnsignedInteger(second.address, NumberDisplayBase.getBase(context.displayAddressesInHex()))
-                val directive = if (context.memory().inTextSegment(second.address)) ".text" else ".ktext"
+            if (first.addressBits == second.addressBits) {
+                val address = if (second.addressBits == second.address.toLong()) {
+                    NumberDisplayBase.formatUnsignedInteger(second.address, NumberDisplayBase.getBase(context.displayAddressesInHex()))
+                } else if (context.displayAddressesInHex()) {
+                    Binary.longToHexString(second.addressBits)
+                } else second.addressBits.toULong().toString()
+                val directive = if (context.memory().inWideText(second.addressBits) || context.memory().inTextSegment(second.address)) ".text" else ".ktext"
                 errors.add(
                     ErrorMessage(
                         second.sourceMIPSprogram, second.sourceLine, 0,

@@ -217,8 +217,18 @@ internal class FirstPassProcessor(
                     dataAddress
                 } else textAddress
                 address.kernel = directive == Directives.KDATA || directive == Directives.KTEXT
-                if (tokens.size() > 1 && TokenTypes.isIntegerTokenType(tokens[1].type)) {
-                    address.set(Binary.stringToInt(tokens[1].value))
+                if (tokens.size() > 1) {
+                    val operand = tokens[1]
+                    if (context.session.target == MarsTarget.MARS64) {
+                        try {
+                            val bits = Binary.stringToDoubleword(operand.value)
+                            address.set(if (bits == bits.toUInt().toLong()) bits.toInt().toLong() else bits)
+                        } catch (_: NumberFormatException) {
+                            errors.add(ErrorMessage(operand, "Invalid segment address"))
+                        }
+                    } else if (TokenTypes.isIntegerTokenType(operand.type)) {
+                        address.set(Binary.stringToInt(operand.value).toLong())
+                    }
                 }
             }
             Directives.WORD, Directives.DWORD, Directives.HALF, Directives.BYTE, Directives.FLOAT, Directives.DOUBLE -> {
@@ -311,7 +321,7 @@ internal class FirstPassProcessor(
             val symbol = local.getSymbol(label.value)
             when {
                 symbol == null -> errors.add(ErrorMessage(label, "\"$label\" declared global label but not defined."))
-                global.getAddress(label.value) != SymbolTable.NOT_FOUND ->
+                global.getSymbol(label.value) != null ->
                     errors.add(ErrorMessage(label, "\"$label\" already defined as global in a different file."))
                 else -> {
                     local.removeSymbol(label)
@@ -394,25 +404,37 @@ internal class FirstPassProcessor(
     }
 
     private fun storeDoubleword(token: Token) {
+        if (token.type == TokenTypes.IDENTIFIER) {
+            val symbol = fileCurrentlyBeingAssembled.localSymbolTable!!.getSymbolLocalOrGlobal(token.value)
+            if (symbol == null) {
+                val address = writeDoubleword(0, token)
+                fileReferences.add(address, Long.SIZE_BYTES, token)
+            } else {
+                symbolUses.record(token, symbol)
+                writeDoubleword(symbol.addressBits, token)
+            }
+            return
+        }
         val bits = try {
             Binary.stringToDoubleword(token.value)
         } catch (_: NumberFormatException) {
             errors.add(ErrorMessage(token, "\"$token\" is not a valid 64-bit integer constant"))
             return
         }
+        writeDoubleword(bits, token)
+    }
+
+    private fun writeDoubleword(bits: Long, token: Token): Long {
         alignData(Long.SIZE_BYTES)
-        val memory = context.memory()
-        val low = bits.toInt()
-        val high = (bits ushr Int.SIZE_BITS).toInt()
+        val address = dataAddress.get()
         try {
-            val address = dataAddress.get()
-            memory.set(address, if (memory.byteOrder) low else high, Int.SIZE_BYTES)
-            memory.set(address + Int.SIZE_BYTES, if (memory.byteOrder) high else low, Int.SIZE_BYTES)
+            context.memory().setAssemblyDoubleword(address, bits)
         } catch (_: AddressErrorException) {
             reportInvalidDataAddress(token)
-            return
+            return address
         }
         dataAddress.increment(Long.SIZE_BYTES)
+        return address
     }
 
     private fun storeInteger(token: Token, directive: Directives) {
@@ -434,16 +456,23 @@ internal class FirstPassProcessor(
             }
             token.type == TokenTypes.IDENTIFIER -> {
                 val symbol = fileCurrentlyBeingAssembled.localSymbolTable!!.getSymbolLocalOrGlobal(token.value)
-                if (symbol == null || symbol.address == SymbolTable.NOT_FOUND) {
+                if (symbol == null || symbol.addressBits == SymbolTable.NOT_FOUND.toLong()) {
                     val address = writeToDataSegment(0, length, token)
                     fileReferences.add(address, length, token)
                 } else {
                     symbolUses.record(token, symbol)
-                    writeToDataSegment(symbol.address, length, token)
+                    writeToDataSegment(narrowDataSymbol(symbol, token), length, token)
                 }
             }
             else -> errors.add(ErrorMessage(token, "\"$token\" is not a valid integer constant or label"))
         }
+    }
+
+    private fun narrowDataSymbol(symbol: Symbol, token: Token): Int {
+        if (symbol.addressBits != symbol.address.toLong()) {
+            errors.add(ErrorMessage(token, "Label address requires .dword"))
+        }
+        return symbol.address
     }
 
     private fun storeRealNumber(token: Token, directive: Directives) {
@@ -507,7 +536,7 @@ internal class FirstPassProcessor(
 
     private fun storeCharacter(value: Int, token: Token) {
         try {
-            context.memory().set(dataAddress.get(), value, DataTypes.CHAR_SIZE)
+            context.memory().setAssemblyData(dataAddress.get(), value, DataTypes.CHAR_SIZE)
         } catch (_: AddressErrorException) {
             reportInvalidDataAddress(token)
         }
@@ -521,11 +550,11 @@ internal class FirstPassProcessor(
     }
 
     /** Returns the address to use when backpatching a forward reference. */
-    private fun writeToDataSegment(value: Int, length: Int, token: Token): Int {
+    private fun writeToDataSegment(value: Int, length: Int, token: Token): Long {
         alignData(length)
         val address = dataAddress.get()
         try {
-            context.memory().set(address, value, length)
+            context.memory().setAssemblyData(address, value, length)
         } catch (_: AddressErrorException) {
             reportInvalidDataAddress(token)
             return address
@@ -537,7 +566,13 @@ internal class FirstPassProcessor(
     private fun writeDoubleToDataSegment(value: Double, token: Token) {
         alignData(DataTypes.DOUBLE_SIZE)
         try {
-            context.memory().setDouble(dataAddress.get(), value)
+            val address = dataAddress.get()
+            val memory = context.memory()
+            if (address == address.toInt().toLong()) {
+                memory.setDouble(address.toInt(), value)
+            } else {
+                memory.setAssemblyDoubleword(address, value.toRawBits())
+            }
         } catch (_: AddressErrorException) {
             reportInvalidDataAddress(token)
             return
@@ -553,23 +588,23 @@ internal class FirstPassProcessor(
         if (autoAlign) dataAddress.set(alignToBoundary(dataAddress.get(), length))
     }
 
-    private fun alignToBoundary(address: Int, boundary: Int): Int {
+    private fun alignToBoundary(address: Long, boundary: Int): Long {
         val remainder = address % boundary
-        if (remainder == 0) return address
+        if (remainder == 0L) return address
         val aligned = address + boundary - remainder
         fileCurrentlyBeingAssembled.localSymbolTable!!.fixSymbolTableAddress(address, aligned)
         return aligned
     }
 
     class UserKernelAddressSpace(userBase: Int, kernelBase: Int) {
-        private val addresses = intArrayOf(userBase, kernelBase)
+        private val addresses = longArrayOf(userBase.toLong(), kernelBase.toLong())
         var kernel = false
 
         private val index: Int get() = if (kernel) 1 else 0
 
-        fun get(): Int = addresses[index]
+        fun get(): Long = addresses[index]
 
-        fun set(value: Int) {
+        fun set(value: Long) {
             addresses[index] = value
         }
 
@@ -578,12 +613,12 @@ internal class FirstPassProcessor(
         }
     }
 
-    private data class DataSegmentForwardReference(val patchAddress: Int, val length: Int, val token: Token)
+    private data class DataSegmentForwardReference(val patchAddress: Long, val length: Int, val token: Token)
 
     private inner class DataSegmentForwardReferences {
         private val entries = ArrayList<DataSegmentForwardReference>()
 
-        fun add(address: Int, length: Int, token: Token) {
+        fun add(address: Long, length: Int, token: Token) {
             entries.add(DataSegmentForwardReference(address, length, token))
         }
 
@@ -601,9 +636,13 @@ internal class FirstPassProcessor(
                 checkCancellation.run()
                 val entry = iterator.next()
                 val symbol = symbols.getSymbolLocalOrGlobal(entry.token.value)
-                if (symbol == null || symbol.address == SymbolTable.NOT_FOUND) continue
+                if (symbol == null || symbol.addressBits == SymbolTable.NOT_FOUND.toLong()) continue
                 try {
-                    context.memory().set(entry.patchAddress, symbol.address, entry.length)
+                    if (entry.length == Long.SIZE_BYTES) {
+                        context.memory().setAssemblyDoubleword(entry.patchAddress, symbol.addressBits)
+                    } else {
+                        context.memory().setAssemblyData(entry.patchAddress, narrowDataSymbol(symbol, entry.token), entry.length)
+                    }
                 } catch (_: AddressErrorException) {
                     // The initial data write already reported an invalid patch address.
                 }

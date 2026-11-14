@@ -326,7 +326,7 @@ class MarsContext @Inject constructor(
     }
 
     fun loadAssemblyImage(image: AssemblyImage, startAtMain: Boolean, checkCancellation: Runnable) {
-        loadAssemblyImage(image, checkCancellation) { programEntryAddress(startAtMain).toLong() }
+        loadAssemblyImage(image, checkCancellation) { programEntryAddress(startAtMain) }
     }
 
     private fun loadAssemblyImage(image: AssemblyImage, checkCancellation: Runnable, entryAddress: LongSupplier) {
@@ -344,7 +344,7 @@ class MarsContext @Inject constructor(
             for (statement in instructions) {
                 checkCancellation.run()
                 try {
-                    memory.setStatement(statement.address, statement)
+                    memory.setStatement(statement.addressBits, statement)
                 } catch (invalidAddress: AddressErrorException) {
                     throw IllegalStateException("Invalid instruction address in assembly image", invalidAddress)
                 }
@@ -368,7 +368,7 @@ class MarsContext @Inject constructor(
 
     internal fun finishAssembly(candidate: MIPSprogram) {
         program = candidate
-        registerFile.initializeProgramCounter(programEntryAddress(settings.isStartAtMainEnabled))
+        registerFile.setProgramCounterBits(programEntryAddress(settings.isStartAtMainEnabled))
     }
 
     /** Closes default I/O. Caller-supplied syscall environments remain caller-owned. */
@@ -381,10 +381,14 @@ class MarsContext @Inject constructor(
         if (active != null) active.close() else releaseDefaultResources()
     }
 
-    private fun programEntryAddress(startAtMain: Boolean): Int {
-        val entry = if (startAtMain) symbolTable.getAddress(SymbolTable.getStartLabel()) else SymbolTable.NOT_FOUND
-        return if (entry != SymbolTable.NOT_FOUND && (memory.inTextSegment(entry) || memory.inKernelTextSegment(entry))) {
-            entry
-        } else memory.textBaseAddress
+    private fun programEntryAddress(startAtMain: Boolean): Long {
+        val entry = if (startAtMain) symbolTable.getSymbol(SymbolTable.getStartLabel())?.addressBits else null
+        if (entry != null) {
+            val narrow = entry.toInt()
+            if (memory.inWideText(entry) || entry == narrow.toLong() &&
+                (memory.inTextSegment(narrow) || memory.inKernelTextSegment(narrow))
+            ) return entry
+        }
+        return memory.textBaseAddress.toLong()
     }
 }

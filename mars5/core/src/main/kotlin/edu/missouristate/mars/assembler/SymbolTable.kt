@@ -42,7 +42,7 @@ open class SymbolTable @JvmOverloads constructor(private val globalSymbols: Symb
     open fun loadDefinitions(definitions: Map<String, Definition>) {
         clear()
         definitions.forEach { (name, definition) ->
-            table.add(Symbol(name, definition.address, definition.kind, definition.origin, definition.macroPrivate, definition.column))
+            table.add(Symbol(name, definition.addressBits, definition.kind, definition.origin, definition.macroPrivate, definition.column))
         }
     }
 
@@ -51,6 +51,10 @@ open class SymbolTable @JvmOverloads constructor(private val globalSymbols: Symb
     }
 
     fun addSymbol(token: Token, address: Int, kind: Kind, origin: Origin?, macroPrivate: Boolean, errors: ErrorList) {
+        addSymbol(token, address.toLong(), kind, origin, macroPrivate, errors)
+    }
+
+    internal fun addSymbol(token: Token, address: Long, kind: Kind, origin: Origin?, macroPrivate: Boolean, errors: ErrorList) {
         addSymbol(token, Symbol(token.value, address, kind, origin, macroPrivate, token.writtenOrigin().originalStartPos), errors)
     }
 
@@ -74,18 +78,18 @@ open class SymbolTable @JvmOverloads constructor(private val globalSymbols: Symb
 
     open fun getSymbolLocalOrGlobal(name: String?): Symbol? {
         val local = getSymbol(name)
-        return if (globalSymbols != null && (local == null || local.address == NOT_FOUND)) globalSymbols.getSymbol(name) else local
+        return if (globalSymbols != null && (local == null || local.addressBits == NOT_FOUND.toLong())) globalSymbols.getSymbol(name) else local
     }
 
     open fun getSymbol(name: String?): Symbol? = table.firstOrNull { it.name == name }
 
     open fun getSymbolGivenAddress(spelling: String): Symbol? {
         val address = try {
-            Binary.stringToInt(spelling)
+            Binary.stringToLong(spelling)
         } catch (_: NumberFormatException) {
             return null
         }
-        return table.firstOrNull { it.address == address }
+        return table.firstOrNull { it.addressBits == address }
     }
 
     open fun getSymbolGivenAddressLocalOrGlobal(spelling: String): Symbol? =
@@ -100,8 +104,12 @@ open class SymbolTable @JvmOverloads constructor(private val globalSymbols: Symb
     }
 
     open fun fixSymbolTableAddress(originalAddress: Int, replacementAddress: Int) {
+        fixSymbolTableAddress(originalAddress.toLong(), replacementAddress.toLong())
+    }
+
+    internal fun fixSymbolTableAddress(originalAddress: Long, replacementAddress: Long) {
         for (symbol in table) {
-            if (symbol.address == originalAddress) symbol.address = replacementAddress
+            if (symbol.addressBits == originalAddress) symbol.addressBits = replacementAddress
         }
     }
 

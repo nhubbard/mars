@@ -186,7 +186,7 @@ class MarsTargetTest {
                 machine.memory.byteOrder = littleEndian
                 assertEquals(MarsTarget.MARS64, machine.target)
                 val program = requireNotNull(machine.program)
-                assertFalse(program.simulate(10))
+                assertFalse(program.simulate(program.instructionCount()))
                 val cell = machine.registerFile.getValue(10)
                 assertEquals(0xffff_ffffL, machine.registerFile.getLongValueNoNotify(9))
                 assertEquals(0L, machine.registerFile.getLongValueNoNotify(11))

@@ -85,6 +85,7 @@ enum class TokenTypes {
             if (RegisterNames.floating(value) != null) return FP_REGISTER_NAME
             if (instructions.target == MarsTarget.MARS64 && RegisterNames.vector(value) != null) return VECTOR_REGISTER_NAME
 
+            if (instructions.target == MarsTarget.MARS64 && hasDoublewordSpelling(value)) return INTEGER_64
             val integer = try {
                 Binary.stringToInt(value)
             } catch (_: NumberFormatException) {
@@ -98,7 +99,6 @@ enum class TokenTypes {
                     else -> INTEGER_32
                 }
             }
-            if (instructions.target == MarsTarget.MARS64 && hasDoublewordSpelling(value)) return INTEGER_64
             try {
                 parseDouble(value)
                 return REAL_NUMBER
@@ -128,8 +128,13 @@ enum class TokenTypes {
 
         private fun hasDoublewordSpelling(value: String): Boolean {
             val unsigned = value.removePrefix("-").removePrefix("+")
-            return unsigned.startsWith("0x", ignoreCase = true) && unsigned.length in 11..18 &&
-                unsigned.substring(2).all { it in '0'..'9' || it in 'a'..'f' || it in 'A'..'F' }
+            if (unsigned.startsWith("0x", ignoreCase = true)) {
+                return unsigned.length in 11..18 && unsigned.substring(2).toULongOrNull(16) != null
+            }
+            if (unsigned.firstOrNull() == '0' || unsigned.length < 10) return false
+            val bits = value.toLongOrNull()
+            return if (bits != null) bits !in Int.MIN_VALUE.toLong()..UInt.MAX_VALUE.toLong()
+            else !value.startsWith('-') && unsigned.toULongOrNull() != null
         }
 
         @JvmStatic

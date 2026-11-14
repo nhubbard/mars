@@ -1,5 +1,6 @@
 package edu.missouristate.mars.assembler
 
+import edu.missouristate.mars.util.Binary
 import edu.missouristate.mars.ErrorMessage
 import edu.missouristate.mars.ErrorMessage.Companion.WARNING
 import edu.missouristate.mars.ProgramStatement
@@ -108,6 +109,14 @@ internal class Parser(private val pass: FirstPassProcessor) {
             pass.errors.add(ErrorMessage(operator, "Extended (pseudo) instruction or format not permitted.  See Settings."))
         }
         if (!OperandFormat.tokenOperandMatch(tokens, instruction, pass.errors, pass.context.bareMachineEnabled())) return null
+        if (instruction.name == "dli") {
+            try {
+                Binary.stringToDoubleword(tokens[2].value)
+            } catch (_: NumberFormatException) {
+                pass.errors.add(ErrorMessage(tokens[2], "Invalid 64-bit integer constant"))
+                return null
+            }
+        }
         if (instruction is Release6ImmediateTrap && RegisterNames.integer(tokens[1].value)?.number == 1) {
             pass.errors.add(ErrorMessage(tokens[1], "This immediate trap uses \$at. Use a different temporary and a register trap."))
             return null
@@ -115,8 +124,8 @@ internal class Parser(private val pass: FirstPassProcessor) {
 
         val instructionOrigin = origin(physicalLine, caller)
         val statement = ProgramStatement(
-            pass.fileCurrentlyBeingAssembled, source, tokenList, tokens, instruction, pass.textAddress.get(),
-            sourceLineNumber, instructionOrigin, sourceOperands(tokens, instruction, instructionOrigin.location),
+            pass.fileCurrentlyBeingAssembled, source, tokenList, tokens, instruction, pass.textAddress.get().toInt(),
+            sourceLineNumber, instructionOrigin, sourceOperands(tokens, instruction, instructionOrigin.location), pass.textAddress.get(),
         )
         val delayedBranching = pass.context.settings().isDelayedBranchingEnabled
         var length = if (instruction is ExtendedInstruction) instruction.getInstructionLength(delayedBranching) else instruction.instructionLength

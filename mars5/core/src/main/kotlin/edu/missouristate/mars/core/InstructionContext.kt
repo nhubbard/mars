@@ -360,6 +360,7 @@ class InstructionContext(private val session: MarsContext, private val environme
 
     internal fun loadPcRelativeWord(address: Long): Int {
         val memory = memory()
+        if (memory.inWideText(address)) return memory.fetchInstruction(address, notify = false)?.binaryStatement ?: 0
         val location = address.toInt()
         return if (address == location.toLong() &&
             (memory.inTextSegment(location) || memory.inKernelTextSegment(location))

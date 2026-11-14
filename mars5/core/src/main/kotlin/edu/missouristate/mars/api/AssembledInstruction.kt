@@ -5,4 +5,7 @@ import kotlin.jvm.JvmRecord
 
 /** An emitted instruction and its source provenance when available. */
 @JvmRecord
-data class AssembledInstruction(val address: Int, val encoding: Int, val assembly: String, val origin: Origin?)
+data class AssembledInstruction @JvmOverloads constructor(
+    val address: Int, val encoding: Int, val assembly: String, val origin: Origin?,
+    val addressBits: Long = address.toLong(),
+)

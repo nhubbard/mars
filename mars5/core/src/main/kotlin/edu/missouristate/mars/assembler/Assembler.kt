@@ -69,7 +69,7 @@ class Assembler(private val context: AssemblyContext) {
         HashMap<String, Definition>().apply {
             for (symbol in table.allSymbols) {
                 checkCancellation.run()
-                put(symbol.name, Definition(symbol.address, symbol.kind(), symbol.origin(), symbol.macroPrivate(), symbol.column()))
+                put(symbol.name, Definition(symbol.address, symbol.kind(), symbol.origin(), symbol.macroPrivate(), symbol.column(), symbol.addressBits))
             }
         }
 }

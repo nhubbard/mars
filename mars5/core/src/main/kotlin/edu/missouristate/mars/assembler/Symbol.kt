@@ -34,12 +34,16 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /** A label's current address and its original definition. */
 open class Symbol internal constructor(
     open val name: String,
-    open var address: Int,
+    internal var addressBits: Long,
     private val kind: Kind,
     private val origin: Origin?,
     private val macroPrivate: Boolean,
     private val column: Int?,
 ) {
+    open var address: Int
+        get() = addressBits.toInt()
+        set(value) { addressBits = value.toLong() }
+
     fun kind(): Kind = kind
 
     fun origin(): Origin? = origin

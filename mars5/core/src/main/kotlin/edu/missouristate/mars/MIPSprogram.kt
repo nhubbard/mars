@@ -272,7 +272,7 @@ open class MIPSprogram @JvmOverloads constructor(
         val instructions = ArrayList<AssembledInstruction>()
         for (statement in this.instructions ?: return emptyList()) {
             checkCancellation.run()
-            val origin = sourceMap.origins()[statement.address]
+            val origin = sourceMap.originsByAddress[statement.addressBits]
             var frame = origin
             while (frame != null) {
                 if (frame.location == location) {
@@ -286,19 +286,19 @@ open class MIPSprogram @JvmOverloads constructor(
     }
 
     override fun pseudoInstructions(checkCancellation: Runnable): List<AssembledInstruction> {
-        val addresses = sourceMap.pseudoAddresses()
+        val addresses = sourceMap.pseudoAddressBits
         if (addresses.isEmpty()) return emptyList()
         val instructions = ArrayList<AssembledInstruction>(addresses.size)
         for (statement in this.instructions!!) {
             checkCancellation.run()
-            val address = statement.address
-            if (address in addresses) instructions.add(assembledInstruction(statement, sourceMap.origins()[address]))
+            val address = statement.addressBits
+            if (address in addresses) instructions.add(assembledInstruction(statement, sourceMap.originsByAddress[address]))
         }
         return copyList(instructions)
     }
 
     private fun assembledInstruction(statement: ProgramStatement, origin: Origin?): AssembledInstruction =
-        AssembledInstruction(statement.address, statement.binaryStatement, statement.printableBasicAssemblyStatement, origin)
+        AssembledInstruction(statement.address, statement.binaryStatement, statement.printableBasicAssemblyStatement, origin, statement.addressBits)
 
     override fun symbolMap(): AssemblySymbolMap = symbolMap
 

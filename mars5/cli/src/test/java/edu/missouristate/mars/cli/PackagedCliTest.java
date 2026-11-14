@@ -122,6 +122,24 @@ class PackagedCliTest {
   }
 
   @Test
+  void runsSourceAssembledAboveFourGiB() throws Exception {
+    var entry = source("high-address.s", """
+        .data 0x100000000
+        pointer: .dword main
+        .text 0x100400000
+        .globl main
+        main:
+            dla $a0,pointer
+            ld $t0,0($a0)
+            li $v0,10
+            syscall
+        """);
+    var run = launch("--target", "mars64", "--start-at-main", "--register", "t0", entry.toString());
+    assertEquals(0, run.status(), run.err());
+    assertTrue(run.out().contains("$t0\t0x0000000100400000"), run.out());
+  }
+
+  @Test
   void runsAnMsaLoadComputeAndStoreProgram() throws Exception {
     var entry = source("vector.s", """
         .data

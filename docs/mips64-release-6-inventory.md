@@ -79,9 +79,14 @@ limit raise an address exception before writing any bytes. Its contents
 participate in assembly images and backstep. With self-modifying code
 enabled, MARS64 can fetch generated instructions in that region. The program
 counter, control transfers, PC-relative instructions, EPC, and backstep
-preserve the full address during execution. Source assembly still places
-text and labels in the classroom map. The IntelliJ memory browser and
-breakpoints still use 32-bit addresses.
+preserve the full address during execution. MARS64 also accepts
+`.data 0x100000000` and `.text 0x100400000` for explicit placement in its
+high data and text regions. High text runs with the default execution
+permissions. `la` and `dla` can load a full-width label address,
+`dli` loads a full-width constant, and `.dword label` stores a full-width
+address, including forward references. The assembler's source map
+preserves these addresses. The IntelliJ memory browser and breakpoints
+still use 32-bit addresses.
 
 `mfc0` sign-extends its word result. `mtc0` preserves the full source value
 when writing an educational address register. For both forms, reserved or

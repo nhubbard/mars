@@ -122,7 +122,7 @@ class Mars64ExceptionReturnTest {
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
             val program = session.assemble(listOf(source), null, false, false)
-            val address = 0x1_0000_0000L + session.memory.textBaseAddress
+            val address = 0x2_0000_0000L + session.memory.textBaseAddress
             session.editCoprocessor0Register(STATUS, 2)
             session.editIntegerRegister(9, address)
             assertThrows(ProcessingException::class.java) { program.simulate(2) }

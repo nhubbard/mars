@@ -2,6 +2,7 @@ package edu.missouristate.mars
 
 import edu.missouristate.mars.api.InstructionSourceMap.Origin
 import edu.missouristate.mars.api.InstructionSourceMap.SourceOperand
+import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.assembler.Symbol
 import edu.missouristate.mars.assembler.SymbolTable
 import edu.missouristate.mars.assembler.Token
@@ -13,6 +14,7 @@ import edu.missouristate.mars.core.SimulationSettings
 import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
 import edu.missouristate.mars.mips.instructions.Instruction
+import edu.missouristate.mars.mips.instructions.ExtendedInstruction
 import edu.missouristate.mars.mips.instructions.InstructionDefaults
 import edu.missouristate.mars.mips.instructions.InstructionSet
 import edu.missouristate.mars.util.Binary
@@ -81,10 +83,11 @@ open class ProgramStatement private constructor(
         sourceLine: Int,
         instructionOrigin: Origin? = null,
         sourceOperands: List<SourceOperand> = emptyList(),
+        addressBits: Long = textAddress.toLong(),
     ) : this(
         sourceMIPSprogram, "", source, originalTokenList, strippedTokenList, instruction, textAddress, sourceLine,
         instructionOrigin, copyList(sourceOperands), sourceMIPSprogram?.assemblyContext()?.session?.settings,
-        IntArray(4), 0, 0, null, null, ArrayList(),
+        IntArray(4), 0, 0, null, null, ArrayList(), addressBits,
     )
 
     /** Decodes an instruction when only the machine word and its address are available. */
@@ -114,6 +117,8 @@ open class ProgramStatement private constructor(
             describeDecodedInstruction(decoded)
         }
     }
+
+    private var absoluteJumpAddress: Long? = null
 
     /** A detached copy of the instruction, safe to install in a different session. */
     open fun captureImage(): Image = Image.capture(this)
@@ -219,21 +224,44 @@ open class ProgramStatement private constructor(
                 }
                 TokenTypes.IDENTIFIER -> {
                     val symbol = sourceMIPSprogram!!.localSymbolTable!!.getSymbolLocalOrGlobal(value)
-                    if (symbol == null || symbol.address == SymbolTable.NOT_FOUND) {
+                    if (symbol == null || symbol.addressBits == SymbolTable.NOT_FOUND.toLong()) {
                         errors.add(ErrorMessage(token, "Symbol \"$value\" not found in symbol table."))
                         return
                     }
                     recordSymbolUse.accept(token, symbol)
                     // Branch offsets are in words from the instruction after the branch.
-                    val relative = (instruction as? BasicInstruction)?.instructionFormat == BasicInstructionFormat.I_BRANCH_FORMAT
-                    val operand = if (relative) (symbol.address - (address + Instruction.INSTRUCTION_LENGTH)) shr 2 else symbol.address
-                    basic.append(operand)
-                    display.add(if (relative) DisplayElement.Value(operand) else DisplayElement.Address(operand))
-                    operandValues!![numOperands++] = operand
+                    val basicInstruction = instruction as? BasicInstruction
+                    val relative = basicInstruction?.instructionFormat == BasicInstructionFormat.I_BRANCH_FORMAT
+                    val target = symbol.addressBits
+                    if (target != target.toInt().toLong() && !relative &&
+                        (instruction as? BasicInstruction)?.instructionFormat != BasicInstructionFormat.J_FORMAT &&
+                        (instruction as? ExtendedInstruction)?.acceptsWideAddress != true
+                    ) {
+                        errors.add(ErrorMessage(token, "Label address requires a full-width operand. Load it with la or dla and use register addressing."))
+                        return
+                    }
+                    val wideTarget = sourceMIPSprogram?.assemblyContext()?.session?.target == MarsTarget.MARS64
+                    val displacement = target - (addressBits + Instruction.INSTRUCTION_LENGTH)
+                    val operand = if (!relative) target else if (wideTarget) displacement shr 2 else (displacement.toInt() shr 2).toLong()
+                    if (relative && wideTarget) {
+                        val mask = checkNotNull(basicInstruction).operationMask
+                        val width = mask.reversed().takeWhile { it == mask.last() }.length
+                        val limit = 1L shl (width - 1)
+                        if (operand !in -limit..<limit || target and 3 != 0L) {
+                            errors.add(ErrorMessage(token, "Branch destination is unaligned or outside its signed displacement range"))
+                            return
+                        }
+                    }
+                    if ((instruction as? BasicInstruction)?.instructionFormat == BasicInstructionFormat.J_FORMAT) {
+                        absoluteJumpAddress = target
+                    }
+                    basic.append(if (!relative && target != target.toInt().toLong()) Binary.longToHexString(target) else operand)
+                    display.add(if (relative) DisplayElement.Value(operand.toInt()) else DisplayElement.Address(operand.toInt()))
+                    operandValues!![numOperands++] = operand.toInt()
                 }
                 TokenTypes.INTEGER_5, TokenTypes.INTEGER_16, TokenTypes.INTEGER_16U, TokenTypes.INTEGER_32 -> {
                     val operand = Binary.stringToInt(value)
-                    basic.append(operand)
+                    basic.append(if (instruction?.name == "dli") value else operand)
                     display.add(DisplayElement.Value(operand))
                     operandValues!![numOperands++] = operand
                 }
@@ -257,7 +285,12 @@ open class ProgramStatement private constructor(
         val values = operandValues!!
         if (basic.instructionFormat == BasicInstructionFormat.J_FORMAT) {
             machineStatement = basic.operationMask.replace('c', '0')
-            if ((address and JUMP_REGION_MASK) != (values[0] and JUMP_REGION_MASK)) {
+            val target = absoluteJumpAddress ?: values[0].toLong()
+            val regionMask = JUMP_REGION_MASK.toLong()
+            val pc = if (sourceMIPSprogram?.assemblyContext()?.session?.target == MarsTarget.MARS64) {
+                addressBits + Instruction.INSTRUCTION_LENGTH
+            } else addressBits
+            if (pc and regionMask != target and regionMask) {
                 errors.add(ErrorMessage(sourceMIPSprogram, sourceLine, 0, "Jump target word address beyond 26-bit range"))
                 return
             }

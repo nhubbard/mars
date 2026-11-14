@@ -60,6 +60,8 @@ open class ExtendedInstruction @JvmOverloads constructor(
 
     open fun hasCompactTranslation(): Boolean = compactTemplates != null
 
+    internal val acceptsWideAddress: Boolean get() = branchesToLabel() || standardTemplates?.any { "DW3_2" in it } == true
+
     open fun branchesToLabel(): Boolean = hasLabelBranch(standardTemplates) ||
         hasLabelBranch(compactTemplates)
 
@@ -108,6 +110,14 @@ open class ExtendedInstruction @JvmOverloads constructor(
             for (position in 1 until tokens.size()) {
                 val value = tokens[position].value
                 instruction = instruction.replace("RG$position", value).replace("OP$position", value)
+
+                for (part in 0..3) {
+                    val marker = "DW${part}_$position"
+                    if (marker in instruction) {
+                        val bits = Binary.stringToDoubleword(value)
+                        number(marker, ((bits ushr (part * 16)) and 0xffff).toInt())
+                    }
+                }
 
                 withAddend("LH${position}P", value) { marker, address -> number(marker, adjustedHigh(address)) }
                 if (instruction.contains("LH$position")) number("LH$position", adjustedHigh(parseNumber(value)))

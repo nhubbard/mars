@@ -15,10 +15,16 @@ class InstructionSourceMap @JvmOverloads constructor(
     origins: Map<Int, Origin>,
     breakpoints: Map<Location, List<Int>>,
     pseudoAddresses: Set<Int> = emptySet(),
+    originsByAddress: Map<Long, Origin> = origins.mapKeys { it.key.toLong() },
+    breakpointsByAddress: Map<Location, List<Long>> = breakpoints.mapValues { (_, values) -> values.map(Int::toLong) },
+    pseudoAddressBits: Set<Long> = pseudoAddresses.mapTo(HashSet(), Int::toLong),
 ) {
     private val origins: Map<Int, Origin> = copyMap(origins)
     private val breakpoints: Map<Location, List<Int>> = copyMap(breakpoints.mapValues { copyList(it.value) })
     private val pseudoAddresses: Set<Int> = copySet(pseudoAddresses)
+    val originsByAddress: Map<Long, Origin> = copyMap(originsByAddress)
+    val breakpointsByAddress: Map<Location, List<Long>> = copyMap(breakpointsByAddress.mapValues { copyList(it.value) })
+    val pseudoAddressBits: Set<Long> = copySet(pseudoAddressBits)
 
     fun origins(): Map<Int, Origin> = origins
 
@@ -27,13 +33,13 @@ class InstructionSourceMap @JvmOverloads constructor(
     fun pseudoAddresses(): Set<Int> = pseudoAddresses
 
     override fun equals(other: Any?): Boolean =
-        other is InstructionSourceMap && origins == other.origins && breakpoints == other.breakpoints &&
-            pseudoAddresses == other.pseudoAddresses
+        other is InstructionSourceMap && originsByAddress == other.originsByAddress &&
+            breakpointsByAddress == other.breakpointsByAddress && pseudoAddressBits == other.pseudoAddressBits
 
-    override fun hashCode(): Int = 31 * (31 * origins.hashCode() + breakpoints.hashCode()) + pseudoAddresses.hashCode()
+    override fun hashCode(): Int = 31 * (31 * originsByAddress.hashCode() + breakpointsByAddress.hashCode()) + pseudoAddressBits.hashCode()
 
     override fun toString(): String =
-        "InstructionSourceMap[origins=$origins, breakpoints=$breakpoints, pseudoAddresses=$pseudoAddresses]"
+        "InstructionSourceMap[origins=$originsByAddress, breakpoints=$breakpointsByAddress, pseudoAddresses=$pseudoAddressBits]"
 
     /** An operand and its written token and macro arguments, from inner to outer invocation. */
     class SourceOperand(
@@ -95,6 +101,17 @@ class InstructionSourceMap @JvmOverloads constructor(
     data class Origin(val location: Location, val caller: Origin?)
 
     companion object {
+        internal fun fromAddressBits(
+            origins: Map<Long, Origin>, breakpoints: Map<Location, List<Long>>, pseudoAddresses: Set<Long>,
+        ): InstructionSourceMap = InstructionSourceMap(
+            origins.filterKeys { it == it.toInt().toLong() }.mapKeys { it.key.toInt() },
+            breakpoints.mapValues { (_, addresses) ->
+                addresses.filter { it == it.toInt().toLong() }.map(Long::toInt)
+            }.filterValues { it.isNotEmpty() },
+            pseudoAddresses.filter { it == it.toInt().toLong() }.mapTo(HashSet(), Long::toInt),
+            origins, breakpoints, pseudoAddresses,
+        )
+
         @JvmField val EMPTY = InstructionSourceMap(emptyMap(), emptyMap())
     }
 }

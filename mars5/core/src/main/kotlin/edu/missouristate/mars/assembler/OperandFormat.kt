@@ -86,6 +86,7 @@ object OperandFormat {
                 continue
             }
             if (expected == TokenTypes.REGISTER_NAME && type == TokenTypes.REGISTER_NUMBER) continue
+            if (expected == TokenTypes.INTEGER_64 && TokenTypes.isIntegerTokenType(type)) continue
             if (expected == TokenTypes.INTEGER_16 && type == TokenTypes.INTEGER_5 ||
                 expected == TokenTypes.INTEGER_16U && type == TokenTypes.INTEGER_5 ||
                 expected == TokenTypes.INTEGER_32 && (type == TokenTypes.INTEGER_5 || type == TokenTypes.INTEGER_16U || type == TokenTypes.INTEGER_16)

@@ -20,6 +20,8 @@ class InstructionLoader {
             val templates = lines.filterNot { it.isEmpty() || it.startsWith('#') || it.startsWith(' ') }
                 .mapNotNull { parseTemplate(it, owner) }.toMutableList()
             if (owner.target == MarsTarget.MARS64) {
+                templates.add(wideConstantTemplate(owner, "dli \$t1,0x123456789abcdef0"))
+                templates.add(wideConstantTemplate(owner, "dla \$t1,label"))
                 templates.addAll(release6TrapTemplates(owner))
                 templates.addAll(release6CompactBranchAliases(owner))
             }
@@ -49,6 +51,7 @@ class InstructionLoader {
         val wide = owner.target == MarsTarget.MARS64
         if (wide) {
             when (mnemonic) {
+                "la" -> if (example == "la \$t1,label") return wideConstantTemplate(owner, example)
                 "ld", "sd" -> return wideMemoryTemplate(owner, mnemonic, example)
                 "ulw", "usw", "ulh", "ulhu", "ush" ->
                     return wideMemoryTemplate(owner, mnemonic.removePrefix("u"), example)
@@ -93,6 +96,14 @@ class InstructionLoader {
             ExtendedInstruction(example, standard, remaining, description, owner)
         }
     }
+
+    private fun wideConstantTemplate(owner: InstructionSet, example: String): ExtendedInstruction =
+        ExtendedInstruction(
+            example,
+            "ori RG1, \$zero, DW3_2\n" +
+                (2 downTo 0).joinToString("\n") { "dsll RG1, RG1, 16\nori RG1, RG1, DW${it}_2" },
+            null, "Load a full-width constant or label address", owner,
+        )
 
     private fun wideWordArithmeticTemplate(owner: InstructionSet, mnemonic: String, example: String): ExtendedInstruction? {
         val operand = example.substringAfterLast(',')
