@@ -53,7 +53,7 @@ internal fun coprocessor0Operand(head: PsiElement): Int? {
 }
 
 internal fun enabledInstructionFormats(name: String, allowPseudo: Boolean, target: MarsTarget = MarsTarget.MARS32): List<Instruction> {
-    val catalog = if (target == MarsTarget.MARS64) InstructionDefaults.editorCatalog() else InstructionDefaults.get()
+    val catalog = InstructionDefaults.forTarget(target)
     val formats = catalog.matchOperator(name).orEmpty()
     return if (allowPseudo) formats else formats.filterIsInstance<BasicInstruction>()
 }

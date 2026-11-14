@@ -22,6 +22,10 @@ import java.lang.Math.unsignedMultiplyHigh
 
 /** Doubleword operations enabled by the educational MARS64 target. */
 internal val wideInstructionFactories: List<() -> BasicInstruction> = listOf(
+    { release6WordResult("mul", "Multiply words and keep the low word", "011000", Int::times) },
+    { release6WordResult("mulu", "Multiply unsigned words and keep the low word", "011001", Int::times) },
+    { release6WordResult("div", "Divide signed words and keep the quotient", "011010", Int::div, division = true) },
+    { release6WordResult("divu", "Divide unsigned words and keep the quotient", "011011", Integer::divideUnsigned, division = true) },
     { wideArithmetic("dadd", "Add doublewords and trap on signed overflow", "101100", ::addExact) },
     { wideArithmetic("daddu", "Add doublewords with wraparound", "101101", Long::plus) },
     { wideArithmetic("dsub", "Subtract doublewords and trap on signed overflow", "101110", ::subtractExact) },
@@ -194,6 +198,18 @@ internal val wideInstructionFactories: List<() -> BasicInstruction> = listOf(
         }
     },
 )
+
+private fun release6WordResult(
+    name: String, description: String, function: String, operation: (Int, Int) -> Int, division: Boolean = false,
+) = BasicInstruction(
+    "$name \$t1,\$t2,\$t3", description, R_FORMAT, "000000 sssss ttttt fffff 00010 $function",
+) { statement, context ->
+    val (destination, leftRegister, rightRegister) = statement.operands
+    val left = context.registerFile.getValue(leftRegister)
+    val right = context.registerFile.getValue(rightRegister)
+    if (division && right == 0) throw ProcessingException(context, statement, "division by zero", TRAP_EXCEPTION)
+    context.updateRegister(destination, operation(left, right))
+}
 
 private fun pcRelativeWideLoad(doubleword: Boolean): PcRelativeWordInstruction =
     object : PcRelativeWordInstruction(

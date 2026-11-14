@@ -130,10 +130,10 @@ di		201	audit
 di	rt	201	audit
 dins	rt, rs, pos, size	203	implemented
 div	rs, rt	209	removed
-div	rd,rs,rt	212	audit
-mod	rd,rs,rt	212	audit
-divu	rd,rs,rt	212	audit
-modu	rd,rs,rt	212	audit
+div	rd,rs,rt	212	implemented
+mod	rd,rs,rt	212	implemented
+divu	rd,rs,rt	212	implemented
+modu	rd,rs,rt	212	implemented
 ddiv	rd,rs,rt	212	audit
 dmod	rd,rs,rt	212	audit
 ddivu	rd,rs,rt	212	audit
@@ -291,10 +291,10 @@ mthc2	rt, Impl, sel	390	audit
 mthi	rs	391	removed
 mtlo	rs	392	removed
 mul	rd, rs, rt	393	removed
-mul	rd,rs,rt	397	audit
-muh	rd,rs,rt	397	audit
-mulu	rd,rs,rt	397	audit
-muhu	rd,rs,rt	397	audit
+mul	rd,rs,rt	397	implemented
+muh	rd,rs,rt	397	implemented
+mulu	rd,rs,rt	397	implemented
+muhu	rd,rs,rt	397	implemented
 dmul	rd,rs,rt	397	audit
 dmuh	rd,rs,rt	397	audit
 dmulu	rd,rs,rt	397	audit

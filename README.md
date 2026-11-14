@@ -87,10 +87,12 @@ map. Use `.dword` for aligned 64-bit constants and `ld` and `sd` to load and sto
 The MARS32 catalog includes additional user-mode operations from the MIPS32 Release 6 reference,
 including bitfield extraction and insertion, rotates, scaled addressing, PC-relative addressing,
 and compact control transfers, including signed and unsigned comparisons. Compact transfers
-use immediate control flow and are disallowed in a legacy delay slot. MARS retains `addi` for
-its primary opcode, which Release 6 reuses for `beqc`. `mod`, `modu`, `muh`, and `muhu` write
-their result to a general register. The historical `div`, `mul`, and `mulu` forms retain their
-original MARS behavior.
+use immediate control flow and are disallowed in a legacy delay slot. MARS32 retains `addi`
+and its historical HI/LO arithmetic. MARS64 uses the Release 6 encodings for `beqc`,
+`beqzalc`, and `bovc` in that opcode space. For MARS64 word multiplication and division,
+use the three-register `mul`, `mulu`, `div`, and `divu` forms. They write a sign-extended
+word result to the destination register. Use `muh` or `muhu` for the high product word and
+`mod` or `modu` for the remainder. MARS64 reports a trap on division by zero.
 The floating-point catalog includes fused multiply-add and subtract, minimum and maximum by value
 or magnitude, and bit-controlled selection. These operations use the simulator's existing
 floating-point model, with round-to-nearest arithmetic and paired registers for doubles.

@@ -78,10 +78,11 @@ or PC-relative immediate in this table is the displacement as written to LLVM.
 
 ## Shared forms and encoding conflicts to audit next
 
-- **Integer multiply and divide.** Compare the existing word forms with Appendix
-  A.4 Table A.26. Release 6 reuses names such as `div` for three-register
-  forms, while the older two-register operations write HI/LO. Track the forms
-  separately and defer compatibility translations until the native set is ready.
+- **Integer multiply and divide.** MARS64 uses the register-result word forms
+  in Appendix A.4 Table A.26 and excludes the legacy HI/LO native forms.
+  MARS32 retains its existing behavior. MARS64 defines a trap on division
+  by zero, and the inventory still tracks source migration guidance for
+  removed forms.
 - **Compact control flow.** Expand each operand constraint in Table A.29.
   Check overlapping encodings using raw words, then audit link values, taken
   and untaken paths, and forbidden-slot behavior. MARS64 now assigns the

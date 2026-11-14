@@ -18,7 +18,7 @@ class InstructionLoader {
     fun loadExtendedInstructions(owner: InstructionSet): List<ExtendedInstruction> = try {
         pseudoOps().useLines { lines ->
             copyOf(lines.filterNot { it.isEmpty() || it.startsWith('#') || it.startsWith(' ') }
-                .map { parseTemplate(it, owner) }.toList())
+                .mapNotNull { parseTemplate(it, owner) }.toList())
         }
     } catch (failure: IOException) {
         throw IllegalStateException("Unable to load pseudo-instruction templates", failure)
@@ -26,7 +26,7 @@ class InstructionLoader {
         throw IllegalStateException("Unable to load pseudo-instruction templates", failure)
     }
 
-    private fun parseTemplate(line: String, owner: InstructionSet): ExtendedInstruction {
+    private fun parseTemplate(line: String, owner: InstructionSet): ExtendedInstruction? {
         val tokens = StringTokenizer(line, "\t")
         val example = tokens.nextToken()
         val mnemonic = example.substringBefore(' ')
@@ -35,6 +35,8 @@ class InstructionLoader {
             when (mnemonic) {
                 "ld", "sd" -> return wideMemoryTemplate(owner, mnemonic, example)
                 "move" -> return ExtendedInstruction(example, "or RG1, RG2, \$0", null, "Copy an integer register", owner)
+                "mul", "mulu", "div", "divu", "rem", "remu" -> return wideWordArithmeticTemplate(owner, mnemonic, example)
+                "mulo", "mulou" -> return null
             }
         }
         var description = ""
@@ -64,6 +66,27 @@ class InstructionLoader {
         } else {
             ExtendedInstruction(example, standard, remaining, description, owner)
         }
+    }
+
+    private fun wideWordArithmeticTemplate(owner: InstructionSet, mnemonic: String, example: String): ExtendedInstruction? {
+        val operand = example.substringAfterLast(',')
+        val operation = when (mnemonic) {
+            "rem" -> "mod"
+            "remu" -> "modu"
+            else -> mnemonic
+        }
+        val description = when (operation) {
+            "mul", "mulu" -> "Multiply words and keep the low word"
+            "div", "divu" -> "Divide words and keep the quotient"
+            else -> "Divide words and keep the remainder"
+        }
+        val translation = when (operand) {
+            "\$t3" -> if (operation == mnemonic) return null else "$operation RG1, RG2, RG3"
+            "-100" -> "addiu \$1, \$0, VL3\n$operation RG1, RG2, \$1"
+            "100000" -> "lui \$1, VHL3\nori \$1, \$1, VL3U\n$operation RG1, RG2, \$1"
+            else -> error("Unknown word arithmetic operand form: $example")
+        }
+        return ExtendedInstruction(example, translation, null, description, owner)
     }
 
     private fun wideTemplateInstruction(mnemonic: String, token: String): String = when {

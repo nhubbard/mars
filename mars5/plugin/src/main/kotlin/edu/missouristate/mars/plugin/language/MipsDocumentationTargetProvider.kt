@@ -70,7 +70,7 @@ internal class MipsDocumentationTargetProvider : DocumentationTargetProvider, Lo
             // Includes are expanded before equivalences, so a generated .include cannot open a file.
             val operation = site.name
             if (Directives.INCLUDE.name.equals(operation, ignoreCase = true)) return emptyList()
-            return listOfNotNull(MipsDocumentationCatalog[operation])
+            return listOfNotNull(MipsDocumentationCatalog[operation, file.project.service<MarsAssemblySettings>().executionOptions.target])
         }
         val keyword = when (PsiUtilCore.getElementType(token)) {
             includeType -> ownerType in includeOwners
@@ -112,7 +112,7 @@ internal class MipsDocumentationTargetProvider : DocumentationTargetProvider, Lo
                 val definitions = if (exact == null) overloads.filterKeys { matchesMacroCall(tokens, end, setOf(it)) }.values else listOf(exact)
                 MacroLookupDocumentation(name, definitions, pointer)
             } else if (matchesCatalogAlias(tokens, end, options)) {
-                CatalogAliasDocumentation(MipsDocumentationCatalog[operation.value], pointer)
+                MipsDocumentationCatalog[operation.value, options.target]?.let { CatalogAliasDocumentation(it, pointer) }
             } else null
         }
     }
@@ -250,7 +250,7 @@ internal class MipsCatalogEntry(
 
 internal object MipsDocumentationCatalog {
     private val byName by lazy { catalog(InstructionDefaults.get()) }
-    private val wide by lazy { catalog(InstructionDefaults.editorCatalog()) }
+    private val wide by lazy { catalog(InstructionDefaults.forTarget(MarsTarget.MARS64)) }
 
     private fun catalog(instructionsForTarget: InstructionSet) =
         TreeMap<String, MipsCatalogEntry>(String.CASE_INSENSITIVE_ORDER).apply {
@@ -278,5 +278,8 @@ internal object MipsDocumentationCatalog {
         renderInstructionExample(instruction, bareMachine = true).text.removePrefix(instruction.name),
     )
 
-    operator fun get(name: String): MipsCatalogEntry = wide.getValue(name)
+    operator fun get(name: String, target: MarsTarget): MipsCatalogEntry? =
+        if (target == MarsTarget.MARS64) wide[name] else byName[name]
+
+    operator fun get(name: String): MipsCatalogEntry = byName[name] ?: wide.getValue(name)
 }

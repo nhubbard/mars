@@ -3,7 +3,6 @@ package edu.missouristate.mars.mips.instructions
 import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.mips.instructions.basic.CompactComparison
 import edu.missouristate.mars.mips.instructions.basic.InstrCompactCompareBranch
-import edu.missouristate.mars.mips.instructions.basic.InstrAddi
 /*
 Copyright (c) 2003-2013,  Pete Sanderson and Kenneth Vollmar
 
@@ -44,12 +43,12 @@ open class InstructionSet {
         populate(MarsTarget.MARS32)
     }
 
-    internal fun populate(target: MarsTarget) {
+    internal fun populate(target: MarsTarget, includeLegacySourceForms: Boolean = false) {
         this.target = target
         forms.clear()
         val loader = InstructionLoader()
         val common = loader.loadBasicInstructions()
-        forms.addAll(if (target == MarsTarget.MARS64) common.filterNot { it is InstrAddi } else common)
+        forms.addAll(if (target == MarsTarget.MARS64) common.filterNot { it.name in replacedWordInstructions } else common)
         if (target == MarsTarget.MARS64) {
             forms.addAll(wideInstructionFactories.map { it() })
             forms.addAll(CompactComparison.entries.filter { it.wideOnly }.map(::InstrCompactCompareBranch))
@@ -70,6 +69,10 @@ open class InstructionSet {
                 val specificity = right.mask.countOneBits() - left.mask.countOneBits()
                 if (specificity != 0) specificity else left.mask - right.mask
             }
+        if (includeLegacySourceForms) {
+            val examples = forms.mapTo(HashSet()) { it.exampleFormat }
+            forms.addAll(InstructionDefaults.get().instructionList.filter { examples.add(it.exampleFormat) })
+        }
     }
 
     open fun findByBinaryCode(binaryInstr: Int): BasicInstruction? {
@@ -88,4 +91,11 @@ open class InstructionSet {
         forms.filterTo(ArrayList()) { it.name.equals(name, ignoreCase = true) }.takeIf { it.isNotEmpty() }
 
     private data class MatchMap(val mask: Int, val instructions: Map<Int, List<BasicInstruction>>)
+
+    private companion object {
+        val replacedWordInstructions = setOf(
+            "addi", "mul", "div", "divu", "mult", "multu", "madd", "maddu", "msub", "msubu",
+            "mfhi", "mflo", "mthi", "mtlo",
+        )
+    }
 }

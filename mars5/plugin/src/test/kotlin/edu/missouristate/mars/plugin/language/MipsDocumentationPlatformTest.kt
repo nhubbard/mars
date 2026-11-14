@@ -5,6 +5,7 @@ import com.intellij.lang.documentation.ide.IdeDocumentationTargetProvider
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.command.WriteCommandAction
+import com.intellij.openapi.components.service
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.util.text.StringUtil
@@ -16,9 +17,11 @@ import com.intellij.testFramework.DumbModeTestUtils
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
+import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.assembler.Directives
 import edu.missouristate.mars.mips.instructions.InstructionDefaults
 import edu.missouristate.mars.mips.instructions.SyscallRegistry
+import edu.missouristate.mars.plugin.build.MarsAssemblySettings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -33,6 +36,19 @@ import org.junit.jupiter.api.Test
 class MipsDocumentationPlatformTest {
     private val project = codeInsightProjectFixture()
     private val fixture by codeInsightFixture(project)
+
+    @Test
+    fun `quick documentation describes the selected target's native arithmetic`() = timeoutRunBlocking {
+        val settings = project.get().service<MarsAssemblySettings>()
+        withContext(Dispatchers.EDT) { settings.changeTarget(MarsTarget.MARS64) }
+        try {
+            val html = documentation($$"di<caret>v $9,$10,$11").orEmpty()
+            assertTrue("Divide signed words and keep the quotient" in html, html)
+            assertTrue("mflo" !in html, html)
+        } finally {
+            withContext(Dispatchers.EDT) { settings.changeTarget(MarsTarget.MARS32) }
+        }
+    }
 
     @Test
     fun `quick documentation presents the core instruction examples and descriptions`() = timeoutRunBlocking {

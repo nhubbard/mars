@@ -12,7 +12,10 @@ object InstructionDefaults {
     fun get(): InstructionSet = Holder.instructions
 
     private val wide by lazy { InstructionSet().apply { populate(MarsTarget.MARS64) } }
+    private val editor by lazy { InstructionSet().apply { populate(MarsTarget.MARS64, includeLegacySourceForms = true) } }
+
+    fun forTarget(target: MarsTarget): InstructionSet = if (target == MarsTarget.MARS64) wide else get()
 
     /** The editor recognizes the union of both targets before project-specific analysis. */
-    fun editorCatalog(): InstructionSet = wide
+    fun editorCatalog(): InstructionSet = editor
 }
