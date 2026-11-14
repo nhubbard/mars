@@ -38,7 +38,7 @@ class MipsSyntaxHighlighter(private val debuggerExpression: Boolean = false) : S
         put(MipsTypes.psi("REGISTER"), registerColor)
         put(MipsTypes.psi("PARAMETER"), macroParameterColor)
         for (name in listOf("WORD", "DOLLAR_WORD", "MNEMONIC")) put(MipsTypes.psi(name), DefaultLanguageHighlighterColors.IDENTIFIER)
-        for (name in listOf("COMMA", "COLON", "LEFT_PAREN", "RIGHT_PAREN", "PLUS", "MINUS")) {
+        for (name in listOf("COMMA", "COLON", "LEFT_PAREN", "RIGHT_PAREN", "LEFT_BRACKET", "RIGHT_BRACKET", "PLUS", "MINUS")) {
             put(MipsTypes.psi(name), punctuationColor)
         }
         for (name in listOf("EQUALITY", "RELATION", "BIT_OR", "BIT_XOR", "BIT_AND", "BIT_NOT", "SHIFT")) {

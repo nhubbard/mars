@@ -29,6 +29,8 @@
     SEGMENT="regexp:\.(data|kdata|text|ktext)"
     COMMA=","
     COLON=":"
+    LEFT_BRACKET="["
+    RIGHT_BRACKET="]"
     LEFT_PAREN="("
     RIGHT_PAREN=")"
     PLUS="+"
@@ -78,7 +80,7 @@ short_equivalence ::= EQV <<isShortEquivalence>> raw_operand? &line_end {element
 equivalence ::= EQV name replacement+ {pin=1}
 replacement ::= assembly_token
 private assembly_token ::= signed_number | <<recoverBadOperandToken>> | single_assembly_token | unfinished_character
-private single_assembly_token ::= WORD | MNEMONIC | DIRECTIVE | REGISTER | DOLLAR_WORD | PARAMETER | NUMBER | quoted_operand | CHARACTER | COLON | LEFT_PAREN | RIGHT_PAREN | PLUS | MINUS | MACRO | END_MACRO | EQV | INCLUDE | SET | SEGMENT | EXTERN
+private single_assembly_token ::= WORD | MNEMONIC | DIRECTIVE | REGISTER | DOLLAR_WORD | PARAMETER | NUMBER | quoted_operand | CHARACTER | COLON | LEFT_PAREN | RIGHT_PAREN | LEFT_BRACKET | RIGHT_BRACKET | PLUS | MINUS | MACRO | END_MACRO | EQV | INCLUDE | SET | SEGMENT | EXTERN
 private signed_number ::= <<startsSignedNumber>> (PLUS | MINUS) NUMBER
 // MARS warns and ignores .set, so its payload is a sequence of assembler tokens.
 ignored_set ::= SET assembly_token* {elementType=directive_statement}
@@ -120,7 +122,7 @@ operand ::= expr repetition?
 repetition ::= COLON expr {pin=1}
 // The debugger lexer alone emits comparison and bitwise tokens.
 debugger_expression ::= expr <<eof>> {extraRoot=true}
-expr ::= bit_or_expr | bit_xor_expr | bit_and_expr | equality_expr | relational_expr | shift_expr | add_expr | invalid_operand_expr | unary_expr | address_expr | group_expr | literal_expr | reference_expr
+expr ::= bit_or_expr | bit_xor_expr | bit_and_expr | equality_expr | relational_expr | shift_expr | add_expr | invalid_operand_expr | unary_expr | address_expr | lane_expr | group_expr | literal_expr | reference_expr
 bit_or_expr ::= expr BIT_OR expr {pin=2}
 bit_xor_expr ::= expr BIT_XOR expr {pin=2}
 bit_and_expr ::= expr BIT_AND expr {pin=2}
@@ -131,6 +133,8 @@ add_expr ::= expr (<<continueOperand>> (PLUS | MINUS)) expr {pin=2}
 unary_expr ::= (PLUS | MINUS | BIT_NOT) expr
 // Pin the postfix suffix separately so a missing close retains the address in PSI.
 address_expr ::= expr <<continueOperand>> parenthesized_operand
+lane_expr ::= expr lane_suffix
+private lane_suffix ::= LEFT_BRACKET nested_expression RIGHT_BRACKET {pin=1}
 group_expr ::= LEFT_PAREN nested_expression RIGHT_PAREN {pin=1}
 private parenthesized_operand ::= LEFT_PAREN nested_expression RIGHT_PAREN {pin=1}
 invalid_operand_expr ::= <<recoverInvalidOperandExpression>>

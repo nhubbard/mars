@@ -7,7 +7,7 @@ import edu.missouristate.mars.util.Binary
 enum class MipsTokenKind {
     SPACE, NEWLINE, COMMENT, WORD, DIRECTIVE, REGISTER, PARAMETER, NUMBER,
     STRING, CHARACTER, UNCLOSED_STRING, UNCLOSED_CHARACTER, INVALID_CHARACTER,
-    COMMA, COLON, LEFT_PAREN, RIGHT_PAREN, PLUS, MINUS, EQUALITY, RELATION,
+    COMMA, COLON, LEFT_PAREN, RIGHT_PAREN, LEFT_BRACKET, RIGHT_BRACKET, PLUS, MINUS, EQUALITY, RELATION,
     BIT_OR, BIT_XOR, BIT_AND, BIT_NOT, SHIFT, BAD_CHARACTER,
 }
 
@@ -15,8 +15,8 @@ data class MipsToken(val kind: MipsTokenKind, val start: Int, val end: Int)
 
 /** Lossless file-local scanning. Every token ends at a restartable boundary; strings end at EOL. */
 object MipsScanner {
-    private const val CHARACTER_DELIMITERS = " \t,:()#\"+-"
-    private const val ASSEMBLY_DELIMITERS = " \t\r\n,:()#\"'"
+    private const val CHARACTER_DELIMITERS = " \t,:()[]#\"+-"
+    private const val ASSEMBLY_DELIMITERS = " \t\r\n,:()[]#\"'"
 
     fun scan(source: CharSequence): List<MipsToken> = buildList {
         var position = 0
@@ -71,7 +71,7 @@ object MipsScanner {
                     }
                     if (character == '\\' && position < end && source[position] !in "\r\n") {
                         // A broken escape can end at a separator, leaving the next operand intact.
-                        if (source[position] in " \t,:()#" &&
+                        if (source[position] in " \t,:()[]#" &&
                             (position + 1 == end || source[position + 1] != '\'')) break
                         position++
                     }
@@ -82,11 +82,13 @@ object MipsScanner {
                     else -> MipsTokenKind.CHARACTER
                 }
             }
-            first in ",:()+-" -> when (first) {
+            first in ",:()[]+-" -> when (first) {
                 ',' -> MipsTokenKind.COMMA
                 ':' -> MipsTokenKind.COLON
                 '(' -> MipsTokenKind.LEFT_PAREN
                 ')' -> MipsTokenKind.RIGHT_PAREN
+                '[' -> MipsTokenKind.LEFT_BRACKET
+                ']' -> MipsTokenKind.RIGHT_BRACKET
                 '+' -> MipsTokenKind.PLUS
                 else -> MipsTokenKind.MINUS
             }

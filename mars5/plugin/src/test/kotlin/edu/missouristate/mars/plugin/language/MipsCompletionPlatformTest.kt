@@ -58,6 +58,22 @@ class MipsCompletionPlatformTest {
         }
     }
 
+    @Test
+    fun `vector completion offers vector registers for MSA operands in MARS64`() = timeoutRunBlocking {
+        IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
+        withContext(Dispatchers.EDT) {
+            val settings = project.get().service<MarsAssemblySettings>()
+            try {
+                settings.changeTarget(MarsTarget.MARS64)
+                fixture.configureByText("vector.mars", $$"fill.b <caret>, $9\n")
+                val matches = fixture.completeBasic().orEmpty().map { it.lookupString }
+                assertTrue($$"$w31" in matches)
+            } finally {
+                settings.changeTarget(MarsTarget.MARS32)
+            }
+        }
+    }
+
     @ParameterizedTest
     @ValueSource(booleans = [true, false])
     fun `statement heads offer enabled catalog instructions and directives once`(allowPseudo: Boolean) = timeoutRunBlocking {

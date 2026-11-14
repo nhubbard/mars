@@ -160,8 +160,8 @@ internal class MipsSymbolToken(type: IElementType, text: CharSequence) : LeafPsi
         val parameterTypes = TokenSet.create(MipsTypes.psi("PARAMETER"), MipsTypes.psi("DOLLAR_WORD"))
         val numericTypes = setOf(TokenTypes.INTEGER_5, TokenTypes.INTEGER_16, TokenTypes.INTEGER_16U,
             TokenTypes.INTEGER_32, TokenTypes.REAL_NUMBER)
-        val registerTypes = setOf(TokenTypes.REGISTER_NAME, TokenTypes.REGISTER_NUMBER, TokenTypes.FP_REGISTER_NAME)
-        val punctuationTypes = setOf(TokenTypes.LEFT_PAREN, TokenTypes.RIGHT_PAREN, TokenTypes.COLON,
+        val registerTypes = setOf(TokenTypes.REGISTER_NAME, TokenTypes.REGISTER_NUMBER, TokenTypes.FP_REGISTER_NAME, TokenTypes.VECTOR_REGISTER_NAME)
+        val punctuationTypes = setOf(TokenTypes.LEFT_PAREN, TokenTypes.RIGHT_PAREN, TokenTypes.LEFT_BRACKET, TokenTypes.RIGHT_BRACKET, TokenTypes.COLON,
             TokenTypes.PLUS, TokenTypes.MINUS)
     }
 }

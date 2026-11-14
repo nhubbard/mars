@@ -63,9 +63,9 @@ private val registerType = MipsTypes.psi("REGISTER")
 private val mnemonicType = MipsTypes.psi("MNEMONIC")
 private val aliasTypes = TokenSet.create(MipsTypes.psi("WORD"), MipsTypes.psi("DOLLAR_WORD"))
 private val usageTypes = TokenSet.orSet(aliasTypes, TokenSet.create(registerType))
-private val registerTokens = setOf(TokenTypes.REGISTER_NAME, TokenTypes.REGISTER_NUMBER, TokenTypes.FP_REGISTER_NAME)
+private val registerTokens = setOf(TokenTypes.REGISTER_NAME, TokenTypes.REGISTER_NUMBER, TokenTypes.FP_REGISTER_NAME, TokenTypes.VECTOR_REGISTER_NAME)
 
-private enum class Bank { INTEGER, COPROCESSOR_0, FLOATING }
+private enum class Bank { INTEGER, COPROCESSOR_0, FLOATING, VECTOR }
 private data class RegisterId(val bank: Bank, val number: Int)
 
 private fun MipsFile.writtenRegisterUsages(): Map<Int, List<TextRange>> = CachedValuesManager.getCachedValue(this) {
@@ -146,7 +146,8 @@ private fun registerId(text: String, systemOperand: Boolean): RegisterId? {
     val integer = RegisterNames.integer(text)
     if (systemOperand) return integer?.let { RegisterId(Bank.COPROCESSOR_0, it.number) }
     if (integer != null) return RegisterId(Bank.INTEGER, integer.number)
-    val floating = RegisterNames.floating(text)!!
+    RegisterNames.vector(text)?.let { return RegisterId(Bank.VECTOR, it) }
+    val floating = RegisterNames.floating(text) ?: return null
     // Tokenization recognizes alternate FPR numbers, but assembly requires the canonical name.
     return RegisterId(Bank.FLOATING, floating.number).takeIf { floating.name == text }
 }

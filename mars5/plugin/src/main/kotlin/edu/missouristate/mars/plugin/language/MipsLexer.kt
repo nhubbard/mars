@@ -7,6 +7,7 @@ import com.intellij.util.text.CharArrayUtil
 import com.intellij.util.text.CharSequenceSubSequence
 import edu.missouristate.mars.assembler.Directives
 import edu.missouristate.mars.assembler.Macro
+import edu.missouristate.mars.assembler.RegisterNames
 import edu.missouristate.mars.mips.instructions.InstructionDefaults
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes
 import edu.missouristate.mars.plugin.language.syntax.MipsScanner
@@ -77,7 +78,7 @@ class MipsLexer(private val debuggerExpression: Boolean = false) : LexerBase() {
                 null -> MipsSyntaxTypes.WORD
                 else -> MipsSyntaxTypes.DIRECTIVE
             }
-            MipsTokenKind.REGISTER -> if (Macro.tokenIsMacroParameter(textOf(current), true)) {
+            MipsTokenKind.REGISTER -> if (RegisterNames.vector(textOf(current)) == null && Macro.tokenIsMacroParameter(textOf(current), true)) {
                 MipsSyntaxTypes.DOLLAR_WORD
             } else {
                 MipsSyntaxTypes.REGISTER

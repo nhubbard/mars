@@ -95,7 +95,7 @@ private fun matchesInstructionHead(tokens: TokenList, end: Int, options: MarsExe
     }
 }
 
-private val addressPunctuation = setOf(TokenTypes.LEFT_PAREN, TokenTypes.RIGHT_PAREN)
+private val addressPunctuation = setOf(TokenTypes.LEFT_PAREN, TokenTypes.RIGHT_PAREN, TokenTypes.LEFT_BRACKET, TokenTypes.RIGHT_BRACKET)
 
 private fun matchesAddressShape(tokens: TokenList, format: TokenList, first: Int = 1): Boolean = (first until tokens.size()).all { index ->
     val actual = tokens[index].type

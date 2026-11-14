@@ -52,6 +52,19 @@ class MipsParserPlatformTest {
     private val project = projectFixture()
 
     @Test
+    fun `vector lane operands are parsed with matched brackets and register tokens`() = timeoutRunBlocking {
+        readAction {
+            val source = $$"insert.b $w5[15],$9\ncopy_s.h $9,$w5[7]\n"
+            val file = PsiFileFactory.getInstance(project.get()).createFileFromText("vector.mars", MipsFileType, source)
+            assertTrue(PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java).isEmpty())
+            val nodes = SyntaxTraverser.psiTraverser(file).filter { it.node.elementType == MipsTypes.psi("LANE_EXPR") }.toList()
+            assertEquals(listOf($$"$w5[15]", $$"$w5[7]"), nodes.map { it.text })
+            val register = file.findElementAt(source.indexOf($$"$w5"))!!
+            assertEquals(MipsTypes.psi("REGISTER"), register.node.elementType)
+        }
+    }
+
+    @Test
     fun `macro definitions retain raw operands until the assembler expands them`(@TempDir directory: Path) =
         timeoutRunBlocking {
             val source = $$"""
