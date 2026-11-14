@@ -185,4 +185,48 @@ class Mars64VectorFloatingTest {
         }
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = ["w", "d"])
+    fun `integer conversion preserves full unsigned input and fixed-point conversion selects a half`(
+        suffix: String, @TempDir directory: Path,
+    ) {
+        val double = suffix == "d"
+        val file = Files.writeString(directory.resolve("from-integer.s"), $$"""
+            ffint_s.$$suffix $w31,$w3
+            ffint_u.$$suffix $w31,$w3
+            ffint_u.$$suffix $w31,$w3
+            ffql.$$suffix $w31,$w5
+            ffqr.$$suffix $w31,$w5
+        """.trimIndent())
+        fun bits(value: Double): Long = if (double) value.toRawBits()
+            else value.toFloat().toRawBits().toUInt().toLong().let { it or (it shl 32) }
+        TestSessions.create().use { session ->
+            session.selectTarget(MarsTarget.MARS64)
+            val program = session.assemble(listOf(file), null, false, false)
+            val format = if (double) 1 shl 16 else 0
+            val words = listOf(0x7b3c1fde, 0x7b3e1fde, 0x7b3e1fde, 0x7b342fde, 0x7b362fde)
+            assertEquals(words.map { it or format }, program.machineList!!.map { it.binaryStatement })
+            val fpu = session.coprocessor1
+            fpu.updateVector(3, VectorRegister(-1, -1))
+            program.simulate(1)
+            assertEquals(VectorRegister(bits(-1.0), bits(-1.0)), fpu.readVector(31))
+            program.simulate(1)
+            val limit = Math.scalb(1.0, if (double) 64 else 32)
+            assertEquals(VectorRegister(bits(limit), bits(limit)), fpu.readVector(31))
+            assertEquals(0x1004, fpu.msaStatus)
+            fpu.updateMsaStatus(1)
+            program.simulate(1)
+            val below = if (double) Math.nextDown(limit) else Math.nextDown(limit.toFloat()).toDouble()
+            assertEquals(VectorRegister(bits(below), bits(below)), fpu.readVector(31))
+            val low = if (double) 0x4000000040000000L else 0x4000400040004000L
+            val high = if (double) 0x8000000080000000uL.toLong() else 0x8000800080008000uL.toLong()
+            fpu.updateVector(5, VectorRegister(low, high))
+            program.simulate(1)
+            assertEquals(VectorRegister(bits(-1.0), bits(-1.0)), fpu.readVector(31))
+            assertEquals(0x5, fpu.msaStatus)
+            program.simulate(1)
+            assertEquals(VectorRegister(bits(0.5), bits(0.5)), fpu.readVector(31))
+        }
+    }
+
 }

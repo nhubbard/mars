@@ -9,6 +9,7 @@ import edu.missouristate.mars.mips.hardware.Coprocessor1State.Companion.INVALID_
 import edu.missouristate.mars.mips.hardware.Coprocessor1State.Companion.MSA_NON_TRAPPING
 import edu.missouristate.mars.mips.hardware.VectorRegister
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat.R_FORMAT
+import edu.missouristate.mars.mips.instructions.basic.convertInteger
 import edu.missouristate.mars.mips.instructions.basic.floatingClass
 import edu.missouristate.mars.mips.instructions.basic.roundIntegral
 import kotlin.math.abs
@@ -31,7 +32,10 @@ internal fun msaFloatingCompareInstructions(): List<BasicInstruction> = buildLis
         for (signed in listOf(true, false)) {
             add(toIntegerInstruction(format, suffix, signed, truncate = false))
             add(toIntegerInstruction(format, suffix, signed, truncate = true))
+            add(fromIntegerInstruction(format, suffix, signed))
         }
+        add(fromFixedPointInstruction(format, suffix, left = true))
+        add(fromFixedPointInstruction(format, suffix, left = false))
         for ((index, name) in listOf("fmin", "fmin_a", "fmax", "fmax_a").withIndex()) {
             add(extremumInstruction(name, index, format, suffix))
         }
@@ -203,4 +207,53 @@ private fun toIntegerInstruction(format: Int, suffix: Char, signed: Boolean, tru
             }
         }
     }
+}
+
+private fun fromIntegerInstruction(format: Int, suffix: Char, signed: Boolean): BasicInstruction {
+    val precision = MsaPrecision(format)
+    val field = (28 + (if (signed) 0 else 2) + format).toString(2)
+    val mnemonic = if (signed) "ffint_s" else "ffint_u"
+    return BasicInstruction(
+        "$mnemonic.$suffix \$w1,\$w2", "Convert each integer element to floating point",
+        R_FORMAT, "011110 11001 $field sssss fffff 011110",
+    ) { statement, context ->
+        val (destination, source) = statement.operands
+        val input = context.coprocessor1.readVector(source)
+        context.writeFloatingVector(statement, destination, precision) { half, shift, status ->
+            val value = element(half(input), shift, precision.bits, signed)
+            val result = convertInteger(value, double = format != 0, status, unsigned = !signed)
+            FloatingLane(result.bits, result.causes)
+        }
+    }
+}
+
+private fun fromFixedPointInstruction(format: Int, suffix: Char, left: Boolean): BasicInstruction {
+    val precision = MsaPrecision(format)
+    val mnemonic = if (left) "ffql" else "ffqr"
+    val field = (20 + (if (left) 0 else 2) + format).toString(2)
+    return BasicInstruction(
+        "$mnemonic.$suffix \$w1,\$w2", "Convert a half-vector of signed fixed-point elements to floating point",
+        R_FORMAT, "011110 11001 $field sssss fffff 011110",
+    ) { statement, context ->
+        val (destination, source) = statement.operands
+        val input = context.coprocessor1.readVector(source)
+        val selected = if (left) input.high else input.low
+        val result = VectorRegister(
+            fixedPointHalf(selected, 0, precision),
+            fixedPointHalf(selected, 32, precision),
+        )
+        context.writeMsaStatus(statement, context.coprocessor1.msaStatus and CAUSE_MASK.inv())
+        context.updateVectorRegister(destination, result)
+    }
+}
+
+
+private fun fixedPointHalf(source: Long, offset: Int, precision: MsaPrecision): Long {
+    val narrow = precision.bits / 2
+    var result = 0L
+    for (shift in 0 until Long.SIZE_BITS step precision.bits) {
+        val value = element(source, offset + shift / 2, narrow, signed = true)
+        result = result or (precision.raw(Math.scalb(value.toDouble(), 1 - narrow)) shl shift)
+    }
+    return result
 }

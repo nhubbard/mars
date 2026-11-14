@@ -45,7 +45,7 @@ private fun floatingConversion(destinationFormat: String, sourceFormat: String, 
     }
 }
 
-private data class FloatingConversionResult(val bits: Long, val causes: Int = 0)
+internal data class FloatingConversionResult(val bits: Long, val causes: Int = 0)
 
 private fun widenSingle(bits: Int, status: Int): FloatingConversionResult {
     val value = Float.fromBits(bits)
@@ -60,11 +60,12 @@ private fun widenSingle(bits: Int, status: Int): FloatingConversionResult {
     return FloatingConversionResult(value.toDouble().toRawBits())
 }
 
-private fun convertInteger(value: Long, double: Boolean, status: Int): FloatingConversionResult {
+internal fun convertInteger(value: Long, double: Boolean, status: Int, unsigned: Boolean = false): FloatingConversionResult {
     // An exact comparison matters for longword inputs above the consecutive-integer range of Double.
-    val nearest = if (double) value.toDouble() else value.toFloat().toDouble()
-    val relation = BigDecimal(nearest).compareTo(BigDecimal.valueOf(value))
-    val rounded = directedRound(nearest, relation, value < 0, double, status and 3)
+    val exact = if (unsigned && value < 0) BigDecimal(value.toULong().toString()) else BigDecimal.valueOf(value)
+    val nearest = if (double) exact.toDouble() else exact.toFloat().toDouble()
+    val relation = BigDecimal(nearest).compareTo(exact)
+    val rounded = directedRound(nearest, relation, exact.signum() < 0, double, status and 3)
     return FloatingConversionResult(floatingBits(rounded, double), if (relation == 0) 0 else INEXACT)
 }
 
