@@ -288,7 +288,7 @@ class MipsDocumentationPlatformTest {
             assertEquals("addiu", target.computePresentation().presentableText)
             target.createPointer()
         }
-        assertEquals(MipsDocumentationCatalog["addiu"].referenceHtml(), computeDocumentationBlocking(pointer)?.html)
+        assertEquals(MipsDocumentationCatalog["addiu", MarsTarget.MARS32]!!.referenceHtml(), computeDocumentationBlocking(pointer)?.html)
         withContext(Dispatchers.EDT) { fixture.lookup.hideLookup(false) }
         suspend fun edit(from: String, to: String) = withContext(Dispatchers.EDT) {
             val document = fixture.editor.document
@@ -299,7 +299,7 @@ class MipsDocumentationPlatformTest {
         edit(" 7", $$" $f0")
         assertNull(computeDocumentationBlocking(pointer))
         edit($$"row: addiu $t0, $zero", ".word")
-        assertEquals(MipsDocumentationCatalog[".word"].referenceHtml(), computeDocumentationBlocking(pointer)?.html)
+        assertEquals(MipsDocumentationCatalog.directive(".word").referenceHtml(), computeDocumentationBlocking(pointer)?.html)
         edit(".eqv LAUNCH .word", ".eqv LAUNCH .include \"data.inc\"")
         assertNull(computeDocumentationBlocking(pointer))
     }

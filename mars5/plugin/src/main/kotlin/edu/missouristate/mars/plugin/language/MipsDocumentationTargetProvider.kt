@@ -77,7 +77,7 @@ internal class MipsDocumentationTargetProvider : DocumentationTargetProvider, Lo
             macroEndType -> ownerType in macroEndOwners
             else -> ownerType in headOwners && owner.firstChild == token
         }
-        return if (keyword) listOfNotNull(MipsDocumentationCatalog[token.text]) else emptyList()
+        return if (keyword) listOf(MipsDocumentationCatalog.directive(token.text)) else emptyList()
     }
 
     override fun documentationTarget(psiFile: PsiFile, element: LookupElement, offset: Int): DocumentationTarget? =
@@ -112,7 +112,7 @@ internal class MipsDocumentationTargetProvider : DocumentationTargetProvider, Lo
                 val definitions = if (exact == null) overloads.filterKeys { matchesMacroCall(tokens, end, setOf(it)) }.values else listOf(exact)
                 MacroLookupDocumentation(name, definitions, pointer)
             } else if (matchesCatalogAlias(tokens, end, options)) {
-                MipsDocumentationCatalog[operation.value, options.target]?.let { CatalogAliasDocumentation(it, pointer) }
+                CatalogAliasDocumentation(MipsDocumentationCatalog[operation.value, options.target]!!, pointer)
             } else null
         }
     }
@@ -281,5 +281,5 @@ internal object MipsDocumentationCatalog {
     operator fun get(name: String, target: MarsTarget): MipsCatalogEntry? =
         if (target == MarsTarget.MARS64) wide[name] else byName[name]
 
-    operator fun get(name: String): MipsCatalogEntry = byName[name] ?: wide.getValue(name)
+    fun directive(name: String): MipsCatalogEntry = byName.getValue(name)
 }

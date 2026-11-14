@@ -179,7 +179,7 @@ private class MipsBlock(
             // A space can turn a sign into a separate token, or prevent an exponent from joining.
             before in signs -> readOnly
             after in signs -> if (gap.isEmpty() && before != comma) readOnly else oneSpace
-            after in closingPunctuation || before == leftParen || before == leftBracket || after == leftBracket -> noSpaces
+            after in tightBefore || before in tightAfter -> noSpaces
             after == leftParen && expandedParenthesis == OperandParenthesis.ADDRESS -> noSpaces
             after == leftParen && expandedParenthesis == OperandParenthesis.GROUP -> oneSpace
             after == leftParen && myNode.elementType == address -> noSpaces
@@ -207,7 +207,8 @@ private class MipsBlock(
         val badCharacter = MipsTypes.psi("BAD_CHARACTER")
         val trivia = TokenSet.create(TokenType.WHITE_SPACE, newline)
         val signs = TokenSet.create(MipsTypes.psi("PLUS"), MipsTypes.psi("MINUS"))
-        val closingPunctuation = TokenSet.create(comma, colon, MipsTypes.psi("RIGHT_PAREN"), MipsTypes.psi("RIGHT_BRACKET"))
+        val tightBefore = TokenSet.create(comma, colon, MipsTypes.psi("RIGHT_PAREN"), leftBracket, MipsTypes.psi("RIGHT_BRACKET"))
+        val tightAfter = TokenSet.create(leftParen, leftBracket)
         val separators = TokenSet.create(comma, colon)
         val indentedScopes = TokenSet.create(MipsTypes.file, macro)
         val candidate = MipsTypes.psi("OPERATION_CANDIDATE")

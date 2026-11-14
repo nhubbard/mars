@@ -19,7 +19,7 @@ internal class MipsRelease6MergeInspection : LocalInspectionTool() {
     override fun runForWholeFile() = true
 
     override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): PsiElementVisitor {
-        val file = holder.file as? MipsFile ?: return PsiElementVisitor.EMPTY_VISITOR
+        val file = holder.file as MipsFile
         if (file.project.service<MarsAssemblySettings>().target != MarsTarget.MARS64) return PsiElementVisitor.EMPTY_VISITOR
         val analysis = file.project.service<MarsAnalysisService>()
         return object : PsiElementVisitor() {
@@ -32,7 +32,7 @@ internal class MipsRelease6MergeInspection : LocalInspectionTool() {
                     "swl", "swr" -> "sw"
                     else -> return
                 }
-                val token = file.findElementAt(site.range.startOffset) ?: return
+                val token = file.findElementAt(site.range.startOffset)!!
                 holder.registerProblem(token, messages.getMessage("inspection.release6.merge.removed", site.name, replacement))
             }
         }

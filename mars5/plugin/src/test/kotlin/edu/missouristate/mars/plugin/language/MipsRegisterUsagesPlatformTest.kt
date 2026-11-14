@@ -26,6 +26,14 @@ class MipsRegisterUsagesPlatformTest {
     private val fixture by codeInsightFixture(project)
 
     @Test
+    fun `vector register occurrences include lane operands and stay separate from scalar registers`() = timeoutRunBlocking {
+        withContext(Dispatchers.EDT) {
+            fixture.configureByText("vector.mars", $$"insert.b $w<caret>5[15],$9\ncopy_s.h $5,$w5[7]\nmov.s $f5,$f5\n")
+            assertEquals(listOf($$"$w5", $$"$w5"), currentUses())
+        }
+    }
+
+    @Test
     fun `native usage highlighting groups GPR aliases and excludes other banks and non operands`() = timeoutRunBlocking {
         val source = $$"""
             .eqv TEMP $8

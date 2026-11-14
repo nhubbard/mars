@@ -147,7 +147,8 @@ private fun registerId(text: String, systemOperand: Boolean): RegisterId? {
     if (systemOperand) return integer?.let { RegisterId(Bank.COPROCESSOR_0, it.number) }
     if (integer != null) return RegisterId(Bank.INTEGER, integer.number)
     RegisterNames.vector(text)?.let { return RegisterId(Bank.VECTOR, it) }
-    val floating = RegisterNames.floating(text) ?: return null
+    // The lexer and assembler have already classified this token as a register.
+    val floating = RegisterNames.floating(text)!!
     // Tokenization recognizes alternate FPR numbers, but assembly requires the canonical name.
     return RegisterId(Bank.FLOATING, floating.number).takeIf { floating.name == text }
 }

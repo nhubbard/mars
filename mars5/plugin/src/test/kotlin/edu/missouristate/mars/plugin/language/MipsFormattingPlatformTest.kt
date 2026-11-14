@@ -35,6 +35,14 @@ class MipsFormattingPlatformTest {
     private val fixture by codeInsightFixture(project)
 
     @Test
+    fun `reformat closes up the spaces in vector lane operands`() = timeoutRunBlocking {
+        withContext(Dispatchers.EDT) {
+            fixture.configureByText("lane.mars", $$"insert.b $w5 [ 15 ] , $9\n")
+            assertEquals($$"    insert.b $w5[15], $9\n", reformat())
+        }
+    }
+
+    @Test
     fun `reformat normalizes native syntax and preserves machine words and data`(@TempDir directory: Path) = timeoutRunBlocking {
         val source = $$"""
               .eqv    OFFSET -4

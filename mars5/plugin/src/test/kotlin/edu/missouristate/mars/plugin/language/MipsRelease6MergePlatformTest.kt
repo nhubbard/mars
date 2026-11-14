@@ -12,6 +12,7 @@ import edu.missouristate.mars.plugin.language.inspection.MipsRelease6MergeInspec
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 @TestApplication
@@ -22,7 +23,9 @@ class MipsRelease6MergePlatformTest {
     @Test
     fun `only MARS64 warns about direct and substituted merge mnemonics`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
-            fixture.enableInspections(MipsRelease6MergeInspection())
+            val inspection = MipsRelease6MergeInspection()
+            assertTrue(inspection.runForWholeFile())
+            fixture.enableInspections(inspection)
             val source = $$"""
                 .text
                 .eqv MERGE swr
@@ -32,6 +35,11 @@ class MipsRelease6MergePlatformTest {
                 MERGE $9,0($8)
                 lwl: nop
                 ulw $9,0($8)
+                unknown_operation $9
+                .macro emit (%value)
+                    nop
+                .end_macro
+                emit(1)
             """.trimIndent()
             fixture.configureByText("migration.mars", source)
             val settings = fixture.project.service<MarsAssemblySettings>()

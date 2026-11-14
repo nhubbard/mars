@@ -65,6 +65,19 @@ class MipsParserPlatformTest {
     }
 
     @Test
+    fun `malformed vector lanes preserve their instruction and report syntax errors`() = timeoutRunBlocking {
+        readAction {
+            for (operand in listOf($$"$w5[", $$"$w5[]", $$"$w5[15")) {
+                val file = PsiFileFactory.getInstance(project.get()).createFileFromText("lane.mars", MipsFileType,
+                    $$"insert.b $$operand\naddiu $8,$0,1\n")
+                assertTrue(PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java).isNotEmpty(), operand)
+                val lanes = SyntaxTraverser.psiTraverser(file).filter { it.node.elementType == MipsTypes.psi("LANE_EXPR") }.toList()
+                assertEquals(listOf(operand), lanes.map { it.text })
+            }
+        }
+    }
+
+    @Test
     fun `macro definitions retain raw operands until the assembler expands them`(@TempDir directory: Path) =
         timeoutRunBlocking {
             val source = $$"""

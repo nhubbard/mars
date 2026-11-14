@@ -97,8 +97,8 @@ internal class MarsStackFrame(
                 })
             }
             val doublewords = XValueChildrenList()
-            val step = if (wide) 1 else 2
-            for (number in registers.indices step step) {
+            for (number in registers.indices) {
+                if (!wide && number % 2 != 0) continue
                 val name = if (wide) registers[number].first else "${registers[number].first}/${registers[number + 1].first}"
                 val bits = fpu.getDoublewordNoNotify(number)
                 val hex = Binary.longToHexString(bits)
