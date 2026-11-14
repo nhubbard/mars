@@ -101,6 +101,33 @@ data. MARS syscall arguments that are pointers to strings or buffers
 preserve the full register value. The syscall numbers and numeric
 arguments retain the educational MARS ABI.
 
+## Freestanding compiler output
+
+The assembler accepts the metadata produced by Clang for an ordinary
+freestanding function. `.section` maps `.text` and its subsections to
+user text, and `.data`, `.rodata`, `.rdata`, `.bss`, `.sdata`, `.sbss`, and
+their subsections to user data. Recognized metadata section declarations
+and directives such as `.type`, `.size`, and `.frame` emit no bytes. The
+assembler preserves source order and implements the Release 6 NaN encoding.
+It warns when `.set noat` or `.set nomacro` asks for assembler restrictions
+it cannot enforce. It rejects sections such as `.got` that depend on a
+linker or loader.
+
+`.p2align` accepts a single power-of-two exponent, and `.balign` accepts a
+single positive byte boundary. Both write zero bytes in data and emit whole
+`nop` instructions in text. Neither crosses the current segment's bounds.
+
+The test suite assembles the checked-in Clang 23.1.5 output and calls the
+routine twice with a MARS64 assembly caller. Rebuild the fixture from its
+source in the [compiler fixture directory](../mars5/core/src/test/resources/compiler)
+with the following command.
+
+```sh
+clang -target mips64-unknown-elf -march=mips64r6 -mabi=64 -mno-abicalls \
+  -fno-pic -ffreestanding -fno-asynchronous-unwind-tables -O2 \
+  -S rotate-sum.c -o rotate-sum.s
+```
+
 `mfc0` sign-extends its word result. `mtc0` preserves the full source value
 when writing an educational address register. For both forms, reserved or
 unimplemented register and selector combinations read as zero or ignore the

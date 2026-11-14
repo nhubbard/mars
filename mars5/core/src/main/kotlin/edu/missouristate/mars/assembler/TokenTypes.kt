@@ -55,6 +55,7 @@ enum class TokenTypes {
     INTEGER_64,
     REAL_NUMBER,
     QUOTED_STRING,
+    OBJECT_ATTRIBUTE,
     PLUS,
     MINUS,
     COLON,
@@ -109,6 +110,7 @@ enum class TokenTypes {
                 instructions.matchOperator(value) != null -> OPERATOR
                 first == '.' && Directives.matchDirective(value) != null -> DIRECTIVE
                 first == '"' -> QUOTED_STRING
+                first == '@' && Directives.isObjectAttribute(value) -> OBJECT_ATTRIBUTE
                 isValidIdentifier(value) -> IDENTIFIER
                 else -> ERROR
             }

@@ -1,5 +1,6 @@
 package edu.missouristate.mars.plugin.language.syntax
 
+import edu.missouristate.mars.assembler.Directives
 import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.assembler.Tokenizer
 import edu.missouristate.mars.util.Binary
@@ -148,8 +149,12 @@ object MipsScanner {
                 when {
                     // A floating-point value can contain a signed exponent or trailing ASCII control whitespace.
                     invalidCharacter || signedExponent && !debuggerExpression -> {
-                        val value = source.subSequence(start, position).toString().toDoubleOrNull()
-                        if (value == null) MipsTokenKind.BAD_CHARACTER else MipsTokenKind.NUMBER
+                        val value = source.subSequence(start, position).toString()
+                        when {
+                            Directives.isObjectAttribute(value) -> MipsTokenKind.WORD
+                            value.toDoubleOrNull() != null -> MipsTokenKind.NUMBER
+                            else -> MipsTokenKind.BAD_CHARACTER
+                        }
                     }
                     // A leading dot also starts identifiers. Only a complete decimal takes priority.
                     first == '.' -> if (numeric && source.subSequence(start, position).toString().toDoubleOrNull() != null) {

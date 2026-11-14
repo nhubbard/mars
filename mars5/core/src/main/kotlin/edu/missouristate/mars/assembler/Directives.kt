@@ -60,6 +60,25 @@ class Directives private constructor(val name: String, val description: String) 
         @JvmField val MACRO = directive(".macro", "Begin macro definition.  See .end_macro")
         @JvmField val END_MACRO = directive(".end_macro", "End macro definition.  See .macro")
         @JvmField val INCLUDE = directive(".include", "Insert the contents of the specified file.  Put filename in quotes.")
+        @JvmField val SECTION = directive(".section", "Select a text or data section from freestanding MARS64 assembler source")
+        @JvmField val NAN = directive(".nan", "Select the Release 6 NaN encoding with .nan 2008")
+
+        internal val compilerMetadata = listOf(".file", ".type", ".ent", ".frame", ".mask", ".fmask", ".end", ".size", ".ident", ".addrsig")
+            .map { directive(it, "Compiler metadata accepted by the MARS64 assembler") }.toSet()
+
+        private val objectAttributes = setOf("@function", "@object", "@progbits", "@nobits")
+
+        fun isObjectAttribute(value: String): Boolean = value in objectAttributes
+
+        fun sectionSegment(name: String): Directives? {
+            val section = name.removeSurrounding("\"")
+            if (!section.startsWith('.')) return null
+            return when (section.drop(1).substringBefore('.')) {
+                "text" -> TEXT
+                "data", "rodata", "rdata", "bss", "sdata", "sbss" -> DATA
+                else -> null
+            }
+        }
 
         private fun directive(name: String, description: String) =
             Directives(name, description).also(directiveList::add)

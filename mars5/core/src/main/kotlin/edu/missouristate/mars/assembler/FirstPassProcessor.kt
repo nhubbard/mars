@@ -211,12 +211,7 @@ internal class FirstPassProcessor(
         val token = tokens[0]
         when (directive) {
             Directives.DATA, Directives.KDATA, Directives.TEXT, Directives.KTEXT -> {
-                inDataSegment = directive == Directives.DATA || directive == Directives.KDATA
-                val address = if (inDataSegment) {
-                    autoAlign = true
-                    dataAddress
-                } else textAddress
-                address.kernel = directive == Directives.KDATA || directive == Directives.KTEXT
+                val address = switchSegment(directive)
                 if (tokens.size() > 1) {
                     val operand = tokens[1]
                     if (context.session.target == MarsTarget.MARS64) {
@@ -246,10 +241,48 @@ internal class FirstPassProcessor(
             Directives.ALIGN, Directives.SPACE -> applyDataLayout(tokens, directive)
             Directives.P2ALIGN, Directives.BALIGN -> alignSection(tokens, directive, physicalLine, caller)
             Directives.EXTERN -> declareExternal(tokens, physicalLine, caller, renamedLabels)
-            Directives.SET -> errors.add(ErrorMessage(ErrorMessage.WARNING, token, "MARS currently ignores the .set directive."))
+            Directives.SET -> applySet(tokens)
             Directives.GLOBL -> declareGlobals(tokens)
+            Directives.SECTION -> applySection(tokens)
+            Directives.NAN -> if (context.session.target != MarsTarget.MARS64 || tokens.size() != 2 || tokens[1].value != "2008") {
+                errors.add(ErrorMessage(token, "Only .nan 2008 is supported, with the MARS64 target"))
+            } else Unit
+            in Directives.compilerMetadata -> if (context.session.target != MarsTarget.MARS64) {
+                errors.add(ErrorMessage(token, "$directive requires the MARS64 target"))
+            } else Unit
             else -> errors.add(ErrorMessage(token, "\"$token\" directive recognized but not yet implemented."))
         }
+    }
+
+    private fun switchSegment(directive: Directives): UserKernelAddressSpace {
+        inDataSegment = directive == Directives.DATA || directive == Directives.KDATA
+        val address = if (inDataSegment) {
+            autoAlign = true
+            dataAddress
+        } else textAddress
+        address.kernel = directive == Directives.KDATA || directive == Directives.KTEXT
+        return address
+    }
+
+    private fun applySection(tokens: TokenList) {
+        val token = tokens[0]
+        if (context.session.target != MarsTarget.MARS64 || tokens.size() < 2) {
+            errors.add(ErrorMessage(token, ".section requires a section name and the MARS64 target"))
+            return
+        }
+        val name = tokens[1].value.removeSurrounding("\"")
+        if (name == ".mdebug.abi64" || name == ".note.GNU-stack") return
+        val segment = Directives.sectionSegment(name)
+        if (segment == null) {
+            errors.add(ErrorMessage(tokens[1], "Unsupported section \"$name\". Use a freestanding text or data section."))
+            return
+        }
+        switchSegment(segment)
+    }
+
+    private fun applySet(tokens: TokenList) {
+        if (context.session.target == MarsTarget.MARS64 && tokens.size() == 2 && tokens[1].value in sourceModeDeclarations) return
+        errors.add(ErrorMessage(ErrorMessage.WARNING, tokens[0], "MARS currently ignores the .set directive."))
     }
 
     private fun alignSection(tokens: TokenList, directive: Directives, line: SourceLine, caller: Origin?) {
@@ -711,5 +744,10 @@ internal class FirstPassProcessor(
                 errors.add(ErrorMessage(entry.token, "Symbol \"${entry.token}\" not found in symbol table."))
             }
         }
+    }
+
+    private companion object {
+        // MARS64 always uses fixed-width instructions in the order they appear in the source.
+        val sourceModeDeclarations = setOf("nomicromips", "nomips16", "noreorder", "reorder", "at", "macro")
     }
 }

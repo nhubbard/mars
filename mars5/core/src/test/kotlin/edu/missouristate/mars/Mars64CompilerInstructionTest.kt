@@ -11,6 +11,57 @@ import org.junit.jupiter.api.io.TempDir
 
 class Mars64CompilerInstructionTest {
     @Test
+    fun `unmodified freestanding Clang output runs with a MARS64 caller`(@TempDir directory: Path) {
+        val callee = directory.resolve("rotate-sum.s")
+        checkNotNull(javaClass.getResourceAsStream("/compiler/rotate-sum.s")).use { Files.copy(it, callee) }
+        val caller = Files.writeString(directory.resolve("caller.mars"), $$"""
+            .data 0x100000000
+            words: .dword 0x0123456789abcdef, 0xfedcba9876543210
+            .text
+            dla $a0,words
+            addiu $a1,$zero,2
+            jal rotate_sum
+            nop
+            move $s0,$v0
+            or $a1,$zero,$zero
+            jal rotate_sum
+            nop
+            move $s1,$v0
+            addiu $v0,$zero,10
+            syscall
+        """.trimIndent())
+        TestSessions.create().use { machine ->
+            machine.selectTarget(MarsTarget.MARS64)
+            val program = machine.assemble(listOf(caller, callee))
+            assertTrue(program.simulate(100))
+            assertEquals(-1L, machine.registerFile.getLongValueNoNotify(16))
+            assertEquals(0L, machine.registerFile.getLongValueNoNotify(17))
+        }
+    }
+
+    @Test
+    fun `compiler sections select classroom storage and reject loader-dependent sections`(@TempDir directory: Path) {
+        val file = Files.writeString(directory.resolve("sections.mars"), $$"""
+            .section ".rodata.constants", "a", @progbits
+            value: .dword 7
+            .section .text.lookup, "ax", @progbits
+            ld $v0,value
+            .section ".note.GNU-stack", "", @progbits
+        """.trimIndent())
+        TestSessions.create().use { machine ->
+            machine.selectTarget(MarsTarget.MARS64)
+            val program = machine.assemble(listOf(file))
+            assertTrue(program.simulate(30))
+            assertEquals(7L, machine.registerFile.getLongValueNoNotify(2))
+            Files.writeString(file, ".section .got,\"aw\",@progbits\n.nan legacy\n")
+            val unsupported = assertThrows(ProcessingException::class.java) { machine.assemble(listOf(file)) }
+            val errors = unsupported.errors()!!.generateErrorReport()
+            assertTrue(errors.contains("Unsupported section \".got\""))
+            assertTrue(errors.contains("Only .nan 2008 is supported"))
+        }
+    }
+
+    @Test
     fun `unsuffixed shifts select the upper encoding for counts above 31`(@TempDir directory: Path) {
         val file = Files.writeString(directory.resolve("shifts.mars"), $$"""
             dsll $9,$10,32

@@ -32,6 +32,7 @@ class MipsScannerTest {
             "\u000c" to MipsTokenKind.BAD_CHARACTER,
             "\n" to MipsTokenKind.NEWLINE, "\r" to MipsTokenKind.NEWLINE, "\r\n" to MipsTokenKind.NEWLINE,
             "# comment" to MipsTokenKind.COMMENT, "name" to MipsTokenKind.WORD,
+            "@progbits" to MipsTokenKind.WORD, "@function" to MipsTokenKind.WORD,
             $$"_local.$x" to MipsTokenKind.WORD,
             ".text" to MipsTokenKind.DIRECTIVE, "$" + "a0" to MipsTokenKind.REGISTER,
             "%arg" to MipsTokenKind.PARAMETER, "12" to MipsTokenKind.NUMBER, "0" to MipsTokenKind.NUMBER, "012" to MipsTokenKind.NUMBER,
