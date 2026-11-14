@@ -47,9 +47,9 @@ bc2t	offset (cc = 0 implied)	90	removed
 bc2t	cc, offset	90	removed
 bc2tl	offset (cc = 0 implied)	91	removed
 bc2tl	cc, offset	91	removed
-beq	rs, rt, offset	93	audit
+beq	rs, rt, offset	93	implemented
 beql	rs, rt, offset	94	removed
-bgez	rs, offset	96	audit
+bgez	rs, offset	96	implemented
 bgezal	rs, offset	97	removed
 blezalc	rt, offset	98	implemented
 bgezalc	rt, offset	98	implemented
@@ -75,17 +75,17 @@ bgtzc	rs, offset	104	implemented
 beqzc	rs, offset	104	implemented
 bnezc	rs, offset	104	implemented
 bgezl	rs, offset	107	removed
-bgtz	rs, offset	109	audit
+bgtz	rs, offset	109	implemented
 bgtzl	rs, offset	110	removed
 bitswap	rd,rt	112	audit
 dbitswap	rd,rt	112	implemented
-blez	rs, offset	114	audit
+blez	rs, offset	114	implemented
 blezl	rs, offset	115	removed
-bltz	rs, offset	117	audit
+bltz	rs, offset	117	implemented
 bltzal	rs, offset	118	removed
 bltzall	rs, offset	119	removed
 bltzl	rs, offset	121	removed
-bne	rs, rt, offset	123	audit
+bne	rs, rt, offset	123	implemented
 bnel	rs, rt, offset	124	removed
 bovc	rs,rt,offset	126	implemented
 bnvc	rs,rt,offset	126	implemented
@@ -244,8 +244,8 @@ floor.w.s	fd, fs	258	implemented
 floor.w.d	fd, fs	258	implemented
 ginvi	rs	260	requires-privileged-platform
 ginvt	rs, type	262	requires-privileged-platform
-j	target	268	audit
-jal	target	269	audit
+j	target	268	implemented
+jal	target	269	implemented
 jalr	rs (rd = 31 implied)	271	implemented
 jalr	rd, rs	271	implemented
 jalr.hb	rs (rd = 31 implied)	273	implemented

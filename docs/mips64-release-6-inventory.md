@@ -120,6 +120,10 @@ or PC-relative immediate in this table is the displacement as written to LLVM.
   and untaken paths, and forbidden-slot behavior. MARS64 now assigns the
   `addi` primary opcode to `beqc`, `beqzalc`, and `bovc`. The same words
   still decode as `addi` in MARS32.
+- **Delayed control flow.** MARS64 executes the architectural delay slot for
+  `beq`, `bne`, `bgez`, `bgtz`, `blez`, `bltz`, `j`, and `jal`. An untaken
+  branch still reserves its delay slot. `jal` links to the second instruction
+  after the jump. These rules are independent of the MARS32 delay setting.
 - **PC-relative and memory operations.** Audit the entire family in
   Tables A.27 and A.28, plus word `ll`/`sc` and the Release 6 encodings
   for doubleword reservations. Ordinary scalar halfword, word, and

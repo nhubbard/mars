@@ -84,7 +84,7 @@ class IntegerOperandWidthTest {
             machine.editIntegerRegister(4, if (wide) Long.MIN_VALUE else 0L)
             machine.editIntegerRegister(5, if (wide) -0x1_0000_0000L else 0L)
             assertTrue(program.simulate(20))
-            val expected = if (wide) listOf(1, 1, 1, 1, 1, 0, 0, 1) else listOf(0, 0, 0, 1, 0, 1, 1, 0)
+            val expected = if (wide) listOf(1, 1, 1, 1, 1, 1, 1, 1) else listOf(0, 0, 0, 1, 0, 1, 1, 0)
             assertEquals(expected, (8..15).map(machine.registerFile::getValueNoNotify))
         }
     }

@@ -11,8 +11,6 @@ open class InstrBgez : BasicInstruction(
     "000001 fffff 00001 ssssssssssssssss",
     { statement, context ->
         val operands = statement.operands
-        if (context.readIntegerOperand(operands[0]) >= 0) {
-            context.branch(operands[1])
-        }
+        context.branch(operands[1], taken = context.readIntegerOperand(operands[0]) >= 0)
     },
 )

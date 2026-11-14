@@ -10,8 +10,6 @@ open class InstrBeq : BasicInstruction(
     "000100 fffff sssss tttttttttttttttt",
     { statement, context ->
         val operands = statement.operands
-        if (context.readIntegerOperand(operands[0]) == context.readIntegerOperand(operands[1])) {
-            context.branch(operands[2])
-        }
+        context.branch(operands[2], taken = context.readIntegerOperand(operands[0]) == context.readIntegerOperand(operands[1]))
     },
 )

@@ -6,10 +6,48 @@ import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertThrows
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 
 class Mars64BarrierTest {
+    @Test
+    fun `an untaken delayed branch still reserves its delay slot`(@TempDir directory: Path) {
+        val source = Files.writeString(directory.resolve("branch.s"), $$"""
+            bne $zero,$zero,target
+            j target
+            target: nop
+        """.trimIndent())
+        TestSessions.create().use { session ->
+            session.selectTarget(MarsTarget.MARS64)
+            val program = session.assemble(listOf(source), null, false, false)
+            val failure = assertThrows(ProcessingException::class.java) { program.simulate(2) }
+            assertTrue(failure.message!!.contains("control transfer in a delay slot"))
+        }
+    }
+
+    @Test
+    fun `direct jumps link past and execute the architectural delay slot`(@TempDir directory: Path) {
+        val source = Files.writeString(directory.resolve("direct.s"), $$"""
+            jal target
+            addiu $9,$9,1
+            nop
+            target: j end
+            addiu $9,$9,2
+            nop
+            end: nop
+        """.trimIndent())
+        TestSessions.create().use { session ->
+            session.selectTarget(MarsTarget.MARS64)
+            val program = session.assemble(listOf(source), null, false, false)
+            val words = program.machineList!!
+            program.simulate(4)
+            assertEquals(words[6].address, session.registerFile.programCounter)
+            assertEquals(words[2].address, session.registerFile.getValueNoNotify(31))
+            assertEquals(3, session.registerFile.getValueNoNotify(9))
+        }
+    }
+
     @Test
     fun `register jumps use Release 6 encoding and always execute a delay slot`(@TempDir directory: Path) {
         val source = Files.writeString(directory.resolve("jump.s"), $$"""

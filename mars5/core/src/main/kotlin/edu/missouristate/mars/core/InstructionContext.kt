@@ -109,7 +109,7 @@ class InstructionContext(private val session: MarsContext, private val environme
 
     /** Save the address after the jump or its delay slot, as configured for this session. */
     internal fun linkReturnAddress(register: Int) {
-        val delay = if (settings().isDelayedBranchingEnabled) INSTRUCTION_LENGTH else 0
+        val delay = if (usesDelaySlots()) INSTRUCTION_LENGTH else 0
         link(register, registerFile.programCounter + delay)
     }
 
@@ -123,7 +123,13 @@ class InstructionContext(private val session: MarsContext, private val environme
 
     fun lastBranchOutcome(): BranchOutcome? = lastBranchOutcome
 
-    fun branch(displacement: Int) {
+    @JvmOverloads
+    fun branch(displacement: Int, taken: Boolean = true) {
+        if (session.target == MarsTarget.MARS64) {
+            release6DelayedBranch(displacement, taken)
+            return
+        }
+        if (!taken) return
         val target = registerFile.programCounter + (displacement shl 2)
         lastBranchOutcome = BranchOutcome.TAKEN
         if (settings().isDelayedBranchingEnabled) {
@@ -149,13 +155,15 @@ class InstructionContext(private val session: MarsContext, private val environme
     /** Execute or schedule a jump. Linking instructions have already recorded a call. */
     fun jump(target: Int) {
         val withoutLink = lastTransfer == null
-        if (settings().isDelayedBranchingEnabled) {
+        if (usesDelaySlots()) {
             delayedBranch.register(target, withoutLink)
         } else {
             setProgramCounter(target)
             if (withoutLink) lastTransfer = Jump(target)
         }
     }
+
+    private fun usesDelaySlots(): Boolean = session.target == MarsTarget.MARS64 || settings().isDelayedBranchingEnabled
 
     /** Transfer control immediately, even when legacy branch delay slots are enabled. */
     internal fun compactTransfer(statement: ProgramStatement, target: Int, branch: Boolean = false) {
