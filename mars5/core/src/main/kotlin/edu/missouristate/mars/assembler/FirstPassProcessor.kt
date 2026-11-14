@@ -244,11 +244,65 @@ internal class FirstPassProcessor(
                 if (passesDataSegmentCheck(token)) storeStrings(tokens, directive)
             }
             Directives.ALIGN, Directives.SPACE -> applyDataLayout(tokens, directive)
+            Directives.P2ALIGN, Directives.BALIGN -> alignSection(tokens, directive, physicalLine, caller)
             Directives.EXTERN -> declareExternal(tokens, physicalLine, caller, renamedLabels)
             Directives.SET -> errors.add(ErrorMessage(ErrorMessage.WARNING, token, "MARS currently ignores the .set directive."))
             Directives.GLOBL -> declareGlobals(tokens)
             else -> errors.add(ErrorMessage(token, "\"$token\" directive recognized but not yet implemented."))
         }
+    }
+
+    private fun alignSection(tokens: TokenList, directive: Directives, line: SourceLine, caller: Origin?) {
+        val token = tokens[0]
+        if (context.session.target != MarsTarget.MARS64) {
+            errors.add(ErrorMessage(token, "$directive requires the MARS64 target"))
+            return
+        }
+        val value = if (tokens.size() == 2) nonNegativeInteger(tokens[1]) else null
+        if (value == null || (directive == Directives.P2ALIGN && value > 31) || (directive == Directives.BALIGN && value == 0)) {
+            val allowed = if (directive == Directives.P2ALIGN) "an exponent from 0 through 31" else "a positive byte boundary"
+            errors.add(ErrorMessage(token, "$directive requires one operand, $allowed"))
+            return
+        }
+        val boundary = if (directive == Directives.P2ALIGN) 1L shl value else value.toLong()
+        val address = if (inDataSegment) dataAddress else textAddress
+        val start = address.get()
+        val misalignment = Math.floorMod(start, boundary)
+        if (misalignment == 0L) return
+        val aligned = start + boundary - misalignment
+        val memory = context.memory()
+        val contains: (Long) -> Boolean = when {
+            inDataSegment && address.kernel -> { location -> location == location.toInt().toLong() && memory.inKernelDataSegment(location.toInt()) }
+            inDataSegment -> memory::inUserData
+            address.kernel -> { location -> location == location.toInt().toLong() && memory.inKernelTextSegment(location.toInt()) }
+            else -> memory::inUserText
+        }
+        if (!contains(start) || !contains(aligned - 1) || aligned <= start) {
+            errors.add(ErrorMessage(token, "$directive crosses the bounds of the active segment"))
+            return
+        }
+
+        if (inDataSegment) {
+            for (location in start until aligned) {
+                checkCancellation.run()
+                memory.setAssemblyData(location, 0, DataTypes.CHAR_SIZE)
+            }
+        } else {
+            if ((start or aligned) and 3L != 0L) {
+                errors.add(ErrorMessage(token, "$directive must align text using whole instruction words"))
+                return
+            }
+            val nop = context.instructions().matchOperator("nop")!!.first()
+            val origin = Parser.origin(line, caller)
+            for (location in start until aligned step Int.SIZE_BYTES.toLong()) {
+                checkCancellation.run()
+                fileCurrentlyBeingAssembled.parsedList!!.add(ProgramStatement(
+                    fileCurrentlyBeingAssembled, line.source, tokens, nop.tokenList, nop, location.toInt(), line.lineNumber,
+                    origin, addressBits = location,
+                ))
+            }
+        }
+        address.set(aligned)
     }
 
     private fun applyDataLayout(tokens: TokenList, directive: Directives) {
