@@ -213,14 +213,15 @@ class Coprocessor1State {
     val conditionFlagCount: Int get() = CONDITION_FLAG_COUNT
 
     companion object {
-        // 2008 NaN encoding, 64-bit FPRs, word, double, and single formats.
-        private const val FIR = 0x00d3_0000
+        // 2008 NaN encoding, 64-bit FPRs, longword, word, double, and single formats.
+        private const val FIR = 0x00f3_0000
         private const val FCSR_IEEE_2008 = 0x000c_0000
         private const val ROUNDING_MASK = 0x3
         private const val FLAG_MASK = 0x7c
         private const val ENABLE_MASK = 0xf80
         internal const val CAUSE_MASK = 0x3f000
         internal const val FLUSH_SUBNORMALS = 1 shl 24
+        internal const val INEXACT = 1
         internal const val INVALID_OPERATION = 1 shl 4
 
         internal fun hasEnabledFloatingException(status: Int): Boolean =

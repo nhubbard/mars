@@ -3,6 +3,7 @@ package edu.missouristate.mars.mips.instructions
 import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.mips.instructions.basic.CompactComparison
 import edu.missouristate.mars.mips.instructions.basic.InstrCompactCompareBranch
+import edu.missouristate.mars.mips.instructions.basic.release6FixedPointConversions
 import edu.missouristate.mars.mips.instructions.basic.release6FloatingCompareInstructions
 /*
 Copyright (c) 2003-2013,  Pete Sanderson and Kenneth Vollmar
@@ -53,6 +54,7 @@ open class InstructionSet {
         if (target == MarsTarget.MARS64) {
             forms.addAll(wideInstructionFactories.map { it() })
             forms.addAll(release6FloatingCompareInstructions())
+            forms.addAll(release6FixedPointConversions())
             forms.addAll(CompactComparison.entries.filter { it.wideOnly }.map(::InstrCompactCompareBranch))
         }
         forms.addAll(loader.loadExtendedInstructions(this))
@@ -99,6 +101,8 @@ open class InstructionSet {
             "addi", "mul", "div", "divu", "mult", "multu", "madd", "maddu", "msub", "msubu",
             "mfhi", "mflo", "mthi", "mtlo",
             "ll", "sc", "bc1f", "bc1t", "bltzal", "bgezal",
+            "round.w.s", "round.w.d", "trunc.w.s", "trunc.w.d",
+            "ceil.w.s", "ceil.w.d", "floor.w.s", "floor.w.d", "cvt.w.s", "cvt.w.d",
             "c.eq.s", "c.eq.d", "c.lt.s", "c.lt.d", "c.le.s", "c.le.d",
         )
     }

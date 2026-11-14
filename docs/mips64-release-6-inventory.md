@@ -113,8 +113,11 @@ or PC-relative immediate in this table is the displacement as written to LLVM.
   `cmp` conditions in single and double precision. They write truth masks,
   recognize ordered and unordered inputs, and report invalid comparisons
   through the FCSR. `cfc1` and `ctc1` expose FCSR and its exception and
-  enable aliases. FIR is read-only and FCCR is reserved. Rounding-mode and
-  exception handling for arithmetic and conversions are still open.
+  enable aliases. FIR is read-only and FCCR is reserved. The fixed-point
+  conversions `cvt`, `round`, `trunc`, `ceil`, and `floor` support both
+  result widths, with FCSR-selected or instruction-selected rounding and
+  invalid and inexact exceptions. Rounding and exceptions for arithmetic
+  and conversions into floating-point formats are still open.
   [MIPS64 FPU programming model](https://s3-eu-west-1.amazonaws.com/downloads-mips/documents/MD00083-2B-MIPS64INT-AFP-06.01.pdf)
 - **REGIMM.** MARS64 supports `bal` and `nal` at the retained zero-source
   encodings. Both link past the delay slot. The old register-conditional

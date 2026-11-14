@@ -82,10 +82,10 @@ c.cond.s	cc, fs, ft	129	removed
 c.cond.d	cc, fs, ft	129	removed
 c.cond.ps	cc, fs, ft	129	removed
 cache	op, offset(base)	134	audit
-ceil.l.s		147	audit
-ceil.l.d		147	audit
-ceil.w.s		149	audit
-ceil.w.d		149	audit
+ceil.l.s	fd, fs	147	implemented
+ceil.l.d	fd, fs	147	implemented
+ceil.w.s	fd, fs	149	implemented
+ceil.w.d	fd, fs	149	implemented
 cfc1	rt, fs	151	implemented
 cfc2	rt, Impl	153	audit
 class.s	fd,fs	154	audit
@@ -150,15 +150,15 @@ ctc2	rt, Impl	174	audit
 cvt.d.s	fd, fs	175	audit
 cvt.d.w	fd, fs	175	audit
 cvt.d.l	fd, fs	175	audit
-cvt.l.s	fd, fs	176	audit
-cvt.l.d	fd, fs	176	audit
+cvt.l.s	fd, fs	176	implemented
+cvt.l.d	fd, fs	176	implemented
 cvt.s.pl	fd, fs	181	removed
 cvt.s.pu	fd, fs	182	removed
 cvt.s.d	fd, fs	180	audit
 cvt.s.w	fd, fs	180	audit
 cvt.s.l	fd, fs	180	audit
-cvt.w.s	fd, fs	183	audit
-cvt.w.d	fd, fs	183	audit
+cvt.w.s	fd, fs	183	implemented
+cvt.w.d	fd, fs	183	implemented
 dadd	rd, rs, rt	185	audit
 daddi	rt, rs, immediate	186	removed
 daddiu	rt, rs, immediate	187	audit
@@ -218,10 +218,10 @@ ei	rt	246	audit
 eret		248	audit
 eretnc		250	audit
 evp	rt	252	audit
-floor.l.s	fd, fs	256	audit
-floor.l.d	fd, fs	256	audit
-floor.w.s		258	audit
-floor.w.d		258	audit
+floor.l.s	fd, fs	256	implemented
+floor.l.d	fd, fs	256	implemented
+floor.w.s	fd, fs	258	implemented
+floor.w.d	fd, fs	258	implemented
 ginvi	rs	260	audit
 ginvt	rs, type	262	audit
 j	target	268	audit
@@ -377,10 +377,10 @@ rint.s	fd,fs	438	audit
 rint.d	fd,fs	438	audit
 rotr	rd, rt, sa	440	audit
 rotrv	rd, rt, rs	441	audit
-round.l.s		442	audit
-round.l.d		442	audit
-round.w.s		444	audit
-round.w.d		444	audit
+round.l.s	fd, fs	442	implemented
+round.l.d	fd, fs	442	implemented
+round.w.s	fd, fs	444	implemented
+round.w.d	fd, fs	444	implemented
 rsqrt.s		446	audit
 rsqrt.d		446	audit
 sb	rt, offset(base)	448	audit
@@ -460,10 +460,10 @@ tltiu	rs, immediate	561	removed
 tltu	rs, rt	562	audit
 tne	rs, rt	563	audit
 tnei	rs, immediate	564	removed
-trunc.l.s	fd, fs	565	audit
-trunc.l.d	fd, fs	565	audit
-trunc.w.s	fd, fs	567	audit
-trunc.w.d	fd, fs	567	audit
+trunc.l.s	fd, fs	565	implemented
+trunc.l.d	fd, fs	565	implemented
+trunc.w.s	fd, fs	567	implemented
+trunc.w.d	fd, fs	567	implemented
 wait		569	audit
 wrpgpr	rd, rt	571	audit
 wsbh	rd, rt	572	audit
