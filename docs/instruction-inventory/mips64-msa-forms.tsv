@@ -1,6 +1,6 @@
 # MD00868 revision 1.12, section 4.1.2 concrete Format rows.
 # Page numbers are printed manual pages. MIPS64 MSA denotes forms specific to a 64-bit CPU.
-# scalar-audit and scalar-implemented cross-reference scalar LSA and DLSA in Volume II-A.
+# scalar-implemented identifies the scalar LSA and DLSA cross-references in Volume II-A.
 # mnemonic	operands	availability	page	implementation status
 add_a.b	wd,ws,wt	MSA	80	implemented
 add_a.h	wd,ws,wt	MSA	80	implemented
@@ -334,7 +334,7 @@ ldi.b	wd,s10	MSA	228	implemented
 ldi.h	wd,s10	MSA	228	implemented
 ldi.w	wd,s10	MSA	228	implemented
 ldi.d	wd,s10	MSA	228	implemented
-lsa	rd,rs,rt,sa	MSA	229	scalar-audit
+lsa	rd,rs,rt,sa	MSA	229	scalar-implemented
 madd_q.h	wd,ws,wt	MSA	230	implemented
 madd_q.w	wd,ws,wt	MSA	230	implemented
 maddr_q.h	wd,ws,wt	MSA	232	implemented
