@@ -49,6 +49,22 @@ fields on decode, and that the same raw word has no MARS32 decoding. The current
 | `drotr`, `drotr32`, `drotrv`, `dclz`, `dclo` | Checked | Confirm masked counts and all-zero/all-one results. |
 | `lwu`, `ld`, `sd` | Checked | Ordinary storage supports misaligned accesses in both byte orders within the current 32-bit address map. |
 
+## Scalar forms that depend on hardware
+
+The scalar table marks the dependencies separately from implementation status.
+The distinction helps identify which source needs a diagnostic from MARS64.
+
+| Status | Dependency |
+| --- | --- |
+| `requires-cop2` | A platform-specific coprocessor supplies the conditions, registers, or operations. The manual defines transfer encodings and leaves their device behavior implementation-dependent. |
+| `requires-eva` | Enhanced Virtual Addressing uses CP0 access modes and translated user memory from privileged code. |
+| `requires-privileged-platform` | Global invalidation and TLB forms require privileged address translation. `rdpgpr` and `wrpgpr` require shadow register sets. `wait` depends on interrupt and power-management behavior. |
+| `requires-ejtag` | `deret` and `sdbbp` use processor Debug Mode and its exception state. |
+
+These categories apply to the forms that depend on those facilities. The
+existing educational CP0 exception state and the IDE debugger are available
+independently. Diagnostics for the classified forms are still pending.
+
 ## Additional scalar forms with encoding probes
 
 MARS64 assembles and executes all six doubleword bitfield forms, as well as

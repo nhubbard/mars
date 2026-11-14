@@ -37,8 +37,8 @@ bc1t	offset (cc = 0 implied)	81	removed
 bc1t	cc, offset	81	removed
 bc1tl	offset (cc = 0 implied)	83	removed
 bc1tl	cc, offset	83	removed
-bc2eqz	ct, offset	85	audit
-bc2nez	ct, offset	85	audit
+bc2eqz	ct, offset	85	requires-cop2
+bc2nez	ct, offset	85	requires-cop2
 bc2f	offset (cc = 0 implied)	87	removed
 bc2f	cc, offset	87	removed
 bc2fl	offset (cc = 0 implied)	88	removed
@@ -102,7 +102,7 @@ ceil.l.d	fd, fs	147	implemented
 ceil.w.s	fd, fs	149	implemented
 ceil.w.d	fd, fs	149	implemented
 cfc1	rt, fs	151	implemented
-cfc2	rt, Impl	153	audit
+cfc2	rt, Impl	153	requires-cop2
 class.s	fd,fs	154	audit
 class.d	fd,fs	154	audit
 clo	rd, rs	156	audit
@@ -151,7 +151,7 @@ cmp.sune.s	fd, fs, ft	158	implemented
 cmp.sune.d	fd, fs, ft	158	implemented
 cmp.sne.s	fd, fs, ft	158	implemented
 cmp.sne.d	fd, fs, ft	158	implemented
-cop2	func	163	audit
+cop2	func	163	requires-cop2
 crc32b	rt, rs, rt	165	implemented
 crc32h	rt, rs, rt	165	implemented
 crc32w	rt, rs, rt	165	implemented
@@ -161,7 +161,7 @@ crc32ch	rt, rs, rt	168	implemented
 crc32cw	rt, rs, rt	168	implemented
 crc32cd	rt, rs, rt	168	implemented
 ctc1	rt, fs	171	implemented
-ctc2	rt, Impl	174	audit
+ctc2	rt, Impl	174	requires-cop2
 cvt.d.s	fd, fs	175	implemented
 cvt.d.w	fd, fs	175	implemented
 cvt.d.l	fd, fs	175	implemented
@@ -182,7 +182,7 @@ dclo	rd, rs	189	audit
 dclz	rd, rs	190	audit
 ddiv	rs, rt	191	removed
 ddivu	rs, rt	192	removed
-deret		193	audit
+deret		193	requires-ejtag
 di		201	audit
 di	rt	201	audit
 dext	rt, rs, pos, size	195	implemented
@@ -206,13 +206,13 @@ divu	rs, rt	215	removed
 dmfc0	rt, rd	216	audit
 dmfc0	rt, rd, sel	216	audit
 dmfc1	rt,fs	217	implemented
-dmfc2	rt, rd	218	audit
-dmfc2,	rt, rd, sel	218	audit
+dmfc2	rt, rd	218	requires-cop2
+dmfc2	rt, rd, sel	218	requires-cop2
 dmtc0	rt, rd	219	audit
 dmtc0	rt, rd, sel	219	audit
 dmtc1	rt, fs	220	implemented
-dmtc2	rt,Impl	221	audit
-dmtc2	rt, Impl, sel	221	audit
+dmtc2	rt,Impl	221	requires-cop2
+dmtc2	rt, Impl, sel	221	requires-cop2
 dmult	rs, rt	222	removed
 dmultu	rs, rt	223	removed
 drotr	rd, rt, sa	224	audit
@@ -242,8 +242,8 @@ floor.l.s	fd, fs	256	implemented
 floor.l.d	fd, fs	256	implemented
 floor.w.s	fd, fs	258	implemented
 floor.w.d	fd, fs	258	implemented
-ginvi	rs	260	audit
-ginvt	rs, type	262	audit
+ginvi	rs	260	requires-privileged-platform
+ginvt	rs, type	262	requires-privileged-platform
 j	target	268	audit
 jal	target	269	audit
 jalr	rs (rd = 31 implied)	271	audit
@@ -256,32 +256,32 @@ jic	rt, offset	280	audit
 jr	rs	281	audit
 jr.hb	rs	283	implemented
 lb	rt, offset(base)	286	audit
-lbe	rt, offset(base)	287	audit
+lbe	rt, offset(base)	287	requires-eva
 lbu	rt, offset(base)	288	audit
-lbue	rt, offset(base)	289	audit
+lbue	rt, offset(base)	289	requires-eva
 ld	rt, offset(base)	290	audit
 ldc1	ft, offset(base)	291	audit
-ldc2	rt, offset(base)	292	audit
+ldc2	rt, offset(base)	292	requires-cop2
 ldpc	rs, offset	296	implemented
 ldxc1	fd, index(base)	299	removed
 lh	rt, offset(base)	301	audit
-lhe	rt, offset(base)	302	audit
+lhe	rt, offset(base)	302	requires-eva
 lhu	rt, offset(base)	304	audit
-lhue	rt, offset(base)	305	audit
+lhue	rt, offset(base)	305	requires-eva
 ll	rt, offset(base)	307	implemented
 lld	rt, offset(base)	309	implemented
-lle	rt, offset(base)	314	audit
+lle	rt, offset(base)	314	requires-eva
 lldp	rt, rd, (base)	312	implemented
 llwp	rt, rd, (base)	316	implemented
-llwpe	rt, rd, (base)	318	audit
+llwpe	rt, rd, (base)	318	requires-eva
 lsa	rd,rs,rt,sa	320	audit
 dlsa	rd,rs,rt,sa	320	implemented
 lui	rt, immediate	321	idiom-audit
 luxc1	fd, index(base)	322	removed
 lw	rt, offset(base)	323	audit
 lwc1	ft, offset(base)	324	audit
-lwc2	rt, offset(base)	325	audit
-lwe	rt, offset(base)	327	audit
+lwc2	rt, offset(base)	325	requires-cop2
+lwe	rt, offset(base)	327	requires-eva
 lwl	rt, offset(base)	330	removed
 lwle	rt, offset(base)	333	removed
 lwpc	rs, offset	335	implemented
@@ -310,13 +310,13 @@ mina.d	fd,fs,ft	352	audit
 mfc0	rt, rd	356	audit
 mfc0	rt, rd, sel	356	audit
 mfc1	rt, fs	357	audit
-mfc2	rt, Impl	358	audit
-mfc2,	rt, Impl, sel	358	audit
+mfc2	rt, Impl	358	requires-cop2
+mfc2	rt, Impl, sel	358	requires-cop2
 mfhc0	rt, rd	359	audit
 mfhc0	rt, rd, sel	359	audit
 mfhc1	rt, fs	361	implemented
-mfhc2	rt, Impl	362	audit
-mfhc2,	rt, rd, sel	362	audit
+mfhc2	rt, Impl	362	requires-cop2
+mfhc2	rt, rd, sel	362	requires-cop2
 mfhi		363	removed
 mflo	rd	364	removed
 mov.s	fd, fs	365	audit
@@ -346,13 +346,13 @@ msubu	rs, rt	382	removed
 mtc0	rt, rd	383	audit
 mtc0	rt, rd, sel	383	audit
 mtc1	rt, fs	385	audit
-mtc2	rt, Impl	386	audit
-mtc2	rt, Impl, sel	386	audit
+mtc2	rt, Impl	386	requires-cop2
+mtc2	rt, Impl, sel	386	requires-cop2
 mthc0	rt, rd	387	audit
 mthc0	rt, rd, sel	387	audit
 mthc1	rt, fs	389	implemented
-mthc2	rt, Impl	390	audit
-mthc2	rt, Impl, sel	390	audit
+mthc2	rt, Impl	390	requires-cop2
+mthc2	rt, Impl, sel	390	requires-cop2
 mthi	rs	391	removed
 mtlo	rs	392	removed
 mul	rd, rs, rt	393	removed
@@ -387,12 +387,12 @@ pause		415	audit
 pll.ps	fd, fs, ft	417	removed
 plu.ps	fd, fs, ft	418	removed
 pref	hint,offset(base)	419	audit
-prefe	hint,offset(base)	423	audit
+prefe	hint,offset(base)	423	requires-eva
 prefx	hint, index(base)	428	removed
 pul.ps	fd, fs, ft	430	removed
 puu.ps	fd, fs, ft	431	removed
 rdhwr	rt,rd,sel	432	audit
-rdpgpr	rd, rt	435	audit
+rdpgpr	rd, rt	435	requires-privileged-platform
 recip.s		436	audit
 recip.d		436	audit
 rint.s	fd, fs	438	implemented
@@ -406,17 +406,17 @@ round.w.d	fd, fs	444	implemented
 rsqrt.s		446	audit
 rsqrt.d		446	audit
 sb	rt, offset(base)	448	audit
-sbe	rt, offset(base)	449	audit
+sbe	rt, offset(base)	449	requires-eva
 sc	rt, offset(base)	450	implemented
 scd	rt, offset(base)	454	implemented
 scdp	rt, rd, (base)	458	implemented
-sce	rt, offset(base)	461	audit
+sce	rt, offset(base)	461	requires-eva
 scwp	rt, rd, (base)	465	implemented
-scwpe	rt, rd, (base)	469	audit
+scwpe	rt, rd, (base)	469	requires-eva
 sd	rt, offset(base)	472	audit
-sdbbp	code	473	audit
+sdbbp	code	473	requires-ejtag
 sdc1	ft, offset(base)	474	audit
-sdc2	rt, offset(base)	475	audit
+sdc2	rt, offset(base)	475	requires-cop2
 sdl	rt, offset(base)	477	removed
 sdr	rt, offset(base)	479	removed
 sdxc1	fs, index(base)	481	removed
@@ -431,7 +431,7 @@ seleqz.d	fd,fs,ft	491	audit
 selnez.s	fd,fs,ft	491	audit
 selnez.d	fd,fs,ft	491	audit
 sh	rt, offset(base)	493	audit
-she	rt, offset(base)	494	audit
+she	rt, offset(base)	494	requires-eva
 sigrie	code	496	implemented
 sll	rd, rt, sa	497	audit
 sllv	rd, rt, rs	498	audit
@@ -453,8 +453,8 @@ sub.ps	fd, fs, ft	510	removed
 subu	rd, rs, rt	512	audit
 suxc1	fs, index(base)	513	removed
 sw	rt, offset(base)	514	audit
-swc2	rt, offset(base)	516	audit
-swe	rt, offset(base)	518	audit
+swc2	rt, offset(base)	516	requires-cop2
+swe	rt, offset(base)	518	requires-eva
 swl	rt, offset(base)	520	removed
 swle	rt, offset(base)	522	removed
 swr	rt, offset(base)	525	removed
@@ -470,12 +470,12 @@ tge	rs, rt	543	audit
 tgei	rs, immediate	544	removed
 tgeiu	rs, immediate	545	removed
 tgeu	rs, rt	546	audit
-tlbinv		547	audit
-tlbinvf		550	audit
-tlbp		552	audit
-tlbr		553	audit
-tlbwi		555	audit
-tlbwr		557	audit
+tlbinv		547	requires-privileged-platform
+tlbinvf		550	requires-privileged-platform
+tlbp		552	requires-privileged-platform
+tlbr		553	requires-privileged-platform
+tlbwi		555	requires-privileged-platform
+tlbwr		557	requires-privileged-platform
 tlt	rs, rt	559	audit
 tlti	rs, immediate	560	removed
 tltiu	rs, immediate	561	removed
@@ -486,8 +486,8 @@ trunc.l.s	fd, fs	565	implemented
 trunc.l.d	fd, fs	565	implemented
 trunc.w.s	fd, fs	567	implemented
 trunc.w.d	fd, fs	567	implemented
-wait		569	audit
-wrpgpr	rd, rt	571	audit
+wait		569	requires-privileged-platform
+wrpgpr	rd, rt	571	requires-privileged-platform
 wsbh	rd, rt	572	audit
 xor	rd, rs, rt	574	audit
 xori	rt, rs, immediate	575	audit
