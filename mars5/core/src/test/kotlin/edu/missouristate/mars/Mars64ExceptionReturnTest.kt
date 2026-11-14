@@ -9,6 +9,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertThrows
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.params.ParameterizedTest
@@ -61,6 +62,31 @@ class Mars64ExceptionReturnTest {
             session.backStepper.backStep()
             assertEquals(0, session.coprocessor0.getValue(EPC))
             assertEquals(0, session.coprocessor0.getValue(CAUSE) ushr 31)
+        }
+    }
+
+    @Test
+    fun `an assembled handler can resume after a fault in a delay slot`(@TempDir directory: Path) {
+        val source = Files.writeString(directory.resolve("handler.s"), $$"""
+            beq $zero,$zero,target
+            break
+            addiu $9,$zero,7
+            target: nop
+            .ktext 0x80000180
+            dmfc0 $10,$14
+            mfc0 $11,$13
+            daddiu $12,$10,8
+            dmtc0 $12,$14
+            eret
+        """.trimIndent())
+        TestSessions.create().use { session ->
+            session.selectTarget(MarsTarget.MARS64)
+            val program = session.assemble(listOf(source), null, false, false)
+            assertTrue(program.simulate(20))
+            assertEquals(session.memory.textBaseAddress.toLong(), session.registerFile.getLongValueNoNotify(10))
+            assertEquals(1, session.registerFile.getValueNoNotify(11) ushr 31)
+            assertEquals(7, session.registerFile.getValueNoNotify(9))
+            assertEquals(0, session.coprocessor0.getValue(STATUS) and 2)
         }
     }
 
