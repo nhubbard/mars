@@ -66,7 +66,10 @@ class InstructionContext(private val session: MarsContext, private val environme
     /** Resolve a register-based address against the existing 32-bit memory map. */
     internal fun effectiveAddress(register: Int, offset: Int, exception: Int = ADDRESS_EXCEPTION_LOAD): Int {
         if (session.target == MarsTarget.MARS32) return registerFile.getValue(register) + offset
-        val address = registerFile.getLongValue(register) + offset.toShort()
+        return mappedAddress(registerFile.getLongValue(register) + offset.toShort(), exception)
+    }
+
+    private fun mappedAddress(address: Long, exception: Int): Int {
         val mapped = address.toInt()
         if (address != mapped.toLong() && address != mapped.toUInt().toLong()) {
             throw AddressErrorException("Effective address is outside mapped memory: ", exception, address)
@@ -178,8 +181,22 @@ class InstructionContext(private val session: MarsContext, private val environme
     }
 
     fun returnFromException() {
-        memory().reservation = null
-        setProgramCounter(coprocessor0.getValue(EPC))
+        finishExceptionReturn(coprocessor0.getValue(EPC), clearReservation = true)
+    }
+
+    internal fun release6ExceptionReturn(statement: ProgramStatement, clearReservation: Boolean) {
+        val target = try {
+            mappedAddress(coprocessor0.readRegisterBits(EPC), ADDRESS_EXCEPTION_LOAD)
+        } catch (failure: AddressErrorException) {
+            throw ProcessingException(this, statement, failure)
+        }
+        updateCoprocessor0(STATUS, Binary.clearBit(coprocessor0.getValue(STATUS), EXCEPTION_LEVEL))
+        finishExceptionReturn(target, clearReservation)
+    }
+
+    private fun finishExceptionReturn(target: Int, clearReservation: Boolean) {
+        if (clearReservation) memory().reservation = null
+        setProgramCounter(target)
         lastTransfer = ExceptionReturn.INSTANCE
     }
 
@@ -459,9 +476,18 @@ class InstructionContext(private val session: MarsContext, private val environme
     }
 
     fun setExceptionRegisters(cause: Int) {
-        updateCoprocessor0(CAUSE, (coprocessor0.getValue(CAUSE) and 0xfffffc83.toInt()) or (cause shl 2))
-        updateCoprocessor0(EPC, registerFile.programCounter - INSTRUCTION_LENGTH)
-        updateCoprocessor0(STATUS, Binary.setBit(coprocessor0.getValue(STATUS), EXCEPTION_LEVEL))
+        val status = coprocessor0.getValue(STATUS)
+        var causeBits = (coprocessor0.getValue(CAUSE) and 0xfffffc83.toInt()) or (cause shl 2)
+        val faultPc = registerFile.programCounter - INSTRUCTION_LENGTH
+        if (session.target == MarsTarget.MARS32) {
+            updateCoprocessor0(EPC, faultPc)
+        } else if (status and (1 shl EXCEPTION_LEVEL) == 0) {
+            val inDelaySlot = delayedBranch.isTriggered
+            causeBits = (causeBits and Int.MAX_VALUE) or (if (inDelaySlot) Int.MIN_VALUE else 0)
+            updateCoprocessor0(EPC, faultPc - if (inDelaySlot) INSTRUCTION_LENGTH else 0)
+        }
+        updateCoprocessor0(CAUSE, causeBits)
+        updateCoprocessor0(STATUS, Binary.setBit(status, EXCEPTION_LEVEL))
     }
 
     fun exit() = exit(0)

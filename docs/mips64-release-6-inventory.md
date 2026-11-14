@@ -74,6 +74,13 @@ preserves the full effective address in `BadVAddr`, and backstep restores
 its previous value. The program counter and mapped segments still use
 32-bit addresses.
 
+`eret` and `eretnc` return through the educational EPC register. `eret`
+clears the load-linked reservation and `eretnc` preserves it. A fault in a
+MARS64 delay slot records the branch address in EPC and sets `Cause.BD`.
+When exception level is already set, a subsequent fault preserves EPC and
+`Cause.BD`. A return to a full-width EPC outside the current map raises an
+address fault.
+
 ## Additional scalar forms with encoding probes
 
 MARS64 assembles and executes all six doubleword bitfield forms, as well as

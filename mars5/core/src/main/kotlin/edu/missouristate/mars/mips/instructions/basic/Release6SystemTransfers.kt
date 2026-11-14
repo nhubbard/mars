@@ -10,7 +10,13 @@ import edu.missouristate.mars.simulator.Exceptions.RESERVED_INSTRUCTION_EXCEPTIO
 internal fun release6SystemTransfers(): List<BasicInstruction> = listOf(
     systemTransfer(write = false, explicitSelector = false), systemTransfer(write = false, explicitSelector = true),
     systemTransfer(write = true, explicitSelector = false), systemTransfer(write = true, explicitSelector = true),
+    exceptionReturn("eret", clearReservation = true), exceptionReturn("eretnc", clearReservation = false),
 )
+
+private fun exceptionReturn(mnemonic: String, clearReservation: Boolean): BasicInstruction = BasicInstruction(
+    mnemonic, if (clearReservation) "Return through EPC and clear the reservation" else "Return through EPC and preserve the reservation",
+    R_FORMAT, "010000 1 000000000000000000 ${if (clearReservation) 0 else 1} 011000",
+) { statement, context -> context.release6ExceptionReturn(statement, clearReservation) }
 
 private fun systemTransfer(write: Boolean, explicitSelector: Boolean): BasicInstruction {
     val mnemonic = if (write) "dmtc0" else "dmfc0"

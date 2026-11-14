@@ -235,8 +235,8 @@ dvp	rt	242	audit
 ehb		245	implemented
 ei		246	audit
 ei	rt	246	audit
-eret		248	audit
-eretnc		250	audit
+eret		248	implemented-subset
+eretnc		250	implemented-subset
 evp	rt	252	audit
 floor.l.s	fd, fs	256	implemented
 floor.l.d	fd, fs	256	implemented
