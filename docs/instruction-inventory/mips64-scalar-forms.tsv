@@ -231,13 +231,15 @@ dsrl32	rd, rt, sa	238	implemented
 dsrlv	rd, rt, rs	239	implemented
 dsub	rd, rs, rt	240	implemented
 dsubu	rd, rs, rt	241	implemented
-dvp	rt	242	audit
+dvp		242	implemented
+dvp	rt	242	implemented
 ehb		245	implemented
 ei		246	implemented-subset
 ei	rt	246	implemented-subset
 eret		248	implemented-subset
 eretnc		250	implemented-subset
-evp	rt	252	audit
+evp		252	implemented
+evp	rt	252	implemented
 floor.l.s	fd, fs	256	implemented
 floor.l.d	fd, fs	256	implemented
 floor.w.s	fd, fs	258	implemented
@@ -383,7 +385,7 @@ nop		411	idiom-audit
 nor	rd, rs, rt	412	audit
 or	rd, rs, rt	413	implemented
 ori	rt, rs, immediate	414	implemented
-pause		415	audit
+pause		415	implemented-subset
 pll.ps	fd, fs, ft	417	removed
 plu.ps	fd, fs, ft	418	removed
 pref	hint,offset(base)	419	implemented

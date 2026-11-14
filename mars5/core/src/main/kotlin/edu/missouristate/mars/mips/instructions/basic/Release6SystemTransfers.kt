@@ -15,7 +15,17 @@ internal fun release6SystemTransfers(): List<BasicInstruction> = listOf(
     exceptionReturn("eret", clearReservation = true), exceptionReturn("eretnc", clearReservation = false),
     interruptControl(enable = false, hasDestination = false), interruptControl(enable = false, hasDestination = true),
     interruptControl(enable = true, hasDestination = false), interruptControl(enable = true, hasDestination = true),
+    virtualProcessorControl("dvp", disable = true, hasDestination = false),
+    virtualProcessorControl("dvp", disable = true, hasDestination = true),
+    virtualProcessorControl("evp", disable = false, hasDestination = false),
+    virtualProcessorControl("evp", disable = false, hasDestination = true),
 )
+
+private fun virtualProcessorControl(mnemonic: String, disable: Boolean, hasDestination: Boolean) = BasicInstruction(
+    if (hasDestination) "$mnemonic \$t1" else mnemonic,
+    "Virtual processor control. No operation on the single-core target without virtual processors.",
+    R_FORMAT, "010000 01011 ${if (hasDestination) "fffff" else "00000"} 00000 00000 ${if (disable) 1 else 0}00100",
+) { _, _ -> }
 
 private fun interruptControl(enable: Boolean, hasDestination: Boolean): BasicInstruction {
     val mnemonic = if (enable) "ei" else "di"

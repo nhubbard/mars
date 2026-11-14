@@ -12,6 +12,8 @@ internal fun release6BarrierInstructions(): List<BasicInstruction> = listOf(
     BasicInstruction("sync 31", "Synchronize shared memory", R_FORMAT, "000000 00000 00000 00000 fffff 001111") { _, _ -> },
     BasicInstruction("ehb", "Clear execution hazards", R_FORMAT, "000000 00000 00000 00000 00011 000000") { _, _ -> },
     BasicInstruction("ssnop", "Deprecated no operation", R_FORMAT, "000000 00000 00000 00000 00001 000000") { _, _ -> },
+    BasicInstruction("pause", "Processor wait hint. No operation on the single-core target without hardware threading.",
+        R_FORMAT, "000000 00000 00000 00000 00101 000000") { _, _ -> },
     object : BasicInstruction(
         "synci -100(\$t2)", "Synchronize instruction writes", I_FORMAT, "000001 sssss 11111 ffffffffffffffff",
         { statement, context ->
