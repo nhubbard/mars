@@ -1,535 +1,536 @@
 # MD00868 revision 1.12, section 4.1.2 concrete Format rows.
 # Page numbers are printed manual pages. MIPS64 MSA denotes forms specific to a 64-bit CPU.
 # scalar-implemented identifies the scalar LSA and DLSA cross-references in Volume II-A.
-# mnemonic	operands	availability	page	implementation status
-add_a.b	wd,ws,wt	MSA	80	implemented
-add_a.h	wd,ws,wt	MSA	80	implemented
-add_a.w	wd,ws,wt	MSA	80	implemented
-add_a.d	wd,ws,wt	MSA	80	implemented
-adds_a.b	wd,ws,wt	MSA	82	implemented
-adds_a.h	wd,ws,wt	MSA	82	implemented
-adds_a.w	wd,ws,wt	MSA	82	implemented
-adds_a.d	wd,ws,wt	MSA	82	implemented
-adds_s.b	wd,ws,wt	MSA	84	implemented
-adds_s.h	wd,ws,wt	MSA	84	implemented
-adds_s.w	wd,ws,wt	MSA	84	implemented
-adds_s.d	wd,ws,wt	MSA	84	implemented
-adds_u.b	wd,ws,wt	MSA	86	implemented
-adds_u.h	wd,ws,wt	MSA	86	implemented
-adds_u.w	wd,ws,wt	MSA	86	implemented
-adds_u.d	wd,ws,wt	MSA	86	implemented
-addv.b	wd,ws,wt	MSA	88	implemented
-addv.h	wd,ws,wt	MSA	88	implemented
-addv.w	wd,ws,wt	MSA	88	implemented
-addv.d	wd,ws,wt	MSA	88	implemented
-addvi.b	wd,ws,u5	MSA	89	implemented
-addvi.h	wd,ws,u5	MSA	89	implemented
-addvi.w	wd,ws,u5	MSA	89	implemented
-addvi.d	wd,ws,u5	MSA	89	implemented
-and.v	wd,ws,wt	MSA	90	implemented
-andi.b	wd,ws,i8	MSA	91	implemented
-asub_s.b	wd,ws,wt	MSA	92	implemented
-asub_s.h	wd,ws,wt	MSA	92	implemented
-asub_s.w	wd,ws,wt	MSA	92	implemented
-asub_s.d	wd,ws,wt	MSA	92	implemented
-asub_u.b	wd,ws,wt	MSA	94	implemented
-asub_u.h	wd,ws,wt	MSA	94	implemented
-asub_u.w	wd,ws,wt	MSA	94	implemented
-asub_u.d	wd,ws,wt	MSA	94	implemented
-ave_s.b	wd,ws,wt	MSA	96	implemented
-ave_s.h	wd,ws,wt	MSA	96	implemented
-ave_s.w	wd,ws,wt	MSA	96	implemented
-ave_s.d	wd,ws,wt	MSA	96	implemented
-ave_u.b	wd,ws,wt	MSA	97	implemented
-ave_u.h	wd,ws,wt	MSA	97	implemented
-ave_u.w	wd,ws,wt	MSA	97	implemented
-ave_u.d	wd,ws,wt	MSA	97	implemented
-aver_s.b	wd,ws,wt	MSA	98	implemented
-aver_s.h	wd,ws,wt	MSA	98	implemented
-aver_s.w	wd,ws,wt	MSA	98	implemented
-aver_s.d	wd,ws,wt	MSA	98	implemented
-aver_u.b	wd,ws,wt	MSA	99	implemented
-aver_u.h	wd,ws,wt	MSA	99	implemented
-aver_u.w	wd,ws,wt	MSA	99	implemented
-aver_u.d	wd,ws,wt	MSA	99	implemented
-bclr.b	wd,ws,wt	MSA	100	implemented
-bclr.h	wd,ws,wt	MSA	100	implemented
-bclr.w	wd,ws,wt	MSA	100	implemented
-bclr.d	wd,ws,wt	MSA	100	implemented
-bclri.b	wd,ws,m	MSA	101	implemented
-bclri.h	wd,ws,m	MSA	101	implemented
-bclri.w	wd,ws,m	MSA	101	implemented
-bclri.d	wd,ws,m	MSA	101	implemented
-binsl.b	wd,ws,wt	MSA	102	implemented
-binsl.h	wd,ws,wt	MSA	102	implemented
-binsl.w	wd,ws,wt	MSA	102	implemented
-binsl.d	wd,ws,wt	MSA	102	implemented
-binsli.b	wd,ws,m	MSA	103	implemented
-binsli.h	wd,ws,m	MSA	103	implemented
-binsli.w	wd,ws,m	MSA	103	implemented
-binsli.d	wd,ws,m	MSA	103	implemented
-binsr.b	wd,ws,wt	MSA	104	implemented
-binsr.h	wd,ws,wt	MSA	104	implemented
-binsr.w	wd,ws,wt	MSA	104	implemented
-binsr.d	wd,ws,wt	MSA	104	implemented
-binsri.b	wd,ws,m	MSA	105	implemented
-binsri.h	wd,ws,m	MSA	105	implemented
-binsri.w	wd,ws,m	MSA	105	implemented
-binsri.d	wd,ws,m	MSA	105	implemented
-bmnz.v	wd,ws,wt	MSA	106	implemented
-bmnzi.b	wd,ws,i8	MSA	107	implemented
-bmz.v	wd,ws,wt	MSA	108	implemented
-bmzi.b	wd,ws,i8	MSA	109	implemented
-bneg.b	wd,ws,wt	MSA	110	implemented
-bneg.h	wd,ws,wt	MSA	110	implemented
-bneg.w	wd,ws,wt	MSA	110	implemented
-bneg.d	wd,ws,wt	MSA	110	implemented
-bnegi.b	wd,ws,m	MSA	111	implemented
-bnegi.h	wd,ws,m	MSA	111	implemented
-bnegi.w	wd,ws,m	MSA	111	implemented
-bnegi.d	wd,ws,m	MSA	111	implemented
-bnz.b	wt,s16	MSA	112	implemented
-bnz.h	wt,s16	MSA	112	implemented
-bnz.w	wt,s16	MSA	112	implemented
-bnz.d	wt,s16	MSA	112	implemented
-bnz.v	wt,s16	MSA	113	implemented
-bsel.v	wd,ws,wt	MSA	114	implemented
-bseli.b	wd,ws,i8	MSA	115	implemented
-bset.b	wd,ws,wt	MSA	116	implemented
-bset.h	wd,ws,wt	MSA	116	implemented
-bset.w	wd,ws,wt	MSA	116	implemented
-bset.d	wd,ws,wt	MSA	116	implemented
-bseti.b	wd,ws,m	MSA	117	implemented
-bseti.h	wd,ws,m	MSA	117	implemented
-bseti.w	wd,ws,m	MSA	117	implemented
-bseti.d	wd,ws,m	MSA	117	implemented
-bz.b	wt,s16	MSA	118	implemented
-bz.h	wt,s16	MSA	118	implemented
-bz.w	wt,s16	MSA	118	implemented
-bz.d	wt,s16	MSA	118	implemented
-bz.v	wt,s16	MSA	119	implemented
-ceq.b	wd,ws,wt	MSA	120	implemented
-ceq.h	wd,ws,wt	MSA	120	implemented
-ceq.w	wd,ws,wt	MSA	120	implemented
-ceq.d	wd,ws,wt	MSA	120	implemented
-ceqi.b	wd,ws,s5	MSA	121	implemented
-ceqi.h	wd,ws,s5	MSA	121	implemented
-ceqi.w	wd,ws,s5	MSA	121	implemented
-ceqi.d	wd,ws,s5	MSA	121	implemented
-cfcmsa	rd,cs	MSA	123	implemented
-cle_s.b	wd,ws,wt	MSA	125	implemented
-cle_s.h	wd,ws,wt	MSA	125	implemented
-cle_s.w	wd,ws,wt	MSA	125	implemented
-cle_s.d	wd,ws,wt	MSA	125	implemented
-cle_u.b	wd,ws,wt	MSA	126	implemented
-cle_u.h	wd,ws,wt	MSA	126	implemented
-cle_u.w	wd,ws,wt	MSA	126	implemented
-cle_u.d	wd,ws,wt	MSA	126	implemented
-clei_s.b	wd,ws,s5	MSA	127	implemented
-clei_s.h	wd,ws,s5	MSA	127	implemented
-clei_s.w	wd,ws,s5	MSA	127	implemented
-clei_s.d	wd,ws,s5	MSA	127	implemented
-clei_u.b	wd,ws,u5	MSA	129	implemented
-clei_u.h	wd,ws,u5	MSA	129	implemented
-clei_u.w	wd,ws,u5	MSA	129	implemented
-clei_u.d	wd,ws,u5	MSA	129	implemented
-clt_s.b	wd,ws,wt	MSA	131	implemented
-clt_s.h	wd,ws,wt	MSA	131	implemented
-clt_s.w	wd,ws,wt	MSA	131	implemented
-clt_s.d	wd,ws,wt	MSA	131	implemented
-clt_u.b	wd,ws,wt	MSA	132	implemented
-clt_u.h	wd,ws,wt	MSA	132	implemented
-clt_u.w	wd,ws,wt	MSA	132	implemented
-clt_u.d	wd,ws,wt	MSA	132	implemented
-clti_s.b	wd,ws,s5	MSA	133	implemented
-clti_s.h	wd,ws,s5	MSA	133	implemented
-clti_s.w	wd,ws,s5	MSA	133	implemented
-clti_s.d	wd,ws,s5	MSA	133	implemented
-clti_u.b	wd,ws,u5	MSA	135	implemented
-clti_u.h	wd,ws,u5	MSA	135	implemented
-clti_u.w	wd,ws,u5	MSA	135	implemented
-clti_u.d	wd,ws,u5	MSA	135	implemented
-copy_s.b	rd,ws[n]	MSA	137	implemented
-copy_s.h	rd,ws[n]	MSA	137	implemented
-copy_s.w	rd,ws[n]	MSA	137	implemented
-copy_s.d	rd,ws[n]	MIPS64 MSA	137	implemented
-copy_u.b	rd,ws[n]	MSA	138	implemented
-copy_u.h	rd,ws[n]	MSA	138	implemented
-copy_u.w	rd,ws[n]	MIPS64 MSA	138	implemented
-ctcmsa	cd,rs	MSA	139	implemented
-div_s.b	wd,ws,wt	MSA	141	implemented
-div_s.h	wd,ws,wt	MSA	141	implemented
-div_s.w	wd,ws,wt	MSA	141	implemented
-div_s.d	wd,ws,wt	MSA	141	implemented
-div_u.b	wd,ws,wt	MSA	142	implemented
-div_u.h	wd,ws,wt	MSA	142	implemented
-div_u.w	wd,ws,wt	MSA	142	implemented
-div_u.d	wd,ws,wt	MSA	142	implemented
-dlsa	rd,rs,rt,sa	MSA	143	scalar-implemented
-dotp_s.h	wd,ws,wt	MSA	144	implemented
-dotp_s.w	wd,ws,wt	MSA	144	implemented
-dotp_s.d	wd,ws,wt	MSA	144	implemented
-dotp_u.h	wd,ws,wt	MSA	146	implemented
-dotp_u.w	wd,ws,wt	MSA	146	implemented
-dotp_u.d	wd,ws,wt	MSA	146	implemented
-dpadd_s.h	wd,ws,wt	MSA	148	implemented
-dpadd_s.w	wd,ws,wt	MSA	148	implemented
-dpadd_s.d	wd,ws,wt	MSA	148	implemented
-dpadd_u.h	wd,ws,wt	MSA	150	implemented
-dpadd_u.w	wd,ws,wt	MSA	150	implemented
-dpadd_u.d	wd,ws,wt	MSA	150	implemented
-dpsub_s.h	wd,ws,wt	MSA	152	implemented
-dpsub_s.w	wd,ws,wt	MSA	152	implemented
-dpsub_s.d	wd,ws,wt	MSA	152	implemented
-dpsub_u.h	wd,ws,wt	MSA	154	implemented
-dpsub_u.w	wd,ws,wt	MSA	154	implemented
-dpsub_u.d	wd,ws,wt	MSA	154	implemented
-fadd.w	wd,ws,wt	MSA	156	implemented
-fadd.d	wd,ws,wt	MSA	156	implemented
-fcaf.w	wd,ws,wt	MSA	157	implemented
-fcaf.d	wd,ws,wt	MSA	157	implemented
-fceq.w	wd,ws,wt	MSA	158	implemented
-fceq.d	wd,ws,wt	MSA	158	implemented
-fclass.w	wd,ws	MSA	159	implemented
-fclass.d	wd,ws	MSA	159	implemented
-fcle.w	wd,ws,wt	MSA	160	implemented
-fcle.d	wd,ws,wt	MSA	160	implemented
-fclt.w	wd,ws,wt	MSA	161	implemented
-fclt.d	wd,ws,wt	MSA	161	implemented
-fcne.w	wd,ws,wt	MSA	162	implemented
-fcne.d	wd,ws,wt	MSA	162	implemented
-fcor.w	wd,ws,wt	MSA	163	implemented
-fcor.d	wd,ws,wt	MSA	163	implemented
-fcueq.w	wd,ws,wt	MSA	164	implemented
-fcueq.d	wd,ws,wt	MSA	164	implemented
-fcule.w	wd,ws,wt	MSA	165	implemented
-fcule.d	wd,ws,wt	MSA	165	implemented
-fcult.w	wd,ws,wt	MSA	167	implemented
-fcult.d	wd,ws,wt	MSA	167	implemented
-fcun.w	wd,ws,wt	MSA	168	implemented
-fcun.d	wd,ws,wt	MSA	168	implemented
-fcune.w	wd,ws,wt	MSA	169	implemented
-fcune.d	wd,ws,wt	MSA	169	implemented
-fdiv.w	wd,ws,wt	MSA	170	implemented
-fdiv.d	wd,ws,wt	MSA	170	implemented
-fexdo.h	wd,ws,wt	MSA	171	implemented
-fexdo.w	wd,ws,wt	MSA	171	implemented
-fexp2.w	wd,ws,wt	MSA	172	implemented
-fexp2.d	wd,ws,wt	MSA	172	implemented
-fexupl.w	wd,ws	MSA	173	implemented
-fexupl.d	wd,ws	MSA	173	implemented
-fexupr.w	wd,ws	MSA	174	implemented
-fexupr.d	wd,ws	MSA	174	implemented
-ffint_s.w	wd,ws	MSA	175	implemented
-ffint_s.d	wd,ws	MSA	175	implemented
-ffint_u.w	wd,ws	MSA	176	implemented
-ffint_u.d	wd,ws	MSA	176	implemented
-ffql.w	wd,ws	MSA	177	implemented
-ffql.d	wd,ws	MSA	177	implemented
-ffqr.w	wd,ws	MSA	178	implemented
-ffqr.d	wd,ws	MSA	178	implemented
-fill.b	wd,rs	MSA	179	implemented
-fill.h	wd,rs	MSA	179	implemented
-fill.w	wd,rs	MSA	179	implemented
-fill.d	wd,rs	MIPS64 MSA	179	implemented
-flog2.w	wd,ws	MSA	180	implemented
-flog2.d	wd,ws	MSA	180	implemented
-fmadd.w	wd,ws,wt	MSA	181	implemented
-fmadd.d	wd,ws,wt	MSA	181	implemented
-fmax.w	wd,ws,wt	MSA	182	implemented
-fmax.d	wd,ws,wt	MSA	182	implemented
-fmax_a.w	wd,ws,wt	MSA	183	implemented
-fmax_a.d	wd,ws,wt	MSA	183	implemented
-fmin.w	wd,ws,wt	MSA	184	implemented
-fmin.d	wd,ws,wt	MSA	184	implemented
-fmin_a.w	wd,ws,wt	MSA	185	implemented
-fmin_a.d	wd,ws,wt	MSA	185	implemented
-fmsub.w	wd,ws,wt	MSA	186	implemented
-fmsub.d	wd,ws,wt	MSA	186	implemented
-fmul.w	wd,ws,wt	MSA	187	implemented
-fmul.d	wd,ws,wt	MSA	187	implemented
-frcp.w	wd,ws	MSA	188	implemented
-frcp.d	wd,ws	MSA	188	implemented
-frint.w	wd,ws	MSA	189	implemented
-frint.d	wd,ws	MSA	189	implemented
-frsqrt.w	wd,ws	MSA	190	implemented
-frsqrt.d	wd,ws	MSA	190	implemented
-fsaf.w	wd,ws,wt	MSA	192	implemented
-fsaf.d	wd,ws,wt	MSA	192	implemented
-fseq.w	wd,ws,wt	MSA	193	implemented
-fseq.d	wd,ws,wt	MSA	193	implemented
-fsle.w	wd,ws,wt	MSA	194	implemented
-fsle.d	wd,ws,wt	MSA	194	implemented
-fslt.w	wd,ws,wt	MSA	195	implemented
-fslt.d	wd,ws,wt	MSA	195	implemented
-fsne.w	wd,ws,wt	MSA	196	implemented
-fsne.d	wd,ws,wt	MSA	196	implemented
-fsor.w	wd,ws,wt	MSA	197	implemented
-fsor.d	wd,ws,wt	MSA	197	implemented
-fsqrt.w	wd,ws	MSA	198	implemented
-fsqrt.d	wd,ws	MSA	198	implemented
-fsub.w	wd,ws,wt	MSA	199	implemented
-fsub.d	wd,ws,wt	MSA	199	implemented
-fsueq.w	wd,ws,wt	MSA	200	implemented
-fsueq.d	wd,ws,wt	MSA	200	implemented
-fsule.w	wd,ws,wt	MSA	201	implemented
-fsule.d	wd,ws,wt	MSA	201	implemented
-fsult.w	wd,ws,wt	MSA	203	implemented
-fsult.d	wd,ws,wt	MSA	203	implemented
-fsun.w	wd,ws,wt	MSA	204	implemented
-fsun.d	wd,ws,wt	MSA	204	implemented
-fsune.w	wd,ws,wt	MSA	205	implemented
-fsune.d	wd,ws,wt	MSA	205	implemented
-ftint_s.w	wd,ws	MSA	206	implemented
-ftint_s.d	wd,ws	MSA	206	implemented
-ftint_u.w	wd,ws	MSA	207	implemented
-ftint_u.d	wd,ws	MSA	207	implemented
-ftq.h	wd,ws,wt	MSA	208	implemented
-ftq.w	wd,ws,wt	MSA	208	implemented
-ftrunc_s.w	wd,ws	MSA	210	implemented
-ftrunc_s.d	wd,ws	MSA	210	implemented
-ftrunc_u.w	wd,ws	MSA	211	implemented
-ftrunc_u.d	wd,ws	MSA	211	implemented
-hadd_s.h	wd,ws,wt	MSA	212	implemented
-hadd_s.w	wd,ws,wt	MSA	212	implemented
-hadd_s.d	wd,ws,wt	MSA	212	implemented
-hadd_u.h	wd,ws,wt	MSA	213	implemented
-hadd_u.w	wd,ws,wt	MSA	213	implemented
-hadd_u.d	wd,ws,wt	MSA	213	implemented
-hsub_s.h	wd,ws,wt	MSA	214	implemented
-hsub_s.w	wd,ws,wt	MSA	214	implemented
-hsub_s.d	wd,ws,wt	MSA	214	implemented
-hsub_u.h	wd,ws,wt	MSA	215	implemented
-hsub_u.w	wd,ws,wt	MSA	215	implemented
-hsub_u.d	wd,ws,wt	MSA	215	implemented
-ilvev.b	wd,ws,wt	MSA	216	implemented
-ilvev.h	wd,ws,wt	MSA	216	implemented
-ilvev.w	wd,ws,wt	MSA	216	implemented
-ilvev.d	wd,ws,wt	MSA	216	implemented
-ilvl.b	wd,ws,wt	MSA	218	implemented
-ilvl.h	wd,ws,wt	MSA	218	implemented
-ilvl.w	wd,ws,wt	MSA	218	implemented
-ilvl.d	wd,ws,wt	MSA	218	implemented
-ilvod.b	wd,ws,wt	MSA	220	implemented
-ilvod.h	wd,ws,wt	MSA	220	implemented
-ilvod.w	wd,ws,wt	MSA	220	implemented
-ilvod.d	wd,ws,wt	MSA	220	implemented
-ilvr.b	wd,ws,wt	MSA	222	implemented
-ilvr.h	wd,ws,wt	MSA	222	implemented
-ilvr.w	wd,ws,wt	MSA	222	implemented
-ilvr.d	wd,ws,wt	MSA	222	implemented
-insert.b	wd[n],rs	MSA	224	implemented
-insert.h	wd[n],rs	MSA	224	implemented
-insert.w	wd[n],rs	MSA	224	implemented
-insert.d	wd[n],rs	MIPS64 MSA	224	implemented
-insve.b	wd[n],ws[0]	MSA	225	implemented
-insve.h	wd[n],ws[0]	MSA	225	implemented
-insve.w	wd[n],ws[0]	MSA	225	implemented
-insve.d	wd[n],ws[0]	MSA	225	implemented
-ld.b	wd,s10(rs)	MSA	226	implemented
-ld.h	wd,s10(rs)	MSA	226	implemented
-ld.w	wd,s10(rs)	MSA	226	implemented
-ld.d	wd,s10(rs)	MSA	226	implemented
-ldi.b	wd,s10	MSA	228	implemented
-ldi.h	wd,s10	MSA	228	implemented
-ldi.w	wd,s10	MSA	228	implemented
-ldi.d	wd,s10	MSA	228	implemented
-lsa	rd,rs,rt,sa	MSA	229	scalar-implemented
-madd_q.h	wd,ws,wt	MSA	230	implemented
-madd_q.w	wd,ws,wt	MSA	230	implemented
-maddr_q.h	wd,ws,wt	MSA	232	implemented
-maddr_q.w	wd,ws,wt	MSA	232	implemented
-maddv.b	wd,ws,wt	MSA	234	implemented
-maddv.h	wd,ws,wt	MSA	234	implemented
-maddv.w	wd,ws,wt	MSA	234	implemented
-maddv.d	wd,ws,wt	MSA	234	implemented
-max_a.b	wd,ws,wt	MSA	235	implemented
-max_a.h	wd,ws,wt	MSA	235	implemented
-max_a.w	wd,ws,wt	MSA	235	implemented
-max_a.d	wd,ws,wt	MSA	235	implemented
-max_s.b	wd,ws,wt	MSA	237	implemented
-max_s.h	wd,ws,wt	MSA	237	implemented
-max_s.w	wd,ws,wt	MSA	237	implemented
-max_s.d	wd,ws,wt	MSA	237	implemented
-max_u.b	wd,ws,wt	MSA	239	implemented
-max_u.h	wd,ws,wt	MSA	239	implemented
-max_u.w	wd,ws,wt	MSA	239	implemented
-max_u.d	wd,ws,wt	MSA	239	implemented
-maxi_s.b	wd,ws,s5	MSA	241	implemented
-maxi_s.h	wd,ws,s5	MSA	241	implemented
-maxi_s.w	wd,ws,s5	MSA	241	implemented
-maxi_s.d	wd,ws,s5	MSA	241	implemented
-maxi_u.b	wd,ws,u5	MSA	243	implemented
-maxi_u.h	wd,ws,u5	MSA	243	implemented
-maxi_u.w	wd,ws,u5	MSA	243	implemented
-maxi_u.d	wd,ws,u5	MSA	243	implemented
-min_a.b	wd,ws,wt	MSA	245	implemented
-min_a.h	wd,ws,wt	MSA	245	implemented
-min_a.w	wd,ws,wt	MSA	245	implemented
-min_a.d	wd,ws,wt	MSA	245	implemented
-min_s.b	wd,ws,wt	MSA	247	implemented
-min_s.h	wd,ws,wt	MSA	247	implemented
-min_s.w	wd,ws,wt	MSA	247	implemented
-min_s.d	wd,ws,wt	MSA	247	implemented
-min_u.b	wd,ws,wt	MSA	249	implemented
-min_u.h	wd,ws,wt	MSA	249	implemented
-min_u.w	wd,ws,wt	MSA	249	implemented
-min_u.d	wd,ws,wt	MSA	249	implemented
-mini_s.b	wd,ws,s5	MSA	251	implemented
-mini_s.h	wd,ws,s5	MSA	251	implemented
-mini_s.w	wd,ws,s5	MSA	251	implemented
-mini_s.d	wd,ws,s5	MSA	251	implemented
-mini_u.b	wd,ws,u5	MSA	253	implemented
-mini_u.h	wd,ws,u5	MSA	253	implemented
-mini_u.w	wd,ws,u5	MSA	253	implemented
-mini_u.d	wd,ws,u5	MSA	253	implemented
-mod_s.b	wd,ws,wt	MSA	255	implemented
-mod_s.h	wd,ws,wt	MSA	255	implemented
-mod_s.w	wd,ws,wt	MSA	255	implemented
-mod_s.d	wd,ws,wt	MSA	255	implemented
-mod_u.b	wd,ws,wt	MSA	256	implemented
-mod_u.h	wd,ws,wt	MSA	256	implemented
-mod_u.w	wd,ws,wt	MSA	256	implemented
-mod_u.d	wd,ws,wt	MSA	256	implemented
-move.v	wd,ws	MSA	257	implemented
-msub_q.h	wd,ws,wt	MSA	258	implemented
-msub_q.w	wd,ws,wt	MSA	258	implemented
-msubr_q.h	wd,ws,wt	MSA	260	implemented
-msubr_q.w	wd,ws,wt	MSA	260	implemented
-msubv.b	wd,ws,wt	MSA	262	implemented
-msubv.h	wd,ws,wt	MSA	262	implemented
-msubv.w	wd,ws,wt	MSA	262	implemented
-msubv.d	wd,ws,wt	MSA	262	implemented
-mul_q.h	wd,ws,wt	MSA	263	implemented
-mul_q.w	wd,ws,wt	MSA	263	implemented
-mulr_q.h	wd,ws,wt	MSA	264	implemented
-mulr_q.w	wd,ws,wt	MSA	264	implemented
-mulv.b	wd,ws,wt	MSA	266	implemented
-mulv.h	wd,ws,wt	MSA	266	implemented
-mulv.w	wd,ws,wt	MSA	266	implemented
-mulv.d	wd,ws,wt	MSA	266	implemented
-nloc.b	wd,ws	MSA	267	implemented
-nloc.h	wd,ws	MSA	267	implemented
-nloc.w	wd,ws	MSA	267	implemented
-nloc.d	wd,ws	MSA	267	implemented
-nlzc.b	wd,ws	MSA	269	implemented
-nlzc.h	wd,ws	MSA	269	implemented
-nlzc.w	wd,ws	MSA	269	implemented
-nlzc.d	wd,ws	MSA	269	implemented
-nor.v	wd,ws,wt	MSA	271	implemented
-nori.b	wd,ws,i8	MSA	272	implemented
-or.v	wd,ws,wt	MSA	273	implemented
-ori.b	wd,ws,i8	MSA	274	implemented
-pckev.b	wd,ws,wt	MSA	275	implemented
-pckev.h	wd,ws,wt	MSA	275	implemented
-pckev.w	wd,ws,wt	MSA	275	implemented
-pckev.d	wd,ws,wt	MSA	275	implemented
-pckod.b	wd,ws,wt	MSA	277	implemented
-pckod.h	wd,ws,wt	MSA	277	implemented
-pckod.w	wd,ws,wt	MSA	277	implemented
-pckod.d	wd,ws,wt	MSA	277	implemented
-pcnt.b	wd,ws	MSA	279	implemented
-pcnt.h	wd,ws	MSA	279	implemented
-pcnt.w	wd,ws	MSA	279	implemented
-pcnt.d	wd,ws	MSA	279	implemented
-sat_s.b	wd,ws,m	MSA	280	implemented
-sat_s.h	wd,ws,m	MSA	280	implemented
-sat_s.w	wd,ws,m	MSA	280	implemented
-sat_s.d	wd,ws,m	MSA	280	implemented
-sat_u.b	wd,ws,m	MSA	282	implemented
-sat_u.h	wd,ws,m	MSA	282	implemented
-sat_u.w	wd,ws,m	MSA	282	implemented
-sat_u.d	wd,ws,m	MSA	282	implemented
-shf.b	wd,ws,i8	MSA	284	implemented
-shf.h	wd,ws,i8	MSA	284	implemented
-shf.w	wd,ws,i8	MSA	284	implemented
-sld.b	wd,ws[rt]	MSA	285	implemented
-sld.h	wd,ws[rt]	MSA	285	implemented
-sld.w	wd,ws[rt]	MSA	285	implemented
-sld.d	wd,ws[rt]	MSA	285	implemented
-sldi.b	wd,ws[n]	MSA	287	implemented
-sldi.h	wd,ws[n]	MSA	287	implemented
-sldi.w	wd,ws[n]	MSA	287	implemented
-sldi.d	wd,ws[n]	MSA	287	implemented
-sll.b	wd,ws,wt	MSA	289	implemented
-sll.h	wd,ws,wt	MSA	289	implemented
-sll.w	wd,ws,wt	MSA	289	implemented
-sll.d	wd,ws,wt	MSA	289	implemented
-slli.b	wd,ws,m	MSA	290	implemented
-slli.h	wd,ws,m	MSA	290	implemented
-slli.w	wd,ws,m	MSA	290	implemented
-slli.d	wd,ws,m	MSA	290	implemented
-splat.b	wd,ws[rt]	MSA	291	implemented
-splat.h	wd,ws[rt]	MSA	291	implemented
-splat.w	wd,ws[rt]	MSA	291	implemented
-splat.d	wd,ws[rt]	MSA	291	implemented
-splati.b	wd,ws[n]	MSA	292	implemented
-splati.h	wd,ws[n]	MSA	292	implemented
-splati.w	wd,ws[n]	MSA	292	implemented
-splati.d	wd,ws[n]	MSA	292	implemented
-sra.b	wd,ws,wt	MSA	293	implemented
-sra.h	wd,ws,wt	MSA	293	implemented
-sra.w	wd,ws,wt	MSA	293	implemented
-sra.d	wd,ws,wt	MSA	293	implemented
-srai.b	wd,ws,m	MSA	294	implemented
-srai.h	wd,ws,m	MSA	294	implemented
-srai.w	wd,ws,m	MSA	294	implemented
-srai.d	wd,ws,m	MSA	294	implemented
-srar.b	wd,ws,wt	MSA	295	implemented
-srar.h	wd,ws,wt	MSA	295	implemented
-srar.w	wd,ws,wt	MSA	295	implemented
-srar.d	wd,ws,wt	MSA	295	implemented
-srari.b	wd,ws,m	MSA	297	implemented
-srari.h	wd,ws,m	MSA	297	implemented
-srari.w	wd,ws,m	MSA	297	implemented
-srari.d	wd,ws,m	MSA	297	implemented
-srl.b	wd,ws,wt	MSA	299	implemented
-srl.h	wd,ws,wt	MSA	299	implemented
-srl.w	wd,ws,wt	MSA	299	implemented
-srl.d	wd,ws,wt	MSA	299	implemented
-srli.b	wd,ws,m	MSA	300	implemented
-srli.h	wd,ws,m	MSA	300	implemented
-srli.w	wd,ws,m	MSA	300	implemented
-srli.d	wd,ws,m	MSA	300	implemented
-srlr.b	wd,ws,wt	MSA	301	implemented
-srlr.h	wd,ws,wt	MSA	301	implemented
-srlr.w	wd,ws,wt	MSA	301	implemented
-srlr.d	wd,ws,wt	MSA	301	implemented
-srlri.b	wd,ws,m	MSA	303	implemented
-srlri.h	wd,ws,m	MSA	303	implemented
-srlri.w	wd,ws,m	MSA	303	implemented
-srlri.d	wd,ws,m	MSA	303	implemented
-st.b	wd,s10(rs)	MSA	305	implemented
-st.h	wd,s10(rs)	MSA	305	implemented
-st.w	wd,s10(rs)	MSA	305	implemented
-st.d	wd,s10(rs)	MSA	305	implemented
-subs_s.b	wd,ws,wt	MSA	307	implemented
-subs_s.h	wd,ws,wt	MSA	307	implemented
-subs_s.w	wd,ws,wt	MSA	307	implemented
-subs_s.d	wd,ws,wt	MSA	307	implemented
-subs_u.b	wd,ws,wt	MSA	309	implemented
-subs_u.h	wd,ws,wt	MSA	309	implemented
-subs_u.w	wd,ws,wt	MSA	309	implemented
-subs_u.d	wd,ws,wt	MSA	309	implemented
-subsus_u.b	wd,ws,wt	MSA	311	implemented
-subsus_u.h	wd,ws,wt	MSA	311	implemented
-subsus_u.w	wd,ws,wt	MSA	311	implemented
-subsus_u.d	wd,ws,wt	MSA	311	implemented
-subsuu_s.b	wd,ws,wt	MSA	313	implemented
-subsuu_s.h	wd,ws,wt	MSA	313	implemented
-subsuu_s.w	wd,ws,wt	MSA	313	implemented
-subsuu_s.d	wd,ws,wt	MSA	313	implemented
-subv.b	wd,ws,wt	MSA	315	implemented
-subv.h	wd,ws,wt	MSA	315	implemented
-subv.w	wd,ws,wt	MSA	315	implemented
-subv.d	wd,ws,wt	MSA	315	implemented
-subvi.b	wd,ws,u5	MSA	316	implemented
-subvi.h	wd,ws,u5	MSA	316	implemented
-subvi.w	wd,ws,u5	MSA	316	implemented
-subvi.d	wd,ws,u5	MSA	316	implemented
-vshf.b	wd,ws,wt	MSA	317	implemented
-vshf.h	wd,ws,wt	MSA	317	implemented
-vshf.w	wd,ws,wt	MSA	317	implemented
-vshf.d	wd,ws,wt	MSA	317	implemented
-xor.v	wd,ws,wt	MSA	319	implemented
-xori.b	wd,ws,i8	MSA	320	implemented
+# LLVM 23.1.5, big-endian MIPS64 Release 6 with +msa. See Mars64MsaInventoryTest for operands and order.
+# mnemonic	operands	availability	page	implementation status	LLVM word
+add_a.b	wd,ws,wt	MSA	80	implemented	780d5210
+add_a.h	wd,ws,wt	MSA	80	implemented	782d5210
+add_a.w	wd,ws,wt	MSA	80	implemented	784d5210
+add_a.d	wd,ws,wt	MSA	80	implemented	786d5210
+adds_a.b	wd,ws,wt	MSA	82	implemented	788d5210
+adds_a.h	wd,ws,wt	MSA	82	implemented	78ad5210
+adds_a.w	wd,ws,wt	MSA	82	implemented	78cd5210
+adds_a.d	wd,ws,wt	MSA	82	implemented	78ed5210
+adds_s.b	wd,ws,wt	MSA	84	implemented	790d5210
+adds_s.h	wd,ws,wt	MSA	84	implemented	792d5210
+adds_s.w	wd,ws,wt	MSA	84	implemented	794d5210
+adds_s.d	wd,ws,wt	MSA	84	implemented	796d5210
+adds_u.b	wd,ws,wt	MSA	86	implemented	798d5210
+adds_u.h	wd,ws,wt	MSA	86	implemented	79ad5210
+adds_u.w	wd,ws,wt	MSA	86	implemented	79cd5210
+adds_u.d	wd,ws,wt	MSA	86	implemented	79ed5210
+addv.b	wd,ws,wt	MSA	88	implemented	780d520e
+addv.h	wd,ws,wt	MSA	88	implemented	782d520e
+addv.w	wd,ws,wt	MSA	88	implemented	784d520e
+addv.d	wd,ws,wt	MSA	88	implemented	786d520e
+addvi.b	wd,ws,u5	MSA	89	implemented	78025206
+addvi.h	wd,ws,u5	MSA	89	implemented	78225206
+addvi.w	wd,ws,u5	MSA	89	implemented	78425206
+addvi.d	wd,ws,u5	MSA	89	implemented	78625206
+and.v	wd,ws,wt	MSA	90	implemented	780d521e
+andi.b	wd,ws,i8	MSA	91	implemented	78025200
+asub_s.b	wd,ws,wt	MSA	92	implemented	7a0d5211
+asub_s.h	wd,ws,wt	MSA	92	implemented	7a2d5211
+asub_s.w	wd,ws,wt	MSA	92	implemented	7a4d5211
+asub_s.d	wd,ws,wt	MSA	92	implemented	7a6d5211
+asub_u.b	wd,ws,wt	MSA	94	implemented	7a8d5211
+asub_u.h	wd,ws,wt	MSA	94	implemented	7aad5211
+asub_u.w	wd,ws,wt	MSA	94	implemented	7acd5211
+asub_u.d	wd,ws,wt	MSA	94	implemented	7aed5211
+ave_s.b	wd,ws,wt	MSA	96	implemented	7a0d5210
+ave_s.h	wd,ws,wt	MSA	96	implemented	7a2d5210
+ave_s.w	wd,ws,wt	MSA	96	implemented	7a4d5210
+ave_s.d	wd,ws,wt	MSA	96	implemented	7a6d5210
+ave_u.b	wd,ws,wt	MSA	97	implemented	7a8d5210
+ave_u.h	wd,ws,wt	MSA	97	implemented	7aad5210
+ave_u.w	wd,ws,wt	MSA	97	implemented	7acd5210
+ave_u.d	wd,ws,wt	MSA	97	implemented	7aed5210
+aver_s.b	wd,ws,wt	MSA	98	implemented	7b0d5210
+aver_s.h	wd,ws,wt	MSA	98	implemented	7b2d5210
+aver_s.w	wd,ws,wt	MSA	98	implemented	7b4d5210
+aver_s.d	wd,ws,wt	MSA	98	implemented	7b6d5210
+aver_u.b	wd,ws,wt	MSA	99	implemented	7b8d5210
+aver_u.h	wd,ws,wt	MSA	99	implemented	7bad5210
+aver_u.w	wd,ws,wt	MSA	99	implemented	7bcd5210
+aver_u.d	wd,ws,wt	MSA	99	implemented	7bed5210
+bclr.b	wd,ws,wt	MSA	100	implemented	798d520d
+bclr.h	wd,ws,wt	MSA	100	implemented	79ad520d
+bclr.w	wd,ws,wt	MSA	100	implemented	79cd520d
+bclr.d	wd,ws,wt	MSA	100	implemented	79ed520d
+bclri.b	wd,ws,m	MSA	101	implemented	79f15209
+bclri.h	wd,ws,m	MSA	101	implemented	79e15209
+bclri.w	wd,ws,m	MSA	101	implemented	79c15209
+bclri.d	wd,ws,m	MSA	101	implemented	79815209
+binsl.b	wd,ws,wt	MSA	102	implemented	7b0d520d
+binsl.h	wd,ws,wt	MSA	102	implemented	7b2d520d
+binsl.w	wd,ws,wt	MSA	102	implemented	7b4d520d
+binsl.d	wd,ws,wt	MSA	102	implemented	7b6d520d
+binsli.b	wd,ws,m	MSA	103	implemented	7b715209
+binsli.h	wd,ws,m	MSA	103	implemented	7b615209
+binsli.w	wd,ws,m	MSA	103	implemented	7b415209
+binsli.d	wd,ws,m	MSA	103	implemented	7b015209
+binsr.b	wd,ws,wt	MSA	104	implemented	7b8d520d
+binsr.h	wd,ws,wt	MSA	104	implemented	7bad520d
+binsr.w	wd,ws,wt	MSA	104	implemented	7bcd520d
+binsr.d	wd,ws,wt	MSA	104	implemented	7bed520d
+binsri.b	wd,ws,m	MSA	105	implemented	7bf15209
+binsri.h	wd,ws,m	MSA	105	implemented	7be15209
+binsri.w	wd,ws,m	MSA	105	implemented	7bc15209
+binsri.d	wd,ws,m	MSA	105	implemented	7b815209
+bmnz.v	wd,ws,wt	MSA	106	implemented	788d521e
+bmnzi.b	wd,ws,i8	MSA	107	implemented	78025201
+bmz.v	wd,ws,wt	MSA	108	implemented	78ad521e
+bmzi.b	wd,ws,i8	MSA	109	implemented	79025201
+bneg.b	wd,ws,wt	MSA	110	implemented	7a8d520d
+bneg.h	wd,ws,wt	MSA	110	implemented	7aad520d
+bneg.w	wd,ws,wt	MSA	110	implemented	7acd520d
+bneg.d	wd,ws,wt	MSA	110	implemented	7aed520d
+bnegi.b	wd,ws,m	MSA	111	implemented	7af15209
+bnegi.h	wd,ws,m	MSA	111	implemented	7ae15209
+bnegi.w	wd,ws,m	MSA	111	implemented	7ac15209
+bnegi.d	wd,ws,m	MSA	111	implemented	7a815209
+bnz.b	wt,s16	MSA	112	implemented	478d01bc
+bnz.h	wt,s16	MSA	112	implemented	47ad01bb
+bnz.w	wt,s16	MSA	112	implemented	47cd01ba
+bnz.d	wt,s16	MSA	112	implemented	47ed01b9
+bnz.v	wt,s16	MSA	113	implemented	45ed01b8
+bsel.v	wd,ws,wt	MSA	114	implemented	78cd521e
+bseli.b	wd,ws,i8	MSA	115	implemented	7a025201
+bset.b	wd,ws,wt	MSA	116	implemented	7a0d520d
+bset.h	wd,ws,wt	MSA	116	implemented	7a2d520d
+bset.w	wd,ws,wt	MSA	116	implemented	7a4d520d
+bset.d	wd,ws,wt	MSA	116	implemented	7a6d520d
+bseti.b	wd,ws,m	MSA	117	implemented	7a715209
+bseti.h	wd,ws,m	MSA	117	implemented	7a615209
+bseti.w	wd,ws,m	MSA	117	implemented	7a415209
+bseti.d	wd,ws,m	MSA	117	implemented	7a015209
+bz.b	wt,s16	MSA	118	implemented	470d01ad
+bz.h	wt,s16	MSA	118	implemented	472d01ac
+bz.w	wt,s16	MSA	118	implemented	474d01ab
+bz.d	wt,s16	MSA	118	implemented	476d01aa
+bz.v	wt,s16	MSA	119	implemented	456d01a9
+ceq.b	wd,ws,wt	MSA	120	implemented	780d520f
+ceq.h	wd,ws,wt	MSA	120	implemented	782d520f
+ceq.w	wd,ws,wt	MSA	120	implemented	784d520f
+ceq.d	wd,ws,wt	MSA	120	implemented	786d520f
+ceqi.b	wd,ws,s5	MSA	121	implemented	781e5207
+ceqi.h	wd,ws,s5	MSA	121	implemented	783e5207
+ceqi.w	wd,ws,s5	MSA	121	implemented	785e5207
+ceqi.d	wd,ws,s5	MSA	121	implemented	787e5207
+cfcmsa	rd,cs	MSA	123	implemented	787e0a59
+cle_s.b	wd,ws,wt	MSA	125	implemented	7a0d520f
+cle_s.h	wd,ws,wt	MSA	125	implemented	7a2d520f
+cle_s.w	wd,ws,wt	MSA	125	implemented	7a4d520f
+cle_s.d	wd,ws,wt	MSA	125	implemented	7a6d520f
+cle_u.b	wd,ws,wt	MSA	126	implemented	7a8d520f
+cle_u.h	wd,ws,wt	MSA	126	implemented	7aad520f
+cle_u.w	wd,ws,wt	MSA	126	implemented	7acd520f
+cle_u.d	wd,ws,wt	MSA	126	implemented	7aed520f
+clei_s.b	wd,ws,s5	MSA	127	implemented	7a1e5207
+clei_s.h	wd,ws,s5	MSA	127	implemented	7a3e5207
+clei_s.w	wd,ws,s5	MSA	127	implemented	7a5e5207
+clei_s.d	wd,ws,s5	MSA	127	implemented	7a7e5207
+clei_u.b	wd,ws,u5	MSA	129	implemented	7a825207
+clei_u.h	wd,ws,u5	MSA	129	implemented	7aa25207
+clei_u.w	wd,ws,u5	MSA	129	implemented	7ac25207
+clei_u.d	wd,ws,u5	MSA	129	implemented	7ae25207
+clt_s.b	wd,ws,wt	MSA	131	implemented	790d520f
+clt_s.h	wd,ws,wt	MSA	131	implemented	792d520f
+clt_s.w	wd,ws,wt	MSA	131	implemented	794d520f
+clt_s.d	wd,ws,wt	MSA	131	implemented	796d520f
+clt_u.b	wd,ws,wt	MSA	132	implemented	798d520f
+clt_u.h	wd,ws,wt	MSA	132	implemented	79ad520f
+clt_u.w	wd,ws,wt	MSA	132	implemented	79cd520f
+clt_u.d	wd,ws,wt	MSA	132	implemented	79ed520f
+clti_s.b	wd,ws,s5	MSA	133	implemented	791e5207
+clti_s.h	wd,ws,s5	MSA	133	implemented	793e5207
+clti_s.w	wd,ws,s5	MSA	133	implemented	795e5207
+clti_s.d	wd,ws,s5	MSA	133	implemented	797e5207
+clti_u.b	wd,ws,u5	MSA	135	implemented	79825207
+clti_u.h	wd,ws,u5	MSA	135	implemented	79a25207
+clti_u.w	wd,ws,u5	MSA	135	implemented	79c25207
+clti_u.d	wd,ws,u5	MSA	135	implemented	79e25207
+copy_s.b	rd,ws[n]	MSA	137	implemented	78815259
+copy_s.h	rd,ws[n]	MSA	137	implemented	78a15259
+copy_s.w	rd,ws[n]	MSA	137	implemented	78b15259
+copy_s.d	rd,ws[n]	MIPS64 MSA	137	implemented	78b95259
+copy_u.b	rd,ws[n]	MSA	138	implemented	78c15259
+copy_u.h	rd,ws[n]	MSA	138	implemented	78e15259
+copy_u.w	rd,ws[n]	MIPS64 MSA	138	implemented	78f15259
+ctcmsa	cd,rs	MSA	139	implemented	783e5059
+div_s.b	wd,ws,wt	MSA	141	implemented	7a0d5212
+div_s.h	wd,ws,wt	MSA	141	implemented	7a2d5212
+div_s.w	wd,ws,wt	MSA	141	implemented	7a4d5212
+div_s.d	wd,ws,wt	MSA	141	implemented	7a6d5212
+div_u.b	wd,ws,wt	MSA	142	implemented	7a8d5212
+div_u.h	wd,ws,wt	MSA	142	implemented	7aad5212
+div_u.w	wd,ws,wt	MSA	142	implemented	7acd5212
+div_u.d	wd,ws,wt	MSA	142	implemented	7aed5212
+dlsa	rd,rs,rt,sa	MSA	143	scalar-implemented	014b4855
+dotp_s.h	wd,ws,wt	MSA	144	implemented	782d5213
+dotp_s.w	wd,ws,wt	MSA	144	implemented	784d5213
+dotp_s.d	wd,ws,wt	MSA	144	implemented	786d5213
+dotp_u.h	wd,ws,wt	MSA	146	implemented	78ad5213
+dotp_u.w	wd,ws,wt	MSA	146	implemented	78cd5213
+dotp_u.d	wd,ws,wt	MSA	146	implemented	78ed5213
+dpadd_s.h	wd,ws,wt	MSA	148	implemented	792d5213
+dpadd_s.w	wd,ws,wt	MSA	148	implemented	794d5213
+dpadd_s.d	wd,ws,wt	MSA	148	implemented	796d5213
+dpadd_u.h	wd,ws,wt	MSA	150	implemented	79ad5213
+dpadd_u.w	wd,ws,wt	MSA	150	implemented	79cd5213
+dpadd_u.d	wd,ws,wt	MSA	150	implemented	79ed5213
+dpsub_s.h	wd,ws,wt	MSA	152	implemented	7a2d5213
+dpsub_s.w	wd,ws,wt	MSA	152	implemented	7a4d5213
+dpsub_s.d	wd,ws,wt	MSA	152	implemented	7a6d5213
+dpsub_u.h	wd,ws,wt	MSA	154	implemented	7aad5213
+dpsub_u.w	wd,ws,wt	MSA	154	implemented	7acd5213
+dpsub_u.d	wd,ws,wt	MSA	154	implemented	7aed5213
+fadd.w	wd,ws,wt	MSA	156	implemented	780d521b
+fadd.d	wd,ws,wt	MSA	156	implemented	782d521b
+fcaf.w	wd,ws,wt	MSA	157	implemented	780d521a
+fcaf.d	wd,ws,wt	MSA	157	implemented	782d521a
+fceq.w	wd,ws,wt	MSA	158	implemented	788d521a
+fceq.d	wd,ws,wt	MSA	158	implemented	78ad521a
+fclass.w	wd,ws	MSA	159	implemented	7b20521e
+fclass.d	wd,ws	MSA	159	implemented	7b21521e
+fcle.w	wd,ws,wt	MSA	160	implemented	798d521a
+fcle.d	wd,ws,wt	MSA	160	implemented	79ad521a
+fclt.w	wd,ws,wt	MSA	161	implemented	790d521a
+fclt.d	wd,ws,wt	MSA	161	implemented	792d521a
+fcne.w	wd,ws,wt	MSA	162	implemented	78cd521c
+fcne.d	wd,ws,wt	MSA	162	implemented	78ed521c
+fcor.w	wd,ws,wt	MSA	163	implemented	784d521c
+fcor.d	wd,ws,wt	MSA	163	implemented	786d521c
+fcueq.w	wd,ws,wt	MSA	164	implemented	78cd521a
+fcueq.d	wd,ws,wt	MSA	164	implemented	78ed521a
+fcule.w	wd,ws,wt	MSA	165	implemented	79cd521a
+fcule.d	wd,ws,wt	MSA	165	implemented	79ed521a
+fcult.w	wd,ws,wt	MSA	167	implemented	794d521a
+fcult.d	wd,ws,wt	MSA	167	implemented	796d521a
+fcun.w	wd,ws,wt	MSA	168	implemented	784d521a
+fcun.d	wd,ws,wt	MSA	168	implemented	786d521a
+fcune.w	wd,ws,wt	MSA	169	implemented	788d521c
+fcune.d	wd,ws,wt	MSA	169	implemented	78ad521c
+fdiv.w	wd,ws,wt	MSA	170	implemented	78cd521b
+fdiv.d	wd,ws,wt	MSA	170	implemented	78ed521b
+fexdo.h	wd,ws,wt	MSA	171	implemented	7a0d521b
+fexdo.w	wd,ws,wt	MSA	171	implemented	7a2d521b
+fexp2.w	wd,ws,wt	MSA	172	implemented	79cd521b
+fexp2.d	wd,ws,wt	MSA	172	implemented	79ed521b
+fexupl.w	wd,ws	MSA	173	implemented	7b30521e
+fexupl.d	wd,ws	MSA	173	implemented	7b31521e
+fexupr.w	wd,ws	MSA	174	implemented	7b32521e
+fexupr.d	wd,ws	MSA	174	implemented	7b33521e
+ffint_s.w	wd,ws	MSA	175	implemented	7b3c521e
+ffint_s.d	wd,ws	MSA	175	implemented	7b3d521e
+ffint_u.w	wd,ws	MSA	176	implemented	7b3e521e
+ffint_u.d	wd,ws	MSA	176	implemented	7b3f521e
+ffql.w	wd,ws	MSA	177	implemented	7b34521e
+ffql.d	wd,ws	MSA	177	implemented	7b35521e
+ffqr.w	wd,ws	MSA	178	implemented	7b36521e
+ffqr.d	wd,ws	MSA	178	implemented	7b37521e
+fill.b	wd,rs	MSA	179	implemented	7b00521e
+fill.h	wd,rs	MSA	179	implemented	7b01521e
+fill.w	wd,rs	MSA	179	implemented	7b02521e
+fill.d	wd,rs	MIPS64 MSA	179	implemented	7b03521e
+flog2.w	wd,ws	MSA	180	implemented	7b2e521e
+flog2.d	wd,ws	MSA	180	implemented	7b2f521e
+fmadd.w	wd,ws,wt	MSA	181	implemented	790d521b
+fmadd.d	wd,ws,wt	MSA	181	implemented	792d521b
+fmax.w	wd,ws,wt	MSA	182	implemented	7b8d521b
+fmax.d	wd,ws,wt	MSA	182	implemented	7bad521b
+fmax_a.w	wd,ws,wt	MSA	183	implemented	7bcd521b
+fmax_a.d	wd,ws,wt	MSA	183	implemented	7bed521b
+fmin.w	wd,ws,wt	MSA	184	implemented	7b0d521b
+fmin.d	wd,ws,wt	MSA	184	implemented	7b2d521b
+fmin_a.w	wd,ws,wt	MSA	185	implemented	7b4d521b
+fmin_a.d	wd,ws,wt	MSA	185	implemented	7b6d521b
+fmsub.w	wd,ws,wt	MSA	186	implemented	794d521b
+fmsub.d	wd,ws,wt	MSA	186	implemented	796d521b
+fmul.w	wd,ws,wt	MSA	187	implemented	788d521b
+fmul.d	wd,ws,wt	MSA	187	implemented	78ad521b
+frcp.w	wd,ws	MSA	188	implemented	7b2a521e
+frcp.d	wd,ws	MSA	188	implemented	7b2b521e
+frint.w	wd,ws	MSA	189	implemented	7b2c521e
+frint.d	wd,ws	MSA	189	implemented	7b2d521e
+frsqrt.w	wd,ws	MSA	190	implemented	7b28521e
+frsqrt.d	wd,ws	MSA	190	implemented	7b29521e
+fsaf.w	wd,ws,wt	MSA	192	implemented	7a0d521a
+fsaf.d	wd,ws,wt	MSA	192	implemented	7a2d521a
+fseq.w	wd,ws,wt	MSA	193	implemented	7a8d521a
+fseq.d	wd,ws,wt	MSA	193	implemented	7aad521a
+fsle.w	wd,ws,wt	MSA	194	implemented	7b8d521a
+fsle.d	wd,ws,wt	MSA	194	implemented	7bad521a
+fslt.w	wd,ws,wt	MSA	195	implemented	7b0d521a
+fslt.d	wd,ws,wt	MSA	195	implemented	7b2d521a
+fsne.w	wd,ws,wt	MSA	196	implemented	7acd521c
+fsne.d	wd,ws,wt	MSA	196	implemented	7aed521c
+fsor.w	wd,ws,wt	MSA	197	implemented	7a4d521c
+fsor.d	wd,ws,wt	MSA	197	implemented	7a6d521c
+fsqrt.w	wd,ws	MSA	198	implemented	7b26521e
+fsqrt.d	wd,ws	MSA	198	implemented	7b27521e
+fsub.w	wd,ws,wt	MSA	199	implemented	784d521b
+fsub.d	wd,ws,wt	MSA	199	implemented	786d521b
+fsueq.w	wd,ws,wt	MSA	200	implemented	7acd521a
+fsueq.d	wd,ws,wt	MSA	200	implemented	7aed521a
+fsule.w	wd,ws,wt	MSA	201	implemented	7bcd521a
+fsule.d	wd,ws,wt	MSA	201	implemented	7bed521a
+fsult.w	wd,ws,wt	MSA	203	implemented	7b4d521a
+fsult.d	wd,ws,wt	MSA	203	implemented	7b6d521a
+fsun.w	wd,ws,wt	MSA	204	implemented	7a4d521a
+fsun.d	wd,ws,wt	MSA	204	implemented	7a6d521a
+fsune.w	wd,ws,wt	MSA	205	implemented	7a8d521c
+fsune.d	wd,ws,wt	MSA	205	implemented	7aad521c
+ftint_s.w	wd,ws	MSA	206	implemented	7b38521e
+ftint_s.d	wd,ws	MSA	206	implemented	7b39521e
+ftint_u.w	wd,ws	MSA	207	implemented	7b3a521e
+ftint_u.d	wd,ws	MSA	207	implemented	7b3b521e
+ftq.h	wd,ws,wt	MSA	208	implemented	7a8d521b
+ftq.w	wd,ws,wt	MSA	208	implemented	7aad521b
+ftrunc_s.w	wd,ws	MSA	210	implemented	7b22521e
+ftrunc_s.d	wd,ws	MSA	210	implemented	7b23521e
+ftrunc_u.w	wd,ws	MSA	211	implemented	7b24521e
+ftrunc_u.d	wd,ws	MSA	211	implemented	7b25521e
+hadd_s.h	wd,ws,wt	MSA	212	implemented	7a2d5215
+hadd_s.w	wd,ws,wt	MSA	212	implemented	7a4d5215
+hadd_s.d	wd,ws,wt	MSA	212	implemented	7a6d5215
+hadd_u.h	wd,ws,wt	MSA	213	implemented	7aad5215
+hadd_u.w	wd,ws,wt	MSA	213	implemented	7acd5215
+hadd_u.d	wd,ws,wt	MSA	213	implemented	7aed5215
+hsub_s.h	wd,ws,wt	MSA	214	implemented	7b2d5215
+hsub_s.w	wd,ws,wt	MSA	214	implemented	7b4d5215
+hsub_s.d	wd,ws,wt	MSA	214	implemented	7b6d5215
+hsub_u.h	wd,ws,wt	MSA	215	implemented	7bad5215
+hsub_u.w	wd,ws,wt	MSA	215	implemented	7bcd5215
+hsub_u.d	wd,ws,wt	MSA	215	implemented	7bed5215
+ilvev.b	wd,ws,wt	MSA	216	implemented	7b0d5214
+ilvev.h	wd,ws,wt	MSA	216	implemented	7b2d5214
+ilvev.w	wd,ws,wt	MSA	216	implemented	7b4d5214
+ilvev.d	wd,ws,wt	MSA	216	implemented	7b6d5214
+ilvl.b	wd,ws,wt	MSA	218	implemented	7a0d5214
+ilvl.h	wd,ws,wt	MSA	218	implemented	7a2d5214
+ilvl.w	wd,ws,wt	MSA	218	implemented	7a4d5214
+ilvl.d	wd,ws,wt	MSA	218	implemented	7a6d5214
+ilvod.b	wd,ws,wt	MSA	220	implemented	7b8d5214
+ilvod.h	wd,ws,wt	MSA	220	implemented	7bad5214
+ilvod.w	wd,ws,wt	MSA	220	implemented	7bcd5214
+ilvod.d	wd,ws,wt	MSA	220	implemented	7bed5214
+ilvr.b	wd,ws,wt	MSA	222	implemented	7a8d5214
+ilvr.h	wd,ws,wt	MSA	222	implemented	7aad5214
+ilvr.w	wd,ws,wt	MSA	222	implemented	7acd5214
+ilvr.d	wd,ws,wt	MSA	222	implemented	7aed5214
+insert.b	wd[n],rs	MSA	224	implemented	79015219
+insert.h	wd[n],rs	MSA	224	implemented	79215219
+insert.w	wd[n],rs	MSA	224	implemented	79315219
+insert.d	wd[n],rs	MIPS64 MSA	224	implemented	79395219
+insve.b	wd[n],ws[0]	MSA	225	implemented	79415219
+insve.h	wd[n],ws[0]	MSA	225	implemented	79615219
+insve.w	wd[n],ws[0]	MSA	225	implemented	79715219
+insve.d	wd[n],ws[0]	MSA	225	implemented	79795219
+ld.b	wd,s10(rs)	MSA	226	implemented	78085220
+ld.h	wd,s10(rs)	MSA	226	implemented	78045221
+ld.w	wd,s10(rs)	MSA	226	implemented	78025222
+ld.d	wd,s10(rs)	MSA	226	implemented	78015223
+ldi.b	wd,s10	MSA	228	implemented	7b001207
+ldi.h	wd,s10	MSA	228	implemented	7b201207
+ldi.w	wd,s10	MSA	228	implemented	7b401207
+ldi.d	wd,s10	MSA	228	implemented	7b601207
+lsa	rd,rs,rt,sa	MSA	229	scalar-implemented	014b4845
+madd_q.h	wd,ws,wt	MSA	230	implemented	794d521c
+madd_q.w	wd,ws,wt	MSA	230	implemented	796d521c
+maddr_q.h	wd,ws,wt	MSA	232	implemented	7b4d521c
+maddr_q.w	wd,ws,wt	MSA	232	implemented	7b6d521c
+maddv.b	wd,ws,wt	MSA	234	implemented	788d5212
+maddv.h	wd,ws,wt	MSA	234	implemented	78ad5212
+maddv.w	wd,ws,wt	MSA	234	implemented	78cd5212
+maddv.d	wd,ws,wt	MSA	234	implemented	78ed5212
+max_a.b	wd,ws,wt	MSA	235	implemented	7b0d520e
+max_a.h	wd,ws,wt	MSA	235	implemented	7b2d520e
+max_a.w	wd,ws,wt	MSA	235	implemented	7b4d520e
+max_a.d	wd,ws,wt	MSA	235	implemented	7b6d520e
+max_s.b	wd,ws,wt	MSA	237	implemented	790d520e
+max_s.h	wd,ws,wt	MSA	237	implemented	792d520e
+max_s.w	wd,ws,wt	MSA	237	implemented	794d520e
+max_s.d	wd,ws,wt	MSA	237	implemented	796d520e
+max_u.b	wd,ws,wt	MSA	239	implemented	798d520e
+max_u.h	wd,ws,wt	MSA	239	implemented	79ad520e
+max_u.w	wd,ws,wt	MSA	239	implemented	79cd520e
+max_u.d	wd,ws,wt	MSA	239	implemented	79ed520e
+maxi_s.b	wd,ws,s5	MSA	241	implemented	791e5206
+maxi_s.h	wd,ws,s5	MSA	241	implemented	793e5206
+maxi_s.w	wd,ws,s5	MSA	241	implemented	795e5206
+maxi_s.d	wd,ws,s5	MSA	241	implemented	797e5206
+maxi_u.b	wd,ws,u5	MSA	243	implemented	79825206
+maxi_u.h	wd,ws,u5	MSA	243	implemented	79a25206
+maxi_u.w	wd,ws,u5	MSA	243	implemented	79c25206
+maxi_u.d	wd,ws,u5	MSA	243	implemented	79e25206
+min_a.b	wd,ws,wt	MSA	245	implemented	7b8d520e
+min_a.h	wd,ws,wt	MSA	245	implemented	7bad520e
+min_a.w	wd,ws,wt	MSA	245	implemented	7bcd520e
+min_a.d	wd,ws,wt	MSA	245	implemented	7bed520e
+min_s.b	wd,ws,wt	MSA	247	implemented	7a0d520e
+min_s.h	wd,ws,wt	MSA	247	implemented	7a2d520e
+min_s.w	wd,ws,wt	MSA	247	implemented	7a4d520e
+min_s.d	wd,ws,wt	MSA	247	implemented	7a6d520e
+min_u.b	wd,ws,wt	MSA	249	implemented	7a8d520e
+min_u.h	wd,ws,wt	MSA	249	implemented	7aad520e
+min_u.w	wd,ws,wt	MSA	249	implemented	7acd520e
+min_u.d	wd,ws,wt	MSA	249	implemented	7aed520e
+mini_s.b	wd,ws,s5	MSA	251	implemented	7a1e5206
+mini_s.h	wd,ws,s5	MSA	251	implemented	7a3e5206
+mini_s.w	wd,ws,s5	MSA	251	implemented	7a5e5206
+mini_s.d	wd,ws,s5	MSA	251	implemented	7a7e5206
+mini_u.b	wd,ws,u5	MSA	253	implemented	7a825206
+mini_u.h	wd,ws,u5	MSA	253	implemented	7aa25206
+mini_u.w	wd,ws,u5	MSA	253	implemented	7ac25206
+mini_u.d	wd,ws,u5	MSA	253	implemented	7ae25206
+mod_s.b	wd,ws,wt	MSA	255	implemented	7b0d5212
+mod_s.h	wd,ws,wt	MSA	255	implemented	7b2d5212
+mod_s.w	wd,ws,wt	MSA	255	implemented	7b4d5212
+mod_s.d	wd,ws,wt	MSA	255	implemented	7b6d5212
+mod_u.b	wd,ws,wt	MSA	256	implemented	7b8d5212
+mod_u.h	wd,ws,wt	MSA	256	implemented	7bad5212
+mod_u.w	wd,ws,wt	MSA	256	implemented	7bcd5212
+mod_u.d	wd,ws,wt	MSA	256	implemented	7bed5212
+move.v	wd,ws	MSA	257	implemented	78be5219
+msub_q.h	wd,ws,wt	MSA	258	implemented	798d521c
+msub_q.w	wd,ws,wt	MSA	258	implemented	79ad521c
+msubr_q.h	wd,ws,wt	MSA	260	implemented	7b8d521c
+msubr_q.w	wd,ws,wt	MSA	260	implemented	7bad521c
+msubv.b	wd,ws,wt	MSA	262	implemented	790d5212
+msubv.h	wd,ws,wt	MSA	262	implemented	792d5212
+msubv.w	wd,ws,wt	MSA	262	implemented	794d5212
+msubv.d	wd,ws,wt	MSA	262	implemented	796d5212
+mul_q.h	wd,ws,wt	MSA	263	implemented	790d521c
+mul_q.w	wd,ws,wt	MSA	263	implemented	792d521c
+mulr_q.h	wd,ws,wt	MSA	264	implemented	7b0d521c
+mulr_q.w	wd,ws,wt	MSA	264	implemented	7b2d521c
+mulv.b	wd,ws,wt	MSA	266	implemented	780d5212
+mulv.h	wd,ws,wt	MSA	266	implemented	782d5212
+mulv.w	wd,ws,wt	MSA	266	implemented	784d5212
+mulv.d	wd,ws,wt	MSA	266	implemented	786d5212
+nloc.b	wd,ws	MSA	267	implemented	7b08521e
+nloc.h	wd,ws	MSA	267	implemented	7b09521e
+nloc.w	wd,ws	MSA	267	implemented	7b0a521e
+nloc.d	wd,ws	MSA	267	implemented	7b0b521e
+nlzc.b	wd,ws	MSA	269	implemented	7b0c521e
+nlzc.h	wd,ws	MSA	269	implemented	7b0d521e
+nlzc.w	wd,ws	MSA	269	implemented	7b0e521e
+nlzc.d	wd,ws	MSA	269	implemented	7b0f521e
+nor.v	wd,ws,wt	MSA	271	implemented	784d521e
+nori.b	wd,ws,i8	MSA	272	implemented	7a025200
+or.v	wd,ws,wt	MSA	273	implemented	782d521e
+ori.b	wd,ws,i8	MSA	274	implemented	79025200
+pckev.b	wd,ws,wt	MSA	275	implemented	790d5214
+pckev.h	wd,ws,wt	MSA	275	implemented	792d5214
+pckev.w	wd,ws,wt	MSA	275	implemented	794d5214
+pckev.d	wd,ws,wt	MSA	275	implemented	796d5214
+pckod.b	wd,ws,wt	MSA	277	implemented	798d5214
+pckod.h	wd,ws,wt	MSA	277	implemented	79ad5214
+pckod.w	wd,ws,wt	MSA	277	implemented	79cd5214
+pckod.d	wd,ws,wt	MSA	277	implemented	79ed5214
+pcnt.b	wd,ws	MSA	279	implemented	7b04521e
+pcnt.h	wd,ws	MSA	279	implemented	7b05521e
+pcnt.w	wd,ws	MSA	279	implemented	7b06521e
+pcnt.d	wd,ws	MSA	279	implemented	7b07521e
+sat_s.b	wd,ws,m	MSA	280	implemented	7871520a
+sat_s.h	wd,ws,m	MSA	280	implemented	7861520a
+sat_s.w	wd,ws,m	MSA	280	implemented	7841520a
+sat_s.d	wd,ws,m	MSA	280	implemented	7801520a
+sat_u.b	wd,ws,m	MSA	282	implemented	78f1520a
+sat_u.h	wd,ws,m	MSA	282	implemented	78e1520a
+sat_u.w	wd,ws,m	MSA	282	implemented	78c1520a
+sat_u.d	wd,ws,m	MSA	282	implemented	7881520a
+shf.b	wd,ws,i8	MSA	284	implemented	78025202
+shf.h	wd,ws,i8	MSA	284	implemented	79025202
+shf.w	wd,ws,i8	MSA	284	implemented	7a025202
+sld.b	wd,ws[rt]	MSA	285	implemented	780b5214
+sld.h	wd,ws[rt]	MSA	285	implemented	782b5214
+sld.w	wd,ws[rt]	MSA	285	implemented	784b5214
+sld.d	wd,ws[rt]	MSA	285	implemented	786b5214
+sldi.b	wd,ws[n]	MSA	287	implemented	78015219
+sldi.h	wd,ws[n]	MSA	287	implemented	78215219
+sldi.w	wd,ws[n]	MSA	287	implemented	78315219
+sldi.d	wd,ws[n]	MSA	287	implemented	78395219
+sll.b	wd,ws,wt	MSA	289	implemented	780d520d
+sll.h	wd,ws,wt	MSA	289	implemented	782d520d
+sll.w	wd,ws,wt	MSA	289	implemented	784d520d
+sll.d	wd,ws,wt	MSA	289	implemented	786d520d
+slli.b	wd,ws,m	MSA	290	implemented	78715209
+slli.h	wd,ws,m	MSA	290	implemented	78615209
+slli.w	wd,ws,m	MSA	290	implemented	78415209
+slli.d	wd,ws,m	MSA	290	implemented	78015209
+splat.b	wd,ws[rt]	MSA	291	implemented	788b5214
+splat.h	wd,ws[rt]	MSA	291	implemented	78ab5214
+splat.w	wd,ws[rt]	MSA	291	implemented	78cb5214
+splat.d	wd,ws[rt]	MSA	291	implemented	78eb5214
+splati.b	wd,ws[n]	MSA	292	implemented	78415219
+splati.h	wd,ws[n]	MSA	292	implemented	78615219
+splati.w	wd,ws[n]	MSA	292	implemented	78715219
+splati.d	wd,ws[n]	MSA	292	implemented	78795219
+sra.b	wd,ws,wt	MSA	293	implemented	788d520d
+sra.h	wd,ws,wt	MSA	293	implemented	78ad520d
+sra.w	wd,ws,wt	MSA	293	implemented	78cd520d
+sra.d	wd,ws,wt	MSA	293	implemented	78ed520d
+srai.b	wd,ws,m	MSA	294	implemented	78f15209
+srai.h	wd,ws,m	MSA	294	implemented	78e15209
+srai.w	wd,ws,m	MSA	294	implemented	78c15209
+srai.d	wd,ws,m	MSA	294	implemented	78815209
+srar.b	wd,ws,wt	MSA	295	implemented	788d5215
+srar.h	wd,ws,wt	MSA	295	implemented	78ad5215
+srar.w	wd,ws,wt	MSA	295	implemented	78cd5215
+srar.d	wd,ws,wt	MSA	295	implemented	78ed5215
+srari.b	wd,ws,m	MSA	297	implemented	7971520a
+srari.h	wd,ws,m	MSA	297	implemented	7961520a
+srari.w	wd,ws,m	MSA	297	implemented	7941520a
+srari.d	wd,ws,m	MSA	297	implemented	7901520a
+srl.b	wd,ws,wt	MSA	299	implemented	790d520d
+srl.h	wd,ws,wt	MSA	299	implemented	792d520d
+srl.w	wd,ws,wt	MSA	299	implemented	794d520d
+srl.d	wd,ws,wt	MSA	299	implemented	796d520d
+srli.b	wd,ws,m	MSA	300	implemented	79715209
+srli.h	wd,ws,m	MSA	300	implemented	79615209
+srli.w	wd,ws,m	MSA	300	implemented	79415209
+srli.d	wd,ws,m	MSA	300	implemented	79015209
+srlr.b	wd,ws,wt	MSA	301	implemented	790d5215
+srlr.h	wd,ws,wt	MSA	301	implemented	792d5215
+srlr.w	wd,ws,wt	MSA	301	implemented	794d5215
+srlr.d	wd,ws,wt	MSA	301	implemented	796d5215
+srlri.b	wd,ws,m	MSA	303	implemented	79f1520a
+srlri.h	wd,ws,m	MSA	303	implemented	79e1520a
+srlri.w	wd,ws,m	MSA	303	implemented	79c1520a
+srlri.d	wd,ws,m	MSA	303	implemented	7981520a
+st.b	wd,s10(rs)	MSA	305	implemented	78085224
+st.h	wd,s10(rs)	MSA	305	implemented	78045225
+st.w	wd,s10(rs)	MSA	305	implemented	78025226
+st.d	wd,s10(rs)	MSA	305	implemented	78015227
+subs_s.b	wd,ws,wt	MSA	307	implemented	780d5211
+subs_s.h	wd,ws,wt	MSA	307	implemented	782d5211
+subs_s.w	wd,ws,wt	MSA	307	implemented	784d5211
+subs_s.d	wd,ws,wt	MSA	307	implemented	786d5211
+subs_u.b	wd,ws,wt	MSA	309	implemented	788d5211
+subs_u.h	wd,ws,wt	MSA	309	implemented	78ad5211
+subs_u.w	wd,ws,wt	MSA	309	implemented	78cd5211
+subs_u.d	wd,ws,wt	MSA	309	implemented	78ed5211
+subsus_u.b	wd,ws,wt	MSA	311	implemented	790d5211
+subsus_u.h	wd,ws,wt	MSA	311	implemented	792d5211
+subsus_u.w	wd,ws,wt	MSA	311	implemented	794d5211
+subsus_u.d	wd,ws,wt	MSA	311	implemented	796d5211
+subsuu_s.b	wd,ws,wt	MSA	313	implemented	798d5211
+subsuu_s.h	wd,ws,wt	MSA	313	implemented	79ad5211
+subsuu_s.w	wd,ws,wt	MSA	313	implemented	79cd5211
+subsuu_s.d	wd,ws,wt	MSA	313	implemented	79ed5211
+subv.b	wd,ws,wt	MSA	315	implemented	788d520e
+subv.h	wd,ws,wt	MSA	315	implemented	78ad520e
+subv.w	wd,ws,wt	MSA	315	implemented	78cd520e
+subv.d	wd,ws,wt	MSA	315	implemented	78ed520e
+subvi.b	wd,ws,u5	MSA	316	implemented	78825206
+subvi.h	wd,ws,u5	MSA	316	implemented	78a25206
+subvi.w	wd,ws,u5	MSA	316	implemented	78c25206
+subvi.d	wd,ws,u5	MSA	316	implemented	78e25206
+vshf.b	wd,ws,wt	MSA	317	implemented	780d5215
+vshf.h	wd,ws,wt	MSA	317	implemented	782d5215
+vshf.w	wd,ws,wt	MSA	317	implemented	784d5215
+vshf.d	wd,ws,wt	MSA	317	implemented	786d5215
+xor.v	wd,ws,wt	MSA	319	implemented	786d521e
+xori.b	wd,ws,i8	MSA	320	implemented	7b025200

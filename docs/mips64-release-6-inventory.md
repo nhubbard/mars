@@ -20,8 +20,9 @@ for the intended coverage.
   concrete forms in the SIMD reference's Format blocks, including the
   scalar LSA and DLSA cross-references and four MIPS64-specific vector forms.
   The table records the documented operands, availability, and reference
-  page. The MARS64 catalog contains all 529 vector and control forms and
-  the two scalar cross-references. The low 64 bits of each vector register share
+  page. A Jupiter test assembles each of the 531 rows, compares its word with
+  LLVM 23.1.5, and checks that the MARS64 decoder identifies the form. The low
+  64 bits of each vector register share
   storage with the corresponding scalar FPR. Scalar writes preserve the
   other bits where the ISA leaves them unpredictable. Backstep restores
   both halves of a vector write. Vector loads and stores support all four

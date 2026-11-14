@@ -35,6 +35,12 @@ tasks.test {
   useJUnitPlatform()
 }
 
+tasks.processTestResources {
+  from(rootProject.layout.projectDirectory.dir("../docs/instruction-inventory")) {
+    include("mips64-msa-forms.tsv")
+  }
+}
+
 jacoco { toolVersion = "0.8.16" }
 tasks.jacocoTestReport {
   dependsOn(tasks.test)
