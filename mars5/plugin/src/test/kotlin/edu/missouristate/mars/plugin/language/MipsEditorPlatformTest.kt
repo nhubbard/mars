@@ -976,9 +976,10 @@ class MipsEditorPlatformTest {
 
             val matcher = LanguageBraceMatching.INSTANCE.forLanguage(MipsLanguage)
             assertInstanceOf(MipsBraceMatcher::class.java, matcher)
-            val pair = matcher.pairs.single()
-            assertSame(MipsTypes.psi("LEFT_PAREN"), pair.leftBraceType)
+            val pair = matcher.pairs.single { it.leftBraceType == MipsTypes.psi("LEFT_PAREN") }
             assertSame(MipsTypes.psi("RIGHT_PAREN"), pair.rightBraceType)
+            val lanePair = matcher.pairs.single { it.leftBraceType == MipsTypes.psi("LEFT_BRACKET") }
+            assertSame(MipsTypes.psi("RIGHT_BRACKET"), lanePair.rightBraceType)
             assertFalse(pair.isStructural)
             assertTrue(matcher.isPairedBracesAllowedBeforeType(pair.leftBraceType, null))
             assertTrue(matcher.isPairedBracesAllowedBeforeType(pair.leftBraceType, MipsTypes.psi("NUMBER")))
