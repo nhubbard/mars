@@ -72,7 +72,7 @@ class Mars64InstructionBaselineTest {
             val previous = 0x1234_5678_9abc_def0L
             session.editIntegerRegister(9, previous)
             session.editIntegerRegister(10, -0x0001_0000_0000_0001L)
-            // A variable shift uses the low six bits of 65, while multiplication uses 65.
+            // A variable shift uses the low six bits of 65.
             session.editIntegerRegister(11, 65)
             program.simulate(1)
             assertEquals(expected, session.registerFile.getLongValueNoNotify(9))
@@ -108,6 +108,22 @@ class Mars64InstructionBaselineTest {
             Arguments.of("dsll32 \$9,\$10,31", Long.MIN_VALUE),
             Arguments.of("dsrl32 \$9,\$10,31", 1L),
             Arguments.of("dsra32 \$9,\$10,31", -1L),
+            Arguments.of("dmul \$9,\$10,\$11", -18_295_873_486_192_705L),
+            Arguments.of("dmuh \$9,\$10,\$11", -1L),
+            Arguments.of("dmulu \$9,\$10,\$11", -18_295_873_486_192_705L),
+            Arguments.of("dmuhu \$9,\$10,\$11", 64L),
+            Arguments.of("ddiv \$9,\$10,\$11", -4_330_384_257_087L),
+            Arguments.of("ddivu \$9,\$10,\$11", 283_791_732_288_197_553L),
+            Arguments.of("dmod \$9,\$10,\$11", -2L),
+            Arguments.of("dmodu \$9,\$10,\$11", 14L),
+            Arguments.of("dsll \$9,\$10,10", -288_230_376_151_712_768L),
+            Arguments.of("dsrl \$9,\$10,10", 18_014_123_631_575_039L),
+            Arguments.of("dsra \$9,\$10,10", -274_877_906_945L),
+            Arguments.of("drotr \$9,\$10,10", -274_877_906_945L),
+            Arguments.of("drotr32 \$9,\$10,10", -65L),
+            Arguments.of("drotrv \$9,\$10,\$11", -140_737_488_355_329L),
+            Arguments.of("dclz \$9,\$10", 0L),
+            Arguments.of("dclo \$9,\$10", 15L),
         )
     }
 }
