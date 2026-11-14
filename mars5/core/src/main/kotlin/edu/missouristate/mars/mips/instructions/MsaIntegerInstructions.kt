@@ -178,7 +178,7 @@ private fun integerInstruction(operation: IntegerOperation, format: Int, suffix:
     }
 }
 
-private inline fun mapLanes(bits: Int, transform: (half: (VectorRegister) -> Long, shift: Int) -> Long): VectorRegister {
+internal inline fun mapLanes(bits: Int, transform: (half: (VectorRegister) -> Long, shift: Int) -> Long): VectorRegister {
     val mask = -1L ushr (Long.SIZE_BITS - bits)
     var low = 0L
     var high = 0L
@@ -189,7 +189,7 @@ private inline fun mapLanes(bits: Int, transform: (half: (VectorRegister) -> Lon
     return VectorRegister(low, high)
 }
 
-private fun element(half: Long, shift: Int, bits: Int, signed: Boolean = false): Long {
+internal fun element(half: Long, shift: Int, bits: Int, signed: Boolean = false): Long {
     val extension = Long.SIZE_BITS - bits
     val lane = (half ushr shift) shl extension
     return if (signed) lane shr extension else lane ushr extension
@@ -214,7 +214,7 @@ private fun shiftInstruction(operation: ShiftOperation, format: Int, suffix: Cha
         immediate && operation == ShiftOperation.RIGHT_LOGICAL_ROUNDED -> "011"
         else -> operation.opcode
     }
-    val selector = if (immediate) listOf("1110ttt", "110tttt", "10ttttt", "0tttttt")[format]
+    val selector = if (immediate) msaBitImmediateField(format)
     else format.toString(2).padStart(2, '0') + "ttttt"
     val function = if (immediate) operation.immediateFunction else operation.function
     val operand = if (immediate) (bits - 1).toString() else "\$w3"
@@ -254,3 +254,6 @@ private fun countInstruction(name: String, opcode: String, format: String, suffi
         val value = context.coprocessor1.readVector(source)
         context.updateVectorRegister(destination, mapLanes(bits) { half, shift -> count(element(half(value), shift, bits)).toLong() })
     }
+
+
+internal fun msaBitImmediateField(format: Int): String = "1".repeat(3 - format) + "0" + "t".repeat(3 + format)
