@@ -229,4 +229,33 @@ class Mars64VectorFloatingTest {
         }
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = ["w", "d"])
+    fun `widening preserves NaN payloads and only flushes single precision input`(suffix: String, @TempDir directory: Path) {
+        val double = suffix == "d"
+        val file = Files.writeString(directory.resolve("widen.s"), $$"""
+            fexupl.$$suffix $w31,$w3
+            fexupr.$$suffix $w31,$w3
+        """.trimIndent())
+        TestSessions.create().use { session ->
+            session.selectTarget(MarsTarget.MARS64)
+            val program = session.assemble(listOf(file), null, false, false)
+            val format = if (double) 1 shl 16 else 0
+            assertEquals(listOf(0x7b301fde or format, 0x7b321fde or format), program.machineList!!.map { it.binaryStatement })
+            val fpu = session.coprocessor1
+            val low = if (double) 0x3f80000080000000L else 0x000000003c008000L
+            val high = if (double) 0x800000017f800123uL.toLong() else 0x0000000000017c01L
+            fpu.updateVector(3, VectorRegister(low, high))
+            fpu.updateMsaStatus(0x1000000)
+            program.simulate(1)
+            val expected = if (double) VectorRegister(0x7ff8002460000000L, Long.MIN_VALUE)
+                else VectorRegister(0x338000007fc02000L, 0)
+            assertEquals(expected, fpu.readVector(31))
+            assertEquals(if (double) 0x1011044 else 0x1010040, fpu.msaStatus)
+            program.simulate(1)
+            assertEquals(if (double) VectorRegister(Long.MIN_VALUE, 1.0.toBits())
+                else VectorRegister(0x3f80000080000000L, 0), fpu.readVector(31))
+        }
+    }
+
 }

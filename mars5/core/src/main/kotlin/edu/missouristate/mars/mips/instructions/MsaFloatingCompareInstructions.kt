@@ -12,6 +12,8 @@ import edu.missouristate.mars.mips.instructions.BasicInstructionFormat.R_FORMAT
 import edu.missouristate.mars.mips.instructions.basic.convertInteger
 import edu.missouristate.mars.mips.instructions.basic.floatingClass
 import edu.missouristate.mars.mips.instructions.basic.roundIntegral
+import edu.missouristate.mars.mips.instructions.basic.widenSingle
+import java.lang.Float.float16ToFloat
 import kotlin.math.abs
 
 internal fun msaFloatingCompareInstructions(): List<BasicInstruction> = buildList {
@@ -36,6 +38,8 @@ internal fun msaFloatingCompareInstructions(): List<BasicInstruction> = buildLis
         }
         add(fromFixedPointInstruction(format, suffix, left = true))
         add(fromFixedPointInstruction(format, suffix, left = false))
+        add(widenFloatingInstruction(format, suffix, left = true))
+        add(widenFloatingInstruction(format, suffix, left = false))
         for ((index, name) in listOf("fmin", "fmin_a", "fmax", "fmax_a").withIndex()) {
             add(extremumInstruction(name, index, format, suffix))
         }
@@ -63,9 +67,9 @@ private fun compare(name: String, predicate: Int, format: Int, suffix: Char, sig
         val fpu = context.coprocessor1
         val a = fpu.readVector(source)
         val b = fpu.readVector(target)
-        context.writeFloatingVector(statement, destination, precision) { half, shift, status ->
-            val left = element(half(a), shift, precision.bits)
-            val right = element(half(b), shift, precision.bits)
+        context.writeFloatingVector(statement, destination, precision) { index, status ->
+            val left = a.floatingLane(index, precision.bits)
+            val right = b.floatingLane(index, precision.bits)
             val unordered = precision.isNan(left) || precision.isNan(right)
             val invalid = (signaling && unordered) || precision.isSignaling(left) || precision.isSignaling(right)
             val relation = if (unordered) 1 else {
@@ -100,22 +104,27 @@ private class MsaPrecision(format: Int) {
 
 private data class FloatingLane(val bits: Long, val causes: Int = 0)
 
-private inline fun InstructionContext.writeFloatingVector(
+private fun InstructionContext.writeFloatingVector(
     statement: ProgramStatement, destination: Int, precision: MsaPrecision,
-    evaluate: (half: (VectorRegister) -> Long, shift: Int, status: Int) -> FloatingLane,
+    evaluate: (index: Int, status: Int) -> FloatingLane,
 ) {
     val status = coprocessor1.msaStatus
     val enabled = ((status ushr 7) and 0x1f) or 0x20
     val nonTrapping = status and MSA_NON_TRAPPING != 0
     var causes = 0
-    val result = mapLanes(precision.bits) { half, shift ->
-        val lane = evaluate(half, shift, status)
-        if (nonTrapping && lane.causes and enabled != 0) precision.exponent or lane.causes.toLong()
+    fun evaluateLane(index: Int): Long {
+        val lane = evaluate(index, status)
+        return if (nonTrapping && lane.causes and enabled != 0) precision.exponent or lane.causes.toLong()
         else {
             causes = causes or lane.causes
             lane.bits
         }
     }
+    val result = if (precision.bits == 64) VectorRegister(evaluateLane(0), evaluateLane(1))
+    else VectorRegister(
+        (evaluateLane(0) and 0xffff_ffffL) or (evaluateLane(1) shl 32),
+        (evaluateLane(2) and 0xffff_ffffL) or (evaluateLane(3) shl 32),
+    )
     val updated = (status and CAUSE_MASK.inv()) or (causes shl 12)
     writeMsaStatus(statement, if (causes and enabled != 0) updated else updated or (causes shl 2))
     updateVectorRegister(destination, result)
@@ -129,8 +138,8 @@ private fun roundingInstruction(format: Int, suffix: Char): BasicInstruction {
     ) { statement, context ->
         val (destination, source) = statement.operands
         val input = context.coprocessor1.readVector(source)
-        context.writeFloatingVector(statement, destination, precision) { half, shift, status ->
-            val raw = element(half(input), shift, precision.bits)
+        context.writeFloatingVector(statement, destination, precision) { index, status ->
+            val raw = input.floatingLane(index, precision.bits)
             if (precision.isNan(raw)) {
                 FloatingLane(raw or precision.quiet, if (precision.isSignaling(raw)) INVALID_OPERATION else 0)
             } else {
@@ -154,9 +163,9 @@ private fun extremumInstruction(name: String, index: Int, format: Int, suffix: C
         val fpu = context.coprocessor1
         val left = fpu.readVector(source)
         val right = fpu.readVector(target)
-        context.writeFloatingVector(statement, destination, precision) { half, shift, status ->
-            val rawA = element(half(left), shift, precision.bits)
-            val rawB = element(half(right), shift, precision.bits)
+        context.writeFloatingVector(statement, destination, precision) { index, status ->
+            val rawA = left.floatingLane(index, precision.bits)
+            val rawB = right.floatingLane(index, precision.bits)
             val a = precision.flush(rawA, status)
             val b = precision.flush(rawB, status)
             val inexact = if (a != rawA || b != rawB) INEXACT else 0
@@ -192,8 +201,8 @@ private fun toIntegerInstruction(format: Int, suffix: Char, signed: Boolean, tru
     ) { statement, context ->
         val (destination, source) = statement.operands
         val input = context.coprocessor1.readVector(source)
-        context.writeFloatingVector(statement, destination, precision) { half, shift, status ->
-            val raw = element(half(input), shift, precision.bits)
+        context.writeFloatingVector(statement, destination, precision) { index, status ->
+            val raw = input.floatingLane(index, precision.bits)
             val value = precision.number(raw)
             val rounded = roundIntegral(precision.number(precision.flush(raw, status)), if (truncate) 1 else status and 3)
             when {
@@ -219,8 +228,8 @@ private fun fromIntegerInstruction(format: Int, suffix: Char, signed: Boolean): 
     ) { statement, context ->
         val (destination, source) = statement.operands
         val input = context.coprocessor1.readVector(source)
-        context.writeFloatingVector(statement, destination, precision) { half, shift, status ->
-            val value = element(half(input), shift, precision.bits, signed)
+        context.writeFloatingVector(statement, destination, precision) { index, status ->
+            val value = input.floatingLane(index, precision.bits, signed)
             val result = convertInteger(value, double = format != 0, status, unsigned = !signed)
             FloatingLane(result.bits, result.causes)
         }
@@ -256,4 +265,37 @@ private fun fixedPointHalf(source: Long, offset: Int, precision: MsaPrecision): 
         result = result or (precision.raw(Math.scalb(value.toDouble(), 1 - narrow)) shl shift)
     }
     return result
+}
+
+private fun VectorRegister.floatingLane(index: Int, bits: Int, signed: Boolean = false): Long {
+    val offset = index * bits
+    return element(if (offset < 64) low else high, offset and 63, bits, signed)
+}
+
+private fun widenFloatingInstruction(format: Int, suffix: Char, left: Boolean): BasicInstruction {
+    val precision = MsaPrecision(format)
+    val mnemonic = if (left) "fexupl" else "fexupr"
+    val field = (16 + (if (left) 0 else 2) + format).toString(2)
+    val offset = if (left) 128 / precision.bits else 0
+    return BasicInstruction(
+        "$mnemonic.$suffix \$w1,\$w2", "Widen floating-point elements from one half of a vector",
+        R_FORMAT, "011110 11001 $field sssss fffff 011110",
+    ) { statement, context ->
+        val (destination, source) = statement.operands
+        val input = context.coprocessor1.readVector(source)
+        context.writeFloatingVector(statement, destination, precision) { index, status ->
+            val raw = input.floatingLane(index + offset, precision.bits / 2).toInt()
+            if (format != 0) {
+                val result = widenSingle(raw, status)
+                FloatingLane(result.bits, result.causes)
+            } else if (raw and 0x7c00 == 0x7c00 && raw and 0x03ff != 0) {
+                val sign = (raw and 0x8000).toLong() shl 16
+                val payload = (raw and 0x03ff).toLong() shl 13
+                val cause = if (raw and 0x0200 == 0) INVALID_OPERATION else 0
+                FloatingLane(sign or 0x7fc00000L or payload, cause)
+            } else {
+                FloatingLane(float16ToFloat(raw.toShort()).toRawBits().toUInt().toLong())
+            }
+        }
+    }
 }

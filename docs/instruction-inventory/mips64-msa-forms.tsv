@@ -216,10 +216,10 @@ fexdo.h	wd,ws,wt	MSA	171	missing
 fexdo.w	wd,ws,wt	MSA	171	missing
 fexp2.w	wd,ws,wt	MSA	172	missing
 fexp2.d	wd,ws,wt	MSA	172	missing
-fexupl.w	wd,ws	MSA	173	missing
-fexupl.d	wd,ws	MSA	173	missing
-fexupr.w	wd,ws	MSA	174	missing
-fexupr.d	wd,ws	MSA	174	missing
+fexupl.w	wd,ws	MSA	173	implemented
+fexupl.d	wd,ws	MSA	173	implemented
+fexupr.w	wd,ws	MSA	174	implemented
+fexupr.d	wd,ws	MSA	174	implemented
 ffint_s.w	wd,ws	MSA	175	implemented
 ffint_s.d	wd,ws	MSA	175	implemented
 ffint_u.w	wd,ws	MSA	176	implemented

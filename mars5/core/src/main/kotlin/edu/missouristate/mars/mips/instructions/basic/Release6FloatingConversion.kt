@@ -47,7 +47,7 @@ private fun floatingConversion(destinationFormat: String, sourceFormat: String, 
 
 internal data class FloatingConversionResult(val bits: Long, val causes: Int = 0)
 
-private fun widenSingle(bits: Int, status: Int): FloatingConversionResult {
+internal fun widenSingle(bits: Int, status: Int): FloatingConversionResult {
     val value = Float.fromBits(bits)
     if (value.isNaN()) {
         val payload = (bits.toLong() and 0x007f_ffff) shl 29
