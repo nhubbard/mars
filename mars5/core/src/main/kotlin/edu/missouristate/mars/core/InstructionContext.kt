@@ -133,6 +133,14 @@ class InstructionContext(private val session: MarsContext, private val environme
         }
     }
 
+    /** Register the architectural delay slot, including when the branch falls through. */
+    internal fun release6DelayedBranch(displacement: Int, taken: Boolean) {
+        val next = registerFile.programCounter
+        val target = next + if (taken) (displacement shl 2) else INSTRUCTION_LENGTH
+        delayedBranch.register(target)
+        lastBranchOutcome = if (taken) BranchOutcome.TAKEN else BranchOutcome.NOT_TAKEN
+    }
+
     /** Execute or schedule a jump. Linking instructions have already recorded a call. */
     fun jump(target: Int) {
         val withoutLink = lastTransfer == null
@@ -302,8 +310,13 @@ class InstructionContext(private val session: MarsContext, private val environme
                 if (interrupt != 0) throw ProcessingException(this, statement, "External interrupt", interrupt)
                 val instruction = statement.instruction as? BasicInstruction
                     ?: throw ProcessingException(this, statement, "invalid instruction", RESERVED_INSTRUCTION_EXCEPTION)
-                if (forbiddenSlot && instruction.isControlTransfer()) {
-                    throw ProcessingException(this, statement, "control transfer in a forbidden slot", RESERVED_INSTRUCTION_EXCEPTION)
+                if (instruction.isControlTransfer()) {
+                    if (forbiddenSlot) {
+                        throw ProcessingException(this, statement, "control transfer in a forbidden slot", RESERVED_INSTRUCTION_EXCEPTION)
+                    }
+                    if (session.target == MarsTarget.MARS64 && delayedBranch.isTriggered) {
+                        throw ProcessingException(this, statement, "control transfer in a delay slot", RESERVED_INSTRUCTION_EXCEPTION)
+                    }
                 }
                 instruction.simulationCode.simulate(statement, this)
                 if (instruction.instructionFormat == I_BRANCH_FORMAT && lastBranchOutcome == null) {

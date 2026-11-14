@@ -5,6 +5,7 @@ import edu.missouristate.mars.core.InstructionContext
 import edu.missouristate.mars.mips.hardware.AddressErrorException
 import edu.missouristate.mars.mips.hardware.MemoryState
 import edu.missouristate.mars.mips.hardware.MemoryState.Reservation
+import edu.missouristate.mars.mips.instructions.BasicInstructionFormat.I_BRANCH_FORMAT
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat.I_FORMAT
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat.R_FORMAT
 import edu.missouristate.mars.mips.instructions.basic.DoublewordBitField
@@ -24,6 +25,8 @@ import java.lang.Math.unsignedMultiplyHigh
 
 /** Doubleword operations enabled by the educational MARS64 target. */
 internal val wideInstructionFactories: List<() -> BasicInstruction> = listOf(
+    { floatingBitBranch(nonzero = false) },
+    { floatingBitBranch(nonzero = true) },
     { doublewordFloatingMove(toFloatingPoint = false) },
     { doublewordFloatingMove(toFloatingPoint = true) },
     { linkedMemoryInstruction("ll", Int.SIZE_BYTES, store = false, "110110") },
@@ -305,6 +308,27 @@ private fun pairedLinkedMemoryInstruction(name: String, elementSize: Int, store:
             return store || low == 0 || low != high
         }
     }
+
+private fun floatingBitBranch(nonzero: Boolean) = object : BasicInstruction(
+    "${if (nonzero) "bc1nez" else "bc1eqz"} \$f1,label",
+    if (nonzero) "Branch if bit 0 of a floating-point register is set"
+    else "Branch if bit 0 of a floating-point register is clear",
+    I_BRANCH_FORMAT, "010001 ${if (nonzero) "01101" else "01001"} fffff ssssssssssssssss",
+    { statement, context ->
+        val (source, displacement) = statement.operands
+        val bitSet = context.coprocessor1.getValue(source) and 1 != 0
+        context.release6DelayedBranch(displacement, bitSet == nonzero)
+    },
+) {
+    override fun encodeOperands(values: IntArray): IntArray {
+        require(values[1] in Short.MIN_VALUE..Short.MAX_VALUE) { "Floating-point branch destination is outside its signed displacement range" }
+        return values
+    }
+
+    override fun decodeOperands(values: IntArray) {
+        values[1] = values[1].toShort().toInt()
+    }
+}
 
 private fun doublewordFloatingMove(toFloatingPoint: Boolean) = BasicInstruction(
     if (toFloatingPoint) "dmtc1 \$t1,\$f2" else "dmfc1 \$t1,\$f2",

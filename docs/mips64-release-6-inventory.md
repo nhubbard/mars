@@ -105,6 +105,10 @@ or PC-relative immediate in this table is the displacement as written to LLVM.
   deterministic result where the ISA leaves it unpredictable. MARS32 keeps
   its even/odd register pairs. The MARS32 `mfc1.d` and `mtc1.d` pseudos
   transfer between two GPRs and two FPRs and are excluded from MARS64.
+- **Scalar FPU branches.** MARS64 uses `bc1eqz` and `bc1nez` in place of
+  the removed `bc1f` and `bc1t`. Both Release 6 forms test bit 0 and execute
+  one delay slot on both paths, independently of the legacy delay-slot setting.
+  Their signed displacement is relative to the instruction after the branch.
 - **Remaining scalar and optional families.** Expand Volume II-A by operand
   form and classify shared integer, COP1, memory, system, and optional forms.
   Track removed and privileged forms separately from missing user-mode
