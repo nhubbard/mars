@@ -14,10 +14,10 @@ internal enum class WatchMemoryWidth(val spelling: String, private val bytes: In
     HALF("half", 2, 0xffff),
     WORD("word", 4, -1);
 
-    fun inspect(memory: MemoryState, address: Int): Int? {
-        if (address and (bytes - 1) != 0) return null
-        val word = memory.inspectWord(address and -Int.SIZE_BYTES) ?: return null
-        val offset = address and (Int.SIZE_BYTES - 1)
+    fun inspect(memory: MemoryState, address: Long): Int? {
+        if (address and (bytes - 1).toLong() != 0L) return null
+        val word = memory.inspectWord(address and -Int.SIZE_BYTES.toLong()) ?: return null
+        val offset = address.toInt() and (Int.SIZE_BYTES - 1)
         val shift = Byte.SIZE_BITS * if (memory.byteOrder) offset else Int.SIZE_BYTES - bytes - offset
         return word ushr shift and mask
     }

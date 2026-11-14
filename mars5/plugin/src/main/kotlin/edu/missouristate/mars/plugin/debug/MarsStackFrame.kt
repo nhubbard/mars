@@ -62,8 +62,9 @@ internal class MarsStackFrame(
         val writes = machine.backStepper.previousRegisterWrites()
         fun written(bank: RegisterWriteBank, number: Int) = RegisterWrite(bank, number) in writes
         addTopGroup(RegisterGroup("debug.registers.cpu", XValueChildrenList().apply {
-            val pc = cpu.programCounterRegister.valueNoNotify
-            add(RegisterValue(cpu.programCounterRegister.name) { display.formatUnsignedValue(pc) })
+            val pc = cpu.programCounterBits
+            add(RegisterValue(cpu.programCounterRegister.name) { if (pc == pc.toInt().toLong()) display.formatUnsignedValue(pc.toInt())
+                else display.formatWideValue(pc) })
             cpu.registers.forEach {
                 if (wide) {
                     val bits = cpu.getLongValueNoNotify(it.number)

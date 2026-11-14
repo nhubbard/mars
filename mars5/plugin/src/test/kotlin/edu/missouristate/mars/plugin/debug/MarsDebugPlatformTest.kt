@@ -2032,8 +2032,8 @@ class MarsDebugPlatformTest {
             memory.setWord(address, 0x11223344)
             val notices = ArrayList<Any>()
             memory.addObserver { notices.add(it) }
-            assertEquals(0x11, WatchMemoryWidth.BYTE.inspect(memory, address))
-            assertEquals(0x3344, WatchMemoryWidth.HALF.inspect(memory, address + 2))
+            assertEquals(0x11, WatchMemoryWidth.BYTE.inspect(memory, address.toLong()))
+            assertEquals(0x3344, WatchMemoryWidth.HALF.inspect(memory, address.toLong() + 2))
             assertTrue(notices.isEmpty())
         }
         val requests = watchMemoryRequests()
@@ -2164,6 +2164,8 @@ class MarsDebugPlatformTest {
             val file = withContext(Dispatchers.EDT) {
                 settings.changeTarget(MarsTarget.MARS64)
                 fixture.addFileToProject("high-debug.mars", $$"""
+                    .data 0x100000000
+                    cell: .word 0x12345678
                     .text 0x100400000
                     .globl main
                     main: balc callee
@@ -2172,19 +2174,25 @@ class MarsDebugPlatformTest {
                     syscall
                     callee: addiu $t1,$zero,42
                     jic $ra,0
-                """.trimIndent()).virtualFile.also { addBreakpoint(it, 2) }
+                """.trimIndent()).virtualFile.also { addBreakpoint(it, 4) }
             }
             withDebug(file, { startAtMain = ProjectOptionOverride.ENABLED }) { debug ->
-                debug.assertPausedAt(file, 2)
-                withContext(Dispatchers.EDT) { debug.session.stepOver(false) }
-                debug.assertPausedAt(file, 3)
-                withContext(Dispatchers.EDT) { debug.session.stepInto() }
                 debug.assertPausedAt(file, 4)
+                withContext(Dispatchers.EDT) {
+                    val frame = requireNotNull(debug.session.currentStackFrame)
+                    assertEquals("0x0000000100400000", evaluate(debug.session, frame, "pc"))
+                    assertEquals("0x0000000100000000", evaluate(debug.session, frame, "cell"))
+                    assertEquals("0x12345678", evaluate(debug.session, frame, "word(cell)"))
+                }
+                withContext(Dispatchers.EDT) { debug.session.stepOver(false) }
+                debug.assertPausedAt(file, 5)
+                withContext(Dispatchers.EDT) { debug.session.stepInto() }
+                debug.assertPausedAt(file, 6)
                 withContext(Dispatchers.EDT) {
                     val (action, event) = backstepAction(debug.session)
                     ActionUtil.performAction(action, event)
                 }
-                debug.assertPausedAt(file, 3)
+                debug.assertPausedAt(file, 5)
                 withContext(Dispatchers.EDT) {
                     val type = XDebuggerUtil.getInstance().findBreakpointType(MarsAddressBreakpointType::class.java)
                     val address = 0x1_0040_0024L
@@ -2192,7 +2200,7 @@ class MarsDebugPlatformTest {
                     debugger.breakpointManager.addBreakpoint(type, properties)
                     debug.session.resume()
                 }
-                debug.assertPausedAt(file, 5)
+                debug.assertPausedAt(file, 7)
                 withContext(Dispatchers.EDT) { debug.session.resume() }
                 assertEquals(0, debug.exit.await())
             }

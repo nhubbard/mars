@@ -62,7 +62,7 @@ internal class MarsExpressionEvaluator(
         for (register in cpu.registers) {
             put(register.name, if (wide) Doubleword(cpu.getLongValueNoNotify(register.number)) else Word(register.valueNoNotify))
         }
-        put("pc", Word(cpu.programCounterRegister.valueNoNotify))
+        put("pc", addressValue(cpu.programCounterBits))
         put("hi", Word(cpu.getValueNoNotify(HI_REGISTER)))
         put("lo", Word(cpu.getValueNoNotify(LO_REGISTER)))
         for (register in machine.coprocessor0.registers) {
@@ -154,7 +154,7 @@ internal class MarsExpressionEvaluator(
         return ExpressionInfo(element.textRange, expression, element.text)
     }
 
-    private fun addressExpression(address: Int?): String? = address?.let(Binary::intToHexString)
+    private fun addressExpression(address: Long?): String? = address?.let { addressValue(it).display() }
 
     override fun evaluate(expression: String, callback: XEvaluationCallback, expressionPosition: XSourcePosition?) {
         val source = expression.trim()
@@ -242,9 +242,12 @@ internal class MarsExpressionEvaluator(
     private fun resolveReference(name: String): Scalar? =
         registers[name]
             ?: RegisterNames.integer(name)?.let { registers.getValue(it.name) }
-            ?: symbolAddress(name)?.let(::Word)
+            ?: symbolAddress(name)?.let(::addressValue)
 
-    private fun symbolAddress(name: String): Int? = (localSymbols[name] ?: globalSymbols[name])?.address
+    private fun symbolAddress(name: String): Long? = (localSymbols[name] ?: globalSymbols[name])?.addressBits
+
+    private fun addressValue(bits: Long): Scalar =
+        if (bits == bits.toInt().toLong()) Word(bits.toInt()) else Doubleword(bits)
 
     private fun signedWord(operator: ASTNode, operand: ASTNode): Immediate? {
         if (operator.elementType != minusType || operand.elementType != literalType ||
@@ -262,7 +265,9 @@ internal class MarsExpressionEvaluator(
         val value = evaluateNode(address) ?: return null
         return ReadMemory { memory ->
             val resolved = value.resolve(memory).getOrElse { return@ReadMemory Result.failure(it) }
-            val location = resolved.addressBits ?: return@ReadMemory invalidMemory()
+            val bits = resolved.integerBits ?: return@ReadMemory invalidMemory()
+            val location = memoryAddress(bits)
+            if (location !in 0..memory.highestInspectableAddress) return@ReadMemory invalidMemory()
             width.inspect(memory, location)?.let { Result.success(Word(it)) } ?: invalidMemory()
         }
     }

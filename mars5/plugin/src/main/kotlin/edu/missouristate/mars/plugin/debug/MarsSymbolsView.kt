@@ -59,17 +59,17 @@ internal class LoadedSymbols(private val symbols: AssemblySymbolMap, val sources
     }
 
     private val definitionsBySite = rows.groupBy { it.location to it.definition.column }
-        .mapValues { (_, rows) -> rows.groupBy(AssembledSymbol::name) { it.definition.address } }
+        .mapValues { (_, rows) -> rows.groupBy(AssembledSymbol::name) { it.definition.addressBits } }
 
     /** An external declaration can expand or normalize its spelling at this captured source site. */
-    fun addressAt(site: SourceToken, spelling: String?): Int? {
+    fun addressAt(site: SourceToken, spelling: String?): Long? {
         val bindings = symbols.symbolUses()[site]
         val addresses = if (bindings == null) {
             val definitions = definitionsBySite.getOrDefault(site.location to site.column, emptyMap())
             if (spelling == null) definitions.values.flatten() else definitions.getOrDefault(spelling, emptyList())
         } else {
             if (spelling != null && bindings.any { it.name != spelling }) return null
-            bindings.map { it.address }
+            bindings.map { it.addressBits }
         }
         return addresses.distinct().singleOrNull()
     }
@@ -136,7 +136,7 @@ internal class MarsSymbolsView(
     private val inspectAddress = JButton(runMessages.getMessage("debug.symbols.inspect")).apply { isEnabled = false }
     private val model = ListTableModel<AssembledSymbol>(
         column(MarsSymbolColumn.NAME, AssembledSymbol::name),
-        column(MarsSymbolColumn.ADDRESS, { display.formatAddress(it.definition.address) }, compareBy { it.definition.address.toUInt() }),
+        column(MarsSymbolColumn.ADDRESS, { display.formatAddress(it.definition.addressBits) }, compareBy { memoryAddress(it.definition.addressBits) }),
         column(MarsSymbolColumn.KIND) { runMessages.getMessage("debug.symbols.kind.${it.definition.kind.name.lowercase(Locale.ROOT)}") },
         column(MarsSymbolColumn.SCOPE) { runMessages.getMessage("debug.symbols.scope.${it.scope}") },
         column(MarsSymbolColumn.UNIT) { it.unit?.let(::displayPath).orEmpty() },
