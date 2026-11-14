@@ -124,6 +124,11 @@ an immediate or a base-register displacement in a native instruction.
 Position-independent relocations that require a global offset table are
 outside the classroom address model. [LLVM MIPS fixups](https://www.llvm.org/doxygen/namespacellvm_1_1jitlink_1_1mips.html)
 
+Instruction operands and address relocations can refer to repeatable decimal
+labels. For example, `7f` resolves to the next `7:` and `7b` resolves to the
+previous `7:` in the same assembly source. Includes and macro expansions
+participate in the resulting source order.
+
 The test suite assembles the checked-in Clang 23.1.5 output and calls the
 rotate routine twice with a MARS64 assembly caller. It also compares a second
 Clang function's linked words with `ld.lld` and executes the function with

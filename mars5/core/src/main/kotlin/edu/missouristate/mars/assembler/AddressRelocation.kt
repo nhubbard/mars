@@ -25,7 +25,7 @@ internal class AddressRelocation(partToken: Token, val symbol: Token, val part: 
 }
 
 /** Collapse each relocation expression to a single operand before matching instruction forms. */
-internal fun parseAddressRelocations(tokens: TokenList, errors: ErrorList): Boolean {
+internal fun parseAddressRelocations(tokens: TokenList, labels: LocalNumericLabels, errors: ErrorList): Boolean {
     var index = 1
     while (index < tokens.size()) {
         val head = tokens[index]
@@ -36,7 +36,7 @@ internal fun parseAddressRelocations(tokens: TokenList, errors: ErrorList): Bool
         }
         fun tokenAt(position: Int) = if (position < tokens.size()) tokens[position] else null
         val open = tokenAt(index + 1)
-        val symbol = tokenAt(index + 2)
+        val symbol = tokenAt(index + 2)?.let { labels.reference(it) ?: it }
         if (open?.type != TokenTypes.LEFT_PAREN || symbol == null ||
             (symbol.type != TokenTypes.IDENTIFIER && symbol.type != TokenTypes.OPERATOR)) {
             errors.add(ErrorMessage(head, "${part.spelling} requires a label in parentheses"))

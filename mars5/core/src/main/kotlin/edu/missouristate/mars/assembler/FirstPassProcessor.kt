@@ -71,6 +71,8 @@ internal class FirstPassProcessor(
     private lateinit var globalDeclarations: TokenList
     private lateinit var dataAddress: UserKernelAddressSpace
     private val fileReferences = DataSegmentForwardReferences()
+    var numericLabels = LocalNumericLabels()
+        private set
 
     @Throws(ProcessingException::class)
     fun process(programs: List<MIPSprogram>, extendedAssemblerEnabled: Boolean): ErrorList {
@@ -93,6 +95,7 @@ internal class FirstPassProcessor(
             checkCancellation.run()
             if (errors.errorLimitExceeded()) break
             fileCurrentlyBeingAssembled = program
+            numericLabels = LocalNumericLabels()
             globalDeclarations = TokenList()
             // Each file starts in user text and retains the addresses accumulated so far.
             inDataSegment = false
@@ -139,15 +142,24 @@ internal class FirstPassProcessor(
         PseudoInstructionExpander.compact(context, statement)
 
     fun stripLabels(tokens: TokenList, physicalLine: SourceLine, caller: Origin?, renamedLabels: Set<String>) {
-        if (!tokens.beginsWithLabel()) return
+        val number = if (context.session.target == MarsTarget.MARS64 && tokens.size() >= 2 &&
+            tokens[1].type == TokenTypes.COLON && (!inDataSegment || tokens.size() == 2 || tokens[2].type == TokenTypes.DIRECTIVE)) {
+            LocalNumericLabels.decimal(tokens[0].value)
+        } else null
+        if (number == null && !tokens.beginsWithLabel()) return
         val token = tokens[0]
         tokens.remove(0)
         tokens.remove(0) // The colon shifted to the first position.
         if (token.type == TokenTypes.OPERATOR) token.type = TokenTypes.IDENTIFIER
+        val address = if (inDataSegment) dataAddress.get() else textAddress.get()
+        val kind = if (inDataSegment) Kind.DATA else Kind.TEXT
+        val origin = Parser.origin(physicalLine, caller)
+        if (number != null) {
+            numericLabels.define(number, Symbol(token.value, address, kind, origin, false, token.writtenOrigin().originalStartPos))
+            return
+        }
         fileCurrentlyBeingAssembled.localSymbolTable!!.addSymbol(
-            token, if (inDataSegment) dataAddress.get() else textAddress.get(),
-            if (inDataSegment) Kind.DATA else Kind.TEXT, Parser.origin(physicalLine, caller),
-            token.value in renamedLabels, errors,
+            token, address, kind, origin, token.value in renamedLabels, errors,
         )
     }
 
@@ -685,6 +697,7 @@ internal class FirstPassProcessor(
         if (remainder == 0L) return address
         val aligned = address + boundary - remainder
         fileCurrentlyBeingAssembled.localSymbolTable!!.fixSymbolTableAddress(address, aligned)
+        numericLabels.align(address, aligned)
         return aligned
     }
 

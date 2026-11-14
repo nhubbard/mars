@@ -106,7 +106,10 @@ internal class Parser(private val pass: FirstPassProcessor) {
         }
 
         val matches = pass.matchInstruction(operator) ?: return ArrayList()
-        if (pass.context.session.target == MarsTarget.MARS64 && !parseAddressRelocations(tokens, pass.errors)) return null
+        if (pass.context.session.target == MarsTarget.MARS64) {
+            if (!parseAddressRelocations(tokens, pass.numericLabels, pass.errors)) return null
+            bindNumericReferences(tokens, matches)
+        }
         val instruction = OperandFormat.bestOperandMatch(tokens, matches, pass.context.bareMachineEnabled())!!
         if (instruction is ExtendedInstruction && !extendedAssemblerEnabled) {
             pass.errors.add(ErrorMessage(operator, "Extended (pseudo) instruction or format not permitted.  See Settings."))
@@ -146,6 +149,16 @@ internal class Parser(private val pass: FirstPassProcessor) {
         }
         pass.textAddress.increment(length)
         return arrayListOf(statement)
+    }
+
+    private fun bindNumericReferences(tokens: TokenList, matches: List<Instruction>) {
+        for (index in 1 until tokens.size()) {
+            val value = tokens[index].value
+            if (value.lastOrNull() != 'f' && value.lastOrNull() != 'b') continue
+            if (matches.none { it.tokenList.size() == tokens.size() && it.tokenList[index].type == TokenTypes.IDENTIFIER }) continue
+            val reference = pass.numericLabels.reference(tokens[index]) ?: continue
+            tokens[index] = reference
+        }
     }
 
     private fun expandMacro(

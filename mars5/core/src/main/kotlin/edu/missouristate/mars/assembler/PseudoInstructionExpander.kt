@@ -20,11 +20,14 @@ internal class PseudoInstructionExpander(private val context: AssemblyContext) {
         val line = statement.sourceLine
         val operands = tokenizer.tokenizeLine(line, statement.basicAssemblyStatement!!, errors, false)
         val result = ArrayList<ProgramStatement>(templates.size)
+        val written = statement.strippedTokenList!!
+        val localLabel = written[written.size() - 1] as? LocalNumericReference
         var address = statement.addressBits
         for ((index, template) in templates.withIndex()) {
             val expanded = ExtendedInstruction.makeTemplateSubstitutions(program, template, operands)
             if (expanded.isEmpty()) continue
             val tokens = tokenizer.tokenizeLine(line, expanded, errors, false)
+            if (localLabel != null && template.trimEnd().endsWith(" LAB")) tokens[tokens.size() - 1] = localLabel
             val matches = context.instructions().matchOperator(tokens[0].value)
             val basic = OperandFormat.bestOperandMatch(tokens, matches, context.bareMachineEnabled())
             val generated = ProgramStatement(

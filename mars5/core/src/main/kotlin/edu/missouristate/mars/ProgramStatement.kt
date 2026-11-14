@@ -4,6 +4,7 @@ import edu.missouristate.mars.api.InstructionSourceMap.Origin
 import edu.missouristate.mars.api.InstructionSourceMap.SourceOperand
 import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.assembler.AddressRelocation
+import edu.missouristate.mars.assembler.LocalNumericReference
 import edu.missouristate.mars.assembler.Symbol
 import edu.missouristate.mars.assembler.SymbolTable
 import edu.missouristate.mars.assembler.Token
@@ -184,9 +185,12 @@ open class ProgramStatement private constructor(
             display.add(DisplayElement.Text(text))
         }
         fun resolveSymbol(token: Token): Symbol? {
-            val symbol = sourceMIPSprogram!!.localSymbolTable!!.getSymbolLocalOrGlobal(token.value)
+            val symbol = if (token is LocalNumericReference) token.symbol
+            else sourceMIPSprogram!!.localSymbolTable!!.getSymbolLocalOrGlobal(token.value)
             if (symbol == null || symbol.addressBits == SymbolTable.NOT_FOUND.toLong()) {
-                errors.add(ErrorMessage(token, "Symbol \"${token.value}\" not found in symbol table."))
+                val message = if (token is LocalNumericReference) "Numeric label reference \"${token.value}\" has no matching definition."
+                else "Symbol \"${token.value}\" not found in symbol table."
+                errors.add(ErrorMessage(token, message))
                 return null
             }
             recordSymbolUse.accept(token, symbol)

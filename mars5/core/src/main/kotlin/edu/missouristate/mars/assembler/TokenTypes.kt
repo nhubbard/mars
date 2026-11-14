@@ -57,6 +57,7 @@ enum class TokenTypes {
     QUOTED_STRING,
     OBJECT_ATTRIBUTE,
     ADDRESS_RELOCATION,
+    LOCAL_LABEL_CANDIDATE,
     PLUS,
     MINUS,
     COLON,
@@ -112,6 +113,7 @@ enum class TokenTypes {
                 first == '.' && Directives.matchDirective(value) != null -> DIRECTIVE
                 first == '"' -> QUOTED_STRING
                 first == '@' && Directives.isObjectAttribute(value) -> OBJECT_ATTRIBUTE
+                instructions.target == MarsTarget.MARS64 && first.isDigit() && isLocalNumericReference(value) -> LOCAL_LABEL_CANDIDATE
                 isValidIdentifier(value) -> IDENTIFIER
                 else -> ERROR
             }
@@ -120,6 +122,8 @@ enum class TokenTypes {
         @JvmStatic
         fun isIntegerTokenType(type: TokenTypes?): Boolean =
             type == INTEGER_5 || type == INTEGER_16 || type == INTEGER_16U || type == INTEGER_32
+
+        fun isLocalNumericReference(value: String): Boolean = LocalNumericLabels.referenceNumber(value) != null
 
         @JvmStatic
         fun isFloatingTokenType(type: TokenTypes?): Boolean = type == REAL_NUMBER
