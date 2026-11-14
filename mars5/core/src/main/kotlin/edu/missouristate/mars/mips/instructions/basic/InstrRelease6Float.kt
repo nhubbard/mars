@@ -1,8 +1,10 @@
 package edu.missouristate.mars.mips.instructions.basic
 
 import edu.missouristate.mars.ProcessingException
+import edu.missouristate.mars.mips.hardware.Coprocessor1State.Companion.INVALID_OPERATION
 import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat.R_FORMAT
+import edu.missouristate.mars.mips.instructions.FloatingPrecision
 import java.lang.Math.fma
 import kotlin.math.abs
 
@@ -19,7 +21,19 @@ internal class InstrRelease6Float(operation: Release6FloatOperation, double: Boo
     { statement, context ->
         val (destination, left, right) = statement.operands
         val fpu = context.coprocessor1
-        if (double) {
+        if (fpu.hasWideRegisters && operation.isExtremum) {
+            fun read(register: Int): Long = if (double) fpu.getLongFromRegisterPair(register)
+            else fpu.getValue(register).toUInt().toLong()
+
+            val a = read(left)
+            val b = read(right)
+            val precision = if (double) doublePrecision else singlePrecision
+            val invalid = if (precision.isSignaling(a) || precision.isSignaling(b)) INVALID_OPERATION else 0
+            context.recordFloatingExceptions(statement, invalid)
+            val bits = operation.apply(a, b, 0, double)
+            if (double) context.writeDoubleBits(destination, bits)
+            else context.updateCoprocessor1(destination, bits.toInt())
+        } else if (double) {
             if (!context.coprocessor1.hasWideRegisters && ((destination or left or right) and 1 != 0)) {
                 throw ProcessingException(context, statement, "all registers must be even-numbered")
             }
@@ -39,6 +53,9 @@ internal class InstrRelease6Float(operation: Release6FloatOperation, double: Boo
     },
 )
 
+private val singlePrecision = FloatingPrecision(32)
+private val doublePrecision = FloatingPrecision(64)
+
 internal enum class Release6FloatOperation(val mnemonic: String, val encoding: String, val description: String) {
     SELECT("sel", "010000", "Select a floating-point value using bit 0 of the destination"),
     SELECT_ZERO("seleqz", "010100", "Copy a floating-point value when bit 0 of the condition is clear, else set zero"),
@@ -51,6 +68,7 @@ internal enum class Release6FloatOperation(val mnemonic: String, val encoding: S
     MAXIMUM_MAGNITUDE("maxa", "011111", "Select the floating-point value with larger magnitude");
 
     val usesDestination: Boolean get() = this == SELECT || this == MULTIPLY_ADD || this == MULTIPLY_SUBTRACT
+    val isExtremum: Boolean get() = this == MINIMUM || this == MINIMUM_MAGNITUDE || this == MAXIMUM || this == MAXIMUM_MAGNITUDE
 
     fun apply(left: Long, right: Long, destination: Long, double: Boolean): Long = when (this) {
         SELECT -> if (destination and 1L == 0L) left else right

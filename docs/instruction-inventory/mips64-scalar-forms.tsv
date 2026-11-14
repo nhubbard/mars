@@ -299,14 +299,14 @@ maddf.d	fd, fs, ft	349	implemented
 msubf.s	fd, fs, ft	349	implemented
 msubf.d	fd, fs, ft	349	implemented
 maddu	rs, rt	351	removed
-max.s	fd,fs,ft	352	audit
-max.d	fd,fs,ft	352	audit
-maxa.s	fd,fs,ft	352	audit
-maxa.d	fd,fs,ft	352	audit
-min.s	fd,fs,ft	352	audit
-min.d	fd,fs,ft	352	audit
-mina.s	fd,fs,ft	352	audit
-mina.d	fd,fs,ft	352	audit
+max.s	fd,fs,ft	352	implemented
+max.d	fd,fs,ft	352	implemented
+maxa.s	fd,fs,ft	352	implemented
+maxa.d	fd,fs,ft	352	implemented
+min.s	fd,fs,ft	352	implemented
+min.d	fd,fs,ft	352	implemented
+mina.s	fd,fs,ft	352	implemented
+mina.d	fd,fs,ft	352	implemented
 mfc0	rt, rd	356	audit
 mfc0	rt, rd, sel	356	audit
 mfc1	rt, fs	357	audit

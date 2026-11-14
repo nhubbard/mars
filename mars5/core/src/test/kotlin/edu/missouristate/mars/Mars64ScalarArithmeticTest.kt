@@ -15,6 +15,53 @@ import org.junit.jupiter.params.provider.ValueSource
 class Mars64ScalarArithmeticTest {
     @ParameterizedTest
     @ValueSource(booleans = [false, true])
+    fun `extrema preserve the first NaN payload and prefer numbers when invalid is masked`(double: Boolean, @TempDir directory: Path) {
+        val format = if (double) "d" else "s"
+        val source = Files.writeString(directory.resolve("extrema.s"), $$"""
+            max.$$format $f3,$f5,$f7
+            min.$$format $f3,$f5,$f7
+            maxa.$$format $f3,$f5,$f7
+            mina.$$format $f3,$f5,$f7
+            ctc1 $8,$31
+            max.$$format $f3,$f5,$f7
+        """.trimIndent())
+        TestSessions.create().use { machine ->
+            machine.selectTarget(MarsTarget.MARS64)
+            val program = machine.assemble(listOf(source), null, false, false)
+            val base = if (double) 0x462728c0 else 0x460728c0
+            assertEquals(listOf(30, 28, 31, 29).map { base or it }, program.machineList!!.take(4).map(ProgramStatement::binaryStatement))
+            val fpu = machine.coprocessor1
+            val signaling = if (double) 0x7ff0_0000_0000_0123L else 0x7f80_0123L
+            val quiet = if (double) 0x7ff8_0000_0000_0456L else 0x7fc0_0456L
+            fun bits(value: Double) = if (double) value.toRawBits() else value.toFloat().toRawBits().toUInt().toLong()
+            fun inputs(a: Long, b: Long) {
+                machine.editCoprocessor1Pair(5, a)
+                machine.editCoprocessor1Pair(7, b)
+            }
+            fun step(expected: Long, causes: Int = 0) {
+                program.simulate(1)
+                assertEquals(expected, fpu.getDoublewordNoNotify(3))
+                assertEquals(causes, (fpu.floatingStatus ushr 12) and 31)
+            }
+
+            inputs(signaling, quiet)
+            step(signaling, INVALID_OPERATION)
+            inputs(quiet, bits(-0.0))
+            step(bits(-0.0))
+            inputs(bits(-2.0), bits(2.0))
+            step(bits(2.0))
+            inputs(bits(0.0), bits(-0.0))
+            step(bits(-0.0))
+            machine.editIntegerRegister(8, INVALID_OPERATION shl 7)
+            program.simulate(1)
+            inputs(bits(2.0), signaling)
+            assertThrows(ProcessingException::class.java) { program.simulate(1) }
+            assertEquals(bits(-0.0), fpu.getDoublewordNoNotify(3))
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = [false, true])
     fun `roots preserve signed zero and report IEEE exceptions`(double: Boolean, @TempDir directory: Path) {
         val format = if (double) "d" else "s"
         val source = Files.writeString(directory.resolve("roots.s"), $$"""

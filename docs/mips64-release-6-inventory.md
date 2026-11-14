@@ -160,7 +160,9 @@ or PC-relative immediate in this table is the displacement as written to LLVM.
   and an enabled exception that preserves the destination. `sqrt` and `recip`
   honor FCSR rounding. `rsqrt` approximates the result using nearest-even
   square root and division. All three report exceptions. The minimum and
-  maximum instructions still need review.
+  maximum instructions report signaling NaNs through FCSR. With invalid
+  masked, they prefer a number to a NaN and preserve the first operand's
+  payload and signaling bit when both operands are NaNs.
   [MIPS64 FPU programming model](https://s3-eu-west-1.amazonaws.com/downloads-mips/documents/MD00083-2B-MIPS64INT-AFP-06.01.pdf)
 - **REGIMM.** MARS64 supports `bal` and `nal` at the retained zero-source
   encodings. Both link past the delay slot. The old register-conditional
