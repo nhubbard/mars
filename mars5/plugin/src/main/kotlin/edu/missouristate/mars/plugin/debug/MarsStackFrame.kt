@@ -111,6 +111,14 @@ internal class MarsStackFrame(
             val groupKey = if (wide) "debug.registers.double.wide" else "debug.registers.double"
             addBottomGroup(RegisterGroup(groupKey, doublewords))
         }))
+        if (wide) {
+            addTopGroup(RegisterGroup("debug.registers.vector", XValueChildrenList().apply {
+                for (number in registers.indices) {
+                    val bits = fpu.getVectorNoNotify(number)
+                    add(RegisterValue("\$w$number", written = written(RegisterWriteBank.COPROCESSOR_1, number), format = bits::toHexString))
+                }
+            }))
+        }
     }
 
     private fun editableWord(bank: RegisterBank, name: String, bits: Int, number: Int, written: Boolean): RegisterValue {

@@ -125,6 +125,12 @@ class Coprocessor1State {
     /** Lane zero of each MSA register shares the existing scalar FPR storage. */
     internal fun readVector(number: Int): VectorRegister = VectorRegister(registers[number].longValue, vectorHigh[number])
 
+    /** Read both halves without publishing a register access event. */
+    fun getVectorNoNotify(number: Int): VectorRegister {
+        check(hasWideRegisters) { "Vector registers require MARS64" }
+        return VectorRegister(registers[number].longValueNoNotify, vectorHigh[number])
+    }
+
     internal fun updateVector(number: Int, value: VectorRegister): VectorRegister {
         val previousHigh = vectorHigh[number]
         vectorHigh[number] = value.high

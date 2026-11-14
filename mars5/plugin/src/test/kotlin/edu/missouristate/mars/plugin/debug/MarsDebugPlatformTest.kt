@@ -2046,18 +2046,21 @@ class MarsDebugPlatformTest {
         try {
             val root = XStackFrameNode(tree, frame, null)
             tree.setRoot(root, true)
-            val (cpu, cp0, cp1) = children(root, 3).map { assertInstanceOf(XValueGroupNodeImpl::class.java, it) }
+            val wide = project.service<MarsAssemblySettings>().target == MarsTarget.MARS64
+            val groups = children(root, if (wide) 4 else 3).map { assertInstanceOf(XValueGroupNodeImpl::class.java, it) }
+            val (cpu, cp0, cp1) = groups
             assertTrue(cpu.valueContainer.isAutoExpand)
             assertFalse(cp1.valueContainer.isAutoExpand)
             assertTrue(cp0.valueContainer.isRestoreExpansion)
             val floating = children(cp1, 34)
             val doublewords = assertInstanceOf(XValueGroupNodeImpl::class.java, floating.last())
-            val doublewordCount = if (project.service<MarsAssemblySettings>().target == MarsTarget.MARS64) 32 else 16
+            val doublewordCount = if (wide) 32 else 16
             val nodes = buildList {
                 addAll(children(cpu, 35))
                 addAll(children(cp0, 4))
                 addAll(floating.dropLast(1))
                 addAll(children(doublewords, doublewordCount))
+                if (wide) addAll(children(groups[3], 32))
             }
             val values = nodes.map { assertInstanceOf(XValueNodeImpl::class.java, it) }
             pollAssertionsAsync(3.seconds, 10.milliseconds) { assertTrue(values.all { it.isComputed }) }
@@ -2394,6 +2397,41 @@ class MarsDebugPlatformTest {
                 debug.session.resume()
             }
             assertEquals(0, debug.exit.await())
+        }
+    }
+
+    @Test
+    fun `MARS64 Variables show all 128 vector bits alongside their scalar alias`() = timeoutRunBlocking {
+        val settings = project.service<MarsAssemblySettings>()
+        val originalTarget = settings.target
+        try {
+            val source = withContext(Dispatchers.EDT) {
+                settings.changeTarget(MarsTarget.MARS64)
+                fixture.addFileToProject("vector-state.mars", $$"""
+                    ldi.d $w0,255
+                    dmtc1 $zero,$f0
+                    nop
+                """.trimIndent()).virtualFile.also { addBreakpoint(it, 1) }
+            }
+            withDebug(source) { debug ->
+                debug.assertPausedAt(source, 1)
+                withContext(Dispatchers.EDT) {
+                    val frame = requireNotNull(debug.session.currentStackFrame)
+                    val registers = registerValues(debug.session, frame)
+                    assertEquals("0x00000000000000ff00000000000000ff", registers[$$"$w0"])
+                    assertEquals(32, registers.keys.count { it.startsWith($$"$w") })
+                    debug.session.stepInto()
+                }
+                debug.assertPausedAt(source, 2)
+                withContext(Dispatchers.EDT) {
+                    val frame = requireNotNull(debug.session.currentStackFrame)
+                    assertEquals("0x00000000000000ff0000000000000000", registerValues(debug.session, frame)[$$"$w0"])
+                    debug.session.resume()
+                }
+                assertEquals(0, debug.exit.await())
+            }
+        } finally {
+            withContext(Dispatchers.EDT) { settings.changeTarget(originalTarget) }
         }
     }
 
