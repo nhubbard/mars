@@ -5,15 +5,15 @@
 abs.s	fd, fs	50	implemented
 abs.d	fd, fs	50	implemented
 abs.ps	fd, fs	50	removed
-add	rd, rs, rt	52	audit
+add	rd, rs, rt	52	implemented
 add.s	fd, fs, ft	53	implemented
 add.d	fd, fs, ft	53	implemented
 add.ps	fd, fs, ft	53	removed
 addi	rt, rs, immediate	55	removed
-addiu	rt, rs, immediate	56	audit
+addiu	rt, rs, immediate	56	implemented
 addiupc	rs,immediate	57	implemented
-addu	rd, rs, rt	58	audit
-align	rd,rs,rt,bp	59	audit
+addu	rd, rs, rt	58	implemented
+align	rd,rs,rt,bp	59	implemented
 dalign	rd,rs,rt,bp	59	implemented
 aluipc	rs,immediate	64	implemented
 and	rd, rs, rt	65	implemented
@@ -77,7 +77,7 @@ bnezc	rs, offset	104	implemented
 bgezl	rs, offset	107	removed
 bgtz	rs, offset	109	implemented
 bgtzl	rs, offset	110	removed
-bitswap	rd,rt	112	audit
+bitswap	rd,rt	112	implemented
 dbitswap	rd,rt	112	implemented
 blez	rs, offset	114	implemented
 blezl	rs, offset	115	removed
@@ -276,7 +276,7 @@ lle	rt, offset(base)	314	requires-eva
 lldp	rt, rd, (base)	312	implemented
 llwp	rt, rd, (base)	316	implemented
 llwpe	rt, rd, (base)	318	requires-eva
-lsa	rd,rs,rt,sa	320	audit
+lsa	rd,rs,rt,sa	320	implemented
 dlsa	rd,rs,rt,sa	320	implemented
 lui	rt, immediate	321	implemented
 luxc1	fd, index(base)	322	removed
@@ -381,8 +381,8 @@ nmadd.ps	fd, fr, fs, ft	407	removed
 nmsub.s	fd, fr, fs, ft	409	removed
 nmsub.d	fd, fr, fs, ft	409	removed
 nmsub.ps	fd, fr, fs, ft	409	removed
-nop		411	idiom-audit
-nor	rd, rs, rt	412	audit
+nop		411	implemented
+nor	rd, rs, rt	412	implemented
 or	rd, rs, rt	413	implemented
 ori	rt, rs, immediate	414	implemented
 pause		415	implemented-subset
@@ -400,8 +400,8 @@ recip.s	fd, fs	436	implemented
 recip.d	fd, fs	436	implemented
 rint.s	fd, fs	438	implemented
 rint.d	fd, fs	438	implemented
-rotr	rd, rt, sa	440	audit
-rotrv	rd, rt, rs	441	audit
+rotr	rd, rt, sa	440	implemented
+rotrv	rd, rt, rs	441	implemented
 round.l.s	fd, fs	442	implemented
 round.l.d	fd, fs	442	implemented
 round.w.s	fd, fs	444	implemented
@@ -423,8 +423,8 @@ sdc2	rt, offset(base)	475	requires-cop2
 sdl	rt, offset(base)	477	removed
 sdr	rt, offset(base)	479	removed
 sdxc1	fs, index(base)	481	removed
-seb	rd, rt	483	audit
-seh	rd, rt	485	audit
+seb	rd, rt	483	implemented
+seh	rd, rt	485	implemented
 sel.s	fd,fs,ft	487	audit
 sel.d	fd,fs,ft	487	audit
 seleqz	rd,rs,rt	489	implemented
@@ -436,24 +436,24 @@ selnez.d	fd,fs,ft	491	audit
 sh	rt, offset(base)	493	implemented
 she	rt, offset(base)	494	requires-eva
 sigrie	code	496	implemented
-sll	rd, rt, sa	497	audit
-sllv	rd, rt, rs	498	audit
+sll	rd, rt, sa	497	implemented
+sllv	rd, rt, rs	498	implemented
 slt	rd, rs, rt	499	implemented
 slti	rt, rs, immediate	500	implemented
 sltiu	rt, rs, immediate	501	implemented
 sltu	rd, rs, rt	502	implemented
 sqrt.s	fd, fs	503	implemented
 sqrt.d	fd, fs	503	implemented
-sra	rd, rt, sa	504	audit
-srav	rd, rt, rs	505	audit
-srl	rd, rt, sa	506	audit
-srlv	rd, rt, rs	507	audit
+sra	rd, rt, sa	504	implemented
+srav	rd, rt, rs	505	implemented
+srl	rd, rt, sa	506	implemented
+srlv	rd, rt, rs	507	implemented
 ssnop		508	implemented
-sub	rd, rs, rt	509	audit
+sub	rd, rs, rt	509	implemented
 sub.s	fd, fs, ft	510	implemented
 sub.d	fd, fs, ft	510	implemented
 sub.ps	fd, fs, ft	510	removed
-subu	rd, rs, rt	512	audit
+subu	rd, rs, rt	512	implemented
 suxc1	fs, index(base)	513	removed
 sw	rt, offset(base)	514	implemented
 swc2	rt, offset(base)	516	requires-cop2
@@ -491,6 +491,6 @@ trunc.w.s	fd, fs	567	implemented
 trunc.w.d	fd, fs	567	implemented
 wait		569	requires-privileged-platform
 wrpgpr	rd, rt	571	requires-privileged-platform
-wsbh	rd, rt	572	audit
+wsbh	rd, rt	572	implemented
 xor	rd, rs, rt	574	implemented
 xori	rt, rs, immediate	575	implemented
