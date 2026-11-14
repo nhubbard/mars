@@ -1,6 +1,12 @@
 .text
 .globl main
 main:
+    ldi.d $w0, 7
+    addv.d $w1, $w0, $w0
+    copy_s.d $t1, $w1[1]
+    daddiu $t2, $zero, 14
+    bne $t1, $t2, failed
+    nop
     jal write_result
     nop
     li $v0, 10
