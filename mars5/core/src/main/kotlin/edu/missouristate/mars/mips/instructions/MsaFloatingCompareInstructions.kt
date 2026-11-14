@@ -18,6 +18,7 @@ import edu.missouristate.mars.mips.instructions.basic.narrowDouble
 import edu.missouristate.mars.mips.instructions.basic.narrowSingleToHalf
 import edu.missouristate.mars.mips.instructions.basic.roundIntegral
 import edu.missouristate.mars.mips.instructions.basic.widenSingle
+import java.lang.Double.MIN_NORMAL as DOUBLE_MIN_NORMAL
 import java.lang.Float.float16ToFloat
 import java.math.BigDecimal
 import kotlin.math.abs
@@ -41,6 +42,8 @@ internal fun msaFloatingCompareInstructions(): List<BasicInstruction> = buildLis
             })
         })
         add(roundingInstruction(format, suffix))
+        for (operation in FloatingUnary.entries) add(unaryInstruction(operation, format, suffix))
+        add(scaleInstruction(format, suffix))
         for (operation in FloatingArithmetic.entries) add(arithmeticInstruction(operation, format, suffix))
         for (signed in listOf(true, false)) {
             add(toIntegerInstruction(format, suffix, signed, truncate = false))
@@ -430,7 +433,7 @@ private fun evaluateArithmetic(
     val nearest = operation.nearest(a, b, accumulator, single)
     if (nearest.isNaN()) return FloatingLane(precision.exponent or precision.quiet, INVALID_OPERATION)
     if (!a.isFinite() || !b.isFinite() || !accumulator.isFinite()) return FloatingLane(precision.raw(nearest))
-    if (operation == FloatingArithmetic.DIVIDE && b == 0.0) return FloatingLane(precision.raw(nearest), 1 shl 3)
+    if (operation == FloatingArithmetic.DIVIDE && b == 0.0) return FloatingLane(precision.raw(nearest), DIVIDE_BY_ZERO)
     var numerator = operation.exact(BigDecimal(a), BigDecimal(b), BigDecimal(accumulator))
     val denominator = if (operation == FloatingArithmetic.DIVIDE) BigDecimal(abs(b)) else BigDecimal.ONE
     if (operation == FloatingArithmetic.DIVIDE && b < 0.0) numerator = numerator.negate()
@@ -447,6 +450,14 @@ private fun evaluateArithmetic(
         }
         return FloatingLane(precision.raw(if (mode == 3 && cancellation) -0.0 else nearest))
     }
+    return roundFinite(precision, nearest, numerator, denominator, status)
+}
+
+private fun roundFinite(
+    precision: MsaPrecision, nearest: Double, numerator: BigDecimal, denominator: BigDecimal, status: Int,
+): FloatingLane {
+    val single = precision.bits == 32
+    val mode = status and 3
     val negative = numerator.signum() < 0
     val magnitude = numerator.abs()
     val normal = if (single) Math.scalb(1.0, -126) else Math.scalb(1.0, -1022)
@@ -488,4 +499,108 @@ private fun evaluateArithmetic(
         else -> 0
     }
     return FloatingLane(precision.raw(rounded), causes)
+}
+
+private enum class FloatingUnary(val mnemonic: String, val selector: Int) {
+    SQUARE_ROOT("fsqrt", 6),
+    RECIPROCAL_SQUARE_ROOT("frsqrt", 8),
+    RECIPROCAL("frcp", 10),
+    EXPONENT("flog2", 14),
+}
+
+private const val DIVIDE_BY_ZERO = 1 shl 3
+
+private fun unaryInstruction(operation: FloatingUnary, format: Int, suffix: Char): BasicInstruction {
+    val precision = MsaPrecision(format)
+    val field = (operation.selector + format).toString(2).padStart(5, '0')
+    return BasicInstruction(
+        "${operation.mnemonic}.$suffix \$w1,\$w2", "Apply ${operation.mnemonic} to each floating-point element",
+        R_FORMAT, "011110 11001 $field sssss fffff 011110",
+    ) { statement, context ->
+        val (destination, source) = statement.operands
+        val input = context.coprocessor1.readVector(source)
+        context.writeFloatingVector(statement, destination, precision) { index, status ->
+            val raw = input.floatingLane(index, precision.bits)
+            if (precision.isNan(raw)) {
+                FloatingLane(raw or precision.quiet, if (precision.isSignaling(raw)) INVALID_OPERATION else 0)
+            } else {
+                val flushed = precision.flush(raw, status)
+                val value = precision.number(flushed)
+                val result = when (operation) {
+                    FloatingUnary.SQUARE_ROOT -> squareRoot(precision, value, status)
+                    FloatingUnary.RECIPROCAL -> evaluateArithmetic(FloatingArithmetic.DIVIDE, precision, 1.0, value, 0.0, status)
+                    FloatingUnary.RECIPROCAL_SQUARE_ROOT -> {
+                        val root = squareRoot(precision, value, status)
+                        if (root.causes and INVALID_OPERATION != 0) root
+                        else {
+                            val reciprocal = evaluateArithmetic(
+                                FloatingArithmetic.DIVIDE, precision, 1.0, precision.number(root.bits), 0.0, status,
+                            )
+                            reciprocal.copy(causes = reciprocal.causes or root.causes)
+                        }
+                    }
+                    FloatingUnary.EXPONENT -> when {
+                        value == 0.0 -> FloatingLane(precision.raw(Double.NEGATIVE_INFINITY), DIVIDE_BY_ZERO)
+                        value.isInfinite() -> FloatingLane(precision.raw(Double.POSITIVE_INFINITY))
+                        else -> {
+                            val exponent = if (abs(value) < DOUBLE_MIN_NORMAL) {
+                                Math.getExponent(Math.scalb(value, 54)) - 54
+                            } else Math.getExponent(value)
+                            FloatingLane(precision.raw(exponent.toDouble()))
+                        }
+                    }
+                }
+                result.copy(causes = result.causes or if (flushed != raw) INEXACT else 0)
+            }
+        }
+    }
+}
+
+private fun squareRoot(precision: MsaPrecision, value: Double, status: Int): FloatingLane {
+    if (value < 0.0) return FloatingLane(precision.exponent or precision.quiet, INVALID_OPERATION)
+    if (value == 0.0 || value.isInfinite()) return FloatingLane(precision.raw(value))
+    val single = precision.bits == 32
+    val nearest = Math.sqrt(value).let { if (single) it.toFloat().toDouble() else it }
+    val exact = BigDecimal(value)
+    val candidate = BigDecimal(nearest)
+    val relation = (candidate * candidate).compareTo(exact)
+    val rounded = when {
+        relation > 0 && (status and 3 == 1 || status and 3 == 3) ->
+            if (single) Math.nextDown(nearest.toFloat()).toDouble() else Math.nextDown(nearest)
+        relation < 0 && status and 3 == 2 ->
+            if (single) Math.nextUp(nearest.toFloat()).toDouble() else Math.nextUp(nearest)
+        else -> nearest
+    }
+    return FloatingLane(precision.raw(rounded), if (relation != 0) INEXACT else 0)
+}
+
+private fun scaleInstruction(format: Int, suffix: Char): BasicInstruction {
+    val precision = MsaPrecision(format)
+    return BasicInstruction(
+        "fexp2.$suffix \$w1,\$w2,\$w3", "Scale each floating-point element by a signed power of two",
+        R_FORMAT, "011110 0111$format ttttt sssss fffff 011011",
+    ) { statement, context ->
+        val (destination, source, target) = statement.operands
+        val input = context.coprocessor1.readVector(source)
+        val powers = context.coprocessor1.readVector(target)
+        context.writeFloatingVector(statement, destination, precision) { index, status ->
+            val raw = input.floatingLane(index, precision.bits)
+            val flushed = precision.flush(raw, status)
+            val value = precision.number(flushed)
+            when {
+                precision.isNan(raw) -> FloatingLane(raw or precision.quiet, if (precision.isSignaling(raw)) INVALID_OPERATION else 0)
+                value == 0.0 || value.isInfinite() -> FloatingLane(flushed, if (flushed != raw) INEXACT else 0)
+                else -> {
+                    // Beyond this magnitude every nonzero finite input overflows or underflows.
+                    val power = powers.floatingLane(index, precision.bits, signed = true).coerceIn(-4096, 4096).toInt()
+                    val single = precision.bits == 32
+                    val nearest = if (single) Math.scalb(value.toFloat(), power).toDouble() else Math.scalb(value, power)
+                    val factor = BigDecimal.TWO.pow(abs(power))
+                    val numerator = if (power >= 0) BigDecimal(value) * factor else BigDecimal(value)
+                    val denominator = if (power >= 0) BigDecimal.ONE else factor
+                    roundFinite(precision, nearest, numerator, denominator, status)
+                }
+            }
+        }
+    }
 }

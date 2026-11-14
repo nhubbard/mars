@@ -366,4 +366,53 @@ class Mars64VectorFloatingTest {
         }
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = ["w", "d"])
+    fun `roots reciprocals and exponent operations handle special values`(suffix: String, @TempDir directory: Path) {
+        val double = suffix == "d"
+        val file = Files.writeString(directory.resolve("math.s"), $$"""
+            fsqrt.$$suffix $w31,$w3
+            fsqrt.$$suffix $w31,$w3
+            frsqrt.$$suffix $w31,$w3
+            frcp.$$suffix $w31,$w3
+            flog2.$$suffix $w31,$w3
+            flog2.$$suffix $w31,$w3
+            fexp2.$$suffix $w31,$w3,$w5
+            fexp2.$$suffix $w31,$w3,$w5
+        """.trimIndent())
+        fun repeatWord(value: Long) = if (double) value else value.toUInt().toLong() * 0x100000001L
+        fun bits(value: Double) = if (double) value.toRawBits() else repeatWord(value.toFloat().toRawBits().toLong())
+        fun vector(lo: Double, hi: Double) = VectorRegister(bits(lo), bits(hi))
+        TestSessions.create().use { session ->
+            session.selectTarget(MarsTarget.MARS64)
+            val program = session.assemble(listOf(file), null, false, false)
+            val unary = listOf(0x7b261fde, 0x7b261fde, 0x7b281fde, 0x7b2a1fde, 0x7b2e1fde, 0x7b2e1fde)
+            val expected = unary.map { it + if (double) 0x10000 else 0 } +
+                List(2) { 0x79c51fdb + if (double) 0x200000 else 0 }
+            assertEquals(expected, program.machineList!!.map { it.binaryStatement })
+            val fpu = session.coprocessor1
+            fun execute(input: VectorRegister, output: VectorRegister, status: Int = 0, causes: Int = 0) {
+                fpu.updateVector(3, input)
+                fpu.updateMsaStatus(status)
+                program.simulate(1)
+                assertEquals(output, fpu.readVector(31))
+                assertEquals(status or (causes shl 12) or (causes shl 2), fpu.msaStatus)
+            }
+            execute(vector(-0.0, -1.0), vector(-0.0, Double.NaN), causes = 16)
+            val sqrtTwoDown = if (double) Math.nextDown(Math.sqrt(2.0)) else Math.sqrt(2.0).toFloat().toDouble()
+            execute(vector(2.0, 4.0), vector(sqrtTwoDown, 2.0), status = 3, causes = 1)
+            execute(vector(4.0, -0.0), vector(0.5, Double.NEGATIVE_INFINITY), causes = 8)
+            execute(vector(Double.POSITIVE_INFINITY, -2.0), vector(0.0, -0.5))
+            execute(vector(-3.5, Double.NEGATIVE_INFINITY), vector(1.0, Double.POSITIVE_INFINITY))
+            val min = if (double) Double.MIN_VALUE else Float.MIN_VALUE.toDouble()
+            execute(vector(min, 0.0), vector(if (double) -1074.0 else -149.0, Double.NEGATIVE_INFINITY), causes = 8)
+            fpu.updateVector(5, VectorRegister(repeatWord(3), repeatWord(-2)))
+            execute(vector(0.75, -6.0), vector(6.0, -1.5))
+            val max = if (double) Long.MAX_VALUE else Int.MAX_VALUE.toLong()
+            val minPower = if (double) Long.MIN_VALUE else Int.MIN_VALUE.toLong()
+            fpu.updateVector(5, VectorRegister(repeatWord(max), repeatWord(minPower)))
+            execute(vector(1.0, 1.0), vector(Double.POSITIVE_INFINITY, min), status = 2, causes = 7)
+        }
+    }
+
 }

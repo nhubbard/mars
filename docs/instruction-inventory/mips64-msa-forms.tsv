@@ -214,8 +214,8 @@ fdiv.w	wd,ws,wt	MSA	170	implemented
 fdiv.d	wd,ws,wt	MSA	170	implemented
 fexdo.h	wd,ws,wt	MSA	171	implemented
 fexdo.w	wd,ws,wt	MSA	171	implemented
-fexp2.w	wd,ws,wt	MSA	172	missing
-fexp2.d	wd,ws,wt	MSA	172	missing
+fexp2.w	wd,ws,wt	MSA	172	implemented
+fexp2.d	wd,ws,wt	MSA	172	implemented
 fexupl.w	wd,ws	MSA	173	implemented
 fexupl.d	wd,ws	MSA	173	implemented
 fexupr.w	wd,ws	MSA	174	implemented
@@ -232,8 +232,8 @@ fill.b	wd,rs	MSA	179	implemented
 fill.h	wd,rs	MSA	179	implemented
 fill.w	wd,rs	MSA	179	implemented
 fill.d	wd,rs	MIPS64 MSA	179	implemented
-flog2.w	wd,ws	MSA	180	missing
-flog2.d	wd,ws	MSA	180	missing
+flog2.w	wd,ws	MSA	180	implemented
+flog2.d	wd,ws	MSA	180	implemented
 fmadd.w	wd,ws,wt	MSA	181	implemented
 fmadd.d	wd,ws,wt	MSA	181	implemented
 fmax.w	wd,ws,wt	MSA	182	implemented
@@ -248,12 +248,12 @@ fmsub.w	wd,ws,wt	MSA	186	implemented
 fmsub.d	wd,ws,wt	MSA	186	implemented
 fmul.w	wd,ws,wt	MSA	187	implemented
 fmul.d	wd,ws,wt	MSA	187	implemented
-frcp.w	wd,ws	MSA	188	missing
-frcp.d	wd,ws	MSA	188	missing
+frcp.w	wd,ws	MSA	188	implemented
+frcp.d	wd,ws	MSA	188	implemented
 frint.w	wd,ws	MSA	189	implemented
 frint.d	wd,ws	MSA	189	implemented
-frsqrt.w	wd,ws	MSA	190	missing
-frsqrt.d	wd,ws	MSA	190	missing
+frsqrt.w	wd,ws	MSA	190	implemented
+frsqrt.d	wd,ws	MSA	190	implemented
 fsaf.w	wd,ws,wt	MSA	192	implemented
 fsaf.d	wd,ws,wt	MSA	192	implemented
 fseq.w	wd,ws,wt	MSA	193	implemented
@@ -266,8 +266,8 @@ fsne.w	wd,ws,wt	MSA	196	implemented
 fsne.d	wd,ws,wt	MSA	196	implemented
 fsor.w	wd,ws,wt	MSA	197	implemented
 fsor.d	wd,ws,wt	MSA	197	implemented
-fsqrt.w	wd,ws	MSA	198	missing
-fsqrt.d	wd,ws	MSA	198	missing
+fsqrt.w	wd,ws	MSA	198	implemented
+fsqrt.d	wd,ws	MSA	198	implemented
 fsub.w	wd,ws,wt	MSA	199	implemented
 fsub.d	wd,ws,wt	MSA	199	implemented
 fsueq.w	wd,ws,wt	MSA	200	implemented
