@@ -257,7 +257,9 @@ open class ProgramStatement private constructor(
                 errors.add(ErrorMessage(this, failure.message))
                 return
             }
-            for (index in 0 until numOperands) insertBinaryCode(encoded[index], Instruction.operandMask[index], errors)
+            for (index in 0 until basic.encodedOperandCount(numOperands)) {
+                insertBinaryCode(encoded[index], Instruction.operandMask[index], errors)
+            }
         }
         binaryStatement = Binary.binaryStringToInt(machineStatement!!)
     }
@@ -290,6 +292,7 @@ open class ProgramStatement private constructor(
             values[numOperands++] = operand
         }
         instruction.decodeOperands(values)
+        numOperands = instruction.decodedOperandCount(numOperands)
     }
 
     private fun describeDecodedInstruction(instruction: BasicInstruction) {

@@ -56,7 +56,12 @@ open class BasicInstruction(
     /** Allows an instruction to encode fields that differ from its written operands. */
     internal open fun encodeOperands(values: IntArray): IntArray = values
 
+    internal open fun encodedOperandCount(sourceCount: Int): Int = sourceCount
+
     internal open fun decodeOperands(values: IntArray) = Unit
+
+    /** Some assembly forms repeat an operand that occupies only one machine field. */
+    internal open fun decodedOperandCount(encodedCount: Int): Int = encodedCount
 
     internal open fun acceptsEncoding(word: Int): Boolean = true
 

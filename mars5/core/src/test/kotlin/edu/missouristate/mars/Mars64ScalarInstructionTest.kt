@@ -11,10 +11,10 @@ import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.MethodSource
 import org.junit.jupiter.params.provider.ValueSource
 
-class Mars64PermutationTest {
+class Mars64ScalarInstructionTest {
     @ParameterizedTest(name = "{0}")
     @MethodSource("operations")
-    fun `wide permutations and scaled addressing match Release 6`(
+    fun `wide scalar instructions match Release 6`(
         source: String, word: Int, expected: Long, @TempDir directory: Path,
     ) {
         val file = Files.writeString(directory.resolve("wide.s"), "$source\n")
@@ -37,8 +37,11 @@ class Mars64PermutationTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = ["dlsa \$9,\$10,\$11,0", "dlsa \$9,\$10,\$11,5", "dalign \$9,\$10,\$11,8"])
-    fun `out of range immediates are rejected`(source: String, @TempDir directory: Path) {
+    @ValueSource(strings = [
+        "dlsa \$9,\$10,\$11,0", "dlsa \$9,\$10,\$11,5", "dalign \$9,\$10,\$11,8",
+        "dahi \$9,\$10,1", "dati \$9,\$10,1", "daui \$9,\$zero,1",
+    ])
+    fun `invalid operands are rejected`(source: String, @TempDir directory: Path) {
         val file = Files.writeString(directory.resolve("invalid.s"), "$source\n")
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
@@ -57,6 +60,9 @@ class Mars64PermutationTest {
             Arguments.of("dalign \$9,\$10,\$11,0", 0x7d4b4a24, 0xfedc_ba98_7654_3210uL.toLong()),
             Arguments.of("dalign \$9,\$10,\$11,2", 0x7d4b4aa4, 0xba98_7654_3210_0123uL.toLong()),
             Arguments.of("dalign \$9,\$10,\$11,7", 0x7d4b4be4, 0x1001_2345_6789_abcdL),
+            Arguments.of("dahi \$9,\$9,65535", 0x0526ffff, -0x1_0000_0000L + 123),
+            Arguments.of("dati \$9,\$9,65535", 0x053effff, -0x1_0000_0000_0000L + 123),
+            Arguments.of("daui \$9,\$10,65535", 0x7549ffff, 0x0123_4567_89aa_cdefL),
         )
     }
 }

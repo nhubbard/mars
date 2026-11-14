@@ -19,9 +19,9 @@ aluipc	rs,immediate	64	audit
 and	rd, rs, rt	65	audit
 andi	rt, rs, immediate	66	audit
 aui	rt, rs immediate	67	audit
-daui	rt, rs immediate	67	audit
-dahi	rs, rs immediate	67	audit
-dati	rs, rs immediate	67	audit
+daui	rt, rs immediate	67	implemented
+dahi	rs, rs immediate	67	implemented
+dati	rs, rs immediate	67	implemented
 auipc	rs, immediate	69	audit
 b	offset	70	idiom-audit
 bal	offset	71	idiom-audit

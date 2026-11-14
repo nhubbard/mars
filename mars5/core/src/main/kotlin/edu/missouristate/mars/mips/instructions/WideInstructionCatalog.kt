@@ -54,6 +54,26 @@ internal val wideInstructionFactories: List<() -> BasicInstruction> = listOf(
     { wideVariableShift("drotrv", "Rotate a doubleword right by a register count", "010110", Long::rotateRight, "00001") },
     { wideCount("dclz", "Count leading zero bits in a doubleword", "010010", Long::countLeadingZeroBits) },
     { wideCount("dclo", "Count leading one bits in a doubleword", "010011") { it.inv().countLeadingZeroBits() } },
+    { wideUpperImmediate("dahi", "Add a signed immediate in bits 47 through 32", "00110", 32) },
+    { wideUpperImmediate("dati", "Add a signed immediate in bits 63 through 48", "11110", 48) },
+    {
+        object : BasicInstruction(
+            "daui \$t1,\$t2,65535", "Add a signed immediate shifted left by 16 to a doubleword",
+            I_FORMAT, "011101 sssss fffff tttttttttttttttt",
+            { statement, context ->
+                val (destination, source, immediate) = statement.operands
+                context.updateLongRegister(destination, context.registerFile.getLongValue(source) + (immediate.toShort().toLong() shl 16))
+            },
+        ) {
+            override fun encodeOperands(values: IntArray): IntArray {
+                require(values[1] != 0) { "daui source register must not be zero" }
+                return values
+            }
+
+            override fun acceptsEncoding(word: Int): Boolean = word and 0x03e0_0000 != 0
+
+        }
+    },
     { widePermutation("dbitswap", "Reverse the bits within each byte of a doubleword", "00000") { reverse(reverseBytes(it)) } },
     {
         widePermutation("dsbh", "Swap the bytes within each halfword of a doubleword", "00010") { value ->
@@ -165,6 +185,30 @@ internal val wideInstructionFactories: List<() -> BasicInstruction> = listOf(
         }
     },
 )
+
+private fun wideUpperImmediate(name: String, description: String, selector: String, shift: Int) =
+    object : BasicInstruction(
+        "$name \$t1,\$t1,65535", description, I_FORMAT, "000001 fffff $selector ssssssssssssssss",
+        { statement, context ->
+            val (destination, _, immediate) = statement.operands
+            val value = context.registerFile.getLongValue(destination)
+            context.updateLongRegister(destination, value + (immediate.toShort().toLong() shl shift))
+        },
+    ) {
+        override fun encodeOperands(values: IntArray): IntArray {
+            require(values[0] == values[1]) { "$name source and destination registers must match" }
+            return intArrayOf(values[0], values[2])
+        }
+
+        override fun encodedOperandCount(sourceCount: Int): Int = 2
+
+        override fun decodeOperands(values: IntArray) {
+            values[2] = values[1]
+            values[1] = values[0]
+        }
+
+        override fun decodedOperandCount(encodedCount: Int): Int = 3
+    }
 
 private fun widePermutation(name: String, description: String, selector: String, operation: (Long) -> Long) =
     BasicInstruction(
