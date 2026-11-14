@@ -65,6 +65,8 @@ private enum class WideArithmetic(val mnemonic: String, val opcode: Int, val fun
     AVERAGE_ROUNDED_UNSIGNED("aver_u", 7, 16, false),
     SUBTRACT_SATURATING_SIGNED("subs_s", 0, 17, true),
     SUBTRACT_SATURATING_UNSIGNED("subs_u", 1, 17, false),
+    SUBTRACT_UNSIGNED_SIGNED("subsus_u", 2, 17, false),
+    SUBTRACT_UNSIGNED_TO_SIGNED("subsuu_s", 3, 17, false),
     ABSOLUTE_DIFFERENCE_SIGNED("asub_s", 4, 17, true),
     ABSOLUTE_DIFFERENCE_UNSIGNED("asub_u", 5, 17, false);
 
@@ -100,6 +102,17 @@ private enum class WideArithmetic(val mnemonic: String, val opcode: Int, val fun
                 } else difference.coerceIn(minSigned, maxSigned)
             }
             SUBTRACT_SATURATING_UNSIGNED -> if (a.toULong() < b.toULong()) 0L else a - b
+            SUBTRACT_UNSIGNED_SIGNED -> {
+                val signedB = (b shl (64 - bits)) shr (64 - bits)
+                if (signedB < 0) {
+                    val amount = -signedB
+                    if (a.toULong() > (maxUnsigned - amount).toULong()) maxUnsigned else a + amount
+                } else if (a.toULong() < signedB.toULong()) 0L else a - signedB
+            }
+            SUBTRACT_UNSIGNED_TO_SIGNED -> {
+                if (a.toULong() >= b.toULong()) minOf((a - b).toULong(), maxSigned.toULong()).toLong()
+                else -minOf((b - a).toULong(), (-minSigned).toULong()).toLong()
+            }
             ABSOLUTE_DIFFERENCE_SIGNED -> if (a < b) b - a else a - b
             ABSOLUTE_DIFFERENCE_UNSIGNED -> if (a.toULong() < b.toULong()) b - a else a - b
         }

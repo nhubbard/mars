@@ -179,6 +179,7 @@ class Mars64VectorIntegerTest {
             "add_a" to 0x78051fd0, "adds_a" to 0x78851fd0, "adds_s" to 0x79051fd0, "adds_u" to 0x79851fd0,
             "ave_s" to 0x7a051fd0, "ave_u" to 0x7a851fd0, "aver_s" to 0x7b051fd0, "aver_u" to 0x7b851fd0,
             "subs_s" to 0x78051fd1, "subs_u" to 0x78851fd1, "asub_s" to 0x7a051fd1, "asub_u" to 0x7a851fd1,
+            "subsus_u" to 0x79051fd1, "subsuu_s" to 0x79851fd1,
         )
         val format = "bhwd".indexOf(suffix)
         val bits = 8 shl format
@@ -218,6 +219,8 @@ class Mars64VectorIntegerTest {
                         "aver_u" -> (ua + ub + BigInteger.ONE).shiftRight(1)
                         "subs_s" -> (a - b).coerceIn(minimum, maximum)
                         "subs_u" -> maxOf(ua - ub, BigInteger.ZERO)
+                        "subsus_u" -> (ua - b).coerceIn(BigInteger.ZERO, mask)
+                        "subsuu_s" -> (ua - ub).coerceIn(minimum, maximum)
                         "asub_s" -> (a - b).abs()
                         "asub_u" -> (ua - ub).abs()
                         else -> error(name)

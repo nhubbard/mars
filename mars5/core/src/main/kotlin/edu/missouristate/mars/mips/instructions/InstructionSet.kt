@@ -59,6 +59,7 @@ open class InstructionSet {
             forms.addAll(msaRegisterInstructions())
             forms.addAll(msaIntegerInstructions())
             forms.addAll(msaBitInstructions())
+            forms.addAll(msaWideningInstructions())
             forms.addAll(msaPermutationInstructions())
             forms.addAll(msaBranchInstructions())
             forms.addAll(release6FloatingCompareInstructions())
