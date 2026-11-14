@@ -201,6 +201,12 @@ private fun TokenList.operationIndex(inMacro: Boolean) = if (!inMacro && beginsW
 private fun TokenList.directiveAt(operation: Int): Directives? =
     if (operation < size()) Directives.matchDirective(this[operation].value) else null
 
+private fun sectionEvent(head: PsiElement, tokens: TokenList, operation: Int): MipsSourceEvent.DataDirective? {
+    if (operation + 1 >= tokens.size()) return null
+    val segment = Directives.sectionSegment(tokens[operation + 1].value) ?: return null
+    return MipsSourceEvent.DataDirective(head.textOffset, segment)
+}
+
 private fun expandedDirective(
     head: PsiElement, expanded: Tokenizer.MappedLine, inMacro: Boolean, hasErrors: Boolean,
 ): MipsSourceEvent.Effective? {
@@ -223,6 +229,7 @@ private fun expandedDirective(
             else MipsSourceEvent.RejectedMacro(offset, Kind.TRAILING_TEXT)
         }
         Directives.EXTERN -> externalReservation(head, tokens, operation, inMacro)
+        Directives.SECTION -> sectionEvent(head, tokens, operation)
         in dataStateDirectives -> MipsSourceEvent.DataDirective(head.textOffset, directive)
         else -> null
     }
@@ -254,7 +261,8 @@ internal fun mipsSourceEvents(file: MipsFile): List<MipsSourceEvent> = CachedVal
                     directiveStatement -> {
                         val directive = Directives.matchDirective(element.firstChild.text)
                         if (directive in dataStateDirectives) add(MipsSourceEvent.DataDirective(element.textOffset, directive!!))
-                        if (directive == Directives.EQV) add(MipsSourceEvent.OperationCandidate(element))
+                        if (directive == Directives.SECTION) sectionEvent(element, macroLineTokens(element), 0)?.let(::add)
+                        if (directive == Directives.EQV || directive == Directives.SECTION) add(MipsSourceEvent.OperationCandidate(element))
                     }
                     macroHeader -> writtenRejectedMacroHeader(element)?.let { add(it) }
                     else -> writtenMacroEnd(element)?.let { add(it) }

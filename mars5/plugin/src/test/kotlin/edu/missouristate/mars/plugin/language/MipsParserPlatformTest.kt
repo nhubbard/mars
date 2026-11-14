@@ -52,6 +52,27 @@ class MipsParserPlatformTest {
     private val project = projectFixture()
 
     @Test
+    fun `editor tracks written and substituted compiler sections without treating metadata as data`() = timeoutRunBlocking {
+        readAction {
+            val source = """
+                .section .mdebug.abi64,"",@progbits
+                before: nop
+                .section ".rodata.constants","a",@progbits
+                data: .word 1
+                .section
+                .eqv SWITCH .section .text.lookup
+                SWITCH
+                entry: nop
+            """.trimIndent()
+            val file = assertParses(source, "sections.mars")
+            val timeline = mipsSourceTimeline(file)
+            assertNull(timeline.prefix(file, source.indexOf("before:")).dataList)
+            assertEquals(Directives.WORD, timeline.prefix(file, source.indexOf("data:")).dataList)
+            assertNull(timeline.prefix(file, source.indexOf("entry:")).dataList)
+        }
+    }
+
+    @Test
     fun `vector lane operands are parsed with matched brackets and register tokens`() = timeoutRunBlocking {
         readAction {
             val source = $$"insert.b $w5[15],$9\ncopy_s.h $9,$w5[7]\n"
@@ -1939,10 +1960,14 @@ class MipsParserPlatformTest {
                 val parsed = listOf(entry, included).flatMap { text ->
                     SyntaxTraverser.astTraverser(assertParses(text).node).filterTypes { it in directiveTypes }.map { it.text }.toList()
                 }.toSet()
-                val wide = ".data\n.dword 0x123456789abcdef0\n"
-                val directive = SyntaxTraverser.astTraverser(assertParses(wide).node).filterTypes { it in directiveTypes }
-                    .map { it.text }.toList()
-                assertEquals(Directives.getDirectiveList().map { it.name }.toSet(), parsed + directive)
+                val wide = ".data\n.balign 8\n.dword 0x123456789abcdef0\n"
+                val compilerSources = listOf("rotate-sum.s", "lookup.s").map { name ->
+                    checkNotNull(javaClass.getResourceAsStream("/compiler/$name")).bufferedReader().use { it.readText() }
+                }
+                val wideDirectives = (listOf(wide) + compilerSources).flatMap { text ->
+                    SyntaxTraverser.astTraverser(assertParses(text).node).filterTypes { it in directiveTypes }.map { it.text }.toList()
+                }
+                assertEquals(Directives.getDirectiveList().map { it.name }.toSet() + ".8byte", parsed + wideDirectives)
             }
         }
     }
