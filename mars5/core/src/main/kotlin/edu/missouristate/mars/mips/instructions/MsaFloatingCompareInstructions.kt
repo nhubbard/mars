@@ -357,21 +357,9 @@ private fun arithmeticInstruction(operation: FloatingArithmetic, format: Int, su
         val right = fpu.readVector(target)
         val previous = if (operation.fused) fpu.readVector(destination) else VectorRegister(0, 0)
         context.writeFloatingVector(statement, destination, precision) { index, status ->
-            val operands = if (operation.fused) listOf(previous, left, right) else listOf(left, right)
-            val raw = operands.map { it.floatingLane(index, precision.bits) }
-            val nan = raw.firstOrNull(precision::isSignaling) ?: raw.firstOrNull(precision::isNan)
-            val a = precision.number(precision.flush(left.floatingLane(index, precision.bits), status))
-            val b = precision.number(precision.flush(right.floatingLane(index, precision.bits), status))
-            val accumulator = precision.number(precision.flush(previous.floatingLane(index, precision.bits), status))
-            val flushed = if (raw.any { it != precision.flush(it, status) }) INEXACT else 0
-            val invalidProduct = operation.fused && (a.isInfinite() && b == 0.0 || b.isInfinite() && a == 0.0)
-            if (nan != null) {
-                val invalid = if (precision.isSignaling(nan) || invalidProduct) INVALID_OPERATION else 0
-                FloatingLane(nan or precision.quiet, invalid or flushed)
-            } else {
-                val result = evaluateArithmetic(operation, precision, a, b, accumulator, status)
-                result.copy(causes = result.causes or flushed)
-            }
+            val bits = precision.bits
+            operation.evaluate(precision, left.floatingLane(index, bits), right.floatingLane(index, bits),
+                previous.floatingLane(index, bits), status)
         }
     }
 }

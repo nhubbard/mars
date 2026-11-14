@@ -8,6 +8,7 @@ import edu.missouristate.mars.mips.instructions.basic.release6RoundingInstructio
 import edu.missouristate.mars.mips.instructions.basic.release6BarrierInstructions
 import edu.missouristate.mars.mips.instructions.basic.release6FloatingCompareInstructions
 import edu.missouristate.mars.mips.instructions.basic.release6FloatingConversions
+import edu.missouristate.mars.mips.instructions.basic.release6ScalarArithmetic
 /*
 Copyright (c) 2003-2013,  Pete Sanderson and Kenneth Vollmar
 
@@ -68,6 +69,7 @@ open class InstructionSet {
             forms.addAll(msaBranchInstructions())
             forms.addAll(release6FloatingCompareInstructions())
             forms.addAll(release6FloatingConversions())
+            forms.addAll(release6ScalarArithmetic())
             forms.addAll(release6RoundingInstructions())
             forms.addAll(CompactComparison.entries.filter { it.wideOnly }.map(::InstrCompactCompareBranch))
         }
@@ -120,6 +122,8 @@ open class InstructionSet {
             "ceil.w.s", "ceil.w.d", "floor.w.s", "floor.w.d", "cvt.w.s", "cvt.w.d",
             "cvt.s.d", "cvt.s.w", "cvt.d.s", "cvt.d.w",
             "c.eq.s", "c.eq.d", "c.lt.s", "c.lt.d", "c.le.s", "c.le.d",
+            "add.s", "add.d", "sub.s", "sub.d", "mul.s", "mul.d", "div.s", "div.d",
+            "maddf.s", "maddf.d", "msubf.s", "msubf.d",
         )
     }
 }

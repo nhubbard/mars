@@ -33,6 +33,22 @@ internal enum class FloatingArithmetic {
 
     val fused: Boolean get() = this == MULTIPLY_ADD || this == MULTIPLY_SUBTRACT
 
+    fun evaluate(precision: FloatingPrecision, left: Long, right: Long, previous: Long, status: Int): FloatingLane {
+        val raw = if (fused) listOf(previous, left, right) else listOf(left, right)
+        val nan = raw.firstOrNull(precision::isSignaling) ?: raw.firstOrNull(precision::isNan)
+        val a = precision.number(precision.flush(left, status))
+        val b = precision.number(precision.flush(right, status))
+        val accumulator = precision.number(precision.flush(previous, status))
+        val flushed = if (raw.any { it != precision.flush(it, status) }) INEXACT else 0
+        if (nan != null) {
+            val invalidProduct = fused && (a.isInfinite() && b == 0.0 || b.isInfinite() && a == 0.0)
+            val invalid = if (precision.isSignaling(nan) || invalidProduct) INVALID_OPERATION else 0
+            return FloatingLane(nan or precision.quiet, invalid or flushed)
+        }
+        val result = evaluateArithmetic(this, precision, a, b, accumulator, status)
+        return result.copy(causes = result.causes or flushed)
+    }
+
     fun nearest(a: Double, b: Double, accumulator: Double, single: Boolean): Double {
         if (single) {
             val x = a.toFloat()

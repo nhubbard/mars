@@ -6,8 +6,8 @@ abs.s	fd, fs	50	audit
 abs.d	fd, fs	50	audit
 abs.ps	fd, fs	50	removed
 add	rd, rs, rt	52	audit
-add.s	fd, fs, ft	53	audit
-add.d	fd, fs, ft	53	audit
+add.s	fd, fs, ft	53	implemented
+add.d	fd, fs, ft	53	implemented
 add.ps	fd, fs, ft	53	removed
 addi	rt, rs, immediate	55	removed
 addiu	rt, rs, immediate	56	audit
@@ -200,8 +200,8 @@ ddiv	rd,rs,rt	212	audit
 dmod	rd,rs,rt	212	audit
 ddivu	rd,rs,rt	212	audit
 dmodu	rd,rs,rt	212	audit
-div.s	fd, fs, ft	211	audit
-div.d	fd, fs, ft	211	audit
+div.s	fd, fs, ft	211	implemented
+div.d	fd, fs, ft	211	implemented
 divu	rs, rt	215	removed
 dmfc0	rt, rd	216	audit
 dmfc0	rt, rd, sel	216	audit
@@ -294,10 +294,10 @@ madd	rs, rt	346	removed
 madd.s	fd, fr, fs, ft	347	removed
 madd.d	fd, fr, fs, ft	347	removed
 madd.ps	fd, fr, fs, ft	347	removed
-maddf.s	fd, fs, ft	349	audit
-maddf.d	fd, fs, ft	349	audit
-msubf.s	fd, fs, ft	349	audit
-msubf.d	fd, fs, ft	349	audit
+maddf.s	fd, fs, ft	349	implemented
+maddf.d	fd, fs, ft	349	implemented
+msubf.s	fd, fs, ft	349	implemented
+msubf.d	fd, fs, ft	349	implemented
 maddu	rs, rt	351	removed
 max.s	fd,fs,ft	352	audit
 max.d	fd,fs,ft	352	audit
@@ -364,8 +364,8 @@ dmul	rd,rs,rt	397	audit
 dmuh	rd,rs,rt	397	audit
 dmulu	rd,rs,rt	397	audit
 dmuhu	rd,rs,rt	397	audit
-mul.s	fd, fs, ft	395	audit
-mul.d	fd, fs, ft	395	audit
+mul.s	fd, fs, ft	395	implemented
+mul.d	fd, fs, ft	395	implemented
 mul.ps	fd, fs, ft	395	removed
 mult	rs, rt	400	removed
 multu	rs, rt	402	removed
@@ -447,8 +447,8 @@ srl	rd, rt, sa	506	audit
 srlv	rd, rt, rs	507	audit
 ssnop		508	idiom-audit
 sub	rd, rs, rt	509	audit
-sub.s	fd, fs, ft	510	audit
-sub.d	fd, fs, ft	510	audit
+sub.s	fd, fs, ft	510	implemented
+sub.d	fd, fs, ft	510	implemented
 sub.ps	fd, fs, ft	510	removed
 subu	rd, rs, rt	512	audit
 suxc1	fs, index(base)	513	removed
