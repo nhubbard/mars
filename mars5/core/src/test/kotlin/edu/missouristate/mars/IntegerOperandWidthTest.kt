@@ -16,6 +16,7 @@ class IntegerOperandWidthTest {
     @ParameterizedTest
     @EnumSource(MarsTarget::class)
     fun `logic and moves preserve the selected register width and reverse`(target: MarsTarget, @TempDir directory: Path) {
+        val wide = target == MarsTarget.MARS64
         val file = Files.writeString(directory.resolve("logic.s"), $$"""
             and $t0,$a0,$a1
             or $t1,$a0,$a1
@@ -25,8 +26,8 @@ class IntegerOperandWidthTest {
             ori $t5,$a0,0xffff
             xori $t6,$a0,0xffff
             move $t7,$a0
-            movn $s0,$a0,$a1
-            movz $s1,$a0,$zero
+            $${if (wide) "selnez" else "movn"} $s0,$a0,$a1
+            $${if (wide) "seleqz" else "movz"} $s1,$a0,$zero
             seleqz $s2,$a0,$a1
             selnez $s3,$a0,$a1
             seq $s4,$a1,$zero
@@ -37,7 +38,6 @@ class IntegerOperandWidthTest {
         TestSessions.create().use { machine ->
             machine.selectTarget(target)
             val program = machine.assemble(listOf(file))
-            val wide = target == MarsTarget.MARS64
             val value = if (wide) 0x1_ffff_0001L else -65535L
             val mask = if (wide) 0x3_0000_0000L else 0L
             machine.editIntegerRegister(4, value)
