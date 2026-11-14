@@ -28,6 +28,10 @@ internal fun msaFloatingCompareInstructions(): List<BasicInstruction> = buildLis
             })
         })
         add(roundingInstruction(format, suffix))
+        for (signed in listOf(true, false)) {
+            add(toIntegerInstruction(format, suffix, signed, truncate = false))
+            add(toIntegerInstruction(format, suffix, signed, truncate = true))
+        }
         for ((index, name) in listOf("fmin", "fmin_a", "fmax", "fmax_a").withIndex()) {
             add(extremumInstruction(name, index, format, suffix))
         }
@@ -163,6 +167,38 @@ private fun extremumInstruction(name: String, index: Int, format: Int, suffix: C
                     val comparison = if (magnitude) abs(x).compareTo(abs(y)) else 0
                     val order = if (comparison == 0) x.compareTo(y) else comparison
                     FloatingLane(if (if (minimum) order <= 0 else order >= 0) a else b, inexact)
+                }
+            }
+        }
+    }
+}
+
+private fun toIntegerInstruction(format: Int, suffix: Char, signed: Boolean, truncate: Boolean): BasicInstruction {
+    val precision = MsaPrecision(format)
+    val mnemonic = (if (truncate) "ftrunc" else "ftint") + if (signed) "_s" else "_u"
+    val opcode = (if (truncate) 2 else 24) + (if (signed) 0 else 2) + format
+    val field = opcode.toString(2).padStart(5, '0')
+    val limit = Math.scalb(1.0, precision.bits - if (signed) 1 else 0)
+    val lowerBound = if (signed) -limit else 0.0
+    val minimum = if (signed) -1L shl (precision.bits - 1) else 0L
+    val maximum = -1L ushr (64 - precision.bits + if (signed) 1 else 0)
+    return BasicInstruction(
+        "$mnemonic.$suffix \$w1,\$w2", "Convert each floating-point element to an integer",
+        R_FORMAT, "011110 11001 $field sssss fffff 011110",
+    ) { statement, context ->
+        val (destination, source) = statement.operands
+        val input = context.coprocessor1.readVector(source)
+        context.writeFloatingVector(statement, destination, precision) { half, shift, status ->
+            val raw = element(half(input), shift, precision.bits)
+            val value = precision.number(raw)
+            val rounded = roundIntegral(precision.number(precision.flush(raw, status)), if (truncate) 1 else status and 3)
+            when {
+                rounded.isNaN() -> FloatingLane(0, INVALID_OPERATION)
+                rounded < lowerBound -> FloatingLane(minimum, INVALID_OPERATION)
+                rounded >= limit -> FloatingLane(maximum, INVALID_OPERATION)
+                else -> {
+                    val result = if (signed) rounded.toLong() else rounded.toULong().toLong()
+                    FloatingLane(result, if (rounded != value) INEXACT else 0)
                 }
             }
         }

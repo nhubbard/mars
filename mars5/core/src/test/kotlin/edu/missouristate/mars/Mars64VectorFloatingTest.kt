@@ -147,4 +147,42 @@ class Mars64VectorFloatingTest {
         }
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = ["w", "d"])
+    fun `float to integer conversions round saturate and aggregate lane causes`(suffix: String, @TempDir directory: Path) {
+        val double = suffix == "d"
+        val cases = listOf("ftint_s" to 0x7b381fde, "ftint_u" to 0x7b3a1fde,
+            "ftrunc_s" to 0x7b221fde, "ftrunc_u" to 0x7b241fde)
+        val file = Files.writeString(directory.resolve("integer-convert.s"), buildString {
+            for ((name) in cases) repeat(3) { appendLine($$"$$name.$$suffix $w31,$w3") }
+        })
+        fun floatBits(value: Double): Long = if (double) value.toRawBits()
+            else value.toFloat().toRawBits().toUInt().toLong().let { it or (it shl 32) }
+        fun intBits(value: Long): Long = if (double) value else value.toUInt().toLong().let { it or (it shl 32) }
+        val unsignedHigh = if (double) 1L shl 62 else 1L shl 30
+        TestSessions.create().use { session ->
+            session.selectTarget(MarsTarget.MARS64)
+            val program = session.assemble(listOf(file), null, false, false)
+            val fpu = session.coprocessor1
+            for ((index, case) in cases.withIndex()) {
+                val (name, word) = case
+                val signed = name.endsWith("_s")
+                assertEquals(word + if (double) 0x10000 else 0, program.machineList!![index * 3].binaryStatement)
+                fpu.updateMsaStatus(2)
+                fpu.updateVector(3, VectorRegister(floatBits(2.5), floatBits(-2.5)))
+                program.simulate(1)
+                val positive = if (name.startsWith("ftint")) 3L else 2L
+                assertEquals(VectorRegister(intBits(positive), intBits(if (signed) -2 else 0)), fpu.readVector(31))
+                assertEquals(if (signed) 0x1006 else 0x11046, fpu.msaStatus)
+                fpu.updateVector(3, VectorRegister(floatBits(Double.POSITIVE_INFINITY), floatBits(Double.NaN)))
+                program.simulate(1)
+                val max = if (!signed) -1L else if (double) Long.MAX_VALUE else Int.MAX_VALUE.toLong()
+                assertEquals(VectorRegister(intBits(max), 0), fpu.readVector(31))
+                fpu.updateVector(3, VectorRegister(floatBits(unsignedHigh.toDouble()), floatBits((unsignedHigh shl 1).toULong().toDouble())))
+                program.simulate(1)
+                assertEquals(VectorRegister(intBits(unsignedHigh), intBits(if (signed) max else unsignedHigh shl 1)), fpu.readVector(31))
+            }
+        }
+    }
+
 }
