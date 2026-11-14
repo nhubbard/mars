@@ -23,12 +23,15 @@ import edu.missouristate.mars.mips.hardware.InvalidRegisterAccessException
 import edu.missouristate.mars.mips.hardware.MemoryState
 import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat.I_BRANCH_FORMAT
+import edu.missouristate.mars.mips.instructions.BasicInstructionFormat.J_FORMAT
 import edu.missouristate.mars.mips.instructions.Instruction.Companion.INSTRUCTION_LENGTH
 import edu.missouristate.mars.mips.instructions.SyscallRegistry
 import edu.missouristate.mars.mips.instructions.syscalls.RandomStreams
 import edu.missouristate.mars.simulator.Exceptions.ADDRESS_EXCEPTION_LOAD
 import edu.missouristate.mars.simulator.Exceptions.RESERVED_INSTRUCTION_EXCEPTION
 import edu.missouristate.mars.util.Binary
+
+private val indirectControlTransfers = setOf("jr", "jalr", "jic", "jialc", "eret", "eretnc", "deret", "nal", "wait", "pause")
 
 /** Executes instructions against one session's registers, memory, undo history, and syscall I/O. */
 class InstructionContext(private val session: MarsContext, private val environment: SyscallEnvironment) {
@@ -279,6 +282,8 @@ class InstructionContext(private val session: MarsContext, private val environme
         lastBranchOutcome = null
         val history = session.backStepper
         val recording = history.beginInstruction(registerFile.programCounter, statement)
+        val forbiddenSlot = delayedBranch.forbiddenSlot
+        delayedBranch.forbiddenSlot = false
         try {
             registerFile.incrementPC()
             try {
@@ -286,9 +291,15 @@ class InstructionContext(private val session: MarsContext, private val environme
                 if (interrupt != 0) throw ProcessingException(this, statement, "External interrupt", interrupt)
                 val instruction = statement.instruction as? BasicInstruction
                     ?: throw ProcessingException(this, statement, "invalid instruction", RESERVED_INSTRUCTION_EXCEPTION)
+                if (forbiddenSlot && instruction.isControlTransfer()) {
+                    throw ProcessingException(this, statement, "control transfer in a forbidden slot", RESERVED_INSTRUCTION_EXCEPTION)
+                }
                 instruction.simulationCode.simulate(statement, this)
                 if (instruction.instructionFormat == I_BRANCH_FORMAT && lastBranchOutcome == null) {
                     lastBranchOutcome = BranchOutcome.NOT_TAKEN
+                    if (session.target == MarsTarget.MARS64 && instruction.isCompactConditionalBranch) {
+                        delayedBranch.forbiddenSlot = true
+                    }
                 }
             } catch (error: ProcessingException) {
                 if (!dispatchHandler || error.errors() == null) throw error
@@ -308,6 +319,9 @@ class InstructionContext(private val session: MarsContext, private val environme
             if (recording) history.endInstruction()
         }
     }
+
+    private fun BasicInstruction.isControlTransfer(): Boolean =
+        instructionFormat == I_BRANCH_FORMAT || instructionFormat == J_FORMAT || name in indirectControlTransfers
 
     fun completeInstruction() {
         if (delayedBranch.isTriggered) {

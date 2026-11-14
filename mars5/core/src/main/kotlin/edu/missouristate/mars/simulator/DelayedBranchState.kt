@@ -36,22 +36,26 @@ class DelayedBranchState {
     private var state = CLEARED
     private var targetAddress = 0
     private var jump = false
+    internal var forbiddenSlot = false
 
     /** The pending transfer retained by an instruction's undo group. */
     @JvmRecord
-    data class Snapshot(val state: Int, val targetAddress: Int, val jump: Boolean)
+    data class Snapshot @JvmOverloads constructor(
+        val state: Int, val targetAddress: Int, val jump: Boolean, val forbiddenSlot: Boolean = false,
+    )
 
-    fun snapshot(): Snapshot = Snapshot(state, targetAddress, jump)
+    fun snapshot(): Snapshot = Snapshot(state, targetAddress, jump, forbiddenSlot)
 
     fun restore(snapshot: Snapshot) {
         require(snapshot.state in CLEARED..TRIGGERED) { "Invalid delayed branch state" }
         if (snapshot.state == CLEARED) {
             clear()
-            return
+        } else {
+            state = snapshot.state
+            targetAddress = snapshot.targetAddress
+            jump = snapshot.jump
         }
-        state = snapshot.state
-        targetAddress = snapshot.targetAddress
-        jump = snapshot.jump
+        forbiddenSlot = snapshot.forbiddenSlot
     }
 
     fun register(targetAddress: Int) = register(targetAddress, false)
@@ -75,6 +79,7 @@ class DelayedBranchState {
         state = CLEARED
         targetAddress = 0
         jump = false
+        forbiddenSlot = false
     }
 
     /** Whether completing the pending transfer should report a non-linking jump. */

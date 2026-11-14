@@ -68,6 +68,8 @@ open class BasicInstruction(
 
     internal open fun acceptsEncoding(word: Int): Boolean = true
 
+    internal open val isCompactConditionalBranch: Boolean get() = false
+
     private companion object {
         val fixedBit = Regex("[01]")
         val nonBit = Regex("[^01]")

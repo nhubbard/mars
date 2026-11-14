@@ -14,6 +14,54 @@ import org.junit.jupiter.params.provider.ValueSource
 
 class CompactControlFlowTest {
     @ParameterizedTest
+    @ValueSource(strings = ["j target", "bnezalc \$9,target", "beq \$zero,\$9,target", "jalr \$31,\$9", "eret"])
+    fun `only a fallthrough compact branch creates a forbidden slot and backstep restores it`(
+        transfer: String, @TempDir directory: Path,
+    ) {
+        val source = Files.writeString(directory.resolve("slot.s"), $$"""
+            beqzc $9,target
+            $$transfer
+            target: nop
+        """.trimIndent())
+        TestSessions.create().use { machine ->
+            machine.selectTarget(MarsTarget.MARS64)
+            val program = machine.assemble(listOf(source), null, false, false)
+            val pc = machine.memory.textBaseAddress
+            machine.editIntegerRegister(9, 1)
+            program.simulate(1)
+            assertEquals(pc + 4, machine.registerFile.programCounter)
+            repeat(2) {
+                val failure = assertThrows(ProcessingException::class.java) { program.simulate(1) }
+                assertTrue(failure.message!!.contains("control transfer in a forbidden slot"))
+                machine.backStepper.backStep()
+                assertEquals(pc + 4, machine.registerFile.programCounter)
+            }
+            machine.backStepper.backStep()
+            assertEquals(pc, machine.registerFile.programCounter)
+            machine.editIntegerRegister(9, 0)
+            program.simulate(1)
+            assertEquals(pc + 8, machine.registerFile.programCounter)
+            program.simulate(1)
+            assertEquals(pc + 12, machine.registerFile.programCounter)
+        }
+    }
+
+    @Test
+    fun `ordinary instructions consume a forbidden slot`(@TempDir directory: Path) {
+        val source = Files.writeString(directory.resolve("ordinary-slot.s"), $$"""
+            bnezc $9,target
+            nop
+            j target
+            target: nop
+        """.trimIndent())
+        TestSessions.create().use { machine ->
+            machine.selectTarget(MarsTarget.MARS64)
+            val program = machine.assemble(listOf(source), null, false, false)
+            assertTrue(program.simulate(6))
+        }
+    }
+
+    @ParameterizedTest
     @CsvSource(
         "blezalc,18090001,-1,1", "bgezalc,19290001,1,-1",
         "bgtzalc,1c090001,1,0", "bltzalc,1d290001,-1,0",

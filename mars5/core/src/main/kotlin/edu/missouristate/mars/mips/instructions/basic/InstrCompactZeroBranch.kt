@@ -17,6 +17,8 @@ internal class InstrCompactZeroBranch(branchOnZero: Boolean) : BasicInstruction(
         }
     },
 ) {
+    override val isCompactConditionalBranch: Boolean get() = true
+
     override fun encodeOperands(values: IntArray): IntArray {
         require(values[0] != 0) { "Compact zero branch requires a nonzero register number" }
         require(values[1] in -0x100000..0xfffff) { "Compact branch destination is outside its signed displacement range" }

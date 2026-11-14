@@ -25,6 +25,8 @@ internal class InstrCompactCompareBranch(private val form: CompactComparison) : 
         }
     },
 ) {
+    override val isCompactConditionalBranch: Boolean get() = true
+
     override fun encodeOperands(values: IntArray): IntArray {
         val left = values[0]
         val pair = form.registers.isPair
