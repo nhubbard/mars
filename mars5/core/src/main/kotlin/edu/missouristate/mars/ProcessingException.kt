@@ -70,7 +70,7 @@ open class ProcessingException private constructor(
 
     constructor(context: InstructionContext, statement: ProgramStatement?, error: AddressErrorException) :
         this(context, statement, error.message) {
-        context.updateCoprocessor0(VADDR, error.address)
+        context.updateCoprocessor0Bits(VADDR, error.addressBits)
         context.setExceptionRegisters(error.type)
     }
 

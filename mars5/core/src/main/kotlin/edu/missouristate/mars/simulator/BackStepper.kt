@@ -203,7 +203,7 @@ open class BackStepper(
             Action.MEMORY_BYTE -> memory.setByte(first, second)
             Action.REGISTER -> registerFile.updateLongRegister(first, step.param2)
             Action.PC -> registerFile.setProgramCounter(first)
-            Action.COPROCESSOR_0 -> coprocessor0.updateRegister(first, second)
+            Action.COPROCESSOR_0 -> coprocessor0.updateRegisterBits(first, step.param2)
             Action.COPROCESSOR_1 -> if (coprocessor1.hasWideRegisters) {
                 coprocessor1.updateLongRegister(first, step.param2)
             } else {
@@ -243,6 +243,10 @@ open class BackStepper(
     }
 
     open fun addCoprocessor0Restore(register: Int, value: Int): Int = record(Action.COPROCESSOR_0, register, value)
+
+    internal fun addCoprocessor0Restore(register: Int, value: Long) {
+        backSteps.push(Action.COPROCESSOR_0, pc(), register, value)
+    }
 
     open fun addCoprocessor1Restore(register: Int, value: Int): Int = record(Action.COPROCESSOR_1, register, value)
 

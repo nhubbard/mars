@@ -65,6 +65,10 @@ class Coprocessor0State {
 
     fun getValue(number: Int): Int = getRegister(number)?.value ?: 0
 
+    internal fun updateRegisterBits(number: Int, value: Long): Long = getRegister(number)!!.setLongValue(value)
+
+    internal fun readRegisterBits(number: Int): Long = getRegister(number)!!.longValue
+
     fun getRegister(number: Int): Register? = registers.firstOrNull { it.number == number }
 
     fun getNumber(name: String?): Int = getRegister(name)?.number ?: -1

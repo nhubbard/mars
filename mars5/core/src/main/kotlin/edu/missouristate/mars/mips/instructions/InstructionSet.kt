@@ -11,6 +11,7 @@ import edu.missouristate.mars.mips.instructions.basic.release6FloatingConversion
 import edu.missouristate.mars.mips.instructions.basic.release6HardwareReads
 import edu.missouristate.mars.mips.instructions.basic.release6ScalarArithmetic
 import edu.missouristate.mars.mips.instructions.basic.release6ScalarRoots
+import edu.missouristate.mars.mips.instructions.basic.release6SystemTransfers
 /*
 Copyright (c) 2003-2013,  Pete Sanderson and Kenneth Vollmar
 
@@ -62,6 +63,7 @@ open class InstructionSet {
             forms.add(InstrRelease6Pref())
             forms.addAll(release6BarrierInstructions())
             forms.addAll(release6HardwareReads())
+            forms.addAll(release6SystemTransfers())
             forms.addAll(msaRegisterInstructions())
             forms.addAll(msaIntegerInstructions())
             forms.addAll(msaBitInstructions())

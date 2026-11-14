@@ -2,6 +2,7 @@ package edu.missouristate.mars
 
 import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.mips.hardware.Coprocessor0State.Companion.CAUSE
+import edu.missouristate.mars.mips.hardware.Coprocessor0State.Companion.VADDR
 import edu.missouristate.mars.mips.hardware.MemoryState
 import edu.missouristate.mars.simulator.Exceptions.ADDRESS_EXCEPTION_LOAD
 import edu.missouristate.mars.simulator.Exceptions.ADDRESS_EXCEPTION_STORE
@@ -16,6 +17,32 @@ import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 
 class MarsAddressWidthTest {
+    @Test
+    fun `doubleword CP0 transfers preserve address registers and reverse wide writes`(@TempDir directory: Path) {
+        val source = Files.writeString(directory.resolve("cp0.s"), $$"""
+            dmtc0 $9,$14
+            dmfc0 $10,$14,0
+            dmtc0 $9,$12
+            dmfc0 $11,$12
+            dmfc0 $10,$14,1
+        """.trimIndent())
+        TestSessions.create().use { machine ->
+            machine.selectTarget(MarsTarget.MARS64)
+            val program = machine.assemble(listOf(source), null, false, false)
+            assertEquals(listOf(0x40a97000, 0x402a7000, 0x40a96000, 0x402b6000, 0x402a7001),
+                program.machineList!!.map(ProgramStatement::binaryStatement))
+            val bits = 0x1234_5678_fedc_ba98L
+            machine.editIntegerRegister(9, bits)
+            program.simulate(4)
+            assertEquals(bits, machine.registerFile.getLongValueNoNotify(10))
+            assertEquals(0xfedc_ba98L, machine.registerFile.getLongValueNoNotify(11))
+            assertThrows(ProcessingException::class.java) { program.simulate(1) }
+            repeat(5) { machine.backStepper.backStep() }
+            assertEquals(0L, machine.coprocessor0.getRegister(14)!!.longValueNoNotify)
+            assertEquals(0L, machine.registerFile.getLongValueNoNotify(10))
+        }
+    }
+
     @ParameterizedTest
     @ValueSource(booleans = [MemoryState.LITTLE_ENDIAN, MemoryState.BIG_ENDIAN])
     fun `doubleword address forms use one full register in MARS64`(littleEndian: Boolean, @TempDir directory: Path) {
@@ -68,11 +95,14 @@ class MarsAddressWidthTest {
             machine.editIntegerRegister(8, 99)
             val failure = assertThrows(ProcessingException::class.java) { program.simulate(1) }
             val effectiveAddress = unmapped + if (instruction.startsWith('u')) 1 else 0
-            assertTrue(failure.message!!.contains("0x" + effectiveAddress.toString(16).padStart(16, '0') + " is outside mapped memory"))
+            assertTrue(failure.message!!.contains("outside mapped memory: 0x" + effectiveAddress.toString(16).padStart(16, '0')))
+            assertEquals(effectiveAddress, machine.coprocessor0.getRegister(VADDR)!!.longValueNoNotify)
             val expectedCause = if (instruction.removePrefix("u").startsWith('s')) ADDRESS_EXCEPTION_STORE else ADDRESS_EXCEPTION_LOAD
             assertEquals(expectedCause, (machine.coprocessor0.getValue(CAUSE) ushr 2) and 31)
             assertEquals(42, machine.memory.getWord(mapped))
             assertEquals(99, machine.registerFile.getValue(8))
+            machine.backStepper.backStep()
+            assertEquals(0L, machine.coprocessor0.getRegister(VADDR)!!.longValueNoNotify)
         }
     }
 

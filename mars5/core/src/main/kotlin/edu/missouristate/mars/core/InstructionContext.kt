@@ -18,7 +18,6 @@ import edu.missouristate.mars.mips.hardware.Coprocessor0State.Companion.CAUSE
 import edu.missouristate.mars.mips.hardware.Coprocessor0State.Companion.EPC
 import edu.missouristate.mars.mips.hardware.Coprocessor0State.Companion.EXCEPTION_LEVEL
 import edu.missouristate.mars.mips.hardware.Coprocessor0State.Companion.STATUS
-import edu.missouristate.mars.mips.hardware.Coprocessor0State.Companion.VADDR
 import edu.missouristate.mars.mips.hardware.Coprocessor1State.Companion.CAUSE_MASK
 import edu.missouristate.mars.mips.hardware.Coprocessor1State.Companion.hasEnabledFloatingException
 import edu.missouristate.mars.mips.hardware.InvalidRegisterAccessException
@@ -70,8 +69,7 @@ class InstructionContext(private val session: MarsContext, private val environme
         val address = registerFile.getLongValue(register) + offset.toShort()
         val mapped = address.toInt()
         if (address != mapped.toLong() && address != mapped.toUInt().toLong()) {
-            val hex = address.toULong().toString(16).padStart(16, '0')
-            throw AddressErrorException("Address 0x$hex is outside mapped memory; low word ", exception, mapped)
+            throw AddressErrorException("Effective address is outside mapped memory: ", exception, address)
         }
         return mapped
     }
@@ -186,12 +184,13 @@ class InstructionContext(private val session: MarsContext, private val environme
     }
 
     fun updateCoprocessor0(number: Int, value: Int): Int {
-        val previous = coprocessor0.updateRegister(number, value)
-        if (session.backStepper.enabled()) {
-            when (number) {
-                VADDR, STATUS, CAUSE, EPC -> session.backStepper.addCoprocessor0Restore(number, previous)
-            }
-        }
+        if (coprocessor0.getRegister(number) == null) return 0
+        return updateCoprocessor0Bits(number, value.toLong()).toInt()
+    }
+
+    internal fun updateCoprocessor0Bits(number: Int, value: Long): Long {
+        val previous = coprocessor0.updateRegisterBits(number, value)
+        if (session.backStepper.enabled()) session.backStepper.addCoprocessor0Restore(number, previous)
         return previous
     }
 

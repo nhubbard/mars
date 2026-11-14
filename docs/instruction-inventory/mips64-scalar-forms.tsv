@@ -203,13 +203,13 @@ dmodu	rd,rs,rt	212	implemented
 div.s	fd, fs, ft	211	implemented
 div.d	fd, fs, ft	211	implemented
 divu	rs, rt	215	removed
-dmfc0	rt, rd	216	audit
-dmfc0	rt, rd, sel	216	audit
+dmfc0	rt, rd	216	implemented-subset
+dmfc0	rt, rd, sel	216	implemented-subset
 dmfc1	rt,fs	217	implemented
 dmfc2	rt, rd	218	requires-cop2
 dmfc2	rt, rd, sel	218	requires-cop2
-dmtc0	rt, rd	219	audit
-dmtc0	rt, rd, sel	219	audit
+dmtc0	rt, rd	219	implemented-subset
+dmtc0	rt, rd, sel	219	implemented-subset
 dmtc1	rt, fs	220	implemented
 dmtc2	rt,Impl	221	requires-cop2
 dmtc2	rt, Impl, sel	221	requires-cop2
