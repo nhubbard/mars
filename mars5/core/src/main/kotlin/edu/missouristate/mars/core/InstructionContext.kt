@@ -74,9 +74,9 @@ class InstructionContext(private val session: MarsContext, private val environme
     internal fun legacyEffectiveAddress(register: Int, offset: Int, exception: Int = ADDRESS_EXCEPTION_LOAD): Int =
         memory().narrowAddress(effectiveAddress(register, offset), exception)
 
-    internal fun registerJumpTarget(statement: ProgramStatement, register: Int, offset: Int = 0): Int =
+    internal fun registerJumpTarget(statement: ProgramStatement, register: Int, offset: Int = 0): Long =
         try {
-            legacyEffectiveAddress(register, offset)
+            memory().checkInstructionAddress(effectiveAddress(register, offset))
         } catch (failure: AddressErrorException) {
             throw ProcessingException(this, statement, failure)
         }
@@ -99,8 +99,10 @@ class InstructionContext(private val session: MarsContext, private val environme
         return previous
     }
 
-    fun setProgramCounter(value: Int): Int {
-        val previous = registerFile.setProgramCounter(value)
+    fun setProgramCounter(value: Int): Int = setProgramCounter(value.toLong()).toInt()
+
+    private fun setProgramCounter(value: Long): Long {
+        val previous = registerFile.setProgramCounterBits(value)
         if (session.backStepper.enabled()) session.backStepper.addPCRestore(previous)
         return previous
     }
@@ -108,13 +110,16 @@ class InstructionContext(private val session: MarsContext, private val environme
     /** Save the address after the jump or its delay slot, as configured for this session. */
     internal fun linkReturnAddress(register: Int) {
         val delay = if (usesDelaySlots()) INSTRUCTION_LENGTH else 0
-        link(register, registerFile.programCounter + delay)
+        link(register, registerFile.programCounterBits + delay)
     }
 
     /** Write the link register and record a call if the register accepts writes. */
-    fun link(register: Int, returnAddress: Int) {
-        updateRegister(register, returnAddress)
-        if (register != 0) lastTransfer = Call(register, returnAddress)
+    fun link(register: Int, returnAddress: Int) = link(register, returnAddress.toLong())
+
+    internal fun link(register: Int, returnAddress: Long) {
+        val bits = if (session.target == MarsTarget.MARS64) returnAddress else returnAddress.toInt().toLong()
+        updateLongRegister(register, bits)
+        if (register != 0) lastTransfer = Call(register, bits.toInt(), bits)
     }
 
     fun lastTransfer(): Transfer? = lastTransfer
@@ -139,36 +144,38 @@ class InstructionContext(private val session: MarsContext, private val environme
 
     /** Register the architectural delay slot, including when the branch falls through. */
     internal fun release6DelayedBranch(displacement: Int, taken: Boolean) {
-        val next = registerFile.programCounter
+        val next = registerFile.programCounterBits
         val target = next + if (taken) (displacement shl 2) else INSTRUCTION_LENGTH
         delayedBranch.register(target)
         lastBranchOutcome = if (taken) BranchOutcome.TAKEN else BranchOutcome.NOT_TAKEN
     }
 
-    internal fun release6DelayedJump(target: Int, linkRegister: Int) {
-        if (linkRegister != 0) link(linkRegister, registerFile.programCounter + INSTRUCTION_LENGTH)
+    internal fun release6DelayedJump(target: Long, linkRegister: Int) {
+        if (linkRegister != 0) link(linkRegister, registerFile.programCounterBits + INSTRUCTION_LENGTH)
         delayedBranch.register(target, jump = linkRegister == 0)
     }
 
     /** Execute or schedule a jump. Linking instructions have already recorded a call. */
-    fun jump(target: Int) {
+    fun jump(target: Int) = jump(target.toLong())
+
+    internal fun jump(target: Long) {
         val withoutLink = lastTransfer == null
         if (usesDelaySlots()) {
             delayedBranch.register(target, withoutLink)
         } else {
             setProgramCounter(target)
-            if (withoutLink) lastTransfer = Jump(target)
+            if (withoutLink) lastTransfer = Jump(target.toInt(), target)
         }
     }
 
     private fun usesDelaySlots(): Boolean = session.target == MarsTarget.MARS64 || settings().isDelayedBranchingEnabled
 
     /** Transfer control immediately, even when legacy branch delay slots are enabled. */
-    internal fun compactTransfer(statement: ProgramStatement, target: Int, branch: Boolean = false) {
+    internal fun compactTransfer(statement: ProgramStatement, target: Long, branch: Boolean = false) {
         checkCompactTransferSlot(statement)
         setProgramCounter(target)
         if (branch) lastBranchOutcome = BranchOutcome.TAKEN
-        else if (lastTransfer == null) lastTransfer = Jump(target)
+        else if (lastTransfer == null) lastTransfer = Jump(target.toInt(), target)
     }
 
     internal fun checkCompactTransferSlot(statement: ProgramStatement) {
@@ -178,12 +185,12 @@ class InstructionContext(private val session: MarsContext, private val environme
     }
 
     fun returnFromException() {
-        finishExceptionReturn(coprocessor0.getValue(EPC), clearReservation = true)
+        finishExceptionReturn(coprocessor0.getValue(EPC).toLong(), clearReservation = true)
     }
 
     internal fun release6ExceptionReturn(statement: ProgramStatement, clearReservation: Boolean) {
         val target = try {
-            memory().narrowAddress(coprocessor0.readRegisterBits(EPC), ADDRESS_EXCEPTION_LOAD)
+            memory().checkInstructionAddress(coprocessor0.readRegisterBits(EPC))
         } catch (failure: AddressErrorException) {
             throw ProcessingException(this, statement, failure)
         }
@@ -191,7 +198,7 @@ class InstructionContext(private val session: MarsContext, private val environme
         finishExceptionReturn(target, clearReservation)
     }
 
-    private fun finishExceptionReturn(target: Int, clearReservation: Boolean) {
+    private fun finishExceptionReturn(target: Long, clearReservation: Boolean) {
         if (clearReservation) memory().reservation = null
         setProgramCounter(target)
         lastTransfer = ExceptionReturn.INSTANCE
@@ -351,6 +358,18 @@ class InstructionContext(private val session: MarsContext, private val environme
         if (session.backStepper.enabled()) session.backStepper.addMemoryRestore(address, size, previous)
     }
 
+    internal fun loadPcRelativeWord(address: Long): Int {
+        val memory = memory()
+        val location = address.toInt()
+        return if (address == location.toLong() &&
+            (memory.inTextSegment(location) || memory.inKernelTextSegment(location))
+        ) {
+            memory.getStatement(location)?.binaryStatement ?: 0
+        } else {
+            memory.readData(address, 4)
+        }
+    }
+
     @Throws(AddressErrorException::class)
     fun setMemoryWord(address: Int, value: Int): Int {
         val previous = session.memory.setWord(address, value)
@@ -438,7 +457,7 @@ class InstructionContext(private val session: MarsContext, private val environme
         lastTransfer = null
         lastBranchOutcome = null
         val history = session.backStepper
-        val recording = history.beginInstruction(registerFile.programCounter, statement)
+        val recording = history.beginInstruction(registerFile.programCounterBits, statement)
         val forbiddenSlot = delayedBranch.forbiddenSlot
         delayedBranch.forbiddenSlot = false
         try {
@@ -488,9 +507,9 @@ class InstructionContext(private val session: MarsContext, private val environme
 
     fun completeInstruction() {
         if (delayedBranch.isTriggered) {
-            val target = delayedBranch.branchTargetAddress
+            val target = delayedBranch.branchTargetAddressBits
             setProgramCounter(target)
-            if (delayedBranch.isJump && lastTransfer == null) lastTransfer = Jump(target)
+            if (delayedBranch.isJump && lastTransfer == null) lastTransfer = Jump(target.toInt(), target)
             delayedBranch.clear()
         } else if (delayedBranch.isRegistered) {
             delayedBranch.trigger()
@@ -500,13 +519,13 @@ class InstructionContext(private val session: MarsContext, private val environme
     fun setExceptionRegisters(cause: Int) {
         val status = coprocessor0.getValue(STATUS)
         var causeBits = (coprocessor0.getValue(CAUSE) and 0xfffffc83.toInt()) or (cause shl 2)
-        val faultPc = registerFile.programCounter - INSTRUCTION_LENGTH
+        val faultPc = registerFile.programCounterBits - INSTRUCTION_LENGTH
         if (session.target == MarsTarget.MARS32) {
-            updateCoprocessor0(EPC, faultPc)
+            updateCoprocessor0(EPC, faultPc.toInt())
         } else if (status and (1 shl EXCEPTION_LEVEL) == 0) {
             val inDelaySlot = delayedBranch.isTriggered
             causeBits = (causeBits and Int.MAX_VALUE) or (if (inDelaySlot) Int.MIN_VALUE else 0)
-            updateCoprocessor0(EPC, faultPc - if (inDelaySlot) INSTRUCTION_LENGTH else 0)
+            updateCoprocessor0Bits(EPC, faultPc - if (inDelaySlot) INSTRUCTION_LENGTH else 0)
         }
         updateCoprocessor0(CAUSE, causeBits)
         updateCoprocessor0(STATUS, Binary.setBit(status, EXCEPTION_LEVEL))

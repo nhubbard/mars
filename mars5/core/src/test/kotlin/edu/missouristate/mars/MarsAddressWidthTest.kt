@@ -1,6 +1,7 @@
 package edu.missouristate.mars
 
 import edu.missouristate.mars.api.MarsTarget
+import edu.missouristate.mars.api.StepEvent
 import edu.missouristate.mars.mips.hardware.Coprocessor0State.Companion.CAUSE
 import edu.missouristate.mars.mips.hardware.Coprocessor0State.Companion.VADDR
 import edu.missouristate.mars.mips.hardware.MemoryState
@@ -17,6 +18,62 @@ import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 
 class MarsAddressWidthTest {
+    @Test
+    fun `opt-in generated code preserves wide PC links branches and EPC`(@TempDir directory: Path) {
+        val source = Files.writeString(directory.resolve("generated.s"), $$"""
+            jialc $a0,0
+            nop
+            entry: addiupc $t0,0
+            b target
+            addiu $t1,$zero,1
+            break
+            target: balc callee
+            break
+            callee: lwpc $t2,0
+            jic $ra,0
+        """.trimIndent())
+        TestSessions.create().use { machine ->
+            machine.selectTarget(MarsTarget.MARS64)
+            machine.settings.setSelfModifyingCodeEnabled(true)
+            val program = machine.assemble(listOf(source))
+            val high = 0x1_0000_1000L
+            val generated = program.machineList!!.drop(2)
+            generated.forEachIndexed { index, statement ->
+                machine.memory.writeData(high + index * 4, 4, statement.binaryStatement)
+            }
+            machine.editIntegerRegister(4, high)
+            val call = program.executeSessionInstruction()
+            assertEquals(machine.memory.textBaseAddress.toLong() + 4, (call.transfer as StepEvent.Call).returnAddressBits)
+            assertEquals(high, machine.registerFile.programCounterBits)
+
+            assertEquals(high, program.executeSessionInstruction().pcBits)
+            assertEquals(high, machine.registerFile.getLongValueNoNotify(8))
+            program.executeSessionInstruction()
+            program.executeSessionInstruction()
+            assertEquals(1L, machine.registerFile.getLongValueNoNotify(9))
+            assertEquals(high + 16, machine.registerFile.programCounterBits)
+            machine.backStepper.backStep()
+            assertEquals(high + 8, machine.registerFile.programCounterBits)
+            assertEquals(0L, machine.registerFile.getLongValueNoNotify(9))
+            assertEquals(high + 4, machine.backStepper.previousExecution()?.addressBits)
+            program.executeSessionInstruction()
+
+            val compactCall = program.executeSessionInstruction()
+            assertEquals(high + 20, (compactCall.transfer as StepEvent.Call).returnAddressBits)
+            assertEquals(high + 20, machine.registerFile.getLongValueNoNotify(31))
+            program.executeSessionInstruction()
+            assertEquals(generated[6].binaryStatement, machine.registerFile.getValue(10))
+            val jump = program.executeSessionInstruction()
+            assertEquals(high + 20, (jump.transfer as StepEvent.Jump).targetBits)
+            val fault = assertThrows(ProcessingException::class.java) { program.executeSessionInstruction() }
+            assertTrue(fault.message.orEmpty().contains("0x0000000100001014"))
+            assertEquals(high + 20, machine.coprocessor0.getRegister(14)!!.longValueNoNotify)
+            machine.backStepper.backStep()
+            assertEquals(high + 20, machine.registerFile.programCounterBits)
+            assertEquals(0L, machine.coprocessor0.getRegister(14)!!.longValueNoNotify)
+        }
+    }
+
     @ParameterizedTest
     @ValueSource(booleans = [MemoryState.LITTLE_ENDIAN, MemoryState.BIG_ENDIAN])
     fun `native memory instructions use a distinct data segment above four GiB`(

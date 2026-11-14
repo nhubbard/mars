@@ -6,7 +6,7 @@ class InstrBc : CompactBranchInstruction(
     "110010 ffffffffffffffffffffffffff",
     { statement, context ->
         val operands = statement.operands
-        val target = context.registerFile.programCounter + (operands[0] shl 2)
+        val target = context.registerFile.programCounterBits + (operands[0] shl 2)
         context.compactTransfer(statement, target, branch = true)
     },
 )

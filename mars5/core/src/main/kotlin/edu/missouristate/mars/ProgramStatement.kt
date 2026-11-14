@@ -67,6 +67,7 @@ open class ProgramStatement private constructor(
     open var basicAssemblyStatement: String?,
     open var machineStatement: String?,
     private val display: ArrayList<DisplayElement>,
+    val addressBits: Long = address.toLong(),
 ) {
     /** Creates a statement with written tokens and source information. */
     @JvmOverloads
@@ -95,12 +96,16 @@ open class ProgramStatement private constructor(
         displaySettings: SimulationSettings? = null,
     ) : this(binaryStatement, textAddress, instructions, displaySettings, instructions.findByBinaryCode(binaryStatement))
 
+    internal constructor(binary: Int, address: Long, instructions: InstructionSet, settings: SimulationSettings? = null) :
+        this(binary, address.toInt(), instructions, settings, instructions.findByBinaryCode(binary), address)
+
     private constructor(
         binary: Int, address: Int, instructions: InstructionSet, settings: SimulationSettings?, decoded: BasicInstruction?,
+        addressBits: Long = address.toLong(),
     ) : this(
         null, "", "", null, null, decoded ?: if (binary == 0) instructions.matchOperator("nop")!!.first() else null,
         address, 0, null, emptyList(), settings, if (decoded == null) null else IntArray(4),
-        0, binary, null, null, ArrayList(),
+        0, binary, null, null, ArrayList(), addressBits,
     ) {
         if (decoded == null) {
             display.add(DisplayElement.Text("<INVALID>"))
@@ -121,6 +126,7 @@ open class ProgramStatement private constructor(
         private val basicAssembly = statement.basicAssemblyStatement
         private val machine = statement.machineStatement
         private val address = statement.address
+        private val addressBits = statement.addressBits
         private val line = statement.sourceLine
         private val binary = statement.binaryStatement
         private val numOperands = statement.numOperands
@@ -133,11 +139,11 @@ open class ProgramStatement private constructor(
             val instruction = instructions.matchOperator(mnemonic)!!.first { it.exampleFormat == format }
             return ProgramStatement(
                 null, sourceFile, source, null, null, instruction, address, line, origin,
-                sourceOperands, settings, operands.copyOf(), numOperands, binary, basicAssembly, machine, ArrayList(display),
+                sourceOperands, settings, operands.copyOf(), numOperands, binary, basicAssembly, machine, ArrayList(display), addressBits,
             )
         }
 
-        fun hasSameMachineWord(other: Image): Boolean = address == other.address && binary == other.binary
+        fun hasSameMachineWord(other: Image): Boolean = addressBits == other.addressBits && binary == other.binary
 
         companion object {
             internal fun capture(statement: ProgramStatement): Image = Image(statement)

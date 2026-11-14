@@ -48,7 +48,7 @@ open class ProcessingException private constructor(
 
     constructor() : this(null)
 
-    constructor(statement: ProgramStatement, message: String?) : this(ErrorList(), statement, statement.address, message)
+    constructor(statement: ProgramStatement, message: String?) : this(ErrorList(), statement, statement.addressBits, message)
 
     @Suppress("unused", "RedundantSuppression")
     constructor(statement: ProgramStatement, message: String?, cause: Int) : this(statement, message)
@@ -56,10 +56,10 @@ open class ProcessingException private constructor(
     constructor(statement: ProgramStatement, error: AddressErrorException) : this(statement, error.message)
 
     constructor(context: InstructionContext, statement: ProgramStatement?, message: String?) :
-        this(context.newErrorList(), statement, context.registerFile.programCounter - INSTRUCTION_LENGTH, message)
+        this(context.newErrorList(), statement, context.registerFile.programCounterBits - INSTRUCTION_LENGTH, message)
 
-    private constructor(errors: ErrorList, statement: ProgramStatement?, address: Int, message: String?) :
-        this(errors, statement!!.instructionOrigin, "Runtime exception at ${Binary.intToHexString(address)}: $message") {
+    private constructor(errors: ErrorList, statement: ProgramStatement?, address: Long, message: String?) :
+        this(errors, statement!!.instructionOrigin, "Runtime exception at ${if (address == address.toInt().toLong()) Binary.intToHexString(address.toInt()) else Binary.longToHexString(address)}: $message") {
         errors.add(ErrorMessage(statement, this.message))
     }
 

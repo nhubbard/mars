@@ -2,6 +2,7 @@ package edu.missouristate.mars.core
 
 import edu.missouristate.mars.MIPSprogram
 import edu.missouristate.mars.ProcessingException
+import edu.missouristate.mars.ProgramStatement
 import edu.missouristate.mars.api.AssemblySourceSnapshot
 import edu.missouristate.mars.api.MarsGuiProxy
 import edu.missouristate.mars.api.MarsTarget
@@ -32,7 +33,7 @@ import java.util.Objects
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.locks.ReentrantLock
 import java.util.function.Consumer
-import java.util.function.IntSupplier
+import java.util.function.LongSupplier
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.concurrent.withLock
@@ -234,6 +235,10 @@ class MarsContext @Inject constructor(
         instructionSet.populate(target)
         this.target = target
         memory.wideDataEnabled = target == MarsTarget.MARS64
+        memory.wideInstructionDecoder = if (target == MarsTarget.MARS64) {
+            { word, address -> ProgramStatement(word, address, instructionSet, settings) }
+        } else null
+        registerFile.wideProgramCounter = target == MarsTarget.MARS64
         coprocessor1.hasWideRegisters = target == MarsTarget.MARS64
         coprocessor1.resetRegisters()
     }
@@ -311,7 +316,7 @@ class MarsContext @Inject constructor(
         }
         checkCancellation.run()
         AssemblyImage(
-            current.filename!!, memory.getConfiguration().configurationIdentifier()!!, target, registerFile.programCounter,
+            current.filename!!, memory.getConfiguration().configurationIdentifier()!!, target, registerFile.programCounterBits,
             instructions, memory.captureData(checkCancellation), current.sourceMap(), current.symbolMap(),
         )
     }
@@ -321,10 +326,10 @@ class MarsContext @Inject constructor(
     }
 
     fun loadAssemblyImage(image: AssemblyImage, startAtMain: Boolean, checkCancellation: Runnable) {
-        loadAssemblyImage(image, checkCancellation) { programEntryAddress(startAtMain) }
+        loadAssemblyImage(image, checkCancellation) { programEntryAddress(startAtMain).toLong() }
     }
 
-    private fun loadAssemblyImage(image: AssemblyImage, checkCancellation: Runnable, entryAddress: IntSupplier) {
+    private fun loadAssemblyImage(image: AssemblyImage, checkCancellation: Runnable, entryAddress: LongSupplier) {
         claimStoppedSession().use {
             selectTargetStopped(image.target)
             val instructions = image.instructions.mapTo(ArrayList(image.instructions.size)) {
@@ -345,7 +350,7 @@ class MarsContext @Inject constructor(
                 }
             }
             symbolTable.loadDefinitions(image.symbols.globals())
-            registerFile.initializeProgramCounter(entryAddress.asInt)
+            registerFile.setProgramCounterBits(entryAddress.asLong)
             program = loaded
         }
     }

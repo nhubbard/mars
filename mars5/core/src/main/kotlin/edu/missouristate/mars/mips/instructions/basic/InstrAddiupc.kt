@@ -7,6 +7,6 @@ class InstrAddiupc : PcRelativeWordInstruction(
     "111011 fffff 00 sssssssssssssssssss",
     { statement, context ->
         val operands = statement.operands
-        context.updateRegister(operands[0], statement.address + operands[1])
+        context.updateLongRegister(operands[0], statement.addressBits + operands[1])
     },
 )

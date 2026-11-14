@@ -8,8 +8,8 @@ class InstrBalc : CompactBranchInstruction(
     "111010 ffffffffffffffffffffffffff",
     { statement, context ->
         val operands = statement.operands
-        val target = context.registerFile.programCounter + (operands[0] shl 2)
+        val target = context.registerFile.programCounterBits + (operands[0] shl 2)
         context.compactTransfer(statement, target, branch = true)
-        context.link(31, statement.address + INSTRUCTION_LENGTH)
+        context.link(31, statement.addressBits + INSTRUCTION_LENGTH)
     },
 )

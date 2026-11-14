@@ -13,6 +13,6 @@ class InstrJialc : BasicInstruction(
         val operands = statement.operands
         val target = context.registerJumpTarget(statement, operands[0], operands[1].toShort().toInt())
         context.compactTransfer(statement, target)
-        context.link(31, statement.address + INSTRUCTION_LENGTH)
+        context.link(31, statement.addressBits + INSTRUCTION_LENGTH)
     },
 )

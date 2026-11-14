@@ -311,6 +311,7 @@ open class MIPSprogram @JvmOverloads constructor(
         val stopReason: StopEvent.Reason?,
         val transfer: StepEvent.Transfer? = null,
         val branchOutcome: StepEvent.BranchOutcome? = null,
+        val pcBits: Long = pc.toLong(),
     )
 
     @Throws(ProcessingException::class)
@@ -321,7 +322,7 @@ open class MIPSprogram @JvmOverloads constructor(
         check(session.program === this && instructions != null) { "This is not the current assembled program of its session" }
         val execution = sessionExecution ?: InstructionContext(session, syscallEnvironment ?: session.syscallEnvironment)
             .also { sessionExecution = it }
-        val pc = session.registerFile.programCounter
+        val pc = session.registerFile.programCounterBits
         val statement = try {
             session.memory.fetchInstruction(pc)
         } catch (error: AddressErrorException) {
@@ -336,16 +337,16 @@ open class MIPSprogram @JvmOverloads constructor(
         }
         if (statement == null) {
             session.delayedBranch.clear()
-            return ExecutionStep(pc, 0, false, StopEvent.Reason.CLIFF_TERMINATION)
+            return ExecutionStep(pc.toInt(), 0, false, StopEvent.Reason.CLIFF_TERMINATION, pcBits = pc)
         }
         try {
             execution.executeWithExceptionHandler(statement)
         } catch (error: ProcessingException) {
             session.delayedBranch.clear()
             if (error.errors() != null) throw error
-            return ExecutionStep(pc, statement.binaryStatement, true, StopEvent.Reason.NORMAL_EXIT)
+            return ExecutionStep(pc.toInt(), statement.binaryStatement, true, StopEvent.Reason.NORMAL_EXIT, pcBits = pc)
         }
-        return ExecutionStep(pc, statement.binaryStatement, true, null, execution.lastTransfer(), execution.lastBranchOutcome())
+        return ExecutionStep(pc.toInt(), statement.binaryStatement, true, null, execution.lastTransfer(), execution.lastBranchOutcome(), pc)
     }
 
     // A nonpositive limit means execution is unlimited.
@@ -363,7 +364,7 @@ open class MIPSprogram @JvmOverloads constructor(
                 if (result.stopReason != null) return true
                 if (breakPoints != null) {
                     for (breakpoint in breakPoints) {
-                        if (breakpoint == session.registerFile.programCounter) return false
+                        if (breakpoint.toLong() == session.registerFile.programCounterBits) return false
                     }
                 }
             }

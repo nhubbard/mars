@@ -79,6 +79,7 @@ open class MemoryState(
     internal data class Reservation(val address: Long, val size: Int, val paired: Boolean = false)
     internal var reservation: Reservation? = null
     internal var wideDataEnabled = false
+    internal var wideInstructionDecoder: ((Int, Long) -> ProgramStatement)? = null
     private lateinit var wideData: WordMemorySegment
 
     /** Linked operations use aligned ordinary storage in the single-core simulator. */
@@ -472,6 +473,29 @@ open class MemoryState(
     /** Fetch the current instruction and mark the observer event as an instruction fetch. */
     @Throws(AddressErrorException::class)
     open fun fetchInstruction(address: Int): ProgramStatement? = readStatement(address, notify = true, instructionFetch = true)
+
+    internal fun checkInstructionAddress(address: Long): Long {
+        val narrow = address.toInt()
+        if (address == narrow.toLong() || address == narrow.toUInt().toLong()) return narrow.toLong()
+        wideDataOffset(address, WORD_LENGTH_BYTES, ADDRESS_EXCEPTION_LOAD)
+        if (!settings.isSelfModifyingCodeEnabled) {
+            throw AddressErrorException("Effective address is outside mapped memory: ", ADDRESS_EXCEPTION_LOAD, address)
+        }
+        return address
+    }
+
+    internal fun getStatementNoNotify(address: Long): ProgramStatement? = fetchInstruction(address, notify = false)
+
+    internal fun fetchInstruction(address: Long, notify: Boolean = true): ProgramStatement? {
+        val mapped = checkInstructionAddress(address)
+        if (mapped == mapped.toInt().toLong()) {
+            return if (notify) fetchInstruction(mapped.toInt()) else getStatementNoNotify(mapped.toInt())
+        }
+        if (mapped % WORD_LENGTH_BYTES != 0L) {
+            throw AddressErrorException("fetch address for text segment not aligned to word boundary ", ADDRESS_EXCEPTION_LOAD, mapped)
+        }
+        return checkNotNull(wideInstructionDecoder)(readData(mapped, WORD_LENGTH_BYTES), mapped)
+    }
 
     private fun readStatement(address: Int, notify: Boolean, instructionFetch: Boolean): ProgramStatement? {
         checkAlignment(

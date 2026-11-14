@@ -10,6 +10,6 @@ class InstrAluipc : BasicInstruction(
     "111011 fffff 11111 ssssssssssssssss",
     { statement, context ->
         val operands = statement.operands
-        context.updateRegister(operands[0], (statement.address + (operands[1] shl 16)) and -0x10000)
+        context.updateLongRegister(operands[0], (statement.addressBits + (operands[1] shl 16)) and -0x10000L)
     },
 )

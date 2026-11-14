@@ -12,7 +12,7 @@ internal class InstrCompactZeroBranch(branchOnZero: Boolean) : BasicInstruction(
         val (source, displacement) = statement.operands
         context.checkCompactTransferSlot(statement)
         if ((context.readIntegerOperand(source) == 0L) == branchOnZero) {
-            val target = context.registerFile.programCounter + (displacement shl 2)
+            val target = context.registerFile.programCounterBits + (displacement shl 2)
             context.compactTransfer(statement, target, branch = true)
         }
     },

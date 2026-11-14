@@ -72,13 +72,16 @@ zero. `BadVAddr` and `EPC` retain doublewords on transfer. `Status` and
 `Cause` use the low word on write and zero-extend on a doubleword read.
 Unsupported register and selector combinations trap. An address fault now
 preserves the full effective address in `BadVAddr`, and backstep restores
-its previous value. The program counter and mapped segments still use
-32-bit addresses. MARS64 register-based integer, floating-point, vector,
+its previous value. MARS64 register-based integer, floating-point, vector,
 and linked memory operations can also access a sparse 4 MiB data region at
 `0x0000000100000000`. The region starts zeroed. Accesses that cross its
 limit raise an address exception before writing any bytes. Its contents
-participate in assembly images and backstep. Assembly labels, instruction
-fetch, and the IntelliJ memory browser still use the classroom map.
+participate in assembly images and backstep. With self-modifying code
+enabled, MARS64 can fetch generated instructions in that region. The program
+counter, control transfers, PC-relative instructions, EPC, and backstep
+preserve the full address during execution. Source assembly still places
+text and labels in the classroom map. The IntelliJ memory browser and
+breakpoints still use 32-bit addresses.
 
 `mfc0` sign-extends its word result. `mtc0` preserves the full source value
 when writing an educational address register. For both forms, reserved or

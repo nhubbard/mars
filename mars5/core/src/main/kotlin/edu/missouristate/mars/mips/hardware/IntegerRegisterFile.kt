@@ -130,6 +130,13 @@ class IntegerRegisterFile(globalPointer: Int, stackPointer: Int, textBaseAddress
 
     fun setProgramCounter(value: Int): Int = programCounterRegister.setValue(value)
 
+    internal var wideProgramCounter = false
+
+    fun setProgramCounterBits(value: Long): Long =
+        programCounterRegister.setLongValue(if (wideProgramCounter) value else value.toInt().toLong())
+
+    val programCounterBits: Long get() = programCounterRegister.longValueNoNotify
+
     val programCounter: Int get() = programCounterRegister.value
 
     val initialProgramCounter: Int get() = programCounterRegister.resetValue
@@ -142,7 +149,7 @@ class IntegerRegisterFile(globalPointer: Int, stackPointer: Int, textBaseAddress
     }
 
     fun incrementPC() {
-        programCounterRegister.setValue(programCounter + Instruction.INSTRUCTION_LENGTH)
+        setProgramCounterBits(programCounterBits + Instruction.INSTRUCTION_LENGTH)
     }
 
     override fun setValue(register: Int, value: Int) {

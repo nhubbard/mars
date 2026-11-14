@@ -12,7 +12,7 @@ class AssemblyImage internal constructor(
     @JvmField internal val filename: String?,
     @JvmField internal val layout: String,
     val target: MarsTarget,
-    @JvmField internal val entry: Int,
+    @JvmField internal val entry: Long,
     instructions: List<ProgramStatement.Image>,
     @JvmField internal val data: DataImage,
     @JvmField internal val sources: InstructionSourceMap,

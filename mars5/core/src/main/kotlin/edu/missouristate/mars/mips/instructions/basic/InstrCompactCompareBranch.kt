@@ -17,11 +17,11 @@ internal class InstrCompactCompareBranch(private val form: CompactComparison) : 
         val displacement = operands[if (pair) 2 else 1]
         val taken = form.test(left, right)
         if (form.link) {
-            val returnAddress = context.registerFile.programCounter
-            if (taken) context.link(31, returnAddress) else context.updateRegister(31, returnAddress)
+            val returnAddress = context.registerFile.programCounterBits
+            if (taken) context.link(31, returnAddress) else context.updateLongRegister(31, returnAddress)
         }
         if (taken) {
-            context.compactTransfer(statement, context.registerFile.programCounter + (displacement shl 2), branch = true)
+            context.compactTransfer(statement, context.registerFile.programCounterBits + (displacement shl 2), branch = true)
         }
     },
 ) {

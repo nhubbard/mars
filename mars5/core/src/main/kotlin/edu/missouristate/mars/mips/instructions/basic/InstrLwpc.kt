@@ -10,11 +10,8 @@ class InstrLwpc : PcRelativeWordInstruction(
     { statement, context ->
         val operands = statement.operands
         try {
-            val address = statement.address + operands[1]
-            val memory = context.memory()
-            val value = if (memory.inTextSegment(address) || memory.inKernelTextSegment(address)) {
-                memory.getStatement(address)?.binaryStatement ?: 0
-            } else memory.getWord(address)
+            val address = statement.addressBits + operands[1]
+            val value = context.loadPcRelativeWord(address)
             context.updateRegister(operands[0], value)
         } catch (failure: AddressErrorException) {
             throw ProcessingException(context, statement, failure)

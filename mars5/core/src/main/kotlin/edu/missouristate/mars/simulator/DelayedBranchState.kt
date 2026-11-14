@@ -34,7 +34,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 class DelayedBranchState {
     private var state = CLEARED
-    private var targetAddress = 0
+    private var targetAddress = 0L
     private var jump = false
     internal var forbiddenSlot = false
 
@@ -42,9 +42,10 @@ class DelayedBranchState {
     @JvmRecord
     data class Snapshot @JvmOverloads constructor(
         val state: Int, val targetAddress: Int, val jump: Boolean, val forbiddenSlot: Boolean = false,
+        val targetAddressBits: Long = targetAddress.toLong(),
     )
 
-    fun snapshot(): Snapshot = Snapshot(state, targetAddress, jump, forbiddenSlot)
+    fun snapshot(): Snapshot = Snapshot(state, targetAddress.toInt(), jump, forbiddenSlot, targetAddress)
 
     fun restore(snapshot: Snapshot) {
         require(snapshot.state in CLEARED..TRIGGERED) { "Invalid delayed branch state" }
@@ -52,7 +53,7 @@ class DelayedBranchState {
             clear()
         } else {
             state = snapshot.state
-            targetAddress = snapshot.targetAddress
+            targetAddress = snapshot.targetAddressBits
             jump = snapshot.jump
         }
         forbiddenSlot = snapshot.forbiddenSlot
@@ -60,7 +61,9 @@ class DelayedBranchState {
 
     fun register(targetAddress: Int) = register(targetAddress, false)
 
-    fun register(targetAddress: Int, jump: Boolean) {
+    fun register(targetAddress: Int, jump: Boolean) = register(targetAddress.toLong(), jump)
+
+    internal fun register(targetAddress: Long, jump: Boolean = false) {
         if (state == CLEARED) {
             this.targetAddress = targetAddress
             this.jump = jump
@@ -77,7 +80,7 @@ class DelayedBranchState {
 
     fun clear() {
         state = CLEARED
-        targetAddress = 0
+        targetAddress = 0L
         jump = false
         forbiddenSlot = false
     }
@@ -89,7 +92,9 @@ class DelayedBranchState {
 
     val isTriggered: Boolean get() = state == TRIGGERED
 
-    val branchTargetAddress: Int get() = targetAddress
+    val branchTargetAddress: Int get() = targetAddress.toInt()
+
+    internal val branchTargetAddressBits: Long get() = targetAddress
 
     private companion object {
         const val CLEARED = 0

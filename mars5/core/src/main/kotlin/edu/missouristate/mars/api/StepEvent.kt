@@ -11,6 +11,7 @@ data class StepEvent @JvmOverloads constructor(
     val stepCount: Long,
     val transfer: Transfer? = null,
     val branchOutcome: BranchOutcome? = null,
+    val pcBits: Long = pc.toLong(),
 ) {
     enum class BranchOutcome {
         TAKEN,
@@ -21,11 +22,13 @@ data class StepEvent @JvmOverloads constructor(
 
     /** An executed jump or taken branch saved a return address in a nonzero register. */
     @JvmRecord
-    data class Call(val linkRegister: Int, val returnAddress: Int) : Transfer
+    data class Call @JvmOverloads constructor(
+        val linkRegister: Int, val returnAddress: Int, val returnAddressBits: Long = returnAddress.toLong(),
+    ) : Transfer
 
     /** A non-linking jump reached its target after any delay slot. */
     @JvmRecord
-    data class Jump(val target: Int) : Transfer
+    data class Jump @JvmOverloads constructor(val target: Int, val targetBits: Long = target.toLong()) : Transfer
 
     /** A recoverable fault or interrupt entered the exception handler. */
     enum class ExceptionEntry : Transfer {

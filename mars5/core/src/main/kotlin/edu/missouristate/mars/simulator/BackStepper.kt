@@ -52,7 +52,7 @@ open class BackStepper(
     @Volatile private var engaged = true
     private var nextFrame = 0L
     private var activeFrame = 0L
-    private var framePc = 0
+    private var framePc = 0L
     private var frameStatement: ProgramStatement? = null
     private var frameBranch: DelayedBranchState.Snapshot? = null
     private var frameRestore: Runnable? = null
@@ -73,7 +73,9 @@ open class BackStepper(
     }
 
     /** Open an undo group before incrementing the program counter. */
-    open fun beginInstruction(pc: Int, statement: ProgramStatement?): Boolean {
+    open fun beginInstruction(pc: Int, statement: ProgramStatement?): Boolean = beginInstruction(pc.toLong(), statement)
+
+    internal fun beginInstruction(pc: Long, statement: ProgramStatement?): Boolean {
         check(activeFrame == 0L) { "An instruction is already executing" }
         if (!engaged) return false
         val executed = statement ?: throw NullPointerException()
@@ -132,10 +134,12 @@ open class BackStepper(
     internal fun previousInstruction(): ProgramStatement? = previousInstructionStep()?.statement
 
     open fun previousExecution(): ExecutedInstruction? =
-        previousInstructionStep()?.let { ExecutedInstruction(it.pc, it.inDelaySlot) }
+        previousInstructionStep()?.let { ExecutedInstruction(it.pc.toInt(), it.inDelaySlot, it.pc) }
 
     @JvmRecord
-    data class ExecutedInstruction(val address: Int, val delaySlot: Boolean)
+    data class ExecutedInstruction @JvmOverloads constructor(
+        val address: Int, val delaySlot: Boolean, val addressBits: Long = address.toLong(),
+    )
 
     open fun previousMemoryWrite(): MemoryWrite? = if (engaged) backSteps.previousMemoryWrite() else null
 
@@ -180,7 +184,7 @@ open class BackStepper(
                     restore = step.restore
                     step.restore = null
                 }
-                if (step.pc != NOT_PC_VALUE) registerFile.setProgramCounter(step.pc)
+                if (step.pc != NOT_PC_VALUE) registerFile.setProgramCounterBits(step.pc)
                 restoreStep(step)
             } while (!backSteps.empty() && belongsToGroup(backSteps.peek(), frame, statement))
             if (branch != null) delayedBranch.restore(branch)
@@ -206,7 +210,7 @@ open class BackStepper(
             Action.MEMORY_WIDE_BYTE, Action.MEMORY_WIDE_HALF, Action.MEMORY_WIDE_WORD ->
                 memory.writeData(step.param2, step.action.byteCount, first)
             Action.REGISTER -> registerFile.updateLongRegister(first, step.param2)
-            Action.PC -> registerFile.setProgramCounter(first)
+            Action.PC -> registerFile.setProgramCounterBits(step.param2)
             Action.COPROCESSOR_0 -> coprocessor0.updateRegisterBits(first, step.param2)
             Action.COPROCESSOR_1 -> if (coprocessor1.hasWideRegisters) {
                 coprocessor1.updateLongRegister(first, step.param2)
@@ -223,7 +227,7 @@ open class BackStepper(
         }
     }
 
-    private fun pc(): Int = if (activeFrame == 0L) registerFile.programCounter - INSTRUCTION_LENGTH else framePc
+    private fun pc(): Long = if (activeFrame == 0L) registerFile.programCounterBits - INSTRUCTION_LENGTH else framePc
 
     open fun addMemoryRestoreRawWord(address: Int, value: Int): Int = record(Action.MEMORY_RAW_WORD, address, value)
 
@@ -258,8 +262,12 @@ open class BackStepper(
     }
 
     open fun addPCRestore(value: Int): Int {
+        return addPCRestore(value.toLong()).toInt()
+    }
+
+    internal fun addPCRestore(value: Long): Long {
         val address = if (activeFrame == 0L) value - INSTRUCTION_LENGTH else framePc
-        backSteps.push(Action.PC, address, address)
+        backSteps.push(Action.PC, address, second = address)
         return address
     }
 
@@ -328,13 +336,13 @@ open class BackStepper(
         var branch: DelayedBranchState.Snapshot? = null
         var restore: Runnable? = null
         var action = Action.DO_NOTHING
-        var pc = 0
+        var pc = 0L
         var statement: ProgramStatement? = null
         var param1 = 0
         var param2 = 0L
         var inDelaySlot = false
 
-        fun assign(action: Action, address: Int, first: Int, second: Long) {
+        fun assign(action: Action, address: Long, first: Int, second: Long) {
             this.action = action
             frame = activeFrame
             branch = frameBranch
@@ -424,7 +432,7 @@ open class BackStepper(
         }
 
         @Synchronized
-        fun push(action: Action, address: Int, first: Int = 0, second: Long = 0) {
+        fun push(action: Action, address: Long, first: Int = 0, second: Long = 0) {
             if (!engaged || (activeFrame != 0L && frameDiscarded)) return
             if (size == capacity && activeFrame != 0L) {
                 val oldestFrame = stack[oldest()].frame
@@ -461,6 +469,6 @@ open class BackStepper(
     }
 
     private companion object {
-        const val NOT_PC_VALUE = -1
+        const val NOT_PC_VALUE = -1L
     }
 }

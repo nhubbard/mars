@@ -2,7 +2,6 @@ package edu.missouristate.mars.mips.instructions
 
 import edu.missouristate.mars.ProcessingException
 import edu.missouristate.mars.mips.hardware.AddressErrorException
-import edu.missouristate.mars.mips.hardware.MemoryState
 import edu.missouristate.mars.mips.hardware.MemoryState.Reservation
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat.I_BRANCH_FORMAT
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat.I_FORMAT
@@ -324,7 +323,7 @@ private fun legacyBranchAndLink() = object : BasicInstruction(
     "bal label", "Branch and link after one delay slot",
     I_BRANCH_FORMAT, "000001 00000 10001 ffffffffffffffff",
     { statement, context ->
-        context.link(31, context.registerFile.programCounter + INSTRUCTION_LENGTH)
+        context.link(31, context.registerFile.programCounterBits + INSTRUCTION_LENGTH)
         context.release6DelayedBranch(statement.operands[0], taken = true)
     },
 ) {
@@ -342,7 +341,7 @@ private fun noOpAndLink() = BasicInstruction(
     "nal", "Write the address after the delay slot into the link register",
     I_BRANCH_FORMAT, "000001 00000 10000 cccccccccccccccc",
 ) { _, context ->
-    context.updateRegister(31, context.registerFile.programCounter + INSTRUCTION_LENGTH)
+    context.updateLongRegister(31, context.registerFile.programCounterBits + INSTRUCTION_LENGTH)
     context.release6DelayedBranch(0, taken = false)
 }
 
@@ -437,18 +436,11 @@ private fun pcRelativeWideLoad(doubleword: Boolean): PcRelativeWordInstruction =
         else "111011 fffff 10 sssssssssssssssssss",
         { statement, context ->
             val (destination, displacement) = statement.operands
-            val base = if (doubleword) statement.address and -8 else statement.address
+            val base = if (doubleword) statement.addressBits and -8L else statement.addressBits
             val address = base + displacement
-            val memory = context.memory()
-            fun readWord(location: Int): Int =
-                if (memory.inTextSegment(location) || memory.inKernelTextSegment(location)) {
-                    memory.getStatement(location)?.binaryStatement ?: 0
-                } else {
-                    memory.getWord(location)
-                }
             try {
-                val value = if (doubleword) readDoubleword(memory, address, ::readWord)
-                else readWord(address).toUInt().toLong()
+                val value = if (doubleword) readDoubleword(context.memory().byteOrder, address, context::loadPcRelativeWord)
+                else context.loadPcRelativeWord(address).toUInt().toLong()
                 context.updateLongRegister(destination, value)
             } catch (failure: AddressErrorException) {
                 throw ProcessingException(context, statement, failure)
@@ -457,10 +449,10 @@ private fun pcRelativeWideLoad(doubleword: Boolean): PcRelativeWordInstruction =
         displacementShift = if (doubleword) 3 else 2,
     ) {}
 
-private inline fun readDoubleword(memory: MemoryState, address: Int, readWord: (Int) -> Int): Long {
+private inline fun readDoubleword(littleEndian: Boolean, address: Long, readWord: (Long) -> Int): Long {
     val first = readWord(address).toUInt().toLong()
     val second = readWord(address + Int.SIZE_BYTES).toUInt().toLong()
-    return if (memory.byteOrder) (second shl Int.SIZE_BITS) or first else (first shl Int.SIZE_BITS) or second
+    return if (littleEndian) (second shl Int.SIZE_BITS) or first else (first shl Int.SIZE_BITS) or second
 }
 
 private fun wideUpperImmediate(name: String, description: String, selector: String, shift: Int) =

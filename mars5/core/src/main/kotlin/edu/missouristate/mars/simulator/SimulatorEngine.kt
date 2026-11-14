@@ -155,7 +155,7 @@ class SimulatorEngine(private val session: MarsContext) : MarsSimulator, AutoClo
         var steps = 0L
         while (true) {
             if (request != Request.NONE) return if (request == Request.STOP) Reason.STOP_REQUEST else Reason.PAUSE
-            if (shouldBreak != null) {
+            if (shouldBreak != null && session.registerFile.programCounterBits == session.registerFile.getPC().toLong()) {
                 val hit = shouldBreak.test(session.registerFile.getPC())
                 if (request != Request.NONE) continue
                 if (hit) return Reason.BREAKPOINT
@@ -165,7 +165,7 @@ class SimulatorEngine(private val session: MarsContext) : MarsSimulator, AutoClo
                 steps++
                 stepCount++
                 if (instructionLimit > 0) instructionsRemaining--
-                val event = StepEvent(result.pc, result.instruction, stepCount, result.transfer, result.branchOutcome)
+                val event = StepEvent(result.pc, result.instruction, stepCount, result.transfer, result.branchOutcome, result.pcBits)
                 notifyListeners { it.onStep(event) }
             }
             val stop = result.stopReason
@@ -173,7 +173,8 @@ class SimulatorEngine(private val session: MarsContext) : MarsSimulator, AutoClo
             if (instructionLimitReached()) return Reason.INSTRUCTION_LIMIT
             if (request != Request.NONE) continue
             // Address-list breakpoints are checked after execution so resuming can leave a breakpoint.
-            if (points != null && points.binarySearch(session.registerFile.getPC()) >= 0) return Reason.BREAKPOINT
+            if (points != null && session.registerFile.programCounterBits == session.registerFile.getPC().toLong() &&
+                points.binarySearch(session.registerFile.getPC()) >= 0) return Reason.BREAKPOINT
             if (maximumSteps > 0 && steps >= maximumSteps) return Reason.STEP_LIMIT
             awaitNextInstruction()
         }
