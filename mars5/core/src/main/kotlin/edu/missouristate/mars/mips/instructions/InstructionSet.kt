@@ -57,6 +57,7 @@ open class InstructionSet {
             forms.addAll(wideInstructionFactories.map { it() })
             forms.addAll(release6BarrierInstructions())
             forms.addAll(msaRegisterInstructions())
+            forms.addAll(msaIntegerInstructions())
             forms.addAll(release6FloatingCompareInstructions())
             forms.addAll(release6FloatingConversions())
             forms.addAll(release6RoundingInstructions())
