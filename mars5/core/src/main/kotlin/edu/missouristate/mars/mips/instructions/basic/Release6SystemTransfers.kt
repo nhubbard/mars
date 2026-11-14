@@ -10,8 +10,10 @@ import edu.missouristate.mars.mips.instructions.BasicInstructionFormat.R_FORMAT
 import edu.missouristate.mars.simulator.Exceptions.RESERVED_INSTRUCTION_EXCEPTION
 
 internal fun release6SystemTransfers(): List<BasicInstruction> = listOf(
-    systemTransfer(write = false, explicitSelector = false), systemTransfer(write = false, explicitSelector = true),
-    systemTransfer(write = true, explicitSelector = false), systemTransfer(write = true, explicitSelector = true),
+    systemTransfer("dmfc0", "00001", false), systemTransfer("dmfc0", "00001", true),
+    systemTransfer("dmtc0", "00101", false), systemTransfer("dmtc0", "00101", true),
+    systemTransfer("mfc0", "00000", false), systemTransfer("mfc0", "00000", true),
+    systemTransfer("mtc0", "00100", false), systemTransfer("mtc0", "00100", true),
     exceptionReturn("eret", clearReservation = true), exceptionReturn("eretnc", clearReservation = false),
     interruptControl(enable = false, hasDestination = false), interruptControl(enable = false, hasDestination = true),
     interruptControl(enable = true, hasDestination = false), interruptControl(enable = true, hasDestination = true),
@@ -46,24 +48,28 @@ private fun exceptionReturn(mnemonic: String, clearReservation: Boolean): BasicI
     R_FORMAT, "010000 1 000000000000000000 ${if (clearReservation) 0 else 1} 011000",
 ) { statement, context -> context.release6ExceptionReturn(statement, clearReservation) }
 
-private fun systemTransfer(write: Boolean, explicitSelector: Boolean): BasicInstruction {
-    val mnemonic = if (write) "dmtc0" else "dmfc0"
-    val description = if (write) "Move a doubleword into an educational CP0 register" else "Read a doubleword from an educational CP0 register"
+private fun systemTransfer(mnemonic: String, encoding: String, explicitSelector: Boolean): BasicInstruction {
+    val doubleword = mnemonic.startsWith('d')
+    val write = mnemonic.endsWith("tc0")
+    val description = if (write) "Write an educational CP0 register" else "Read an educational CP0 register"
     return object : BasicInstruction(
         "$mnemonic \$t1,\$14${if (explicitSelector) ",7" else ""}", description,
-        R_FORMAT, "010000 ${if (write) "00101" else "00001"} fffff sssss 00000000 ${if (explicitSelector) "ttt" else "000"}",
+        R_FORMAT, "010000 $encoding fffff sssss 00000000 ${if (explicitSelector) "ttt" else "000"}",
         { statement, context ->
             val (integer, system) = statement.operands
             val selector = if (explicitSelector) statement.operands[2] else 0
             if (selector != 0 || context.coprocessor0.getRegister(system) == null) {
-                throw ProcessingException(context, statement, "Unavailable CP0 register $system, selector $selector",
+                if (doubleword) throw ProcessingException(context, statement, "Unavailable CP0 register $system, selector $selector",
                     RESERVED_INSTRUCTION_EXCEPTION)
-            }
-            val wide = system == EPC || system == VADDR
-            if (write) {
+                if (!write) context.updateRegister(integer, 0)
+            } else if (write) {
                 val bits = context.readIntegerOperand(integer)
+                val wide = system == EPC || system == VADDR
                 context.updateCoprocessor0Bits(system, if (wide) bits else bits.toInt().toLong())
+            } else if (!doubleword) {
+                context.updateRegister(integer, context.coprocessor0.getValue(system))
             } else {
+                val wide = system == EPC || system == VADDR
                 val bits = if (wide) context.coprocessor0.readRegisterBits(system)
                 else context.coprocessor0.getValue(system).toUInt().toLong()
                 context.updateLongRegister(integer, bits)

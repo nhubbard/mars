@@ -68,6 +68,10 @@ class MipsCompletionPlatformTest {
                 fixture.configureByText("vector.mars", $$"fill.b <caret>, $9\n")
                 val matches = fixture.completeBasic().orEmpty().map { it.lookupString }
                 assertTrue($$"$w31" in matches)
+                fixture.configureByText("cp0.mars", $$"dmfc0 $t0, <caret>\n")
+                val systemRegisters = fixture.completeBasic().orEmpty().map { it.lookupString }
+                assertTrue($$"$14" in systemRegisters)
+                assertTrue($$"$t1" !in systemRegisters)
             } finally {
                 settings.changeTarget(MarsTarget.MARS32)
             }

@@ -11,8 +11,7 @@ import edu.missouristate.mars.api.InstructionSourceMap.SourceOperand
 import edu.missouristate.mars.mips.instructions.ExtendedInstruction
 import edu.missouristate.mars.mips.instructions.Release6ImmediateTrap
 import edu.missouristate.mars.mips.instructions.Instruction
-import edu.missouristate.mars.mips.instructions.basic.InstrMfc0
-import edu.missouristate.mars.mips.instructions.basic.InstrMtc0
+import edu.missouristate.mars.mips.instructions.Instruction.Companion.coprocessor0Transfers
 import java.nio.file.Path
 
 /*
@@ -188,7 +187,7 @@ internal class Parser(private val pass: FirstPassProcessor) {
             val arguments = token.argumentSites()
             if (arguments.isEmpty() && token.equivalenceSource() == null && token.value == written.value) continue
             val site = SourceToken(location, written.originalStartPos)
-            val systemRegister = index == 2 && (instruction is InstrMfc0 || instruction is InstrMtc0)
+            val systemRegister = index == 2 && instruction.name in coprocessor0Transfers
             val result = operands ?: ArrayList<SourceOperand>().also { operands = it }
             result.add(SourceOperand(site, arguments, token.value, token.type, systemRegister))
         }

@@ -309,8 +309,8 @@ min.s	fd,fs,ft	352	implemented
 min.d	fd,fs,ft	352	implemented
 mina.s	fd,fs,ft	352	implemented
 mina.d	fd,fs,ft	352	implemented
-mfc0	rt, rd	356	audit
-mfc0	rt, rd, sel	356	audit
+mfc0	rt, rd	356	implemented-subset
+mfc0	rt, rd, sel	356	implemented-subset
 mfc1	rt, fs	357	audit
 mfc2	rt, Impl	358	requires-cop2
 mfc2	rt, Impl, sel	358	requires-cop2
@@ -345,8 +345,8 @@ msub.s	fd, fr, fs, ft	380	removed
 msub.d	fd, fr, fs, ft	380	removed
 msub.ps	fd, fr, fs, ft	380	removed
 msubu	rs, rt	382	removed
-mtc0	rt, rd	383	audit
-mtc0	rt, rd, sel	383	audit
+mtc0	rt, rd	383	implemented-subset
+mtc0	rt, rd, sel	383	implemented-subset
 mtc1	rt, fs	385	audit
 mtc2	rt, Impl	386	requires-cop2
 mtc2	rt, Impl, sel	386	requires-cop2

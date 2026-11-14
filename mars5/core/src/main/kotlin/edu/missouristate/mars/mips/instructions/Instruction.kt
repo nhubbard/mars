@@ -55,6 +55,9 @@ abstract class Instruction(
     }
 
     companion object {
+        /** Transfers whose second operand names a CP0 register even though it uses GPR spelling. */
+        val coprocessor0Transfers: Set<String> = setOf("mfc0", "mtc0", "dmfc0", "dmtc0")
+
         const val INSTRUCTION_LENGTH = 4
         const val INSTRUCTION_LENGTH_BITS = 32
 

@@ -16,6 +16,32 @@ import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
 
 class Mars64ExceptionReturnTest {
+    @Test
+    fun `word CP0 transfers preserve wide EPC and apply Release 6 selector defaults`(@TempDir directory: Path) {
+        val source = Files.writeString(directory.resolve("cp0.s"), $$"""
+            mtc0 $9,$14,0
+            dmfc0 $10,$14
+            mfc0 $11,$14,0
+            mtc0 $zero,$14,1
+            mfc0 $12,$14,1
+            dmfc0 $13,$14
+        """.trimIndent())
+        TestSessions.create().use { session ->
+            session.selectTarget(MarsTarget.MARS64)
+            val program = session.assemble(listOf(source), null, false, false)
+            assertEquals(listOf(0x40897000, 0x402a7000, 0x400b7000, 0x40807001, 0x400c7001, 0x402d7000),
+                program.machineList!!.map(ProgramStatement::binaryStatement))
+            val address = 0x1234_5678_8765_4321L
+            session.editIntegerRegister(9, address)
+            session.editIntegerRegister(12, -1)
+            assertTrue(program.simulate(20))
+            assertEquals(address, session.registerFile.getLongValueNoNotify(10))
+            assertEquals(address.toInt().toLong(), session.registerFile.getLongValueNoNotify(11))
+            assertEquals(0L, session.registerFile.getLongValueNoNotify(12))
+            assertEquals(address, session.registerFile.getLongValueNoNotify(13))
+        }
+    }
+
     @ParameterizedTest
     @CsvSource("eret,42000018,0", "eretnc,42000058,1")
     fun `exception return applies the chosen reservation policy`(mnemonic: String, word: String, success: Long, @TempDir directory: Path) {

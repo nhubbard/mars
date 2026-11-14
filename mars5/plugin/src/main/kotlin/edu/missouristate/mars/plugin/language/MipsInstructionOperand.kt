@@ -15,9 +15,8 @@ import edu.missouristate.mars.assembler.TokenList
 import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.Instruction
+import edu.missouristate.mars.mips.instructions.Instruction.Companion.coprocessor0Transfers
 import edu.missouristate.mars.mips.instructions.InstructionDefaults
-import edu.missouristate.mars.mips.instructions.basic.InstrMfc0
-import edu.missouristate.mars.mips.instructions.basic.InstrMtc0
 import edu.missouristate.mars.plugin.MarsExecutionOptions
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.analysis.macroArgumentCount
@@ -39,11 +38,7 @@ internal fun operationOnLine(first: PsiElement?): PsiElement? =
 
 // The assembler tokenizes this operand like a GPR, although it addresses a separate bank.
 internal const val COPROCESSOR0_REGISTER_INDEX = 2
-internal val Instruction.hasCoprocessor0Register: Boolean get() = this is InstrMfc0 || this is InstrMtc0
-
-private val coprocessor0Transfers by lazy {
-    InstructionDefaults.get().instructionList.filter { it.hasCoprocessor0Register }.map { it.name }.toSet()
-}
+internal val Instruction.hasCoprocessor0Register: Boolean get() = name in coprocessor0Transfers
 
 internal fun coprocessor0Operand(head: PsiElement): Int? {
     if (head.text.lowercase() !in coprocessor0Transfers) return null
