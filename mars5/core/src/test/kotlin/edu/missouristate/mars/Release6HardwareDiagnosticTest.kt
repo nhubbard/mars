@@ -52,6 +52,8 @@ class Release6HardwareDiagnosticTest {
             wait
             sdbbp 1
             cache 0,0($9)
+            mfhc0 $9,$2
+            mthc0 $9,$3,0
             unknown_instruction
         """.trimIndent())
         TestSessions.create().use { machine ->
@@ -70,6 +72,8 @@ class Release6HardwareDiagnosticTest {
                 "wait" to "hardware interrupt and power management",
                 "sdbbp" to "EJTAG Debug Mode",
                 "cache" to "privileged cache state",
+                "mfhc0" to "the optional CP0 Move High (MVH) feature",
+                "mthc0" to "the optional CP0 Move High (MVH) feature",
             )) {
                 assertTrue(errors.contains("\"$name\" requires $requirement, which MARS64 does not simulate"), errors)
                 assertNull(machine.instructionSet.matchOperator(name))

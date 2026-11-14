@@ -58,6 +58,7 @@ The distinction helps identify which source needs a diagnostic from MARS64.
 | --- | --- |
 | `requires-cop2` | A platform-specific coprocessor supplies the conditions, registers, or operations. The manual defines transfer encodings and leaves their device behavior implementation-dependent. |
 | `requires-eva` | Enhanced Virtual Addressing uses CP0 access modes and translated user memory from privileged code. |
+| `requires-cp0-mvh` | High-half transfers depend on the optional `Config5.MVH` feature and its extended CP0 register definitions. Use `dmfc0` and `dmtc0` to access the educational address registers as doublewords. |
 | `requires-privileged-platform` | Global invalidation and TLB forms require privileged address translation. `cache` requires cache state. `rdpgpr` and `wrpgpr` require shadow register sets. `wait` depends on interrupt and power-management behavior. |
 | `requires-ejtag` | `deret` and `sdbbp` use processor Debug Mode and its exception state. |
 

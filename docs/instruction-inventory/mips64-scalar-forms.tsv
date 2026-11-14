@@ -314,8 +314,8 @@ mfc0	rt, rd, sel	356	implemented-subset
 mfc1	rt, fs	357	implemented
 mfc2	rt, Impl	358	requires-cop2
 mfc2	rt, Impl, sel	358	requires-cop2
-mfhc0	rt, rd	359	audit
-mfhc0	rt, rd, sel	359	audit
+mfhc0	rt, rd	359	requires-cp0-mvh
+mfhc0	rt, rd, sel	359	requires-cp0-mvh
 mfhc1	rt, fs	361	implemented
 mfhc2	rt, Impl	362	requires-cop2
 mfhc2	rt, rd, sel	362	requires-cop2
@@ -350,8 +350,8 @@ mtc0	rt, rd, sel	383	implemented-subset
 mtc1	rt, fs	385	implemented
 mtc2	rt, Impl	386	requires-cop2
 mtc2	rt, Impl, sel	386	requires-cop2
-mthc0	rt, rd	387	audit
-mthc0	rt, rd, sel	387	audit
+mthc0	rt, rd	387	requires-cp0-mvh
+mthc0	rt, rd, sel	387	requires-cp0-mvh
 mthc1	rt, fs	389	implemented
 mthc2	rt, Impl	390	requires-cop2
 mthc2	rt, Impl, sel	390	requires-cop2

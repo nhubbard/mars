@@ -8,6 +8,7 @@ internal fun release6HardwareRequirement(mnemonic: String): String? = when (mnem
         "privileged Enhanced Virtual Addressing"
     "ginvi", "ginvt", "tlbinv", "tlbinvf", "tlbp", "tlbr", "tlbwi", "tlbwr" -> "privileged address translation"
     "rdpgpr", "wrpgpr" -> "shadow register sets"
+    "mfhc0", "mthc0" -> "the optional CP0 Move High (MVH) feature"
     "wait" -> "hardware interrupt and power management"
     "cache" -> "privileged cache state"
     "deret", "sdbbp" -> "EJTAG Debug Mode"
