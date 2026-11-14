@@ -49,8 +49,10 @@ branch-and-link forms. An untaken compact branch makes the next instruction
 a forbidden slot for control transfers. Backstep restores that state.
 MARS64 uses the Release 6 encodings for `ll`, `sc`, `lld`, and `scd`.
 These reserve the addressed bytes in ordinary storage. Overlapping writes
-invalidate the reservation, and backstep restores it. Paired atomics remain open. Register numbers and immediates
-below are LLVM assembler input, and the hex values are instruction words in architectural bit order. A branch
+invalidate the reservation, and backstep restores it. MARS64 also supports
+`llwp`, `scwp`, `lldp`, and `scdp` using the paired bit in the manual.
+These run in the single-core simulator and use ordinary storage. Example
+register numbers and immediates below are LLVM assembler input, and the hex values are instruction words in architectural bit order. A branch
 or PC-relative immediate in this table is the displacement as written to LLVM.
 
 | Example source | Release 6 word | Family or dependency |

@@ -75,7 +75,7 @@ open class MemoryState(
     private var layout = configuration
     private var endian = LITTLE_ENDIAN
     private val listeners = CopyOnWriteArrayList<MemoryListener>()
-    internal data class Reservation(val address: Int, val size: Int)
+    internal data class Reservation(val address: Int, val size: Int, val paired: Boolean = false)
     internal var reservation: Reservation? = null
 
     /** Linked operations use aligned ordinary storage in the single-core simulator. */

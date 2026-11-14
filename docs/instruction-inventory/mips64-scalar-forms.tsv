@@ -209,8 +209,8 @@ lhue	rt, offset(base)	305	audit
 ll	rt, offset(base)	307	implemented
 lld	rt, offset(base)	309	implemented
 lle	rt, offset(base)	314	audit
-lldp	rt, rd, (base)	312	audit
-llwp	rt, rd, (base)	316	audit
+lldp	rt, rd, (base)	312	implemented
+llwp	rt, rd, (base)	316	implemented
 llwpe	rt, rd, (base)	318	audit
 lsa	rd,rs,rt,sa	320	audit
 dlsa	rd,rs,rt,sa	320	implemented
@@ -345,9 +345,9 @@ sb	rt, offset(base)	448	audit
 sbe	rt, offset(base)	449	audit
 sc	rt, offset(base)	450	implemented
 scd	rt, offset(base)	454	implemented
-scdp	rt, rd, (base)	458	audit
+scdp	rt, rd, (base)	458	implemented
 sce	rt, offset(base)	461	audit
-scwp	rt, rd, (base)	465	audit
+scwp	rt, rd, (base)	465	implemented
 scwpe	rt, rd, (base)	469	audit
 sd	rt, offset(base)	472	audit
 sdbbp	code	473	audit

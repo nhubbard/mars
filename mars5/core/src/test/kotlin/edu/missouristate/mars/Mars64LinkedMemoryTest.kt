@@ -14,6 +14,66 @@ import org.junit.jupiter.params.provider.ValueSource
 
 class Mars64LinkedMemoryTest {
     @ParameterizedTest
+    @CsvSource(
+        "llwp,scwp,7d495876,7d495866,false,false", "llwp,scwp,7d495876,7d495866,false,true",
+        "lldp,scdp,7d495877,7d495867,true,false", "lldp,scdp,7d495877,7d495867,true,true",
+    )
+    fun `paired forms address one aligned reservation and store both registers`(
+        load: String, store: String, loadWord: String, storeWord: String,
+        doubleword: Boolean, littleEndian: Boolean, @TempDir directory: Path,
+    ) {
+        val file = Files.writeString(directory.resolve("pair.s"), $$"""
+            .data
+            .word -2147483647,2,3,4
+            .text
+            $$load $9,$11,($10)
+            $$store $9,$11,($10)
+            $$store $9,$11,($10)
+        """.trimIndent())
+        TestSessions.create().use { session ->
+            session.selectTarget(MarsTarget.MARS64)
+            session.memory.byteOrder = littleEndian
+            val program = session.assemble(listOf(file), null, false, false)
+            val instructions = program.machineList!!
+            assertEquals(loadWord.toInt(16), instructions[0].binaryStatement)
+            assertEquals(storeWord.toInt(16), instructions[1].binaryStatement)
+            for (statement in instructions.take(2)) {
+                val decoded = ProgramStatement(statement.binaryStatement, statement.address, session.instructionSet)
+                assertEquals(statement.operands.toList(), decoded.operands.toList())
+            }
+            val address = session.memory.dataBaseAddress
+            val bytes = if (doubleword) 16 else 8
+            session.editIntegerRegister(10, address.toLong())
+            program.simulate(1)
+            val expected = when {
+                doubleword && littleEndian -> listOf(0x0000_0002_8000_0001L, 0x0000_0004_0000_0003L)
+                doubleword -> listOf(0x0000_0003_0000_0004L, 0x8000_0001_0000_0002uL.toLong())
+                littleEndian -> listOf(-2_147_483_647L, 2L)
+                else -> listOf(2L, -2_147_483_647L)
+            }
+            assertEquals(expected, listOf(9, 11).map(session.registerFile::getLongValueNoNotify))
+            session.editIntegerRegister(9, 0x2222_2222_1111_1111L)
+            session.editIntegerRegister(11, 0x4444_4444_3333_3333L)
+            fun memoryWords() = (0 until bytes step 4).map { session.memory.getWord(address + it) }
+            val original = memoryWords()
+            val words = when {
+                doubleword && littleEndian -> listOf(0x1111_1111, 0x2222_2222, 0x3333_3333, 0x4444_4444)
+                doubleword -> listOf(0x4444_4444, 0x3333_3333, 0x2222_2222, 0x1111_1111)
+                littleEndian -> listOf(0x1111_1111, 0x3333_3333)
+                else -> listOf(0x3333_3333, 0x1111_1111)
+            }
+            program.simulate(1)
+            assertEquals(1L, session.registerFile.getLongValueNoNotify(9))
+            assertEquals(words, memoryWords())
+            session.backStepper.backStep()
+            assertEquals(original, memoryWords())
+            program.simulate(2)
+            assertEquals(0L, session.registerFile.getLongValueNoNotify(9))
+            assertEquals(words, memoryWords())
+        }
+    }
+
+    @ParameterizedTest
     @CsvSource("ll,7d49fc36", "sc,7d49fc26", "lld,7d49fc37", "scd,7d49fc27")
     fun `linked instructions use signed Release 6 offsets`(mnemonic: String, encoding: String, @TempDir directory: Path) {
         val file = Files.writeString(directory.resolve("encoding.s"), "$mnemonic \$9,-8(\$10)\n")

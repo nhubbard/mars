@@ -28,6 +28,10 @@ internal val wideInstructionFactories: List<() -> BasicInstruction> = listOf(
     { linkedMemoryInstruction("sc", Int.SIZE_BYTES, store = true, "100110") },
     { linkedMemoryInstruction("lld", Long.SIZE_BYTES, store = false, "110111") },
     { linkedMemoryInstruction("scd", Long.SIZE_BYTES, store = true, "100111") },
+    { pairedLinkedMemoryInstruction("llwp", Int.SIZE_BYTES, store = false, "110110") },
+    { pairedLinkedMemoryInstruction("scwp", Int.SIZE_BYTES, store = true, "100110") },
+    { pairedLinkedMemoryInstruction("lldp", Long.SIZE_BYTES, store = false, "110111") },
+    { pairedLinkedMemoryInstruction("scdp", Long.SIZE_BYTES, store = true, "100111") },
     { release6WordResult("mul", "Multiply words and keep the low word", "011000", Int::times) },
     { release6WordResult("mulu", "Multiply unsigned words and keep the low word", "011001", Int::times) },
     { release6WordResult("div", "Divide signed words and keep the quotient", "011010", Int::div, division = true) },
@@ -236,6 +240,67 @@ private fun linkedMemoryInstruction(name: String, size: Int, store: Boolean, fun
 
         override fun decodeOperands(values: IntArray) {
             values[1] = (values[1] shl 23) shr 23
+        }
+    }
+
+private fun pairedLinkedMemoryInstruction(name: String, elementSize: Int, store: Boolean, function: String): BasicInstruction =
+    object : BasicInstruction(
+        "$name \$t1,\$t3,(\$t2)",
+        if (store) "Store a register pair if the matching memory reservation is still held"
+        else "Load a register pair and reserve the addressed bytes",
+        I_FORMAT, "011111 ttttt fffff sssss 0000 1 $function",
+        { statement, context ->
+            val (low, high, base) = statement.operands
+            val exception = if (store) ADDRESS_EXCEPTION_STORE else ADDRESS_EXCEPTION_LOAD
+            val size = elementSize * 2
+            val memory = context.memory()
+            try {
+                val address = context.effectiveAddress(base, 0, exception)
+                memory.checkLinkedAccess(address, size, exception)
+                val linked = Reservation(address, size, paired = true)
+                val lowAddress = address + if (memory.byteOrder) 0 else elementSize
+                val highAddress = address + if (memory.byteOrder) elementSize else 0
+                if (store) {
+                    val success = memory.reservation == linked
+                    memory.reservation = null
+                    if (success) {
+                        val lowValue = context.registerFile.getLongValue(low)
+                        val highValue = context.registerFile.getLongValue(high)
+                        if (elementSize == Int.SIZE_BYTES) {
+                            context.setMemoryWord(lowAddress, lowValue.toInt())
+                            context.setMemoryWord(highAddress, highValue.toInt())
+                        } else {
+                            context.storeDoubleword(lowAddress, lowValue)
+                            context.storeDoubleword(highAddress, highValue)
+                        }
+                    }
+                    context.updateRegister(low, if (success) 1 else 0)
+                } else {
+                    fun readElement(location: Int): Long = if (elementSize == Int.SIZE_BYTES) memory.getWord(location).toLong()
+                    else readDoubleword(memory, location, memory::getWord)
+
+                    val lowValue = readElement(lowAddress)
+                    val highValue = readElement(highAddress)
+                    context.updateLongRegister(low, lowValue)
+                    context.updateLongRegister(high, highValue)
+                    memory.reservation = linked
+                }
+            } catch (failure: AddressErrorException) {
+                throw ProcessingException(context, statement, failure)
+            }
+        },
+    ) {
+        override fun encodeOperands(values: IntArray): IntArray {
+            require(store || values[0] == 0 || values[0] != values[1]) {
+                "$name requires distinct destinations or two zero registers"
+            }
+            return values
+        }
+
+        override fun acceptsEncoding(word: Int): Boolean {
+            val low = (word ushr 16) and 31
+            val high = (word ushr 11) and 31
+            return store || low == 0 || low != high
         }
     }
 
