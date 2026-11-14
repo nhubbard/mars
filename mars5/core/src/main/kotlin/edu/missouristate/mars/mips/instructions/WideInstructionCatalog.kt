@@ -204,7 +204,9 @@ internal val wideInstructionFactories: List<() -> BasicInstruction> = listOf(
             }
         }
     },
-)
+) + (0..3).flatMap { size ->
+    listOf({ crcInstruction(size, castagnoli = false) }, { crcInstruction(size, castagnoli = true) })
+}
 
 private fun linkedMemoryInstruction(name: String, size: Int, store: Boolean, function: String): BasicInstruction =
     object : BasicInstruction(
@@ -308,6 +310,41 @@ private fun pairedLinkedMemoryInstruction(name: String, elementSize: Int, store:
             return store || low == 0 || low != high
         }
     }
+
+private fun crcInstruction(size: Int, castagnoli: Boolean): BasicInstruction {
+    val name = "crc32${if (castagnoli) "c" else ""}${"bhwd"[size]}"
+    val polynomial = if (castagnoli) 0x82f63b78L else 0xedb88320L
+    val sizeField = size.toString(2).padStart(2, '0')
+    val polynomialField = if (castagnoli) "001" else "000"
+    val inputBits = Byte.SIZE_BITS shl size
+    return object : BasicInstruction(
+        "$name \$t1,\$t2,\$t1",
+        "Update the destination's CRC with the low $inputBits bits of the source",
+        R_FORMAT, "011111 sssss fffff 00000 $polynomialField$sizeField 001111",
+        { statement, context ->
+            val (accumulator, source) = statement.operands
+            val message = context.registerFile.getLongValue(source) and (ULong.MAX_VALUE shr (Long.SIZE_BITS - inputBits)).toLong()
+            var state = context.registerFile.getValue(accumulator).toUInt().toLong() xor message
+            repeat(inputBits) {
+                state = (state ushr 1) xor (if (state and 1L != 0L) polynomial else 0L)
+            }
+            context.updateRegister(accumulator, state.toInt())
+        },
+    ) {
+        override fun encodeOperands(values: IntArray): IntArray {
+            require(values[0] == values[2]) { "$name requires the same first and third register" }
+            return values
+        }
+
+        override fun encodedOperandCount(sourceCount: Int): Int = 2
+
+        override fun decodeOperands(values: IntArray) {
+            values[2] = values[0]
+        }
+
+        override fun decodedOperandCount(encodedCount: Int): Int = 3
+    }
+}
 
 private fun floatingBitBranch(nonzero: Boolean) = object : BasicInstruction(
     "${if (nonzero) "bc1nez" else "bc1eqz"} \$f1,label",

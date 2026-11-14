@@ -109,6 +109,10 @@ or PC-relative immediate in this table is the displacement as written to LLVM.
   the removed `bc1f` and `bc1t`. Both Release 6 forms test bit 0 and execute
   one delay slot on both paths, independently of the legacy delay-slot setting.
   Their signed displacement is relative to the instruction after the branch.
+- **CRC.** MARS64 includes all eight optional `crc32*` and `crc32c*` forms.
+  They consume the low byte, halfword, word, or doubleword of the message
+  register, update the accumulator in place, and sign-extend the result.
+  The repeated source operand must name the destination register.
 - **Remaining scalar and optional families.** Expand Volume II-A by operand
   form and classify shared integer, COP1, memory, system, and optional forms.
   Track removed and privileged forms separately from missing user-mode
