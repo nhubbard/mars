@@ -2,6 +2,7 @@ package edu.missouristate.mars
 
 import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.mips.hardware.VectorRegister
+import java.math.BigInteger
 import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -167,6 +168,63 @@ class Mars64VectorIntegerTest {
             for ((name, value) in listOf("ceqi" to 16, "ceqi" to -17, "addvi" to 32, "addvi" to -1)) {
                 Files.writeString(source, $$"$$name.$$suffix $w31,$w3,$$value")
                 assertThrows(ProcessingException::class.java) { session.assemble(listOf(source), null, false, false) }
+            }
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = ["b", "h", "w", "d"])
+    fun `saturating and averaging arithmetic keeps intermediate precision`(suffix: String, @TempDir directory: Path) {
+        val cases = listOf(
+            "add_a" to 0x78051fd0, "adds_a" to 0x78851fd0, "adds_s" to 0x79051fd0, "adds_u" to 0x79851fd0,
+            "ave_s" to 0x7a051fd0, "ave_u" to 0x7a851fd0, "aver_s" to 0x7b051fd0, "aver_u" to 0x7b851fd0,
+            "subs_s" to 0x78051fd1, "subs_u" to 0x78851fd1, "asub_s" to 0x7a051fd1, "asub_u" to 0x7a851fd1,
+        )
+        val format = "bhwd".indexOf(suffix)
+        val bits = 8 shl format
+        val boundary = BigInteger.ONE.shiftLeft(bits - 1)
+        val maximum = boundary - BigInteger.ONE
+        val minimum = -boundary
+        val mask = boundary.shiftLeft(1) - BigInteger.ONE
+        val pairs = listOf(maximum to maximum, minimum to minimum, minimum to maximum, maximum to minimum,
+            -BigInteger.ONE to BigInteger.valueOf(2), BigInteger.ZERO to -BigInteger.ONE)
+        val source = Files.writeString(directory.resolve("saturation.s"), buildString {
+            for ((name) in cases) repeat(pairs.size) { appendLine($$"$$name.$$suffix $w31,$w3,$w5") }
+        })
+        TestSessions.create().use { session ->
+            session.selectTarget(MarsTarget.MARS64)
+            val program = session.assemble(listOf(source), null, false, false)
+            fun broadcast(value: BigInteger): VectorRegister {
+                val word = (0 until 64 step bits).fold(0L) { acc, shift -> acc or ((value and mask).toLong() shl shift) }
+                return VectorRegister(word, word)
+            }
+            val fpu = session.coprocessor1
+            for ((index, case) in cases.withIndex()) {
+                val (name, word) = case
+                assertEquals(word or (format shl 21), program.machineList!![index * pairs.size].binaryStatement)
+                for ((a, b) in pairs) {
+                    fpu.updateVector(3, broadcast(a))
+                    fpu.updateVector(5, broadcast(b))
+                    val ua = a and mask
+                    val ub = b and mask
+                    val expected = when (name) {
+                        "add_a" -> a.abs() + b.abs()
+                        "adds_a" -> minOf(a.abs() + b.abs(), maximum)
+                        "adds_s" -> (a + b).coerceIn(minimum, maximum)
+                        "adds_u" -> minOf(ua + ub, mask)
+                        "ave_s" -> (a + b).shiftRight(1)
+                        "ave_u" -> (ua + ub).shiftRight(1)
+                        "aver_s" -> (a + b + BigInteger.ONE).shiftRight(1)
+                        "aver_u" -> (ua + ub + BigInteger.ONE).shiftRight(1)
+                        "subs_s" -> (a - b).coerceIn(minimum, maximum)
+                        "subs_u" -> maxOf(ua - ub, BigInteger.ZERO)
+                        "asub_s" -> (a - b).abs()
+                        "asub_u" -> (ua - ub).abs()
+                        else -> error(name)
+                    }
+                    program.simulate(1)
+                    assertEquals(broadcast(expected), fpu.readVector(31), "$name: $a, $b")
+                }
             }
         }
     }

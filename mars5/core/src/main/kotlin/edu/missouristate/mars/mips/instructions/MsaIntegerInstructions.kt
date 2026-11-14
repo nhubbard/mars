@@ -2,6 +2,7 @@ package edu.missouristate.mars.mips.instructions
 
 import edu.missouristate.mars.mips.hardware.VectorRegister
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat.R_FORMAT
+import kotlin.math.abs
 
 internal fun msaIntegerInstructions(): List<BasicInstruction> =
     "bhwd".flatMapIndexed { format, suffix ->
@@ -11,6 +12,7 @@ internal fun msaIntegerInstructions(): List<BasicInstruction> =
             listOf(shiftInstruction(operation, format, suffix, immediate = false), shiftInstruction(operation, format, suffix, immediate = true))
         }
         IntegerOperation.entries.map { integerInstruction(it, format, suffix) } +
+            WideArithmetic.entries.map { wideArithmetic(it, format, suffix) } +
             immediateOperations.map { immediateInstruction(it.first, it.second, format, suffix) } + shifts + listOf(
             countInstruction("pcnt", "001", formatField, suffix, bits) { it.countOneBits() },
             countInstruction("nlzc", "011", formatField, suffix, bits) { it.countLeadingZeroBits() - (64 - bits) },
@@ -42,6 +44,76 @@ private enum class IntegerOperation(
     LESS_UNSIGNED("clt_u", 3, 15, apply = { a, b, _ -> truthMask(a.toULong() < b.toULong()) }),
     LESS_EQUAL_SIGNED("cle_s", 4, 15, signed = true, apply = { a, b, _ -> truthMask(a <= b) }),
     LESS_EQUAL_UNSIGNED("cle_u", 5, 15, apply = { a, b, _ -> truthMask(a.toULong() <= b.toULong()) }),
+}
+
+private enum class WideArithmetic(val mnemonic: String, val opcode: Int, val function: Int, val signed: Boolean) {
+    ADD_ABSOLUTE("add_a", 0, 16, true),
+    ADD_SATURATING_ABSOLUTE("adds_a", 1, 16, true),
+    ADD_SATURATING_SIGNED("adds_s", 2, 16, true),
+    ADD_SATURATING_UNSIGNED("adds_u", 3, 16, false),
+    AVERAGE_SIGNED("ave_s", 4, 16, true),
+    AVERAGE_UNSIGNED("ave_u", 5, 16, false),
+    AVERAGE_ROUNDED_SIGNED("aver_s", 6, 16, true),
+    AVERAGE_ROUNDED_UNSIGNED("aver_u", 7, 16, false),
+    SUBTRACT_SATURATING_SIGNED("subs_s", 0, 17, true),
+    SUBTRACT_SATURATING_UNSIGNED("subs_u", 1, 17, false),
+    ABSOLUTE_DIFFERENCE_SIGNED("asub_s", 4, 17, true),
+    ABSOLUTE_DIFFERENCE_UNSIGNED("asub_u", 5, 17, false);
+
+    fun apply(a: Long, b: Long, bits: Int): Long {
+        val maxSigned = Long.MAX_VALUE ushr (64 - bits)
+        val minSigned = -maxSigned - 1
+        val maxUnsigned = -1L ushr (64 - bits)
+        val xor = a xor b
+        return when (this) {
+            ADD_ABSOLUTE -> abs(a) + abs(b)
+            ADD_SATURATING_ABSOLUTE -> {
+                val left = abs(a)
+                val right = abs(b)
+                if (left < 0 || right < 0 || right > maxSigned || left > maxSigned - right) maxSigned
+                else left + right
+            }
+            ADD_SATURATING_SIGNED -> {
+                val sum = a + b
+                if (((a xor sum) and (b xor sum)) < 0) {
+                    if (a < 0) minSigned else maxSigned
+                } else sum.coerceIn(minSigned, maxSigned)
+            }
+            ADD_SATURATING_UNSIGNED ->
+                if (a.toULong() > (maxUnsigned - b).toULong()) maxUnsigned else a + b
+            AVERAGE_SIGNED -> (a and b) + (xor shr 1)
+            AVERAGE_UNSIGNED -> (a and b) + (xor ushr 1)
+            AVERAGE_ROUNDED_SIGNED -> (a and b) + (xor shr 1) + (xor and 1)
+            AVERAGE_ROUNDED_UNSIGNED -> (a and b) + (xor ushr 1) + (xor and 1)
+            SUBTRACT_SATURATING_SIGNED -> {
+                val difference = a - b
+                if ((xor and (a xor difference)) < 0) {
+                    if (a < 0) minSigned else maxSigned
+                } else difference.coerceIn(minSigned, maxSigned)
+            }
+            SUBTRACT_SATURATING_UNSIGNED -> if (a.toULong() < b.toULong()) 0L else a - b
+            ABSOLUTE_DIFFERENCE_SIGNED -> if (a < b) b - a else a - b
+            ABSOLUTE_DIFFERENCE_UNSIGNED -> if (a.toULong() < b.toULong()) b - a else a - b
+        }
+    }
+}
+
+private fun wideArithmetic(operation: WideArithmetic, format: Int, suffix: Char): BasicInstruction {
+    val field = (operation.opcode * 4 + format).toString(2).padStart(5, '0')
+    val function = operation.function.toString(2).padStart(6, '0')
+    val bits = Byte.SIZE_BITS shl format
+    return BasicInstruction(
+        "${operation.mnemonic}.$suffix \$w1,\$w2,\$w3", "Apply ${operation.mnemonic} to each integer vector element",
+        R_FORMAT, "011110 $field ttttt sssss fffff $function",
+    ) { statement, context ->
+        val (destination, left, right) = statement.operands
+        val fpu = context.coprocessor1
+        val a = fpu.readVector(left)
+        val b = fpu.readVector(right)
+        context.updateVectorRegister(destination, mapLanes(bits) { half, shift ->
+            operation.apply(element(half(a), shift, bits, operation.signed), element(half(b), shift, bits, operation.signed), bits)
+        })
+    }
 }
 
 private val immediateOperations = listOf(
