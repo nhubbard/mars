@@ -21,12 +21,14 @@ open class InstrLdc1 : BasicInstruction(
         }
         try {
             val address = context.effectiveAddress(operands[2], operands[1], ADDRESS_EXCEPTION_LOAD)
-            if (!MemoryState.doublewordAligned(address)) {
+            if (!context.coprocessor1.hasWideRegisters && !MemoryState.doublewordAligned(address)) {
                 throw AddressErrorException("address not aligned on doubleword boundary ", ADDRESS_EXCEPTION_LOAD, address)
             }
             val memory = context.memory()
             if (context.coprocessor1.hasWideRegisters) {
-                context.updateCoprocessor1Doubleword(operands[0], readDoubleword(memory, address, memory::getWord))
+                val value = if (MemoryState.doublewordAligned(address)) readDoubleword(memory, address, memory::getWord)
+                else context.loadUnaligned(address, 8)
+                context.updateCoprocessor1Doubleword(operands[0], value)
             } else {
                 context.updateCoprocessor1(operands[0], memory.getWord(address))
                 context.updateCoprocessor1(operands[0] + 1, memory.getWord(address + 4))

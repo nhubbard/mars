@@ -31,6 +31,7 @@ import edu.missouristate.mars.mips.instructions.Instruction.Companion.INSTRUCTIO
 import edu.missouristate.mars.mips.instructions.SyscallRegistry
 import edu.missouristate.mars.mips.instructions.syscalls.RandomStreams
 import edu.missouristate.mars.simulator.Exceptions.ADDRESS_EXCEPTION_LOAD
+import edu.missouristate.mars.simulator.Exceptions.ADDRESS_EXCEPTION_STORE
 import edu.missouristate.mars.simulator.Exceptions.FLOATING_POINT_EXCEPTION
 import edu.missouristate.mars.simulator.Exceptions.MSA_FLOATING_POINT_EXCEPTION
 import edu.missouristate.mars.simulator.Exceptions.RESERVED_INSTRUCTION_EXCEPTION
@@ -269,6 +270,46 @@ class InstructionContext(private val session: MarsContext, private val environme
     }
 
     fun memory(): MemoryState = session.memory
+
+    internal fun loadWord(address: Int): Int =
+        if (session.target == MarsTarget.MARS64 && address and 3 != 0) loadUnaligned(address, 4).toInt()
+        else memory().getWord(address)
+
+    internal fun loadHalf(address: Int): Int =
+        if (session.target == MarsTarget.MARS64 && address and 1 != 0) loadUnaligned(address, 2).toInt()
+        else memory().getHalf(address)
+
+    internal fun storeWord(address: Int, value: Int) {
+        if (session.target == MarsTarget.MARS64 && address and 3 != 0) storeUnaligned(address, 4, value.toLong())
+        else setMemoryWord(address, value)
+    }
+
+    internal fun storeHalf(address: Int, value: Int) {
+        if (session.target == MarsTarget.MARS64 && address and 1 != 0) storeUnaligned(address, 2, value.toLong())
+        else setMemoryHalf(address, value)
+    }
+
+    internal fun loadUnaligned(address: Int, size: Int): Long {
+        val memory = session.memory
+        memory.checkOrdinaryAccess(address, size, ADDRESS_EXCEPTION_LOAD)
+        val little = memory.byteOrder
+        var value = 0L
+        for (index in 0 until size) {
+            val shift = (if (little) index else size - 1 - index) * Byte.SIZE_BITS
+            value = value or ((memory.getByte(address + index).toLong() and 0xff) shl shift)
+        }
+        return value
+    }
+
+    internal fun storeUnaligned(address: Int, size: Int, value: Long) {
+        val memory = session.memory
+        memory.checkOrdinaryAccess(address, size, ADDRESS_EXCEPTION_STORE)
+        val little = memory.byteOrder
+        for (index in 0 until size) {
+            val shift = (if (little) index else size - 1 - index) * Byte.SIZE_BITS
+            setMemoryByte(address + index, (value ushr shift).toInt() and 0xff)
+        }
+    }
 
     @Throws(AddressErrorException::class)
     fun setMemoryWord(address: Int, value: Int): Int {

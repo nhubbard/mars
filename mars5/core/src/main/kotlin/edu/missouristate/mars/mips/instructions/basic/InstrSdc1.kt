@@ -21,12 +21,14 @@ open class InstrSdc1 : BasicInstruction(
         }
         try {
             val address = context.effectiveAddress(operands[2], operands[1], ADDRESS_EXCEPTION_STORE)
-            if (!MemoryState.doublewordAligned(address)) {
+            if (!context.coprocessor1.hasWideRegisters && !MemoryState.doublewordAligned(address)) {
                 throw AddressErrorException("address not aligned on doubleword boundary ", ADDRESS_EXCEPTION_STORE, address)
             }
             val fpu = context.coprocessor1
             if (fpu.hasWideRegisters) {
-                context.storeDoubleword(address, fpu.getLongFromRegisterPair(operands[0]))
+                val value = fpu.getLongFromRegisterPair(operands[0])
+                if (MemoryState.doublewordAligned(address)) context.storeDoubleword(address, value)
+                else context.storeUnaligned(address, 8, value)
             } else {
                 context.setMemoryWord(address, fpu.getValue(operands[0]))
                 context.setMemoryWord(address + 4, fpu.getValue(operands[0] + 1))

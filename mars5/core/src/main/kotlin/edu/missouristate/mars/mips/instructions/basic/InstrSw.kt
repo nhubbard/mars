@@ -16,7 +16,7 @@ open class InstrSw : BasicInstruction(
         try {
             val address = context.effectiveAddress(operands[2], operands[1], ADDRESS_EXCEPTION_STORE)
             val value = context.registerFile.getValue(operands[0])
-            context.setMemoryWord(address, value)
+            context.storeWord(address, value)
         } catch (failure: AddressErrorException) {
             throw ProcessingException(context, statement, failure)
         }

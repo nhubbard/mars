@@ -2,8 +2,8 @@
 
 This inventory starts with the 30 native forms present in the original MARS64
 baseline and encoding probes for 24 additional scalar forms. “Encoding checked” means one independently assembled
-word per form. Execution conformance and the complete scalar and MSA
-inventories are still open. See the [implementation plan](mips64-source-compatibility.md)
+word per form. The MSA forms are cataloged below. Scalar classification
+and execution conformance remain in progress. See the [implementation plan](mips64-source-compatibility.md)
 for the intended coverage.
 
 ## Reference indexes
@@ -47,7 +47,7 @@ fields on decode, and that the same raw word has no MARS32 decoding. The current
 | `dmul`, `dmuh`, `dmulu`, `dmuhu`, `ddiv`, `ddivu`, `dmod`, `dmodu` | Checked, Appendix A.4 Table A.26 | Review full-width signed and unsigned edge cases. MARS currently traps on a zero divisor. |
 | `dsll`, `dsll32`, `dsrl`, `dsrl32`, `dsra`, `dsra32`, `dsllv`, `dsrlv`, `dsrav` | Checked | Confirm shift boundaries and that variable counts use six bits. |
 | `drotr`, `drotr32`, `drotrv`, `dclz`, `dclo` | Checked | Confirm masked counts and all-zero/all-one results. |
-| `lwu`, `ld`, `sd` | Checked | Current MARS uses a 32-bit address map and requires alignment. Release 6 needs the documented misaligned access behavior. |
+| `lwu`, `ld`, `sd` | Checked | Ordinary storage supports misaligned accesses in both byte orders within the current 32-bit address map. |
 
 ## Additional scalar forms with encoding probes
 
@@ -105,8 +105,10 @@ or PC-relative immediate in this table is the displacement as written to LLVM.
   still decode as `addi` in MARS32.
 - **PC-relative and memory operations.** Audit the entire family in
   Tables A.27 and A.28, plus word `ll`/`sc` and the Release 6 encodings
-  for doubleword reservations. Keep immediate scaling and alignment
-  constraints in the inventory alongside instruction words.
+  for doubleword reservations. Ordinary scalar halfword, word, and
+  doubleword loads and stores may cross word boundaries. Linked and
+  conditional accesses still require natural alignment. The address map
+  remains 32-bit.
 - **Scalar FPR layout.** MARS64 uses one 64-bit register per scalar FPR,
   including odd-numbered registers. Double-precision operations, doubleword
   loads and stores, and `dmfc1`/`dmtc1` use the full register. `mfc1` and

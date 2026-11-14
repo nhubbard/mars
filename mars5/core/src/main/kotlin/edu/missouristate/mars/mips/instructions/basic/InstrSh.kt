@@ -17,7 +17,7 @@ open class InstrSh : BasicInstruction(
         try {
             val address = context.effectiveAddress(operands[2], operands[1].toShort().toInt(), ADDRESS_EXCEPTION_STORE)
             val value = context.registerFile.getValue(operands[0]) and 0xffff
-            context.setMemoryHalf(address, value)
+            context.storeHalf(address, value)
         } catch (failure: AddressErrorException) {
             throw ProcessingException(context, statement, failure)
         }

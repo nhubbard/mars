@@ -15,7 +15,7 @@ open class InstrLwc1 : BasicInstruction(
         val operands = statement.operands
         try {
             val address = context.effectiveAddress(operands[2], operands[1])
-            val value = context.memory().getWord(address)
+            val value = context.loadWord(address)
             context.updateCoprocessor1(operands[0], value)
         } catch (failure: AddressErrorException) {
             throw ProcessingException(context, statement, failure)

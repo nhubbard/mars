@@ -15,7 +15,7 @@ open class InstrLh : BasicInstruction(
         val operands = statement.operands
         try {
             val address = context.effectiveAddress(operands[2], operands[1].toShort().toInt())
-            val value = context.memory().getHalf(address).toShort().toInt()
+            val value = context.loadHalf(address).toShort().toInt()
             context.updateRegister(operands[0], value)
         } catch (failure: AddressErrorException) {
             throw ProcessingException(context, statement, failure)

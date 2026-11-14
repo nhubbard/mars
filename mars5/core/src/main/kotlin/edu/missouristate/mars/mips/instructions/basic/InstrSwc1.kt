@@ -17,7 +17,7 @@ open class InstrSwc1 : BasicInstruction(
         try {
             val address = context.effectiveAddress(operands[2], operands[1], ADDRESS_EXCEPTION_STORE)
             val value = context.coprocessor1.getValue(operands[0])
-            context.setMemoryWord(address, value)
+            context.storeWord(address, value)
         } catch (failure: AddressErrorException) {
             throw ProcessingException(context, statement, failure)
         }

@@ -132,7 +132,7 @@ class InstructionLoader {
             "label+100000(\$t2)" -> "lui \$1, LHPA\ndaddu \$1, \$1, RG6\n$mnemonic RG1, LLP(\$1)"
             else -> error("Unknown doubleword operand form: $example")
         }
-        val description = if (mnemonic == "ld") "Load an aligned doubleword" else "Store an aligned doubleword"
+        val description = if (mnemonic == "ld") "Load a doubleword" else "Store a doubleword"
         return ExtendedInstruction(example, setup, null, description, owner)
     }
 
