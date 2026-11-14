@@ -678,9 +678,9 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
     }
 
     /** An equivalence can put the mnemonic at the head itself or after a generated label. */
-    internal fun operationSite(root: MipsFile, head: PsiElement): OperationSite? {
+    internal fun operationSite(root: MipsFile, head: PsiElement, includeUnrecognized: Boolean = false): OperationSite? {
         val prefix = leadingEquivalencePrefix(root, head)
-        if (prefix != null) return expandedOperationSite(root, head, prefix)
+        if (prefix != null) return expandedOperationSite(root, head, prefix, includeUnrecognized)
         if (head.elementType == mnemonicType) return OperationSite(head.text, TokenTypes.OPERATOR, head.textRange)
         if (!DumbService.isDumb(project)) {
             val timeline = editorTimeline(root)
@@ -688,14 +688,14 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
                 return OperationSite(head.text, TokenTypes.MACRO_PARAMETER, head.textRange)
             }
             if (head.text in timeline.macroNames) {
-                return expandedOperationSite(root, head, timeline.prefix(root, head.textOffset))
+                return expandedOperationSite(root, head, timeline.prefix(root, head.textOffset), includeUnrecognized)
             }
         }
-        return null
+        return if (includeUnrecognized) OperationSite(head.text, TokenTypes.IDENTIFIER, head.textRange) else null
     }
 
     private fun expandedOperationSite(
-        root: MipsFile, head: PsiElement, prefix: MipsSourceTimeline.Prefix,
+        root: MipsFile, head: PsiElement, prefix: MipsSourceTimeline.Prefix, includeUnrecognized: Boolean,
     ): OperationSite? {
         val start = sourceLineStart(head)
         val source = sourceLine(head, fromLineStart = true)
@@ -708,7 +708,8 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         val operationIndex = if (tokens.beginsWithLabel()) 2 else 0
         if (operationIndex == tokens.size()) return null
         val operation = tokens[operationIndex]
-        val type = prefix.operationType(tokens, operationIndex) ?: return null
+        val type = prefix.operationType(tokens, operationIndex)
+            ?: if (includeUnrecognized && operation.type == TokenTypes.IDENTIFIER) TokenTypes.IDENTIFIER else return null
         val written = expansion.originalOffset(operation.startPos - 1)
         val composite = (0 until tokens.size()).any {
             it != operationIndex && expansion.originalOffset(tokens[it].startPos - 1) == written
