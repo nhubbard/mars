@@ -10,6 +10,7 @@ import edu.missouristate.mars.mips.instructions.Instruction
 import edu.missouristate.mars.simulator.Exceptions.ADDRESS_EXCEPTION_LOAD
 import edu.missouristate.mars.simulator.Exceptions.ADDRESS_EXCEPTION_STORE
 import edu.missouristate.mars.util.Binary
+import java.lang.Integer.reverseBytes
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.function.BiFunction
 import java.util.function.Consumer
@@ -75,16 +76,28 @@ open class MemoryState(
     private var layout = configuration
     private var endian = LITTLE_ENDIAN
     private val listeners = CopyOnWriteArrayList<MemoryListener>()
-    internal data class Reservation(val address: Int, val size: Int, val paired: Boolean = false)
+    internal data class Reservation(val address: Long, val size: Int, val paired: Boolean = false)
     internal var reservation: Reservation? = null
+    internal var wideDataEnabled = false
+    private lateinit var wideData: WordMemorySegment
 
     /** Linked operations use aligned ordinary storage in the single-core simulator. */
-    internal fun checkLinkedAccess(address: Int, size: Int, exception: Int) {
-        checkAlignment(address, size, "address not aligned for linked access ", exception)
+    internal fun checkLinkedAccess(address: Long, size: Int, exception: Int) {
+        if (address % size != 0L) {
+            throw AddressErrorException("address not aligned for linked access ", exception, address)
+        }
         checkOrdinaryAccess(address, size, exception)
     }
 
-    internal fun checkOrdinaryAccess(address: Int, size: Int, exception: Int) {
+    internal fun checkOrdinaryAccess(address: Long, size: Int, exception: Int) {
+        if (wideDataEnabled && address in WIDE_DATA_BASE..<WIDE_DATA_BASE + SEGMENT_BYTES) {
+            wideDataOffset(address, size, exception)
+            return
+        }
+        checkOrdinaryAccess(narrowAddress(address, exception), size, exception)
+    }
+
+    private fun checkOrdinaryAccess(address: Int, size: Int, exception: Int) {
         val last = address + size - 1
         if (!(inDataSegment(address) && inDataSegment(last) ||
                 inKernelDataSegment(address) && inKernelDataSegment(last) ||
@@ -93,12 +106,62 @@ open class MemoryState(
         }
     }
 
-    private fun invalidateReservation(address: Int, length: Int) {
+    private fun invalidateReservation(address: Long, length: Int) {
         val linked = reservation ?: return
-        if (address.toLong() < linked.address.toLong() + linked.size &&
-            linked.address.toLong() < address.toLong() + length) {
+        if (address < linked.address + linked.size && linked.address < address + length) {
             reservation = null
         }
+    }
+
+    internal fun narrowAddress(address: Long, exception: Int): Int {
+        val narrow = address.toInt()
+        if (address != narrow.toLong() && address != narrow.toUInt().toLong()) {
+            throw AddressErrorException("Effective address is outside mapped memory: ", exception, address)
+        }
+        return narrow
+    }
+
+    private fun wideDataOffset(address: Long, size: Int, exception: Int): Int {
+        if (!wideDataEnabled || address !in WIDE_DATA_BASE..WIDE_DATA_BASE + SEGMENT_BYTES - size) {
+            throw AddressErrorException("Effective address is outside mapped memory: ", exception, address)
+        }
+        return (address - WIDE_DATA_BASE).toInt()
+    }
+
+    internal fun checkDataAddress(address: Long) {
+        if (address != address.toInt().toLong()) wideDataOffset(address, 1, ADDRESS_EXCEPTION_LOAD)
+    }
+
+    internal fun readData(address: Long, size: Int): Int {
+        if (address == address.toInt().toLong()) {
+            return when (size) {
+                1 -> getByte(address.toInt())
+                2 -> getHalf(address.toInt())
+                else -> getWord(address.toInt())
+            }
+        }
+        val bytes = wideData.fetchBytes(wideDataOffset(address, size, ADDRESS_EXCEPTION_LOAD), size)
+        return wideDataValue(bytes, size)
+    }
+
+    internal fun writeData(address: Long, size: Int, value: Int): Int {
+        if (address == address.toInt().toLong()) {
+            return when (size) {
+                1 -> setByte(address.toInt(), value)
+                2 -> setHalf(address.toInt(), value)
+                else -> setWord(address.toInt(), value)
+            }
+        }
+        val offset = wideDataOffset(address, size, ADDRESS_EXCEPTION_STORE)
+        val previous = wideData.storeBytes(offset, size, wideDataValue(value, size))
+        invalidateReservation(address, size)
+        return wideDataValue(previous, size)
+    }
+
+    // WordMemorySegment transfers its first byte in the least significant bits.
+    private fun wideDataValue(value: Int, size: Int): Int {
+        if (byteOrder == LITTLE_ENDIAN || size == 1) return value
+        return reverseBytes(value) ushr ((Int.SIZE_BYTES - size) * Byte.SIZE_BITS)
     }
 
     private lateinit var dataBlockTable: WordMemorySegment
@@ -120,7 +183,7 @@ open class MemoryState(
     open fun captureData(checkCancellation: Runnable): DataImage = DataImage(
         byteOrder, heapAddress, dataBlockTable.capture(checkCancellation),
         kernelDataBlockTable.capture(checkCancellation), stackBlockTable.capture(checkCancellation),
-        memoryMapBlockTable.capture(checkCancellation),
+        memoryMapBlockTable.capture(checkCancellation), wideData.capture(checkCancellation),
     )
 
     open fun loadData(image: DataImage, checkCancellation: Runnable) {
@@ -131,6 +194,7 @@ open class MemoryState(
         kernelDataBlockTable.load(image.kernelData, checkCancellation)
         stackBlockTable.load(image.stack, checkCancellation)
         memoryMapBlockTable.load(image.mmio, checkCancellation)
+        wideData.load(image.wideData, checkCancellation)
     }
 
     @JvmRecord
@@ -141,13 +205,15 @@ open class MemoryState(
         val kernelData: WordMemorySegment.Image,
         val stack: WordMemorySegment.Image,
         val mmio: WordMemorySegment.Image,
+        val wideData: WordMemorySegment.Image,
     ) {
         fun hasSameContents(other: DataImage, checkCancellation: Runnable): Boolean =
             littleEndian == other.littleEndian && heapAddress == other.heapAddress &&
                 data.hasSameContents(other.data, checkCancellation) &&
                 kernelData.hasSameContents(other.kernelData, checkCancellation) &&
                 stack.hasSameContents(other.stack, checkCancellation) &&
-                mmio.hasSameContents(other.mmio, checkCancellation)
+                mmio.hasSameContents(other.mmio, checkCancellation) &&
+                wideData.hasSameContents(other.wideData, checkCancellation)
     }
 
     open fun getConfiguration(): MemoryConfiguration = MemoryConfiguration(
@@ -192,6 +258,7 @@ open class MemoryState(
         kernelDataBlockTable = WordMemorySegment(BLOCK_TABLE_LENGTH, false) { byteOrder }
         stackBlockTable = WordMemorySegment(BLOCK_TABLE_LENGTH, true) { byteOrder }
         memoryMapBlockTable = WordMemorySegment(MMIO_TABLE_LENGTH, false) { byteOrder }
+        wideData = WordMemorySegment(BLOCK_TABLE_LENGTH, false) { byteOrder }
     }
 
     /** Reserve word-aligned heap storage and return its starting address. */
@@ -225,7 +292,7 @@ open class MemoryState(
             inKernelTextSegment(address) -> throw AddressErrorException(KERNEL_TEXT_STORE, ADDRESS_EXCEPTION_STORE, address)
             else -> throw AddressErrorException("address out of range ", ADDRESS_EXCEPTION_STORE, address)
         }
-        invalidateReservation(address, length)
+        invalidateReservation(address.toLong(), length)
         notifyAnyObservers(WRITE, address, length, value)
         return previous
     }
@@ -243,7 +310,7 @@ open class MemoryState(
             inKernelTextSegment(address) -> throw AddressErrorException(KERNEL_TEXT_STORE, ADDRESS_EXCEPTION_STORE, address)
             else -> throw AddressErrorException("store address out of range ", ADDRESS_EXCEPTION_STORE, address)
         }
-        invalidateReservation(address, WORD_LENGTH_BYTES)
+        invalidateReservation(address.toLong(), WORD_LENGTH_BYTES)
         notifyAnyObservers(WRITE, address, WORD_LENGTH_BYTES, value)
         return previous
     }
@@ -487,6 +554,7 @@ open class MemoryState(
         const val WORD_LENGTH_BYTES = 4
         const val LITTLE_ENDIAN = true
         const val BIG_ENDIAN = false
+        internal const val WIDE_DATA_BASE = 0x1_0000_0000L
 
         private const val BLOCK_LENGTH_WORDS = 1024
         private const val BLOCK_TABLE_LENGTH = 1024

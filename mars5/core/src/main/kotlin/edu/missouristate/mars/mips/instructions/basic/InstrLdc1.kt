@@ -2,10 +2,8 @@ package edu.missouristate.mars.mips.instructions.basic
 
 import edu.missouristate.mars.ProcessingException
 import edu.missouristate.mars.mips.hardware.AddressErrorException
-import edu.missouristate.mars.mips.hardware.MemoryState
 import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
-import edu.missouristate.mars.mips.instructions.readDoubleword
 import edu.missouristate.mars.simulator.Exceptions.ADDRESS_EXCEPTION_LOAD
 
 open class InstrLdc1 : BasicInstruction(
@@ -20,18 +18,17 @@ open class InstrLdc1 : BasicInstruction(
             throw ProcessingException(context, statement, "first register must be even-numbered")
         }
         try {
-            val address = context.effectiveAddress(operands[2], operands[1], ADDRESS_EXCEPTION_LOAD)
-            if (!context.coprocessor1.hasWideRegisters && !MemoryState.doublewordAligned(address)) {
+            val address = context.effectiveAddress(operands[2], operands[1])
+            if (!context.coprocessor1.hasWideRegisters && address % 8 != 0L) {
                 throw AddressErrorException("address not aligned on doubleword boundary ", ADDRESS_EXCEPTION_LOAD, address)
             }
             val memory = context.memory()
             if (context.coprocessor1.hasWideRegisters) {
-                val value = if (MemoryState.doublewordAligned(address)) readDoubleword(memory, address, memory::getWord)
-                else context.loadUnaligned(address, 8)
+                val value = context.loadDoubleword(address)
                 context.updateCoprocessor1Doubleword(operands[0], value)
             } else {
-                context.updateCoprocessor1(operands[0], memory.getWord(address))
-                context.updateCoprocessor1(operands[0] + 1, memory.getWord(address + 4))
+                context.updateCoprocessor1(operands[0], memory.readData(address, 4))
+                context.updateCoprocessor1(operands[0] + 1, memory.readData(address + 4, 4))
             }
         } catch (failure: AddressErrorException) {
             throw ProcessingException(context, statement, failure)

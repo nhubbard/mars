@@ -1,7 +1,6 @@
 package edu.missouristate.mars.mips.instructions
 
 import edu.missouristate.mars.ProcessingException
-import edu.missouristate.mars.core.InstructionContext
 import edu.missouristate.mars.mips.hardware.AddressErrorException
 import edu.missouristate.mars.mips.hardware.MemoryState
 import edu.missouristate.mars.mips.hardware.MemoryState.Reservation
@@ -176,7 +175,7 @@ internal val wideInstructionFactories: List<() -> BasicInstruction> = listOf(
         ) { statement, context ->
             val (destination, offset, base) = statement.operands
             try {
-                val address = context.effectiveAddress(base, offset, ADDRESS_EXCEPTION_LOAD)
+                val address = context.effectiveAddress(base, offset)
                 val bits = context.loadWord(address).toUInt().toLong()
                 context.updateLongRegister(destination, bits)
             } catch (failure: AddressErrorException) {
@@ -191,10 +190,8 @@ internal val wideInstructionFactories: List<() -> BasicInstruction> = listOf(
         ) { statement, context ->
             val (destination, offset, base) = statement.operands
             try {
-                val address = context.effectiveAddress(base, offset, ADDRESS_EXCEPTION_LOAD)
-                val memory = context.memory()
-                val bits = if (MemoryState.doublewordAligned(address)) readDoubleword(memory, address, memory::getWord)
-                else context.loadUnaligned(address, 8)
+                val address = context.effectiveAddress(base, offset)
+                val bits = context.loadDoubleword(address)
                 context.updateLongRegister(destination, bits)
             } catch (failure: AddressErrorException) {
                 throw ProcessingException(context, statement, failure)
@@ -208,10 +205,9 @@ internal val wideInstructionFactories: List<() -> BasicInstruction> = listOf(
         ) { statement, context ->
             val (source, offset, base) = statement.operands
             try {
-                val address = context.effectiveAddress(base, offset, ADDRESS_EXCEPTION_STORE)
+                val address = context.effectiveAddress(base, offset)
                 val value = context.registerFile.getLongValue(source)
-                if (MemoryState.doublewordAligned(address)) context.storeDoubleword(address, value)
-                else context.storeUnaligned(address, 8, value)
+                context.storeDoubleword(address, value)
             } catch (failure: AddressErrorException) {
                 throw ProcessingException(context, statement, failure)
             }
@@ -231,20 +227,20 @@ private fun linkedMemoryInstruction(name: String, size: Int, store: Boolean, fun
             val exception = if (store) ADDRESS_EXCEPTION_STORE else ADDRESS_EXCEPTION_LOAD
             val memory = context.memory()
             try {
-                val address = context.effectiveAddress(base, offset, exception)
+                val address = context.effectiveAddress(base, offset)
                 memory.checkLinkedAccess(address, size, exception)
                 val linked = Reservation(address, size)
                 if (store) {
                     val success = memory.reservation == linked
                     memory.reservation = null
                     if (success) {
-                        if (size == Int.SIZE_BYTES) context.setMemoryWord(address, context.registerFile.getValue(register))
+                        if (size == Int.SIZE_BYTES) context.storeData(address, 4, context.registerFile.getValue(register))
                         else context.storeDoubleword(address, context.registerFile.getLongValue(register))
                     }
                     context.updateRegister(register, if (success) 1 else 0)
                 } else {
-                    val value = if (size == Int.SIZE_BYTES) memory.getWord(address).toLong()
-                    else readDoubleword(memory, address, memory::getWord)
+                    val value = if (size == Int.SIZE_BYTES) memory.readData(address, 4).toLong()
+                    else context.loadDoubleword(address)
                     context.updateLongRegister(register, value)
                     memory.reservation = linked
                 }
@@ -275,7 +271,7 @@ private fun pairedLinkedMemoryInstruction(name: String, elementSize: Int, store:
             val size = elementSize * 2
             val memory = context.memory()
             try {
-                val address = context.effectiveAddress(base, 0, exception)
+                val address = context.effectiveAddress(base, 0)
                 memory.checkLinkedAccess(address, size, exception)
                 val linked = Reservation(address, size, paired = true)
                 val lowAddress = address + if (memory.byteOrder) 0 else elementSize
@@ -287,8 +283,8 @@ private fun pairedLinkedMemoryInstruction(name: String, elementSize: Int, store:
                         val lowValue = context.registerFile.getLongValue(low)
                         val highValue = context.registerFile.getLongValue(high)
                         if (elementSize == Int.SIZE_BYTES) {
-                            context.setMemoryWord(lowAddress, lowValue.toInt())
-                            context.setMemoryWord(highAddress, highValue.toInt())
+                            context.storeData(lowAddress, 4, lowValue.toInt())
+                            context.storeData(highAddress, 4, highValue.toInt())
                         } else {
                             context.storeDoubleword(lowAddress, lowValue)
                             context.storeDoubleword(highAddress, highValue)
@@ -296,8 +292,8 @@ private fun pairedLinkedMemoryInstruction(name: String, elementSize: Int, store:
                     }
                     context.updateRegister(low, if (success) 1 else 0)
                 } else {
-                    fun readElement(location: Int): Long = if (elementSize == Int.SIZE_BYTES) memory.getWord(location).toLong()
-                    else readDoubleword(memory, location, memory::getWord)
+                    fun readElement(location: Long): Long = if (elementSize == Int.SIZE_BYTES) memory.readData(location, 4).toLong()
+                    else context.loadDoubleword(location)
 
                     val lowValue = readElement(lowAddress)
                     val highValue = readElement(highAddress)
@@ -420,14 +416,6 @@ private fun doublewordFloatingMove(toFloatingPoint: Boolean) = BasicInstruction(
     }
 }
 
-internal fun InstructionContext.storeDoubleword(address: Int, value: Long) {
-    val low = value.toInt()
-    val high = (value ushr Int.SIZE_BITS).toInt()
-    val littleEndian = memory().byteOrder
-    setMemoryWord(address, if (littleEndian) low else high)
-    setMemoryWord(address + Int.SIZE_BYTES, if (littleEndian) high else low)
-}
-
 private fun release6WordResult(
     name: String, description: String, function: String, operation: (Int, Int) -> Int, division: Boolean = false,
 ) = BasicInstruction(
@@ -469,7 +457,7 @@ private fun pcRelativeWideLoad(doubleword: Boolean): PcRelativeWordInstruction =
         displacementShift = if (doubleword) 3 else 2,
     ) {}
 
-internal inline fun readDoubleword(memory: MemoryState, address: Int, readWord: (Int) -> Int): Long {
+private inline fun readDoubleword(memory: MemoryState, address: Int, readWord: (Int) -> Int): Long {
     val first = readWord(address).toUInt().toLong()
     val second = readWord(address + Int.SIZE_BYTES).toUInt().toLong()
     return if (memory.byteOrder) (second shl Int.SIZE_BITS) or first else (first shl Int.SIZE_BITS) or second

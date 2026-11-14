@@ -143,7 +143,7 @@ private fun vectorMemory(suffix: Char, format: Int, store: Boolean): BasicInstru
             val (register, offset, base) = statement.operands
             val memory = context.memory()
             try {
-                val address = context.effectiveAddress(base, offset, exception)
+                val address = context.effectiveAddress(base, offset)
                 memory.checkOrdinaryAccess(address, 16, exception)
                 if (store) {
                     val (low, high) = context.coprocessor1.readVector(register)
@@ -151,14 +151,14 @@ private fun vectorMemory(suffix: Char, format: Int, store: Boolean): BasicInstru
                         val vectorByte = if (memory.byteOrder) index else index xor elementMask
                         val half = if (vectorByte < 8) low else high
                         val value = (half ushr ((vectorByte and 7) * Byte.SIZE_BITS)).toInt() and 0xff
-                        context.setMemoryByte(address + index, value)
+                        context.storeData(address + index, 1, value)
                     }
                 } else {
                     var low = 0L
                     var high = 0L
                     for (index in 0 until 16) {
                         val vectorByte = if (memory.byteOrder) index else index xor elementMask
-                        val value = (memory.getByte(address + index).toLong() and 0xff) shl ((vectorByte and 7) * Byte.SIZE_BITS)
+                        val value = (memory.readData(address + index, 1).toLong() and 0xff) shl ((vectorByte and 7) * Byte.SIZE_BITS)
                         if (vectorByte < 8) low = low or value else high = high or value
                     }
                     context.updateVectorRegister(register, VectorRegister(low, high))

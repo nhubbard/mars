@@ -16,7 +16,7 @@ open class InstrSc : BasicInstruction(
     { statement, context ->
         val operands = statement.operands
         try {
-            val address = context.effectiveAddress(operands[2], operands[1], ADDRESS_EXCEPTION_STORE)
+            val address = context.legacyEffectiveAddress(operands[2], operands[1], ADDRESS_EXCEPTION_STORE)
             val value = context.registerFile.getValue(operands[0])
             context.setMemoryWord(address, value)
         } catch (failure: AddressErrorException) {

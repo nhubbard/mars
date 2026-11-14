@@ -173,7 +173,7 @@ internal class MarsMemoryView(private val session: XDebugSession, private val en
             override fun sessionStopped() = refreshOnEdt()
             override fun settingsChanged() = UIUtil.invokeLaterIfNeeded {
                 val context = session.suspendContext as? MarsSuspendContext
-                if (context != null && context.lastMemoryWrite != displayedWrite) refresh()
+                if (context != null && context.lastMemoryWrite?.takeIf { it.addressBits in 0..<ADDRESS_SPACE } != displayedWrite) refresh()
             }
         }, this)
         refresh()
@@ -272,8 +272,8 @@ internal class MarsMemoryView(private val session: XDebugSession, private val en
             val write = context.lastMemoryWrite
             withContext(Dispatchers.EDT) {
                 if (request == revision) {
-                    displayedWrite = write
-                    lastWrite.isEnabled = write != null
+                    displayedWrite = write?.takeIf { it.addressBits in 0..<ADDRESS_SPACE }
+                    lastWrite.isEnabled = displayedWrite != null
                     renderWriteStatus()
                     model.items = rows
                     displayedSuspension = context.number

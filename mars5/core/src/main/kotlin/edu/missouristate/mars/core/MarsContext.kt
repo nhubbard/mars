@@ -233,6 +233,7 @@ class MarsContext @Inject constructor(
         setMemoryConfigurationStopped(settings.memoryConfiguration)
         instructionSet.populate(target)
         this.target = target
+        memory.wideDataEnabled = target == MarsTarget.MARS64
         coprocessor1.hasWideRegisters = target == MarsTarget.MARS64
         coprocessor1.resetRegisters()
     }

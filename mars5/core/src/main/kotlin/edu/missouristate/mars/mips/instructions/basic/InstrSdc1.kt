@@ -2,10 +2,8 @@ package edu.missouristate.mars.mips.instructions.basic
 
 import edu.missouristate.mars.ProcessingException
 import edu.missouristate.mars.mips.hardware.AddressErrorException
-import edu.missouristate.mars.mips.hardware.MemoryState
 import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
-import edu.missouristate.mars.mips.instructions.storeDoubleword
 import edu.missouristate.mars.simulator.Exceptions.ADDRESS_EXCEPTION_STORE
 
 open class InstrSdc1 : BasicInstruction(
@@ -20,18 +18,17 @@ open class InstrSdc1 : BasicInstruction(
             throw ProcessingException(context, statement, "first register must be even-numbered")
         }
         try {
-            val address = context.effectiveAddress(operands[2], operands[1], ADDRESS_EXCEPTION_STORE)
-            if (!context.coprocessor1.hasWideRegisters && !MemoryState.doublewordAligned(address)) {
+            val address = context.effectiveAddress(operands[2], operands[1])
+            if (!context.coprocessor1.hasWideRegisters && address % 8 != 0L) {
                 throw AddressErrorException("address not aligned on doubleword boundary ", ADDRESS_EXCEPTION_STORE, address)
             }
             val fpu = context.coprocessor1
             if (fpu.hasWideRegisters) {
                 val value = fpu.getLongFromRegisterPair(operands[0])
-                if (MemoryState.doublewordAligned(address)) context.storeDoubleword(address, value)
-                else context.storeUnaligned(address, 8, value)
+                context.storeDoubleword(address, value)
             } else {
-                context.setMemoryWord(address, fpu.getValue(operands[0]))
-                context.setMemoryWord(address + 4, fpu.getValue(operands[0] + 1))
+                context.storeData(address, 4, fpu.getValue(operands[0]))
+                context.storeData(address + 4, 4, fpu.getValue(operands[0] + 1))
             }
         } catch (failure: AddressErrorException) {
             throw ProcessingException(context, statement, failure)

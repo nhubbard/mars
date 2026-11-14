@@ -63,23 +63,20 @@ class InstructionContext(private val session: MarsContext, private val environme
         if (session.target == MarsTarget.MARS64) registerFile.getLongValue(number)
         else registerFile.getValue(number).toLong()
 
-    /** Resolve a register-based address against the existing 32-bit memory map. */
-    internal fun effectiveAddress(register: Int, offset: Int, exception: Int = ADDRESS_EXCEPTION_LOAD): Int {
-        if (session.target == MarsTarget.MARS32) return registerFile.getValue(register) + offset
-        return mappedAddress(registerFile.getLongValue(register) + offset.toShort(), exception)
+    /** Compute the address before looking up the segment that services the access. */
+    internal fun effectiveAddress(register: Int, offset: Int): Long {
+        if (session.target == MarsTarget.MARS32) return (registerFile.getValue(register) + offset).toLong()
+        val address = registerFile.getLongValue(register) + offset.toShort()
+        val narrow = address.toInt()
+        return if (address == narrow.toUInt().toLong()) narrow.toLong() else address
     }
 
-    private fun mappedAddress(address: Long, exception: Int): Int {
-        val mapped = address.toInt()
-        if (address != mapped.toLong() && address != mapped.toUInt().toLong()) {
-            throw AddressErrorException("Effective address is outside mapped memory: ", exception, address)
-        }
-        return mapped
-    }
+    internal fun legacyEffectiveAddress(register: Int, offset: Int, exception: Int = ADDRESS_EXCEPTION_LOAD): Int =
+        memory().narrowAddress(effectiveAddress(register, offset), exception)
 
     internal fun registerJumpTarget(statement: ProgramStatement, register: Int, offset: Int = 0): Int =
         try {
-            effectiveAddress(register, offset)
+            legacyEffectiveAddress(register, offset)
         } catch (failure: AddressErrorException) {
             throw ProcessingException(this, statement, failure)
         }
@@ -186,7 +183,7 @@ class InstructionContext(private val session: MarsContext, private val environme
 
     internal fun release6ExceptionReturn(statement: ProgramStatement, clearReservation: Boolean) {
         val target = try {
-            mappedAddress(coprocessor0.readRegisterBits(EPC), ADDRESS_EXCEPTION_LOAD)
+            memory().narrowAddress(coprocessor0.readRegisterBits(EPC), ADDRESS_EXCEPTION_LOAD)
         } catch (failure: AddressErrorException) {
             throw ProcessingException(this, statement, failure)
         }
@@ -289,44 +286,69 @@ class InstructionContext(private val session: MarsContext, private val environme
 
     fun memory(): MemoryState = session.memory
 
-    internal fun loadWord(address: Int): Int =
-        if (session.target == MarsTarget.MARS64 && address and 3 != 0) loadUnaligned(address, 4).toInt()
-        else memory().getWord(address)
+    internal fun loadWord(address: Long): Int =
+        if (session.target == MarsTarget.MARS64 && address and 3 != 0L) loadUnaligned(address, 4).toInt()
+        else memory().readData(address, 4)
 
-    internal fun loadHalf(address: Int): Int =
-        if (session.target == MarsTarget.MARS64 && address and 1 != 0) loadUnaligned(address, 2).toInt()
-        else memory().getHalf(address)
+    internal fun loadHalf(address: Long): Int =
+        if (session.target == MarsTarget.MARS64 && address and 1 != 0L) loadUnaligned(address, 2).toInt()
+        else memory().readData(address, 2)
 
-    internal fun storeWord(address: Int, value: Int) {
-        if (session.target == MarsTarget.MARS64 && address and 3 != 0) storeUnaligned(address, 4, value.toLong())
-        else setMemoryWord(address, value)
+    internal fun storeWord(address: Long, value: Int) {
+        if (session.target == MarsTarget.MARS64 && address and 3 != 0L) storeUnaligned(address, 4, value.toLong())
+        else storeData(address, 4, value)
     }
 
-    internal fun storeHalf(address: Int, value: Int) {
-        if (session.target == MarsTarget.MARS64 && address and 1 != 0) storeUnaligned(address, 2, value.toLong())
-        else setMemoryHalf(address, value)
+    internal fun storeHalf(address: Long, value: Int) {
+        if (session.target == MarsTarget.MARS64 && address and 1 != 0L) storeUnaligned(address, 2, value.toLong())
+        else storeData(address, 2, value)
     }
 
-    internal fun loadUnaligned(address: Int, size: Int): Long {
+    internal fun loadDoubleword(address: Long): Long {
+        if (address and 7 != 0L) return loadUnaligned(address, 8)
+        val memory = memory()
+        val first = memory.readData(address, 4).toUInt().toLong()
+        val second = memory.readData(address + 4, 4).toUInt().toLong()
+        return if (memory.byteOrder) (second shl 32) or first else (first shl 32) or second
+    }
+
+    internal fun storeDoubleword(address: Long, value: Long) {
+        if (address and 7 != 0L) {
+            storeUnaligned(address, 8, value)
+            return
+        }
+        val low = value.toInt()
+        val high = (value ushr 32).toInt()
+        val little = memory().byteOrder
+        storeData(address, 4, if (little) low else high)
+        storeData(address + 4, 4, if (little) high else low)
+    }
+
+    internal fun loadUnaligned(address: Long, size: Int): Long {
         val memory = session.memory
         memory.checkOrdinaryAccess(address, size, ADDRESS_EXCEPTION_LOAD)
         val little = memory.byteOrder
         var value = 0L
         for (index in 0 until size) {
             val shift = (if (little) index else size - 1 - index) * Byte.SIZE_BITS
-            value = value or ((memory.getByte(address + index).toLong() and 0xff) shl shift)
+            value = value or ((memory.readData(address + index, 1).toLong() and 0xff) shl shift)
         }
         return value
     }
 
-    internal fun storeUnaligned(address: Int, size: Int, value: Long) {
+    internal fun storeUnaligned(address: Long, size: Int, value: Long) {
         val memory = session.memory
         memory.checkOrdinaryAccess(address, size, ADDRESS_EXCEPTION_STORE)
         val little = memory.byteOrder
         for (index in 0 until size) {
             val shift = (if (little) index else size - 1 - index) * Byte.SIZE_BITS
-            setMemoryByte(address + index, (value ushr shift).toInt() and 0xff)
+            storeData(address + index, 1, (value ushr shift).toInt() and 0xff)
         }
+    }
+
+    internal fun storeData(address: Long, size: Int, value: Int) {
+        val previous = memory().writeData(address, size, value)
+        if (session.backStepper.enabled()) session.backStepper.addMemoryRestore(address, size, previous)
     }
 
     @Throws(AddressErrorException::class)

@@ -140,7 +140,9 @@ open class BackStepper(
     open fun previousMemoryWrite(): MemoryWrite? = if (engaged) backSteps.previousMemoryWrite() else null
 
     @JvmRecord
-    data class MemoryWrite(val address: Int, val length: Int)
+    data class MemoryWrite(val address: Int, val length: Int, val addressBits: Long) {
+        constructor(address: Int, length: Int) : this(address, length, address.toUInt().toLong())
+    }
 
     open fun previousRegisterWrites(): Set<RegisterWrite> = if (engaged) backSteps.previousRegisterWrites() else emptySet()
 
@@ -201,6 +203,8 @@ open class BackStepper(
             Action.MEMORY_WORD -> memory.setWord(first, second)
             Action.MEMORY_HALF -> memory.setHalf(first, second)
             Action.MEMORY_BYTE -> memory.setByte(first, second)
+            Action.MEMORY_WIDE_BYTE, Action.MEMORY_WIDE_HALF, Action.MEMORY_WIDE_WORD ->
+                memory.writeData(step.param2, step.action.byteCount, first)
             Action.REGISTER -> registerFile.updateLongRegister(first, step.param2)
             Action.PC -> registerFile.setProgramCounter(first)
             Action.COPROCESSOR_0 -> coprocessor0.updateRegisterBits(first, step.param2)
@@ -228,6 +232,23 @@ open class BackStepper(
     open fun addMemoryRestoreHalf(address: Int, value: Int): Int = record(Action.MEMORY_HALF, address, value)
 
     open fun addMemoryRestoreByte(address: Int, value: Int): Int = record(Action.MEMORY_BYTE, address, value)
+
+    internal fun addMemoryRestore(address: Long, size: Int, value: Int) {
+        if (address == address.toInt().toLong()) {
+            when (size) {
+                1 -> addMemoryRestoreByte(address.toInt(), value)
+                2 -> addMemoryRestoreHalf(address.toInt(), value)
+                else -> addMemoryRestoreWord(address.toInt(), value)
+            }
+        } else {
+            val action = when (size) {
+                1 -> Action.MEMORY_WIDE_BYTE
+                2 -> Action.MEMORY_WIDE_HALF
+                else -> Action.MEMORY_WIDE_WORD
+            }
+            backSteps.push(action, pc(), value, address)
+        }
+    }
 
     open fun addRegisterFileRestore(register: Int, value: Int): Int = addRegisterFileRestore(register, value.toLong()).toInt()
 
@@ -281,11 +302,14 @@ open class BackStepper(
         backSteps.push(Action.HEAP, pc(), address)
     }
 
-    private enum class Action(val byteCount: Int = 0, val bank: RegisterWriteBank? = null) {
+    private enum class Action(val byteCount: Int = 0, val bank: RegisterWriteBank? = null, val wideAddress: Boolean = false) {
         MEMORY_RAW_WORD(Int.SIZE_BYTES),
         MEMORY_WORD(Int.SIZE_BYTES),
         MEMORY_HALF(Short.SIZE_BYTES),
         MEMORY_BYTE(Byte.SIZE_BYTES),
+        MEMORY_WIDE_BYTE(Byte.SIZE_BYTES, wideAddress = true),
+        MEMORY_WIDE_HALF(Short.SIZE_BYTES, wideAddress = true),
+        MEMORY_WIDE_WORD(Int.SIZE_BYTES, wideAddress = true),
         REGISTER(bank = RegisterWriteBank.CPU),
         PC,
         COPROCESSOR_0(bank = RegisterWriteBank.COPROCESSOR_0),
@@ -362,7 +386,10 @@ open class BackStepper(
             repeat(size) {
                 val step = stack[index]
                 val length = step.action.byteCount
-                if (step.frame != 0L && length > 0) return MemoryWrite(step.param1, length)
+                if (step.frame != 0L && length > 0) {
+                    return if (step.action.wideAddress) MemoryWrite(step.param2.toInt(), length, step.param2)
+                    else MemoryWrite(step.param1, length)
+                }
                 index = previous(index)
             }
             return null

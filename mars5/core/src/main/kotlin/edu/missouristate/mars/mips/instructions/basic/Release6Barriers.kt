@@ -19,7 +19,7 @@ internal fun release6BarrierInstructions(): List<BasicInstruction> = listOf(
         { statement, context ->
             val (offset, base) = statement.operands
             try {
-                context.effectiveAddress(base, offset)
+                context.memory().checkDataAddress(context.effectiveAddress(base, offset))
             } catch (failure: AddressErrorException) {
                 throw ProcessingException(context, statement, failure)
             }

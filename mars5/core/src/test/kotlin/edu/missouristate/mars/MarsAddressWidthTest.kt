@@ -17,6 +17,84 @@ import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 
 class MarsAddressWidthTest {
+    @ParameterizedTest
+    @ValueSource(booleans = [MemoryState.LITTLE_ENDIAN, MemoryState.BIG_ENDIAN])
+    fun `native memory instructions use a distinct data segment above four GiB`(
+        littleEndian: Boolean, @TempDir directory: Path,
+    ) {
+        val source = Files.writeString(directory.resolve("high-data.s"), $$"""
+            .text
+            ori $a0,$zero,1
+            dsll32 $a0,$a0,0
+            ori $a0,$a0,0x1000
+            ori $a1,$zero,0x0123
+            dsll $a1,$a1,16
+            ori $a1,$a1,0x4567
+            dsll $a1,$a1,16
+            ori $a1,$a1,0x89ab
+            dsll $a1,$a1,16
+            ori $a1,$a1,0xcdef
+            sd $a1,1($a0)
+            ld $t0,1($a0)
+            ldc1 $f3,1($a0)
+            sdc1 $f3,24($a0)
+            lld $t1,24($a0)
+            daddiu $t1,$t1,1
+            scd $t1,24($a0)
+            ld.b $w5,0($a0)
+            st.b $w5,32($a0)
+            ld $t2,33($a0)
+        """.trimIndent())
+        TestSessions.create().use { machine ->
+            machine.selectTarget(MarsTarget.MARS64)
+            machine.memory.byteOrder = littleEndian
+            val program = machine.assemble(listOf(source))
+            val address = 0x1_0000_1000L
+            val payload = 0x0123_4567_89ab_cdefL
+            assertTrue(program.simulate(40))
+            assertEquals(payload, machine.registerFile.getLongValueNoNotify(8))
+            assertEquals(1L, machine.registerFile.getLongValueNoNotify(9))
+            assertEquals(payload, machine.registerFile.getLongValueNoNotify(10))
+            assertEquals(payload, machine.coprocessor1.getDoublewordNoNotify(3))
+            assertEquals(address + 47, machine.backStepper.previousMemoryWrite()?.addressBits)
+            assertEquals(if (littleEndian) 0xf0 else 0x01, machine.memory.readData(address + 24, 1))
+            repeat(4) { machine.backStepper.backStep() }
+            assertEquals(if (littleEndian) 0xef else 0x01, machine.memory.readData(address + 24, 1))
+            assertEquals(0, machine.memory.readData(address + 33, 1))
+            assertEquals(payload + 1, machine.registerFile.getLongValueNoNotify(9))
+            assertTrue(program.simulate(5))
+            assertEquals(1L, machine.registerFile.getLongValueNoNotify(9))
+            val image = machine.captureAssemblyImage {}
+            TestSessions.create().use { restored ->
+                restored.loadAssemblyImage(image) {}
+                assertEquals(if (littleEndian) 0xf0 else 0x01, restored.memory.readData(address + 24, 1))
+                assertEquals(if (littleEndian) 0xef else 0x01, restored.memory.readData(address + 33, 1))
+            }
+        }
+    }
+
+    @Test
+    fun `a store crossing the end of high data faults without modifying the mapped prefix`(
+        @TempDir directory: Path,
+    ) {
+        val source = Files.writeString(directory.resolve("boundary.s"), $$"""
+            ori $a0,$zero,1
+            dsll $a0,$a0,16
+            ori $a0,$a0,0x40
+            dsll $a0,$a0,16
+            daddiu $a0,$a0,-4
+            daddiu $a1,$zero,-1
+            sd $a1,0($a0)
+        """.trimIndent())
+        TestSessions.create().use { machine ->
+            machine.selectTarget(MarsTarget.MARS64)
+            val program = machine.assemble(listOf(source))
+            assertThrows(ProcessingException::class.java) { program.simulate(20) }
+            assertEquals(0x1_003f_fffcL, machine.coprocessor0.getRegister(VADDR)!!.longValueNoNotify)
+            assertEquals(0, machine.memory.readData(0x1_003f_fffcL, 4))
+        }
+    }
+
     @Test
     fun `doubleword CP0 transfers preserve address registers and reverse wide writes`(@TempDir directory: Path) {
         val source = Files.writeString(directory.resolve("cp0.s"), $$"""

@@ -26,7 +26,7 @@ for the intended coverage.
   other bits where the ISA leaves them unpredictable. Backstep restores
   both halves of a vector write. Vector loads and stores support all four
   element widths, either byte order, and unaligned addresses in ordinary
-  storage within the current memory map. Integer vector arithmetic,
+  storage, including the MARS64 data region above 4 GiB. Integer vector arithmetic,
   multiply-accumulate, comparisons, shifts, and bit counts execute at all
   four element widths. Integer vector division and remainder return zero
   for lanes with a zero divisor, a deterministic choice for the result the
@@ -73,7 +73,12 @@ zero. `BadVAddr` and `EPC` retain doublewords on transfer. `Status` and
 Unsupported register and selector combinations trap. An address fault now
 preserves the full effective address in `BadVAddr`, and backstep restores
 its previous value. The program counter and mapped segments still use
-32-bit addresses.
+32-bit addresses. MARS64 register-based integer, floating-point, vector,
+and linked memory operations can also access a sparse 4 MiB data region at
+`0x0000000100000000`. The region starts zeroed. Accesses that cross its
+limit raise an address exception before writing any bytes. Its contents
+participate in assembly images and backstep. Assembly labels, instruction
+fetch, and the IntelliJ memory browser still use the classroom map.
 
 `mfc0` sign-extends its word result. `mtc0` preserves the full source value
 when writing an educational address register. For both forms, reserved or

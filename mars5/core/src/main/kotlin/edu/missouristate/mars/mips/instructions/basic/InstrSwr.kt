@@ -18,7 +18,7 @@ open class InstrSwr : BasicInstruction(
     { statement, context ->
         val operands = statement.operands
         try {
-            val address = context.effectiveAddress(operands[2], operands[1], ADDRESS_EXCEPTION_STORE)
+            val address = context.legacyEffectiveAddress(operands[2], operands[1], ADDRESS_EXCEPTION_STORE)
             val source = context.registerFile.getValue(operands[0])
             for (index in 0..(3 - (address % WORD_LENGTH_BYTES))) {
                 context.setMemoryByte(address + index, Binary.getByte(source, index))

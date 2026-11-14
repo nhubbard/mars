@@ -15,7 +15,7 @@ open class InstrLl : BasicInstruction(
     { statement, context ->
         val operands = statement.operands
         try {
-            val address = context.effectiveAddress(operands[2], operands[1])
+            val address = context.legacyEffectiveAddress(operands[2], operands[1])
             val value = context.memory().getWord(address)
             context.updateRegister(operands[0], value)
         } catch (failure: AddressErrorException) {
