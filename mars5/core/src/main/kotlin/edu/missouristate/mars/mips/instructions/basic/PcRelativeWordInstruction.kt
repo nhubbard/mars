@@ -4,19 +4,25 @@ import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat.I_FORMAT
 import edu.missouristate.mars.mips.instructions.SimulationCode
 
-/** PC-relative forms with a signed 19-bit displacement encoded in words and written in bytes. */
-abstract class PcRelativeWordInstruction(
-    example: String, description: String, mask: String, simulate: SimulationCode,
+/** PC-relative forms with a signed displacement written in bytes. */
+abstract class PcRelativeWordInstruction @JvmOverloads constructor(
+    example: String, description: String, mask: String,
+    simulate: SimulationCode,
+    private val displacementShift: Int = 2,
 ) : BasicInstruction(example, description, I_FORMAT, mask, simulate) {
     override fun encodeOperands(values: IntArray): IntArray {
         val bytes = values[1]
-        require(bytes in -0x10_0000..0x0f_fffc && bytes % Int.SIZE_BYTES == 0) {
-            "$name displacement must be a multiple of four in the range -1048576 through 1048572 bytes"
+        val alignment = 1 shl displacementShift
+        val alignmentName = if (alignment == 4) "four" else "eight"
+        val limit = 0x10_0000
+        require(bytes in -limit..(limit - alignment) && bytes % alignment == 0) {
+            "$name displacement must be a multiple of $alignmentName in the range ${-limit} through ${limit - alignment} bytes"
         }
-        return values.copyOf().also { it[1] = bytes shr 2 }
+        return values.copyOf().also { it[1] = bytes shr displacementShift }
     }
 
     override fun decodeOperands(values: IntArray) {
-        values[1] = ((values[1] shl 13) shr 13) shl 2
+        val signShift = 11 + displacementShift
+        values[1] = (values[1] shl signShift) shr 11
     }
 }

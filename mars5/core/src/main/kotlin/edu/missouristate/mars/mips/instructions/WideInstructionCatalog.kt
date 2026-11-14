@@ -2,9 +2,11 @@ package edu.missouristate.mars.mips.instructions
 
 import edu.missouristate.mars.ProcessingException
 import edu.missouristate.mars.mips.hardware.AddressErrorException
+import edu.missouristate.mars.mips.hardware.MemoryState
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat.I_FORMAT
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat.R_FORMAT
 import edu.missouristate.mars.mips.instructions.basic.DoublewordBitField
+import edu.missouristate.mars.mips.instructions.basic.PcRelativeWordInstruction
 import edu.missouristate.mars.simulator.Exceptions.ADDRESS_EXCEPTION_LOAD
 import edu.missouristate.mars.simulator.Exceptions.ADDRESS_EXCEPTION_STORE
 import edu.missouristate.mars.simulator.Exceptions.ARITHMETIC_OVERFLOW_EXCEPTION
@@ -61,6 +63,8 @@ internal val wideInstructionFactories: List<() -> BasicInstruction> = listOf(
     { DoublewordBitField(insert = true) },
     { DoublewordBitField(insert = true, variant = "m") },
     { DoublewordBitField(insert = true, variant = "u") },
+    { pcRelativeWideLoad(doubleword = false) },
+    { pcRelativeWideLoad(doubleword = true) },
     { wideUpperImmediate("dahi", "Add a signed immediate in bits 47 through 32", "00110", 32) },
     { wideUpperImmediate("dati", "Add a signed immediate in bits 63 through 48", "11110", 48) },
     {
@@ -158,9 +162,7 @@ internal val wideInstructionFactories: List<() -> BasicInstruction> = listOf(
                 val address = context.effectiveAddress(base, offset, ADDRESS_EXCEPTION_LOAD)
                 requireDoublewordAlignment(address, ADDRESS_EXCEPTION_LOAD)
                 val memory = context.memory()
-                val first = memory.getWord(address).toUInt().toLong()
-                val second = memory.getWord(address + Int.SIZE_BYTES).toUInt().toLong()
-                val bits = if (memory.byteOrder) (second shl Int.SIZE_BITS) or first else (first shl Int.SIZE_BITS) or second
+                val bits = readDoubleword(memory, address, memory::getWord)
                 context.updateLongRegister(destination, bits)
             } catch (failure: AddressErrorException) {
                 throw ProcessingException(context, statement, failure)
@@ -192,6 +194,41 @@ internal val wideInstructionFactories: List<() -> BasicInstruction> = listOf(
         }
     },
 )
+
+private fun pcRelativeWideLoad(doubleword: Boolean): PcRelativeWordInstruction =
+    object : PcRelativeWordInstruction(
+        "${if (doubleword) "ldpc" else "lwupc"} \$t1,100000",
+        if (doubleword) "Load a doubleword relative to the aligned instruction address"
+        else "Load a zero-extended word relative to the instruction address",
+        if (doubleword) "111011 fffff 110 ssssssssssssssssss"
+        else "111011 fffff 10 sssssssssssssssssss",
+        { statement, context ->
+            val (destination, displacement) = statement.operands
+            val base = if (doubleword) statement.address and -8 else statement.address
+            val address = base + displacement
+            val memory = context.memory()
+            fun readWord(location: Int): Int =
+                if (memory.inTextSegment(location) || memory.inKernelTextSegment(location)) {
+                    memory.getStatement(location)?.binaryStatement ?: 0
+                } else {
+                    memory.getWord(location)
+                }
+            try {
+                val value = if (doubleword) readDoubleword(memory, address, ::readWord)
+                else readWord(address).toUInt().toLong()
+                context.updateLongRegister(destination, value)
+            } catch (failure: AddressErrorException) {
+                throw ProcessingException(context, statement, failure)
+            }
+        },
+        displacementShift = if (doubleword) 3 else 2,
+    ) {}
+
+private inline fun readDoubleword(memory: MemoryState, address: Int, readWord: (Int) -> Int): Long {
+    val first = readWord(address).toUInt().toLong()
+    val second = readWord(address + Int.SIZE_BYTES).toUInt().toLong()
+    return if (memory.byteOrder) (second shl Int.SIZE_BITS) or first else (first shl Int.SIZE_BITS) or second
+}
 
 private fun wideUpperImmediate(name: String, description: String, selector: String, shift: Int) =
     object : BasicInstruction(

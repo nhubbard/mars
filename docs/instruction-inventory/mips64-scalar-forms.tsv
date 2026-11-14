@@ -200,7 +200,7 @@ lbue	rt, offset(base)	289	audit
 ld	rt, offset(base)	290	audit
 ldc1	ft, offset(base)	291	audit
 ldc2	rt, offset(base)	292	audit
-ldpc	rs, offset	296	audit
+ldpc	rs, offset	296	implemented
 ldxc1	fd, index(base)	299	removed
 lh	rt, offset(base)	301	audit
 lhe	rt, offset(base)	302	audit
@@ -223,7 +223,7 @@ lwe	rt, offset(base)	327	audit
 lwpc	rs, offset	335	audit
 lwre	rt, offset(base)	339	removed
 lwu	rt, offset(base)	343	audit
-lwupc	rs, offset	344	audit
+lwupc	rs, offset	344	implemented
 lwxc1	fd, index(base)	345	removed
 madd	rs, rt	346	removed
 madd.s	fd, fr, fs, ft	347	removed
