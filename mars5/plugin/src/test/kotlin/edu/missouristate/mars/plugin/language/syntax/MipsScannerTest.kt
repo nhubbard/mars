@@ -198,6 +198,7 @@ class MipsScannerTest {
             "head\n-$minimum" to MipsTokenKind.NUMBER,
             ".word +$unsignedWord" to MipsTokenKind.BAD_CHARACTER,
             ".word -$unsignedWord" to MipsTokenKind.BAD_CHARACTER,
+            "\n-$unsignedWord" to MipsTokenKind.BAD_CHARACTER,
             "head, +$unsignedWord" to MipsTokenKind.NUMBER,
             "head, -$unsignedWord" to MipsTokenKind.NUMBER,
             ".word - $unsignedWord" to MipsTokenKind.NUMBER,
