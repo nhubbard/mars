@@ -333,10 +333,12 @@ internal class FirstPassProcessor(
 
     fun matchInstruction(token: Token): ArrayList<Instruction>? {
         if (token.type != TokenTypes.OPERATOR) {
-            val message = if (token.sourceMIPSprogram!!.localMacroPool!!.matchesAnyMacroName(token.value)) {
-                "forward reference or invalid parameters for macro \"$token\""
-            } else {
-                "\"$token\" is not a recognized operator"
+            val requirement = release6HardwareRequirement(token.value).takeIf { context.session.target == MarsTarget.MARS64 }
+            val message = when {
+                token.sourceMIPSprogram!!.localMacroPool!!.matchesAnyMacroName(token.value) ->
+                    "forward reference or invalid parameters for macro \"$token\""
+                requirement != null -> "\"$token\" requires $requirement, which MARS64 does not simulate"
+                else -> "\"$token\" is not a recognized operator"
             }
             errors.add(ErrorMessage(token, message))
             return null

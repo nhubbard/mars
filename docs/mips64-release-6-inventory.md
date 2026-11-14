@@ -63,7 +63,8 @@ The distinction helps identify which source needs a diagnostic from MARS64.
 
 These categories apply to the forms that depend on those facilities. The
 existing educational CP0 exception state and the IDE debugger are available
-independently. Diagnostics for the classified forms are still pending.
+independently. The MARS64 assembler identifies the required hardware facility
+when it encounters any of these mnemonics.
 
 ## Additional scalar forms with encoding probes
 
