@@ -2,6 +2,7 @@ package edu.missouristate.mars.mips.instructions
 
 import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.mips.instructions.basic.CompactComparison
+import edu.missouristate.mars.mips.instructions.basic.InstrCodedSyscall
 import edu.missouristate.mars.mips.instructions.basic.InstrCompactCompareBranch
 import edu.missouristate.mars.mips.instructions.basic.InstrRelease6Pref
 import edu.missouristate.mars.mips.instructions.basic.release6RoundingInstructions
@@ -64,6 +65,7 @@ open class InstructionSet {
             forms.addAll(release6BarrierInstructions())
             forms.addAll(release6HardwareReads())
             forms.addAll(release6SystemTransfers())
+            forms.add(InstrCodedSyscall())
             forms.addAll(msaRegisterInstructions())
             forms.addAll(msaIntegerInstructions())
             forms.addAll(msaBitInstructions())

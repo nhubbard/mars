@@ -466,7 +466,8 @@ swxc1	fs, index(base)	530	removed
 sync	(stype = 0 implied)	531	implemented
 sync	stype	531	implemented
 synci	offset(base)	537	implemented
-syscall		540	audit
+syscall		540	implemented
+syscall	code	540	implemented
 teq	rs, rt	541	implemented
 teqi	rs, immediate	542	removed
 tge	rs, rt	543	implemented

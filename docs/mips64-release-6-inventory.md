@@ -95,6 +95,10 @@ keeps masked device requests pending until they are enabled or withdrawn.
 a no-op in ordinary execution and still follows delay-slot and forbidden-slot
 restrictions.
 
+`syscall` accepts an optional unsigned 20-bit code. The assembler and
+disassembler preserve that field in the machine word. MARS's educational
+syscall services still use the service number in `$v0`.
+
 ## Additional scalar forms with encoding probes
 
 MARS64 assembles and executes all six doubleword bitfield forms, as well as
