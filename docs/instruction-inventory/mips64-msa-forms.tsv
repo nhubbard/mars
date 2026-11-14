@@ -26,7 +26,7 @@ addvi.b	wd,ws,u5	MSA	89	missing
 addvi.h	wd,ws,u5	MSA	89	missing
 addvi.w	wd,ws,u5	MSA	89	missing
 addvi.d	wd,ws,u5	MSA	89	missing
-and.v	wd,ws,wt	MSA	90	missing
+and.v	wd,ws,wt	MSA	90	implemented
 andi.b	wd,ws,i8	MSA	91	missing
 asub_s.b	wd,ws,wt	MSA	92	missing
 asub_s.h	wd,ws,wt	MSA	92	missing
@@ -228,10 +228,10 @@ ffql.w	wd,ws	MSA	177	missing
 ffql.d	wd,ws	MSA	177	missing
 ffqr.w	wd,ws	MSA	178	missing
 ffqr.d	wd,ws	MSA	178	missing
-fill.b	wd,rs	MSA	179	missing
-fill.h	wd,rs	MSA	179	missing
-fill.w	wd,rs	MSA	179	missing
-fill.d	wd,rs	MIPS64 MSA	179	missing
+fill.b	wd,rs	MSA	179	implemented
+fill.h	wd,rs	MSA	179	implemented
+fill.w	wd,rs	MSA	179	implemented
+fill.d	wd,rs	MIPS64 MSA	179	implemented
 flog2.w	wd,ws	MSA	180	missing
 flog2.d	wd,ws	MSA	180	missing
 fmadd.w	wd,ws,wt	MSA	181	missing
@@ -391,7 +391,7 @@ mod_u.b	wd,ws,wt	MSA	256	missing
 mod_u.h	wd,ws,wt	MSA	256	missing
 mod_u.w	wd,ws,wt	MSA	256	missing
 mod_u.d	wd,ws,wt	MSA	256	missing
-move.v	wd,ws	MSA	257	missing
+move.v	wd,ws	MSA	257	implemented
 msub_q.h	wd,ws,wt	MSA	258	missing
 msub_q.w	wd,ws,wt	MSA	258	missing
 msubr_q.h	wd,ws,wt	MSA	260	missing
@@ -416,9 +416,9 @@ nlzc.b	wd,ws	MSA	269	missing
 nlzc.h	wd,ws	MSA	269	missing
 nlzc.w	wd,ws	MSA	269	missing
 nlzc.d	wd,ws	MSA	269	missing
-nor.v	wd,ws,wt	MSA	271	missing
+nor.v	wd,ws,wt	MSA	271	implemented
 nori.b	wd,ws,i8	MSA	272	missing
-or.v	wd,ws,wt	MSA	273	missing
+or.v	wd,ws,wt	MSA	273	implemented
 ori.b	wd,ws,i8	MSA	274	missing
 pckev.b	wd,ws,wt	MSA	275	missing
 pckev.h	wd,ws,wt	MSA	275	missing
@@ -531,5 +531,5 @@ vshf.b	wd,ws,wt	MSA	317	missing
 vshf.h	wd,ws,wt	MSA	317	missing
 vshf.w	wd,ws,wt	MSA	317	missing
 vshf.d	wd,ws,wt	MSA	317	missing
-xor.v	wd,ws,wt	MSA	319	missing
+xor.v	wd,ws,wt	MSA	319	implemented
 xori.b	wd,ws,i8	MSA	320	missing

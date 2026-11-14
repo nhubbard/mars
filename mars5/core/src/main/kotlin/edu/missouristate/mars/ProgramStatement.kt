@@ -6,6 +6,7 @@ import edu.missouristate.mars.assembler.Symbol
 import edu.missouristate.mars.assembler.SymbolTable
 import edu.missouristate.mars.assembler.Token
 import edu.missouristate.mars.assembler.TokenList
+import edu.missouristate.mars.assembler.RegisterNames
 import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.core.AssemblyContext
 import edu.missouristate.mars.core.SimulationSettings
@@ -206,6 +207,10 @@ open class ProgramStatement private constructor(
                     }
                     operandValues!![numOperands++] = register
                 }
+                TokenTypes.VECTOR_REGISTER_NAME -> {
+                    appendText(value)
+                    operandValues!![numOperands++] = checkNotNull(RegisterNames.vector(value))
+                }
                 TokenTypes.IDENTIFIER -> {
                     val symbol = sourceMIPSprogram!!.localSymbolTable!!.getSymbolLocalOrGlobal(value)
                     if (symbol == null || symbol.address == SymbolTable.NOT_FOUND) {
@@ -312,6 +317,7 @@ open class ProgramStatement private constructor(
                     continue
                 }
                 display.add(when (token.type) {
+                    TokenTypes.VECTOR_REGISTER_NAME -> DisplayElement.Text("\$w${values[index]}")
                     TokenTypes.FP_REGISTER_NAME -> DisplayElement.Text("\$f${values[index]}")
                     TokenTypes.REGISTER_NAME, TokenTypes.REGISTER_NUMBER -> DisplayElement.Text("$${values[index]}")
                     else -> DisplayElement.Value(values[index])

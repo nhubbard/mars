@@ -36,6 +36,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 class Coprocessor1State {
     internal var hasWideRegisters = false
     val registers = Array(32) { Register("\$f$it", it, 0) }
+    private val vectorHigh = LongArray(registers.size)
     private val fcsr = Register("FCSR", 31, FCSR_IEEE_2008)
     private val condition = Register("cf", registers.size, 0)
     private val registerEvents = EventEmitter<RegisterAccessNotice>()
@@ -119,6 +120,20 @@ class Coprocessor1State {
         return Binary.twoIntsToLong(registers[number + 1].valueNoNotify, registers[number].valueNoNotify)
     }
 
+    /** Lane zero of each MSA register shares the existing scalar FPR storage. */
+    internal fun readVector(number: Int): VectorRegister = VectorRegister(registers[number].longValue, vectorHigh[number])
+
+    internal fun updateVector(number: Int, value: VectorRegister): VectorRegister {
+        val previousHigh = vectorHigh[number]
+        vectorHigh[number] = value.high
+        val previousLow = updateLongRegister(number, value.low)
+        return VectorRegister(previousLow, previousHigh)
+    }
+
+    internal fun updateVectorHigh(number: Int, value: Long) {
+        vectorHigh[number] = value
+    }
+
     internal fun updateLongRegister(number: Int, value: Long): Long = registers[number].setLongValue(value)
 
     fun updateRegister(number: Int, value: Int): Int = updateLowWord(number, value).toInt()
@@ -145,6 +160,7 @@ class Coprocessor1State {
 
     fun resetRegisters() {
         registers.forEach(Register::resetValue)
+        vectorHigh.fill(0)
         fcsr.resetValue()
         clearConditionFlags()
     }

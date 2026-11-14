@@ -42,6 +42,7 @@ enum class TokenTypes {
     REGISTER_NAME,
     REGISTER_NUMBER,
     FP_REGISTER_NAME,
+    VECTOR_REGISTER_NAME,
     IDENTIFIER,
     LEFT_PAREN,
     RIGHT_PAREN,
@@ -78,6 +79,7 @@ enum class TokenTypes {
             if (Macro.tokenIsMacroParameter(value, false)) return MACRO_PARAMETER
             RegisterNames.integer(value)?.let { return if (it.name == value) REGISTER_NAME else REGISTER_NUMBER }
             if (RegisterNames.floating(value) != null) return FP_REGISTER_NAME
+            if (instructions.target == MarsTarget.MARS64 && RegisterNames.vector(value) != null) return VECTOR_REGISTER_NAME
 
             val integer = try {
                 Binary.stringToInt(value)

@@ -20,7 +20,11 @@ for the intended coverage.
   concrete forms in the SIMD reference's Format blocks, including the
   scalar LSA and DLSA cross-references and four MIPS64-specific vector forms.
   The table records the documented operands, availability, and reference
-  page. Execution semantics and encoding verification remain open.
+  page. MARS64 now executes the four `fill` forms, `move.v`, and the four
+  logical vector operations. The low 64 bits of each vector register share
+  storage with the corresponding scalar FPR. Scalar writes preserve the
+  other bits where the ISA leaves them unpredictable. Backstep restores
+  both halves of a vector write.
 
 ## Current MARS64 forms
 

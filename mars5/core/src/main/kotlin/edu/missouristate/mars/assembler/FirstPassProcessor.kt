@@ -183,7 +183,7 @@ internal class FirstPassProcessor(
         for (index in 2 until tokens.size()) {
             val argument = tokens[index]
             if (argument.type == TokenTypes.RIGHT_PAREN || argument.type == TokenTypes.LEFT_PAREN) continue
-            if (!Macro.tokenIsMacroParameter(argument.value, true)) {
+            if (argument.type == TokenTypes.VECTOR_REGISTER_NAME || !Macro.tokenIsMacroParameter(argument.value, true)) {
                 errors.add(ErrorMessage(argument, "Invalid macro argument '$argument'"))
                 return
             }

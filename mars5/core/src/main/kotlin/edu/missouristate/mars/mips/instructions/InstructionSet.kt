@@ -56,6 +56,7 @@ open class InstructionSet {
         if (target == MarsTarget.MARS64) {
             forms.addAll(wideInstructionFactories.map { it() })
             forms.addAll(release6BarrierInstructions())
+            forms.addAll(msaRegisterInstructions())
             forms.addAll(release6FloatingCompareInstructions())
             forms.addAll(release6FloatingConversions())
             forms.addAll(release6RoundingInstructions())

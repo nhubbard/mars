@@ -23,6 +23,7 @@ import edu.missouristate.mars.mips.hardware.Coprocessor1State.Companion.CAUSE_MA
 import edu.missouristate.mars.mips.hardware.Coprocessor1State.Companion.hasEnabledFloatingException
 import edu.missouristate.mars.mips.hardware.InvalidRegisterAccessException
 import edu.missouristate.mars.mips.hardware.MemoryState
+import edu.missouristate.mars.mips.hardware.VectorRegister
 import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat.I_BRANCH_FORMAT
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat.J_FORMAT
@@ -202,6 +203,14 @@ class InstructionContext(private val session: MarsContext, private val environme
     internal fun updateCoprocessor1Doubleword(number: Int, value: Long) {
         val previous = coprocessor1.updateLongRegister(number, value)
         if (session.backStepper.enabled()) session.backStepper.addCoprocessor1Restore(number, previous)
+    }
+
+    internal fun updateVectorRegister(number: Int, value: VectorRegister) {
+        val previous = coprocessor1.updateVector(number, value)
+        if (session.backStepper.enabled()) {
+            session.backStepper.addCoprocessor1Restore(number, previous.low)
+            session.backStepper.addVectorHighRestore(number, previous.high)
+        }
     }
 
     internal fun writeFloatingControl(statement: ProgramStatement, register: Int, bits: Int) {

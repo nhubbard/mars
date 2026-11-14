@@ -84,7 +84,7 @@ open class Macro {
             var origin = token
             val substitute: String
             val renamed: Boolean
-            if (tokenIsMacroParameter(token.value, true)) {
+            if (token.type != TokenTypes.VECTOR_REGISTER_NAME && tokenIsMacroParameter(token.value, true)) {
                 val argument = this.args.indexOf(token.value)
                 if (argument >= 0) {
                     origin = args[argument + 1]
