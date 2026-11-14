@@ -19,7 +19,7 @@ class Mars64ScalarInventoryTest {
     @Test
     fun `each implemented scalar form emits its Release 6 word`(@TempDir directory: Path) {
         val forms = inventory().filter { it[3].startsWith("implemented") }.map { it[4] to it[5] }
-        assertEquals(328, forms.size)
+        assertEquals(331, forms.size)
         val source = Files.writeString(
             directory.resolve("release6.mars"),
             forms.joinToString("\n", prefix = ".text\n", postfix = "\ntarget: nop\n") { it.first },
@@ -39,7 +39,7 @@ class Mars64ScalarInventoryTest {
     @Test
     fun `each unavailable scalar facility is identified during assembly`(@TempDir directory: Path) {
         val rows = inventory().filter { it[3].startsWith("requires-") }
-        assertEquals(52, rows.size)
+        assertEquals(53, rows.size)
         val names = rows.map { it.first() }.distinct()
         val file = Files.writeString(directory.resolve("hardware.mars"), names.joinToString("\n"))
         TestSessions.create().use { machine ->
@@ -56,7 +56,7 @@ class Mars64ScalarInventoryTest {
     @Test
     fun `removed scalar mnemonics explain how to migrate`(@TempDir directory: Path) {
         val removed = inventory().filter { it[3] == "removed" }
-        assertEquals(115, removed.size)
+        assertEquals(119, removed.size)
         // These spellings have a retained Release 6 form or a compatibility expansion.
         val retainedNames = setOf("mul", "div", "divu", "ddiv", "ddivu", "addi", "teqi", "tgei", "tgeiu", "tlti", "tltiu", "tnei")
         val conditions = listOf("f", "un", "eq", "ueq", "olt", "ult", "ole", "ule", "sf", "ngle", "seq", "ngl", "lt", "nge", "le", "ngt")

@@ -1,5 +1,5 @@
-# MD00087 revision 6.06, explicitly tagged Format rows in section 3.2.
-# This is a source index. Expand generic condition/format notation and audit operand constraints and untagged forms against the diagrams.
+# MD00087 revision 6.06, Format rows and instruction-description diagrams in section 3.2.
+# C.cond rows group the 16 legacy comparison mnemonics per format. The migration test checks each spelling.
 # Page numbers are the printed instruction-description pages, not the table of contents numbers.
 # Expected words from LLVM 23.1.5, big-endian MIPS64 Release 6 with +crc, or from Volume II-A for paired LL/SC and CMP conditions that LLVM omits.
 # mnemonic or group	operands	page	Release 6 audit status	Example source	Expected word
@@ -15,6 +15,9 @@ addiu	rt, rs, immediate	56	implemented	addiu $11,$10,3	254b0003
 addiupc	rs,immediate	57	implemented	addiupc $10,8	ed400002
 addu	rd, rs, rt	58	implemented	addu $9,$10,$11	014b4821
 align	rd,rs,rt,bp	59	implemented	align $9,$10,$11,2	7d4b4aa0
+alnv.ps	fd, fs, ft, rs	61	removed
+cachee	op, offset(base)	140	requires-eva
+cvt.ps.s	fd, fs, ft	178	removed
 dalign	rd,rs,rt,bp	59	implemented	dalign $9,$10,$11,2	7d4b4aa4
 aluipc	rs,immediate	64	implemented	aluipc $10,3	ed5f0003
 and	rd, rs, rt	65	implemented	and $9,$10,$11	014b4824
@@ -24,12 +27,12 @@ daui	rt, rs immediate	67	implemented	daui $11,$10,3	754b0003
 dahi	rs, rs immediate	67	implemented	dahi $10,$10,3	05460003
 dati	rs, rs immediate	67	implemented	dati $10,$10,3	055e0003
 auipc	rs, immediate	69	implemented	auipc $10,3	ed5e0003
-b	offset	70	implemented	b target	10000135
-bal	offset	71	implemented	bal target	04110134
-balc	offset	73	implemented	balc target	e8000133
-bc	offset	74	implemented	bc target	c8000132
-bc1eqz	ft, offset	75	implemented	bc1eqz $f11,target	452b0131
-bc1nez	ft, offset	75	implemented	bc1nez $f11,target	45ab0130
+b	offset	70	implemented	b target	10000138
+bal	offset	71	implemented	bal target	04110137
+balc	offset	73	implemented	balc target	e8000136
+bc	offset	74	implemented	bc target	c8000135
+bc1eqz	ft, offset	75	implemented	bc1eqz $f11,target	452b0134
+bc1nez	ft, offset	75	implemented	bc1nez $f11,target	45ab0133
 bc1f	offset (cc = 0 implied)	77	removed
 bc1f	cc, offset	77	removed
 bc1fl	offset (cc = 0 implied)	79	removed
@@ -48,48 +51,48 @@ bc2t	offset (cc = 0 implied)	90	removed
 bc2t	cc, offset	90	removed
 bc2tl	offset (cc = 0 implied)	91	removed
 bc2tl	cc, offset	91	removed
-beq	rs, rt, offset	93	implemented	beq $10,$11,target	114b012f
+beq	rs, rt, offset	93	implemented	beq $10,$11,target	114b0132
 beql	rs, rt, offset	94	removed
-bgez	rs, offset	96	implemented	bgez $10,target	0541012e
+bgez	rs, offset	96	implemented	bgez $10,target	05410131
 bgezal	rs, offset	97	removed
-blezalc	rt, offset	98	implemented	blezalc $11,target	180b012d
-bgezalc	rt, offset	98	implemented	bgezalc $11,target	196b012c
-bgtzalc	rt, offset	98	implemented	bgtzalc $11,target	1c0b012b
-bltzalc	rt, offset	98	implemented	bltzalc $11,target	1d6b012a
-beqzalc	rt, offset	98	implemented	beqzalc $11,target	200b0129
-bnezalc	rt, offset	98	implemented	bnezalc $11,target	600b0128
+blezalc	rt, offset	98	implemented	blezalc $11,target	180b0130
+bgezalc	rt, offset	98	implemented	bgezalc $11,target	196b012f
+bgtzalc	rt, offset	98	implemented	bgtzalc $11,target	1c0b012e
+bltzalc	rt, offset	98	implemented	bltzalc $11,target	1d6b012d
+beqzalc	rt, offset	98	implemented	beqzalc $11,target	200b012c
+bnezalc	rt, offset	98	implemented	bnezalc $11,target	600b012b
 bgezall	rs, offset	101	removed
-beqc	rs, rt, offset	103	implemented	beqc $10,$11,target	214b0127
-bnec	rs, rt, offset	103	implemented	bnec $10,$11,target	614b0126
-bltc	rs, rt, offset	104	implemented	bltc $10,$11,target	5d4b0125
-bgec	rs, rt, offset	104	implemented	bgec $10,$11,target	594b0124
-bltuc	rs, rt, offset	104	implemented	bltuc $10,$11,target	1d4b0123
-bgeuc	rs, rt, offset	104	implemented	bgeuc $10,$11,target	194b0122
-bgtc	rs, rt, offset	104	implemented-alias	bgtc $10,$11,target	5d6a0121
-blec	rs, rt, offset	104	implemented-alias	blec $10,$11,target	596a0120
-bgtuc	rs, rt, offset	104	implemented-alias	bgtuc $10,$11,target	1d6a011f
-bleuc	rs, rt, offset	104	implemented-alias	bleuc $10,$11,target	196a011e
-bltzc	rs, offset	104	implemented	bltzc $10,target	5d4a011d
-blezc	rs, offset	104	implemented	blezc $10,target	580a011c
-bgezc	rs, offset	104	implemented	bgezc $10,target	594a011b
-bgtzc	rs, offset	104	implemented	bgtzc $10,target	5c0a011a
-beqzc	rs, offset	104	implemented	beqzc $10,target	d9400119
-bnezc	rs, offset	104	implemented	bnezc $10,target	f9400118
+beqc	rs, rt, offset	103	implemented	beqc $10,$11,target	214b012a
+bnec	rs, rt, offset	103	implemented	bnec $10,$11,target	614b0129
+bltc	rs, rt, offset	104	implemented	bltc $10,$11,target	5d4b0128
+bgec	rs, rt, offset	104	implemented	bgec $10,$11,target	594b0127
+bltuc	rs, rt, offset	104	implemented	bltuc $10,$11,target	1d4b0126
+bgeuc	rs, rt, offset	104	implemented	bgeuc $10,$11,target	194b0125
+bgtc	rs, rt, offset	104	implemented-alias	bgtc $10,$11,target	5d6a0124
+blec	rs, rt, offset	104	implemented-alias	blec $10,$11,target	596a0123
+bgtuc	rs, rt, offset	104	implemented-alias	bgtuc $10,$11,target	1d6a0122
+bleuc	rs, rt, offset	104	implemented-alias	bleuc $10,$11,target	196a0121
+bltzc	rs, offset	104	implemented	bltzc $10,target	5d4a0120
+blezc	rs, offset	104	implemented	blezc $10,target	580a011f
+bgezc	rs, offset	104	implemented	bgezc $10,target	594a011e
+bgtzc	rs, offset	104	implemented	bgtzc $10,target	5c0a011d
+beqzc	rs, offset	104	implemented	beqzc $10,target	d940011c
+bnezc	rs, offset	104	implemented	bnezc $10,target	f940011b
 bgezl	rs, offset	107	removed
-bgtz	rs, offset	109	implemented	bgtz $10,target	1d400117
+bgtz	rs, offset	109	implemented	bgtz $10,target	1d40011a
 bgtzl	rs, offset	110	removed
 bitswap	rd,rt	112	implemented	bitswap $9,$11	7c0b4820
 dbitswap	rd,rt	112	implemented	dbitswap $9,$11	7c0b4824
-blez	rs, offset	114	implemented	blez $10,target	19400114
+blez	rs, offset	114	implemented	blez $10,target	19400117
 blezl	rs, offset	115	removed
-bltz	rs, offset	117	implemented	bltz $10,target	05400113
+bltz	rs, offset	117	implemented	bltz $10,target	05400116
 bltzal	rs, offset	118	removed
 bltzall	rs, offset	119	removed
 bltzl	rs, offset	121	removed
-bne	rs, rt, offset	123	implemented	bne $10,$11,target	154b0112
+bne	rs, rt, offset	123	implemented	bne $10,$11,target	154b0115
 bnel	rs, rt, offset	124	removed
-bovc	rs,rt,offset	126	implemented	bovc $12,$11,target	218b0111
-bnvc	rs,rt,offset	126	implemented	bnvc $12,$11,target	618b0110
+bovc	rs,rt,offset	126	implemented	bovc $12,$11,target	218b0114
+bnvc	rs,rt,offset	126	implemented	bnvc $12,$11,target	618b0113
 break		128	implemented	break	0000000d
 break	code	128	implemented	break 4	0004000d
 break	code, subcode	128	implemented	break 4,7	000401cd
@@ -196,6 +199,10 @@ dinsm	rt, rs, pos, size	205	implemented	dinsm $11,$10,1,40	7d4b4045
 dinsu	rt, rs, pos, size	207	implemented	dinsu $11,$10,33,8	7d4b4046
 div	rs, rt	209	removed
 div	rd,rs,rt	212	implemented	div $9,$10,$11	014b489a
+ext	rt, rs, pos, size	254	implemented	ext $11,$10,1,8	7d4b3840
+ins	rt, rs, pos, size	266	implemented	ins $11,$10,1,8	7d4b4044
+ldl	rt, offset(base)	294	removed
+ldr	rt, offset(base)	297	removed
 mod	rd,rs,rt	212	implemented	mod $9,$10,$11	014b48da
 divu	rd,rs,rt	212	implemented	divu $9,$10,$11	014b489b
 modu	rd,rs,rt	212	implemented	modu $9,$10,$11	014b48db
@@ -249,8 +256,8 @@ floor.w.s	fd, fs	258	implemented	floor.w.s $f9,$f10	4600524f
 floor.w.d	fd, fs	258	implemented	floor.w.d $f9,$f10	4620524f
 ginvi	rs	260	requires-privileged-platform
 ginvt	rs, type	262	requires-privileged-platform
-j	target	268	implemented	j target	08100148
-jal	target	269	implemented	jal target	0c100148
+j	target	268	implemented	j target	0810014b
+jal	target	269	implemented	jal target	0c10014b
 jalr	rs (rd = 31 implied)	271	implemented	jalr $10	0140f809
 jalr	rd, rs	271	implemented	jalr $9,$10	01404809
 jalr.hb	rs (rd = 31 implied)	273	implemented	jalr.hb $10	0140fc09
@@ -459,6 +466,7 @@ sub.ps	fd, fs, ft	510	removed
 subu	rd, rs, rt	512	implemented	subu $9,$10,$11	014b4823
 suxc1	fs, index(base)	513	removed
 sw	rt, offset(base)	514	implemented	sw $11,8($12)	ad8b0008
+swc1	ft, offset(base)	515	implemented	swc1 $f11,8($12)	e58b0008
 swc2	rt, offset(base)	516	requires-cop2
 swe	rt, offset(base)	518	requires-eva
 swl	rt, offset(base)	520	removed

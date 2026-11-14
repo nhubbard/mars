@@ -47,6 +47,6 @@ private val floatingConditions = setOf(
 )
 
 private val pairedSingleInstructions = setOf(
-    "abs.ps", "add.ps", "madd.ps", "mov.ps", "movf.ps", "movn.ps", "movt.ps", "movz.ps", "msub.ps",
+    "abs.ps", "add.ps", "alnv.ps", "cvt.ps.s", "madd.ps", "mov.ps", "movf.ps", "movn.ps", "movt.ps", "movz.ps", "msub.ps",
     "mul.ps", "neg.ps", "nmadd.ps", "nmsub.ps", "pll.ps", "plu.ps", "pul.ps", "puu.ps", "sub.ps",
 )

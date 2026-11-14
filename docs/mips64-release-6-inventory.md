@@ -11,9 +11,9 @@ See the [implementation plan](mips64-source-compatibility.md) for the intended c
 - [Scalar section index](instruction-inventory/mips64-scalar-sections.tsv)
   tracks all 307 entries in the Volume II-A section 3.2 table of contents.
 - [Scalar operand forms](instruction-inventory/mips64-scalar-forms.tsv)
-  lists 328 supported forms, including aliases and educational subsets, 115
-  removed forms, and 52 forms that need unavailable hardware. A Jupiter test
-  checks all 328 example encodings against LLVM 23.1.5 or the reference
+  lists 331 supported forms, including aliases and educational subsets, 119
+  removed forms, and 53 forms that need unavailable hardware. A Jupiter test
+  checks all 331 example encodings against LLVM 23.1.5 or the reference
   diagrams for compare conditions and paired atomics LLVM omits.
   The table of contents and instruction descriptions use different page
   numbers in this copy. The operand table uses the printed description pages.
@@ -43,13 +43,13 @@ The Jupiter test checks that MARS64 assembles each word, recovers the operand
 fields on decode, and that the same raw word has no MARS32 decoding. The current decoder represents negative signed immediates as raw
 16-bit fields for these wide forms.
 
-| Current native forms | Release 6 encoding evidence | Execution work |
+| Original native forms | Release 6 encoding evidence | Behavior |
 | --- | --- | --- |
-| `dadd`, `daddu`, `dsub`, `dsubu`, `daddiu` | Checked | Confirm signed overflow, wrap, immediates, zero destination, and backstep. |
-| `dmul`, `dmuh`, `dmulu`, `dmuhu`, `ddiv`, `ddivu`, `dmod`, `dmodu` | Checked, Appendix A.4 Table A.26 | Review full-width signed and unsigned edge cases. MARS currently traps on a zero divisor. |
-| `dsll`, `dsll32`, `dsrl`, `dsrl32`, `dsra`, `dsra32`, `dsllv`, `dsrlv`, `dsrav` | Checked | Confirm shift boundaries and that variable counts use six bits. |
-| `drotr`, `drotr32`, `drotrv`, `dclz`, `dclo` | Checked | Confirm masked counts and all-zero/all-one results. |
-| `lwu`, `ld`, `sd` | Checked | Ordinary storage supports misaligned accesses in both byte orders within the current 32-bit address map. |
+| `dadd`, `daddu`, `dsub`, `dsubu`, `daddiu` | Checked | Doubleword results and full register restoration on backstep. |
+| `dmul`, `dmuh`, `dmulu`, `dmuhu`, `ddiv`, `ddivu`, `dmod`, `dmodu` | Checked, Appendix A.4 Table A.26 | Signed and unsigned register results. Division by zero traps. |
+| `dsll`, `dsll32`, `dsrl`, `dsrl32`, `dsra`, `dsra32`, `dsllv`, `dsrlv`, `dsrav` | Checked | Variable counts use the low six bits. |
+| `drotr`, `drotr32`, `drotrv`, `dclz`, `dclo` | Checked | Doubleword rotations and leading-bit counts. |
+| `lwu`, `ld`, `sd` | Checked | Ordinary storage supports misaligned accesses in both byte orders, including above 4 GiB. |
 
 ## Scalar forms that depend on hardware
 
@@ -223,9 +223,8 @@ or PC-relative immediate in this table is the displacement as written to LLVM.
   MARS32 retains its existing behavior. MARS64 defines a trap on division
   by zero, and the inventory still tracks source migration guidance for
   removed forms.
-- **Compact control flow.** Expand each operand constraint in Table A.29.
-  Check overlapping encodings using raw words, then audit link values, taken
-  and untaken paths, and forbidden-slot behavior. MARS64 now assigns the
+- **Compact control flow.** Tests cover overlapping encodings, link values,
+  both branch paths, and forbidden-slot behavior. MARS64 assigns the
   `addi` primary opcode to `beqc`, `beqzalc`, and `bovc`. The same words
   still decode as `addi` in MARS32.
   `bgtc`, `blec`, `bgtuc`, and `bleuc` are assembler aliases. Each emits one
@@ -238,9 +237,9 @@ or PC-relative immediate in this table is the displacement as written to LLVM.
   `beq`, `bne`, `bgez`, `bgtz`, `blez`, `bltz`, `j`, and `jal`. An untaken
   branch still reserves its delay slot. `jal` links to the second instruction
   after the jump. These rules are independent of the MARS32 delay setting.
-- **PC-relative and memory operations.** Audit the entire family in
-  Tables A.27 and A.28, plus word `ll`/`sc` and the Release 6 encodings
-  for doubleword reservations. Ordinary scalar halfword, word, and
+- **PC-relative and memory operations.** The inventory covers Tables A.27
+  and A.28, including the Release 6 word and doubleword reservation encodings.
+  Ordinary scalar halfword, word, and
   doubleword loads and stores may cross word boundaries. Linked and
   conditional accesses still require natural alignment. Both can use the
   mapped MARS64 data region above 4 GiB. The `ulw`, `usw`, `ulh`, `ulhu`, and `ush` pseudos use

@@ -6,6 +6,7 @@ internal fun release6HardwareRequirement(mnemonic: String): String? = when (mnem
     "mthc2", "sdc2", "swc2" -> "a platform-specific coprocessor 2"
     "lbe", "lbue", "lhe", "lhue", "lle", "llwpe", "lwe", "prefe", "sbe", "sce", "scwpe", "she", "swe" ->
         "privileged Enhanced Virtual Addressing"
+    "cachee" -> "privileged Enhanced Virtual Addressing and cache state"
     "ginvi", "ginvt", "tlbinv", "tlbinvf", "tlbp", "tlbr", "tlbwi", "tlbwr" -> "privileged address translation"
     "rdpgpr", "wrpgpr" -> "shadow register sets"
     "mfhc0", "mthc0" -> "the optional CP0 Move High (MVH) feature"
