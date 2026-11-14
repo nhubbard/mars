@@ -228,6 +228,43 @@ class PackagedCliTest {
   }
 
   @Test
+  void kotlinAssignmentCanStartStepAndInspectMemoryAboveFourGiB() throws Exception {
+    var script = source("high-address checks.kts", """
+        import edu.missouristate.mars.api.MarsTarget
+
+        case("high routine", target = MarsTarget.MARS64) {
+            requireTextLabel("routine")
+            requireDataLabel("cell")
+            setWord("cell", 41, offset = 4)
+            setRegister("a0", 0x100000004L)
+            startAt("routine")
+            runUntil("store")
+            expectRegister("t0", 42)
+            expectWord("cell", 41, offset = 4)
+            step()
+            expectWord("cell", 42, offset = 4)
+            expectBytes("cell", 42, 0, 0, 0, offset = 4)
+            runToExit()
+        }
+        """);
+    var entry = source("high-routine.mars", """
+        .data 0x100000000
+        cell: .word 0, 0
+        .text 0x100400000
+        routine:
+            lw $t0,0($a0)
+            addiu $t0,$t0,1
+        store:
+            sw $t0,0($a0)
+            addiu $v0,$zero,10
+            syscall
+        """);
+    var result = launch("grade", script.toString(), entry.toString());
+    assertEquals(0, result.status(), result.err() + result.out());
+    assertTrue(result.out().contains("PASS high routine"), result.out());
+  }
+
+  @Test
   void gradingChecksStructureAndIntermediateStateAndIsolatesCases() throws Exception {
     var script = source("linked-list checks.kts", """
         case("double a word", instructionLimit = 8) {

@@ -109,7 +109,7 @@ class AssemblyCase internal constructor(
         requireCase(stop == null) { "Choose an entry label before executing instructions" }
         val address = textAddress(label)
         machine.claimStoppedSession().use {
-            machine.registerFile.initializeProgramCounter(address)
+            machine.registerFile.setProgramCounterBits(address)
         }
     }
 
@@ -143,7 +143,7 @@ class AssemblyCase internal constructor(
     fun runUntil(label: String) {
         ensureRunnable()
         val address = textAddress(label)
-        checkStop(simulator.runUntilAsync(0) { it == address }.join(), Reason.BREAKPOINT)
+        checkStop(simulator.runUntilAddressAsync(0) { it == address }.join(), Reason.BREAKPOINT)
     }
 
     fun runToExit(exitCode: Int = 0) {
@@ -189,7 +189,7 @@ class AssemblyCase internal constructor(
     fun expectBytes(label: String, vararg expected: Int, offset: Int = 0) {
         for ((index, byte) in expected.withIndex()) {
             require(byte in 0..255) { "Expected bytes must be unsigned values from 0 through 255" }
-            val actual = machine.memory.getByte(dataAddress(label, offset.toLong() + index, alignment = 1))
+            val actual = machine.memory.inspectDataByte(dataAddress(label, offset.toLong() + index, alignment = 1))
             requireCase(actual == byte) { "Expected byte at $label + ${offset.toLong() + index} = $byte, got $actual" }
         }
     }
@@ -227,27 +227,30 @@ class AssemblyCase internal constructor(
         return definitions.singleOrNull() ?: throw CaseFailure("Missing label: $label")
     }
 
-    private fun textAddress(label: String): Int {
+    private fun textAddress(label: String): Long {
         val definition = definition(label)
-        requireCase(definition.kind == AssemblySymbolMap.Kind.TEXT && machine.memory.getStatementNoNotify(definition.address) != null) {
+        val address = definition.addressBits
+        requireCase(definition.kind == AssemblySymbolMap.Kind.TEXT && address % Int.SIZE_BYTES == 0L &&
+            machine.memory.inspectInstruction(address) != null) {
             "Expected an instruction at text label: $label"
         }
-        return definition.address
+        return address
     }
 
-    private fun dataAddress(label: String, offset: Int): Int = dataAddress(label, offset.toLong(), Int.SIZE_BYTES)
+    private fun dataAddress(label: String, offset: Int): Long = dataAddress(label, offset.toLong(), Int.SIZE_BYTES)
 
-    private fun dataAddress(label: String, offset: Long, alignment: Int): Int {
+    private fun dataAddress(label: String, offset: Long, alignment: Int): Long {
         val definition = definition(label)
         requireCase(definition.kind == AssemblySymbolMap.Kind.DATA || definition.kind == AssemblySymbolMap.Kind.EXTERNAL) {
             "Expected a data label: $label"
         }
-        val address = Integer.toUnsignedLong(definition.address) + offset
-        requireCase(address in 0..0xffff_ffffL && address % alignment == 0L &&
-            machine.memory.inDataSegment(address.toInt())) {
+        val base = if (definition.addressBits == definition.address.toLong()) definition.address.toUInt().toLong()
+        else definition.addressBits
+        val address = base + offset
+        requireCase(address % alignment == 0L && machine.memory.inUserData(address)) {
             "Invalid data address at $label + $offset"
         }
-        return address.toInt()
+        return address
     }
 }
 

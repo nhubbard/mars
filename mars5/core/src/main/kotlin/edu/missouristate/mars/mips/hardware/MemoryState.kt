@@ -466,6 +466,13 @@ open class MemoryState(
         if (address in 0..UInt.MAX_VALUE.toLong()) inDataSegment(address.toInt())
         else wideDataEnabled && address in WIDE_DATA_BASE..<WIDE_DATA_BASE + SEGMENT_BYTES
 
+    /** Inspect one byte in user data without publishing a simulated access. */
+    fun inspectDataByte(address: Long): Int? {
+        if (!inUserData(address)) return null
+        if (address > UInt.MAX_VALUE.toLong()) return readWideData(address, 1, notify = false)
+        return readBytes(address.toInt(), 1, notify = false)
+    }
+
     @Throws(AddressErrorException::class)
     fun getDumpWordOrNull(address: Long): Int? {
         if (address in 0..UInt.MAX_VALUE.toLong()) return getRawWordOrNull(address.toInt())
