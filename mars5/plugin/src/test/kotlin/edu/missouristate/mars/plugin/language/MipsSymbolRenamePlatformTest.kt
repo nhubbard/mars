@@ -331,7 +331,11 @@ class MipsSymbolRenamePlatformTest {
             assertTrue(usages(idle).isEmpty())
             RenameProcessor(project, idle, "main", false, false).run()
             assertEquals(source.replace("idle", "main"), file.text)
-            RenameProcessor(project, macros(file).single(), "dormant", false, false).run()
+            val renamed = macros(file).single()
+            assertEquals("", conflicts(renamed, "dormant", emptyList()))
+            WriteCommandAction.runWriteCommandAction(project) {
+                processor.renameElement(renamed, "dormant", emptyArray(), null)
+            }
             assertEquals(source.replace("idle", "dormant"), file.text)
         }
     }

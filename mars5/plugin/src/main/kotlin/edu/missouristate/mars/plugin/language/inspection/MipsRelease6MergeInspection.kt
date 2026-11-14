@@ -34,7 +34,8 @@ internal class MipsRelease6MergeInspection : LocalInspectionTool() {
                 if (site.macroDefinition != null || site.type !in instructionTypes) return
                 val guidance = release6Migration(site.name) ?: return
                 if (catalog.matchOperator(site.name) != null) return
-                val token = file.findElementAt(site.range.startOffset) ?: return
+                // Operation sites come from this file's PSI during the same read action.
+                val token = file.findElementAt(site.range.startOffset)!!
                 holder.registerProblem(token, messages.getMessage("inspection.release6.merge.removed", site.name, guidance))
             }
         }

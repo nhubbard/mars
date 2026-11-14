@@ -5,6 +5,7 @@ import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.components.service
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiElementVisitor
 import com.intellij.psi.PsiRecursiveElementWalkingVisitor
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
@@ -50,6 +51,12 @@ class MipsRelease6MergePlatformTest {
                     nop
                 .end_macro
                 emit(1)
+                .eqv SITE generated:
+                SITE
+                .eqv REGISTER $9
+                REGISTER $8
+                .eqv SECTION .text
+                SECTION
             """.trimIndent()
             fixture.configureByText("migration.mars", source)
             val settings = fixture.project.service<MarsAssemblySettings>()
@@ -73,6 +80,9 @@ class MipsRelease6MergePlatformTest {
             assertEquals(emptyList<String>(), batchDiagnostics())
             settings.changeTarget(MarsTarget.MARS64)
             try {
+                val plain = fixture.addFileToProject("notes.txt", "lwl")
+                val holder = ProblemsHolder(InspectionManager.getInstance(fixture.project), plain, false)
+                assertEquals(PsiElementVisitor.EMPTY_VISITOR, inspection.buildVisitor(holder, false))
                 val expected = listOf("lwl", "LWR", "swl", "MERGE", "LIKELY", "mflo", "c.eq.s")
                 assertEquals(expected, mergeWarnings())
                 assertEquals(expected, batchDiagnostics())

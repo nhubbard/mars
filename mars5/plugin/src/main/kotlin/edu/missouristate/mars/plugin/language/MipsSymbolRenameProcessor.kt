@@ -108,9 +108,9 @@ internal class MipsSymbolRenameProcessor : RenamePsiElementProcessor() {
             // Preserve the declaration node through the platform's rename-complete event.
             val sample = PsiFileFactory.getInstance(file.project)
                 .createFileFromText("macro.mars", MipsFileType, ".macro $newName\n.end_macro\n")
-            val name = MipsDeclaration.findAt(sample, ".macro ".length, newName)?.nameIdentifier
-                ?: throw symbolRenameError("symbol.rename.unverified")
-            val original = declaration.nameIdentifier ?: throw symbolRenameError("symbol.rename.unverified")
+            // Verification already established both names as single identifier tokens.
+            val name = sample.findElementAt(".macro ".length)!!
+            val original = declaration.nameIdentifier!!
             original.node.treeParent.replaceChild(original.node, name.node.copyElement())
             listener?.elementRenamed(declaration)
             return
