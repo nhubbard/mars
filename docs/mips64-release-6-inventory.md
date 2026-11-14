@@ -11,7 +11,7 @@ for the intended coverage.
 - [Scalar section index](instruction-inventory/mips64-scalar-sections.tsv)
   tracks all 307 entries in the Volume II-A section 3.2 table of contents.
 - [Scalar operand forms](instruction-inventory/mips64-scalar-forms.tsv)
-  lists 466 forms, including 112 tagged as removed and the 44 scalar comparison forms.
+  lists concrete forms, including 112 tagged as removed and 44 scalar comparison forms.
   Generic condition notation, untagged aliases, and privilege and operand
   constraints still need review against the instruction descriptions.
   The table of contents and instruction descriptions use different page

@@ -24,11 +24,11 @@ dahi	rs, rs immediate	67	implemented
 dati	rs, rs immediate	67	implemented
 auipc	rs, immediate	69	audit
 b	offset	70	idiom-audit
-bal	offset	71	idiom-audit
+bal	offset	71	implemented
 balc	offset	73	audit
 bc	offset	74	audit
-bc1eqz	ft, offset	75	audit
-bc1nez	ft, offset	75	audit
+bc1eqz	ft, offset	75	implemented
+bc1nez	ft, offset	75	implemented
 bc1f	offset (cc = 0 implied)	77	removed
 bc1f	cc, offset	77	removed
 bc1fl	offset (cc = 0 implied)	79	removed
@@ -58,7 +58,22 @@ bltzalc	rt, offset	98	implemented
 beqzalc	rt, offset	98	implemented
 bnezalc	rt, offset	98	implemented
 bgezall	rs, offset	101	removed
-b<cond>c	rs, rt, offset	103	audit
+beqc	rs, rt, offset	103	implemented
+bnec	rs, rt, offset	103	implemented
+bltc	rs, rt, offset	104	implemented
+bgec	rs, rt, offset	104	implemented
+bltuc	rs, rt, offset	104	implemented
+bgeuc	rs, rt, offset	104	implemented
+bgtc	rs, rt, offset	104	idiom-audit
+blec	rs, rt, offset	104	idiom-audit
+bgtuc	rs, rt, offset	104	idiom-audit
+bleuc	rs, rt, offset	104	idiom-audit
+bltzc	rs, offset	104	implemented
+blezc	rs, offset	104	implemented
+bgezc	rs, offset	104	implemented
+bgtzc	rs, offset	104	implemented
+beqzc	rs, offset	104	implemented
+bnezc	rs, offset	104	implemented
 bgezl	rs, offset	107	removed
 bgtz	rs, offset	109	audit
 bgtzl	rs, offset	110	removed
@@ -137,14 +152,14 @@ cmp.sune.d	fd, fs, ft	158	implemented
 cmp.sne.s	fd, fs, ft	158	implemented
 cmp.sne.d	fd, fs, ft	158	implemented
 cop2	func	163	audit
-crc32b	rt, rs, rt	165	audit
-crc32h	rt, rs, rt	165	audit
-crc32w	rt, rs, rt	165	audit
-crc32d	rt, rs, rt	165	audit
-crc32cb	rt, rs, rt	168	audit
-crc32ch	rt, rs, rt	168	audit
-crc32cw	rt, rs, rt	168	audit
-crc32cd	rt, rs, rt	168	audit
+crc32b	rt, rs, rt	165	implemented
+crc32h	rt, rs, rt	165	implemented
+crc32w	rt, rs, rt	165	implemented
+crc32d	rt, rs, rt	165	implemented
+crc32cb	rt, rs, rt	168	implemented
+crc32ch	rt, rs, rt	168	implemented
+crc32cw	rt, rs, rt	168	implemented
+crc32cd	rt, rs, rt	168	implemented
 ctc1	rt, fs	171	implemented
 ctc2	rt, Impl	174	audit
 cvt.d.s	fd, fs	175	audit
@@ -170,7 +185,12 @@ ddivu	rs, rt	192	removed
 deret		193	audit
 di		201	audit
 di	rt	201	audit
+dext	rt, rs, pos, size	195	implemented
+dextm	rt, rs, pos, size	197	implemented
+dextu	rt, rs, pos, size	199	implemented
 dins	rt, rs, pos, size	203	implemented
+dinsm	rt, rs, pos, size	205	implemented
+dinsu	rt, rs, pos, size	207	implemented
 div	rs, rt	209	removed
 div	rd,rs,rt	212	implemented
 mod	rd,rs,rt	212	implemented
@@ -185,12 +205,12 @@ div.d	fd, fs, ft	211	audit
 divu	rs, rt	215	removed
 dmfc0	rt, rd	216	audit
 dmfc0	rt, rd, sel	216	audit
-dmfc1	rt,fs	217	audit
+dmfc1	rt,fs	217	implemented
 dmfc2	rt, rd	218	audit
 dmfc2,	rt, rd, sel	218	audit
 dmtc0	rt, rd	219	audit
 dmtc0	rt, rd, sel	219	audit
-dmtc1	rt, fs	220	audit
+dmtc1	rt, fs	220	implemented
 dmtc2	rt,Impl	221	audit
 dmtc2	rt, Impl, sel	221	audit
 dmult	rs, rt	222	removed
@@ -291,7 +311,7 @@ mfc2	rt, Impl	358	audit
 mfc2,	rt, Impl, sel	358	audit
 mfhc0	rt, rd	359	audit
 mfhc0	rt, rd, sel	359	audit
-mfhc1	rt, fs	361	audit
+mfhc1	rt, fs	361	implemented
 mfhc2	rt, Impl	362	audit
 mfhc2,	rt, rd, sel	362	audit
 mfhi		363	removed
@@ -327,7 +347,7 @@ mtc2	rt, Impl	386	audit
 mtc2	rt, Impl, sel	386	audit
 mthc0	rt, rd	387	audit
 mthc0	rt, rd, sel	387	audit
-mthc1	rt, fs	389	audit
+mthc1	rt, fs	389	implemented
 mthc2	rt, Impl	390	audit
 mthc2	rt, Impl, sel	390	audit
 mthi	rs	391	removed
@@ -346,7 +366,7 @@ mul.d	fd, fs, ft	395	audit
 mul.ps	fd, fs, ft	395	removed
 mult	rs, rt	400	removed
 multu	rs, rt	402	removed
-nal		404	idiom-audit
+nal		404	implemented
 neg.s	fd, fs	405	audit
 neg.d	fd, fs	405	audit
 neg.ps	fd, fs	405	removed
@@ -409,7 +429,7 @@ selnez.s	fd,fs,ft	491	audit
 selnez.d	fd,fs,ft	491	audit
 sh	rt, offset(base)	493	audit
 she	rt, offset(base)	494	audit
-sigrie	code	496	audit
+sigrie	code	496	implemented
 sll	rd, rt, sa	497	audit
 sllv	rd, rt, rs	498	audit
 slt	rd, rs, rt	499	audit
