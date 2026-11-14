@@ -15,6 +15,43 @@ import org.junit.jupiter.params.provider.ValueSource
 class Mars64ScalarArithmeticTest {
     @ParameterizedTest
     @ValueSource(booleans = [false, true])
+    fun `roots preserve signed zero and report IEEE exceptions`(double: Boolean, @TempDir directory: Path) {
+        val format = if (double) "d" else "s"
+        val source = Files.writeString(directory.resolve("roots.s"), $$"""
+            ctc1 $8,$31
+            sqrt.$$format $f3,$f5
+            recip.$$format $f3,$f5
+            rsqrt.$$format $f3,$f5
+            sqrt.$$format $f3,$f5
+            rsqrt.$$format $f3,$f5
+        """.trimIndent())
+        TestSessions.create().use { machine ->
+            machine.selectTarget(MarsTarget.MARS64)
+            val program = machine.assemble(listOf(source), null, false, false)
+            val base = if (double) 0x462028c0 else 0x460028c0
+            assertEquals(listOf(4, 21, 22, 4, 22).map { base or it }, program.machineList!!.drop(1).map(ProgramStatement::binaryStatement))
+            val fpu = machine.coprocessor1
+            fun bits(value: Double) = if (double) value.toRawBits() else value.toFloat().toRawBits().toUInt().toLong()
+            fun step(input: Double, expected: Long, causes: Int = 0) {
+                machine.editCoprocessor1Pair(5, bits(input))
+                program.simulate(1)
+                assertEquals(expected, fpu.getDoublewordNoNotify(3))
+                assertEquals(causes, (fpu.floatingStatus ushr 12) and 31)
+            }
+
+            machine.editIntegerRegister(8, 2)
+            program.simulate(1)
+            // Binary64's nearest sqrt(2) is already above the exact value. Binary32's is below it.
+            step(2.0, bits(Math.sqrt(2.0)) + if (double) 0 else 1, INEXACT)
+            step(-0.0, bits(Double.NEGATIVE_INFINITY), DIVIDE_BY_ZERO)
+            step(4.0, bits(0.5))
+            step(-0.0, bits(-0.0))
+            step(-1.0, bits(Double.NaN), INVALID_OPERATION)
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = [false, true])
     fun `arithmetic uses odd registers and rounds according to FCSR`(double: Boolean, @TempDir directory: Path) {
         val format = if (double) "d" else "s"
         val operations = listOf("add" to 0, "sub" to 1, "mul" to 2, "div" to 3, "maddf" to 24, "msubf" to 25)

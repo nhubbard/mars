@@ -393,8 +393,8 @@ pul.ps	fd, fs, ft	430	removed
 puu.ps	fd, fs, ft	431	removed
 rdhwr	rt,rd,sel	432	audit
 rdpgpr	rd, rt	435	requires-privileged-platform
-recip.s		436	audit
-recip.d		436	audit
+recip.s	fd, fs	436	implemented
+recip.d	fd, fs	436	implemented
 rint.s	fd, fs	438	implemented
 rint.d	fd, fs	438	implemented
 rotr	rd, rt, sa	440	audit
@@ -403,8 +403,8 @@ round.l.s	fd, fs	442	implemented
 round.l.d	fd, fs	442	implemented
 round.w.s	fd, fs	444	implemented
 round.w.d	fd, fs	444	implemented
-rsqrt.s		446	audit
-rsqrt.d		446	audit
+rsqrt.s	fd, fs	446	implemented
+rsqrt.d	fd, fs	446	implemented
 sb	rt, offset(base)	448	audit
 sbe	rt, offset(base)	449	requires-eva
 sc	rt, offset(base)	450	implemented
@@ -439,8 +439,8 @@ slt	rd, rs, rt	499	audit
 slti	rt, rs, immediate	500	audit
 sltiu	rt, rs, immediate	501	audit
 sltu	rd, rs, rt	502	audit
-sqrt.s	fd, fs	503	audit
-sqrt.d	fd, fs	503	audit
+sqrt.s	fd, fs	503	implemented
+sqrt.d	fd, fs	503	implemented
 sra	rd, rt, sa	504	audit
 srav	rd, rt, rs	505	audit
 srl	rd, rt, sa	506	audit

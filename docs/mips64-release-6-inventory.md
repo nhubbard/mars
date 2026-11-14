@@ -157,8 +157,10 @@ or PC-relative immediate in this table is the displacement as written to LLVM.
   FCSR rounding mode and report conversion exceptions. Scalar `add`, `sub`,
   `mul`, `div`, `maddf`, and `msubf` in both precisions round using FCSR and
   report arithmetic exceptions. Tests check directed rounding, sticky flags,
-  and an enabled exception that preserves the destination. Unary arithmetic
-  and the minimum and maximum instructions still need review.
+  and an enabled exception that preserves the destination. `sqrt` and `recip`
+  honor FCSR rounding. `rsqrt` approximates the result using nearest-even
+  square root and division. All three report exceptions. The minimum and
+  maximum instructions still need review.
   [MIPS64 FPU programming model](https://s3-eu-west-1.amazonaws.com/downloads-mips/documents/MD00083-2B-MIPS64INT-AFP-06.01.pdf)
 - **REGIMM.** MARS64 supports `bal` and `nal` at the retained zero-source
   encodings. Both link past the delay slot. The old register-conditional

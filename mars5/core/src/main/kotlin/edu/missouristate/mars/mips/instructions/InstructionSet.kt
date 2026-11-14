@@ -9,6 +9,7 @@ import edu.missouristate.mars.mips.instructions.basic.release6BarrierInstruction
 import edu.missouristate.mars.mips.instructions.basic.release6FloatingCompareInstructions
 import edu.missouristate.mars.mips.instructions.basic.release6FloatingConversions
 import edu.missouristate.mars.mips.instructions.basic.release6ScalarArithmetic
+import edu.missouristate.mars.mips.instructions.basic.release6ScalarRoots
 /*
 Copyright (c) 2003-2013,  Pete Sanderson and Kenneth Vollmar
 
@@ -70,6 +71,7 @@ open class InstructionSet {
             forms.addAll(release6FloatingCompareInstructions())
             forms.addAll(release6FloatingConversions())
             forms.addAll(release6ScalarArithmetic())
+            forms.addAll(release6ScalarRoots())
             forms.addAll(release6RoundingInstructions())
             forms.addAll(CompactComparison.entries.filter { it.wideOnly }.map(::InstrCompactCompareBranch))
         }
@@ -124,6 +126,7 @@ open class InstructionSet {
             "c.eq.s", "c.eq.d", "c.lt.s", "c.lt.d", "c.le.s", "c.le.d",
             "add.s", "add.d", "sub.s", "sub.d", "mul.s", "mul.d", "div.s", "div.d",
             "maddf.s", "maddf.d", "msubf.s", "msubf.d",
+            "sqrt.s", "sqrt.d",
         )
     }
 }

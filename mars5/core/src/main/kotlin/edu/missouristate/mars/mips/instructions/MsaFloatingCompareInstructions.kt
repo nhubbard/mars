@@ -417,24 +417,6 @@ private fun unaryInstruction(operation: FloatingUnary, format: Int, suffix: Char
     }
 }
 
-private fun squareRoot(precision: FloatingPrecision, value: Double, status: Int): FloatingLane {
-    if (value < 0.0) return FloatingLane(precision.exponent or precision.quiet, INVALID_OPERATION)
-    if (value == 0.0 || value.isInfinite()) return FloatingLane(precision.raw(value))
-    val single = precision.bits == 32
-    val nearest = Math.sqrt(value).let { if (single) it.toFloat().toDouble() else it }
-    val exact = BigDecimal(value)
-    val candidate = BigDecimal(nearest)
-    val relation = (candidate * candidate).compareTo(exact)
-    val rounded = when {
-        relation > 0 && (status and 3 == 1 || status and 3 == 3) ->
-            if (single) Math.nextDown(nearest.toFloat()).toDouble() else Math.nextDown(nearest)
-        relation < 0 && status and 3 == 2 ->
-            if (single) Math.nextUp(nearest.toFloat()).toDouble() else Math.nextUp(nearest)
-        else -> nearest
-    }
-    return FloatingLane(precision.raw(rounded), if (relation != 0) INEXACT else 0)
-}
-
 private fun scaleInstruction(format: Int, suffix: Char): BasicInstruction {
     val precision = FloatingPrecision(32 shl format)
     return BasicInstruction(
