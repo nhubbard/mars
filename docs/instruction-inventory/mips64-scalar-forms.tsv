@@ -246,14 +246,14 @@ ginvi	rs	260	requires-privileged-platform
 ginvt	rs, type	262	requires-privileged-platform
 j	target	268	audit
 jal	target	269	audit
-jalr	rs (rd = 31 implied)	271	audit
-jalr	rd, rs	271	audit
+jalr	rs (rd = 31 implied)	271	implemented
+jalr	rd, rs	271	implemented
 jalr.hb	rs (rd = 31 implied)	273	implemented
 jalr.hb	rd, rs	273	implemented
 jalx	target	276	removed
 jialc	rt, offset	278	audit
 jic	rt, offset	280	audit
-jr	rs	281	audit
+jr	rs	281	implemented
 jr.hb	rs	283	implemented
 lb	rt, offset(base)	286	audit
 lbe	rt, offset(base)	287	requires-eva

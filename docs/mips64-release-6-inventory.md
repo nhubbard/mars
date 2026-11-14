@@ -182,6 +182,8 @@ or PC-relative immediate in this table is the displacement as written to LLVM.
   synchronous in the simulator. The hazard-barrier jumps still execute an
   architectural delay slot. Tests exercise writing and executing a new
   instruction with the existing opt-in setting and restoring it on backstep.
+  Ordinary `jr` and `jalr` also use an architectural delay slot in MARS64.
+  `jr` uses the Release 6 `jalr` encoding with a zero destination register.
   `ssnop` retains its distinct encoding and acts as `nop`. `rdhwr` exposes
   CPU number zero, synchronization step zero, and available paired LL/SC.
   Hardware counters, the OS thread-local pointer, and other register or

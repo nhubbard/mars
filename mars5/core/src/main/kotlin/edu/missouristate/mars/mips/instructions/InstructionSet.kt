@@ -123,6 +123,7 @@ open class InstructionSet {
             "ll", "sc", "bc1f", "bc1t", "bltzal", "bgezal",
             "lwl", "lwr", "swl", "swr",
             "teqi", "tgei", "tgeiu", "tlti", "tltiu", "tnei",
+            "jr", "jalr",
             "round.w.s", "round.w.d", "trunc.w.s", "trunc.w.d",
             "ceil.w.s", "ceil.w.d", "floor.w.s", "floor.w.d", "cvt.w.s", "cvt.w.d",
             "cvt.s.d", "cvt.s.w", "cvt.d.s", "cvt.d.w",

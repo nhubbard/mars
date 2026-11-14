@@ -4,11 +4,41 @@ import edu.missouristate.mars.api.MarsTarget
 import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 
 class Mars64BarrierTest {
+    @Test
+    fun `register jumps use Release 6 encoding and always execute a delay slot`(@TempDir directory: Path) {
+        val source = Files.writeString(directory.resolve("jump.s"), $$"""
+            jalr $9,$10
+            addiu $11,$11,1
+            returned: nop
+            callee: jr $9
+            addiu $11,$11,2
+        """.trimIndent())
+        TestSessions.create().use { session ->
+            assertEquals("jr", session.instructionSet.findByBinaryCode(0x01200008)?.name)
+            session.selectTarget(MarsTarget.MARS64)
+            val program = session.assemble(listOf(source), null, false, false)
+            val statements = program.machineList!!
+            assertNull(session.instructionSet.findByBinaryCode(0x01200008))
+            assertEquals(0x01404809, statements[0].binaryStatement)
+            assertEquals(0x01200009, statements[3].binaryStatement)
+            assertEquals("jr", session.instructionSet.findByBinaryCode(0x01200009)?.name)
+            session.editIntegerRegister(10, statements[3].address)
+            program.simulate(4)
+            assertEquals(statements[2].address, session.registerFile.programCounter)
+            assertEquals(statements[2].address, session.registerFile.getValueNoNotify(9))
+            assertEquals(3, session.registerFile.getValueNoNotify(11))
+            session.backStepper.backStep()
+            assertEquals(statements[4].address, session.registerFile.programCounter)
+            assertEquals(1, session.registerFile.getValueNoNotify(11))
+        }
+    }
+
     @Test
     fun `barrier sequence executes an instruction written to text when enabled and reverses the write`(@TempDir directory: Path) {
         val source = Files.writeString(directory.resolve("rewrite.s"), $$"""

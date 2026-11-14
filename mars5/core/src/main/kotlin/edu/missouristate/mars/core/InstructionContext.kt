@@ -83,15 +83,9 @@ class InstructionContext(private val session: MarsContext, private val environme
             throw ProcessingException(this, statement, failure)
         }
 
-    internal fun jumpAndLinkRegister(statement: ProgramStatement, link: Int, source: Int) {
-        if (session.target == MarsTarget.MARS32) {
-            linkReturnAddress(link)
-            jump(registerFile.getValue(source))
-        } else {
-            val target = registerJumpTarget(statement, source)
-            linkReturnAddress(link)
-            jump(target)
-        }
+    internal fun jumpAndLinkRegister(link: Int, source: Int) {
+        linkReturnAddress(link)
+        jump(registerFile.getValue(source))
     }
 
     fun updateRegister(number: Int, value: Int): Int {

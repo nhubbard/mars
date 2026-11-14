@@ -27,15 +27,18 @@ internal fun release6BarrierInstructions(): List<BasicInstruction> = listOf(
             values[0] = values[0].toShort().toInt()
         }
     },
-    hazardJump("jalr.hb \$t1,\$t2", "sssss 00000 fffff", link = null),
-    hazardJump("jalr.hb \$t1", "fffff 00000 11111", link = 31),
-    hazardJump("jr.hb \$t1", "fffff 00000 00000", link = 0),
+    delayedJump("jalr.hb \$t1,\$t2", "sssss 00000 fffff", link = null, hazardBarrier = true),
+    delayedJump("jalr.hb \$t1", "fffff 00000 11111", link = 31, hazardBarrier = true),
+    delayedJump("jr.hb \$t1", "fffff 00000 00000", link = 0, hazardBarrier = true),
+    delayedJump("jalr \$t1,\$t2", "sssss 00000 fffff", link = null),
+    delayedJump("jalr \$t1", "fffff 00000 11111", link = 31),
+    delayedJump("jr \$t1", "fffff 00000 00000", link = 0),
 )
 
-private fun hazardJump(example: String, registerFields: String, link: Int?) =
+private fun delayedJump(example: String, registerFields: String, link: Int?, hazardBarrier: Boolean = false) =
     object : BasicInstruction(
-        example, "Jump after a delay slot and clear execution and instruction hazards", R_FORMAT,
-        "000000 $registerFields 10000 001001",
+        example, if (hazardBarrier) "Jump after a delay slot and clear execution and instruction hazards" else "Jump after a delay slot",
+        R_FORMAT, "000000 $registerFields ${if (hazardBarrier) "10000" else "00000"} 001001",
         { statement, context ->
             val operands = statement.operands
             val source = operands[if (link == null) 1 else 0]

@@ -11,6 +11,6 @@ open class InstrJalr1 : BasicInstruction(
     "000000 sssss 00000 fffff 00000 001001",
     { statement, context ->
         val operands = statement.operands
-        context.jumpAndLinkRegister(statement, operands[0], operands[1])
+        context.jumpAndLinkRegister(operands[0], operands[1])
     },
 )
