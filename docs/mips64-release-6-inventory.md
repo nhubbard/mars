@@ -128,6 +128,11 @@ or PC-relative immediate in this table is the displacement as written to LLVM.
   They consume the low byte, halfword, word, or doubleword of the message
   register, update the accumulator in place, and sign-extend the result.
   The repeated source operand must name the destination register.
+- **Barriers and self-modifying code.** MARS64 recognizes `sync`, `ehb`,
+  `synci`, `jr.hb`, and `jalr.hb`. Memory and instruction fetch are
+  synchronous in the simulator. The hazard-barrier jumps still execute an
+  architectural delay slot. Tests exercise writing and executing a new
+  instruction with the existing opt-in setting and restoring it on backstep.
 - **Remaining scalar and optional families.** Expand Volume II-A by operand
   form and classify shared integer, COP1, memory, system, and optional forms.
   Track removed and privileged forms separately from missing user-mode

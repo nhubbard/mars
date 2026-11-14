@@ -4,6 +4,7 @@ import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.mips.instructions.basic.CompactComparison
 import edu.missouristate.mars.mips.instructions.basic.InstrCompactCompareBranch
 import edu.missouristate.mars.mips.instructions.basic.release6RoundingInstructions
+import edu.missouristate.mars.mips.instructions.basic.release6BarrierInstructions
 import edu.missouristate.mars.mips.instructions.basic.release6FloatingCompareInstructions
 /*
 Copyright (c) 2003-2013,  Pete Sanderson and Kenneth Vollmar
@@ -53,6 +54,7 @@ open class InstructionSet {
         forms.addAll(if (target == MarsTarget.MARS64) common.filterNot { it.name in replacedWordInstructions } else common)
         if (target == MarsTarget.MARS64) {
             forms.addAll(wideInstructionFactories.map { it() })
+            forms.addAll(release6BarrierInstructions())
             forms.addAll(release6FloatingCompareInstructions())
             forms.addAll(release6RoundingInstructions())
             forms.addAll(CompactComparison.entries.filter { it.wideOnly }.map(::InstrCompactCompareBranch))

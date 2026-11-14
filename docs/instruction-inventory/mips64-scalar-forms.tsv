@@ -232,7 +232,7 @@ dsrlv	rd, rt, rs	239	audit
 dsub	rd, rs, rt	240	audit
 dsubu	rd, rs, rt	241	audit
 dvp	rt	242	audit
-ehb		245	idiom-audit
+ehb		245	implemented
 ei		246	audit
 ei	rt	246	audit
 eret		248	audit
@@ -248,13 +248,13 @@ j	target	268	audit
 jal	target	269	audit
 jalr	rs (rd = 31 implied)	271	audit
 jalr	rd, rs	271	audit
-jalr.hb	rs (rd = 31 implied)	273	audit
-jalr.hb	rd, rs	273	audit
+jalr.hb	rs (rd = 31 implied)	273	implemented
+jalr.hb	rd, rs	273	implemented
 jalx	target	276	removed
 jialc	rt, offset	278	audit
 jic	rt, offset	280	audit
 jr	rs	281	audit
-jr.hb	rs	283	audit
+jr.hb	rs	283	implemented
 lb	rt, offset(base)	286	audit
 lbe	rt, offset(base)	287	audit
 lbu	rt, offset(base)	288	audit
@@ -457,9 +457,9 @@ swle	rt, offset(base)	522	removed
 swr	rt, offset(base)	525	removed
 swre	rt, offset(base)	527	removed
 swxc1	fs, index(base)	530	removed
-sync	(stype = 0 implied)	531	audit
-sync	stype	531	audit
-synci	offset(base)	537	audit
+sync	(stype = 0 implied)	531	implemented
+sync	stype	531	implemented
+synci	offset(base)	537	implemented
 syscall		540	audit
 teq	rs, rt	541	audit
 teqi	rs, immediate	542	removed

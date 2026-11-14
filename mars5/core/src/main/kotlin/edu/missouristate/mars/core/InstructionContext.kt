@@ -34,7 +34,7 @@ import edu.missouristate.mars.simulator.Exceptions.FLOATING_POINT_EXCEPTION
 import edu.missouristate.mars.simulator.Exceptions.RESERVED_INSTRUCTION_EXCEPTION
 import edu.missouristate.mars.util.Binary
 
-private val indirectControlTransfers = setOf("jr", "jalr", "jic", "jialc", "eret", "eretnc", "deret", "nal", "wait", "pause")
+private val indirectControlTransfers = setOf("jr", "jalr", "jr.hb", "jalr.hb", "jic", "jialc", "eret", "eretnc", "deret", "nal", "wait", "pause")
 
 /** Executes instructions against one session's registers, memory, undo history, and syscall I/O. */
 class InstructionContext(private val session: MarsContext, private val environment: SyscallEnvironment) {
@@ -142,6 +142,11 @@ class InstructionContext(private val session: MarsContext, private val environme
         val target = next + if (taken) (displacement shl 2) else INSTRUCTION_LENGTH
         delayedBranch.register(target)
         lastBranchOutcome = if (taken) BranchOutcome.TAKEN else BranchOutcome.NOT_TAKEN
+    }
+
+    internal fun release6DelayedJump(target: Int, linkRegister: Int) {
+        if (linkRegister != 0) link(linkRegister, registerFile.programCounter + INSTRUCTION_LENGTH)
+        delayedBranch.register(target, jump = linkRegister == 0)
     }
 
     /** Execute or schedule a jump. Linking instructions have already recorded a call. */
