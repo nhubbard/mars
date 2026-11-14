@@ -75,6 +75,27 @@ open class MemoryState(
     private var layout = configuration
     private var endian = LITTLE_ENDIAN
     private val listeners = CopyOnWriteArrayList<MemoryListener>()
+    internal data class Reservation(val address: Int, val size: Int)
+    internal var reservation: Reservation? = null
+
+    /** Linked operations use aligned ordinary storage in the single-core simulator. */
+    internal fun checkLinkedAccess(address: Int, size: Int, exception: Int) {
+        checkAlignment(address, size, "address not aligned for linked access ", exception)
+        val last = address + size - 1
+        if (!(inDataSegment(address) && inDataSegment(last) ||
+                inKernelDataSegment(address) && inKernelDataSegment(last) ||
+                inStack(address) && last.toLong() <= stackBaseAddress.toLong() + WORD_LENGTH_BYTES - 1)) {
+            throw AddressErrorException("address outside ordinary storage for linked access ", exception, address)
+        }
+    }
+
+    private fun invalidateReservation(address: Int, length: Int) {
+        val linked = reservation ?: return
+        if (address.toLong() < linked.address.toLong() + linked.size &&
+            linked.address.toLong() < address.toLong() + length) {
+            reservation = null
+        }
+    }
 
     private lateinit var dataBlockTable: WordMemorySegment
     private lateinit var kernelDataBlockTable: WordMemorySegment
@@ -99,6 +120,7 @@ open class MemoryState(
     )
 
     open fun loadData(image: DataImage, checkCancellation: Runnable) {
+        reservation = null
         endian = image.littleEndian
         heapAddress = image.heapAddress
         dataBlockTable.load(image.data, checkCancellation)
@@ -158,6 +180,7 @@ open class MemoryState(
     open fun usingCompactMemoryConfiguration(): Boolean = (kernelHighAddress and 0x7fff) == kernelHighAddress
 
     private fun initialize() {
+        reservation = null
         heapAddress = heapBaseAddress
         textBlockTable = TextMemorySegment(BLOCK_TABLE_LENGTH)
         kernelTextBlockTable = TextMemorySegment(BLOCK_TABLE_LENGTH)
@@ -198,6 +221,7 @@ open class MemoryState(
             inKernelTextSegment(address) -> throw AddressErrorException(KERNEL_TEXT_STORE, ADDRESS_EXCEPTION_STORE, address)
             else -> throw AddressErrorException("address out of range ", ADDRESS_EXCEPTION_STORE, address)
         }
+        invalidateReservation(address, length)
         notifyAnyObservers(WRITE, address, length, value)
         return previous
     }
@@ -215,6 +239,7 @@ open class MemoryState(
             inKernelTextSegment(address) -> throw AddressErrorException(KERNEL_TEXT_STORE, ADDRESS_EXCEPTION_STORE, address)
             else -> throw AddressErrorException("store address out of range ", ADDRESS_EXCEPTION_STORE, address)
         }
+        invalidateReservation(address, WORD_LENGTH_BYTES)
         notifyAnyObservers(WRITE, address, WORD_LENGTH_BYTES, value)
         return previous
     }

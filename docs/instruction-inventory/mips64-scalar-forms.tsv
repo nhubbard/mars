@@ -206,8 +206,8 @@ lh	rt, offset(base)	301	audit
 lhe	rt, offset(base)	302	audit
 lhu	rt, offset(base)	304	audit
 lhue	rt, offset(base)	305	audit
-ll	rt, offset(base)	307	audit
-lld	rt, offset(base)	309	audit
+ll	rt, offset(base)	307	implemented
+lld	rt, offset(base)	309	implemented
 lle	rt, offset(base)	314	audit
 lldp	rt, rd, (base)	312	audit
 llwp	rt, rd, (base)	316	audit
@@ -343,8 +343,8 @@ rsqrt.s		446	audit
 rsqrt.d		446	audit
 sb	rt, offset(base)	448	audit
 sbe	rt, offset(base)	449	audit
-sc	rt, offset(base)	450	audit
-scd	rt, offset(base)	454	audit
+sc	rt, offset(base)	450	implemented
+scd	rt, offset(base)	454	implemented
 scdp	rt, rd, (base)	458	audit
 sce	rt, offset(base)	461	audit
 scwp	rt, rd, (base)	465	audit

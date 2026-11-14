@@ -63,6 +63,16 @@ class MarsContext @Inject constructor(
     @Volatile var isClosing: Boolean = false
         private set
 
+    init {
+        backStepper.addInstructionCheckpoint {
+            if (target == MarsTarget.MARS32) null
+            else {
+                val reservation = memory.reservation
+                Runnable { memory.reservation = reservation }
+            }
+        }
+    }
+
     /** Requests an interrupt to be handled at the next instruction boundary. */
     fun requestExternalInterrupt(cause: Int) {
         interrupt.set(cause)
@@ -224,6 +234,7 @@ class MarsContext @Inject constructor(
     }
 
     private fun clearPendingEvents() {
+        memory.reservation = null
         delayedBranch.clear()
         interrupt.set(0)
         deviceInterrupts.set(0)

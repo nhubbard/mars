@@ -1,8 +1,10 @@
 package edu.missouristate.mars.mips.instructions
 
 import edu.missouristate.mars.ProcessingException
+import edu.missouristate.mars.core.InstructionContext
 import edu.missouristate.mars.mips.hardware.AddressErrorException
 import edu.missouristate.mars.mips.hardware.MemoryState
+import edu.missouristate.mars.mips.hardware.MemoryState.Reservation
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat.I_FORMAT
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat.R_FORMAT
 import edu.missouristate.mars.mips.instructions.basic.DoublewordBitField
@@ -22,6 +24,10 @@ import java.lang.Math.unsignedMultiplyHigh
 
 /** Doubleword operations enabled by the educational MARS64 target. */
 internal val wideInstructionFactories: List<() -> BasicInstruction> = listOf(
+    { linkedMemoryInstruction("ll", Int.SIZE_BYTES, store = false, "110110") },
+    { linkedMemoryInstruction("sc", Int.SIZE_BYTES, store = true, "100110") },
+    { linkedMemoryInstruction("lld", Long.SIZE_BYTES, store = false, "110111") },
+    { linkedMemoryInstruction("scd", Long.SIZE_BYTES, store = true, "100111") },
     { release6WordResult("mul", "Multiply words and keep the low word", "011000", Int::times) },
     { release6WordResult("mulu", "Multiply unsigned words and keep the low word", "011001", Int::times) },
     { release6WordResult("div", "Divide signed words and keep the quotient", "011010", Int::div, division = true) },
@@ -183,21 +189,63 @@ internal val wideInstructionFactories: List<() -> BasicInstruction> = listOf(
                 val address = context.effectiveAddress(base, offset, ADDRESS_EXCEPTION_STORE)
                 requireDoublewordAlignment(address, ADDRESS_EXCEPTION_STORE)
                 val value = context.registerFile.getLongValue(source)
-                val low = value.toInt()
-                val high = (value ushr Int.SIZE_BITS).toInt()
-                if (context.memory().byteOrder) {
-                    context.setMemoryWord(address, low)
-                    context.setMemoryWord(address + Int.SIZE_BYTES, high)
-                } else {
-                    context.setMemoryWord(address, high)
-                    context.setMemoryWord(address + Int.SIZE_BYTES, low)
-                }
+                context.storeDoubleword(address, value)
             } catch (failure: AddressErrorException) {
                 throw ProcessingException(context, statement, failure)
             }
         }
     },
 )
+
+private fun linkedMemoryInstruction(name: String, size: Int, store: Boolean, function: String): BasicInstruction =
+    object : BasicInstruction(
+        "$name \$t1,-100(\$t2)",
+        if (store) "Store if the matching memory reservation is still held" else "Load and reserve the addressed bytes",
+        I_FORMAT, "011111 ttttt fffff sssssssss 0 $function",
+        { statement, context ->
+            val (register, offset, base) = statement.operands
+            val exception = if (store) ADDRESS_EXCEPTION_STORE else ADDRESS_EXCEPTION_LOAD
+            val memory = context.memory()
+            try {
+                val address = context.effectiveAddress(base, offset, exception)
+                memory.checkLinkedAccess(address, size, exception)
+                val linked = Reservation(address, size)
+                if (store) {
+                    val success = memory.reservation == linked
+                    memory.reservation = null
+                    if (success) {
+                        if (size == Int.SIZE_BYTES) context.setMemoryWord(address, context.registerFile.getValue(register))
+                        else context.storeDoubleword(address, context.registerFile.getLongValue(register))
+                    }
+                    context.updateRegister(register, if (success) 1 else 0)
+                } else {
+                    val value = if (size == Int.SIZE_BYTES) memory.getWord(address).toLong()
+                    else readDoubleword(memory, address, memory::getWord)
+                    context.updateLongRegister(register, value)
+                    memory.reservation = linked
+                }
+            } catch (failure: AddressErrorException) {
+                throw ProcessingException(context, statement, failure)
+            }
+        },
+    ) {
+        override fun encodeOperands(values: IntArray): IntArray {
+            require(values[1] in -256..255) { "$name offset must be from -256 through 255" }
+            return values
+        }
+
+        override fun decodeOperands(values: IntArray) {
+            values[1] = (values[1] shl 23) shr 23
+        }
+    }
+
+private fun InstructionContext.storeDoubleword(address: Int, value: Long) {
+    val low = value.toInt()
+    val high = (value ushr Int.SIZE_BITS).toInt()
+    val littleEndian = memory().byteOrder
+    setMemoryWord(address, if (littleEndian) low else high)
+    setMemoryWord(address + Int.SIZE_BYTES, if (littleEndian) high else low)
+}
 
 private fun release6WordResult(
     name: String, description: String, function: String, operation: (Int, Int) -> Int, division: Boolean = false,

@@ -159,6 +159,7 @@ class InstructionContext(private val session: MarsContext, private val environme
     }
 
     fun returnFromException() {
+        memory().reservation = null
         setProgramCounter(coprocessor0.getValue(EPC))
         lastTransfer = ExceptionReturn.INSTANCE
     }
@@ -302,6 +303,7 @@ class InstructionContext(private val session: MarsContext, private val environme
                     }
                 }
             } catch (error: ProcessingException) {
+                memory().reservation = null
                 if (!dispatchHandler || error.errors() == null) throw error
                 val handler = try {
                     memory().getStatementNoNotify(memory().exceptionHandlerAddress)

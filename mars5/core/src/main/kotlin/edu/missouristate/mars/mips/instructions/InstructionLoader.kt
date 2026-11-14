@@ -60,6 +60,9 @@ class InstructionLoader {
                 }
             }
         }
+        if (wide && (mnemonic == "ll" || mnemonic == "sc")) {
+            description = if (mnemonic == "ll") "Load and reserve a word" else "Store a word if its reservation is held"
+        }
         val remaining = template.toString()
         return if (standard == null) {
             ExtendedInstruction(example, remaining, null, description, owner)
@@ -90,6 +93,13 @@ class InstructionLoader {
     }
 
     private fun wideTemplateInstruction(mnemonic: String, token: String): String = when {
+        (mnemonic == "ll" || mnemonic == "sc") && token.startsWith("$mnemonic ") -> {
+            val register = token.substringAfter(' ').substringBefore(',')
+            val offset = token.substringAfter(',').substringBefore('(').trim()
+            val base = token.substringAfter('(').substringBefore(')')
+            if (offset == "0") token else "daddiu \$1, $base, $offset\n$mnemonic $register,0(\$1)"
+        }
+        (mnemonic == "ll" || mnemonic == "sc") && token.startsWith("addu ") -> token.replaceFirst("addu ", "daddu ")
         (mnemonic == "seq" || mnemonic == "sne") && token.startsWith("subu ") -> {
             // An equality test must detect a difference anywhere in the register.
             token.replaceFirst("subu ", "xor ")

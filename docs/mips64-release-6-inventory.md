@@ -46,7 +46,10 @@ MARS64 assembles and executes all six doubleword bitfield forms, as well as
 Plain `dext` and `dins` choose their machine forms from the field size and
 position. MARS64 also implements `beqc`, `bovc`, `bnvc`, and six compact conditional
 branch-and-link forms. An untaken compact branch makes the next instruction
-a forbidden slot for control transfers. Backstep restores that state. Register numbers and immediates
+a forbidden slot for control transfers. Backstep restores that state.
+MARS64 uses the Release 6 encodings for `ll`, `sc`, `lld`, and `scd`.
+These reserve the addressed bytes in ordinary storage. Overlapping writes
+invalidate the reservation, and backstep restores it. Paired atomics remain open. Register numbers and immediates
 below are LLVM assembler input, and the hex values are instruction words in architectural bit order. A branch
 or PC-relative immediate in this table is the displacement as written to LLVM.
 

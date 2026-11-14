@@ -96,6 +96,7 @@ open class InstructionSet {
         val replacedWordInstructions = setOf(
             "addi", "mul", "div", "divu", "mult", "multu", "madd", "maddu", "msub", "msubu",
             "mfhi", "mflo", "mthi", "mtlo",
+            "ll", "sc",
         )
     }
 }
