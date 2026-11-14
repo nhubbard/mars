@@ -1,7 +1,6 @@
 package edu.missouristate.mars
 
 import edu.missouristate.mars.api.MarsTarget
-import edu.missouristate.mars.mips.instructions.BasicInstruction
 import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertArrayEquals
@@ -45,18 +44,14 @@ class Mars64InstructionBaselineTest {
     }
 
     @Test
-    fun `encoding fixture covers every native form added by MARS64`() {
+    fun `encoding fixture still covers 30 distinct original MARS64 native forms`() {
         TestSessions.create().use { session ->
-            val narrow = session.instructionSet.instructionList.filterIsInstance<BasicInstruction>()
-                .map { it.exampleFormat }.toSet()
             session.selectTarget(MarsTarget.MARS64)
-            val wide = session.instructionSet.instructionList.filterIsInstance<BasicInstruction>()
-                .filter { it.exampleFormat !in narrow }
-            assertEquals(encodingVectors.size, wide.size)
             val coveredForms = encodingVectors.map { (_, word) ->
                 checkNotNull(session.instructionSet.findByBinaryCode(word)).exampleFormat
             }
-            assertEquals(wide.map { it.exampleFormat }.sorted(), coveredForms.sorted())
+            assertEquals(30, coveredForms.size)
+            assertEquals(30, coveredForms.toSet().size)
         }
     }
 

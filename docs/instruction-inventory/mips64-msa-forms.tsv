@@ -1,6 +1,6 @@
 # MD00868 revision 1.12, section 4.1.2 concrete Format rows.
 # Page numbers are printed manual pages. MIPS64 MSA denotes forms specific to a 64-bit CPU.
-# scalar-audit and scalar-missing cross-reference scalar LSA and DLSA in Volume II-A.
+# scalar-audit and scalar-implemented cross-reference scalar LSA and DLSA in Volume II-A.
 # mnemonic	operands	availability	page	implementation status
 add_a.b	wd,ws,wt	MSA	80	missing
 add_a.h	wd,ws,wt	MSA	80	missing
@@ -165,7 +165,7 @@ div_u.b	wd,ws,wt	MSA	142	missing
 div_u.h	wd,ws,wt	MSA	142	missing
 div_u.w	wd,ws,wt	MSA	142	missing
 div_u.d	wd,ws,wt	MSA	142	missing
-dlsa	rd,rs,rt,sa	MSA	143	scalar-missing
+dlsa	rd,rs,rt,sa	MSA	143	scalar-implemented
 dotp_s.h	wd,ws,wt	MSA	144	missing
 dotp_s.w	wd,ws,wt	MSA	144	missing
 dotp_s.d	wd,ws,wt	MSA	144	missing

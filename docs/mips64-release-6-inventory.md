@@ -1,7 +1,7 @@
 # MIPS64 Release 6 instruction inventory
 
-This first pass covers the 30 native forms currently added by MARS64 and 24
-missing scalar forms. “Encoding checked” means one independently assembled
+This inventory starts with the 30 native forms present in the original MARS64
+baseline and encoding probes for 24 additional scalar forms. “Encoding checked” means one independently assembled
 word per form. Execution conformance and the complete scalar and MSA
 inventories are still open. See the [implementation plan](mips64-source-compatibility.md)
 for the intended coverage.
@@ -39,10 +39,10 @@ fields on decode, and that the same raw word has no MARS32 decoding. The current
 | `drotr`, `drotr32`, `drotrv`, `dclz`, `dclo` | Checked | Confirm masked counts and all-zero/all-one results. |
 | `lwu`, `ld`, `sd` | Checked | Current MARS uses a 32-bit address map and requires alignment. Release 6 needs the documented misaligned access behavior. |
 
-## Missing scalar forms with encoding probes
+## Additional scalar forms with encoding probes
 
-These rows are inventory entries. The current MARS assembler does not accept
-these forms. Register numbers and immediates below are LLVM assembler input,
+MARS64 now assembles and executes `dlsa`, `dalign`, `dbitswap`, `dsbh`, and
+`dshd`. The remaining rows are pending. Register numbers and immediates below are LLVM assembler input,
 and the hex values are instruction words in architectural bit order. A branch
 or PC-relative immediate in this table is the displacement as written to LLVM.
 

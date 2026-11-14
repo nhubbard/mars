@@ -14,7 +14,7 @@ addiu	rt, rs, immediate	56	audit
 addiupc	rs,immediate	57	audit
 addu	rd, rs, rt	58	audit
 align	rd,rs,rt,bp	59	audit
-dalign	rd,rs,rt,bp	59	audit
+dalign	rd,rs,rt,bp	59	implemented
 aluipc	rs,immediate	64	audit
 and	rd, rs, rt	65	audit
 andi	rt, rs, immediate	66	audit
@@ -63,7 +63,7 @@ bgezl	rs, offset	107	removed
 bgtz	rs, offset	109	audit
 bgtzl	rs, offset	110	removed
 bitswap	rd,rt	112	audit
-dbitswap	rd,rt	112	audit
+dbitswap	rd,rt	112	implemented
 blez	rs, offset	114	audit
 blezl	rs, offset	115	removed
 bltz	rs, offset	117	audit
@@ -156,8 +156,8 @@ dmultu	rs, rt	223	removed
 drotr	rd, rt, sa	224	audit
 drotr32	rd, rt, sa	225	audit
 drotrv	rd, rt, rs	226	audit
-dsbh	rd, rt	227	audit
-dshd	rd, rt	229	audit
+dsbh	rd, rt	227	implemented
+dshd	rd, rt	229	implemented
 dsll	rd, rt, sa	231	audit
 dsll32	rd, rt, sa	232	audit
 dsllv	rd, rt, rs	233	audit
@@ -213,7 +213,7 @@ lldp	rt, rd, (base)	312	audit
 llwp	rt, rd, (base)	316	audit
 llwpe	rt, rd, (base)	318	audit
 lsa	rd,rs,rt,sa	320	audit
-dlsa	rd,rs,rt,sa	320	audit
+dlsa	rd,rs,rt,sa	320	implemented
 lui	rt, immediate	321	idiom-audit
 luxc1	fd, index(base)	322	removed
 lw	rt, offset(base)	323	audit

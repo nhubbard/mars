@@ -10,6 +10,8 @@ import edu.missouristate.mars.simulator.Exceptions.ARITHMETIC_OVERFLOW_EXCEPTION
 import edu.missouristate.mars.simulator.Exceptions.TRAP_EXCEPTION
 import java.lang.Long.divideUnsigned
 import java.lang.Long.remainderUnsigned
+import java.lang.Long.reverse
+import java.lang.Long.reverseBytes
 import java.lang.Math.addExact
 import java.lang.Math.multiplyHigh
 import java.lang.Math.subtractExact
@@ -52,6 +54,58 @@ internal val wideInstructionFactories: List<() -> BasicInstruction> = listOf(
     { wideVariableShift("drotrv", "Rotate a doubleword right by a register count", "010110", Long::rotateRight, "00001") },
     { wideCount("dclz", "Count leading zero bits in a doubleword", "010010", Long::countLeadingZeroBits) },
     { wideCount("dclo", "Count leading one bits in a doubleword", "010011") { it.inv().countLeadingZeroBits() } },
+    { widePermutation("dbitswap", "Reverse the bits within each byte of a doubleword", "00000") { reverse(reverseBytes(it)) } },
+    {
+        widePermutation("dsbh", "Swap the bytes within each halfword of a doubleword", "00010") { value ->
+            val lowBytes = 0x00ff_00ff_00ff_00ffL
+            ((value and lowBytes) shl 8) or ((value ushr 8) and lowBytes)
+        }
+    },
+    {
+        widePermutation("dshd", "Reverse the order of halfwords within a doubleword", "00101") { value ->
+            val lowHalfwords = 0x0000_ffff_0000_ffffL
+            (((value and lowHalfwords) shl 16) or ((value ushr 16) and lowHalfwords)).rotateLeft(32)
+        }
+    },
+    {
+        object : BasicInstruction(
+            "dlsa \$t1,\$t2,\$t3,2", "Shift the first doubleword left and add the second doubleword",
+            R_FORMAT, "000000 sssss ttttt fffff 000uu 010101",
+            { statement, context ->
+                val (destination, index, base, shift) = statement.operands
+                val registers = context.registerFile
+                context.updateLongRegister(destination, (registers.getLongValue(index) shl shift) + registers.getLongValue(base))
+            },
+        ) {
+            override fun encodeOperands(values: IntArray): IntArray {
+                require(values[3] in 1..4) { "dlsa shift must be from 1 through 4" }
+                return values.copyOf().also { it[3]-- }
+            }
+
+            override fun decodeOperands(values: IntArray) {
+                values[3]++
+            }
+        }
+    },
+    {
+        object : BasicInstruction(
+            "dalign \$t1,\$t2,\$t3,2", "Extract a doubleword from two registers at a byte boundary",
+            R_FORMAT, "011111 sssss ttttt fffff 01uuu 100100",
+            { statement, context ->
+                val (destination, low, high, position) = statement.operands
+                val registers = context.registerFile
+                val upper = registers.getLongValue(high)
+                val bits = position * Byte.SIZE_BITS
+                val result = if (bits == 0) upper else (upper shl bits) or (registers.getLongValue(low) ushr (Long.SIZE_BITS - bits))
+                context.updateLongRegister(destination, result)
+            },
+        ) {
+            override fun encodeOperands(values: IntArray): IntArray {
+                require(values[3] in 0..7) { "dalign byte position must be from 0 through 7" }
+                return values
+            }
+        }
+    },
     {
         BasicInstruction(
             "lwu \$t1,-100(\$t2)", "Load a word and zero-extend it to a doubleword",
@@ -111,6 +165,14 @@ internal val wideInstructionFactories: List<() -> BasicInstruction> = listOf(
         }
     },
 )
+
+private fun widePermutation(name: String, description: String, selector: String, operation: (Long) -> Long) =
+    BasicInstruction(
+        "$name \$t1,\$t2", description, R_FORMAT, "011111 00000 sssss fffff $selector 100100",
+    ) { statement, context ->
+        val (destination, source) = statement.operands
+        context.updateLongRegister(destination, operation(context.registerFile.getLongValue(source)))
+    }
 
 private fun wideArithmetic(
     name: String, description: String, function: String, operation: (Long, Long) -> Long,
