@@ -222,6 +222,9 @@ class Coprocessor1State {
         internal const val CAUSE_MASK = 0x3f000
         internal const val FLUSH_SUBNORMALS = 1 shl 24
         internal const val INEXACT = 1
+        internal const val UNDERFLOW = 1 shl 1
+        internal const val OVERFLOW = 1 shl 2
+        internal const val UNDERFLOW_ENABLE = UNDERFLOW shl 7
         internal const val INVALID_OPERATION = 1 shl 4
 
         internal fun hasEnabledFloatingException(status: Int): Boolean =

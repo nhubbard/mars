@@ -117,8 +117,9 @@ or PC-relative immediate in this table is the displacement as written to LLVM.
   conversions `cvt`, `round`, `trunc`, `ceil`, and `floor` support both
   result widths, with FCSR-selected or instruction-selected rounding and
   invalid and inexact exceptions. `rint.s` and `rint.d` round to integral
-  values without changing their format. Rounding and exceptions for other arithmetic
-  and conversions into floating-point formats are still open.
+  values without changing their format. Conversions to single and double precision use the
+  FCSR rounding mode and report conversion exceptions. Arithmetic rounding
+  and exceptions are still open.
   [MIPS64 FPU programming model](https://s3-eu-west-1.amazonaws.com/downloads-mips/documents/MD00083-2B-MIPS64INT-AFP-06.01.pdf)
 - **REGIMM.** MARS64 supports `bal` and `nal` at the retained zero-source
   encodings. Both link past the delay slot. The old register-conditional

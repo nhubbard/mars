@@ -44,7 +44,7 @@ private fun fixedPointConversion(name: String, operation: Int, double: Boolean, 
         val invalid = rounded.isNaN() || rounded < -limit || rounded >= limit
         val causes = when {
             invalid -> INVALID_OPERATION
-            rounded != value -> INEXACT
+            rounded != input -> INEXACT
             else -> 0
         }
         val result = when {
@@ -88,7 +88,7 @@ private fun roundToIntegral(double: Boolean) = BasicInstruction(
             Math.copySign(0.0, input)
         } else input
         val rounded = roundIntegral(value, status and 3)
-        causes = if (rounded == value) 0 else INEXACT
+        causes = if (rounded == input) 0 else INEXACT
         result = if (double) rounded.toRawBits() else rounded.toFloat().toRawBits().toLong()
     }
     context.recordFloatingExceptions(statement, causes)

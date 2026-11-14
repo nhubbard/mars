@@ -6,6 +6,7 @@ import edu.missouristate.mars.mips.instructions.basic.InstrCompactCompareBranch
 import edu.missouristate.mars.mips.instructions.basic.release6RoundingInstructions
 import edu.missouristate.mars.mips.instructions.basic.release6BarrierInstructions
 import edu.missouristate.mars.mips.instructions.basic.release6FloatingCompareInstructions
+import edu.missouristate.mars.mips.instructions.basic.release6FloatingConversions
 /*
 Copyright (c) 2003-2013,  Pete Sanderson and Kenneth Vollmar
 
@@ -56,6 +57,7 @@ open class InstructionSet {
             forms.addAll(wideInstructionFactories.map { it() })
             forms.addAll(release6BarrierInstructions())
             forms.addAll(release6FloatingCompareInstructions())
+            forms.addAll(release6FloatingConversions())
             forms.addAll(release6RoundingInstructions())
             forms.addAll(CompactComparison.entries.filter { it.wideOnly }.map(::InstrCompactCompareBranch))
         }
@@ -105,6 +107,7 @@ open class InstructionSet {
             "ll", "sc", "bc1f", "bc1t", "bltzal", "bgezal",
             "round.w.s", "round.w.d", "trunc.w.s", "trunc.w.d",
             "ceil.w.s", "ceil.w.d", "floor.w.s", "floor.w.d", "cvt.w.s", "cvt.w.d",
+            "cvt.s.d", "cvt.s.w", "cvt.d.s", "cvt.d.w",
             "c.eq.s", "c.eq.d", "c.lt.s", "c.lt.d", "c.le.s", "c.le.d",
         )
     }

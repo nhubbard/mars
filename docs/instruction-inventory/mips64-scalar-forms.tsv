@@ -162,16 +162,16 @@ crc32cw	rt, rs, rt	168	implemented
 crc32cd	rt, rs, rt	168	implemented
 ctc1	rt, fs	171	implemented
 ctc2	rt, Impl	174	audit
-cvt.d.s	fd, fs	175	audit
-cvt.d.w	fd, fs	175	audit
-cvt.d.l	fd, fs	175	audit
+cvt.d.s	fd, fs	175	implemented
+cvt.d.w	fd, fs	175	implemented
+cvt.d.l	fd, fs	175	implemented
 cvt.l.s	fd, fs	176	implemented
 cvt.l.d	fd, fs	176	implemented
 cvt.s.pl	fd, fs	181	removed
 cvt.s.pu	fd, fs	182	removed
-cvt.s.d	fd, fs	180	audit
-cvt.s.w	fd, fs	180	audit
-cvt.s.l	fd, fs	180	audit
+cvt.s.d	fd, fs	180	implemented
+cvt.s.w	fd, fs	180	implemented
+cvt.s.l	fd, fs	180	implemented
 cvt.w.s	fd, fs	183	implemented
 cvt.w.d	fd, fs	183	implemented
 dadd	rd, rs, rt	185	audit
