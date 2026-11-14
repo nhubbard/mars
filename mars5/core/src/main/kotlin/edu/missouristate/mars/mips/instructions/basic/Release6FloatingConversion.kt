@@ -10,6 +10,8 @@ import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat.R_FORMAT
 import java.lang.Double.MIN_NORMAL as DOUBLE_MIN_NORMAL
 import java.lang.Float.MIN_NORMAL as FLOAT_MIN_NORMAL
+import java.lang.Float.float16ToFloat
+import java.lang.Float.floatToFloat16
 import java.math.BigDecimal
 import kotlin.math.abs
 
@@ -69,7 +71,49 @@ internal fun convertInteger(value: Long, double: Boolean, status: Int, unsigned:
     return FloatingConversionResult(floatingBits(rounded, double), if (relation == 0) 0 else INEXACT)
 }
 
-private fun narrowDouble(bits: Long, status: Int): FloatingConversionResult {
+internal fun narrowSingleToHalf(bits: Int, status: Int): FloatingConversionResult {
+    val value = Float.fromBits(bits)
+    val sign = (bits ushr 16) and 0x8000
+    if (value.isNaN()) {
+        val result = sign or 0x7e00 or ((bits ushr 13) and 0x03ff)
+        val cause = if (bits and 0x0040_0000 == 0) INVALID_OPERATION else 0
+        return FloatingConversionResult(result.toLong(), cause)
+    }
+    val magnitude = abs(value).toDouble()
+    if (magnitude == 0.0 || value.isInfinite()) {
+        return FloatingConversionResult((sign or if (value.isInfinite()) 0x7c00 else 0).toLong())
+    }
+    if (status and FLUSH_SUBNORMALS != 0 && magnitude < FLOAT_MIN_NORMAL) {
+        return FloatingConversionResult(sign.toLong(), INEXACT)
+    }
+
+    val mode = status and 3
+    val outward = if (sign != 0) mode == 3 else mode == 2
+    val nearestBits = floatToFloat16(abs(value)).toInt()
+    val nearest = float16ToFloat(nearestBits.toShort()).toDouble()
+    val relation = nearest.compareTo(magnitude)
+    val rounded = when {
+        mode == 0 -> nearestBits
+        outward && relation < 0 -> nearestBits + 1
+        !outward && relation > 0 -> nearestBits - 1
+        else -> nearestBits
+    }
+    val overflow = when {
+        mode == 0 -> nearest.isInfinite()
+        outward -> magnitude > 65504.0
+        else -> magnitude >= 65536.0
+    }
+    val minimumNormal = Math.scalb(1.0, -14)
+    val edgeGap = Math.scalb(1.0, -25)
+    val tiny = when {
+        mode == 0 -> magnitude < minimumNormal - edgeGap / 2
+        outward -> magnitude <= minimumNormal - edgeGap
+        else -> magnitude < minimumNormal
+    }
+    return FloatingConversionResult((sign or rounded).toLong(), narrowingCauses(overflow, tiny, relation != 0, status))
+}
+
+internal fun narrowDouble(bits: Long, status: Int): FloatingConversionResult {
     val value = Double.fromBits(bits)
     if (value.isNaN()) {
         val payload = ((bits ushr 29) and 0x007f_ffff).toInt()
@@ -104,14 +148,14 @@ private fun narrowDouble(bits: Long, status: Int): FloatingConversionResult {
         outward -> magnitude <= minimumNormal - edgeGap
         else -> magnitude < minimumNormal
     }
-    val inexact = relation != 0
-    val causes = when {
-        overflow -> OVERFLOW or if (status and (OVERFLOW shl 7) == 0) INEXACT else 0
-        tiny && (inexact || status and UNDERFLOW_ENABLE != 0) -> UNDERFLOW or if (inexact) INEXACT else 0
-        inexact -> INEXACT
-        else -> 0
-    }
-    return FloatingConversionResult(rounded.toFloat().toRawBits().toLong(), causes)
+    return FloatingConversionResult(rounded.toFloat().toRawBits().toLong(), narrowingCauses(overflow, tiny, relation != 0, status))
+}
+
+private fun narrowingCauses(overflow: Boolean, tiny: Boolean, inexact: Boolean, status: Int): Int = when {
+    overflow -> OVERFLOW or if (status and (OVERFLOW shl 7) == 0) INEXACT else 0
+    tiny && (inexact || status and UNDERFLOW_ENABLE != 0) -> UNDERFLOW or if (inexact) INEXACT else 0
+    inexact -> INEXACT
+    else -> 0
 }
 
 private fun floatingBits(value: Double, double: Boolean): Long =

@@ -212,8 +212,8 @@ fcune.w	wd,ws,wt	MSA	169	implemented
 fcune.d	wd,ws,wt	MSA	169	implemented
 fdiv.w	wd,ws,wt	MSA	170	missing
 fdiv.d	wd,ws,wt	MSA	170	missing
-fexdo.h	wd,ws,wt	MSA	171	missing
-fexdo.w	wd,ws,wt	MSA	171	missing
+fexdo.h	wd,ws,wt	MSA	171	implemented
+fexdo.w	wd,ws,wt	MSA	171	implemented
 fexp2.w	wd,ws,wt	MSA	172	missing
 fexp2.d	wd,ws,wt	MSA	172	missing
 fexupl.w	wd,ws	MSA	173	implemented
@@ -284,8 +284,8 @@ ftint_s.w	wd,ws	MSA	206	implemented
 ftint_s.d	wd,ws	MSA	206	implemented
 ftint_u.w	wd,ws	MSA	207	implemented
 ftint_u.d	wd,ws	MSA	207	implemented
-ftq.h	wd,ws,wt	MSA	208	missing
-ftq.w	wd,ws,wt	MSA	208	missing
+ftq.h	wd,ws,wt	MSA	208	implemented
+ftq.w	wd,ws,wt	MSA	208	implemented
 ftrunc_s.w	wd,ws	MSA	210	implemented
 ftrunc_s.d	wd,ws	MSA	210	implemented
 ftrunc_u.w	wd,ws	MSA	211	implemented

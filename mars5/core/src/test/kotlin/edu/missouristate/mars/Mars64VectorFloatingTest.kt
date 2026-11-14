@@ -258,4 +258,49 @@ class Mars64VectorFloatingTest {
         }
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = ["h", "w"])
+    fun `narrowing packs target first and reports overflow and invalid lanes`(suffix: String, @TempDir directory: Path) {
+        val half = suffix == "h"
+        val file = Files.writeString(directory.resolve("narrow.s"), $$"""
+            fexdo.$$suffix $w31,$w3,$w5
+            fexdo.$$suffix $w31,$w3,$w5
+            ftq.$$suffix $w31,$w3,$w5
+        """.trimIndent())
+        fun input(low: Double, high: Double) = if (!half) VectorRegister(low.toBits(), high.toBits())
+        else VectorRegister(
+            low.toFloat().toRawBits().toUInt().toLong() * 0x100000001L,
+            high.toFloat().toRawBits().toUInt().toLong() * 0x100000001L,
+        )
+        fun packed(low: Long, high: Long): Long =
+            if (half) low or (low shl 16) or (high shl 32) or (high shl 48) else low or (high shl 32)
+        TestSessions.create().use { session ->
+            session.selectTarget(MarsTarget.MARS64)
+            val program = session.assemble(listOf(file), null, false, false)
+            val format = if (half) 0 else 0x200000
+            assertEquals(listOf(0x7a051fdb, 0x7a051fdb, 0x7a851fdb).map { it or format },
+                program.machineList!!.map { it.binaryStatement })
+            val fpu = session.coprocessor1
+            val midpoint = 1.0 + Math.scalb(1.0, if (half) -11 else -24)
+            val subnormal = Math.scalb(1.0, if (half) -24 else -149)
+            val one = if (half) 0x3c00L else 0x3f800000L
+            val infinity = if (half) 0x7c00L else 0x7f800000L
+            fpu.updateVector(3, input(if (half) Float.MAX_VALUE.toDouble() else Double.MAX_VALUE, -0.0))
+            fpu.updateVector(5, input(midpoint, subnormal))
+            fpu.updateMsaStatus(if (half) 0x1000000 else 0)
+            program.simulate(1)
+            val negativeZero = if (half) 0x8000L else 0x80000000L
+            assertEquals(VectorRegister(packed(one, 1), packed(infinity, negativeZero)), fpu.readVector(31))
+            fpu.updateMsaStatus(2)
+            program.simulate(1)
+            assertEquals(VectorRegister(packed(one + 1, 1), packed(infinity, negativeZero)), fpu.readVector(31))
+            fpu.updateVector(3, input(2.0, Double.NaN))
+            fpu.updateVector(5, input(0.5, -1.0))
+            program.simulate(1)
+            val scale = if (half) 0x8000L else 0x80000000L
+            assertEquals(VectorRegister(packed(scale / 2, scale), packed(scale - 1, 0)), fpu.readVector(31))
+            assertEquals(0x15056, fpu.msaStatus)
+        }
+    }
+
 }

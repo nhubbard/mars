@@ -7,16 +7,23 @@ import edu.missouristate.mars.mips.hardware.Coprocessor1State.Companion.FLUSH_SU
 import edu.missouristate.mars.mips.hardware.Coprocessor1State.Companion.INEXACT
 import edu.missouristate.mars.mips.hardware.Coprocessor1State.Companion.INVALID_OPERATION
 import edu.missouristate.mars.mips.hardware.Coprocessor1State.Companion.MSA_NON_TRAPPING
+import edu.missouristate.mars.mips.hardware.Coprocessor1State.Companion.OVERFLOW
 import edu.missouristate.mars.mips.hardware.VectorRegister
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat.R_FORMAT
 import edu.missouristate.mars.mips.instructions.basic.convertInteger
 import edu.missouristate.mars.mips.instructions.basic.floatingClass
+import edu.missouristate.mars.mips.instructions.basic.narrowDouble
+import edu.missouristate.mars.mips.instructions.basic.narrowSingleToHalf
 import edu.missouristate.mars.mips.instructions.basic.roundIntegral
 import edu.missouristate.mars.mips.instructions.basic.widenSingle
 import java.lang.Float.float16ToFloat
 import kotlin.math.abs
 
 internal fun msaFloatingCompareInstructions(): List<BasicInstruction> = buildList {
+    for ((format, suffix) in "hw".withIndex()) {
+        add(narrowFloatingInstruction(format, suffix, fixedPoint = false))
+        add(narrowFloatingInstruction(format, suffix, fixedPoint = true))
+    }
     for ((format, suffix) in "wd".withIndex()) {
         val bits = 32 shl format
         add(BasicInstruction(
@@ -107,6 +114,11 @@ private data class FloatingLane(val bits: Long, val causes: Int = 0)
 private fun InstructionContext.writeFloatingVector(
     statement: ProgramStatement, destination: Int, precision: MsaPrecision,
     evaluate: (index: Int, status: Int) -> FloatingLane,
+) = writeFloatingVector(statement, destination, precision.bits, precision.exponent, evaluate)
+
+private fun InstructionContext.writeFloatingVector(
+    statement: ProgramStatement, destination: Int, bits: Int, exponent: Long,
+    evaluate: (index: Int, status: Int) -> FloatingLane,
 ) {
     val status = coprocessor1.msaStatus
     val enabled = ((status ushr 7) and 0x1f) or 0x20
@@ -114,17 +126,17 @@ private fun InstructionContext.writeFloatingVector(
     var causes = 0
     fun evaluateLane(index: Int): Long {
         val lane = evaluate(index, status)
-        return if (nonTrapping && lane.causes and enabled != 0) precision.exponent or lane.causes.toLong()
+        return if (nonTrapping && lane.causes and enabled != 0) exponent or lane.causes.toLong()
         else {
             causes = causes or lane.causes
             lane.bits
         }
     }
-    val result = if (precision.bits == 64) VectorRegister(evaluateLane(0), evaluateLane(1))
-    else VectorRegister(
-        (evaluateLane(0) and 0xffff_ffffL) or (evaluateLane(1) shl 32),
-        (evaluateLane(2) and 0xffff_ffffL) or (evaluateLane(3) shl 32),
-    )
+    val mask = -1L ushr (64 - bits)
+    fun pack(start: Int): Long = (0 until 64 step bits).fold(0L) { result, shift ->
+        result or ((evaluateLane(start + shift / bits) and mask) shl shift)
+    }
+    val result = VectorRegister(pack(0), pack(64 / bits))
     val updated = (status and CAUSE_MASK.inv()) or (causes shl 12)
     writeMsaStatus(statement, if (causes and enabled != 0) updated else updated or (causes shl 2))
     updateVectorRegister(destination, result)
@@ -295,6 +307,42 @@ private fun widenFloatingInstruction(format: Int, suffix: Char, left: Boolean): 
                 FloatingLane(sign or 0x7fc00000L or payload, cause)
             } else {
                 FloatingLane(float16ToFloat(raw.toShort()).toRawBits().toUInt().toLong())
+            }
+        }
+    }
+}
+
+private fun narrowFloatingInstruction(format: Int, suffix: Char, fixedPoint: Boolean): BasicInstruction {
+    val input = MsaPrecision(format)
+    val bits = input.bits / 2
+    val exponent = if (format == 0) 0x7c00L else 0x7f800000L
+    val lanesPerSource = 128 / input.bits
+    val name = if (fixedPoint) "ftq" else "fexdo"
+    val field = (16 + (if (fixedPoint) 4 else 0) + format).toString(2)
+    return BasicInstruction(
+        "$name.$suffix \$w1,\$w2,\$w3", "Narrow and pack floating-point elements from two vectors",
+        R_FORMAT, "011110 $field ttttt sssss fffff 011011",
+    ) { statement, context ->
+        val (destination, source, target) = statement.operands
+        val left = context.coprocessor1.readVector(source)
+        val right = context.coprocessor1.readVector(target)
+        context.writeFloatingVector(statement, destination, bits, exponent) { index, status ->
+            val vector = if (index < lanesPerSource) right else left
+            val raw = vector.floatingLane(index % lanesPerSource, input.bits)
+            if (fixedPoint) {
+                val value = input.number(raw)
+                val scaled = Math.scalb(input.number(input.flush(raw, status)), bits - 1)
+                val rounded = roundIntegral(scaled, status and 3)
+                val limit = 1L shl (bits - 1)
+                when {
+                    rounded.isNaN() -> FloatingLane(0, INVALID_OPERATION)
+                    rounded < -limit.toDouble() -> FloatingLane(-limit, OVERFLOW or INEXACT)
+                    rounded >= limit.toDouble() -> FloatingLane(limit - 1, OVERFLOW or INEXACT)
+                    else -> FloatingLane(rounded.toLong(), if (Math.scalb(value, bits - 1) != rounded) INEXACT else 0)
+                }
+            } else {
+                val result = if (format == 0) narrowSingleToHalf(raw.toInt(), status) else narrowDouble(raw, status)
+                FloatingLane(result.bits, result.causes)
             }
         }
     }
