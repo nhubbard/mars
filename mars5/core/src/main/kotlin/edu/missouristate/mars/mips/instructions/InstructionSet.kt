@@ -139,6 +139,8 @@ open class InstructionSet {
             "ceil.w.s", "ceil.w.d", "floor.w.s", "floor.w.d", "cvt.w.s", "cvt.w.d",
             "cvt.s.d", "cvt.s.w", "cvt.d.s", "cvt.d.w",
             "c.eq.s", "c.eq.d", "c.lt.s", "c.lt.d", "c.le.s", "c.le.d",
+            "movf", "movf.s", "movf.d", "movt", "movt.s", "movt.d",
+            "movn", "movn.s", "movn.d", "movz", "movz.s", "movz.d",
             "add.s", "add.d", "sub.s", "sub.d", "mul.s", "mul.d", "div.s", "div.d",
             "maddf.s", "maddf.d", "msubf.s", "msubf.d",
             "sqrt.s", "sqrt.d",
