@@ -2420,6 +2420,18 @@ class MarsDebugPlatformTest {
                     val registers = registerValues(debug.session, frame)
                     assertEquals("0x00000000000000ff00000000000000ff", registers[$$"$w0"])
                     assertEquals(32, registers.keys.count { it.startsWith($$"$w") })
+                    inspectRegisterNodes(debug.session, frame) { nodes ->
+                        val vector = nodes.single { it.name == $$"$w0" }
+                        val lanes = children(vector, 6).map { assertInstanceOf(XValueNodeImpl::class.java, it) }
+                        pollAssertionsAsync(3.seconds, 10.milliseconds) { assertTrue(lanes.all { it.isComputed }) }
+                        assertEquals("[0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, " +
+                            "0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]", lanes[0].rawValue)
+                        assertEquals("[0x00ff, 0x0000, 0x0000, 0x0000, 0x00ff, 0x0000, 0x0000, 0x0000]", lanes[1].rawValue)
+                        assertEquals("[0x000000ff, 0x00000000, 0x000000ff, 0x00000000]", lanes[2].rawValue)
+                        assertEquals("[0x00000000000000ff, 0x00000000000000ff]", lanes[3].rawValue)
+                        assertEquals("[${Float.fromBits(255)}, 0.0, ${Float.fromBits(255)}, 0.0]", lanes[4].rawValue)
+                        assertEquals("[${Double.fromBits(255)}, ${Double.fromBits(255)}]", lanes[5].rawValue)
+                    }
                     debug.session.stepInto()
                 }
                 debug.assertPausedAt(source, 2)

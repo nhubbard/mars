@@ -18,6 +18,7 @@ import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.mips.hardware.Coprocessor1State.Companion.CONDITION_FLAG_MASK
 import edu.missouristate.mars.mips.hardware.IntegerRegisterFile.Companion.HI_REGISTER
 import edu.missouristate.mars.mips.hardware.IntegerRegisterFile.Companion.LO_REGISTER
+import edu.missouristate.mars.mips.hardware.VectorRegister
 import edu.missouristate.mars.plugin.debug.RegisterBank.COPROCESSOR_0
 import edu.missouristate.mars.plugin.debug.RegisterBank.CPU
 import edu.missouristate.mars.plugin.debug.RegisterBank.FPU_DOUBLE
@@ -115,7 +116,7 @@ internal class MarsStackFrame(
             addTopGroup(RegisterGroup("debug.registers.vector", XValueChildrenList().apply {
                 for (number in registers.indices) {
                     val bits = fpu.getVectorNoNotify(number)
-                    add(RegisterValue("\$w$number", written = written(RegisterWriteBank.COPROCESSOR_1, number), format = bits::toHexString))
+                    add(VectorRegisterValue("\$w$number", bits, written(RegisterWriteBank.COPROCESSOR_1, number)))
                 }
             }))
         }
@@ -129,7 +130,7 @@ internal class MarsStackFrame(
     private fun formatFloating(decimal: String, hex: String) = if (display.hexValues) "$decimal ($hex)" else decimal
 
     private fun editableValue(bank: RegisterBank, number: Int, name: String, written: Boolean, initial: () -> String, format: () -> String) =
-        RegisterValue(name, RegisterModifier(bank, number, initial, machineEdits, isCurrent), written, format)
+        RegisterValue(name, RegisterModifier(bank, number, initial, machineEdits, isCurrent), written, format = format)
 
     override fun getSourcePosition() = position
     override fun getEvaluator() = snapshot.evaluator
@@ -147,10 +148,11 @@ private class RegisterGroup(key: String, private val values: XValueChildrenList,
     }
 }
 
-internal class RegisterValue(
+internal open class RegisterValue(
     name: String,
     private val modifier: XValueModifier? = null,
     private val written: Boolean = false,
+    private val expandable: Boolean = false,
     private val format: () -> String,
 ) : XNamedValue(name) {
     override fun getModifier() = modifier
@@ -158,13 +160,36 @@ internal class RegisterValue(
     override fun computePresentation(node: XValueNode, place: XValuePlace) {
         val value = format()
         if (!written || !service<MarsDebuggerDisplaySettings>().highlightRegisterWrites) {
-            node.setPresentation(null, null, value, false)
+            node.setPresentation(null, null, value, expandable)
             return
         }
         node.setPresentation(null, object : XValuePresentation() {
             override fun getSeparator() = " (${runMessages.getMessage("debug.registers.written")})${super.getSeparator()}"
 
             override fun renderValue(renderer: XValueTextRenderer) = renderer.renderValue(value, MarsMachineHighlight.REGISTER.colorKey)
-        }, false)
+        }, expandable)
+    }
+}
+
+private class VectorRegisterValue(name: String, private val bits: VectorRegister, written: Boolean) :
+    RegisterValue(name, written = written, expandable = true, format = bits::toHexString) {
+    override fun computeChildren(node: XCompositeNode) {
+        val values = XValueChildrenList()
+        for (width in listOf(8, 16, 32, 64)) {
+            val label = runMessages.getMessage("debug.registers.vector.integer.lanes", width)
+            values.add(RegisterValue(label) {
+                (0 until 128 / width).joinToString(", ", "[", "]") { index ->
+                    "0x" + bits.lane(index, width).toULong().toString(16).padStart(width / 4, '0')
+                }
+            })
+        }
+        values.add(RegisterValue(runMessages.getMessage("debug.registers.vector.float.lanes", 32)) {
+            (0 until 4).joinToString(", ", "[", "]") { Float.fromBits(bits.lane(it, 32).toInt()).toString() }
+        })
+        values.add(RegisterValue(runMessages.getMessage("debug.registers.vector.float.lanes", 64)) {
+            (0 until 2).joinToString(", ", "[", "]") { Double.fromBits(bits.lane(it, 64)).toString() }
+        })
+        node.setAlreadySorted(true)
+        node.addChildren(values, true)
     }
 }
