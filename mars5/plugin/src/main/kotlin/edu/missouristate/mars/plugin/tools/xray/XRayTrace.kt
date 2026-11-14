@@ -1,6 +1,7 @@
 package edu.missouristate.mars.plugin.tools.xray
 
 import edu.missouristate.mars.ProgramStatement
+import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.api.StepEvent
 import edu.missouristate.mars.api.StepEvent.BranchOutcome.NOT_TAKEN
 import edu.missouristate.mars.api.StepEvent.BranchOutcome.TAKEN
@@ -74,18 +75,19 @@ internal class XRayTrace {
 
 /** Formats the executed machine word using the core catalog, independent of mutable simulator memory. */
 internal class XRayInstruction(private val event: StepEvent) {
-    private val statement = ProgramStatement(event.instruction, event.pc, InstructionDefaults.get())
+    private val statement = ProgramStatement(event.instruction, event.pc, InstructionDefaults.forTarget(event.target))
+    val hasDatapath = event.target == MarsTarget.MARS32
     private val instruction = statement.instruction as? BasicInstruction
     val word = event.instruction
     val format = instruction?.instructionFormat
     private val mnemonic = instruction?.name ?: toolsMessages.getMessage("xray.unknown")
 
     fun describe(): String = buildString {
-        val address = Binary.intToHexString(event.pc)
+        val address = event.xRayAddress()
         val machine = Binary.intToHexString(word)
         appendLine(toolsMessages.getMessage("xray.instructionDetails", address, machine, statement.printableBasicAssemblyStatement.trimEnd()))
         val bits = Binary.intToBinaryString(word)
-        val fields = when (format) {
+        val fields = if (!hasDatapath) bits else when (format) {
             R_FORMAT -> toolsMessages.getMessage("xray.fields.register",
                 bits.substring(0, 6), bits.substring(6, 11), bits.substring(11, 16), bits.substring(16, 21),
                 bits.substring(21, 26), bits.substring(26))
@@ -110,6 +112,9 @@ internal class XRayInstruction(private val event: StepEvent) {
         else -> name
     }
 }
+
+internal fun StepEvent.xRayAddress(): String =
+    if (pcBits == pc.toLong()) Binary.intToHexString(pc) else Binary.longToHexString(pcBits)
 
 internal class XRayPlayback {
     var playing = false

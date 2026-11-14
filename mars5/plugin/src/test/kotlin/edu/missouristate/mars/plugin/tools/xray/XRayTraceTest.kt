@@ -1,5 +1,6 @@
 package edu.missouristate.mars.plugin.tools.xray
 
+import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.api.StepEvent
 import edu.missouristate.mars.api.StepEvent.BranchOutcome.NOT_TAKEN
 import edu.missouristate.mars.api.StepEvent.BranchOutcome.TAKEN
@@ -10,6 +11,20 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class XRayTraceTest {
+    @Test
+    fun `Release 6 trace decodes a reused opcode and shows all PC bits`() {
+        val pc = 0x1_0040_0000L
+        val word = 0x212a0001
+        val legacy = StepEvent(pc.toInt(), word, 1)
+        val wide = legacy.copy(pcBits = pc, target = MarsTarget.MARS64)
+        assertTrue(legacy.xRayLabel().contains("addi"))
+        assertTrue(wide.xRayLabel().contains("beqc"))
+        assertTrue(wide.xRayLabel().contains("0x0000000100400000"))
+        val details = XRayInstruction(wide)
+        assertTrue(details.describe().contains("beqc"))
+        assertFalse(details.hasDatapath)
+    }
+
     @Test
     fun `bounded history includes repeated PCs and rewinds by execution step`() {
         val trace = XRayTrace()

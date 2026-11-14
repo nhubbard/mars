@@ -172,7 +172,9 @@ class SimulatorEngine(private val session: MarsContext) : MarsSimulator, AutoClo
                 steps++
                 stepCount++
                 if (instructionLimit > 0) instructionsRemaining--
-                val event = StepEvent(result.pc, result.instruction, stepCount, result.transfer, result.branchOutcome, result.pcBits)
+                val event = StepEvent(
+                    result.pc, result.instruction, stepCount, result.transfer, result.branchOutcome, result.pcBits, session.target,
+                )
                 notifyListeners { it.onStep(event) }
             }
             val stop = result.stopReason

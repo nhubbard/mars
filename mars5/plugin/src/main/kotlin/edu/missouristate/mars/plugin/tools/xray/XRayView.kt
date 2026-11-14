@@ -13,7 +13,6 @@ import edu.missouristate.mars.mips.instructions.InstructionDefaults
 import edu.missouristate.mars.plugin.tools.MarsToolRunContent
 import edu.missouristate.mars.plugin.tools.marsToolExecutions
 import edu.missouristate.mars.plugin.tools.toolsMessages
-import edu.missouristate.mars.util.Binary
 import java.awt.Color
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -132,7 +131,7 @@ internal class XRayView(private val project: Project) : Disposable {
     private fun showDiagram() {
         val diagram = diagrams.getValue(unit)
         val selected = instruction
-        val signals = selected?.let { diagram.signals(it.word, it.format) }.orEmpty()
+        val signals = selected?.takeIf(XRayInstruction::hasDatapath)?.let { diagram.signals(it.word, it.format) }.orEmpty()
         schematicFrame.value = XRaySchematicFrame(unit, diagram.wireSegments, signals, selected)
         playback.show(signals.maxOfOrNull(XRaySignal::endsAt) ?: 0)
         description.value = selected?.let {
@@ -141,7 +140,9 @@ internal class XRayView(private val project: Project) : Disposable {
                 .map { signal -> signal.name.trimStart('*').replace('_', ' ') }
                 .distinct()
                 .joinToString(", ")
-            "${it.describe()}\n${toolsMessages.getMessage("xray.paths", paths)}"
+            val details = if (it.hasDatapath) toolsMessages.getMessage("xray.paths", paths)
+            else toolsMessages.getMessage("xray.datapath.mars64")
+            "${it.describe()}\n$details"
         } ?: toolsMessages.getMessage("xray.noSteps")
         showPosition()
     }
@@ -165,7 +166,7 @@ internal class XRayView(private val project: Project) : Disposable {
 }
 
 internal fun StepEvent.xRayLabel(): String {
-    val decoded = InstructionDefaults.get().findByBinaryCode(instruction)
+    val decoded = InstructionDefaults.forTarget(target).findByBinaryCode(instruction)
     val name = decoded?.name ?: toolsMessages.getMessage("xray.unknown")
-    return toolsMessages.getMessage("xray.step", stepCount.toString(), Binary.intToHexString(pc), name)
+    return toolsMessages.getMessage("xray.step", stepCount.toString(), xRayAddress(), name)
 }
