@@ -459,6 +459,24 @@ open class MemoryState(
         } else null
     }
 
+    fun inUserText(address: Long): Boolean =
+        if (address in 0..UInt.MAX_VALUE.toLong()) inTextSegment(address.toInt()) else inWideText(address)
+
+    fun inUserData(address: Long): Boolean =
+        if (address in 0..UInt.MAX_VALUE.toLong()) inDataSegment(address.toInt())
+        else wideDataEnabled && address in WIDE_DATA_BASE..<WIDE_DATA_BASE + SEGMENT_BYTES
+
+    @Throws(AddressErrorException::class)
+    fun getDumpWordOrNull(address: Long): Int? {
+        if (address in 0..UInt.MAX_VALUE.toLong()) return getRawWordOrNull(address.toInt())
+        if (address and 3L != 0L) throw AddressErrorException(RAW_FETCH_ALIGNMENT, ADDRESS_EXCEPTION_LOAD, address)
+        if (inWideText(address)) return getStatementNoNotify(address)?.binaryStatement
+        val offset = wideDataOffset(address, WORD_LENGTH_BYTES, ADDRESS_EXCEPTION_LOAD)
+        return wideData.fetchWordOrNull(offset / WORD_LENGTH_BYTES)?.let {
+            readWideData(address, WORD_LENGTH_BYTES, notify = false)
+        }
+    }
+
     fun inspectInstruction(address: Long): ProgramStatement? {
         val narrow = address.toInt()
         if (address == narrow.toLong() || address == narrow.toUInt().toLong()) return inspectInstruction(narrow)

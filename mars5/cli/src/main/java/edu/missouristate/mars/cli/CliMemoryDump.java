@@ -29,28 +29,32 @@ record CliMemoryDump(String region, MemoryAddressRange range, DumpFormat format,
     return new CliMemoryDump(region, range, format, Path.of(filename).toAbsolutePath().normalize());
   }
 
+  static String formatAddress(long address) {
+    return address <= 0xffffffffL ? Binary.intToHexString((int) address) : Binary.longToHexString(address);
+  }
+
   void write(MarsContext session, PrintStream error) {
     var memory = session.memory;
-    int first;
-    int last;
+    long first;
+    long last;
     if (range == null) {
       Integer[] bounds = Objects.requireNonNull(
           MemoryDump.getSegmentBounds(region, memory), "Unknown memory segment: " + region);
-      first = bounds[0];
-      last = bounds[1] - MemoryState.WORD_LENGTH_BYTES;
+      first = Integer.toUnsignedLong(bounds[0]);
+      last = Integer.toUnsignedLong(bounds[1] - MemoryState.WORD_LENGTH_BYTES);
     } else {
       first = range.first();
       last = range.last();
     }
     try {
-      boolean userText = memory.inTextSegment(first) && memory.inTextSegment(last);
-      boolean userData = memory.inDataSegment(first) && memory.inDataSegment(last);
+      boolean userText = memory.inUserText(first) && memory.inUserText(last);
+      boolean userData = memory.inUserData(first) && memory.inUserData(last);
       if (format.includesSourceListing() && !userText && !userData) {
         throw new IOException("SegmentWindow requires a range within user text or user data");
       }
       var snapshot = format.capture(session, first, last, () -> {});
       if (snapshot.size() == 0) {
-        throw new IOException("no initialized words at " + Binary.intToHexString(first));
+        throw new IOException("no initialized words at " + formatAddress(first));
       }
       if (output.getParent() == null) {
         throw new IOException("expected an output file");
@@ -65,7 +69,7 @@ record CliMemoryDump(String region, MemoryAddressRange range, DumpFormat format,
       }
     } catch (AddressErrorException failure) {
       error.println(
-          "Cannot dump " + region + ": invalid address " + Binary.intToHexString(failure.getAddress()));
+          "Cannot dump " + region + ": invalid address " + formatAddress(failure.getAddressBits()));
     } catch (IOException failure) {
       error.println("Cannot dump " + region + " to " + output + ": " + failure.getMessage());
     }

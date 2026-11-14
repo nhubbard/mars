@@ -35,7 +35,9 @@ import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.testFramework.replaceService
 import com.intellij.ui.UiInterceptors
 import com.intellij.util.ui.UIUtil
+import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.mips.dump.DumpFormatLoader
+import edu.missouristate.mars.plugin.MarsSessionService
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.HexFormat
@@ -60,6 +62,19 @@ class MarsMemoryExportPlatformTest {
 
     @TempDir
     lateinit var directory: Path
+
+    @Test
+    fun `segment listing retains a high data address`() = timeoutRunBlocking {
+        MarsSessionService.createMarsComponent().context().use { machine ->
+            machine.selectTarget(MarsTarget.MARS64)
+            val high = 0x1_0000_0000L
+            machine.editMemoryWord(high, 0x41424344)
+            val options = MemoryExportOptions(format("SegmentWindow"), MemoryExportRegion.RANGE, high..high)
+            val output = directory.resolve("high-data.txt")
+            assertNull(export.exportSession(machine, MemoryExportSelection(options, output)))
+            assertTrue(withContext(Dispatchers.IO) { Files.readString(output).contains("0x0000000100000000    0x41424344") })
+        }
+    }
 
     @Test
     // Kotlin exposes the reported Java setters as read-only properties.
@@ -87,7 +102,7 @@ class MarsMemoryExportPlatformTest {
         for (format in DumpFormatLoader.FORMATS) {
             val descriptor = requireNotNull(format.commandDescriptor)
             val output = directory.resolve(descriptor)
-            val range = 0x10010000u..0x10010000u
+            val range = 0x10010000L..0x10010000L
             assertNull(export.export(entry, MemoryExportOptions(format, MemoryExportRegion.RANGE, range), output))
             val lineEnd = if (descriptor == "Binary") "" else HexFormat.of().formatHex(newline.toByteArray())
             withContext(Dispatchers.IO) { assertEquals(outputs.getValue(descriptor) + lineEnd, HexFormat.of().formatHex(Files.readAllBytes(output)), format.toString()) }
@@ -110,7 +125,7 @@ class MarsMemoryExportPlatformTest {
         val destination = withContext(Dispatchers.IO) { directory.resolve("existing").also { Files.writeString(it, "preserve") } }
         val data = MemoryExportOptions(format("HexText"), MemoryExportRegion.DATA)
         val text = data.copy(region = MemoryExportRegion.TEXT)
-        fun range(first: UInt, last: UInt) = data.copy(region = MemoryExportRegion.RANGE, range = first..last)
+        fun range(first: UInt, last: UInt) = data.copy(region = MemoryExportRegion.RANGE, range = first.toLong()..last.toLong())
         val cases = listOf(
             Triple(entry, data, "empty"),
             Triple(entry, range(0x00400000u, 0x00400004u), "unpopulated word at 0x00400004"),

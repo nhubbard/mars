@@ -145,6 +145,7 @@ public final class MarsCli {
         return 2;
       }
       session.setMemoryConfiguration(layout);
+      report.validateRanges(session.memory);
       var sources = project ? projectSources(files) : files;
       PrintStream trace = tracePhases ? reportOutput : null;
       var program = trace == null

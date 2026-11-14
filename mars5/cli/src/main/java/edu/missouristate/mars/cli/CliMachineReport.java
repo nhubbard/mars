@@ -19,6 +19,7 @@ final class CliMachineReport {
 
   private final ArrayList<RegisterSelection> registers = new ArrayList<>();
   private final ArrayList<MemoryAddressRange> ranges = new ArrayList<>();
+  private final ArrayList<String> rangeArguments = new ArrayList<>();
   private long instructions;
   Format format = Format.HEX;
   boolean brief;
@@ -52,6 +53,15 @@ final class CliMachineReport {
 
   void addRange(String text) {
     ranges.add(MemoryAddressRange.parse(text));
+    rangeArguments.add(text);
+  }
+
+  void validateRanges(MemoryState memory) {
+    for (int i = 0; i < ranges.size(); i++) {
+      if (ranges.get(i).last() > memory.getHighestInspectableAddress()) {
+        throw new IllegalArgumentException("Invalid memory range for selected target: " + rangeArguments.get(i));
+      }
+    }
   }
 
   void recordInstructionCount(long completed) {
@@ -103,19 +113,24 @@ final class CliMachineReport {
   }
 
   private void writeRange(MemoryAddressRange range, MemoryState memory, PrintStream out) {
-    long first = Integer.toUnsignedLong(range.first());
-    long last = Integer.toUnsignedLong(range.last());
+    long first = range.first();
+    long last = range.last();
     int column = 0;
     for (long address = first; address <= last; address += MemoryState.WORD_LENGTH_BYTES) {
       int wordAddress = (int) address;
       if (column == 0 && !brief) {
-        out.print("Mem[" + Binary.intToHexString(wordAddress) + "]\t");
+        out.print("Mem[" + CliMemoryDump.formatAddress(address) + "]\t");
       }
       try {
-        int bits = memory.inTextSegment(wordAddress) || memory.inKernelTextSegment(wordAddress)
-            ? Objects.requireNonNullElse(memory.getRawWordOrNull(wordAddress), 0)
-            : memory.getWordNoNotify(wordAddress);
-        out.print(formatWord(bits) + "\t");
+        Integer bits;
+        if (address > 0xffffffffL) {
+          bits = memory.inspectWord(address);
+        } else {
+          bits = memory.inTextSegment(wordAddress) || memory.inKernelTextSegment(wordAddress)
+              ? Objects.requireNonNullElse(memory.getRawWordOrNull(wordAddress), 0)
+              : memory.getWordNoNotify(wordAddress);
+        }
+        out.print((bits == null ? "Invalid address: " + address : formatWord(bits)) + "\t");
       } catch (AddressErrorException ignored) {
         out.print("Invalid address: " + wordAddress + "\t");
       }

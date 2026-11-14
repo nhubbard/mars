@@ -14,7 +14,7 @@ import edu.missouristate.mars.plugin.build.MemoryExportSelection
 import edu.missouristate.mars.plugin.build.chooseMemoryExport
 import edu.missouristate.mars.plugin.build.memoryExportMessages
 import edu.missouristate.mars.plugin.projectFilePath
-import edu.missouristate.mars.util.Binary
+import edu.missouristate.mars.plugin.build.formatExportAddress
 import java.nio.file.Path
 import javax.swing.ListSelectionModel
 
@@ -29,10 +29,10 @@ internal class RunMemoryDumpState : BaseState() {
         val output = projectFilePath(project, outputPath) ?: return null
         val format = DumpFormatLoader.findByCommandDescriptor(formatName) ?: return null
         val range = if (region == MemoryExportRegion.RANGE) {
-            if (firstAddress !in 0..UInt.MAX_VALUE.toLong() || lastAddress !in firstAddress..UInt.MAX_VALUE.toLong() ||
+            if (firstAddress < 0 || lastAddress < firstAddress ||
                 !MemoryState.wordAligned(firstAddress.toInt()) || !MemoryState.wordAligned(lastAddress.toInt())) return null
-            firstAddress.toUInt()..lastAddress.toUInt()
-        } else UIntRange.EMPTY
+            firstAddress..lastAddress
+        } else LongRange.EMPTY
         return MemoryExportSelection(MemoryExportOptions(format, region, range), output)
     }
 }
@@ -46,8 +46,8 @@ internal class RunMemoryDumpEditor(private val project: Project, private val ent
         cellRenderer = textListCellRenderer("") { row ->
             val region = if (row.region == MemoryExportRegion.RANGE) {
                 runMessages.getMessage(
-                    "run.export.item.range", Binary.intToHexString(row.firstAddress.toInt()),
-                    Binary.intToHexString(row.lastAddress.toInt()),
+                    "run.export.item.range", formatExportAddress(row.firstAddress),
+                    formatExportAddress(row.lastAddress),
                 )
             } else {
                 memoryExportMessages.getMessage(row.region.label)
@@ -80,8 +80,8 @@ internal class RunMemoryDumpEditor(private val project: Project, private val ent
         formatName = selection.options.format.commandDescriptor
         region = selection.options.region
         if (region == MemoryExportRegion.RANGE) {
-            firstAddress = selection.options.range.first.toLong()
-            lastAddress = selection.options.range.last.toLong()
+            firstAddress = selection.options.range.first
+            lastAddress = selection.options.range.last
         }
     }
 }

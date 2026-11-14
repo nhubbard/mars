@@ -140,6 +140,28 @@ class PackagedCliTest {
   }
 
   @Test
+  void dumpsHighTextAndDataWithoutTruncatingAddresses() throws Exception {
+    var entry = source("high-dump.s", """
+        .data 0x100000000
+        .word 0x41424344
+        .text 0x100400000
+        .globl main
+        main: addiu $v0,$zero,10
+        syscall
+        """);
+    var data = directory.resolve("high-data.txt");
+    var text = directory.resolve("high-text.txt");
+    var run = launch("--target", "mars64", "--start-at-main",
+        "dump", "0x100000000-0x100000000", "HexText", data.toString(),
+        "dump", "0x100400000-0x100400000", "SegmentWindow", text.toString(),
+        "0x100000000-0x100000000", entry.toString());
+    assertEquals(0, run.status(), run.err());
+    assertEquals("41424344", Files.readString(data).strip());
+    assertTrue(Files.readString(text).contains("0x0000000100400000  0x2402000a"));
+    assertTrue(run.out().contains("Mem[0x0000000100000000]"), run.out());
+  }
+
+  @Test
   void runsAnMsaLoadComputeAndStoreProgram() throws Exception {
     var entry = source("vector.s", """
         .data

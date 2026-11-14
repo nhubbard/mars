@@ -4882,7 +4882,7 @@ class MarsDebugPlatformTest {
                     hex.write(file, snapshot)
                 }
             }
-            val options = MemoryExportOptions(format, MemoryExportRegion.RANGE, 0x10010000u..0x10010000u)
+            val options = MemoryExportOptions(format, MemoryExportRegion.RANGE, 0x10010000L..0x10010000L)
             withDebug(file) { debug ->
                 debug.assertPausedAt(file, 3)
                 val pause = assertInstanceOf(MarsSuspendContext::class.java, debug.session.suspendContext)

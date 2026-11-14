@@ -77,7 +77,7 @@ internal enum class MemoryExportRegion(val label: String) {
 internal data class MemoryExportOptions(
     val format: DumpFormat,
     val region: MemoryExportRegion,
-    val range: UIntRange = UIntRange.EMPTY,
+    val range: LongRange = LongRange.EMPTY,
 )
 
 internal class MarsMemoryExportDialog(project: Project, existing: MemoryExportOptions?) : DialogWrapper(project) {
@@ -107,8 +107,8 @@ internal class MarsMemoryExportDialog(project: Project, existing: MemoryExportOp
             region.item = existing.region
             format.item = existing.format
             if (existing.region == MemoryExportRegion.RANGE) {
-                first.text = Binary.intToHexString(existing.range.first.toInt())
-                last.text = Binary.intToHexString(existing.range.last.toInt())
+                first.text = formatExportAddress(existing.range.first)
+                last.text = formatExportAddress(existing.range.last)
             }
         }
         title = messages.getMessage("export.title")
@@ -129,14 +129,17 @@ internal class MarsMemoryExportDialog(project: Project, existing: MemoryExportOp
         val range = if (region.item == MemoryExportRegion.RANGE) {
             parseAddress(first.text)!!..parseAddress(last.text)!!
         } else {
-            UIntRange.EMPTY
+            LongRange.EMPTY
         }
         return MemoryExportOptions(format.item, region.item, range)
     }
 
-    private fun parseAddress(input: String): UInt? {
+    private fun parseAddress(input: String): Long? {
         val text = input.trim()
-        val address = if (text.startsWith("0x", ignoreCase = true)) text.drop(2).toUIntOrNull(16) else text.toUIntOrNull()
-        return address?.takeIf { MemoryState.wordAligned(it.toInt()) }
+        val address = if (text.startsWith("0x", ignoreCase = true)) text.drop(2).toLongOrNull(16) else text.toLongOrNull()
+        return address?.takeIf { it >= 0 && MemoryState.wordAligned(it.toInt()) }
     }
 }
+
+internal fun formatExportAddress(address: Long): String =
+    if (address <= UInt.MAX_VALUE.toLong()) Binary.intToHexString(address.toInt()) else Binary.longToHexString(address)

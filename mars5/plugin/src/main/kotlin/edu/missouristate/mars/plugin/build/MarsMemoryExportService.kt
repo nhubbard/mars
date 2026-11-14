@@ -15,7 +15,6 @@ import edu.missouristate.mars.mips.dump.SegmentWindowDumpFormat
 import edu.missouristate.mars.mips.hardware.AddressErrorException
 import edu.missouristate.mars.mips.hardware.MemoryState.Companion.WORD_LENGTH_BYTES
 import edu.missouristate.mars.plugin.MarsSessionService
-import edu.missouristate.mars.util.Binary
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
@@ -104,23 +103,23 @@ internal fun captureMemory(
     val messages = memoryExportMessages
     val memory = session.memory
     val (first, last) = when (options.region) {
-        MemoryExportRegion.TEXT -> memory.textBaseAddress to memory.textLimitAddress - WORD_LENGTH_BYTES
-        MemoryExportRegion.DATA -> memory.dataBaseAddress to memory.dataSegmentLimitAddress - WORD_LENGTH_BYTES
-        MemoryExportRegion.RANGE -> options.range.first.toInt() to options.range.last.toInt()
+        MemoryExportRegion.TEXT -> memory.textBaseAddress.toUInt().toLong() to (memory.textLimitAddress - WORD_LENGTH_BYTES).toUInt().toLong()
+        MemoryExportRegion.DATA -> memory.dataBaseAddress.toUInt().toLong() to (memory.dataSegmentLimitAddress - WORD_LENGTH_BYTES).toUInt().toLong()
+        MemoryExportRegion.RANGE -> options.range.first to options.range.last
     }
     if (options.format is SegmentWindowDumpFormat) {
-        val userText = memory.inTextSegment(first) && memory.inTextSegment(last)
-        val userData = memory.inDataSegment(first) && memory.inDataSegment(last)
+        val userText = memory.inUserText(first) && memory.inUserText(last)
+        val userData = memory.inUserData(first) && memory.inUserData(last)
         if (!userText && !userData) return MemoryExportCapture.Failed(messages.getMessage("export.window.range"))
     }
     val snapshot = try {
         options.format.capture(session, first, last, checkCancellation)
     } catch (e: AddressErrorException) {
-        return MemoryExportCapture.Failed(messages.getMessage("export.invalid.memory", Binary.intToHexString(e.address)))
+        return MemoryExportCapture.Failed(messages.getMessage("export.invalid.memory", formatExportAddress(e.addressBits.toUInt().toLong().takeIf { e.addressBits == e.address.toLong() } ?: e.addressBits)))
     }
-    val nextAddress = first.toUInt().toLong() + snapshot.size().toLong() * WORD_LENGTH_BYTES
-    if (options.region == MemoryExportRegion.RANGE && nextAddress <= last.toUInt().toLong()) {
-        return MemoryExportCapture.Failed(messages.getMessage("export.unpopulated", Binary.intToHexString(nextAddress.toInt())))
+    val nextAddress = first + snapshot.size().toLong() * WORD_LENGTH_BYTES
+    if (options.region == MemoryExportRegion.RANGE && nextAddress <= last) {
+        return MemoryExportCapture.Failed(messages.getMessage("export.unpopulated", formatExportAddress(nextAddress)))
     }
     if (snapshot.size() == 0) return MemoryExportCapture.Failed(messages.getMessage("export.empty"))
     return MemoryExportCapture.Ready(snapshot)

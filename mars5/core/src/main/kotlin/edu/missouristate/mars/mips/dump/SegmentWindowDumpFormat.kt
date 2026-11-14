@@ -81,6 +81,8 @@ open class SegmentWindowDumpFormat : AbstractDumpFormat(
 
     private fun formatAddress(snapshot: MemoryDumpSnapshot, index: Int): String {
         val address = snapshot.address(index)
-        return if (snapshot.hexAddresses) Binary.intToHexString(address) else Binary.unsignedIntToIntString(address)
+        return if (!snapshot.hexAddresses) address.toULong().toString()
+        else if (address <= UInt.MAX_VALUE.toLong()) Binary.intToHexString(address.toInt())
+        else Binary.longToHexString(address)
     }
 }

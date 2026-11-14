@@ -3,11 +3,11 @@ package edu.missouristate.mars.mips.hardware
 import java.lang.Long.decode as decodeLong
 import kotlin.jvm.JvmRecord
 
-/** A word-aligned range in the unsigned 32-bit address space. */
+/** A word-aligned range with nonnegative address bounds. */
 @JvmRecord
-data class MemoryAddressRange(val first: Int, val last: Int) {
+data class MemoryAddressRange(val first: Long, val last: Long) {
     init {
-        require(first.toUInt() <= last.toUInt() && MemoryState.wordAligned(first) && MemoryState.wordAligned(last)) {
+        require(first >= 0 && first <= last && first and 3L == 0L && last and 3L == 0L) {
             "Memory range requires ordered, word-aligned endpoints"
         }
     }
@@ -41,10 +41,10 @@ data class MemoryAddressRange(val first: Int, val last: Int) {
             throw IllegalArgumentException("Invalid or unaligned memory range: $text")
         }
 
-        private fun address(text: String): Int {
+        private fun address(text: String): Long {
             val value = decodeLong(text)
-            if (value < Int.MIN_VALUE || value > 0xffffffffL) throw NumberFormatException(text)
-            return value.toInt()
+            if (value < Int.MIN_VALUE) throw NumberFormatException(text)
+            return if (value < 0) value.toUInt().toLong() else value
         }
     }
 }
