@@ -56,6 +56,9 @@ open class BasicInstruction(
     /** Allows an instruction to encode fields that differ from its written operands. */
     internal open fun encodeOperands(values: IntArray): IntArray = values
 
+    /** Some source mnemonics select a machine form from their operands. */
+    internal open fun encodingMask(values: IntArray): String = operationMask
+
     internal open fun encodedOperandCount(sourceCount: Int): Int = sourceCount
 
     internal open fun decodeOperands(values: IntArray) = Unit

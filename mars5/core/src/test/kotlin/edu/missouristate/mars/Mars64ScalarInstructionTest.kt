@@ -4,6 +4,7 @@ import edu.missouristate.mars.api.MarsTarget
 import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.params.ParameterizedTest
@@ -12,6 +13,15 @@ import org.junit.jupiter.params.provider.MethodSource
 import org.junit.jupiter.params.provider.ValueSource
 
 class Mars64ScalarInstructionTest {
+    @ParameterizedTest
+    @ValueSource(ints = [0x7d49ffc1, 0x7d49ffc2, 0x7d4907c7, 0x7d4907c6])
+    fun `invalid doubleword bitfield encodings are rejected`(word: Int) {
+        TestSessions.create().use { session ->
+            session.selectTarget(MarsTarget.MARS64)
+            assertNull(session.instructionSet.findByBinaryCode(word))
+        }
+    }
+
     @ParameterizedTest(name = "{0}")
     @MethodSource("operations")
     fun `wide scalar instructions match Release 6`(
@@ -40,6 +50,9 @@ class Mars64ScalarInstructionTest {
     @ValueSource(strings = [
         "dlsa \$9,\$10,\$11,0", "dlsa \$9,\$10,\$11,5", "dalign \$9,\$10,\$11,8",
         "dahi \$9,\$10,1", "dati \$9,\$10,1", "daui \$9,\$zero,1",
+        "dext \$9,\$10,64,1", "dext \$9,\$10,0,0", "dins \$9,\$10,31,34",
+        "dextm \$9,\$10,1,8", "dextu \$9,\$10,31,8",
+        "dinsm \$9,\$10,1,8", "dinsu \$9,\$10,31,1",
     ])
     fun `invalid operands are rejected`(source: String, @TempDir directory: Path) {
         val file = Files.writeString(directory.resolve("invalid.s"), "$source\n")
@@ -63,6 +76,22 @@ class Mars64ScalarInstructionTest {
             Arguments.of("dahi \$9,\$9,65535", 0x0526ffff, -0x1_0000_0000L + 123),
             Arguments.of("dati \$9,\$9,65535", 0x053effff, -0x1_0000_0000_0000L + 123),
             Arguments.of("daui \$9,\$10,65535", 0x7549ffff, 0x0123_4567_89aa_cdefL),
+            Arguments.of("dext \$9,\$10,1,8", 0x7d493843, 0xf7L),
+            Arguments.of("dext \$9,\$10,1,40", 0x7d493841, 0xb3_c4d5_e6f7L),
+            Arguments.of("dext \$9,\$10,33,8", 0x7d493842, 0xb3L),
+            Arguments.of("dext \$9,\$10,0,64", 0x7d49f801, 0x0123_4567_89ab_cdefL),
+            Arguments.of("dext \$9,\$10,31,32", 0x7d49ffc3, 0x0246_8acfL),
+            Arguments.of("dext \$9,\$10,63,1", 0x7d4907c2, 0L),
+            Arguments.of("dextm \$9,\$10,1,40", 0x7d493841, 0xb3_c4d5_e6f7L),
+            Arguments.of("dextu \$9,\$10,33,8", 0x7d493842, 0xb3L),
+            Arguments.of("dins \$9,\$10,1,8", 0x7d494047, 0x1dfL),
+            Arguments.of("dins \$9,\$10,1,40", 0x7d494045, 0xcf_1357_9bdfL),
+            Arguments.of("dins \$9,\$10,33,8", 0x7d494046, 0x1de_0000_007bL),
+            Arguments.of("dins \$9,\$10,0,64", 0x7d49f805, 0x0123_4567_89ab_cdefL),
+            Arguments.of("dins \$9,\$10,31,2", 0x7d4907c5, 0x1_8000_007bL),
+            Arguments.of("dins \$9,\$10,63,1", 0x7d49ffc6, Long.MIN_VALUE + 123),
+            Arguments.of("dinsm \$9,\$10,1,40", 0x7d494045, 0xcf_1357_9bdfL),
+            Arguments.of("dinsu \$9,\$10,33,8", 0x7d494046, 0x1de_0000_007bL),
         )
     }
 }

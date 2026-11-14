@@ -41,8 +41,11 @@ fields on decode, and that the same raw word has no MARS32 decoding. The current
 
 ## Additional scalar forms with encoding probes
 
-MARS64 now assembles and executes `dlsa`, `dalign`, `dbitswap`, `dsbh`,
-`dshd`, `dahi`, `dati`, and `daui`. The remaining rows are pending. Register numbers and immediates below are LLVM assembler input,
+MARS64 assembles and executes all six doubleword bitfield forms, as well as
+`dlsa`, `dalign`, `dbitswap`, `dsbh`, `dshd`, `dahi`, `dati`, and `daui`.
+Plain `dext` and `dins` choose their machine forms from the field size and
+position. The remaining rows are pending. Register numbers and immediates
+below are LLVM assembler input,
 and the hex values are instruction words in architectural bit order. A branch
 or PC-relative immediate in this table is the displacement as written to LLVM.
 

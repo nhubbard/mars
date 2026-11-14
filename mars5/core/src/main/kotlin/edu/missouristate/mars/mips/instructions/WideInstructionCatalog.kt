@@ -4,6 +4,7 @@ import edu.missouristate.mars.ProcessingException
 import edu.missouristate.mars.mips.hardware.AddressErrorException
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat.I_FORMAT
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat.R_FORMAT
+import edu.missouristate.mars.mips.instructions.basic.DoublewordBitField
 import edu.missouristate.mars.simulator.Exceptions.ADDRESS_EXCEPTION_LOAD
 import edu.missouristate.mars.simulator.Exceptions.ADDRESS_EXCEPTION_STORE
 import edu.missouristate.mars.simulator.Exceptions.ARITHMETIC_OVERFLOW_EXCEPTION
@@ -54,6 +55,12 @@ internal val wideInstructionFactories: List<() -> BasicInstruction> = listOf(
     { wideVariableShift("drotrv", "Rotate a doubleword right by a register count", "010110", Long::rotateRight, "00001") },
     { wideCount("dclz", "Count leading zero bits in a doubleword", "010010", Long::countLeadingZeroBits) },
     { wideCount("dclo", "Count leading one bits in a doubleword", "010011") { it.inv().countLeadingZeroBits() } },
+    { DoublewordBitField(insert = false) },
+    { DoublewordBitField(insert = false, variant = "m") },
+    { DoublewordBitField(insert = false, variant = "u") },
+    { DoublewordBitField(insert = true) },
+    { DoublewordBitField(insert = true, variant = "m") },
+    { DoublewordBitField(insert = true, variant = "u") },
     { wideUpperImmediate("dahi", "Add a signed immediate in bits 47 through 32", "00110", 32) },
     { wideUpperImmediate("dati", "Add a signed immediate in bits 63 through 48", "11110", 48) },
     {

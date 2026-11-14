@@ -241,9 +241,9 @@ open class ProgramStatement private constructor(
             errors.add(ErrorMessage(sourceMIPSprogram, sourceLine, 0, "INTERNAL ERROR: pseudo-instruction expansion contained a pseudo-instruction"))
             return
         }
-        machineStatement = basic.operationMask.replace('c', '0')
         val values = operandValues!!
         if (basic.instructionFormat == BasicInstructionFormat.J_FORMAT) {
+            machineStatement = basic.operationMask.replace('c', '0')
             if ((address and JUMP_REGION_MASK) != (values[0] and JUMP_REGION_MASK)) {
                 errors.add(ErrorMessage(sourceMIPSprogram, sourceLine, 0, "Jump target word address beyond 26-bit range"))
                 return
@@ -257,6 +257,7 @@ open class ProgramStatement private constructor(
                 errors.add(ErrorMessage(this, failure.message))
                 return
             }
+            machineStatement = basic.encodingMask(values).replace(" ", "").replace('c', '0')
             for (index in 0 until basic.encodedOperandCount(numOperands)) {
                 insertBinaryCode(encoded[index], Instruction.operandMask[index], errors)
             }
