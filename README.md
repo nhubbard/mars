@@ -76,13 +76,14 @@ Gradle or GitHub Classroom, and checking script registration.
 ## Architecture target
 
 MARS32 is the default. Select **MARS64** under **Settings → Build, Execution, Deployment →
-MARS Assembly**, or pass `--target MARS64` to the CLI, to enable educational doubleword
-instructions. The debugger can inspect, edit, and reverse changes to the full integer registers.
+MARS Assembly**, or pass `--target mars64` to the CLI, for the MIPS64 Release 6 source target
+with MSA vectors. The debugger can inspect, edit, and reverse changes to the full integer registers.
 Word instructions such as `addiu` and `sll` use the low 32 bits and write sign-extended word
 results. Bitwise operations, comparisons, branches, and register moves use the selected target's
-integer register width. Memory uses the existing MARS address layouts. Register-based loads,
-stores, and jumps report an address error when the effective address falls outside the 32-bit
-map. Use `.dword` for aligned 64-bit constants and `ld` and `sd` to load and store them.
+integer register width. MARS64 keeps the classroom memory layouts and adds two sparse 4 MiB regions.
+Place data above 4 GiB with `.data 0x100000000` and executable code with `.text 0x100400000`.
+Use `.dword` for aligned 64-bit constants or label addresses and `ld` and `sd` to load and store them.
+The assembler, simulator, debugger, dump formats, and grading DSL preserve these addresses.
 
 The MARS32 catalog includes additional user-mode operations from the MIPS32 Release 6 reference,
 including bitfield extraction and insertion, rotates, scaled addressing, PC-relative addressing,
@@ -99,8 +100,10 @@ both byte orders. The `ulw`, `usw`, `ulh`, `ulhu`, and `ush` aliases use those s
 MARS64 provides 32 individually addressable 64-bit floating-point registers and supports
 FCSR rounding and exceptions for scalar arithmetic. MSA vector instructions use 32 128-bit
 registers whose low halves share storage with the scalar registers. MARS32 uses paired
-registers for doubles. See the [Release 6 inventory](docs/mips64-release-6-inventory.md)
-for the status of specific instruction forms and the current compatibility limits.
+registers for doubles. MARS64 runs freestanding source and uses the educational MARS syscall ABI.
+See the [Release 6 inventory](docs/mips64-release-6-inventory.md) for instruction coverage,
+compiler syntax, and the facilities outside the simulator's scope. The [FIR filter example](examples/mars64)
+uses vectors, scalar code, and addresses above 4 GiB in a program you can run, debug, and grade.
 
 ## UTF-8 assembly and console text
 

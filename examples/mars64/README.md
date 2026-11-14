@@ -17,6 +17,8 @@ java -jar mars5/cli/build/libs/cli-1.0-SNAPSHOT.jar nc --target mars64 --start-a
 java -jar mars5/cli/build/libs/cli-1.0-SNAPSHOT.jar grade examples/mars64/fir-check.kts examples/mars64/fir.mars
 ```
 
+To save the success message as well as print it, append `-- fir.ok` to the run command.
+
 In IntelliJ, open `fir.mars`, select **MARS64** and the **Default** memory
 layout in the MARS project settings, and enable **Start at main** in the run
 configuration. Debug with a breakpoint on `balc scalar_sample`. At the
