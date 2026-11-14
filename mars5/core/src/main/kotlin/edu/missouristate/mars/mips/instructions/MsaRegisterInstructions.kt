@@ -9,6 +9,20 @@ import edu.missouristate.mars.simulator.Exceptions.ADDRESS_EXCEPTION_LOAD
 import edu.missouristate.mars.simulator.Exceptions.ADDRESS_EXCEPTION_STORE
 
 internal fun msaRegisterInstructions(): List<BasicInstruction> = buildList {
+    add(BasicInstruction(
+        "cfcmsa \$t1,\$1", "Copy an MSA control register to a CPU register",
+        R_FORMAT, "011110 00011 11110 sssss fffff 011001",
+    ) { statement, context ->
+        val (destination, control) = statement.operands
+        context.updateRegister(destination, context.coprocessor1.readMsaControl(control))
+    })
+    add(BasicInstruction(
+        "ctcmsa \$1,\$t1", "Copy a CPU register to the MSA control and status register",
+        R_FORMAT, "011110 00001 11110 sssss fffff 011001",
+    ) { statement, context ->
+        val (control, source) = statement.operands
+        if (control == 1) context.writeMsaStatus(statement, context.registerFile.getValue(source))
+    })
     for ((format, suffix) in "bhwd".withIndex()) {
         add(fillVector(format, suffix))
         add(loadImmediate(format, suffix))

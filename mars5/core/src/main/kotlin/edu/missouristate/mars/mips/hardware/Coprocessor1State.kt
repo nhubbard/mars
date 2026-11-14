@@ -36,6 +36,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 class Coprocessor1State {
     internal var hasWideRegisters = false
     val registers = Array(32) { Register("\$f$it", it, 0) }
+    private val msaControl = Register("MSACSR", 1, 0)
     private val vectorHigh = LongArray(registers.size)
     private val fcsr = Register("FCSR", 31, FCSR_IEEE_2008)
     private val condition = Register("cf", registers.size, 0)
@@ -43,6 +44,7 @@ class Coprocessor1State {
 
     init {
         registers.forEach { it.addObserver(registerEvents::emit) }
+        msaControl.addObserver(registerEvents::emit)
         fcsr.addObserver(registerEvents::emit)
         condition.addObserver(registerEvents::emit)
     }
@@ -162,6 +164,7 @@ class Coprocessor1State {
         registers.forEach(Register::resetValue)
         vectorHigh.fill(0)
         fcsr.resetValue()
+        msaControl.resetValue()
         clearConditionFlags()
     }
 
@@ -186,6 +189,12 @@ class Coprocessor1State {
             else -> null
         }
     }
+
+    internal val msaStatus: Int get() = msaControl.valueNoNotify
+
+    internal fun readMsaControl(number: Int): Int = if (number == 1) msaControl.value else 0
+
+    internal fun updateMsaStatus(bits: Int): Int = msaControl.setValue(bits and (FLUSH_SUBNORMALS or MSA_NON_TRAPPING or 0x3ffff))
 
     internal val floatingStatus: Int get() = fcsr.valueNoNotify
 
@@ -237,6 +246,7 @@ class Coprocessor1State {
         private const val ENABLE_MASK = 0xf80
         internal const val CAUSE_MASK = 0x3f000
         internal const val FLUSH_SUBNORMALS = 1 shl 24
+        internal const val MSA_NON_TRAPPING = 1 shl 18
         internal const val INEXACT = 1
         internal const val UNDERFLOW = 1 shl 1
         internal const val OVERFLOW = 1 shl 2

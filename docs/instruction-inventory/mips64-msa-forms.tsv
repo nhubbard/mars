@@ -116,7 +116,7 @@ ceqi.b	wd,ws,s5	MSA	121	implemented
 ceqi.h	wd,ws,s5	MSA	121	implemented
 ceqi.w	wd,ws,s5	MSA	121	implemented
 ceqi.d	wd,ws,s5	MSA	121	implemented
-cfcmsa	rd,cs	MSA	123	missing
+cfcmsa	rd,cs	MSA	123	implemented
 cle_s.b	wd,ws,wt	MSA	125	implemented
 cle_s.h	wd,ws,wt	MSA	125	implemented
 cle_s.w	wd,ws,wt	MSA	125	implemented
@@ -156,7 +156,7 @@ copy_s.d	rd,ws[n]	MIPS64 MSA	137	implemented
 copy_u.b	rd,ws[n]	MSA	138	implemented
 copy_u.h	rd,ws[n]	MSA	138	implemented
 copy_u.w	rd,ws[n]	MIPS64 MSA	138	implemented
-ctcmsa	cd,rs	MSA	139	missing
+ctcmsa	cd,rs	MSA	139	implemented
 div_s.b	wd,ws,wt	MSA	141	implemented
 div_s.h	wd,ws,wt	MSA	141	implemented
 div_s.w	wd,ws,wt	MSA	141	implemented

@@ -41,5 +41,6 @@ object Exceptions {
     const val RESERVED_INSTRUCTION_EXCEPTION = 10
     const val ARITHMETIC_OVERFLOW_EXCEPTION = 12
     const val TRAP_EXCEPTION = 13
+    const val MSA_FLOATING_POINT_EXCEPTION = 14
     const val FLOATING_POINT_EXCEPTION = 15
 }

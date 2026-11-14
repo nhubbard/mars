@@ -32,6 +32,7 @@ import edu.missouristate.mars.mips.instructions.SyscallRegistry
 import edu.missouristate.mars.mips.instructions.syscalls.RandomStreams
 import edu.missouristate.mars.simulator.Exceptions.ADDRESS_EXCEPTION_LOAD
 import edu.missouristate.mars.simulator.Exceptions.FLOATING_POINT_EXCEPTION
+import edu.missouristate.mars.simulator.Exceptions.MSA_FLOATING_POINT_EXCEPTION
 import edu.missouristate.mars.simulator.Exceptions.RESERVED_INSTRUCTION_EXCEPTION
 import edu.missouristate.mars.util.Binary
 
@@ -210,6 +211,14 @@ class InstructionContext(private val session: MarsContext, private val environme
         if (session.backStepper.enabled()) {
             session.backStepper.addCoprocessor1Restore(number, previous.low)
             session.backStepper.addVectorHighRestore(number, previous.high)
+        }
+    }
+
+    internal fun writeMsaStatus(statement: ProgramStatement, bits: Int) {
+        val previous = coprocessor1.updateMsaStatus(bits)
+        if (session.backStepper.enabled()) session.backStepper.addMsaStatusRestore(previous)
+        if (hasEnabledFloatingException(coprocessor1.msaStatus)) {
+            throw ProcessingException(this, statement, "MSA floating-point exception", MSA_FLOATING_POINT_EXCEPTION)
         }
     }
 
