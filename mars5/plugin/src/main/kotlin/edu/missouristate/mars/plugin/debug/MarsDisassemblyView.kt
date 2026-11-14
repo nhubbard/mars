@@ -20,7 +20,6 @@ import com.intellij.util.ui.ListTableModel
 import com.intellij.xdebugger.XDebugSession
 import com.intellij.xdebugger.XDebugSessionListener
 import com.intellij.xdebugger.XDebuggerManager
-import com.intellij.xdebugger.XDebuggerUtil
 import com.intellij.xdebugger.XSourcePosition
 import com.intellij.xdebugger.breakpoints.SuspendPolicy
 import com.intellij.xdebugger.breakpoints.XBreakpointListener
@@ -28,6 +27,7 @@ import edu.missouristate.mars.api.InstructionSourceMap.Location
 import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.mips.hardware.MemoryState
 import edu.missouristate.mars.plugin.run.runMessages
+import edu.missouristate.mars.plugin.topicOf
 import edu.missouristate.mars.simulator.BackStepper.ExecutedInstruction
 import edu.missouristate.mars.util.Binary
 import java.awt.Font
@@ -83,7 +83,7 @@ internal fun interface MarsDisassemblyOrderListener {
     companion object {
         @Topic.AppLevel
         @JvmField
-        val TOPIC = Topic("MARS imported disassembly order", MarsDisassemblyOrderListener::class.java, Topic.BroadcastDirection.NONE)
+        val TOPIC = topicOf<MarsDisassemblyOrderListener>("MARS imported disassembly order", Topic.BroadcastDirection.NONE)
     }
 }
 
@@ -132,7 +132,7 @@ internal class MarsDisassemblyView(
 ) : Disposable {
     private val display = service<MarsDebuggerDisplaySettings>()
     private val breakpointManager = XDebuggerManager.getInstance(session.project).breakpointManager
-    private val breakpointType = XDebuggerUtil.getInstance().findBreakpointType(MarsAddressBreakpointType::class.java)
+    private val breakpointType = findBreakpointType<MarsAddressBreakpointType>()
     private val status = JBLabel()
     private val followPc = JButton(runMessages.getMessage("debug.disassembly.follow.pc"))
     private val lastExecuted = JButton(runMessages.getMessage("debug.disassembly.last.executed"))

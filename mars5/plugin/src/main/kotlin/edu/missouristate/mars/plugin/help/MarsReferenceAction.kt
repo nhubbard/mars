@@ -2,13 +2,13 @@ package edu.missouristate.mars.plugin.help
 
 import com.intellij.CommonBundle
 import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.observable.util.whenDocumentChanged
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.text.StringUtil.escapeXmlEntities
 import com.intellij.ui.CollectionListModel
-import com.intellij.ui.DocumentAdapter
 import com.intellij.ui.JBSplitter
 import com.intellij.ui.ScrollingUtil
 import com.intellij.ui.SearchTextField
@@ -24,7 +24,6 @@ import com.intellij.ui.dsl.listCellRenderer.textListCellRenderer
 import com.intellij.ui.speedSearch.FilteringListModel
 import com.intellij.util.ui.JBUI
 import javax.swing.ListSelectionModel
-import javax.swing.event.DocumentEvent
 
 internal class MarsReferenceAction : DumbAwareAction() {
     override fun actionPerformed(e: AnActionEvent) = MarsReferenceDialog(e.project, MarsReferenceCatalog.topics.first()).show()
@@ -78,9 +77,7 @@ internal class MarsReferenceDialog(project: Project?, initialTopic: MarsReferenc
             details.text = topics.selectedValue?.let { topic -> "<h2>${escapeXmlEntities(topic.title)}</h2>${topic.html()}" }.orEmpty()
             details.caretPosition = 0
         }
-        search.addDocumentListener(object : DocumentAdapter() {
-            override fun textChanged(e: DocumentEvent) = filterTopics()
-        })
+        search.textEditor.document.whenDocumentChanged(disposable) { filterTopics() }
         filterTopics()
         topics.setSelectedValue(initialTopic, true)
         init()

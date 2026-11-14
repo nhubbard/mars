@@ -1,6 +1,7 @@
 package edu.missouristate.mars.plugin.analysis
 
 import com.intellij.util.messages.Topic
+import edu.missouristate.mars.plugin.topicOf
 
 internal fun interface MipsAssemblyContextListener {
     fun assemblyEntryChanged()
@@ -8,6 +9,6 @@ internal fun interface MipsAssemblyContextListener {
     companion object {
         @Topic.ProjectLevel
         @JvmField
-        val TOPIC = Topic("MARS assembly context", MipsAssemblyContextListener::class.java, Topic.BroadcastDirection.NONE)
+        val TOPIC = topicOf<MipsAssemblyContextListener>("MARS assembly context", Topic.BroadcastDirection.NONE)
     }
 }

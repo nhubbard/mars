@@ -15,7 +15,7 @@ import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiErrorElement
 import com.intellij.psi.PsiManager
-import com.intellij.psi.util.PsiTreeUtil
+import com.intellij.psi.util.parentOfType
 import edu.missouristate.mars.ErrorList
 import edu.missouristate.mars.assembler.Directives
 import edu.missouristate.mars.assembler.Tokenizer
@@ -51,7 +51,7 @@ internal class MipsMacroDiagnosticAnnotator : Annotator {
             val invalid = macro.invalidFormal ?: continue
             val site = file.findElementAt(invalid.offset)!!
             val range = macroDiagnosticRange(site, invalid.lastOffset)
-            val physicalError = PsiTreeUtil.getParentOfType(site, PsiErrorElement::class.java)
+            val physicalError = site.parentOfType<PsiErrorElement>()
             if (physicalError != null && !physicalError.isSupersededFormalError(range)) continue
             if (!hasEntry) return
             if (timeline.prefix(file, sourceLineStart(site)).hasIncompleteIncludes) continue

@@ -11,7 +11,6 @@ import com.intellij.openapi.util.text.StringUtil
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiManager
 import com.intellij.xdebugger.XDebuggerManager
-import com.intellij.xdebugger.XDebuggerUtil
 import edu.missouristate.mars.api.InstructionSourceMap.Location
 import edu.missouristate.mars.plugin.analysis.assemblySourceSyntax
 import edu.missouristate.mars.plugin.analysis.unresolvedAssemblySourceSyntax
@@ -28,7 +27,7 @@ internal class MarsToggleOriginalBreakpointAction : DumbAwareAction() {
     override fun actionPerformed(e: AnActionEvent) {
         val (file, location) = target(e) ?: return
         val manager = XDebuggerManager.getInstance(e.project!!).breakpointManager
-        val type = XDebuggerUtil.getInstance().findBreakpointType(MarsLineBreakpointType::class.java)
+        val type = findBreakpointType<MarsLineBreakpointType>()
         val line = location.line() - 1
         WriteAction.run<RuntimeException> {
             val existing = manager.findBreakpointsAtLine(type, file, line).firstOrNull()
@@ -57,7 +56,7 @@ internal class MarsToggleOriginalBreakpointAction : DumbAwareAction() {
         val current = (if (physical == null) unresolvedAssemblySourceSyntax(project, original)
             else assemblySourceSyntax(physical)) ?: return null
         if (!StringUtil.equals(current.viewProvider.contents, displayed)) return null
-        val type = XDebuggerUtil.getInstance().findBreakpointType(MarsLineBreakpointType::class.java)
+        val type = findBreakpointType<MarsLineBreakpointType>()
         if (!type.canPutAtOperation(view, line, project)) return null
         // Store the physical URL so the breakpoint survives a closed tab or IDE restart.
         return original to Location(original.toNioPath(), line + 1)

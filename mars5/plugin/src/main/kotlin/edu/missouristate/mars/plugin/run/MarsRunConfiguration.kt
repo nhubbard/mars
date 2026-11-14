@@ -8,7 +8,7 @@ import com.intellij.execution.actions.ConfigurationContext
 import com.intellij.execution.actions.LazyRunConfigurationProducer
 import com.intellij.execution.configurations.CommandLineState
 import com.intellij.execution.configurations.ConfigurationFactory
-import com.intellij.execution.configurations.ConfigurationTypeUtil
+import com.intellij.execution.configurations.runConfigurationType
 import com.intellij.execution.configurations.RunConfigurationBase
 import com.intellij.execution.configurations.RunConfigurationOptions
 import com.intellij.execution.configurations.RuntimeConfigurationError
@@ -483,7 +483,7 @@ internal class MarsRunState(
 }
 
 internal class MarsRunConfigurationProducer : LazyRunConfigurationProducer<MarsRunConfiguration>() {
-    override fun getConfigurationFactory() = ConfigurationTypeUtil.findConfigurationType(MarsRunType::class.java)
+    override fun getConfigurationFactory() = runConfigurationType<MarsRunType>()
 
     override fun setupConfigurationFromContext(
         configuration: MarsRunConfiguration, context: ConfigurationContext, sourceElement: Ref<PsiElement>,

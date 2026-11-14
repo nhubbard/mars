@@ -1,17 +1,17 @@
 package edu.missouristate.mars.plugin.help
 
-import com.intellij.DynamicBundle
 import com.intellij.ide.plugins.PluginDetailsService
 import com.intellij.openapi.extensions.PluginId
 import com.intellij.openapi.util.text.StringUtil.escapeXmlEntities
 import com.intellij.openapi.util.text.StringUtil.stripHtml
 import com.intellij.util.ResourceUtil.loadText
+import edu.missouristate.mars.plugin.dynamicBundleOf
 import edu.missouristate.mars.plugin.language.MipsDocumentationCatalog
 import edu.missouristate.mars.plugin.language.MipsSyscallDocumentation
 import org.jetbrains.annotations.Nls
 
-private val guides = DynamicBundle(MarsReferenceCatalog::class.java, "messages.MarsReference")
-internal val referenceMessages = DynamicBundle(MarsReferenceCatalog::class.java, "messages.MarsBundle")
+private val guides = dynamicBundleOf<MarsReferenceCatalog>("messages.MarsReference")
+internal val referenceMessages = dynamicBundleOf<MarsReferenceCatalog>("messages.MarsBundle")
 
 internal class MarsReferenceTopic(
     @param:Nls @get:Nls val title: String,

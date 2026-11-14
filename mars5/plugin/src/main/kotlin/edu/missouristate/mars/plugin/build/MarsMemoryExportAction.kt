@@ -1,6 +1,5 @@
 package edu.missouristate.mars.plugin.build
 
-import com.intellij.DynamicBundle
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
@@ -20,13 +19,14 @@ import com.intellij.ui.layout.selectedValueIs
 import edu.missouristate.mars.mips.dump.DumpFormat
 import edu.missouristate.mars.mips.dump.DumpFormatLoader
 import edu.missouristate.mars.mips.hardware.MemoryState
+import edu.missouristate.mars.plugin.dynamicBundleOf
 import edu.missouristate.mars.plugin.language.MipsFileType
 import edu.missouristate.mars.util.Binary
 import java.nio.file.Path
 import java.util.Objects
 import javax.swing.JTextField
 
-internal val memoryExportMessages = DynamicBundle(MarsMemoryExportAction::class.java, "messages.MarsBundle")
+internal val memoryExportMessages = dynamicBundleOf<MarsMemoryExportAction>("messages.MarsBundle")
 
 internal class MarsMemoryExportAction : DumbAwareAction() {
     override fun getActionUpdateThread() = ActionUpdateThread.BGT

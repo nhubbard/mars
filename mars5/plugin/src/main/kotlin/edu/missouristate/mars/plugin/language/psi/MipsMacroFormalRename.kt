@@ -6,7 +6,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFileFactory
 import com.intellij.psi.PsiManager
-import com.intellij.psi.util.PsiTreeUtil
+import com.intellij.psi.util.childOfType
 import com.intellij.util.IncorrectOperationException
 import edu.missouristate.mars.ErrorList
 import edu.missouristate.mars.assembler.Tokenizer
@@ -31,7 +31,7 @@ internal fun isMacroFormalName(name: String): Boolean {
 internal fun macroFormalNameElement(project: Project, name: String): PsiElement {
     if (!isMacroFormalName(name)) throw formalRenameError("macro.rename.invalid.name")
     val file = PsiFileFactory.getInstance(project).createFileFromText("formal.asm", MipsFileType, ".macro emit ($name)\n.end_macro\n")
-    return PsiTreeUtil.findChildOfType(file, MipsMacroFormal::class.java)!!.nameIdentifier
+    return file.childOfType<MipsMacroFormal>()!!.nameIdentifier
 }
 
 /** Confirms that a rename changes the spelling of one binding in the assembler's prepass tokens. */

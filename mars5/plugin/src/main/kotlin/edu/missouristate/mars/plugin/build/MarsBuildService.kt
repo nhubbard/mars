@@ -1,6 +1,8 @@
+@file:Suppress("UnstableApiUsage")
+
 package edu.missouristate.mars.plugin.build
 
-import com.intellij.DynamicBundle
+import com.intellij.build.BuildDescriptor
 import com.intellij.build.BuildViewManager
 import com.intellij.build.DefaultBuildDescriptor
 import com.intellij.build.FilePosition
@@ -32,8 +34,8 @@ import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.analysis.MipsAssemblyContextListener
 import edu.missouristate.mars.plugin.analysis.assembleIn
 import edu.missouristate.mars.plugin.analysis.captureBuildSources
+import edu.missouristate.mars.plugin.dynamicBundleOf
 import edu.missouristate.mars.plugin.run.MarsExecutionSources
-import java.nio.file.Path
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -42,8 +44,14 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.future.asCompletableFuture
 import org.jetbrains.concurrency.asPromise
+import java.nio.file.Path
 
-internal val buildMessages = DynamicBundle(MarsBuildService::class.java, "messages.MarsBundle")
+private class MarsBuildProgressDescriptor(private val descriptor: BuildDescriptor) : BuildProgressDescriptor {
+    override fun getTitle() = descriptor.title
+    override fun getBuildDescriptor() = descriptor
+}
+
+internal val buildMessages = dynamicBundleOf<MarsBuildService>("messages.MarsBundle")
 
 internal class MarsAssembledProgram(val image: AssemblyImage, val sources: CapturedAssemblySources)
 
@@ -138,10 +146,7 @@ internal class MarsBuildService(private val project: Project, private val scope:
             isActivateToolWindowWhenAdded = activateBuildView
             isActivateToolWindowWhenFailed = activateOnFailure
         }
-        val progressDescriptor = object : BuildProgressDescriptor {
-            override fun getTitle() = descriptor.title
-            override fun getBuildDescriptor() = descriptor
-        }
+        val progressDescriptor = MarsBuildProgressDescriptor(descriptor)
         val progress = BuildViewManager.createBuildProgress(project).start(progressDescriptor.title, progressDescriptor)
         var cancelled = false
         var succeeded = false
@@ -150,7 +155,7 @@ internal class MarsBuildService(private val project: Project, private val scope:
             val completed = assembleAndReport(symbolBuild, assemble) { diagnostics, capture ->
                 val events = readAction { diagnosticEvents(project, progress.id, diagnostics, capture) }
                 checkCanceled()
-                val view = project.getService(BuildViewManager::class.java)
+                val view = project.service<BuildViewManager>()
                 for (event in events) {
                     checkCanceled()
                     view.onEvent(progress.id, event)

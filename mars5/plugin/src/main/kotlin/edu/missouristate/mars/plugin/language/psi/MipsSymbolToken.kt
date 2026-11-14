@@ -11,7 +11,7 @@ import com.intellij.psi.PsiReference
 import com.intellij.psi.impl.source.tree.LeafPsiElement
 import com.intellij.psi.tree.IElementType
 import com.intellij.psi.tree.TokenSet
-import com.intellij.psi.util.PsiTreeUtil
+import com.intellij.psi.util.firstLeaf
 import com.intellij.psi.util.PsiUtilCore
 import edu.missouristate.mars.assembler.Directives
 import edu.missouristate.mars.assembler.TokenTypes
@@ -220,7 +220,7 @@ internal enum class DataLabelOperand {
         private fun followedBySign(operand: PsiElement): Boolean {
             val next = generateSequence(operand.nextSibling) { it.nextSibling }
                 .firstOrNull { PsiUtilCore.getElementType(it) == operandType } ?: return false
-            return PsiUtilCore.getElementType(PsiTreeUtil.getDeepestFirst(next)) in signs
+            return PsiUtilCore.getElementType(next.firstLeaf()) in signs
         }
     }
 }

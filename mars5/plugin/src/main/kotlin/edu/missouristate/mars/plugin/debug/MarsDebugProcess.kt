@@ -123,12 +123,14 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
         debug(this, machine)
     }
 
-    private val lineHandler = bindingHandler(MarsLineBreakpointType::class.java, registeredLines)
-    private val addressHandler = bindingHandler(MarsAddressBreakpointType::class.java, registeredAddresses)
-    private val watchpointHandler = bindingHandler(MarsMemoryWatchpointType::class.java, registeredWatchpoints)
+    private val lineHandler = bindingHandler<MarsLineBreakpointType, _>(registeredLines)
+    private val addressHandler = bindingHandler<MarsAddressBreakpointType, _>(registeredAddresses)
+    private val watchpointHandler = bindingHandler<MarsMemoryWatchpointType, _>(registeredWatchpoints)
 
-    private fun <B : XBreakpoint<*>> bindingHandler(type: Class<out XBreakpointType<B, *>>, registered: MutableSet<B>) =
-        object : XBreakpointHandler<B>(type) {
+    private inline fun <reified T : XBreakpointType<B, *>, B : XBreakpoint<*>> bindingHandler(
+        registered: MutableSet<B>,
+    ): XBreakpointHandler<B> =
+        object : XBreakpointHandler<B>(T::class.java) {
             override fun registerBreakpoint(breakpoint: B) {
                 synchronized(bindings) {
                     registered.add(breakpoint)

@@ -9,10 +9,10 @@ import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.editor.event.DocumentEvent
 import com.intellij.openapi.editor.event.DocumentListener
 import com.intellij.openapi.fileEditor.FileDocumentManager
+import com.intellij.openapi.observable.util.whenTextChanged
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.AsyncFileListener
 import com.intellij.openapi.vfs.VirtualFileManager
-import com.intellij.ui.DocumentAdapter
 import com.intellij.ui.SearchTextField
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.dsl.builder.Align
@@ -29,6 +29,7 @@ import edu.missouristate.mars.api.AssemblySymbolMap.SourceToken
 import edu.missouristate.mars.api.AssemblySymbolMap.Definition
 import edu.missouristate.mars.plugin.run.MarsExecutionSources
 import edu.missouristate.mars.plugin.run.runMessages
+import edu.missouristate.mars.plugin.topicOf
 import java.nio.file.Path
 import java.util.Locale
 import java.util.regex.Pattern
@@ -37,7 +38,6 @@ import javax.swing.ListSelectionModel
 import javax.swing.RowFilter
 import javax.swing.RowSorter.SortKey
 import javax.swing.SortOrder
-import javax.swing.event.DocumentEvent as SwingDocumentEvent
 import javax.swing.table.TableModel
 import javax.swing.table.TableRowSorter
 import javax.swing.table.TableStringConverter
@@ -115,7 +115,7 @@ internal fun interface MarsSymbolSortListener {
     companion object {
         @Topic.ProjectLevel
         @JvmField
-        val TOPIC = Topic("MARS imported symbol sort", MarsSymbolSortListener::class.java, Topic.BroadcastDirection.NONE)
+        val TOPIC = topicOf<MarsSymbolSortListener>("MARS imported symbol sort", Topic.BroadcastDirection.NONE)
     }
 }
 
@@ -193,11 +193,9 @@ internal class MarsSymbolsView(
             sorter.sort()
             table.repaint()
         }
-        filter.addDocumentListener(object : DocumentAdapter() {
-            override fun textChanged(e: SwingDocumentEvent) {
-                sorter.rowFilter = RowFilter.regexFilter("(?iu)" + Pattern.quote(filter.text.trim()))
-            }
-        })
+        filter.whenTextChanged(this) { text ->
+            sorter.rowFilter = RowFilter.regexFilter("(?iu)" + Pattern.quote(text.trim()))
+        }
         table.selectionModel.addListSelectionListener { openSource.isEnabled = table.selectedObject?.location != null }
         openSource.addActionListener {
             val symbol = table.selectedObject!!

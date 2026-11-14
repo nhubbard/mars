@@ -12,6 +12,7 @@ import com.intellij.openapi.project.DumbAwareToggleAction
 import com.intellij.util.messages.Topic
 import com.intellij.util.ui.UIUtil
 import edu.missouristate.mars.plugin.run.runMessages
+import edu.missouristate.mars.plugin.topicOf
 import edu.missouristate.mars.util.Binary
 import edu.missouristate.mars.util.NumberDisplayBase.formatNumber
 import edu.missouristate.mars.util.NumberDisplayBase.formatUnsignedInteger
@@ -95,7 +96,7 @@ internal class MarsDebuggerDisplaySettings :
         companion object {
             @Topic.AppLevel
             @JvmField
-            val TOPIC = Topic("MARS debugger display settings", DisplayListener::class.java, Topic.BroadcastDirection.NONE)
+            val TOPIC = topicOf<DisplayListener>("MARS debugger display settings", Topic.BroadcastDirection.NONE)
         }
     }
 }

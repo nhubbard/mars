@@ -2,7 +2,7 @@ package edu.missouristate.mars.plugin.project
 
 import com.intellij.DynamicBundle
 import com.intellij.execution.RunManager
-import com.intellij.execution.configurations.ConfigurationTypeUtil
+import com.intellij.execution.configurations.runConfigurationType
 import com.intellij.ide.util.projectWizard.WizardContext
 import com.intellij.ide.wizard.AbstractNewProjectWizardStep
 import com.intellij.ide.wizard.GeneratorNewProjectWizard
@@ -69,7 +69,7 @@ internal class MarsNewProjectWizard : GeneratorNewProjectWizard {
                 }
                 project.service<MarsAssemblySettings>().changeSources(sources.map(Path::toString))
                 val manager = RunManager.getInstance(project)
-                val factory = ConfigurationTypeUtil.findConfigurationType(MarsRunType::class.java)
+                val factory = runConfigurationType<MarsRunType>()
                 val settings = manager.createConfiguration(messages.getMessage("project.wizard.run"), factory)
                 (settings.configuration as MarsRunConfiguration).options.useProjectSources = true
                 settings.storeInDotIdeaFolder()

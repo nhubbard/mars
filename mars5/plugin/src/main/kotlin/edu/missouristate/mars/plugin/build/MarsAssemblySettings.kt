@@ -1,6 +1,5 @@
 package edu.missouristate.mars.plugin.build
 
-import com.intellij.DynamicBundle
 import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer
 import com.intellij.openapi.application.runWriteAction
 import com.intellij.openapi.components.PathMacroManager
@@ -36,6 +35,7 @@ import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.plugin.MarsMemoryLayout
 import edu.missouristate.mars.plugin.projectFilePath
 import com.intellij.util.xmlb.annotations.XCollection
+import edu.missouristate.mars.plugin.dynamicBundleOf
 import java.nio.file.Path
 import javax.swing.JCheckBox
 import kotlin.io.path.invariantSeparatorsPathString
@@ -204,7 +204,7 @@ internal class MarsAssemblySettings(private val project: Project) :
     }
 }
 
-private val messages = DynamicBundle(MarsAssemblyConfigurable::class.java, "messages.MarsBundle")
+private val messages = dynamicBundleOf<MarsAssemblyConfigurable>("messages.MarsBundle")
 
 internal class MarsAssemblyConfigurable(private val project: Project) :
     BoundConfigurable(messages.getMessage("build.settings.title")) {

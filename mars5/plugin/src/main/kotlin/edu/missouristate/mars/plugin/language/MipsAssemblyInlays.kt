@@ -1,6 +1,5 @@
 package edu.missouristate.mars.plugin.language
 
-import com.intellij.DynamicBundle
 import com.intellij.codeInsight.hints.declarative.CollapseState
 import com.intellij.codeInsight.hints.declarative.DeclarativeInlayHintsSettings
 import com.intellij.codeInsight.hints.declarative.EndOfLinePosition
@@ -31,12 +30,13 @@ import edu.missouristate.mars.plugin.analysis.EditorAssemblyCapture
 import edu.missouristate.mars.plugin.analysis.MipsAssemblyContextListener
 import edu.missouristate.mars.plugin.analysis.collectEditorAssembly
 import edu.missouristate.mars.plugin.build.MarsSourceSet
+import edu.missouristate.mars.plugin.dynamicBundleOf
 import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
 import edu.missouristate.mars.util.Binary
-import java.nio.file.Path
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import org.jetbrains.annotations.TestOnly
+import java.nio.file.Path
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
@@ -90,7 +90,7 @@ private object ExpansionCollector : OwnBypassCollector {
     }
 }
 
-private val bundle = DynamicBundle(MipsAddressInlayProvider::class.java, "messages.MarsBundle")
+private val bundle = dynamicBundleOf<MipsAddressInlayProvider>("messages.MarsBundle")
 private val assemblyHints = Key.create<MipsAssemblyHints>("mars.mips.assembled.inlays")
 
 internal data class MipsAssemblyHintVersion(

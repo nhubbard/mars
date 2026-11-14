@@ -1,7 +1,7 @@
 package edu.missouristate.mars.plugin.build
 
 import com.intellij.execution.RunManager
-import com.intellij.execution.configurations.ConfigurationTypeUtil
+import com.intellij.execution.configurations.runConfigurationType
 import com.intellij.openapi.command.undo.BasicUndoableAction
 import com.intellij.openapi.command.undo.UndoManager
 import com.intellij.openapi.components.PathMacroManager
@@ -60,7 +60,7 @@ private fun relocateInputs(project: Project, oldPath: Path, newPath: Path, direc
     val assembly = project.service<MarsAssemblySettings>()
     val before = assembly.sourcePaths
     val after = MarsAssemblySettings.SourcePaths(before.sources.map(::relocated), before.handler?.let(::relocated))
-    val type = ConfigurationTypeUtil.findConfigurationType(MarsRunType::class.java)
+    val type = runConfigurationType<MarsRunType>()
     val runs = RunManager.getInstance(project).getConfigurationsList(type).mapNotNull { config ->
         val run = config as MarsRunConfiguration
         val original = RunPaths(run.options.sourcePath, run.options.workingDirectory)

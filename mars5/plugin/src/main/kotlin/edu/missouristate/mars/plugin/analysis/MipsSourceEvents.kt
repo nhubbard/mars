@@ -5,8 +5,8 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.SyntaxTraverser
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
-import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.util.elementType
+import com.intellij.psi.util.firstLeaf
 import com.intellij.util.text.CharArrayUtil
 import edu.missouristate.mars.ErrorList
 import edu.missouristate.mars.assembler.Directives
@@ -53,7 +53,7 @@ internal sealed interface MipsSourceEvent {
     }
 
     class OperationCandidate(owner: PsiElement) : MipsSourceEvent {
-        private val head = PsiTreeUtil.getDeepestFirst(owner)
+        private val head = owner.firstLeaf()
         override val offset = head.textOffset
         private val followsLabel = owner.parent.node.findChildByType(labelType) != null
         private val positionalPrefix = if (owner.elementType != directiveStatement && !followsLabel) {

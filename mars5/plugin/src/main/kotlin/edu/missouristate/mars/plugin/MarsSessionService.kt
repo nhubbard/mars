@@ -2,7 +2,7 @@ package edu.missouristate.mars.plugin
 
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.components.Service
-import com.intellij.openapi.diagnostic.Logger
+import com.intellij.openapi.diagnostic.logger
 import edu.missouristate.mars.ApplicationInfo
 import edu.missouristate.mars.Settings
 import edu.missouristate.mars.api.MarsGuiProxy
@@ -46,7 +46,7 @@ class MarsSessionService : Disposable {
         override val isGuiMode = false
 
         override fun postMessage(message: String) {
-            Logger.getInstance(MarsSessionService::class.java).info(message)
+            logger<MarsSessionService>().info(message)
         }
 
         override fun postRunMessage(message: String) = postMessage(message)

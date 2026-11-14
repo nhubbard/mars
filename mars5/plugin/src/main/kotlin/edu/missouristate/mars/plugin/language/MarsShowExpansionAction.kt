@@ -1,6 +1,5 @@
 package edu.missouristate.mars.plugin.language
 
-import com.intellij.DynamicBundle
 import com.intellij.codeInsight.hint.HintManager
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
@@ -23,6 +22,7 @@ import edu.missouristate.mars.plugin.analysis.EditorAssemblyCapture
 import edu.missouristate.mars.plugin.analysis.assembleIn
 import edu.missouristate.mars.plugin.analysis.collectEditorAssembly
 import edu.missouristate.mars.plugin.build.isLocalSource
+import edu.missouristate.mars.plugin.dynamicBundleOf
 import edu.missouristate.mars.plugin.run.MarsExecutionSources
 import edu.missouristate.mars.util.Binary
 import kotlinx.coroutines.Dispatchers
@@ -140,4 +140,4 @@ private fun originStep(project: Project, editor: Editor, sources: MarsExecutionS
         }
     }
 
-private val messages = DynamicBundle(MarsShowExpansionAction::class.java, "messages.MarsBundle")
+private val messages = dynamicBundleOf<MarsShowExpansionAction>("messages.MarsBundle")
