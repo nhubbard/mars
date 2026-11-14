@@ -8,9 +8,44 @@ import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.CsvSource
 import org.junit.jupiter.params.provider.ValueSource
 
 class Mars64FloatingRegisterTest {
+    @ParameterizedTest
+    @CsvSource(
+        "sel.s,460728d0,1,2", "sel.d,462728d0,1,2",
+        "seleqz.s,460728d4,1,0", "seleqz.d,462728d4,1,0",
+        "selnez.s,460728d7,0,1", "selnez.d,462728d7,0,1",
+    )
+    fun `floating select uses bit zero and copies raw bits without exceptions`(
+        mnemonic: String, encoding: String, resultWithClearBit: Int, resultWithSetBit: Int, @TempDir directory: Path,
+    ) {
+        val source = Files.writeString(directory.resolve("select.s"), "$mnemonic \$f3,\$f5,\$f7\n".repeat(2))
+        TestSessions.create().use { session ->
+            session.selectTarget(MarsTarget.MARS64)
+            val program = session.assemble(listOf(source), null, false, false)
+            val word = encoding.toInt(16)
+            assertEquals(listOf(word, word), program.machineList!!.map(ProgramStatement::binaryStatement))
+            assertEquals(mnemonic, session.instructionSet.findByBinaryCode(word)?.name)
+            val double = mnemonic.endsWith(".d")
+            val signalingNan = if (double) 0x7ff0_0000_0000_0002L else 0x7f80_0002L
+            val negativeZero = if (double) Long.MIN_VALUE else 0x8000_0000L
+            val initialStatus = session.coprocessor1.readControl(31)
+            session.editCoprocessor1Pair(5, signalingNan)
+
+            for ((bit, selection) in listOf(0L to resultWithClearBit, 1L to resultWithSetBit)) {
+                session.editCoprocessor1Pair(3, 0x20L or bit)
+                session.editCoprocessor1Pair(7, negativeZero or bit)
+                program.simulate(1)
+                val result = session.coprocessor1.getDoublewordNoNotify(3)
+                assertEquals(listOf(0L, signalingNan, negativeZero or bit)[selection],
+                    if (double) result else result and 0xffff_ffffL)
+                assertEquals(initialStatus, session.coprocessor1.readControl(31))
+            }
+        }
+    }
+
     @Test
     fun `word and doubleword moves address one floating-point register and undo all its bits`(@TempDir directory: Path) {
         val source = Files.writeString(directory.resolve("moves.s"), $$"""

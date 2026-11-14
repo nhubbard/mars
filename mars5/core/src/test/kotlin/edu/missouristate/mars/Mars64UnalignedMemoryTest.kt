@@ -13,6 +13,39 @@ import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 
 class Mars64UnalignedMemoryTest {
+    @ParameterizedTest
+    @ValueSource(booleans = [false, true])
+    fun `byte memory operations sign extend or zero extend and backstep cleanly`(
+        littleEndian: Boolean, @TempDir directory: Path,
+    ) {
+        val source = Files.writeString(directory.resolve("byte.s"), $$"""
+            .data
+            .byte 0x33,0x44
+            .text
+            sb $9,-1($10)
+            lb $11,-1($10)
+            lbu $12,-1($10)
+        """.trimIndent())
+        TestSessions.create().use { session ->
+            session.selectTarget(MarsTarget.MARS64)
+            session.memory.byteOrder = littleEndian
+            val program = session.assemble(listOf(source), null, false, false)
+            val words = listOf(0xa149ffff.toInt(), 0x814bffff.toInt(), 0x914cffff.toInt())
+            assertEquals(words, program.machineList!!.map(ProgramStatement::binaryStatement))
+            assertEquals(listOf("sb", "lb", "lbu"), words.map { session.instructionSet.findByBinaryCode(it)?.name })
+            val address = session.memory.dataBaseAddress
+            session.editIntegerRegister(9, 0x1234_5678_1122_3380)
+            session.editIntegerRegister(10, address + 1)
+            program.simulate(3)
+            assertEquals(0x80, session.memory.getByte(address))
+            assertEquals(0x44, session.memory.getByte(address + 1))
+            assertEquals(-128L, session.registerFile.getLongValueNoNotify(11))
+            assertEquals(128L, session.registerFile.getLongValueNoNotify(12))
+            repeat(3) { session.backStepper.backStep() }
+            assertEquals(0x33, session.memory.getByte(address))
+        }
+    }
+
     @Test
     fun `aliases expand to ordinary accesses in Release 6 and legacy merge forms stay in MARS32`(@TempDir directory: Path) {
         val source = Files.writeString(directory.resolve("aliases.s"), $$"""

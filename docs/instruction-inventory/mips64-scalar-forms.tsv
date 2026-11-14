@@ -257,9 +257,9 @@ jialc	rt, offset	278	audit
 jic	rt, offset	280	audit
 jr	rs	281	implemented
 jr.hb	rs	283	implemented
-lb	rt, offset(base)	286	audit
+lb	rt, offset(base)	286	implemented
 lbe	rt, offset(base)	287	requires-eva
-lbu	rt, offset(base)	288	audit
+lbu	rt, offset(base)	288	implemented
 lbue	rt, offset(base)	289	requires-eva
 ld	rt, offset(base)	290	implemented
 ldc1	ft, offset(base)	291	implemented
@@ -311,7 +311,7 @@ mina.s	fd,fs,ft	352	implemented
 mina.d	fd,fs,ft	352	implemented
 mfc0	rt, rd	356	implemented-subset
 mfc0	rt, rd, sel	356	implemented-subset
-mfc1	rt, fs	357	audit
+mfc1	rt, fs	357	implemented
 mfc2	rt, Impl	358	requires-cop2
 mfc2	rt, Impl, sel	358	requires-cop2
 mfhc0	rt, rd	359	audit
@@ -347,7 +347,7 @@ msub.ps	fd, fr, fs, ft	380	removed
 msubu	rs, rt	382	removed
 mtc0	rt, rd	383	implemented-subset
 mtc0	rt, rd, sel	383	implemented-subset
-mtc1	rt, fs	385	audit
+mtc1	rt, fs	385	implemented
 mtc2	rt, Impl	386	requires-cop2
 mtc2	rt, Impl, sel	386	requires-cop2
 mthc0	rt, rd	387	audit
@@ -408,7 +408,7 @@ round.w.s	fd, fs	444	implemented
 round.w.d	fd, fs	444	implemented
 rsqrt.s	fd, fs	446	implemented
 rsqrt.d	fd, fs	446	implemented
-sb	rt, offset(base)	448	audit
+sb	rt, offset(base)	448	implemented
 sbe	rt, offset(base)	449	requires-eva
 sc	rt, offset(base)	450	implemented
 scd	rt, offset(base)	454	implemented
@@ -425,14 +425,14 @@ sdr	rt, offset(base)	479	removed
 sdxc1	fs, index(base)	481	removed
 seb	rd, rt	483	implemented
 seh	rd, rt	485	implemented
-sel.s	fd,fs,ft	487	audit
-sel.d	fd,fs,ft	487	audit
+sel.s	fd,fs,ft	487	implemented
+sel.d	fd,fs,ft	487	implemented
 seleqz	rd,rs,rt	489	implemented
 selnez	rd,rs,rt	489	implemented
-seleqz.s	fd,fs,ft	491	audit
-seleqz.d	fd,fs,ft	491	audit
-selnez.s	fd,fs,ft	491	audit
-selnez.d	fd,fs,ft	491	audit
+seleqz.s	fd,fs,ft	491	implemented
+seleqz.d	fd,fs,ft	491	implemented
+selnez.s	fd,fs,ft	491	implemented
+selnez.d	fd,fs,ft	491	implemented
 sh	rt, offset(base)	493	implemented
 she	rt, offset(base)	494	requires-eva
 sigrie	code	496	implemented
