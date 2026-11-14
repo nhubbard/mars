@@ -39,6 +39,7 @@ internal object DebuggerExpressionParsing : ParserUserState
 
 private val signs = setOf(PLUS, MINUS)
 private val repeatPrefixes = signs + setOf(NUMBER, CHARACTER, STRING)
+private val decimalLabelName = Regex("[0-9]+")
 private val identifiers = setOf(WORD, DOLLAR_WORD)
 private val labelTokens = identifiers + setOf(MNEMONIC, PARAMETER)
 private val addressOffsets = setOf(NUMBER, CHARACTER, WORD, MNEMONIC, DOLLAR_WORD, PARAMETER, BAD_CHARACTER)
@@ -105,6 +106,16 @@ internal fun continueOperand(runtime: SyntaxGeneratedParserRuntime, level: Int):
 internal fun startsSignedNumber(runtime: SyntaxGeneratedParserRuntime, level: Int): Boolean {
     val builder = runtime.syntaxBuilder
     return builder.tokenType in signs && builder.signAttachesToNumber(builder.previousToken(separators))
+}
+
+/** A leading decimal number names a label when the colon introduces a statement. */
+@Suppress("unused", "RedundantSuppression")
+internal fun consumeNumericLabel(runtime: SyntaxGeneratedParserRuntime, level: Int): Boolean {
+    val builder = runtime.syntaxBuilder
+    if (builder.tokenType != NUMBER || builder.lookAhead(1) != COLON || builder.lookAhead(2) in repeatPrefixes) return false
+    if (!decimalLabelName.matches(builder.tokenText!!)) return false
+    builder.advanceLexer()
+    return true
 }
 
 /** A literal or detached sign can occupy the ignored first token of a continued numeric repetition. */

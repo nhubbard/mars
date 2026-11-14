@@ -52,6 +52,30 @@ class MipsParserPlatformTest {
     private val project = projectFixture()
 
     @Test
+    fun `decimal labels parse without consuming data repetitions or hexadecimal operands`() = timeoutRunBlocking {
+        readAction {
+            val source = $$"""
+                .data
+                .word 7:2
+                9:3
+                42
+                0x4: 2
+                .text
+                b 7f
+                nop
+                7: addiu $t0,$t0,1
+                bnez $t0,7b
+                nop
+                7:
+                0x4: nop
+            """.trimIndent()
+            val file = assertParses(source, "numeric-labels.mars")
+            assertEquals(listOf("7:", "7:"), descendants(file.node, "LABEL").map(ASTNode::getText).toList())
+            assertTrue(descendants(file.node, "DATA_CONTINUATION").any { it.text == "9:3" })
+        }
+    }
+
+    @Test
     fun `editor tracks written and substituted compiler sections without treating metadata as data`() = timeoutRunBlocking {
         readAction {
             val source = """

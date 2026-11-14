@@ -205,7 +205,7 @@ object MipsScanner {
             Binary.stringToInt(text)
             return true
         } catch (_: NumberFormatException) {
-            return text.toDoubleOrNull() != null || doublewordHex.matches(text)
+            return text.toDoubleOrNull() != null || doublewordHex.matches(text) || TokenTypes.isLocalNumericReference(text)
         }
     }
 
