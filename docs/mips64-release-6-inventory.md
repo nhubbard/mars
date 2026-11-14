@@ -66,6 +66,14 @@ existing educational CP0 exception state and the IDE debugger are available
 independently. The MARS64 assembler identifies the required hardware facility
 when it encounters any of these mnemonics.
 
+`dmfc0` and `dmtc0` cover the four educational CP0 registers with selector
+zero. `BadVAddr` and `EPC` retain doublewords on transfer. `Status` and
+`Cause` use the low word on write and zero-extend on a doubleword read.
+Unsupported register and selector combinations trap. An address fault now
+preserves the full effective address in `BadVAddr`, and backstep restores
+its previous value. The program counter and mapped segments still use
+32-bit addresses.
+
 ## Additional scalar forms with encoding probes
 
 MARS64 assembles and executes all six doubleword bitfield forms, as well as
@@ -120,6 +128,8 @@ or PC-relative immediate in this table is the displacement as written to LLVM.
   and untaken paths, and forbidden-slot behavior. MARS64 now assigns the
   `addi` primary opcode to `beqc`, `beqzalc`, and `bovc`. The same words
   still decode as `addi` in MARS32.
+  `bgtc`, `blec`, `bgtuc`, and `bleuc` are assembler aliases. Each emits one
+  native compact branch with its register operands reversed.
 - **Delayed control flow.** MARS64 executes the architectural delay slot for
   `beq`, `bne`, `bgez`, `bgtz`, `blez`, `bltz`, `j`, and `jal`. An untaken
   branch still reserves its delay slot. `jal` links to the second instruction
