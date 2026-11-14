@@ -128,6 +128,7 @@ class InstructionLoader {
             // An equality test must detect a difference anywhere in the register.
             token.replaceFirst("subu ", "xor ")
         }
+        mnemonic == "b" && token == "bgez \$0, LAB" -> "beq \$0, \$0, LAB"
         token.startsWith("addi ") -> {
             val (destination, source, immediate) = token.removePrefix("addi ").split(", ")
             when {

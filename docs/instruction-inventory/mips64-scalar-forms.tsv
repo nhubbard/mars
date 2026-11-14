@@ -23,10 +23,10 @@ daui	rt, rs immediate	67	implemented
 dahi	rs, rs immediate	67	implemented
 dati	rs, rs immediate	67	implemented
 auipc	rs, immediate	69	implemented
-b	offset	70	idiom-audit
+b	offset	70	implemented
 bal	offset	71	implemented
-balc	offset	73	audit
-bc	offset	74	audit
+balc	offset	73	implemented
+bc	offset	74	implemented
 bc1eqz	ft, offset	75	implemented
 bc1nez	ft, offset	75	implemented
 bc1f	offset (cc = 0 implied)	77	removed
@@ -253,8 +253,8 @@ jalr	rd, rs	271	implemented
 jalr.hb	rs (rd = 31 implied)	273	implemented
 jalr.hb	rd, rs	273	implemented
 jalx	target	276	removed
-jialc	rt, offset	278	audit
-jic	rt, offset	280	audit
+jialc	rt, offset	278	implemented
+jic	rt, offset	280	implemented
 jr	rs	281	implemented
 jr.hb	rs	283	implemented
 lb	rt, offset(base)	286	implemented

@@ -292,8 +292,13 @@ class CompactControlFlowTest {
             done: nop
         """.trimIndent())
         TestSessions.create().use { machine ->
+            machine.selectTarget(MarsTarget.MARS64)
             machine.settings.setDelayedBranchingEnabled(delayed)
             val program = machine.assemble(listOf(source))
+            val statements = program.machineList!!
+            assertEquals(0xc8000001.toInt(), statements[0].binaryStatement)
+            assertEquals(0xe8000003.toInt(), statements[2].binaryStatement)
+            assertEquals(0xd81f0000.toInt(), statements[6].binaryStatement)
             val base = machine.memory.textBaseAddress
             assertTrue(program.simulate(10))
             assertEquals(0, machine.registerFile.getValue(8))
@@ -303,6 +308,26 @@ class CompactControlFlowTest {
             assertEquals(base + 24, machine.registerFile.getPC())
             machine.backStepper.backStep()
             assertEquals(0, machine.registerFile.getValue(31))
+        }
+    }
+
+    @Test
+    fun `MARS64 branch idiom emits BEQ and executes its delay slot`(@TempDir directory: Path) {
+        val source = Files.writeString(directory.resolve("b.s"), $$"""
+            b target
+            addiu $9,$zero,9
+            addiu $10,$zero,10
+            target: nop
+        """.trimIndent())
+        TestSessions.create().use { machine ->
+            val legacy = machine.assemble(listOf(source))
+            assertEquals(0x04010002, legacy.machineList!!.first().binaryStatement)
+            machine.selectTarget(MarsTarget.MARS64)
+            val program = machine.assemble(listOf(source))
+            assertEquals(0x10000002, program.machineList!!.first().binaryStatement)
+            assertTrue(program.simulate(4))
+            assertEquals(9L, machine.registerFile.getLongValueNoNotify(9))
+            assertEquals(0L, machine.registerFile.getLongValueNoNotify(10))
         }
     }
 
