@@ -27,7 +27,9 @@ for the intended coverage.
   other bits where the ISA leaves them unpredictable. Backstep restores
   both halves of a vector write. Vector loads and stores support all four
   element widths, either byte order, and unaligned addresses in ordinary
-  storage within the current memory map.
+  storage within the current memory map. Integer vector arithmetic,
+  multiply-accumulate, comparisons, shifts, and bit counts execute at all
+  four element widths. See the MSA forms table for individual status.
 
 ## Current MARS64 forms
 
