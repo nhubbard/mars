@@ -283,6 +283,7 @@ tasks.named<RunIdeTask>("runIde") {
       val staged = archive.copyTo(stagedArchive.get(), overwrite = true)
       project.sync {
         from(scenario.dir("project"))
+        from(rootProject.file("../examples/mars64/fir.mars"))
         into(fixture)
       }
       val projectSettings = fixture.get().file(".idea/mars.xml").asFile
@@ -316,6 +317,10 @@ tasks.named<RunIdeTask>("runIde") {
         check(result.isFile && result.readBytes().contentEquals(expected)) {
           "The MARS program did not write the expected result to $result."
         }
+      }
+      val fir = fixture.get().file("fir.ok").asFile
+      check(fir.isFile && fir.readText() == "MSA FIR matches the scalar reference\n") {
+        "The MARS64 FIR program did not write its success result to $fir."
       }
       val archive = stagedArchive.get()
       val checksum = MessageDigest.getInstance("SHA-256").digest(archive.readBytes())

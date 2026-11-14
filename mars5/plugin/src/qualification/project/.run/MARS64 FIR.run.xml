@@ -1,0 +1,8 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="MARS64 FIR" type="MarsMipsRun" factoryName="MarsMipsRun">
+    <option name="sourcePath" value="$PROJECT_DIR$/fir.mars" />
+    <option name="startAtMain" value="ENABLED" />
+    <option name="programArguments" value="fir.ok" />
+    <method v="2" />
+  </configuration>
+</component>

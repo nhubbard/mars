@@ -10,6 +10,8 @@ failed:  .asciiz "MSA FIR mismatch\n"
 .text 0x100400000
 .globl main
 main:
+    move $s5,$a0
+    move $s6,$a1
     dla $s0,samples
     dla $s1,taps
     dla $s2,output
@@ -41,6 +43,27 @@ next_sample:
     dla $a0,passed
     addiu $v0,$zero,4
     syscall
+    beqzc $s5,exit_success
+    # An optional argv[0] names a file for the success message.
+    lw $a0,0($s6)
+    addiu $a1,$zero,1
+    or $a2,$zero,$zero
+    addiu $v0,$zero,13
+    syscall
+    bltz $v0,mismatch
+    nop
+    move $s7,$v0
+    move $a0,$s7
+    dla $a1,passed
+    addiu $a2,$zero,37
+    addiu $v0,$zero,15
+    syscall
+    bne $v0,$a2,mismatch
+    nop
+    move $a0,$s7
+    addiu $v0,$zero,16
+    syscall
+exit_success:
     addiu $v0,$zero,10
     syscall
 
