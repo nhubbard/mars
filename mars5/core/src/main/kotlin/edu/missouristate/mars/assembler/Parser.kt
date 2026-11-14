@@ -10,6 +10,7 @@ import edu.missouristate.mars.api.AssemblySymbolMap.SourceToken
 import edu.missouristate.mars.api.InstructionSourceMap.Location
 import edu.missouristate.mars.api.InstructionSourceMap.Origin
 import edu.missouristate.mars.api.InstructionSourceMap.SourceOperand
+import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.mips.instructions.ExtendedInstruction
 import edu.missouristate.mars.mips.instructions.Release6ImmediateTrap
 import edu.missouristate.mars.mips.instructions.Instruction
@@ -105,6 +106,7 @@ internal class Parser(private val pass: FirstPassProcessor) {
         }
 
         val matches = pass.matchInstruction(operator) ?: return ArrayList()
+        if (pass.context.session.target == MarsTarget.MARS64 && !parseAddressRelocations(tokens, pass.errors)) return null
         val instruction = OperandFormat.bestOperandMatch(tokens, matches, pass.context.bareMachineEnabled())!!
         if (instruction is ExtendedInstruction && !extendedAssemblerEnabled) {
             pass.errors.add(ErrorMessage(operator, "Extended (pseudo) instruction or format not permitted.  See Settings."))

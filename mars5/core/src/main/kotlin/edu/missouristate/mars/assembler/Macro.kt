@@ -4,6 +4,7 @@ import edu.missouristate.mars.ErrorList
 import edu.missouristate.mars.ErrorMessage
 import edu.missouristate.mars.MIPSprogram
 import edu.missouristate.mars.api.AssemblySymbolMap.SourceToken
+import edu.missouristate.mars.api.MarsTarget
 import java.util.NavigableMap
 import java.util.TreeMap
 import kotlin.jvm.JvmRecord
@@ -72,7 +73,8 @@ open class Macro {
     }
 
     fun expandLine(line: Int, args: TokenList, counter: Long, privateArguments: Set<String>, errors: ErrorList): ExpandedLine {
-        val tokens = program!!.tokenList!![line - 1]
+        val owner = program!!
+        val tokens = owner.tokenList!![line - 1]
         val source = StringBuilder(tokens.processedLine)
         var renamedLabels: HashSet<String>? = null
         val origins = TreeMap<Int, TokenOrigin>()
@@ -89,6 +91,10 @@ open class Macro {
                 if (argument >= 0) {
                     origin = args[argument + 1]
                     substitute = origin.toString()
+                } else if (owner.assemblyContext().session.target == MarsTarget.MARS64 && AddressPart.parse(token.value) != null &&
+                    index + 1 < tokens.size() && tokens[index + 1].type == TokenTypes.LEFT_PAREN) {
+                    origins[source.length - start] = TokenOrigin(token, origin)
+                    continue
                 } else {
                     substitute = token.value
                     errors.add(ErrorMessage(token, "Unknown macro parameter"))

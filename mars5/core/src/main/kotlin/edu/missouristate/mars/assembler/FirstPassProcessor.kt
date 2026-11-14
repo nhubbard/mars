@@ -291,10 +291,15 @@ internal class FirstPassProcessor(
             errors.add(ErrorMessage(token, "$directive requires the MARS64 target"))
             return
         }
-        val value = if (tokens.size() == 2) nonNegativeInteger(tokens[1]) else null
+        val value = if (tokens.size() in 2..3) nonNegativeInteger(tokens[1]) else null
         if (value == null || (directive == Directives.P2ALIGN && value > 31) || (directive == Directives.BALIGN && value == 0)) {
             val allowed = if (directive == Directives.P2ALIGN) "an exponent from 0 through 31" else "a positive byte boundary"
-            errors.add(ErrorMessage(token, "$directive requires one operand, $allowed"))
+            errors.add(ErrorMessage(token, "$directive requires $allowed and an optional fill byte"))
+            return
+        }
+        val fill = if (tokens.size() == 3) nonNegativeInteger(tokens[2]) else 0
+        if (fill == null || fill > 255 || !inDataSegment && fill != 0) {
+            errors.add(ErrorMessage(token, "$directive requires a fill byte from 0 through 255 in data, or zero in text"))
             return
         }
         val boundary = if (directive == Directives.P2ALIGN) 1L shl value else value.toLong()
@@ -318,7 +323,7 @@ internal class FirstPassProcessor(
         if (inDataSegment) {
             for (location in start until aligned) {
                 checkCancellation.run()
-                memory.setAssemblyData(location, 0, DataTypes.CHAR_SIZE)
+                memory.setAssemblyData(location, fill, DataTypes.CHAR_SIZE)
             }
         } else {
             if ((start or aligned) and 3L != 0L) {

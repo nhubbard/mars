@@ -62,6 +62,80 @@ class Mars64CompilerInstructionTest {
     }
 
     @Test
+    fun `Clang builds a pointer to static data above four GiB using all four relocation operators`(@TempDir directory: Path) {
+        val callee = directory.resolve("lookup.s")
+        checkNotNull(javaClass.getResourceAsStream("/compiler/lookup.s")).use { Files.copy(it, callee) }
+        val caller = Files.writeString(directory.resolve("caller.mars"), $$"""
+            .data 0x100008000
+            .text
+            addiu $a0,$zero,0
+            jal lookup
+            nop
+            move $s0,$v0
+            addiu $a0,$zero,1
+            jal lookup
+            nop
+            move $s1,$v0
+            addiu $v0,$zero,10
+            syscall
+        """.trimIndent())
+        TestSessions.create().use { machine ->
+            machine.selectTarget(MarsTarget.MARS64)
+            val program = machine.assemble(listOf(caller, callee))
+            // Linked by lld with .rodata at 0x100008000, then read by llvm-objdump.
+            val linked = listOf(0x30810001u, 0x000108f8u, 0x3c020000u, 0x64420001u,
+                0x00021438u, 0x64420001u, 0x00021438u, 0x64428000u, 0x0041082du,
+                0xdc210000u, 0x03e00009u, 0x64220001u)
+            assertEquals(linked, program.machineList!!.takeLast(linked.size).map { it.binaryStatement.toUInt() })
+            assertTrue(program.simulate(100))
+            assertEquals(0x0123456789abcdf0L, machine.registerFile.getLongValueNoNotify(16))
+            assertEquals(0xfedcba9876543211UL.toLong(), machine.registerFile.getLongValueNoNotify(17))
+        }
+    }
+
+    @Test
+    fun `relocation diagnostics identify malformed expressions and missing labels`(@TempDir directory: Path) {
+        val file = directory.resolve("invalid.mars")
+        TestSessions.create().use { machine ->
+            machine.selectTarget(MarsTarget.MARS64)
+            for ((source, message) in listOf(
+                $$"lui $t0,%hi(45)" to "requires a label in parentheses",
+                $$"lui $t0,%hi(main+end)" to "requires an integer addend",
+                $$"lui $t0,%hi(main+1" to "requires a closing parenthesis",
+                $$"lui $t0,%hi(missing)" to "Symbol \"missing\" not found",
+                $$"dsll $t0,$t0,%lo(main)" to "operand is of incorrect type",
+            )) {
+                Files.writeString(file, "$source\nmain: nop\n")
+                val invalid = assertThrows(ProcessingException::class.java) { machine.assemble(listOf(file)) }
+                assertTrue(invalid.errors()!!.generateErrorReport().contains(message), source)
+            }
+        }
+    }
+
+    @Test
+    fun `a relocation in a macro retains parentheses around the memory base and resolves addends`(@TempDir directory: Path) {
+        val file = Files.writeString(directory.resolve("relocations.mars"), $$"""
+            .data 0x100008000
+            data: .8byte 27, 63
+            .text
+            .macro read (%dst)
+                ld %dst,%lo(data+8)($t0)
+            .end_macro
+            dli $t0,0x100010000
+            read($t1)
+            daddiu $t2,$t0,%lo(data-8)
+            nop
+        """.trimIndent())
+        TestSessions.create().use { machine ->
+            machine.selectTarget(MarsTarget.MARS64)
+            val program = machine.assemble(listOf(file))
+            assertTrue(program.simulate(100))
+            assertEquals(63L, machine.registerFile.getLongValueNoNotify(9))
+            assertEquals(0x1_0001_7ff8L, machine.registerFile.getLongValueNoNotify(10))
+        }
+    }
+
+    @Test
     fun `unsuffixed shifts select the upper encoding for counts above 31`(@TempDir directory: Path) {
         val file = Files.writeString(directory.resolve("shifts.mars"), $$"""
             dsll $9,$10,32

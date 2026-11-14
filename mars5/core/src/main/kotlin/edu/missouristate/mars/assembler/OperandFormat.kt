@@ -2,6 +2,8 @@ package edu.missouristate.mars.assembler
 
 import edu.missouristate.mars.ErrorList
 import edu.missouristate.mars.ErrorMessage
+import edu.missouristate.mars.mips.instructions.BasicInstruction
+import edu.missouristate.mars.mips.instructions.BasicInstructionFormat.I_BRANCH_FORMAT
 import edu.missouristate.mars.mips.instructions.Instruction
 import edu.missouristate.mars.util.Binary
 
@@ -74,6 +76,11 @@ object OperandFormat {
             val written = candidate[index]
             val type = written.type
             val expected = instruction.tokenList[index].type
+            if (type == TokenTypes.ADDRESS_RELOCATION && TokenTypes.isIntegerTokenType(expected) &&
+                instruction is BasicInstruction && instruction.instructionFormat != I_BRANCH_FORMAT) {
+                val field = "fstu".getOrNull(index - 1)
+                if (instruction.operationMask.count { it == field } == 16) continue
+            }
             if (expected == TokenTypes.IDENTIFIER && type == TokenTypes.OPERATOR) {
                 candidate[index] = written.withType(TokenTypes.IDENTIFIER)
                 continue

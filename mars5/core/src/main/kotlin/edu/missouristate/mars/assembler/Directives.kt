@@ -85,7 +85,7 @@ class Directives private constructor(val name: String, val description: String) 
 
         @JvmStatic
         fun matchDirective(text: String): Directives? =
-            directiveList.firstOrNull { text.equals(it.name, ignoreCase = true) }
+            if (text.equals(".8byte", ignoreCase = true)) DWORD else directiveList.firstOrNull { text.equals(it.name, ignoreCase = true) }
 
         @JvmStatic
         fun getDirectiveList(): ArrayList<Directives> = directiveList

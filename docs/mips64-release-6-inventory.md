@@ -113,12 +113,21 @@ It warns when `.set noat` or `.set nomacro` asks for assembler restrictions
 it cannot enforce. It rejects sections such as `.got` that depend on a
 linker or loader.
 
-`.p2align` accepts a single power-of-two exponent, and `.balign` accepts a
-single positive byte boundary. Both write zero bytes in data and emit whole
+`.p2align` accepts a power-of-two exponent, and `.balign` accepts a positive
+byte boundary. Both accept an optional fill byte in data and emit whole
 `nop` instructions in text. Neither crosses the current segment's bounds.
+`.8byte` is another spelling of `.dword`.
+
+The `%lo`, `%hi`, `%higher`, and `%highest` operators resolve a label and an
+optional integer addend into a 16-bit machine field. They can be used with
+an immediate or a base-register displacement in a native instruction.
+Position-independent relocations that require a global offset table are
+outside the classroom address model. [LLVM MIPS fixups](https://www.llvm.org/doxygen/namespacellvm_1_1jitlink_1_1mips.html)
 
 The test suite assembles the checked-in Clang 23.1.5 output and calls the
-routine twice with a MARS64 assembly caller. Rebuild the fixture from its
+rotate routine twice with a MARS64 assembly caller. It also compares a second
+Clang function's linked words with `ld.lld` and executes the function with
+static data above 4 GiB. Rebuild the fixtures from their
 source in the [compiler fixture directory](../mars5/core/src/test/resources/compiler)
 with the following command.
 
@@ -127,6 +136,8 @@ clang -target mips64-unknown-elf -march=mips64r6 -mabi=64 -mno-abicalls \
   -fno-pic -ffreestanding -fno-asynchronous-unwind-tables -O2 \
   -S rotate-sum.c -o rotate-sum.s
 ```
+
+Substitute `lookup.c` and `lookup.s` to rebuild the static-data example.
 
 `mfc0` sign-extends its word result. `mtc0` preserves the full source value
 when writing an educational address register. For both forms, reserved or

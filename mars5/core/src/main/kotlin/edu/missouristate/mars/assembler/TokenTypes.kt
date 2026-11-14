@@ -56,6 +56,7 @@ enum class TokenTypes {
     REAL_NUMBER,
     QUOTED_STRING,
     OBJECT_ATTRIBUTE,
+    ADDRESS_RELOCATION,
     PLUS,
     MINUS,
     COLON,

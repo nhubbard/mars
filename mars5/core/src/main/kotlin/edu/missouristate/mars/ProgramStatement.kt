@@ -3,6 +3,7 @@ package edu.missouristate.mars
 import edu.missouristate.mars.api.InstructionSourceMap.Origin
 import edu.missouristate.mars.api.InstructionSourceMap.SourceOperand
 import edu.missouristate.mars.api.MarsTarget
+import edu.missouristate.mars.assembler.AddressRelocation
 import edu.missouristate.mars.assembler.Symbol
 import edu.missouristate.mars.assembler.SymbolTable
 import edu.missouristate.mars.assembler.Token
@@ -182,6 +183,15 @@ open class ProgramStatement private constructor(
             basic.append(text)
             display.add(DisplayElement.Text(text))
         }
+        fun resolveSymbol(token: Token): Symbol? {
+            val symbol = sourceMIPSprogram!!.localSymbolTable!!.getSymbolLocalOrGlobal(token.value)
+            if (symbol == null || symbol.addressBits == SymbolTable.NOT_FOUND.toLong()) {
+                errors.add(ErrorMessage(token, "Symbol \"${token.value}\" not found in symbol table."))
+                return null
+            }
+            recordSymbolUse.accept(token, symbol)
+            return symbol
+        }
 
         appendText("${tokens[0].value} ")
         numOperands = 0
@@ -223,12 +233,7 @@ open class ProgramStatement private constructor(
                     operandValues!![numOperands++] = checkNotNull(RegisterNames.vector(value))
                 }
                 TokenTypes.IDENTIFIER -> {
-                    val symbol = sourceMIPSprogram!!.localSymbolTable!!.getSymbolLocalOrGlobal(value)
-                    if (symbol == null || symbol.addressBits == SymbolTable.NOT_FOUND.toLong()) {
-                        errors.add(ErrorMessage(token, "Symbol \"$value\" not found in symbol table."))
-                        return
-                    }
-                    recordSymbolUse.accept(token, symbol)
+                    val symbol = resolveSymbol(token) ?: return
                     // Branch offsets are in words from the instruction after the branch.
                     val basicInstruction = instruction as? BasicInstruction
                     val relative = basicInstruction?.instructionFormat == BasicInstructionFormat.I_BRANCH_FORMAT
@@ -258,6 +263,14 @@ open class ProgramStatement private constructor(
                     basic.append(if (!relative && target != target.toInt().toLong()) Binary.longToHexString(target) else operand)
                     display.add(if (relative) DisplayElement.Value(operand.toInt()) else DisplayElement.Address(operand.toInt()))
                     operandValues!![numOperands++] = operand.toInt()
+                }
+                TokenTypes.ADDRESS_RELOCATION -> {
+                    val relocation = token as AddressRelocation
+                    val symbol = resolveSymbol(relocation.symbol) ?: return
+                    val field = relocation.part.field(symbol.addressBits + relocation.addend)
+                    basic.append(field)
+                    display.add(DisplayElement.Value(field))
+                    operandValues!![numOperands++] = field
                 }
                 TokenTypes.INTEGER_5, TokenTypes.INTEGER_16, TokenTypes.INTEGER_16U, TokenTypes.INTEGER_32 -> {
                     val operand = Binary.stringToInt(value)
