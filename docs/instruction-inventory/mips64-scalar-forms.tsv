@@ -386,7 +386,7 @@ ori	rt, rs, immediate	414	audit
 pause		415	audit
 pll.ps	fd, fs, ft	417	removed
 plu.ps	fd, fs, ft	418	removed
-pref	hint,offset(base)	419	audit
+pref	hint,offset(base)	419	implemented
 prefe	hint,offset(base)	423	requires-eva
 prefx	hint, index(base)	428	removed
 pul.ps	fd, fs, ft	430	removed

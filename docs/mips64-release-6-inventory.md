@@ -130,6 +130,9 @@ or PC-relative immediate in this table is the displacement as written to LLVM.
   left/right pair that loads or stores a complete unaligned word, use
   `lw` or `sw` at the address of the first byte. Code that uses a single
   merge instruction to preserve selected bytes needs an explicit sequence.
+  `pref` accepts the Release 6 signed 9-bit displacement. Hints 0–23 do
+  nothing in the synchronous memory model, and hints 24–31 raise a
+  reserved-instruction exception. It does not access the supplied address.
 - **Scalar FPR layout.** MARS64 uses one 64-bit register per scalar FPR,
   including odd-numbered registers. Double-precision operations, doubleword
   loads and stores, and `dmfc1`/`dmtc1` use the full register. `mfc1` and
