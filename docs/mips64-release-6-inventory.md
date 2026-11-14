@@ -81,6 +81,11 @@ When exception level is already set, a subsequent fault preserves EPC and
 `Cause.BD`. A return to a full-width EPC outside the current map raises an
 address fault.
 
+`di` and `ei` control delivery of MARS64 device interrupts through
+`Status.IE`. Both can copy the previous, sign-extended Status to a GPR.
+The simulator defers delivery at exception level or while disabled and
+keeps masked device requests pending until they are enabled or withdrawn.
+
 ## Additional scalar forms with encoding probes
 
 MARS64 assembles and executes all six doubleword bitfield forms, as well as

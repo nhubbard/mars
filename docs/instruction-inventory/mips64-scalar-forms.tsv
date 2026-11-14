@@ -183,8 +183,8 @@ dclz	rd, rs	190	implemented
 ddiv	rs, rt	191	removed
 ddivu	rs, rt	192	removed
 deret		193	requires-ejtag
-di		201	audit
-di	rt	201	audit
+di		201	implemented-subset
+di	rt	201	implemented-subset
 dext	rt, rs, pos, size	195	implemented
 dextm	rt, rs, pos, size	197	implemented
 dextu	rt, rs, pos, size	199	implemented
@@ -233,8 +233,8 @@ dsub	rd, rs, rt	240	implemented
 dsubu	rd, rs, rt	241	implemented
 dvp	rt	242	audit
 ehb		245	implemented
-ei		246	audit
-ei	rt	246	audit
+ei		246	implemented-subset
+ei	rt	246	implemented-subset
 eret		248	implemented-subset
 eretnc		250	implemented-subset
 evp	rt	252	audit

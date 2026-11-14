@@ -88,6 +88,8 @@ class Coprocessor0State {
         const val CAUSE = 13
         const val EPC = 14
         const val EXCEPTION_LEVEL = 1
+        internal const val INTERRUPT_ENABLE = 1
+        internal const val INTERRUPT_MASK = 0xff00
 
         // Enable interrupts and user mode, enable all interrupt levels, and clear exception level.
         const val DEFAULT_STATUS_VALUE = 0x0000ff11

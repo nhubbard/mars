@@ -10,6 +10,10 @@ import edu.missouristate.mars.api.SimulatorState
 import edu.missouristate.mars.assembler.SymbolTable
 import edu.missouristate.mars.mips.hardware.AddressErrorException
 import edu.missouristate.mars.mips.hardware.Coprocessor0State
+import edu.missouristate.mars.mips.hardware.Coprocessor0State.Companion.EXCEPTION_LEVEL
+import edu.missouristate.mars.mips.hardware.Coprocessor0State.Companion.INTERRUPT_ENABLE
+import edu.missouristate.mars.mips.hardware.Coprocessor0State.Companion.INTERRUPT_MASK
+import edu.missouristate.mars.mips.hardware.Coprocessor0State.Companion.STATUS
 import edu.missouristate.mars.mips.hardware.Coprocessor1State
 import edu.missouristate.mars.mips.hardware.Coprocessor1State.Companion.CONDITION_FLAG_MASK
 import edu.missouristate.mars.mips.hardware.IntegerRegisterFile
@@ -77,7 +81,16 @@ class MarsContext @Inject constructor(
         interrupt.set(cause)
     }
 
-    internal fun takeExternalInterrupt(): Int = interrupt.getAndSet(0) or deviceInterrupts.getAndSet(0)
+    internal fun takeExternalInterrupt(): Int {
+        if (target == MarsTarget.MARS32) return interrupt.getAndSet(0) or deviceInterrupts.getAndSet(0)
+        val status = coprocessor0.getRegister(STATUS)!!.valueNoNotify
+        if (status and (INTERRUPT_ENABLE or (1 shl EXCEPTION_LEVEL)) != INTERRUPT_ENABLE) return 0
+        // Device causes use the representation expected by the exception dispatcher.
+        val enabled = (status and INTERRUPT_MASK) ushr 2
+        val requested = interrupt.getAndUpdate { it and enabled.inv() }
+        val devices = deviceInterrupts.getAndUpdate { it and enabled.inv() }
+        return (requested or devices) and enabled
+    }
 
     fun pendingDeviceInterrupts(): Int = deviceInterrupts.get()
 
