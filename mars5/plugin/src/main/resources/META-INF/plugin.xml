@@ -69,6 +69,9 @@
     <localInspection language="MARS_MIPS" shortName="MipsMacroArity" bundle="messages.MarsBundle"
                      groupKey="inspection.group" key="inspection.macro.arity" enabledByDefault="true" level="WARNING"
                      implementationClass="edu.missouristate.mars.plugin.language.inspection.MipsMacroArityInspection"/>
+    <localInspection language="MARS_MIPS" shortName="MipsRelease6Merge" bundle="messages.MarsBundle"
+                     groupKey="inspection.group" key="inspection.release6.merge" enabledByDefault="true" level="WARNING"
+                     implementationClass="edu.missouristate.mars.plugin.language.inspection.MipsRelease6MergeInspection"/>
     <highlightErrorFilter implementation="edu.missouristate.mars.plugin.language.MipsAssemblySyntaxErrorFilter"/>
     <externalAnnotator language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsAssemblyAnnotator"/>
     <codeInsight.lineMarkerProvider language="MARS_MIPS"
