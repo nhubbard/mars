@@ -1,7 +1,12 @@
 package edu.missouristate.mars.mips.instructions
 
+import edu.missouristate.mars.ProcessingException
+import edu.missouristate.mars.mips.hardware.AddressErrorException
 import edu.missouristate.mars.mips.hardware.VectorRegister
+import edu.missouristate.mars.mips.instructions.BasicInstructionFormat.I_FORMAT
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat.R_FORMAT
+import edu.missouristate.mars.simulator.Exceptions.ADDRESS_EXCEPTION_LOAD
+import edu.missouristate.mars.simulator.Exceptions.ADDRESS_EXCEPTION_STORE
 
 internal fun msaRegisterInstructions(): List<BasicInstruction> = buildList {
     for ((format, suffix) in "bhwd".withIndex()) add(fillVector(format, suffix))
@@ -16,6 +21,8 @@ internal fun msaRegisterInstructions(): List<BasicInstruction> = buildList {
         add(elementTransfer(suffix, format, "copy_s", "0010"))
         if (format < 3) add(elementTransfer(suffix, format, "copy_u", "0011"))
         add(elementTransfer(suffix, format, "insert", "0100"))
+        add(vectorMemory(suffix, format, store = false))
+        add(vectorMemory(suffix, format, store = true))
     }
     add(vectorLogic("and", "00000", Long::and))
     add(vectorLogic("or", "00001", Long::or))
@@ -88,6 +95,59 @@ private fun elementTransfer(suffix: Char, format: Int, mnemonic: String, operati
         override fun encodeOperands(values: IntArray): IntArray {
             require(values[laneOperand] in 0 until laneCount) { "Vector lane must be between 0 and ${laneCount - 1}" }
             return values
+        }
+    }
+}
+
+private fun vectorMemory(suffix: Char, format: Int, store: Boolean): BasicInstruction {
+    val mnemonic = if (store) "st" else "ld"
+    val width = 1 shl format
+    val elementMask = width - 1
+    val operation = if (store) "1001" else "1000"
+    val size = format.toString(2).padStart(2, '0')
+    val exception = if (store) ADDRESS_EXCEPTION_STORE else ADDRESS_EXCEPTION_LOAD
+    return object : BasicInstruction(
+        "$mnemonic.$suffix \$w1,-8(\$t2)", "Transfer 16 bytes of vector elements",
+        I_FORMAT, "011110 ssssssssss ttttt fffff $operation$size",
+        { statement, context ->
+            val (register, offset, base) = statement.operands
+            val memory = context.memory()
+            try {
+                val address = context.effectiveAddress(base, offset, exception)
+                memory.checkOrdinaryAccess(address, 16, exception)
+                if (store) {
+                    val (low, high) = context.coprocessor1.readVector(register)
+                    for (index in 0 until 16) {
+                        val vectorByte = if (memory.byteOrder) index else index xor elementMask
+                        val half = if (vectorByte < 8) low else high
+                        val value = (half ushr ((vectorByte and 7) * Byte.SIZE_BITS)).toInt() and 0xff
+                        context.setMemoryByte(address + index, value)
+                    }
+                } else {
+                    var low = 0L
+                    var high = 0L
+                    for (index in 0 until 16) {
+                        val vectorByte = if (memory.byteOrder) index else index xor elementMask
+                        val value = (memory.getByte(address + index).toLong() and 0xff) shl ((vectorByte and 7) * Byte.SIZE_BITS)
+                        if (vectorByte < 8) low = low or value else high = high or value
+                    }
+                    context.updateVectorRegister(register, VectorRegister(low, high))
+                }
+            } catch (failure: AddressErrorException) {
+                throw ProcessingException(context, statement, failure)
+            }
+        },
+    ) {
+        override fun encodeOperands(values: IntArray): IntArray {
+            val offset = values[1]
+            require(offset % width == 0 && offset / width in -512..511) {
+                "$mnemonic.$suffix requires a byte offset that fits a signed 10-bit field scaled by $width"
+            }
+            return values.copyOf().also { it[1] = offset / width }
+        }
+
+        override fun decodeOperands(values: IntArray) {
+            values[1] = ((values[1] shl 22) shr 22) * width
         }
     }
 }

@@ -81,11 +81,15 @@ open class MemoryState(
     /** Linked operations use aligned ordinary storage in the single-core simulator. */
     internal fun checkLinkedAccess(address: Int, size: Int, exception: Int) {
         checkAlignment(address, size, "address not aligned for linked access ", exception)
+        checkOrdinaryAccess(address, size, exception)
+    }
+
+    internal fun checkOrdinaryAccess(address: Int, size: Int, exception: Int) {
         val last = address + size - 1
         if (!(inDataSegment(address) && inDataSegment(last) ||
                 inKernelDataSegment(address) && inKernelDataSegment(last) ||
                 inStack(address) && last.toLong() <= stackBaseAddress.toLong() + WORD_LENGTH_BYTES - 1)) {
-            throw AddressErrorException("address outside ordinary storage for linked access ", exception, address)
+            throw AddressErrorException("address outside ordinary storage ", exception, address)
         }
     }
 

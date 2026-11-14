@@ -25,7 +25,9 @@ for the intended coverage.
   and insertion. The low 64 bits of each vector register share
   storage with the corresponding scalar FPR. Scalar writes preserve the
   other bits where the ISA leaves them unpredictable. Backstep restores
-  both halves of a vector write.
+  both halves of a vector write. Vector loads and stores support all four
+  element widths, either byte order, and unaligned addresses in ordinary
+  storage within the current memory map.
 
 ## Current MARS64 forms
 
