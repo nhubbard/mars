@@ -142,8 +142,14 @@ open class MemoryState(
                 else -> getWord(address.toInt())
             }
         }
+        return readWideData(address, size, notify = true)
+    }
+
+    private fun readWideData(address: Long, size: Int, notify: Boolean, instructionFetch: Boolean = false): Int {
         val bytes = wideData.fetchBytes(wideDataOffset(address, size, ADDRESS_EXCEPTION_LOAD), size)
-        return wideDataValue(bytes, size)
+        val value = wideDataValue(bytes, size)
+        if (notify) notifyAddressObservers(READ, address, size, value, instructionFetch)
+        return value
     }
 
     internal fun writeData(address: Long, size: Int, value: Int): Int {
@@ -157,6 +163,7 @@ open class MemoryState(
         val offset = wideDataOffset(address, size, ADDRESS_EXCEPTION_STORE)
         val previous = wideData.storeBytes(offset, size, wideDataValue(value, size))
         invalidateReservation(address, size)
+        notifyAddressObservers(WRITE, address, size, value)
         return wideDataValue(previous, size)
     }
 
@@ -448,7 +455,7 @@ open class MemoryState(
         if (address and 3L != 0L) return null
         if (inWideText(address)) return getStatementNoNotify(address)?.binaryStatement
         return if (wideDataEnabled && address in WIDE_DATA_BASE..<WIDE_DATA_BASE + SEGMENT_BYTES) {
-            readData(address, WORD_LENGTH_BYTES)
+            readWideData(address, WORD_LENGTH_BYTES, notify = false)
         } else null
     }
 
@@ -521,8 +528,13 @@ open class MemoryState(
         if (mapped % WORD_LENGTH_BYTES != 0L) {
             throw AddressErrorException("fetch address for text segment not aligned to word boundary ", ADDRESS_EXCEPTION_LOAD, mapped)
         }
-        if (inWideText(mapped)) return wideText.read(((mapped - WIDE_TEXT_BASE) / WORD_LENGTH_BYTES).toInt())
-        return checkNotNull(wideInstructionDecoder)(readData(mapped, WORD_LENGTH_BYTES), mapped)
+        if (inWideText(mapped)) {
+            val statement = wideText.read(((mapped - WIDE_TEXT_BASE) / WORD_LENGTH_BYTES).toInt())
+            if (notify) notifyAddressObservers(READ, mapped, WORD_LENGTH_BYTES, statement?.binaryStatement ?: 0, true)
+            return statement
+        }
+        val word = readWideData(mapped, WORD_LENGTH_BYTES, notify, instructionFetch = true)
+        return checkNotNull(wideInstructionDecoder)(word, mapped)
     }
 
     internal fun setStatement(address: Long, statement: ProgramStatement) {
@@ -614,6 +626,17 @@ open class MemoryState(
         listeners.removeIf { it.callback === callback }
     }
 
+    private val addressObservers = CopyOnWriteArrayList<Consumer<MemoryAccessNotice>>()
+
+    /** Subscribe to execution and host accesses with full unsigned addresses. */
+    fun addAddressObserver(callback: Consumer<MemoryAccessNotice>) {
+        addressObservers.addIfAbsent(callback)
+    }
+
+    fun deleteAddressObserver(callback: Consumer<MemoryAccessNotice>) {
+        addressObservers.remove(callback)
+    }
+
     open fun countObservers(): Int = listeners.size
 
     private class MemoryListener(val callback: Consumer<MemoryAccessNotice>, val low: Int, val high: Int) {
@@ -621,11 +644,18 @@ open class MemoryState(
     }
 
     private fun notifyAnyObservers(type: Int, address: Int, length: Int, value: Int, instructionFetch: Boolean = false) {
+        notifyAddressObservers(type, address.toUInt().toLong(), length, value, instructionFetch)
         if (listeners.isEmpty()) return
         val notice = MemoryAccessNotice(type, address, length, value, instructionFetch)
         for (listener in listeners) {
             if (listener.matches(address)) listener.callback.accept(notice)
         }
+    }
+
+    private fun notifyAddressObservers(type: Int, address: Long, length: Int, value: Int, instructionFetch: Boolean = false) {
+        if (addressObservers.isEmpty()) return
+        val notice = MemoryAccessNotice(type, address.toInt(), length, value, instructionFetch, address)
+        for (observer in addressObservers) observer.accept(notice)
     }
 
     companion object {

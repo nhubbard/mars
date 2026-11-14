@@ -35,12 +35,14 @@ open class MemoryAccessNotice internal constructor(
     open val length: Int,
     open val value: Int,
     open val isInstructionFetch: Boolean,
+    val addressBits: Long = address.toUInt().toLong(),
 ) : AccessNotice(type) {
     constructor(type: Int, address: Int, value: Int) :
         this(type, address, MemoryState.WORD_LENGTH_BYTES, value, false)
 
     override fun toString(): String {
         val action = if (accessType == READ) "R" else "W"
-        return "$action Mem $address ${length}B = $value"
+        val location = if (addressBits == address.toUInt().toLong()) address.toString() else addressBits.toULong().toString()
+        return "$action Mem $location ${length}B = $value"
     }
 }

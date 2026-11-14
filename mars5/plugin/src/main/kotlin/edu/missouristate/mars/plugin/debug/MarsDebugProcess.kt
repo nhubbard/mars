@@ -306,7 +306,7 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
         addresses = next
         val nextWatchpoints = buildMap {
             for (breakpoint in registeredWatchpoints) {
-                val range = breakpoint.properties?.range()
+                val range = breakpoint.properties?.range(machine.memory.highestInspectableAddress)
                 if (range == null) {
                     session.updateBreakpointPresentation(breakpoint, AllIcons.Debugger.Db_invalid_breakpoint, runMessages.getMessage("debug.watchpoint.invalid"))
                 } else {
@@ -322,7 +322,7 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
         val wasObserving = watchpoints.isNotEmpty()
         watchpoints = next
         if (wasObserving == next.isNotEmpty()) return
-        if (wasObserving) memory.deleteObserver(watchMemory) else memory.addObserver(watchMemory)
+        if (wasObserving) memory.deleteAddressObserver(watchMemory) else memory.addAddressObserver(watchMemory)
     }
 
     private suspend fun debug(process: MarsProcessHandler, machine: MarsContext): StopEvent {

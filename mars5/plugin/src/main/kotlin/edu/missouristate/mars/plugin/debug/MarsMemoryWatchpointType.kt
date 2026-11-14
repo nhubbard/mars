@@ -30,8 +30,7 @@ internal class MarsMemoryWatchpointType : XBreakpointType<MemoryWatchpoint, Mars
     override fun getDisplayText(breakpoint: MemoryWatchpoint): String {
         val range = breakpoint.properties?.range() ?: return runMessages.getMessage("debug.watchpoint.invalid")
         return runMessages.getMessage(
-            "debug.watchpoint.display", Binary.intToHexString(range.first.toInt()),
-            Binary.intToHexString(range.last.toInt()), range.mode.title,
+            "debug.watchpoint.display", hexAddress(range.first), hexAddress(range.last), range.mode.title,
         )
     }
 
@@ -76,15 +75,15 @@ internal class MarsMemoryWatchpointProperties(
         mode = state.mode
     }
 
-    fun range() = if (first >= 0 && last <= UInt.MAX_VALUE.toLong() && first <= last) {
+    fun range(highestAddress: Long = Long.MAX_VALUE) = if (first >= 0 && last <= highestAddress && first <= last) {
         MemoryWatchRange(first, last, mode)
     } else null
 }
 
 internal data class MemoryWatchRange(val first: Long, val last: Long, val mode: MemoryWatchMode) {
     fun overlaps(access: MemoryAccessNotice): Boolean {
-        val start = access.address.toUInt().toLong()
-        return mode.accepts(access.accessType) && start <= last && start + access.length - 1 >= first
+        val start = access.addressBits
+        return mode.accepts(access.accessType) && start in 0..last && first - start < access.length
     }
 }
 
@@ -94,13 +93,16 @@ internal fun parseMemoryAddress(text: String, highestAddress: Long = UInt.MAX_VA
         ?.takeIf { it in 0..highestAddress }
 }
 
+private fun hexAddress(address: Long): String =
+    if (address <= UInt.MAX_VALUE.toLong()) Binary.intToHexString(address.toInt()) else Binary.longToHexString(address)
+
 internal class MarsMemoryWatchpointDialog(project: Project) : DialogWrapper(project) {
     private lateinit var startField: JTextField
     private lateinit var endField: JTextField
     private lateinit var modeBox: JComboBox<MemoryWatchMode>
     val fields = panel {
-        row(runMessages.getMessage("debug.watchpoint.first")) { startField = textField().columns(12).component }
-        row(runMessages.getMessage("debug.watchpoint.last")) { endField = textField().columns(12).component }
+        row(runMessages.getMessage("debug.watchpoint.first")) { startField = textField().columns(20).component }
+        row(runMessages.getMessage("debug.watchpoint.last")) { endField = textField().columns(20).component }
         row(runMessages.getMessage("debug.watchpoint.mode")) {
             modeBox = comboBox(MemoryWatchMode.entries, textListCellRenderer("") { it.title }).component
         }
@@ -115,16 +117,16 @@ internal class MarsMemoryWatchpointDialog(project: Project) : DialogWrapper(proj
     override fun getPreferredFocusedComponent() = startField
 
     override fun doValidate(): ValidationInfo? {
-        val first = parseMemoryAddress(startField.text)
-            ?: return ValidationInfo(runMessages.getMessage("debug.memory.invalid"), startField)
-        val last = parseMemoryAddress(endField.text)
-            ?: return ValidationInfo(runMessages.getMessage("debug.memory.invalid"), endField)
+        val first = parseMemoryAddress(startField.text, Long.MAX_VALUE)
+            ?: return ValidationInfo(runMessages.getMessage("debug.watchpoint.invalid.address"), startField)
+        val last = parseMemoryAddress(endField.text, Long.MAX_VALUE)
+            ?: return ValidationInfo(runMessages.getMessage("debug.watchpoint.invalid.address"), endField)
         return if (last < first) ValidationInfo(runMessages.getMessage("debug.watchpoint.order"), endField) else null
     }
 
     fun properties() = MarsMemoryWatchpointProperties(
-        parseMemoryAddress(startField.text)!!,
-        parseMemoryAddress(endField.text)!!,
+        parseMemoryAddress(startField.text, Long.MAX_VALUE)!!,
+        parseMemoryAddress(endField.text, Long.MAX_VALUE)!!,
         modeBox.selectedItem as MemoryWatchMode,
     )
 }

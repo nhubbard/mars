@@ -87,8 +87,8 @@ permissions. `la` and `dla` can load a full-width label address,
 address, including forward references. The assembler's source map
 preserves these addresses. IntelliJ source and address breakpoints,
 stepping, disassembly, and the memory browser use the full address.
-The memory browser can edit high data words. Memory watchpoints and
-memory dumps still use the classroom address range.
+The memory browser can edit high data words, and watchpoints can stop on high
+data accesses. Memory dumps still use the classroom address range.
 
 `mfc0` sign-extends its word result. `mtc0` preserves the full source value
 when writing an educational address register. For both forms, reserved or

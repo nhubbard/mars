@@ -216,7 +216,7 @@ class MarsDebugPlatformTest {
                     assertSame(first, dialog.getPreferredFocusedComponent())
                     assertSame(first, dialog.performValidateAll().single().component)
                     first.text = " 0Xfffffffe "
-                    last.text = "4294967296"
+                    last.text = "0x8000000000000000"
                     assertSame(last, dialog.performValidateAll().single().component)
                     last.text = "0"
                     assertTrue(dialog.performValidateAll().single().message.contains(@Suppress("DialogTitleCapitalization") "at or after"))
@@ -245,7 +245,7 @@ class MarsDebugPlatformTest {
                 assertFalse(range.overlaps(MemoryAccessNotice(AccessNotice.READ, 0, 0)))
                 assertFalse(range.overlaps(MemoryAccessNotice(AccessNotice.WRITE, 0xfffffffc.toInt(), 0)))
                 restored.last++
-                assertNull(restored.range())
+                assertNull(restored.range(UInt.MAX_VALUE.toLong()))
                 restored.last = 1
                 assertNull(restored.range())
                 val invalid = WriteAction.compute<MemoryWatchpoint, RuntimeException> { manager.addBreakpoint(type, type.createProperties()) }
@@ -310,6 +310,40 @@ class MarsDebugPlatformTest {
                 }
             }
             assertEquals(0, debug.exit.await())
+        }
+    }
+
+    @Test
+    fun `watchpoints distinguish high and classroom data addresses`() = timeoutRunBlocking {
+        val settings = project.service<MarsAssemblySettings>()
+        val original = settings.target
+        try {
+            val file = withContext(Dispatchers.EDT) {
+                settings.changeTarget(MarsTarget.MARS64)
+                val type = XDebuggerUtil.getInstance().findBreakpointType(MarsMemoryWatchpointType::class.java)
+                WriteAction.run<RuntimeException> {
+                    debugger.breakpointManager.addBreakpoint(type, MarsMemoryWatchpointProperties(0x10000, 0x10003, MemoryWatchMode.WRITE))
+                    debugger.breakpointManager.addBreakpoint(type, MarsMemoryWatchpointProperties(0x1_0001_0000L, 0x1_0001_0003L, MemoryWatchMode.READ))
+                }
+                fixture.addFileToProject("high-watch.mars", $$"""
+                    .data 0x100010000
+                    cell: .word 0
+                    .text
+                    dla $a0,cell
+                    li $t0,42
+                    sw $t0,0($a0)
+                    lw $t1,0($a0)
+                    li $v0,10
+                    syscall
+                """.trimIndent()).virtualFile
+            }
+            withDebug(file) { debug ->
+                debug.assertPausedAt(file, 7)
+                withContext(Dispatchers.EDT) { debug.session.resume() }
+                assertEquals(0, debug.exit.await())
+            }
+        } finally {
+            withContext(Dispatchers.EDT) { settings.changeTarget(original) }
         }
     }
 
