@@ -51,6 +51,7 @@ class Release6HardwareDiagnosticTest {
             rdpgpr $8,$9
             wait
             sdbbp 1
+            cache 0,0($9)
             unknown_instruction
         """.trimIndent())
         TestSessions.create().use { machine ->
@@ -68,6 +69,7 @@ class Release6HardwareDiagnosticTest {
                 "rdpgpr" to "shadow register sets",
                 "wait" to "hardware interrupt and power management",
                 "sdbbp" to "EJTAG Debug Mode",
+                "cache" to "privileged cache state",
             )) {
                 assertTrue(errors.contains("\"$name\" requires $requirement, which MARS64 does not simulate"), errors)
                 assertNull(machine.instructionSet.matchOperator(name))

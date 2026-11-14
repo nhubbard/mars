@@ -58,7 +58,7 @@ The distinction helps identify which source needs a diagnostic from MARS64.
 | --- | --- |
 | `requires-cop2` | A platform-specific coprocessor supplies the conditions, registers, or operations. The manual defines transfer encodings and leaves their device behavior implementation-dependent. |
 | `requires-eva` | Enhanced Virtual Addressing uses CP0 access modes and translated user memory from privileged code. |
-| `requires-privileged-platform` | Global invalidation and TLB forms require privileged address translation. `rdpgpr` and `wrpgpr` require shadow register sets. `wait` depends on interrupt and power-management behavior. |
+| `requires-privileged-platform` | Global invalidation and TLB forms require privileged address translation. `cache` requires cache state. `rdpgpr` and `wrpgpr` require shadow register sets. `wait` depends on interrupt and power-management behavior. |
 | `requires-ejtag` | `deret` and `sdbbp` use processor Debug Mode and its exception state. |
 
 These categories apply to the forms that depend on those facilities. The
@@ -74,6 +74,12 @@ preserves the full effective address in `BadVAddr`, and backstep restores
 its previous value. The program counter and mapped segments still use
 32-bit addresses.
 
+`mfc0` sign-extends its word result. `mtc0` preserves the full source value
+when writing an educational address register. For both forms, reserved or
+unimplemented register and selector combinations read as zero or ignore the
+write. IntelliJ uses CP0 register names when completing the register operand
+of the word and doubleword transfers.
+
 `eret` and `eretnc` return through the educational EPC register. `eret`
 clears the load-linked reservation and `eretnc` preserves it. A fault in a
 MARS64 delay slot records the branch address in EPC and sets `Cause.BD`.
@@ -85,6 +91,9 @@ address fault.
 `Status.IE`. Both can copy the previous, sign-extended Status to a GPR.
 The simulator defers delivery at exception level or while disabled and
 keeps masked device requests pending until they are enabled or withdrawn.
+`dvp` and `evp` act as no-ops on the single-core target. `pause` is also
+a no-op in ordinary execution and still follows delay-slot and forbidden-slot
+restrictions.
 
 ## Additional scalar forms with encoding probes
 

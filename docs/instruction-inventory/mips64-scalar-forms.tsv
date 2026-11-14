@@ -96,7 +96,7 @@ c.cond.ps	fs, ft(cc = 0 implied)	129	removed
 c.cond.s	cc, fs, ft	129	removed
 c.cond.d	cc, fs, ft	129	removed
 c.cond.ps	cc, fs, ft	129	removed
-cache	op, offset(base)	134	audit
+cache	op, offset(base)	134	requires-privileged-platform
 ceil.l.s	fd, fs	147	implemented
 ceil.l.d	fd, fs	147	implemented
 ceil.w.s	fd, fs	149	implemented
