@@ -17,7 +17,7 @@ import kotlin.script.experimental.api.filePathPattern
 import kotlin.script.experimental.api.isStandalone
 import kotlin.script.experimental.api.valueOrNull
 import kotlin.script.experimental.host.toScriptSource
-import kotlin.script.experimental.jvm.dependenciesFromCurrentContext
+import kotlin.script.experimental.jvm.dependenciesFromClassContext
 import kotlin.script.experimental.jvm.jvm
 import kotlin.script.experimental.jvmhost.BasicJvmScriptingHost
 import kotlin.script.experimental.jvmhost.createJvmCompilationConfigurationFromTemplate
@@ -39,7 +39,6 @@ abstract class AssignmentScript(assignment: Assignment) {
 object AssignmentCompilation : ScriptCompilationConfiguration({
     filePathPattern("""(?:.*[/\\])?assignment[0-9]+\.kts""")
     isStandalone(true)
-    jvm { dependenciesFromCurrentContext(wholeClasspath = true) }
 })
 
 object GradeCommand {
@@ -55,7 +54,10 @@ object GradeCommand {
             val assignment = Assignment(captureSubmission(arguments.drop(1)))
             val result = BasicJvmScriptingHost().eval(
                 script.toFile().toScriptSource(),
-                createJvmCompilationConfigurationFromTemplate<AssignmentScript>(),
+                createJvmCompilationConfigurationFromTemplate<AssignmentScript> {
+                    // IntelliJ supplies the definition classpath when it loads the template.
+                    jvm { dependenciesFromClassContext(AssignmentScript::class, wholeClasspath = true) }
+                },
                 ScriptEvaluationConfiguration { constructorArgs(assignment) },
             )
             val evaluated = result.valueOrNull()

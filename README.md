@@ -1,12 +1,8 @@
 # MARS 5
 
-MARS 5 combines an independent assembler and simulator with a standalone CLI and a Kotlin IntelliJ
-plugin. The plugin provides MARS assembly editing, build diagnostics, native Run and Debug, and
-educational tools. The core is migrating from Java to Kotlin. The legacy Venus desktop target was
-retired. See the
-[IntelliJ component mapping](INTELLIJ_COMPONENT_MAPPING.md) for scope and release gates,
-the [plugin implementation notes](PLUGIN_IMPLEMENTATION.md) for usage and verification,
-and the [modernization plan](MODERNIZATION_PLAN.md) for the broader project.
+MARS 5 is a MIPS assembler and simulator with a standalone CLI and an IntelliJ plugin.
+The plugin supports editing, building, running, and debugging MARS assembly and includes
+educational tools such as the Bitmap Display and the X-Ray datapath view.
 
 | Module | Responsibility |
 | --- | --- |
@@ -14,6 +10,7 @@ and the [modernization plan](MODERNIZATION_PLAN.md) for the broader project.
 | `mars5/cli` | Standalone command-line launcher |
 | `mars5/datapath` | Compiled MIPS X-Ray diagram tables for the IntelliJ plugin |
 | `mars5/plugin` | Kotlin IntelliJ plugin for editing, assembling, running, and debugging MIPS |
+| `mars5/plugin-jvm-compiler` | Registers the MARS compiler with IntelliJ's build process |
 
 For IntelliJ development, open the `mars5` directory as a Gradle project. IntelliJ generates its
 local project settings in the Git-ignored `.idea` directory.

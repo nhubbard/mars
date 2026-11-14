@@ -41,8 +41,12 @@ jar tf mars5/cli/build/libs/cli-1.0-SNAPSHOT.jar |
   grep -Fx 'META-INF/kotlin/script/templates/edu.missouristate.mars.cli.grading.AssignmentScript.classname'
 ```
 
-When editing the definition in the MARS source project itself, **Register in Kotlin Scripting
-settings** is a local setup option. Consumer projects discover the definition from the built JAR.
+IntelliJ discovers the *assignment definition* from the MARS CLI JAR. In projects without it as a
+dependency, add the built CLI JAR under **Definition classpath** and enter
+`edu.missouristate.mars.cli.grading.AssignmentScript` under **Definition classes** in Kotlin
+Scripting settings. Rebuild the JAR if you updated MARS since the last build. Then reload
+definitions and the script configuration. The filename must match `assignment<number>.kts`
+for editor discovery.
 
 ## Grade submissions
 
@@ -69,7 +73,7 @@ if the current PC already points there. Check state at each stop with `expectReg
 `expectWord`, `expectBytes`, or `expectOutput`. Use `runToExit` to check syscall 10 or 17
 termination. The default expected exit code is 0.
 
-Pass `input = "42\\n"` as a case option to provide a console fixture. Set `utf8Text = true`
+Pass `input = "42\n"` as a case option to provide a console fixture. Set `utf8Text = true`
 when the assignment uses UTF-8 string syscalls. `instructionLimit` defaults to 100,000 and applies
 across all execution steps in the case. The grader also limits source size, assembly work, and
 captured output. It enables console syscalls, heap allocation, and exit. File descriptors, MIDI,

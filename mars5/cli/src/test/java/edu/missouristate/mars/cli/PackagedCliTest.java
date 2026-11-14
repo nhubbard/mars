@@ -3,6 +3,8 @@ package edu.missouristate.mars.cli;
 import static org.junit.jupiter.api.Assertions.*;
 
 import edu.missouristate.mars.mips.dump.DumpFormatLoader;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -81,10 +83,24 @@ class PackagedCliTest {
 
   @Test
   void graderJarRegistersItsKotlinScriptTemplate() throws Exception {
-    try (var jar = new ZipFile(System.getProperty("mars.cli.jar"))) {
-      var name = "edu.missouristate.mars.cli.grading.AssignmentScript";
-      assertNotNull(jar.getEntry("META-INF/kotlin/script/templates/" + name + ".classname"));
-      assertNotNull(jar.getEntry(name.replace('.', '/') + ".class"));
+    var archive = Path.of(System.getProperty("mars.cli.jar"));
+    try (var jar = new ZipFile(archive.toFile());
+        var loader = URLClassLoader.newInstance(
+            new URL[] {archive.toUri().toURL()}, ClassLoader.getPlatformClassLoader())) {
+      var template = "edu.missouristate.mars.cli.grading.AssignmentScript";
+      assertNotNull(jar.getEntry("META-INF/kotlin/script/templates/" + template + ".classname"));
+      var thread = Thread.currentThread();
+      var previous = thread.getContextClassLoader();
+      try {
+        thread.setContextClassLoader(null);
+        var annotation = Arrays.stream(Class.forName(template, true, loader).getDeclaredAnnotations())
+            .filter(candidate -> candidate.annotationType().getSimpleName().equals("KotlinScript"))
+            .findFirst().orElseThrow();
+        var configuration = (Class<?>) annotation.annotationType().getMethod("compilationConfiguration").invoke(annotation);
+        assertNotNull(configuration.getField("INSTANCE").get(null));
+      } finally {
+        thread.setContextClassLoader(previous);
+      }
     }
   }
 
