@@ -303,4 +303,67 @@ class Mars64VectorFloatingTest {
         }
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = ["w", "d"])
+    fun `arithmetic rounds once and reports each lanes exceptions`(suffix: String, @TempDir directory: Path) {
+        val double = suffix == "d"
+        val file = Files.writeString(directory.resolve("arithmetic.s"), $$"""
+            fadd.$$suffix $w31,$w3,$w5
+            fsub.$$suffix $w31,$w3,$w5
+            fmul.$$suffix $w31,$w3,$w5
+            fdiv.$$suffix $w31,$w3,$w5
+            fmadd.$$suffix $w31,$w3,$w5
+            fmsub.$$suffix $w31,$w3,$w5
+        """.trimIndent())
+        fun bits(value: Double): Long = if (double) value.toRawBits()
+            else value.toFloat().toRawBits().toUInt().toLong() * 0x100000001L
+        fun vector(low: Double, high: Double) = VectorRegister(bits(low), bits(high))
+        TestSessions.create().use { session ->
+            session.selectTarget(MarsTarget.MARS64)
+            val program = session.assemble(listOf(file), null, false, false)
+            assertEquals(List(6) { 0x78051fdb + (it shl 22) + if (double) 0x200000 else 0 },
+                program.machineList!!.map { it.binaryStatement })
+            val fpu = session.coprocessor1
+            val halfUlp = Math.scalb(1.0, if (double) -53 else -24)
+            val next = if (double) Math.nextUp(1.0) else Math.nextUp(1f).toDouble()
+            fpu.updateVector(3, vector(1.0, -1.0))
+            fpu.updateVector(5, vector(halfUlp, 1.0))
+            fpu.updateMsaStatus(2)
+            program.simulate(1)
+            assertEquals(vector(next, 0.0), fpu.readVector(31))
+            assertEquals(0x1006, fpu.msaStatus)
+            fpu.updateVector(3, vector(1.0, 0.0))
+            fpu.updateVector(5, vector(1.0, -0.0))
+            fpu.updateMsaStatus(3)
+            program.simulate(1)
+            assertEquals(vector(-0.0, 0.0), fpu.readVector(31))
+
+            val maximum = if (double) Double.MAX_VALUE else Float.MAX_VALUE.toDouble()
+            val minimum = Math.scalb(1.0, if (double) -1022 else -126)
+            fpu.updateVector(3, vector(maximum, minimum))
+            fpu.updateVector(5, vector(2.0, 0.5))
+            fpu.updateMsaStatus(0x1000001)
+            program.simulate(1)
+            assertEquals(vector(maximum, 0.0), fpu.readVector(31))
+            assertEquals(0x100701d, fpu.msaStatus)
+
+            fpu.updateVector(3, vector(1.0, 0.0))
+            fpu.updateVector(5, vector(-0.0, 0.0))
+            fpu.updateMsaStatus(0)
+            program.simulate(1)
+            assertEquals(vector(Double.NEGATIVE_INFINITY, Double.NaN), fpu.readVector(31))
+            assertEquals(0x18060, fpu.msaStatus)
+
+            val epsilon = Math.scalb(1.0, if (double) -52 else -23)
+            fpu.updateVector(3, vector(1 + epsilon, 1 + epsilon))
+            fpu.updateVector(5, vector(1 - epsilon, 1 - epsilon))
+            fpu.updateVector(31, vector(-1.0, -1.0))
+            program.simulate(1)
+            assertEquals(vector(-epsilon * epsilon, -epsilon * epsilon), fpu.readVector(31))
+            fpu.updateVector(31, vector(1.0, 1.0))
+            program.simulate(1)
+            assertEquals(vector(epsilon * epsilon, epsilon * epsilon), fpu.readVector(31))
+        }
+    }
+
 }

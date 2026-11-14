@@ -184,8 +184,8 @@ dpsub_s.d	wd,ws,wt	MSA	152	implemented
 dpsub_u.h	wd,ws,wt	MSA	154	implemented
 dpsub_u.w	wd,ws,wt	MSA	154	implemented
 dpsub_u.d	wd,ws,wt	MSA	154	implemented
-fadd.w	wd,ws,wt	MSA	156	missing
-fadd.d	wd,ws,wt	MSA	156	missing
+fadd.w	wd,ws,wt	MSA	156	implemented
+fadd.d	wd,ws,wt	MSA	156	implemented
 fcaf.w	wd,ws,wt	MSA	157	implemented
 fcaf.d	wd,ws,wt	MSA	157	implemented
 fceq.w	wd,ws,wt	MSA	158	implemented
@@ -210,8 +210,8 @@ fcun.w	wd,ws,wt	MSA	168	implemented
 fcun.d	wd,ws,wt	MSA	168	implemented
 fcune.w	wd,ws,wt	MSA	169	implemented
 fcune.d	wd,ws,wt	MSA	169	implemented
-fdiv.w	wd,ws,wt	MSA	170	missing
-fdiv.d	wd,ws,wt	MSA	170	missing
+fdiv.w	wd,ws,wt	MSA	170	implemented
+fdiv.d	wd,ws,wt	MSA	170	implemented
 fexdo.h	wd,ws,wt	MSA	171	implemented
 fexdo.w	wd,ws,wt	MSA	171	implemented
 fexp2.w	wd,ws,wt	MSA	172	missing
@@ -234,8 +234,8 @@ fill.w	wd,rs	MSA	179	implemented
 fill.d	wd,rs	MIPS64 MSA	179	implemented
 flog2.w	wd,ws	MSA	180	missing
 flog2.d	wd,ws	MSA	180	missing
-fmadd.w	wd,ws,wt	MSA	181	missing
-fmadd.d	wd,ws,wt	MSA	181	missing
+fmadd.w	wd,ws,wt	MSA	181	implemented
+fmadd.d	wd,ws,wt	MSA	181	implemented
 fmax.w	wd,ws,wt	MSA	182	implemented
 fmax.d	wd,ws,wt	MSA	182	implemented
 fmax_a.w	wd,ws,wt	MSA	183	implemented
@@ -244,10 +244,10 @@ fmin.w	wd,ws,wt	MSA	184	implemented
 fmin.d	wd,ws,wt	MSA	184	implemented
 fmin_a.w	wd,ws,wt	MSA	185	implemented
 fmin_a.d	wd,ws,wt	MSA	185	implemented
-fmsub.w	wd,ws,wt	MSA	186	missing
-fmsub.d	wd,ws,wt	MSA	186	missing
-fmul.w	wd,ws,wt	MSA	187	missing
-fmul.d	wd,ws,wt	MSA	187	missing
+fmsub.w	wd,ws,wt	MSA	186	implemented
+fmsub.d	wd,ws,wt	MSA	186	implemented
+fmul.w	wd,ws,wt	MSA	187	implemented
+fmul.d	wd,ws,wt	MSA	187	implemented
 frcp.w	wd,ws	MSA	188	missing
 frcp.d	wd,ws	MSA	188	missing
 frint.w	wd,ws	MSA	189	implemented
@@ -268,8 +268,8 @@ fsor.w	wd,ws,wt	MSA	197	implemented
 fsor.d	wd,ws,wt	MSA	197	implemented
 fsqrt.w	wd,ws	MSA	198	missing
 fsqrt.d	wd,ws	MSA	198	missing
-fsub.w	wd,ws,wt	MSA	199	missing
-fsub.d	wd,ws,wt	MSA	199	missing
+fsub.w	wd,ws,wt	MSA	199	implemented
+fsub.d	wd,ws,wt	MSA	199	implemented
 fsueq.w	wd,ws,wt	MSA	200	implemented
 fsueq.d	wd,ws,wt	MSA	200	implemented
 fsule.w	wd,ws,wt	MSA	201	implemented

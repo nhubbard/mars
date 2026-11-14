@@ -8,6 +8,8 @@ import edu.missouristate.mars.mips.hardware.Coprocessor1State.Companion.INEXACT
 import edu.missouristate.mars.mips.hardware.Coprocessor1State.Companion.INVALID_OPERATION
 import edu.missouristate.mars.mips.hardware.Coprocessor1State.Companion.MSA_NON_TRAPPING
 import edu.missouristate.mars.mips.hardware.Coprocessor1State.Companion.OVERFLOW
+import edu.missouristate.mars.mips.hardware.Coprocessor1State.Companion.UNDERFLOW
+import edu.missouristate.mars.mips.hardware.Coprocessor1State.Companion.UNDERFLOW_ENABLE
 import edu.missouristate.mars.mips.hardware.VectorRegister
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat.R_FORMAT
 import edu.missouristate.mars.mips.instructions.basic.convertInteger
@@ -17,6 +19,7 @@ import edu.missouristate.mars.mips.instructions.basic.narrowSingleToHalf
 import edu.missouristate.mars.mips.instructions.basic.roundIntegral
 import edu.missouristate.mars.mips.instructions.basic.widenSingle
 import java.lang.Float.float16ToFloat
+import java.math.BigDecimal
 import kotlin.math.abs
 
 internal fun msaFloatingCompareInstructions(): List<BasicInstruction> = buildList {
@@ -38,6 +41,7 @@ internal fun msaFloatingCompareInstructions(): List<BasicInstruction> = buildLis
             })
         })
         add(roundingInstruction(format, suffix))
+        for (operation in FloatingArithmetic.entries) add(arithmeticInstruction(operation, format, suffix))
         for (signed in listOf(true, false)) {
             add(toIntegerInstruction(format, suffix, signed, truncate = false))
             add(toIntegerInstruction(format, suffix, signed, truncate = true))
@@ -346,4 +350,142 @@ private fun narrowFloatingInstruction(format: Int, suffix: Char, fixedPoint: Boo
             }
         }
     }
+}
+
+private enum class FloatingArithmetic(val mnemonic: String) {
+    ADD("fadd"), SUBTRACT("fsub"), MULTIPLY("fmul"), DIVIDE("fdiv"),
+    MULTIPLY_ADD("fmadd"), MULTIPLY_SUBTRACT("fmsub");
+
+    val fused: Boolean get() = this == MULTIPLY_ADD || this == MULTIPLY_SUBTRACT
+
+    fun nearest(a: Double, b: Double, accumulator: Double, single: Boolean): Double {
+        if (single) {
+            val x = a.toFloat()
+            val y = b.toFloat()
+            return when (this) {
+                ADD -> x + y
+                SUBTRACT -> x - y
+                MULTIPLY -> x * y
+                DIVIDE -> x / y
+                MULTIPLY_ADD -> Math.fma(x, y, accumulator.toFloat())
+                MULTIPLY_SUBTRACT -> Math.fma(-x, y, accumulator.toFloat())
+            }.toDouble()
+        }
+        return when (this) {
+            ADD -> a + b
+            SUBTRACT -> a - b
+            MULTIPLY -> a * b
+            DIVIDE -> a / b
+            MULTIPLY_ADD -> Math.fma(a, b, accumulator)
+            MULTIPLY_SUBTRACT -> Math.fma(-a, b, accumulator)
+        }
+    }
+
+    fun exact(a: BigDecimal, b: BigDecimal, accumulator: BigDecimal): BigDecimal = when (this) {
+        ADD -> a + b
+        SUBTRACT -> a - b
+        MULTIPLY -> a * b
+        DIVIDE -> a // The caller carries the denominator separately.
+        MULTIPLY_ADD -> accumulator + a * b
+        MULTIPLY_SUBTRACT -> accumulator - a * b
+    }
+}
+
+private fun arithmeticInstruction(operation: FloatingArithmetic, format: Int, suffix: Char): BasicInstruction {
+    val precision = MsaPrecision(format)
+    val field = (operation.ordinal * 2 + format).toString(2).padStart(5, '0')
+    return BasicInstruction(
+        "${operation.mnemonic}.$suffix \$w1,\$w2,\$w3", "Apply floating-point arithmetic independently to each vector element",
+        R_FORMAT, "011110 $field ttttt sssss fffff 011011",
+    ) { statement, context ->
+        val (destination, source, target) = statement.operands
+        val fpu = context.coprocessor1
+        val left = fpu.readVector(source)
+        val right = fpu.readVector(target)
+        val previous = if (operation.fused) fpu.readVector(destination) else VectorRegister(0, 0)
+        context.writeFloatingVector(statement, destination, precision) { index, status ->
+            val operands = if (operation.fused) listOf(previous, left, right) else listOf(left, right)
+            val raw = operands.map { it.floatingLane(index, precision.bits) }
+            val nan = raw.firstOrNull(precision::isSignaling) ?: raw.firstOrNull(precision::isNan)
+            val a = precision.number(precision.flush(left.floatingLane(index, precision.bits), status))
+            val b = precision.number(precision.flush(right.floatingLane(index, precision.bits), status))
+            val accumulator = precision.number(precision.flush(previous.floatingLane(index, precision.bits), status))
+            val flushed = if (raw.any { it != precision.flush(it, status) }) INEXACT else 0
+            val invalidProduct = operation.fused && (a.isInfinite() && b == 0.0 || b.isInfinite() && a == 0.0)
+            if (nan != null) {
+                val invalid = if (precision.isSignaling(nan) || invalidProduct) INVALID_OPERATION else 0
+                FloatingLane(nan or precision.quiet, invalid or flushed)
+            } else {
+                val result = evaluateArithmetic(operation, precision, a, b, accumulator, status)
+                result.copy(causes = result.causes or flushed)
+            }
+        }
+    }
+}
+
+private fun evaluateArithmetic(
+    operation: FloatingArithmetic, precision: MsaPrecision, a: Double, b: Double, accumulator: Double, status: Int,
+): FloatingLane {
+    val single = precision.bits == 32
+    val nearest = operation.nearest(a, b, accumulator, single)
+    if (nearest.isNaN()) return FloatingLane(precision.exponent or precision.quiet, INVALID_OPERATION)
+    if (!a.isFinite() || !b.isFinite() || !accumulator.isFinite()) return FloatingLane(precision.raw(nearest))
+    if (operation == FloatingArithmetic.DIVIDE && b == 0.0) return FloatingLane(precision.raw(nearest), 1 shl 3)
+    var numerator = operation.exact(BigDecimal(a), BigDecimal(b), BigDecimal(accumulator))
+    val denominator = if (operation == FloatingArithmetic.DIVIDE) BigDecimal(abs(b)) else BigDecimal.ONE
+    if (operation == FloatingArithmetic.DIVIDE && b < 0.0) numerator = numerator.negate()
+    val mode = status and 3
+    if (numerator.signum() == 0) {
+        val cancellation = when (operation) {
+            FloatingArithmetic.ADD -> a.toRawBits() xor b.toRawBits() < 0
+            FloatingArithmetic.SUBTRACT -> a.toRawBits() xor b.toRawBits() >= 0
+            FloatingArithmetic.MULTIPLY_ADD, FloatingArithmetic.MULTIPLY_SUBTRACT -> {
+                val productSign = (a.toRawBits() xor b.toRawBits() < 0) != (operation == FloatingArithmetic.MULTIPLY_SUBTRACT)
+                productSign != (accumulator.toRawBits() < 0)
+            }
+            else -> false
+        }
+        return FloatingLane(precision.raw(if (mode == 3 && cancellation) -0.0 else nearest))
+    }
+    val negative = numerator.signum() < 0
+    val magnitude = numerator.abs()
+    val normal = if (single) Math.scalb(1.0, -126) else Math.scalb(1.0, -1022)
+    val minimumNormal = BigDecimal(normal).multiply(denominator)
+    if (status and FLUSH_SUBNORMALS != 0 && magnitude < minimumNormal) {
+        return FloatingLane(precision.raw(if (negative) -0.0 else 0.0), UNDERFLOW or INEXACT)
+    }
+    val relation = when {
+        nearest == Double.POSITIVE_INFINITY -> 1
+        nearest == Double.NEGATIVE_INFINITY -> -1
+        else -> BigDecimal(nearest).multiply(denominator).compareTo(numerator)
+    }
+    val lower = relation > 0 && (mode == 3 || mode == 1 && !negative)
+    val upper = relation < 0 && (mode == 2 || mode == 1 && negative)
+    val rounded = when {
+        lower -> if (single) Math.nextDown(nearest.toFloat()).toDouble() else Math.nextDown(nearest)
+        upper -> if (single) Math.nextUp(nearest.toFloat()).toDouble() else Math.nextUp(nearest)
+        else -> nearest
+    }
+    val outward = if (negative) mode == 3 else mode == 2
+    val maximum = if (single) Float.MAX_VALUE.toDouble() else Double.MAX_VALUE
+    val overflow = when {
+        mode == 0 -> nearest.isInfinite()
+        outward -> magnitude > BigDecimal(maximum).multiply(denominator)
+        else -> magnitude >= BigDecimal(maximum).add(BigDecimal(Math.ulp(maximum).let {
+            if (single) Math.ulp(maximum.toFloat()).toDouble() else it
+        })).multiply(denominator)
+    }
+    val edge = BigDecimal(normal).divide(BigDecimal.valueOf(1L shl (if (single) 24 else 53))).multiply(denominator)
+    val tiny = when {
+        mode == 0 -> magnitude < minimumNormal.subtract(edge.divide(BigDecimal.TWO))
+        outward -> magnitude <= minimumNormal.subtract(edge)
+        else -> magnitude < minimumNormal
+    }
+    val causes = when {
+        overflow -> OVERFLOW or if (status and (OVERFLOW shl 7) == 0) INEXACT else 0
+        tiny && (relation != 0 || status and UNDERFLOW_ENABLE != 0) -> UNDERFLOW or if (relation != 0) INEXACT else 0
+        relation != 0 -> INEXACT
+        else -> 0
+    }
+    return FloatingLane(precision.raw(rounded), causes)
 }
