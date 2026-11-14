@@ -13,7 +13,7 @@ import java.util.StringTokenizer
 class InstructionLoader {
     fun loadBasicInstructions(): List<BasicInstruction> =
         copyOf((basicInstructionFactories + release6FloatFactories).map { it() } +
-            CompactComparison.entries.map(::InstrCompactCompareBranch))
+            CompactComparison.entries.filterNot { it.wideOnly }.map(::InstrCompactCompareBranch))
 
     fun loadExtendedInstructions(owner: InstructionSet): List<ExtendedInstruction> = try {
         pseudoOps().useLines { lines ->

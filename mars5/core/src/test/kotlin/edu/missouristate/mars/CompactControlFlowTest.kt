@@ -9,9 +9,78 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.CsvSource
 import org.junit.jupiter.params.provider.ValueSource
 
 class CompactControlFlowTest {
+    @ParameterizedTest
+    @CsvSource(
+        "blezalc,18090001,-1,1", "bgezalc,19290001,1,-1",
+        "bgtzalc,1c090001,1,0", "bltzalc,1d290001,-1,0",
+        "bnezalc,60090001,4294967296,0",
+    )
+    fun `wide compact conditional calls write the link on either path`(
+        mnemonic: String, encoding: String, taken: Long, untaken: Long, @TempDir directory: Path,
+    ) {
+        val source = Files.writeString(directory.resolve("link.s"), "$mnemonic \$9,target\nnop\ntarget: nop\n")
+        TestSessions.create().use { machine ->
+            machine.selectTarget(MarsTarget.MARS64)
+            for ((operand, branches) in listOf(taken to true, untaken to false)) {
+                val program = machine.assemble(listOf(source), null, false, false)
+                val statement = program.machineList!!.first()
+                val word = encoding.toUInt(16).toInt()
+                assertEquals(word, statement.binaryStatement)
+                val decoded = ProgramStatement(word, statement.address, machine.instructionSet)
+                assertEquals(mnemonic, decoded.instruction?.name)
+                assertEquals(listOf(9, 1), decoded.operands.take(2))
+                machine.editIntegerRegister(9, operand)
+                machine.editIntegerRegister(31, 0x1_0000_0000)
+                program.simulate(1)
+                assertEquals(statement.address + if (branches) 8 else 4, machine.registerFile.programCounter)
+                assertEquals(statement.address.toLong() + 4, machine.registerFile.getLongValueNoNotify(31))
+                machine.backStepper.backStep()
+                assertEquals(0x1_0000_0000L, machine.registerFile.getLongValueNoNotify(31))
+                assertEquals(statement.address, machine.registerFile.programCounter)
+            }
+        }
+    }
+
+    @ParameterizedTest
+    @CsvSource("1,2,true", "2147483647,1,false", "-2147483648,-1,false", "4294967296,0,false")
+    fun `bnvc checks both inputs and the sum for signed word overflow`(
+        left: Long, right: Long, taken: Boolean, @TempDir directory: Path,
+    ) {
+        val source = Files.writeString(directory.resolve("overflow.s"), $$"""
+            bnvc $9,$10,target
+            nop
+            target: nop
+        """.trimIndent())
+        TestSessions.create().use { machine ->
+            machine.selectTarget(MarsTarget.MARS64)
+            val program = machine.assemble(listOf(source), null, false, false)
+            val statement = program.machineList!!.first()
+            assertEquals(0x61490001, statement.binaryStatement)
+            assertEquals("bnvc", machine.instructionSet.findByBinaryCode(0x61490001)?.name)
+            assertEquals("bnec", machine.instructionSet.findByBinaryCode(0x612a0001)?.name)
+            machine.editIntegerRegister(9, left)
+            machine.editIntegerRegister(10, right)
+            program.simulate(1)
+            assertEquals(statement.address + if (taken) 8 else 4, machine.registerFile.programCounter)
+        }
+    }
+
+    @Test
+    fun `compact conditional calls reject the link register as input`(@TempDir directory: Path) {
+        val source = Files.writeString(directory.resolve("invalid-link.s"), $$"bnezalc $ra,target\ntarget: nop\n")
+        TestSessions.create().use { machine ->
+            machine.selectTarget(MarsTarget.MARS64)
+            val failure = assertThrows(ProcessingException::class.java) {
+                machine.assemble(listOf(source), null, false, false)
+            }
+            assertTrue(failure.errors()!!.generateErrorReport().contains("source register must not be the link register"))
+        }
+    }
+
     @ParameterizedTest
     @ValueSource(booleans = [false, true])
     fun `compare branches share encodings without changing the legacy branches`(delayed: Boolean, @TempDir directory: Path) {

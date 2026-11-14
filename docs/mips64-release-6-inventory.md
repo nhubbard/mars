@@ -44,7 +44,8 @@ fields on decode, and that the same raw word has no MARS32 decoding. The current
 MARS64 assembles and executes all six doubleword bitfield forms, as well as
 `dlsa`, `dalign`, `dbitswap`, `dsbh`, `dshd`, `dahi`, `dati`, `daui`, `ldpc`, and `lwupc`.
 Plain `dext` and `dins` choose their machine forms from the field size and
-position. The remaining rows are pending. Register numbers and immediates
+position. MARS64 also implements `bnvc` and five compact conditional
+branch-and-link forms. Their forbidden-slot behavior remains open. Register numbers and immediates
 below are LLVM assembler input, and the hex values are instruction words in architectural bit order. A branch
 or PC-relative immediate in this table is the displacement as written to LLVM.
 

@@ -51,12 +51,12 @@ beq	rs, rt, offset	93	audit
 beql	rs, rt, offset	94	removed
 bgez	rs, offset	96	audit
 bgezal	rs, offset	97	removed
-blezalc	rt, offset	98	audit
-bgezalc	rt, offset	98	audit
-bgtzalc	rt, offset	98	audit
-bltzalc	rt, offset	98	audit
+blezalc	rt, offset	98	partial
+bgezalc	rt, offset	98	partial
+bgtzalc	rt, offset	98	partial
+bltzalc	rt, offset	98	partial
 beqzalc	rt, offset	98	audit
-bnezalc	rt, offset	98	audit
+bnezalc	rt, offset	98	partial
 bgezall	rs, offset	101	removed
 b<cond>c	rs, rt, offset	103	audit
 bgezl	rs, offset	107	removed
@@ -73,7 +73,7 @@ bltzl	rs, offset	121	removed
 bne	rs, rt, offset	123	audit
 bnel	rs, rt, offset	124	removed
 bovc	rs,rt,offset	126	audit
-bnvc	rs,rt,offset	126	audit
+bnvc	rs,rt,offset	126	partial
 break		128	audit
 c.cond.s	fs, ft (cc = 0 implied)	129	removed
 c.cond.d	fs, ft (cc = 0 implied)	129	removed
