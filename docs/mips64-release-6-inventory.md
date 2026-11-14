@@ -109,6 +109,10 @@ or PC-relative immediate in this table is the displacement as written to LLVM.
   the removed `bc1f` and `bc1t`. Both Release 6 forms test bit 0 and execute
   one delay slot on both paths, independently of the legacy delay-slot setting.
   Their signed displacement is relative to the instruction after the branch.
+- **REGIMM.** MARS64 supports `bal` and `nal` at the retained zero-source
+  encodings. Both link past the delay slot. The old register-conditional
+  `bgezal` and `bltzal` forms are removed. `sigrie` signals a reserved
+  instruction exception and carries a 16-bit software code.
 - **CRC.** MARS64 includes all eight optional `crc32*` and `crc32c*` forms.
   They consume the low byte, halfword, word, or doubleword of the message
   register, update the accumulator in place, and sign-extend the result.

@@ -8,11 +8,13 @@ import edu.missouristate.mars.mips.hardware.MemoryState.Reservation
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat.I_BRANCH_FORMAT
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat.I_FORMAT
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat.R_FORMAT
+import edu.missouristate.mars.mips.instructions.Instruction.Companion.INSTRUCTION_LENGTH
 import edu.missouristate.mars.mips.instructions.basic.DoublewordBitField
 import edu.missouristate.mars.mips.instructions.basic.PcRelativeWordInstruction
 import edu.missouristate.mars.simulator.Exceptions.ADDRESS_EXCEPTION_LOAD
 import edu.missouristate.mars.simulator.Exceptions.ADDRESS_EXCEPTION_STORE
 import edu.missouristate.mars.simulator.Exceptions.ARITHMETIC_OVERFLOW_EXCEPTION
+import edu.missouristate.mars.simulator.Exceptions.RESERVED_INSTRUCTION_EXCEPTION
 import edu.missouristate.mars.simulator.Exceptions.TRAP_EXCEPTION
 import java.lang.Long.divideUnsigned
 import java.lang.Long.remainderUnsigned
@@ -25,6 +27,15 @@ import java.lang.Math.unsignedMultiplyHigh
 
 /** Doubleword operations enabled by the educational MARS64 target. */
 internal val wideInstructionFactories: List<() -> BasicInstruction> = listOf(
+    ::legacyBranchAndLink,
+    ::noOpAndLink,
+    {
+        BasicInstruction("sigrie 65535", "Signal a reserved-instruction exception",
+            I_FORMAT, "000001 00000 10111 ffffffffffffffff",
+        ) { statement, context ->
+            throw ProcessingException(context, statement, "sigrie code ${statement.operands[0]}", RESERVED_INSTRUCTION_EXCEPTION)
+        }
+    },
     { floatingBitBranch(nonzero = false) },
     { floatingBitBranch(nonzero = true) },
     { doublewordFloatingMove(toFloatingPoint = false) },
@@ -310,6 +321,32 @@ private fun pairedLinkedMemoryInstruction(name: String, elementSize: Int, store:
             return store || low == 0 || low != high
         }
     }
+
+private fun legacyBranchAndLink() = object : BasicInstruction(
+    "bal label", "Branch and link after one delay slot",
+    I_BRANCH_FORMAT, "000001 00000 10001 ffffffffffffffff",
+    { statement, context ->
+        context.link(31, context.registerFile.programCounter + INSTRUCTION_LENGTH)
+        context.release6DelayedBranch(statement.operands[0], taken = true)
+    },
+) {
+    override fun encodeOperands(values: IntArray): IntArray {
+        require(values[0] in Short.MIN_VALUE..Short.MAX_VALUE) { "Branch destination is outside its signed displacement range" }
+        return values
+    }
+
+    override fun decodeOperands(values: IntArray) {
+        values[0] = values[0].toShort().toInt()
+    }
+}
+
+private fun noOpAndLink() = BasicInstruction(
+    "nal", "Write the address after the delay slot into the link register",
+    I_BRANCH_FORMAT, "000001 00000 10000 cccccccccccccccc",
+) { _, context ->
+    context.updateRegister(31, context.registerFile.programCounter + INSTRUCTION_LENGTH)
+    context.release6DelayedBranch(0, taken = false)
+}
 
 private fun crcInstruction(size: Int, castagnoli: Boolean): BasicInstruction {
     val name = "crc32${if (castagnoli) "c" else ""}${"bhwd"[size]}"
