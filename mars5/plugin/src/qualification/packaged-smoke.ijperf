@@ -41,5 +41,8 @@
 %takeScreenshot packaged-tools
 %openFile -file fir.mars -timeout 45
 %runConfiguration -mode=TILL_TERMINATED|-configurationName=MARS64 FIR
+%delay 1000
+%assertCurrentFile fir.mars
+%takeScreenshot packaged-fir
 %storeHighlightingResults packaged-smoke-complete
 %exitApp

@@ -308,9 +308,12 @@ tasks.named<RunIdeTask>("runIde") {
     }
     doLast {
       val log = sandboxLogDirectory.get().asFile
-      check(log.resolve("packaged-smoke-complete.txt").isFile) {
+      val highlighting = log.resolve("packaged-smoke-complete.txt")
+      check(highlighting.isFile) {
         "IntelliJ did not finish the packaged smoke scenario. See $log."
       }
+      val errors = highlighting.readLines().filter { it.startsWith("ERROR(") }
+      check(errors.isEmpty()) { "IntelliJ reported errors in the MARS64 FIR example:\n${errors.joinToString("\n")}" }
       val expected = "MARS packaged smoke\n".encodeToByteArray()
       for (name in listOf("run.ok", "debug.ok")) {
         val result = fixture.get().file(name).asFile
