@@ -209,6 +209,7 @@ open class BackStepper(
             } else {
                 coprocessor1.updateRegister(first, second)
             }
+            Action.FLOATING_STATUS -> coprocessor1.updateFloatingStatus(second)
             Action.CONDITION_CLEAR -> coprocessor1.clearConditionFlag(first)
             Action.CONDITION_SET -> coprocessor1.setConditionFlag(first)
             Action.HEAP -> memory.heapAddress = first
@@ -252,6 +253,8 @@ open class BackStepper(
         return value
     }
 
+    internal fun addFloatingStatusRestore(value: Int) = record(Action.FLOATING_STATUS, 0, value)
+
     open fun addConditionFlagSet(flag: Int): Int {
         backSteps.push(Action.CONDITION_SET, pc(), flag)
         return flag
@@ -275,6 +278,7 @@ open class BackStepper(
         PC,
         COPROCESSOR_0(bank = RegisterWriteBank.COPROCESSOR_0),
         COPROCESSOR_1(bank = RegisterWriteBank.COPROCESSOR_1),
+        FLOATING_STATUS,
         CONDITION_CLEAR(bank = RegisterWriteBank.CONDITION_FLAGS),
         CONDITION_SET(bank = RegisterWriteBank.CONDITION_FLAGS),
         HEAP,

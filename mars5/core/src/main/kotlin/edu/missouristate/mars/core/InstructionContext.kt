@@ -19,6 +19,8 @@ import edu.missouristate.mars.mips.hardware.Coprocessor0State.Companion.EPC
 import edu.missouristate.mars.mips.hardware.Coprocessor0State.Companion.EXCEPTION_LEVEL
 import edu.missouristate.mars.mips.hardware.Coprocessor0State.Companion.STATUS
 import edu.missouristate.mars.mips.hardware.Coprocessor0State.Companion.VADDR
+import edu.missouristate.mars.mips.hardware.Coprocessor1State.Companion.CAUSE_MASK
+import edu.missouristate.mars.mips.hardware.Coprocessor1State.Companion.hasEnabledFloatingException
 import edu.missouristate.mars.mips.hardware.InvalidRegisterAccessException
 import edu.missouristate.mars.mips.hardware.MemoryState
 import edu.missouristate.mars.mips.instructions.BasicInstruction
@@ -28,6 +30,7 @@ import edu.missouristate.mars.mips.instructions.Instruction.Companion.INSTRUCTIO
 import edu.missouristate.mars.mips.instructions.SyscallRegistry
 import edu.missouristate.mars.mips.instructions.syscalls.RandomStreams
 import edu.missouristate.mars.simulator.Exceptions.ADDRESS_EXCEPTION_LOAD
+import edu.missouristate.mars.simulator.Exceptions.FLOATING_POINT_EXCEPTION
 import edu.missouristate.mars.simulator.Exceptions.RESERVED_INSTRUCTION_EXCEPTION
 import edu.missouristate.mars.util.Binary
 
@@ -194,6 +197,37 @@ class InstructionContext(private val session: MarsContext, private val environme
     internal fun updateCoprocessor1Doubleword(number: Int, value: Long) {
         val previous = coprocessor1.updateLongRegister(number, value)
         if (session.backStepper.enabled()) session.backStepper.addCoprocessor1Restore(number, previous)
+    }
+
+    internal fun writeFloatingControl(statement: ProgramStatement, register: Int, bits: Int) {
+        val status = coprocessor1.controlWriteValue(register, bits)
+            ?: throw ProcessingException(this, statement, "Reserved COP1 control register $register", RESERVED_INSTRUCTION_EXCEPTION)
+        updateFloatingStatus(status)
+        checkFloatingException(statement, status)
+    }
+
+    /** Record the current operation's causes and accumulate flags for operations that complete. */
+    internal fun recordFloatingExceptions(statement: ProgramStatement, causes: Int) {
+        val previous = coprocessor1.floatingStatus
+        val status = (previous and CAUSE_MASK.inv()) or (causes shl 12)
+        if (hasEnabledFloatingException(status)) {
+            updateFloatingStatus(status)
+            checkFloatingException(statement, status)
+        } else {
+            updateFloatingStatus(status or (causes shl 2))
+        }
+    }
+
+    private fun updateFloatingStatus(status: Int) {
+        if (status == coprocessor1.floatingStatus) return
+        val previous = coprocessor1.updateFloatingStatus(status)
+        if (session.backStepper.enabled()) session.backStepper.addFloatingStatusRestore(previous)
+    }
+
+    private fun checkFloatingException(statement: ProgramStatement, status: Int) {
+        if (hasEnabledFloatingException(status)) {
+            throw ProcessingException(this, statement, "Floating-point exception", FLOATING_POINT_EXCEPTION)
+        }
     }
 
     fun setConditionFlag(flag: Int): Int = recordConditionFlag(flag, coprocessor1.setConditionFlag(flag))

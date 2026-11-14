@@ -11,7 +11,7 @@ for the intended coverage.
 - [Scalar section index](instruction-inventory/mips64-scalar-sections.tsv)
   tracks all 307 entries in the Volume II-A section 3.2 table of contents.
 - [Scalar operand forms](instruction-inventory/mips64-scalar-forms.tsv)
-  lists 425 explicitly tagged forms, including 112 tagged as removed.
+  lists 467 forms, including 112 tagged as removed and the 44 scalar comparison forms.
   Generic condition notation, untagged aliases, and privilege and operand
   constraints still need review against the instruction descriptions.
   The table of contents and instruction descriptions use different page
@@ -109,6 +109,13 @@ or PC-relative immediate in this table is the displacement as written to LLVM.
   the removed `bc1f` and `bc1t`. Both Release 6 forms test bit 0 and execute
   one delay slot on both paths, independently of the legacy delay-slot setting.
   Their signed displacement is relative to the instruction after the branch.
+- **Scalar FPU comparison and control.** MARS64 supports all 22 Release 6
+  `cmp` conditions in single and double precision. They write truth masks,
+  recognize ordered and unordered inputs, and report invalid comparisons
+  through the FCSR. `cfc1` and `ctc1` expose FCSR and its exception and
+  enable aliases. FIR is read-only and FCCR is reserved. Rounding-mode and
+  exception handling for arithmetic and conversions are still open.
+  [MIPS64 FPU programming model](https://s3-eu-west-1.amazonaws.com/downloads-mips/documents/MD00083-2B-MIPS64INT-AFP-06.01.pdf)
 - **REGIMM.** MARS64 supports `bal` and `nal` at the retained zero-source
   encodings. Both link past the delay slot. The old register-conditional
   `bgezal` and `bltzal` forms are removed. `sigrie` signals a reserved

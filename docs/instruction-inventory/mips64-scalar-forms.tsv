@@ -86,14 +86,56 @@ ceil.l.s		147	audit
 ceil.l.d		147	audit
 ceil.w.s		149	audit
 ceil.w.d		149	audit
-cfc1	rt, fs	151	audit
+cfc1	rt, fs	151	implemented
 cfc2	rt, Impl	153	audit
 class.s	fd,fs	154	audit
 class.d	fd,fs	154	audit
 clo	rd, rs	156	audit
 clz	rd, rs	157	audit
-cmp.condn.s	fd, fs, ft	158	audit
-cmp.condn.d	fd, fs, ft	158	audit
+cmp.af.s	fd, fs, ft	158	implemented
+cmp.af.d	fd, fs, ft	158	implemented
+cmp.un.s	fd, fs, ft	158	implemented
+cmp.un.d	fd, fs, ft	158	implemented
+cmp.eq.s	fd, fs, ft	158	implemented
+cmp.eq.d	fd, fs, ft	158	implemented
+cmp.ueq.s	fd, fs, ft	158	implemented
+cmp.ueq.d	fd, fs, ft	158	implemented
+cmp.olt.s	fd, fs, ft	158	implemented
+cmp.olt.d	fd, fs, ft	158	implemented
+cmp.ult.s	fd, fs, ft	158	implemented
+cmp.ult.d	fd, fs, ft	158	implemented
+cmp.ole.s	fd, fs, ft	158	implemented
+cmp.ole.d	fd, fs, ft	158	implemented
+cmp.ule.s	fd, fs, ft	158	implemented
+cmp.ule.d	fd, fs, ft	158	implemented
+cmp.saf.s	fd, fs, ft	158	implemented
+cmp.saf.d	fd, fs, ft	158	implemented
+cmp.sub.s	fd, fs, ft	158	implemented
+cmp.sub.d	fd, fs, ft	158	implemented
+cmp.seq.s	fd, fs, ft	158	implemented
+cmp.seq.d	fd, fs, ft	158	implemented
+cmp.sueq.s	fd, fs, ft	158	implemented
+cmp.sueq.d	fd, fs, ft	158	implemented
+cmp.slt.s	fd, fs, ft	158	implemented
+cmp.slt.d	fd, fs, ft	158	implemented
+cmp.sult.s	fd, fs, ft	158	implemented
+cmp.sult.d	fd, fs, ft	158	implemented
+cmp.sle.s	fd, fs, ft	158	implemented
+cmp.sle.d	fd, fs, ft	158	implemented
+cmp.sule.s	fd, fs, ft	158	implemented
+cmp.sule.d	fd, fs, ft	158	implemented
+cmp.or.s	fd, fs, ft	158	implemented
+cmp.or.d	fd, fs, ft	158	implemented
+cmp.une.s	fd, fs, ft	158	implemented
+cmp.une.d	fd, fs, ft	158	implemented
+cmp.ne.s	fd, fs, ft	158	implemented
+cmp.ne.d	fd, fs, ft	158	implemented
+cmp.sor.s	fd, fs, ft	158	implemented
+cmp.sor.d	fd, fs, ft	158	implemented
+cmp.sune.s	fd, fs, ft	158	implemented
+cmp.sune.d	fd, fs, ft	158	implemented
+cmp.sne.s	fd, fs, ft	158	implemented
+cmp.sne.d	fd, fs, ft	158	implemented
 cop2	func	163	audit
 crc32b	rt, rs, rt	165	audit
 crc32h	rt, rs, rt	165	audit
@@ -103,7 +145,7 @@ crc32cb	rt, rs, rt	168	audit
 crc32ch	rt, rs, rt	168	audit
 crc32cw	rt, rs, rt	168	audit
 crc32cd	rt, rs, rt	168	audit
-ctc1	rt, fs	171	audit
+ctc1	rt, fs	171	implemented
 ctc2	rt, Impl	174	audit
 cvt.d.s	fd, fs	175	audit
 cvt.d.w	fd, fs	175	audit

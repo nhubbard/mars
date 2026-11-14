@@ -36,11 +36,13 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 class Coprocessor1State {
     internal var hasWideRegisters = false
     val registers = Array(32) { Register("\$f$it", it, 0) }
+    private val fcsr = Register("FCSR", 31, FCSR_IEEE_2008)
     private val condition = Register("cf", registers.size, 0)
     private val registerEvents = EventEmitter<RegisterAccessNotice>()
 
     init {
         registers.forEach { it.addObserver(registerEvents::emit) }
+        fcsr.addObserver(registerEvents::emit)
         condition.addObserver(registerEvents::emit)
     }
 
@@ -143,8 +145,38 @@ class Coprocessor1State {
 
     fun resetRegisters() {
         registers.forEach(Register::resetValue)
+        fcsr.resetValue()
         clearConditionFlags()
     }
+
+    internal fun readControl(number: Int): Int? = when (number) {
+        0 -> FIR
+        26 -> fcsr.value and (CAUSE_MASK or FLAG_MASK)
+        28 -> (fcsr.value and (ENABLE_MASK or ROUNDING_MASK)) or ((fcsr.valueNoNotify and FLUSH_SUBNORMALS) ushr 22)
+        31 -> fcsr.value
+        else -> null
+    }
+
+    /** Merge a write to FCSR or one of its aliases. FIR is read-only. */
+    internal fun controlWriteValue(number: Int, bits: Int): Int? {
+        val previous = fcsr.valueNoNotify
+        return when (number) {
+            26 -> replaceBits(previous, CAUSE_MASK or FLAG_MASK, bits)
+            28 -> {
+                val flush = (bits and 4) shl 22
+                replaceBits(previous, ENABLE_MASK or ROUNDING_MASK or FLUSH_SUBNORMALS, (bits and (ENABLE_MASK or ROUNDING_MASK)) or flush)
+            }
+            31 -> (bits and (FLUSH_SUBNORMALS or CAUSE_MASK or ENABLE_MASK or FLAG_MASK or ROUNDING_MASK)) or FCSR_IEEE_2008
+            else -> null
+        }
+    }
+
+    internal val floatingStatus: Int get() = fcsr.valueNoNotify
+
+    internal fun updateFloatingStatus(bits: Int): Int = fcsr.setValue(bits)
+
+    private fun replaceBits(original: Int, mask: Int, bits: Int): Int =
+        (original and mask.inv()) or (bits and mask)
 
     fun setConditionFlag(flag: Int): Int {
         if (flag !in 0 until conditionFlagCount) return 0
@@ -181,6 +213,19 @@ class Coprocessor1State {
     val conditionFlagCount: Int get() = CONDITION_FLAG_COUNT
 
     companion object {
+        // 2008 NaN encoding, 64-bit FPRs, word, double, and single formats.
+        private const val FIR = 0x00d3_0000
+        private const val FCSR_IEEE_2008 = 0x000c_0000
+        private const val ROUNDING_MASK = 0x3
+        private const val FLAG_MASK = 0x7c
+        private const val ENABLE_MASK = 0xf80
+        internal const val CAUSE_MASK = 0x3f000
+        internal const val FLUSH_SUBNORMALS = 1 shl 24
+        internal const val INVALID_OPERATION = 1 shl 4
+
+        internal fun hasEnabledFloatingException(status: Int): Boolean =
+            ((status ushr 12) and ((status ushr 7) or 0x20) and 0x3f) != 0
+
         private const val CONDITION_FLAG_COUNT = 8
         const val CONDITION_FLAG_MASK = (1 shl CONDITION_FLAG_COUNT) - 1
     }
