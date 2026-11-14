@@ -149,13 +149,13 @@ clti_u.b	wd,ws,u5	MSA	135	missing
 clti_u.h	wd,ws,u5	MSA	135	missing
 clti_u.w	wd,ws,u5	MSA	135	missing
 clti_u.d	wd,ws,u5	MSA	135	missing
-copy_s.b	rd,ws[n]	MSA	137	missing
-copy_s.h	rd,ws[n]	MSA	137	missing
-copy_s.w	rd,ws[n]	MSA	137	missing
-copy_s.d	rd,ws[n]	MIPS64 MSA	137	missing
-copy_u.b	rd,ws[n]	MSA	138	missing
-copy_u.h	rd,ws[n]	MSA	138	missing
-copy_u.w	rd,ws[n]	MIPS64 MSA	138	missing
+copy_s.b	rd,ws[n]	MSA	137	implemented
+copy_s.h	rd,ws[n]	MSA	137	implemented
+copy_s.w	rd,ws[n]	MSA	137	implemented
+copy_s.d	rd,ws[n]	MIPS64 MSA	137	implemented
+copy_u.b	rd,ws[n]	MSA	138	implemented
+copy_u.h	rd,ws[n]	MSA	138	implemented
+copy_u.w	rd,ws[n]	MIPS64 MSA	138	implemented
 ctcmsa	cd,rs	MSA	139	missing
 div_s.b	wd,ws,wt	MSA	141	missing
 div_s.h	wd,ws,wt	MSA	141	missing
@@ -318,10 +318,10 @@ ilvr.b	wd,ws,wt	MSA	222	missing
 ilvr.h	wd,ws,wt	MSA	222	missing
 ilvr.w	wd,ws,wt	MSA	222	missing
 ilvr.d	wd,ws,wt	MSA	222	missing
-insert.b	wd[n],rs	MSA	224	missing
-insert.h	wd[n],rs	MSA	224	missing
-insert.w	wd[n],rs	MSA	224	missing
-insert.d	wd[n],rs	MIPS64 MSA	224	missing
+insert.b	wd[n],rs	MSA	224	implemented
+insert.h	wd[n],rs	MSA	224	implemented
+insert.w	wd[n],rs	MSA	224	implemented
+insert.d	wd[n],rs	MIPS64 MSA	224	implemented
 insve.b	wd[n],ws[0]	MSA	225	missing
 insve.h	wd[n],ws[0]	MSA	225	missing
 insve.w	wd[n],ws[0]	MSA	225	missing

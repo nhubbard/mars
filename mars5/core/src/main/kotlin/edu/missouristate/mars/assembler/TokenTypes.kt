@@ -46,6 +46,8 @@ enum class TokenTypes {
     IDENTIFIER,
     LEFT_PAREN,
     RIGHT_PAREN,
+    LEFT_BRACKET,
+    RIGHT_BRACKET,
     INTEGER_5,
     INTEGER_16,
     INTEGER_16U,
@@ -71,6 +73,8 @@ enum class TokenTypes {
                 when (first) {
                     '(' -> return LEFT_PAREN
                     ')' -> return RIGHT_PAREN
+                    '[' -> return LEFT_BRACKET
+                    ']' -> return RIGHT_BRACKET
                     ':' -> return COLON
                     '+' -> return PLUS
                     '-' -> return MINUS

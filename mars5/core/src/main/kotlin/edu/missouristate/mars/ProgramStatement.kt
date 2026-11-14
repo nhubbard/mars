@@ -233,7 +233,9 @@ open class ProgramStatement private constructor(
                 }
                 else -> appendText(value)
             }
-            if (index < tokens.size() - 1 && !token.type.isParenthesis() && !tokens[index + 1].type.isParenthesis()) {
+            if (index < tokens.size() - 1 && !token.type.isParenthesis() && token.type != TokenTypes.LEFT_BRACKET &&
+                !tokens[index + 1].type.isParenthesis() &&
+                tokens[index + 1].type != TokenTypes.LEFT_BRACKET && tokens[index + 1].type != TokenTypes.RIGHT_BRACKET) {
                 appendText(",")
             }
         }
@@ -307,12 +309,12 @@ open class ProgramStatement private constructor(
         display.add(DisplayElement.Text("${instruction.name} "))
         var cursor = 1
         for (index in 0 until numOperands) {
-            if (cursor > 1 && cursor < tokens.size() && !tokens[cursor].type.isParenthesis()) {
+            if (cursor > 1 && cursor < tokens.size() && !tokens[cursor].type.isParenthesis() && tokens[cursor].type != TokenTypes.LEFT_BRACKET) {
                 display.add(DisplayElement.Text(","))
             }
             while (cursor < tokens.size()) {
                 val token = tokens[cursor++]
-                if (token.type.isParenthesis()) {
+                if (token.type.isParenthesis() || token.type == TokenTypes.LEFT_BRACKET) {
                     display.add(DisplayElement.Text(token.value))
                     continue
                 }
@@ -320,8 +322,13 @@ open class ProgramStatement private constructor(
                     TokenTypes.VECTOR_REGISTER_NAME -> DisplayElement.Text("\$w${values[index]}")
                     TokenTypes.FP_REGISTER_NAME -> DisplayElement.Text("\$f${values[index]}")
                     TokenTypes.REGISTER_NAME, TokenTypes.REGISTER_NUMBER -> DisplayElement.Text("$${values[index]}")
-                    else -> DisplayElement.Value(values[index])
+                    else -> if (tokens[cursor - 2].type == TokenTypes.LEFT_BRACKET) {
+                        DisplayElement.Text(values[index].toString())
+                    } else DisplayElement.Value(values[index])
                 })
+                if (cursor < tokens.size() && tokens[cursor].type == TokenTypes.RIGHT_BRACKET) {
+                    display.add(DisplayElement.Text(tokens[cursor++].value))
+                }
                 break
             }
         }

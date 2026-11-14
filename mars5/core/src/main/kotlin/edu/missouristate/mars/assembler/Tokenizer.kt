@@ -316,7 +316,7 @@ open class Tokenizer @JvmOverloads constructor(
                         if (!unary) emit(position + 1)
                     }
                 }
-                ':', '(', ')' -> {
+                ':', '(', ')', '[', ']' -> {
                     emit(position)
                     emit(position + 1)
                 }

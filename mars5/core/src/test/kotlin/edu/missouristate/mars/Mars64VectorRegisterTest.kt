@@ -57,6 +57,54 @@ class Mars64VectorRegisterTest {
         }
     }
 
+    @ParameterizedTest
+    @CsvSource(
+        "b,15,790f4959,788f2a59,78cf2a59",
+        "h,7,79274959,78a72a59,78e72a59",
+        "w,3,79334959,78b32a59,78f32a59",
+        "d,1,79394959,78b92a59,-",
+    )
+    fun `element transfers encode the largest lane and preserve adjacent bits`(
+        suffix: String, lane: Int, insert: String, signed: String, unsigned: String, @TempDir directory: Path,
+    ) {
+        val path = Files.writeString(directory.resolve("lane.s"), buildString {
+            appendLine($$"insert.$$suffix $w5[$$lane],$9")
+            appendLine($$"copy_s.$$suffix $9,$w5[$$lane]")
+            if (unsigned != "-") appendLine($$"copy_u.$$suffix $9,$w5[$$lane]")
+        })
+        TestSessions.create().use { session ->
+            session.selectTarget(MarsTarget.MARS64)
+            val program = session.assemble(listOf(path), null, false, false)
+            val words = listOf(insert, signed, unsigned).filterNot { it == "-" }.map { it.toInt(16) }
+            assertEquals(words, program.machineList!!.map { it.binaryStatement })
+            program.machineList!!.forEach {
+                val decoded = ProgramStatement(it.binaryStatement, it.address, session.instructionSet)
+                assertEquals(it.operands.take(3), decoded.operands.take(3))
+                assertTrue(decoded.printableBasicAssemblyStatement.contains("[$lane]"))
+            }
+            val bits = 8 shl "bhwd".indexOf(suffix)
+            val mask = ULong.MAX_VALUE shr (64 - bits)
+            val initial = VectorRegister(0x1234, 0x1122334455667788)
+            session.coprocessor1.updateVector(5, initial)
+            session.editIntegerRegister(9, -2L)
+            program.simulate(1)
+            val shift = 64 - bits
+            val expectedHigh = (initial.high and (mask.toLong() shl shift).inv()) or
+                ((-2L and mask.toLong()) shl shift)
+            assertEquals(VectorRegister(initial.low, expectedHigh), session.coprocessor1.readVector(5))
+            program.simulate(1)
+            assertEquals(-2L, session.registerFile.getLongValueNoNotify(9))
+            if (unsigned != "-") {
+                program.simulate(1)
+                assertEquals(mask.toLong() - 1, session.registerFile.getLongValueNoNotify(9))
+            }
+            repeat(words.size) { session.backStepper.backStep() }
+            assertEquals(initial, session.coprocessor1.readVector(5))
+            Files.writeString(path, $$"insert.$$suffix $w5[$${lane + 1}],$9")
+            assertThrows(ProcessingException::class.java) { session.assemble(listOf(path), null, false, false) }
+        }
+    }
+
     @Test
     fun `logical vector operations apply to both halves even with overlapping operands`(@TempDir directory: Path) {
         val path = Files.writeString(directory.resolve("logic.s"), $$"""
