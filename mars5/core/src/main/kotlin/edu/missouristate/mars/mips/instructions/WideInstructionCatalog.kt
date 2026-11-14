@@ -87,6 +87,8 @@ internal val wideInstructionFactories: List<() -> BasicInstruction> = listOf(
     { wideVariableShift("drotrv", "Rotate a doubleword right by a register count", "010110", Long::rotateRight, "00001") },
     { wideCount("dclz", "Count leading zero bits in a doubleword", "010010", Long::countLeadingZeroBits) },
     { wideCount("dclo", "Count leading one bits in a doubleword", "010011") { it.inv().countLeadingZeroBits() } },
+    { wordCount("clz", "Count leading zero bits in a word", "010000", Int::countLeadingZeroBits) },
+    { wordCount("clo", "Count leading one bits in a word", "010001") { it.inv().countLeadingZeroBits() } },
     { DoublewordBitField(insert = false) },
     { DoublewordBitField(insert = false, variant = "m") },
     { DoublewordBitField(insert = false, variant = "u") },
@@ -553,4 +555,13 @@ private fun wideCount(
 ) { statement, context ->
     val (destination, source) = statement.operands
     context.updateRegister(destination, operation(context.registerFile.getLongValue(source)))
+}
+
+private fun wordCount(
+    name: String, description: String, function: String, operation: (Int) -> Int,
+) = BasicInstruction(
+    "$name \$t1,\$t2", description, R_FORMAT, "000000 sssss 00000 fffff 00001 $function",
+) { statement, context ->
+    val (destination, source) = statement.operands
+    context.updateRegister(destination, operation(context.registerFile.getValue(source)))
 }

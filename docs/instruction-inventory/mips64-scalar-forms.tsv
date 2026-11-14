@@ -18,7 +18,7 @@ dalign	rd,rs,rt,bp	59	implemented
 aluipc	rs,immediate	64	implemented
 and	rd, rs, rt	65	implemented
 andi	rt, rs, immediate	66	implemented
-aui	rt, rs immediate	67	audit
+aui	rt, rs immediate	67	implemented
 daui	rt, rs immediate	67	implemented
 dahi	rs, rs immediate	67	implemented
 dati	rs, rs immediate	67	implemented
@@ -105,8 +105,8 @@ cfc1	rt, fs	151	implemented
 cfc2	rt, Impl	153	requires-cop2
 class.s	fd,fs	154	implemented
 class.d	fd,fs	154	implemented
-clo	rd, rs	156	audit
-clz	rd, rs	157	audit
+clo	rd, rs	156	implemented
+clz	rd, rs	157	implemented
 cmp.af.s	fd, fs, ft	158	implemented
 cmp.af.d	fd, fs, ft	158	implemented
 cmp.un.s	fd, fs, ft	158	implemented
@@ -278,7 +278,7 @@ llwp	rt, rd, (base)	316	implemented
 llwpe	rt, rd, (base)	318	requires-eva
 lsa	rd,rs,rt,sa	320	audit
 dlsa	rd,rs,rt,sa	320	implemented
-lui	rt, immediate	321	idiom-audit
+lui	rt, immediate	321	implemented
 luxc1	fd, index(base)	322	removed
 lw	rt, offset(base)	323	implemented
 lwc1	ft, offset(base)	324	implemented
