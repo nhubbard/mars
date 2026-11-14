@@ -73,6 +73,12 @@ class MarsMemoryExportPlatformTest {
             val output = directory.resolve("high-data.txt")
             assertNull(export.exportSession(machine, MemoryExportSelection(options, output)))
             assertTrue(withContext(Dispatchers.IO) { Files.readString(output).contains("0x0000000100000000    0x41424344") })
+
+            val outsideMappedMemory = listOf(0xf000_0000L to "0xf0000000", 0x1_0080_0000L to "0x0000000100800000")
+            for ((address, expected) in outsideMappedMemory) {
+                val invalid = MemoryExportOptions(format("HexText"), MemoryExportRegion.RANGE, address..address)
+                assertTrue(export.exportSession(machine, MemoryExportSelection(invalid, output))?.contains(expected) == true)
+            }
         }
     }
 
@@ -213,6 +219,8 @@ class MarsMemoryExportPlatformTest {
                     combos[0].selectedItem = MemoryExportRegion.RANGE
                     combos[1].selectedItem = format("HEX")
                     val (first, last) = UIUtil.findComponentsOfType(dialog.fields, JTextField::class.java)
+                    assertEquals(first, dialog.performValidateAll().single().component)
+                    first.text = "-4"
                     assertEquals(first, dialog.performValidateAll().single().component)
                     first.text = " 0X00400000 "
                     last.text = "0x00400001"

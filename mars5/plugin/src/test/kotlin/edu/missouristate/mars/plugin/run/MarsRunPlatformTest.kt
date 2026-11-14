@@ -77,6 +77,7 @@ import com.intellij.ui.UiInterceptors
 import com.intellij.util.ui.UIUtil
 import com.intellij.util.xmlb.XmlSerializer
 import com.intellij.xdebugger.XDebuggerManager
+import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.api.SessionSyscallEnvironment
 import edu.missouristate.mars.mips.dump.DumpFormatLoader
 import edu.missouristate.mars.plugin.build.MarsSourceSet
@@ -1653,6 +1654,11 @@ class MarsRunPlatformTest {
                 assertEquals(0x80000180L..0x80000184L, restored.options.memoryDumps.single().resolve(project)?.options?.range)
                 val old = type.createTemplateConfiguration(project).also { it.readExternal(Element("configuration")) }
                 assertTrue(old.options.memoryDumps.isEmpty())
+
+                val high = 0x1_0000_0000L
+                project.service<MarsAssemblySettings>().changeTarget(MarsTarget.MARS64)
+                config.options.memoryDumps = arrayListOf(dumpState(output, MemoryExportRegion.RANGE, high, high))
+                config.checkConfiguration()
             }
         }
 

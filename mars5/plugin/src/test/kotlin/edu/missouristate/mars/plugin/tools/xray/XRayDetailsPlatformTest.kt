@@ -19,6 +19,7 @@ import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsigh
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.toolWindow.ToolWindowHeadlessManagerImpl.MockToolWindow
+import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.api.StepEvent
 import edu.missouristate.mars.plugin.tools.MarsToolWindowUnloadListener
 import edu.missouristate.mars.plugin.tools.toolsMessages
@@ -92,6 +93,31 @@ class XRayDetailsPlatformTest {
             Disposer.dispose(view)
             assertNull(host.parent)
             assertEquals(0, view.component.componentCount)
+        }
+    }
+
+    @OptIn(ExperimentalJewelApi::class)
+    @Test
+    fun `a MARS64 step clears MARS32 datapath playback and still shows instruction details`() = timeoutRunBlocking(20.seconds) {
+        val current = project.get()
+        withContext(Dispatchers.EDT) {
+            val view = XRayView(current)
+            val scene = ImageComposeScene(1000, 940)
+            try {
+                scene.setContent { SwingBridgeTheme(content = view.content) }
+                val legacy = StepEvent(0x00400000, 0x212a0001, 1)
+                view.selectStep(legacy)
+                assertTrue(view.canPlay)
+                view.selectStep(legacy.copy(target = MarsTarget.MARS64))
+                assertFalse(view.canPlay)
+                scene.render(0).close()
+                val text = scene.semanticsOwners.flatMap { it.rootSemanticsNode.text() }.joinToString("\n")
+                assertTrue("beqc" in text, text)
+                assertTrue(toolsMessages.getMessage("xray.datapath.mars64") in text, text)
+            } finally {
+                scene.close()
+                Disposer.dispose(view)
+            }
         }
     }
 
