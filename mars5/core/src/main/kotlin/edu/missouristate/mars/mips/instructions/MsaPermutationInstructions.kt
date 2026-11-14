@@ -1,6 +1,7 @@
 package edu.missouristate.mars.mips.instructions
 
 import edu.missouristate.mars.mips.hardware.VectorRegister
+import edu.missouristate.mars.mips.instructions.BasicInstructionFormat.I_BRANCH_FORMAT
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat.R_FORMAT
 
 internal fun msaPermutationInstructions(): List<BasicInstruction> = buildList {
@@ -12,6 +13,41 @@ internal fun msaPermutationInstructions(): List<BasicInstruction> = buildList {
             add(indexed(format, suffix, bits, immediate = true, splat))
         }
         if (format < 3) add(shuffleSet(format, suffix, bits))
+    }
+}
+
+internal fun msaBranchInstructions(): List<BasicInstruction> = buildList {
+    for ((format, suffix) in "bhwdv".withIndex()) {
+        add(branchOnVector(format, suffix, nonzero = false))
+        add(branchOnVector(format, suffix, nonzero = true))
+    }
+}
+
+private fun branchOnVector(format: Int, suffix: Char, nonzero: Boolean): BasicInstruction {
+    val whole = suffix == 'v'
+    val opcode = (if (whole) 11 else 24 + format) + if (nonzero) 4 else 0
+    val field = opcode.toString(2).padStart(5, '0')
+    val bits = Byte.SIZE_BITS shl format
+    val name = if (nonzero) "bnz" else "bz"
+    return object : BasicInstruction(
+        "$name.$suffix \$w1,label", "Branch on zero or nonzero vector data",
+        I_BRANCH_FORMAT, "010001 $field fffff ssssssssssssssss",
+        { statement, context ->
+            val (source, displacement) = statement.operands
+            val vector = context.coprocessor1.readVector(source)
+            val zero = if (whole) vector.low == 0L && vector.high == 0L
+            else (0 until 128 / bits).any { vector.lane(bits, it) == 0L }
+            context.release6DelayedBranch(displacement, zero != nonzero)
+        },
+    ) {
+        override fun encodeOperands(values: IntArray): IntArray {
+            require(values[1] in Short.MIN_VALUE..Short.MAX_VALUE) { "Branch destination is outside its signed displacement range" }
+            return values
+        }
+
+        override fun decodeOperands(values: IntArray) {
+            values[1] = values[1].toShort().toInt()
+        }
     }
 }
 
