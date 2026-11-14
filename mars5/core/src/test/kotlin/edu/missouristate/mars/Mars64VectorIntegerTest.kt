@@ -127,4 +127,48 @@ class Mars64VectorIntegerTest {
         }
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = ["b", "h", "w", "d"])
+    fun `immediate operations sign extend only signed fields`(suffix: String, @TempDir directory: Path) {
+        val cases = listOf(
+            Triple("addvi", 0x787f1fc6, 15L), Triple("subvi", 0x78ff1fc6, -47L),
+            Triple("maxi_s", 0x79701fc6, -16L), Triple("maxi_u", 0x79ff1fc6, -16L),
+            Triple("mini_s", 0x7a701fc6, -16L), Triple("mini_u", 0x7aff1fc6, 31L),
+            Triple("ceqi", 0x78701fc7, -1L),
+            Triple("clti_s", 0x79701fc7, 0L), Triple("clti_u", 0x79ff1fc7, 0L),
+            Triple("clei_s", 0x7a701fc7, -1L), Triple("clei_u", 0x7aff1fc7, 0L),
+        )
+        val signed = setOf("maxi_s", "mini_s", "ceqi", "clti_s", "clei_s")
+        val source = Files.writeString(directory.resolve("immediate.s"), buildString {
+            for ((name) in cases) {
+                val value = if (name in signed) -16 else 31
+                appendLine($$"$$name.$$suffix $w31,$w3,$$value")
+            }
+        })
+        TestSessions.create().use { session ->
+            session.selectTarget(MarsTarget.MARS64)
+            val program = session.assemble(listOf(source), null, false, false)
+            val format = "bhwd".indexOf(suffix)
+            val bits = 8 shl format
+            val mask = -1L ushr (64 - bits)
+            fun repeat(value: Long): Long =
+                (0 until 64 step bits).fold(0L) { result, shift -> result or ((value and mask) shl shift) }
+            session.coprocessor1.updateVector(3, VectorRegister(repeat(-16), repeat(-16)))
+            for ((index, case) in cases.withIndex()) {
+                val (name, word, result) = case
+                val statement = program.machineList!![index]
+                assertEquals(word - ((3 - format) shl 21), statement.binaryStatement, name)
+                val decoded = ProgramStatement(statement.binaryStatement, statement.address, session.instructionSet)
+                assertEquals(if (name in signed) -16 else 31, decoded.operands[2], name)
+                program.simulate(1)
+                val expected = repeat(result)
+                assertEquals(VectorRegister(expected, expected), session.coprocessor1.readVector(31), name)
+            }
+            for ((name, value) in listOf("ceqi" to 16, "ceqi" to -17, "addvi" to 32, "addvi" to -1)) {
+                Files.writeString(source, $$"$$name.$$suffix $w31,$w3,$$value")
+                assertThrows(ProcessingException::class.java) { session.assemble(listOf(source), null, false, false) }
+            }
+        }
+    }
+
 }

@@ -10,7 +10,8 @@ internal fun msaIntegerInstructions(): List<BasicInstruction> =
         val shifts = ShiftOperation.entries.flatMap { operation ->
             listOf(shiftInstruction(operation, format, suffix, immediate = false), shiftInstruction(operation, format, suffix, immediate = true))
         }
-        IntegerOperation.entries.map { integerInstruction(it, format, suffix) } + shifts + listOf(
+        IntegerOperation.entries.map { integerInstruction(it, format, suffix) } +
+            immediateOperations.map { immediateInstruction(it.first, it.second, format, suffix) } + shifts + listOf(
             countInstruction("pcnt", "001", formatField, suffix, bits) { it.countOneBits() },
             countInstruction("nlzc", "011", formatField, suffix, bits) { it.countLeadingZeroBits() - (64 - bits) },
             countInstruction("nloc", "010", formatField, suffix, bits) {
@@ -41,6 +42,43 @@ private enum class IntegerOperation(
     LESS_UNSIGNED("clt_u", 3, 15, apply = { a, b, _ -> truthMask(a.toULong() < b.toULong()) }),
     LESS_EQUAL_SIGNED("cle_s", 4, 15, signed = true, apply = { a, b, _ -> truthMask(a <= b) }),
     LESS_EQUAL_UNSIGNED("cle_u", 5, 15, apply = { a, b, _ -> truthMask(a.toULong() <= b.toULong()) }),
+}
+
+private val immediateOperations = listOf(
+    "addvi" to IntegerOperation.ADD, "subvi" to IntegerOperation.SUBTRACT,
+    "maxi_s" to IntegerOperation.MAX_SIGNED, "maxi_u" to IntegerOperation.MAX_UNSIGNED,
+    "mini_s" to IntegerOperation.MIN_SIGNED, "mini_u" to IntegerOperation.MIN_UNSIGNED,
+    "ceqi" to IntegerOperation.EQUAL,
+    "clti_s" to IntegerOperation.LESS_SIGNED, "clti_u" to IntegerOperation.LESS_UNSIGNED,
+    "clei_s" to IntegerOperation.LESS_EQUAL_SIGNED, "clei_u" to IntegerOperation.LESS_EQUAL_UNSIGNED,
+)
+
+private fun immediateInstruction(name: String, operation: IntegerOperation, format: Int, suffix: Char): BasicInstruction {
+    val signed = operation.signed || operation == IntegerOperation.EQUAL
+    val range = if (signed) -16..15 else 0..31
+    val opcode = ((operation.opcode shl 2) or format).toString(2).padStart(5, '0')
+    val function = if (operation.function == 14) "000110" else "000111"
+    val bits = Byte.SIZE_BITS shl format
+    return object : BasicInstruction(
+        "$name.$suffix \$w1,\$w2,${if (signed) -16 else 31}", "Apply $name with a constant to each vector element",
+        R_FORMAT, "011110 $opcode ttttt sssss fffff $function",
+        { statement, context ->
+            val (destination, source, immediate) = statement.operands
+            val input = context.coprocessor1.readVector(source)
+            context.updateVectorRegister(destination, mapLanes(bits) { half, shift ->
+                operation.apply(element(half(input), shift, bits, signed), immediate.toLong(), 0L)
+            })
+        },
+    ) {
+        override fun encodeOperands(values: IntArray): IntArray {
+            require(values[2] in range) { "$name requires an immediate between ${range.first} and ${range.last}" }
+            return values
+        }
+
+        override fun decodeOperands(values: IntArray) {
+            if (signed) values[2] = (values[2] shl 27) shr 27
+        }
+    }
 }
 
 private fun truthMask(result: Boolean): Long = if (result) -1L else 0L
