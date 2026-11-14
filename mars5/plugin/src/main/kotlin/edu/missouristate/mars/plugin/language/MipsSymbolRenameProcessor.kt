@@ -12,6 +12,7 @@ import com.intellij.patterns.PlatformPatterns
 import com.intellij.patterns.PsiElementPattern
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiFileFactory
 import com.intellij.psi.PsiManager
 import com.intellij.psi.PsiPlainTextFile
 import com.intellij.psi.PsiReference
@@ -38,6 +39,7 @@ import edu.missouristate.mars.api.AssemblySymbolMap.SymbolUse
 import edu.missouristate.mars.api.InstructionSourceMap.Location
 import edu.missouristate.mars.assembler.SymbolTable
 import edu.missouristate.mars.assembler.TokenTypes
+import edu.missouristate.mars.mips.instructions.InstructionDefaults
 import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.analysis.CapturedAssemblySources
 import edu.missouristate.mars.plugin.analysis.EditorAssemblyCapture
@@ -101,6 +103,18 @@ internal class MipsSymbolRenameProcessor : RenamePsiElementProcessor() {
         if (PsiModificationTracker.getInstance(element.project).modificationCount != plan.projectRevision) {
             throw symbolRenameError("symbol.rename.stale")
         }
+        val declaration = element as MipsDeclaration
+        if (declaration.kind == SymbolKind.MACRO && plan.usages.isEmpty()) {
+            // Preserve the declaration node through the platform's rename-complete event.
+            val sample = PsiFileFactory.getInstance(file.project)
+                .createFileFromText("macro.mars", MipsFileType, ".macro $newName\n.end_macro\n")
+            val name = MipsDeclaration.findAt(sample, ".macro ".length, newName)?.nameIdentifier
+                ?: throw symbolRenameError("symbol.rename.unverified")
+            val original = declaration.nameIdentifier ?: throw symbolRenameError("symbol.rename.unverified")
+            original.node.treeParent.replaceChild(original.node, name.node.copyElement())
+            listener?.elementRenamed(declaration)
+            return
+        }
         val manager = PsiDocumentManager.getInstance(element.project)
         for ((path, edits) in plan.edits) {
             val document = documents.getValue(path)
@@ -142,7 +156,7 @@ private val bundle = DynamicBundle(MipsSymbolRenameProcessor::class.java, "messa
 private fun symbolRenameError(key: String) = IncorrectOperationException(bundle.getMessage(key))
 
 private fun validSymbolName(name: String, kind: SymbolKind): Boolean = !reservedEntry(name, kind) && name.isNotEmpty() &&
-    TokenTypes.isValidIdentifier(name) && TokenTypes.matchTokenType(name) == TokenTypes.IDENTIFIER
+    TokenTypes.isValidIdentifier(name) && TokenTypes.matchTokenType(name, InstructionDefaults.editorCatalog()) == TokenTypes.IDENTIFIER
 
 private fun reservedEntry(name: String, kind: SymbolKind) = name == SymbolTable.getStartLabel() && kind in addressKinds
 

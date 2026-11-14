@@ -64,6 +64,7 @@ import edu.missouristate.mars.plugin.build.MarsAssemblyMode
 import edu.missouristate.mars.plugin.build.MarsAssemblySettings
 import edu.missouristate.mars.plugin.build.MarsSourceSet
 import edu.missouristate.mars.plugin.build.MemoryExportSelection
+import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.MipsFileType
 import edu.missouristate.mars.plugin.projectAbsolutePath
@@ -159,8 +160,11 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
 
     private fun memoryDumps(entry: Path, invalid: (String) -> Exception): List<MemoryExportSelection> {
         val outputs = mutableSetOf<Path>()
+        val narrow = project.service<MarsAssemblySettings>().target == MarsTarget.MARS32
         return options.memoryDumps.mapIndexed { index, state ->
-            val selection = state.resolve(project) ?: throw invalid(runMessages.getMessage("run.export.invalid", index + 1))
+            val selection = state.resolve(project)
+                ?.takeUnless { narrow && it.options.range.last > UInt.MAX_VALUE.toLong() }
+                ?: throw invalid(runMessages.getMessage("run.export.invalid", index + 1))
             if (selection.output == entry) throw invalid(runMessages.getMessage("run.export.source", selection.output))
             if (!outputs.add(selection.output)) throw invalid(runMessages.getMessage("run.export.duplicate", selection.output))
             selection

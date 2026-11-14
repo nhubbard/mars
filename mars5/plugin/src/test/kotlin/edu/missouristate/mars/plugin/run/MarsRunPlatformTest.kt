@@ -1650,7 +1650,7 @@ class MarsRunPlatformTest {
                 val xml = Element("configuration")
                 config.writeExternal(xml)
                 val restored = type.createTemplateConfiguration(project).also { it.readExternal(xml) }
-                assertEquals(0x80000180u..0x80000184u, restored.options.memoryDumps.single().resolve(project)?.options?.range)
+                assertEquals(0x80000180L..0x80000184L, restored.options.memoryDumps.single().resolve(project)?.options?.range)
                 val old = type.createTemplateConfiguration(project).also { it.readExternal(Element("configuration")) }
                 assertTrue(old.options.memoryDumps.isEmpty())
             }

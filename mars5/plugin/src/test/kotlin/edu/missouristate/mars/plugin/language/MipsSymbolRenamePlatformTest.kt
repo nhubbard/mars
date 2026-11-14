@@ -327,11 +327,12 @@ class MipsSymbolRenamePlatformTest {
             assertTrue(validator.pattern.accepts(idle))
             assertTrue(validator.isInputValid("main", idle, ProcessingContext()))
             assertFalse(validator.isInputValid("nop", idle, ProcessingContext()))
+            assertFalse(validator.isInputValid("pause", idle, ProcessingContext()))
             assertTrue(usages(idle).isEmpty())
             RenameProcessor(project, idle, "main", false, false).run()
             assertEquals(source.replace("idle", "main"), file.text)
-            RenameProcessor(project, macros(file).single(), "pause", false, false).run()
-            assertEquals(source.replace("idle", "pause"), file.text)
+            RenameProcessor(project, macros(file).single(), "dormant", false, false).run()
+            assertEquals(source.replace("idle", "dormant"), file.text)
         }
     }
 
