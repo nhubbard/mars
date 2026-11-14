@@ -2,8 +2,10 @@ package edu.missouristate.mars.mips.instructions
 
 import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.mips.instructions.basic.CompactComparison
+import edu.missouristate.mars.mips.instructions.basic.InstrBreak1
 import edu.missouristate.mars.mips.instructions.basic.InstrCodedSyscall
 import edu.missouristate.mars.mips.instructions.basic.InstrCompactCompareBranch
+import edu.missouristate.mars.mips.instructions.basic.InstrRelease6Break
 import edu.missouristate.mars.mips.instructions.basic.InstrRelease6Pref
 import edu.missouristate.mars.mips.instructions.basic.release6RoundingInstructions
 import edu.missouristate.mars.mips.instructions.basic.release6BarrierInstructions
@@ -58,7 +60,7 @@ open class InstructionSet {
         forms.clear()
         val loader = InstructionLoader()
         val common = loader.loadBasicInstructions()
-        forms.addAll(if (target == MarsTarget.MARS64) common.filterNot { it.name in replacedWordInstructions } else common)
+        forms.addAll(if (target == MarsTarget.MARS64) common.filterNot { it.name in replacedWordInstructions || it is InstrBreak1 } else common)
         if (target == MarsTarget.MARS64) {
             forms.addAll(wideInstructionFactories.map { it() })
             forms.add(InstrRelease6Pref())
@@ -66,6 +68,8 @@ open class InstructionSet {
             forms.addAll(release6HardwareReads())
             forms.addAll(release6SystemTransfers())
             forms.add(InstrCodedSyscall())
+            forms.add(InstrRelease6Break(hasLowCode = false))
+            forms.add(InstrRelease6Break(hasLowCode = true))
             forms.addAll(msaRegisterInstructions())
             forms.addAll(msaIntegerInstructions())
             forms.addAll(msaBitInstructions())

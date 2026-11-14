@@ -89,7 +89,9 @@ bne	rs, rt, offset	123	implemented
 bnel	rs, rt, offset	124	removed
 bovc	rs,rt,offset	126	implemented
 bnvc	rs,rt,offset	126	implemented
-break		128	audit
+break		128	implemented
+break	code	128	implemented
+break	code, subcode	128	implemented
 c.cond.s	fs, ft (cc = 0 implied)	129	removed
 c.cond.d	fs, ft (cc = 0 implied)	129	removed
 c.cond.ps	fs, ft(cc = 0 implied)	129	removed

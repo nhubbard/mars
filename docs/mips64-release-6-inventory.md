@@ -100,6 +100,11 @@ restrictions.
 disassembler preserve that field in the machine word. MARS's educational
 syscall services still use the service number in `$v0`.
 
+`break` accepts the one- and two-operand spellings used by LLVM's MIPS
+assembler. Each operand is ten bits. To migrate a MARS32 `break code`
+while preserving all 20 encoded bits, pass `code >> 10` and
+`code & 1023` as the two operands.
+
 ## Additional scalar forms with encoding probes
 
 MARS64 assembles and executes all six doubleword bitfield forms, as well as
