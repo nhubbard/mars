@@ -1,5 +1,6 @@
 package edu.missouristate.mars.assembler
 
+import edu.missouristate.mars.mips.instructions.WideAddressMemory
 import edu.missouristate.mars.util.Binary
 import edu.missouristate.mars.ErrorMessage
 import edu.missouristate.mars.ErrorMessage.Companion.WARNING
@@ -120,6 +121,15 @@ internal class Parser(private val pass: FirstPassProcessor) {
         if (instruction is Release6ImmediateTrap && RegisterNames.integer(tokens[1].value)?.number == 1) {
             pass.errors.add(ErrorMessage(tokens[1], "This immediate trap uses \$at. Use a different temporary and a register trap."))
             return null
+        }
+        if (instruction is WideAddressMemory) {
+            val baseIsTemporary = instruction.baseToken != 0 && RegisterNames.integer(tokens[instruction.baseToken].value)?.number == 1
+            val sourceIsTemporary = instruction.stores && RegisterNames.integer(tokens[1].value)?.number == 1
+            if (baseIsTemporary || sourceIsTemporary) {
+                val operand = if (baseIsTemporary) instruction.baseToken else 1
+                pass.errors.add(ErrorMessage(tokens[operand], "This address expansion uses \$at. Use a different register or write the address calculation explicitly."))
+                return null
+            }
         }
 
         val instructionOrigin = origin(physicalLine, caller)

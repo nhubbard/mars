@@ -113,10 +113,15 @@ open class ExtendedInstruction @JvmOverloads constructor(
 
                 for (part in 0..3) {
                     val marker = "DW${part}_$position"
-                    if (marker in instruction) {
-                        val bits = Binary.stringToDoubleword(value)
-                        number(marker, ((bits ushr (part * 16)) and 0xffff).toInt())
+                    if (marker !in instruction) continue
+                    val bits = Binary.stringToDoubleword(value)
+                    val withAddend = marker + "A"
+                    val shift = part * 16
+                    if (withAddend in instruction) {
+                        val addend = Binary.stringToInt(tokens[position + 2].value)
+                        number(withAddend, (((bits + addend) ushr shift) and 0xffff).toInt())
                     }
+                    number(marker, ((bits ushr shift) and 0xffff).toInt())
                 }
 
                 withAddend("LH${position}P", value) { marker, address -> number(marker, adjustedHigh(address)) }

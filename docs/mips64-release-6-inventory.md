@@ -84,7 +84,10 @@ preserve the full address during execution. MARS64 also accepts
 high data and text regions. High text runs with the default execution
 permissions. `la` and `dla` can load a full-width label address,
 `dli` loads a full-width constant, and `.dword label` stores a full-width
-address, including forward references. The assembler's source map
+address, including forward references. Scalar loads and stores also accept
+high labels and full-width numeric addresses directly. These forms use
+`$at` to build the address and diagnose a base or store source that
+would be overwritten by the expansion. The assembler's source map
 preserves these addresses. IntelliJ source and address breakpoints,
 stepping, disassembly, and the memory browser use the full address.
 The memory browser can edit high data words, and watchpoints can stop on high

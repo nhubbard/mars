@@ -24,6 +24,16 @@ class InstructionLoader {
                 templates.add(wideConstantTemplate(owner, "dla \$t1,label"))
                 templates.addAll(release6TrapTemplates(owner))
                 templates.addAll(release6CompactBranchAliases(owner))
+                for ((mnemonic, operation) in wideMemoryOperations) {
+                    val register = if (operation in floatingMemoryOperations) "\$f2" else "\$t1"
+                    templates.add(WideAddressMemory("$mnemonic $register,0x100000000", operation, 0, false, owner))
+                    templates.add(WideAddressMemory("$mnemonic $register,0x100000000(\$t2)", operation, 4, false, owner))
+                    if (operation in extraSymbolicMemoryOperations) {
+                        for (operand in listOf("label", "label(\$t2)", "label+100000", "label+100000(\$t2)")) {
+                            templates.add(wideSymbolicMemory(owner, "$mnemonic $register,$operand", operation, operand))
+                        }
+                    }
+                }
             }
             copyOf(templates)
         }
@@ -50,6 +60,11 @@ class InstructionLoader {
         val mnemonic = example.substringBefore(' ')
         val wide = owner.target == MarsTarget.MARS64
         if (wide) {
+            val operand = example.substringAfter(',')
+            val operation = wideMemoryOperations[mnemonic]
+            if (operation != null && operand.startsWith("label")) {
+                return wideSymbolicMemory(owner, example, operation, operand)
+            }
             when (mnemonic) {
                 "la" -> if (example == "la \$t1,label") return wideConstantTemplate(owner, example)
                 "ld", "sd" -> return wideMemoryTemplate(owner, mnemonic, example)
@@ -99,11 +114,14 @@ class InstructionLoader {
 
     private fun wideConstantTemplate(owner: InstructionSet, example: String): ExtendedInstruction =
         ExtendedInstruction(
-            example,
-            "ori RG1, \$zero, DW3_2\n" +
-                (2 downTo 0).joinToString("\n") { "dsll RG1, RG1, 16\nori RG1, RG1, DW${it}_2" },
-            null, "Load a full-width constant or label address", owner,
+            example, loadWideConstant("RG1"), null, "Load a full-width constant or label address", owner,
         )
+
+    private fun wideSymbolicMemory(owner: InstructionSet, example: String, operation: String, operand: String): ExtendedInstruction {
+        val hasAddend = '+' in operand
+        val base = if ('(' !in operand) 0 else if (hasAddend) 6 else 4
+        return WideAddressMemory(example, operation, base, hasAddend, owner)
+    }
 
     private fun wideWordArithmeticTemplate(owner: InstructionSet, mnemonic: String, example: String): ExtendedInstruction? {
         val operand = example.substringAfterLast(',')
@@ -155,12 +173,8 @@ class InstructionLoader {
         val setup = when (example.substringAfter(',')) {
             "-100(\$t2)" -> "$mnemonic RG1, VL2(RG4)"
             "100000" -> "lui \$1, VH2\n$mnemonic RG1, VL2(\$1)"
-            "label" -> "lui \$1, LH2\n$mnemonic RG1, LL2(\$1)"
-            "label+100000" -> "lui \$1, LHPA\n$mnemonic RG1, LLP(\$1)"
             "(\$t2)" -> "$mnemonic RG1, 0(RG3)"
             "100000(\$t2)" -> "lui \$1, VH2\ndaddu \$1, \$1, RG4\n$mnemonic RG1, VL2(\$1)"
-            "label(\$t2)" -> "lui \$1, LH2\ndaddu \$1, \$1, RG4\n$mnemonic RG1, LL2(\$1)"
-            "label+100000(\$t2)" -> "lui \$1, LHPA\ndaddu \$1, \$1, RG6\n$mnemonic RG1, LLP(\$1)"
             else -> error("Unknown memory operand form: $example")
         }
         val description = when (mnemonic) {
@@ -173,6 +187,15 @@ class InstructionLoader {
 
     private companion object {
         val doublewordFloatingMemoryPseudos = setOf("ldc1", "sdc1", "l.d", "s.d")
+        val floatingMemoryOperations = setOf("lwc1", "swc1", "ldc1", "sdc1")
+        val extraSymbolicMemoryOperations = setOf("lwu", "lld", "scd")
+        val wideMemoryOperations = (
+            listOf("lb", "lbu", "lh", "lhu", "lw", "lwu", "ld", "sb", "sh", "sw", "sd", "ll", "sc", "lld", "scd") +
+                floatingMemoryOperations
+            ).associateWith { it } + mapOf(
+            "l.s" to "lwc1", "s.s" to "swc1", "l.d" to "ldc1", "s.d" to "sdc1",
+            "ulw" to "lw", "usw" to "sw", "ulh" to "lh", "ulhu" to "lhu", "ush" to "sh",
+        )
     }
 
     private fun pseudoOps(): BufferedReader {
@@ -180,6 +203,24 @@ class InstructionLoader {
             ?: throw IllegalStateException("Missing instruction resource: /PseudoOps.txt")
         return input.bufferedReader(Charsets.UTF_8)
     }
+}
+
+private fun loadWideConstant(register: String, hasAddend: Boolean = false): String {
+    val suffix = if (hasAddend) "A" else ""
+    return "ori $register, \$zero, DW3_2$suffix\n" +
+        (2 downTo 0).joinToString("\n") { "dsll $register, $register, 16\nori $register, $register, DW${it}_2$suffix" }
+}
+
+internal class WideAddressMemory(
+    example: String, operation: String, val baseToken: Int, hasAddend: Boolean, owner: InstructionSet,
+) : ExtendedInstruction(
+    example,
+    loadWideConstant("\$at", hasAddend) + "\n" +
+        (if (baseToken == 0) "" else "daddu \$at, \$at, RG$baseToken\n") +
+        "$operation RG1,0(\$at)",
+    null, "Access memory at a full-width address using \$at as a temporary", owner,
+) {
+    val stores = operation in setOf("sb", "sh", "sw", "sd", "sc", "scd", "swc1", "sdc1")
 }
 
 internal class Release6ImmediateTrap(operation: String, owner: InstructionSet) : ExtendedInstruction(

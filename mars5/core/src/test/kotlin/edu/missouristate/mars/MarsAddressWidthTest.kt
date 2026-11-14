@@ -18,6 +18,51 @@ import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 
 class MarsAddressWidthTest {
+    @Test
+    fun `wide address expansion rejects an assembler temporary used as an input`(@TempDir directory: Path) {
+        val source = Files.writeString(directory.resolve("temporary.mars"), $$"""
+            .data 0x100000000
+            cell: .dword 0
+            .text
+            sd $at,cell
+            ld $t0,cell($at)
+            ld $at,cell
+        """.trimIndent())
+        TestSessions.create().use { machine ->
+            machine.selectTarget(MarsTarget.MARS64)
+            val errors = assertThrows(ProcessingException::class.java) { machine.assemble(listOf(source)) }
+                .errors()!!.generateErrorReport()
+            assertEquals(2, errors.lineSequence().count { "This address expansion uses" in it })
+        }
+    }
+
+    @Test
+    fun `symbolic and absolute memory operands preserve high address bits`(@TempDir directory: Path) {
+        val source = Files.writeString(directory.resolve("direct.mars"), $$"""
+            .data 0x100000000
+            cell: .dword 0x1122334455667788,0
+            .text
+            ld $t0,cell
+            daddiu $a0,$zero,4
+            sd $t0,cell+4($a0)
+            ld $t1,0x100000008
+            l.d $f3,cell+8
+            lld $t2,cell+8
+            daddiu $t2,$t2,1
+            scd $t2,cell+8
+            ld $t3,0x100000004($a0)
+        """.trimIndent())
+        TestSessions.create().use { machine ->
+            machine.selectTarget(MarsTarget.MARS64)
+            val program = machine.assemble(listOf(source))
+            assertTrue(program.simulate(100))
+            assertEquals(0x1122_3344_5566_7788L, machine.registerFile.getLongValueNoNotify(9))
+            assertEquals(0x1122_3344_5566_7788L, machine.coprocessor1.getDoublewordNoNotify(3))
+            assertEquals(1L, machine.registerFile.getLongValueNoNotify(10))
+            assertEquals(0x1122_3344_5566_7789L, machine.registerFile.getLongValueNoNotify(11))
+        }
+    }
+
     @ParameterizedTest
     @ValueSource(booleans = [MemoryState.LITTLE_ENDIAN, MemoryState.BIG_ENDIAN])
     fun `assembly places source and label fixups above four GiB`(littleEndian: Boolean, @TempDir directory: Path) {
@@ -250,7 +295,7 @@ class MarsAddressWidthTest {
             assertEquals(1, program.machineList!!.count { it.instruction?.name == "sd" })
             machine.editIntegerRegister(5, machine.memory.dataBaseAddress - 65536)
             machine.editIntegerRegister(9, 42)
-            assertTrue(program.simulate(30))
+            assertTrue(program.simulate(program.instructionCount() + 1))
             for (register in listOf(8, 10, 11, 12, 13, 14)) {
                 assertEquals(0x1234_5678_9abc_def0L, machine.registerFile.getLongValueNoNotify(register), "register $register")
             }
