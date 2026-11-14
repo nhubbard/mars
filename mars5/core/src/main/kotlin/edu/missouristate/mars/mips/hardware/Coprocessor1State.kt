@@ -249,6 +249,7 @@ class Coprocessor1State {
         internal const val MSA_NON_TRAPPING = 1 shl 18
         internal const val INEXACT = 1
         internal const val UNDERFLOW = 1 shl 1
+        internal const val DIVIDE_BY_ZERO = 1 shl 3
         internal const val OVERFLOW = 1 shl 2
         internal const val UNDERFLOW_ENABLE = UNDERFLOW shl 7
         internal const val INVALID_OPERATION = 1 shl 4
