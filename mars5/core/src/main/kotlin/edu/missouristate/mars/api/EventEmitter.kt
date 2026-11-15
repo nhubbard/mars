@@ -1,21 +1,20 @@
 package edu.missouristate.mars.api
 
 import java.util.concurrent.CopyOnWriteArrayList
-import java.util.function.Consumer
 
 /** Thread-safe event delivery. Listener changes apply to subsequent emissions. */
 class EventEmitter<T> {
-    private val listeners = CopyOnWriteArrayList<Consumer<T>>()
+    private val listeners = CopyOnWriteArrayList<(T) -> Unit>()
 
-    fun subscribe(listener: Consumer<T>) {
+    fun subscribe(listener: (T) -> Unit) {
         listeners.add(listener)
     }
 
-    fun unsubscribe(listener: Consumer<T>) {
+    fun unsubscribe(listener: (T) -> Unit) {
         listeners.remove(listener)
     }
 
     fun emit(event: T) {
-        listeners.forEach { it.accept(event) }
+        listeners.forEach { it(event) }
     }
 }

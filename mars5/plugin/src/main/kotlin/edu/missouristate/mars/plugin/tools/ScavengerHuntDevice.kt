@@ -17,7 +17,6 @@ import edu.missouristate.mars.plugin.tools.ScavengerHuntGame.Player
 import edu.missouristate.mars.plugin.tools.ScavengerHuntGame.Point
 import edu.missouristate.mars.plugin.tools.ScavengerHuntGame.Rejection
 import edu.missouristate.mars.plugin.tools.ScavengerHuntGame.Result
-import java.util.function.Consumer
 
 /** One simulation worker owns the protocol. The view reads immutable snapshots. */
 internal class ScavengerHuntDevice(session: MarsContext, connectAtLaunch: Boolean = true) : AutoCloseable {
@@ -30,7 +29,7 @@ internal class ScavengerHuntDevice(session: MarsContext, connectAtLaunch: Boolea
 
     private data class State(val game: ScavengerHuntGame = ScavengerHuntGame(), val diagnostic: Diagnostic? = null)
 
-    private inner class Frame(val before: State) : Runnable {
+    private inner class Frame(val before: State) : () -> Unit {
         var overwritten: MutableMap<Int, Int>? = null
 
         fun record(address: Int, value: Int) {
@@ -38,14 +37,14 @@ internal class ScavengerHuntDevice(session: MarsContext, connectAtLaunch: Boolea
             changes.putIfAbsent(address, value)
         }
 
-        override fun run() = restore(this)
+        override fun invoke() = restore(this)
     }
 
     private data class Store(val address: Int, val value: Int)
 
     private val memory = session.memory
     private val simulator = session.simulator()
-    private val observer = Consumer<MemoryAccessNotice>(::record)
+    private val observer = ::record
     private val listener = object : SimulatorListener {
         override fun onStep(event: StepEvent) = completeInstruction(event.stepCount)
         override fun onStop(event: StopEvent) = Unit
@@ -232,7 +231,7 @@ internal class ScavengerHuntDevice(session: MarsContext, connectAtLaunch: Boolea
     }
 
     @Synchronized
-    private fun capture(): Runnable {
+    private fun capture(): () -> Unit {
         if (connected) return Frame(state).also { frame = it }
         if (inactiveFrame.before !== state) inactiveFrame = Frame(state)
         return inactiveFrame

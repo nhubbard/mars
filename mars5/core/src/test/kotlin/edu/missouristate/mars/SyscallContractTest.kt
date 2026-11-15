@@ -8,10 +8,8 @@ import edu.missouristate.mars.mips.instructions.syscalls.Syscall
 import java.lang.reflect.InvocationHandler
 import java.lang.reflect.Method
 import java.lang.reflect.Proxy
-import java.util.Objects
 import java.util.Random
 import java.util.function.Predicate
-import java.util.stream.Stream
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
@@ -32,17 +30,13 @@ internal class SyscallContractTest {
                         if (method!!.declaringClass == Any::class.java) {
                             return@InvocationHandler when (method.name) {
                                 "equals" ->
-                                    proxy === Objects.requireNonNull(args)!![0]
+                                    proxy === checkNotNull(args)[0]
                                 "hashCode" -> System.identityHashCode(proxy)
                                 "toString" -> "Test syscall environment"
                                 else -> throw AssertionError(method)
                             }
                         }
-                        calls.add(
-                            method.name +
-                                (if (args == null) arrayOfNulls(0) else args)
-                                    .contentToString(),
-                        )
+                        calls += "${method.name}${args.orEmpty().contentToString()}"
                         when (method.name) {
                             "readInt" -> 7
                             "readFloat" -> 1.5f
@@ -55,14 +49,14 @@ internal class SyscallContractTest {
                             "openFile" -> 3
                             "readFromFile" -> {
                                 val buffer =
-                                    Objects.requireNonNull(args)!![1] as ByteArray
+                                    checkNotNull(args)[1] as ByteArray
                                 buffer[0] = 1
                                 buffer[1] = 2
                                 buffer[2] = 3
                                 3
                             }
 
-                            "writeToFile" -> Objects.requireNonNull(args)!![2]
+                            "writeToFile" -> checkNotNull(args)[2]
                             else -> null
                         }
                     },
@@ -133,11 +127,7 @@ internal class SyscallContractTest {
             }
             session.randomStreams.setSeed(1, 123)
             val heap: Int = session.memory.heapAddress
-            val service: Syscall =
-                Objects.requireNonNull<Syscall>(
-                    session.syscalls.findByNumber(number),
-                    "Missing syscall " + number,
-                )
+            val service = checkNotNull(session.syscalls.findByNumber(number)) { "Missing syscall $number" }
             if (number == 10 || number == 17) {
                 val failure =
                     Assertions.catchThrowable { service.simulate(null, context) }
@@ -284,16 +274,16 @@ internal class SyscallContractTest {
     fun mutableServiceNumbersAreNotSharedAcrossSessions() {
         val first = SyscallRegistry()
         val second = SyscallRegistry()
-        Objects.requireNonNull(first.findByNumber(1), "Missing PrintInt")!!.number = 101
-        val unchanged = Objects.requireNonNull<Syscall>(second.findByNumber(1), "Missing PrintInt")
+        checkNotNull(first.findByNumber(1)) { "Missing PrintInt" }.number = 101
+        val unchanged = checkNotNull(second.findByNumber(1)) { "Missing PrintInt" }
         Assertions.assertThat(unchanged.number).isEqualTo(1)
         Assertions.assertThat<Syscall?>(first.services()).hasSize(40)
     }
 
     companion object {
         @JvmStatic
-        fun services(): Stream<Int?>? {
-            return SyscallRegistry().services().stream().map<Int?>(Syscall::number).sorted()
+        fun services(): List<Int> {
+            return SyscallRegistry().services().map(Syscall::number).sorted()
         }
     }
 }

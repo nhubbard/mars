@@ -42,6 +42,7 @@ import edu.missouristate.mars.plugin.analysis.mipsSourceTimeline
 import edu.missouristate.mars.plugin.language.psi.MipsStringLiteral
 import edu.missouristate.mars.plugin.language.references.MipsFileReferenceSet
 import edu.missouristate.mars.plugin.language.references.MipsIncludeNavigation
+import edu.missouristate.mars.plugin.language.references.mipsIncludeDirectoryPath
 import edu.missouristate.mars.plugin.language.references.resolveMipsDotSegment
 import java.nio.file.Files
 import java.nio.file.Path
@@ -482,6 +483,18 @@ class MipsFileReferencesPlatformTest {
         }
         IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
         readAction { assertEquals(valid.virtualFile.toNioPath(), inferredMipsAssemblyEntry(decoy)) }
+    }
+
+    @Test
+    fun `relative includes use the parent path when the VFS has no canonical path`() {
+        val directory = object : MockVirtualFile(true, "source") {
+            override fun getCanonicalPath(): String? = null
+        }
+        val source = object : MockVirtualFile("main.mars") {
+            override fun getParent(): VirtualFile = directory
+        }
+
+        assertEquals(directory.path, source.mipsIncludeDirectoryPath())
     }
 
     @Test

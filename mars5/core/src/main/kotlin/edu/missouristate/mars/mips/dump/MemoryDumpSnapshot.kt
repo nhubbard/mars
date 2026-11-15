@@ -28,7 +28,7 @@ class MemoryDumpSnapshot private constructor(
     companion object {
         @Throws(AddressErrorException::class)
         internal fun capture(
-            session: MarsContext, firstAddress: Long, lastAddress: Long, includeSource: Boolean, checkCancellation: Runnable,
+            session: MarsContext, firstAddress: Long, lastAddress: Long, includeSource: Boolean, checkCancellation: () -> Unit,
         ): MemoryDumpSnapshot {
             val memory = session.memory
             val segment = when {
@@ -42,7 +42,7 @@ class MemoryDumpSnapshot private constructor(
             var count = 0
             var address = firstAddress
             while (address <= lastAddress) {
-                checkCancellation.run()
+                checkCancellation()
                 val word = if (captureSource) {
                     val statement = memory.getStatementNoNotify(address) ?: break
                     sourceLines.add(SourceLine(statement.printableBasicAssemblyStatement, statement.sourceLine, statement.source!!))

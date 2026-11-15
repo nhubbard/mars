@@ -94,7 +94,7 @@ internal class RuntimeServicesTest {
     @ParameterizedTest
     @ValueSource(booleans = [true, false])
     fun sparseStoragePreservesByteOrderAndCrossBlockWrites(littleEndian: Boolean) {
-        val segment = WordMemorySegment(2, false, { littleEndian })
+        val segment = WordMemorySegment(2, false) { littleEndian }
         Assertions.assertThat(segment.fetchWordOrNull(0)).isNull()
         Assertions.assertThat(segment.storeWord(0, 0x12345678)).isZero()
         Assertions.assertThat(segment.fetchBytes(0, 1)).isEqualTo(if (littleEndian) 0x78 else 0x12)

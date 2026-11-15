@@ -9,6 +9,10 @@ import edu.missouristate.mars.mips.hardware.Coprocessor1State.Companion.UNDERFLO
 import edu.missouristate.mars.mips.hardware.Coprocessor1State.Companion.UNDERFLOW_ENABLE
 import java.math.BigDecimal
 import kotlin.math.abs
+import kotlin.math.nextDown
+import kotlin.math.nextUp
+import kotlin.math.sqrt
+import kotlin.math.ulp
 
 internal class FloatingPrecision(val bits: Int) {
     val exponent = if (bits == 32) 0x7f800000L else 0x7ff0000000000000L
@@ -121,16 +125,16 @@ internal fun roundFinite(
     if (status and FLUSH_SUBNORMALS != 0 && magnitude < minimumNormal) {
         return FloatingLane(precision.raw(if (negative) -0.0 else 0.0), UNDERFLOW or INEXACT)
     }
-    val relation = when {
-        nearest == Double.POSITIVE_INFINITY -> 1
-        nearest == Double.NEGATIVE_INFINITY -> -1
+    val relation = when (nearest) {
+        Double.POSITIVE_INFINITY -> 1
+        Double.NEGATIVE_INFINITY -> -1
         else -> BigDecimal(nearest).multiply(denominator).compareTo(numerator)
     }
     val lower = relation > 0 && (mode == 3 || mode == 1 && !negative)
     val upper = relation < 0 && (mode == 2 || mode == 1 && negative)
     val rounded = when {
-        lower -> if (single) Math.nextDown(nearest.toFloat()).toDouble() else Math.nextDown(nearest)
-        upper -> if (single) Math.nextUp(nearest.toFloat()).toDouble() else Math.nextUp(nearest)
+        lower -> if (single) nearest.toFloat().nextDown().toDouble() else nearest.nextDown()
+        upper -> if (single) nearest.toFloat().nextUp().toDouble() else nearest.nextUp()
         else -> nearest
     }
     val outward = if (negative) mode == 3 else mode == 2
@@ -138,9 +142,7 @@ internal fun roundFinite(
     val overflow = when {
         mode == 0 -> nearest.isInfinite()
         outward -> magnitude > BigDecimal(maximum).multiply(denominator)
-        else -> magnitude >= BigDecimal(maximum).add(BigDecimal(Math.ulp(maximum).let {
-            if (single) Math.ulp(maximum.toFloat()).toDouble() else it
-        })).multiply(denominator)
+        else -> magnitude >= BigDecimal(maximum).add(BigDecimal(if (single) maximum.toFloat().ulp.toDouble() else maximum.ulp)).multiply(denominator)
     }
     val edge = BigDecimal(normal).divide(BigDecimal.valueOf(1L shl (if (single) 24 else 53))).multiply(denominator)
     val tiny = when {
@@ -161,15 +163,15 @@ internal fun squareRoot(precision: FloatingPrecision, value: Double, status: Int
     if (value < 0.0) return FloatingLane(precision.exponent or precision.quiet, INVALID_OPERATION)
     if (value == 0.0 || value.isInfinite()) return FloatingLane(precision.raw(value))
     val single = precision.bits == 32
-    val nearest = Math.sqrt(value).let { if (single) it.toFloat().toDouble() else it }
+    val nearest = sqrt(value).let { if (single) it.toFloat().toDouble() else it }
     val exact = BigDecimal(value)
     val candidate = BigDecimal(nearest)
     val relation = (candidate * candidate).compareTo(exact)
     val rounded = when {
         relation > 0 && (status and 3 == 1 || status and 3 == 3) ->
-            if (single) Math.nextDown(nearest.toFloat()).toDouble() else Math.nextDown(nearest)
+            if (single) nearest.toFloat().nextDown().toDouble() else nearest.nextDown()
         relation < 0 && status and 3 == 2 ->
-            if (single) Math.nextUp(nearest.toFloat()).toDouble() else Math.nextUp(nearest)
+            if (single) nearest.toFloat().nextUp().toDouble() else nearest.nextUp()
         else -> nearest
     }
     return FloatingLane(precision.raw(rounded), if (relation != 0) INEXACT else 0)

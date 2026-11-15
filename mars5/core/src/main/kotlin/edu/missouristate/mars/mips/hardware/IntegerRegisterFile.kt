@@ -4,7 +4,6 @@ import edu.missouristate.mars.api.EventEmitter
 import edu.missouristate.mars.api.MarsRegisterFile
 import edu.missouristate.mars.mips.instructions.Instruction
 import edu.missouristate.mars.util.Binary
-import java.util.function.Consumer
 
 /*
 Copyright (c) 2003-2008,  Pete Sanderson and Kenneth Vollmar
@@ -61,11 +60,11 @@ class IntegerRegisterFile(globalPointer: Int, stackPointer: Int, textBaseAddress
         lo.addObserver(registerEvents::emit)
     }
 
-    fun addRegistersObserver(listener: Consumer<RegisterAccessNotice>) {
+    fun addRegistersObserver(listener: (RegisterAccessNotice) -> Unit) {
         registerEvents.subscribe(listener)
     }
 
-    fun deleteRegistersObserver(listener: Consumer<RegisterAccessNotice>) {
+    fun deleteRegistersObserver(listener: (RegisterAccessNotice) -> Unit) {
         registerEvents.unsubscribe(listener)
     }
 

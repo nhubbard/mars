@@ -7,6 +7,7 @@ import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.editor.ScrollType
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.ComboBox
+import com.intellij.ui.CollectionComboBoxModel
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.ui.components.JBCheckBox
 import com.intellij.ui.components.JBLabel
@@ -54,7 +55,7 @@ internal class KeyboardDisplayView(project: Project) : Disposable {
         accessibleContext.accessibleName = toolsMessages.getMessage("keyboardDisplay.input")
     }
     val inputComponent: JComponent = keyboard
-    private val delayMode = ComboBox(Delay.entries.toTypedArray()).apply {
+    private val delayMode = ComboBox(CollectionComboBoxModel(Delay.entries.toMutableList())).apply {
         renderer = textListCellRenderer("") { toolsMessages.getMessage("keyboardDisplay.delay.${it.name.lowercase()}") }
     }
     private val instructions = JSpinner(SpinnerNumberModel(5, 1, 1_000_000, 1))

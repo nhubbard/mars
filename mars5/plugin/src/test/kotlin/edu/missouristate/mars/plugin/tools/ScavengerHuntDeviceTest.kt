@@ -36,7 +36,6 @@ import edu.missouristate.mars.plugin.tools.ScavengerHuntGame.Point
 import edu.missouristate.mars.plugin.tools.ScavengerHuntGame.Rejection
 import java.nio.file.Path
 import java.util.concurrent.TimeUnit.SECONDS
-import java.util.function.Consumer
 import kotlin.io.path.writeText
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -327,7 +326,7 @@ class ScavengerHuntDeviceTest {
             }
             session.assemble(listOf(file))
             lateinit var device: ScavengerHuntDevice
-            val connect = Consumer<MemoryAccessNotice> { notice ->
+            val connect: (MemoryAccessNotice) -> Unit = { notice ->
                 if (notice.accessType == WRITE) {
                     device.setConnected(true)
                     device.requestReset()
@@ -396,7 +395,7 @@ class ScavengerHuntDeviceTest {
             }
             session.assemble(listOf(file))
             lateinit var device: ScavengerHuntDevice
-            val detach = Consumer<MemoryAccessNotice> { notice ->
+            val detach: (MemoryAccessNotice) -> Unit = { notice ->
                 if (notice.accessType == WRITE) device.close()
             }
             session.memory.addObserver(detach, GAME_ON)

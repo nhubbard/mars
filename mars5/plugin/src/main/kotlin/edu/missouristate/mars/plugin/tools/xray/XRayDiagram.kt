@@ -40,7 +40,7 @@ internal class XRayDiagram private constructor(
 
     // Diagram data defines the exact signal RGB values.
     @Suppress("UseJBColor")
-    private val colors = Palette.entries.toTypedArray().take(wires.first().colors.size).associateWith { palette ->
+    private val colors = Palette.entries.take(wires.first().colors.size).associateWith { palette ->
         wires.map { Color(it.rgb(palette)) }
     }
 

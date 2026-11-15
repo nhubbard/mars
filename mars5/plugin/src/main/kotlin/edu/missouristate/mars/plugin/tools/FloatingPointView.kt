@@ -4,6 +4,7 @@ import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.ComboBox
+import com.intellij.ui.CollectionComboBoxModel
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.dsl.listCellRenderer.textListCellRenderer
@@ -37,9 +38,10 @@ import kotlin.time.Duration.Companion.milliseconds
 
 internal class FloatingPointView(private val project: Project) : Disposable {
     private val selector = MarsToolExecutionSelector(project, ::bindingChanged)
-    private val register = ComboBox((listOf(toolsMessages.getMessage("float.detached")) +
-        RegisterNames.floatingSpellings()).toTypedArray())
-    private val precision = ComboBox(Format.entries.toTypedArray()).apply {
+    private val register = ComboBox(CollectionComboBoxModel(mutableListOf(toolsMessages.getMessage("float.detached")).apply {
+        addAll(RegisterNames.floatingSpellings())
+    }))
+    private val precision = ComboBox(CollectionComboBoxModel(Format.entries.toMutableList())).apply {
         renderer = textListCellRenderer("") { toolsMessages.getMessage(it.messageKey) }
     }
     private val format get() = precision.selectedItem as Format

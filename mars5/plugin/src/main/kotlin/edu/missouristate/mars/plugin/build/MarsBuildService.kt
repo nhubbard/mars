@@ -104,7 +104,7 @@ internal class MarsBuildService(private val project: Project, private val scope:
     ): MarsAssembledProgram? {
         val (capture, output) = buildWithProgress(sourceSet, options, activateBuildView, activateOnFailure) { sources ->
             val revision = Revision(sources.snapshot, sources.exceptionHandler, options)
-            val cached = if (reuse) synchronized(images) { images.get(revision) } else null
+            val cached = if (reuse) synchronized(images) { images[revision] } else null
             cached?.copy(reused = true) ?: assembleImage(sources, options)
         }
         val image = output.image ?: return null

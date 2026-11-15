@@ -20,7 +20,7 @@ class AnalysisCoordinator(
 
     /** Replaces the complete captured fact view. Per-file deltas must be merged by the acquisition layer. */
     fun submit(contributions: List<IndexContribution>): Deferred<Boolean> {
-        val captured = listOf(*contributions.toTypedArray())
+        val captured = contributions.toList()
         return synchronized(lock) {
             val ticket = core.beginUpdate()
             work?.cancel()

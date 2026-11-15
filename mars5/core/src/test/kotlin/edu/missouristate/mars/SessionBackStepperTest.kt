@@ -22,7 +22,6 @@ import edu.missouristate.mars.mips.instructions.basic.InstrNop
 import edu.missouristate.mars.mips.instructions.basic.InstrSw
 import edu.missouristate.mars.mips.instructions.basic.InstrSyscall
 import edu.missouristate.mars.simulator.DelayedBranchState
-import java.util.Objects
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
@@ -66,12 +65,10 @@ internal class SessionBackStepperTest {
         val execution: InstructionContext = execution(session)
         val base = session.memory.textBaseAddress
         val loop: BasicInstruction =
-            custom(
-                { `_`: ProgramStatement?, context: InstructionContext? ->
-                    context!!.updateRegister(8, context.registerFile.getValue(8) + 1)
-                    context.setProgramCounter(base)
-                },
-            )
+            custom { `_`: ProgramStatement?, context: InstructionContext? ->
+                context!!.updateRegister(8, context.registerFile.getValue(8) + 1)
+                context.setProgramCounter(base)
+            }
         val statement: ProgramStatement = statement(loop)
         for (i in 0..2) {
             execution.execute(statement)
@@ -171,21 +168,19 @@ internal class SessionBackStepperTest {
         session.memory.setWord(address, 0x12345678)
         execution.execute(
             statement(
-                custom(
-                    { statement: ProgramStatement?, context: InstructionContext? ->
-                        try {
-                            when (operation) {
-                                "word" -> context!!.setMemoryWord(address, 0x76543210)
-                                "half" -> context!!.setMemoryHalf(address, 0xabcd)
-                                "byte" -> context!!.setMemoryByte(address, 0xff)
-                                "raw" -> context!!.setMemoryRawWord(address, 0x76543210)
-                                else -> throw IllegalArgumentException(operation)
-                            }
-                        } catch (error: AddressErrorException) {
-                            throw ProcessingException(context!!, statement, error)
+                custom { statement: ProgramStatement?, context: InstructionContext? ->
+                    try {
+                        when (operation) {
+                            "word" -> context!!.setMemoryWord(address, 0x76543210)
+                            "half" -> context!!.setMemoryHalf(address, 0xabcd)
+                            "byte" -> context!!.setMemoryByte(address, 0xff)
+                            "raw" -> context!!.setMemoryRawWord(address, 0x76543210)
+                            else -> throw IllegalArgumentException(operation)
                         }
-                    },
-                ),
+                    } catch (error: AddressErrorException) {
+                        throw ProcessingException(context!!, statement, error)
+                    }
+                },
             ),
         )
         Assertions.assertThat(session.memory.getWord(address)).isNotEqualTo(0x12345678)
@@ -211,15 +206,13 @@ internal class SessionBackStepperTest {
         session.coprocessor1.setRegisterPairToLong(0, 0x0123456789abcdefL)
         execution.execute(
             statement(
-                custom(
-                    { `_`: ProgramStatement?, context: InstructionContext? ->
-                        try {
-                            context!!.setRegisterPairToDouble(0, 3.5)
-                        } catch (error: InvalidRegisterAccessException) {
-                            throw AssertionError(error)
-                        }
-                    },
-                ),
+                custom { `_`: ProgramStatement?, context: InstructionContext? ->
+                    try {
+                        context!!.setRegisterPairToDouble(0, 3.5)
+                    } catch (error: InvalidRegisterAccessException) {
+                        throw AssertionError(error)
+                    }
+                },
             ),
         )
         Assertions.assertThat(session.coprocessor1.getDoubleFromRegisterPair(0)).isEqualTo(3.5)
@@ -266,12 +259,10 @@ internal class SessionBackStepperTest {
             val result = value
             execution.execute(
                 statement(
-                    custom(
-                        { `_`: ProgramStatement?, context: InstructionContext? ->
-                            context!!.updateRegister(8, result)
-                            context.updateRegister(9, result)
-                        },
-                    ),
+                    custom { `_`: ProgramStatement?, context: InstructionContext? ->
+                        context!!.updateRegister(8, result)
+                        context.updateRegister(9, result)
+                    },
                 ),
             )
         }
@@ -287,13 +278,11 @@ internal class SessionBackStepperTest {
         val execution: InstructionContext = execution(session)
         execution.execute(
             statement(
-                custom(
-                    { `_`: ProgramStatement?, context: InstructionContext? ->
-                        context!!.updateRegister(8, 1)
-                        context.updateRegister(9, 2)
-                        context.updateRegister(10, 3)
-                    },
-                ),
+                custom { `_`: ProgramStatement?, context: InstructionContext? ->
+                    context!!.updateRegister(8, 1)
+                    context.updateRegister(9, 2)
+                    context.updateRegister(10, 3)
+                },
             ),
         )
         Assertions.assertThat(session.backStepper.empty()).isTrue()
@@ -363,13 +352,7 @@ internal class SessionBackStepperTest {
             vararg operands: Int,
         ): ProgramStatement {
             val statement = ProgramStatement(null, "test", null, null, instruction, 0x400000, 1)
-            System.arraycopy(
-                operands,
-                0,
-                Objects.requireNonNull<IntArray?>(statement.operands),
-                0,
-                operands.size,
-            )
+            operands.copyInto(checkNotNull(statement.operands))
             return statement
         }
 

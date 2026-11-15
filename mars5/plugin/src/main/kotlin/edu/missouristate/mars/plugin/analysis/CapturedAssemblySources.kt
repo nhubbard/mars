@@ -261,7 +261,7 @@ internal suspend fun CapturedAssemblySources.assembleIn(component: MarsComponent
     return assembleIn(component, context::ensureActive)
 }
 
-internal fun CapturedAssemblySources.assembleIn(component: MarsComponent, checkCancellation: Runnable): AssemblyResult {
+internal fun CapturedAssemblySources.assembleIn(component: MarsComponent, checkCancellation: () -> Unit): AssemblyResult {
     val settings = component.simulationSettings()
     val result = component.assembler().assembleSnapshot(
         snapshot, exceptionHandler?.takeUnless { it in snapshot.entries() },

@@ -48,7 +48,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /** Builds symbol tables, applies directives, and resolves forward data references. */
 internal class FirstPassProcessor(
     val context: AssemblyContext,
-    val checkCancellation: Runnable,
+    val checkCancellation: () -> Unit,
     private val symbolUses: AssemblySymbolUses,
 ) {
     val macroCalls = HashMap<SourceToken, MutableSet<MacroCall>>()
@@ -80,7 +80,7 @@ internal class FirstPassProcessor(
         require(programs.all { context.sharesSession(it.assemblyContext()) }) {
             "All source files must belong to the assembler's session"
         }
-        checkCancellation.run()
+        checkCancellation()
         context.beginAssembly(programs.first())
         val memory = context.memory()
         textAddress = UserKernelAddressSpace(memory.textBaseAddress, memory.kernelTextBaseAddress)
@@ -92,7 +92,7 @@ internal class FirstPassProcessor(
         errors = context.newErrorList()
 
         for (program in programs) {
-            checkCancellation.run()
+            checkCancellation()
             if (errors.errorLimitExceeded()) break
             fileCurrentlyBeingAssembled = program
             numericLabels = LocalNumericLabels()
@@ -111,7 +111,7 @@ internal class FirstPassProcessor(
             val parsed = program.createParsedList()
             val macroPool = program.createMacroPool()
             for (index in tokenLists.indices) {
-                checkCancellation.run()
+                checkCancellation()
                 if (errors.errorLimitExceeded()) break
                 val line = lines[index]
                 val tokens = tokenLists[index]
@@ -317,7 +317,7 @@ internal class FirstPassProcessor(
         val boundary = if (directive == Directives.P2ALIGN) 1L shl value else value.toLong()
         val address = if (inDataSegment) dataAddress else textAddress
         val start = address.get()
-        val misalignment = Math.floorMod(start, boundary)
+        val misalignment = start.mod(boundary)
         if (misalignment == 0L) return
         val aligned = start + boundary - misalignment
         val memory = context.memory()
@@ -334,7 +334,7 @@ internal class FirstPassProcessor(
 
         if (inDataSegment) {
             for (location in start until aligned) {
-                checkCancellation.run()
+                checkCancellation()
                 memory.setAssemblyData(location, fill, DataTypes.CHAR_SIZE)
             }
         } else {
@@ -345,7 +345,7 @@ internal class FirstPassProcessor(
             val nop = context.instructions().matchOperator("nop")!!.first()
             val origin = Parser.origin(line, caller)
             for (location in start until aligned step Int.SIZE_BYTES.toLong()) {
-                checkCancellation.run()
+                checkCancellation()
                 fileCurrentlyBeingAssembled.parsedList!!.add(ProgramStatement(
                     fileCurrentlyBeingAssembled, line.source, tokens, nop.tokenList, nop, location.toInt(), line.lineNumber,
                     origin, addressBits = location,
@@ -420,7 +420,7 @@ internal class FirstPassProcessor(
         val local = fileCurrentlyBeingAssembled.localSymbolTable!!
         val global = context.symbols()
         for (index in 0 until globalDeclarations.size()) {
-            checkCancellation.run()
+            checkCancellation()
             val label = globalDeclarations[index]
             val symbol = local.getSymbol(label.value)
             when {
@@ -485,7 +485,7 @@ internal class FirstPassProcessor(
             }
             alignData(DataTypes.getLengthInBytes(directive))
             repeat(repetitions) {
-                checkCancellation.run()
+                checkCancellation()
                 storeNumericValue(value, directive)
             }
             return
@@ -493,7 +493,7 @@ internal class FirstPassProcessor(
 
         val firstValue = if (tokens[0].type == TokenTypes.DIRECTIVE) 1 else 0
         for (index in firstValue until tokens.size()) {
-            checkCancellation.run()
+            checkCancellation()
             val token = tokens[index]
             storeNumericValue(token, directive)
         }
@@ -594,7 +594,7 @@ internal class FirstPassProcessor(
     private fun storeStrings(tokens: TokenList, directive: Directives) {
         val firstValue = if (tokens[0].type == TokenTypes.DIRECTIVE) 1 else 0
         for (index in firstValue until tokens.size()) {
-            checkCancellation.run()
+            checkCancellation()
             val token = tokens[index]
             if (token.type != TokenTypes.QUOTED_STRING) {
                 errors.add(ErrorMessage(token, "\"$token\" is not a valid character string"))
@@ -738,7 +738,7 @@ internal class FirstPassProcessor(
         fun resolve(symbols: SymbolTable) {
             val iterator = entries.iterator()
             while (iterator.hasNext()) {
-                checkCancellation.run()
+                checkCancellation()
                 val entry = iterator.next()
                 val symbol = symbols.getSymbolLocalOrGlobal(entry.token.value)
                 if (symbol == null || symbol.addressBits == SymbolTable.NOT_FOUND.toLong()) continue
@@ -758,7 +758,7 @@ internal class FirstPassProcessor(
 
         fun reportMissing() {
             for (entry in entries) {
-                checkCancellation.run()
+                checkCancellation()
                 errors.add(ErrorMessage(entry.token, "Symbol \"${entry.token}\" not found in symbol table."))
             }
         }

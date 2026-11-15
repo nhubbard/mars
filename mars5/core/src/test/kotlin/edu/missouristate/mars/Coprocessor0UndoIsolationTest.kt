@@ -2,8 +2,6 @@ package edu.missouristate.mars
 
 import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.mips.hardware.Coprocessor0State
-import edu.missouristate.mars.simulator.BackStepper
-import java.util.Objects
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.params.ParameterizedTest
@@ -29,7 +27,7 @@ internal class Coprocessor0UndoIsolationTest {
             program.tokenize()
             val filenames = arrayListOf(path)
             program.assemble(program.prepareFilesForAssembly(filenames, path, null), extended = true, warnings = false)
-            val backStepper = Objects.requireNonNull<BackStepper>(program.backStepper)
+            val backStepper = checkNotNull(program.backStepper)
             machine.registerFile.initializeProgramCounter(
                 machine.registerFile.initialProgramCounter + 4,
             )

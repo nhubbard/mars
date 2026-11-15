@@ -16,7 +16,6 @@ import edu.missouristate.mars.mips.instructions.basic.InstrLwc1
 import edu.missouristate.mars.mips.instructions.basic.InstrSdc1
 import edu.missouristate.mars.mips.instructions.basic.InstrSwc1
 import edu.missouristate.mars.mips.instructions.basic.InstrSyscall
-import java.util.Objects
 import org.assertj.core.api.Assertions
 import org.assertj.core.api.ThrowingConsumer
 import org.junit.jupiter.api.Test
@@ -30,7 +29,7 @@ internal class SessionMemoryTest {
             val statement =
                 requireNotNull(session.memory.getStatement(session.memory.textBaseAddress))
             Assertions.assertThat(
-                    Objects.requireNonNull(statement.instruction)!!.name,
+                    checkNotNull(statement.instruction).name,
                 )
                 .isEqualTo("addiu")
             Assertions.assertThat(statement.printableBasicAssemblyStatement).contains("addiu")
@@ -287,13 +286,7 @@ internal class SessionMemoryTest {
                     context.memory().textBaseAddress,
                     1,
                 )
-            System.arraycopy(
-                operands,
-                0,
-                Objects.requireNonNull<IntArray?>(statement.operands),
-                0,
-                operands.size,
-            )
+            operands.copyInto(checkNotNull(statement.operands))
             instruction.simulationCode.simulate(statement, context)
         }
 

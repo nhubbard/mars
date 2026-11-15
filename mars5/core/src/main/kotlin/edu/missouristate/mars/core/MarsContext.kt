@@ -33,8 +33,6 @@ import java.nio.file.Path
 import java.util.Objects
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.locks.ReentrantLock
-import java.util.function.Consumer
-import java.util.function.LongSupplier
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.concurrent.withLock
@@ -74,7 +72,7 @@ class MarsContext @Inject constructor(
             if (target == MarsTarget.MARS32) null
             else {
                 val reservation = memory.reservation
-                Runnable { memory.reservation = reservation }
+                { memory.reservation = reservation }
             }
         }
     }
@@ -298,7 +296,7 @@ class MarsContext @Inject constructor(
         claimStoppedSession().use { assembleStopped(sources, handler, extended, warnings, null, {}, null) }
 
     @Throws(ProcessingException::class)
-    fun assemble(sources: List<Path>?, phaseStarted: Consumer<AssemblyPhase>): MIPSprogram =
+    fun assemble(sources: List<Path>?, phaseStarted: (AssemblyPhase) -> Unit): MIPSprogram =
         claimStoppedSession().use {
             assembleStopped(sources, null, settings.isExtendedAssemblerEnabled, settings.isWarningsAreErrors, null, {}, phaseStarted)
         }
@@ -306,64 +304,64 @@ class MarsContext @Inject constructor(
     @JvmOverloads
     @Throws(ProcessingException::class)
     fun assembleSnapshot(
-        snapshot: AssemblySourceSnapshot, handler: Path?, extended: Boolean, warnings: Boolean, checkCancellation: Runnable = Runnable {},
+        snapshot: AssemblySourceSnapshot, handler: Path?, extended: Boolean, warnings: Boolean, checkCancellation: () -> Unit = {},
     ): MIPSprogram = claimStoppedSession().use {
         assembleStopped(snapshot.entries(), handler, extended, warnings, snapshot, checkCancellation, null)
     }
 
     private fun assembleStopped(
         sources: List<Path>?, handler: Path?, extended: Boolean, warnings: Boolean, snapshot: AssemblySourceSnapshot?,
-        checkCancellation: Runnable, phaseStarted: Consumer<AssemblyPhase>?,
+        checkCancellation: () -> Unit, phaseStarted: ((AssemblyPhase) -> Unit)?,
     ): MIPSprogram {
         require(!sources.isNullOrEmpty()) { "At least one source file is required" }
         val root = MIPSprogram(this, snapshot)
         val filenames = sources.mapTo(ArrayList(sources.size)) {
-            checkCancellation.run()
+            checkCancellation()
             it.toAbsolutePath().normalize().toString()
         }
-        phaseStarted?.accept(AssemblyPhase.TOKENIZING)
+        phaseStarted?.invoke(AssemblyPhase.TOKENIZING)
         val files = root.prepareFilesForAssembly(filenames, filenames.first(), handler?.toAbsolutePath()?.toString(), checkCancellation)
-        phaseStarted?.accept(AssemblyPhase.ASSEMBLING)
+        phaseStarted?.invoke(AssemblyPhase.ASSEMBLING)
         root.assemble(files, extended, warnings, checkCancellation)
         return root
     }
 
     /** Captures a newly assembled program before execution or frontend edits. */
-    fun captureAssemblyImage(checkCancellation: Runnable): AssemblyImage = claimStoppedSession().use {
+    fun captureAssemblyImage(checkCancellation: () -> Unit): AssemblyImage = claimStoppedSession().use {
         val current = checkNotNull(program) { "No assembled program" }
         val instructions = current.machineList!!.mapTo(ArrayList(current.instructionCount())) {
-            checkCancellation.run()
+            checkCancellation()
             it.captureImage()
         }
-        checkCancellation.run()
+        checkCancellation()
         AssemblyImage(
             current.filename!!, memory.getConfiguration().configurationIdentifier()!!, target, registerFile.programCounterBits,
             instructions, memory.captureData(checkCancellation), current.sourceMap(), current.symbolMap(),
         )
     }
 
-    fun loadAssemblyImage(image: AssemblyImage, checkCancellation: Runnable) {
+    fun loadAssemblyImage(image: AssemblyImage, checkCancellation: () -> Unit) {
         loadAssemblyImage(image, checkCancellation) { image.entry }
     }
 
-    fun loadAssemblyImage(image: AssemblyImage, startAtMain: Boolean, checkCancellation: Runnable) {
+    fun loadAssemblyImage(image: AssemblyImage, startAtMain: Boolean, checkCancellation: () -> Unit) {
         loadAssemblyImage(image, checkCancellation) { programEntryAddress(startAtMain) }
     }
 
-    private fun loadAssemblyImage(image: AssemblyImage, checkCancellation: Runnable, entryAddress: LongSupplier) {
+    private fun loadAssemblyImage(image: AssemblyImage, checkCancellation: () -> Unit, entryAddress: () -> Long) {
         claimStoppedSession().use {
             selectTargetStopped(image.target)
             val instructions = image.instructions.mapTo(ArrayList(image.instructions.size)) {
-                checkCancellation.run()
+                checkCancellation()
                 it.load(instructionSet, settings)
             }
-            checkCancellation.run()
+            checkCancellation()
             val loaded = MIPSprogram.fromImage(this, image.filename!!, instructions, image.sources, image.symbols)
             setMemoryConfigurationStopped(image.layout)
             beginAssembly(loaded)
             memory.loadData(image.data, checkCancellation)
             for (statement in instructions) {
-                checkCancellation.run()
+                checkCancellation()
                 try {
                     memory.setStatement(statement.addressBits, statement)
                 } catch (invalidAddress: AddressErrorException) {
@@ -371,7 +369,7 @@ class MarsContext @Inject constructor(
                 }
             }
             symbolTable.loadDefinitions(image.symbols.globals())
-            registerFile.setProgramCounterBits(entryAddress.asLong)
+            registerFile.setProgramCounterBits(entryAddress())
             program = loaded
         }
     }

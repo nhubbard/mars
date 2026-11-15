@@ -21,7 +21,6 @@ import edu.missouristate.mars.mips.instructions.BasicInstructionFormat.R_FORMAT
 import edu.missouristate.mars.mips.instructions.InstructionDefaults
 import edu.missouristate.mars.plugin.tools.toolsMessages
 import edu.missouristate.mars.util.Binary
-import java.util.function.Consumer
 
 /** Holds completed events, including repeated addresses. Backstep rewinds this execution's timeline. */
 internal class XRayTrace {
@@ -85,7 +84,7 @@ internal class XRayTrace {
     }
 
     fun observeMemory(memory: MemoryState): AutoCloseable {
-        val callback = Consumer<MemoryAccessNotice>(::recordMemory)
+        val callback = ::recordMemory
         memory.addAddressObserver(callback)
         return AutoCloseable { memory.deleteAddressObserver(callback) }
     }

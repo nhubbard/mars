@@ -80,9 +80,9 @@ internal class InstructionSetTest {
         // MARS intentionally registers multiple BasicInstruction entries under the same mnemonic
         // for instructions that have both register and immediate forms (e.g. trap instructions
         // teq/tne/tlt/tltu/tge/tgeu which have both R-type and I-type encodings). Pin this count.
-        val distinctNames: Long =
-            basicInstructions!!.stream().map<String?>(Instruction::name).distinct().count()
-        val duplicates: Long = basicInstructions!!.size - distinctNames
+        val distinctNames =
+            basicInstructions!!.map(Instruction::name).toSet().size
+        val duplicates = basicInstructions!!.size - distinctNames
         Assertions.assertThat(duplicates)
             .`as`(
                 "Expected exactly 16 duplicate mnemonics (R-type + I-type pairs); adjust if changed",

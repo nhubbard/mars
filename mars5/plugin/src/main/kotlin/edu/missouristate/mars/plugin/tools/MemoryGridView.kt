@@ -7,6 +7,7 @@ import com.intellij.openapi.application.EDT
 import com.intellij.openapi.observable.util.whenFocusGained
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.ComboBox
+import com.intellij.ui.CollectionComboBoxModel
 import com.intellij.ui.ColorPanel
 import com.intellij.ui.ScrollPaneFactory
 import com.intellij.ui.components.JBCheckBox
@@ -34,7 +35,6 @@ import java.awt.event.FocusEvent
 import java.awt.event.KeyEvent
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
-import javax.swing.DefaultComboBoxModel
 import javax.swing.JButton
 import javax.swing.JComponent
 import javax.swing.JEditorPane
@@ -53,12 +53,12 @@ internal class MemoryGridView(
     project: Project, private val mode: Mode, private val model: (MarsProcessHandler) -> MemoryGridDisplay,
 ) : Disposable {
     private val selector = MarsToolExecutionSelector(project, ::selectionChanged)
-    private val width = ComboBox(MemoryGridDisplay.displaySizes.toTypedArray())
-    private val height = ComboBox(MemoryGridDisplay.displaySizes.toTypedArray())
-    private val unitWidth = ComboBox(MemoryGridDisplay.unitSizes.toTypedArray())
-    private val unitHeight = ComboBox(MemoryGridDisplay.unitSizes.toTypedArray())
+    private val width = ComboBox(CollectionComboBoxModel(MemoryGridDisplay.displaySizes.toMutableList()))
+    private val height = ComboBox(CollectionComboBoxModel(MemoryGridDisplay.displaySizes.toMutableList()))
+    private val unitWidth = ComboBox(CollectionComboBoxModel(MemoryGridDisplay.unitSizes.toMutableList()))
+    private val unitHeight = ComboBox(CollectionComboBoxModel(MemoryGridDisplay.unitSizes.toMutableList()))
     private var addresses = emptyMap<Base, Long>()
-    private val base = ComboBox(baseChoices().toTypedArray()).apply {
+    private val base = ComboBox(CollectionComboBoxModel(baseChoices().toMutableList())).apply {
         renderer = textListCellRenderer("") { choice ->
             val name = toolsMessages.getMessage(choice.messageKey)
             addresses[choice]?.let { toolsMessages.getMessage("bitmap.baseChoice", formatToolHex(it), name) } ?: name
@@ -198,7 +198,7 @@ internal class MemoryGridView(
         addresses = current
         val choices = baseChoices()
         if (oldChoices != choices) {
-            base.model = DefaultComboBoxModel(choices.toTypedArray())
+            base.model = CollectionComboBoxModel(choices.toMutableList())
             base.selectedItem = if (previous in choices) previous else mode.defaults().base
         }
         base.repaint()
@@ -226,7 +226,7 @@ internal class MemoryGridView(
     }
 
     private inner class ReferenceControls {
-        val words = ComboBox(MemoryGridDisplay.wordCounts.toTypedArray())
+        val words = ComboBox(CollectionComboBoxModel(MemoryGridDisplay.wordCounts.toMutableList()))
         val threshold = JSpinner(SpinnerNumberModel(0, 0, Int.MAX_VALUE, 1)).apply {
             editor = JSpinner.NumberEditor(this, "0").apply { textField.columns = 10 }
         }

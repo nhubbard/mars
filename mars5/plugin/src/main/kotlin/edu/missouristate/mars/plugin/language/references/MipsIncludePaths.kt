@@ -6,7 +6,6 @@ import com.intellij.openapi.vfs.VirtualFileManager
 import edu.missouristate.mars.assembler.Tokenizer
 import java.nio.file.InvalidPathException
 import java.nio.file.Path
-import java.util.Objects.requireNonNullElse
 
 internal fun VirtualFile.mipsIncludeRequest(path: String): Path? {
     if (!isInLocalFileSystem) return null
@@ -39,7 +38,7 @@ internal val dotSegments = setOf(".", "..")
 
 /** Resolve directory aliases while keeping the written file name for relative includes. */
 internal fun VirtualFile.mipsIncludeDirectoryPath(): String? =
-    parent?.let { requireNonNullElse(it.canonicalPath, it.path) }
+    parent?.let { it.canonicalPath ?: it.path }
 
 /** A dot segment requires a directory. At the filesystem root, the parent is the root itself. */
 internal fun VirtualFile.resolveMipsDotSegment(segment: String): VirtualFile? {

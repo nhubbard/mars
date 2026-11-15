@@ -4,16 +4,17 @@ import edu.missouristate.mars.core.InstructionContext
 import edu.missouristate.mars.mips.hardware.Coprocessor1State
 import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.InstructionLoader
-import java.lang.Double.MIN_NORMAL as DOUBLE_MIN_NORMAL
-import java.lang.Float.MIN_NORMAL
-import java.util.Arrays
-import java.util.Objects
-import java.util.function.DoubleFunction
-import java.util.stream.Stream
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.MethodSource
+import java.lang.Float.MIN_NORMAL
+import kotlin.math.abs
+import kotlin.math.ceil
+import kotlin.math.floor
+import kotlin.math.round
+import kotlin.math.sqrt
+import java.lang.Double.MIN_NORMAL as DOUBLE_MIN_NORMAL
 
 /** Pins supported MARS FP behavior, including its saturation conventions and opcode rounding. */
 internal class FloatingPointEdgeTest {
@@ -51,13 +52,7 @@ internal class FloatingPointEdgeTest {
                     session.registerFile.getPC(),
                     1,
                 )
-            System.arraycopy(
-                operands,
-                0,
-                Objects.requireNonNull<IntArray?>(statement.operands),
-                0,
-                operands.size,
-            )
+            operands.copyInto(requireNotNull(statement.operands))
             context.execute(statement)
             if (comparison) {
                 val expected =
@@ -77,9 +72,9 @@ internal class FloatingPointEdgeTest {
                 val expected =
                     if (invalid) Int.MAX_VALUE
                     else
-                        (if (base.startsWith("Floor")) Math.floor(input)
-                            else if (base.startsWith("Ceil")) Math.ceil(input)
-                            else if (base.startsWith("Round")) Math.rint(input) else input)
+                        (if (base.startsWith("Floor")) floor(input)
+                            else if (base.startsWith("Ceil")) ceil(input)
+                            else if (base.startsWith("Round")) round(input) else input)
                             .toInt()
                 Assertions.assertThat(fp.getValue(8)).isEqualTo(expected)
             } else {
@@ -88,8 +83,8 @@ internal class FloatingPointEdgeTest {
                     else if (base.startsWith("Sub")) input - 2
                     else if (base.startsWith("Mul")) input * 2
                     else if (base.startsWith("Div")) input / 2
-                    else if (base.startsWith("Sqrt")) Math.sqrt(input)
-                    else if (base.startsWith("Abs")) Math.abs(input)
+                    else if (base.startsWith("Sqrt")) sqrt(input)
+                    else if (base.startsWith("Abs")) abs(input)
                     else if (base.startsWith("Neg")) -input else input
                 val targetDouble =
                     if (base.startsWith("Cvt")) base[3] == 'D' else base.endsWith("D")
@@ -113,7 +108,7 @@ internal class FloatingPointEdgeTest {
 
     companion object {
         @JvmStatic
-        fun cases(): Stream<Arguments?>? {
+        fun cases(): List<Arguments> {
             val values =
                 doubleArrayOf(
                     Double.NaN,
@@ -133,7 +128,6 @@ internal class FloatingPointEdgeTest {
                 )
             return InstructionLoader()
                 .loadBasicInstructions()
-                .stream()
                 .filter { instruction: BasicInstruction ->
                     instruction.javaClass
                         .getSimpleName()
@@ -143,15 +137,7 @@ internal class FloatingPointEdgeTest {
                         )
                 }
                 .flatMap { instruction: BasicInstruction ->
-                    Arrays.stream(values)
-                        .mapToObj<Arguments?>(
-                            DoubleFunction { value: Double ->
-                                Arguments.of(
-                                    instruction,
-                                    value,
-                                )
-                            },
-                        )
+                    values.map { value -> Arguments.of(instruction, value) }
                 }
         }
     }

@@ -6,10 +6,9 @@ import edu.missouristate.mars.mips.hardware.MemoryState
 import java.net.URL
 import java.nio.file.Files
 import java.nio.file.Path
-import java.util.Objects
+import kotlin.io.path.useDirectoryEntries
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
-import java.util.stream.Stream
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -75,18 +74,11 @@ internal class CoreSessionIntegrationTest {
 
     companion object {
         @JvmStatic
-        fun corpus(): Stream<Path> {
+        fun corpus(): List<Path> {
             val resources: URL? =
-                Objects.requireNonNull<URL?>(
-                    CoreSessionIntegrationTest::class.java.getResource("/testPrograms"),
-                    "testPrograms",
-                )
-            Files.list(Path.of(resources!!.toURI())).use { paths ->
-                return paths
-                    .filter { path: Path -> path.toString().endsWith(".asm") }
-                    .sorted()
-                    .toList()
-                    .stream()
+                checkNotNull(CoreSessionIntegrationTest::class.java.getResource("/testPrograms")) { "testPrograms" }
+            return Path.of(requireNotNull(resources).toURI()).useDirectoryEntries("*.asm") { paths ->
+                paths.sorted().toList()
             }
         }
     }

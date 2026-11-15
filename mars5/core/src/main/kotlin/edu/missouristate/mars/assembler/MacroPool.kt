@@ -71,9 +71,9 @@ open class MacroPool(private val program: MIPSprogram) {
 
     open fun matchesAnyMacroName(value: String): Boolean = macros.any { it.name == value }
 
-    fun definitions(checkCancellation: Runnable): List<MacroDefinition> =
+    fun definitions(checkCancellation: () -> Unit): List<MacroDefinition> =
         macros.map { macro ->
-            checkCancellation.run()
+            checkCancellation()
             MacroDefinition(macro.definitionSite(), macro.name, macro.args)
         }
 

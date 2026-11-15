@@ -19,7 +19,7 @@ import java.util.IdentityHashMap
 /** Resolves operands, expands pseudo-instructions, and emits machine words. */
 internal class SecondPassProcessor(
     private val context: AssemblyContext,
-    private val checkCancellation: Runnable,
+    private val checkCancellation: () -> Unit,
     private val symbolUses: AssemblySymbolUses,
 ) {
     data class Result(val instructions: ArrayList<ProgramStatement>, val sourceMap: InstructionSourceMap)
@@ -32,14 +32,14 @@ internal class SecondPassProcessor(
         for (program in programs) {
             if (errors.errorLimitExceeded()) break
             for (statement in program.parsedList!!) {
-                checkCancellation.run()
+                checkCancellation()
                 statement.buildBasicStatementFromBasicInstruction(errors, symbolUses::record)
                 if (errors.errorsOccurred()) throw ProcessingException(errors)
                 if (statement.instruction is BasicInstruction) {
                     machine.add(statement)
                 } else {
                     for (generated in expander.expand(statement, program, errors)) {
-                        checkCancellation.run()
+                        checkCancellation()
                         pseudoAddresses.add(generated.addressBits)
                         machine.add(generated)
                     }
@@ -51,7 +51,7 @@ internal class SecondPassProcessor(
         val breakpoints = HashMap<Location, MutableList<Long>>()
         val seen = newSetFromMap(IdentityHashMap<Origin, Boolean>())
         for (statement in machine) {
-            checkCancellation.run()
+            checkCancellation()
             if (errors.errorLimitExceeded()) break
             statement.buildMachineStatementFromBasicStatement(errors)
             val address = statement.addressBits
@@ -71,7 +71,7 @@ internal class SecondPassProcessor(
         }
 
         machine.sortWith { first, second ->
-            checkCancellation.run()
+            checkCancellation()
             first.addressBits.toULong().compareTo(second.addressBits.toULong())
         }
         checkDuplicateAddresses(machine, errors)
@@ -81,7 +81,7 @@ internal class SecondPassProcessor(
 
     private fun checkDuplicateAddresses(instructions: List<ProgramStatement>, errors: ErrorList) {
         for (index in 0 until instructions.lastIndex) {
-            checkCancellation.run()
+            checkCancellation()
             val first = instructions[index]
             val second = instructions[index + 1]
             if (first.addressBits == second.addressBits) {

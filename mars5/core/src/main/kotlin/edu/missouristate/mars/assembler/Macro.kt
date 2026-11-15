@@ -101,7 +101,7 @@ open class Macro {
                 }
                 renamed = argument >= 0 && substitute in privateArguments
             } else if (labels.binarySearch(token.value) >= 0) {
-                substitute = token.value + "_M" + counter
+                substitute = "${token.value}_M$counter"
                 renamed = true
             } else {
                 origins[source.length - start] = TokenOrigin(token, origin)

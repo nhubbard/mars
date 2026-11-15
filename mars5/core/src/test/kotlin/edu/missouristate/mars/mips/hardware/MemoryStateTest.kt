@@ -4,7 +4,6 @@ import edu.missouristate.mars.ProgramStatement
 import edu.missouristate.mars.core.SimulationSettings
 import edu.missouristate.mars.mips.instructions.InstructionSet
 import edu.missouristate.mars.simulator.Exceptions
-import java.util.function.Consumer
 import org.assertj.core.api.Assertions
 import org.assertj.core.api.ThrowingConsumer
 import org.junit.jupiter.api.BeforeAll
@@ -80,7 +79,7 @@ internal class MemoryStateTest {
             state.setStatement(address, ProgramStatement(0x2408002a, address, instructions))
         }
         val notices = ArrayList<MemoryAccessNotice>()
-        state.addObserver({ notices.add(it) })
+        state.addObserver { notices.add(it) }
         for (address in data) {
             Assertions.assertThat(state.inspectWord(address)).isEqualTo(0x12345678)
         }
@@ -104,7 +103,7 @@ internal class MemoryStateTest {
         )
         state.setWord(state.dataBaseAddress, code)
         val notices = ArrayList<MemoryAccessNotice>()
-        state.addObserver({ notices.add(it) })
+        state.addObserver { notices.add(it) }
         Assertions.assertThat(
                 requireNotNull(state.inspectInstruction(state.kernelTextBaseAddress))
                     .binaryStatement,
@@ -134,8 +133,7 @@ internal class MemoryStateTest {
             MemoryState(
                 configuration,
                 SimulationSettings(),
-                { binary, address -> ProgramStatement(binary, address, instructions) },
-            )
+            ) { binary, address -> ProgramStatement(binary, address, instructions) }
         val second: MemoryState = memory("Default", SimulationSettings())
         first.setWord(0, 42)
         second.setWord(second.dataBaseAddress, 99)
@@ -261,7 +259,7 @@ internal class MemoryStateTest {
         val first: MemoryState = memory("Default", SimulationSettings())
         val second: MemoryState = memory("Default", SimulationSettings())
         val notices = ArrayList<MemoryAccessNotice>()
-        val listener = Consumer<MemoryAccessNotice> { notices.add(it) }
+        val listener: (MemoryAccessNotice) -> Unit = { notices.add(it) }
         val address = first.dataBaseAddress
         first.addObserver(listener, address)
         second.setWord(address, 99)
@@ -294,8 +292,7 @@ internal class MemoryStateTest {
             return MemoryState(
                 MemoryConfigurations.createConfiguration(layout),
                 settings,
-                { binary, address -> ProgramStatement(binary, address, instructions) },
-            )
+            ) { binary, address -> ProgramStatement(binary, address, instructions) }
         }
     }
 }

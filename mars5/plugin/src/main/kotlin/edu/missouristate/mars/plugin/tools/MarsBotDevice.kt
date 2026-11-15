@@ -5,7 +5,6 @@ import edu.missouristate.mars.mips.hardware.AccessNotice.Companion.WRITE
 import edu.missouristate.mars.mips.hardware.AccessOrigin.EXECUTION
 import edu.missouristate.mars.mips.hardware.MemoryAccessNotice
 import edu.missouristate.mars.mips.hardware.MemoryState
-import java.util.function.Consumer
 
 /** MarsBot moves on the execution worker and shares its instruction history. */
 internal class MarsBotDevice(private val connectAtLaunch: Boolean = false) {
@@ -29,7 +28,7 @@ internal class MarsBotDevice(private val connectAtLaunch: Boolean = false) {
 
     private var memory: MemoryState? = null
     private var ports: Ports? = null
-    private val observer = Consumer<MemoryAccessNotice>(::record)
+    private val observer = ::record
     private var connected = connectAtLaunch
     private var hasConnected = connectAtLaunch
     private var world = MarsBotWorld()
@@ -37,7 +36,7 @@ internal class MarsBotDevice(private val connectAtLaunch: Boolean = false) {
     private var remaining = instructionsPerTick
     private var publish = false
     private var checkpoint: RewindState? = null
-    private var restoreCheckpoint: Runnable? = null
+    private var restoreCheckpoint: (() -> Unit)? = null
 
     @Synchronized
     fun observe(session: MarsContext): AutoCloseable {
@@ -105,7 +104,7 @@ internal class MarsBotDevice(private val connectAtLaunch: Boolean = false) {
         val source = memory!!
         val addresses = ports!!
         when (val address = notice.address and -4) {
-            addresses.heading -> world = world.copy(heading = Math.floorMod(source.getWordNoNotify(address), 360))
+            addresses.heading -> world = world.copy(heading = source.getWordNoNotify(address).mod(360))
             addresses.pen -> when (source.getWordNoNotify(address)) {
                 0 -> world = world.copy(penDown = false)
                 1 -> world = world.copy(penDown = true)
@@ -143,7 +142,7 @@ internal class MarsBotDevice(private val connectAtLaunch: Boolean = false) {
     }
 
     @Synchronized
-    private fun capture(source: MemoryState, addresses: Ports): Runnable {
+    private fun capture(source: MemoryState, addresses: Ports): () -> Unit {
         if (!hasConnected) restoreCheckpoint?.let { return it }
         val coordinates = if (connected) PositionWords(
             source.getWordNoNotify(addresses.x), source.getWordNoNotify(addresses.y),
@@ -151,7 +150,7 @@ internal class MarsBotDevice(private val connectAtLaunch: Boolean = false) {
         val state = RewindState(world, remaining, publish, coordinates)
         if (state != checkpoint) {
             checkpoint = state
-            restoreCheckpoint = Runnable { restore(source, addresses, state) }
+            restoreCheckpoint = { restore(source, addresses, state) }
         }
         return restoreCheckpoint!!
     }

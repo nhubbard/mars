@@ -11,7 +11,6 @@ import edu.missouristate.mars.plugin.tools.MmioTerminalDisplay.Geometry
 import edu.missouristate.mars.simulator.Exceptions.EXTERNAL_INTERRUPT_DISPLAY
 import edu.missouristate.mars.simulator.Exceptions.EXTERNAL_INTERRUPT_KEYBOARD
 import java.util.SplittableRandom
-import java.util.function.Consumer
 import kotlin.math.abs
 import kotlin.random.Random
 
@@ -44,7 +43,7 @@ internal class KeyboardDisplayDevice(
 
     private var memory: MemoryState? = null
     private var base: Int? = null
-    private val observer = Consumer<MemoryAccessNotice>(::record)
+    private val observer = ::record
     private var connected = connectAtLaunch
     private var hasConnected = connectAtLaunch
     private var options = Options()
@@ -56,7 +55,7 @@ internal class KeyboardDisplayDevice(
     private var receiverRead = false
     private var transmitted: Int? = null
     private var checkpoint: RewindState? = null
-    private var restoreCheckpoint: Runnable? = null
+    private var restoreCheckpoint: (() -> Unit)? = null
 
     @Synchronized
     fun observe(session: MarsContext): AutoCloseable {
@@ -215,7 +214,7 @@ internal class KeyboardDisplayDevice(
     }
 
     @Synchronized
-    private fun capture(session: MarsContext): Runnable {
+    private fun capture(session: MarsContext): () -> Unit {
         if (!hasConnected && checkpoint?.display === display) return restoreCheckpoint!!
         val source = session.memory
         val start = source.memoryMapBaseAddress
@@ -225,7 +224,7 @@ internal class KeyboardDisplayDevice(
             session.pendingDeviceInterrupts() and INTERRUPT_MASK)
         if (state != checkpoint) {
             checkpoint = state
-            restoreCheckpoint = Runnable { restore(session, start, state) }
+            restoreCheckpoint = { restore(session, start, state) }
         }
         return restoreCheckpoint!!
     }

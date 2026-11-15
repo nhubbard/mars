@@ -9,7 +9,6 @@ import edu.missouristate.mars.mips.hardware.MemoryAccessNotice
 import edu.missouristate.mars.plugin.MarsSessionService
 import java.nio.file.Path
 import java.util.concurrent.TimeUnit
-import java.util.function.Consumer
 import kotlin.io.path.writeText
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -192,7 +191,7 @@ class DigitalLabDeviceTest {
             val memory = session.memory
             val start = memory.memoryMapBaseAddress + 0x10
             val lab = DigitalLabDevice(true)
-            val disconnect = Consumer<MemoryAccessNotice> { lab.setConnected(false) }
+            val disconnect: (MemoryAccessNotice) -> Unit = { lab.setConnected(false) }
             memory.addObserver(disconnect, start)
             lab.observe(session).use {
                 duringExecution<Unit, Exception> { memory.setByte(start, 0xff) }

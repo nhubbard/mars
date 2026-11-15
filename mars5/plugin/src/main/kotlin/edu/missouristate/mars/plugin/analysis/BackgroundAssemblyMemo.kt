@@ -28,7 +28,7 @@ internal class BackgroundAssemblyMemo {
     fun assemble(sources: CapturedAssemblySources, structureStamp: Long, options: MarsExecutionOptions): BackgroundAssemblyOutcome {
         ProgressManager.checkCanceled()
         val key = Revision(sources.sourceSet, sources.exceptionHandler, sources.revisions, sources.diskSources, structureStamp, options)
-        synchronized(outcomes) { outcomes.get(key) }?.let { return it }
+        synchronized(outcomes) { outcomes[key] }?.let { return it }
         val component = MarsSessionService.createMarsComponent()
         val outcome = component.context().use { session ->
             options.applyForAssembly(session)

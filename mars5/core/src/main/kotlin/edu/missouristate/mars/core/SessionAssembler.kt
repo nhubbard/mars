@@ -29,7 +29,7 @@ class SessionAssembler(private val session: MarsContext) : MarsAssembler {
         exceptionHandler: Path?,
         extendedAssemblerEnabled: Boolean,
         warningsAreErrors: Boolean,
-        checkCancellation: Runnable,
+        checkCancellation: () -> Unit,
     ): AssemblyResult = assemble {
         session.assembleSnapshot(snapshot, exceptionHandler, extendedAssemblerEnabled, warningsAreErrors, checkCancellation)
     }

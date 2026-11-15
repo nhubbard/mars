@@ -135,7 +135,7 @@ internal fun scrollableToolPanel(
     UIUtil.uiTraverser(body).filter(JComponent::class.java).forEach { control ->
         control.whenFocusGained(owner) {
             // Scroll the tool panel even when the focused control handles scrolling internally.
-            val target = focusTargets.getOrDefault(control, control)
+            val target = focusTargets[control] ?: control
             body.scrollRectToVisible(SwingUtilities.convertRectangle(target.parent, target.bounds, body))
         }
     }
@@ -196,6 +196,7 @@ internal class MarsToolExecutionSelector(private val project: Project, private v
             val selected = selector.selectedItem
             executions = available
             val next = available.firstOrNull { it == selected } ?: available.firstOrNull()
+            // Preserve Swing's null result when an empty selector is queried for an item.
             selector.model = DefaultComboBoxModel(available.toTypedArray()).apply { selectedItem = next }
             if (next != selected) selectionChanged()
         }

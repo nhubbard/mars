@@ -6,7 +6,6 @@ import edu.missouristate.mars.mips.hardware.AccessOrigin.EXECUTION
 import edu.missouristate.mars.mips.hardware.Coprocessor0State.Companion.STATUS
 import edu.missouristate.mars.mips.hardware.MemoryAccessNotice
 import edu.missouristate.mars.mips.hardware.MemoryState
-import java.util.function.Consumer
 
 /** Digital Lab's byte ports and instruction-driven timer, owned by one execution. */
 internal class DigitalLabDevice(private val connectAtLaunch: Boolean = false) {
@@ -16,7 +15,7 @@ internal class DigitalLabDevice(private val connectAtLaunch: Boolean = false) {
     )
 
     private var memory: MemoryState? = null
-    private val observer = Consumer<MemoryAccessNotice>(::record)
+    private val observer = ::record
     private var connected = connectAtLaunch
     private var hasConnected = connectAtLaunch
     private var right = 0
@@ -28,7 +27,7 @@ internal class DigitalLabDevice(private val connectAtLaunch: Boolean = false) {
     private var row = 0
     private var timerRemaining = 0
     private var checkpoint: RewindState? = null
-    private var restoreCheckpoint: Runnable? = null
+    private var restoreCheckpoint: (() -> Unit)? = null
 
     private data class RewindState(
         val right: Int, val left: Int, val key: Int?, val row: Int, val timerRemaining: Int,
@@ -157,7 +156,7 @@ internal class DigitalLabDevice(private val connectAtLaunch: Boolean = false) {
     }
 
     @Synchronized
-    private fun capture(session: MarsContext): Runnable {
+    private fun capture(session: MarsContext): () -> Unit {
         // A device that has never connected can reuse the initial, inactive checkpoint.
         if (!hasConnected) restoreCheckpoint?.let { return it }
         val source = session.memory
@@ -167,7 +166,7 @@ internal class DigitalLabDevice(private val connectAtLaunch: Boolean = false) {
             session.pendingDeviceInterrupts() and INTERRUPT_MASK)
         if (state != checkpoint) {
             checkpoint = state
-            restoreCheckpoint = Runnable { restore(session, address, state) }
+            restoreCheckpoint = { restore(session, address, state) }
         }
         return restoreCheckpoint!!
     }

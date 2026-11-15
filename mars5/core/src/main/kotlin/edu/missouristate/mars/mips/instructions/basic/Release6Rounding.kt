@@ -9,7 +9,9 @@ import java.lang.Double.MIN_NORMAL as DOUBLE_MIN_NORMAL
 import java.lang.Float.MIN_NORMAL as FLOAT_MIN_NORMAL
 import kotlin.math.ceil
 import kotlin.math.floor
+import kotlin.math.round
 import kotlin.math.truncate
+import kotlin.math.withSign
 
 internal fun release6RoundingInstructions(): List<BasicInstruction> = buildList {
     add(roundToIntegral(double = false))
@@ -60,7 +62,7 @@ private fun fixedPointConversion(name: String, operation: Int, double: Boolean, 
 }
 
 internal fun roundIntegral(value: Double, mode: Int): Double = when (mode) {
-    0 -> Math.rint(value)
+    0 -> round(value)
     1 -> truncate(value)
     2 -> ceil(value)
     else -> floor(value)
@@ -85,7 +87,7 @@ private fun roundToIntegral(double: Boolean) = BasicInstruction(
         result = bits or quietBit
     } else {
         val value = if (status and FLUSH_SUBNORMALS != 0 && input > -minNormal && input < minNormal) {
-            Math.copySign(0.0, input)
+            0.0.withSign(input)
         } else input
         val rounded = roundIntegral(value, status and 3)
         causes = if (rounded == input) 0 else INEXACT

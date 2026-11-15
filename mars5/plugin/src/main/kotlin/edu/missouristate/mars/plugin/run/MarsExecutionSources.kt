@@ -175,7 +175,7 @@ internal class MarsExecutionSources(private val capture: CapturedAssemblySources
     private fun fileAt(location: Location, consoleProject: Project? = null): VirtualFile {
         val path = location.file()
         val text = texts.getValue(path)
-        if (location.line() > capture.previewLineCounts.getOrDefault(path, Int.MAX_VALUE)) {
+        if (location.line() > (capture.previewLineCounts[path] ?: Int.MAX_VALUE)) {
             return excerptAt(path, text, location.line() - 1)
         }
         val file = LocalFileSystem.getInstance().findFileByNioFile(path)

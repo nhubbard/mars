@@ -1,12 +1,10 @@
 package edu.missouristate.mars
 
-import edu.missouristate.mars.mips.dump.DumpFormat
 import edu.missouristate.mars.mips.dump.DumpFormatLoader
 import edu.missouristate.mars.mips.dump.MemoryDumpSnapshot
 import edu.missouristate.mars.mips.hardware.MemoryAccessNotice
 import java.nio.file.Files
 import java.nio.file.Path
-import java.util.Objects
 import java.util.concurrent.CancellationException
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
@@ -25,7 +23,7 @@ internal class MemoryDumpTest {
                 offset += Integer.BYTES
             }
             val output = directory.resolve("data.hex")
-            Objects.requireNonNull(DumpFormatLoader.findByCommandDescriptor("HEX"))!!
+            checkNotNull(DumpFormatLoader.findByCommandDescriptor("HEX"))
                 .dumpMemoryRange(output.toFile(), start, start + 0x10000, session)
             val lines = Files.readAllLines(output)
             Assertions.assertThat(lines).hasSize(16387)
@@ -50,9 +48,7 @@ internal class MemoryDumpTest {
         TestSessions.create().use { session ->
             session.assemble(listOf(source))
             val format =
-                Objects.requireNonNull<DumpFormat>(
-                    DumpFormatLoader.findByCommandDescriptor("SegmentWindow"),
-                )
+                checkNotNull(DumpFormatLoader.findByCommandDescriptor("SegmentWindow"))
             val output = directory.resolve("segment.txt")
             val data: Int = session.memory.dataBaseAddress
             format.dumpMemoryRange(output.toFile(), data, data + 8 * Integer.BYTES, session)
@@ -76,11 +72,9 @@ internal class MemoryDumpTest {
         val source = directory.resolve("program.s")
         Files.writeString(source, $$".text\nmain: addiu $t0, $zero, 7\n")
         val listingFormat =
-            Objects.requireNonNull<DumpFormat>(
-                DumpFormatLoader.findByCommandDescriptor("SegmentWindow"),
-            )
+            checkNotNull(DumpFormatLoader.findByCommandDescriptor("SegmentWindow"))
         val hexFormat =
-            Objects.requireNonNull<DumpFormat>(DumpFormatLoader.findByCommandDescriptor("HexText"))
+            checkNotNull(DumpFormatLoader.findByCommandDescriptor("HexText"))
         val listing: MemoryDumpSnapshot
         val mmio: MemoryDumpSnapshot
         TestSessions.create().use { session ->
@@ -100,17 +94,16 @@ internal class MemoryDumpTest {
                 mapped,
             )
             session.claimStoppedSession().use { `_` ->
-                listing = listingFormat.capture(session, text, text, {})
-                mmio = hexFormat.capture(session, mapped, mapped, {})
+                listing = listingFormat.capture(session, text, text) {}
+                mmio = hexFormat.capture(session, mapped, mapped) {}
                 Assertions.assertThatThrownBy {
                     hexFormat.capture(
                         session,
                         mapped,
                         mapped,
-                        {
-                            throw CancellationException()
-                        },
-                    )
+                    ) {
+                        throw CancellationException()
+                    }
                 }
                     .isInstanceOf(CancellationException::class.java)
             }

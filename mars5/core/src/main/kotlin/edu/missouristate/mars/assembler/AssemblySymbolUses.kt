@@ -11,12 +11,12 @@ internal class AssemblySymbolUses {
 
     private val bindings = HashMap<SourceToken, MutableSet<Binding>>()
 
-    fun bindings(checkCancellation: Runnable): Map<SourceToken, Set<SymbolUse>> {
+    fun bindings(checkCancellation: () -> Unit): Map<SourceToken, Set<SymbolUse>> {
         val result = HashMap<SourceToken, Set<SymbolUse>>()
         bindings.forEach { (site, uses) ->
             val detached = HashSet<SymbolUse>()
             for ((target, equivalenceSource) in uses) {
-                checkCancellation.run()
+                checkCancellation()
                 val definition = SourceToken(target.origin()!!.location, target.column()!!)
                 detached.add(SymbolUse(definition, target.name, target.address, equivalenceSource, target.addressBits))
             }

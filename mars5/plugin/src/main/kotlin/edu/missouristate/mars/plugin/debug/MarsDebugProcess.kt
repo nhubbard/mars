@@ -56,7 +56,6 @@ import edu.missouristate.mars.plugin.run.runMessages
 import edu.missouristate.mars.simulator.SimulatorEngine
 import edu.missouristate.mars.simulator.BackStepper.MemoryWrite
 import java.nio.file.Path
-import java.util.function.Consumer
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -107,7 +106,7 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
     @Volatile private var watchpoints = emptyMap<MemoryWatchpoint, MemoryWatchRange>()
     // Written on the simulator worker and drained when its slice completes.
     private val watchpointHits = linkedSetOf<MemoryWatchpoint>()
-    private val watchMemory = Consumer<MemoryAccessNotice> { access ->
+    private val watchMemory: (MemoryAccessNotice) -> Unit = { access ->
         if (access.origin() == AccessOrigin.EXECUTION && !access.isInstructionFetch) {
             for ((breakpoint, range) in watchpoints) {
                 if (range.overlaps(access)) watchpointHits.add(breakpoint)

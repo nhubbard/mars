@@ -9,10 +9,10 @@ interface Program {
     fun sourceMap(): InstructionSourceMap = InstructionSourceMap.EMPTY
 
     /** Return instructions emitted at a physical line or through a macro call at that line. */
-    fun instructionsAt(location: Location, checkCancellation: Runnable): List<AssembledInstruction> = emptyList()
+    fun instructionsAt(location: Location, checkCancellation: () -> Unit): List<AssembledInstruction> = emptyList()
 
     /** Return basic instructions emitted by pseudo-instructions. */
-    fun pseudoInstructions(checkCancellation: Runnable): List<AssembledInstruction> = emptyList()
+    fun pseudoInstructions(checkCancellation: () -> Unit): List<AssembledInstruction> = emptyList()
 
     fun symbolMap(): AssemblySymbolMap = AssemblySymbolMap.EMPTY
 }

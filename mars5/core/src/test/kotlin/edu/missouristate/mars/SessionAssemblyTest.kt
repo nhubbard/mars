@@ -27,13 +27,11 @@ import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
-import java.util.*
 import java.util.concurrent.CancellationException
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
-import java.util.stream.Stream
 
 internal class SessionAssemblyTest {
     @TempDir lateinit var directory: Path
@@ -95,7 +93,7 @@ internal class SessionAssemblyTest {
         """
                     .trimIndent() + program(42, false).replace($$"addiu $t0, $t0, 1", "increment"),
             )
-        val neverCancelled = Runnable {}
+        val neverCancelled = {}
         val image: AssemblyImage
         val main: Int
         val result: Int
@@ -122,7 +120,7 @@ internal class SessionAssemblyTest {
             session("Default").use { second ->
                 first.loadAssemblyImage(image, neverCancelled)
                 second.loadAssemblyImage(image, neverCancelled)
-                val installed = Objects.requireNonNull<MIPSprogram>(first.program)
+                val installed = checkNotNull(first.program)
                 Assertions.assertThat<InstructionSourceMap?>(installed.sourceMap())
                     .isSameAs(original.sourceMap())
                 Assertions.assertThat<AssemblySymbolMap?>(installed.symbolMap())
@@ -142,10 +140,7 @@ internal class SessionAssemblyTest {
                         .sourceMap()
                         .origins()
                         .values
-                        .stream()
-                        .filter { origin: InstructionSourceMap.Origin? -> origin!!.caller != null }
-                        .findFirst()
-                        .orElseThrow()
+                        .first { origin -> origin.caller != null }
                 Assertions.assertThat(
                         installed.instructionsAt(
                             macroSite.location,
@@ -154,11 +149,8 @@ internal class SessionAssemblyTest {
                     )
                     .isEqualTo(original.instructionsAt(macroSite.location, neverCancelled))
                 val statement =
-                    Objects.requireNonNull(installed.machineList)!!
-                        .stream()
-                        .filter { row: ProgramStatement -> row.instructionOrigin === macroSite }
-                        .findFirst()
-                        .orElseThrow()
+                    checkNotNull(installed.machineList)
+                        .first { row: ProgramStatement -> row.instructionOrigin === macroSite }
                 Assertions.assertThat(ErrorMessage(statement, "failure").filename)
                     .isEqualTo(file.toString())
 
@@ -221,18 +213,14 @@ internal class SessionAssemblyTest {
             val argument: String = "x".repeat(memory.stackBaseAddress - memory.stackPointer - 1)
             ProgramArgumentList(arrayOf(argument)).storeProgramArguments(session)
             val stack =
-                Objects.requireNonNull(
-                        session.registerFile.getUserRegister(
+                checkNotNull(session.registerFile.getUserRegister(
                             $$"$sp",
-                        ),
-                    )!!
+                        ))
                     .valueNoNotify
             val argv =
-                Objects.requireNonNull(
-                        session.registerFile.getUserRegister(
+                checkNotNull(session.registerFile.getUserRegister(
                             $$"$a1",
-                        ),
-                    )!!
+                        ))
                     .valueNoNotify
             val string = memory.getWord(argv)
             Assertions.assertThat(stack).isLessThan(memory.stackPointer)
@@ -263,20 +251,16 @@ internal class SessionAssemblyTest {
                 .hasMessage("Program arguments exceed session stack memory")
             Assertions.assertThat(memory.getByte(memory.stackBaseAddress)).isEqualTo(0x5a)
             Assertions.assertThat(
-                    Objects.requireNonNull(
-                            session.registerFile.getUserRegister(
+                    checkNotNull(session.registerFile.getUserRegister(
                                 $$"$sp",
-                            ),
-                        )!!
+                            ))
                         .valueNoNotify,
                 )
                 .isEqualTo(memory.stackPointer)
             Assertions.assertThat(
-                    Objects.requireNonNull(
-                            session.registerFile.getUserRegister(
+                    checkNotNull(session.registerFile.getUserRegister(
                                 $$"$a0",
-                            ),
-                        )!!
+                            ))
                         .valueNoNotify,
                 )
                 .isZero()
@@ -420,7 +404,7 @@ internal class SessionAssemblyTest {
             Assertions.assertThat(session.memory.getWord(session.symbolTable.getAddress("ptr")))
                 .isEqualTo(target)
             Assertions.assertThat(
-                    Objects.requireNonNull(program.localSymbolTable)!!
+                    checkNotNull(program.localSymbolTable)
                         .getAddressLocalOrGlobal("target"),
                 )
                 .isEqualTo(target)
@@ -449,7 +433,7 @@ internal class SessionAssemblyTest {
                     ProcessingException::class.java,
                 ) { error: ProcessingException? ->
                   Assertions.assertThat(
-                    Objects.requireNonNull(error!!.errors())!!
+                    checkNotNull(error!!.errors())
                       .generateErrorReport(),
                   )
                     .contains("private_label", "not found")
@@ -520,7 +504,7 @@ internal class SessionAssemblyTest {
         TestSessions.create().use { machine ->
             val program: MIPSprogram = machine.assemble(listOf(entry))
             val instruction =
-                Objects.requireNonNull(program.machineList)!!.first()
+                checkNotNull(program.machineList).first()
             Assertions.assertThat(instruction.binaryStatement).isEqualTo(0x24080007)
             Assertions.assertThat<InstructionSourceMap.Location?>(
                     program.sourceMap().origins()[instruction.address]!!.location,
@@ -531,13 +515,13 @@ internal class SessionAssemblyTest {
             Assertions.assertThat(machine.memory.getByte(data + 1)).isEqualTo(0xff)
             Assertions.assertThat(machine.memory.getByte(data + 2)).isZero()
             Assertions.assertThat(
-                    Objects.requireNonNull(program.localSymbolTable)!!
+                    checkNotNull(program.localSymbolTable)
                         .getAddressLocalOrGlobal("entrée"),
                 )
                 .isEqualTo(instruction.address)
 
             val empty = directory.resolve("empty.s")
-            Files.write(empty, HexFormat.of().parseHex(marker))
+            Files.write(empty, marker.hexToByteArray())
             val source = MIPSprogram(machine)
             source.readSource(empty.toString())
             Assertions.assertThat<String?>(source.sourceList).isEmpty()
@@ -581,7 +565,7 @@ internal class SessionAssemblyTest {
             val result = SessionAssembler(session).assembleSnapshot(snapshot, handler, extendedAssemblerEnabled = true, warningsAreErrors = false)
             Assertions.assertThat(result.errors()).isEmpty()
             Assertions.assertThat(result.succeeded()).isTrue()
-            val program = Objects.requireNonNull<MIPSprogram>(session.program)
+            val program = checkNotNull(session.program)
             Assertions.assertThat(result.program()).isSameAs(program)
             Assertions.assertThat(program.filename).isEqualTo(main.toString())
             Assertions.assertThat(program.sourceMap().breakpoints())
@@ -652,7 +636,7 @@ internal class SessionAssemblyTest {
         session("Default").use { session ->
             val result = SessionAssembler(session).assembleSnapshot(snapshot, null, extendedAssemblerEnabled = true, warningsAreErrors = false)
             Assertions.assertThat(result.errors()).isEmpty()
-            val assembled = Objects.requireNonNull<Program>(result.program())
+            val assembled = checkNotNull(result.program())
             val map = assembled.sourceMap()
             val pc: Int = session.memory.textBaseAddress
             val includedCall =
@@ -687,8 +671,8 @@ internal class SessionAssemblyTest {
                     ),
                 )
             val expansion =
-                Objects.requireNonNull<InstructionSourceMap.Origin>(map.origins()[pc + 16])
-            val caller = Objects.requireNonNull<InstructionSourceMap.Origin>(expansion.caller)
+                checkNotNull(map.origins()[pc + 16])
+            val caller = checkNotNull(expansion.caller)
             Assertions.assertThat(caller.caller)
                 .isEqualTo(
                     InstructionSourceMap.Origin(InstructionSourceMap.Location(main, 4), null),
@@ -830,7 +814,7 @@ internal class SessionAssemblyTest {
         session("Default").use { session ->
             val result = SessionAssembler(session).assembleSnapshot(sources, null, extendedAssemblerEnabled = true, warningsAreErrors = false)
             Assertions.assertThat(result.errors()).isEmpty()
-            val map = Objects.requireNonNull(result.program())!!.symbolMap()
+            val map = checkNotNull(result.program()).symbolMap()
             val text: Int = session.memory.textBaseAddress
             val firstCall =
                 InstructionSourceMap.Origin(InstructionSourceMap.Location(main, 7), null)
@@ -1047,7 +1031,7 @@ internal class SessionAssemblyTest {
             val result = SessionAssembler(session).assembleSnapshot(sources, null, extendedAssemblerEnabled = true, warningsAreErrors = false)
             Assertions.assertThat(result.errors()).isEmpty()
             Assertions.assertThat(
-                    Objects.requireNonNull(result.program())!!.symbolMap().macros(),
+                    checkNotNull(result.program()).symbolMap().macros(),
                 )
                 .containsExactlyInAnyOrderEntriesOf(
                     mapOf(
@@ -1068,7 +1052,7 @@ internal class SessionAssemblyTest {
                         emptyList(),
                     ),
                 )
-            val symbols = Objects.requireNonNull(result.program())!!.symbolMap()
+            val symbols = checkNotNull(result.program()).symbolMap()
             val target =
                 SymbolUse(
                     SourceToken(InstructionSourceMap.Location(other, 2), 1),
@@ -1079,7 +1063,7 @@ internal class SessionAssemblyTest {
             val base = SourceToken(InstructionSourceMap.Location(macros, 1), 6)
             val invocation = SourceToken(InstructionSourceMap.Location(main, 7), 3)
             Assertions.assertThat<EquivalenceOccurrence?>(
-              Objects.requireNonNull(result.program())!!.symbolMap()
+              checkNotNull(result.program()).symbolMap()
                 .equivalences()[main],
                 )
                 .contains(
@@ -1171,7 +1155,7 @@ internal class SessionAssemblyTest {
                     )
             Assertions.assertThat(result.errors()).isEmpty()
             val uses: Map<SourceToken, Set<SymbolUse>> =
-                Objects.requireNonNull(result.program())!!.symbolMap().symbolUses()
+                checkNotNull(result.program()).symbolMap().symbolUses()
             Assertions.assertThat<SymbolUse?>(
                     uses[SourceToken(InstructionSourceMap.Location(file, 3), 16)],
                 )
@@ -1516,7 +1500,7 @@ internal class SessionAssemblyTest {
 
         TestSessions.create().use { machine ->
             val program: MIPSprogram = machine.assemble(listOf(entry))
-            val symbols = Objects.requireNonNull<SymbolTable>(program.localSymbolTable)
+            val symbols = checkNotNull(program.localSymbolTable)
             val base: Int = machine.memory.dataBaseAddress
             Assertions.assertThat(symbols.getAddress("start")).isEqualTo(base)
             Assertions.assertThat(symbols.getAddress("tail")).isEqualTo(base + 7)
@@ -1603,7 +1587,7 @@ internal class SessionAssemblyTest {
             val result = assembler.assembleSnapshot(snapshot, null, extendedAssemblerEnabled = true, warningsAreErrors = false)
             Assertions.assertThat(result.succeeded()).isTrue()
             Assertions.assertThat(
-                    Objects.requireNonNull<MIPSprogram>(session.program)!!.machineList,
+                    checkNotNull(session.program).machineList,
                 )
                 .extracting<Int?, RuntimeException>(ProgramStatement::binaryStatement)
                 .containsExactly(0x24080007, 0x24090002)
@@ -1644,7 +1628,7 @@ internal class SessionAssemblyTest {
             val assembler = SessionAssembler(session)
             Assertions.assertThat(assembler.assemble(listOf(entry)).succeeded()).isTrue()
             Assertions.assertThat(
-                    Objects.requireNonNull<MIPSprogram>(session.program)!!.machineList,
+                    checkNotNull(session.program).machineList,
                 )
                 .extracting<Int?, RuntimeException>(ProgramStatement::binaryStatement)
                 .containsExactly(0x24080007)
@@ -1714,7 +1698,7 @@ internal class SessionAssemblyTest {
             val result = SessionAssembler(session).assemble(listOf(main))
             Assertions.assertThat(result.succeeded()).isTrue()
             Assertions.assertThat(
-                    Objects.requireNonNull<MIPSprogram>(session.program)!!.machineList,
+                    checkNotNull(session.program).machineList,
                 )
                 .extracting<Int?, RuntimeException>(ProgramStatement::binaryStatement)
                 .containsExactly(0x24080007, 0x24090002)
@@ -1737,7 +1721,7 @@ internal class SessionAssemblyTest {
             val result = SessionAssembler(session).assembleSnapshot(snapshot, null, extendedAssemblerEnabled = true, warningsAreErrors = false)
             Assertions.assertThat(result.succeeded()).isTrue()
             Assertions.assertThat(
-                    Objects.requireNonNull<MIPSprogram>(session.program)!!.machineList,
+                    checkNotNull(session.program).machineList,
                 )
                 .extracting<Int?, RuntimeException>(ProgramStatement::binaryStatement)
                 .containsExactly(0x24080001, 0x24090002, 0x240a0003)
@@ -1834,9 +1818,8 @@ internal class SessionAssemblyTest {
             Tokenizer.tokenizeMappedLine(
                 source,
                 errors,
-              { o: String? -> replacements[o!!] },
-              {},
-            )
+                replacements::get,
+            ) {}
 
         Assertions.assertThat(errors.errorsOccurred()).isFalse()
         Assertions.assertThat(mapped.expanded().definition).isNull()
@@ -1878,9 +1861,8 @@ internal class SessionAssemblyTest {
             Tokenizer.tokenizeMappedLine(
                 "DEFINE PAIR BASE,   9",
                 errors,
-              { o: String? -> replacements[o!!] },
-              {},
-            )
+                replacements::get,
+            ) {}
 
         Assertions.assertThat(errors.errorsOccurred()).isFalse()
         Assertions.assertThat(mapped.expanded().definition)
@@ -1898,9 +1880,8 @@ internal class SessionAssemblyTest {
             Tokenizer.tokenizeMappedLine(
                 ".macro emit (FORM, @)",
                 lexicalErrors,
-              { o: String? -> replacements[o!!] },
-              {},
-            )
+                replacements::get,
+            ) {}
         Assertions.assertThat(lexicalErrors.errorsOccurred()).isTrue()
         Assertions.assertThat(lexical.tokens().hasCompleteEquivalenceExpansion()).isTrue()
         Assertions.assertThat(lexical.tokens().processedLine).isEqualTo(".macro emit (%value, @)")
@@ -1910,9 +1891,8 @@ internal class SessionAssemblyTest {
             Tokenizer.tokenizeMappedLine(
                 ".macro emit (FORM, FIRST)",
                 cycleErrors,
-              { o: String? -> replacements[o!!] },
-              {},
-            )
+                replacements::get,
+            ) {}
         Assertions.assertThat(cycleErrors.errorsOccurred()).isTrue()
         Assertions.assertThat(cycle.tokens().hasCompleteEquivalenceExpansion()).isFalse()
     }
@@ -2006,9 +1986,8 @@ internal class SessionAssemblyTest {
             Tokenizer.tokenizeMappedLine(
                 source,
                 errors,
-              { o: String? -> replacements[o!!] },
-              {},
-            )
+                replacements::get,
+            ) {}
 
         Assertions.assertThat(mapped.tokens().processedLine)
             .isEqualTo(".byte 100, 2000, 'ab', 'cd', 'ab', 'ab'")
@@ -2039,9 +2018,8 @@ internal class SessionAssemblyTest {
             Tokenizer.tokenizeWithEquivalences(
                 source,
                 errors,
-              { o: String? -> mapOf("QUOTE" to "\"prefix ")[o] },
-              {},
-            )
+                { name -> if (name == "QUOTE") "\"prefix " else null },
+            ) {}
         Assertions.assertThat(tokens.processedLine).isEqualTo(".ascii \"prefix  bad%name\"")
         Assertions.assertThat(errors.errorMessages)
             .singleElement()
@@ -2063,9 +2041,8 @@ internal class SessionAssemblyTest {
             Tokenizer.tokenizeWithEquivalences(
                 ".ascii OUTER\"",
                 errors,
-              { o: String? -> replacements[o!!] },
-              {},
-            )
+                replacements::get,
+            ) {}
         Assertions.assertThat(tokens.processedLine).isEqualTo(".ascii \"prefix  bad%name\"")
         Assertions.assertThat(errors.errorMessages).isEmpty()
     }
@@ -2175,8 +2152,8 @@ internal class SessionAssemblyTest {
                     )
                     .isEqualTo(expected[i])
             }
-            val program = Objects.requireNonNull<MIPSprogram>(session.program)
-            val sourceLines = Objects.requireNonNull<ArrayList<SourceLine>>(program.sourceLineList)
+            val program = checkNotNull(session.program)
+            val sourceLines = checkNotNull(program.sourceLineList)
             Assertions.assertThat(sourceLines[9].source)
                 .isEqualTo(".word 'A', '\\n', '\\101', '\\'', '\\\\', '鯉', 99, '\\0'")
         }
@@ -2366,16 +2343,16 @@ internal class SessionAssemblyTest {
                 val delayed: MIPSprogram = second.assemble(listOf(source))
                 Assertions.assertThat(delayed.machineList)
                     .hasSize(
-                        Objects.requireNonNull(plain.machineList)!!
+                        checkNotNull(plain.machineList)
                             .size + 1,
                     )
                 Assertions.assertThat(
-                        Objects.requireNonNull(delayed.localSymbolTable)!!.getAddress(
+                        checkNotNull(delayed.localSymbolTable).getAddress(
                             "done",
                         ),
                     )
                     .isEqualTo(
-                        Objects.requireNonNull(plain.localSymbolTable)!!.getAddress(
+                        checkNotNull(plain.localSymbolTable).getAddress(
                             "done",
                         ) + 4,
                     )
@@ -2406,12 +2383,12 @@ internal class SessionAssemblyTest {
                         ProcessingException::class.java,
                     ) { error: ProcessingException? ->
                       Assertions.assertThat(
-                        Objects.requireNonNull(error!!.errors())!!
+                        checkNotNull(error!!.errors())
                           .errorLimit,
                       )
                         .isEqualTo(1)
                       Assertions.assertThat(
-                        Objects.requireNonNull(error.errors())!!
+                        checkNotNull(error.errors())
                           .errorMessages,
                       )
                         .hasSize(2)
@@ -2426,9 +2403,7 @@ internal class SessionAssemblyTest {
                         ProcessingException::class.java,
                     ) { error: ProcessingException? ->
                       Assertions.assertThat(
-                        Objects.requireNonNull(
-                          error!!.errors(),
-                        )!!
+                        checkNotNull(error!!.errors())
                           .errorMessages,
                       )
                         .hasSize(4)
@@ -2439,12 +2414,12 @@ internal class SessionAssemblyTest {
                         ProcessingException::class.java,
                     ) { error: ProcessingException? ->
                       Assertions.assertThat(
-                        Objects.requireNonNull(error!!.errors())!!
+                        checkNotNull(error!!.errors())
                           .generateErrorReport(),
                       )
                         .contains("already defined", "duplicate.s")
                       Assertions.assertThat(
-                        Objects.requireNonNull(error.errors())!!
+                        checkNotNull(error.errors())
                           .errorMessages
                           .first()
                           .line,
@@ -2467,11 +2442,11 @@ internal class SessionAssemblyTest {
                     ProcessingException::class.java,
                 ) { error: ProcessingException? ->
                   Assertions.assertThat(
-                    Objects.requireNonNull(error!!.errors())!!.errorLimit,
+                    checkNotNull(error!!.errors()).errorLimit,
                   )
                     .isEqualTo(2)
                   Assertions.assertThat(
-                    Objects.requireNonNull(error.errors())!!.errorMessages,
+                    checkNotNull(error.errors()).errorMessages,
                   )
                     .satisfiesExactly(
                       ThrowingConsumer { first: ErrorMessage ->
@@ -2507,9 +2482,7 @@ internal class SessionAssemblyTest {
                         ProcessingException::class.java,
                     ) { error: ProcessingException? ->
                       Assertions.assertThat(
-                        Objects.requireNonNull(
-                          error!!.errors(),
-                        )!!
+                        checkNotNull(error!!.errors())
                           .generateErrorReport(),
                       )
                         .contains("register number")
@@ -2684,16 +2657,13 @@ internal class SessionAssemblyTest {
 
     companion object {
         @JvmStatic
-        fun corpus(): Stream<String?> {
-            return Stream.concat(
-                AssemblerSmokeTest.allPrograms(),
-                Stream.of<String?>("16_floating_point.asm"),
-            )
+        fun corpus(): List<String> {
+            return AssemblerSmokeTest.allPrograms() + "16_floating_point.asm"
         }
 
         @JvmStatic
-        fun unicodeSourceEncodings(): Stream<Arguments?> {
-            return Stream.of(
+        fun unicodeSourceEncodings(): List<Arguments> {
+            return listOf(
                 Arguments.of("efbbbf", StandardCharsets.UTF_8),
                 Arguments.of("feff", StandardCharsets.UTF_16BE),
                 Arguments.of("fffe", StandardCharsets.UTF_16LE),
@@ -2704,14 +2674,14 @@ internal class SessionAssemblyTest {
 
         private fun encodedSource(marker: String, charset: Charset, text: String): ByteArray {
             val bytes = ByteArrayOutputStream()
-            bytes.writeBytes(HexFormat.of().parseHex(marker))
+            bytes.writeBytes(marker.hexToByteArray())
             bytes.writeBytes(text.toByteArray(charset))
             return bytes.toByteArray()
         }
 
         @JvmStatic
-        fun equivalenceDiagnosticCases(): Stream<Arguments?> {
-            return Stream.of(
+        fun equivalenceDiagnosticCases(): List<Arguments> {
+            return listOf(
                 Arguments.of(
                     $$".eqv DEST $f0\n.eqv ADDRESS OFFSET\n.eqv OFFSET -4(\n",
                     $$"\tentry: lwc1 DEST, ADDRESS $s29)",
@@ -2746,8 +2716,8 @@ internal class SessionAssemblyTest {
         }
 
         @JvmStatic
-        fun macroDiagnosticCases(): Stream<Arguments?> {
-            return Stream.of(
+        fun macroDiagnosticCases(): List<Arguments> {
+            return listOf(
                 Arguments.of(
                     $$"lwc1 $f0, -4(%argument)",
                     "outer (BAD)",

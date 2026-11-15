@@ -1,6 +1,5 @@
 package edu.missouristate.mars.mips.hardware
 
-import java.util.function.Consumer
 import kotlin.Int
 import kotlin.Long
 import kotlin.RuntimeException
@@ -16,7 +15,7 @@ internal class Coprocessor1StateTest {
         val state = Coprocessor1State()
         state.setConditionFlag(7)
         val notices = ArrayList<RegisterAccessNotice>()
-        state.addRegistersObserver({ notices.add(it) })
+        state.addRegistersObserver { notices.add(it) }
         Assertions.assertThat(state.conditionFlagsNoNotify).isEqualTo(0x80)
         Assertions.assertThat(notices).isEmpty()
         Assertions.assertThat(state.conditionFlags).isEqualTo(0x80)
@@ -81,7 +80,7 @@ internal class Coprocessor1StateTest {
     fun registerPairObserversSeeTheOddRegisterBeforeTheEvenRegister() {
         val state = Coprocessor1State()
         val notices = ArrayList<RegisterAccessNotice>()
-        state.addRegistersObserver({ notices.add(it) })
+        state.addRegistersObserver { notices.add(it) }
 
         state.setRegisterPairToDouble(4, 1.5)
         Assertions.assertThat(state.getDoubleFromRegisterPair(4)).isEqualTo(1.5)
@@ -182,7 +181,7 @@ internal class Coprocessor1StateTest {
         val first = Coprocessor1State()
         val second = Coprocessor1State()
         val notices = ArrayList<RegisterAccessNotice>()
-        val listener = Consumer<RegisterAccessNotice> { notices.add(it) }
+        val listener: (RegisterAccessNotice) -> Unit = { notices.add(it) }
         first.addRegistersObserver(listener)
         second.updateRegister(0, 42)
         second.setConditionFlag(0)
@@ -190,7 +189,7 @@ internal class Coprocessor1StateTest {
         first.updateRegister(31, 42)
         first.setConditionFlag(7)
         Assertions.assertThat(
-                notices.stream().filter { n: RegisterAccessNotice ->
+                notices.filter { n: RegisterAccessNotice ->
                     n.accessType == AccessNotice.WRITE
                 },
             )

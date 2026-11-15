@@ -12,7 +12,6 @@ import edu.missouristate.mars.mips.hardware.Coprocessor0State
 import edu.missouristate.mars.mips.hardware.Coprocessor1State
 import edu.missouristate.mars.mips.hardware.MemoryConfigurations
 import java.util.concurrent.atomic.AtomicInteger
-import java.util.function.Consumer
 import java.util.prefs.AbstractPreferences
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
@@ -37,7 +36,7 @@ internal class SettingsReconciliationTest {
         val settings = Settings(preferences)
         val simulation = settings.simulationSettings
         val notifications = AtomicInteger()
-        val listener = Consumer { ignored: Settings -> notifications.incrementAndGet() }
+        val listener: (Settings) -> Unit = { notifications.incrementAndGet() }
         settings.subscribeChange(listener)
 
         settings.setBooleanSettingNonPersistent(id, false)
@@ -221,7 +220,7 @@ internal class SettingsReconciliationTest {
         private val values: MutableMap<String?, String?> = HashMap()
 
         override fun putSpi(key: String?, value: String?) {
-            values.put(key, value)
+            values[key] = value
         }
 
         override fun getSpi(key: String?): String? {

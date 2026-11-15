@@ -1,7 +1,6 @@
 package edu.missouristate.mars.mips.hardware
 
 import edu.missouristate.mars.api.EventEmitter
-import java.util.function.Consumer
 
 /*
 Copyright (c) 2003-2006,  Pete Sanderson and Kenneth Vollmar
@@ -37,11 +36,11 @@ open class Register(open val name: String, open val number: Int, initial: Int) {
     @Volatile private var currentValue = initial.toLong()
     private val events = EventEmitter<RegisterAccessNotice>()
 
-    open fun addObserver(listener: Consumer<RegisterAccessNotice>) {
+    open fun addObserver(listener: (RegisterAccessNotice) -> Unit) {
         events.subscribe(listener)
     }
 
-    open fun deleteObserver(listener: Consumer<RegisterAccessNotice>) {
+    open fun deleteObserver(listener: (RegisterAccessNotice) -> Unit) {
         events.unsubscribe(listener)
     }
 

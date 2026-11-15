@@ -3,7 +3,6 @@ package edu.missouristate.mars.simulator
 import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.mips.hardware.AddressErrorException
 import edu.missouristate.mars.mips.hardware.MemoryState
-import java.util.StringTokenizer
 
 /*
 Copyright (c) 2003-2008,  Pete Sanderson and Kenneth Vollmar
@@ -35,38 +34,32 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /** Initializes the simulated program's argc and argv from a copy of its launch arguments. */
 open class ProgramArgumentList {
-    private val arguments: ArrayList<String>
+    private val arguments: List<String>
 
     /** Splits on space, tab, newline, carriage return, and form feed. */
-    constructor(args: String) {
-        val tokens = StringTokenizer(args)
-        arguments = ArrayList(tokens.countTokens())
-        while (tokens.hasMoreTokens()) {
-            arguments.add(tokens.nextToken())
-        }
-    }
+    constructor(args: String) : this(args.split(' ', '\t', '\n', '\r', '\u000C').filter(String::isNotEmpty))
 
     constructor(list: Array<out String>) : this(list, 0)
 
     constructor(list: Array<out String>, startPosition: Int) {
-        arguments = ArrayList(list.size - startPosition)
-        arguments.addAll(list.asList().subList(startPosition, list.size))
+        require(startPosition <= list.size) { "Invalid argument offset: $startPosition" }
+        arguments = list.asList().subList(startPosition, list.size).toList()
     }
 
-    constructor(list: ArrayList<String>?) : this(list, 0)
+    constructor(list: List<String>?) : this(list, 0)
 
-    constructor(list: ArrayList<String>?, startPosition: Int) {
+    constructor(list: List<String>?, startPosition: Int) {
         arguments = if (list == null || list.size < startPosition) {
-            ArrayList(0)
+            emptyList()
         } else {
-            ArrayList(list.subList(startPosition, list.size))
+            list.subList(startPosition, list.size).toList()
         }
     }
 
     open fun storeProgramArguments(session: MarsContext) = storeProgramArguments(session) {}
 
     /** Initializes the argument frame before execution and checks cancellation during setup. */
-    open fun storeProgramArguments(session: MarsContext, checkCancellation: Runnable) {
+    open fun storeProgramArguments(session: MarsContext, checkCancellation: () -> Unit) {
         if (arguments.isEmpty()) return
 
         val memory = session.memory
@@ -74,13 +67,13 @@ open class ProgramArgumentList {
         // for the null sentinel, each argv pointer, and argc before writing anything.
         var freeBelowStrings = memory.stackBaseAddress.toLong()
         for (argument in arguments) {
-            checkCancellation.run()
+            checkCancellation()
             freeBelowStrings -= argument.length.toLong() + 1
         }
         val word = MemoryState.WORD_LENGTH_BYTES
         var sentinelAddress = memory.stackPointer.toLong()
         if (freeBelowStrings < sentinelAddress + word - 1) {
-            sentinelAddress = Math.floorDiv(freeBelowStrings, word) * word - word
+            sentinelAddress = freeBelowStrings.floorDiv(word) * word - word
         }
         val argcAddress = sentinelAddress - (arguments.size.toLong() + 1) * word
         require(argcAddress > memory.stackLimitAddress) { "Program arguments exceed session stack memory" }
@@ -89,11 +82,11 @@ open class ProgramArgumentList {
         val argumentAddresses = IntArray(arguments.size)
         try {
             for ((index, argument) in arguments.withIndex()) {
-                checkCancellation.run()
+                checkCancellation()
                 memory.set(highAddress--, 0, 1)
                 for (characterIndex in argument.indices.reversed()) {
                     if ((characterIndex and 0xff) == 0) {
-                        checkCancellation.run()
+                        checkCancellation()
                     }
                     memory.set(highAddress--, argument[characterIndex].code, 1)
                 }
@@ -104,7 +97,7 @@ open class ProgramArgumentList {
             memory.set(stackAddress, 0, word)
             stackAddress -= word
             for (index in argumentAddresses.indices.reversed()) {
-                checkCancellation.run()
+                checkCancellation()
                 memory.set(stackAddress, argumentAddresses[index], word)
                 stackAddress -= word
             }

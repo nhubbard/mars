@@ -19,13 +19,13 @@ open class IntelHexDumpFormat : AbstractDumpFormat("Intel hex format", "HEX", "W
                 val upper = offset ushr 16
                 if (upper != upperAddress) {
                     val checksum = 2 + 4 + (upper ushr 8) + (upper and 0xff)
-                    out.println(":02000004" + hex.toHexDigits(upper.toShort()) + hex.toHexDigits((-checksum).toByte()))
+                    out.println(":02000004${hex.toHexDigits(upper.toShort())}${hex.toHexDigits((-checksum).toByte())}")
                     upperAddress = upper
                 }
                 var checksum = 4 + (offset and 0xff) + ((offset ushr 8) and 0xff)
                 for (shift in 0..24 step 8) checksum += (word ushr shift) and 0xff
                 out.println(
-                    ":04" + hex.toHexDigits(offset.toShort()) + "00" + hex.toHexDigits(word) +
+                    ":04${hex.toHexDigits(offset.toShort())}00${hex.toHexDigits(word)}" +
                         hex.toHexDigits((-checksum).toByte()),
                 )
             }

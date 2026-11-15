@@ -723,7 +723,7 @@ class MipsFormattingPlatformTest {
             val settings = CodeStyle.createTestSettings(CodeStyle.getSettings(current))
             settings.getCommonSettings(MipsLanguage).indentOptions!!.INDENT_SIZE = 2
             settings.AUTODETECT_INDENTS = false
-            CodeStyle.doWithTemporarySettings(current, settings, Runnable {
+            CodeStyle.doWithTemporarySettings(current, settings) { ->
                 fixture.configureByText("selection.s", source)
                 assertEquals(2, CodeStyle.getIndentOptions(fixture.file).INDENT_SIZE)
                 val start = source.indexOf("  addiu")
@@ -735,7 +735,7 @@ class MipsFormattingPlatformTest {
                   $$".text\nstart :   nop\n   lw $t0,4($sp\n  addiu $t0, $zero, 1\nnext :    nop\n",
                     fixture.editor.document.text,
                 )
-            })
+            }
         }
     }
 

@@ -46,11 +46,11 @@ interface DumpFormat {
 
     /** Capture while the caller owns stopped execution. */
     @Throws(AddressErrorException::class)
-    fun capture(session: MarsContext, firstAddress: Int, lastAddress: Int, checkCancellation: Runnable): MemoryDumpSnapshot =
+    fun capture(session: MarsContext, firstAddress: Int, lastAddress: Int, checkCancellation: () -> Unit): MemoryDumpSnapshot =
         capture(session, firstAddress.toUInt().toLong(), lastAddress.toUInt().toLong(), checkCancellation)
 
     @Throws(AddressErrorException::class)
-    fun capture(session: MarsContext, firstAddress: Long, lastAddress: Long, checkCancellation: Runnable): MemoryDumpSnapshot =
+    fun capture(session: MarsContext, firstAddress: Long, lastAddress: Long, checkCancellation: () -> Unit): MemoryDumpSnapshot =
         MemoryDumpSnapshot.capture(session, firstAddress, lastAddress, includesSourceListing(), checkCancellation)
 
     fun includesSourceListing(): Boolean = false

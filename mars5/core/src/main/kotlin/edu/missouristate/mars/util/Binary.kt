@@ -74,10 +74,10 @@ open class Binary {
         }
 
         @JvmStatic
-        fun intToHexString(value: Int): String = "0x" + value.toUInt().toString(16).padStart(8, '0')
+        fun intToHexString(value: Int): String = "0x${value.toUInt().toString(16).padStart(8, '0')}"
 
         @JvmStatic
-        fun longToHexString(value: Long): String = "0x" + value.toULong().toString(16).padStart(16, '0')
+        fun longToHexString(value: Long): String = "0x${value.toULong().toString(16).padStart(16, '0')}"
 
         @JvmStatic
         fun unsignedIntToIntString(value: Int): String = value.toUInt().toString()

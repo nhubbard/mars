@@ -32,7 +32,7 @@ class Assembler(private val context: AssemblyContext) {
     @Throws(ProcessingException::class)
     @JvmOverloads
     fun assemble(
-        programs: ArrayList<MIPSprogram>, extended: Boolean, warnings: Boolean = false, checkCancellation: Runnable = Runnable {},
+        programs: ArrayList<MIPSprogram>, extended: Boolean, warnings: Boolean = false, checkCancellation: () -> Unit = {},
     ): ArrayList<ProgramStatement> = context.session.claimStoppedSession().use {
         sourceMap = InstructionSourceMap.EMPTY
         symbolMap = AssemblySymbolMap.EMPTY
@@ -51,7 +51,7 @@ class Assembler(private val context: AssemblyContext) {
         val macros = HashMap<Path, List<MacroDefinition>>()
         val equivalences = HashMap<Path, Set<EquivalenceOccurrence>>()
         for (program in programs) {
-            checkCancellation.run()
+            checkCancellation()
             val entry = Path.of(program.filename).toAbsolutePath().normalize()
             locals[entry] = definitions(program.localSymbolTable!!, checkCancellation)
             macros[entry] = program.localMacroPool!!.definitions(checkCancellation)
@@ -65,10 +65,10 @@ class Assembler(private val context: AssemblyContext) {
         result.instructions
     }
 
-    private fun definitions(table: SymbolTable, checkCancellation: Runnable): Map<String, Definition> =
+    private fun definitions(table: SymbolTable, checkCancellation: () -> Unit): Map<String, Definition> =
         HashMap<String, Definition>().apply {
             for (symbol in table.allSymbols) {
-                checkCancellation.run()
+                checkCancellation()
                 put(symbol.name, Definition(symbol.address, symbol.kind(), symbol.origin(), symbol.macroPrivate(), symbol.column(), symbol.addressBits))
             }
         }

@@ -2,7 +2,6 @@ package edu.missouristate.mars.mips.hardware
 
 import edu.missouristate.mars.api.EventEmitter
 import edu.missouristate.mars.util.Binary
-import java.util.function.Consumer
 
 /*
 Copyright (c) 2003-2009,  Pete Sanderson and Kenneth Vollmar
@@ -49,11 +48,11 @@ class Coprocessor1State {
         condition.addObserver(registerEvents::emit)
     }
 
-    fun addRegistersObserver(listener: Consumer<RegisterAccessNotice>) {
+    fun addRegistersObserver(listener: (RegisterAccessNotice) -> Unit) {
         registerEvents.subscribe(listener)
     }
 
-    fun deleteRegistersObserver(listener: Consumer<RegisterAccessNotice>) {
+    fun deleteRegistersObserver(listener: (RegisterAccessNotice) -> Unit) {
         registerEvents.unsubscribe(listener)
     }
 

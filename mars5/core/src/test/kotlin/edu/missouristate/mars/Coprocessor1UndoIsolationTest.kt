@@ -4,8 +4,6 @@ import edu.missouristate.mars.core.InstructionContext
 import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.mips.hardware.Coprocessor1State
 import edu.missouristate.mars.mips.instructions.basic.InstrAddS
-import edu.missouristate.mars.simulator.BackStepper
-import java.util.Objects
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.params.ParameterizedTest
@@ -35,7 +33,7 @@ internal class Coprocessor1UndoIsolationTest {
             program.tokenize()
             val filenames = arrayListOf(path)
             program.assemble(program.prepareFilesForAssembly(filenames, path, null), extended = true, warnings = false)
-            val backStepper = Objects.requireNonNull<BackStepper>(program.backStepper)
+            val backStepper = checkNotNull(program.backStepper)
             val pc = machine.registerFile.initialProgramCounter + 4
             machine.registerFile.initializeProgramCounter(pc)
             machine.backStepper.clear()
@@ -56,13 +54,7 @@ internal class Coprocessor1UndoIsolationTest {
             val add = InstrAddS()
             val statement =
                 ProgramStatement(null, $$"add.s $f14,$f12,$f12", null, null, add, pc - 4, 1)
-            System.arraycopy(
-                intArrayOf(14, 12, 12),
-                0,
-                Objects.requireNonNull<IntArray?>(statement.operands),
-                0,
-                3,
-            )
+            intArrayOf(14, 12, 12).copyInto(checkNotNull(statement.operands))
             add.simulationCode.simulate(
                 statement,
                 InstructionContext(

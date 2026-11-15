@@ -7,7 +7,6 @@ import edu.missouristate.mars.mips.hardware.MemoryState
 import java.awt.image.BufferedImage
 import java.awt.image.DataBufferInt
 import java.util.TreeMap
-import java.util.function.Consumer
 
 /** Per-execution memory grid. Repaints consume snapshots and never read simulator memory. */
 internal class MemoryGridDisplay(private val captureAtLaunch: Boolean = false, mode: Mode = Mode.BITMAP) {
@@ -151,7 +150,7 @@ internal class MemoryGridDisplay(private val captureAtLaunch: Boolean = false, m
         val first = range.first
         val last = minOf(first + (options.cells.toLong() * options.wordsPerCell - 1) * 4, range.last and -4L)
         val registration = generation
-        val callback = Consumer<MemoryAccessNotice> { notice ->
+        val callback: (MemoryAccessNotice) -> Unit = { notice ->
             val address = notice.addressBits
             if (address >= first && address <= last + 3) {
                 record(source, first, registration, notice)

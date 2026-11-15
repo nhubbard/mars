@@ -1,11 +1,8 @@
 package edu.missouristate.mars
 
-import edu.missouristate.mars.mips.instructions.Instruction
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
-import java.util.Objects
-import java.util.stream.Stream
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.params.ParameterizedTest
@@ -27,52 +24,35 @@ internal class InstructionEncodingTest {
             Files.writeString(file, ".text\n" + source + "\nlabel:\ntarget: nop\n")
             val program: MIPSprogram = session.assemble(listOf(file), null, extended = false, warnings = false)
             val statement =
-                Objects.requireNonNull(
-                        program.machineList,
-                        "Expected assembled instructions",
-                    )!!
+                checkNotNull(program.machineList) { "Expected assembled instructions" }
                     .first()
             val instruction =
-                Objects.requireNonNull<Instruction>(
-                    statement.instruction,
-                    "Expected assembled instruction",
-                )
+                checkNotNull(statement.instruction) { "Expected assembled instruction" }
             Assertions.assertThat(instruction.javaClass.getSimpleName()).isEqualTo(type)
             Assertions.assertThat(statement.binaryStatement).isEqualTo(expected)
             val decoded = ProgramStatement(expected, statement.address, session.instructionSet)
             val decodedInstruction =
-                Objects.requireNonNull<Instruction>(
-                    decoded.instruction,
-                    "Expected decoded instruction",
-                )
+                checkNotNull(decoded.instruction) { "Expected decoded instruction" }
             Assertions.assertThat(decodedInstruction.name).isEqualTo(instruction.name)
         }
     }
 
     companion object {
         @JvmStatic
-        fun vectors(): Stream<Arguments> {
-            Objects.requireNonNull(
-                    InstructionEncodingTest::class
+        fun vectors(): List<Arguments> {
+            checkNotNull(InstructionEncodingTest::class
                         .java
-                        .getResourceAsStream("/basic-encoding-vectors.tsv"),
-                    "basic-encoding-vectors.tsv",
-                )
+                        .getResourceAsStream("/basic-encoding-vectors.tsv")) { "basic-encoding-vectors.tsv" }
                 .use { input ->
                     return input
                         .bufferedReader(StandardCharsets.UTF_8)
                         .lineSequence()
                         .filter { line: String -> !line.startsWith("#") && !line.isBlank() }
                         .map { line: String ->
-                            val fields: Array<String> =
-                                line
-                                    .split("\t".toRegex())
-                                    .dropLastWhile { it.isEmpty() }
-                                    .toTypedArray()
+                            val fields = line.split('\t')
                             Arguments.of(fields[0], fields[1], fields[2].toLong(16).toInt())
                         }
                         .toList()
-                        .stream()
                 }
         }
     }

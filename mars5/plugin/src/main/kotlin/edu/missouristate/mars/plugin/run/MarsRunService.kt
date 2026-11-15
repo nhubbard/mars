@@ -275,7 +275,7 @@ internal class MarsProcessHandler(
             launch.options.applyTo(session.settings)
             session.loadAssemblyImage(program.image, startAtMain, execution::ensureActive)
             try {
-                ProgramArgumentList(arguments.toTypedArray()).storeProgramArguments(session, execution::ensureActive)
+                ProgramArgumentList(arguments).storeProgramArguments(session, execution::ensureActive)
             } catch (_: IllegalArgumentException) {
                 notifyTextAvailable(runMessages.getMessage("run.arguments.stack") + "\n", ProcessOutputTypes.STDERR)
                 return 1

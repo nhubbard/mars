@@ -12,7 +12,6 @@ import edu.missouristate.mars.mips.instructions.InstructionSet
 import java.io.File
 import java.nio.file.Path
 import java.util.Set.copyOf as copySet
-import java.util.function.Function
 import kotlin.jvm.JvmRecord
 
 /*
@@ -57,7 +56,7 @@ open class Tokenizer @JvmOverloads constructor(
     open fun tokenize(program: MIPSprogram): ArrayList<TokenList> = tokenize(program) {}
 
     @Throws(ProcessingException::class)
-    open fun tokenize(program: MIPSprogram, checkCancellation: Runnable): ArrayList<TokenList> {
+    open fun tokenize(program: MIPSprogram, checkCancellation: () -> Unit): ArrayList<TokenList> {
         sourceProgram = program
         equivalents.clear()
         equivalenceOccurrences.clear()
@@ -81,7 +80,7 @@ open class Tokenizer @JvmOverloads constructor(
     }
 
     // Expand depth first and retain each line's original file and line number.
-    private fun processIncludes(root: MIPSprogram, checkCancellation: Runnable): ArrayList<SourceLine> {
+    private fun processIncludes(root: MIPSprogram, checkCancellation: () -> Unit): ArrayList<SourceLine> {
         val pending = ArrayDeque<IncludeFrame>()
         pending.addLast(IncludeFrame(root))
         val includedPaths = HashSet<Path>()
@@ -94,7 +93,7 @@ open class Tokenizer @JvmOverloads constructor(
                 pending.removeLast()
                 continue
             }
-            checkCancellation.run()
+            checkCancellation()
             val line = lines.next()
             val lineNumber = lines.nextIndex()
             val candidates = scanPossibleInclude(program, lineNumber, line, checkCancellation)
@@ -147,7 +146,7 @@ open class Tokenizer @JvmOverloads constructor(
     data class IncludePath(val path: String?, val offset: Int, val directiveOffset: Int)
 
     private fun scanPossibleInclude(
-        program: MIPSprogram?, lineNumber: Int, line: String, checkCancellation: Runnable,
+        program: MIPSprogram?, lineNumber: Int, line: String, checkCancellation: () -> Unit,
     ): TokenList? = if ('.' in line) scanLine(program, lineNumber, line, checkCancellation) else null
 
     @Throws(ProcessingException::class)
@@ -167,7 +166,7 @@ open class Tokenizer @JvmOverloads constructor(
 
     private fun tokenizeLine(
         lineNum: Int, line: String, callerErrors: ErrorList, substituteEquivalences: Boolean,
-        checkCancellation: Runnable, expansion: Macro.ExpandedLine?,
+        checkCancellation: () -> Unit, expansion: Macro.ExpandedLine?,
     ): TokenList {
         val savedErrors = errors
         errors = callerErrors
@@ -179,7 +178,7 @@ open class Tokenizer @JvmOverloads constructor(
     }
 
     fun tokenizeMacroLine(
-        lineNum: Int, expansion: Macro.ExpandedLine, callerErrors: ErrorList, checkCancellation: Runnable,
+        lineNum: Int, expansion: Macro.ExpandedLine, callerErrors: ErrorList, checkCancellation: () -> Unit,
     ): TokenList {
         val tokens = tokenizeLine(lineNum, expansion.text, callerErrors, true, checkCancellation, expansion)
         for (index in 0 until tokens.size()) {
@@ -210,7 +209,7 @@ open class Tokenizer @JvmOverloads constructor(
 
         companion object {
             internal fun tokenize(
-                line: String, errors: ErrorList, replacements: Function<String, String?>, checkCancellation: Runnable,
+                line: String, errors: ErrorList, replacements: (String) -> String?, checkCancellation: () -> Unit,
             ): MappedLine {
                 val edits = ArrayList<SourceEdit>()
                 return MappedLine(expandLine(line, errors, replacements, checkCancellation, edits), edits)
@@ -244,22 +243,22 @@ open class Tokenizer @JvmOverloads constructor(
     data class ExpandedLine(val tokens: TokenList, val definition: EquivalenceDefinition?)
 
     private fun expandDetachedLine(
-        line: String, errors: ErrorList, replacements: Function<String, String?>,
-        checkCancellation: Runnable, edits: MutableList<SourceEdit>?,
+        line: String, errors: ErrorList, replacements: (String) -> String?,
+        checkCancellation: () -> Unit, edits: MutableList<SourceEdit>?,
     ): TokenList {
         this.errors = errors
         val tokens = tokenizeLine(null, 1, line, false, checkCancellation)
         return processEqv(null, 1, line, tokens, { name ->
-            replacements.apply(name)?.let { EquivalenceReplacement(it, null, null, emptyMap()) }
+            replacements(name)?.let { EquivalenceReplacement(it, null, null, emptyMap()) }
         }, checkCancellation, edits, null)
     }
 
     open fun tokenizeLine(program: MIPSprogram?, lineNum: Int, line: String, substituteEquivalences: Boolean): TokenList =
-        tokenizeLine(program, lineNum, line, substituteEquivalences, {})
+        tokenizeLine(program, lineNum, line, substituteEquivalences, checkCancellation = {})
 
     private fun tokenizeLine(
         program: MIPSprogram?, lineNum: Int, line: String, substituteEquivalences: Boolean,
-        checkCancellation: Runnable, expansion: Macro.ExpandedLine? = null,
+        checkCancellation: () -> Unit, expansion: Macro.ExpandedLine? = null,
     ): TokenList {
         val tokens = scanLine(program, lineNum, line, checkCancellation)
         reportLexicalErrors(program, lineNum, line, tokens, expansion = expansion)
@@ -268,8 +267,8 @@ open class Tokenizer @JvmOverloads constructor(
         } else tokens
     }
 
-    private fun scanLine(program: MIPSprogram?, lineNum: Int, line: String, checkCancellation: Runnable): TokenList {
-        checkCancellation.run()
+    private fun scanLine(program: MIPSprogram?, lineNum: Int, line: String, checkCancellation: () -> Unit): TokenList {
+        checkCancellation()
         val tokens = TokenList()
         if (line.isEmpty()) return tokens
         var position = 0
@@ -284,7 +283,7 @@ open class Tokenizer @JvmOverloads constructor(
 
         while (position < line.length) {
             if (position >= nextCheck) {
-                checkCancellation.run()
+                checkCancellation()
                 nextCheck = position + 256
             }
             val char = line[position]
@@ -364,7 +363,7 @@ open class Tokenizer @JvmOverloads constructor(
     // Re-scan replacements as source text so they can introduce punctuation and directives.
     private fun processEqv(
         originalProgram: MIPSprogram?, lineNum: Int, originalLine: String, originalTokens: TokenList,
-        replacements: (String) -> EquivalenceReplacement?, checkCancellation: Runnable,
+        replacements: (String) -> EquivalenceReplacement?, checkCancellation: () -> Unit,
         sourceEdits: MutableList<SourceEdit>?, expansion: Macro.ExpandedLine?,
     ): TokenList {
         var program = originalProgram
@@ -412,7 +411,7 @@ open class Tokenizer @JvmOverloads constructor(
             use = nextEquivalenceUse(program, lineNum, line, tokens, replacements, edits, expansion) ?: break
         }
         for (index in 0 until tokens.size()) {
-            checkCancellation.run()
+            checkCancellation()
             val token = tokens[index]
             token.setOriginalStartPos(originalColumn(token, edits))
             token.setEquivalenceSource(spellingSource(edits, token.startPos - 1, token.endPos - 1, null, null))
@@ -565,22 +564,22 @@ open class Tokenizer @JvmOverloads constructor(
         /** Tokenizes a detached line. The replacement lookup returns null for an undefined name. */
         @JvmStatic
         fun tokenizeWithEquivalences(
-            line: String, errors: ErrorList, replacements: Function<String, String?>, checkCancellation: Runnable,
+            line: String, errors: ErrorList, replacements: (String) -> String?, checkCancellation: () -> Unit,
         ): TokenList = Tokenizer().expandDetachedLine(line, errors, replacements, checkCancellation, null)
 
         /** Tokenizes a detached line and preserves the source positions of expanded tokens. */
         @JvmStatic
         fun tokenizeMappedLine(
-            line: String, errors: ErrorList, replacements: Function<String, String?>, checkCancellation: Runnable,
+            line: String, errors: ErrorList, replacements: (String) -> String?, checkCancellation: () -> Unit,
         ): MappedLine = MappedLine.tokenize(line, errors, replacements, checkCancellation)
 
         @JvmStatic
         fun expandLine(
-            line: String, errors: ErrorList, replacements: Function<String, String?>, checkCancellation: Runnable,
+            line: String, errors: ErrorList, replacements: (String) -> String?, checkCancellation: () -> Unit,
         ): ExpandedLine = expandLine(line, errors, replacements, checkCancellation, null)
 
         private fun expandLine(
-            line: String, errors: ErrorList, replacements: Function<String, String?>, checkCancellation: Runnable,
+            line: String, errors: ErrorList, replacements: (String) -> String?, checkCancellation: () -> Unit,
             edits: MutableList<SourceEdit>?,
         ): ExpandedLine {
             val tokenizer = Tokenizer()

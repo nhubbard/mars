@@ -21,10 +21,10 @@ class AssemblyImage internal constructor(
     @JvmField internal val instructions: List<ProgramStatement.Image> = copyOf(instructions)
 
     /** Compare executable output independently of source names and positions. */
-    fun hasSameMachineImage(other: AssemblyImage, checkCancellation: Runnable): Boolean {
+    fun hasSameMachineImage(other: AssemblyImage, checkCancellation: () -> Unit): Boolean {
         if (target != other.target || entry != other.entry || layout != other.layout || instructions.size != other.instructions.size) return false
         for (index in instructions.indices) {
-            checkCancellation.run()
+            checkCancellation()
             if (!instructions[index].hasSameMachineWord(other.instructions[index])) return false
         }
         return data.hasSameContents(other.data, checkCancellation)

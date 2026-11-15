@@ -8,7 +8,6 @@ import edu.missouristate.mars.mips.hardware.MemoryState
 import edu.missouristate.mars.mips.instructions.basic.InstrSw
 import edu.missouristate.mars.simulator.BackStepper
 import edu.missouristate.mars.simulator.BackStepper.MemoryWrite
-import java.util.Objects
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
@@ -41,7 +40,7 @@ internal class MemoryUndoIsolationTest {
             TestSessions.execution(machine).updateRegister(8, 0x76543210)
             TestSessions.execution(machine).updateRegister(9, address)
             machine.registerFile.initializeProgramCounter(machine.memory.textBaseAddress + 4)
-            val backStepper = Objects.requireNonNull<BackStepper>(program.backStepper)
+            val backStepper = checkNotNull(program.backStepper)
             machine.backStepper.clear()
             machine.backStepper.clear()
             val independent =
@@ -50,10 +49,9 @@ internal class MemoryUndoIsolationTest {
                         "Default",
                     ),
                     SimulationSettings(),
-                    { binary: Int?, pc: Int? ->
-                        ProgramStatement(binary!!, pc!!, machine.instructionSet)
-                    },
-                )
+                ) { binary, pc ->
+                    ProgramStatement(binary, pc, machine.instructionSet)
+                }
             independent.setWord(address, 99)
             Assertions.assertThat(backStepper.empty()).isTrue()
             when (operation) {
@@ -73,13 +71,7 @@ internal class MemoryUndoIsolationTest {
                             machine.memory.textBaseAddress,
                             1,
                         )
-                    System.arraycopy(
-                        intArrayOf(8, 0, 9),
-                        0,
-                        Objects.requireNonNull<IntArray?>(statement.operands),
-                        0,
-                        3,
-                    )
+                    intArrayOf(8, 0, 9).copyInto(checkNotNull(statement.operands))
                     store.simulationCode.simulate(
                         statement,
                         InstructionContext(
@@ -137,14 +129,9 @@ internal class MemoryUndoIsolationTest {
                         "CompactTextAtZero",
                     ),
                     SimulationSettings(),
-                    { binary: Int?, address: Int? ->
-                        ProgramStatement(
-                            binary!!,
-                            address!!,
-                            machine.instructionSet,
-                        )
-                    },
-                )
+                ) { binary, address ->
+                    ProgramStatement(binary, address, machine.instructionSet)
+                }
             session.setWord(session.dataBaseAddress, 42)
             session.allocateBytesFromHeap(8)
             val singleton = machine.memory

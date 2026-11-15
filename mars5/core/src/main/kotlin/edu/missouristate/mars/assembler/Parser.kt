@@ -204,7 +204,7 @@ internal class Parser(private val pass: FirstPassProcessor) {
             )
             pass.macroCalls.getOrPut(call, ::HashSet).add(occurrence)
             for (line in (macro.fromLine + 1) until macro.toLine) {
-                pass.checkCancellation.run()
+                pass.checkCancellation()
                 if (pass.errors.errorLimitExceeded()) break
                 val previousErrors = pass.errors.errorCount()
                 val expanded = macro.expandLine(line, tokens, counter, renamedLabels, pass.errors)

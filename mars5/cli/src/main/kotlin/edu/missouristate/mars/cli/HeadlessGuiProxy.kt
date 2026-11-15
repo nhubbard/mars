@@ -13,7 +13,7 @@ class HeadlessGuiProxy : MarsGuiProxy {
 
     override fun postMessage(message: String) = System.err.print(message)
 
-    override fun postRunMessage(message: String) = System.out.print(message)
+    override fun postRunMessage(message: String) = print(message)
 
     override fun readInput(maxLength: Int): String {
         return try {

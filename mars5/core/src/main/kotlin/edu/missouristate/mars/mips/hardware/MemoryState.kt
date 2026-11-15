@@ -12,8 +12,6 @@ import edu.missouristate.mars.simulator.Exceptions.ADDRESS_EXCEPTION_STORE
 import edu.missouristate.mars.util.Binary
 import java.lang.Integer.reverseBytes
 import java.util.concurrent.CopyOnWriteArrayList
-import java.util.function.BiFunction
-import java.util.function.Consumer
 import kotlin.jvm.JvmRecord
 
 /*
@@ -48,7 +46,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 open class MemoryState(
     configuration: MemoryConfiguration,
     private val settings: MarsSettings,
-    private val decoder: BiFunction<Int, Int, ProgramStatement?>,
+    private val decoder: (Int, Int) -> ProgramStatement?,
 ) {
     @JvmField var textBaseAddress: Int = 0
     @JvmField var dataSegmentBaseAddress: Int = 0
@@ -190,13 +188,13 @@ open class MemoryState(
     open fun clear() = initialize()
 
     /** Captures a stopped session's sparse words. Text is stored with its instructions. */
-    open fun captureData(checkCancellation: Runnable): DataImage = DataImage(
+    open fun captureData(checkCancellation: () -> Unit): DataImage = DataImage(
         byteOrder, heapAddress, dataBlockTable.capture(checkCancellation),
         kernelDataBlockTable.capture(checkCancellation), stackBlockTable.capture(checkCancellation),
         memoryMapBlockTable.capture(checkCancellation), wideData.capture(checkCancellation),
     )
 
-    open fun loadData(image: DataImage, checkCancellation: Runnable) {
+    open fun loadData(image: DataImage, checkCancellation: () -> Unit) {
         reservation = null
         endian = image.littleEndian
         heapAddress = image.heapAddress
@@ -217,7 +215,7 @@ open class MemoryState(
         val mmio: WordMemorySegment.Image,
         val wideData: WordMemorySegment.Image,
     ) {
-        fun hasSameContents(other: DataImage, checkCancellation: Runnable): Boolean =
+        fun hasSameContents(other: DataImage, checkCancellation: () -> Unit): Boolean =
             littleEndian == other.littleEndian && heapAddress == other.heapAddress &&
                 data.hasSameContents(other.data, checkCancellation) &&
                 kernelData.hasSameContents(other.kernelData, checkCancellation) &&
@@ -331,7 +329,7 @@ open class MemoryState(
             throw AddressErrorException("Cannot write directly to text segment!", ADDRESS_EXCEPTION_STORE, address)
         }
         val previous = getStatementNoNotify(address)?.binaryStatement ?: 0
-        setStatement(address, decoder.apply(value, address))
+        setStatement(address, decoder(value, address))
         return previous
     }
 
@@ -517,7 +515,7 @@ open class MemoryState(
         if (!wordAligned(address)) return null
         if (inTextSegment(address) || inKernelTextSegment(address)) return getStatementNoNotify(address)
         if (!settings.isSelfModifyingCodeEnabled) return null
-        return inspectWord(address)?.let { decoder.apply(it, address) }
+        return inspectWord(address)?.let { decoder(it, address) }
     }
 
     @Throws(AddressErrorException::class)
@@ -605,7 +603,7 @@ open class MemoryState(
         val statement = when {
             inTextSegment(address) -> textBlockTable.read((address - textBaseAddress) shr 2)
             inKernelTextSegment(address) -> kernelTextBlockTable.read((address - kernelTextBaseAddress) shr 2)
-            else -> return decoder.apply(readBytes(address, WORD_LENGTH_BYTES, notify, instructionFetch), address)
+            else -> return decoder(readBytes(address, WORD_LENGTH_BYTES, notify, instructionFetch), address)
         }
         if (notify) notifyAnyObservers(READ, address, Instruction.INSTRUCTION_LENGTH, statement?.binaryStatement ?: 0, instructionFetch)
         return statement
@@ -625,7 +623,7 @@ open class MemoryState(
 
     private fun inMappedStorage(address: Int): Boolean = address in memoryMapBaseAddress..<memoryMapLimitAddress
 
-    open fun addObserver(callback: Consumer<MemoryAccessNotice>) {
+    open fun addObserver(callback: (MemoryAccessNotice) -> Unit) {
         try {
             addObserver(callback, 0, 0x7ffffffc)
             addObserver(callback, Int.MIN_VALUE, 0xfffffffc.toInt())
@@ -635,12 +633,12 @@ open class MemoryState(
     }
 
     @Throws(AddressErrorException::class)
-    open fun addObserver(callback: Consumer<MemoryAccessNotice>, address: Int) {
+    open fun addObserver(callback: (MemoryAccessNotice) -> Unit, address: Int) {
         addObserver(callback, address, address)
     }
 
     @Throws(AddressErrorException::class)
-    open fun addObserver(callback: Consumer<MemoryAccessNotice>, startAddr: Int, endAddr: Int) {
+    open fun addObserver(callback: (MemoryAccessNotice) -> Unit, startAddr: Int, endAddr: Int) {
         checkAlignment(startAddr, WORD_LENGTH_BYTES, OBSERVER_ALIGNMENT, ADDRESS_EXCEPTION_LOAD)
         if (endAddr != startAddr && !wordAligned(endAddr)) {
             throw AddressErrorException(OBSERVER_ALIGNMENT, ADDRESS_EXCEPTION_LOAD, startAddr)
@@ -654,24 +652,24 @@ open class MemoryState(
         listeners.add(MemoryListener(callback, startAddr, endAddr))
     }
 
-    open fun deleteObserver(callback: Consumer<MemoryAccessNotice>) {
+    open fun deleteObserver(callback: (MemoryAccessNotice) -> Unit) {
         listeners.removeIf { it.callback === callback }
     }
 
-    private val addressObservers = CopyOnWriteArrayList<Consumer<MemoryAccessNotice>>()
+    private val addressObservers = CopyOnWriteArrayList<(MemoryAccessNotice) -> Unit>()
 
     /** Subscribe to execution and host accesses with full unsigned addresses. */
-    fun addAddressObserver(callback: Consumer<MemoryAccessNotice>) {
+    fun addAddressObserver(callback: (MemoryAccessNotice) -> Unit) {
         addressObservers.addIfAbsent(callback)
     }
 
-    fun deleteAddressObserver(callback: Consumer<MemoryAccessNotice>) {
+    fun deleteAddressObserver(callback: (MemoryAccessNotice) -> Unit) {
         addressObservers.remove(callback)
     }
 
     open fun countObservers(): Int = listeners.size
 
-    private class MemoryListener(val callback: Consumer<MemoryAccessNotice>, val low: Int, val high: Int) {
+    private class MemoryListener(val callback: (MemoryAccessNotice) -> Unit, val low: Int, val high: Int) {
         fun matches(address: Int): Boolean = address >= low && address <= high - 1 + WORD_LENGTH_BYTES
     }
 
@@ -680,14 +678,14 @@ open class MemoryState(
         if (listeners.isEmpty()) return
         val notice = MemoryAccessNotice(type, address, length, value, instructionFetch)
         for (listener in listeners) {
-            if (listener.matches(address)) listener.callback.accept(notice)
+            if (listener.matches(address)) listener.callback(notice)
         }
     }
 
     private fun notifyAddressObservers(type: Int, address: Long, length: Int, value: Int, instructionFetch: Boolean = false) {
         if (addressObservers.isEmpty()) return
         val notice = MemoryAccessNotice(type, address.toInt(), length, value, instructionFetch, address)
-        for (observer in addressObservers) observer.accept(notice)
+        for (observer in addressObservers) observer(notice)
     }
 
     companion object {

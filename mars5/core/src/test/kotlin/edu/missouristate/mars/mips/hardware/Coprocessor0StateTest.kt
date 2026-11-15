@@ -1,7 +1,5 @@
 package edu.missouristate.mars.mips.hardware
 
-import java.util.Objects
-import java.util.function.Consumer
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
@@ -31,7 +29,7 @@ internal class Coprocessor0StateTest {
         val first = Coprocessor0State()
         val second = Coprocessor0State()
         val name = "$" + number
-        val register = Objects.requireNonNull<Register>(first.getRegister(name))
+        val register = checkNotNull(first.getRegister(name))
         Assertions.assertThat(first.getRegister(register.name)).isSameAs(register)
         Assertions.assertThat(first.getNumber(name)).isEqualTo(number)
         Assertions.assertThat(first.getNumber(register.name)).isEqualTo(number)
@@ -59,7 +57,7 @@ internal class Coprocessor0StateTest {
         val first = Coprocessor0State()
         val second = Coprocessor0State()
         val notices = ArrayList<RegisterAccessNotice>()
-        val listener = Consumer<RegisterAccessNotice> { notices.add(it) }
+        val listener: (RegisterAccessNotice) -> Unit = { notices.add(it) }
         first.addRegistersObserver(listener)
         second.updateRegister(8, 100)
         second.getValue(8)

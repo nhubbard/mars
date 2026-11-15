@@ -9,6 +9,9 @@ import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
+import kotlin.math.nextDown
+import kotlin.math.nextUp
+import kotlin.math.sqrt
 
 class Mars64VectorFloatingTest {
     @ParameterizedTest
@@ -216,7 +219,7 @@ class Mars64VectorFloatingTest {
             assertEquals(0x1004, fpu.msaStatus)
             fpu.updateMsaStatus(1)
             program.simulate(1)
-            val below = if (double) Math.nextDown(limit) else Math.nextDown(limit.toFloat()).toDouble()
+            val below = if (double) limit.nextDown() else limit.toFloat().nextDown().toDouble()
             assertEquals(VectorRegister(bits(below), bits(below)), fpu.readVector(31))
             val low = if (double) 0x4000000040000000L else 0x4000400040004000L
             val high = if (double) 0x8000000080000000uL.toLong() else 0x8000800080008000uL.toLong()
@@ -325,7 +328,7 @@ class Mars64VectorFloatingTest {
                 program.machineList!!.map { it.binaryStatement })
             val fpu = session.coprocessor1
             val halfUlp = Math.scalb(1.0, if (double) -53 else -24)
-            val next = if (double) Math.nextUp(1.0) else Math.nextUp(1f).toDouble()
+            val next = if (double) 1.0.nextUp() else 1f.nextUp().toDouble()
             fpu.updateVector(3, vector(1.0, -1.0))
             fpu.updateVector(5, vector(halfUlp, 1.0))
             fpu.updateMsaStatus(2)
@@ -399,7 +402,7 @@ class Mars64VectorFloatingTest {
                 assertEquals(status or (causes shl 12) or (causes shl 2), fpu.msaStatus)
             }
             execute(vector(-0.0, -1.0), vector(-0.0, Double.NaN), causes = 16)
-            val sqrtTwoDown = if (double) Math.nextDown(Math.sqrt(2.0)) else Math.sqrt(2.0).toFloat().toDouble()
+            val sqrtTwoDown = if (double) sqrt(2.0).nextDown() else sqrt(2.0).toFloat().toDouble()
             execute(vector(2.0, 4.0), vector(sqrtTwoDown, 2.0), status = 3, causes = 1)
             execute(vector(4.0, -0.0), vector(0.5, Double.NEGATIVE_INFINITY), causes = 8)
             execute(vector(Double.POSITIVE_INFINITY, -2.0), vector(0.0, -0.5))

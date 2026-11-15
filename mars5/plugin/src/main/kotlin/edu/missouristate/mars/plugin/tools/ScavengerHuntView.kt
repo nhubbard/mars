@@ -127,7 +127,7 @@ internal class ScavengerHuntView(project: Project) : Disposable {
             }
         }
         val diagnosticText = snapshot?.diagnostic?.let {
-            val reason = toolsMessages.getMessage("scavenger.rejection." + (it.rejection?.name ?: "FOREIGN_WRITE"))
+            val reason = toolsMessages.getMessage("scavenger.rejection.${it.rejection?.name ?: "FOREIGN_WRITE"}")
             toolsMessages.getMessage("scavenger.diagnostic", it.address.toUInt().toString(16), reason)
         }
         val tooltip = diagnosticText?.let(HtmlChunk::text)

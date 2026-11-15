@@ -180,7 +180,7 @@ private class VectorRegisterValue(name: String, private val bits: VectorRegister
             val label = runMessages.getMessage("debug.registers.vector.integer.lanes", width)
             values.add(RegisterValue(label) {
                 (0 until 128 / width).joinToString(", ", "[", "]") { index ->
-                    "0x" + bits.unsignedLane(index, width).toULong().toString(16).padStart(width / 4, '0')
+                    "0x${bits.unsignedLane(index, width).toULong().toString(16).padStart(width / 4, '0')}"
                 }
             })
         }

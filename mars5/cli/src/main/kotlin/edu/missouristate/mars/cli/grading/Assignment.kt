@@ -257,7 +257,7 @@ internal inline fun requireCase(condition: Boolean, message: () -> String) {
     if (!condition) throw CaseFailure(message())
 }
 
-private fun String.quote() = "\"" + take(200).replace("\n", "\\n").replace("\r", "\\r") + "\""
+private fun String.quote() = "\"${take(200).replace("\n", "\\n").replace("\r", "\\r")}\""
 
 private class BoundedOutput(private val bytes: ByteArrayOutputStream) : OutputStream() {
     override fun write(value: Int) {

@@ -7,7 +7,6 @@ import edu.missouristate.mars.mips.hardware.MemoryState
 import edu.missouristate.mars.mips.hardware.RegisterAccessNotice
 import java.nio.file.Files
 import java.nio.file.Path
-import java.util.Objects
 import java.util.concurrent.FutureTask
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
@@ -81,18 +80,12 @@ internal class AccessOriginTest {
     fun threadNamesDoNotTurnApplicationWritesIntoInstructionWrites() {
         TestSessions.create().use { session ->
             val notices = LinkedBlockingQueue<RegisterAccessNotice>()
-            session.registerFile.registers[8].addObserver(
-                { notices.add(it) },
-            )
-            val operation =
-                FutureTask<Int?>({ session.registerFile.updateRegister(8, 42) })
+            session.registerFile.registers[8].addObserver { notices.add(it) }
+            val operation = FutureTask<Int?> { session.registerFile.updateRegister(8, 42) }
             Thread.ofPlatform().name("MIPS-spoof").start(operation)
             operation.get(2, TimeUnit.SECONDS)
             val notice =
-                Objects.requireNonNull(
-                    notices.poll(2, TimeUnit.SECONDS),
-                    "Expected a memory access notice",
-                )
+                checkNotNull(notices.poll(2, TimeUnit.SECONDS)) { "Expected a memory access notice" }
             Assertions.assertThat<AccessOrigin?>(notice.origin())
                 .isEqualTo(AccessOrigin.APPLICATION)
         }

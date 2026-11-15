@@ -4,6 +4,7 @@ import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.ComboBox
+import com.intellij.ui.CollectionComboBoxModel
 import com.intellij.ui.components.JBCheckBox
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBScrollPane
@@ -24,7 +25,6 @@ import edu.missouristate.mars.plugin.tools.DataCacheSimulator.Options
 import edu.missouristate.mars.plugin.tools.DataCacheSimulator.Placement
 import edu.missouristate.mars.plugin.tools.DataCacheSimulator.Replacement
 import edu.missouristate.mars.util.Binary
-import javax.swing.DefaultComboBoxModel
 import javax.swing.JButton
 import javax.swing.JEditorPane
 import javax.swing.JProgressBar
@@ -36,13 +36,13 @@ import kotlin.time.Duration.Companion.milliseconds
 
 internal class DataCacheView(project: Project) : Disposable {
     private val selector = MarsToolExecutionSelector(project, ::selectionChanged)
-    private val placement = ComboBox(Placement.entries.toTypedArray()).apply {
+    private val placement = ComboBox(CollectionComboBoxModel(Placement.entries.toMutableList())).apply {
         renderer = textListCellRenderer { toolsMessages.getMessage(it.messageKey) }
     }
-    private val blocks = ComboBox(DataCacheSimulator.sizes.toTypedArray())
-    private val words = ComboBox(DataCacheSimulator.sizes.toTypedArray())
+    private val blocks = ComboBox(CollectionComboBoxModel(DataCacheSimulator.sizes.toMutableList()))
+    private val words = ComboBox(CollectionComboBoxModel(DataCacheSimulator.sizes.toMutableList()))
     private val ways = ComboBox<Int>()
-    private val replacement = ComboBox(Replacement.entries.toTypedArray()).apply {
+    private val replacement = ComboBox(CollectionComboBoxModel(Replacement.entries.toMutableList())).apply {
         renderer = textListCellRenderer { toolsMessages.getMessage(it.messageKey) }
     }
     private val apply = JButton(toolsMessages.getMessage("cache.apply"))
@@ -149,7 +149,7 @@ internal class DataCacheView(project: Project) : Disposable {
     private fun updateWays() {
         val choices = (placement.selectedItem as Placement).wayChoices(blocks.selectedItem as Int)
         val selected = ways.selectedItem
-        ways.model = DefaultComboBoxModel(choices.toTypedArray()).apply {
+        ways.model = CollectionComboBoxModel(choices.toMutableList()).apply {
             selectedItem = choices.firstOrNull { it == selected } ?: choices.first()
         }
     }

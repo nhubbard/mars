@@ -6,7 +6,6 @@ import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.tools.MarsBotWorld.Point
 import edu.missouristate.mars.plugin.tools.MarsBotWorld.Stroke
 import java.nio.file.Path
-import java.util.function.Consumer
 import kotlin.io.path.writeText
 import kotlin.math.sqrt
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -222,7 +221,7 @@ class MarsBotDeviceTest {
             val memory = session.memory
             val bot = MarsBotDevice(true)
             val heading = 0xffff8010.toInt()
-            val disconnect = Consumer<MemoryAccessNotice> { bot.setConnected(false) }
+            val disconnect: (MemoryAccessNotice) -> Unit = { bot.setConnected(false) }
             memory.addObserver(disconnect, heading)
             bot.observe(session).use {
                 duringExecution<Unit, Exception> { memory.setWord(heading, 90) }

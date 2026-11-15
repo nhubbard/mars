@@ -1,5 +1,6 @@
 package edu.missouristate.mars.plugin.tools
 
+import edu.missouristate.mars.util.Binary
 import com.intellij.ide.setToolTipText
 import com.intellij.openapi.util.text.HtmlChunk
 import com.intellij.openapi.Disposable
@@ -138,7 +139,7 @@ internal class MarsBotView(project: Project) : Disposable {
         board.showWorld(world, description)
     }
 
-    private fun hexAddress(value: Int) = "0x" + value.toUInt().toString(16).padStart(8, '0')
+    private fun hexAddress(value: Int) = Binary.intToHexString(value)
 
     override fun dispose() {
         refreshJob.cancel()

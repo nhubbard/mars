@@ -5,6 +5,7 @@ import com.intellij.openapi.application.EDT
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.openapi.ui.ComboBox
+import com.intellij.ui.CollectionComboBoxModel
 import com.intellij.ui.components.JBCheckBox
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTextArea
@@ -32,8 +33,8 @@ import kotlin.time.Duration.Companion.milliseconds
 
 internal class BranchHistoryView(project: Project) : Disposable {
     private val selector = MarsToolExecutionSelector(project, ::selectionChanged)
-    private val size = ComboBox(BranchHistoryTable.sizes.toTypedArray())
-    private val history = ComboBox(BranchHistoryTable.histories.toTypedArray())
+    private val size = ComboBox(CollectionComboBoxModel(BranchHistoryTable.sizes.toMutableList()))
+    private val history = ComboBox(CollectionComboBoxModel(BranchHistoryTable.histories.toMutableList()))
     private val initialTaken = JBCheckBox(toolsMessages.getMessage("branchHistory.initialTaken"))
     private val apply = JButton(toolsMessages.getMessage("branchHistory.apply"))
     private val toggle = JButton()

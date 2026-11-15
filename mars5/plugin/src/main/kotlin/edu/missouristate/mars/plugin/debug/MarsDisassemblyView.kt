@@ -46,7 +46,7 @@ import kotlinx.coroutines.withContext
 
 internal const val DISASSEMBLY_LAYOUT_PREFIX = "mars.debug.disassembly.v1."
 // BaseTableView stores complete layouts. Keep the imported order separate until the next native layout save.
-private const val importedOrderKey = DISASSEMBLY_LAYOUT_PREFIX + "importedOrder"
+private const val importedOrderKey = "${DISASSEMBLY_LAYOUT_PREFIX}importedOrder"
 private val addressColumn = MarsDisassemblyColumn.ADDRESS.ordinal
 private val sourceColumn = MarsDisassemblyColumn.SOURCE.ordinal
 
@@ -235,15 +235,15 @@ internal class MarsDisassemblyView(
         ApplicationManager.getApplication().messageBus.connect(this)
             .subscribe(MarsDisassemblyOrderListener.TOPIC, MarsDisassemblyOrderListener(::applyImportedOrder))
         val sorter = table.rowSorter
-        val column = properties.getInt(DISASSEMBLY_LAYOUT_PREFIX + "sortColumn", addressColumn)
+        val column = properties.getInt("${DISASSEMBLY_LAYOUT_PREFIX}sortColumn", addressColumn)
             .coerceIn(addressColumn, sourceColumn)
-        val order = if (properties.getBoolean(DISASSEMBLY_LAYOUT_PREFIX + "descending")) SortOrder.DESCENDING else SortOrder.ASCENDING
+        val order = if (properties.getBoolean("${DISASSEMBLY_LAYOUT_PREFIX}descending")) SortOrder.DESCENDING else SortOrder.ASCENDING
         sorter.sortKeys = listOf(SortKey(column, order))
         sorter.addRowSorterListener { event ->
             if (event.type != RowSorterEvent.Type.SORT_ORDER_CHANGED) return@addRowSorterListener
             val key = sorter.sortKeys.firstOrNull() ?: SortKey(addressColumn, SortOrder.ASCENDING)
-            properties.setValue(DISASSEMBLY_LAYOUT_PREFIX + "sortColumn", key.column, addressColumn)
-            properties.setValue(DISASSEMBLY_LAYOUT_PREFIX + "descending", key.sortOrder == SortOrder.DESCENDING)
+            properties.setValue("${DISASSEMBLY_LAYOUT_PREFIX}sortColumn", key.column, addressColumn)
+            properties.setValue("${DISASSEMBLY_LAYOUT_PREFIX}descending", key.sortOrder == SortOrder.DESCENDING)
         }
         table.tableHeader.addMouseListener(object : MouseAdapter() {
             private fun layout() = table.columnModel.columns.asSequence().map { it.modelIndex to it.width }.toList()

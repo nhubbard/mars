@@ -2,7 +2,6 @@ package edu.missouristate.mars
 
 import edu.missouristate.mars.api.EventEmitter
 import edu.missouristate.mars.core.SimulationSettings
-import java.util.function.Consumer
 import java.util.prefs.BackingStoreException
 import java.util.prefs.Preferences
 
@@ -54,11 +53,11 @@ open class Settings internal constructor(private val preferences: Preferences) {
             errorLimit = value
         }
 
-    open fun subscribeChange(listener: Consumer<Settings>) {
+    open fun subscribeChange(listener: (Settings) -> Unit) {
         settingsEvents.subscribe(listener)
     }
 
-    open fun unsubscribeChange(listener: Consumer<Settings>) {
+    open fun unsubscribeChange(listener: (Settings) -> Unit) {
         settingsEvents.unsubscribe(listener)
     }
 

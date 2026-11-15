@@ -36,6 +36,6 @@ interface MarsAssembler {
         exceptionHandler: Path?,
         extendedAssemblerEnabled: Boolean,
         warningsAreErrors: Boolean,
-        checkCancellation: Runnable,
+        checkCancellation: () -> Unit,
     ): AssemblyResult
 }

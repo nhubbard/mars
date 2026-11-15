@@ -194,7 +194,7 @@ internal class MarsSymbolsView(
             table.repaint()
         }
         filter.whenTextChanged(this) { text ->
-            sorter.rowFilter = RowFilter.regexFilter("(?iu)" + Pattern.quote(text.trim()))
+            sorter.rowFilter = RowFilter.regexFilter("(?iu)${Pattern.quote(text.trim())}")
         }
         table.selectionModel.addListSelectionListener { openSource.isEnabled = table.selectedObject?.location != null }
         openSource.addActionListener {

@@ -1,5 +1,6 @@
 package edu.missouristate.mars.mips.instructions
 
+import java.util.Collections.unmodifiableCollection
 import edu.missouristate.mars.mips.instructions.syscalls.Syscall
 import edu.missouristate.mars.mips.instructions.syscalls.SyscallClearScreen
 import edu.missouristate.mars.mips.instructions.syscalls.SyscallClose
@@ -41,55 +42,55 @@ import edu.missouristate.mars.mips.instructions.syscalls.SyscallSbrk
 import edu.missouristate.mars.mips.instructions.syscalls.SyscallSleep
 import edu.missouristate.mars.mips.instructions.syscalls.SyscallTime
 import edu.missouristate.mars.mips.instructions.syscalls.SyscallWrite
-import java.util.Map.entry
-import java.util.Map.ofEntries
 
 /** Session-owned MIPS syscall implementations keyed by their dispatch numbers. */
 class SyscallRegistry {
-    private val byNumber = ofEntries<Int, Syscall>(
-        entry(1, SyscallPrintInt()),
-        entry(2, SyscallPrintFloat()),
-        entry(3, SyscallPrintDouble()),
-        entry(4, SyscallPrintString()),
-        entry(5, SyscallReadInt()),
-        entry(6, SyscallReadFloat()),
-        entry(7, SyscallReadDouble()),
-        entry(8, SyscallReadString()),
-        entry(9, SyscallSbrk()),
-        entry(10, SyscallExit()),
-        entry(11, SyscallPrintChar()),
-        entry(12, SyscallReadChar()),
-        entry(13, SyscallOpen()),
-        entry(14, SyscallRead()),
-        entry(15, SyscallWrite()),
-        entry(16, SyscallClose()),
-        entry(17, SyscallExit2()),
-        entry(30, SyscallTime()),
-        entry(31, SyscallMidiOut()),
-        entry(32, SyscallSleep()),
-        entry(33, SyscallMidiOutSync()),
-        entry(34, SyscallPrintIntHex()),
-        entry(35, SyscallPrintIntBinary()),
-        entry(36, SyscallPrintIntUnsigned()),
-        entry(40, SyscallRandSeed()),
-        entry(41, SyscallRandInt()),
-        entry(42, SyscallRandIntRange()),
-        entry(43, SyscallRandFloat()),
-        entry(44, SyscallRandDouble()),
-        entry(50, SyscallConfirmDialog()),
-        entry(51, SyscallInputDialogInt()),
-        entry(52, SyscallInputDialogFloat()),
-        entry(53, SyscallInputDialogDouble()),
-        entry(54, SyscallInputDialogString()),
-        entry(55, SyscallMessageDialog()),
-        entry(56, SyscallMessageDialogInt()),
-        entry(57, SyscallMessageDialogFloat()),
-        entry(58, SyscallMessageDialogDouble()),
-        entry(59, SyscallMessageDialogString()),
-        entry(60, SyscallClearScreen()),
+    private val byNumber = mapOf<Int, Syscall>(
+        1 to SyscallPrintInt(),
+        2 to SyscallPrintFloat(),
+        3 to SyscallPrintDouble(),
+        4 to SyscallPrintString(),
+        5 to SyscallReadInt(),
+        6 to SyscallReadFloat(),
+        7 to SyscallReadDouble(),
+        8 to SyscallReadString(),
+        9 to SyscallSbrk(),
+        10 to SyscallExit(),
+        11 to SyscallPrintChar(),
+        12 to SyscallReadChar(),
+        13 to SyscallOpen(),
+        14 to SyscallRead(),
+        15 to SyscallWrite(),
+        16 to SyscallClose(),
+        17 to SyscallExit2(),
+        30 to SyscallTime(),
+        31 to SyscallMidiOut(),
+        32 to SyscallSleep(),
+        33 to SyscallMidiOutSync(),
+        34 to SyscallPrintIntHex(),
+        35 to SyscallPrintIntBinary(),
+        36 to SyscallPrintIntUnsigned(),
+        40 to SyscallRandSeed(),
+        41 to SyscallRandInt(),
+        42 to SyscallRandIntRange(),
+        43 to SyscallRandFloat(),
+        44 to SyscallRandDouble(),
+        50 to SyscallConfirmDialog(),
+        51 to SyscallInputDialogInt(),
+        52 to SyscallInputDialogFloat(),
+        53 to SyscallInputDialogDouble(),
+        54 to SyscallInputDialogString(),
+        55 to SyscallMessageDialog(),
+        56 to SyscallMessageDialogInt(),
+        57 to SyscallMessageDialogFloat(),
+        58 to SyscallMessageDialogDouble(),
+        59 to SyscallMessageDialogString(),
+        60 to SyscallClearScreen(),
     )
+
+    private val services = unmodifiableCollection(byNumber.values)
 
     fun findByNumber(number: Int): Syscall? = byNumber[number]
 
-    fun services(): Collection<Syscall> = byNumber.values
+    fun services(): Collection<Syscall> = services
 }

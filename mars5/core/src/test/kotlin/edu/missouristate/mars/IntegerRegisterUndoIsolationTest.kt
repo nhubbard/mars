@@ -4,8 +4,6 @@ import edu.missouristate.mars.core.InstructionContext
 import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.mips.hardware.IntegerRegisterFile
 import edu.missouristate.mars.mips.instructions.basic.InstrAddi
-import edu.missouristate.mars.simulator.BackStepper
-import java.util.Objects
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
@@ -33,7 +31,7 @@ internal class IntegerRegisterUndoIsolationTest {
             program.tokenize()
             val filenames = arrayListOf(path)
             program.assemble(program.prepareFilesForAssembly(filenames, path, null), extended = true, warnings = false)
-            val backStepper = Objects.requireNonNull<BackStepper>(program.backStepper)
+            val backStepper = checkNotNull(program.backStepper)
             val pc = machine.registerFile.initialProgramCounter
             machine.registerFile.initializeProgramCounter(pc + 4)
             val previousT0 = machine.registerFile.getValue(8)
@@ -62,13 +60,7 @@ internal class IntegerRegisterUndoIsolationTest {
             machine.registerFile.initializeProgramCounter(pc + 4)
             val add = InstrAddi()
             val statement = ProgramStatement(null, $$"addi $t0,$zero,42", null, null, add, pc, 1)
-            System.arraycopy(
-                intArrayOf(8, 0, 42),
-                0,
-                Objects.requireNonNull<IntArray?>(statement.operands),
-                0,
-                3,
-            )
+            intArrayOf(8, 0, 42).copyInto(checkNotNull(statement.operands))
             add.simulationCode.simulate(
                 statement,
                 InstructionContext(

@@ -410,7 +410,7 @@ internal class MipsSourceTimeline(
         }
 
         fun macroOverload(name: String, arity: Int): Begin? =
-            closedMacros[name]?.get(arity)?.floorEntry(end)?.value
+            closedMacros[name]?.let { it[arity] }?.floorEntry(end)?.value
 
         fun macroOverloads(acceptsName: (String) -> Boolean): List<Begin> =
             closedMacros.keys.filter {

@@ -1,6 +1,5 @@
 package edu.missouristate.mars.mips.hardware
 
-import java.util.function.Consumer
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
@@ -65,7 +64,7 @@ internal class IntegerRegisterFileTest {
         val first = IntegerRegisterFile()
         val second = IntegerRegisterFile()
         val notices = ArrayList<RegisterAccessNotice>()
-        val listener = Consumer<RegisterAccessNotice> { notices.add(it) }
+        val listener: (RegisterAccessNotice) -> Unit = { notices.add(it) }
         first.addRegistersObserver(listener)
         second.setValue(8, 123)
         Assertions.assertThat(notices).isEmpty()

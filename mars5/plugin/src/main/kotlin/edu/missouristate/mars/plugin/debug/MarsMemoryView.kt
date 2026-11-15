@@ -4,6 +4,7 @@ import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.components.service
 import com.intellij.openapi.ui.ComboBox
+import com.intellij.ui.CollectionComboBoxModel
 import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.openapi.ui.ValidationInfo
 import com.intellij.openapi.project.Project
@@ -91,7 +92,7 @@ internal class MarsMemoryView(private val session: XDebugSession, private val en
     private val export = JButton(runMessages.getMessage("debug.memory.export"))
     private val edit = JButton(runMessages.getMessage("debug.memory.edit"))
     private val lastWrite = JButton(runMessages.getMessage("debug.memory.last.write"))
-    private val regions = ComboBox(MemoryRegion.entries.toTypedArray()).apply {
+    private val regions = ComboBox(CollectionComboBoxModel(MemoryRegion.entries.toMutableList())).apply {
         renderer = textListCellRenderer(runMessages.getMessage("debug.memory.region")) { runMessages.getMessage(it.label) }
         selectedItem = null
     }

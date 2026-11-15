@@ -12,14 +12,11 @@ import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.InstructionLoader
 import edu.missouristate.mars.simulator.Exceptions.BREAKPOINT_EXCEPTION
 import edu.missouristate.mars.simulator.Exceptions.TRAP_EXCEPTION
-import java.util.Arrays
-import java.util.Objects
-import java.util.function.Consumer
-import java.util.stream.Stream
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
+import kotlin.math.sqrt
 
 /** Architectural test vectors: expected results are specified independently of instruction code. */
 internal class BasicInstructionSemanticsTest {
@@ -67,7 +64,7 @@ internal class BasicInstructionSemanticsTest {
                     name.substring(0, name.length - 1)
                 else name
             var operands = intArrayOf(8, 2, 4)
-            val verify: Consumer<MarsContext?>
+            val verify: (MarsContext) -> Unit
             var exception: Int? = null
             val result =
                 when (base) {
@@ -103,12 +100,11 @@ internal class BasicInstructionSemanticsTest {
                     else -> null
                 }
             if (result != null) {
-                val expected = result
-                verify = Consumer { s: MarsContext? ->
-                    Assertions.assertThat(s!!.registerFile.getValue(8)).isEqualTo(expected)
+                verify = { s ->
+                    Assertions.assertThat(s.registerFile.getValue(8)).isEqualTo(result)
                 }
             } else if (
-                mutableSetOf<String?>(
+                mutableSetOf(
                         "Mult",
                         "Multu",
                         "Madd",
@@ -141,8 +137,8 @@ internal class BasicInstructionSemanticsTest {
                         "Msubu" -> -28
                         else -> 3
                     }
-                verify = Consumer { s: MarsContext? ->
-                    Assertions.assertThat(s!!.registerFile.getValue(33)).isEqualTo(expectedHi)
+                verify = { s ->
+                    Assertions.assertThat(s.registerFile.getValue(33)).isEqualTo(expectedHi)
                     Assertions.assertThat(s.registerFile.getValue(34)).isEqualTo(expectedLo)
                 }
             } else if (mutableSetOf<String?>("Mfhi", "Mflo", "Mthi", "Mtlo").contains(base)) {
@@ -150,13 +146,13 @@ internal class BasicInstructionSemanticsTest {
                 registers.updateRegister(8, 10)
                 val target = if (base == "Mthi") 33 else if (base == "Mtlo") 34 else 8
                 val expected = if (base == "Mfhi") 1 else if (base == "Mflo") 2 else 10
-                verify = Consumer { s: MarsContext? ->
-                    Assertions.assertThat(s!!.registerFile.getValue(target)).isEqualTo(expected)
+                verify = { s ->
+                    Assertions.assertThat(s.registerFile.getValue(target)).isEqualTo(expected)
                 }
             } else if (base == "Lui") {
                 operands = intArrayOf(8, 0xabcd)
-                verify = Consumer { s: MarsContext? ->
-                    Assertions.assertThat(s!!.registerFile.getValue(8)).isEqualTo(-0x54330000)
+                verify = { s ->
+                    Assertions.assertThat(s.registerFile.getValue(8)).isEqualTo(-0x54330000)
                 }
             } else if (mutableSetOf<String?>("Muh", "Muhu", "Mod", "Modu").contains(base)) {
                 registers.updateRegister(2, -10)
@@ -168,8 +164,8 @@ internal class BasicInstructionSemanticsTest {
                         "Muhu" -> 2
                         else -> 0
                     }
-                verify = Consumer { s: MarsContext? ->
-                    Assertions.assertThat(s!!.registerFile.getValue(8)).isEqualTo(expected)
+                verify = { s ->
+                    Assertions.assertThat(s.registerFile.getValue(8)).isEqualTo(expected)
                     Assertions.assertThat(s.registerFile.getValue(33)).isEqualTo(1)
                     Assertions.assertThat(s.registerFile.getValue(34)).isEqualTo(2)
                 }
@@ -182,14 +178,14 @@ internal class BasicInstructionSemanticsTest {
                         "Aluipc" -> (pc - 0x40000) and -0x10000
                         else -> 0
                     }
-                verify = Consumer { s: MarsContext? ->
-                    Assertions.assertThat(s!!.registerFile.getValue(8)).isEqualTo(expected)
+                verify = { s ->
+                    Assertions.assertThat(s.registerFile.getValue(8)).isEqualTo(expected)
                 }
             } else if (mutableSetOf<String?>("Clo", "Clz").contains(base)) {
                 operands = intArrayOf(8, 2)
                 registers.updateRegister(2, if (base == "Clo") -0x1000000 else 0x00ffffff)
-                verify = Consumer { s: MarsContext? ->
-                    Assertions.assertThat(s!!.registerFile.getValue(8)).isEqualTo(8)
+                verify = { s ->
+                    Assertions.assertThat(s.registerFile.getValue(8)).isEqualTo(8)
                 }
             } else if (mutableSetOf<String?>("Align", "Lsa", "Ext", "Ins").contains(base)) {
                 registers.updateRegister(2, -0x55443323)
@@ -204,8 +200,8 @@ internal class BasicInstructionSemanticsTest {
                         "Ext" -> 0xcd
                         else -> 0x12345dd8
                     }
-                verify = Consumer { s: MarsContext? ->
-                    Assertions.assertThat(s!!.registerFile.getValue(8)).isEqualTo(expected)
+                verify = { s ->
+                    Assertions.assertThat(s.registerFile.getValue(8)).isEqualTo(expected)
                 }
             } else if (mutableSetOf<String?>("Bitswap", "Seb", "Seh", "Wsbh").contains(base)) {
                 operands = intArrayOf(8, 2)
@@ -217,8 +213,8 @@ internal class BasicInstructionSemanticsTest {
                         "Seh" -> -0x5a19
                         else -> 0x2301e7a5
                     }
-                verify = Consumer { s: MarsContext? ->
-                    Assertions.assertThat(s!!.registerFile.getValue(8)).isEqualTo(expected)
+                verify = { s ->
+                    Assertions.assertThat(s.registerFile.getValue(8)).isEqualTo(expected)
                 }
             } else if (mutableSetOf<String?>("Movn", "Movz", "Movf", "Movt").contains(base)) {
                 if (base == "Movz") {
@@ -227,8 +223,8 @@ internal class BasicInstructionSemanticsTest {
                 if (base == "Movt") {
                     floating.setConditionFlag(if (name.endsWith("2")) 4 else 0)
                 }
-                verify = Consumer { s: MarsContext? ->
-                    Assertions.assertThat(s!!.registerFile.getValue(8)).isEqualTo(10)
+                verify = { s ->
+                    Assertions.assertThat(s.registerFile.getValue(8)).isEqualTo(10)
                 }
             } else if (
                 mutableSetOf<String?>(
@@ -251,8 +247,8 @@ internal class BasicInstructionSemanticsTest {
                 }
                 operands =
                     if (base == "Beq" || base == "Bne") intArrayOf(2, 4, 2) else intArrayOf(2, 2)
-                verify = Consumer { s: MarsContext? ->
-                    Assertions.assertThat(s!!.registerFile.getPC())
+                verify = { s ->
+                    Assertions.assertThat(s.registerFile.getPC())
                         .isEqualTo(pc + (if (taken) 12 else 4))
                     if (base == "Bgezal") {
                         Assertions.assertThat(s.registerFile.getValue(31)).isEqualTo(pc + 4)
@@ -265,23 +261,23 @@ internal class BasicInstructionSemanticsTest {
                 val taken: Boolean =
                     !mutableSetOf<String?>("blezc", "bltzc", "bltc", "bltuc").contains(mnemonic)
                 operands = if (zero) intArrayOf(2, 4) else intArrayOf(2, 4, 4)
-                verify = Consumer { s: MarsContext? ->
-                    Assertions.assertThat(s!!.registerFile.getPC())
+                verify = { s ->
+                    Assertions.assertThat(s.registerFile.getPC())
                         .isEqualTo(pc + (if (taken) 20 else 4))
                 }
             } else if (base == "CompactZeroBranch") {
                 registers.updateRegister(2, if (instruction.name == "beqzc") 0 else 1)
                 operands = intArrayOf(2, 4)
-                verify = Consumer { s: MarsContext? ->
-                    Assertions.assertThat(s!!.registerFile.getPC()).isEqualTo(pc + 20)
+                verify = { s ->
+                    Assertions.assertThat(s.registerFile.getPC()).isEqualTo(pc + 20)
                 }
             } else if (mutableSetOf<String?>("Bc", "Balc", "Jic", "Jialc").contains(base)) {
                 val branch = base == "Bc" || base == "Balc"
                 val link = base == "Balc" || base == "Jialc"
                 registers.updateRegister(2, pc + 20)
                 operands = if (branch) intArrayOf(4) else intArrayOf(2, -4)
-                verify = Consumer { s: MarsContext? ->
-                    Assertions.assertThat(s!!.registerFile.getPC())
+                verify = { s ->
+                    Assertions.assertThat(s.registerFile.getPC())
                         .isEqualTo(pc + (if (branch) 20 else 16))
                     Assertions.assertThat(s.registerFile.getValue(31))
                         .isEqualTo(if (link) pc + 4 else 0)
@@ -294,8 +290,8 @@ internal class BasicInstructionSemanticsTest {
                     "Jalr" if name.endsWith("1") -> intArrayOf(8, 2)
                     else -> intArrayOf(2)
                   }
-                verify = Consumer { s: MarsContext? ->
-                    Assertions.assertThat(s!!.registerFile.getPC()).isEqualTo(pc + 32)
+                verify = { s ->
+                    Assertions.assertThat(s.registerFile.getPC()).isEqualTo(pc + 32)
                     if (base == "Jal") {
                         Assertions.assertThat(s.registerFile.getValue(31)).isEqualTo(pc + 4)
                     }
@@ -346,14 +342,14 @@ internal class BasicInstructionSemanticsTest {
                         "Lhu" -> 52719
                         else -> null
                     }
-                verify = Consumer { s: MarsContext? ->
+                verify = { s ->
                     if (expectedLoad != null) {
-                        Assertions.assertThat(s!!.registerFile.getValue(8)).isEqualTo(expectedLoad)
+                        Assertions.assertThat(s.registerFile.getValue(8)).isEqualTo(expectedLoad)
                     } else {
                         when (base) {
                             "Lwc1",
                             "Ldc1" -> {
-                                Assertions.assertThat(s!!.coprocessor1.getValue(8))
+                                Assertions.assertThat(s.coprocessor1.getValue(8))
                                     .isEqualTo(-0x76543211)
                                 if (base == "Ldc1") {
                                     Assertions.assertThat(s.coprocessor1.getValue(9))
@@ -368,7 +364,7 @@ internal class BasicInstructionSemanticsTest {
                                   else -> 0x12345678
                                 }
                                 try {
-                                    Assertions.assertThat(s!!.memory.getWord(address))
+                                    Assertions.assertThat(s.memory.getWord(address))
                                         .isEqualTo(expectedWord)
                                     if (base == "Sdc1") {
                                         Assertions.assertThat(s.memory.getWord(address + 4))
@@ -388,10 +384,10 @@ internal class BasicInstructionSemanticsTest {
                 operands = intArrayOf(8, Coprocessor0State.EPC)
                 session.coprocessor0.updateRegister(Coprocessor0State.EPC, 42)
                 registers.updateRegister(8, 99)
-                verify = Consumer { s: MarsContext? ->
+                verify = { s ->
                     Assertions.assertThat(
-                            if (base == "Mfc0") s!!.registerFile.getValue(8)
-                            else s!!.coprocessor0.getValue(Coprocessor0State.EPC),
+                            if (base == "Mfc0") s.registerFile.getValue(8)
+                            else s.coprocessor0.getValue(Coprocessor0State.EPC),
                         )
                         .isEqualTo(if (base == "Mfc0") 42 else 99)
                 }
@@ -407,12 +403,7 @@ internal class BasicInstructionSemanticsTest {
                     floating.setRegisterToFloat(8, 1.0f)
                 }
                 val expected =
-                    when (
-                        instruction.name
-                            .split("\\.".toRegex())
-                            .dropLastWhile { it.isEmpty() }
-                            .toTypedArray()[0]
-                    ) {
+                    when (instruction.name.substringBefore('.')) {
                         "sel",
                         "seleqz",
                         "min",
@@ -424,27 +415,27 @@ internal class BasicInstructionSemanticsTest {
                         "max" -> 2.0
                         else -> throw AssertionError(instruction.name)
                     }
-                verify = Consumer { s: MarsContext? ->
+                verify = { s ->
                     if (doubles) {
-                      assertDouble(s!!, expected)
+                      assertDouble(s, expected)
                     } else {
-                        Assertions.assertThat(s!!.coprocessor1.getFloatFromRegister(8))
+                        Assertions.assertThat(s.coprocessor1.getFloatFromRegister(8))
                             .isEqualTo(expected.toFloat())
                     }
                 }
             } else if (base == "ClassS" || base == "ClassD") {
                 operands = intArrayOf(2, 4)
                 floating.setRegisterPairToLong(4, -0x7fffffff00800000L)
-                verify = Consumer { s: MarsContext? ->
-                    Assertions.assertThat(s!!.coprocessor1.getValue(2))
+                verify = { s ->
+                    Assertions.assertThat(s.coprocessor1.getValue(2))
                         .isEqualTo(if (base == "ClassS") 4 else 16)
                 }
             } else if (base == "Mfhc1" || base == "Mthc1") {
                 operands = intArrayOf(8, 4)
                 registers.updateRegister(8, 99)
                 floating.setRegisterPairToLong(4, 0x0000002a12345678L)
-                verify = Consumer { s: MarsContext? ->
-                    Assertions.assertThat(s!!.coprocessor1.getValue(4)).isEqualTo(0x12345678)
+                verify = { s ->
+                    Assertions.assertThat(s.coprocessor1.getValue(4)).isEqualTo(0x12345678)
                     if (base == "Mfhc1") {
                         Assertions.assertThat(s.registerFile.getValue(8)).isEqualTo(42)
                     } else {
@@ -455,10 +446,10 @@ internal class BasicInstructionSemanticsTest {
                 operands = intArrayOf(8, 2)
                 floating.setRegisterToInt(2, 42)
                 registers.updateRegister(8, 99)
-                verify = Consumer { s: MarsContext? ->
+                verify = { s ->
                     Assertions.assertThat(
-                            if (base == "Mfc1") s!!.registerFile.getValue(8)
-                            else s!!.coprocessor1.getValue(2),
+                            if (base == "Mfc1") s.registerFile.getValue(8)
+                            else s.coprocessor1.getValue(2),
                         )
                         .isEqualTo(if (base == "Mfc1") 42 else 99)
                 }
@@ -468,8 +459,8 @@ internal class BasicInstructionSemanticsTest {
                     floating.setConditionFlag(flag)
                 }
                 operands = if (name.endsWith("2")) intArrayOf(flag, 2) else intArrayOf(2)
-                verify = Consumer { s: MarsContext? ->
-                    Assertions.assertThat(s!!.registerFile.getPC()).isEqualTo(pc + 12)
+                verify = { s ->
+                    Assertions.assertThat(s.registerFile.getPC()).isEqualTo(pc + 12)
                 }
             } else if (base.startsWith("CEq") || base.startsWith("CLe") || base.startsWith("CLt")) {
                 val doubles: Boolean = base.endsWith("D")
@@ -482,8 +473,8 @@ internal class BasicInstructionSemanticsTest {
                     floating.setRegisterToFloat(4, 4f)
                 }
                 operands = if (name.endsWith("2")) intArrayOf(flag, 2, 4) else intArrayOf(2, 4)
-                verify = Consumer { s: MarsContext? ->
-                    Assertions.assertThat(s!!.coprocessor1.getConditionFlag(flag))
+                verify = { s ->
+                    Assertions.assertThat(s.coprocessor1.getConditionFlag(flag))
                         .isEqualTo(if (base.startsWith("CEq")) 0 else 1)
                 }
             } else if (base.endsWith("S") || base.endsWith("D") || base.startsWith("Cvt")) {
@@ -501,23 +492,23 @@ internal class BasicInstructionSemanticsTest {
                     when (base) {
                         "CvtDS" -> {
                             floating.setRegisterToFloat(2, 4.75f)
-                            verify = Consumer { s: MarsContext? ->
-                              assertDouble(s!!, 4.75)
+                            verify = { s ->
+                              assertDouble(s, 4.75)
                             }
                         }
 
                         "CvtDW" -> {
                             floating.setRegisterToInt(2, 42)
-                            verify = Consumer { s: MarsContext? ->
-                              assertDouble(s!!, 42.0)
+                            verify = { s ->
+                              assertDouble(s, 42.0)
                             }
                         }
 
                         "CvtSD" -> {
                             floating.setRegisterPairToDouble(2, 4.75)
-                            verify = Consumer { s: MarsContext? ->
+                            verify = { s ->
                                 Assertions.assertThat(
-                                        s!!.coprocessor1.getFloatFromRegister(8),
+                                        s.coprocessor1.getFloatFromRegister(8),
                                     )
                                     .isEqualTo(4.75f)
                             }
@@ -525,17 +516,17 @@ internal class BasicInstructionSemanticsTest {
 
                         "CvtSW" -> {
                             floating.setRegisterToInt(2, 42)
-                            verify = Consumer { s: MarsContext? ->
+                            verify = { s ->
                                 Assertions.assertThat(
-                                        s!!.coprocessor1.getFloatFromRegister(8),
+                                        s.coprocessor1.getFloatFromRegister(8),
                                     )
                                     .isEqualTo(42f)
                             }
                         }
 
                         "CvtWD",
-                        "CvtWS" -> verify = Consumer { s: MarsContext? ->
-                                Assertions.assertThat(s!!.coprocessor1.getValue(8)).isEqualTo(4)
+                        "CvtWS" -> verify = { s ->
+                                Assertions.assertThat(s.coprocessor1.getValue(8)).isEqualTo(4)
                             }
 
                         else -> throw AssertionError(base)
@@ -547,11 +538,11 @@ internal class BasicInstructionSemanticsTest {
                     if (operation == "Movz") {
                         registers.updateRegister(4, 0)
                     }
-                    verify = Consumer { s: MarsContext? ->
+                    verify = { s ->
                         if (doubles) {
-                          assertDouble(s!!, 4.75)
+                          assertDouble(s, 4.75)
                         } else {
-                            Assertions.assertThat(s!!.coprocessor1.getFloatFromRegister(8))
+                            Assertions.assertThat(s.coprocessor1.getFloatFromRegister(8))
                                 .isEqualTo(4.75f)
                         }
                     }
@@ -559,8 +550,8 @@ internal class BasicInstructionSemanticsTest {
                     mutableSetOf<String?>("FloorW", "CeilW", "RoundW", "TruncW").contains(operation)
                 ) {
                     val expected = if (operation == "FloorW" || operation == "TruncW") 4 else 5
-                    verify = Consumer { s: MarsContext? ->
-                        Assertions.assertThat(s!!.coprocessor1.getValue(8)).isEqualTo(expected)
+                    verify = { s ->
+                        Assertions.assertThat(s.coprocessor1.getValue(8)).isEqualTo(expected)
                     }
                 } else {
                     val expected =
@@ -569,16 +560,16 @@ internal class BasicInstructionSemanticsTest {
                             "Sub" -> 2.75
                             "Mul" -> 9.5
                             "Div" -> 2.375
-                            "Sqrt" -> Math.sqrt(4.75)
+                            "Sqrt" -> sqrt(4.75)
                             "Abs" -> 4.75
                             "Neg" -> -4.75
-                            else -> throw AssertionError("Missing vector for " + name)
+                            else -> throw AssertionError("Missing vector for $name")
                         }
-                    verify = Consumer { s: MarsContext? ->
+                    verify = { s ->
                         if (doubles) {
-                          assertDouble(s!!, expected)
+                          assertDouble(s, expected)
                         } else {
-                            Assertions.assertThat(s!!.coprocessor1.getFloatFromRegister(8))
+                            Assertions.assertThat(s.coprocessor1.getFloatFromRegister(8))
                                 .isEqualTo(expected.toFloat())
                         }
                     }
@@ -590,46 +581,46 @@ internal class BasicInstructionSemanticsTest {
                 }
                 val traps: Boolean = !base.startsWith("Tlt")
                 exception = if (traps) TRAP_EXCEPTION else null
-                verify = Consumer { s: MarsContext? ->
-                    Assertions.assertThat(s!!.registerFile.getValue(8)).isZero()
+                verify = { s ->
+                    Assertions.assertThat(s.registerFile.getValue(8)).isZero()
                 }
             } else if (base == "Break") {
                 operands = intArrayOf(0)
                 exception = BREAKPOINT_EXCEPTION
-                verify = Consumer { s: MarsContext? ->
-                    Assertions.assertThat(s!!.coprocessor0.getValue(Coprocessor0State.EPC))
+                verify = { s ->
+                    Assertions.assertThat(s.coprocessor0.getValue(Coprocessor0State.EPC))
                         .isEqualTo(pc)
                 }
             } else if (base == "Syscall") {
                 registers.updateRegister(2, 10)
                 exception = -1
-                verify = Consumer { `_`: MarsContext? ->
+                verify = { _ ->
                     Assertions.assertThat(context.exitCode).isZero()
                 }
             } else if (base == "Eret") {
                 session.coprocessor0.updateRegister(Coprocessor0State.EPC, pc + 32)
                 session.coprocessor0.updateRegister(Coprocessor0State.STATUS, 3)
-                verify = Consumer { s: MarsContext? ->
-                    Assertions.assertThat(s!!.registerFile.getPC()).isEqualTo(pc + 32)
+                verify = { s ->
+                    Assertions.assertThat(s.registerFile.getPC()).isEqualTo(pc + 32)
                     Assertions.assertThat(s.coprocessor0.getValue(Coprocessor0State.STATUS))
                         .isEqualTo(1)
                 }
             } else {
                 if (base == "Nop") {
-                    verify = Consumer { s: MarsContext? ->
-                        Assertions.assertThat(s!!.registerFile.getPC()).isEqualTo(pc + 4)
+                    verify = { s ->
+                        Assertions.assertThat(s.registerFile.getPC()).isEqualTo(pc + 4)
                     }
                 } else {
-                    throw AssertionError("Missing semantic vector for " + name)
+                    throw AssertionError("Missing semantic vector for $name")
                 }
             }
 
             val beforeRegisters =
-                Arrays.stream(registers.registers).mapToInt(Register::value).toArray()
+                registerValues(registers.registers)
             val beforeFloating =
-                Arrays.stream(floating.registers).mapToInt(Register::value).toArray()
+                registerValues(floating.registers)
             val beforeCp0 =
-                Arrays.stream(session.coprocessor0.registers).mapToInt(Register::value).toArray()
+                registerValues(session.coprocessor0.registers)
             val beforeFlags = floating.conditionFlags
             val statement =
                 ProgramStatement(
@@ -641,13 +632,7 @@ internal class BasicInstructionSemanticsTest {
                     pc,
                     1,
                 )
-            System.arraycopy(
-                operands,
-                0,
-                requireNotNull(statement.operands),
-                0,
-                operands.size,
-            )
+            operands.copyInto(requireNotNull(statement.operands))
             if (exception == null) {
                 context.execute(statement)
             } else {
@@ -665,21 +650,19 @@ internal class BasicInstructionSemanticsTest {
                         .isEqualTo(exception)
                 }
             }
-            verify.accept(session)
+            verify(session)
             Assertions.assertThat(registers.getValue(0)).isZero()
             session.backStepper.backStep()
             Assertions.assertThat(
-                    Arrays.stream(registers.registers).mapToInt(Register::value).toArray(),
+                    registerValues(registers.registers),
                 )
                 .containsExactly(*beforeRegisters)
             Assertions.assertThat(
-                    Arrays.stream(floating.registers).mapToInt(Register::value).toArray(),
+                    registerValues(floating.registers),
                 )
                 .containsExactly(*beforeFloating)
             Assertions.assertThat(
-                    Arrays.stream(session.coprocessor0.registers)
-                        .mapToInt(Register::value)
-                        .toArray(),
+                    registerValues(session.coprocessor0.registers),
                 )
                 .containsExactly(*beforeCp0)
             Assertions.assertThat(floating.conditionFlags).isEqualTo(beforeFlags)
@@ -689,10 +672,13 @@ internal class BasicInstructionSemanticsTest {
         }
     }
 
+    private fun registerValues(registers: Array<Register>): IntArray =
+        IntArray(registers.size) { registers[it].value }
+
     companion object {
         @JvmStatic
-        fun instructions(): Stream<BasicInstruction> {
-            return InstructionLoader().loadBasicInstructions().stream()
+        fun instructions(): List<BasicInstruction> {
+            return InstructionLoader().loadBasicInstructions()
         }
 
         private fun assertDouble(session: MarsContext, expected: Double) {

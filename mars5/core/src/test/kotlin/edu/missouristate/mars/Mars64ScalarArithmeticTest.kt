@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
+import kotlin.math.sqrt
 
 class Mars64ScalarArithmeticTest {
     @ParameterizedTest
@@ -121,7 +122,7 @@ class Mars64ScalarArithmeticTest {
             machine.editIntegerRegister(8, 2)
             program.simulate(1)
             // Binary64's nearest sqrt(2) is already above the exact value. Binary32's is below it.
-            step(2.0, bits(Math.sqrt(2.0)) + if (double) 0 else 1, INEXACT)
+            step(2.0, bits(sqrt(2.0)) + if (double) 0 else 1, INEXACT)
             step(-0.0, bits(Double.NEGATIVE_INFINITY), DIVIDE_BY_ZERO)
             step(4.0, bits(0.5))
             step(-0.0, bits(-0.0))

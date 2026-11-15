@@ -3,7 +3,6 @@ package edu.missouristate.mars.mips.instructions.syscalls
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.locks.ReentrantLock
-import java.util.function.Consumer
 import javax.sound.midi.InvalidMidiDataException
 import javax.sound.midi.MetaEventListener
 import javax.sound.midi.MetaMessage
@@ -60,14 +59,14 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /** Plays MIDI tones for one syscall environment. */
 class ToneGenerator internal constructor(
     private val sequencers: SequencerSource,
-    private val reportFailure: Consumer<Exception>,
+    private val reportFailure: (Exception) -> Unit,
 ) : AutoCloseable {
     internal fun interface SequencerSource {
         @Throws(MidiUnavailableException::class)
         fun create(): Sequencer
     }
 
-    constructor(reportFailure: Consumer<Exception>) : this(SequencerSource(MidiSystem::getSequencer), reportFailure)
+    constructor(reportFailure: (Exception) -> Unit) : this(SequencerSource(MidiSystem::getSequencer), reportFailure)
 
     private var threadPool: ExecutorService? = null
 
@@ -135,7 +134,7 @@ class ToneGenerator internal constructor(
     }
 
     private fun reportUnlessInterrupted(failure: Exception) {
-        if (!Thread.currentThread().isInterrupted) reportFailure.accept(failure)
+        if (!Thread.currentThread().isInterrupted) reportFailure(failure)
     }
 
     private class EndOfTrackListener : MetaEventListener {

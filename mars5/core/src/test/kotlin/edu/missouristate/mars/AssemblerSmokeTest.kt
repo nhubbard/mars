@@ -5,7 +5,6 @@ import java.net.URISyntaxException
 import java.net.URL
 import java.nio.file.Path
 import java.util.Objects
-import java.util.stream.Stream
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -75,8 +74,8 @@ internal class AssemblerSmokeTest {
 
     companion object {
         @JvmStatic
-        fun allPrograms(): Stream<String?> {
-            return Stream.of(
+        fun allPrograms(): List<String> {
+            return listOf(
                 "01_helloworld.asm",
                 "02_readint.asm",
                 "03_readstring.asm",

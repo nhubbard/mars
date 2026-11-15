@@ -8,28 +8,28 @@ class WordMemorySegment(blocks: Int, private val descending: Boolean, private va
 
     /** Copy allocated blocks. A restored segment keeps its own byte order supplier. */
     @Synchronized
-    fun capture(checkCancellation: Runnable): Image = Image.capture(blockTable, checkCancellation)
+    fun capture(checkCancellation: () -> Unit): Image = Image.capture(blockTable, checkCancellation)
 
     @Synchronized
-    fun load(image: Image, checkCancellation: Runnable) {
+    fun load(image: Image, checkCancellation: () -> Unit) {
         val copy = image.copy(checkCancellation)
-        System.arraycopy(copy, 0, blockTable, 0, blockTable.size)
+        copy.copyInto(blockTable, endIndex = blockTable.size)
     }
 
     class Image private constructor(private val blocks: Array<IntArray?>) {
-        internal fun copy(checkCancellation: Runnable): Array<IntArray?> = copyBlocks(blocks, checkCancellation)
+        internal fun copy(checkCancellation: () -> Unit): Array<IntArray?> = copyBlocks(blocks, checkCancellation)
 
-        fun hasSameContents(other: Image, checkCancellation: Runnable): Boolean {
+        fun hasSameContents(other: Image, checkCancellation: () -> Unit): Boolean {
             if (blocks.size != other.blocks.size) return false
             for (index in blocks.indices) {
-                checkCancellation.run()
+                checkCancellation()
                 if (!blocks[index].contentEquals(other.blocks[index])) return false
             }
             return true
         }
 
         companion object {
-            internal fun capture(blocks: Array<IntArray?>, checkCancellation: Runnable): Image =
+            internal fun capture(blocks: Array<IntArray?>, checkCancellation: () -> Unit): Image =
                 Image(copyBlocks(blocks, checkCancellation))
         }
     }
@@ -88,10 +88,10 @@ class WordMemorySegment(blocks: Int, private val descending: Boolean, private va
     companion object {
         private const val BLOCK_LENGTH_WORDS = 1024
 
-        private fun copyBlocks(source: Array<IntArray?>, checkCancellation: Runnable): Array<IntArray?> =
+        private fun copyBlocks(source: Array<IntArray?>, checkCancellation: () -> Unit): Array<IntArray?> =
             Array(source.size) { index ->
                 source[index]?.let { block ->
-                    checkCancellation.run()
+                    checkCancellation()
                     block.copyOf()
                 }
             }

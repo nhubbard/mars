@@ -131,16 +131,16 @@ open class MIPSprogram @JvmOverloads constructor(
     }
 
     @Throws(ProcessingException::class)
-    open fun readSource(file: String, checkCancellation: Runnable) {
+    open fun readSource(file: String, checkCancellation: () -> Unit) {
         readSource(file, checkCancellation, include = false)
     }
 
     @Throws(ProcessingException::class)
-    open fun readIncludedSource(file: String, checkCancellation: Runnable) {
+    open fun readIncludedSource(file: String, checkCancellation: () -> Unit) {
         readSource(file, checkCancellation, include = true)
     }
 
-    private fun readSource(file: String, checkCancellation: Runnable, include: Boolean) {
+    private fun readSource(file: String, checkCancellation: () -> Unit, include: Boolean) {
         sourceFilename = file
         val lines = ArrayList<String>()
         writtenLines = lines
@@ -149,7 +149,7 @@ open class MIPSprogram @JvmOverloads constructor(
             openSource(file, include).buffered().use { reader ->
                 while (true) {
                     val line = reader.readLine() ?: break
-                    checkCancellation.run()
+                    checkCancellation()
                     lines.add(line)
                 }
             }
@@ -178,7 +178,7 @@ open class MIPSprogram @JvmOverloads constructor(
         tokenize {}
     }
 
-    private fun tokenize(checkCancellation: Runnable) {
+    private fun tokenize(checkCancellation: () -> Unit) {
         val current = assemblyContext.tokenizer(this)
         activeTokenizer = current
         tokenizedLines = current.tokenize(this, checkCancellation)
@@ -193,7 +193,7 @@ open class MIPSprogram @JvmOverloads constructor(
 
     @Throws(ProcessingException::class)
     open fun prepareFilesForAssembly(
-        filenames: ArrayList<String>, leadFilename: String?, exceptionHandler: String?, checkCancellation: Runnable,
+        filenames: ArrayList<String>, leadFilename: String?, exceptionHandler: String?, checkCancellation: () -> Unit,
     ): ArrayList<MIPSprogram> {
         val programs = ArrayList<MIPSprogram>()
         val leadPosition = if (!exceptionHandler.isNullOrEmpty()) {
@@ -201,7 +201,7 @@ open class MIPSprogram @JvmOverloads constructor(
             1
         } else 0
         for (file in filenames) {
-            checkCancellation.run()
+            checkCancellation()
             val program = if (file == leadFilename) this else createRelatedProgram()
             program.readSource(file, checkCancellation)
             program.tokenize(checkCancellation)
@@ -219,7 +219,7 @@ open class MIPSprogram @JvmOverloads constructor(
 
     @Throws(ProcessingException::class)
     open fun assemble(
-        programs: ArrayList<MIPSprogram>?, extended: Boolean, warnings: Boolean, checkCancellation: Runnable,
+        programs: ArrayList<MIPSprogram>?, extended: Boolean, warnings: Boolean, checkCancellation: () -> Unit,
     ): ErrorList = session.claimStoppedSession().use {
         require(!programs.isNullOrEmpty()) { "At least one source file is required" }
         require(programs.all { assemblyContext.sharesSession(it.assemblyContext()) }) {
@@ -230,7 +230,7 @@ open class MIPSprogram @JvmOverloads constructor(
         instructions = assembler.assemble(programs, extended, warnings, checkCancellation)
         sourceMap = assembler.sourceMap
         symbolMap = assembler.symbolMap
-        checkCancellation.run()
+        checkCancellation()
         assemblyBackStepper = session.backStepper
         sessionExecution = null
         assemblyContext.finishAssembly(this)
@@ -268,10 +268,10 @@ open class MIPSprogram @JvmOverloads constructor(
 
     override fun sourceMap(): InstructionSourceMap = sourceMap
 
-    override fun instructionsAt(location: Location, checkCancellation: Runnable): List<AssembledInstruction> {
+    override fun instructionsAt(location: Location, checkCancellation: () -> Unit): List<AssembledInstruction> {
         val instructions = ArrayList<AssembledInstruction>()
         for (statement in this.instructions ?: return emptyList()) {
-            checkCancellation.run()
+            checkCancellation()
             val origin = sourceMap.originsByAddress[statement.addressBits]
             var frame = origin
             while (frame != null) {
@@ -285,12 +285,12 @@ open class MIPSprogram @JvmOverloads constructor(
         return copyList(instructions)
     }
 
-    override fun pseudoInstructions(checkCancellation: Runnable): List<AssembledInstruction> {
+    override fun pseudoInstructions(checkCancellation: () -> Unit): List<AssembledInstruction> {
         val addresses = sourceMap.pseudoAddressBits
         if (addresses.isEmpty()) return emptyList()
         val instructions = ArrayList<AssembledInstruction>(addresses.size)
         for (statement in this.instructions!!) {
-            checkCancellation.run()
+            checkCancellation()
             val address = statement.addressBits
             if (address in addresses) instructions.add(assembledInstruction(statement, sourceMap.originsByAddress[address]))
         }

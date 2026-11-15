@@ -9,7 +9,6 @@ import edu.missouristate.mars.mips.hardware.MemoryState
 import edu.missouristate.mars.mips.instructions.Instruction.Companion.INSTRUCTION_LENGTH
 import java.util.Set.copyOf
 import java.util.concurrent.CopyOnWriteArrayList
-import java.util.function.Supplier
 import kotlin.jvm.JvmRecord
 
 /*
@@ -55,11 +54,11 @@ open class BackStepper(
     private var framePc = 0L
     private var frameStatement: ProgramStatement? = null
     private var frameBranch: DelayedBranchState.Snapshot? = null
-    private var frameRestore: Runnable? = null
+    private var frameRestore: (() -> Unit)? = null
     private var frameDiscarded = false
     private var frameInDelaySlot = false
     private val backSteps: BackstepStack
-    private val checkpoints = CopyOnWriteArrayList<Supplier<Runnable?>>()
+    private val checkpoints = CopyOnWriteArrayList<() -> (() -> Unit)?>()
 
     init {
         require(capacity > 0) { "Backstep capacity must be positive" }
@@ -67,7 +66,7 @@ open class BackStepper(
     }
 
     /** Capture device undo before an instruction. Its action runs after CPU and memory restore. */
-    open fun addInstructionCheckpoint(capture: Supplier<Runnable?>): AutoCloseable {
+    open fun addInstructionCheckpoint(capture: () -> (() -> Unit)?): AutoCloseable {
         checkpoints.add(capture)
         return AutoCloseable { checkpoints.remove(capture) }
     }
@@ -79,13 +78,17 @@ open class BackStepper(
         check(activeFrame == 0L) { "An instruction is already executing" }
         if (!engaged) return false
         val executed = statement ?: throw NullPointerException()
-        var restore: Runnable? = null
+        var restore: (() -> Unit)? = null
         for (checkpoint in checkpoints) {
-            val next = checkpoint.get() ?: continue
+            val next = checkpoint() ?: continue
             val previous = restore
-            restore = if (previous == null) next else Runnable {
-                previous.run()
-                next.run()
+            if (previous == null) {
+                restore = next
+            } else {
+                restore = {
+                    previous()
+                    next()
+                }
             }
         }
         activeFrame = ++nextFrame
@@ -175,7 +178,7 @@ open class BackStepper(
         val statement = first.statement
         val frame = first.frame
         val branch = first.branch
-        var restore: Runnable? = null
+        var restore: (() -> Unit)? = null
         engaged = false
         try {
             do {
@@ -188,7 +191,7 @@ open class BackStepper(
                 restoreStep(step)
             } while (!backSteps.empty() && belongsToGroup(backSteps.peek(), frame, statement))
             if (branch != null) delayedBranch.restore(branch)
-            restore?.run()
+            restore?.invoke()
         } catch (error: AddressErrorException) {
             throw IllegalStateException("Cannot restore memory while back-stepping", error)
         } finally {
@@ -334,7 +337,7 @@ open class BackStepper(
     private inner class BackStep {
         var frame = 0L
         var branch: DelayedBranchState.Snapshot? = null
-        var restore: Runnable? = null
+        var restore: (() -> Unit)? = null
         var action = Action.DO_NOTHING
         var pc = 0L
         var statement: ProgramStatement? = null

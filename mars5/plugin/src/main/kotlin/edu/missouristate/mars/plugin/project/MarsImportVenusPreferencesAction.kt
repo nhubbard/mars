@@ -182,7 +182,7 @@ internal fun <T : Any> loadVenusPreferences(project: Project, title: String, rea
 }
 
 internal fun confirmVenusImport(project: Project, title: String, text: String): Boolean {
-    val html = "<html>" + escapeXmlEntities(text).replace("\n", "<br>") + "</html>"
+    val html = "<html>${escapeXmlEntities(text).replace("\n", "<br>")}</html>"
     return MessageDialogBuilder.okCancel(title, html).yesText(messages.getMessage("import.venus.apply")).ask(project)
 }
 

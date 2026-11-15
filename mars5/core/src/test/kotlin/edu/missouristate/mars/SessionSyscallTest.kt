@@ -20,7 +20,6 @@ import java.io.PrintStream
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
-import java.util.Objects
 import java.util.Random
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
@@ -84,7 +83,7 @@ internal class SessionSyscallTest {
                 second.close()
                 Assertions.assertThat(b.readFromFile(3, bytes, 3)).isEqualTo(-1)
                 Assertions.assertThat(
-                        Objects.requireNonNull<MIPSprogram>(first.program)!!.simulate(20),
+                        checkNotNull(first.program).simulate(20),
                     )
                     .isTrue()
             }

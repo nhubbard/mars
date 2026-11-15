@@ -8,7 +8,6 @@ import edu.missouristate.mars.plugin.tools.KeyboardDisplayDevice.Delay
 import edu.missouristate.mars.plugin.tools.KeyboardDisplayDevice.Options
 import edu.missouristate.mars.plugin.tools.MmioTerminalDisplay.Geometry
 import java.nio.file.Path
-import java.util.function.Consumer
 import kotlin.io.path.writeText
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -162,7 +161,7 @@ class KeyboardDisplayDeviceTest {
                 device.instructionCompleted(session)
                 assertEquals("Q", device.snapshot().display.text)
                 assertEquals(0, session.pendingDeviceInterrupts())
-                val disconnect = Consumer<MemoryAccessNotice> { device.releaseView() }
+                val disconnect: (MemoryAccessNotice) -> Unit = { device.releaseView() }
                 device.setConnected(false)
                 memory.addObserver(disconnect, start + 12)
                 device.setConnected(true)

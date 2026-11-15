@@ -7,7 +7,6 @@ import java.lang.reflect.Proxy
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
-import java.util.function.Consumer
 import javax.sound.midi.InvalidMidiDataException
 import javax.sound.midi.MetaEventListener
 import javax.sound.midi.MetaMessage
@@ -31,7 +30,7 @@ internal class ToneGeneratorTest {
         try {
             ToneGenerator(
                     SequencerSource { device.proxy() },
-                    Consumer { e: Exception? -> failures.add(e) },
+                    { e -> failures.add(e) },
                 )
                 .use { generator ->
                     val tone =
@@ -70,7 +69,7 @@ internal class ToneGeneratorTest {
         try {
             ToneGenerator(
                     SequencerSource { device.proxy() },
-                    Consumer { e: Exception? -> failures.add(e) },
+                    { e -> failures.add(e) },
                 )
                 .use { generator ->
                     generator.generateToneSynchronously(60.toByte(), 200, 0.toByte(), 80.toByte())
@@ -90,7 +89,7 @@ internal class ToneGeneratorTest {
         val failures = ArrayList<Exception?>()
         ToneGenerator(
                 SequencerSource { device.proxy() },
-                Consumer { e: Exception? -> failures.add(e) },
+                { e -> failures.add(e) },
             )
             .use { generator ->
                 generator.generateTone(60.toByte(), 60000, 0.toByte(), 80.toByte())
@@ -107,7 +106,7 @@ internal class ToneGeneratorTest {
         val failures = ArrayList<Exception?>()
         ToneGenerator(
                 SequencerSource { throw unavailable },
-                Consumer { e: Exception? -> failures.add(e) },
+                { e -> failures.add(e) },
             )
             .use { generator ->
                 generator.generateToneSynchronously(60.toByte(), 200, 0.toByte(), 80.toByte())
@@ -116,7 +115,7 @@ internal class ToneGeneratorTest {
         badOpen.openFailure = MidiUnavailableException("Device busy")
         ToneGenerator(
                 SequencerSource { badOpen.proxy() },
-                Consumer { e: Exception? -> failures.add(e) },
+                { e -> failures.add(e) },
             )
             .use { generator ->
                 generator.generateToneSynchronously(60.toByte(), 200, 0.toByte(), 80.toByte())
@@ -125,7 +124,7 @@ internal class ToneGeneratorTest {
         badSequence.sequenceFailure = InvalidMidiDataException("Cannot configure sequence")
         ToneGenerator(
                 SequencerSource { badSequence.proxy() },
-                Consumer { e: Exception? -> failures.add(e) },
+                { e -> failures.add(e) },
             )
             .use { generator ->
                 generator.generateToneSynchronously(60.toByte(), 200, 0.toByte(), 80.toByte())

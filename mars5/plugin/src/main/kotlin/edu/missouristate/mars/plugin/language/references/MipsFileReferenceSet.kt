@@ -44,7 +44,7 @@ class MipsFileReferenceSet internal constructor(
     }
 
     override fun getNewAbsolutePath(root: PsiFileSystemItem, relativePath: String): String =
-        root.virtualFile.path.trimEnd('/') + "/" + relativePath
+        "${root.virtualFile.path.trimEnd('/')}/$relativePath"
 
     override fun reparse(str: String, startInElement: Int): List<FileReference> {
         val references = ArrayList<FileReference>()

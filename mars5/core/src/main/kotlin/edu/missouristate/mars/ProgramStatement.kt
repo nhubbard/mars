@@ -22,7 +22,6 @@ import edu.missouristate.mars.mips.instructions.InstructionSet
 import edu.missouristate.mars.util.Binary
 import edu.missouristate.mars.util.NumberDisplayBase
 import java.util.List.copyOf as copyList
-import java.util.function.BiConsumer
 
 /*
 Copyright (c) 2003-2013,  Pete Sanderson and Kenneth Vollmar
@@ -185,7 +184,7 @@ open class ProgramStatement private constructor(
     }
 
     /** Resolves operands and reports the written token for each resolved symbol. */
-    open fun buildBasicStatementFromBasicInstruction(errors: ErrorList, recordSymbolUse: BiConsumer<Token, Symbol>) {
+    open fun buildBasicStatementFromBasicInstruction(errors: ErrorList, recordSymbolUse: (Token, Symbol) -> Unit) {
         val tokens = strippedTokenList!!
         val basic = StringBuilder()
         fun appendText(text: String) {
@@ -201,7 +200,7 @@ open class ProgramStatement private constructor(
                 errors.add(ErrorMessage(token, message))
                 return null
             }
-            recordSymbolUse.accept(token, symbol)
+            recordSymbolUse(token, symbol)
             return symbol
         }
 

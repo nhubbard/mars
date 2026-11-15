@@ -6,7 +6,6 @@ import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.tools.MemoryGridDisplay.Base
 import edu.missouristate.mars.plugin.tools.MemoryGridDisplay.BitmapCell
 import edu.missouristate.mars.plugin.tools.MemoryGridDisplay.Options
-import java.util.function.Consumer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertSame
@@ -88,7 +87,7 @@ class BitmapDisplayTest {
         MarsSessionService.createMarsComponent().context().use { session ->
             val memory = session.memory
             val display = MemoryGridDisplay(captureAtLaunch = true)
-            val watcher = Consumer<MemoryAccessNotice> { display.configure(Options(1024, 64, base = Base.MMIO)) }
+            val watcher: (MemoryAccessNotice) -> Unit = { display.configure(Options(1024, 64, base = Base.MMIO)) }
             memory.addObserver(watcher, memory.dataBaseAddress)
             display.observe(memory).use {
                 memory.setWord(memory.dataBaseAddress, 0x00ff0000)

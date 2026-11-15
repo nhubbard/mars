@@ -28,9 +28,7 @@ import edu.missouristate.mars.mips.instructions.basic.InstrMult
 import edu.missouristate.mars.mips.instructions.basic.InstrSyscall
 import edu.missouristate.mars.mips.instructions.syscalls.AbstractSyscall
 import edu.missouristate.mars.simulator.Exceptions.ARITHMETIC_OVERFLOW_EXCEPTION
-import java.util.Objects
 import java.util.concurrent.atomic.AtomicInteger
-import java.util.function.Consumer
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
@@ -150,14 +148,13 @@ internal class InstructionContextTest {
         Assertions.assertThatThrownBy { execute(InstrAdd(), context, 10, 8, 9) }
             .isInstanceOfSatisfying<ProcessingException?>(
                 ProcessingException::class.java,
-                Consumer { error: ProcessingException? ->
-                    Assertions.assertThat(
-                            Objects.requireNonNull(error!!.errors())!!
-                                .generateErrorReport(),
-                        )
-                        .contains("0x00400100", "arithmetic overflow")
-                },
-            )
+            ) { error ->
+                Assertions.assertThat(
+                        checkNotNull(error!!.errors())
+                            .generateErrorReport(),
+                    )
+                    .contains("0x00400100", "arithmetic overflow")
+            }
         Assertions.assertThat(context.coprocessor0.getValue(Coprocessor0State.CAUSE))
             .isEqualTo(ARITHMETIC_OVERFLOW_EXCEPTION shl 2)
         Assertions.assertThat(context.coprocessor0.getValue(Coprocessor0State.EPC))
@@ -197,10 +194,9 @@ internal class InstructionContextTest {
         Assertions.assertThatThrownBy { execute(syscall, first) }
             .isInstanceOfSatisfying<ProcessingException?>(
                 ProcessingException::class.java,
-                Consumer { error: ProcessingException? ->
-                    Assertions.assertThat(error!!.errors()).isNull()
-                },
-            )
+            ) { error ->
+                Assertions.assertThat(error!!.errors()).isNull()
+            }
         Assertions.assertThat(first.exitCode).isEqualTo(7)
         Assertions.assertThat(firstIo.exitCode).isEqualTo(7)
         Assertions.assertThat(second.exitCode).isZero()
@@ -214,8 +210,7 @@ internal class InstructionContextTest {
                 "custom",
                 BasicInstructionFormat.R_FORMAT,
                 "00000000000000000000000000000000",
-                { _, _ -> calls.incrementAndGet() },
-            )
+            ) { _, _ -> calls.incrementAndGet() }
         val syscall: AbstractSyscall? =
             object : AbstractSyscall(123, "Legacy") {
                 override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
@@ -270,13 +265,7 @@ internal class InstructionContextTest {
             vararg operands: Int,
         ): ProgramStatement {
             val statement = ProgramStatement(null, "test", null, null, instruction, BASE, 1)
-            System.arraycopy(
-                operands,
-                0,
-                Objects.requireNonNull<IntArray?>(statement.operands),
-                0,
-                operands.size,
-            )
+            operands.copyInto(checkNotNull(statement.operands))
             return statement
         }
 
@@ -298,7 +287,7 @@ internal class InstructionContextTest {
             Assertions.assertThat(index).isBetween(0, code.size - 1)
             val statement = code[index]
             context.registerFile.incrementPC()
-            (Objects.requireNonNull(statement.instruction) as BasicInstruction)
+            (checkNotNull(statement.instruction) as BasicInstruction)
                 .simulationCode
                 .simulate(statement, context)
             context.completeInstruction()

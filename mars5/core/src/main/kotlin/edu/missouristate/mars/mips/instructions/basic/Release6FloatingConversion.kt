@@ -14,6 +14,9 @@ import java.lang.Float.float16ToFloat
 import java.lang.Float.floatToFloat16
 import java.math.BigDecimal
 import kotlin.math.abs
+import kotlin.math.nextDown
+import kotlin.math.nextUp
+import kotlin.math.withSign
 
 internal fun release6FloatingConversions(): List<BasicInstruction> =
     listOf(
@@ -57,7 +60,7 @@ internal fun widenSingle(bits: Int, status: Int): FloatingConversionResult {
         return FloatingConversionResult(result, if (bits and (1 shl 22) == 0) INVALID_OPERATION else 0)
     }
     if (status and FLUSH_SUBNORMALS != 0 && value != 0f && abs(value) < FLOAT_MIN_NORMAL) {
-        return FloatingConversionResult(Math.copySign(0.0, value.toDouble()).toRawBits(), INEXACT)
+        return FloatingConversionResult(0.0.withSign(value.toDouble()).toRawBits(), INEXACT)
     }
     return FloatingConversionResult(value.toDouble().toRawBits())
 }
@@ -126,7 +129,7 @@ internal fun narrowDouble(bits: Long, status: Int): FloatingConversionResult {
     val minimumNormal = FLOAT_MIN_NORMAL.toDouble()
     if (status and FLUSH_SUBNORMALS != 0 && magnitude < minimumNormal) {
         val causes = if (magnitude < DOUBLE_MIN_NORMAL) INEXACT else UNDERFLOW or INEXACT
-        return FloatingConversionResult(Math.copySign(0f, value.toFloat()).toRawBits().toLong(), causes)
+        return FloatingConversionResult(0f.withSign(value.toFloat()).toRawBits().toLong(), causes)
     }
 
     val mode = status and 3
@@ -165,8 +168,8 @@ private fun directedRound(nearest: Double, relation: Int, negative: Boolean, dou
     val lower = relation > 0 && (mode == 3 || mode == 1 && !negative)
     val upper = relation < 0 && (mode == 2 || mode == 1 && negative)
     return when {
-        lower -> if (double) Math.nextDown(nearest) else Math.nextDown(nearest.toFloat()).toDouble()
-        upper -> if (double) Math.nextUp(nearest) else Math.nextUp(nearest.toFloat()).toDouble()
+        lower -> if (double) nearest.nextDown() else nearest.toFloat().nextDown().toDouble()
+        upper -> if (double) nearest.nextUp() else nearest.toFloat().nextUp().toDouble()
         else -> nearest
     }
 }

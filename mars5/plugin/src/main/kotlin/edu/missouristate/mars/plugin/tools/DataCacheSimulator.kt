@@ -6,7 +6,6 @@ import edu.missouristate.mars.mips.hardware.MemoryAccessNotice
 import edu.missouristate.mars.mips.hardware.MemoryState
 import edu.missouristate.mars.mips.hardware.MemoryState.Companion.WORD_LENGTH_BYTES
 import java.util.Random
-import java.util.function.Consumer
 import kotlin.math.roundToInt
 
 /** One cache per execution. The simulator writes observations and the tool window reads snapshots. */
@@ -69,7 +68,7 @@ internal class DataCacheSimulator {
 
     fun observe(memory: MemoryState): AutoCloseable {
         val classroom = memory.dataSegmentBaseAddress.toUInt().toLong()..(memory.stackBaseAddress.toUInt().toLong() + 3)
-        val listener = Consumer<MemoryAccessNotice> { notice ->
+        val listener: (MemoryAccessNotice) -> Unit = { notice ->
             val address = notice.addressBits
             if (address in classroom || address > UInt.MAX_VALUE.toLong() && memory.inUserData(address)) {
                 record(notice)
