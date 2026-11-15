@@ -247,7 +247,7 @@ open class MemoryState(
         kernelDataBaseAddress = configuration.kernelDataBaseAddress
         memoryMapBaseAddress = configuration.memoryMapBaseAddress
         kernelHighAddress = configuration.kernelHighAddress
-        dataSegmentLimitAddress = minOf(configuration.dataSegmentLimitAddress, dataSegmentBaseAddress + SEGMENT_BYTES)
+        dataSegmentLimitAddress = minOf(configuration.dataSegmentLimitAddress, dataSegmentBaseAddress + USER_DATA_BYTES)
         textLimitAddress = minOf(configuration.textLimitAddress, textBaseAddress + SEGMENT_BYTES)
         kernelDataSegmentLimitAddress = minOf(configuration.kernelDataSegmentLimitAddress, kernelDataBaseAddress + SEGMENT_BYTES)
         kernelTextLimitAddress = minOf(configuration.kernelTextLimitAddress, kernelTextBaseAddress + SEGMENT_BYTES)
@@ -262,7 +262,7 @@ open class MemoryState(
         heapAddress = heapBaseAddress
         textBlockTable = TextMemorySegment(BLOCK_TABLE_LENGTH)
         kernelTextBlockTable = TextMemorySegment(BLOCK_TABLE_LENGTH)
-        dataBlockTable = WordMemorySegment(BLOCK_TABLE_LENGTH, false) { byteOrder }
+        dataBlockTable = WordMemorySegment(USER_DATA_BLOCKS, false) { byteOrder }
         kernelDataBlockTable = WordMemorySegment(BLOCK_TABLE_LENGTH, false) { byteOrder }
         stackBlockTable = WordMemorySegment(BLOCK_TABLE_LENGTH, true) { byteOrder }
         memoryMapBlockTable = WordMemorySegment(MMIO_TABLE_LENGTH, false) { byteOrder }
@@ -697,7 +697,9 @@ open class MemoryState(
 
         private const val BLOCK_LENGTH_WORDS = 1024
         private const val BLOCK_TABLE_LENGTH = 1024
+        private const val USER_DATA_BLOCKS = 4096
         private const val MMIO_TABLE_LENGTH = 16
+        private const val USER_DATA_BYTES = BLOCK_LENGTH_WORDS * USER_DATA_BLOCKS * WORD_LENGTH_BYTES
         private const val SEGMENT_BYTES = BLOCK_LENGTH_WORDS * BLOCK_TABLE_LENGTH * WORD_LENGTH_BYTES
         private const val MMIO_BYTES = BLOCK_LENGTH_WORDS * MMIO_TABLE_LENGTH * WORD_LENGTH_BYTES
 

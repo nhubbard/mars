@@ -226,7 +226,7 @@ internal class MemoryStateTest {
         Assertions.assertThatIllegalArgumentException()
             .isThrownBy { state.allocateBytesFromHeap(-1) }
         Assertions.assertThatIllegalArgumentException()
-            .isThrownBy { state.allocateBytesFromHeap(0x400000) }
+            .isThrownBy { state.allocateBytesFromHeap(state.dataSegmentLimitAddress - state.heapBaseAddress) }
         Assertions.assertThatIllegalArgumentException()
             .isThrownBy { state.allocateBytesFromHeap(Int.MAX_VALUE) }
         Assertions.assertThat(state.allocateBytesFromHeap(4)).isEqualTo(state.heapBaseAddress)
