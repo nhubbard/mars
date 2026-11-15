@@ -34,6 +34,40 @@ See the [implementation plan](mips64-source-compatibility.md) for the intended c
   for lanes with a zero divisor, a deterministic choice for the result the
   ISA leaves unpredictable. See the MSA forms table for individual status.
 
+## Independent execution checks
+
+The [execution fixtures](../mars5/core/src/test/resources/qemu-mips64) run the
+same small assembly sequences in QEMU I6400 and MARS64. The harness initializes
+memory with fixed bytes, runs the sequence, and compares the output byte for
+byte in both byte orders. Initial cases cover scalar integer arithmetic,
+unaligned scalar loads and stores, MSA memory transfers at four element widths,
+and vector integer arithmetic and shuffles. The output comparison includes
+guard bytes around stores.
+
+The checked-in results record the QEMU, LLVM, and LLD versions used to generate
+them. The normal Jupiter suite reads the files and requires only the MARS build.
+To reproduce the reference results, put `qemu-system-mips64`,
+`qemu-system-mips64el`, `llvm-mc`, `llvm-nm`, and `ld.lld` on the path and run
+the following from the repository root.
+
+```sh
+python3 mars5/core/tools/refresh-qemu-execution-fixtures.py
+```
+
+The script prints the results for review. Pass `--write` to update the fixture
+after all cases succeed. It runs trusted local probes in QEMU and reads memory
+over the debugger’s standard input and output. In MARS, the tests assemble the
+instruction sequence as ordinary source. The ELF and startup code belong to the
+reference harness.
+
+When a result differs, check the Release 6 or MSA specification before changing
+the simulator. Record which cases have defined results and which rely on a
+documented MARS teaching behavior. Validate the supported program model,
+including integer, floating-point, vector, and memory effects. A board, an OS,
+and hardware timing are outside this model.
+[QEMU MIPS64 CPU models](https://www.qemu.org/docs/master/system/qemu-cpu-models.html)
+· [QEMU debugger interface](https://www.qemu.org/docs/master/system/gdb.html)
+
 ## Original MARS64 encoding baseline
 
 All 30 example words below are in the
