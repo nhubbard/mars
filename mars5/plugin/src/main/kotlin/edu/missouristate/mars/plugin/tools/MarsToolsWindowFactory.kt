@@ -50,6 +50,7 @@ internal class MarsToolsWindowFactory : ToolWindowFactory, DumbAware {
         val manager = toolWindow.contentManager
         fun addTab(name: String, initialize: (Content) -> Unit) {
             val content = ContentFactory.getInstance().createContent(JBLabel(), toolsMessages.getMessage(name), false)
+            content.putUserData(marsToolId, name.removeSuffix(".name"))
             content.initializeMarsToolOnSelection(initialize)
             manager.addContent(content)
         }
@@ -75,9 +76,17 @@ internal class MarsToolsWindowFactory : ToolWindowFactory, DumbAware {
             )
         }
         addView("branchHistory.name", BranchHistoryView::component) { BranchHistoryView(project) }
-        addView(Mode.BITMAP.nameKey, MemoryGridView::component) { MemoryGridView(project, Mode.BITMAP, MarsProcessHandler::bitmapDisplay) }
-        addView(Mode.REFERENCES.nameKey, MemoryGridView::component) {
-            MemoryGridView(project, Mode.REFERENCES, MarsProcessHandler::memoryReferences)
+        for ((mode, display) in listOf(
+            Mode.BITMAP to MarsProcessHandler::bitmapDisplay,
+            Mode.REFERENCES to MarsProcessHandler::memoryReferences,
+        )) {
+            addTab(mode.nameKey) { content ->
+                val view = MemoryGridView(project, mode, display)
+                @Suppress("UsePropertyAccessSyntax")
+                content.setDisposer(view)
+                content.component = view.component
+                content.putUserData(memoryGridControls, view)
+            }
         }
         addView("xray.name", XRayView::component) {
             XRayView(project).also { view ->
@@ -189,6 +198,12 @@ internal class MarsToolExecutionSelector(private val project: Project, private v
     val component: JComponent = selector
     val process: MarsProcessHandler? get() = (selector.selectedItem as MarsToolRunContent?)?.process
     private var executions = emptyList<MarsToolRunContent>()
+    private var requested: MarsProcessHandler? = null
+
+    fun select(process: MarsProcessHandler) {
+        requested = process
+        refresh()
+    }
 
     fun refresh() {
         val available = marsToolExecutions(project)
@@ -199,6 +214,12 @@ internal class MarsToolExecutionSelector(private val project: Project, private v
             // Preserve Swing's null result when an empty selector is queried for an item.
             selector.model = DefaultComboBoxModel(available.toTypedArray()).apply { selectedItem = next }
             if (next != selected) selectionChanged()
+        }
+        requested?.let { process ->
+            available.firstOrNull { it.process === process }?.let {
+                requested = null
+                selector.selectedItem = it
+            }
         }
     }
 }

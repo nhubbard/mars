@@ -1,4 +1,5 @@
-# Open this file with MARS Run or Debug. See the smoke README for Bitmap Display settings.
+# Open this file with MARS Run or Debug.
+# mars:tool bitmap width=1024 height=1024 unitWidth=2 unitHeight=2 base=heap
 # Default memory layout. One optional argument overrides the path to torture.png.
 .eqv FRAME_BYTES 1048576
 .eqv FILE_BYTES 1048576
@@ -6,13 +7,14 @@
 
 .data
 default_file: .asciiz "torture.png"
-prompt: .asciiz "Set Bitmap Display to Heap, 1024 x 1024, 2 x 2 units. Apply and Clear, connect, then press Enter.\n"
+reading: .asciiz "Reading PNG...\n"
+checking: .asciiz "Checking PNG chunks...\n"
+inflating: .asciiz "Decompressing image...\n"
 drawing: .asciiz "PNG verified. Drawing pixels...\n"
 done: .asciiz "PNG displayed.\n"
 bad_file: .asciiz "Cannot read PNG (missing, empty, or larger than 1 MiB).\n"
 bad_png: .asciiz "Invalid PNG or corrupt compressed image.\n"
 bad_format: .asciiz "Expected a non-interlaced 8-bit RGB PNG, up to 512 x 512.\n"
-confirmation: .space 2
 
 .text
 .globl main
@@ -22,6 +24,9 @@ main:
     nop
     lw $s3, 0($a1)
 get_workspace:
+    la $a0, reading
+    li $v0, 4
+    syscall
     li $v0, 9
     li $a0, WORK_BYTES
     syscall
@@ -30,14 +35,6 @@ get_workspace:
     addu $s1, $s0, $t0             # file bytes, then compacted IDAT bytes
     li $t0, FILE_BYTES
     addu $s2, $s1, $t0             # filtered image bytes
-
-    la $a0, prompt
-    li $v0, 4
-    syscall
-    la $a0, confirmation
-    li $a1, 2
-    li $v0, 8
-    syscall
 
     move $a0, $s3
     move $a1, $zero
@@ -77,12 +74,18 @@ close_file:
     syscall
     beqz $s5, file_error
     nop
+    la $a0, checking
+    li $v0, 4
+    syscall
     move $a0, $s1
     move $a1, $s5
     jal parse_png
     nop
+    move $a1, $v0                 # parse_png returns the compressed byte count
+    la $a0, inflating
+    li $v0, 4
+    syscall
     move $a0, $s1
-    move $a1, $v0
     move $a2, $s2
     lw $t0, png_row_bytes
     addiu $t0, $t0, 1

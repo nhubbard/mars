@@ -69,6 +69,7 @@ internal class MarsToolExtensions(private val project: Project, private val mana
         providers.forEachIndexed { index, provider ->
             if (provider !in tabs) {
                 val content = ContentFactory.getInstance().createContent(JBLabel(), provider.title, false)
+                content.putUserData(marsToolId, provider.id)
                 val lifetime = Disposer.newDisposable()
                 // Kotlin exposes this Java accessor as a read-only property.
                 @Suppress("UsePropertyAccessSyntax")

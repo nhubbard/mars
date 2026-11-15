@@ -5,6 +5,7 @@ package edu.missouristate.mars.plugin.tools
 
 import com.intellij.execution.executors.DefaultRunExecutor
 import com.intellij.execution.ui.RunContentDescriptor
+import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.components.service
 import com.intellij.openapi.util.Disposer
@@ -23,6 +24,7 @@ import com.intellij.ui.content.ContentFactory
 import com.intellij.util.ui.UIUtil
 import com.intellij.util.ui.withForcedRespectIsShowingClientProperty
 import com.intellij.util.ui.withShowingChanged
+import edu.missouristate.mars.api.StepEvent
 import edu.missouristate.mars.plugin.run.MarsProcessHandler
 import edu.missouristate.mars.plugin.run.MarsRunService
 import javax.swing.JComboBox
@@ -41,6 +43,8 @@ import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 
 @TestApplication
 class MarsToolProviderPlatformTest {
@@ -125,6 +129,53 @@ class MarsToolProviderPlatformTest {
                 Disposer.dispose(parent)
                 manager.removeAllContents(true)
             }
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = [true, false])
+    fun `named tool receives merged settings before the first instruction`(valid: Boolean) = timeoutRunBlocking {
+        val extensionLifetime = Disposer.newDisposable()
+        val settingsSeen = CompletableDeferred<Map<String, String>>()
+        val firstStep = CompletableDeferred<StepEvent>()
+        val disposed = CompletableDeferred<Unit>()
+        val tool = object : MarsSourceConfiguredToolProvider {
+            override val id = "example.configured"
+            override val title = "Configured tool"
+            override fun createContent(context: MarsToolContext) = JBLabel(title)
+
+            override fun configureExecution(
+                execution: MarsToolExecution, properties: Map<String, String>, lifetime: Disposable,
+            ) {
+                settingsSeen.complete(properties)
+                if (!valid) throw IllegalArgumentException()
+                execution.addInstructionListener({ firstStep.complete(it) }, lifetime)
+                Disposer.register(lifetime) { disposed.complete(Unit) }
+            }
+        }
+        try {
+            ExtensionTestUtil.addExtensions(MarsToolProvider.EP, listOf(tool), extensionLifetime)
+            val process = withContext(Dispatchers.EDT) {
+                val file = fixture.addFileToProject("configured.asm", """
+                    # mars:tool example.configured label=start
+                    # mars:tool example.configured repeat=3
+                    .text
+                    nop
+                """.trimIndent()).virtualFile
+                project.service<MarsRunService>().createProcess(file.toNioPath(), memoryDumps = emptyList())
+                    .also { it.startNotify() }
+            }
+            try {
+                assertEquals(mapOf("label" to "start", "repeat" to "3"), settingsSeen.await())
+                if (valid) {
+                    assertEquals(1L, firstStep.await().stepCount)
+                    disposed.await()
+                }
+            } finally {
+                process.destroyProcess()
+            }
+        } finally {
+            Disposer.dispose(extensionLifetime)
         }
     }
 

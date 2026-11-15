@@ -97,6 +97,7 @@ import edu.missouristate.mars.plugin.language.MipsFileType
 import edu.missouristate.mars.plugin.language.mipsAssemblySourceOrigin
 import java.nio.file.Files
 import java.nio.file.Path
+import javax.imageio.ImageIO
 import javax.swing.JCheckBox
 import javax.swing.JComboBox
 import javax.swing.JList
@@ -1291,6 +1292,61 @@ class MarsRunPlatformTest {
         }
     }
 
+    @ParameterizedTest
+    @ValueSource(booleans = [false, true])
+    fun `native Run and Debug decode the shipped PNG without input`(debug: Boolean) = timeoutRunBlocking(45.seconds) {
+        val lifetime = Disposer.newDisposable()
+        val recording = Recording()
+        val started = CompletableDeferred<MarsProcessHandler>()
+        val executor = if (debug) DefaultDebugExecutor.getDebugExecutorInstance() else executor
+        val example = "smoke/png-decoder/src/main/mips"
+        val png = requireNotNull(javaClass.getResourceAsStream("/$example/torture.png")).use { it.readAllBytes() }
+        try {
+            withContext(Dispatchers.EDT) {
+                project.service<MarsAssemblySettings>().changeTarget(MarsTarget.MARS64)
+                for (name in listOf("png.s", "deflate.s")) exampleSource("$example/$name")
+                val entry = exampleSource("$example/viewer.asm").virtualFile
+                Files.write(entry.toNioPath().resolveSibling("torture.png"), png)
+                val config = type.createTemplateConfiguration(project)
+                config.options.sourcePath = entry.path
+                val environment = ExecutionEnvironmentBuilder.create(executor, config).build()
+                project.messageBus.connect(lifetime).subscribe(ExecutionManager.EXECUTION_TOPIC, object : ExecutionListener {
+                    override fun processStarting(executorId: String, env: ExecutionEnvironment, handler: ProcessHandler) {
+                        if (env !== environment) return
+                        handler.addProcessListener(recording)
+                        started.complete(handler as MarsProcessHandler)
+                    }
+                })
+                environment.runner.execute(environment)
+            }
+            val handler = started.await()
+            try {
+                assertEquals(0, recording.exit.await(), recording.stderr.toString())
+                assertEquals(
+                    listOf("Reading PNG...", "Checking PNG chunks...", "Decompressing image...",
+                        "PNG verified. Drawing pixels...", "PNG displayed.").joinToString("\n", postfix = "\n"),
+                    recording.stdout.toString(),
+                )
+                val display = handler.bitmapDisplay.snapshot()
+                assertTrue(display.connected)
+                assertEquals(1024, display.frame.options.width)
+                assertEquals(2, display.frame.options.unitWidth)
+                val bitmap = requireNotNull(display.frame.image)
+                val expected = png.inputStream().use(ImageIO::read)
+                assertEquals(expected.width, bitmap.width)
+                assertEquals(expected.height, bitmap.height)
+                assertArrayEquals(
+                    expected.getRGB(0, 0, expected.width, expected.height, null, 0, expected.width),
+                    bitmap.getRGB(0, 0, bitmap.width, bitmap.height, null, 0, bitmap.width),
+                )
+            } finally {
+                handler.destroyProcess()
+            }
+        } finally {
+            Disposer.dispose(lifetime)
+        }
+    }
+
     @Test
     fun `native Run draws the MarsBot sample with the panel closed`() = timeoutRunBlocking {
         val disposable = Disposer.newDisposable()
@@ -1854,6 +1910,85 @@ class MarsRunPlatformTest {
         }
     }
 
+    @Test
+    fun `source settings configure each tool before executing and bad settings warn without blocking`() = timeoutRunBlocking {
+        val (handler, recording) = run($$"""
+            # mars:tool counter connected=false
+            # mars:tool statistics connected=false
+            # mars:tool references width=64 height=64 wordsPerCell=2 base=text
+            # mars:tool digitalLab
+            # mars:tool marsBot instructionsPerTick=32
+            # mars:tool scavenger connected=false
+            # mars:tool xray connected=false
+            # mars:tool float
+            # mars:tool keyboardDisplay delay=uniform instructions=17 displayAfterDelay=false
+            # mars:tool cache blocks=32 wordsPerBlock=2 placement=full replacement=random logging=true
+            # mars:tool bitmap base=wrong
+            # mars:tool branchHistory size=invalid
+            # mars:tool introduction
+            # mars:tool edu.missouristate.mars.introToTools unexpected=true
+            .text
+            lui $t0, 0x1001
+            sw $zero, 0($t0)
+            li $v0, 5
+            syscall
+        """.trimIndent())
+        try {
+            pollAssertionsAsync(5.seconds, 30.milliseconds) {
+                assertTrue(handler.keyboardDisplay.snapshot().available)
+                assertTrue(handler.marsBot.snapshot().available)
+                assertTrue(handler.dataCache.snapshot().accesses > 0)
+            }
+            assertTrue(handler.digitalLab.snapshot().connected)
+            assertTrue(handler.keyboardDisplay.snapshot().connected)
+            assertEquals(17, handler.keyboardDisplay.snapshot().options.instructions)
+            assertFalse(handler.keyboardDisplay.snapshot().options.displayAfterDelay)
+            assertTrue(handler.marsBot.snapshot().connected)
+            assertEquals(32, handler.marsBot.snapshot().instructionsPerTick)
+            assertEquals(32, handler.dataCache.snapshot().options.ways)
+            assertTrue(handler.dataCache.snapshot().logging)
+            assertEquals(2, handler.memoryReferences.controls().options.wordsPerCell)
+            handler.memoryReferences.releaseView()
+            assertTrue(handler.memoryReferences.controls().connected)
+            handler.digitalLab.releaseView()
+            assertTrue(handler.digitalLab.snapshot().connected)
+            handler.keyboardDisplay.releaseView()
+            assertTrue(handler.keyboardDisplay.snapshot().connected)
+            handler.marsBot.releaseView()
+            assertTrue(handler.marsBot.snapshot().connected)
+            assertFalse(handler.instructionCounter.snapshot().connected)
+            assertFalse(handler.instructionStatistics.countsSnapshot().connected)
+            assertTrue(handler.xray.snapshot().isEmpty())
+            val diagnostics = recording.stderr.toString()
+            assertTrue("line 11: bitmap: Expected one of" in diagnostics, diagnostics)
+            assertTrue("line 12: branchHistory: Expected an integer for size" in diagnostics, diagnostics)
+            assertTrue("line 13: introduction: Unknown tool ID" in diagnostics, diagnostics)
+            assertTrue("line 14: edu.missouristate.mars.introToTools: Unknown settings: unexpected" in diagnostics, diagnostics)
+            withContext(Dispatchers.IO) { handler.processInput.write("1\n".toByteArray()) }
+            assertEquals(0, recording.exit.await())
+        } finally {
+            handler.destroyProcess()
+        }
+    }
+
+    @ParameterizedTest
+    @CsvSource(
+        "bitmap base=text, Bitmap Display requires a data base",
+        "bitmap base=wide_data, Base wide_data is unavailable",
+        "references width=1920, Use a standard display size",
+        "references height=1080, Use a standard display size",
+        "cache blocks=-1 placement=set_associative, Failed requirement",
+        "counter connected=maybe, Expected true or false for connected",
+        "marsBot | scavenger, Scavenger Hunt and MarsBot share memory addresses",
+        "scavenger | marsBot, Scavenger Hunt and MarsBot share memory addresses",
+    )
+    fun `invalid source tool settings report why they were rejected`(settings: String, diagnostic: String) = timeoutRunBlocking {
+        val header = settings.split(" | ").joinToString("\n") { "# mars:tool $it" }
+        val (_, recording) = run("$header\n.text\nnop\n")
+        assertEquals(0, recording.exit.await())
+        assertTrue(diagnostic in recording.stderr.toString(), recording.stderr.toString())
+    }
+
     @ParameterizedTest
     @ValueSource(strings = ["UTF-8", "UTF-16"])
     fun `typed console input reaches the line and raw descriptor syscalls`(encoding: String) = timeoutRunBlocking {
@@ -1874,6 +2009,13 @@ class MarsRunPlatformTest {
             .data
             buffer: .space 4
             .text
+            li $v0, 8
+            la $a0, buffer
+            li $a1, 2
+            syscall
+            lbu $a0, buffer
+            li $v0, 1
+            syscall
             li $v0, 5
             syscall
             move $a0, $v0
@@ -1912,10 +2054,12 @@ class MarsRunPlatformTest {
             view
         }
         try {
+            withContext(Dispatchers.EDT) { console.type(console.editor!!, "\n") }
+            recording.output.await()
             withContext(Dispatchers.EDT) { console.type(console.editor!!, "42\né\nR\n") }
             assertEquals(0, recording.exit.await())
             val expectedBytes = if (encoding == "UTF-16") "0 82 0 10 " else "82 10 "
-            assertEquals("42é$expectedBytes", recording.stdout.toString())
+            assertEquals("1042é$expectedBytes", recording.stdout.toString())
             assertEquals("", recording.stderr.toString())
         } finally {
             withContext(Dispatchers.EDT) {

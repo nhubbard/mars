@@ -73,6 +73,55 @@ a sample submission, and an IntelliJ Run configuration. See the
 [assignment setup guide](examples/assignment/README.md) for Kotlin completion, grading from
 Gradle or GitHub Classroom, and checking script registration.
 
+## Interactive input
+
+In an IntelliJ MARS Run or Debug configuration, set **Standard input** to
+**Dialogs** to show a text field for standard input syscalls. You can use the
+editor and tool windows while the simulation waits for the dialog. Reads from
+file descriptor 0 use the console.
+
+For a program-controlled pause, syscall 55 (`MessageDialog`) shows an **OK**
+button. Put the message address in `$a0` and the icon type in `$a1` (`1` for
+information). The simulation continues when the user acknowledges the message.
+
+## Tool settings in assembly source
+
+Use **MARS Tools → Bitmap Display → Open Display** to open the selected execution's
+bitmap in the editor area. The tool window holds the connection and display settings.
+For a 1920 × 1080 framebuffer with one word per pixel, choose the **Default** memory
+layout, **Heap** as the base, and **1 × 1** units. Reserve 8,294,400 bytes for the pixels.
+
+A Run or Debug entry file can configure tools in the comment header above its first
+assembly statement. Use a tool ID followed by space-separated `key=value` pairs.
+Several lines can configure one tool or different tools.
+
+```asm
+# mars:tool bitmap width=1920 height=1080 base=heap
+# mars:tool bitmap unitWidth=1 unitHeight=1
+# mars:tool cache blocks=32 wordsPerBlock=4
+```
+
+Settings apply to that execution before its first instruction. The tool window opens
+on the first configured tool, and a configured bitmap also opens its editor tab.
+A tool ID on its own uses the tool defaults. Invalid settings are reported in the
+console and the program can still run.
+
+| Tool ID | Settings |
+| --- | --- |
+| `bitmap` | `width`, `height`, `unitWidth`, `unitHeight`, `base` |
+| `references` | The bitmap settings plus `wordsPerCell` |
+| `cache` | `blocks`, `wordsPerBlock`, `placement` (`direct`, `full`, `set_associative`), `ways`, `replacement` (`lru`, `random`), `logging` |
+| `branchHistory` | `size`, `historyBits`, `initialTaken` |
+| `keyboardDisplay` | `delay` (`fixed`, `uniform`, `normal`), `instructions`, `displayAfterDelay` |
+| `marsBot` | `instructionsPerTick` |
+| `counter`, `statistics`, `digitalLab`, `scavenger`, `xray` | Connection only |
+| `float` | Open the tool |
+
+Use `connected=false` to open a tool with capture or its device disconnected. The
+bitmap bases are `global_data`, `global_pointer`, `static_data`, `heap`, `mmio`, and
+`wide_data`. Memory Reference Visualization also accepts `text` and `wide_text`.
+Installed tool providers can use their own IDs and declare their own settings.
+
 ## Instruction set
 
 MARS uses the MIPS64 Release 6 instruction set with MSA vectors for IntelliJ, CLI,

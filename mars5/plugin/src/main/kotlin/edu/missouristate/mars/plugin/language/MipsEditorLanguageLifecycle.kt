@@ -9,6 +9,7 @@ import com.intellij.openapi.editor.ex.EditorMarkupModel
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.project.ProjectManager
+import edu.missouristate.mars.plugin.tools.isBitmapDisplayFile
 import java.util.function.Supplier
 
 internal class MipsEditorLanguageLifecycle : DynamicPluginListener {
@@ -41,7 +42,7 @@ internal class MipsEditorLanguageLifecycle : DynamicPluginListener {
             if (!loaded) {
                 for (project in ProjectManager.getInstance().openProjects) {
                     val manager = FileEditorManager.getInstance(project)
-                    manager.openFiles.filter { it.mipsAssemblySourceOrigin != null }.forEach(manager::closeFile)
+                    manager.openFiles.filter { it.mipsAssemblySourceOrigin != null || it.isBitmapDisplayFile }.forEach(manager::closeFile)
                 }
                 detachMipsAssemblySourceViews()
             }

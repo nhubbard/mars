@@ -8,7 +8,7 @@ import edu.missouristate.mars.mips.hardware.MemoryAccessNotice
 import edu.missouristate.mars.mips.hardware.MemoryState
 
 /** Digital Lab's byte ports and instruction-driven timer, owned by one execution. */
-internal class DigitalLabDevice(private val connectAtLaunch: Boolean = false) {
+internal class DigitalLabDevice(private var connectAtLaunch: Boolean = false) {
     data class Snapshot(
         val available: Boolean, val connected: Boolean, val right: Int, val left: Int,
         val key: Int?, val timerRemaining: Int,
@@ -61,6 +61,14 @@ internal class DigitalLabDevice(private val connectAtLaunch: Boolean = false) {
         updateObserver()
     }
 
+    @Synchronized
+    fun setSourceConnection(value: Boolean) {
+        connectAtLaunch = value
+        connected = value
+        hasConnected = value
+    }
+
+    @Synchronized
     fun releaseView() {
         if (!connectAtLaunch) setConnected(false)
     }

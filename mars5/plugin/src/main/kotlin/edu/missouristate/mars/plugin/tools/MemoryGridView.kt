@@ -1,17 +1,18 @@
 package edu.missouristate.mars.plugin.tools
 
 import com.intellij.ide.setToolTipText
-import com.intellij.openapi.util.text.HtmlChunk
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.observable.util.whenFocusGained
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.ComboBox
+import com.intellij.openapi.util.text.HtmlChunk
 import com.intellij.ui.CollectionComboBoxModel
 import com.intellij.ui.ColorPanel
 import com.intellij.ui.ScrollPaneFactory
 import com.intellij.ui.components.JBCheckBox
 import com.intellij.ui.dsl.builder.Align
+import com.intellij.ui.dsl.builder.CollapsibleRow
 import com.intellij.ui.dsl.builder.LabelPosition
 import com.intellij.ui.dsl.builder.RowLayout
 import com.intellij.ui.dsl.builder.TopGap
@@ -50,11 +51,11 @@ import kotlinx.coroutines.withContext
 import kotlin.time.Duration.Companion.milliseconds
 
 internal class MemoryGridView(
-    project: Project, private val mode: Mode, private val model: (MarsProcessHandler) -> MemoryGridDisplay,
+    private val project: Project, private val mode: Mode, private val model: (MarsProcessHandler) -> MemoryGridDisplay,
 ) : Disposable {
     private val selector = MarsToolExecutionSelector(project, ::selectionChanged)
-    private val width = ComboBox(CollectionComboBoxModel(MemoryGridDisplay.displaySizes.toMutableList()))
-    private val height = ComboBox(CollectionComboBoxModel(MemoryGridDisplay.displaySizes.toMutableList()))
+    private val width = sizeSelector(MemoryGridDisplay.displayWidths)
+    private val height = sizeSelector(MemoryGridDisplay.displayHeights)
     private val unitWidth = ComboBox(CollectionComboBoxModel(MemoryGridDisplay.unitSizes.toMutableList()))
     private val unitHeight = ComboBox(CollectionComboBoxModel(MemoryGridDisplay.unitSizes.toMutableList()))
     private var addresses = emptyMap<Base, Long>()
@@ -66,13 +67,17 @@ internal class MemoryGridView(
     }
     private val apply = JButton(toolsMessages.getMessage("bitmap.apply"))
     private val toggle = JButton()
+    private val open = JButton(toolsMessages.getMessage("bitmap.open"))
+    private lateinit var settings: CollapsibleRow
     private val reset = JButton(toolsMessages.getMessage("counter.reset"))
     private val blank = Frame(mode.defaults(), null)
     private val inspectionHint = toolsMessages.getMessage(mode.inspectionHintKey)
     private lateinit var inspection: JEditorPane
-    private val canvas = MemoryGridCanvas(blank, mode.nameKey, inspectionHint, ::describeCell) { inspection.text = it }
+    private val canvas = if (mode == Mode.REFERENCES) {
+        MemoryGridCanvas(blank, mode.nameKey, inspectionHint, ::describeCell) { inspection.text = it }
+    } else null
     private var selected: MemoryGridDisplay? = null
-    private val reference = if (mode == Mode.REFERENCES) ReferenceControls() else null
+    private val reference = canvas?.let(::ReferenceControls)
 
     val component = ScrollPaneFactory.createScrollPane(marsToolPanel {
         marsExecutionRow(selector.component)
@@ -101,16 +106,22 @@ internal class MemoryGridView(
                 row { cell(controls.grid) }
             }
             row { cell(apply) }
-        }.expanded = false
-        row { cell(canvas).align(Align.FILL).resizableColumn() }.resizableRow()
-        row { inspection = text(inspectionHint).resizableColumn().component }.layout(RowLayout.INDEPENDENT)
+        }.also {
+            settings = it
+            it.expanded = false
+        }
+        if (mode == Mode.BITMAP) row { cell(open) }
+        if (canvas != null) {
+            row { cell(canvas).align(Align.FILL).resizableColumn() }.resizableRow()
+            row { inspection = text(inspectionHint).resizableColumn().component }.layout(RowLayout.INDEPENDENT)
+        }
         row { comment(toolsMessages.getMessage(mode.helpKey)).resizableColumn() }.layout(RowLayout.INDEPENDENT)
     }, true).apply { horizontalScrollBarPolicy = HORIZONTAL_SCROLLBAR_NEVER }
 
     init {
         UIUtil.uiTraverser(component.viewport.view).filter(JComponent::class.java).forEach { control ->
             control.whenFocusGained(this) {
-                if (control === canvas) {
+                if (canvas != null && control === canvas) {
                     // The initial inspection can change the height of the wrapping text.
                     inspection.parent.doLayout()
                     val bounds = Rectangle(0, 0, canvas.width, canvas.height)
@@ -121,6 +132,7 @@ internal class MemoryGridView(
                 }
             }
         }
+        open.addActionListener { selector.process?.let { openBitmapDisplay(project, it, focus = true) } }
         apply.addActionListener {
             selected!!.configure(Options(
                 width.selectedItem as Int, height.selectedItem as Int,
@@ -131,7 +143,7 @@ internal class MemoryGridView(
         }
         toggle.addActionListener {
             val display = selected!!
-            display.setConnected(!display.snapshot().connected)
+            display.setConnected(!display.controls().connected)
             render()
         }
         reset.addActionListener {
@@ -150,6 +162,16 @@ internal class MemoryGridView(
         }
     }
 
+    private fun sizeSelector(bitmapSizes: List<Int>): ComboBox<Int> {
+        val sizes = if (mode == Mode.BITMAP) bitmapSizes else MemoryGridDisplay.displaySizes
+        return ComboBox(CollectionComboBoxModel(sizes.toMutableList()))
+    }
+
+    fun showSettings(process: MarsProcessHandler) {
+        selector.select(process)
+        settings.expanded = true
+    }
+
     private fun refresh() {
         selector.refresh()
         render()
@@ -160,14 +182,15 @@ internal class MemoryGridView(
         if (selected !== current) {
             releaseSelection()
             selected = current
-            canvas.clearInspection()
+            canvas?.clearInspection()
         }
-        val options = current?.snapshot()?.frame?.options ?: blank.options
+        val controls = current?.controls()
+        val options = controls?.options ?: blank.options
         width.selectedItem = options.width
         height.selectedItem = options.height
         unitWidth.selectedItem = options.unitWidth
         unitHeight.selectedItem = options.unitHeight
-        updateBaseChoices(selected?.snapshot()?.addresses.orEmpty())
+        updateBaseChoices(controls?.addresses.orEmpty())
         base.selectedItem = options.base
         reference?.let {
             it.words.selectedItem = options.wordsPerCell
@@ -177,13 +200,13 @@ internal class MemoryGridView(
     }
 
     private fun render() {
-        val snapshot = selected?.snapshot()
+        val snapshot = selected?.controls()
         val available = snapshot != null
-        for (control in listOf(width, height, unitWidth, unitHeight, base, apply, toggle, reset)) control.isEnabled = available
+        for (control in listOf(width, height, unitWidth, unitHeight, base, apply, toggle, reset, open)) control.isEnabled = available
         reference?.controls?.forEach { it.isEnabled = available }
         toggle.text = toolsMessages.getMessage(if (snapshot?.connected == true) "counter.disconnect" else "counter.connect")
         updateBaseChoices(snapshot?.addresses.orEmpty())
-        canvas.showFrame(snapshot?.frame ?: blank)
+        canvas?.showFrame(selected?.snapshot()?.frame ?: blank)
     }
 
     private fun baseChoices(): List<Base> = Base.entries.filter { choice ->
@@ -210,22 +233,14 @@ internal class MemoryGridView(
     }
 
     private fun releaseSelection() {
-        selected?.releaseView()
+        if (mode == Mode.REFERENCES) selected?.releaseView()
     }
 
-    private fun describeCell(index: Int): String? = when (mode) {
-        Mode.REFERENCES -> selected?.referenceCell(index)?.let {
-            toolsMessages.getMessage("references.cell", formatToolHex(it.address), it.count.toString())
-        }
-        Mode.BITMAP -> selected?.bitmapCell(index)?.let {
-            toolsMessages.getMessage(
-                "bitmap.cell", it.column.toString(), it.row.toString(),
-                formatToolHex(it.address), it.rgb.toString(16).padStart(6, '0'),
-            )
-        }
+    private fun describeCell(index: Int): String? = selected?.referenceCell(index)?.let {
+        toolsMessages.getMessage("references.cell", formatToolHex(it.address), it.count.toString())
     }
 
-    private inner class ReferenceControls {
+    private inner class ReferenceControls(private val gridCanvas: MemoryGridCanvas) {
         val words = ComboBox(CollectionComboBoxModel(MemoryGridDisplay.wordCounts.toMutableList()))
         val threshold = JSpinner(SpinnerNumberModel(0, 0, Int.MAX_VALUE, 1)).apply {
             editor = JSpinner.NumberEditor(this, "0").apply { textField.columns = 10 }
@@ -241,7 +256,7 @@ internal class MemoryGridView(
                 selected!!.setColor(thresholdValue(), color.selectedColor!!.rgb)
                 render()
             }
-            grid.addActionListener { canvas.showGrid(grid.isSelected) }
+            grid.addActionListener { gridCanvas.showGrid(grid.isSelected) }
         }
 
         private fun thresholdValue() = (threshold.value as Int).toLong()

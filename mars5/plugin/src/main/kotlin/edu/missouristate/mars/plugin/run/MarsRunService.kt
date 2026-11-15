@@ -49,6 +49,9 @@ import edu.missouristate.mars.plugin.tools.MarsBotDevice
 import edu.missouristate.mars.plugin.tools.MarsToolExecution
 import edu.missouristate.mars.plugin.tools.MarsToolInstructionListener
 import edu.missouristate.mars.plugin.tools.ScavengerHuntDevice
+import edu.missouristate.mars.plugin.tools.bitmapDisplayFile
+import edu.missouristate.mars.plugin.tools.configureSourceTools
+import edu.missouristate.mars.plugin.tools.revealSourceTools
 import edu.missouristate.mars.plugin.tools.xray.XRayTrace
 import edu.missouristate.mars.simulator.ProgramArgumentList
 import edu.missouristate.mars.simulator.SimulatorEngine
@@ -141,7 +144,7 @@ internal class MarsProcessHandler(
     connectDigitalLab: Boolean,
     connectKeyboardDisplay: Boolean,
     connectMarsBot: Boolean,
-    private val connectScavengerHunt: Boolean,
+    connectScavengerHunt: Boolean,
     private val backstepLimit: Int,
     private val execute: suspend MarsProcessHandler.(MarsContext, MarsExecutionSources) -> StopEvent,
 ) : ProcessHandler(), MarsToolExecution {
@@ -176,10 +179,12 @@ internal class MarsProcessHandler(
     val digitalLab = DigitalLabDevice(connectDigitalLab)
     val keyboardDisplay = KeyboardDisplayDevice(connectKeyboardDisplay)
     val marsBot = MarsBotDevice(connectMarsBot)
+    internal var connectScavengerHunt = connectScavengerHunt
     private var scavengerHunt: ScavengerHuntDevice? = null
     private var finishedHunt: ScavengerHuntDevice.Snapshot? = null
     val xray = XRayTrace()
     val bitmapDisplay = MemoryGridDisplay(captureBitmap)
+    val bitmapFile by lazy { bitmapDisplayFile(entry.fileName.toString(), bitmapDisplay) }
     val memoryReferences = MemoryGridDisplay(captureReferences, MemoryGridDisplay.Mode.REFERENCES)
     val target get() = launch.options.target
     @Volatile private var readFloatingRegisters: ((Int, Boolean) -> Long)? = null
@@ -216,7 +221,12 @@ internal class MarsProcessHandler(
     private val inputCharset = EncodingManager.getInstance().defaultCharset
     private var status = 1
     private val execution = scope.launch(Dispatchers.Default, start = CoroutineStart.LAZY) {
-        status = runProgram()
+        val toolLifetime = Disposer.newDisposable("MARS source tool execution")
+        try {
+            status = runProgram(toolLifetime)
+        } finally {
+            Disposer.dispose(toolLifetime)
+        }
     }
 
     init {
@@ -265,7 +275,7 @@ internal class MarsProcessHandler(
         }
     }
 
-    private suspend fun runProgram(): Int {
+    private suspend fun runProgram(toolLifetime: Disposable): Int {
         val program = launch.take() ?: project.service<MarsBuildService>().prepare(launch.sources, launch.options, activateBuildView = false)
         if (program == null) {
             notifyTextAvailable(runMessages.getMessage("run.assembly.failed") + "\n", ProcessOutputTypes.STDERR)
@@ -279,6 +289,10 @@ internal class MarsProcessHandler(
             } catch (_: IllegalArgumentException) {
                 notifyTextAvailable(runMessages.getMessage("run.arguments.stack") + "\n", ProcessOutputTypes.STDERR)
                 return 1
+            }
+            val entryText = program.sources.snapshot.texts().getValue(entry)
+            val sourceTools = configureSourceTools(this, session.memory, entryText, toolLifetime) { line, message ->
+                notifyTextAvailable(runMessages.getMessage("run.tools.invalid", line, message) + "\n", ProcessOutputTypes.STDERR)
             }
             capturedProgram = program
             val sources = MarsExecutionSources(program.sources)
@@ -329,6 +343,7 @@ internal class MarsProcessHandler(
                                         dataCache.observe(session.memory).use {
                                             digitalLab.observe(session).use {
                                                 keyboardDisplay.observe(session).use {
+                                                    revealSourceTools(project, this, sourceTools)
                                                     executeWithWorldDevices(session, sources)
                                                 }
                                             }

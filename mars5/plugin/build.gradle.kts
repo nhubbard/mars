@@ -430,7 +430,7 @@ tasks.check { dependsOn(verifyGeneratedParserCoverage) }
 
 tasks.named<ProcessResources>("processTestResources") {
   from(rootProject.file("../examples")) {
-    include("**/*.asm", "**/*.s", "**/*.mars", "**/*.inc")
+    include("**/*.asm", "**/*.s", "**/*.mars", "**/*.inc", "smoke/png-decoder/src/main/mips/torture.png")
     exclude("**/build/**", "**/.gradle/**")
   }
   doLast {

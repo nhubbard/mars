@@ -9,7 +9,7 @@ import java.awt.image.DataBufferInt
 import java.util.TreeMap
 
 /** Per-execution memory grid. Repaints consume snapshots and never read simulator memory. */
-internal class MemoryGridDisplay(private val captureAtLaunch: Boolean = false, mode: Mode = Mode.BITMAP) {
+internal class MemoryGridDisplay(private var captureAtLaunch: Boolean = false, mode: Mode = Mode.BITMAP) {
     enum class Mode(val nameKey: String, val helpKey: String, val inspectionHintKey: String) {
         BITMAP("bitmap.name", "bitmap.help", "bitmap.inspect.hint"),
         REFERENCES("references.name", "references.help", "references.inspect.hint");
@@ -33,7 +33,7 @@ internal class MemoryGridDisplay(private val captureAtLaunch: Boolean = false, m
         val base: Base = Base.STATIC_DATA, val wordsPerCell: Int = 1,
     ) {
         init {
-            require(width in displaySizes && height in displaySizes)
+            require(width in displayWidths && height in displayHeights)
             require(unitWidth in unitSizes && unitHeight in unitSizes)
             require(wordsPerCell in wordCounts)
         }
@@ -44,6 +44,7 @@ internal class MemoryGridDisplay(private val captureAtLaunch: Boolean = false, m
     }
 
     data class Frame(val options: Options, val image: BufferedImage?)
+    data class Controls(val connected: Boolean, val addresses: Map<Base, Long>, val options: Options)
     data class Snapshot(val connected: Boolean, val addresses: Map<Base, Long>, val frame: Frame)
     data class ReferenceCell(val address: Long, val count: Long)
     data class BitmapCell(val column: Int, val row: Int, val address: Long, val rgb: Int)
@@ -73,6 +74,9 @@ internal class MemoryGridDisplay(private val captureAtLaunch: Boolean = false, m
     }
 
     @Synchronized
+    fun controls() = Controls(connected, addresses, options)
+
+    @Synchronized
     fun snapshot(): Snapshot {
         val frame = cachedFrame ?: Frame(options, pixels?.let { colors ->
             BufferedImage(options.columns, options.rows, BufferedImage.TYPE_INT_RGB).apply {
@@ -89,6 +93,13 @@ internal class MemoryGridDisplay(private val captureAtLaunch: Boolean = false, m
         startWatching()
     }
 
+    @Synchronized
+    fun setSourceConnection(value: Boolean) {
+        captureAtLaunch = value
+        setConnected(value)
+    }
+
+    @Synchronized
     fun releaseView() {
         if (!captureAtLaunch) setConnected(false)
     }
@@ -195,6 +206,8 @@ internal class MemoryGridDisplay(private val captureAtLaunch: Boolean = false, m
 
     companion object {
         val displaySizes = listOf(64, 128, 256, 512, 1024)
+        val displayWidths = displaySizes + 1920
+        val displayHeights = displaySizes + 1080
         val unitSizes = listOf(1, 2, 4, 8, 16, 32)
         val wordCounts = (0..11).map { 1 shl it }
         private const val RGB_MASK = 0x00ff_ffff

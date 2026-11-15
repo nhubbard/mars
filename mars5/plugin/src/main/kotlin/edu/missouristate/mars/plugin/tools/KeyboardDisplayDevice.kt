@@ -16,7 +16,7 @@ import kotlin.random.Random
 
 /** Per-execution SPIM keyboard and display. MMIO effects run at instruction boundaries. */
 internal class KeyboardDisplayDevice(
-    private val connectAtLaunch: Boolean = false,
+    private var connectAtLaunch: Boolean = false,
     private val seed: Long = Random.nextLong(),
 ) {
     enum class Delay { FIXED, UNIFORM, NORMAL }
@@ -83,6 +83,14 @@ internal class KeyboardDisplayDevice(
         updateObserver()
     }
 
+    @Synchronized
+    fun setSourceConnection(value: Boolean) {
+        connectAtLaunch = value
+        connected = value
+        hasConnected = value
+    }
+
+    @Synchronized
     fun releaseView() {
         if (!connectAtLaunch) setConnected(false)
     }

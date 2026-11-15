@@ -120,7 +120,7 @@ internal class PngDecoderTest {
                         PrintStream(output, true, StandardCharsets.UTF_8).use { console ->
                             SessionSyscallEnvironment(
                                     session.memory,
-                                    ByteArrayInputStream(byteArrayOf(10)),
+                                    ByteArrayInputStream(byteArrayOf()),
                                     console,
                                     console,
                                     input.parent,

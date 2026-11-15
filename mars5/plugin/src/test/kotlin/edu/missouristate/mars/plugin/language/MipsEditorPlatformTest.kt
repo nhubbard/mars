@@ -60,6 +60,8 @@ import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import edu.missouristate.mars.plugin.tools.MemoryGridDisplay
+import edu.missouristate.mars.plugin.tools.bitmapDisplayFile
 import java.awt.Color
 import java.awt.Font
 import java.nio.file.Files
@@ -102,6 +104,8 @@ class MipsEditorPlatformTest {
                 val include = mipsAssemblySourceView(source.virtualFile, ".eqv VALUE 4\n")
                 manager.openFile(include, FileEditorOpenRequest.withFocus(false))
                 val includeEditor = manager.getEditors(include).filterIsInstance<TextEditor>().single().editor
+                val bitmap = bitmapDisplayFile("example.asm", MemoryGridDisplay())
+                manager.openFile(bitmap, FileEditorOpenRequest.withFocus(false))
                 val closedInclude = mipsAssemblySourceView(source.virtualFile, "nop\n")
                 val psi = PsiManager.getInstance(current)
                 val includePsi = psi.findFile(include)!!
@@ -123,6 +127,7 @@ class MipsEditorPlatformTest {
                     listener.beforePluginUnload(mars, false)
                     assertTrue(includeEditor.isDisposed)
                     assertFalse(manager.isFileOpen(include))
+                    assertFalse(manager.isFileOpen(bitmap))
                     assertNull(markup.errorStripeRenderer)
                     assertFalse(includePsi.isValid)
                     assertFalse(closedPsi.isValid)

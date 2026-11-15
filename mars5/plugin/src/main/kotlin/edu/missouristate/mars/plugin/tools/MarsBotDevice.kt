@@ -7,7 +7,7 @@ import edu.missouristate.mars.mips.hardware.MemoryAccessNotice
 import edu.missouristate.mars.mips.hardware.MemoryState
 
 /** MarsBot moves on the execution worker and shares its instruction history. */
-internal class MarsBotDevice(private val connectAtLaunch: Boolean = false) {
+internal class MarsBotDevice(private var connectAtLaunch: Boolean = false) {
     data class Ports(val base: Int) {
         val heading = base + 0x10
         val pen = base + 0x20
@@ -65,6 +65,14 @@ internal class MarsBotDevice(private val connectAtLaunch: Boolean = false) {
         updateObserver()
     }
 
+    @Synchronized
+    fun setSourceConnection(value: Boolean) {
+        connectAtLaunch = value
+        connected = value
+        hasConnected = value
+    }
+
+    @Synchronized
     fun releaseView() {
         if (!connectAtLaunch) setConnected(false)
     }

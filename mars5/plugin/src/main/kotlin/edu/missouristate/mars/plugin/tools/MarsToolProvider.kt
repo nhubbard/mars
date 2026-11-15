@@ -24,6 +24,15 @@ interface MarsToolProvider {
     }
 }
 
+/** A tool that accepts per-execution settings from a MARS source header. */
+interface MarsSourceConfiguredToolProvider : MarsToolProvider {
+    /**
+     * Called on the simulation worker before the first instruction. Validate the entire map before applying changes;
+     * throw [IllegalArgumentException] for invalid settings. Register listeners with [lifetime].
+     */
+    fun configureExecution(execution: MarsToolExecution, properties: Map<String, String>, lifetime: Disposable)
+}
+
 interface MarsToolExecution {
     /** Delivers future instructions on the simulation worker. Listeners must return promptly. */
     fun addInstructionListener(listener: MarsToolInstructionListener, lifetime: Disposable)

@@ -67,14 +67,11 @@ Use the **Default** memory layout and leave the instruction limit at **0**
 which contains [torture.png](png-decoder/src/main/mips/torture.png). To try
 another PNG, pass its filename as the first program argument.
 
-1. Open **MARS Tools → Bitmap Display** and select the waiting execution.
-2. Expand **Display Settings**. Set the base address to **Heap (0x10040000)**,
-   the display width and height to **1024**, and both unit dimensions to **2**.
-   Click **Apply and Clear**, then collapse **Display Settings** to make room
-   for the bitmap.
-3. Click **Connect** if capture is off, then press Enter in the Run console.
-   The program validates and decodes the PNG before writing the bitmap.
-   The supplied image writes all 262,144 cells, covering the whole display.
+The source header opens **MARS Tools → Bitmap Display** with **Display Settings**
+expanded and the bitmap in its own editor tab. It connects capture before the
+first instruction and configures **Heap**, a **1024 × 1024** viewport, and
+**2 × 2** units. The console reports reading, chunk validation, decompression,
+and drawing. The supplied image writes all 262,144 cells. Use **Open Display** in the tool panel to reopen the editor tab.
 
 This is an assembly-only decoder for non-interlaced 8-bit RGB PNGs up to
 512 × 512 and 1 MiB. It checks chunk CRCs and the zlib Adler-32 checksum,

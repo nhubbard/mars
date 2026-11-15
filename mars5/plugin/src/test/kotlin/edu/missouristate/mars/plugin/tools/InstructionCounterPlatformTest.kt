@@ -21,11 +21,14 @@ import com.intellij.execution.ui.RunContentDescriptor
 import com.intellij.execution.ui.RunContentManager
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.editor.EditorFactory
+import com.intellij.openapi.fileEditor.FileEditorManager
+import com.intellij.openapi.fileEditor.FileEditorState
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
+import com.intellij.testFramework.junit5.fixture.fileEditorManagerFixture
 import com.intellij.testFramework.pollAssertionsAsync
 import com.intellij.ui.ComponentUtil
 import com.intellij.ui.ColorPanel
@@ -77,6 +80,7 @@ import javax.swing.SwingUtilities
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -103,6 +107,7 @@ class InstructionCounterPlatformTest {
         }
     }
     private val projectFixture = codeInsightProjectFixture()
+    private val editorManagerFixture = projectFixture.fileEditorManagerFixture()
     private val fixture by codeInsightFixture(projectFixture)
 
     @Test
@@ -289,6 +294,8 @@ class InstructionCounterPlatformTest {
         }
 
         try {
+            lateinit var editor: BitmapDisplayEditor
+            fun bitmapView() = editor.component
             fun canvas(panel: JComponent) = UIUtil.findComponentsOfType(panel, MemoryGridCanvas::class.java).single()
             fun gridKey(key: Int, panel: JComponent = references) {
                 val grid = canvas(panel)
@@ -308,7 +315,8 @@ class InstructionCounterPlatformTest {
                 grid.setSize(512, 512)
                 return grid.getToolTipText(MouseEvent(grid, MouseEvent.MOUSE_MOVED, 0, 0, x, y, 0, false))
             }
-            fun renderBitmap(panel: JComponent = bitmap): BufferedImage {
+            fun renderBitmap(panel: JComponent = bitmapView()): BufferedImage {
+                if (panel === editor.component) editor.refresh()
                 val canvas = canvas(panel)
                 canvas.setSize(512, 512)
                 return BufferedImage(512, 512, BufferedImage.TYPE_INT_RGB).also { image ->
@@ -413,7 +421,8 @@ class InstructionCounterPlatformTest {
                     SwingUtilities.getAncestorOfClass(JScrollPane::class.java, cacheTable))
                 assertCollapsedSettings(cache, "Cache Settings", button("Apply and Reset", cache), cacheTableScroll)
                 for (panel in listOf(bitmap, references)) {
-                    assertCollapsedSettings(panel, "Display Settings", button("Apply and Clear", panel), canvas(panel))
+                    val result = if (panel === bitmap) button("Open Display", panel) else canvas(panel)
+                    assertCollapsedSettings(panel, "Display Settings", button("Apply and Clear", panel), result)
                 }
                 val memoryDock = layoutDock(references, 280, 460)
                 val gridChoice = UIUtil.findComponentsOfType(references, JBCheckBox::class.java).single()
@@ -459,16 +468,22 @@ class InstructionCounterPlatformTest {
                     assertEquals(viewport.extentSize.width, body.width)
                     assertCompactSettings(viewport, "Display width", "Display height")
                     assertCompactSettings(viewport, "Unit width", "Unit height")
-                    val grid = canvas(panel)
-                    val gridBounds = SwingUtilities.convertRectangle(grid.parent, grid.bounds, body)
-                    assertTrue(gridBounds.height >= JBUI.scale(128))
-                    assertTrue(gridBounds.maxY > viewport.viewRect.maxY)
-
                     val reset = button("Reset", panel)
                     val resetBounds = SwingUtilities.convertRectangle(reset.parent, reset.bounds, body)
                     reset.focusListeners.forEach { it.focusGained(FocusEvent(reset, FocusEvent.FOCUS_GAINED)) }
                     assertTrue(viewport.viewRect.contains(resetBounds))
 
+                    if (panel === bitmap) {
+                        assertTrue(UIUtil.findComponentsOfType(panel, MemoryGridCanvas::class.java).isEmpty())
+                        val open = button("Open Display", panel)
+                        assertFalse(open.isEnabled)
+                        open.actionListeners.forEach { it.actionPerformed(ActionEvent(open, 0, "")) }
+                        continue
+                    }
+                    val grid = canvas(panel)
+                    val gridBounds = SwingUtilities.convertRectangle(grid.parent, grid.bounds, body)
+                    assertTrue(gridBounds.height >= JBUI.scale(128))
+                    assertTrue(gridBounds.maxY > viewport.viewRect.maxY)
                     val details = UIUtil.findComponentsOfType(panel, JEditorPane::class.java)
                         .single { paneText(it) == grid.accessibleContext.accessibleDescription }
                     grid.focusListeners.forEach { it.focusGained(FocusEvent(grid, FocusEvent.FOCUS_GAINED)) }
@@ -480,8 +495,6 @@ class InstructionCounterPlatformTest {
                     grid.clearInspection()
                 }
                 assertEquals(null, tooltip(references, 10, 10))
-                assertTrue(canvas(bitmap).isFocusable)
-                assertNull(tooltip(bitmap, 1, 128))
                 assertTrue(canvas(references).isFocusable)
                 gridKey(KeyEvent.VK_RIGHT)
                 assertInspection("This cell has no mapped address.")
@@ -694,14 +707,90 @@ class InstructionCounterPlatformTest {
             waitFor(1, "1 (100%)")
             withContext(Dispatchers.EDT) { assertTrue(checkNotNull(first.manager).removeContent(first, true)) }
             waitFor(0, "0 (0%)")
-            assertFalse(firstBitmap.snapshot().connected)
+            assertTrue(firstBitmap.snapshot().connected)
 
+            val files = editorManagerFixture.get()
+            withContext(Dispatchers.EDT) {
+                val noRunYet = fixture.addFileToProject("pending-bitmap.asm", "nop").virtualFile
+                val pendingProcess = project.getService(MarsRunService::class.java).createProcess(
+                    noRunYet.toNioPath(), memoryDumps = emptyList(),
+                )
+                val other = fixture.addFileToProject("other-bitmap.asm", "nop").virtualFile
+                val otherProcess = project.getService(MarsRunService::class.java).createProcess(
+                    other.toNioPath(), memoryDumps = emptyList(),
+                )
+                val pendingSelector = MarsToolExecutionSelector(project) {}
+                val otherDescriptor = RunContentDescriptor(null, otherProcess, JPanel(), "Other")
+                val otherContent = addExecutionContent(run, otherDescriptor)
+                val intended = RunContentDescriptor(null, pendingProcess, JPanel(), "Pending")
+                try {
+                    pendingSelector.select(pendingProcess)
+                    assertSame(otherProcess, pendingSelector.process)
+                    val intendedContent = addExecutionContent(debug, intended)
+                    try {
+                        pendingSelector.refresh()
+                        assertSame(pendingProcess, pendingSelector.process)
+                    } finally {
+                        checkNotNull(intendedContent.manager).removeContent(intendedContent, true)
+                    }
+                } finally {
+                    checkNotNull(otherContent.manager).removeContent(otherContent, true)
+                    pendingProcess.destroyProcess()
+                    otherProcess.destroyProcess()
+                }
+                assertFalse(BitmapDisplayEditorProvider().accept(project, noRunYet))
+            }
+            val auxiliary = launch(debug, 3, "# mars:tool marsBot connected=false\n" +
+                "# mars:tool edu.missouristate.mars.introToTools\nnop\n")
+            pollAssertionsAsync(5.seconds, 30.milliseconds) {
+                withContext(Dispatchers.EDT) {
+                    assertEquals("MarsBot", window.contentManager.selectedContent?.displayName)
+                }
+            }
+            withContext(Dispatchers.EDT) {
+                val process = auxiliary.getUserData(RunContentDescriptor.DESCRIPTOR_KEY)!!.processHandler as MarsProcessHandler
+                val intro = window.contentManager.contents.single { it.displayName == "Introduction to Tools" }
+                assertTrue(window.contentManager.removeContent(intro, true))
+                revealSourceTools(project, process, listOf("edu.missouristate.mars.introToTools"))
+                assertTrue(checkNotNull(auxiliary.manager).removeContent(auxiliary, true))
+            }
             val bitmapRun = launch(
-                run, 4, $$"lui $t0, 0x1001\nlui $t1, 0xff\nsw $t1, 0($t0)\nli $t1, 0xff\nsw $t1, 4($t0)\n",
+                run, 4, $$"# mars:tool bitmap width=512\n# mars:tool bitmap height=256\n# mars:tool branchHistory size=32\nlui $t0, 0x1001\nlui $t1, 0xff\nsw $t1, 0($t0)\nli $t1, 0xff\nsw $t1, 4($t0)\n",
                 captureGrids = true,
             )
             waitFor(1, "5 (100%)")
-            val dataCache = (bitmapRun.getUserData(RunContentDescriptor.DESCRIPTOR_KEY)!!.processHandler as MarsProcessHandler).dataCache
+            val bitmapProcess = bitmapRun.getUserData(RunContentDescriptor.DESCRIPTOR_KEY)!!.processHandler as MarsProcessHandler
+            val standaloneEditor = withContext(Dispatchers.EDT) {
+                val provider = BitmapDisplayEditorProvider()
+                val view = assertInstanceOf(BitmapDisplayEditor::class.java, provider.createEditor(project, bitmapProcess.bitmapFile))
+                withForcedRespectIsShowingClientProperty {
+                    withShowingChanged { container.add(view.component) }
+                    UIUtil.dispatchAllInvocationEvents()
+                }
+                view
+            }
+            val dataCache = bitmapProcess.dataCache
+            assertSame(files, FileEditorManager.getInstance(project))
+            pollAssertionsAsync(5.seconds, 30.milliseconds) {
+                withContext(Dispatchers.EDT) {
+                    assertEquals("Bitmap Display", window.contentManager.selectedContent?.displayName)
+                    assertTrue(button("Apply and Clear", bitmap).isVisible)
+                    editor = assertInstanceOf(BitmapDisplayEditor::class.java, files.getEditors(bitmapProcess.bitmapFile).singleOrNull())
+                    assertSame(canvas(bitmapView()), editor.preferredFocusedComponent)
+                    assertTrue(editor.preferredFocusedComponent.isFocusable)
+                    assertTrue(editor.isValid)
+                    assertFalse(editor.isModified)
+                    editor.setState(FileEditorState.INSTANCE)
+                    assertEquals(32, bitmapProcess.branchHistory.snapshot().options.size)
+                }
+            }
+            delay(250.milliseconds)
+            withContext(Dispatchers.EDT) {
+                withForcedRespectIsShowingClientProperty {
+                    withShowingChanged { container.remove(standaloneEditor.component) }
+                }
+                standaloneEditor.dispose()
+            }
             pollAssertionsAsync(5.seconds, 30.milliseconds) {
                 withContext(Dispatchers.EDT) {
                     val status = UIUtil.findComponentsOfType(cache, JEditorPane::class.java).map(::paneText)
@@ -782,31 +871,14 @@ class InstructionCounterPlatformTest {
                 }
             }
             withContext(Dispatchers.EDT) {
-                assertEquals(null, tooltip(bitmap, 1, 127))
-                assertEquals("(1, 0) · 0x10010004 · #0000ff", tooltip(bitmap, 1, 128))
-                focusGrid(bitmap)
-                assertInspection("(0, 0) · 0x10010000 · #ff0000", bitmap)
-                gridKey(KeyEvent.VK_LEFT, bitmap)
-                assertInspection("(0, 0) · 0x10010000 · #ff0000", bitmap)
-                gridKey(KeyEvent.VK_RIGHT, bitmap)
-                val pixel = "(1, 0) · 0x10010004 · #0000ff"
-                assertInspection(pixel, bitmap)
-                val displaySettings = UIUtil.findComponentsOfType(bitmap, JLabel::class.java)
-                    .single { it.text == "Display Settings" }.accessibleContext.accessibleAction
-                assertTrue(displaySettings.doAccessibleAction(0))
-                val dock = layoutDock(bitmap, 185, 460)
-                val pixelDetails = UIUtil.findComponentsOfType(bitmap, JEditorPane::class.java).single { paneText(it) == pixel }
-                // The HTML view requests a new layout after it receives the new width.
-                dock.viewport.view.doLayout()
-                val firstLine = pixelDetails.modelToView2D(1)
-                val lastLine = pixelDetails.modelToView2D(pixelDetails.document.length - 1)
-                assertTrue(lastLine.y > firstLine.y) {
-                    "Pixel details ${pixelDetails.bounds} in ${dock.viewport.extentSize}, " +
-                        "first $firstLine, last $lastLine, font width ${pixelDetails.getFontMetrics(pixelDetails.font).stringWidth(pixel)}"
-                }
-                assertTrue(lastLine.maxY <= pixelDetails.height, "The wrapped line should be visible")
-                assertTrue(pixelDetails.x + pixelDetails.width <= dock.viewport.extentSize.width)
-                assertTrue(displaySettings.doAccessibleAction(0))
+                assertEquals(null, tooltip(bitmapView(), 1, 127))
+                assertEquals("(1, 0) · 0x10010004 · #0000ff", tooltip(bitmapView(), 1, 128))
+                focusGrid(bitmapView())
+                assertInspection("(0, 0) · 0x10010000 · #ff0000", bitmapView())
+                gridKey(KeyEvent.VK_LEFT, bitmapView())
+                assertInspection("(0, 0) · 0x10010000 · #ff0000", bitmapView())
+                gridKey(KeyEvent.VK_RIGHT, bitmapView())
+                assertInspection("(1, 0) · 0x10010004 · #0000ff", bitmapView())
                 val selectedPixel = renderBitmap()
                 assertEquals(Color.BLUE.rgb, selectedPixel.getRGB(1, 128))
                 assertEquals(Color.WHITE.rgb, selectedPixel.getRGB(1 + JBUI.scale(7) / 2, 128))
@@ -848,13 +920,26 @@ class InstructionCounterPlatformTest {
                 button("Disconnect", bitmap).doClick()
                 button("Apply and Clear", bitmap).doClick()
                 assertEquals(0xff000000.toInt(), renderBitmap().getRGB(0, 128))
-                assertInspection("(1, 0) · 0x10040004 · #000000", bitmap)
+                assertInspection("(1, 0) · 0x10040004 · #000000", bitmapView())
                 button("Connect", bitmap).doClick()
                 button("Reset", bitmap).doClick()
                 assertEquals(Base.HEAP, baseChoice().selectedItem)
                 baseChoice().selectedItem = Base.MMIO
                 button("Apply and Clear", bitmap).doClick()
-                assertNull(tooltip(bitmap, 0, 160))
+                editor.refresh()
+                assertNull(tooltip(bitmapView(), 0, 160))
+                files.closeFile(bitmapProcess.bitmapFile)
+                button("Open Display", bitmap).doClick()
+            }
+            pollAssertionsAsync(5.seconds, 30.milliseconds) {
+                withContext(Dispatchers.EDT) {
+                    val reopened = assertInstanceOf(BitmapDisplayEditor::class.java, files.getEditors(bitmapProcess.bitmapFile).singleOrNull())
+                    assertTrue(reopened !== editor)
+                    assertEquals(Base.MMIO, bitmapProcess.bitmapDisplay.controls().options.base)
+                    files.closeFile(bitmapProcess.bitmapFile)
+                }
+            }
+            withContext(Dispatchers.EDT) {
                 assertTrue(checkNotNull(bitmapRun.manager).removeContent(bitmapRun, true))
             }
             waitFor(0, "0 (0%)")

@@ -14,6 +14,28 @@ import org.junit.jupiter.api.Test
 
 class BitmapDisplayTest {
     @Test
+    fun `a Full HD bitmap reaches the final heap word`() {
+        MarsSessionService.createMarsComponent().context().use { session ->
+            val memory = session.memory
+            val options = Options(width = 1920, height = 1080, base = Base.HEAP)
+            val display = MemoryGridDisplay(captureAtLaunch = true)
+            display.configure(options)
+            val base = memory.allocateBytesFromHeap(options.cells * 4)
+            val last = base + (options.cells - 1) * 4
+            display.observe(memory).use {
+                memory.setWord(base, 0xabcdef)
+                memory.setWord(last, 0x123456)
+                val image = requireNotNull(display.snapshot().frame.image)
+                assertEquals(1920, image.width)
+                assertEquals(1080, image.height)
+                assertEquals(0xffabcdef.toInt(), image.getRGB(0, 0))
+                assertEquals(0xff123456.toInt(), image.getRGB(1919, 1079))
+                assertEquals(BitmapCell(1919, 1079, last.toLong(), 0x123456), display.bitmapCell(options.cells - 1))
+            }
+        }
+    }
+
+    @Test
     fun `tracks complete RGB words through partial writes and reconnect`() {
         MarsSessionService.createMarsComponent().context().use { session ->
             val memory = session.memory

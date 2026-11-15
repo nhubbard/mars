@@ -426,6 +426,7 @@ class MarsSyscallDialogsPlatformTest {
         try {
             withContext(Dispatchers.EDT) {
                 interceptSyscallDialog {
+                    assertFalse(it.isModal)
                     assertEquals("Simulation result", it.title)
                     assertEquals("Complete", it.messageText())
                     it.clickButton("OK")
