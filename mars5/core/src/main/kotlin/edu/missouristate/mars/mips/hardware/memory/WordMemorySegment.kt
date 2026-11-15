@@ -49,14 +49,16 @@ class WordMemorySegment(blocks: Int, private val descending: Boolean, private va
             if (delta != 0) address += (4 - delta) shl 1
         }
 
+        val little = littleEndian.asBoolean
         var result = 0
-        for (byteInValue in 3 downTo (4 - length)) {
+        for (index in 0 until length) {
+            val byteInValue = if (little) 3 - index else 4 - length + index
             val word = address shr 2
             val blockIndex = word / BLOCK_LENGTH_WORDS
             val offset = word % BLOCK_LENGTH_WORDS
             val block = blockTable[blockIndex] ?: if (store) allocateBlock(blockIndex) else return 0
             val byteOffset = address % 4
-            val byteInMemory = if (littleEndian.asBoolean) 3 - byteOffset else byteOffset
+            val byteInMemory = if (little) 3 - byteOffset else byteOffset
             result = replaceByte(block[offset], byteInMemory, result, byteInValue)
             if (store) block[offset] = replaceByte(value, byteInValue, block[offset], byteInMemory)
             address++

@@ -10,7 +10,6 @@ import edu.missouristate.mars.mips.instructions.Instruction
 import edu.missouristate.mars.simulator.Exceptions.ADDRESS_EXCEPTION_LOAD
 import edu.missouristate.mars.simulator.Exceptions.ADDRESS_EXCEPTION_STORE
 import edu.missouristate.mars.util.Binary
-import java.lang.Integer.reverseBytes
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.jvm.JvmRecord
 
@@ -144,8 +143,7 @@ open class MemoryState(
     }
 
     private fun readWideData(address: Long, size: Int, notify: Boolean, instructionFetch: Boolean = false): Int {
-        val bytes = wideData.fetchBytes(wideDataOffset(address, size, ADDRESS_EXCEPTION_LOAD), size)
-        val value = wideDataValue(bytes, size)
+        val value = wideData.fetchBytes(wideDataOffset(address, size, ADDRESS_EXCEPTION_LOAD), size)
         if (notify) notifyAddressObservers(READ, address, size, value, instructionFetch)
         return value
     }
@@ -159,17 +157,10 @@ open class MemoryState(
             }
         }
         val offset = wideDataOffset(address, size, ADDRESS_EXCEPTION_STORE)
-        val previous = wideData.storeBytes(offset, size, wideDataValue(value, size))
+        val previous = wideData.storeBytes(offset, size, value)
         invalidateReservation(address, size)
         notifyAddressObservers(WRITE, address, size, value)
-        return wideDataValue(previous, size)
-    }
-
-    // WordMemorySegment transfers its first byte in the least significant bits.
-    private fun wideDataValue(value: Int, size: Int): Int {
-        // byteOrder is true when the endianness is little endian.
-        if (byteOrder || size == 1) return value
-        return reverseBytes(value) ushr ((Int.SIZE_BYTES - size) * Byte.SIZE_BITS)
+        return previous
     }
 
     private lateinit var dataBlockTable: WordMemorySegment

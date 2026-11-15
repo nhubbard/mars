@@ -100,9 +100,11 @@ internal class RuntimeServicesTest {
         Assertions.assertThat(segment.fetchBytes(0, 1)).isEqualTo(if (littleEndian) 0x78 else 0x12)
         segment.storeBytes(4095, 2, 0xabcd)
         Assertions.assertThat(segment.fetchBytes(4095, 2)).isEqualTo(0xabcd)
+        Assertions.assertThat(segment.fetchBytes(4095, 1)).isEqualTo(if (littleEndian) 0xcd else 0xab)
+        Assertions.assertThat(segment.fetchBytes(4096, 1)).isEqualTo(if (littleEndian) 0xab else 0xcd)
         Assertions.assertThat(segment.fetchWordOrNull(1024)).isNotNull()
         Assertions.assertThat(segment.storeWord(1024, 42))
-            .isEqualTo(if (littleEndian) 0xab else -0x55000000)
+            .isEqualTo(if (littleEndian) 0xab else 0xcd000000.toInt())
         Assertions.assertThat(segment.fetchWord(1024)).isEqualTo(42)
     }
 

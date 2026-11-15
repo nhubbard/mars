@@ -1,11 +1,15 @@
 package edu.missouristate.mars
 
 import edu.missouristate.mars.api.MarsTarget
+import edu.missouristate.mars.mips.hardware.MemoryState
 import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 
 class Mars64MsaInventoryTest {
     private data class Form(val mnemonic: String, val source: String, val word: Int)
@@ -35,6 +39,46 @@ class Mars64MsaInventoryTest {
                 val word = statements[index].binaryStatement
                 assertEquals(form.word.toUInt().toString(16), word.toUInt().toString(16), form.source)
                 assertEquals(form.mnemonic, machine.instructionSet.findByBinaryCode(word)?.name, form.source)
+            }
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = [MemoryState.LITTLE_ENDIAN, MemoryState.BIG_ENDIAN])
+    fun `vector word transfers agree with scalar words and bytes across address ranges`(
+        littleEndian: Boolean, @TempDir directory: Path,
+    ) {
+        val source = Files.writeString(directory.resolve("vector-memory.mars"), $$"""
+            .data
+            input: .word 0x01234567, 0x89abcdef, 0xfedcba98, 0x76543210
+            output: .space 16
+            .data 0x100000000
+            wide: .space 16
+            .text
+            la $t0, input
+            dla $t1, wide
+            ld.w $w0, 0($t0)
+            st.w $w0, 0($t1)
+            ld.w $w1, 0($t1)
+            st.w $w1, 16($t0)
+        """.trimIndent())
+        TestSessions.create().use { machine ->
+            machine.selectTarget(MarsTarget.MARS64)
+            val memory = machine.memory
+            memory.byteOrder = littleEndian
+            val program = machine.assemble(listOf(source))
+            assertTrue(program.simulate(50))
+
+            val words = listOf(0x01234567, 0x89abcdef.toInt(), 0xfedcba98.toInt(), 0x76543210)
+            for (base in listOf(memory.dataBaseAddress.toLong(), 0x1_0000_0000L, memory.dataBaseAddress + 16L)) {
+                words.forEachIndexed { index, word ->
+                    val address = base + index * 4
+                    assertEquals(word, memory.inspectWord(address))
+                    for (byte in 0..3) {
+                        val shift = (if (littleEndian) byte else 3 - byte) * 8
+                        assertEquals((word ushr shift) and 0xff, memory.inspectDataByte(address + byte))
+                    }
+                }
             }
         }
     }
