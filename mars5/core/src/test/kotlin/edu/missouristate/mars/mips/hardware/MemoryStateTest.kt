@@ -1,7 +1,6 @@
 package edu.missouristate.mars.mips.hardware
 
 import edu.missouristate.mars.ProgramStatement
-import edu.missouristate.mars.api.InstructionSourceMap
 import edu.missouristate.mars.core.SimulationSettings
 import edu.missouristate.mars.mips.instructions.InstructionSet
 import edu.missouristate.mars.simulator.Exceptions
@@ -36,15 +35,15 @@ internal class MemoryStateTest {
         }
         val statement = ProgramStatement(0x2408002a, first.textBaseAddress, instructions)
         first.setStatement(first.textBaseAddress, statement)
-        Assertions.assertThat<ProgramStatement?>(first.getStatement(first.textBaseAddress))
+        Assertions.assertThat(first.getStatement(first.textBaseAddress))
             .isSameAs(statement)
-        Assertions.assertThat<ProgramStatement?>(second.getStatement(second.textBaseAddress))
+        Assertions.assertThat(second.getStatement(second.textBaseAddress))
             .isNull()
         first.setStatement(
             first.kernelTextBaseAddress,
             ProgramStatement(0, first.kernelTextBaseAddress, instructions),
         )
-        Assertions.assertThat<ProgramStatement?>(second.getStatement(second.kernelTextBaseAddress))
+        Assertions.assertThat(second.getStatement(second.kernelTextBaseAddress))
             .isNull()
         val heap = first.allocateBytesFromHeap(5)
         Assertions.assertThat(heap).isEqualTo(first.heapBaseAddress)
@@ -52,7 +51,7 @@ internal class MemoryStateTest {
         Assertions.assertThat(second.allocateBytesFromHeap(4)).isEqualTo(second.heapBaseAddress)
         first.clear()
         Assertions.assertThat(first.allocateBytesFromHeap(4)).isEqualTo(first.heapBaseAddress)
-        Assertions.assertThat<ProgramStatement?>(first.getStatement(first.textBaseAddress)).isNull()
+        Assertions.assertThat(first.getStatement(first.textBaseAddress)).isNull()
         for (address in
             intArrayOf(
                 first.dataBaseAddress,
@@ -82,7 +81,7 @@ internal class MemoryStateTest {
             state.setStatement(address, ProgramStatement(0x2408002a, address, instructions))
         }
         val notices = ArrayList<MemoryAccessNotice>()
-        state.addObserver(Consumer<MemoryAccessNotice> { notices.add(it) })
+        state.addObserver({ notices.add(it) })
         for (address in data) {
             Assertions.assertThat(state.inspectWord(address)).isEqualTo(0x12345678)
         }
@@ -92,7 +91,7 @@ internal class MemoryStateTest {
         Assertions.assertThat(state.inspectWord(state.dataBaseAddress + 1)).isNull()
         Assertions.assertThat(state.inspectWord(state.dataBaseAddress + 4)).isZero()
         Assertions.assertThat(state.inspectWord(0)).isNull()
-        Assertions.assertThat<MemoryAccessNotice>(notices).isEmpty()
+        Assertions.assertThat(notices).isEmpty()
     }
 
     @Test
@@ -106,27 +105,27 @@ internal class MemoryStateTest {
         )
         state.setWord(state.dataBaseAddress, code)
         val notices = ArrayList<MemoryAccessNotice>()
-        state.addObserver(Consumer<MemoryAccessNotice> { notices.add(it) })
+        state.addObserver({ notices.add(it) })
         Assertions.assertThat(
                 requireNotNull(state.inspectInstruction(state.kernelTextBaseAddress))
                     .binaryStatement,
             )
             .isEqualTo(code)
-        Assertions.assertThat<ProgramStatement?>(state.inspectInstruction(state.textBaseAddress))
+        Assertions.assertThat(state.inspectInstruction(state.textBaseAddress))
             .isNull()
-        Assertions.assertThat<ProgramStatement?>(state.inspectInstruction(state.dataBaseAddress))
+        Assertions.assertThat(state.inspectInstruction(state.dataBaseAddress))
             .isNull()
         settings.setSelfModifyingCodeEnabled(true)
         val decoded = requireNotNull(state.inspectInstruction(state.dataBaseAddress))
         Assertions.assertThat(decoded.binaryStatement).isEqualTo(code)
-        Assertions.assertThat<InstructionSourceMap.Origin?>(decoded.instructionOrigin).isNull()
+        Assertions.assertThat(decoded.instructionOrigin).isNull()
         Assertions.assertThat(decoded.printableBasicAssemblyStatement).contains("addiu")
-        Assertions.assertThat<ProgramStatement?>(
+        Assertions.assertThat(
                 state.inspectInstruction(state.dataBaseAddress + 1),
             )
             .isNull()
-        Assertions.assertThat<ProgramStatement?>(state.inspectInstruction(0)).isNull()
-        Assertions.assertThat<MemoryAccessNotice>(notices).isEmpty()
+        Assertions.assertThat(state.inspectInstruction(0)).isNull()
+        Assertions.assertThat(notices).isEmpty()
     }
 
     @Test
@@ -174,7 +173,7 @@ internal class MemoryStateTest {
         Assertions.assertThat(state.inTextSegment(state.textLimitAddress)).isFalse()
         val lastTextWord = (state.textLimitAddress - 1) and 3.inv()
         state.setStatement(lastTextWord, ProgramStatement(0, lastTextWord, instructions))
-        Assertions.assertThat<ProgramStatement?>(state.getStatement(lastTextWord)).isNotNull()
+        Assertions.assertThat(state.getStatement(lastTextWord)).isNotNull()
         Assertions.assertThatExceptionOfType(AddressErrorException::class.java)
             .isThrownBy(
                 ThrowableAssert.ThrowingCallable { state.getStatement(state.textLimitAddress) },
@@ -260,7 +259,7 @@ internal class MemoryStateTest {
         Assertions.assertThat(requireNotNull(modified.instruction).name).isEqualTo("addiu")
         Assertions.assertThat(modified.operands).startsWith(8, 0, 42)
         Assertions.assertThat(first.getWord(address)).isEqualTo(0x2408002a)
-        Assertions.assertThat<ProgramStatement?>(second.getStatement(address)).isNull()
+        Assertions.assertThat(second.getStatement(address)).isNull()
         Assertions.assertThatExceptionOfType(AddressErrorException::class.java)
             .isThrownBy(ThrowableAssert.ThrowingCallable { second.setWord(address, 0x2408002a) })
         first.setWord(first.dataBaseAddress, 0x24090063)
@@ -278,19 +277,19 @@ internal class MemoryStateTest {
         first.addObserver(listener, address)
         second.setWord(address, 99)
         first.setWord(address + 4, 42)
-        Assertions.assertThat<MemoryAccessNotice>(notices).isEmpty()
+        Assertions.assertThat(notices).isEmpty()
         first.setWord(address, 123)
         first.getWord(address)
         first.getWordNoNotify(address)
-        Assertions.assertThat<MemoryAccessNotice>(notices)
+        Assertions.assertThat(notices)
             .extracting<Int?, RuntimeException>(AccessNotice::accessType)
             .containsExactly(AccessNotice.WRITE, AccessNotice.READ)
         first.clear()
         first.setWord(address, 456)
-        Assertions.assertThat<MemoryAccessNotice>(notices).hasSize(3)
+        Assertions.assertThat(notices).hasSize(3)
         first.deleteObserver(listener)
         first.getWord(address)
-        Assertions.assertThat<MemoryAccessNotice>(notices).hasSize(3)
+        Assertions.assertThat(notices).hasSize(3)
     }
 
     companion object {

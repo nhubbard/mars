@@ -92,7 +92,7 @@
 
 not $t1,$t2	nor RG1, RG2, $0	#Bitwise NOT (bit inversion)
 
-# Here are some "convenience" arithmetic pseduo-ops.  But do they encourage sloppy programming?
+# Here are some "convenience" arithmetic pseudo-ops.  But do they encourage sloppy programming?
 add $t1,$t2,-100	addi RG1, RG2, VL3	#ADDition : set $t1 to ($t2 plus 16-bit immediate)
 add $t1,$t2,100000	lui $1, VHL3	ori $1, $1, VL3U	add RG1, RG2, $1	#ADDition : set $t1 to ($t2 plus 32-bit immediate)
 addu $t1,$t2,100000	lui $1, VHL3	ori $1, $1, VL3U	addu RG1, RG2, $1	#ADDition Unsigned : set $t1 to ($t2 plus 32-bit immediate), no overflow
@@ -104,7 +104,7 @@ subu $t1,$t2,100000	lui $1, VHL3	ori $1, $1, VL3U	subu RG1, RG2, $1	#SUBtraction
 subi $t1,$t2,-100		addi $1, $0, VL3	sub RG1, RG2, $1	#SUBtraction Immediate : set $t1 to ($t2 minus 16-bit immediate)
 subi $t1,$t2,100000	lui $1, VHL3	ori $1, $1, VL3U	sub RG1, RG2, $1	#SUBtraction Immediate : set $t1 to ($t2 minus 32-bit immediate)
 subiu $t1,$t2,100000	lui $1, VHL3	ori $1, $1, VL3U	subu RG1, RG2, $1	#SUBtraction Immediate Unsigned : set $t1 to ($t2 minus 32-bit immediate), no overflow
-# feel free to add more convenience arithmetic pseduo-ops.
+# feel free to add more convenience arithmetic pseudo-ops.
 
 # convenience logical operations can be added too,
 andi $t1,$t2,100000	lui $1, VHL3	ori $1, $1, VL3U	and RG1, RG2, $1	#AND Immediate : set $t1 to ($t2 bitwise-AND 32-bit immediate)

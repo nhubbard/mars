@@ -197,7 +197,7 @@ internal class SessionSyscallTest {
         session().use { session ->
             session.settings.isUtf8TextEnabled = true
             val program: MIPSprogram = session.assemble(listOf(source))
-            val buffer = program.symbolMap().locals().get(source)!!.get("buffer")!!.address
+            val buffer = program.symbolMap().locals()[source]!!.get("buffer")!!.address
             val input = ByteArrayInputStream("ignored\n鯉\n".toByteArray(StandardCharsets.UTF_8))
             SessionSyscallEnvironment(session.memory, input, System.out, System.err).use { io ->
                 program.setSyscallEnvironment(io)

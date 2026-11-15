@@ -9,7 +9,6 @@ import edu.missouristate.mars.mips.instructions.basic.InstrSw
 import edu.missouristate.mars.simulator.BackStepper
 import edu.missouristate.mars.simulator.BackStepper.MemoryWrite
 import java.util.Objects
-import java.util.function.BiFunction
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
@@ -51,7 +50,7 @@ internal class MemoryUndoIsolationTest {
                         "Default",
                     ),
                     SimulationSettings(),
-                    BiFunction { binary: Int?, pc: Int? ->
+                    { binary: Int?, pc: Int? ->
                         ProgramStatement(binary!!, pc!!, machine.instructionSet)
                     },
                 )
@@ -114,13 +113,13 @@ internal class MemoryUndoIsolationTest {
         history.endInstruction()
         execution.setMemoryWord(address + Integer.BYTES, 99)
 
-        Assertions.assertThat<MemoryWrite?>(history.previousMemoryWrite())
+        Assertions.assertThat(history.previousMemoryWrite())
             .isEqualTo(MemoryWrite(address, Integer.BYTES))
         history.setEnabled(false)
-        Assertions.assertThat<MemoryWrite?>(history.previousMemoryWrite()).isNull()
+        Assertions.assertThat(history.previousMemoryWrite()).isNull()
         history.setEnabled(true)
         history.clear()
-        Assertions.assertThat<MemoryWrite?>(history.previousMemoryWrite()).isNull()
+        Assertions.assertThat(history.previousMemoryWrite()).isNull()
     }
 
     @Test
@@ -138,7 +137,7 @@ internal class MemoryUndoIsolationTest {
                         "CompactTextAtZero",
                     ),
                     SimulationSettings(),
-                    BiFunction { binary: Int?, address: Int? ->
+                    { binary: Int?, address: Int? ->
                         ProgramStatement(
                             binary!!,
                             address!!,

@@ -27,24 +27,24 @@ internal class SyscallContractTest {
             val wallTime = 0x0123456789abcdefL
             val environment =
                 Proxy.newProxyInstance(
-                    SyscallEnvironment::class.java.getClassLoader(),
+                    SyscallEnvironment::class.java.classLoader,
                     arrayOf<Class<*>>(SyscallEnvironment::class.java),
                     InvocationHandler { proxy: Any?, method: Method?, args: Array<Any?>? ->
-                        if (method!!.getDeclaringClass() == Any::class.java) {
-                            return@InvocationHandler when (method.getName()) {
+                        if (method!!.declaringClass == Any::class.java) {
+                            return@InvocationHandler when (method.name) {
                                 "equals" ->
-                                    proxy === Objects.requireNonNull<Array<Any?>?>(args)!![0]
+                                    proxy === Objects.requireNonNull(args)!![0]
                                 "hashCode" -> System.identityHashCode(proxy)
                                 "toString" -> "Test syscall environment"
                                 else -> throw AssertionError(method)
                             }
                         }
                         calls.add(
-                            method.getName() +
-                                (if (args == null) arrayOfNulls<Any>(0) else args)
+                            method.name +
+                                (if (args == null) arrayOfNulls(0) else args)
                                     .contentToString(),
                         )
-                        when (method.getName()) {
+                        when (method.name) {
                             "readInt" -> 7
                             "readFloat" -> 1.5f
                             "readDouble" -> 2.5
@@ -56,14 +56,14 @@ internal class SyscallContractTest {
                             "openFile" -> 3
                             "readFromFile" -> {
                                 val buffer =
-                                    Objects.requireNonNull<Array<Any?>?>(args)!![1] as ByteArray
+                                    Objects.requireNonNull(args)!![1] as ByteArray
                                 buffer[0] = 1
                                 buffer[1] = 2
                                 buffer[2] = 3
                                 3
                             }
 
-                            "writeToFile" -> Objects.requireNonNull<Array<Any?>?>(args)!![2]
+                            "writeToFile" -> Objects.requireNonNull(args)!![2]
                             else -> null
                         }
                     },
@@ -146,18 +146,18 @@ internal class SyscallContractTest {
                     )
                 Assertions.assertThat<Throwable?>(failure)
                     .isInstanceOf(ProcessingException::class.java)
-                Assertions.assertThat<ErrorList?>((failure as ProcessingException).errors())
+                Assertions.assertThat((failure as ProcessingException).errors())
                     .isNull()
                 Assertions.assertThat(context.exitCode).isEqualTo(if (number == 17) 7 else 0)
             } else {
                 service.simulate(null, context)
             }
             when (number) {
-                1 -> Assertions.assertThat<String>(calls).containsExactly("printInt[42]")
-                2 -> Assertions.assertThat<String>(calls).containsExactly("printFloat[1.5]")
-                3 -> Assertions.assertThat<String>(calls).containsExactly("printDouble[2.5]")
+                1 -> Assertions.assertThat(calls).containsExactly("printInt[42]")
+                2 -> Assertions.assertThat(calls).containsExactly("printFloat[1.5]")
+                3 -> Assertions.assertThat(calls).containsExactly("printDouble[2.5]")
                 4 ->
-                    Assertions.assertThat<String>(calls)
+                    Assertions.assertThat(calls)
                         .containsExactly(
                             "printChar[h]",
                             "printChar[e]",
@@ -186,42 +186,42 @@ internal class SyscallContractTest {
 
                 10,
                 17 ->
-                    Assertions.assertThat<String>(calls)
+                    Assertions.assertThat(calls)
                         .containsExactly("exit[" + (if (number == 17) 7 else 0) + "]")
 
-                11 -> Assertions.assertThat<String>(calls).containsExactly("printChar[A]")
+                11 -> Assertions.assertThat(calls).containsExactly("printChar[A]")
                 12 -> Assertions.assertThat(registers.getValue(2)).isEqualTo('Z'.code)
                 13,
                 14,
                 15 -> {
                     Assertions.assertThat(registers.getValue(2)).isEqualTo(3)
-                    Assertions.assertThat<String>(calls).hasSize(1)
+                    Assertions.assertThat(calls).hasSize(1)
                     if (number == 14) {
                         Assertions.assertThat(session.memory.getByte(buffer + 2)).isEqualTo(3)
                     }
                 }
 
-                16 -> Assertions.assertThat<String>(calls).containsExactly("closeFile[3]")
+                16 -> Assertions.assertThat(calls).containsExactly("closeFile[3]")
                 30 -> {
-                    Assertions.assertThat<String>(calls).containsExactly("currentTimeMillis[]")
+                    Assertions.assertThat(calls).containsExactly("currentTimeMillis[]")
                     Assertions.assertThat(registers.getValue(4)).isEqualTo(-0x76543211)
                     Assertions.assertThat(registers.getValue(5)).isEqualTo(0x01234567)
                 }
 
                 31,
                 33 ->
-                    Assertions.assertThat<String>(calls)
+                    Assertions.assertThat(calls)
                         .containsExactly("playTone[60, 0, 0, 10, " + (number == 33) + "]")
 
-                32 -> Assertions.assertThat<String>(calls).containsExactly("sleepMillis[250]")
+                32 -> Assertions.assertThat(calls).containsExactly("sleepMillis[250]")
                 34 ->
-                    Assertions.assertThat<String>(calls).containsExactly("printString[0x0000002a]")
+                    Assertions.assertThat(calls).containsExactly("printString[0x0000002a]")
                 35 ->
-                    Assertions.assertThat<String>(calls)
+                    Assertions.assertThat(calls)
                         .containsExactly("printString[00000000000000000000000000101010]")
 
                 36 ->
-                    Assertions.assertThat<String>(calls).containsExactly("printString[4294967295]")
+                    Assertions.assertThat(calls).containsExactly("printString[4294967295]")
                 40,
                 41 ->
                     Assertions.assertThat(
@@ -269,7 +269,7 @@ internal class SyscallContractTest {
                 57,
                 58,
                 59 ->
-                    Assertions.assertThat<String>(calls)
+                    Assertions.assertThat(calls)
                         .hasSize(1)
                         .allMatch(
                             Predicate { call: String ->
@@ -277,7 +277,7 @@ internal class SyscallContractTest {
                             },
                         )
 
-                60 -> Assertions.assertThat<String>(calls).containsExactly("clearConsole[]")
+                60 -> Assertions.assertThat(calls).containsExactly("clearConsole[]")
                 else -> throw AssertionError("Missing syscall vector " + number)
             }
         }
@@ -287,7 +287,7 @@ internal class SyscallContractTest {
     fun mutableServiceNumbersAreNotSharedAcrossSessions() {
         val first = SyscallRegistry()
         val second = SyscallRegistry()
-        Objects.requireNonNull<Syscall?>(first.findByNumber(1), "Missing PrintInt")!!.number = 101
+        Objects.requireNonNull(first.findByNumber(1), "Missing PrintInt")!!.number = 101
         val unchanged = Objects.requireNonNull<Syscall>(second.findByNumber(1), "Missing PrintInt")
         Assertions.assertThat(unchanged.number).isEqualTo(1)
         Assertions.assertThat<Syscall?>(first.services()).hasSize(40)

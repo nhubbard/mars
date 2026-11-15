@@ -52,7 +52,7 @@ internal class AssemblerSmokeTest {
         Assertions.assertThat(errors.errorsOccurred())
             .`as`("Expected no assembly errors for %s but got: %s", filename, errors)
             .isFalse()
-        Assertions.assertThat<ProgramStatement>(program.machineList)
+        Assertions.assertThat(program.machineList)
             .`as`("Expected assembled instructions for %s", filename)
             .isNotEmpty()
     }
@@ -79,7 +79,7 @@ internal class AssemblerSmokeTest {
     companion object {
         @JvmStatic
         fun allPrograms(): Stream<String?> {
-            return Stream.of<String?>(
+            return Stream.of(
                 "01_helloworld.asm",
                 "02_readint.asm",
                 "03_readstring.asm",

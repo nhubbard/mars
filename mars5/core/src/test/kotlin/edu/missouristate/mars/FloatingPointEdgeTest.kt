@@ -92,7 +92,7 @@ internal class FloatingPointEdgeTest {
                     else if (base.startsWith("Abs")) Math.abs(input)
                     else if (base.startsWith("Neg")) -input else input
                 val targetDouble =
-                    if (base.startsWith("Cvt")) base.get(3) == 'D' else base.endsWith("D")
+                    if (base.startsWith("Cvt")) base[3] == 'D' else base.endsWith("D")
                 if (targetDouble) {
                     if (expected.isNaN()) {
                         Assertions.assertThat(fp.getDoubleFromRegisterPair(8)).isNaN()
@@ -142,7 +142,7 @@ internal class FloatingPointEdgeTest {
                                 .toRegex(),
                         )
                 }
-                .flatMap<Arguments?> { instruction: BasicInstruction ->
+                .flatMap { instruction: BasicInstruction ->
                     Arrays.stream(values)
                         .mapToObj<Arguments?>(
                             DoubleFunction { value: Double ->

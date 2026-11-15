@@ -2,7 +2,6 @@ package edu.missouristate.mars
 
 import edu.missouristate.mars.api.AssemblyResult
 import edu.missouristate.mars.api.ErrorEvent
-import edu.missouristate.mars.api.Program
 import edu.missouristate.mars.api.SimulatorListener
 import edu.missouristate.mars.api.SimulatorState
 import edu.missouristate.mars.api.StepEvent
@@ -30,8 +29,6 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.function.DoubleSupplier
-import java.util.function.IntPredicate
-import java.util.function.Supplier
 import org.assertj.core.api.Assertions
 import org.assertj.core.api.ThrowableAssert
 import org.junit.jupiter.api.Test
@@ -56,7 +53,7 @@ internal class SimulatorEngineTest {
                 .isEqualTo(StopEvent.Reason.STEP_LIMIT)
             Assertions.assertThat<SimulatorState?>(engine.state()).isEqualTo(SimulatorState.PAUSED)
             Assertions.assertThat(session.registerFile.getValue(8)).isEqualTo(7)
-            Assertions.assertThat<Any?>(events.first())
+            Assertions.assertThat(events.first())
                 .isEqualTo(
                     StepEvent(
                         pc,
@@ -65,8 +62,8 @@ internal class SimulatorEngineTest {
                     ),
                 )
             engine.backstepAsync().get(5, TimeUnit.SECONDS)
-            Assertions.assertThat<Any?>(events.get(events.size - 2)).isEqualTo(0L)
-            Assertions.assertThat<Any?>(events.last())
+            Assertions.assertThat(events[events.size - 2]).isEqualTo(0L)
+            Assertions.assertThat(events.last())
                 .isEqualTo(StopEvent(StopEvent.Reason.BACKSTEP, 0))
             Assertions.assertThat(session.registerFile.getPC()).isEqualTo(pc)
             Assertions.assertThat(session.registerFile.getValue(8)).isZero()
@@ -114,7 +111,7 @@ internal class SimulatorEngineTest {
                     engine
                         .runUntilAsync(
                             0,
-                            IntPredicate { pc: Int -> pc == entry + 4 },
+                            { pc: Int -> pc == entry + 4 },
                         )
                         .get(5, TimeUnit.SECONDS)
                         .reason,
@@ -138,7 +135,7 @@ internal class SimulatorEngineTest {
         load($$"addiu $v0,$zero,17\naddiu $a0,$zero,7\nsyscall\n").use { session ->
             val engine: SimulatorEngine = session.simulator()
             engine.setInstructionLimit(3)
-            Assertions.assertThat<StopEvent>(engine.runAsync(0, null).get(5, TimeUnit.SECONDS))
+            Assertions.assertThat(engine.runAsync(0, null).get(5, TimeUnit.SECONDS))
                 .isEqualTo(StopEvent(StopEvent.Reason.NORMAL_EXIT, 7))
         }
     }
@@ -158,7 +155,7 @@ internal class SimulatorEngineTest {
             )
             val completion: CompletableFuture<StopEvent> = engine.runAsync(3, null)
             Assertions.assertThat(waiting.await(2, TimeUnit.SECONDS)).isTrue()
-            Assertions.assertThat<StopEvent>(completion).isNotDone()
+            Assertions.assertThat(completion).isNotDone()
             unlimited.set(true)
             Assertions.assertThat<StopEvent.Reason?>(completion.get(2, TimeUnit.SECONDS)!!.reason)
                 .isEqualTo(StopEvent.Reason.STEP_LIMIT)
@@ -184,7 +181,7 @@ internal class SimulatorEngineTest {
             val value = AtomicInteger()
             history
                 .addInstructionCheckpoint(
-                    Supplier {
+                    {
                         val previous = value.get()
                         Runnable {
                             Assertions.assertThat(session.registerFile.getPC()).isEqualTo(pc)
@@ -193,9 +190,9 @@ internal class SimulatorEngineTest {
                     },
                 )
                 .use { `_` ->
-                    history.addInstructionCheckpoint(Supplier { null }).use { `_` ->
+                    history.addInstructionCheckpoint({ null }).use { `_` ->
                         history
-                            .addInstructionCheckpoint(Supplier { Runnable { restored.add(-1) } })
+                            .addInstructionCheckpoint({ Runnable { restored.add(-1) } })
                             .use { `_` ->
                                 history.beginInstruction(pc, statement)
                                 history.endInstruction()
@@ -205,21 +202,21 @@ internal class SimulatorEngineTest {
                                 session.registerFile.setProgramCounter(pc + 4)
                                 history.backStep()
                                 Assertions.assertThat(history.canBackstep()).isFalse()
-                                Assertions.assertThat<Int?>(restored).containsExactly(7, -1)
+                                Assertions.assertThat(restored).containsExactly(7, -1)
 
                                 history.beginInstruction(pc, statement)
                                 history.addRegisterFileRestore(8, 0)
                                 history.addRegisterFileRestore(9, 0)
                                 history.endInstruction()
                                 Assertions.assertThat(history.canBackstep()).isFalse()
-                                Assertions.assertThat<Int?>(restored).containsExactly(7, -1)
+                                Assertions.assertThat(restored).containsExactly(7, -1)
                             }
                     }
                 }
             history.beginInstruction(pc, statement)
             history.endInstruction()
             history.backStep()
-            Assertions.assertThat<Int?>(restored).containsExactly(7, -1)
+            Assertions.assertThat(restored).containsExactly(7, -1)
         }
     }
 
@@ -265,7 +262,7 @@ internal class SimulatorEngineTest {
                 )
                 .isInstanceOf(AddressErrorException::class.java)
             val originalInstruction: Int =
-                Objects.requireNonNull<Int?>(memory.inspectWord(memory.textBaseAddress))!!
+                Objects.requireNonNull(memory.inspectWord(memory.textBaseAddress))!!
             Assertions.assertThatThrownBy(
                     ThrowableAssert.ThrowingCallable {
                         session.editMemoryWord(
@@ -367,10 +364,10 @@ internal class SimulatorEngineTest {
             engine.backstepSourceAsync().get(5, TimeUnit.SECONDS)
             Assertions.assertThat(session.registerFile.getPC()).isEqualTo(entry)
             Assertions.assertThat(session.backStepper.canBackstep()).isTrue()
-            Assertions.assertThat<Any?>(events.last())
+            Assertions.assertThat(events.last())
                 .isEqualTo(StopEvent(StopEvent.Reason.BACKSTEP, 0))
             engine.runAsync(1, null).get(5, TimeUnit.SECONDS)
-            Assertions.assertThat<Any?>(events.get(events.size - 2))
+            Assertions.assertThat(events[events.size - 2])
                 .isEqualTo(
                     StepEvent(
                         entry,
@@ -392,7 +389,7 @@ internal class SimulatorEngineTest {
             val target: Int = session.registerFile.getPC() + 4
             session.editCoprocessor0Register(Coprocessor0State.EPC, target)
             engine.runAsync(1, null).get(5, TimeUnit.SECONDS)
-            Assertions.assertThat<Transfer?>((events.first() as StepEvent).transfer)
+            Assertions.assertThat((events.first() as StepEvent).transfer)
                 .isEqualTo(ExceptionReturn.INSTANCE)
             Assertions.assertThat(session.registerFile.getPC()).isEqualTo(target)
         }
@@ -405,7 +402,7 @@ internal class SimulatorEngineTest {
             val events = ArrayList<Any?>()
             engine.addListener(listener(events))
             engine.runAsync(1, null).get(5, TimeUnit.SECONDS)
-            Assertions.assertThat<Transfer?>((events.first() as StepEvent).transfer)
+            Assertions.assertThat((events.first() as StepEvent).transfer)
                 .isEqualTo(Jump(0))
             Assertions.assertThat(session.registerFile.getValue(0)).isZero()
         }
@@ -423,15 +420,15 @@ internal class SimulatorEngineTest {
             engine.runAsync(1, null).get(5, TimeUnit.SECONDS)
             val transfer = Jump(target)
             if (delayed) {
-                Assertions.assertThat<Transfer?>((events.first() as StepEvent).transfer).isNull()
+                Assertions.assertThat((events.first() as StepEvent).transfer).isNull()
                 engine.runAsync(1, null).get(5, TimeUnit.SECONDS)
             }
-            Assertions.assertThat<Transfer?>((events.get(events.size - 2) as StepEvent).transfer)
+            Assertions.assertThat((events[events.size - 2] as StepEvent).transfer)
                 .isEqualTo(transfer)
             Assertions.assertThat(session.registerFile.getPC()).isEqualTo(target)
             engine.backstepAsync().get(5, TimeUnit.SECONDS)
             engine.runAsync(1, null).get(5, TimeUnit.SECONDS)
-            Assertions.assertThat<Transfer?>((events.get(events.size - 2) as StepEvent).transfer)
+            Assertions.assertThat((events[events.size - 2] as StepEvent).transfer)
                 .isEqualTo(transfer)
         }
     }
@@ -464,13 +461,13 @@ internal class SimulatorEngineTest {
                     events
                         .stream()
                         .filter { o: Any? -> StepEvent::class.java.isInstance(o) }
-                        .map<StepEvent> { obj: Any? -> StepEvent::class.java.cast(obj) }
+                        .map { obj: Any? -> StepEvent::class.java.cast(obj) }
                         .toList()
                 val returnAddress = entry + (if (delayedBranching) 20 else 16)
-                Assertions.assertThat<StepEvent>(steps)
+                Assertions.assertThat(steps)
                     .extracting<Transfer?, RuntimeException>(StepEvent::transfer)
                     .containsExactly(null, null, null, StepEvent.Call(31, returnAddress))
-                Assertions.assertThat<StepEvent>(steps)
+                Assertions.assertThat(steps)
                     .extracting<BranchOutcome?, RuntimeException>(StepEvent::branchOutcome)
                     .containsExactly(null, BranchOutcome.NOT_TAKEN, null, BranchOutcome.TAKEN)
                 Assertions.assertThat(session.registerFile.getValue(31)).isEqualTo(returnAddress)
@@ -492,11 +489,11 @@ internal class SimulatorEngineTest {
             Assertions.assertThat(session.registerFile.getPC()).isEqualTo(entry + 4)
             engine.backstepAsync().get(5, TimeUnit.SECONDS)
             engine.runAsync(2, null).get(5, TimeUnit.SECONDS)
-            Assertions.assertThat<StepEvent>(
+            Assertions.assertThat(
                     events
                         .stream()
                         .filter { o: Any? -> StepEvent::class.java.isInstance(o) }
-                        .map<StepEvent> { obj: Any? -> StepEvent::class.java.cast(obj) },
+                        .map { obj: Any? -> StepEvent::class.java.cast(obj) },
                 )
                 .extracting<BranchOutcome?, RuntimeException>(StepEvent::branchOutcome)
                 .containsExactly(BranchOutcome.TAKEN, BranchOutcome.TAKEN, null)
@@ -512,8 +509,8 @@ internal class SimulatorEngineTest {
             session.requestExternalInterrupt(EXTERNAL_INTERRUPT_KEYBOARD)
             engine.runAsync(1, null).get(5, TimeUnit.SECONDS)
             val event = events.first() as StepEvent
-            Assertions.assertThat<Transfer?>(event.transfer).isEqualTo(ExceptionEntry.INSTANCE)
-            Assertions.assertThat<BranchOutcome?>(event.branchOutcome).isNull()
+            Assertions.assertThat(event.transfer).isEqualTo(ExceptionEntry.INSTANCE)
+            Assertions.assertThat(event.branchOutcome).isNull()
         }
     }
 
@@ -525,16 +522,16 @@ internal class SimulatorEngineTest {
             val breakpoint = AtomicInteger(entry)
             val events = ArrayList<Any?>()
             engine.addListener(listener(events))
-            Assertions.assertThat<StopEvent>(
+            Assertions.assertThat(
                     engine
                         .runUntilAsync(
                             0,
-                            IntPredicate { pc: Int -> pc == breakpoint.get() },
+                            { pc: Int -> pc == breakpoint.get() },
                         )
                         .get(5, TimeUnit.SECONDS),
                 )
                 .isEqualTo(StopEvent(StopEvent.Reason.BREAKPOINT, 0))
-            Assertions.assertThat<Any?>(events)
+            Assertions.assertThat(events)
                 .containsExactly(StopEvent(StopEvent.Reason.BREAKPOINT, 0))
             Assertions.assertThat(session.registerFile.getPC()).isEqualTo(entry)
             Assertions.assertThat(session.registerFile.getValue(8)).isZero()
@@ -544,7 +541,7 @@ internal class SimulatorEngineTest {
             val resumed: CompletableFuture<StopEvent> =
                 engine.runUntilAsync(
                     0,
-                    IntPredicate { pc: Int ->
+                    { pc: Int ->
                         if (pc == entry) {
                             checkedEntry.countDown()
                             try {
@@ -567,8 +564,8 @@ internal class SimulatorEngineTest {
                 .isEqualTo(StopEvent.Reason.BREAKPOINT)
             Assertions.assertThat(session.registerFile.getPC()).isEqualTo(entry + 4)
             Assertions.assertThat(session.registerFile.getValue(8)).isEqualTo(7)
-            Assertions.assertThat<Any?>(events.get(1)).isInstanceOf(StepEvent::class.java)
-            Assertions.assertThat<Any?>(events.get(2))
+            Assertions.assertThat(events[1]).isInstanceOf(StepEvent::class.java)
+            Assertions.assertThat(events[2])
                 .isEqualTo(StopEvent(StopEvent.Reason.BREAKPOINT, 0))
         }
     }
@@ -580,7 +577,7 @@ internal class SimulatorEngineTest {
             val result: CompletableFuture<StopEvent> =
                 engine.runUntilAsync(
                     0,
-                    IntPredicate { pc: Int ->
+                    { pc: Int ->
                         engine.stop()
                         true
                     },
@@ -714,7 +711,7 @@ internal class SimulatorEngineTest {
             load($$".text\naddiu $t0,$zero,99\n").use { second ->
                 val a: CompletableFuture<StopEvent> = first.simulator().runAsync(0, null)
                 val b: CompletableFuture<StopEvent> = second.simulator().runAsync(0, null)
-                Assertions.assertThat<StopEvent>(a.get(5, TimeUnit.SECONDS))
+                Assertions.assertThat(a.get(5, TimeUnit.SECONDS))
                     .isEqualTo(StopEvent(StopEvent.Reason.NORMAL_EXIT, 7))
                 Assertions.assertThat<StopEvent.Reason?>(b.get(5, TimeUnit.SECONDS)!!.reason)
                     .isEqualTo(StopEvent.Reason.CLIFF_TERMINATION)
@@ -741,9 +738,9 @@ internal class SimulatorEngineTest {
                     session.simulator().runAsync(0, null).get(5, TimeUnit.SECONDS).reason,
                 )
                 .isEqualTo(StopEvent.Reason.EXCEPTION)
-            Assertions.assertThat<Any?>(events.get(events.size - 2))
+            Assertions.assertThat(events[events.size - 2])
                 .isInstanceOf(ErrorEvent::class.java)
-            Assertions.assertThat<Any?>(events.last())
+            Assertions.assertThat(events.last())
                 .isEqualTo(StopEvent(StopEvent.Reason.EXCEPTION, 0))
             Assertions.assertThat(session.backStepper.empty()).isFalse()
             session.simulator().backstepAsync().get(5, TimeUnit.SECONDS)
@@ -760,13 +757,13 @@ internal class SimulatorEngineTest {
             val success: AssemblyResult = assembler.assemble(listOf(source))
             Assertions.assertThat(success.succeeded()).isTrue()
             Assertions.assertThat(
-                    Objects.requireNonNull<Program?>(success.program())!!.instructionCount(),
+                    Objects.requireNonNull(success.program())!!.instructionCount(),
                 )
                 .isEqualTo(1)
             Files.writeString(source, $$".text\nunknown $t0\n")
             val failure: AssemblyResult = assembler.assemble(listOf(source))
             Assertions.assertThat(failure.succeeded()).isFalse()
-            Assertions.assertThat<Program?>(failure.program()).isNull()
+            Assertions.assertThat(failure.program()).isNull()
             Assertions.assertThat(failure.errors().first().file).isEqualTo(source)
             Assertions.assertThat(failure.errors().first().line).isEqualTo(2)
         }

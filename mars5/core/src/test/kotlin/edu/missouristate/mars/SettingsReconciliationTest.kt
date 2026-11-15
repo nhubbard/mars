@@ -195,8 +195,8 @@ internal class SettingsReconciliationTest {
                 errors.add(ErrorMessage(null, i + 1, 1, "Invalid instruction"))
             }
             Assertions.assertThat(errors.errorLimitExceeded()).isTrue()
-            Assertions.assertThat<ErrorMessage>(errors.errorMessages).hasSize(4)
-            Assertions.assertThat(errors.errorMessages.get(3).message)
+            Assertions.assertThat(errors.errorMessages).hasSize(4)
+            Assertions.assertThat(errors.errorMessages[3].message)
                 .isEqualTo("Error Limit of 3 exceeded.")
             Assertions.assertThat(settings.getBooleanSetting(Settings.WARNINGS_ARE_ERRORS)).isTrue()
             settings.setBooleanSettingNonPersistent(Settings.WARNINGS_ARE_ERRORS, false)
@@ -218,14 +218,14 @@ internal class SettingsReconciliationTest {
 
     /** In-memory preferences keep these tests away from the user's saved settings. */
     private class MemoryPreferences : AbstractPreferences(null, "") {
-        private val values: MutableMap<String?, String?> = HashMap<String?, String?>()
+        private val values: MutableMap<String?, String?> = HashMap()
 
         override fun putSpi(key: String?, value: String?) {
             values.put(key, value)
         }
 
         override fun getSpi(key: String?): String? {
-            return values.get(key)
+            return values[key]
         }
 
         override fun removeSpi(key: String?) {
@@ -241,7 +241,7 @@ internal class SettingsReconciliationTest {
         }
 
         override fun childrenNamesSpi(): Array<String?> {
-            return arrayOfNulls<String>(0)
+            return arrayOfNulls(0)
         }
 
         override fun childSpi(name: String?): AbstractPreferences? {

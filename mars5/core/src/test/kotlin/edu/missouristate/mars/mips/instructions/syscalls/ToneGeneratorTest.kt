@@ -36,7 +36,7 @@ internal class ToneGeneratorTest {
                 .use { generator ->
                     val tone =
                         executor.submit(
-                            Runnable {
+                            {
                                 generator.generateToneSynchronously(
                                     65.toByte(),
                                     120,
@@ -54,8 +54,8 @@ internal class ToneGeneratorTest {
                     assertEvent(track.get(2), 120, ShortMessage.NOTE_OFF, 65, 90)
                     device.listener!!.meta(MetaMessage(47, ByteArray(0), 0))
                     tone.get(3, TimeUnit.SECONDS)
-                    Assertions.assertThat(device.closed.getCount()).isZero()
-                    Assertions.assertThat<Exception?>(failures).isEmpty()
+                    Assertions.assertThat(device.closed.count).isZero()
+                    Assertions.assertThat(failures).isEmpty()
                 }
         } finally {
             executor.shutdownNow()
@@ -74,9 +74,9 @@ internal class ToneGeneratorTest {
                 )
                 .use { generator ->
                     generator.generateToneSynchronously(60.toByte(), 200, 0.toByte(), 80.toByte())
-                    Assertions.assertThat(Thread.currentThread().isInterrupted()).isTrue()
-                    Assertions.assertThat(device.closed.getCount()).isZero()
-                    Assertions.assertThat<Exception?>(failures).isEmpty()
+                    Assertions.assertThat(Thread.currentThread().isInterrupted).isTrue()
+                    Assertions.assertThat(device.closed.count).isZero()
+                    Assertions.assertThat(failures).isEmpty()
                 }
         } finally {
             // Clear the interrupt before JUnit reuses the test thread.
@@ -95,10 +95,10 @@ internal class ToneGeneratorTest {
             .use { generator ->
                 generator.generateTone(60.toByte(), 60000, 0.toByte(), 80.toByte())
                 Assertions.assertThat(device.started.await(3, TimeUnit.SECONDS)).isTrue()
-                Assertions.assertThat(device.closed.getCount()).isEqualTo(1)
+                Assertions.assertThat(device.closed.count).isEqualTo(1)
             }
         Assertions.assertThat(device.closed.await(3, TimeUnit.SECONDS)).isTrue()
-        Assertions.assertThat<Exception?>(failures).isEmpty()
+        Assertions.assertThat(failures).isEmpty()
     }
 
     @Test
@@ -130,9 +130,9 @@ internal class ToneGeneratorTest {
             .use { generator ->
                 generator.generateToneSynchronously(60.toByte(), 200, 0.toByte(), 80.toByte())
             }
-        Assertions.assertThat(badOpen.closed.getCount()).isZero()
-        Assertions.assertThat(badSequence.closed.getCount()).isZero()
-        Assertions.assertThat<Exception?>(failures)
+        Assertions.assertThat(badOpen.closed.count).isZero()
+        Assertions.assertThat(badSequence.closed.count).isZero()
+        Assertions.assertThat(failures)
             .containsExactly(unavailable, badOpen.openFailure, badSequence.sequenceFailure)
     }
 
@@ -148,10 +148,10 @@ internal class ToneGeneratorTest {
 
         fun proxy(): Sequencer {
             return Proxy.newProxyInstance(
-                Sequencer::class.java.getClassLoader(),
+                Sequencer::class.java.classLoader,
                 arrayOf<Class<*>>(Sequencer::class.java),
                 InvocationHandler { proxy: Any?, method: Method?, args: Array<Any?>? ->
-                    when (method!!.getName()) {
+                    when (method!!.name) {
                         "open" -> {
                             openFailure?.let { throw it }
                         }
@@ -176,7 +176,7 @@ internal class ToneGeneratorTest {
                         }
 
                         "close" -> closed.countDown()
-                        else -> throw UnsupportedOperationException(method.getName())
+                        else -> throw UnsupportedOperationException(method.name)
                     }
                     null
                 },
@@ -192,10 +192,10 @@ internal class ToneGeneratorTest {
             first: Int,
             second: Int,
         ) {
-            val message = event.getMessage() as ShortMessage
-            Assertions.assertThat(event.getTick()).isEqualTo(tick)
-            Assertions.assertThat(message.getCommand()).isEqualTo(command)
-            Assertions.assertThat(message.getChannel()).isZero()
+            val message = event.message as ShortMessage
+            Assertions.assertThat(event.tick).isEqualTo(tick)
+            Assertions.assertThat(message.command).isEqualTo(command)
+            Assertions.assertThat(message.channel).isZero()
             Assertions.assertThat(message.getData1()).isEqualTo(first)
             Assertions.assertThat(message.getData2()).isEqualTo(second)
         }

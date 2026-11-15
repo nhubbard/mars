@@ -1,6 +1,5 @@
 package edu.missouristate.mars
 
-import java.io.InputStream
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
@@ -43,7 +42,7 @@ internal class PseudoExpansionTest {
                     machine
                         .subList(0, machine.size - 1)
                         .stream()
-                        .map<Int>(ProgramStatement::binaryStatement)
+                        .map(ProgramStatement::binaryStatement)
                         .toList()
                 Assertions.assertThat<Int?>(words)
                     .`as`(vector.example)
@@ -56,7 +55,7 @@ internal class PseudoExpansionTest {
         @JvmStatic
         fun configurations(): Stream<Arguments?>? {
             val groups = linkedMapOf<String, MutableList<Vector>>()
-            Objects.requireNonNull<InputStream>(
+            Objects.requireNonNull(
                     PseudoExpansionTest::class
                         .java
                         .getResourceAsStream("/pseudo-expansion-vectors.tsv"),
@@ -72,20 +71,20 @@ internal class PseudoExpansionTest {
                             val words =
                                 if (fields[3].isBlank()) mutableListOf<Int>()
                                 else
-                                    Arrays.stream<String>(
+                                    Arrays.stream(
                                             fields[3]
                                                 .split(",".toRegex())
                                                 .dropLastWhile { it.isEmpty() }
                                                 .toTypedArray(),
                                         )
-                                        .map<Int> { word: String -> word.toLong(16).toInt() }
+                                        .map { word: String -> word.toLong(16).toInt() }
                                         .toList()
                             groups
                                 .getOrPut(fields[0] + " " + fields[1]) { mutableListOf() }
                                 .add(Vector(fields[2], words))
                         }
                 }
-            return groups.entries.stream().map<Arguments?> { entry: Map.Entry<String, List<Vector>>
+            return groups.entries.stream().map { entry: Map.Entry<String, List<Vector>>
                 ->
                 val key: Array<String> =
                     entry.key.split(" ".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()

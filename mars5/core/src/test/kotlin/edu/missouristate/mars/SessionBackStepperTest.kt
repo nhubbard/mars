@@ -68,7 +68,7 @@ internal class SessionBackStepperTest {
         val base = session.memory.textBaseAddress
         val loop: BasicInstruction =
             custom(
-                SimulationCode { `_`: ProgramStatement?, context: InstructionContext? ->
+                { `_`: ProgramStatement?, context: InstructionContext? ->
                     context!!.updateRegister(8, context.registerFile.getValue(8) + 1)
                     context.setProgramCounter(base)
                 },
@@ -177,7 +177,7 @@ internal class SessionBackStepperTest {
         execution.execute(
             statement(
                 custom(
-                    SimulationCode { statement: ProgramStatement?, context: InstructionContext? ->
+                    { statement: ProgramStatement?, context: InstructionContext? ->
                         try {
                             when (operation) {
                                 "word" -> context!!.setMemoryWord(address, 0x76543210)
@@ -217,7 +217,7 @@ internal class SessionBackStepperTest {
         execution.execute(
             statement(
                 custom(
-                    SimulationCode { `_`: ProgramStatement?, context: InstructionContext? ->
+                    { `_`: ProgramStatement?, context: InstructionContext? ->
                         try {
                             context!!.setRegisterPairToDouble(0, 3.5)
                         } catch (error: InvalidRegisterAccessException) {
@@ -272,7 +272,7 @@ internal class SessionBackStepperTest {
             execution.execute(
                 statement(
                     custom(
-                        SimulationCode { `_`: ProgramStatement?, context: InstructionContext? ->
+                        { `_`: ProgramStatement?, context: InstructionContext? ->
                             context!!.updateRegister(8, result)
                             context.updateRegister(9, result)
                         },
@@ -293,7 +293,7 @@ internal class SessionBackStepperTest {
         execution.execute(
             statement(
                 custom(
-                    SimulationCode { `_`: ProgramStatement?, context: InstructionContext? ->
+                    { `_`: ProgramStatement?, context: InstructionContext? ->
                         context!!.updateRegister(8, 1)
                         context.updateRegister(9, 2)
                         context.updateRegister(10, 3)

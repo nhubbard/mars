@@ -655,7 +655,7 @@ internal class BasicInstructionSemanticsTest {
                 Assertions.assertThat<Throwable?>(failure)
                     .isInstanceOf(ProcessingException::class.java)
                 if (exception == -1) {
-                    Assertions.assertThat<ErrorList?>((failure as ProcessingException).errors())
+                    Assertions.assertThat((failure as ProcessingException).errors())
                         .isNull()
                 } else {
                     Assertions.assertThat(

@@ -7,8 +7,6 @@ import edu.missouristate.mars.di.DaggerMarsComponent
 import edu.missouristate.mars.mips.hardware.Coprocessor0State
 import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
-import edu.missouristate.mars.mips.instructions.Instruction
-import edu.missouristate.mars.mips.instructions.SimulationCode
 import edu.missouristate.mars.mips.instructions.basic.InstrAdd
 import edu.missouristate.mars.mips.instructions.basic.InstrAddS
 import edu.missouristate.mars.mips.instructions.basic.InstrAddiu
@@ -157,7 +155,7 @@ internal class InstructionContextTest {
                 ProcessingException::class.java,
                 Consumer { error: ProcessingException? ->
                     Assertions.assertThat(
-                            Objects.requireNonNull<ErrorList?>(error!!.errors())!!
+                            Objects.requireNonNull(error!!.errors())!!
                                 .generateErrorReport(),
                         )
                         .contains("0x00400100", "arithmetic overflow")
@@ -189,8 +187,8 @@ internal class InstructionContextTest {
         second.registerFile.setValue(4, 99)
         execute(syscall, first)
         execute(syscall, second)
-        Assertions.assertThat<Int?>(firstIo.printed).containsExactly(42)
-        Assertions.assertThat<Int?>(secondIo.printed).containsExactly(99)
+        Assertions.assertThat(firstIo.printed).containsExactly(42)
+        Assertions.assertThat(secondIo.printed).containsExactly(99)
         firstIo.input = 123
         secondIo.input = 456
         first.registerFile.setValue(2, 5)
@@ -205,7 +203,7 @@ internal class InstructionContextTest {
             .isInstanceOfSatisfying<ProcessingException?>(
                 ProcessingException::class.java,
                 Consumer { error: ProcessingException? ->
-                    Assertions.assertThat<ErrorList?>(error!!.errors()).isNull()
+                    Assertions.assertThat(error!!.errors()).isNull()
                 },
             )
         Assertions.assertThat(first.exitCode).isEqualTo(7)
@@ -221,7 +219,7 @@ internal class InstructionContextTest {
                 "custom",
                 BasicInstructionFormat.R_FORMAT,
                 "00000000000000000000000000000000",
-                SimulationCode { _, _ -> calls.incrementAndGet() },
+                { _, _ -> calls.incrementAndGet() },
             )
         val syscall: AbstractSyscall? =
             object : AbstractSyscall(123, "Legacy") {
@@ -237,7 +235,7 @@ internal class InstructionContextTest {
     }
 
     private class RecordingEnvironment : TestEnvironment() {
-        val printed: MutableList<Int?> = ArrayList<Int?>()
+        val printed: MutableList<Int?> = ArrayList()
         var input: Int = 0
         var exitCode: Int = 0
 
@@ -303,9 +301,9 @@ internal class InstructionContextTest {
                 return
             }
             Assertions.assertThat(index).isBetween(0, code.size - 1)
-            val statement = code.get(index)
+            val statement = code[index]
             context.registerFile.incrementPC()
-            (Objects.requireNonNull<Instruction?>(statement.instruction) as BasicInstruction)
+            (Objects.requireNonNull(statement.instruction) as BasicInstruction)
                 .simulationCode
                 .simulate(statement, context)
             context.completeInstruction()

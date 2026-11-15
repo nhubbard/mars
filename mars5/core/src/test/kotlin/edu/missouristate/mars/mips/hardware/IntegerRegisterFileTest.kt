@@ -38,14 +38,14 @@ internal class IntegerRegisterFileTest {
     fun namesAndNumbersReferToTheSameRegister() {
         val registers = IntegerRegisterFile()
         Assertions.assertThat(registers.getNumber($$"$t0")).isEqualTo(8)
-        Assertions.assertThat<Register?>(registers.getUserRegister("$8"))
+        Assertions.assertThat(registers.getUserRegister("$8"))
             .isSameAs(registers.getUserRegister($$"$t0"))
         registers.updateRegister($$"$t0", 42)
         Assertions.assertThat(registers.getValue(8)).isEqualTo(42)
         Assertions.assertThat(registers.updateRegister(8, 99)).isEqualTo(42)
         Assertions.assertThat(registers.getValue(8)).isEqualTo(99)
         Assertions.assertThat(registers.getNumber($$"$missing")).isEqualTo(-1)
-        Assertions.assertThat<Register?>(registers.getUserRegister($$"$missing")).isNull()
+        Assertions.assertThat(registers.getUserRegister($$"$missing")).isNull()
     }
 
     @Test
@@ -69,14 +69,14 @@ internal class IntegerRegisterFileTest {
         val listener = Consumer<RegisterAccessNotice> { notices.add(it) }
         first.addRegistersObserver(listener)
         second.setValue(8, 123)
-        Assertions.assertThat<RegisterAccessNotice>(notices).isEmpty()
+        Assertions.assertThat(notices).isEmpty()
         first.setValue(8, 42)
         first.getValue(8)
         first.setValue(33, 5)
         first.setValue(34, 6)
         Assertions.assertThat(first.getValueNoNotify(IntegerRegisterFile.HI_REGISTER)).isEqualTo(5)
         Assertions.assertThat(first.getValueNoNotify(IntegerRegisterFile.LO_REGISTER)).isEqualTo(6)
-        Assertions.assertThat<RegisterAccessNotice>(notices)
+        Assertions.assertThat(notices)
             .extracting<Int?, RuntimeException>(AccessNotice::accessType)
             .containsExactly(
                 AccessNotice.WRITE,
@@ -84,12 +84,12 @@ internal class IntegerRegisterFileTest {
                 AccessNotice.WRITE,
                 AccessNotice.WRITE,
             )
-        Assertions.assertThat<RegisterAccessNotice>(notices)
+        Assertions.assertThat(notices)
             .extracting<String?, RuntimeException>(RegisterAccessNotice::registerName)
             .containsExactly($$"$t0", $$"$t0", "hi", "lo")
         first.deleteRegistersObserver(listener)
         first.setValue(8, 99)
-        Assertions.assertThat<RegisterAccessNotice>(notices).hasSize(4)
+        Assertions.assertThat(notices).hasSize(4)
     }
 
     @ParameterizedTest

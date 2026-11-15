@@ -11,7 +11,6 @@ import edu.missouristate.mars.di.MarsComponent
 import edu.missouristate.mars.mips.hardware.AddressErrorException
 import edu.missouristate.mars.mips.hardware.MemoryState
 import edu.missouristate.mars.mips.instructions.BasicInstruction
-import edu.missouristate.mars.mips.instructions.Instruction
 import edu.missouristate.mars.mips.instructions.basic.InstrLdc1
 import edu.missouristate.mars.mips.instructions.basic.InstrLwc1
 import edu.missouristate.mars.mips.instructions.basic.InstrSdc1
@@ -32,7 +31,7 @@ internal class SessionMemoryTest {
             val statement =
                 requireNotNull(session.memory.getStatement(session.memory.textBaseAddress))
             Assertions.assertThat(
-                    Objects.requireNonNull<Instruction?>(statement.instruction)!!.name,
+                    Objects.requireNonNull(statement.instruction)!!.name,
                 )
                 .isEqualTo("addiu")
             Assertions.assertThat(statement.printableBasicAssemblyStatement).contains("addiu")
@@ -192,14 +191,14 @@ internal class SessionMemoryTest {
             Assertions.assertThat(api.getWord(address)).isEqualTo(0x1234abcd)
             Assertions.assertThat(api.getHalfWord(address)).isEqualTo(0xabcd)
             Assertions.assertThat(api.getByte(address)).isEqualTo(0xcd)
-            Assertions.assertThatExceptionOfType<MemoryAccessException>(
+            Assertions.assertThatExceptionOfType(
                     MemoryAccessException::class.java,
                 )
                 .isThrownBy(ThrowableAssert.ThrowingCallable { api.getWord(address + 1) })
                 .satisfies(
                     ThrowingConsumer { error: MemoryAccessException ->
                         Assertions.assertThat(error.address).isEqualTo(address + 1)
-                        Assertions.assertThat<Throwable?>(error.cause)
+                        Assertions.assertThat(error.cause)
                             .isInstanceOf(AddressErrorException::class.java)
                     },
                 )
@@ -301,7 +300,7 @@ internal class SessionMemoryTest {
 
         private fun writeString(context: InstructionContext, address: Int, value: String) {
             for (i in 0..<value.length) {
-                context.memory().setByte(address + i, value.get(i).code)
+                context.memory().setByte(address + i, value[i].code)
             }
             context.memory().setByte(address + value.length, 0)
         }

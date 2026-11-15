@@ -5,7 +5,7 @@ import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
 
 open class InstrSltu : BasicInstruction(
     $$"sltu $t1,$t2,$t3",
-    $$"Set less than unsigned : If $t2 is less than $t3 using unsigned comparision, then set $t1"
+    $$"Set less than unsigned : If $t2 is less than $t3 using unsigned comparison, then set $t1"
         + $$" to 1 else set $t1 to 0",
     BasicInstructionFormat.R_FORMAT,
     "000000 sssss ttttt fffff 00000 101011",

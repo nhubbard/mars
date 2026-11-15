@@ -1,5 +1,5 @@
 // GrammarKit's Java resolver cannot see the Kotlin functions imported by the generated Syntax parser.
-//noinspection BnfResolve
+//noinspection BnfResolveForFile
 {
   generate=[psi="no" parser-api="syntax"]
   parserClass="edu.missouristate.mars.plugin.language.parser.MipsParser"

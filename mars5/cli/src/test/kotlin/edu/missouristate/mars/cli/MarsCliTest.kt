@@ -636,7 +636,7 @@ internal class MarsCliTest {
                 130,
                 execute(arrayOf("--max-steps", "40", source.toString()), output, error),
             )
-            assertTrue(Thread.currentThread().isInterrupted())
+            assertTrue(Thread.currentThread().isInterrupted)
         } finally {
             // Clear the interrupt before JUnit reuses the test thread.
             Thread.interrupted()

@@ -49,6 +49,7 @@ dependencies {
     } else {
       intellijIdea("2026.3")
     }
+    bundledModule("intellij.platform.monolith")
     bundledModule("intellij.platform.buildView")
     bundledModule("intellij.platform.debugger")
     bundledPlugin("com.intellij.modules.compose")

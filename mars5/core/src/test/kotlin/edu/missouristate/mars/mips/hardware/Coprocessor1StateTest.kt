@@ -17,11 +17,11 @@ internal class Coprocessor1StateTest {
         val state = Coprocessor1State()
         state.setConditionFlag(7)
         val notices = ArrayList<RegisterAccessNotice>()
-        state.addRegistersObserver(Consumer<RegisterAccessNotice> { notices.add(it) })
+        state.addRegistersObserver({ notices.add(it) })
         Assertions.assertThat(state.conditionFlagsNoNotify).isEqualTo(0x80)
-        Assertions.assertThat<RegisterAccessNotice>(notices).isEmpty()
+        Assertions.assertThat(notices).isEmpty()
         Assertions.assertThat(state.conditionFlags).isEqualTo(0x80)
-        Assertions.assertThat<RegisterAccessNotice>(notices)
+        Assertions.assertThat(notices)
             .extracting<Int?, RuntimeException>(AccessNotice::accessType)
             .containsExactly(AccessNotice.READ)
     }
@@ -33,7 +33,7 @@ internal class Coprocessor1StateTest {
         for (i in 0..31) {
             Assertions.assertThat(first.updateRegister(i, i + 1)).isZero()
             Assertions.assertThat(second.getValue(i)).isZero()
-            Assertions.assertThat<Register?>(first.getRegister($$"$f" + i))
+            Assertions.assertThat(first.getRegister($$"$f" + i))
                 .isSameAs(first.registers[i])
             Assertions.assertThat(first.getRegisterNumber($$"$f" + i)).isEqualTo(i)
         }
@@ -82,15 +82,15 @@ internal class Coprocessor1StateTest {
     fun registerPairObserversSeeTheOddRegisterBeforeTheEvenRegister() {
         val state = Coprocessor1State()
         val notices = ArrayList<RegisterAccessNotice>()
-        state.addRegistersObserver(Consumer<RegisterAccessNotice> { notices.add(it) })
+        state.addRegistersObserver({ notices.add(it) })
 
         state.setRegisterPairToDouble(4, 1.5)
         Assertions.assertThat(state.getDoubleFromRegisterPair(4)).isEqualTo(1.5)
 
-        Assertions.assertThat<RegisterAccessNotice>(notices)
+        Assertions.assertThat(notices)
             .extracting<String?, RuntimeException>(RegisterAccessNotice::registerName)
             .containsExactly($$"$f5", $$"$f4", $$"$f5", $$"$f4")
-        Assertions.assertThat<RegisterAccessNotice>(notices)
+        Assertions.assertThat(notices)
             .extracting<Int?, RuntimeException>(AccessNotice::accessType)
             .containsExactly(
                 AccessNotice.WRITE,
@@ -175,8 +175,8 @@ internal class Coprocessor1StateTest {
         Assertions.assertThat(state.getRegisterNumber($$"$f32")).isEqualTo(-1)
         Assertions.assertThat(state.getRegisterNumber($$"$f010")).isEqualTo(8)
         Assertions.assertThat(state.getRegisterNumber($$"$f0x1f")).isEqualTo(31)
-        Assertions.assertThat<Register?>(state.getRegister($$"$f")).isNull()
-        Assertions.assertThat<Register?>(state.getRegister($$"$f32")).isNull()
+        Assertions.assertThat(state.getRegister($$"$f")).isNull()
+        Assertions.assertThat(state.getRegister($$"$f32")).isNull()
         Assertions.assertThat(state.setConditionFlag(-1)).isZero()
         Assertions.assertThat(state.clearConditionFlag(8)).isZero()
         Assertions.assertThat(state.conditionFlags).isZero()
@@ -193,10 +193,10 @@ internal class Coprocessor1StateTest {
         first.addRegistersObserver(listener)
         second.updateRegister(0, 42)
         second.setConditionFlag(0)
-        Assertions.assertThat<RegisterAccessNotice>(notices).isEmpty()
+        Assertions.assertThat(notices).isEmpty()
         first.updateRegister(31, 42)
         first.setConditionFlag(7)
-        Assertions.assertThat<RegisterAccessNotice>(
+        Assertions.assertThat(
                 notices.stream().filter { n: RegisterAccessNotice ->
                     n.accessType == AccessNotice.WRITE
                 },
@@ -207,6 +207,6 @@ internal class Coprocessor1StateTest {
         val count = notices.size
         first.updateRegister(31, 43)
         first.clearConditionFlag(7)
-        Assertions.assertThat<RegisterAccessNotice>(notices).hasSize(count)
+        Assertions.assertThat(notices).hasSize(count)
     }
 }

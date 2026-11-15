@@ -1,7 +1,6 @@
 package edu.missouristate.mars
 
 import edu.missouristate.mars.mips.instructions.Instruction
-import java.io.InputStream
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
@@ -28,7 +27,7 @@ internal class InstructionEncodingTest {
             Files.writeString(file, ".text\n" + source + "\nlabel:\ntarget: nop\n")
             val program: MIPSprogram = session.assemble(listOf(file), null, extended = false, warnings = false)
             val statement =
-                Objects.requireNonNull<ArrayList<ProgramStatement>?>(
+                Objects.requireNonNull(
                         program.machineList,
                         "Expected assembled instructions",
                     )!!
@@ -53,7 +52,7 @@ internal class InstructionEncodingTest {
     companion object {
         @JvmStatic
         fun vectors(): Stream<Arguments> {
-            Objects.requireNonNull<InputStream>(
+            Objects.requireNonNull(
                     InstructionEncodingTest::class
                         .java
                         .getResourceAsStream("/basic-encoding-vectors.tsv"),

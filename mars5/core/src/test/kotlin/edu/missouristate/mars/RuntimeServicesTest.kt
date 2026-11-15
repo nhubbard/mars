@@ -1,7 +1,6 @@
 package edu.missouristate.mars
 
 import edu.missouristate.mars.api.AssemblyError
-import edu.missouristate.mars.api.Program
 import edu.missouristate.mars.api.StopEvent
 import edu.missouristate.mars.api.SyscallEnvironment
 import edu.missouristate.mars.core.InstructionContext
@@ -19,7 +18,6 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
-import java.util.function.BooleanSupplier
 import org.assertj.core.api.Assertions
 import org.assertj.core.api.ThrowableAssert
 import org.junit.jupiter.api.Test
@@ -86,9 +84,9 @@ internal class RuntimeServicesTest {
                 second.registerFile.updateRegister(6, 3)
                 second.registerFile.updateRegister(7, 20)
                 SyscallMidiOutSync().simulate(null, right)
-                Assertions.assertThat<List<Any?>>(a)
+                Assertions.assertThat(a)
                     .containsExactly(mutableListOf<Any?>(60, 1000, 0, 100, false))
-                Assertions.assertThat<List<Any?>>(b)
+                Assertions.assertThat(b)
                     .containsExactly(mutableListOf<Any?>(64, 10, 3, 20, true))
             }
         }
@@ -97,7 +95,7 @@ internal class RuntimeServicesTest {
     @ParameterizedTest
     @ValueSource(booleans = [true, false])
     fun sparseStoragePreservesByteOrderAndCrossBlockWrites(littleEndian: Boolean) {
-        val segment = WordMemorySegment(2, false, BooleanSupplier { littleEndian })
+        val segment = WordMemorySegment(2, false, { littleEndian })
         Assertions.assertThat(segment.fetchWordOrNull(0)).isNull()
         Assertions.assertThat(segment.storeWord(0, 0x12345678)).isZero()
         Assertions.assertThat(segment.fetchBytes(0, 1)).isEqualTo(if (littleEndian) 0x78 else 0x12)
@@ -131,31 +129,31 @@ internal class RuntimeServicesTest {
             val assembler = SessionAssembler(session)
             val success = assembler.assemble(listOf(source), null, true, false)
             Assertions.assertThat(success.succeeded()).isTrue()
-            Assertions.assertThat<AssemblyError>(success.errors())
+            Assertions.assertThat(success.errors())
                 .hasSize(1)
                 .allMatch(AssemblyError::isWarning)
-            Assertions.assertThat<Program?>(success.program()).isNotNull()
+            Assertions.assertThat(success.program()).isNotNull()
             Assertions.assertThatThrownBy(
                     ThrowableAssert.ThrowingCallable { (success.errors() as MutableList).clear() },
                 )
                 .isInstanceOf(UnsupportedOperationException::class.java)
             val failure = assembler.assemble(listOf(source), null, true, true)
             Assertions.assertThat(failure.succeeded()).isFalse()
-            Assertions.assertThat<Program?>(failure.program()).isNull()
+            Assertions.assertThat(failure.program()).isNull()
         }
     }
 
     companion object {
         private fun midiRecorder(calls: MutableList<List<Any?>>): SyscallEnvironment {
             return Proxy.newProxyInstance(
-                SyscallEnvironment::class.java.getClassLoader(),
+                SyscallEnvironment::class.java.classLoader,
                 arrayOf<Class<*>>(SyscallEnvironment::class.java),
                 InvocationHandler { proxy: Any?, method: Method?, args: Array<Any?>? ->
-                    if (method!!.getName() == "playTone") {
+                    if (method!!.name == "playTone") {
                         calls.add(requireNotNull(args).toList())
                         return@InvocationHandler null
                     }
-                    throw AssertionError("Unexpected I/O: " + method.getName())
+                    throw AssertionError("Unexpected I/O: " + method.name)
                 },
             ) as SyscallEnvironment
         }

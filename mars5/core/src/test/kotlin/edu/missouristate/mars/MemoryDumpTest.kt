@@ -8,7 +8,6 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.util.Objects
 import java.util.concurrent.CancellationException
-import java.util.function.Consumer
 import org.assertj.core.api.Assertions
 import org.assertj.core.api.ThrowableAssert
 import org.junit.jupiter.api.Test
@@ -27,12 +26,12 @@ internal class MemoryDumpTest {
                 offset += Integer.BYTES
             }
             val output = directory.resolve("data.hex")
-            Objects.requireNonNull<DumpFormat?>(DumpFormatLoader.findByCommandDescriptor("HEX"))!!
+            Objects.requireNonNull(DumpFormatLoader.findByCommandDescriptor("HEX"))!!
                 .dumpMemoryRange(output.toFile(), start, start + 0x10000, session)
             val lines = Files.readAllLines(output)
-            Assertions.assertThat<String>(lines).hasSize(16387)
+            Assertions.assertThat(lines).hasSize(16387)
             Assertions.assertThat(lines.first()).isEqualTo(":0400000041424344F2")
-            Assertions.assertThat<String>(lines.subList(16383, lines.size))
+            Assertions.assertThat(lines.subList(16383, lines.size))
                 .containsExactly(
                     ":04FFFC0041424344F7",
                     ":020000040001F9",
@@ -58,7 +57,7 @@ internal class MemoryDumpTest {
             val output = directory.resolve("segment.txt")
             val data: Int = session.memory.dataBaseAddress
             format.dumpMemoryRange(output.toFile(), data, data + 8 * Integer.BYTES, session)
-            Assertions.assertThat<String>(Files.readAllLines(output))
+            Assertions.assertThat(Files.readAllLines(output))
                 .containsExactly(
                     "0x10010000    0x00000001 0x00000002 0x00000003 0x00000004 0x00000005 0x00000006 0x00000007 0x00000008 ",
                     "0x10010020    0x00000009 ",
@@ -66,7 +65,7 @@ internal class MemoryDumpTest {
             val text: Int = session.memory.textBaseAddress
             format.dumpMemoryRange(output.toFile(), text, text + Integer.BYTES, session)
             val lines = Files.readAllLines(output)
-            Assertions.assertThat<String>(lines).hasSize(3)
+            Assertions.assertThat(lines).hasSize(3)
             Assertions.assertThat(lines.last())
                 .startsWith("0x00400000  0x24080007  ")
                 .endsWith($$"main: addiu $t0, $zero, 7")
@@ -92,25 +91,25 @@ internal class MemoryDumpTest {
             session.memory.setWord(mapped, 0x12345678)
             val notices = ArrayList<MemoryAccessNotice>()
             session.memory.addObserver(
-                Consumer { e: MemoryAccessNotice -> notices.add(e) },
+                { e: MemoryAccessNotice -> notices.add(e) },
                 text,
                 text,
             )
             session.memory.addObserver(
-                Consumer { e: MemoryAccessNotice -> notices.add(e) },
+                { e: MemoryAccessNotice -> notices.add(e) },
                 mapped,
                 mapped,
             )
             session.claimStoppedSession().use { `_` ->
-                listing = listingFormat.capture(session, text, text, Runnable {})
-                mmio = hexFormat.capture(session, mapped, mapped, Runnable {})
+                listing = listingFormat.capture(session, text, text, {})
+                mmio = hexFormat.capture(session, mapped, mapped, {})
                 Assertions.assertThatThrownBy(
                         ThrowableAssert.ThrowingCallable {
                             hexFormat.capture(
                                 session,
                                 mapped,
                                 mapped,
-                                Runnable {
+                                {
                                     throw CancellationException()
                                 },
                             )
@@ -118,7 +117,7 @@ internal class MemoryDumpTest {
                     )
                     .isInstanceOf(CancellationException::class.java)
             }
-            Assertions.assertThat<MemoryAccessNotice>(notices).isEmpty()
+            Assertions.assertThat(notices).isEmpty()
             val statement = requireNotNull(session.memory.getStatementNoNotify(text))
             statement.binaryStatement = 0
             statement.source = "changed"
@@ -131,6 +130,6 @@ internal class MemoryDumpTest {
             .endsWith($$"main: addiu $t0, $zero, 7")
         val mmioFile = directory.resolve("mmio")
         hexFormat.write(mmioFile.toFile(), mmio)
-        Assertions.assertThat<String>(Files.readAllLines(mmioFile)).containsExactly("12345678")
+        Assertions.assertThat(Files.readAllLines(mmioFile)).containsExactly("12345678")
     }
 }

@@ -23,7 +23,7 @@ internal class InstructionSetTest {
     fun basicInstructionCountIsStable() {
         // Pin the exact count so accidental addition or deletion is immediately visible.
         // Adjust this value only when intentionally adding or removing basic instructions.
-        Assertions.assertThat<BasicInstruction>(basicInstructions)
+        Assertions.assertThat(basicInstructions)
             .`as`("Expected exactly 213 basic instructions; adjust if intentionally changed")
             .hasSize(213)
     }
@@ -93,7 +93,7 @@ internal class InstructionSetTest {
     @Test
     fun coreInstructionsArePresent() {
         val coreInstructions: MutableList<String?> =
-            mutableListOf<String?>(
+            mutableListOf(
                 "add",
                 "addi",
                 "sub",
@@ -135,10 +135,10 @@ internal class InstructionSetTest {
         @BeforeAll
         fun initMars() {
             TestSessions.create().use { session ->
-                allInstructions = ArrayList<Instruction>(session.instructionSet.instructionList)
+                allInstructions = ArrayList(session.instructionSet.instructionList)
             }
-            basicInstructions = ArrayList<BasicInstruction>()
-            extendedInstructions = ArrayList<ExtendedInstruction>()
+            basicInstructions = ArrayList()
+            extendedInstructions = ArrayList()
             for (instruction in allInstructions!!) {
                 if (instruction is BasicInstruction) {
                     basicInstructions!!.add(instruction)

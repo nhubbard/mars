@@ -8,7 +8,7 @@ import edu.missouristate.mars.simulator.Exceptions.TRAP_EXCEPTION
 open class InstrTgeu : BasicInstruction(
     $$"tgeu $t1,$t2",
     $$"Trap if greater or equal unsigned : Trap if $t1 is greater than or equal to $t2 using"
-        + " unsigned comparision",
+        + " unsigned comparison",
     BasicInstructionFormat.R_FORMAT,
     "000000 fffff sssss ccccc ccccc 110001",
     { statement, context ->

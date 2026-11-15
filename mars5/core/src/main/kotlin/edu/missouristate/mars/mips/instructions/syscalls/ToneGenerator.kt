@@ -48,7 +48,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 //  The ToneGenerator and Tone classes were developed by Otterbein College
 //  student Tony Brock in July 2007.  They simulate MIDI output through the
-//  computers soundcard using classes and methods of the javax.sound.midi
+//  computer's sound card using classes and methods of the javax.sound.midi
 //  package.
 //
 //  Max Hailperin <max@gustavus.edu> updated ToneGenerator on 2009-10-19.

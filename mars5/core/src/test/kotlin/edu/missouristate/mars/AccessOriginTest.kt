@@ -8,11 +8,9 @@ import edu.missouristate.mars.mips.hardware.RegisterAccessNotice
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.Objects
-import java.util.concurrent.Callable
 import java.util.concurrent.FutureTask
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
-import java.util.function.Consumer
 import java.util.function.Predicate
 import org.assertj.core.api.Assertions
 import org.assertj.core.api.ThrowableAssert
@@ -30,12 +28,12 @@ internal class AccessOriginTest {
             val program: MIPSprogram = session.assemble(listOf(source))
             val notices = ArrayList<MemoryAccessNotice>()
             session.memory.addObserver(
-                Consumer<MemoryAccessNotice> { notices.add(it) },
+                { notices.add(it) },
                 session.memory.textBaseAddress,
                 session.memory.textBaseAddress + 4,
             )
             Assertions.assertThat(program.simulate(1)).isFalse()
-            Assertions.assertThat<MemoryAccessNotice>(notices)
+            Assertions.assertThat(notices)
                 .isNotEmpty()
                 .allMatch(
                     Predicate { n: MemoryAccessNotice ->
@@ -61,7 +59,7 @@ internal class AccessOriginTest {
             session.settings.setSelfModifyingCodeEnabled(true)
             memory.setWord(address, 0)
             val notices = ArrayList<MemoryAccessNotice>()
-            memory.addObserver(Consumer<MemoryAccessNotice> { notices.add(it) }, address)
+            memory.addObserver({ notices.add(it) }, address)
             AccessOrigin.duringExecution<Any?, AddressErrorException>(
                 ScopedValue.CallableOp {
                     memory.fetchInstruction(address)
@@ -70,10 +68,10 @@ internal class AccessOriginTest {
                     null
                 },
             )
-            Assertions.assertThat<MemoryAccessNotice>(notices)
+            Assertions.assertThat(notices)
                 .extracting<Boolean?, RuntimeException>(MemoryAccessNotice::isInstructionFetch)
                 .containsExactly(true, false)
-            Assertions.assertThat<MemoryAccessNotice>(notices)
+            Assertions.assertThat(notices)
                 .allMatch(
                     Predicate { n: MemoryAccessNotice -> n.origin() == AccessOrigin.EXECUTION },
                 )
@@ -85,14 +83,14 @@ internal class AccessOriginTest {
         TestSessions.create().use { session ->
             val notices = LinkedBlockingQueue<RegisterAccessNotice>()
             session.registerFile.registers[8].addObserver(
-                Consumer<RegisterAccessNotice> { notices.add(it) },
+                { notices.add(it) },
             )
             val operation =
-                FutureTask<Int?>(Callable { session.registerFile.updateRegister(8, 42) })
+                FutureTask<Int?>({ session.registerFile.updateRegister(8, 42) })
             Thread.ofPlatform().name("MIPS-spoof").start(operation)
             operation.get(2, TimeUnit.SECONDS)
             val notice =
-                Objects.requireNonNull<RegisterAccessNotice>(
+                Objects.requireNonNull(
                     notices.poll(2, TimeUnit.SECONDS),
                     "Expected a memory access notice",
                 )
