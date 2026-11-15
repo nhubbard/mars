@@ -50,14 +50,13 @@ then records the probe's executed words, emitted words, and exit or expected
 exception in `instruction-lab/build/instruction-catalog/coverage.tsv`.
 The generated programs under `build/instruction-catalog/sources` can be
 opened individually for debugging. Each header specifies its memory layout.
-The probes assume delayed branching is off.
+The probes use Release 6 delay-slot rules and provide a no-op after each probe.
 
 A few catalog probes use alternate operand values to fit the simulated
-memory map and meet doubleword alignment. The catalog's unsigned
-load and store offset examples use `32768` to select the pseudo form.
-Expected breakpoint, trap, and overflow cases count only when execution
-reaches the probe and reports the expected exception cause. The catalog
-check covers instruction forms.
+memory map and meet linked-access alignment. Expected exceptions count only
+when execution reaches the probe and reports the expected cause. Where a native
+instruction and a pseudo-instruction have identical syntax, the probe verifies the
+native form selected by the assembler.
 The interactive workbench exercises a subset of the syscall services.
 
 ## PNG decoder and Bitmap Display

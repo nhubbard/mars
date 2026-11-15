@@ -1,6 +1,5 @@
 package edu.missouristate.mars.smoke
 
-import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.MIPSprogram
 import edu.missouristate.mars.MIPSprogram.ExecutionStep
 import edu.missouristate.mars.ProcessingException
@@ -16,7 +15,10 @@ import edu.missouristate.mars.mips.hardware.Coprocessor0State
 import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.Instruction
 import edu.missouristate.mars.mips.instructions.InstructionDefaults
+import edu.missouristate.mars.simulator.Exceptions.ADDRESS_EXCEPTION_LOAD
+import edu.missouristate.mars.simulator.Exceptions.ADDRESS_EXCEPTION_STORE
 import edu.missouristate.mars.simulator.Exceptions.BREAKPOINT_EXCEPTION
+import edu.missouristate.mars.simulator.Exceptions.RESERVED_INSTRUCTION_EXCEPTION
 import edu.missouristate.mars.simulator.Exceptions.TRAP_EXCEPTION
 import java.io.InputStream
 import java.io.PrintStream
@@ -25,7 +27,7 @@ import java.nio.file.Path
 import java.util.Locale
 
 object InstructionLab {
-    private const val STEP_LIMIT = 96
+    private const val STEP_LIMIT = 160
     private val MEMORY: Set<String> =
         setOf(
             "lb",
@@ -33,15 +35,18 @@ object InstructionLab {
             "lh",
             "lhu",
             "lw",
+            "lwu",
             "ll",
-            "lwl",
-            "lwr",
+            "lld",
+            "llwp",
+            "lldp",
             "sb",
             "sh",
             "sw",
             "sc",
-            "swl",
-            "swr",
+            "scd",
+            "scwp",
+            "scdp",
             "lwc1",
             "ldc1",
             "swc1",
@@ -57,8 +62,18 @@ object InstructionLab {
             "usw",
             "ush",
             "sd",
+            "uld",
+            "usd",
+            "ld.b",
+            "ld.h",
+            "ld.w",
+            "ld.d",
+            "st.b",
+            "st.h",
+            "st.w",
+            "st.d",
         )
-    private val DOUBLE_MEMORY: Set<String> = setOf("ldc1", "sdc1", "l.d", "s.d")
+    private val REGISTER_JUMPS = setOf("jr", "jalr", "jr.hb", "jalr.hb", "jrc", "jalrc")
     private val TAKEN_TRAPS: Set<String> = setOf("tne", "tnei", "tge", "tgeu", "tgei", "tltiu")
     private val HEADLESS: MarsGuiProxy =
         object : MarsGuiProxy {
@@ -108,7 +123,8 @@ object InstructionLab {
                 Files.delete(path)
             }
         }
-        val catalog = InstructionDefaults.forTarget(MarsTarget.MARS32).instructionList
+        // The assembler gives the native ld and sd spellings priority over identical pseudo forms.
+        val catalog = InstructionDefaults.get().instructionList.distinctBy(Instruction::exampleFormat)
         check(!catalog.isEmpty()) { "MARS returned an empty instruction catalog" }
         val lines = ArrayList<String>()
         lines.add(
@@ -179,7 +195,7 @@ object InstructionLab {
             val words = checkNotNull(program.machineList).filter { it.address in start until end }
             val matches =
                 if (instruction is BasicInstruction)
-                    words.size == 1 && words.first().instruction?.javaClass == instruction.javaClass
+                    words.size == 1 && words.first().instruction?.exampleFormat == instruction.exampleFormat
                 else
                     words.isNotEmpty() &&
                         words.all { it.address in program.sourceMap().pseudoAddresses() }
@@ -252,7 +268,7 @@ object InstructionLab {
         input: InputStream,
         output: PrintStream,
     ) {
-        session("Default", MarsTarget.MARS64).use { session ->
+        session("Default").use { session ->
             try {
                 SessionSyscallEnvironment(session.memory, input, output, output).use { console ->
                     val program: MIPSprogram = session.assemble(listOf(path))
@@ -270,18 +286,17 @@ object InstructionLab {
         }
     }
 
-    private fun session(layout: String, target: MarsTarget = MarsTarget.MARS32): MarsContext {
+    private fun session(layout: String): MarsContext {
         val settings = Settings()
         settings.simulationSettings
             .setMemoryConfiguration(layout)
-            .setDelayedBranchingEnabled(false)
             .setBareMachineEnabled(false)
             .setStartAtMainEnabled(false)
             .setExtendedAssemblerEnabled(true)
             .setSelfModifyingCodeEnabled(false)
             .setWarningsAreErrors(false)
         return DaggerMarsComponent.builder()
-            .coreModule(CoreModule(settings, 32, target))
+            .coreModule(CoreModule(settings, 32))
             .guiProxy(HEADLESS)
             .build()
             .context()
@@ -299,7 +314,7 @@ object InstructionLab {
         fun source(original: String): String {
             return """
             # Catalog form: %s
-            # Memory configuration: %s. Delayed branching: off.
+            # Memory configuration: %s. Release 6 architectural delay slots.
             .data
             .align 3
             buffer: .space 128
@@ -355,36 +370,37 @@ object InstructionLab {
                 if (memory && assembly.endsWith(",100000")) {
                     assembly = assembly.replace(",100000", ",0x10010000")
                 }
-                if (DOUBLE_MEMORY.contains(name) && assembly.endsWith(",-100")) {
-                    assembly = assembly.replace(",-100", ",-104")
+                if (name in setOf("lld", "scd") && assembly.endsWith("-100(\$t2)")) {
+                    assembly = assembly.replace("-100(\$t2)", "-104(\$t2)")
                 }
                 var seed = ""
                 if (memory && assembly.endsWith("(\$t2)")) {
-                    seed =
-                        if (assembly.contains("label")) "move \$t2,\$zero"
-                        else if (assembly.endsWith("-100(\$t2)"))
-                            "la \$t2,buffer\naddiu \$t2,\$t2,100"
-                        else "la \$t2,buffer"
+                    seed = when {
+                        "label" in assembly || "0x100000000" in assembly -> "move \$t2,\$zero"
+                        assembly.endsWith("-100(\$t2)") -> "la \$t2,buffer\naddiu \$t2,\$t2,100"
+                        assembly.endsWith("-104(\$t2)") -> "la \$t2,buffer\naddiu \$t2,\$t2,104"
+                        assembly.endsWith("-8(\$t2)") -> "la \$t2,buffer\naddiu \$t2,\$t2,8"
+                        else -> "la \$t2,buffer"
+                    }
                 }
-                if (name == "jr" || name == "jalr") {
+                if (name in REGISTER_JUMPS) {
                     seed = "la \$t1,target\nla \$t2,target"
                 }
                 if (name == "jic" || name == "jialc") {
                     seed = "la \$t2,target\naddiu \$t2,\$t2,100"
                 }
-                if (name == "eret") {
-                    seed = "la \$t0,target\nmtc0 \$t0,$14"
+                if (name == "eret" || name == "eretnc") {
+                    seed = "la \$t0,target\ndmtc0 \$t0,$14"
                 }
-                if (name.startsWith("movz")) {
-                    seed = "move \$t3,\$zero"
+                val exception = when {
+                    name == "break" -> BREAKPOINT_EXCEPTION
+                    name in TAKEN_TRAPS -> TRAP_EXCEPTION
+                    name == "sigrie" || (name in setOf("rdhwr", "dmfc0", "dmtc0") && assembly.endsWith(",7")) ->
+                        RESERVED_INSTRUCTION_EXCEPTION
+                    name in setOf("ll", "ldc1", "l.d") && assembly.endsWith(",-100") -> ADDRESS_EXCEPTION_LOAD
+                    name in setOf("sc", "sdc1", "s.d") && assembly.endsWith(",-100") -> ADDRESS_EXCEPTION_STORE
+                    else -> 0
                 }
-                if (name.startsWith("movt")) {
-                    seed = "c.eq.s \$f1,\$f1\nc.eq.s 1,\$f1,\$f1"
-                }
-                val overflowProbe = name == "mulou" && assembly.endsWith(",-100")
-                val exception =
-                    if (name == "break" || overflowProbe) BREAKPOINT_EXCEPTION
-                    else if (TAKEN_TRAPS.contains(name)) TRAP_EXCEPTION else 0
                 return Probe(assembly, layout, seed, branch, exception)
             }
         }
