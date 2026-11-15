@@ -24,7 +24,7 @@ class Release6HardwareDiagnosticTest {
         """.trimIndent())
         TestSessions.create().use { machine ->
             machine.selectTarget(MarsTarget.MARS64)
-            val program = machine.assemble(listOf(source), null, false, false)
+            val program = machine.assemble(listOf(source), null, extended = false, warnings = false)
             val words = listOf(0x7c09003b, 0x7c0a083b, 0x7c0b283b, 0x00000040, 0x7c0920fb)
             assertEquals(words, program.machineList!!.map(ProgramStatement::binaryStatement))
             assertEquals(listOf("rdhwr", "rdhwr", "rdhwr", "ssnop", "rdhwr"),

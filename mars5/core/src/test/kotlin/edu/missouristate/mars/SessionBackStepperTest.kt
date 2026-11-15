@@ -24,7 +24,6 @@ import edu.missouristate.mars.mips.instructions.basic.InstrSyscall
 import edu.missouristate.mars.simulator.DelayedBranchState
 import java.util.Objects
 import org.assertj.core.api.Assertions
-import org.assertj.core.api.ThrowableAssert
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
@@ -124,18 +123,16 @@ internal class SessionBackStepperTest {
         session.coprocessor0.resetRegisters()
         session.registerFile.setValue(8, Int.MAX_VALUE)
         session.registerFile.setValue(9, 1)
-        Assertions.assertThatThrownBy(
-                ThrowableAssert.ThrowingCallable {
-                    execution.execute(
-                        statement(
-                            InstrAdd(),
-                            10,
-                            8,
-                            9,
-                        ),
-                    )
-                },
+        Assertions.assertThatThrownBy {
+            execution.execute(
+                statement(
+                    InstrAdd(),
+                    10,
+                    8,
+                    9,
+                ),
             )
+        }
             .isInstanceOf(ProcessingException::class.java)
         Assertions.assertThat(session.coprocessor0.getValue(Coprocessor0State.CAUSE)).isNotZero()
         session.backStepper.backStep()
@@ -155,9 +152,7 @@ internal class SessionBackStepperTest {
         val execution: InstructionContext = execution(session)
         val base = session.memory.textBaseAddress
         val invalid = ProgramStatement(null, "invalid", null, null, null, base, 1)
-        Assertions.assertThatThrownBy(
-                ThrowableAssert.ThrowingCallable { execution.execute(invalid) },
-            )
+        Assertions.assertThatThrownBy { execution.execute(invalid) }
             .isInstanceOf(ProcessingException::class.java)
         Assertions.assertThat(session.coprocessor0.getValue(Coprocessor0State.CAUSE))
             .isEqualTo(10 shl 2)
@@ -333,9 +328,7 @@ internal class SessionBackStepperTest {
     fun anUndoFailureRaisesAnErrorWithoutTerminatingTheProcessOrDisablingHistory() {
         val session: MarsContext = session(16)
         session.backStepper.addMemoryRestoreByte(3, 42)
-        Assertions.assertThatThrownBy(
-                ThrowableAssert.ThrowingCallable { session.backStepper.backStep() },
-            )
+        Assertions.assertThatThrownBy { session.backStepper.backStep() }
             .isInstanceOf(IllegalStateException::class.java)
             .hasMessageContaining("restore memory")
         Assertions.assertThat(session.backStepper.enabled()).isTrue()

@@ -11,7 +11,6 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 import java.util.stream.Stream
 import org.assertj.core.api.Assertions
-import org.assertj.core.api.ThrowableAssert
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.params.ParameterizedTest
@@ -23,11 +22,9 @@ internal class CoreSessionIntegrationTest {
     @ParameterizedTest
     @MethodSource("corpus")
     fun assemblesExistingCorpusWithoutCompatibilityClasses(source: Path) {
-        Assertions.assertThatThrownBy(
-                ThrowableAssert.ThrowingCallable {
-                    Class.forName("edu.missouristate.mars.Globals")
-                },
-            )
+        Assertions.assertThatThrownBy {
+            Class.forName("edu.missouristate.mars.Globals")
+        }
             .isInstanceOf(ClassNotFoundException::class.java)
         TestSessions.create().use { session ->
             Assertions.assertThat(session.assemble(listOf(source)).instructionCount()).isPositive()

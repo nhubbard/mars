@@ -18,7 +18,6 @@ import edu.missouristate.mars.mips.instructions.basic.InstrSwc1
 import edu.missouristate.mars.mips.instructions.basic.InstrSyscall
 import java.util.Objects
 import org.assertj.core.api.Assertions
-import org.assertj.core.api.ThrowableAssert
 import org.assertj.core.api.ThrowingConsumer
 import org.junit.jupiter.api.Test
 
@@ -194,7 +193,7 @@ internal class SessionMemoryTest {
             Assertions.assertThatExceptionOfType(
                     MemoryAccessException::class.java,
                 )
-                .isThrownBy(ThrowableAssert.ThrowingCallable { api.getWord(address + 1) })
+                .isThrownBy { api.getWord(address + 1) }
                 .satisfies(
                     ThrowingConsumer { error: MemoryAccessException ->
                         Assertions.assertThat(error.address).isEqualTo(address + 1)

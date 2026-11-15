@@ -17,7 +17,6 @@ import edu.missouristate.mars.api.Program
 import edu.missouristate.mars.assembler.Assembler
 import edu.missouristate.mars.assembler.Macro
 import edu.missouristate.mars.assembler.SourceLine
-import edu.missouristate.mars.assembler.Symbol
 import edu.missouristate.mars.assembler.SymbolTable
 import edu.missouristate.mars.assembler.Token
 import edu.missouristate.mars.assembler.Tokenizer
@@ -49,7 +48,6 @@ import java.util.function.Consumer
 import java.util.function.Function
 import java.util.stream.Stream
 import org.assertj.core.api.Assertions
-import org.assertj.core.api.ThrowableAssert
 import org.assertj.core.api.ThrowingConsumer
 import org.assertj.core.api.iterable.ThrowingExtractor
 import org.junit.jupiter.api.Test
@@ -127,11 +125,9 @@ internal class SessionAssemblyTest {
         session(layout).use { builder ->
             builder.settings.setStartAtMainEnabled(true)
             builder.memory.byteOrder = MemoryState.BIG_ENDIAN
-            Assertions.assertThatThrownBy(
-                    ThrowableAssert.ThrowingCallable {
-                        builder.captureAssemblyImage(neverCancelled)
-                    },
-                )
+            Assertions.assertThatThrownBy {
+                builder.captureAssemblyImage(neverCancelled)
+            }
                 .isInstanceOf(IllegalStateException::class.java)
                 .hasMessage("No assembled program")
             original = builder.assemble(listOf(file))
@@ -195,18 +191,16 @@ internal class SessionAssemblyTest {
                 Assertions.assertThat(first.memory.getWord(result)).isEqualTo(43)
                 Assertions.assertThat(second.memory.getWord(result)).isEqualTo(42)
                 Assertions.assertThat(second.registerFile.programCounter).isEqualTo(main)
-                Assertions.assertThatThrownBy(
-                        ThrowableAssert.ThrowingCallable {
-                            first.loadAssemblyImage(
-                                image,
-                                {
-                                    if (first.program == null) {
-                                        throw CancellationException()
-                                    }
-                                },
-                            )
+                Assertions.assertThatThrownBy {
+                    first.loadAssemblyImage(
+                        image,
+                        {
+                            if (first.program == null) {
+                                throw CancellationException()
+                            }
                         },
                     )
+                }
                     .isInstanceOf(CancellationException::class.java)
                 Assertions.assertThat<MIPSprogram>(first.program).isNull()
                 first.loadAssemblyImage(image, neverCancelled)
@@ -280,16 +274,14 @@ internal class SessionAssemblyTest {
             val memory: MemoryState = session.memory
             memory.set(memory.stackBaseAddress, 0x5a, 1)
             val argument: String = "x".repeat(memory.stackBaseAddress - memory.stackLimitAddress)
-            Assertions.assertThatThrownBy(
-                    ThrowableAssert.ThrowingCallable {
-                        ProgramArgumentList(
-                                arrayOf(
-                                    argument,
-                                ),
-                            )
-                            .storeProgramArguments(session)
-                    },
-                )
+            Assertions.assertThatThrownBy {
+                ProgramArgumentList(
+                        arrayOf(
+                            argument,
+                        ),
+                    )
+                    .storeProgramArguments(session)
+            }
                 .isInstanceOf(IllegalArgumentException::class.java)
                 .hasMessage("Program arguments exceed session stack memory")
             Assertions.assertThat(memory.getByte(memory.stackBaseAddress)).isEqualTo(0x5a)
@@ -468,16 +460,14 @@ internal class SessionAssemblyTest {
             Assertions.assertThat(program.simulate(100)).isTrue()
             Assertions.assertThat(output.printed).containsExactly(73)
             val badLead = source("bad-lead.s", ".text\nj private_label\n")
-            Assertions.assertThatThrownBy(
-                    ThrowableAssert.ThrowingCallable {
-                        session.assemble(
-                            listOf(
-                                badLead,
-                                library,
-                            ),
-                        )
-                    },
+            Assertions.assertThatThrownBy {
+                session.assemble(
+                    listOf(
+                        badLead,
+                        library,
+                    ),
                 )
+            }
                 .isInstanceOfSatisfying<ProcessingException?>(
                     ProcessingException::class.java,
                     Consumer { error: ProcessingException? ->
@@ -612,13 +602,9 @@ internal class SessionAssemblyTest {
         val snapshot = AssemblySourceSnapshot(entries, texts)
         entries.clear()
         texts.clear()
-        Assertions.assertThatThrownBy(
-                ThrowableAssert.ThrowingCallable { (snapshot.entries() as MutableList).clear() },
-            )
+        Assertions.assertThatThrownBy { (snapshot.entries() as MutableList).clear() }
             .isInstanceOf(UnsupportedOperationException::class.java)
-        Assertions.assertThatThrownBy(
-                ThrowableAssert.ThrowingCallable { (snapshot.texts() as MutableMap).clear() },
-            )
+        Assertions.assertThatThrownBy { (snapshot.texts() as MutableMap).clear() }
             .isInstanceOf(UnsupportedOperationException::class.java)
 
         session("Default").use { session ->
@@ -766,17 +752,13 @@ internal class SessionAssemblyTest {
                         listOf(pc + 36),
                     ),
                 )
-            Assertions.assertThatThrownBy(
-                    ThrowableAssert.ThrowingCallable { (map.origins() as MutableMap).clear() },
-                )
+            Assertions.assertThatThrownBy { (map.origins() as MutableMap).clear() }
                 .isInstanceOf(UnsupportedOperationException::class.java)
-            Assertions.assertThatThrownBy(
-                    ThrowableAssert.ThrowingCallable {
-                        (map.breakpoints()[InstructionSourceMap.Location(calls, 2)]
-                                as MutableList)
-                            .clear()
-                    },
-                )
+            Assertions.assertThatThrownBy {
+                (map.breakpoints()[InstructionSourceMap.Location(calls, 2)]
+                        as MutableList)
+                    .clear()
+            }
                 .isInstanceOf(UnsupportedOperationException::class.java)
             val expanded: List<AssembledInstruction> =
                 assembled.instructionsAt(InstructionSourceMap.Location(calls, 2), {})
@@ -789,11 +771,9 @@ internal class SessionAssemblyTest {
                 .isSameAs(map.origins()[pc])
             Assertions.assertThat<Int?>(map.pseudoAddresses())
                 .containsExactlyInAnyOrder(pc, pc + 4, pc + 16, pc + 20)
-            Assertions.assertThatThrownBy(
-                    ThrowableAssert.ThrowingCallable {
-                        (map.pseudoAddresses() as MutableSet).clear()
-                    },
-                )
+            Assertions.assertThatThrownBy {
+                (map.pseudoAddresses() as MutableSet).clear()
+            }
                 .isInstanceOf(UnsupportedOperationException::class.java)
             Assertions.assertThat(assembled.pseudoInstructions({}))
                 .containsExactly(
@@ -826,16 +806,14 @@ internal class SessionAssemblyTest {
                     ),
                 )
                 .isEmpty()
-            Assertions.assertThatThrownBy(
-                    ThrowableAssert.ThrowingCallable {
-                        assembled.instructionsAt(
-                            InstructionSourceMap.Location(calls, 2),
-                            {
-                                throw CancellationException("stop inspection")
-                            },
-                        )
+            Assertions.assertThatThrownBy {
+                assembled.instructionsAt(
+                    InstructionSourceMap.Location(calls, 2),
+                    {
+                        throw CancellationException("stop inspection")
                     },
                 )
+            }
                 .isInstanceOf(CancellationException::class.java)
         }
     }
@@ -1015,15 +993,11 @@ internal class SessionAssemblyTest {
                         ),
                     ),
                 )
-            Assertions.assertThatThrownBy(
-                    ThrowableAssert.ThrowingCallable {
-                        (map.locals().getValue(main) as MutableMap).clear()
-                    },
-                )
+            Assertions.assertThatThrownBy {
+                (map.locals().getValue(main) as MutableMap).clear()
+            }
                 .isInstanceOf(UnsupportedOperationException::class.java)
-            Assertions.assertThatThrownBy(
-                    ThrowableAssert.ThrowingCallable { (map.globals() as MutableMap).clear() },
-                )
+            Assertions.assertThatThrownBy { (map.globals() as MutableMap).clear() }
                 .isInstanceOf(UnsupportedOperationException::class.java)
         }
     }
@@ -1199,20 +1173,18 @@ internal class SessionAssemblyTest {
                         setOf(target),
                     ),
                 )
-            Assertions.assertThatThrownBy(
-                    ThrowableAssert.ThrowingCallable {
-                        (uses.getValue(
-                                SourceToken(
-                                    InstructionSourceMap.Location(
-                                        main,
-                                        4,
-                                    ),
-                                    14,
-                                ),
-                            ) as MutableSet)
-                            .clear()
-                    },
-                )
+            Assertions.assertThatThrownBy {
+                (uses.getValue(
+                        SourceToken(
+                            InstructionSourceMap.Location(
+                                main,
+                                4,
+                            ),
+                            14,
+                        ),
+                    ) as MutableSet)
+                    .clear()
+            }
                 .isInstanceOf(UnsupportedOperationException::class.java)
         }
     }
@@ -1230,8 +1202,8 @@ internal class SessionAssemblyTest {
                             immutableMapOf(file, Files.readString(file)),
                         ),
                         null,
-                        true,
-                        false,
+                        extendedAssemblerEnabled = true,
+                        warningsAreErrors = false,
                     )
             Assertions.assertThat(result.errors()).isEmpty()
             val uses: Map<SourceToken, Set<SymbolUse>> =
@@ -1342,8 +1314,8 @@ internal class SessionAssemblyTest {
                 assembler.assembleSnapshot(
                     AssemblySourceSnapshot(entries, immutableMapOf()),
                     null,
-                    true,
-                    false,
+                    extendedAssemblerEnabled = true,
+                    warningsAreErrors = false,
                 )
             Assertions.assertThat(absentMain.succeeded()).isFalse()
             Assertions.assertThat(absentMain.errors())
@@ -1361,8 +1333,8 @@ internal class SessionAssemblyTest {
                         immutableMapOf(main, mainText, outer, outerText),
                     ),
                     null,
-                    true,
-                    false,
+                    extendedAssemblerEnabled = true,
+                    warningsAreErrors = false,
                 )
             Assertions.assertThat(absentInclude.succeeded()).isFalse()
             Assertions.assertThat(absentInclude.errors())
@@ -1389,8 +1361,8 @@ internal class SessionAssemblyTest {
                         ),
                     ),
                     null,
-                    true,
-                    false,
+                    extendedAssemblerEnabled = true,
+                    warningsAreErrors = false,
                 )
             Assertions.assertThat(invalidInclude.succeeded()).isFalse()
             Assertions.assertThat(invalidInclude.errors())
@@ -1470,8 +1442,8 @@ internal class SessionAssemblyTest {
                         ),
                     ),
                     null,
-                    true,
-                    false,
+                    extendedAssemblerEnabled = true,
+                    warningsAreErrors = false,
                 )
             Assertions.assertThat(unfinished.succeeded()).isFalse()
             Assertions.assertThat(unfinished.errors())
@@ -1496,8 +1468,8 @@ internal class SessionAssemblyTest {
                         immutableMapOf(main, completePath + "\nj entry\n", part, "entry: nop\n"),
                     ),
                     null,
-                    true,
-                    false,
+                    extendedAssemblerEnabled = true,
+                    warningsAreErrors = false,
                 )
             Assertions.assertThat(completed.succeeded()).isTrue()
         }
@@ -1518,8 +1490,8 @@ internal class SessionAssemblyTest {
                         immutableMapOf(main, entry, part, unfinished),
                     ),
                     null,
-                    true,
-                    false,
+                    extendedAssemblerEnabled = true,
+                    warningsAreErrors = false,
                 )
             Assertions.assertThat(result.succeeded()).isFalse()
             Assertions.assertThat(result.errors())
@@ -1551,8 +1523,8 @@ internal class SessionAssemblyTest {
                         immutableMapOf(main, entry, part, completed),
                     ),
                     null,
-                    true,
-                    false,
+                    extendedAssemblerEnabled = true,
+                    warningsAreErrors = false,
                 )
             Assertions.assertThat(valid.succeeded()).isTrue()
             val base: Int = session.memory.dataBaseAddress
@@ -1626,8 +1598,8 @@ internal class SessionAssemblyTest {
                     .assembleSnapshot(
                         AssemblySourceSnapshot(listOf(entry), immutableMapOf(entry, source)),
                         null,
-                        true,
-                        false,
+                        extendedAssemblerEnabled = true,
+                        warningsAreErrors = false,
                     )
             Assertions.assertThat(result.succeeded()).isFalse()
             Assertions.assertThat(result.errors())
@@ -1875,24 +1847,20 @@ internal class SessionAssemblyTest {
                     },
                 )
         }
-        Assertions.assertThatThrownBy(
-                ThrowableAssert.ThrowingCallable {
-                    AssemblySourceSnapshot(
-                        listOf(main),
-                        immutableMapOf(main, "", directory.resolve("./main.s"), "nop"),
-                    )
-                },
+        Assertions.assertThatThrownBy {
+            AssemblySourceSnapshot(
+                listOf(main),
+                immutableMapOf(main, "", directory.resolve("./main.s"), "nop"),
             )
+        }
             .isInstanceOf(IllegalArgumentException::class.java)
             .hasMessageContaining("Multiple source texts")
-        Assertions.assertThatThrownBy(
-                ThrowableAssert.ThrowingCallable {
-                    AssemblySourceSnapshot(
-                        mutableListOf(),
-                        immutableMapOf(),
-                    )
-                },
+        Assertions.assertThatThrownBy {
+            AssemblySourceSnapshot(
+                mutableListOf(),
+                immutableMapOf(),
             )
+        }
             .isInstanceOf(IllegalArgumentException::class.java)
             .hasMessageContaining("At least one source file")
     }
@@ -2385,21 +2353,19 @@ internal class SessionAssemblyTest {
                 for (checkpoint in 1..checkpoints.get()) {
                     val remaining = AtomicInteger(checkpoint)
                     val cancellation = CancellationException("stop assembly")
-                    Assertions.assertThatThrownBy(
-                            ThrowableAssert.ThrowingCallable {
-                                assembler.assembleSnapshot(
-                                    snapshot,
-                                    null,
-                                    true,
-                                    false,
-                                    {
-                                        if (remaining.decrementAndGet() == 0) {
-                                            throw cancellation
-                                        }
-                                    },
-                                )
+                    Assertions.assertThatThrownBy {
+                        assembler.assembleSnapshot(
+                            snapshot,
+                            null,
+                            true,
+                            false,
+                            {
+                                if (remaining.decrementAndGet() == 0) {
+                                    throw cancellation
+                                }
                             },
                         )
+                    }
                         .isSameAs(cancellation)
                     Assertions.assertThat<MIPSprogram>(session.program).isNull()
                     val data: Int = session.memory.dataBaseAddress
@@ -2495,9 +2461,7 @@ internal class SessionAssemblyTest {
                 val invalid =
                     source("errors.s", ".text\nunknown_op\nunknown_op\nunknown_op\nunknown_op\n")
                 second.settings.setAssemblerErrorLimit(1)
-                Assertions.assertThatThrownBy(
-                        ThrowableAssert.ThrowingCallable { second.assemble(listOf(invalid)) },
-                    )
+                Assertions.assertThatThrownBy { second.assemble(listOf(invalid)) }
                     .isInstanceOfSatisfying<ProcessingException?>(
                         ProcessingException::class.java,
                         Consumer { error: ProcessingException? ->
@@ -2518,9 +2482,7 @@ internal class SessionAssemblyTest {
                 Assertions.assertThat(first.memory.getWord(address)).isEqualTo(42)
                 Assertions.assertThat(first.symbolTable.getAddress("result")).isEqualTo(address)
                 second.settings.setAssemblerErrorLimit(20)
-                Assertions.assertThatThrownBy(
-                        ThrowableAssert.ThrowingCallable { second.assemble(listOf(invalid)) },
-                    )
+                Assertions.assertThatThrownBy { second.assemble(listOf(invalid)) }
                     .isInstanceOfSatisfying<ProcessingException?>(
                         ProcessingException::class.java,
                         Consumer { error: ProcessingException? ->
@@ -2534,9 +2496,7 @@ internal class SessionAssemblyTest {
                         },
                     )
                 val duplicate = source("duplicate.s", ".data\nitem: .word 1\nitem: .word 2\n")
-                Assertions.assertThatThrownBy(
-                        ThrowableAssert.ThrowingCallable { second.assemble(listOf(duplicate)) },
-                    )
+                Assertions.assertThatThrownBy { second.assemble(listOf(duplicate)) }
                     .isInstanceOfSatisfying<ProcessingException?>(
                         ProcessingException::class.java,
                         Consumer { error: ProcessingException? ->
@@ -2565,9 +2525,7 @@ internal class SessionAssemblyTest {
                 session.assemble(listOf(source("valid-before-token-error.s", program(42, false))))
             session.settings.setAssemblerErrorLimit(2)
             val invalid = source("token-errors.s", ".data\n.byte 'ab'\n.byte 'cd'\n.byte 'ef'\n")
-            Assertions.assertThatThrownBy(
-                    ThrowableAssert.ThrowingCallable { session.assemble(listOf(invalid)) },
-                )
+            Assertions.assertThatThrownBy { session.assemble(listOf(invalid)) }
                 .isInstanceOfSatisfying<ProcessingException?>(
                     ProcessingException::class.java,
                     Consumer { error: ProcessingException? ->
@@ -2608,9 +2566,7 @@ internal class SessionAssemblyTest {
                 val named = source("named-registers.s", $$".text\nadd $t0, $t1, $t2\n")
                 Assertions.assertThat(regular.assemble(listOf(named)).machineList)
                     .hasSize(1)
-                Assertions.assertThatThrownBy(
-                        ThrowableAssert.ThrowingCallable { strict.assemble(listOf(named)) },
-                    )
+                Assertions.assertThatThrownBy { strict.assemble(listOf(named)) }
                     .isInstanceOfSatisfying<ProcessingException?>(
                         ProcessingException::class.java,
                         Consumer { error: ProcessingException? ->
@@ -2640,28 +2596,22 @@ internal class SessionAssemblyTest {
                 val current: MIPSprogram =
                     session.assemble(listOf(source("new.s", program(2, false))))
                 val address: Int = session.symbolTable.getAddress("result")
-                Assertions.assertThatThrownBy(
-                        ThrowableAssert.ThrowingCallable { old.simulate(100) },
-                    )
+                Assertions.assertThatThrownBy { old.simulate(100) }
                     .isInstanceOf(IllegalStateException::class.java)
                 Assertions.assertThat(old.backStepper).isNull()
-                Assertions.assertThatThrownBy(
-                        ThrowableAssert.ThrowingCallable {
-                            Assembler(session).assemble(MIPSprogram(other), true)
-                        },
-                    )
+                Assertions.assertThatThrownBy {
+                    Assembler(session).assemble(MIPSprogram(other), true)
+                }
                     .isInstanceOf(IllegalArgumentException::class.java)
                 Assertions.assertThat<MIPSprogram>(session.program).isSameAs(current)
                 Assertions.assertThat(session.memory.getWord(address)).isEqualTo(2)
-                Assertions.assertThatThrownBy(
-                        ThrowableAssert.ThrowingCallable {
-                            session.assemble(
-                                listOf(
-                                    directory.resolve("missing.s"),
-                                ),
-                            )
-                        },
+                Assertions.assertThatThrownBy {
+                    session.assemble(
+                        listOf(
+                            directory.resolve("missing.s"),
+                        ),
                     )
+                }
                     .isInstanceOf(ProcessingException::class.java)
                 Assertions.assertThat<MIPSprogram>(session.program).isSameAs(current)
                 val standaloneSource = MIPSprogram(session)
@@ -2674,9 +2624,7 @@ internal class SessionAssemblyTest {
                     )
                     .isNotEmpty()
                 Assertions.assertThat<MIPSprogram>(session.program).isNull()
-                Assertions.assertThatThrownBy(
-                        ThrowableAssert.ThrowingCallable { current.simulate(100) },
-                    )
+                Assertions.assertThatThrownBy { current.simulate(100) }
                     .isInstanceOf(IllegalStateException::class.java)
             }
         }

@@ -19,7 +19,6 @@ import java.nio.file.Path
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 import org.assertj.core.api.Assertions
-import org.assertj.core.api.ThrowableAssert
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.params.ParameterizedTest
@@ -127,17 +126,15 @@ internal class RuntimeServicesTest {
         Files.writeString(source, ".text\n.unsupported\nnop\n")
         TestSessions.create().use { session ->
             val assembler = SessionAssembler(session)
-            val success = assembler.assemble(listOf(source), null, true, false)
+            val success = assembler.assemble(listOf(source), null, extendedAssemblerEnabled = true, warningsAreErrors = false)
             Assertions.assertThat(success.succeeded()).isTrue()
             Assertions.assertThat(success.errors())
                 .hasSize(1)
                 .allMatch(AssemblyError::isWarning)
             Assertions.assertThat(success.program()).isNotNull()
-            Assertions.assertThatThrownBy(
-                    ThrowableAssert.ThrowingCallable { (success.errors() as MutableList).clear() },
-                )
+            Assertions.assertThatThrownBy { (success.errors() as MutableList).clear() }
                 .isInstanceOf(UnsupportedOperationException::class.java)
-            val failure = assembler.assemble(listOf(source), null, true, true)
+            val failure = assembler.assemble(listOf(source), null, extendedAssemblerEnabled = true, warningsAreErrors = true)
             Assertions.assertThat(failure.succeeded()).isFalse()
             Assertions.assertThat(failure.program()).isNull()
         }

@@ -13,7 +13,6 @@ import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
 import java.util.function.Predicate
 import org.assertj.core.api.Assertions
-import org.assertj.core.api.ThrowableAssert
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 
@@ -101,26 +100,24 @@ internal class AccessOriginTest {
 
     @Test
     fun nestedBindingsAndExceptionalExitsRestoreTheOuterOrigin() {
-        Assertions.assertThatThrownBy(
-                ThrowableAssert.ThrowingCallable {
+        Assertions.assertThatThrownBy {
+            AccessOrigin.duringExecution<Any?, RuntimeException>(
+                ScopedValue.CallableOp {
+                    Assertions.assertThat<AccessOrigin?>(AccessOrigin.current())
+                        .isEqualTo(AccessOrigin.EXECUTION)
                     AccessOrigin.duringExecution<Any?, RuntimeException>(
                         ScopedValue.CallableOp {
                             Assertions.assertThat<AccessOrigin?>(AccessOrigin.current())
                                 .isEqualTo(AccessOrigin.EXECUTION)
-                            AccessOrigin.duringExecution<Any?, RuntimeException>(
-                                ScopedValue.CallableOp {
-                                    Assertions.assertThat<AccessOrigin?>(AccessOrigin.current())
-                                        .isEqualTo(AccessOrigin.EXECUTION)
-                                    null
-                                },
-                            )
-                            Assertions.assertThat<AccessOrigin?>(AccessOrigin.current())
-                                .isEqualTo(AccessOrigin.EXECUTION)
-                            throw IllegalArgumentException("failed invocation")
+                            null
                         },
                     )
+                    Assertions.assertThat<AccessOrigin?>(AccessOrigin.current())
+                        .isEqualTo(AccessOrigin.EXECUTION)
+                    throw IllegalArgumentException("failed invocation")
                 },
             )
+        }
             .isInstanceOf(IllegalArgumentException::class.java)
         Assertions.assertThat<AccessOrigin?>(AccessOrigin.current())
             .isEqualTo(AccessOrigin.APPLICATION)

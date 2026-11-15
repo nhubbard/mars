@@ -2,7 +2,6 @@ package edu.missouristate.mars.mips.hardware
 
 import java.util.function.Consumer
 import org.assertj.core.api.Assertions
-import org.assertj.core.api.ThrowableAssert
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
@@ -97,11 +96,11 @@ internal class IntegerRegisterFileTest {
     fun invalidRegisterNumbersAreRejected(number: Int) {
         val registers = IntegerRegisterFile()
         Assertions.assertThatIllegalArgumentException()
-            .isThrownBy(ThrowableAssert.ThrowingCallable { registers.getValue(number) })
+            .isThrownBy { registers.getValue(number) }
         Assertions.assertThatIllegalArgumentException()
-            .isThrownBy(ThrowableAssert.ThrowingCallable { registers.getValueNoNotify(number) })
+            .isThrownBy { registers.getValueNoNotify(number) }
         Assertions.assertThatIllegalArgumentException()
-            .isThrownBy(ThrowableAssert.ThrowingCallable { registers.setValue(number, 42) })
+            .isThrownBy { registers.setValue(number, 42) }
     }
 
     @Test

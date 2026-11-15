@@ -28,7 +28,7 @@ class Mars64MsaInventoryTest {
         )
         TestSessions.create().use { machine ->
             machine.selectTarget(MarsTarget.MARS64)
-            val program = machine.assemble(listOf(source), null, false, false)
+            val program = machine.assemble(listOf(source), null, extended = false, warnings = false)
             val statements = checkNotNull(program.machineList)
             assertEquals(forms.size + 1, statements.size)
             for ((index, form) in forms.withIndex()) {

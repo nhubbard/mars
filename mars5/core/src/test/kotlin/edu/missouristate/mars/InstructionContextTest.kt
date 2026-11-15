@@ -32,7 +32,6 @@ import java.util.Objects
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.function.Consumer
 import org.assertj.core.api.Assertions
-import org.assertj.core.api.ThrowableAssert
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
@@ -148,9 +147,7 @@ internal class InstructionContextTest {
         context.registerFile.initializeProgramCounter(BASE + 0x104)
         context.registerFile.setValue(8, Int.MAX_VALUE)
         context.registerFile.setValue(9, 1)
-        Assertions.assertThatThrownBy(
-                ThrowableAssert.ThrowingCallable { execute(InstrAdd(), context, 10, 8, 9) },
-            )
+        Assertions.assertThatThrownBy { execute(InstrAdd(), context, 10, 8, 9) }
             .isInstanceOfSatisfying<ProcessingException?>(
                 ProcessingException::class.java,
                 Consumer { error: ProcessingException? ->
@@ -167,9 +164,7 @@ internal class InstructionContextTest {
             .isEqualTo(BASE + 0x100)
         Assertions.assertThat(context.coprocessor0.getValue(Coprocessor0State.STATUS) and 2)
             .isEqualTo(2)
-        Assertions.assertThatThrownBy(
-                ThrowableAssert.ThrowingCallable { execute(InstrLw(), context, 10, 3, 0) },
-            )
+        Assertions.assertThatThrownBy { execute(InstrLw(), context, 10, 3, 0) }
             .isInstanceOf(ProcessingException::class.java)
         Assertions.assertThat(context.coprocessor0.getValue(Coprocessor0State.VADDR)).isEqualTo(3)
     }
@@ -199,7 +194,7 @@ internal class InstructionContextTest {
         Assertions.assertThat(second.registerFile.getValue(2)).isEqualTo(456)
         first.registerFile.setValue(2, 17)
         first.registerFile.setValue(4, 7)
-        Assertions.assertThatThrownBy(ThrowableAssert.ThrowingCallable { execute(syscall, first) })
+        Assertions.assertThatThrownBy { execute(syscall, first) }
             .isInstanceOfSatisfying<ProcessingException?>(
                 ProcessingException::class.java,
                 Consumer { error: ProcessingException? ->

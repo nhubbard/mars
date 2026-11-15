@@ -26,7 +26,7 @@ class Mars64ScalarArithmeticTest {
         """.trimIndent())
         TestSessions.create().use { machine ->
             machine.selectTarget(MarsTarget.MARS64)
-            val program = machine.assemble(listOf(source), null, false, false)
+            val program = machine.assemble(listOf(source), null, extended = false, warnings = false)
             val base = if (double) 0x462028c0 else 0x460028c0
             assertEquals(listOf(5, 7, 6, 27).map { base or it }, program.machineList!!.drop(1).map(ProgramStatement::binaryStatement))
             val fpu = machine.coprocessor1
@@ -59,7 +59,7 @@ class Mars64ScalarArithmeticTest {
         """.trimIndent())
         TestSessions.create().use { machine ->
             machine.selectTarget(MarsTarget.MARS64)
-            val program = machine.assemble(listOf(source), null, false, false)
+            val program = machine.assemble(listOf(source), null, extended = false, warnings = false)
             val base = if (double) 0x462728c0 else 0x460728c0
             assertEquals(listOf(30, 28, 31, 29).map { base or it }, program.machineList!!.take(4).map(ProgramStatement::binaryStatement))
             val fpu = machine.coprocessor1
@@ -106,7 +106,7 @@ class Mars64ScalarArithmeticTest {
         """.trimIndent())
         TestSessions.create().use { machine ->
             machine.selectTarget(MarsTarget.MARS64)
-            val program = machine.assemble(listOf(source), null, false, false)
+            val program = machine.assemble(listOf(source), null, extended = false, warnings = false)
             val base = if (double) 0x462028c0 else 0x460028c0
             assertEquals(listOf(4, 21, 22, 4, 22).map { base or it }, program.machineList!!.drop(1).map(ProgramStatement::binaryStatement))
             val fpu = machine.coprocessor1
@@ -140,7 +140,7 @@ class Mars64ScalarArithmeticTest {
         })
         TestSessions.create().use { machine ->
             machine.selectTarget(MarsTarget.MARS64)
-            val program = machine.assemble(listOf(source), null, false, false)
+            val program = machine.assemble(listOf(source), null, extended = false, warnings = false)
             val base = if (double) 0x462728c0 else 0x460728c0
             assertEquals(operations.map { base or it.second }, program.machineList!!.drop(1).map(ProgramStatement::binaryStatement))
             val fpu = machine.coprocessor1
@@ -184,7 +184,7 @@ class Mars64ScalarArithmeticTest {
         val source = Files.writeString(directory.resolve("invalid.s"), $$"ctc1 $8,$31\ndiv.$$format $f3,$f5,$f7")
         TestSessions.create().use { machine ->
             machine.selectTarget(MarsTarget.MARS64)
-            val program = machine.assemble(listOf(source), null, false, false)
+            val program = machine.assemble(listOf(source), null, extended = false, warnings = false)
             machine.editIntegerRegister(8, INVALID_OPERATION shl 7)
             machine.editCoprocessor1Pair(3, 99)
             program.simulate(1)

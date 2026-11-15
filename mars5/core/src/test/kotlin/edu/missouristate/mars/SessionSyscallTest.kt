@@ -23,7 +23,6 @@ import java.nio.file.Path
 import java.util.Objects
 import java.util.Random
 import org.assertj.core.api.Assertions
-import org.assertj.core.api.ThrowableAssert
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 
@@ -308,11 +307,9 @@ internal class SessionSyscallTest {
                     Assertions.assertThat(io.readString(3)).isEqualTo("abc")
                     Assertions.assertThat(io.showInputDialog("prompt")).isEqualTo("answer")
                     Assertions.assertThat(io.readString(20)).isNull()
-                    Assertions.assertThatThrownBy(ThrowableAssert.ThrowingCallable { io.readInt() })
+                    Assertions.assertThatThrownBy { io.readInt() }
                         .isInstanceOf(NumberFormatException::class.java)
-                    Assertions.assertThatThrownBy(
-                            ThrowableAssert.ThrowingCallable { io.readChar() },
-                        )
+                    Assertions.assertThatThrownBy { io.readChar() }
                         .isInstanceOf(IndexOutOfBoundsException::class.java)
                     io.printString("value=")
                     io.printInt(42)

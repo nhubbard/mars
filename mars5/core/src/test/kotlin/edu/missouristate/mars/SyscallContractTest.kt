@@ -13,7 +13,6 @@ import java.util.Random
 import java.util.function.Predicate
 import java.util.stream.Stream
 import org.assertj.core.api.Assertions
-import org.assertj.core.api.ThrowableAssert
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
@@ -141,9 +140,7 @@ internal class SyscallContractTest {
                 )
             if (number == 10 || number == 17) {
                 val failure =
-                    Assertions.catchThrowable(
-                        ThrowableAssert.ThrowingCallable { service.simulate(null, context) },
-                    )
+                    Assertions.catchThrowable { service.simulate(null, context) }
                 Assertions.assertThat<Throwable?>(failure)
                     .isInstanceOf(ProcessingException::class.java)
                 Assertions.assertThat((failure as ProcessingException).errors())

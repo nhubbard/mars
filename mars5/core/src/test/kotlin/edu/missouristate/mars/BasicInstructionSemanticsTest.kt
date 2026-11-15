@@ -17,7 +17,6 @@ import java.util.Objects
 import java.util.function.Consumer
 import java.util.stream.Stream
 import org.assertj.core.api.Assertions
-import org.assertj.core.api.ThrowableAssert
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
@@ -649,9 +648,7 @@ internal class BasicInstructionSemanticsTest {
                 context.execute(statement)
             } else {
                 val failure =
-                    Assertions.catchThrowable(
-                        ThrowableAssert.ThrowingCallable { context.execute(statement) },
-                    )
+                    Assertions.catchThrowable { context.execute(statement) }
                 Assertions.assertThat<Throwable?>(failure)
                     .isInstanceOf(ProcessingException::class.java)
                 if (exception == -1) {

@@ -21,7 +21,7 @@ class Mars64PrefetchTest {
         """.trimIndent())
         TestSessions.create().use { machine ->
             machine.selectTarget(MarsTarget.MARS64)
-            val program = machine.assemble(listOf(source), null, false, false)
+            val program = machine.assemble(listOf(source), null, extended = false, warnings = false)
             val statements = program.machineList!!
             assertEquals(listOf(0x7d038035, 0x7d377fb5, 0x7d380035), statements.map(ProgramStatement::binaryStatement))
             for ((statement, offset) in statements.zip(listOf(-256, 255, 0))) {

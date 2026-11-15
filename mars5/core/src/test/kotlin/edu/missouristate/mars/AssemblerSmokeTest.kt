@@ -7,7 +7,6 @@ import java.nio.file.Path
 import java.util.Objects
 import java.util.stream.Stream
 import org.assertj.core.api.Assertions
-import org.assertj.core.api.ThrowableAssert
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.params.ParameterizedTest
@@ -70,9 +69,7 @@ internal class AssemblerSmokeTest {
             program.prepareFilesForAssembly(filenames, path, null)
 
         // Extended assembler enabled (pseudo-instructions allowed) — should never throw
-        Assertions.assertThatCode(
-                ThrowableAssert.ThrowingCallable { program.assemble(programs, extended = true, warnings = false) },
-            )
+        Assertions.assertThatCode { program.assemble(programs, extended = true, warnings = false) }
             .doesNotThrowAnyException()
     }
 

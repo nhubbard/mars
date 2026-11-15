@@ -6,7 +6,6 @@ import kotlin.Long
 import kotlin.RuntimeException
 import kotlin.String
 import org.assertj.core.api.Assertions
-import org.assertj.core.api.ThrowableAssert
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
@@ -127,19 +126,13 @@ internal class Coprocessor1StateTest {
     fun oddRegisterPairsAreRejectedWithoutWriting(number: Int) {
         val state = Coprocessor1State()
         Assertions.assertThatExceptionOfType(InvalidRegisterAccessException::class.java)
-            .isThrownBy(
-                ThrowableAssert.ThrowingCallable { state.setRegisterPairToDouble(number, 1.5) },
-            )
+            .isThrownBy { state.setRegisterPairToDouble(number, 1.5) }
         Assertions.assertThatExceptionOfType(InvalidRegisterAccessException::class.java)
-            .isThrownBy(
-                ThrowableAssert.ThrowingCallable { state.setRegisterPairToLong(number, 42L) },
-            )
+            .isThrownBy { state.setRegisterPairToLong(number, 42L) }
         Assertions.assertThatExceptionOfType(InvalidRegisterAccessException::class.java)
-            .isThrownBy(
-                ThrowableAssert.ThrowingCallable { state.getDoubleFromRegisterPair(number) },
-            )
+            .isThrownBy { state.getDoubleFromRegisterPair(number) }
         Assertions.assertThatExceptionOfType(InvalidRegisterAccessException::class.java)
-            .isThrownBy(ThrowableAssert.ThrowingCallable { state.getLongFromRegisterPair(number) })
+            .isThrownBy { state.getLongFromRegisterPair(number) }
         Assertions.assertThat(state.getValue(number)).isZero()
     }
 

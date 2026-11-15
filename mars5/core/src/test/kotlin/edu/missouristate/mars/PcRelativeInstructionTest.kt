@@ -24,7 +24,7 @@ class PcRelativeInstructionTest {
         """.trimIndent())
         TestSessions.create().use { machine ->
             machine.selectTarget(MarsTarget.MARS64)
-            val program = machine.assemble(listOf(source), null, false, false)
+            val program = machine.assemble(listOf(source), null, extended = false, warnings = false)
             val instructions = program.machineList!!
             val words = listOf(0xed07_ffffu, 0xed28_0003u, 0xed5e_0001u, 0xed7f_ffffu, 0xfc00_0000u)
             assertEquals(words.map { it.toInt() }, instructions.map(ProgramStatement::binaryStatement))
@@ -52,10 +52,10 @@ class PcRelativeInstructionTest {
             sd $zero,0($zero)
         """.trimIndent())
         TestSessions.create().use { machine ->
-            assertThrows(ProcessingException::class.java) { machine.assemble(listOf(source), null, false, false) }
+            assertThrows(ProcessingException::class.java) { machine.assemble(listOf(source), null, extended = false, warnings = false) }
             machine.selectTarget(MarsTarget.MARS64)
             machine.memory.byteOrder = littleEndian
-            val program = machine.assemble(listOf(source), null, false, false)
+            val program = machine.assemble(listOf(source), null, extended = false, warnings = false)
             val instructions = program.machineList!!
             assertEquals(0xed30_0003u.toInt(), instructions[0].binaryStatement)
             assertEquals(0xed58_0001u.toInt(), instructions[1].binaryStatement)

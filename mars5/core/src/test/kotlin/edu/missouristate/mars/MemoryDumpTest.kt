@@ -9,7 +9,6 @@ import java.nio.file.Path
 import java.util.Objects
 import java.util.concurrent.CancellationException
 import org.assertj.core.api.Assertions
-import org.assertj.core.api.ThrowableAssert
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 
@@ -103,18 +102,16 @@ internal class MemoryDumpTest {
             session.claimStoppedSession().use { `_` ->
                 listing = listingFormat.capture(session, text, text, {})
                 mmio = hexFormat.capture(session, mapped, mapped, {})
-                Assertions.assertThatThrownBy(
-                        ThrowableAssert.ThrowingCallable {
-                            hexFormat.capture(
-                                session,
-                                mapped,
-                                mapped,
-                                {
-                                    throw CancellationException()
-                                },
-                            )
+                Assertions.assertThatThrownBy {
+                    hexFormat.capture(
+                        session,
+                        mapped,
+                        mapped,
+                        {
+                            throw CancellationException()
                         },
                     )
+                }
                     .isInstanceOf(CancellationException::class.java)
             }
             Assertions.assertThat(notices).isEmpty()

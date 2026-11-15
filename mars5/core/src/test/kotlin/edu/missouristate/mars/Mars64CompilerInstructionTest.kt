@@ -176,7 +176,7 @@ class Mars64CompilerInstructionTest {
         val input = 0x8123_4567_89ab_cdefUL.toLong()
         TestSessions.create().use { machine ->
             machine.selectTarget(MarsTarget.MARS64)
-            val program = machine.assemble(listOf(file), null, false, false)
+            val program = machine.assemble(listOf(file), null, extended = false, warnings = false)
             val words = checkNotNull(program.machineList).map(ProgramStatement::binaryStatement)
             assertEquals(listOf(0x000a483c, 0x000a4ffe, 0x000a4fff, 0x002a4e7e), words)
             assertEquals(listOf("dsll32", "dsrl32", "dsra32", "drotr32"), words.map { machine.instructionSet.findByBinaryCode(it)?.name })

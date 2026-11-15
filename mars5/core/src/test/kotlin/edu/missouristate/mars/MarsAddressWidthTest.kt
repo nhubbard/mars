@@ -255,7 +255,7 @@ class MarsAddressWidthTest {
         """.trimIndent())
         TestSessions.create().use { machine ->
             machine.selectTarget(MarsTarget.MARS64)
-            val program = machine.assemble(listOf(source), null, false, false)
+            val program = machine.assemble(listOf(source), null, extended = false, warnings = false)
             assertEquals(listOf(0x40a97000, 0x402a7000, 0x40a96000, 0x402b6000, 0x402a7001),
                 program.machineList!!.map(ProgramStatement::binaryStatement))
             val bits = 0x1234_5678_fedc_ba98L

@@ -48,7 +48,7 @@ class CompactControlFlowTest {
         """.trimIndent())
         TestSessions.create().use { machine ->
             machine.selectTarget(MarsTarget.MARS64)
-            val program = machine.assemble(listOf(source), null, false, false)
+            val program = machine.assemble(listOf(source), null, extended = false, warnings = false)
             val pc = machine.memory.textBaseAddress
             machine.editIntegerRegister(9, 1)
             program.simulate(1)
@@ -79,7 +79,7 @@ class CompactControlFlowTest {
         """.trimIndent())
         TestSessions.create().use { machine ->
             machine.selectTarget(MarsTarget.MARS64)
-            val program = machine.assemble(listOf(source), null, false, false)
+            val program = machine.assemble(listOf(source), null, extended = false, warnings = false)
             assertTrue(program.simulate(6))
         }
     }
@@ -97,7 +97,7 @@ class CompactControlFlowTest {
         TestSessions.create().use { machine ->
             machine.selectTarget(MarsTarget.MARS64)
             for ((operand, branches) in listOf(taken to true, untaken to false)) {
-                val program = machine.assemble(listOf(source), null, false, false)
+                val program = machine.assemble(listOf(source), null, extended = false, warnings = false)
                 val statement = program.machineList!!.first()
                 val word = encoding.toUInt(16).toInt()
                 assertEquals(word, statement.binaryStatement)
@@ -131,7 +131,7 @@ class CompactControlFlowTest {
             assertEquals("addi", machine.instructionSet.findByBinaryCode(word)?.name)
             machine.selectTarget(MarsTarget.MARS64)
             assertEquals(mnemonic, machine.instructionSet.findByBinaryCode(word)?.name)
-            val program = machine.assemble(listOf(source), null, false, false)
+            val program = machine.assemble(listOf(source), null, extended = false, warnings = false)
             val branch = program.machineList!!.first()
             assertEquals(word, branch.binaryStatement)
             machine.editIntegerRegister(9, left)
@@ -171,7 +171,7 @@ class CompactControlFlowTest {
         """.trimIndent())
         TestSessions.create().use { machine ->
             machine.selectTarget(MarsTarget.MARS64)
-            val program = machine.assemble(listOf(source), null, false, false)
+            val program = machine.assemble(listOf(source), null, extended = false, warnings = false)
             val statement = program.machineList!!.first()
             assertEquals(0x61490001, statement.binaryStatement)
             assertEquals("bnvc", machine.instructionSet.findByBinaryCode(0x61490001)?.name)
@@ -189,7 +189,7 @@ class CompactControlFlowTest {
         TestSessions.create().use { machine ->
             machine.selectTarget(MarsTarget.MARS64)
             val failure = assertThrows(ProcessingException::class.java) {
-                machine.assemble(listOf(source), null, false, false)
+                machine.assemble(listOf(source), null, extended = false, warnings = false)
             }
             assertTrue(failure.errors()!!.generateErrorReport().contains("source register must not be the link register"))
         }
