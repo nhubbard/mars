@@ -1,5 +1,13 @@
 package edu.missouristate.mars.plugin.tools
 
+import edu.missouristate.mars.api.MarsTarget
+import edu.missouristate.mars.plugin.MarsSessionService
+import edu.missouristate.mars.plugin.tools.MemoryGridDisplay.Base
+import edu.missouristate.mars.plugin.tools.MemoryGridDisplay.Mode
+import edu.missouristate.mars.plugin.tools.MemoryGridDisplay.Options as GridOptions
+import java.nio.file.Files
+import java.nio.file.Path
+import org.junit.jupiter.api.io.TempDir
 import edu.missouristate.mars.mips.hardware.AccessNotice.Companion.READ
 import edu.missouristate.mars.mips.hardware.AccessNotice.Companion.WRITE
 import edu.missouristate.mars.mips.hardware.AccessOrigin
@@ -32,12 +40,12 @@ class DataCacheSimulatorTest {
         assertEquals(2L, snapshot.misses)
         assertEquals(33, snapshot.hitRate)
         assertEquals(listOf(0, 0, 0), snapshot.recent.map { it.block })
-        assertEquals(listOf(0x08000000, 0x08000000, 0x08000001), snapshot.recent.map { it.tag })
+        assertEquals(listOf(0x08000000L, 0x08000000L, 0x08000001L), snapshot.recent.map { it.tag })
         assertEquals(listOf(false, true, false), snapshot.recent.map { it.hit })
         assertTrue(snapshot.recent[1].write)
         assertNull(snapshot.recent.first().previousTag)
-        assertEquals(0x08000000, snapshot.recent.last().previousTag)
-        assertEquals(listOf(0x08000001, null), snapshot.blocks.map { it.tag })
+        assertEquals(0x08000000L, snapshot.recent.last().previousTag)
+        assertEquals(listOf(0x08000001L, null), snapshot.blocks.map { it.tag })
     }
 
     @Test
@@ -49,7 +57,7 @@ class DataCacheSimulatorTest {
         val snapshot = cache.snapshot()
         assertEquals(listOf(0, 1, 2, 0, 1, 3, 2), snapshot.recent.map { it.block })
         assertEquals(listOf(0, 0, 1, 0, 0, 1, 1), snapshot.recent.map { it.set })
-        assertEquals(listOf(0, 2, 2, 1), snapshot.blocks.map { it.tag })
+        assertEquals(listOf(0L, 2L, 2L, 1L), snapshot.blocks.map { it.tag })
         assertEquals(listOf(4L, 5L, 7L, 6L), snapshot.blocks.map { it.lastAccess })
         assertTrue(snapshot.blocks.first().lastHit)
     }
@@ -89,6 +97,46 @@ class DataCacheSimulatorTest {
         assertEquals(141L, snapshot.hits)
         assertFalse(snapshot.logging)
         assertEquals((14L..141L).toList(), snapshot.recent.map { it.number })
+    }
+
+    @Test
+    fun `cache, bitmap, and reference tools observe wide data without aliasing narrow locations`(@TempDir directory: Path) {
+        val source = Files.writeString(directory.resolve("tools64.mars"), $$"""
+            .data 0x100000000
+            cell: .word 0x00123456
+            .text 0x100400000
+            .globl main
+            main: dla $t0,cell
+            lw $t1,0($t0)
+            sw $t1,4($t0)
+            sb $zero,5($t0)
+        """.trimIndent())
+        MarsSessionService.createMarsComponent().context().use { machine ->
+            machine.selectTarget(MarsTarget.MARS64)
+            machine.settings.setStartAtMainEnabled(true)
+            val program = machine.assemble(listOf(source))
+            val cache = DataCacheSimulator().apply { setLogging(true) }
+            val bitmap = MemoryGridDisplay(captureAtLaunch = true)
+            val instructions = MemoryGridDisplay(captureAtLaunch = true, mode = Mode.REFERENCES)
+            bitmap.configure(GridOptions(base = Base.WIDE_DATA))
+            instructions.configure(GridOptions(base = Base.WIDE_TEXT))
+            cache.observe(machine.memory).use {
+                bitmap.observe(machine.memory).use {
+                    instructions.observe(machine.memory).use {
+                        assertTrue(program.simulate(100))
+                    }
+                }
+            }
+
+            val first = 0x1_0000_0000L
+            val cacheState = cache.snapshot()
+            assertEquals(listOf(first, first + 4, first + 5), cacheState.recent.map { it.address })
+            assertEquals(2L, cacheState.hits)
+            assertEquals(first + 4, bitmap.bitmapCell(1)?.address)
+            assertEquals(0x00120056, bitmap.bitmapCell(1)?.rgb)
+            assertEquals(0x1_0040_0000L, instructions.referenceCell(0)?.address)
+            assertEquals(1L, instructions.referenceCell(0)?.count)
+        }
     }
 
     @Test

@@ -18,13 +18,15 @@ internal class MemoryGridDisplay(private val captureAtLaunch: Boolean = false, m
         fun defaults() = if (this == REFERENCES) Options(256, 256, 16, 16) else Options()
     }
 
-    enum class Base(val messageKey: String, val address: (MemoryState) -> Int) {
-        TEXT("references.text", { it.textBaseAddress }),
-        GLOBAL_DATA("bitmap.global", { it.dataSegmentBaseAddress }),
-        GLOBAL_POINTER("bitmap.gp", { it.globalPointer }),
-        STATIC_DATA("bitmap.static", { it.dataBaseAddress }),
-        HEAP("bitmap.heap", { it.heapBaseAddress }),
-        MMIO("bitmap.mmio", { it.memoryMapBaseAddress }),
+    enum class Base(val messageKey: String, val range: (MemoryState) -> LongRange?) {
+        TEXT("references.text", { narrowRange(it.textBaseAddress) }),
+        GLOBAL_DATA("bitmap.global", { narrowRange(it.dataSegmentBaseAddress) }),
+        GLOBAL_POINTER("bitmap.gp", { narrowRange(it.globalPointer) }),
+        STATIC_DATA("bitmap.static", { narrowRange(it.dataBaseAddress) }),
+        HEAP("bitmap.heap", { narrowRange(it.heapBaseAddress) }),
+        MMIO("bitmap.mmio", { narrowRange(it.memoryMapBaseAddress) }),
+        WIDE_DATA("bitmap.wideData", MemoryState::wideDataRange),
+        WIDE_TEXT("references.wideText", MemoryState::wideTextRange),
     }
 
     data class Options(
@@ -43,14 +45,15 @@ internal class MemoryGridDisplay(private val captureAtLaunch: Boolean = false, m
     }
 
     data class Frame(val options: Options, val image: BufferedImage?)
-    data class Snapshot(val connected: Boolean, val addresses: Map<Base, Int>, val frame: Frame)
-    data class ReferenceCell(val address: Int, val count: Long)
-    data class BitmapCell(val column: Int, val row: Int, val address: Int, val rgb: Int)
+    data class Snapshot(val connected: Boolean, val addresses: Map<Base, Long>, val frame: Frame)
+    data class ReferenceCell(val address: Long, val count: Long)
+    data class BitmapCell(val column: Int, val row: Int, val address: Long, val rgb: Int)
 
     private val tracksReferences = mode == Mode.REFERENCES
     private var connected = captureAtLaunch
     private var options = mode.defaults()
-    private var addresses = emptyMap<Base, Int>()
+    private var ranges = emptyMap<Base, LongRange>()
+    private var addresses = emptyMap<Base, Long>()
     private var pixels: IntArray? = null
     private var counts: LongArray? = null
     private val palette = TreeMap(defaultPalette)
@@ -62,7 +65,10 @@ internal class MemoryGridDisplay(private val captureAtLaunch: Boolean = false, m
     @Synchronized
     fun observe(source: MemoryState): AutoCloseable {
         memory = source
-        addresses = Base.entries.associateWith { it.address(source) }
+        ranges = buildMap {
+            for (base in Base.entries) base.range(source)?.let { put(base, it) }
+        }
+        addresses = ranges.mapValues { (_, range) -> range.first }
         startWatching()
         return AutoCloseable { detach() }
     }
@@ -126,11 +132,10 @@ internal class MemoryGridDisplay(private val captureAtLaunch: Boolean = false, m
         return BitmapCell(index % options.columns, index / options.columns, address, pixels?.get(index) ?: 0)
     }
 
-    private fun cellAddress(index: Int): Int? {
-        val base = addresses[options.base] ?: return null
-        val address = Integer.toUnsignedLong(base) + index.toLong() * options.wordsPerCell * 4
-        if (address > addressLimit(base)) return null
-        return address.toInt()
+    private fun cellAddress(index: Int): Long? {
+        val range = ranges[options.base] ?: return null
+        val address = range.first + index.toLong() * options.wordsPerCell * 4
+        return address.takeIf { it in range }
     }
 
     @Synchronized
@@ -142,25 +147,35 @@ internal class MemoryGridDisplay(private val captureAtLaunch: Boolean = false, m
     private fun startWatching() {
         val source = memory ?: return
         if (!connected) return
-        val base = addresses.getValue(options.base)
-        val start = Integer.toUnsignedLong(base)
-        val last = start + (options.cells.toLong() * options.wordsPerCell - 1) * 4
+        val range = ranges[options.base] ?: return
+        val first = range.first
+        val last = minOf(first + (options.cells.toLong() * options.wordsPerCell - 1) * 4, range.last and -4L)
         val registration = generation
-        val callback = Consumer<MemoryAccessNotice> { record(source, base, registration, it) }
-        source.addObserver(callback, base, minOf(last, addressLimit(base)).toInt())
+        val callback = Consumer<MemoryAccessNotice> { notice ->
+            val address = notice.addressBits
+            if (address >= first && address <= last + 3) {
+                record(source, first, registration, notice)
+            }
+        }
+        if (first > UInt.MAX_VALUE.toLong()) source.addAddressObserver(callback)
+        else source.addObserver(callback, first.toInt(), last.toInt())
         observer = callback
     }
 
     private fun stopWatching() {
         generation++
-        observer?.let { memory!!.deleteObserver(it) }
+        observer?.let { callback ->
+            val source = checkNotNull(memory)
+            source.deleteObserver(callback)
+            source.deleteAddressObserver(callback)
+        }
         observer = null
     }
 
     @Synchronized
-    private fun record(source: MemoryState, base: Int, registration: Long, notice: MemoryAccessNotice) {
+    private fun record(source: MemoryState, base: Long, registration: Long, notice: MemoryAccessNotice) {
         if (registration != generation) return
-        val index = ((notice.address - base) ushr 2) / options.wordsPerCell
+        val index = (((notice.addressBits - base) ushr 2) / options.wordsPerCell).toInt()
         val color = if (tracksReferences) {
             if (notice.origin() != EXECUTION) return
             val references = counts ?: LongArray(options.cells).also { counts = it }
@@ -168,7 +183,10 @@ internal class MemoryGridDisplay(private val captureAtLaunch: Boolean = false, m
         } else {
             if (notice.accessType != WRITE) return
             // The notice is delivered on the writer's thread after the store has completed.
-            source.getWordNoNotify(notice.address and -4) and RGB_MASK
+            val address = notice.addressBits and -4L
+            val word = if (address <= UInt.MAX_VALUE.toLong()) source.getWordNoNotify(address.toInt())
+                else source.inspectWord(address) ?: return
+            word and RGB_MASK
         }
         val colors = pixels ?: IntArray(options.cells).also { pixels = it }
         colors[index] = color
@@ -185,6 +203,7 @@ internal class MemoryGridDisplay(private val captureAtLaunch: Boolean = false, m
             3L to 0xffff00, 5L to 0xffc800, 10L to 0xff0000,
         )
 
-        private fun addressLimit(base: Int) = if (base < 0) 0xffff_fffcL else 0x7fff_fffcL
+        private fun narrowRange(base: Int): LongRange =
+            base.toUInt().toLong()..if (base < 0) 0xffff_fffcL else 0x7fff_fffcL
     }
 }

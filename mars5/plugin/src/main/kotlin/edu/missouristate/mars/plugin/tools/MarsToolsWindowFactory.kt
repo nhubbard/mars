@@ -1,5 +1,6 @@
 package edu.missouristate.mars.plugin.tools
 
+import edu.missouristate.mars.util.Binary
 import com.intellij.DynamicBundle
 import com.intellij.execution.ui.RunContentManager
 import com.intellij.ide.plugins.DynamicPluginListener
@@ -278,3 +279,6 @@ private class InstructionCountsView(
         refreshJob.cancel()
     }
 }
+
+internal fun formatToolHex(bits: Long): String =
+    if (bits in 0..UInt.MAX_VALUE.toLong()) Binary.intToHexString(bits.toInt()) else Binary.longToHexString(bits)

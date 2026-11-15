@@ -445,6 +445,12 @@ open class MemoryState(
         return readBytes(address, WORD_LENGTH_BYTES, notify = false)
     }
 
+    val wideDataRange: LongRange?
+        get() = if (wideDataEnabled) WIDE_DATA_BASE..<WIDE_DATA_BASE + SEGMENT_BYTES else null
+
+    val wideTextRange: LongRange?
+        get() = if (wideDataEnabled) WIDE_TEXT_BASE..<WIDE_TEXT_BASE + SEGMENT_BYTES else null
+
     val highestInspectableAddress: Long
         get() = if (wideDataEnabled) WIDE_TEXT_BASE + SEGMENT_BYTES - 1 else UInt.MAX_VALUE.toLong()
 

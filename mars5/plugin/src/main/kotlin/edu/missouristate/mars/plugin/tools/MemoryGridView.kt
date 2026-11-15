@@ -21,7 +21,6 @@ import edu.missouristate.mars.plugin.tools.MemoryGridDisplay.Base
 import edu.missouristate.mars.plugin.tools.MemoryGridDisplay.Frame
 import edu.missouristate.mars.plugin.tools.MemoryGridDisplay.Mode
 import edu.missouristate.mars.plugin.tools.MemoryGridDisplay.Options
-import edu.missouristate.mars.util.Binary
 import java.awt.Color
 import java.awt.Graphics
 import java.awt.Graphics2D
@@ -33,6 +32,7 @@ import java.awt.event.FocusEvent
 import java.awt.event.KeyEvent
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
+import javax.swing.DefaultComboBoxModel
 import javax.swing.JButton
 import javax.swing.JComponent
 import javax.swing.JEditorPane
@@ -55,13 +55,11 @@ internal class MemoryGridView(
     private val height = ComboBox(MemoryGridDisplay.displaySizes.toTypedArray())
     private val unitWidth = ComboBox(MemoryGridDisplay.unitSizes.toTypedArray())
     private val unitHeight = ComboBox(MemoryGridDisplay.unitSizes.toTypedArray())
-    private var addresses = emptyMap<Base, Int>()
-    private val base = ComboBox(
-        (if (mode == Mode.REFERENCES) Base.entries else Base.entries.filterNot { it == Base.TEXT }).toTypedArray(),
-    ).apply {
+    private var addresses = emptyMap<Base, Long>()
+    private val base = ComboBox(baseChoices().toTypedArray()).apply {
         renderer = textListCellRenderer("") { choice ->
             val name = toolsMessages.getMessage(choice.messageKey)
-            addresses[choice]?.let { toolsMessages.getMessage("bitmap.baseChoice", Binary.intToHexString(it), name) } ?: name
+            addresses[choice]?.let { toolsMessages.getMessage("bitmap.baseChoice", formatToolHex(it), name) } ?: name
         }
     }
     private val apply = JButton(toolsMessages.getMessage("bitmap.apply"))
@@ -166,6 +164,7 @@ internal class MemoryGridView(
         height.selectedItem = options.height
         unitWidth.selectedItem = options.unitWidth
         unitHeight.selectedItem = options.unitHeight
+        updateBaseChoices(selected?.snapshot()?.addresses.orEmpty())
         base.selectedItem = options.base
         reference?.let {
             it.words.selectedItem = options.wordsPerCell
@@ -180,12 +179,26 @@ internal class MemoryGridView(
         for (control in listOf(width, height, unitWidth, unitHeight, base, apply, toggle, reset)) control.isEnabled = available
         reference?.controls?.forEach { it.isEnabled = available }
         toggle.text = toolsMessages.getMessage(if (snapshot?.connected == true) "counter.disconnect" else "counter.connect")
-        val currentAddresses = snapshot?.addresses.orEmpty()
-        if (addresses != currentAddresses) {
-            addresses = currentAddresses
-            base.repaint()
-        }
+        updateBaseChoices(snapshot?.addresses.orEmpty())
         canvas.showFrame(snapshot?.frame ?: blank)
+    }
+
+    private fun baseChoices(): List<Base> = Base.entries.filter { choice ->
+        (mode == Mode.REFERENCES || choice != Base.TEXT && choice != Base.WIDE_TEXT) &&
+            (choice != Base.WIDE_DATA && choice != Base.WIDE_TEXT || choice in addresses)
+    }
+
+    private fun updateBaseChoices(current: Map<Base, Long>) {
+        if (addresses == current) return
+        val previous = base.selectedItem
+        val oldChoices = baseChoices()
+        addresses = current
+        val choices = baseChoices()
+        if (oldChoices != choices) {
+            base.model = DefaultComboBoxModel(choices.toTypedArray())
+            base.selectedItem = previous.takeIf { it in choices } ?: mode.defaults().base
+        }
+        base.repaint()
     }
 
     override fun dispose() {
@@ -199,12 +212,12 @@ internal class MemoryGridView(
 
     private fun describeCell(index: Int): String? = when (mode) {
         Mode.REFERENCES -> selected?.referenceCell(index)?.let {
-            toolsMessages.getMessage("references.cell", Binary.intToHexString(it.address), it.count.toString())
+            toolsMessages.getMessage("references.cell", formatToolHex(it.address), it.count.toString())
         }
         Mode.BITMAP -> selected?.bitmapCell(index)?.let {
             toolsMessages.getMessage(
                 "bitmap.cell", it.column.toString(), it.row.toString(),
-                Binary.intToHexString(it.address), it.rgb.toString(16).padStart(6, '0'),
+                formatToolHex(it.address), it.rgb.toString(16).padStart(6, '0'),
             )
         }
     }

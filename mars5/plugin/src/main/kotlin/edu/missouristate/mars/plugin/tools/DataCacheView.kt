@@ -211,7 +211,7 @@ internal class DataCacheView(project: Project) : Disposable {
             return when (columnIndex) {
                 0 -> rowIndex.toString()
                 1 -> (rowIndex / state.options.ways).toString()
-                2 -> block.tag?.let(Binary::intToHexString).orEmpty()
+                2 -> block.tag?.let(::formatToolHex).orEmpty()
                 3 -> block.lastAccess.takeIf { it != 0L }?.toString().orEmpty()
                 else -> toolsMessages.getMessage(when {
                     block.tag == null -> "cache.empty"
@@ -227,10 +227,10 @@ private fun logLine(access: Access): String {
     val result = when {
         access.hit -> toolsMessages.getMessage("cache.hit")
         access.previousTag == null -> toolsMessages.getMessage("cache.fill")
-        else -> toolsMessages.getMessage("cache.evict", Binary.intToHexString(access.previousTag))
+        else -> toolsMessages.getMessage("cache.evict", formatToolHex(access.previousTag))
     }
     return toolsMessages.getMessage(
         "cache.observation", access.number.toString(), toolsMessages.getMessage(if (access.write) "cache.write" else "cache.read"),
-        Binary.intToHexString(access.address), Binary.intToHexString(access.tag), access.set.toString(), access.block.toString(), result,
+        formatToolHex(access.address), formatToolHex(access.tag), access.set.toString(), access.block.toString(), result,
     )
 }

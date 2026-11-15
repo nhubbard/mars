@@ -24,15 +24,15 @@ class MemoryReferenceDisplayTest {
             display.observe(memory).use {
                 memory.setWord(base, 7)
                 memory.getWord(base)
-                assertEquals(ReferenceCell(base, 0), display.referenceCell(0))
+                assertEquals(ReferenceCell(base.toLong(), 0), display.referenceCell(0))
                 AccessOrigin.duringExecution<Int, Exception> {
                     memory.getByte(base + 1)
                     memory.setHalf(base + 4, 7)
                     memory.getWord(base + 8)
                     memory.getWord(base + 32)
                 }
-                assertEquals(ReferenceCell(base, 2), display.referenceCell(0))
-                assertEquals(ReferenceCell(base + 8, 1), display.referenceCell(1))
+                assertEquals(ReferenceCell(base.toLong(), 2), display.referenceCell(0))
+                assertEquals(ReferenceCell(base + 8L, 1), display.referenceCell(1))
                 val before = display.snapshot().frame.image!!
                 assertEquals(0xff00ff00.toInt(), before.getRGB(0, 0))
                 assertEquals(0xff0000ff.toInt(), before.getRGB(1, 0))
@@ -42,7 +42,7 @@ class MemoryReferenceDisplayTest {
                 assertEquals(0xff0000ff.toInt(), before.getRGB(1, 0))
                 display.setColor(0, 0x00010203)
                 display.reset()
-                assertEquals(ReferenceCell(base, 0), display.referenceCell(0))
+                assertEquals(ReferenceCell(base.toLong(), 0), display.referenceCell(0))
                 assertEquals(0xff010203.toInt(), display.snapshot().frame.image!!.getRGB(0, 0))
                 display.setColor(0, 0x00020304)
                 assertEquals(0xff020304.toInt(), display.snapshot().frame.image!!.getRGB(0, 0))

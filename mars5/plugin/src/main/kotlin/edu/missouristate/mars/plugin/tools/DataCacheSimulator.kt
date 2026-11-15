@@ -40,9 +40,9 @@ internal class DataCacheSimulator {
         val bytes: Int get() = blocks * wordsPerBlock * WORD_LENGTH_BYTES
     }
 
-    data class Block(val tag: Int?, val lastAccess: Long, val lastHit: Boolean)
+    data class Block(val tag: Long?, val lastAccess: Long, val lastHit: Boolean)
     data class Access(
-        val number: Long, val address: Int, val write: Boolean, val set: Int, val tag: Int, val block: Int, val previousTag: Int?,
+        val number: Long, val address: Long, val write: Boolean, val set: Int, val tag: Long, val block: Int, val previousTag: Long?,
     ) {
         val hit: Boolean get() = previousTag == tag
     }
@@ -60,7 +60,7 @@ internal class DataCacheSimulator {
     private var logging = false
     private var accesses = 0L
     private var hits = 0L
-    private var tags = IntArray(options.blocks) { EMPTY_TAG }
+    private var tags = LongArray(options.blocks) { EMPTY_TAG }
     private var recency = LongArray(options.blocks)
     private var hit = BooleanArray(options.blocks)
     private val random = Random(0)
@@ -68,17 +68,23 @@ internal class DataCacheSimulator {
     private var cached: Snapshot? = null
 
     fun observe(memory: MemoryState): AutoCloseable {
-        val listener = Consumer<MemoryAccessNotice>(::record)
-        memory.addObserver(listener, memory.dataSegmentBaseAddress, memory.stackBaseAddress)
-        return AutoCloseable { memory.deleteObserver(listener) }
+        val classroom = memory.dataSegmentBaseAddress.toUInt().toLong()..(memory.stackBaseAddress.toUInt().toLong() + 3)
+        val listener = Consumer<MemoryAccessNotice> { notice ->
+            val address = notice.addressBits
+            if (address in classroom || address > UInt.MAX_VALUE.toLong() && memory.inUserData(address)) {
+                record(notice)
+            }
+        }
+        memory.addAddressObserver(listener)
+        return AutoCloseable { memory.deleteAddressObserver(listener) }
     }
 
     @Synchronized
     fun record(notice: MemoryAccessNotice) {
-        if (!connected || notice.origin() != EXECUTION) return
-        val address = notice.address
+        if (!connected || notice.origin() != EXECUTION || notice.isInstructionFetch) return
+        val address = notice.addressBits
         val memoryBlock = (address ushr 2) / options.wordsPerBlock
-        val set = memoryBlock % options.sets
+        val set = (memoryBlock % options.sets).toInt()
         val tag = memoryBlock / options.sets
         val block = findBlock(set * options.ways, tag)
         val previous = tags[block]
@@ -95,7 +101,7 @@ internal class DataCacheSimulator {
         cached = null
     }
 
-    private fun findBlock(first: Int, tag: Int): Int {
+    private fun findBlock(first: Int, tag: Long): Int {
         var oldest = first
         for (block in first until first + options.ways) {
             if (tags[block] == tag || tags[block] == EMPTY_TAG) return block
@@ -138,7 +144,7 @@ internal class DataCacheSimulator {
 
     @Synchronized
     fun reset() {
-        tags = IntArray(options.blocks) { EMPTY_TAG }
+        tags = LongArray(options.blocks) { EMPTY_TAG }
         recency = LongArray(options.blocks)
         hit = BooleanArray(options.blocks)
         accesses = 0
@@ -150,7 +156,7 @@ internal class DataCacheSimulator {
 
     companion object {
         val sizes = (0..11).map { 1 shl it }
-        private const val EMPTY_TAG = -1
+        private const val EMPTY_TAG = -1L
         private const val LOG_LIMIT = 128
     }
 }
