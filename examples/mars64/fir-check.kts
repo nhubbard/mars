@@ -1,6 +1,4 @@
-import edu.missouristate.mars.api.MarsTarget
-
-case("signed FIR windows", target = MarsTarget.MARS64) {
+case("signed FIR windows") {
     requireDataLabel("output")
     startAt("main")
     runUntil("scalar_sample")

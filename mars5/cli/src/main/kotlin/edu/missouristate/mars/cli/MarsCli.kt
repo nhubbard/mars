@@ -2,7 +2,6 @@ package edu.missouristate.mars.cli
 
 import edu.missouristate.mars.ApplicationInfo
 import edu.missouristate.mars.ProcessingException
-import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.api.SessionSyscallEnvironment
 import edu.missouristate.mars.cli.grading.GradeCommand
 import edu.missouristate.mars.core.MarsContext.AssemblyPhase
@@ -75,19 +74,10 @@ object MarsCli {
                             tracePhases = true
                         }
                         "--project", "p" -> project = true
-                        "--delayed-branching", "db" -> settings.setDelayedBranchingEnabled(true)
                         "--self-modifying-code", "smc" -> settings.setSelfModifyingCodeEnabled(true)
                         "--start-at-main", "sm" -> settings.setStartAtMainEnabled(true)
                         "--no-pseudo", "np", "ne" -> settings.setExtendedAssemblerEnabled(false)
                         "--utf8-text" -> settings.isUtf8TextEnabled = true
-                        "--target" -> {
-                            val target = nextValue("target")
-                            session.selectTarget(when (target.uppercase()) {
-                                "MARS32" -> MarsTarget.MARS32
-                                "MARS64" -> MarsTarget.MARS64
-                                else -> throw IllegalArgumentException("Unknown target: $target. Use MARS32 or MARS64.")
-                            })
-                        }
                         "--warnings-as-errors", "we" -> settings.setWarningsAreErrors(true)
                         "--messages-to-stderr", "me" -> reportOutput = error
                         "--brief", "b" -> report.brief = true
@@ -213,12 +203,10 @@ object MarsCli {
           --assemble-only       Assemble without running (a)
           --trace-phases        Show tokenization, assembly, and simulation phases (d, ad, da)
           --project             Assemble sources beside the first file and any additional files (p)
-          --delayed-branching    Enable branch delay slots (db)
           --self-modifying-code  Allow writes to text and execution from data (smc)
           --start-at-main        Start at the exported main label (sm)
           --no-pseudo            Accept basic instructions only (np)
           --utf8-text            Use UTF-8 text for .ascii, .asciiz, and console string syscalls
-          --target TARGET        Select MARS64 (default) or classic MARS32
           --warnings-as-errors   Fail assembly on warnings (we)
           --memory LAYOUT        Default, CompactDataAtZero, or CompactTextAtZero (mc)
           --dump REGION FORMAT FILE   Export .text, .data, or an inclusive word range (dump)

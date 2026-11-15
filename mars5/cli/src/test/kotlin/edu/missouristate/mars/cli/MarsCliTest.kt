@@ -43,7 +43,7 @@ internal class MarsCliTest {
         val error = ByteArrayOutputStream()
         val code: Int =
             MarsCli.execute(
-                arrayOf("--target", "mars32", file.toString(), "--", "one", "two"),
+                arrayOf(file.toString(), "--", "one", "two"),
                 ByteArrayInputStream("42\n".toByteArray()),
                 PrintStream(output),
                 PrintStream(error),
@@ -58,7 +58,7 @@ internal class MarsCliTest {
         val file = directory.resolve("program.s")
         val error = ByteArrayOutputStream()
         val output = ByteArrayOutputStream()
-        Files.writeString(file, ".text\nloop: b loop\n")
+        Files.writeString(file, ".text\nloop: bc loop\n")
         assertEquals(3, execute(arrayOf("--max-steps", "4", file.toString()), output, error))
         assertTrue(error.toString().contains("step limit"))
         assertEquals(0, execute(arrayOf("--assemble-only", file.toString()), output, error))
@@ -76,9 +76,9 @@ internal class MarsCliTest {
         val main = directory.resolve("z-entry.s")
         val sibling = directory.resolve("a-library.asm")
         val outside = Files.createDirectory(directory.resolve("nested")).resolve("extra.txt")
-        Files.writeString(main, ".text\njal library\nli \$v0,17\nsyscall\n")
-        Files.writeString(sibling, ".text\n.globl library\nlibrary: j extra\n")
-        Files.writeString(outside, ".text\n.globl extra\nextra: li \$a0,42\njr \$ra\n")
+        Files.writeString(main, ".text\nbalc library\nli \$v0,17\nsyscall\n")
+        Files.writeString(sibling, ".text\n.globl library\nlibrary: bc extra\n")
+        Files.writeString(outside, ".text\n.globl extra\nextra: li \$a0,42\njrc \$ra\n")
         Files.writeString(directory.resolve("ignored.txt"), "invalid\n")
         Files.writeString(outside.resolveSibling("ignored.s"), "invalid\n")
         val output = ByteArrayOutputStream()
@@ -381,10 +381,10 @@ internal class MarsCliTest {
         assertEquals(
             listOf(
                 "",
-                "\$t0\t0xfffffff9",
-                "$8\t0xfffffff9",
-                "\$f0\t0x00000000\t0x3ff0000000000000",
-                "\$f1\t0x3ff00000",
+                "\$t0\t0xfffffffffffffff9",
+                "$8\t0xfffffffffffffff9",
+                "\$f0\t0x00000000\t0x0000000000000000",
+                "\$f1\t0x3ff00000\t0x000000003ff00000",
                 "Mem[0x10010000]\t0x00000001\t0x00000002\t0x00000003\t0x00000004\t",
                 "Mem[0x10010010]\t0x00000005\t",
                 "Mem[0x00400000]\t0x2408fff9\t",
@@ -405,8 +405,9 @@ internal class MarsCliTest {
             .word 0x41424344
             .text
             li ${'$'}t0,0x41424344
-            mtc1 ${'$'}t0,${'$'}f0
-            mtc1 ${'$'}t0,${'$'}f1
+            dsll32 ${'$'}t1,${'$'}t0,0
+            or ${'$'}t1,${'$'}t1,${'$'}t0
+            dmtc1 ${'$'}t1,${'$'}f0
             li ${'$'}a0,7
             li ${'$'}v0,1
             syscall
@@ -448,7 +449,7 @@ internal class MarsCliTest {
         )
         assertEquals("7", output.toString())
         assertEquals(
-            listOf("", "  A  B  C  D", "  A  B  C  D\t  A  B  C  D  A  B  C  D", "  A  B  C  D\t"),
+            listOf("", " \\0 \\0 \\0 \\0  A  B  C  D", "  A  B  C  D\t  A  B  C  D  A  B  C  D", "  A  B  C  D\t"),
             error.toString().reader().readLines(),
         )
     }
@@ -499,7 +500,7 @@ internal class MarsCliTest {
     @Test
     fun countsRepeatedInstructionsAtAddressZeroUpToTheStepLimit() {
         val source = directory.resolve("loop.s")
-        Files.writeString(source, ".text\nloop: beq \$zero,\$zero,loop\n")
+        Files.writeString(source, ".text\nloop: bc loop\n")
         val output = ByteArrayOutputStream()
         val error = ByteArrayOutputStream()
 
@@ -619,7 +620,7 @@ internal class MarsCliTest {
     @Test
     fun distinguishesInterruptedExecutionFromTheStepLimit() {
         val source = directory.resolve("cancel.s")
-        Files.writeString(source, "li \$a0,42\nli \$v0,1\nsyscall\nloop: b loop\n")
+        Files.writeString(source, "li \$a0,42\nli \$v0,1\nsyscall\nloop: bc loop\n")
         val output =
             object : ByteArrayOutputStream() {
                 @Synchronized
@@ -651,7 +652,7 @@ internal class MarsCliTest {
             err: ByteArrayOutputStream,
         ): Int {
             return MarsCli.execute(
-                arrayOf("--target", "mars32", *args),
+                arrayOf(*args),
                 InputStream.nullInputStream(),
                 PrintStream(out),
                 PrintStream(err),

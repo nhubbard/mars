@@ -1,6 +1,5 @@
 package edu.missouristate.mars.cli
 
-import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.mips.hardware.AddressErrorException
 import edu.missouristate.mars.mips.hardware.MemoryAddressRange
@@ -69,7 +68,6 @@ internal class CliMachineReport {
         val register = selection.register
         val bits = register.value
         if (!selection.floating) {
-            if (session.target != MarsTarget.MARS64) return formatWord(bits)
             val wide = session.registerFile.getLongValueNoNotify(register.number)
             return when (format) {
                 Format.HEX -> Binary.longToHexString(wide)
@@ -78,7 +76,6 @@ internal class CliMachineReport {
             }
         }
         val value = if (format == Format.DECIMAL) Float.fromBits(bits).toString() else formatWord(bits)
-        if (session.target == MarsTarget.MARS32 && register.number % 2 != 0) return value
         val doubleword = session.coprocessor1.getDoublewordNoNotify(register.number)
         return "$value\t" + when (format) {
             Format.HEX -> Binary.longToHexString(doubleword)

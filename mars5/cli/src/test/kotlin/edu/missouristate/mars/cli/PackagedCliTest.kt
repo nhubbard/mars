@@ -133,7 +133,7 @@ internal class PackagedCliTest {
     }
 
     @Test
-    fun release6IsTheDefaultAndReportsFullWidthRegisters() {
+    fun release6ReportsFullWidthRegisters() {
         val entry =
             source(
                 "wide.s",
@@ -147,10 +147,7 @@ internal class PackagedCliTest {
                 """
                     .trimIndent(),
             )
-        val narrow = launch("--target", "mars32", entry.toString())
-        assertEquals(1, narrow.status)
-        assertTrue(narrow.err.contains("daddiu"), narrow.err)
-        val wide = launch("", listOf("--register", "t0", entry.toString()), classic = false)
+        val wide = launch("--register", "t0", entry.toString())
         assertEquals(0, wide.status, wide.err)
         assertTrue(wide.out.contains("\$t0\t0x00000000ffffffff"), wide.out)
     }
@@ -175,7 +172,7 @@ internal class PackagedCliTest {
                     .trimIndent(),
             )
         val run =
-            launch("--target", "mars64", "--start-at-main", "--register", "t0", entry.toString())
+            launch("--start-at-main", "--register", "t0", entry.toString())
         assertEquals(0, run.status, run.err)
         assertTrue(run.out.contains("\$t0\t0x0000000100400000"), run.out)
     }
@@ -200,8 +197,6 @@ internal class PackagedCliTest {
         val text = directory.resolve("high-text.txt")
         val run =
             launch(
-                "--target",
-                "mars64",
                 "--start-at-main",
                 "dump",
                 "0x100000000-0x100000000",
@@ -244,7 +239,7 @@ internal class PackagedCliTest {
                 """
                     .trimIndent(),
             )
-        val run = launch("nc", "--target", "mars64", entry.toString())
+        val run = launch("nc", entry.toString())
         assertEquals(0, run.status, run.err)
         assertEquals("12", run.out.trim())
     }
@@ -264,7 +259,7 @@ internal class PackagedCliTest {
                 """
                     .trimIndent(),
             )
-        val wide = launch("--target", "mars64", "--register", "f31", entry.toString())
+        val wide = launch("--register", "f31", entry.toString())
         assertEquals(0, wide.status, wide.err)
         assertTrue(wide.out.contains("\$f31\t0x00000000\t0x4004000000000000"), wide.out)
     }
@@ -314,9 +309,7 @@ internal class PackagedCliTest {
             source(
                 "high string checks.kts",
                 """
-                import edu.missouristate.mars.api.MarsTarget
-
-                case("high text", target = MarsTarget.MARS64, utf8Text = true, input = "é\n") {
+                case("high text", utf8Text = true, input = "é\n") {
                     runToExit()
                     expectOutput("é\n")
                     expectBytes("buffer", 0xc3, 0xa9, 10, 0)
@@ -355,9 +348,7 @@ internal class PackagedCliTest {
             source(
                 "high-address checks.kts",
                 """
-                import edu.missouristate.mars.api.MarsTarget
-
-                case("high routine", target = MarsTarget.MARS64) {
+                case("high routine") {
                     requireTextLabel("routine")
                     requireDataLabel("cell")
                     setWord("cell", 41, offset = 4)
@@ -591,11 +582,11 @@ internal class PackagedCliTest {
                 """
                 move ${'$'}s0,${'$'}a0
                 lw ${'$'}a0,0(${'$'}a1)
-                jal print
+                balc print
                 li ${'$'}v0,5
                 syscall
                 move ${'$'}a0,${'$'}v0
-                jal number
+                balc number
                 move ${'$'}a0,${'$'}s0
                 li ${'$'}v0,17
                 syscall
@@ -603,9 +594,9 @@ internal class PackagedCliTest {
                 """
                     .trimIndent(),
             )
-        source("a-library.asm", ".text\n.globl print\nprint: li \$v0,4\nsyscall\njr \$ra\n")
+        source("a-library.asm", ".text\n.globl print\nprint: li \$v0,4\nsyscall\njrc \$ra\n")
         val extra =
-            source("nested/number.s", ".text\n.globl number\nnumber: li \$v0,1\nsyscall\njr \$ra\n")
+            source("nested/number.s", ".text\n.globl number\nnumber: li \$v0,1\nsyscall\njrc \$ra\n")
         source("ignored.txt", "not assembly\n")
         assertProgramResult(
             listOf("nc", "p", main.toString(), extra.toString(), "pa", "value=", "d"),
@@ -621,7 +612,7 @@ internal class PackagedCliTest {
             source(
                 "main.mars",
                 """
-                jal increment
+                balc increment
                 move ${'$'}a0,${'$'}t0
                 li ${'$'}v0,1
                 syscall
@@ -639,7 +630,7 @@ internal class PackagedCliTest {
             .globl increment
             increment: li ${'$'}t0,BASE
             addiu ${'$'}t0,${'$'}t0,1
-            jr ${'$'}ra
+            jrc ${'$'}ra
 
             """
                 .trimIndent(),
@@ -654,7 +645,7 @@ internal class PackagedCliTest {
             source(
                 "entry",
                 """
-                jal helper
+                balc helper
                 move ${'$'}a0,${'$'}t0
                 li ${'$'}v0,1
                 syscall
@@ -670,7 +661,7 @@ internal class PackagedCliTest {
                 """
                 .globl helper
                 helper: li ${'$'}t0,42
-                jr ${'$'}ra
+                jrc ${'$'}ra
 
                 """
                     .trimIndent(),
@@ -684,8 +675,8 @@ internal class PackagedCliTest {
             source(
                 "entry",
                 """
-                jal helper
-                jal sibling
+                balc helper
+                balc sibling
                 addu ${'$'}a0,${'$'}t0,${'$'}t1
                 li ${'$'}v0,1
                 syscall
@@ -701,7 +692,7 @@ internal class PackagedCliTest {
                 """
                 .globl helper
                 helper: li ${'$'}t0,42
-                jr ${'$'}ra
+                jrc ${'$'}ra
 
                 """
                     .trimIndent(),
@@ -712,7 +703,7 @@ internal class PackagedCliTest {
                 """
                 .globl sibling
                 sibling: li ${'$'}t1,7
-                jr ${'$'}ra
+                jrc ${'$'}ra
 
                 """
                     .trimIndent(),
@@ -728,7 +719,7 @@ internal class PackagedCliTest {
     }
 
     @Test
-    fun entrySelectionAndBranchDelaySlotsChangeExecution() {
+    fun startAtMainExecutesTheArchitecturalDelaySlot() {
         val file =
             source(
                 "entry.s",
@@ -750,8 +741,7 @@ internal class PackagedCliTest {
                     .trimIndent(),
             )
         assertProgramResult(listOf("nc", file.toString()), "", 11, "")
-        assertProgramResult(listOf("nc", "sm", file.toString()), "", 19, "")
-        assertProgramResult(listOf("nc", "sm", "db", file.toString()), "", 20, "")
+        assertProgramResult(listOf("nc", "sm", file.toString()), "", 20, "")
     }
 
     @Test
@@ -954,7 +944,7 @@ internal class PackagedCliTest {
                 .toList(),
         )
         for (range in
-            listOf("0x80000000-0x7ffffffc", "4294967296-4294967296", "0x80000001-0x80000004")) {
+            listOf("0x80000000-0x7ffffffc", "4294967297-4294967300", "0x80000001-0x80000004")) {
             val failure = launch("nc", "me", range, file.toString())
             assertEquals(2, failure.status, range)
             assertTrue(failure.err.contains(range), failure.err)
@@ -1036,7 +1026,7 @@ internal class PackagedCliTest {
 
     @Test
     fun compactTextLoopCountsEveryStepAndReportsTheStepLimitStatus() {
-        val file = source("loop.s", "loop: beq \$zero,\$zero,loop\n")
+        val file = source("loop.s", "loop: bc loop\n")
         for (limit in listOf("3", "32")) {
             val arguments = listOf("nc", "ic", "mc", "CompactTextAtZero", limit, file.toString())
             val standalone = launch("", arguments)
@@ -1084,7 +1074,7 @@ internal class PackagedCliTest {
         return launch("", arguments.toList())
     }
 
-    private fun launch(input: String, arguments: List<String>, classic: Boolean = true): Result {
+    private fun launch(input: String, arguments: List<String>): Result {
         val bin = Path.of(System.getProperty("java.home"), "bin")
         val java = bin.resolve(if (Files.exists(bin.resolve("java.exe"))) "java.exe" else "java")
         val command =
@@ -1093,9 +1083,6 @@ internal class PackagedCliTest {
                 "-jar",
                 System.getProperty("mars.cli.jar"),
             )
-        if (classic && arguments.firstOrNull() != "grade" && "--target" !in arguments) {
-            command.addAll(listOf("--target", "mars32"))
-        }
         command.addAll(arguments)
         val stdout = Files.createTempFile(directory, "stdout-", ".txt")
         val stderr = Files.createTempFile(directory, "stderr-", ".txt")

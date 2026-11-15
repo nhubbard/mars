@@ -6,7 +6,6 @@ import edu.missouristate.mars.ProcessingException
 import edu.missouristate.mars.api.AssemblySourceSnapshot
 import edu.missouristate.mars.api.AssemblySymbolMap
 import edu.missouristate.mars.api.ErrorEvent
-import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.api.SessionSyscallEnvironment
 import edu.missouristate.mars.api.SimulatorListener
 import edu.missouristate.mars.api.StepEvent
@@ -41,14 +40,12 @@ class Assignment internal constructor(
         instructionLimit: Long = 100_000,
         input: String = "",
         utf8Text: Boolean = false,
-        target: MarsTarget = MarsTarget.DEFAULT,
         verify: AssemblyCase.() -> Unit,
     ) {
         require(name.isNotBlank() && results.none { it.name == name }) { "Choose a unique, non-empty case name" }
         require(instructionLimit > 0) { "Instruction limit must be positive" }
         try {
             DaggerMarsComponent.builder().guiProxy(HeadlessGuiProxy()).build().context().use { machine ->
-                machine.selectTarget(target)
                 machine.settings.isUtf8TextEnabled = utf8Text
                 var assemblyChecks = 0
                 val program = machine.assembleSnapshot(submission, null, extended = true, warnings = false) {
@@ -120,7 +117,6 @@ class AssemblyCase internal constructor(
     fun setRegister(register: String, value: Long) {
         val number = registerNumber(register)
         requireCase(number != 0) { "Cannot write the zero register" }
-        requireCase(machine.target == MarsTarget.MARS64 || value == value.toInt().toLong()) { "Value does not fit a MARS32 register" }
         machine.editIntegerRegister(number, value)
     }
 
@@ -175,7 +171,6 @@ class AssemblyCase internal constructor(
     }
 
     private fun vector(register: String): VectorRegister {
-        requireCase(machine.target == MarsTarget.MARS64) { "Vector registers require MARS64" }
         val name = "\$${register.removePrefix("\$")}"
         val number = RegisterNames.vector(name) ?: throw CaseFailure("Unknown vector register $register")
         return machine.coprocessor1.getVectorNoNotify(number)
