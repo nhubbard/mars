@@ -11,8 +11,8 @@ class SyscallMemoryBoundaryTest {
         TestSessions.create().use { session ->
             val output = StringBuilder()
             val environment = object : TestEnvironment() {
-                override fun printChar(value: Char) {
-                    output.append(value)
+                override fun printChar(c: Char) {
+                    output.append(c)
                 }
             }
             val context = InstructionContext(session, environment)

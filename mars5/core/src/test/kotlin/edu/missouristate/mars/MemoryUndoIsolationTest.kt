@@ -152,7 +152,7 @@ internal class MemoryUndoIsolationTest {
             val singleton = machine.memory
             TestSessions.select(
                 machine,
-                Objects.requireNonNull<MemoryConfiguration?>(
+                requireNotNull(
                     MemoryConfigurations.getConfigurationByName("CompactDataAtZero"),
                 ),
             )
