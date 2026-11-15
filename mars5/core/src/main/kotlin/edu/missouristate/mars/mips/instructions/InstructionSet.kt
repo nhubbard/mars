@@ -6,6 +6,7 @@ import edu.missouristate.mars.mips.instructions.basic.InstrBreak1
 import edu.missouristate.mars.mips.instructions.basic.InstrCodedSyscall
 import edu.missouristate.mars.mips.instructions.basic.InstrCompactCompareBranch
 import edu.missouristate.mars.mips.instructions.basic.InstrRelease6Break
+import edu.missouristate.mars.mips.instructions.basic.InstrCodedTrap
 import edu.missouristate.mars.mips.instructions.basic.InstrRelease6Pref
 import edu.missouristate.mars.mips.instructions.basic.release6RoundingInstructions
 import edu.missouristate.mars.mips.instructions.basic.release6BarrierInstructions
@@ -68,6 +69,7 @@ open class InstructionSet {
             forms.addAll(release6HardwareReads())
             forms.addAll(release6SystemTransfers())
             forms.add(InstrCodedSyscall())
+            forms.addAll(common.filter { it.name in registerTraps }.map(::InstrCodedTrap))
             forms.add(InstrRelease6Break(hasLowCode = false))
             forms.add(InstrRelease6Break(hasLowCode = true))
             forms.addAll(msaRegisterInstructions())
@@ -125,6 +127,7 @@ open class InstructionSet {
     private data class MatchMap(val mask: Int, val instructions: Map<Int, List<BasicInstruction>>)
 
     private companion object {
+        val registerTraps = setOf("teq", "tge", "tgeu", "tlt", "tltu", "tne")
         val replacedWordInstructions = setOf(
             "addi", "mul", "div", "divu", "mult", "multu", "madd", "maddu", "msub", "msubu",
             "mfhi", "mflo", "mthi", "mtlo",

@@ -250,7 +250,10 @@ internal class FirstPassProcessor(
                 dataDirective = directive
                 if (passesDataSegmentCheck(token)) storeStrings(tokens, directive)
             }
-            Directives.ALIGN, Directives.SPACE -> applyDataLayout(tokens, directive)
+            Directives.ALIGN -> if (!inDataSegment && context.session.target == MarsTarget.MARS64) {
+                alignSection(tokens, directive, physicalLine, caller)
+            } else applyDataLayout(tokens, directive)
+            Directives.SPACE -> applyDataLayout(tokens, directive)
             Directives.P2ALIGN, Directives.BALIGN -> alignSection(tokens, directive, physicalLine, caller)
             Directives.EXTERN -> declareExternal(tokens, physicalLine, caller, renamedLabels)
             Directives.SET -> applySet(tokens)
@@ -303,10 +306,13 @@ internal class FirstPassProcessor(
             errors.add(ErrorMessage(token, "$directive requires the MARS64 target"))
             return
         }
-        val value = if (tokens.size() in 2..3) nonNegativeInteger(tokens[1]) else null
-        if (value == null || (directive == Directives.P2ALIGN && value > 31) || (directive == Directives.BALIGN && value == 0)) {
-            val allowed = if (directive == Directives.P2ALIGN) "an exponent from 0 through 31" else "a positive byte boundary"
-            errors.add(ErrorMessage(token, "$directive requires $allowed and an optional fill byte"))
+        val exponent = directive != Directives.BALIGN
+        val operandCount = if (directive == Directives.ALIGN) 2..2 else 2..3
+        val value = if (tokens.size() in operandCount) nonNegativeInteger(tokens[1]) else null
+        if (value == null || (exponent && value > 31) || (!exponent && value == 0)) {
+            val allowed = if (exponent) "an exponent from 0 through 31" else "a positive byte boundary"
+            val fill = if (directive == Directives.ALIGN) "" else " and an optional fill byte"
+            errors.add(ErrorMessage(token, "$directive requires $allowed$fill"))
             return
         }
         val fill = if (tokens.size() == 3) nonNegativeInteger(tokens[2]) else 0
@@ -314,7 +320,7 @@ internal class FirstPassProcessor(
             errors.add(ErrorMessage(token, "$directive requires a fill byte from 0 through 255 in data, or zero in text"))
             return
         }
-        val boundary = if (directive == Directives.P2ALIGN) 1L shl value else value.toLong()
+        val boundary = if (exponent) 1L shl value else value.toLong()
         val address = if (inDataSegment) dataAddress else textAddress
         val start = address.get()
         val misalignment = start.mod(boundary)
@@ -408,7 +414,7 @@ internal class FirstPassProcessor(
         }
         for (index in 1 until tokens.size()) {
             val label = tokens[index]
-            if (label.type != TokenTypes.IDENTIFIER) {
+            if (label.type != TokenTypes.IDENTIFIER && label.type != TokenTypes.OPERATOR) {
                 errors.add(ErrorMessage(token, "\"$token\" directive argument must be label."))
                 return
             }

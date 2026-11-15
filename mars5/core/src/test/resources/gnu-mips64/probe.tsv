@@ -9,6 +9,12 @@ ll $11,-256($12)	big	7d8b8036	ll	11,-256,12
 sc $11,252($12)	big	7d8b7e26	sc	11,252,12
 lld $11,-248($12)	big	7d8b8437	lld	11,-248,12
 scd $11,248($12)	big	7d8b7c27	scd	11,248,12
+teq $12,$9,7	big	018901f4	teq	12,9,7
+tge $12,$9,255	big	01893ff0	tge	12,9,255
+tgeu $12,$9,256	big	01894031	tgeu	12,9,256
+tlt $12,$9,511	big	01897ff2	tlt	12,9,511
+tltu $12,$9,512	big	01898033	tltu	12,9,512
+tne $15,$10,1023	big	01eafff6	tne	15,10,1023
 llwp $11,$9,($12)	little	7d8b4876	llwp	11,9,12
 scwp $11,$9,($12)	little	7d8b4866	scwp	11,9,12
 lldp $11,$9,($12)	little	7d8b4877	lldp	11,9,12
@@ -17,3 +23,9 @@ ll $11,-256($12)	little	7d8b8036	ll	11,-256,12
 sc $11,252($12)	little	7d8b7e26	sc	11,252,12
 lld $11,-248($12)	little	7d8b8437	lld	11,-248,12
 scd $11,248($12)	little	7d8b7c27	scd	11,248,12
+teq $12,$9,7	little	018901f4	teq	12,9,7
+tge $12,$9,255	little	01893ff0	tge	12,9,255
+tgeu $12,$9,256	little	01894031	tgeu	12,9,256
+tlt $12,$9,511	little	01897ff2	tlt	12,9,511
+tltu $12,$9,512	little	01898033	tltu	12,9,512
+tne $15,$10,1023	little	01eafff6	tne	15,10,1023

@@ -79,10 +79,12 @@ def verify(verifier):
         raise ValueError("The fixture must cover every expected function and rounding mode")
     for (operation, rounding), vectors in batches.items():
         function = operation.replace("_mulSub", "_mulAdd")
-        subprocess.run(
+        check = subprocess.run(
             [verifier, "-checkAll", "-tininessafter", "-exact", f"-{rounding}", function],
-            input="\n".join(vectors) + "\n", text=True, check=True, stdout=subprocess.DEVNULL,
+            input="\n".join(vectors) + "\n", text=True, capture_output=True,
         )
+        if check.returncode != 0:
+            raise ValueError(f"TestFloat could not verify {operation} {rounding}:\n{check.stdout}{check.stderr}")
     print(f"Verified {sum(map(len, batches.values()))} vectors in {len(batches)} batches")
 
 

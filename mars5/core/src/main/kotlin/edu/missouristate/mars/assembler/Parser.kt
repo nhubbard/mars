@@ -12,6 +12,7 @@ import edu.missouristate.mars.api.InstructionSourceMap.Origin
 import edu.missouristate.mars.api.InstructionSourceMap.SourceOperand
 import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.mips.instructions.ExtendedInstruction
+import edu.missouristate.mars.mips.instructions.basic.InstrCodedTrap
 import edu.missouristate.mars.mips.instructions.Release6ImmediateTrap
 import edu.missouristate.mars.mips.instructions.Instruction
 import edu.missouristate.mars.mips.instructions.Instruction.Companion.coprocessor0Transfers
@@ -120,6 +121,10 @@ internal class Parser(private val pass: FirstPassProcessor) {
             pass.errors.add(ErrorMessage(operator, "Extended (pseudo) instruction or format not permitted.  See Settings."))
         }
         if (!OperandFormat.tokenOperandMatch(tokens, instruction, pass.errors, pass.context.bareMachineEnabled())) return null
+        if (instruction is InstrCodedTrap && Binary.stringToInt(tokens[3].value) !in 0..InstrCodedTrap.MAX_CODE) {
+            pass.errors.add(ErrorMessage(tokens[3], "Trap code must be an unsigned 10-bit integer"))
+            return null
+        }
         if (instruction.name == "dli") {
             try {
                 Binary.stringToDoubleword(tokens[2].value)

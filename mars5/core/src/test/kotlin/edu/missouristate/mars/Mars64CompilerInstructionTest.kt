@@ -12,6 +12,26 @@ import org.junit.jupiter.api.io.TempDir
 
 class Mars64CompilerInstructionTest {
     @Test
+    fun `text align pads executable code to a power of two boundary`(@TempDir directory: Path) {
+        val file = Files.writeString(directory.resolve("align.s"), """
+            .text
+            nop
+            .align 4
+            .globl add
+            add:
+            nop
+        """.trimIndent())
+        TestSessions.create().use { machine ->
+            machine.selectTarget(MarsTarget.MARS64)
+            val program = machine.assemble(listOf(file))
+            val base = machine.memory.textBaseAddress.toLong()
+            assertEquals(base + 16, program.symbolMap().globals().getValue("add").addressBits)
+            assertEquals((0L..16L step 4).map { base + it }, program.machineList!!.map { it.addressBits })
+            assertTrue(program.machineList!!.all { it.binaryStatement == 0 })
+        }
+    }
+
+    @Test
     fun `common data and global directive spellings match the canonical MARS directives`(@TempDir directory: Path) {
         val file = Files.writeString(directory.resolve("aliases.mars"), """
             .data
