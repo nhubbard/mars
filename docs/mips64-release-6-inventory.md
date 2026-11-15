@@ -50,13 +50,19 @@ byte in both byte orders. The output comparison includes guard bytes around stor
 | Scalar floating point | Directed rounding, sticky flags, classification, and compare masks. |
 | Memory boundaries | Scalar and vector transfers across a mapped 4 KiB boundary. Separate default-layout stack tests cover the last writable byte and verify that crossing the stack end raises an address error before any write. |
 | MSA memory | Loads and stores in all four element widths at unaligned addresses, including mixed-width transfers that expose byte and lane ordering. |
-| MSA integer | Wrapping addition, signed and unsigned saturation, signed and unsigned division and remainder in all four lane widths, magnitude comparisons at signed limits, and doubleword shifts. |
+| MSA integer | Wrapping arithmetic and accumulation, signed and unsigned saturation, division and remainder, averages, and comparisons. Probes include signed limits and immediate operands in all four lane widths. |
+| MSA bit operations | Bit changes and inserts, leading zero and one counts, population counts, exact and rounded shifts, and saturation to a selected bit width. Shift counts include zero, the largest count, and a count that wraps. |
 | MSA permutations | Packs, interleaves, shuffles, byte slides, and broadcasts across every applicable lane width. Probes include wrapped selectors, shuffle zeroing bits, and destinations that also supply an input. |
 | MSA register transfers and logic | Signed and unsigned extraction into CPU registers, insertion into the upper and lower halves of a vector, whole-vector moves, logical operations, and masks that merge with the previous destination. |
 | MSA branches | Whole-vector and per-lane zero tests in all four lane widths, with delay-slot execution on both taken and untaken branches. |
-| MSA fixed point | Q15 and Q31 multiplication, rounded accumulation, widening sums, and dot products. |
+| MSA fixed point and widening | Q15 and Q31 multiplication and accumulation, including saturation and half-step rounding. Signed and unsigned horizontal arithmetic, dot products, and dot-product accumulation widening into halfwords, words, and doublewords. |
 | MSA floating point | Signed zeros, quiet and signaling NaNs, classification, extrema, unordered masks, directed overflow, gradual underflow, and flush-to-zero results and status flags. |
 | MSA rounding | Directed rounding and integer conversion, including subnormals and the status register. |
+
+The probes exercise all 429 MSA integer, register transfer, memory, and branch
+forms in the reference inventory, including the scalar `lsa` and `dlsa` forms.
+They check selected inputs for each form. MSA floating-point forms have separate
+probes for arithmetic, comparison, rounding, and exception status.
 
 The checked-in results record the QEMU, LLVM, and LLD versions used to generate
 them. The normal Jupiter suite reads the files and requires only the MARS build.
