@@ -108,6 +108,33 @@ and hardware timing are outside this model.
 [QEMU MIPS64 CPU models](https://www.qemu.org/docs/master/system/qemu-cpu-models.html)
 · [QEMU debugger interface](https://www.qemu.org/docs/master/system/gdb.html)
 
+## Run the simulator and plugin checks
+
+From the repository root, use JDK 25 to run the simulator and CLI tests and
+exercise the instruction catalog and the PNG decoder.
+
+```sh
+./mars5/gradlew -p mars5 :core:check :cli:test
+./mars5/gradlew -p examples/smoke :instruction-lab:exerciseInstructions :png-decoder:test
+```
+
+The [instruction lab](../examples/smoke/README.md) checks that execution reaches
+each assembled catalog entry, including pseudo-instructions. The QEMU probes
+and focused core tests check specific results and exception state. The
+[FIR example](../examples/mars64/README.md) provides commands to run and grade
+the same scalar-versus-vector program through the packaged CLI.
+
+From `mars5`, run the packaged plugin in the pinned IntelliJ version.
+
+```sh
+./gradlew clean cleanSandbox runIde -PpackagedSmoke
+```
+
+The replay runs and debugs the source fixture, navigates across its included
+files, opens MARS Tools, and runs the MARS64 FIR example. The Gradle task
+checks the three output files and records the installed ZIP checksum
+with the IDE logs.
+
 ## Original MARS64 encoding baseline
 
 All 30 example words below are in the

@@ -13,15 +13,15 @@ From the repository root, build the CLI with JDK 25 and run the example.
 
 ```sh
 ./mars5/gradlew -p mars5 :cli:jar
-java -jar mars5/cli/build/libs/cli-1.0-SNAPSHOT.jar nc --target mars64 --start-at-main examples/mars64/fir.mars
+java -jar mars5/cli/build/libs/cli-1.0-SNAPSHOT.jar nc --start-at-main examples/mars64/fir.mars
 java -jar mars5/cli/build/libs/cli-1.0-SNAPSHOT.jar grade examples/mars64/fir-check.kts examples/mars64/fir.mars
 ```
 
 To save the success message as well as print it, append `-- fir.ok` to the run command.
 
-In IntelliJ, open `fir.mars`, select **MARS64** and the **Default** memory
-layout in the MARS project settings, and enable **Start at main** in the run
-configuration. Debug with a breakpoint on `balc scalar_sample`. At the
+In IntelliJ, open `fir.mars`, use the **Default** memory layout in the MARS
+project settings, and enable **Start at main** in the run configuration.
+Debug with a breakpoint on `balc scalar_sample`. At the
 first stop, `$s4` holds 31 and `$w2` holds the four partial sums. Step over
 the call to compare `$v0` with `$s4`, or step into it to follow the scalar
 loop. Inspect the resulting words at `output` in the Memory view.
