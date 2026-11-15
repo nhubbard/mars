@@ -15,13 +15,14 @@ INPUT = "ffffffff80020000"
 OUTPUT = "ffffffff80021000"
 OUTPUT_SIZE = 144
 
-# Enable the FPU, 64-bit FPR mode, and MSA. The two pointers address ordinary RAM.
+# Enable the FPU, 64-bit FPRs, kernel extended addressing (KX), and MSA.
 STARTUP = """\
 .set noreorder
 .text
 .global _start
 _start:
     lui $9, 0x2400
+    ori $9, $9, 0x0080
     mtc0 $9, $12, 0
     mfc0 $8, $16, 5
     lui $9, 0x0800
@@ -29,8 +30,7 @@ _start:
     mtc0 $8, $16, 5
     ehb
     lui $4, 0x8002
-    lui $5, 0x8002
-    ori $5, $5, 0x1000
+    daddiu $5, $4, 0x1000
 """
 
 STOP = """\
@@ -144,7 +144,7 @@ def capture():
             source.write_text(STARTUP + program + "\n" + STOP)
             for triple, byte_order in [("mips64", "big"), ("mips64el", "little")]:
                 subprocess.run(
-                    ["llvm-mc", f"-triple={triple}", "-mcpu=mips64r6", "-mattr=+msa",
+                    ["llvm-mc", f"-triple={triple}", "-mcpu=mips64r6", "-mattr=+msa,+crc",
                      "-filetype=obj", str(source), "-o", str(obj)], check=True, timeout=10,
                 )
                 subprocess.run(["ld.lld", "-T", str(layout), str(obj), "-o", str(elf)], check=True, timeout=10)

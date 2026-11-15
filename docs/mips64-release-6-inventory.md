@@ -43,7 +43,9 @@ byte in both byte orders. The output comparison includes guard bytes around stor
 
 | Probe | Execution checked |
 | --- | --- |
-| Scalar integer and memory | Word and doubleword results, rotate, scaled add, high multiply, signed and unsigned division and remainder, and unaligned scalar loads and stores. |
+| Scalar integer | Word and doubleword arithmetic, all low and high multiply forms, signed and unsigned division and remainder, immediate construction, comparisons, and full-width register selection. |
+| Scalar bit operations | Byte and bit swaps, sign extension, leading-bit counts, shifts, rotates, and bitfield extraction and insertion at word and doubleword limits. Includes every CRC-32 and CRC-32C form. |
+| Scalar addressing | Signed and unsigned loads, unaligned transfers, and all six PC-relative forms. PC-relative probes check displacement limits, signed and unsigned reads of the same text word, and an aligned doubleword base for both instruction alignments. |
 | Branches | Taken and untaken compact branches, a delay slot, and a compact call and return. |
 | Atomics | Successful word and doubleword linked loads and conditional stores. |
 | Exceptions | Overflow, misaligned linked load, and breakpoints in delay and forbidden slots. A shared handler records the cause, EPC offset, exception level, destination register, and bad-address offset for address errors. |
@@ -88,7 +90,8 @@ The script prints the results for review. Pass `--write` to update the fixture
 after all cases succeed. It runs trusted local probes in QEMU and reads memory
 over the debugger’s standard input and output. In MARS, the tests assemble the
 instruction sequence as ordinary source. The ELF and startup code belong to the
-reference harness.
+reference harness. The harness enables QEMU kernel extended addressing so that
+PC-relative arithmetic uses the entire 64-bit address.
 
 When a result differs, check the Release 6 or MSA specification before changing
 the simulator. Record which cases have defined results and which rely on a
