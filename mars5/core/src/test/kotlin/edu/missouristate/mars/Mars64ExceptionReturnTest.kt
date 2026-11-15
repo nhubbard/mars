@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
+import org.junit.jupiter.params.provider.ValueSource
 
 class Mars64ExceptionReturnTest {
     @Test
@@ -71,16 +72,21 @@ class Mars64ExceptionReturnTest {
         }
     }
 
-    @Test
-    fun `a delay slot fault saves the branch address and backstep restores exception state`(@TempDir directory: Path) {
-        val source = Files.writeString(directory.resolve("slot.s"), $$"""
-            beq $zero,$zero,target
+    @ParameterizedTest
+    @ValueSource(booleans = [false, true])
+    fun `a branch slot fault saves the branch address and backstep restores exception state`(
+        compact: Boolean, @TempDir directory: Path,
+    ) {
+        val branch = if (compact) "beqzc $9,target" else "beq $0,$0,target"
+        val source = Files.writeString(directory.resolve("slot.s"), """
+            $branch
             break
             target: nop
         """.trimIndent())
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
             val program = session.assemble(listOf(source), null, extended = false, warnings = false)
+            session.editIntegerRegister(9, 1)
             val address = program.machineList!!.first().address
             assertThrows(ProcessingException::class.java) { program.simulate(2) }
             assertEquals(address, session.coprocessor0.getValue(EPC))
@@ -88,6 +94,9 @@ class Mars64ExceptionReturnTest {
             session.backStepper.backStep()
             assertEquals(0, session.coprocessor0.getValue(EPC))
             assertEquals(0, session.coprocessor0.getValue(CAUSE) ushr 31)
+            assertThrows(ProcessingException::class.java) { program.simulate(1) }
+            assertEquals(address, session.coprocessor0.getValue(EPC))
+            assertEquals(1, session.coprocessor0.getValue(CAUSE) ushr 31)
         }
     }
 

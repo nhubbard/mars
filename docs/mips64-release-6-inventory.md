@@ -46,6 +46,7 @@ byte in both byte orders. The output comparison includes guard bytes around stor
 | Scalar integer and memory | Word and doubleword results, rotate, scaled add, high multiply, and unaligned scalar loads and stores. |
 | Branches | Taken and untaken compact branches, a delay slot, and a compact call and return. |
 | Atomics | Successful word and doubleword linked loads and conditional stores. |
+| Exceptions | Overflow, misaligned linked load, and breakpoints in delay and forbidden slots. A shared handler records the cause, EPC offset, exception level, destination register, and bad-address offset for address errors. |
 | Scalar floating point | Directed rounding, sticky flags, classification, and compare masks. |
 | MSA memory | Loads and stores in all four element widths at unaligned addresses, including mixed-width transfers that expose byte and lane ordering. |
 | MSA integer | Wrapping and saturating addition, doubleword shifts, and shuffle selectors. |
@@ -196,7 +197,8 @@ of the word and doubleword transfers.
 
 `eret` and `eretnc` return through the educational EPC register. `eret`
 clears the load-linked reservation and `eretnc` preserves it. A fault in a
-MARS64 delay slot records the branch address in EPC and sets `Cause.BD`.
+MARS64 delay slot or an untaken compact branch’s forbidden slot records the
+branch address in EPC and sets `Cause.BD`. [Release 6 branch and jump rules](https://s3-eu-west-1.amazonaws.com/downloads-mips/documents/MD00083-2B-MIPS64INT-AFP-06.01.pdf)
 When exception level is already set, a subsequent fault preserves EPC and
 `Cause.BD`. A return to a full-width EPC outside the current map raises an
 address fault.

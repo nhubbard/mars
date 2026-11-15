@@ -21,10 +21,8 @@ STARTUP = """\
 .text
 .global _start
 _start:
-    mfc0 $8, $12, 0
     lui $9, 0x2400
-    or $8, $8, $9
-    mtc0 $8, $12, 0
+    mtc0 $9, $12, 0
     mfc0 $8, $16, 5
     lui $9, 0x0800
     or $8, $8, $9
@@ -44,8 +42,9 @@ done:
 
 LINKER_SCRIPT = f"""\
 ENTRY(_start)
-PHDRS {{ ram PT_LOAD FLAGS(5); }}
+PHDRS {{ ram PT_LOAD FLAGS(5); exceptions PT_LOAD FLAGS(5); }}
 SECTIONS {{
+    .exception 0xffffffff80000180 : {{ *(.exception) }} :exceptions
     . = {TEXT_BASE};
     .text : {{ *(.text) }} :ram
     /DISCARD/ : {{ *(.MIPS.abiflags) *(.MIPS.options) *(.reginfo) *(.got) }}
@@ -130,8 +129,19 @@ def capture():
         work = Path(directory)
         source, obj, elf, layout = (work / name for name in ("probe.s", "probe.o", "probe.elf", "ram.ld"))
         layout.write_text(LINKER_SCRIPT)
-        for probe in sorted(FIXTURES.glob("*.asm")):
-            source.write_text(STARTUP + probe.read_text() + "\n" + STOP)
+        probes = sorted(FIXTURES.glob("*.asm")) + sorted(FIXTURES.glob("faults/*.asm"))
+        for probe in probes:
+            program = probe.read_text()
+            name = probe.stem
+            if probe.parent.name == "faults":
+                name = "faults/" + name
+                program = (
+                    "dla $6, probe_start\nprobe_start:\n" + program
+                    + "\nmissed_fault:\nb missed_fault\nnop\n"
+                    + '.section .exception,"ax",@progbits\n'
+                    + (FIXTURES / "exception-handler.s").read_text()
+                )
+            source.write_text(STARTUP + program + "\n" + STOP)
             for triple, byte_order in [("mips64", "big"), ("mips64el", "little")]:
                 subprocess.run(
                     ["llvm-mc", f"-triple={triple}", "-mcpu=mips64r6", "-mattr=+msa",
@@ -140,7 +150,7 @@ def capture():
                 subprocess.run(["ld.lld", "-T", str(layout), str(obj), "-o", str(elf)], check=True, timeout=10)
                 symbols = subprocess.check_output(["llvm-nm", str(elf)], text=True, timeout=10)
                 stop_address = next(line.split()[0] for line in symbols.splitlines() if line.endswith(" T done"))
-                lines.append(f"{probe.stem},{byte_order},{execute(elf, stop_address, triple, inputs)}")
+                lines.append(f"{name},{byte_order},{execute(elf, stop_address, triple, inputs)}")
     return "\n".join(lines) + "\n"
 
 

@@ -459,8 +459,6 @@ class InstructionContext(private val session: MarsContext, private val environme
         lastBranchOutcome = null
         val history = session.backStepper
         val recording = history.beginInstruction(registerFile.programCounterBits, statement)
-        val forbiddenSlot = delayedBranch.forbiddenSlot
-        delayedBranch.forbiddenSlot = false
         try {
             registerFile.incrementPC()
             try {
@@ -469,14 +467,16 @@ class InstructionContext(private val session: MarsContext, private val environme
                 val instruction = statement.instruction as? BasicInstruction
                     ?: throw ProcessingException(this, statement, "invalid instruction", RESERVED_INSTRUCTION_EXCEPTION)
                 if (instruction.isControlTransfer()) {
-                    if (forbiddenSlot) {
+                    if (delayedBranch.forbiddenSlot) {
                         throw ProcessingException(this, statement, "control transfer in a forbidden slot", RESERVED_INSTRUCTION_EXCEPTION)
                     }
                     if (session.target == MarsTarget.MARS64 && delayedBranch.isTriggered) {
                         throw ProcessingException(this, statement, "control transfer in a delay slot", RESERVED_INSTRUCTION_EXCEPTION)
                     }
                 }
+                // Fault construction needs to see the incoming slot until execution finishes.
                 instruction.simulationCode.simulate(statement, this)
+                delayedBranch.forbiddenSlot = false
                 if (instruction.instructionFormat == I_BRANCH_FORMAT && lastBranchOutcome == null) {
                     lastBranchOutcome = BranchOutcome.NOT_TAKEN
                     if (session.target == MarsTarget.MARS64 && instruction.isCompactConditionalBranch) {
@@ -484,6 +484,7 @@ class InstructionContext(private val session: MarsContext, private val environme
                     }
                 }
             } catch (error: ProcessingException) {
+                delayedBranch.forbiddenSlot = false
                 memory().reservation = null
                 if (!dispatchHandler || error.errors() == null) throw error
                 val handler = try {
@@ -524,9 +525,9 @@ class InstructionContext(private val session: MarsContext, private val environme
         if (session.target == MarsTarget.MARS32) {
             updateCoprocessor0(EPC, faultPc.toInt())
         } else if (status and (1 shl EXCEPTION_LEVEL) == 0) {
-            val inDelaySlot = delayedBranch.isTriggered
-            causeBits = (causeBits and Int.MAX_VALUE) or (if (inDelaySlot) Int.MIN_VALUE else 0)
-            updateCoprocessor0Bits(EPC, faultPc - if (inDelaySlot) INSTRUCTION_LENGTH else 0)
+            val inBranchSlot = delayedBranch.isTriggered || delayedBranch.forbiddenSlot
+            causeBits = (causeBits and Int.MAX_VALUE) or (if (inBranchSlot) Int.MIN_VALUE else 0)
+            updateCoprocessor0Bits(EPC, faultPc - if (inBranchSlot) INSTRUCTION_LENGTH else 0)
         }
         updateCoprocessor0(CAUSE, causeBits)
         updateCoprocessor0(STATUS, Binary.setBit(status, EXCEPTION_LEVEL))
