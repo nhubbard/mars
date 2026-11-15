@@ -48,8 +48,7 @@ inflate_zlib:
     sll $t0, $t0, 8
     or $t0, $t0, $t1
     li $t1, 31
-    divu $t0, $t1
-    mfhi $t0
+    modu $t0, $t0, $t1
     bnez $t0, png_invalid
     nop
     addiu $s0, $a0, 2

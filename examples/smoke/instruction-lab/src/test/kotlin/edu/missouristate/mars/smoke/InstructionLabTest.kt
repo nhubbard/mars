@@ -6,13 +6,11 @@ import java.io.PrintStream
 import java.nio.charset.StandardCharsets
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions
-import org.junit.jupiter.params.ParameterizedTest
-import org.junit.jupiter.params.provider.ValueSource
+import org.junit.jupiter.api.Test
 
 internal class InstructionLabTest {
-    @ParameterizedTest
-    @ValueSource(booleans = [false, true])
-    fun executesTheBinaryWorkbenchWithAndWithoutDelaySlots(delayedBranches: Boolean) {
+    @Test
+    fun executesTheBinaryWorkbench() {
         val input: String =
             """
             1
@@ -48,7 +46,6 @@ internal class InstructionLabTest {
                 Path.of("src/main/mips/workbench.asm"),
                 ByteArrayInputStream(input.toByteArray(StandardCharsets.UTF_8)),
                 output,
-                delayedBranches,
             )
         }
         val result = bytes.toString(StandardCharsets.UTF_8)

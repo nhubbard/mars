@@ -1,6 +1,5 @@
 package edu.missouristate.mars.smoke
 
-import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.MIPSprogram
 import edu.missouristate.mars.ProcessingException
 import edu.missouristate.mars.Settings
@@ -25,8 +24,6 @@ import javax.imageio.ImageIO
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
-import org.junit.jupiter.params.ParameterizedTest
-import org.junit.jupiter.params.provider.ValueSource
 
 internal class PngDecoderTest {
     @TempDir lateinit var temporary: Path
@@ -37,18 +34,17 @@ internal class PngDecoderTest {
         val expected = ImageIO.read(input.toFile())
         Assertions.assertEquals(DISPLAY_STRIDE, expected.getWidth())
         Assertions.assertEquals(DISPLAY_STRIDE, expected.getHeight())
-        run(input, expected, false, SUCCESS)
+        run(input, expected, SUCCESS)
     }
 
-    @ParameterizedTest
-    @ValueSource(booleans = [false, true])
-    fun decodesFixedAndStoredBlocksWithAllRowFilters(delayedBranches: Boolean) {
+    @Test
+    fun decodesFixedAndStoredBlocksWithAllRowFilters() {
         val filtered: ByteArray = filteredScanlines()
         val fixed: ByteArray = png(2, 5, 2, fixedZlib(filtered))
         val stored: ByteArray = png(2, 5, 2, storedZlib(filtered))
         for (fixture in listOf(fixed, stored)) {
             val path = Files.write(temporary.resolve("blocks.png"), fixture)
-            run(path, ImageIO.read(path.toFile()), delayedBranches, SUCCESS)
+            run(path, ImageIO.read(path.toFile()), SUCCESS)
         }
     }
 
@@ -73,11 +69,11 @@ internal class PngDecoderTest {
                 png(1, 5, 2, zlib),
             )) {
             val path = Files.write(temporary.resolve("invalid.png"), invalid)
-            run(path, null, false, INVALID)
+            run(path, null, INVALID)
         }
         val rgba: Path = Files.write(temporary.resolve("rgba.png"), png(2, 5, 6, zlib))
-        run(rgba, null, false, "Expected a non-interlaced 8-bit RGB PNG")
-        run(temporary.resolve("missing.png"), null, false, "Cannot read PNG")
+        run(rgba, null, "Expected a non-interlaced 8-bit RGB PNG")
+        run(temporary.resolve("missing.png"), null, "Cannot read PNG")
     }
 
     companion object {
@@ -107,18 +103,16 @@ internal class PngDecoderTest {
         private fun run(
             input: Path,
             expected: BufferedImage?,
-            delayedBranches: Boolean,
             message: String,
         ) {
             val settings = Settings()
             settings.simulationSettings
                 .setMemoryConfiguration("Default")
-                .setDelayedBranchingEnabled(delayedBranches)
                 .setExtendedAssemblerEnabled(true)
             val output = ByteArrayOutputStream()
             try {
                 DaggerMarsComponent.builder()
-                    .coreModule(CoreModule(settings, 32, MarsTarget.MARS32))
+                    .coreModule(CoreModule(settings, 32))
                     .guiProxy(HEADLESS)
                     .build()
                     .context()

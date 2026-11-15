@@ -91,7 +91,7 @@ object InstructionLab {
         val path = Path.of(args[1]).toAbsolutePath().normalize()
         when (args[0]) {
             "catalog" -> exerciseCatalog(path)
-            "run" -> runWorkbench(path, System.`in`, System.out, false)
+            "run" -> runWorkbench(path, System.`in`, System.out)
             else -> throw IllegalArgumentException("Unknown command: " + args[0])
         }
     }
@@ -251,10 +251,8 @@ object InstructionLab {
         path: Path,
         input: InputStream,
         output: PrintStream,
-        delayedBranches: Boolean,
     ) {
-        session("Default").use { session ->
-            session.settings.setDelayedBranchingEnabled(delayedBranches)
+        session("Default", MarsTarget.MARS64).use { session ->
             try {
                 SessionSyscallEnvironment(session.memory, input, output, output).use { console ->
                     val program: MIPSprogram = session.assemble(listOf(path))
@@ -272,7 +270,7 @@ object InstructionLab {
         }
     }
 
-    private fun session(layout: String): MarsContext {
+    private fun session(layout: String, target: MarsTarget = MarsTarget.MARS32): MarsContext {
         val settings = Settings()
         settings.simulationSettings
             .setMemoryConfiguration(layout)
@@ -283,7 +281,7 @@ object InstructionLab {
             .setSelfModifyingCodeEnabled(false)
             .setWarningsAreErrors(false)
         return DaggerMarsComponent.builder()
-            .coreModule(CoreModule(settings, 32, MarsTarget.MARS32))
+            .coreModule(CoreModule(settings, 32, target))
             .guiProxy(HEADLESS)
             .build()
             .context()

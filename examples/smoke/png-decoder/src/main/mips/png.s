@@ -153,8 +153,7 @@ chunk_palette:
     bgtu $s4, $t0, png_invalid
     nop
     li $t0, 3
-    divu $s4, $t0
-    mfhi $t0
+    modu $t0, $s4, $t0
     bnez $t0, png_invalid
     nop
     b chunk_advance
