@@ -1,5 +1,7 @@
 package edu.missouristate.mars.plugin.tools
 
+import com.intellij.ide.setToolTipText
+import com.intellij.openapi.util.text.HtmlChunk
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.project.Project
@@ -109,7 +111,7 @@ internal class MarsBotView(project: Project) : Disposable {
         val snapshot = selected?.snapshot()
         val blocked = selector.process?.scavengerHuntSnapshot()?.connected == true
         toggle.isEnabled = snapshot?.available == true && !blocked
-        toggle.toolTipText = if (blocked) toolsMessages.getMessage("run.connect.deviceConflict") else null
+        toggle.setToolTipText(if (blocked) HtmlChunk.text(toolsMessages.getMessage("run.connect.deviceConflict")) else null)
         toggle.text = toolsMessages.getMessage(if (snapshot?.connected == true) "counter.disconnect" else "counter.connect")
         reset.isEnabled = snapshot != null
         clock.isEnabled = toggle.isEnabled
@@ -127,10 +129,10 @@ internal class MarsBotView(project: Project) : Disposable {
             )
         }.orEmpty()
         ports.text = snapshot?.ports?.let { toolsMessages.getMessage("marsBot.ports", hexAddress(it.heading)) }.orEmpty()
-        ports.toolTipText = snapshot?.ports?.let {
-            toolsMessages.getMessage("marsBot.portDetails", hexAddress(it.heading), hexAddress(it.pen),
-                hexAddress(it.x), hexAddress(it.y), hexAddress(it.move))
-        }
+        ports.setToolTipText(snapshot?.ports?.let {
+            HtmlChunk.text(toolsMessages.getMessage("marsBot.portDetails", hexAddress(it.heading), hexAddress(it.pen),
+                hexAddress(it.x), hexAddress(it.y), hexAddress(it.move)))
+        })
         val description = if (movement.text.isEmpty()) status.text else "${status.text}   ${movement.text}"
         board.showWorld(world, description)
     }

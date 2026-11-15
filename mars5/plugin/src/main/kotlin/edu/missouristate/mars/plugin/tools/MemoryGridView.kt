@@ -1,5 +1,7 @@
 package edu.missouristate.mars.plugin.tools
 
+import com.intellij.ide.setToolTipText
+import com.intellij.openapi.util.text.HtmlChunk
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.observable.util.whenFocusGained
@@ -261,7 +263,7 @@ internal class MemoryGridCanvas(
         preferredSize = minimumSize
         getAccessibleContext().accessibleName = toolsMessages.getMessage(nameKey)
         isFocusable = true
-        toolTipText = ""
+        setToolTipText(HtmlChunk.empty())
         getAccessibleContext().accessibleDescription = inspectionHint
         addFocusListener(object : FocusAdapter() {
             override fun focusGained(event: FocusEvent) {

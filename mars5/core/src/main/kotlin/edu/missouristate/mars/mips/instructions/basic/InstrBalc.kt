@@ -1,6 +1,5 @@
 package edu.missouristate.mars.mips.instructions.basic
 
-import edu.missouristate.mars.mips.instructions.Instruction.Companion.INSTRUCTION_LENGTH
 
 class InstrBalc : CompactBranchInstruction(
     "balc label",

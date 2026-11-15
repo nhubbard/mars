@@ -1,6 +1,5 @@
 package edu.missouristate.mars
 
-import edu.missouristate.mars.PseudoExpansionTest.Vector
 import java.io.InputStream
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files

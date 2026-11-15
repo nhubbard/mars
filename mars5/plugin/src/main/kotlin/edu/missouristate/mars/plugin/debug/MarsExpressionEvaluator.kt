@@ -82,7 +82,6 @@ internal class MarsExpressionEvaluator(
     override fun getExpressionInfoAtOffsetAsync(project: Project, document: Document, offset: Int, sideEffectsAllowed: Boolean) =
         ReadAction.nonBlocking<ExpressionInfo?> { expressionAt(project, document, offset) }
             .withDocumentsCommitted(project)
-            .expireWith(project)
             .submit(AppExecutorUtil.getAppExecutorService())
 
     private fun expressionAt(project: Project, document: Document, offset: Int): ExpressionInfo? {

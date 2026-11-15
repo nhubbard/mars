@@ -2,7 +2,6 @@ package edu.missouristate.mars.mips.instructions.basic
 
 import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat.I_FORMAT
-import edu.missouristate.mars.mips.instructions.Instruction.Companion.INSTRUCTION_LENGTH
 
 class InstrJialc : BasicInstruction(
     "jialc \$t2,-100",

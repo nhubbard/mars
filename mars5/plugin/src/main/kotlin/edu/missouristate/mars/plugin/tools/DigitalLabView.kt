@@ -1,5 +1,7 @@
 package edu.missouristate.mars.plugin.tools
 
+import com.intellij.ide.setToolTipText
+import com.intellij.openapi.util.text.HtmlChunk
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.project.Project
@@ -147,7 +149,7 @@ private class SevenSegment(private val descriptionKey: String, private val value
         val description = toolsMessages.getMessage(descriptionKey, hex)
         valueLabel.text = toolsMessages.getMessage(valueKey, hex)
         getAccessibleContext().accessibleName = description
-        toolTipText = description
+        setToolTipText(HtmlChunk.text(description))
         repaint()
     }
 

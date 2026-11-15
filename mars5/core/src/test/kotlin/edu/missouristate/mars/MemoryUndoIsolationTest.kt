@@ -3,7 +3,6 @@ package edu.missouristate.mars
 import edu.missouristate.mars.core.InstructionContext
 import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.core.SimulationSettings
-import edu.missouristate.mars.mips.hardware.MemoryConfiguration
 import edu.missouristate.mars.mips.hardware.MemoryConfigurations
 import edu.missouristate.mars.mips.hardware.MemoryState
 import edu.missouristate.mars.mips.instructions.basic.InstrSw

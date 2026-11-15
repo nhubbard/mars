@@ -150,8 +150,8 @@ class MarsSourceRefactoringPlatformTest {
         }
     }
 
-    private fun createRun(name: String, source: String?, directory: String? = null): MarsRunConfiguration {
-        val manager = RunManager.getInstance(project)
+    private suspend fun createRun(name: String, source: String?, directory: String? = null): MarsRunConfiguration {
+        val manager = RunManager.getInstanceAsync(project)
         val type = ConfigurationTypeUtil.findConfigurationType(MarsRunType::class.java)
         val registered = manager.createConfiguration(name, type)
         val run = registered.configuration as MarsRunConfiguration

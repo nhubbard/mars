@@ -4,7 +4,6 @@ import edu.missouristate.mars.ProgramStatement
 import edu.missouristate.mars.core.InstructionContext
 import edu.missouristate.mars.mips.hardware.Coprocessor1State.Companion.CAUSE_MASK
 import edu.missouristate.mars.mips.hardware.Coprocessor1State.Companion.DIVIDE_BY_ZERO
-import edu.missouristate.mars.mips.hardware.Coprocessor1State.Companion.FLUSH_SUBNORMALS
 import edu.missouristate.mars.mips.hardware.Coprocessor1State.Companion.INEXACT
 import edu.missouristate.mars.mips.hardware.Coprocessor1State.Companion.INVALID_OPERATION
 import edu.missouristate.mars.mips.hardware.Coprocessor1State.Companion.MSA_NON_TRAPPING

@@ -1,5 +1,7 @@
 package edu.missouristate.mars.plugin.tools
 
+import com.intellij.ide.setToolTipText
+import com.intellij.openapi.util.text.HtmlChunk
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.project.Project
@@ -109,7 +111,7 @@ internal class ScavengerHuntView(project: Project) : Disposable {
         val blocked = selected?.marsBot?.snapshot()?.connected == true
         val connected = snapshot?.connected == true
         toggle.isEnabled = snapshot?.available == true && !blocked
-        toggle.toolTipText = if (blocked) toolsMessages.getMessage("run.connect.deviceConflict") else null
+        toggle.setToolTipText(if (blocked) HtmlChunk.text(toolsMessages.getMessage("run.connect.deviceConflict")) else null)
         toggle.text = toolsMessages.getMessage(if (connected) "counter.disconnect" else "counter.connect")
         reset.isEnabled = connected && !snapshot.resetPending
         val game = snapshot?.game
@@ -127,9 +129,10 @@ internal class ScavengerHuntView(project: Project) : Disposable {
             val reason = toolsMessages.getMessage("scavenger.rejection." + (it.rejection?.name ?: "FOREIGN_WRITE"))
             toolsMessages.getMessage("scavenger.diagnostic", it.address.toUInt().toString(16), reason)
         }
-        if (diagnosticText != diagnostic.toolTipText) {
+        val tooltip = diagnosticText?.let(HtmlChunk::text)
+        if (tooltip?.toString() != diagnostic.toolTipText) {
             diagnostic.text = StringUtil.escapeXmlEntities(diagnosticText.orEmpty())
-            diagnostic.toolTipText = diagnosticText
+            diagnostic.setToolTipText(tooltip)
         }
         val previousSelection = table.selectedRow
         scoreboard.show(round)
