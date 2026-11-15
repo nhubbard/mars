@@ -323,24 +323,21 @@ open class MIPSprogram @JvmOverloads constructor(
         val execution = sessionExecution ?: InstructionContext(session, syscallEnvironment ?: session.syscallEnvironment)
             .also { sessionExecution = it }
         val pc = session.registerFile.programCounterBits
+        var fetchError: AddressErrorException? = null
         val statement = try {
             session.memory.fetchInstruction(pc)
         } catch (error: AddressErrorException) {
-            val location = ProgramStatement(0, pc, session.instructionSet)
-            val recording = session.backStepper.beginInstruction(pc, location)
-            try {
-                session.registerFile.incrementPC()
-                throw ProcessingException(execution, location, error)
-            } finally {
-                if (recording) session.backStepper.endInstruction()
-            }
+            // The faulting PC still needs an exception and backstep record.
+            fetchError = error
+            ProgramStatement(0, pc, session.instructionSet)
         }
         if (statement == null) {
             session.delayedBranch.clear()
             return ExecutionStep(pc.toInt(), 0, false, StopEvent.Reason.CLIFF_TERMINATION, pcBits = pc)
         }
         try {
-            execution.executeWithExceptionHandler(statement)
+            if (fetchError == null) execution.executeWithExceptionHandler(statement)
+            else execution.executeFetchFault(statement, fetchError)
         } catch (error: ProcessingException) {
             session.delayedBranch.clear()
             if (error.errors() != null) throw error

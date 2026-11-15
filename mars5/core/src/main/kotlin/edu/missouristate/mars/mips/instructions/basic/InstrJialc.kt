@@ -10,7 +10,7 @@ class InstrJialc : BasicInstruction(
     "111110 00000 fffff ssssssssssssssss",
     { statement, context ->
         val operands = statement.operands
-        val target = context.registerJumpTarget(statement, operands[0], operands[1].toShort().toInt())
+        val target = context.effectiveAddress(operands[0], operands[1].toShort().toInt())
         context.compactTransfer(statement, target)
         context.link(31, statement.addressBits + INSTRUCTION_LENGTH)
     },

@@ -46,9 +46,9 @@ byte in both byte orders. The output comparison includes guard bytes around stor
 | Scalar integer | Word and doubleword arithmetic, all low and high multiply forms, signed and unsigned division and remainder, immediate construction, comparisons, and full-width register selection. |
 | Scalar bit operations | Byte and bit swaps, sign extension, leading-bit counts, shifts, rotates, and bitfield extraction and insertion at word and doubleword limits. Includes every CRC-32 and CRC-32C form. |
 | Scalar addressing | Signed and unsigned loads, unaligned transfers, and all six PC-relative forms. PC-relative probes check displacement limits, signed and unsigned reads of the same text word, and an aligned doubleword base for both instruction alignments. |
-| Branches | Taken and untaken compact branches, a delay slot, and a compact call and return. |
+| Branches and jumps | Taken and untaken signed, unsigned, zero, overflow, and FPR-bit comparisons. Delayed and compact calls check return addresses, alternate link registers, and call and return slots. |
 | Atomics | Successful word and doubleword linked loads and conditional stores. |
-| Exceptions | Overflow, misaligned linked load, and breakpoints in delay and forbidden slots. A shared handler records the cause, EPC offset, exception level, destination register, and bad-address offset for address errors. |
+| Exceptions | Overflow, misaligned linked load, breakpoints, and illegal control transfers in delay and forbidden slots. Misaligned jump targets check that the slot and link take effect before the instruction fetch faults. A shared handler records the cause, EPC offset, exception level, destination register, and bad-address offset for address errors. |
 | Scalar floating point | Directed rounding, sticky flags, classification, and compare masks. |
 | Memory boundaries | Scalar and vector transfers across a mapped 4 KiB boundary. Separate default-layout stack tests cover the last writable byte and verify that crossing the stack end raises an address error before any write. |
 | MSA memory | Loads and stores in all four element widths at unaligned addresses, including mixed-width transfers that expose byte and lane ordering. |

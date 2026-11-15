@@ -74,13 +74,6 @@ class InstructionContext(private val session: MarsContext, private val environme
     internal fun legacyEffectiveAddress(register: Int, offset: Int, exception: Int = ADDRESS_EXCEPTION_LOAD): Int =
         memory().narrowAddress(effectiveAddress(register, offset), exception)
 
-    internal fun registerJumpTarget(statement: ProgramStatement, register: Int, offset: Int = 0): Long =
-        try {
-            memory().checkInstructionAddress(effectiveAddress(register, offset))
-        } catch (failure: AddressErrorException) {
-            throw ProcessingException(this, statement, failure)
-        }
-
     internal fun jumpAndLinkRegister(link: Int, source: Int) {
         linkReturnAddress(link)
         jump(registerFile.getValue(source))
@@ -446,6 +439,10 @@ class InstructionContext(private val session: MarsContext, private val environme
         execute(statement, dispatchHandler = true)
     }
 
+    internal fun executeFetchFault(statement: ProgramStatement, error: AddressErrorException) {
+        executeInstruction(statement, dispatchHandler = true, fetchError = error)
+    }
+
     fun newErrorList(): ErrorList = ErrorList(session.settings)
 
     private fun execute(statement: ProgramStatement, dispatchHandler: Boolean) {
@@ -454,7 +451,9 @@ class InstructionContext(private val session: MarsContext, private val environme
         }
     }
 
-    private fun executeInstruction(statement: ProgramStatement, dispatchHandler: Boolean) {
+    private fun executeInstruction(
+        statement: ProgramStatement, dispatchHandler: Boolean, fetchError: AddressErrorException? = null,
+    ) {
         lastTransfer = null
         lastBranchOutcome = null
         val history = session.backStepper
@@ -462,6 +461,7 @@ class InstructionContext(private val session: MarsContext, private val environme
         try {
             registerFile.incrementPC()
             try {
+                if (fetchError != null) throw ProcessingException(this, statement, fetchError)
                 val interrupt = session.takeExternalInterrupt()
                 if (interrupt != 0) throw ProcessingException(this, statement, "External interrupt", interrupt)
                 val instruction = statement.instruction as? BasicInstruction

@@ -44,7 +44,7 @@ private fun delayedJump(example: String, registerFields: String, link: Int?, haz
         { statement, context ->
             val operands = statement.operands
             val source = operands[if (link == null) 1 else 0]
-            context.release6DelayedJump(context.registerJumpTarget(statement, source), link ?: operands[0])
+            context.release6DelayedJump(context.effectiveAddress(source, 0), link ?: operands[0])
         },
     ) {
         override fun encodeOperands(values: IntArray): IntArray {

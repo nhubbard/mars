@@ -25,6 +25,13 @@ record_address:
 dmfc0 $9, $8
 dsubu $9, $9, $4
 sd $9, 32($5)
+dmfc0 $9, $14
+dmfc0 $10, $8
+bne $9, $10, done
+nop
+# An instruction fetch fault also exposes the link that preceded the fetch.
+dsubu $9, $31, $6
+sd $9, 64($5)
 beq $0, $0, done
 nop
 record_msa:

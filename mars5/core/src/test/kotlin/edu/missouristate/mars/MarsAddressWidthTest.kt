@@ -3,6 +3,7 @@ package edu.missouristate.mars
 import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.api.StepEvent
 import edu.missouristate.mars.mips.hardware.Coprocessor0State.Companion.CAUSE
+import edu.missouristate.mars.mips.hardware.Coprocessor0State.Companion.EPC
 import edu.missouristate.mars.mips.hardware.Coprocessor0State.Companion.VADDR
 import edu.missouristate.mars.mips.hardware.MemoryState
 import edu.missouristate.mars.simulator.Exceptions.ADDRESS_EXCEPTION_LOAD
@@ -335,17 +336,35 @@ class MarsAddressWidthTest {
 
     @ParameterizedTest
     @ValueSource(strings = [$$"jr $a0", $$"jalr $a0", $$"jalr $ra,$a0", $$"jic $a0,4", $$"jialc $a0,4"])
-    fun `unmapped high bits cannot alias text or change a link`(instruction: String, @TempDir directory: Path) {
-        val source = Files.writeString(directory.resolve("jump.s"), "$instruction\nnop\n")
+    fun `unmapped high bits fault at the target after the jump completes`(instruction: String, @TempDir directory: Path) {
+        val source = Files.writeString(directory.resolve("jump.s"), $$"$$instruction\nori $12,$0,27\n")
         TestSessions.create().use { machine ->
             machine.selectTarget(MarsTarget.MARS64)
             val program = machine.assemble(listOf(source))
-            machine.editIntegerRegister(4, 0x2_0000_0000L + machine.memory.textBaseAddress)
-            machine.editIntegerRegister(31, 0x2_0000_0000L)
+            val start = machine.registerFile.programCounterBits
+            val base = start + 0x2_0000_0000L
+            val compact = instruction.startsWith("jic") || instruction.startsWith("jialc")
+            val target = base + if (compact) 4 else 0
+            machine.editIntegerRegister(4, base)
+            machine.editIntegerRegister(31, -1L)
+            program.simulate(if (compact) 1 else 2)
+            assertEquals(target, machine.registerFile.programCounterBits)
+            val link = when {
+                instruction.startsWith("jalr") -> start + 8
+                instruction.startsWith("jialc") -> start + 4
+                else -> -1L
+            }
+            assertEquals(link, machine.registerFile.getLongValueNoNotify(31))
+            assertEquals(if (compact) 0 else 27, machine.registerFile.getValue(12))
             val failure = assertThrows(ProcessingException::class.java) { program.simulate(1) }
             assertTrue(failure.message!!.contains("outside mapped memory"))
-            assertEquals(0x2_0000_0000L, machine.registerFile.getLongValueNoNotify(31))
-            assertEquals(ADDRESS_EXCEPTION_LOAD, (machine.coprocessor0.getValue(CAUSE) ushr 2) and 31)
+            assertEquals(link, machine.registerFile.getLongValueNoNotify(31))
+            assertEquals(target, machine.coprocessor0.readRegisterBits(EPC))
+            assertEquals(target, machine.coprocessor0.readRegisterBits(VADDR))
+            assertEquals(ADDRESS_EXCEPTION_LOAD shl 2, machine.coprocessor0.getValue(CAUSE))
+            machine.backStepper.backStep()
+            assertEquals(target, machine.registerFile.programCounterBits)
+            assertEquals(0, machine.coprocessor0.getValue(CAUSE))
         }
     }
 
