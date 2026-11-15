@@ -1,0 +1,19 @@
+# GNU assembler (GNU Binutils) 2.45.1
+# GNU objdump (GNU Binutils) 2.45.1
+# source	byte order	word	mnemonic	operands
+llwp $11,$9,($12)	big	7d8b4876	llwp	11,9,12
+scwp $11,$9,($12)	big	7d8b4866	scwp	11,9,12
+lldp $11,$9,($12)	big	7d8b4877	lldp	11,9,12
+scdp $11,$9,($12)	big	7d8b4867	scdp	11,9,12
+ll $11,-256($12)	big	7d8b8036	ll	11,-256,12
+sc $11,252($12)	big	7d8b7e26	sc	11,252,12
+lld $11,-248($12)	big	7d8b8437	lld	11,-248,12
+scd $11,248($12)	big	7d8b7c27	scd	11,248,12
+llwp $11,$9,($12)	little	7d8b4876	llwp	11,9,12
+scwp $11,$9,($12)	little	7d8b4866	scwp	11,9,12
+lldp $11,$9,($12)	little	7d8b4877	lldp	11,9,12
+scdp $11,$9,($12)	little	7d8b4867	scdp	11,9,12
+ll $11,-256($12)	little	7d8b8036	ll	11,-256,12
+sc $11,252($12)	little	7d8b7e26	sc	11,252,12
+lld $11,-248($12)	little	7d8b8437	lld	11,-248,12
+scd $11,248($12)	little	7d8b7c27	scd	11,248,12
