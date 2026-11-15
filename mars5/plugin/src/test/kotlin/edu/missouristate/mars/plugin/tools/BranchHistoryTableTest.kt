@@ -1,5 +1,6 @@
 package edu.missouristate.mars.plugin.tools
 
+import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.api.StepEvent
 import edu.missouristate.mars.api.StepEvent.BranchOutcome.NOT_TAKEN
 import edu.missouristate.mars.api.StepEvent.BranchOutcome.TAKEN
@@ -32,7 +33,27 @@ class BranchHistoryTableTest {
         assertEquals(Row(listOf(false, false), false, 1, 4), result.rows[1])
         assertEquals(20.0, result.rows[1].precision)
         assertEquals(0.0, result.rows[0].precision)
-        assertEquals(Observation(pc, 0x1000fffe, pc - 4, 1, predictedTaken = true, taken = false), result.recent.last())
+        assertEquals(Observation(pc.toLong(), 0x1000fffe, pc - 4L, 1, predictedTaken = true, taken = false, MarsTarget.MARS32), result.recent.last())
+    }
+
+    @Test
+    fun `compact branches keep their full program counters and signed 21-bit destinations`() {
+        val table = BranchHistoryTable()
+        val pc = 0x100400004L
+        val sourceRegister = 8
+        val opcode = 0b110110 shl 26
+        for ((displacement, outcome) in listOf(0x10000 to TAKEN, -0x10000 to NOT_TAKEN)) {
+            val word = opcode or (sourceRegister shl 21) or (displacement and 0x1fffff)
+            table.record(StepEvent(pc.toInt(), word, 1, branchOutcome = outcome, pcBits = pc, target = MarsTarget.MARS64))
+            val observation = table.snapshot().recent.last()
+            assertEquals(pc, observation.pc)
+            assertEquals(pc + 4 + displacement * 4, observation.target)
+            assertEquals(1, observation.index)
+            assertEquals(MarsTarget.MARS64, observation.architecture)
+        }
+        val nal = 0x04100000
+        table.record(StepEvent(pc.toInt(), nal, 1, branchOutcome = NOT_TAKEN, pcBits = pc, target = MarsTarget.MARS64))
+        assertEquals(null, table.snapshot().recent.last().target)
     }
 
     @Test

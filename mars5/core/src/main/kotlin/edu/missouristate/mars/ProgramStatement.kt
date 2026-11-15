@@ -101,7 +101,7 @@ open class ProgramStatement private constructor(
         displaySettings: SimulationSettings? = null,
     ) : this(binaryStatement, textAddress, instructions, displaySettings, instructions.findByBinaryCode(binaryStatement))
 
-    internal constructor(binary: Int, address: Long, instructions: InstructionSet, settings: SimulationSettings? = null) :
+    constructor(binary: Int, address: Long, instructions: InstructionSet, settings: SimulationSettings? = null) :
         this(binary, address.toInt(), instructions, settings, instructions.findByBinaryCode(binary), address)
 
     private constructor(
@@ -165,6 +165,14 @@ open class ProgramStatement private constructor(
 
     /** Invalid machine words have no decoded operands. */
     open fun getOperands(): IntArray? = operandValues
+
+    /** The encoded destination of a relative branch, independent of its execution outcome. */
+    fun relativeBranchDestination(): Long? {
+        val basic = instruction as? BasicInstruction ?: return null
+        if (basic.instructionFormat != BasicInstructionFormat.I_BRANCH_FORMAT || numOperands == 0) return null
+        val displacement = operands[numOperands - 1]
+        return addressBits + Instruction.INSTRUCTION_LENGTH + (displacement.toLong() shl 2)
+    }
 
     /** Execution dispatches only decoded instructions. */
     internal val operands: IntArray get() = checkNotNull(getOperands())

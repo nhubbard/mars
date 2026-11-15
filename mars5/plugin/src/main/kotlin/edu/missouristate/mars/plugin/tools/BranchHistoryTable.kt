@@ -1,8 +1,11 @@
 package edu.missouristate.mars.plugin.tools
 
+import edu.missouristate.mars.ProgramStatement
+import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.api.StepEvent
 import edu.missouristate.mars.api.StepEvent.BranchOutcome.TAKEN
 import edu.missouristate.mars.mips.instructions.Instruction.Companion.INSTRUCTION_LENGTH
+import edu.missouristate.mars.mips.instructions.InstructionDefaults
 
 internal class BranchHistoryTable {
     data class Options(val size: Int = 16, val historyBits: Int = 1, val initialTaken: Boolean = false) {
@@ -17,7 +20,13 @@ internal class BranchHistoryTable {
     }
 
     data class Observation(
-        val pc: Int, val instruction: Int, val target: Int, val index: Int, val predictedTaken: Boolean, val taken: Boolean,
+        val pc: Long,
+        val instruction: Int,
+        val target: Long?,
+        val index: Int,
+        val predictedTaken: Boolean,
+        val taken: Boolean,
+        val architecture: MarsTarget,
     ) {
         val correct: Boolean get() = predictedTaken == taken
     }
@@ -34,7 +43,7 @@ internal class BranchHistoryTable {
     fun record(event: StepEvent) {
         val outcome = event.branchOutcome ?: return
         if (!connected) return
-        val index = (event.pc ushr 2) and (options.size - 1)
+        val index = ((event.pcBits ushr 2) and (options.size - 1).toLong()).toInt()
         val entry = rows[index]
         val taken = outcome == TAKEN
         val predicted = entry.predictedTaken
@@ -47,8 +56,13 @@ internal class BranchHistoryTable {
             if (entry.history == if (taken) mask else 0) entry.predictedTaken = taken
         }
         if (recent.size == LOG_LIMIT) recent.removeFirst()
-        val target = event.pc + INSTRUCTION_LENGTH + (event.instruction.toShort().toInt() shl 2)
-        recent.addLast(Observation(event.pc, event.instruction, target, index, predicted, taken))
+        val target = if (event.target == MarsTarget.MARS32) {
+            (event.pc + INSTRUCTION_LENGTH + (event.instruction.toShort().toInt() shl 2)).toLong()
+        } else {
+            ProgramStatement(event.instruction, event.pcBits, InstructionDefaults.forTarget(event.target))
+                .relativeBranchDestination()
+        }
+        recent.addLast(Observation(event.pcBits, event.instruction, target, index, predicted, taken, event.target))
     }
 
     @Synchronized

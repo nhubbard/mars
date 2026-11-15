@@ -17,6 +17,7 @@ import com.intellij.ui.table.JBTable
 import com.intellij.util.ui.JBDimension
 import com.intellij.util.ui.launchOnShow
 import edu.missouristate.mars.ProgramStatement
+import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.mips.instructions.InstructionDefaults
 import edu.missouristate.mars.plugin.tools.BranchHistoryTable.Observation
 import edu.missouristate.mars.plugin.tools.BranchHistoryTable.Options
@@ -127,19 +128,22 @@ internal class BranchHistoryView(project: Project) : Disposable {
         previous = snapshot
         val decision = snapshot?.recent?.lastOrNull()
         val description = decision?.let {
-            val assembly = ProgramStatement(it.instruction, it.pc, InstructionDefaults.get()).printableBasicAssemblyStatement.trimEnd()
-            toolsMessages.getMessage("branchHistory.latest", Binary.intToHexString(it.pc), assembly, it.index.toString())
+            val assembly = ProgramStatement(it.instruction, it.pc, InstructionDefaults.forTarget(it.architecture)).printableBasicAssemblyStatement.trimEnd()
+            toolsMessages.getMessage("branchHistory.latest", it.formatAddress(it.pc), assembly, it.index.toString())
         } ?: toolsMessages.getMessage("branchHistory.latest.empty")
         latest.text = StringUtil.escapeXmlEntities(description)
         tableModel.update(snapshot?.rows.orEmpty(), decision)
         log.text = snapshot?.recent.orEmpty().joinToString("\n") {
             toolsMessages.getMessage(
-                "branchHistory.observation", Binary.intToHexString(it.pc), Binary.intToHexString(it.target),
+                "branchHistory.observation", it.formatAddress(it.pc), it.target?.let { target -> it.formatAddress(target) } ?: toolsMessages.getMessage("branchHistory.noDestination"),
                 it.index.toString(), prediction(it.predictedTaken), prediction(it.taken), result(it),
             )
         }
         log.caretPosition = log.document.length
     }
+
+    private fun Observation.formatAddress(address: Long): String =
+        if (architecture == MarsTarget.MARS64) Binary.longToHexString(address) else Binary.intToHexString(address.toInt())
 
     override fun dispose() {
         refreshJob.cancel()
