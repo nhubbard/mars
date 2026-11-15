@@ -37,10 +37,8 @@ internal class MipsMacroArityInspection : LocalInspectionTool() {
             }
         }
     }
-
-    private companion object {
-        val messages = DynamicBundle(MipsMacroArityInspection::class.java, "messages.MarsBundle")
-        val statement = MipsTypes.psi("STATEMENT")
-        val label = MipsTypes.psi("LABEL")
-    }
 }
+
+private val messages = DynamicBundle(MipsMacroArityInspection::class.java, "messages.MarsBundle")
+private val statement = MipsTypes.psi("STATEMENT")
+private val label = MipsTypes.psi("LABEL")

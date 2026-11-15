@@ -1,5 +1,7 @@
 package edu.missouristate.mars.plugin.language
 
+import edu.missouristate.mars.plugin.language.index.referenceIndexId
+import edu.missouristate.mars.plugin.language.index.declarationIndexId
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.command.WriteCommandAction
@@ -20,7 +22,6 @@ import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.analysis.SourceId
 import edu.missouristate.mars.plugin.analysis.SymbolKey
 import edu.missouristate.mars.plugin.analysis.SymbolKind
-import edu.missouristate.mars.plugin.language.index.MipsDeclarationIndex
 import edu.missouristate.mars.plugin.language.index.MipsReferenceExternalizer
 import edu.missouristate.mars.plugin.language.index.MipsReferenceIndex
 import edu.missouristate.mars.plugin.language.index.MipsReferenceSite
@@ -79,7 +80,7 @@ class MipsReferenceIndexPlatformTest {
         readAction {
             val index = FileBasedIndex.getInstance()
             val scope = GlobalSearchScope.fileScope(project.get(), file)
-            fun sites(name: String) = index.getValues(MipsReferenceIndex.NAME, name, scope).flatten()
+            fun sites(name: String) = index.getValues(referenceIndexId, name, scope).flatten()
             val macro = source.indexOf(".macro")
             val operandKinds = listOf(SymbolKind.LABEL, SymbolKind.EXTERNAL, SymbolKind.CONSTANT)
             assertEquals(
@@ -122,7 +123,7 @@ class MipsReferenceIndexPlatformTest {
                 assertTrue(sites(name).isEmpty(), name)
             }
             val extension = MipsReferenceIndex()
-            assertSame(MipsReferenceIndex.NAME, extension.name)
+            assertSame(referenceIndexId, extension.name)
             assertEquals(34, extension.version)
             assertTrue(extension.dependsOnFileContent())
             assertTrue(extension.inputFilter.acceptInput(file))
@@ -144,14 +145,14 @@ class MipsReferenceIndexPlatformTest {
         val scope = GlobalSearchScope.projectScope(project)
         IndexingTestUtil.suspendUntilIndexesAreReady(project)
         readAction {
-            assertEquals(setOf(use.virtualFile), index.getContainingFiles(MipsReferenceIndex.NAME, "remote", scope).toSet())
-            assertTrue(index.getContainingFiles(MipsDeclarationIndex.NAME, "remote", scope).isEmpty())
+            assertEquals(setOf(use.virtualFile), index.getContainingFiles(referenceIndexId, "remote", scope).toSet())
+            assertTrue(index.getContainingFiles(declarationIndexId, "remote", scope).isEmpty())
         }
         val definition = withContext(Dispatchers.EDT) { fixture.addFileToProject("def.asm", "remote: nop\n") }
         IndexingTestUtil.suspendUntilIndexesAreReady(project)
         readAction {
-            assertEquals(setOf(definition.virtualFile), index.getContainingFiles(MipsDeclarationIndex.NAME, "remote", scope).toSet())
-            assertEquals(setOf(use.virtualFile, definition.virtualFile), index.getContainingFiles(MipsReferenceIndex.NAME, "remote", scope).toSet())
+            assertEquals(setOf(definition.virtualFile), index.getContainingFiles(declarationIndexId, "remote", scope).toSet())
+            assertEquals(setOf(use.virtualFile, definition.virtualFile), index.getContainingFiles(referenceIndexId, "remote", scope).toSet())
         }
         val editedSource = ",,b,,,unsaved,,\n"
         withContext(Dispatchers.EDT) {
@@ -162,8 +163,8 @@ class MipsReferenceIndexPlatformTest {
             assertTrue(FileDocumentManager.getInstance().isDocumentUnsaved(document))
         }
         readAction {
-            assertEquals(setOf(definition.virtualFile), index.getContainingFiles(MipsReferenceIndex.NAME, "remote", scope).toSet())
-            assertEquals(setOf(use.virtualFile), index.getContainingFiles(MipsReferenceIndex.NAME, "unsaved", scope).toSet())
+            assertEquals(setOf(definition.virtualFile), index.getContainingFiles(referenceIndexId, "remote", scope).toSet())
+            assertEquals(setOf(use.virtualFile), index.getContainingFiles(referenceIndexId, "unsaved", scope).toSet())
         }
         val edited = project.service<MarsAnalysisService>().lookupCandidates(SymbolKey("unsaved", SymbolKind.LABEL), scope)
         assertEquals(
@@ -175,7 +176,7 @@ class MipsReferenceIndexPlatformTest {
         }
         IndexingTestUtil.suspendUntilIndexesAreReady(project)
         readAction {
-            assertTrue(index.getContainingFiles(MipsReferenceIndex.NAME, "unsaved", scope).isEmpty())
+            assertTrue(index.getContainingFiles(referenceIndexId, "unsaved", scope).isEmpty())
         }
     }
 

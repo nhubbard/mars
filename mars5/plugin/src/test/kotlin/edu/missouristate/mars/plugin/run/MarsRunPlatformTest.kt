@@ -1,5 +1,9 @@
+// The headless fixture runs the native dialog validation and confirmation callbacks.
+@file:Suppress("JetBrainsInternalApiUsage")
+
 package edu.missouristate.mars.plugin.run
 
+import edu.missouristate.mars.plugin.run.marsBeforeLaunchTaskId
 import com.intellij.build.BuildViewManager
 import com.intellij.build.events.BuildEvent
 import com.intellij.build.events.FailureResult
@@ -284,7 +288,7 @@ class MarsRunPlatformTest {
                     li $v0, 10
                     syscall
                 """.trimIndent()).virtualFile
-                val settings = RunManager.getInstance(project).createConfiguration("Reset fixture", type)
+                val settings = RunManager.getInstanceAsync(project).createConfiguration("Reset fixture", type)
                 val config = settings.configuration as MarsRunConfiguration
                 config.options.sourcePath = file.path
                 config.options.programArguments = "a"
@@ -382,7 +386,7 @@ class MarsRunPlatformTest {
                 ).virtualFile
                 val config = type.createTemplateConfiguration(project)
                 config.options.sourcePath = file.path
-                val provider = requireNotNull(BeforeRunTaskProvider.getProvider(project, MarsBeforeLaunchTaskProvider.ID))
+                val provider = requireNotNull(BeforeRunTaskProvider.getProvider(project, marsBeforeLaunchTaskId))
                 assertEquals("Assemble MIPS Sources", provider.name)
                 assertTrue(provider.isSingleton)
                 assertTrue(provider.isDumbAware)

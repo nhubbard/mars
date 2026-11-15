@@ -1,3 +1,6 @@
+// A headless component does not receive Swing visibility events; these tests drive the native visibility lifecycle explicitly.
+@file:Suppress("JetBrainsInternalApiUsage")
+
 package edu.missouristate.mars.plugin.tools
 
 import com.intellij.execution.executors.DefaultRunExecutor

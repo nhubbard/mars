@@ -1,3 +1,6 @@
+// The test changes headless tool-window visibility and drives plugin unload with real descriptors.
+@file:Suppress("JetBrainsInternalApiUsage")
+
 package edu.missouristate.mars.plugin.tools.xray
 
 import androidx.compose.runtime.mutableStateOf

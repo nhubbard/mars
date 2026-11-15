@@ -98,26 +98,24 @@ internal class MipsInstructionHighlighter : Annotator, DumbAware {
             holder.color(head.textRange, color)
         }
     }
+}
 
-    private companion object {
-        val contextualDeclarations = setOf(SymbolKind.LABEL, SymbolKind.EXTERNAL)
-        val macroParameter = MipsTypes.psi("MACRO_PARAMETER")
-        val signs = TokenSet.create(MipsTypes.psi("PLUS"), MipsTypes.psi("MINUS"))
-        val uncoloredSigns = TokenSet.create(MipsTypes.psi("ADD_EXPR"), MipsTypes.psi("EXTERNAL_SIGNED_NAME"))
-        val dataRepeatPrefix = MipsTypes.psi("DATA_REPEAT_PREFIX")
-        val number = MipsTypes.psi("NUMBER")
-        val replacement = MipsTypes.psi("REPLACEMENT")
-        val dollarWord = MipsTypes.psi("DOLLAR_WORD")
-        val replacementIdentifiers = TokenSet.create(MipsTypes.psi("WORD"), MipsTypes.psi("DOLLAR_WORD"), MipsTypes.psi("MNEMONIC"))
+private val contextualDeclarations = setOf(SymbolKind.LABEL, SymbolKind.EXTERNAL)
+private val macroParameter = MipsTypes.psi("MACRO_PARAMETER")
+private val signs = TokenSet.create(MipsTypes.psi("PLUS"), MipsTypes.psi("MINUS"))
+private val uncoloredSigns = TokenSet.create(MipsTypes.psi("ADD_EXPR"), MipsTypes.psi("EXTERNAL_SIGNED_NAME"))
+private val dataRepeatPrefix = MipsTypes.psi("DATA_REPEAT_PREFIX")
+private val number = MipsTypes.psi("NUMBER")
+private val replacement = MipsTypes.psi("REPLACEMENT")
+private val dollarWord = MipsTypes.psi("DOLLAR_WORD")
+private val replacementIdentifiers = TokenSet.create(MipsTypes.psi("WORD"), MipsTypes.psi("DOLLAR_WORD"), MipsTypes.psi("MNEMONIC"))
 
-        val SymbolKind.color: TextAttributesKey get() = when (this) {
-            SymbolKind.LABEL, SymbolKind.EXTERNAL -> labelColor
-            SymbolKind.MACRO -> macroColor
-            SymbolKind.CONSTANT -> equivalenceColor
-        }
+private val SymbolKind.color: TextAttributesKey get() = when (this) {
+    SymbolKind.LABEL, SymbolKind.EXTERNAL -> labelColor
+    SymbolKind.MACRO -> macroColor
+    SymbolKind.CONSTANT -> equivalenceColor
+}
 
-        fun AnnotationHolder.color(range: TextRange, key: TextAttributesKey) {
-            newSilentAnnotation(HighlightSeverity.INFORMATION).range(range).textAttributes(key).create()
-        }
-    }
+private fun AnnotationHolder.color(range: TextRange, key: TextAttributesKey) {
+    newSilentAnnotation(HighlightSeverity.INFORMATION).range(range).textAttributes(key).create()
 }

@@ -121,9 +121,7 @@ internal class MipsParameterInfoHandler : ParameterInfoHandler<PsiElement, MipsP
         val owner = operationOnLine(context.file.findElementAt(first)) ?: return null
         return owner.takeIf { offset >= it.firstChild.textRange.endOffset }
     }
-
-    private companion object {
-        val commentType = MipsTypes.psi("COMMENT")
-        val operandPrefixes = setOf(TokenTypes.LEFT_PAREN, TokenTypes.PLUS, TokenTypes.MINUS)
-    }
 }
+
+private val commentType = MipsTypes.psi("COMMENT")
+private val operandPrefixes = setOf(TokenTypes.LEFT_PAREN, TokenTypes.PLUS, TokenTypes.MINUS)

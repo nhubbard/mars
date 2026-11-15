@@ -9,11 +9,9 @@ class MipsBraceMatcher : PairedBraceMatcher {
     override fun getPairs(): Array<BracePair> = PAIRS
     override fun isPairedBracesAllowedBeforeType(lbraceType: IElementType, contextType: IElementType?): Boolean = true
     override fun getCodeConstructStart(file: PsiFile, openingBraceOffset: Int): Int = openingBraceOffset
-
-    companion object {
-        private val PAIRS = arrayOf(
-            BracePair(MipsTypes.psi("LEFT_PAREN"), MipsTypes.psi("RIGHT_PAREN"), false),
-            BracePair(MipsTypes.psi("LEFT_BRACKET"), MipsTypes.psi("RIGHT_BRACKET"), false),
-        )
-    }
 }
+
+private val PAIRS = arrayOf(
+    BracePair(MipsTypes.psi("LEFT_PAREN"), MipsTypes.psi("RIGHT_PAREN"), false),
+    BracePair(MipsTypes.psi("LEFT_BRACKET"), MipsTypes.psi("RIGHT_BRACKET"), false),
+)

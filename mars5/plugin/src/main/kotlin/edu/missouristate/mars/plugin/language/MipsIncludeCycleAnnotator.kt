@@ -23,8 +23,6 @@ internal class MipsIncludeCycleAnnotator : Annotator {
         holder.newAnnotation(HighlightSeverity.ERROR, bundle.getMessage("syntax.include.cycle", path))
             .range(literal.textRange).create()
     }
-
-    private companion object {
-        val bundle = DynamicBundle(MipsIncludeCycleAnnotator::class.java, "messages.MarsBundle")
-    }
 }
+
+private val bundle = DynamicBundle(MipsIncludeCycleAnnotator::class.java, "messages.MarsBundle")

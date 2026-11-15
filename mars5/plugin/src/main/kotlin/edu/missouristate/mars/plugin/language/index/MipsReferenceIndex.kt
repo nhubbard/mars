@@ -23,7 +23,7 @@ import java.io.DataOutput
 data class MipsReferenceSite(val kind: SymbolKind, val offset: Int, val macroOffset: Int)
 
 class MipsReferenceIndex : FileBasedIndexExtension<String, List<MipsReferenceSite>>() {
-    override fun getName() = NAME
+    override fun getName() = referenceIndexId
     override fun getVersion(): Int = 34
     override fun dependsOnFileContent(): Boolean = true
     override fun getInputFilter() = DefaultFileTypeSpecificInputFilter(MipsFileType)
@@ -50,31 +50,6 @@ class MipsReferenceIndex : FileBasedIndexExtension<String, List<MipsReferenceSit
         })
         references
     }
-
-    companion object {
-        val NAME: ID<String, List<MipsReferenceSite>> = ID.create("mars.references")
-
-        private val SYMBOL_TOKENS = TokenSet.create(MipsTypes.psi("WORD"), MipsTypes.psi("DOLLAR_WORD"), MipsTypes.psi("MNEMONIC"))
-        private val OPERAND_CONTEXTS = TokenSet.create(MipsTypes.psi("REFERENCE_EXPR"), MipsTypes.psi("OPERAND_FRAGMENT"))
-        private val EXPANSION_CONTEXTS = TokenSet.create(
-            MipsTypes.psi("OPERATION_CANDIDATE"), MipsTypes.psi("INVOCATION_TOKEN"), MipsTypes.psi("REPLACEMENT"),
-        )
-        private val LABEL_KINDS = listOf(SymbolKind.LABEL, SymbolKind.EXTERNAL)
-        private val CONSTANT_KINDS = listOf(SymbolKind.CONSTANT)
-        private val OPERAND_KINDS = LABEL_KINDS + SymbolKind.CONSTANT
-
-        private fun targetKinds(element: PsiElement): List<SymbolKind> {
-            val context = PsiUtilCore.getElementType(element.parent)
-            return when (context) {
-                MipsTypes.psi("SEGMENT_ADDRESS_SYMBOL") -> CONSTANT_KINDS
-                MipsTypes.psi("LABEL"), MipsTypes.psi("EXTERNAL_NAME"), MipsTypes.psi("MACRO_SIGNATURE"), MipsTypes.psi("MACRO_PARAMETER") ->
-                    if (element.node.elementType == MipsTypes.psi("MNEMONIC")) emptyList() else CONSTANT_KINDS
-                in OPERAND_CONTEXTS -> if (element.node.elementType == MipsTypes.psi("MNEMONIC")) LABEL_KINDS else OPERAND_KINDS
-                in EXPANSION_CONTEXTS -> if (element.node.elementType == MipsTypes.psi("MNEMONIC")) LABEL_KINDS else SymbolKind.entries
-                else -> emptyList()
-            }
-        }
-    }
 }
 
 internal object MipsReferenceExternalizer : DataExternalizer<List<MipsReferenceSite>> {
@@ -89,5 +64,28 @@ internal object MipsReferenceExternalizer : DataExternalizer<List<MipsReferenceS
 
     override fun read(input: DataInput): List<MipsReferenceSite> = List(input.readInt()) {
         MipsReferenceSite(SymbolKind.entries[input.readUnsignedByte()], input.readInt(), input.readInt())
+    }
+}
+
+internal val referenceIndexId: ID<String, List<MipsReferenceSite>> = ID.create("mars.references")
+
+private val SYMBOL_TOKENS = TokenSet.create(MipsTypes.psi("WORD"), MipsTypes.psi("DOLLAR_WORD"), MipsTypes.psi("MNEMONIC"))
+private val OPERAND_CONTEXTS = TokenSet.create(MipsTypes.psi("REFERENCE_EXPR"), MipsTypes.psi("OPERAND_FRAGMENT"))
+private val EXPANSION_CONTEXTS = TokenSet.create(
+    MipsTypes.psi("OPERATION_CANDIDATE"), MipsTypes.psi("INVOCATION_TOKEN"), MipsTypes.psi("REPLACEMENT"),
+)
+private val LABEL_KINDS = listOf(SymbolKind.LABEL, SymbolKind.EXTERNAL)
+private val CONSTANT_KINDS = listOf(SymbolKind.CONSTANT)
+private val OPERAND_KINDS = LABEL_KINDS + SymbolKind.CONSTANT
+
+private fun targetKinds(element: PsiElement): List<SymbolKind> {
+    val context = PsiUtilCore.getElementType(element.parent)
+    return when (context) {
+        MipsTypes.psi("SEGMENT_ADDRESS_SYMBOL") -> CONSTANT_KINDS
+        MipsTypes.psi("LABEL"), MipsTypes.psi("EXTERNAL_NAME"), MipsTypes.psi("MACRO_SIGNATURE"), MipsTypes.psi("MACRO_PARAMETER") ->
+            if (element.node.elementType == MipsTypes.psi("MNEMONIC")) emptyList() else CONSTANT_KINDS
+        in OPERAND_CONTEXTS -> if (element.node.elementType == MipsTypes.psi("MNEMONIC")) LABEL_KINDS else OPERAND_KINDS
+        in EXPANSION_CONTEXTS -> if (element.node.elementType == MipsTypes.psi("MNEMONIC")) LABEL_KINDS else SymbolKind.entries
+        else -> emptyList()
     }
 }

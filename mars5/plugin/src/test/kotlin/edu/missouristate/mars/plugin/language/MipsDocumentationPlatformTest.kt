@@ -1,3 +1,6 @@
+// The headless documentation engine exposes rendered HTML and caret/lookup target selection through test-side platform APIs.
+@file:Suppress("JetBrainsInternalApiUsage")
+
 package edu.missouristate.mars.plugin.language
 
 import com.intellij.codeInsight.lookup.LookupElementBuilder

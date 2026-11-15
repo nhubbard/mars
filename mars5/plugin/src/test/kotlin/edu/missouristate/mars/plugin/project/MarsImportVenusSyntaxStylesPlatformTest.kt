@@ -1,3 +1,6 @@
+// The fixture removes the temporary editor color scheme it registered through the native scheme manager.
+@file:Suppress("JetBrainsInternalApiUsage")
+
 package edu.missouristate.mars.plugin.project
 
 import com.intellij.ide.util.PropertiesComponent

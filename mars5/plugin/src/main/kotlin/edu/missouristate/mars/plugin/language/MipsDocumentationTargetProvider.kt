@@ -190,27 +190,6 @@ internal class MipsDocumentationTargetProvider : DocumentationTargetProvider, Lo
             appendMacroDocumentation(source, nameOffset, signature)
         })
     }
-
-    private companion object {
-        fun StringBuilder.appendMacroDocumentation(source: PsiFile, nameOffset: Int, signature: String) {
-            append(DEFINITION_START).append(StringUtil.escapeXmlEntities(signature)).append(DEFINITION_END)
-            val document = source.fileDocument
-            val end = document.getLineEndOffset(document.getLineNumber(nameOffset))
-            val comment = document.getText(TextRange(nameOffset, end)).substringAfter('#', "").trim()
-            if (comment.isNotEmpty()) {
-                append(CONTENT_START).append(StringUtil.escapeXmlEntities(comment)).append(CONTENT_END)
-            }
-        }
-
-        val includeType = MipsTypes.psi("INCLUDE")
-        val macroEndType = MipsTypes.psi("END_MACRO")
-        val includeOwners = TokenSet.create(MipsTypes.psi("INCLUDE_LINE"), MipsTypes.psi("DIRECTIVE_STATEMENT"))
-        val macroEndOwners = TokenSet.create(MipsTypes.psi("MACRO_DEFINITION"), MipsTypes.psi("STATEMENT"))
-        val headOwners = TokenSet.create(
-            MipsTypes.psi("DIRECTIVE_STATEMENT"),
-            MipsTypes.psi("EQUIVALENCE"), MipsTypes.psi("MACRO_DEFINITION"), MipsTypes.psi("MACRO_HEADER"),
-        )
-    }
 }
 
 internal data class MipsMacroLookup(val name: String)
@@ -283,3 +262,22 @@ internal object MipsDocumentationCatalog {
 
     fun directive(name: String): MipsCatalogEntry = byName.getValue(name)
 }
+
+private fun StringBuilder.appendMacroDocumentation(source: PsiFile, nameOffset: Int, signature: String) {
+    append(DEFINITION_START).append(StringUtil.escapeXmlEntities(signature)).append(DEFINITION_END)
+    val document = source.fileDocument
+    val end = document.getLineEndOffset(document.getLineNumber(nameOffset))
+    val comment = document.getText(TextRange(nameOffset, end)).substringAfter('#', "").trim()
+    if (comment.isNotEmpty()) {
+        append(CONTENT_START).append(StringUtil.escapeXmlEntities(comment)).append(CONTENT_END)
+    }
+}
+
+private val includeType = MipsTypes.psi("INCLUDE")
+private val macroEndType = MipsTypes.psi("END_MACRO")
+private val includeOwners = TokenSet.create(MipsTypes.psi("INCLUDE_LINE"), MipsTypes.psi("DIRECTIVE_STATEMENT"))
+private val macroEndOwners = TokenSet.create(MipsTypes.psi("MACRO_DEFINITION"), MipsTypes.psi("STATEMENT"))
+private val headOwners = TokenSet.create(
+    MipsTypes.psi("DIRECTIVE_STATEMENT"),
+    MipsTypes.psi("EQUIVALENCE"), MipsTypes.psi("MACRO_DEFINITION"), MipsTypes.psi("MACRO_HEADER"),
+)

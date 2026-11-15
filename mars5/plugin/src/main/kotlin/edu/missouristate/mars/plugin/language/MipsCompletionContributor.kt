@@ -138,59 +138,57 @@ class MipsCompletionContributor : CompletionContributor(), DumbAware {
             context.replacementOffset = token.textRange.endOffset
         }
     }
+}
 
-    private companion object {
-        val messages = DynamicBundle(MipsCompletionContributor::class.java, "messages.MarsBundle")
-        val statementHead = psiElement()
-            .withElementType(TokenSet.create(MipsTypes.psi("WORD"), MipsTypes.psi("MNEMONIC"), MipsTypes.psi("DOLLAR_WORD")))
-            .withParent(psiElement().withElementType(TokenSet.create(MipsTypes.psi("OPERATION"), MipsTypes.psi("OPERATION_CANDIDATE"))))
-        val operandOrContinuationPosition = psiElement()
-            .withElementType(TokenSet.create(MipsTypes.psi("WORD"), MipsTypes.psi("DOLLAR_WORD"), MipsTypes.psi("REGISTER")))
-        val macroParameterPosition = psiElement()
-            .withElementType(TokenSet.create(MipsTypes.psi("PARAMETER"), MipsTypes.psi("DOLLAR_WORD"), MipsTypes.psi("WORD")))
-            .withParent(psiElement().withElementType(macroParameterUseContexts))
+private val messages = DynamicBundle(MipsCompletionContributor::class.java, "messages.MarsBundle")
+private val statementHead = psiElement()
+    .withElementType(TokenSet.create(MipsTypes.psi("WORD"), MipsTypes.psi("MNEMONIC"), MipsTypes.psi("DOLLAR_WORD")))
+    .withParent(psiElement().withElementType(TokenSet.create(MipsTypes.psi("OPERATION"), MipsTypes.psi("OPERATION_CANDIDATE"))))
+private val operandOrContinuationPosition = psiElement()
+    .withElementType(TokenSet.create(MipsTypes.psi("WORD"), MipsTypes.psi("DOLLAR_WORD"), MipsTypes.psi("REGISTER")))
+private val macroParameterPosition = psiElement()
+    .withElementType(TokenSet.create(MipsTypes.psi("PARAMETER"), MipsTypes.psi("DOLLAR_WORD"), MipsTypes.psi("WORD")))
+    .withParent(psiElement().withElementType(macroParameterUseContexts))
 
-        val integerRegisters by lazy { RegisterNames.integerSpellings() }
-        val registerSpellings by lazy {
-            mapOf(
-                TokenTypes.REGISTER_NAME to integerRegisters,
-                TokenTypes.REGISTER_NUMBER to integerRegisters,
-                TokenTypes.FP_REGISTER_NAME to RegisterNames.floatingSpellings(),
-                TokenTypes.VECTOR_REGISTER_NAME to List(32) { "\$w$it" },
-            )
-        }
-        val systemRegisters by lazy { RegisterNames.coprocessor0Spellings() }
-        val integerRegisterTypes = setOf(TokenTypes.REGISTER_NAME, TokenTypes.REGISTER_NUMBER)
-        val numberedIntegerRegisters by lazy {
-            integerRegisters.filter { TokenTypes.matchTokenType(it) == TokenTypes.REGISTER_NUMBER }
-        }
+private val integerRegisters by lazy { RegisterNames.integerSpellings() }
+private val registerSpellings by lazy {
+    mapOf(
+        TokenTypes.REGISTER_NAME to integerRegisters,
+        TokenTypes.REGISTER_NUMBER to integerRegisters,
+        TokenTypes.FP_REGISTER_NAME to RegisterNames.floatingSpellings(),
+        TokenTypes.VECTOR_REGISTER_NAME to List(32) { "\$w$it" },
+    )
+}
+private val systemRegisters by lazy { RegisterNames.coprocessor0Spellings() }
+private val integerRegisterTypes = setOf(TokenTypes.REGISTER_NAME, TokenTypes.REGISTER_NUMBER)
+private val numberedIntegerRegisters by lazy {
+    integerRegisters.filter { TokenTypes.matchTokenType(it) == TokenTypes.REGISTER_NUMBER }
+}
 
-        fun prefix(parameters: CompletionParameters): String {
-            val position = parameters.position
-            return position.text.substring(0, parameters.offset - position.textOffset)
-        }
+private fun prefix(parameters: CompletionParameters): String {
+    val position = parameters.position
+    return position.text.substring(0, parameters.offset - position.textOffset)
+}
 
-        fun replacementEnd(parameters: CompletionParameters): Int {
-            val original = parameters.originalPosition
-            if (original != null && (statementHead.accepts(original) || operandOrContinuationPosition.accepts(original))) {
-                return original.textRange.endOffset
-            }
-            return parameters.position.textOffset
-        }
+private fun replacementEnd(parameters: CompletionParameters): Int {
+    val original = parameters.originalPosition
+    if (original != null && (statementHead.accepts(original) || operandOrContinuationPosition.accepts(original))) {
+        return original.textRange.endOffset
+    }
+    return parameters.position.textOffset
+}
 
-        fun equivalenceLookup(name: String, replacement: String): LookupElementBuilder =
-            LookupElementBuilder.create(name).withTailText(" = $replacement", true)
-                .withTypeText(messages.getMessage("colors.equivalence"))
+private fun equivalenceLookup(name: String, replacement: String): LookupElementBuilder =
+    LookupElementBuilder.create(name).withTailText(" = $replacement", true)
+        .withTypeText(messages.getMessage("colors.equivalence"))
 
-        fun registerCandidates(formats: List<Instruction>, index: Int, bareMachine: Boolean): Set<String> = buildSet {
-            for (instruction in formats) {
-                if (index == COPROCESSOR0_REGISTER_INDEX && instruction.hasCoprocessor0Register) {
-                    addAll(systemRegisters)
-                } else {
-                    val type = instruction.tokenList[index].type
-                    addAll(if (bareMachine && type in integerRegisterTypes) numberedIntegerRegisters else registerSpellings[type].orEmpty())
-                }
-            }
+private fun registerCandidates(formats: List<Instruction>, index: Int, bareMachine: Boolean): Set<String> = buildSet {
+    for (instruction in formats) {
+        if (index == COPROCESSOR0_REGISTER_INDEX && instruction.hasCoprocessor0Register) {
+            addAll(systemRegisters)
+        } else {
+            val type = instruction.tokenList[index].type
+            addAll(if (bareMachine && type in integerRegisterTypes) numberedIntegerRegisters else registerSpellings[type].orEmpty())
         }
     }
 }

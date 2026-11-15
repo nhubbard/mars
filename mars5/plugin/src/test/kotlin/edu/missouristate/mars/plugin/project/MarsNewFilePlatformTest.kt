@@ -1,3 +1,6 @@
+// The headless fixture answers the platform new-file dialog through its test interceptor.
+@file:Suppress("JetBrainsInternalApiUsage")
+
 package edu.missouristate.mars.plugin.project
 
 import com.intellij.ide.IdeView

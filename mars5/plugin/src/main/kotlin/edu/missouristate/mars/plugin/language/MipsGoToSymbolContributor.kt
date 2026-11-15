@@ -1,5 +1,6 @@
 package edu.missouristate.mars.plugin.language
 
+import edu.missouristate.mars.plugin.language.index.declarationIndexId
 import com.intellij.icons.AllIcons
 import com.intellij.ide.projectView.PresentationData
 import com.intellij.navigation.ChooseByNameContributorEx
@@ -28,7 +29,7 @@ import edu.missouristate.mars.plugin.analysis.mipsAssemblyRoots
 import edu.missouristate.mars.plugin.analysis.mipsSourceTimeline
 import edu.missouristate.mars.plugin.build.MarsAssemblySettings
 import edu.missouristate.mars.plugin.language.index.MipsDeclarationIndex
-import edu.missouristate.mars.plugin.language.index.MipsDeclarationIndex.Companion.EXPANSION_SEED
+import edu.missouristate.mars.plugin.language.index.EXPANSION_SEED
 import edu.missouristate.mars.plugin.language.index.MipsDeclarationSite
 import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
 import javax.swing.Icon
@@ -37,7 +38,7 @@ internal class MipsGoToSymbolContributor : ChooseByNameContributorEx {
     override fun processNames(processor: Processor<in String>, scope: GlobalSearchScope, filter: IdFilter?) {
         val project = scope.project ?: return
         val written = HashSet<String>()
-        val complete = FileBasedIndex.getInstance().processAllKeys(MipsDeclarationIndex.NAME, { name ->
+        val complete = FileBasedIndex.getInstance().processAllKeys(declarationIndexId, { name ->
             name == EXPANSION_SEED || processor.process(name.also(written::add))
         }, scope, filter)
         if (complete) {
@@ -55,7 +56,7 @@ internal class MipsGoToSymbolContributor : ChooseByNameContributorEx {
         val psiManager = PsiManager.getInstance(project)
         val analysis = project.service<MarsAnalysisService>()
         val candidates = ArrayList<Pair<VirtualFile, List<MipsDeclarationSite>>>()
-        FileBasedIndex.getInstance().processValues(MipsDeclarationIndex.NAME, name, null, { file, sites ->
+        FileBasedIndex.getInstance().processValues(declarationIndexId, name, null, { file, sites ->
             candidates.add(file to sites)
             true
         }, parameters.searchScope, parameters.idFilter)
@@ -81,7 +82,7 @@ internal class MipsGoToSymbolContributor : ChooseByNameContributorEx {
         val analysis = project.service<MarsAnalysisService>()
         // A declaration can be supplied by an alias defined outside the requested result scope.
         val seeds = FileBasedIndex.getInstance().getContainingFiles(
-            MipsDeclarationIndex.NAME, EXPANSION_SEED, GlobalSearchScope.allScope(project),
+            declarationIndexId, EXPANSION_SEED, GlobalSearchScope.allScope(project),
         )
         val indexedRoots = seeds.asSequence().flatMap { seed ->
             ProgressManager.checkCanceled()

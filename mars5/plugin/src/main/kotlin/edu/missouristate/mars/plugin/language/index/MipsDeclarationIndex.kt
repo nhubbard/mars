@@ -25,7 +25,7 @@ data class MipsDeclarationSite(val kind: SymbolKind, val offset: Int, val macroO
 
 /** Index only this file's syntax. Never resolve names or query another index while producing facts. */
 class MipsDeclarationIndex : FileBasedIndexExtension<String, List<MipsDeclarationSite>>() {
-    override fun getName() = NAME
+    override fun getName() = declarationIndexId
     override fun getVersion(): Int = 37
     override fun dependsOnFileContent(): Boolean = true
     override fun getInputFilter() = DefaultFileTypeSpecificInputFilter(MipsFileType)
@@ -57,23 +57,6 @@ class MipsDeclarationIndex : FileBasedIndexExtension<String, List<MipsDeclaratio
         })
         declarations
     }
-
-    companion object {
-        val NAME: ID<String, List<MipsDeclarationSite>> = ID.create("mars.declarations")
-        internal const val EXPANSION_SEED = "#mars.expansion"
-        private val equivalence = MipsTypes.psi("EQV")
-        private val includeLine = MipsTypes.psi("INCLUDE_LINE")
-        private val unclosedString = MipsTypes.psi("UNCLOSED_STRING")
-
-        private fun PsiElement.seedsExpansion(): Boolean = when (node.elementType) {
-            equivalence -> node.treeParent.elementType != includeLine
-            includeLine -> {
-                // Recovery also uses INCLUDE_LINE, but an unfinished path supplies no source.
-                node.findChildByType(unclosedString) == null || Tokenizer().findInclude(node.text) != null
-            }
-            else -> false
-        }
-    }
 }
 
 internal object MipsDeclarationExternalizer : DataExternalizer<List<MipsDeclarationSite>> {
@@ -89,4 +72,19 @@ internal object MipsDeclarationExternalizer : DataExternalizer<List<MipsDeclarat
     override fun read(input: DataInput): List<MipsDeclarationSite> = List(input.readInt()) {
         MipsDeclarationSite(SymbolKind.entries[input.readUnsignedByte()], input.readInt(), input.readInt())
     }
+}
+
+internal val declarationIndexId: ID<String, List<MipsDeclarationSite>> = ID.create("mars.declarations")
+internal const val EXPANSION_SEED = "#mars.expansion"
+private val equivalence = MipsTypes.psi("EQV")
+private val includeLine = MipsTypes.psi("INCLUDE_LINE")
+private val unclosedString = MipsTypes.psi("UNCLOSED_STRING")
+
+private fun PsiElement.seedsExpansion(): Boolean = when (node.elementType) {
+    equivalence -> node.treeParent.elementType != includeLine
+    includeLine -> {
+        // Recovery also uses INCLUDE_LINE, but an unfinished path supplies no source.
+        node.findChildByType(unclosedString) == null || Tokenizer().findInclude(node.text) != null
+    }
+    else -> false
 }

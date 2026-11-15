@@ -1,5 +1,6 @@
 package edu.missouristate.mars.plugin.language
 
+import edu.missouristate.mars.plugin.language.index.declarationIndexId
 import com.intellij.DynamicBundle
 import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.Document
@@ -51,7 +52,7 @@ import edu.missouristate.mars.plugin.analysis.collectEditorAssembly
 import edu.missouristate.mars.plugin.analysis.mipsAssemblyRoots
 import edu.missouristate.mars.plugin.build.MarsSourceSet
 import edu.missouristate.mars.plugin.language.index.MipsDeclarationIndex
-import edu.missouristate.mars.plugin.language.index.MipsDeclarationIndex.Companion.EXPANSION_SEED
+import edu.missouristate.mars.plugin.language.index.EXPANSION_SEED
 import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
 import edu.missouristate.mars.plugin.language.syntax.MipsScanner
 import java.nio.file.Path
@@ -235,7 +236,7 @@ private fun verifyRename(target: MipsDeclaration, newName: String, usages: Set<S
         throw symbolRenameError("symbol.rename.scope")
     }
     // Follow the assembler's include prepass from other indexed entries, including through plain text.
-    val seeds = FileBasedIndex.getInstance().getContainingFiles(MipsDeclarationIndex.NAME, EXPANSION_SEED,
+    val seeds = FileBasedIndex.getInstance().getContainingFiles(declarationIndexId, EXPANSION_SEED,
         GlobalSearchScope.projectScope(project))
     for (seed in seeds) {
         ProgressManager.checkCanceled()

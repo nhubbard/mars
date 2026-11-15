@@ -51,10 +51,10 @@ internal class MarsLaunchAssembly(
     private fun removeProgram() = program.also { program = null }
 }
 
-internal class MarsBeforeLaunchTask : BeforeRunTask<MarsBeforeLaunchTask>(MarsBeforeLaunchTaskProvider.ID)
+internal class MarsBeforeLaunchTask : BeforeRunTask<MarsBeforeLaunchTask>(marsBeforeLaunchTaskId)
 
 internal class MarsBeforeLaunchTaskProvider : BeforeRunTaskProvider<MarsBeforeLaunchTask>() {
-    override fun getId() = ID
+    override fun getId() = marsBeforeLaunchTaskId
     override fun getName() = runMessages.getMessage("run.before.launch.assemble")
     override fun isSingleton() = true
     override fun isDumbAware() = true
@@ -77,8 +77,6 @@ internal class MarsBeforeLaunchTaskProvider : BeforeRunTaskProvider<MarsBeforeLa
             }
         }
     }
-
-    companion object {
-        val ID = Key.create<MarsBeforeLaunchTask>("Mars.AssembleBeforeLaunch")
-    }
 }
+
+internal val marsBeforeLaunchTaskId = Key.create<MarsBeforeLaunchTask>("Mars.AssembleBeforeLaunch")

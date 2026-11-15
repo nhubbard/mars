@@ -51,10 +51,8 @@ internal class MipsRelease6MergeInspection : LocalInspectionTool() {
             }
         }
     }
-
-    private companion object {
-        val messages = DynamicBundle(MipsRelease6MergeInspection::class.java, "messages.MarsBundle")
-        val divides = setOf("div", "divu", "ddiv", "ddivu")
-        val instructionTypes = setOf(TokenTypes.OPERATOR, TokenTypes.IDENTIFIER)
-    }
 }
+
+private val messages = DynamicBundle(MipsRelease6MergeInspection::class.java, "messages.MarsBundle")
+private val divides = setOf("div", "divu", "ddiv", "ddivu")
+private val instructionTypes = setOf(TokenTypes.OPERATOR, TokenTypes.IDENTIFIER)

@@ -1,3 +1,6 @@
+// Headless debugger tests exercise the native variables tree, dependent breakpoints, dialogs, and component visibility.
+@file:Suppress("JetBrainsInternalApiUsage")
+
 package edu.missouristate.mars.plugin.debug
 
 import edu.missouristate.mars.plugin.tools.FloatingPointRepresentation.Format

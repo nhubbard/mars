@@ -1,3 +1,6 @@
+// The headless tests intercept the native file chooser and invoke the dialog validation and confirmation callbacks.
+@file:Suppress("JetBrainsInternalApiUsage")
+
 package edu.missouristate.mars.plugin.build
 
 import com.intellij.notification.Notification

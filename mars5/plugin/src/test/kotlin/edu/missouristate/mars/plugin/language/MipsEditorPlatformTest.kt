@@ -1,3 +1,6 @@
+// This fixture drives plugin unload with real descriptors and observes the editor error stripe before and after.
+@file:Suppress("JetBrainsInternalApiUsage")
+
 package edu.missouristate.mars.plugin.language
 
 import edu.missouristate.mars.plugin.debug.MarsMachineHighlight

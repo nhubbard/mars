@@ -19,7 +19,6 @@ import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.application.runWriteAction
 import com.intellij.openapi.components.service
-import com.intellij.openapi.extensions.ExtensionPointName
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.module.GeneralModuleType
 import com.intellij.openapi.module.ModuleManager
@@ -80,8 +79,9 @@ class MarsNewProjectWizardTest {
         val console = StringBuffer()
         val debugger = XDebuggerManager.getInstance(project)
         try {
-            val generator = ExtensionPointName.create<GeneratorNewProjectWizard>("com.intellij.newProjectWizard.generator")
-                .findExtensionOrFail(MarsNewProjectWizard::class.java)
+            // Check the registered wizard through the platform's extension point in this test.
+            @Suppress("JetBrainsInternalApiUsage")
+            val generator = GeneratorNewProjectWizard.EP_NAME.findExtensionOrFail(MarsNewProjectWizard::class.java)
             assertEquals("MarsMips", generator.id)
             assertEquals("MARS MIPS", generator.name)
             assertSame(MipsFileType.icon, generator.icon)
@@ -134,7 +134,7 @@ class MarsNewProjectWizardTest {
             assertFalse(build.isAborted)
             assertFalse(build.hasErrors())
             withContext(Dispatchers.EDT) {
-                val settings = requireNotNull(RunManager.getInstance(project).selectedConfiguration)
+                val settings = requireNotNull(RunManager.getInstanceAsync(project).selectedConfiguration)
                 assertEquals("Run MIPS Program", settings.name)
                 assertTrue(settings.isStoredInDotIdeaFolder)
                 val config = assertInstanceOf(MarsRunConfiguration::class.java, settings.configuration)

@@ -40,25 +40,23 @@ internal class MipsColorSettingsPage : ColorSettingsPage {
               <instruction>li</instruction> $v0, 10
               <instruction>syscall</instruction>
     """.trimIndent()
-
-    private companion object {
-        val bundle = DynamicBundle(MipsColorSettingsPage::class.java, "messages.MarsBundle")
-        val semanticColors = mapOf(
-            "instruction" to instructionMnemonicColor,
-            "label" to labelColor,
-            "macro" to macroColor,
-            "equivalence" to equivalenceColor,
-            "replacement" to equivalenceReplacementColor,
-            "parameter" to macroParameterColor,
-            "punctuation" to punctuationColor,
-        ) + MarsMachineHighlight.entries.associate { it.tag to it.colorKey }
-        val syntaxColors = mapOf(
-            "directive" to directiveColor,
-            "string" to stringColor,
-            "character" to characterColor,
-            "invalid" to invalidColor,
-            "comment" to commentColor,
-            "register" to registerColor,
-        )
-    }
 }
+
+private val bundle = DynamicBundle(MipsColorSettingsPage::class.java, "messages.MarsBundle")
+private val semanticColors = mapOf(
+    "instruction" to instructionMnemonicColor,
+    "label" to labelColor,
+    "macro" to macroColor,
+    "equivalence" to equivalenceColor,
+    "replacement" to equivalenceReplacementColor,
+    "parameter" to macroParameterColor,
+    "punctuation" to punctuationColor,
+) + MarsMachineHighlight.entries.associate { it.tag to it.colorKey }
+private val syntaxColors = mapOf(
+    "directive" to directiveColor,
+    "string" to stringColor,
+    "character" to characterColor,
+    "invalid" to invalidColor,
+    "comment" to commentColor,
+    "register" to registerColor,
+)

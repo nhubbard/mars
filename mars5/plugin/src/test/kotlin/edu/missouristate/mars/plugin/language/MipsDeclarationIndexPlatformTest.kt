@@ -1,5 +1,6 @@
 package edu.missouristate.mars.plugin.language
 
+import edu.missouristate.mars.plugin.language.index.declarationIndexId
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.command.WriteCommandAction
@@ -13,6 +14,7 @@ import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.util.indexing.FileBasedIndex
 import edu.missouristate.mars.plugin.analysis.SymbolKind
 import edu.missouristate.mars.plugin.language.index.MipsDeclarationExternalizer
+import edu.missouristate.mars.plugin.language.index.EXPANSION_SEED
 import edu.missouristate.mars.plugin.language.index.MipsDeclarationIndex
 import edu.missouristate.mars.plugin.language.index.MipsDeclarationSite
 import java.io.ByteArrayInputStream
@@ -69,7 +71,7 @@ class MipsDeclarationIndexPlatformTest {
         readAction {
             val index = FileBasedIndex.getInstance()
             val scope = GlobalSearchScope.projectScope(project.get())
-            fun sites(name: String) = index.getValues(MipsDeclarationIndex.NAME, name, scope).flatten()
+            fun sites(name: String) = index.getValues(declarationIndexId, name, scope).flatten()
             assertEquals(
                 listOf(
                     MipsDeclarationSite(SymbolKind.CONSTANT, source.indexOf("shared"), -1),
@@ -118,13 +120,13 @@ class MipsDeclarationIndexPlatformTest {
         readAction {
             val index = FileBasedIndex.getInstance()
             val scope = GlobalSearchScope.projectScope(project.get())
-            assertTrue(index.getContainingFiles(MipsDeclarationIndex.NAME, "discarded", scope).isEmpty())
-            assertTrue(index.getContainingFiles(MipsDeclarationIndex.NAME, "ghost", scope).isEmpty())
-            val visible = index.getValues(MipsDeclarationIndex.NAME, "visible", scope).flatten().single()
+            assertTrue(index.getContainingFiles(declarationIndexId, "discarded", scope).isEmpty())
+            assertTrue(index.getContainingFiles(declarationIndexId, "ghost", scope).isEmpty())
+            val visible = index.getValues(declarationIndexId, "visible", scope).flatten().single()
             assertEquals(-1, visible.macroOffset)
             assertEquals(
                 setOf(recognized),
-                index.getContainingFiles(MipsDeclarationIndex.NAME, MipsDeclarationIndex.EXPANSION_SEED, scope).toSet(),
+                index.getContainingFiles(declarationIndexId, EXPANSION_SEED, scope).toSet(),
             )
         }
     }
@@ -143,11 +145,11 @@ class MipsDeclarationIndexPlatformTest {
         readAction {
             val index = FileBasedIndex.getInstance()
             val scope = GlobalSearchScope.projectScope(project.get())
-            assertEquals(1, index.getContainingFiles(MipsDeclarationIndex.NAME, "before", scope).size)
-            assertEquals(1, index.getContainingFiles(MipsDeclarationIndex.NAME, "alternate", scope).size)
-            assertTrue(index.getContainingFiles(MipsDeclarationIndex.NAME, "ignored", scope).isEmpty())
+            assertEquals(1, index.getContainingFiles(declarationIndexId, "before", scope).size)
+            assertEquals(1, index.getContainingFiles(declarationIndexId, "alternate", scope).size)
+            assertTrue(index.getContainingFiles(declarationIndexId, "ignored", scope).isEmpty())
             val extension = MipsDeclarationIndex()
-            assertSame(MipsDeclarationIndex.NAME, extension.name)
+            assertSame(declarationIndexId, extension.name)
             assertEquals(37, extension.version)
             assertTrue(extension.dependsOnFileContent())
             assertTrue(extension.inputFilter.acceptInput(file.virtualFile))
@@ -164,8 +166,8 @@ class MipsDeclarationIndexPlatformTest {
         readAction {
             val index = FileBasedIndex.getInstance()
             val scope = GlobalSearchScope.projectScope(project.get())
-            assertTrue(index.getContainingFiles(MipsDeclarationIndex.NAME, "before", scope).isEmpty())
-            assertEquals(1, index.getContainingFiles(MipsDeclarationIndex.NAME, "after", scope).size)
+            assertTrue(index.getContainingFiles(declarationIndexId, "before", scope).isEmpty())
+            assertEquals(1, index.getContainingFiles(declarationIndexId, "after", scope).size)
         }
         withContext(Dispatchers.EDT) {
             WriteCommandAction.runWriteCommandAction(project.get()) { file.virtualFile.delete(this) }
@@ -173,7 +175,7 @@ class MipsDeclarationIndexPlatformTest {
         IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
         readAction {
             assertTrue(FileBasedIndex.getInstance().getContainingFiles(
-                MipsDeclarationIndex.NAME, "after", GlobalSearchScope.projectScope(project.get()),
+                declarationIndexId, "after", GlobalSearchScope.projectScope(project.get()),
             ).isEmpty())
         }
     }
@@ -190,14 +192,14 @@ class MipsDeclarationIndexPlatformTest {
         readAction {
             val index = FileBasedIndex.getInstance()
             assertEquals(files.toSet(), index.getContainingFiles(
-                MipsDeclarationIndex.NAME, "main", GlobalSearchScope.projectScope(project.get()),
+                declarationIndexId, "main", GlobalSearchScope.projectScope(project.get()),
             ).toSet())
             for (file in files) {
                 assertEquals(setOf(file), index.getContainingFiles(
-                    MipsDeclarationIndex.NAME, "main", GlobalSearchScope.fileScope(project.get(), file),
+                    declarationIndexId, "main", GlobalSearchScope.fileScope(project.get(), file),
                 ).toSet())
             }
-            assertTrue(index.getContainingFiles(MipsDeclarationIndex.NAME, "main", GlobalSearchScope.EMPTY_SCOPE).isEmpty())
+            assertTrue(index.getContainingFiles(declarationIndexId, "main", GlobalSearchScope.EMPTY_SCOPE).isEmpty())
         }
     }
 

@@ -61,19 +61,17 @@ internal class MipsFindUsagesProvider : FindUsagesProvider {
             return PunctuationIdentifier
         }
     }
-
-    private object PunctuationIdentifier : IElementType("MIPS_PUNCTUATION_IDENTIFIER", MipsLanguage)
-
-    private companion object {
-        val bundle = DynamicBundle(MipsFindUsagesProvider::class.java, "messages.MarsBundle")
-        val word = MipsTypes.psi("WORD")
-        val parameter = MipsTypes.psi("PARAMETER")
-        val identifiers = TokenSet.create(word, parameter, MipsTypes.psi("DOLLAR_WORD"), MipsTypes.psi("MNEMONIC"))
-        val wholeWords = TokenSet.create(PunctuationIdentifier)
-        val comments = TokenSet.create(MipsTypes.psi("COMMENT"))
-        val literals = TokenSet.create(
-            MipsTypes.psi("STRING"), MipsTypes.psi("CHARACTER"),
-            MipsTypes.psi("UNCLOSED_STRING"), MipsTypes.psi("UNCLOSED_CHARACTER"),
-        )
-    }
 }
+
+private object PunctuationIdentifier : IElementType("MIPS_PUNCTUATION_IDENTIFIER", MipsLanguage)
+
+private val bundle = DynamicBundle(MipsFindUsagesProvider::class.java, "messages.MarsBundle")
+private val word = MipsTypes.psi("WORD")
+private val parameter = MipsTypes.psi("PARAMETER")
+private val identifiers = TokenSet.create(word, parameter, MipsTypes.psi("DOLLAR_WORD"), MipsTypes.psi("MNEMONIC"))
+private val wholeWords = TokenSet.create(PunctuationIdentifier)
+private val comments = TokenSet.create(MipsTypes.psi("COMMENT"))
+private val literals = TokenSet.create(
+    MipsTypes.psi("STRING"), MipsTypes.psi("CHARACTER"),
+    MipsTypes.psi("UNCLOSED_STRING"), MipsTypes.psi("UNCLOSED_CHARACTER"),
+)

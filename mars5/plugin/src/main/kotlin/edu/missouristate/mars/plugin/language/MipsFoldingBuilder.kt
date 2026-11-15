@@ -54,11 +54,9 @@ internal class MipsFoldingBuilder : FoldingBuilderEx(), DumbAware {
 
     override fun getPlaceholderText(node: ASTNode) = " …"
     override fun isCollapsedByDefault(node: ASTNode) = false
-
-    private companion object {
-        val statements = TokenSet.create(MipsTypes.psi("STATEMENT"))
-        val macroDefinition = MipsTypes.psi("MACRO_DEFINITION")
-        val endMacro = MipsTypes.psi("END_MACRO")
-        val foldingDependencies = setOf(PsiModificationTracker.MODIFICATION_COUNT, VirtualFileManager.VFS_STRUCTURE_MODIFICATIONS)
-    }
 }
+
+private val statements = TokenSet.create(MipsTypes.psi("STATEMENT"))
+private val macroDefinition = MipsTypes.psi("MACRO_DEFINITION")
+private val endMacro = MipsTypes.psi("END_MACRO")
+private val foldingDependencies = setOf(PsiModificationTracker.MODIFICATION_COUNT, VirtualFileManager.VFS_STRUCTURE_MODIFICATIONS)

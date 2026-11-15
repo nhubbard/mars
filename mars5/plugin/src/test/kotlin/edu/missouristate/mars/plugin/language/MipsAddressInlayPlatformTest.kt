@@ -1,3 +1,6 @@
+// These editor tests inspect the native inlay renderer and invoke its click handling without opening a window.
+@file:Suppress("JetBrainsInternalApiUsage")
+
 package edu.missouristate.mars.plugin.language
 
 import com.intellij.codeInsight.hints.declarative.DeclarativeInlayHintsSettings

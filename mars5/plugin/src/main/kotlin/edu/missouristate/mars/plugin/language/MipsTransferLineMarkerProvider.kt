@@ -57,16 +57,14 @@ internal class MipsTransferLineMarkerProvider : RelatedItemLineMarkerProvider() 
     }
 
     private data class Transfer(val label: String, val targets: List<PsiElement>)
+}
 
-    private companion object {
-        val bundle = DynamicBundle(MipsTransferLineMarkerProvider::class.java, "messages.MarsBundle")
-        val transferForms by lazy {
-            val forms = InstructionDefaults.editorCatalog().instructionList
-            val basic = forms.filterIsInstance<BasicInstruction>().filter {
-                it.instructionFormat == I_BRANCH_FORMAT || it.instructionFormat == J_FORMAT
-            }
-            val pseudo = forms.filterIsInstance<ExtendedInstruction>().filter(ExtendedInstruction::branchesToLabel)
-            (basic + pseudo).groupBy(Instruction::name)
-        }
+private val bundle = DynamicBundle(MipsTransferLineMarkerProvider::class.java, "messages.MarsBundle")
+private val transferForms by lazy {
+    val forms = InstructionDefaults.editorCatalog().instructionList
+    val basic = forms.filterIsInstance<BasicInstruction>().filter {
+        it.instructionFormat == I_BRANCH_FORMAT || it.instructionFormat == J_FORMAT
     }
+    val pseudo = forms.filterIsInstance<ExtendedInstruction>().filter(ExtendedInstruction::branchesToLabel)
+    (basic + pseudo).groupBy(Instruction::name)
 }

@@ -1,5 +1,7 @@
 package edu.missouristate.mars.plugin.analysis
 
+import edu.missouristate.mars.plugin.language.index.referenceIndexId
+import edu.missouristate.mars.plugin.language.index.declarationIndexId
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ReadConstraint
 import com.intellij.openapi.application.constrainedReadAction
@@ -51,9 +53,7 @@ import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.MipsFileType
 import edu.missouristate.mars.plugin.language.MipsTypes
 import edu.missouristate.mars.plugin.language.enabledInstructionFormats
-import edu.missouristate.mars.plugin.language.index.MipsDeclarationIndex
 import edu.missouristate.mars.plugin.language.index.MipsDeclarationSite
-import edu.missouristate.mars.plugin.language.index.MipsReferenceIndex
 import edu.missouristate.mars.plugin.language.operationHead
 import edu.missouristate.mars.plugin.language.operationOwner
 import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
@@ -253,7 +253,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
             val outer = ArrayList<PsiElement>()
             val macro = timeline.macroAt(root, position.textOffset)
             val candidates = ArrayList<Pair<VirtualFile, List<MipsDeclarationSite>>>()
-            FileBasedIndex.getInstance().processValues(MipsDeclarationIndex.NAME, name, null, { file, sites ->
+            FileBasedIndex.getInstance().processValues(declarationIndexId, name, null, { file, sites ->
                 candidates.add(file to sites)
                 true
             }, timeline.indexedSourceScope)
@@ -1123,7 +1123,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         owner == null || owner === active && !Macro.tokenIsMacroParameter(name, true)
 
     private fun declarations(file: MipsFile) =
-        FileBasedIndex.getInstance().getFileData(MipsDeclarationIndex.NAME, file.viewProvider.virtualFile, project)
+        FileBasedIndex.getInstance().getFileData(declarationIndexId, file.viewProvider.virtualFile, project)
 
     /** Waits for usable native indices and returns detached candidates for one scoped symbol key. */
     internal suspend fun lookupCandidates(key: SymbolKey, scope: GlobalSearchScope): IndexedSymbolCandidates {
@@ -1131,7 +1131,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         return constrainedReadAction(ReadConstraint.inSmartMode(project), ReadConstraint.withDocumentsCommitted(project)) {
             val index = FileBasedIndex.getInstance()
             val declarations = buildList {
-                index.processValues(MipsDeclarationIndex.NAME, key.name, null, { file, sites ->
+                index.processValues(declarationIndexId, key.name, null, { file, sites ->
                     val source = SourceId(file.url)
                     for ((kind, offset, macroOffset) in sites) {
                         ProgressManager.checkCanceled()
@@ -1141,7 +1141,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
                 }, scope)
             }
             val references = buildList {
-                index.processValues(MipsReferenceIndex.NAME, key.name, null, { file, sites ->
+                index.processValues(referenceIndexId, key.name, null, { file, sites ->
                     val source = SourceId(file.url)
                     for ((kind, offset, macroOffset) in sites) {
                         ProgressManager.checkCanceled()

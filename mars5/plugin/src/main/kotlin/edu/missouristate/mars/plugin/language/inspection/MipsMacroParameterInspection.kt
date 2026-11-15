@@ -88,11 +88,9 @@ internal class MipsMacroParameterInspection : LocalInspectionTool() {
         val line = file.viewProvider.contents.subSequence(start, end).toString()
         return Tokenizer.tokenizeMappedLine(line, errors, { prefix.equivalence(it)?.replacement }, ProgressManager::checkCanceled)
     }
-
-    private companion object {
-        val messages = DynamicBundle(MipsMacroParameterInspection::class.java, "messages.MarsBundle")
-        val statement = MipsTypes.psi("STATEMENT")
-        val includeLine = MipsTypes.psi("INCLUDE_LINE")
-        val boundaries = setOf(Directives.MACRO, Directives.END_MACRO, Directives.INCLUDE)
-    }
 }
+
+private val messages = DynamicBundle(MipsMacroParameterInspection::class.java, "messages.MarsBundle")
+private val statement = MipsTypes.psi("STATEMENT")
+private val includeLine = MipsTypes.psi("INCLUDE_LINE")
+private val boundaries = setOf(Directives.MACRO, Directives.END_MACRO, Directives.INCLUDE)
