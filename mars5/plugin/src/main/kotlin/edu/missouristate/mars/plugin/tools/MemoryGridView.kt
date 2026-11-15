@@ -245,12 +245,16 @@ internal class MemoryGridView(
 
         private fun thresholdValue() = (threshold.value as Int).toLong()
 
+        // Match the configured RGB value in the color picker.
+        @Suppress("UseJBColor")
         fun syncColor() {
             color.selectedColor = selected?.let { Color(it.colorAt(thresholdValue())) }
         }
     }
 }
 
+// The display and its overlays use fixed colors for contrast against simulated pixels.
+@Suppress("UseJBColor")
 internal class MemoryGridCanvas(
     private var frame: Frame, nameKey: String, private val inspectionHint: String, private val cellDetails: (Int) -> String?,
     private val inspectionChanged: (String) -> Unit,

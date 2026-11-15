@@ -251,7 +251,10 @@ internal class ScavengerHuntBoard : JBPanel<ScavengerHuntBoard>() {
                 val x = (position.x * scale).roundToInt()
                 val y = (position.y * scale).roundToInt()
                 val player = players.first()
-                g.color = if (player.value.color == 0) JBColor.foreground() else Color(player.value.color)
+                // Player colors are RGB values supplied by the simulated program.
+                @Suppress("UseJBColor")
+                val playerColor = if (player.value.color == 0) JBColor.foreground() else Color(player.value.color)
+                g.color = playerColor
                 g.drawOval(x - radius, y - radius, radius * 2, radius * 2)
                 if (players.size == 1) {
                     g.drawString(player.index.toString(), x + radius, y - radius)

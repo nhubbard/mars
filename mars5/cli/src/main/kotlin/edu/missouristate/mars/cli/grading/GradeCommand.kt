@@ -21,6 +21,8 @@ import kotlin.script.experimental.jvm.jvm
 import kotlin.script.experimental.jvmhost.BasicJvmScriptingHost
 import kotlin.script.experimental.jvmhost.createJvmCompilationConfigurationFromTemplate
 
+// The IntelliJ plugin registers the definition through MarsAssignmentDefinitions.
+@Suppress("KotlinScriptTemplateNotRegistered")
 @KotlinScript(displayName = "MARS assignment", fileExtension = "kts", compilationConfiguration = AssignmentCompilation::class)
 abstract class AssignmentScript(assignment: Assignment) {
     private val submission = assignment
@@ -38,7 +40,9 @@ object AssignmentCompilation : ScriptCompilationConfiguration({
     // Leave Gradle and Kotlin main scripts with their dedicated definitions.
     filePathPattern("""(?:.*[/\\])?(?![^/\\]*\.(?:gradle|main)\.kts$)[^/\\]+\.kts""")
     isStandalone(true)
-})
+}) {
+    private fun readResolve(): Any = AssignmentCompilation
+}
 
 object GradeCommand {
     @JvmStatic

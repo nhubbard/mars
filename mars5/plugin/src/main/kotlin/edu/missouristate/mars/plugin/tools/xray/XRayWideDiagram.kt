@@ -1,12 +1,25 @@
 package edu.missouristate.mars.plugin.tools.xray
 
 import androidx.compose.ui.unit.IntSize
+import com.intellij.ui.JBColor
 import edu.missouristate.mars.datapath.DatapathDiagram.Wire
 import edu.missouristate.mars.plugin.tools.toolsMessages
-import java.awt.Color
 
 /** The Release 6 source-level execution path, with no timing or pipeline assumptions. */
 internal object XRayWideDiagram {
+    private val labels by lazy {
+        mapOf(
+            "fetch" to toolsMessages.getMessage("xray.mars64.fetch"),
+            "decode" to toolsMessages.getMessage("xray.mars64.decode"),
+            "execute" to toolsMessages.getMessage("xray.mars64.execute"),
+            "nextPc" to toolsMessages.getMessage("xray.mars64.nextPc"),
+            "registers" to toolsMessages.getMessage("xray.mars64.registers"),
+            "memory" to toolsMessages.getMessage("xray.mars64.memory"),
+        )
+    }
+    private val signalColor = JBColor(0x236998, 0x559bd3)
+    private val branchColor = JBColor(0x9f570f, 0xe29848)
+
     private val schematic by lazy {
         XRaySchematic(IntSize(960, 320), listOf(
             node(25, 85, 160, "fetch"),
@@ -19,7 +32,7 @@ internal object XRayWideDiagram {
     }
 
     private fun node(x: Int, y: Int, width: Int, key: String) =
-        XRayNode(x, y, width, 72, toolsMessages.getMessage("xray.mars64.$key"))
+        XRayNode(x, y, width, 72, labels.getValue(key))
 
     private val wires = listOf(
         wire("fetch", true, 121, 185, 235),
@@ -40,9 +53,9 @@ internal object XRayWideDiagram {
         val signals = wires.mapIndexedNotNull { index, wire ->
             if (!active[index]) return@mapIndexedNotNull null
             XRaySignal(
-                toolsMessages.getMessage("xray.mars64.${wire.name}").replace('\n', ' '),
+                labels.getValue(wire.name).replace('\n', ' '),
                 wire.horizontal, wire.axis, wire.start, wire.end, false,
-                if (wire.name == "nextPc" && instruction.isControlFlow) Color(0xe29848) else Color(0x559bd3),
+                if (wire.name == "nextPc" && instruction.isControlFlow) branchColor else signalColor,
                 when (wire.name) {
                     "fetch" -> 0
                     "execute", "registers" -> 50

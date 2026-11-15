@@ -7,6 +7,7 @@ import androidx.compose.runtime.referentialEqualityPolicy
 import androidx.compose.runtime.setValue
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.project.Project
+import com.intellij.ui.Gray
 import com.intellij.util.ui.launchOnShow
 import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.api.StepEvent
@@ -14,7 +15,6 @@ import edu.missouristate.mars.mips.instructions.InstructionDefaults
 import edu.missouristate.mars.plugin.tools.MarsToolRunContent
 import edu.missouristate.mars.plugin.tools.marsToolExecutions
 import edu.missouristate.mars.plugin.tools.toolsMessages
-import java.awt.Color
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jetbrains.jewel.bridge.JewelComposePanel
@@ -170,7 +170,7 @@ internal class XRayView(private val project: Project) : Disposable {
     enum class Rate(val ticks: Int) { SLOW(3), NORMAL(6), FAST(12) }
 
     private companion object {
-        val inactiveSignal = Color(100, 100, 100)
+        val inactiveSignal = Gray._100
     }
 }
 

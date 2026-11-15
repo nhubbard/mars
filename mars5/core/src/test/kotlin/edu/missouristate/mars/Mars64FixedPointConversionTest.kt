@@ -93,7 +93,7 @@ class Mars64FixedPointConversionTest {
     @ValueSource(booleans = [false, true])
     fun `conversion handles limits and NaNs and an inexact trap suppresses the result`(longword: Boolean, @TempDir directory: Path) {
         val prefix = if (longword) "cvt.l.d" else "cvt.w.d"
-        val limit = if (longword) 9_223_372_036_854_775_808.0 else 2_147_483_648.0
+        val limit = if (longword) -Long.MIN_VALUE.toDouble() else -Int.MIN_VALUE.toDouble()
         val maximum = if (longword) Long.MAX_VALUE else Int.MAX_VALUE.toLong()
         val minimum = if (longword) Long.MIN_VALUE else Int.MIN_VALUE.toLong()
         val source = Files.writeString(directory.resolve("limits.s"), buildString {

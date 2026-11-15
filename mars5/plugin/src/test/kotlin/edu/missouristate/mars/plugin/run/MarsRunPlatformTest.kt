@@ -3,7 +3,6 @@
 
 package edu.missouristate.mars.plugin.run
 
-import edu.missouristate.mars.plugin.run.marsBeforeLaunchTaskId
 import com.intellij.build.BuildViewManager
 import com.intellij.build.events.BuildEvent
 import com.intellij.build.events.FailureResult
