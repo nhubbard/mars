@@ -4,6 +4,7 @@
 import argparse
 import os
 from pathlib import Path
+import re
 import select
 import subprocess
 import tempfile
@@ -131,7 +132,8 @@ def capture():
         layout.write_text(LINKER_SCRIPT)
         probes = sorted(FIXTURES.glob("*.asm")) + sorted(FIXTURES.glob("faults/*.asm"))
         for probe in probes:
-            program = probe.read_text()
+            # Some Release 6 forms have specified encodings but no LLVM mnemonic.
+            program = re.sub(r"(?m)^.*# llvm-word (0x[\da-f]{8})$", r".word \1", probe.read_text())
             name = probe.stem
             if probe.parent.name == "faults":
                 name = "faults/" + name

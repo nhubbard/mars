@@ -49,7 +49,7 @@ byte in both byte orders. The output comparison includes guard bytes around stor
 | Branches and jumps | Taken and untaken signed, unsigned, zero, overflow, and FPR-bit comparisons. Delayed and compact calls check return addresses, alternate link registers, and call and return slots. |
 | Atomics | Successful word and doubleword linked loads and conditional stores. |
 | Exceptions | Overflow, misaligned linked load, breakpoints, and illegal control transfers in delay and forbidden slots. Misaligned jump targets check that the slot and link take effect before the instruction fetch faults. A shared handler records the cause, EPC offset, exception level, destination register, and bad-address offset for address errors. |
-| Scalar floating point | Directed rounding, sticky flags, classification, and compare masks. |
+| Scalar floating point | Every compare predicate, both precisions of arithmetic and fused accumulation, selection by raw register bits, integer and interchange conversions, and directed rounding. Transfer probes check both halves of an FPR, unaligned loads and stores, and FCSR register views. A divide-by-zero trap preserves the prior destination and sticky flags. |
 | Memory boundaries | Scalar and vector transfers across a mapped 4 KiB boundary. Separate default-layout stack tests cover the last writable byte and verify that crossing the stack end raises an address error before any write. |
 | MSA memory | Loads and stores in all four element widths at unaligned addresses, including mixed-width transfers that expose byte and lane ordering. |
 | MSA integer | Wrapping arithmetic and accumulation, signed and unsigned saturation, division and remainder, averages, and comparisons. Probes include signed limits and immediate operands in all four lane widths. |
@@ -91,7 +91,9 @@ after all cases succeed. It runs trusted local probes in QEMU and reads memory
 over the debugger’s standard input and output. In MARS, the tests assemble the
 instruction sequence as ordinary source. The ELF and startup code belong to the
 reference harness. The harness enables QEMU kernel extended addressing so that
-PC-relative arithmetic uses the entire 64-bit address.
+PC-relative arithmetic uses the entire 64-bit address. Where LLVM lacks a
+Release 6 mnemonic, the instruction line gives the manual's word in an
+`llvm-word` comment. Only the reference build uses that word.
 
 When a result differs, check the Release 6 or MSA specification before changing
 the simulator. Record which cases have defined results and which rely on a

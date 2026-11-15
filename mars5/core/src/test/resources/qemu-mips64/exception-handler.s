@@ -15,6 +15,9 @@ andi $8, $8, 0x007c
 ori $9, $0, 56
 beq $8, $9, record_msa
 nop
+ori $9, $0, 60
+beq $8, $9, record_fpu
+nop
 ori $9, $0, 16
 beq $8, $9, record_address
 nop
@@ -38,3 +41,12 @@ record_msa:
 cfcmsa $9, $1
 sw $9, 40($5)
 st.w $w2, 48($5)
+beq $0, $0, done
+nop
+record_fpu:
+cfc1 $9, $31
+lui $10, 0x0003
+ori $10, $10, 0xffff
+and $9, $9, $10
+sw $9, 40($5)
+sdc1 $f9, 48($5)
