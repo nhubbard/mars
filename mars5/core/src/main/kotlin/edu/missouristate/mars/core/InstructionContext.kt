@@ -485,7 +485,6 @@ class InstructionContext(private val session: MarsContext, private val environme
                 }
             } catch (error: ProcessingException) {
                 delayedBranch.forbiddenSlot = false
-                memory().reservation = null
                 if (!dispatchHandler || error.errors() == null) throw error
                 val handler = try {
                     memory().getStatementNoNotify(memory().exceptionHandlerAddress)

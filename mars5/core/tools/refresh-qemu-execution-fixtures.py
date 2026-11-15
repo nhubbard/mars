@@ -134,6 +134,7 @@ def capture():
         for probe in probes:
             # Some Release 6 forms have specified encodings but no LLVM mnemonic.
             program = re.sub(r"(?m)^.*# llvm-word (0x[\da-f]{8})$", r".word \1", probe.read_text())
+            program = program.replace(".ktext 0x80000180\n", '.section .exception,"ax",@progbits\n')
             name = probe.stem
             if probe.parent.name == "faults":
                 name = "faults/" + name

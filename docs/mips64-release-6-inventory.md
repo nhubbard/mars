@@ -47,8 +47,9 @@ byte in both byte orders. The output comparison includes guard bytes around stor
 | Scalar bit operations | Byte and bit swaps, sign extension, leading-bit counts, shifts, rotates, and bitfield extraction and insertion at word and doubleword limits. Includes every CRC-32 and CRC-32C form. |
 | Scalar addressing | Signed and unsigned loads, unaligned transfers, and all six PC-relative forms. PC-relative probes check displacement limits, signed and unsigned reads of the same text word, and an aligned doubleword base for both instruction alignments. |
 | Branches and jumps | Taken and untaken signed, unsigned, zero, overflow, and FPR-bit comparisons. Delayed and compact calls check return addresses, alternate link registers, and call and return slots. |
-| Atomics | Successful word and doubleword linked loads and conditional stores. |
+| Atomics | Word and doubleword linked loads and conditional stores. Paired forms use the manual as outlined below. An exception between LL and SC checks both ERET and ERETNC with the same handler. |
 | Exceptions | Overflow, misaligned linked load, breakpoints, and illegal control transfers in delay and forbidden slots. Misaligned jump targets check that the slot and link take effect before the instruction fetch faults. A shared handler records the cause, EPC offset, exception level, destination register, and bad-address offset for address errors. |
+| Scalar system instructions | Interrupt enable and disable, CP0 word and doubleword moves, CPU-number reads, barriers, and hints. Additional fault probes cover signed and unsigned traps, SIGRIE, and a reserved prefetch hint. |
 | Scalar floating point | Every compare predicate, both precisions of arithmetic and fused accumulation, selection by raw register bits, integer and interchange conversions, and directed rounding. Transfer probes check both halves of an FPR, unaligned loads and stores, and FCSR register views. A divide-by-zero trap preserves the prior destination and sticky flags. |
 | Memory boundaries | Scalar and vector transfers across a mapped 4 KiB boundary. Separate default-layout stack tests cover the last writable byte and verify that crossing the stack end raises an address error before any write. |
 | MSA memory | Loads and stores in all four element widths at unaligned addresses, including mixed-width transfers that expose byte and lane ordering. |
@@ -63,6 +64,10 @@ byte in both byte orders. The output comparison includes guard bytes around stor
 
 The QEMU probes exercise selected inputs for each of the 531 forms in the MSA
 reference inventory, including the scalar `lsa` and `dlsa` forms.
+The QEMU probes and the core suite together exercise the implemented scalar
+mnemonics. The core suite covers paired atomics, virtual-processor no-ops, and the
+[classroom syscall ABI](../mars5/core/src/test/kotlin/edu/missouristate/mars/SyscallContractTest.kt)
+with their own expected results.
 
 The reciprocal probes use powers of two and disregard the Inexact cause and
 sticky flag for `frcp` and `frsqrt` on those inputs. The MSA manual allows
@@ -221,7 +226,9 @@ write. IntelliJ uses CP0 register names when completing the register operand
 of the word and doubleword transfers.
 
 `eret` and `eretnc` return through the educational EPC register. `eret`
-clears the load-linked reservation and `eretnc` preserves it. A fault in a
+clears the load-linked reservation and `eretnc` preserves it. Exception entry
+leaves that choice to the handler. An overlapping store in the handler can
+still invalidate the reservation. A fault in a
 MARS64 delay slot or an untaken compact branch’s forbidden slot records the
 branch address in EPC and sets `Cause.BD`. [Release 6 branch and jump rules](https://s3-eu-west-1.amazonaws.com/downloads-mips/documents/MD00083-2B-MIPS64INT-AFP-06.01.pdf)
 When exception level is already set, a subsequent fault preserves EPC and
@@ -234,7 +241,8 @@ The simulator defers delivery at exception level or while disabled and
 keeps masked device requests pending until they are enabled or withdrawn.
 `dvp` and `evp` act as no-ops on the single-core target. `pause` is also
 a no-op in ordinary execution and still follows delay-slot and forbidden-slot
-restrictions.
+restrictions. The core tests check the no-virtual-processor path directly.
+The QEMU I6400 model exposes virtual-processor control state.
 
 `syscall` accepts an optional unsigned 20-bit code. The assembler and
 disassembler preserve that field in the machine word. MARS's educational
@@ -257,7 +265,15 @@ MARS64 uses the Release 6 encodings for `ll`, `sc`, `lld`, and `scd`.
 These reserve the addressed bytes in ordinary storage. Overlapping writes
 invalidate the reservation, and backstep restores it. MARS64 also supports
 `llwp`, `scwp`, `lldp`, and `scdp` using the paired bit in the manual.
-These run in the single-core simulator and use ordinary storage. Example
+These run in the single-core simulator and use ordinary storage. The
+[paired-atomic tests](../mars5/core/src/test/kotlin/edu/missouristate/mars/Mars64LinkedMemoryTest.kt)
+check the manual's encodings and register order, sign extension, success and
+failure, and backstep in both byte orders. QEMU 11.1.3 decodes these paired
+encodings as ordinary linked loads and conditional stores, so the paired
+checks use expectations derived from the manual.
+[QEMU 11.1.3 MIPS decoder](https://github.com/qemu/qemu/blob/v11.1.3/target/mips/tcg/translate.c#L13056)
+
+Example
 register numbers and immediates below are LLVM assembler input, and the hex values are instruction words in architectural bit order. A branch
 or PC-relative immediate in this table is the displacement as written to LLVM.
 

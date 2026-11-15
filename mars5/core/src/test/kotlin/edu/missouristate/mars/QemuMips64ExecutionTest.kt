@@ -34,7 +34,7 @@ class QemuMips64ExecutionTest {
             val memory = machine.memory
             memory.byteOrder = byteOrder == "little"
             val program = try {
-                machine.assemble(listOf(source), handler = null, extended = false, warnings = false)
+                machine.assemble(listOf(source), handler = null, extended = probe == "scalar-branch-aliases", warnings = false)
             } catch (failure: ProcessingException) {
                 throw AssertionError(failure.errors()?.generateErrorAndWarningReport(), failure)
             }
