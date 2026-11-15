@@ -56,13 +56,23 @@ byte in both byte orders. The output comparison includes guard bytes around stor
 | MSA register transfers and logic | Signed and unsigned extraction into CPU registers, insertion into the upper and lower halves of a vector, whole-vector moves, logical operations, and masks that merge with the previous destination. |
 | MSA branches | Whole-vector and per-lane zero tests in all four lane widths, with delay-slot execution on both taken and untaken branches. |
 | MSA fixed point and widening | Q15 and Q31 multiplication and accumulation, including saturation and half-step rounding. Signed and unsigned horizontal arithmetic, dot products, and dot-product accumulation widening into halfwords, words, and doublewords. |
-| MSA floating point | Signed zeros, quiet and signaling NaNs, classification, extrema, unordered masks, directed overflow, gradual underflow, and flush-to-zero results and status flags. |
-| MSA rounding | Directed rounding and integer conversion, including subnormals and the status register. |
+| MSA floating point | Both precisions of arithmetic, fused accumulation, classification, extrema, and every quiet and signaling compare predicate. Probes include directed overflow, gradual underflow, flush-to-zero, and a trap that preserves the destination vector and sticky flags. |
+| MSA conversion | Rounding to integral values, signed and unsigned integer conversions, half/single/double interchange, Q15 and Q31 quantization, and widening from both halves of a vector. |
 
-The probes exercise all 429 MSA integer, register transfer, memory, and branch
-forms in the reference inventory, including the scalar `lsa` and `dlsa` forms.
-They check selected inputs for each form. MSA floating-point forms have separate
-probes for arithmetic, comparison, rounding, and exception status.
+The QEMU probes exercise selected inputs for each of the 531 forms in the MSA
+reference inventory, including the scalar `lsa` and `dlsa` forms.
+
+The reciprocal probes use powers of two and disregard the Inexact cause and
+sticky flag for `frcp` and `frsqrt` on those inputs. The MSA manual allows
+approximate implementations to set Inexact there. The core suite separately
+checks inexact inputs and the one- and two-ULP accuracy bounds.
+
+The `flog2` reference probes use powers of two. The core suite checks the IEEE
+754-2008 §5.3.3 `logB` results required by MSA for nonpowers of two, negative
+values, zero, and subnormals. QEMU I6400 can set Inexact for positive finite
+nonpowers of two and returns Invalid for negative finite inputs.
+[MIPS64 SIMD Architecture manual](https://s3-eu-west-1.amazonaws.com/downloads-mips/documents/MD00868-1D-MSA64-AFP-01.12.pdf)
+· [IEEE 754-2008](https://pub.sergev.org/doc/ieee754-2008.pdf)
 
 The checked-in results record the QEMU, LLVM, and LLD versions used to generate
 them. The normal Jupiter suite reads the files and requires only the MARS build.

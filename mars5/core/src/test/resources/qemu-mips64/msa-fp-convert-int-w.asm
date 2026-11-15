@@ -1,0 +1,35 @@
+# Round both signs toward positive infinity, then truncate.
+lui $8, 0x3fc0
+sw $8, 0($4)
+lui $8, 0xbfc0
+sw $8, 4($4)
+sw $0, 8($4)
+lui $8, 0x3e80
+sw $8, 12($4)
+ld.w $w0, 0($4)
+ori $10, $0, 2
+ctcmsa $1, $10
+frint.w $w2, $w0
+cfcmsa $9, $1
+st.w $w2, 0($5)
+sw $9, 112($5)
+ctcmsa $1, $10
+ftint_s.w $w2, $w0
+cfcmsa $9, $1
+st.w $w2, 16($5)
+sw $9, 116($5)
+ctcmsa $1, $10
+ftint_u.w $w2, $w0
+cfcmsa $9, $1
+st.w $w2, 32($5)
+sw $9, 120($5)
+ctcmsa $1, $10
+ftrunc_s.w $w2, $w0
+cfcmsa $9, $1
+st.w $w2, 48($5)
+sw $9, 124($5)
+ctcmsa $1, $10
+ftrunc_u.w $w2, $w0
+cfcmsa $9, $1
+st.w $w2, 64($5)
+sw $9, 128($5)

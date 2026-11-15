@@ -6,6 +6,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertThrows
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
@@ -415,6 +416,37 @@ class Mars64VectorFloatingTest {
             val minPower = if (double) Long.MIN_VALUE else Int.MIN_VALUE.toLong()
             fpu.updateVector(5, VectorRegister(repeatWord(max), repeatWord(minPower)))
             execute(vector(1.0, 1.0), vector(Double.POSITIVE_INFINITY, min), status = 2, causes = 7)
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = ["w", "d"])
+    fun `approximate reciprocals stay within the MSA error bounds`(suffix: String, @TempDir directory: Path) {
+        val source = $$"""
+            frcp.$$suffix $w31,$w3
+            frsqrt.$$suffix $w31,$w3
+        """.trimIndent()
+        val file = Files.writeString(directory.resolve("reciprocal.s"), source)
+        val double = suffix == "d"
+        val input = if (double) 3.0.toRawBits() else 3f.toRawBits().toLong() * 0x100000001L
+        // MSA defines the reference as IEEE division, with a rounded square root for FRSQRT.
+        val reciprocal = if (double) (1.0 / 3.0).toRawBits() else (1f / 3f).toRawBits().toLong()
+        val reciprocalRoot = if (double) (1.0 / sqrt(3.0)).toRawBits() else (1f / sqrt(3f)).toRawBits().toLong()
+        TestSessions.create().use { session ->
+            session.selectTarget(MarsTarget.MARS64)
+            val program = session.assemble(listOf(file), null, extended = false, warnings = false)
+            val fpu = session.coprocessor1
+            fpu.updateVector(3, VectorRegister(input, input))
+            for ((expected, tolerance) in listOf(reciprocal to 1L, reciprocalRoot to 2L)) {
+                fpu.updateMsaStatus(0)
+                program.simulate(1)
+                val result = fpu.readVector(31)
+                val lanes = if (double) listOf(result.low, result.high) else listOf(
+                    result.low and 0xffffffffL, result.low ushr 32, result.high and 0xffffffffL, result.high ushr 32,
+                )
+                for (lane in lanes) assertTrue(lane in (expected - tolerance)..(expected + tolerance))
+                assertEquals(0x1004, fpu.msaStatus)
+            }
         }
     }
 
