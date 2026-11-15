@@ -5,9 +5,9 @@ import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
 
 open class InstrMovfD2 : BasicInstruction(
-    "movf.d \$f2,\$f4,1",
+    $$"movf.d $f2,$f4,1",
     "Move floating point double precision : If condition flag specified by immediate is false,"
-        + " set double precision \$f2 to double precision value in \$f4",
+        + $$" set double precision $f2 to double precision value in $f4",
     BasicInstructionFormat.R_FORMAT,
     "010001 10001 ttt 00 sssss fffff 010001",
     { statement, context ->

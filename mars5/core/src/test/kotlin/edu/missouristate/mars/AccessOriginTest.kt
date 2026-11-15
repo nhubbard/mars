@@ -26,7 +26,7 @@ internal class AccessOriginTest {
     fun synchronousExecutionMarksInstructionFetchesAndRestoresApplicationOrigin() {
         TestSessions.create().use { session ->
             val source = directory.resolve("origin.s")
-            Files.writeString(source, ".text\nmain: addiu \$t0,\$zero,42\n")
+            Files.writeString(source, $$".text\nmain: addiu $t0,$zero,42\n")
             val program: MIPSprogram = session.assemble(listOf(source))
             val notices = ArrayList<MemoryAccessNotice>()
             session.memory.addObserver(

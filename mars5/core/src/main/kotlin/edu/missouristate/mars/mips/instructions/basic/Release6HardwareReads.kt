@@ -10,7 +10,7 @@ internal fun release6HardwareReads() = listOf(hardwareRead(hasSelector = false),
 private val readableRegisters = setOf(0, 1, 5)
 
 private fun hardwareRead(hasSelector: Boolean) = object : BasicInstruction(
-    if (hasSelector) "rdhwr \$t1,\$0,7" else "rdhwr \$t1,\$0",
+    if (hasSelector) $$"rdhwr $t1,$0,7" else $$"rdhwr $t1,$0",
     "Read CPU number, instruction synchronization step, or paired LL/SC support",
     R_FORMAT, "011111 00000 fffff sssss 00 ${if (hasSelector) "ttt" else "000"} 111011",
     { statement, context ->

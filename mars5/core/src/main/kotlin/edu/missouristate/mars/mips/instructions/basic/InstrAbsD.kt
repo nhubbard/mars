@@ -5,8 +5,8 @@ import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
 
 open class InstrAbsD : BasicInstruction(
-    "abs.d \$f2,\$f4",
-    "Floating point absolute value double precision : Set \$f2 to absolute value of \$f4, double"
+    $$"abs.d $f2,$f4",
+    $$"Floating point absolute value double precision : Set $f2 to absolute value of $f4, double"
         + " precision",
     BasicInstructionFormat.R_FORMAT,
     "010001 10001 00000 sssss fffff 000101",

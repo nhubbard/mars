@@ -117,7 +117,7 @@ internal class MarsStackFrame(
             addTopGroup(RegisterGroup("debug.registers.vector", XValueChildrenList().apply {
                 for (number in registers.indices) {
                     val bits = fpu.getVectorNoNotify(number)
-                    add(VectorRegisterValue("\$w$number", bits, written(RegisterWriteBank.COPROCESSOR_1, number)))
+                    add(VectorRegisterValue($$"$w$$number", bits, written(RegisterWriteBank.COPROCESSOR_1, number)))
                 }
             }))
         }

@@ -33,7 +33,7 @@ class Mars64VectorPermutationTest {
         })
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(source), null, false, false)
+            val program = session.assemble(listOf(source), null, extended = false, warnings = false)
             val fpu = session.coprocessor1
             fpu.updateVector(3, vector(bits, left))
             fpu.updateVector(5, vector(bits, right))
@@ -68,7 +68,7 @@ class Mars64VectorPermutationTest {
         """.trimIndent() + if (format < 3) $$"\nshf.$$suffix $w31,$w3,255" else "")
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(source), null, false, false)
+            val program = session.assemble(listOf(source), null, extended = false, warnings = false)
             val fpu = session.coprocessor1
             val input = (1..16).toList()
             val previous = (41..56).toList()

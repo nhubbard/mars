@@ -124,7 +124,7 @@ private fun wideArithmetic(operation: WideArithmetic, format: Int, suffix: Char)
     val function = operation.function.toString(2).padStart(6, '0')
     val bits = Byte.SIZE_BITS shl format
     return BasicInstruction(
-        "${operation.mnemonic}.$suffix \$w1,\$w2,\$w3", "Apply ${operation.mnemonic} to each integer vector element",
+        $$"$${operation.mnemonic}.$$suffix $w1,$w2,$w3", "Apply ${operation.mnemonic} to each integer vector element",
         R_FORMAT, "011110 $field ttttt sssss fffff $function",
     ) { statement, context ->
         val (destination, left, right) = statement.operands
@@ -153,7 +153,7 @@ private fun immediateInstruction(name: String, operation: IntegerOperation, form
     val function = if (operation.function == 14) "000110" else "000111"
     val bits = Byte.SIZE_BITS shl format
     return object : BasicInstruction(
-        "$name.$suffix \$w1,\$w2,${if (signed) -16 else 31}", "Apply $name with a constant to each vector element",
+        $$"$$name.$$suffix $w1,$w2,$${if (signed) -16 else 31}", "Apply $name with a constant to each vector element",
         R_FORMAT, "011110 $opcode ttttt sssss fffff $function",
         { statement, context ->
             val (destination, source, immediate) = statement.operands
@@ -181,7 +181,7 @@ private fun integerInstruction(operation: IntegerOperation, format: Int, suffix:
     val function = operation.function.toString(2).padStart(6, '0')
     val bits = Byte.SIZE_BITS shl format
     return BasicInstruction(
-        "${operation.mnemonic}.$suffix \$w1,\$w2,\$w3", "Apply ${operation.mnemonic} to each integer vector element",
+        $$"$${operation.mnemonic}.$$suffix $w1,$w2,$w3", "Apply ${operation.mnemonic} to each integer vector element",
         R_FORMAT, "011110 $opcode ttttt sssss fffff $function",
     ) { statement, context ->
         val (destination, left, right) = statement.operands
@@ -238,9 +238,9 @@ private fun shiftInstruction(operation: ShiftOperation, format: Int, suffix: Cha
     val selector = if (immediate) msaBitImmediateField(format)
     else format.toString(2).padStart(2, '0') + "ttttt"
     val function = if (immediate) operation.immediateFunction else operation.function
-    val operand = if (immediate) (bits - 1).toString() else "\$w3"
+    val operand = if (immediate) (bits - 1).toString() else $$"$w3"
     return object : BasicInstruction(
-        "$name.$suffix \$w1,\$w2,$operand", "Shift each vector element independently",
+        $$"$$name.$$suffix $w1,$w2,$$operand", "Shift each vector element independently",
         R_FORMAT, "011110 $shiftOpcode$selector sssss fffff $function",
         { statement, context ->
             val (destination, source, count) = statement.operands
@@ -268,7 +268,7 @@ private fun shiftInstruction(operation: ShiftOperation, format: Int, suffix: Cha
 
 private fun countInstruction(name: String, opcode: String, format: String, suffix: Char, bits: Int, count: (Long) -> Int) =
     BasicInstruction(
-        "$name.$suffix \$w1,\$w2", "Count bits in each vector element",
+        $$"$$name.$$suffix $w1,$w2", "Count bits in each vector element",
         R_FORMAT, "011110 11000 $opcode$format sssss fffff 011110",
     ) { statement, context ->
         val (destination, source) = statement.operands
@@ -284,7 +284,7 @@ private fun saturateInstruction(format: Int, suffix: Char, signed: Boolean): Bas
     val opcode = if (signed) "000" else "001"
     val name = if (signed) "sat_s" else "sat_u"
     return object : BasicInstruction(
-        "$name.$suffix \$w1,\$w2,${bits - 1}", "Saturate each vector element to the selected bit width",
+        $$"$$name.$$suffix $w1,$w2,$${bits - 1}", "Saturate each vector element to the selected bit width",
         R_FORMAT, "011110 $opcode${msaBitImmediateField(format)} sssss fffff 001010",
         { statement, context ->
             val (destination, source, position) = statement.operands

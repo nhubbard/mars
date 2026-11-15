@@ -6,9 +6,9 @@ import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
 import kotlin.math.ceil
 
 open class InstrCeilWD : BasicInstruction(
-    "ceil.w.d \$f1,\$f2",
-    "Ceiling double precision to word : Set \$f1 to 32-bit integer ceiling of double-precision"
-        + " float in \$f2",
+    $$"ceil.w.d $f1,$f2",
+    $$"Ceiling double precision to word : Set $f1 to 32-bit integer ceiling of double-precision"
+        + $$" float in $f2",
     BasicInstructionFormat.R_FORMAT,
     "010001 10001 00000 sssss fffff 001110",
     { statement, context ->

@@ -28,7 +28,7 @@ class Mars64ExceptionReturnTest {
         """.trimIndent())
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(source), null, false, false)
+            val program = session.assemble(listOf(source), null, extended = false, warnings = false)
             assertEquals(listOf(0x40897000, 0x402a7000, 0x400b7000, 0x40807001, 0x400c7001, 0x402d7000),
                 program.machineList!!.map(ProgramStatement::binaryStatement))
             val address = 0x1234_5678_8765_4321L
@@ -54,7 +54,7 @@ class Mars64ExceptionReturnTest {
         """.trimIndent())
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(source), null, false, false)
+            val program = session.assemble(listOf(source), null, extended = false, warnings = false)
             val statements = program.machineList!!
             assertEquals(word.toInt(16), statements[2].binaryStatement)
             session.editCoprocessor0Register(STATUS, 2)
@@ -80,7 +80,7 @@ class Mars64ExceptionReturnTest {
         """.trimIndent())
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(source), null, false, false)
+            val program = session.assemble(listOf(source), null, extended = false, warnings = false)
             val address = program.machineList!!.first().address
             assertThrows(ProcessingException::class.java) { program.simulate(2) }
             assertEquals(address, session.coprocessor0.getValue(EPC))
@@ -107,7 +107,7 @@ class Mars64ExceptionReturnTest {
         """.trimIndent())
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(source), null, false, false)
+            val program = session.assemble(listOf(source), null, extended = false, warnings = false)
             assertTrue(program.simulate(20))
             assertEquals(session.memory.textBaseAddress.toLong(), session.registerFile.getLongValueNoNotify(10))
             assertEquals(1, session.registerFile.getValueNoNotify(11) ushr 31)
@@ -121,7 +121,7 @@ class Mars64ExceptionReturnTest {
         val source = Files.writeString(directory.resolve("wide.s"), $$"dmtc0 $9,$14\neret")
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(source), null, false, false)
+            val program = session.assemble(listOf(source), null, extended = false, warnings = false)
             val address = 0x2_0000_0000L + session.memory.textBaseAddress
             session.editCoprocessor0Register(STATUS, 2)
             session.editIntegerRegister(9, address)

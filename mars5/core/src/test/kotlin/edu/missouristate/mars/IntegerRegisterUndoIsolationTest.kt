@@ -32,7 +32,7 @@ internal class IntegerRegisterUndoIsolationTest {
             program.readSource(path)
             program.tokenize()
             val filenames = arrayListOf(path)
-            program.assemble(program.prepareFilesForAssembly(filenames, path, null), true, false)
+            program.assemble(program.prepareFilesForAssembly(filenames, path, null), extended = true, warnings = false)
             val backStepper = Objects.requireNonNull<BackStepper>(program.backStepper)
             val pc = machine.registerFile.initialProgramCounter
             machine.registerFile.initializeProgramCounter(pc + 4)
@@ -61,7 +61,7 @@ internal class IntegerRegisterUndoIsolationTest {
             // The explicit compatibility-session invocation must keep recording undo history.
             machine.registerFile.initializeProgramCounter(pc + 4)
             val add = InstrAddi()
-            val statement = ProgramStatement(null, "addi \$t0,\$zero,42", null, null, add, pc, 1)
+            val statement = ProgramStatement(null, $$"addi $t0,$zero,42", null, null, add, pc, 1)
             System.arraycopy(
                 intArrayOf(8, 0, 42),
                 0,

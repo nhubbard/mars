@@ -229,7 +229,7 @@ open class ProgramStatement private constructor(
                         }
                         else -> {
                             val number = assemblyContext().floatingRegisterNumber(value)
-                            appendText("\$f$number")
+                            appendText($$"$f$$number")
                             number
                         }
                     }
@@ -383,8 +383,8 @@ open class ProgramStatement private constructor(
                     continue
                 }
                 display.add(when (token.type) {
-                    TokenTypes.VECTOR_REGISTER_NAME -> DisplayElement.Text("\$w${values[index]}")
-                    TokenTypes.FP_REGISTER_NAME -> DisplayElement.Text("\$f${values[index]}")
+                    TokenTypes.VECTOR_REGISTER_NAME -> DisplayElement.Text($$"$w$${values[index]}")
+                    TokenTypes.FP_REGISTER_NAME -> DisplayElement.Text($$"$f$${values[index]}")
                     TokenTypes.REGISTER_NAME, TokenTypes.REGISTER_NUMBER -> DisplayElement.Text("$${values[index]}")
                     else -> if (tokens[cursor - 2].type == TokenTypes.LEFT_BRACKET) {
                         DisplayElement.Text(values[index].toString())

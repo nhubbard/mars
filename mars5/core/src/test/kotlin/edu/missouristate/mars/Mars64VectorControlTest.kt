@@ -25,7 +25,7 @@ class Mars64VectorControlTest {
         """.trimIndent())
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(file), null, false, false)
+            val program = session.assemble(listOf(file), null, extended = false, warnings = false)
             val statements = program.machineList!!
             assertEquals(0x783e4859, statements[0].binaryStatement)
             assertEquals(0x787e0a59, statements[1].binaryStatement)
@@ -42,7 +42,7 @@ class Mars64VectorControlTest {
             assertEquals(statements.last().address, session.coprocessor0.getValue(EPC))
             session.backStepper.backStep()
             assertEquals(0x1040002, session.coprocessor1.msaStatus)
-            session.assemble(listOf(file), null, false, false)
+            session.assemble(listOf(file), null, extended = false, warnings = false)
             assertEquals(0, session.coprocessor1.msaStatus)
         }
     }

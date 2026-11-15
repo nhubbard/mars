@@ -64,7 +64,7 @@ internal val wideInstructionFactories: List<() -> BasicInstruction> = listOf(
     { wideArithmetic("dmodu", "Find the remainder of unsigned doubleword division", "011111", ::remainderUnsigned, "00011", TRAP_EXCEPTION) },
     {
         BasicInstruction(
-            "daddiu \$t1,\$t2,-100", "Add a signed immediate to a doubleword with wraparound",
+            $$"daddiu $t1,$t2,-100", "Add a signed immediate to a doubleword with wraparound",
             I_FORMAT, "011001 sssss fffff tttttttttttttttt",
         ) { statement, context ->
             val (destination, source, immediate) = statement.operands
@@ -99,7 +99,7 @@ internal val wideInstructionFactories: List<() -> BasicInstruction> = listOf(
     { wideUpperImmediate("dati", "Add a signed immediate in bits 63 through 48", "11110", 48) },
     {
         object : BasicInstruction(
-            "daui \$t1,\$t2,65535", "Add a signed immediate shifted left by 16 to a doubleword",
+            $$"daui $t1,$t2,65535", "Add a signed immediate shifted left by 16 to a doubleword",
             I_FORMAT, "011101 sssss fffff tttttttttttttttt",
             { statement, context ->
                 val (destination, source, immediate) = statement.operands
@@ -130,7 +130,7 @@ internal val wideInstructionFactories: List<() -> BasicInstruction> = listOf(
     },
     {
         object : BasicInstruction(
-            "dlsa \$t1,\$t2,\$t3,2", "Shift the first doubleword left and add the second doubleword",
+            $$"dlsa $t1,$t2,$t3,2", "Shift the first doubleword left and add the second doubleword",
             R_FORMAT, "000000 sssss ttttt fffff 000uu 010101",
             { statement, context ->
                 val (destination, index, base, shift) = statement.operands
@@ -150,7 +150,7 @@ internal val wideInstructionFactories: List<() -> BasicInstruction> = listOf(
     },
     {
         object : BasicInstruction(
-            "dalign \$t1,\$t2,\$t3,2", "Extract a doubleword from two registers at a byte boundary",
+            $$"dalign $t1,$t2,$t3,2", "Extract a doubleword from two registers at a byte boundary",
             R_FORMAT, "011111 sssss ttttt fffff 01uuu 100100",
             { statement, context ->
                 val (destination, low, high, position) = statement.operands
@@ -169,7 +169,7 @@ internal val wideInstructionFactories: List<() -> BasicInstruction> = listOf(
     },
     {
         BasicInstruction(
-            "lwu \$t1,-100(\$t2)", "Load a word and zero-extend it to a doubleword",
+            $$"lwu $t1,-100($t2)", "Load a word and zero-extend it to a doubleword",
             I_FORMAT, "100111 ttttt fffff ssssssssssssssss",
         ) { statement, context ->
             val (destination, offset, base) = statement.operands
@@ -184,7 +184,7 @@ internal val wideInstructionFactories: List<() -> BasicInstruction> = listOf(
     },
     {
         BasicInstruction(
-            "ld \$t1,-100(\$t2)", "Load a doubleword",
+            $$"ld $t1,-100($t2)", "Load a doubleword",
             I_FORMAT, "110111 ttttt fffff ssssssssssssssss",
         ) { statement, context ->
             val (destination, offset, base) = statement.operands
@@ -199,7 +199,7 @@ internal val wideInstructionFactories: List<() -> BasicInstruction> = listOf(
     },
     {
         BasicInstruction(
-            "sd \$t1,-100(\$t2)", "Store a doubleword",
+            $$"sd $t1,-100($t2)", "Store a doubleword",
             I_FORMAT, "111111 ttttt fffff ssssssssssssssss",
         ) { statement, context ->
             val (source, offset, base) = statement.operands
@@ -218,7 +218,7 @@ internal val wideInstructionFactories: List<() -> BasicInstruction> = listOf(
 
 private fun linkedMemoryInstruction(name: String, size: Int, store: Boolean, function: String): BasicInstruction =
     object : BasicInstruction(
-        "$name \$t1,-100(\$t2)",
+        $$"$$name $t1,-100($t2)",
         if (store) "Store if the matching memory reservation is still held" else "Load and reserve the addressed bytes",
         I_FORMAT, "011111 ttttt fffff sssssssss 0 $function",
         { statement, context ->
@@ -260,7 +260,7 @@ private fun linkedMemoryInstruction(name: String, size: Int, store: Boolean, fun
 
 private fun pairedLinkedMemoryInstruction(name: String, elementSize: Int, store: Boolean, function: String): BasicInstruction =
     object : BasicInstruction(
-        "$name \$t1,\$t3,(\$t2)",
+        $$"$$name $t1,$t3,($t2)",
         if (store) "Store a register pair if the matching memory reservation is still held"
         else "Load a register pair and reserve the addressed bytes",
         I_FORMAT, "011111 ttttt fffff sssss 0000 1 $function",
@@ -352,7 +352,7 @@ private fun crcInstruction(size: Int, castagnoli: Boolean): BasicInstruction {
     val polynomialField = if (castagnoli) "001" else "000"
     val inputBits = Byte.SIZE_BITS shl size
     return object : BasicInstruction(
-        "$name \$t1,\$t2,\$t1",
+        $$"$$name $t1,$t2,$t1",
         "Update the destination's CRC with the low $inputBits bits of the source",
         R_FORMAT, "011111 sssss fffff 00000 $polynomialField$sizeField 001111",
         { statement, context ->
@@ -381,7 +381,7 @@ private fun crcInstruction(size: Int, castagnoli: Boolean): BasicInstruction {
 }
 
 private fun floatingBitBranch(nonzero: Boolean) = object : BasicInstruction(
-    "${if (nonzero) "bc1nez" else "bc1eqz"} \$f1,label",
+    $$"$${if (nonzero) "bc1nez" else "bc1eqz"} $f1,label",
     if (nonzero) "Branch if bit 0 of a floating-point register is set"
     else "Branch if bit 0 of a floating-point register is clear",
     I_BRANCH_FORMAT, "010001 ${if (nonzero) "01101" else "01001"} fffff ssssssssssssssss",
@@ -402,7 +402,7 @@ private fun floatingBitBranch(nonzero: Boolean) = object : BasicInstruction(
 }
 
 private fun doublewordFloatingMove(toFloatingPoint: Boolean) = BasicInstruction(
-    if (toFloatingPoint) "dmtc1 \$t1,\$f2" else "dmfc1 \$t1,\$f2",
+    if (toFloatingPoint) $$"dmtc1 $t1,$f2" else $$"dmfc1 $t1,$f2",
     if (toFloatingPoint) "Copy a CPU doubleword to a floating-point register"
     else "Copy a floating-point doubleword to a CPU register",
     R_FORMAT, "010001 ${if (toFloatingPoint) "00101" else "00001"} fffff sssss 00000000000",
@@ -418,7 +418,7 @@ private fun doublewordFloatingMove(toFloatingPoint: Boolean) = BasicInstruction(
 private fun release6WordResult(
     name: String, description: String, function: String, operation: (Int, Int) -> Int, division: Boolean = false,
 ) = BasicInstruction(
-    "$name \$t1,\$t2,\$t3", description, R_FORMAT, "000000 sssss ttttt fffff 00010 $function",
+    $$"$$name $t1,$t2,$t3", description, R_FORMAT, "000000 sssss ttttt fffff 00010 $function",
 ) { statement, context ->
     val (destination, leftRegister, rightRegister) = statement.operands
     val left = context.registerFile.getValue(leftRegister)
@@ -429,7 +429,7 @@ private fun release6WordResult(
 
 private fun pcRelativeWideLoad(doubleword: Boolean): PcRelativeWordInstruction =
     object : PcRelativeWordInstruction(
-        "${if (doubleword) "ldpc" else "lwupc"} \$t1,100000",
+        $$"$${if (doubleword) "ldpc" else "lwupc"} $t1,100000",
         if (doubleword) "Load a doubleword relative to the aligned instruction address"
         else "Load a zero-extended word relative to the instruction address",
         if (doubleword) "111011 fffff 110 ssssssssssssssssss"
@@ -457,7 +457,7 @@ private inline fun readDoubleword(littleEndian: Boolean, address: Long, readWord
 
 private fun wideUpperImmediate(name: String, description: String, selector: String, shift: Int) =
     object : BasicInstruction(
-        "$name \$t1,\$t1,65535", description, I_FORMAT, "000001 fffff $selector ssssssssssssssss",
+        $$"$$name $t1,$t1,65535", description, I_FORMAT, "000001 fffff $selector ssssssssssssssss",
         { statement, context ->
             val (destination, _, immediate) = statement.operands
             val value = context.registerFile.getLongValue(destination)
@@ -481,7 +481,7 @@ private fun wideUpperImmediate(name: String, description: String, selector: Stri
 
 private fun widePermutation(name: String, description: String, selector: String, operation: (Long) -> Long) =
     BasicInstruction(
-        "$name \$t1,\$t2", description, R_FORMAT, "011111 00000 sssss fffff $selector 100100",
+        $$"$$name $t1,$t2", description, R_FORMAT, "011111 00000 sssss fffff $selector 100100",
     ) { statement, context ->
         val (destination, source) = statement.operands
         context.updateLongRegister(destination, operation(context.registerFile.getLongValue(source)))
@@ -492,7 +492,7 @@ private fun wideArithmetic(
     modifier: String = "00000",
     fault: Int = ARITHMETIC_OVERFLOW_EXCEPTION,
 ) = BasicInstruction(
-    "$name \$t1,\$t2,\$t3", description, R_FORMAT, "000000 sssss ttttt fffff $modifier $function",
+    $$"$$name $t1,$t2,$t3", description, R_FORMAT, "000000 sssss ttttt fffff $modifier $function",
 ) { statement, context ->
     val (destination, left, right) = statement.operands
     val registers = context.registerFile
@@ -509,7 +509,7 @@ private class WideImmediateShift(
     name: String, description: String, function: String, base: Int, operation: (Long, Int) -> Long,
     modifier: String = "00000", highFunction: String? = null,
 ) : BasicInstruction(
-    "$name \$t1,\$t2,${if (highFunction == null) 10 else 57}", description, R_FORMAT,
+    $$"$$name $t1,$t2,$${if (highFunction == null) 10 else 57}", description, R_FORMAT,
     "000000 $modifier sssss fffff ttttt $function",
     { statement, context ->
         val (destination, source, shift) = statement.operands
@@ -531,7 +531,7 @@ private fun wideVariableShift(
     name: String, description: String, function: String, operation: (Long, Int) -> Long,
     modifier: String = "00000",
 ) = BasicInstruction(
-    "$name \$t1,\$t2,\$t3", description, R_FORMAT, "000000 ttttt sssss fffff $modifier $function",
+    $$"$$name $t1,$t2,$t3", description, R_FORMAT, "000000 ttttt sssss fffff $modifier $function",
 ) { statement, context ->
     val (destination, source, shift) = statement.operands
     val registers = context.registerFile
@@ -541,7 +541,7 @@ private fun wideVariableShift(
 private fun wideCount(
     name: String, description: String, function: String, operation: (Long) -> Int,
 ) = BasicInstruction(
-    "$name \$t1,\$t2", description, R_FORMAT, "000000 sssss 00000 fffff 00001 $function",
+    $$"$$name $t1,$t2", description, R_FORMAT, "000000 sssss 00000 fffff 00001 $function",
 ) { statement, context ->
     val (destination, source) = statement.operands
     context.updateRegister(destination, operation(context.registerFile.getLongValue(source)))
@@ -550,7 +550,7 @@ private fun wideCount(
 private fun wordCount(
     name: String, description: String, function: String, operation: (Int) -> Int,
 ) = BasicInstruction(
-    "$name \$t1,\$t2", description, R_FORMAT, "000000 sssss 00000 fffff 00001 $function",
+    $$"$$name $t1,$t2", description, R_FORMAT, "000000 sssss 00000 fffff 00001 $function",
 ) { statement, context ->
     val (destination, source) = statement.operands
     context.updateRegister(destination, operation(context.registerFile.getValue(source)))

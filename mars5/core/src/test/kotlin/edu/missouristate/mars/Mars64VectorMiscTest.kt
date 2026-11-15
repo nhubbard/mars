@@ -31,7 +31,7 @@ class Mars64VectorMiscTest {
         })
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(file), null, false, false)
+            val program = session.assemble(listOf(file), null, extended = false, warnings = false)
             val fpu = session.coprocessor1
             fpu.updateVector(3, vector(bits, -7, min))
             fpu.updateVector(5, vector(bits, 3, -1))
@@ -42,7 +42,7 @@ class Mars64VectorMiscTest {
                 assertEquals(vector(bits, result.first, result.second), fpu.readVector(31), name)
             }
             Files.writeString(file, $$"div_s.$$suffix $w31,$w3,$w5\nmod_u.$$suffix $w31,$w3,$w5")
-            val zero = session.assemble(listOf(file), null, false, false)
+            val zero = session.assemble(listOf(file), null, extended = false, warnings = false)
             fpu.updateVector(3, vector(bits, -7, min))
             repeat(2) {
                 zero.simulate(1)
@@ -64,7 +64,7 @@ class Mars64VectorMiscTest {
         """.trimIndent())
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(file), null, false, false)
+            val program = session.assemble(listOf(file), null, extended = false, warnings = false)
             val sizeField = listOf(0x700000, 0x600000, 0x400000, 0)[format]
             val insertField = listOf(0, 0x20, 0x30, 0x38)[format] shl 16
             assertEquals(listOf(0x7b1fffc7 or (format shl 21), 0x79411fd9 or insertField,
@@ -85,7 +85,7 @@ class Mars64VectorMiscTest {
             assertEquals(vector(bits, -8, 7), fpu.readVector(5))
             assertEquals(vector(bits, 15, 15), fpu.readVector(6))
             Files.writeString(file, $$"insve.$$suffix $w31[0],$w3[1]")
-            assertThrows(ProcessingException::class.java) { session.assemble(listOf(file), null, false, false) }
+            assertThrows(ProcessingException::class.java) { session.assemble(listOf(file), null, extended = false, warnings = false) }
         }
     }
 

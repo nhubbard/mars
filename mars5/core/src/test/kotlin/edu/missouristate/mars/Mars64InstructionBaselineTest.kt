@@ -23,10 +23,10 @@ class Mars64InstructionBaselineTest {
         TestSessions.create().use { session ->
             assertNull(session.instructionSet.findByBinaryCode(word))
             assertThrows(ProcessingException::class.java) {
-                session.assemble(listOf(file), null, false, false)
+                session.assemble(listOf(file), null, extended = false, warnings = false)
             }
             session.selectTarget(MarsTarget.MARS64)
-            val statement = session.assemble(listOf(file), null, false, false).machineList!!.single()
+            val statement = session.assemble(listOf(file), null, extended = false, warnings = false).machineList!!.single()
             assertEquals(word, statement.binaryStatement)
             val decoded = ProgramStatement(word, statement.address, session.instructionSet)
             val instruction = checkNotNull(decoded.instruction)
@@ -63,7 +63,7 @@ class Mars64InstructionBaselineTest {
         val file = Files.writeString(directory.resolve("instruction.s"), ".text\n$source\n")
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(file), null, false, false)
+            val program = session.assemble(listOf(file), null, extended = false, warnings = false)
             val previous = 0x1234_5678_9abc_def0L
             session.editIntegerRegister(9, previous)
             session.editIntegerRegister(10, -0x0001_0000_0000_0001L)
@@ -92,33 +92,33 @@ class Mars64InstructionBaselineTest {
 
         @JvmStatic
         fun arithmeticCases() = listOf(
-            Arguments.of("dadd \$9,\$10,\$11", -281_474_976_710_592L),
-            Arguments.of("daddu \$9,\$10,\$11", -281_474_976_710_592L),
-            Arguments.of("dsub \$9,\$10,\$11", -281_474_976_710_722L),
-            Arguments.of("dsubu \$9,\$10,\$11", -281_474_976_710_722L),
-            Arguments.of("daddiu \$9,\$10,-32768", -281_474_976_743_425L),
-            Arguments.of("dsllv \$9,\$10,\$11", -562_949_953_421_314L),
-            Arguments.of("dsrlv \$9,\$10,\$11", 9_223_231_299_366_420_479L),
-            Arguments.of("dsrav \$9,\$10,\$11", -140_737_488_355_329L),
-            Arguments.of("dsll32 \$9,\$10,31", Long.MIN_VALUE),
-            Arguments.of("dsrl32 \$9,\$10,31", 1L),
-            Arguments.of("dsra32 \$9,\$10,31", -1L),
-            Arguments.of("dmul \$9,\$10,\$11", -18_295_873_486_192_705L),
-            Arguments.of("dmuh \$9,\$10,\$11", -1L),
-            Arguments.of("dmulu \$9,\$10,\$11", -18_295_873_486_192_705L),
-            Arguments.of("dmuhu \$9,\$10,\$11", 64L),
-            Arguments.of("ddiv \$9,\$10,\$11", -4_330_384_257_087L),
-            Arguments.of("ddivu \$9,\$10,\$11", 283_791_732_288_197_553L),
-            Arguments.of("dmod \$9,\$10,\$11", -2L),
-            Arguments.of("dmodu \$9,\$10,\$11", 14L),
-            Arguments.of("dsll \$9,\$10,10", -288_230_376_151_712_768L),
-            Arguments.of("dsrl \$9,\$10,10", 18_014_123_631_575_039L),
-            Arguments.of("dsra \$9,\$10,10", -274_877_906_945L),
-            Arguments.of("drotr \$9,\$10,10", -274_877_906_945L),
-            Arguments.of("drotr32 \$9,\$10,10", -65L),
-            Arguments.of("drotrv \$9,\$10,\$11", -140_737_488_355_329L),
-            Arguments.of("dclz \$9,\$10", 0L),
-            Arguments.of("dclo \$9,\$10", 15L),
+            Arguments.of("dadd $9,$10,$11", -281_474_976_710_592L),
+            Arguments.of("daddu $9,$10,$11", -281_474_976_710_592L),
+            Arguments.of("dsub $9,$10,$11", -281_474_976_710_722L),
+            Arguments.of("dsubu $9,$10,$11", -281_474_976_710_722L),
+            Arguments.of("daddiu $9,$10,-32768", -281_474_976_743_425L),
+            Arguments.of("dsllv $9,$10,$11", -562_949_953_421_314L),
+            Arguments.of("dsrlv $9,$10,$11", 9_223_231_299_366_420_479L),
+            Arguments.of("dsrav $9,$10,$11", -140_737_488_355_329L),
+            Arguments.of("dsll32 $9,$10,31", Long.MIN_VALUE),
+            Arguments.of("dsrl32 $9,$10,31", 1L),
+            Arguments.of("dsra32 $9,$10,31", -1L),
+            Arguments.of("dmul $9,$10,$11", -18_295_873_486_192_705L),
+            Arguments.of("dmuh $9,$10,$11", -1L),
+            Arguments.of("dmulu $9,$10,$11", -18_295_873_486_192_705L),
+            Arguments.of("dmuhu $9,$10,$11", 64L),
+            Arguments.of("ddiv $9,$10,$11", -4_330_384_257_087L),
+            Arguments.of("ddivu $9,$10,$11", 283_791_732_288_197_553L),
+            Arguments.of("dmod $9,$10,$11", -2L),
+            Arguments.of("dmodu $9,$10,$11", 14L),
+            Arguments.of("dsll $9,$10,10", -288_230_376_151_712_768L),
+            Arguments.of("dsrl $9,$10,10", 18_014_123_631_575_039L),
+            Arguments.of("dsra $9,$10,10", -274_877_906_945L),
+            Arguments.of("drotr $9,$10,10", -274_877_906_945L),
+            Arguments.of("drotr32 $9,$10,10", -65L),
+            Arguments.of("drotrv $9,$10,$11", -140_737_488_355_329L),
+            Arguments.of("dclz $9,$10", 0L),
+            Arguments.of("dclo $9,$10", 15L),
         )
     }
 }

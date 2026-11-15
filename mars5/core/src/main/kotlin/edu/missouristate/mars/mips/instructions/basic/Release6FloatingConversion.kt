@@ -28,7 +28,7 @@ internal fun release6FloatingConversions(): List<BasicInstruction> =
 private fun floatingConversion(destinationFormat: String, sourceFormat: String, formatField: String): BasicInstruction {
     val double = destinationFormat == "d"
     return BasicInstruction(
-        "cvt.$destinationFormat.$sourceFormat \$f2,\$f4",
+        $$"cvt.$$destinationFormat.$$sourceFormat $f2,$f4",
         "Convert to ${if (double) "double" else "single"} precision floating point",
         R_FORMAT, "010001 $formatField 00000 sssss fffff ${if (double) "100001" else "100000"}",
     ) { statement, context ->

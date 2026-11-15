@@ -4,7 +4,7 @@ import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
 
 class InstrSeb : BasicInstruction(
-    "seb \$t1,\$t2",
+    $$"seb $t1,$t2",
     "Sign-extend the low byte",
     BasicInstructionFormat.R_FORMAT,
     "011111 00000 sssss fffff 10000 100000",

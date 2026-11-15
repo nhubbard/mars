@@ -35,7 +35,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /** Owns one simulation's floating-point registers, condition flags, and access listeners. */
 class Coprocessor1State {
     internal var hasWideRegisters = false
-    val registers = Array(32) { Register("\$f$it", it, 0) }
+    val registers = Array(32) { Register($$"$f$$it", it, 0) }
     private val msaControl = Register("MSACSR", 1, 0)
     private val vectorHigh = LongArray(registers.size)
     private val fcsr = Register("FCSR", 31, FCSR_IEEE_2008)
@@ -157,7 +157,7 @@ class Coprocessor1State {
     fun getRegisterNumber(name: String?): Int = getRegister(name)?.number ?: -1
 
     fun getRegister(name: String?): Register? {
-        if (name == null || name.length <= 2 || !name.startsWith("\$f")) return null
+        if (name == null || name.length <= 2 || !name.startsWith($$"$f")) return null
         val number = try {
             Binary.stringToInt(name.substring(2))
         } catch (_: NumberFormatException) {

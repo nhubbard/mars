@@ -6,8 +6,8 @@ import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
 
 open class InstrLw : BasicInstruction(
-    "lw \$t1,-100(\$t2)",
-    "Load word : Set \$t1 to contents of effective memory word address",
+    $$"lw $t1,-100($t2)",
+    $$"Load word : Set $t1 to contents of effective memory word address",
     BasicInstructionFormat.I_FORMAT,
     "100011 ttttt fffff ssssssssssssssss",
     { statement, context ->

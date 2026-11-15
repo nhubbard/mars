@@ -5,8 +5,8 @@ import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
 import edu.missouristate.mars.util.Binary
 
 open class InstrMadd : BasicInstruction(
-    "madd \$t1,\$t2",
-    "Multiply add : Multiply \$t1 by \$t2 then increment HI by high-order 32 bits of product,"
+    $$"madd $t1,$t2",
+    $$"Multiply add : Multiply $t1 by $t2 then increment HI by high-order 32 bits of product,"
         + " increment LO by low-order 32 bits of product (use mfhi to access HI, mflo to access"
         + " LO)",
     BasicInstructionFormat.R_FORMAT,

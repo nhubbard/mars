@@ -35,13 +35,13 @@ internal class RuntimeServicesTest {
         val source = directory.resolve("interrupt.s")
         Files.writeString(
             source,
-            """
+            $$"""
             .text
-            addiu ${'$'}t0,${'$'}zero,42
-            li ${'$'}v0,10
+            addiu $t0,$zero,42
+            li $v0,10
             syscall
             .ktext 0x80000180
-            mfc0 ${'$'}s0,${'$'}13
+            mfc0 $s0,$13
             eret
 
             """

@@ -5,7 +5,7 @@ import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat.R_FORMAT
 
 class InstrMthc1 : BasicInstruction(
-    "mthc1 \$t1,\$f4",
+    $$"mthc1 $t1,$f4",
     "Copy a CPU word to the high half of a floating-point register pair",
     R_FORMAT,
     "010001 00111 fffff sssss 00000000000",

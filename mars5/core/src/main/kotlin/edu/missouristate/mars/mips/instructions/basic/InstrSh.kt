@@ -6,8 +6,8 @@ import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
 
 open class InstrSh : BasicInstruction(
-    "sh \$t1,-100(\$t2)",
-    "Store halfword : Store the low-order 16 bits of \$t1 into the effective memory halfword"
+    $$"sh $t1,-100($t2)",
+    $$"Store halfword : Store the low-order 16 bits of $t1 into the effective memory halfword"
         + " address",
     BasicInstructionFormat.I_FORMAT,
     "101001 ttttt fffff ssssssssssssssss",

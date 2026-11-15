@@ -10,14 +10,14 @@ import edu.missouristate.mars.simulator.Exceptions.ADDRESS_EXCEPTION_STORE
 
 internal fun msaRegisterInstructions(): List<BasicInstruction> = buildList {
     add(BasicInstruction(
-        "cfcmsa \$t1,\$1", "Copy an MSA control register to a CPU register",
+        $$"cfcmsa $t1,$1", "Copy an MSA control register to a CPU register",
         R_FORMAT, "011110 00011 11110 sssss fffff 011001",
     ) { statement, context ->
         val (destination, control) = statement.operands
         context.updateRegister(destination, context.coprocessor1.readMsaControl(control))
     })
     add(BasicInstruction(
-        "ctcmsa \$1,\$t1", "Copy a CPU register to the MSA control and status register",
+        $$"ctcmsa $1,$t1", "Copy a CPU register to the MSA control and status register",
         R_FORMAT, "011110 00001 11110 sssss fffff 011001",
     ) { statement, context ->
         val (control, source) = statement.operands
@@ -28,7 +28,7 @@ internal fun msaRegisterInstructions(): List<BasicInstruction> = buildList {
         add(loadImmediate(format, suffix))
     }
     add(BasicInstruction(
-        "move.v \$w1,\$w2", "Copy a 128-bit vector register",
+        $$"move.v $w1,$w2", "Copy a 128-bit vector register",
         R_FORMAT, "011110 00101 11110 sssss fffff 011001",
     ) { statement, context ->
         val (destination, source) = statement.operands
@@ -53,7 +53,7 @@ private fun fillVector(format: Int, suffix: Char): BasicInstruction {
     val elementBits = Byte.SIZE_BITS shl format
     val mask = (ULong.MAX_VALUE shr (Long.SIZE_BITS - elementBits)).toLong()
     return BasicInstruction(
-        "fill.$suffix \$w1,\$t2", "Fill every vector element from a CPU register",
+        $$"fill.$$suffix $w1,$t2", "Fill every vector element from a CPU register",
         R_FORMAT, "011110 11000 $formatField sssss fffff 011110",
     ) { statement, context ->
         val (destination, source) = statement.operands
@@ -67,7 +67,7 @@ private fun fillVector(format: Int, suffix: Char): BasicInstruction {
 }
 
 private fun vectorLogic(mnemonic: String, opcode: String, apply: (Long, Long) -> Long) = BasicInstruction(
-    "$mnemonic.v \$w1,\$w2,\$w3", "Apply $mnemonic to every bit of two vector registers",
+    $$"$$mnemonic.v $w1,$w2,$w3", "Apply $mnemonic to every bit of two vector registers",
     R_FORMAT, "011110 $opcode ttttt sssss fffff 011110",
 ) { statement, context ->
     val (destination, left, right) = statement.operands
@@ -87,9 +87,9 @@ private fun elementTransfer(suffix: Char, format: Int, mnemonic: String, operati
     val selector = "1".repeat(format) + "00" + (if (insert) "s" else "t").repeat(4 - format)
     val fields = if (insert) "ttttt fffff" else "sssss fffff"
     val example = when {
-        vectorInsert -> "\$w1[0],\$w2[0]"
-        insert -> "\$w1[0],\$t2"
-        else -> "\$t1,\$w2[0]"
+        vectorInsert -> $$"$w1[0],$w2[0]"
+        insert -> $$"$w1[0],$t2"
+        else -> $$"$t1,$w2[0]"
     }
     val laneOperand = if (insert) 1 else 2
     return object : BasicInstruction(
@@ -137,7 +137,7 @@ private fun vectorMemory(suffix: Char, format: Int, store: Boolean): BasicInstru
     val size = format.toString(2).padStart(2, '0')
     val exception = if (store) ADDRESS_EXCEPTION_STORE else ADDRESS_EXCEPTION_LOAD
     return object : BasicInstruction(
-        "$mnemonic.$suffix \$w1,-8(\$t2)", "Transfer 16 bytes of vector elements",
+        $$"$$mnemonic.$$suffix $w1,-8($t2)", "Transfer 16 bytes of vector elements",
         I_FORMAT, "011110 ssssssssss ttttt fffff $operation$size",
         { statement, context ->
             val (register, offset, base) = statement.operands
@@ -186,7 +186,7 @@ private fun loadImmediate(format: Int, suffix: Char): BasicInstruction {
     val bits = Byte.SIZE_BITS shl format
     val field = format.toString(2).padStart(2, '0')
     return object : BasicInstruction(
-        "ldi.$suffix \$w1,-512", "Broadcast a signed immediate into every vector element",
+        $$"ldi.$$suffix $w1,-512", "Broadcast a signed immediate into every vector element",
         R_FORMAT, "011110 110$field ssssssssss fffff 000111",
         { statement, context ->
             val (destination, value) = statement.operands

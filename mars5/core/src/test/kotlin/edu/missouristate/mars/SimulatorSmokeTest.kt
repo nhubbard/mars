@@ -82,13 +82,13 @@ internal class SimulatorSmokeTest {
         runProgram("07_division.asm")
         // $s0 = 10 (set early, never modified), $s1 = 3, $s2 = (10*3)/3 = 10 (last result)
         Assertions.assertThat(machine!!.registerFile.getValue(16))
-            .`as`("\$s0 should be 10")
+            .`as`($$"$s0 should be 10")
             .isEqualTo(10)
         Assertions.assertThat(machine!!.registerFile.getValue(17))
-            .`as`("\$s1 should be 3")
+            .`as`($$"$s1 should be 3")
             .isEqualTo(3)
         Assertions.assertThat(machine!!.registerFile.getValue(18))
-            .`as`("\$s2 should be 10 (last division result)")
+            .`as`($$"$s2 should be 10 (last division result)")
             .isEqualTo(10)
     }
 
@@ -123,7 +123,7 @@ internal class SimulatorSmokeTest {
         runProgram("09_xor.asm")
         // $s0 starts as 0x01234567, XOR'd twice → restored to original value
         Assertions.assertThat(machine!!.registerFile.getValue(16))
-            .`as`("\$s0 should be restored to 0x01234567 after double XOR")
+            .`as`($$"$s0 should be restored to 0x01234567 after double XOR")
             .isEqualTo(0x01234567)
     }
 
@@ -165,7 +165,7 @@ internal class SimulatorSmokeTest {
         val filenames = arrayListOf(path)
         val programs: ArrayList<MIPSprogram> =
             program.prepareFilesForAssembly(filenames, path, null)
-        program.assemble(programs, true, false)
+        program.assemble(programs, extended = true, warnings = false)
         return program.simulate(null)
     }
 

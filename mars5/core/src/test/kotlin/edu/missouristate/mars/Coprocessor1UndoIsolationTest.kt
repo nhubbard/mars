@@ -34,7 +34,7 @@ internal class Coprocessor1UndoIsolationTest {
             program.readSource(path)
             program.tokenize()
             val filenames = arrayListOf(path)
-            program.assemble(program.prepareFilesForAssembly(filenames, path, null), true, false)
+            program.assemble(program.prepareFilesForAssembly(filenames, path, null), extended = true, warnings = false)
             val backStepper = Objects.requireNonNull<BackStepper>(program.backStepper)
             val pc = machine.registerFile.initialProgramCounter + 4
             machine.registerFile.initializeProgramCounter(pc)
@@ -55,7 +55,7 @@ internal class Coprocessor1UndoIsolationTest {
             machine.registerFile.initializeProgramCounter(pc)
             val add = InstrAddS()
             val statement =
-                ProgramStatement(null, "add.s \$f14,\$f12,\$f12", null, null, add, pc - 4, 1)
+                ProgramStatement(null, $$"add.s $f14,$f12,$f12", null, null, add, pc - 4, 1)
             System.arraycopy(
                 intArrayOf(14, 12, 12),
                 0,
@@ -101,13 +101,13 @@ internal class Coprocessor1UndoIsolationTest {
             }
 
             // Conversion helpers also retain their original behavior of bypassing undo recording.
-            machine.coprocessor1.setRegisterToFloat("\$f0", 1.5f)
-            machine.coprocessor1.setRegisterToInt("\$f2", 0x7fc12345)
-            machine.coprocessor1.setRegisterPairToDouble("\$f30", -2.5)
-            Assertions.assertThat(machine.coprocessor1.getFloatFromRegister("\$f0")).isEqualTo(1.5f)
-            Assertions.assertThat(machine.coprocessor1.getIntFromRegister("\$f2"))
+            machine.coprocessor1.setRegisterToFloat($$"$f0", 1.5f)
+            machine.coprocessor1.setRegisterToInt($$"$f2", 0x7fc12345)
+            machine.coprocessor1.setRegisterPairToDouble($$"$f30", -2.5)
+            Assertions.assertThat(machine.coprocessor1.getFloatFromRegister($$"$f0")).isEqualTo(1.5f)
+            Assertions.assertThat(machine.coprocessor1.getIntFromRegister($$"$f2"))
                 .isEqualTo(0x7fc12345)
-            Assertions.assertThat(machine.coprocessor1.getDoubleFromRegisterPair("\$f30"))
+            Assertions.assertThat(machine.coprocessor1.getDoubleFromRegisterPair($$"$f30"))
                 .isEqualTo(-2.5)
             Assertions.assertThat(backStepper.empty()).isTrue()
         } finally {

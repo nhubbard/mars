@@ -33,7 +33,7 @@ class Mars64LinkedMemoryTest {
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
             session.memory.byteOrder = littleEndian
-            val program = session.assemble(listOf(file), null, false, false)
+            val program = session.assemble(listOf(file), null, extended = false, warnings = false)
             val instructions = program.machineList!!
             assertEquals(loadWord.toInt(16), instructions[0].binaryStatement)
             assertEquals(storeWord.toInt(16), instructions[1].binaryStatement)
@@ -76,19 +76,19 @@ class Mars64LinkedMemoryTest {
     @ParameterizedTest
     @CsvSource("ll,7d49fc36", "sc,7d49fc26", "lld,7d49fc37", "scd,7d49fc27")
     fun `linked instructions use signed Release 6 offsets`(mnemonic: String, encoding: String, @TempDir directory: Path) {
-        val file = Files.writeString(directory.resolve("encoding.s"), "$mnemonic \$9,-8(\$10)\n")
+        val file = Files.writeString(directory.resolve("encoding.s"), "$mnemonic $9,-8($10)\n")
         TestSessions.create().use { session ->
             val word = encoding.toInt(16)
             assertNull(session.instructionSet.findByBinaryCode(word))
             session.selectTarget(MarsTarget.MARS64)
-            val statement = session.assemble(listOf(file), null, false, false).machineList!!.single()
+            val statement = session.assemble(listOf(file), null, extended = false, warnings = false).machineList!!.single()
             assertEquals(word, statement.binaryStatement)
             val decoded = ProgramStatement(word, statement.address, session.instructionSet)
             assertEquals(mnemonic, decoded.instruction?.name)
             assertEquals(listOf(9, -8, 10), decoded.operands.take(3))
             for (offset in listOf(-257, 256)) {
-                Files.writeString(file, "$mnemonic \$9,$offset(\$10)\n")
-                assertThrows(ProcessingException::class.java) { session.assemble(listOf(file), null, false, false) }
+                Files.writeString(file, "$mnemonic $9,$offset($10)\n")
+                assertThrows(ProcessingException::class.java) { session.assemble(listOf(file), null, extended = false, warnings = false) }
             }
         }
     }
@@ -108,7 +108,7 @@ class Mars64LinkedMemoryTest {
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
             session.memory.byteOrder = littleEndian
-            val program = session.assemble(listOf(file), null, false, false)
+            val program = session.assemble(listOf(file), null, extended = false, warnings = false)
             val address = session.memory.dataBaseAddress
             session.editIntegerRegister(10, address.toLong() + 8)
             program.simulate(2)
@@ -162,10 +162,10 @@ class Mars64LinkedMemoryTest {
     @ParameterizedTest
     @ValueSource(strings = ["ll", "sc", "lld", "scd"])
     fun `misaligned linked accesses fault even without a reservation`(mnemonic: String, @TempDir directory: Path) {
-        val file = Files.writeString(directory.resolve("fault.s"), "$mnemonic \$9,1(\$10)\n")
+        val file = Files.writeString(directory.resolve("fault.s"), "$mnemonic $9,1($10)\n")
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(file), null, false, false)
+            val program = session.assemble(listOf(file), null, extended = false, warnings = false)
             session.editIntegerRegister(10, session.memory.dataBaseAddress.toLong())
             session.editIntegerRegister(9, 42)
             assertThrows(ProcessingException::class.java) { program.simulate(1) }
@@ -185,7 +185,7 @@ class Mars64LinkedMemoryTest {
         """.trimIndent())
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(file), null, false, false)
+            val program = session.assemble(listOf(file), null, extended = false, warnings = false)
             val address = session.memory.dataBaseAddress
             session.editIntegerRegister(10, address.toLong())
             program.simulate(2)
@@ -195,7 +195,7 @@ class Mars64LinkedMemoryTest {
             assertEquals(0L, session.registerFile.getLongValueNoNotify(9))
             session.registerFile.setProgramCounter(session.memory.textBaseAddress)
             program.simulate(1)
-            val fresh = session.assemble(listOf(file), null, false, false)
+            val fresh = session.assemble(listOf(file), null, extended = false, warnings = false)
             session.editIntegerRegister(10, address.toLong())
             session.editIntegerRegister(9, -1L)
             session.registerFile.setProgramCounter(fresh.machineList!!.last().address)

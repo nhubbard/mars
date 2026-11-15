@@ -19,7 +19,7 @@ class CompactControlFlowTest {
     fun `reversed compact branch aliases emit one native instruction without a delay slot`(
         alias: String, native: String, encoding: String, left: Long, right: Long, @TempDir directory: Path,
     ) {
-        val source = Files.writeString(directory.resolve("alias.s"), "${alias} \$12,\$15,target\nnop\ntarget: nop\n")
+        val source = Files.writeString(directory.resolve("alias.s"), "${alias} $12,$15,target\nnop\ntarget: nop\n")
         TestSessions.create().use { machine ->
             machine.selectTarget(MarsTarget.MARS64)
             for (taken in listOf(true, false)) {
@@ -37,7 +37,7 @@ class CompactControlFlowTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = ["j target", "bnezalc \$9,target", "beq \$zero,\$9,target", "jalr \$31,\$9", "eret"])
+    @ValueSource(strings = ["j target", "bnezalc $9,target", $$"beq $zero,$9,target", "jalr $31,$9", "eret"])
     fun `only a fallthrough compact branch creates a forbidden slot and backstep restores it`(
         transfer: String, @TempDir directory: Path,
     ) {
@@ -93,7 +93,7 @@ class CompactControlFlowTest {
     fun `wide compact conditional calls write the link on either path`(
         mnemonic: String, encoding: String, taken: Long, untaken: Long, @TempDir directory: Path,
     ) {
-        val source = Files.writeString(directory.resolve("link.s"), "$mnemonic \$9,target\nnop\ntarget: nop\n")
+        val source = Files.writeString(directory.resolve("link.s"), "$mnemonic $9,target\nnop\ntarget: nop\n")
         TestSessions.create().use { machine ->
             machine.selectTarget(MarsTarget.MARS64)
             for ((operand, branches) in listOf(taken to true, untaken to false)) {
@@ -125,7 +125,7 @@ class CompactControlFlowTest {
     fun `MARS64 decodes the reclaimed ADDI opcode as compact branches`(
         mnemonic: String, encoding: String, left: Long, right: Long, taken: Boolean, @TempDir directory: Path,
     ) {
-        val source = Files.writeString(directory.resolve("pop10.s"), "$mnemonic \$9,\$10,target\nnop\ntarget: nop\n")
+        val source = Files.writeString(directory.resolve("pop10.s"), "$mnemonic $9,$10,target\nnop\ntarget: nop\n")
         val word = encoding.toUInt(16).toInt()
         TestSessions.create().use { machine ->
             assertEquals("addi", machine.instructionSet.findByBinaryCode(word)?.name)

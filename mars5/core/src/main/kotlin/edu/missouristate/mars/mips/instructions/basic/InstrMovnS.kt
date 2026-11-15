@@ -4,9 +4,9 @@ import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
 
 open class InstrMovnS : BasicInstruction(
-    "movn.s \$f0,\$f1,\$t3",
-    "Move floating point single precision : If \$t3 is not zero, set single precision \$f0 to"
-        + " single precision value in \$f1",
+    $$"movn.s $f0,$f1,$t3",
+    $$"Move floating point single precision : If $t3 is not zero, set single precision $f0 to"
+        + $$" single precision value in $f1",
     BasicInstructionFormat.R_FORMAT,
     "010001 10000 ttttt sssss fffff 010011",
     { statement, context ->

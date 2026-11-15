@@ -28,7 +28,7 @@ class Mars64CrcTest {
             val word = encoding.toInt(16)
             assertNull(session.instructionSet.findByBinaryCode(word))
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(path), null, false, false)
+            val program = session.assemble(listOf(path), null, extended = false, warnings = false)
             val statement = program.machineList!!.first()
             assertEquals(word, statement.binaryStatement)
             val decoded = ProgramStatement(word, statement.address, session.instructionSet)
@@ -49,7 +49,7 @@ class Mars64CrcTest {
             repeat(2) { session.backStepper.backStep() }
             assertEquals(seed, session.registerFile.getLongValueNoNotify(9))
             Files.writeString(path, $$"$$mnemonic $9,$10,$11\n")
-            assertThrows(ProcessingException::class.java) { session.assemble(listOf(path), null, false, false) }
+            assertThrows(ProcessingException::class.java) { session.assemble(listOf(path), null, extended = false, warnings = false) }
         }
     }
 }

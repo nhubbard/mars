@@ -35,7 +35,7 @@ class Mars64FloatingBranchTest {
             assertNull(session.instructionSet.findByBinaryCode(0x45000000))
             assertNull(session.instructionSet.findByBinaryCode(0x45010000))
             assertFalse(session.settings.isDelayedBranchingEnabled)
-            val program = session.assemble(listOf(source), null, false, false)
+            val program = session.assemble(listOf(source), null, extended = false, warnings = false)
             val statement = program.machineList!!.first()
             assertEquals(word, statement.binaryStatement)
             val decoded = ProgramStatement(word, statement.address, session.instructionSet)
@@ -68,7 +68,7 @@ class Mars64FloatingBranchTest {
         """.trimIndent())
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(source), null, false, false)
+            val program = session.assemble(listOf(source), null, extended = false, warnings = false)
             session.editCoprocessor1Pair(31, lowBit)
             program.simulate(1)
             val failure = assertThrows(ProcessingException::class.java) { program.simulate(1) }

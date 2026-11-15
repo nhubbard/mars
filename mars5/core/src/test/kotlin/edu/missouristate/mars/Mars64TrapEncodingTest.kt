@@ -20,7 +20,7 @@ class Mars64TrapEncodingTest {
         val source = Files.writeString(directory.resolve("syscall.s"), "$assembly\nbreak\n")
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(source), null, false, false)
+            val program = session.assemble(listOf(source), null, extended = false, warnings = false)
             val first = program.machineList!!.first()
             assertEquals(encoding.toInt(16), first.binaryStatement)
             val decoded = ProgramStatement(first.binaryStatement, first.address, session.instructionSet)
@@ -38,7 +38,7 @@ class Mars64TrapEncodingTest {
         val source = Files.writeString(directory.resolve("invalid.s"), "syscall $code\n")
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
-            val failure = assertThrows<ProcessingException> { session.assemble(listOf(source), null, false, false) }
+            val failure = assertThrows<ProcessingException> { session.assemble(listOf(source), null, extended = false, warnings = false) }
             assertTrue(failure.errors()!!.generateErrorReport().contains("unsigned 20-bit value"))
         }
     }
@@ -56,7 +56,7 @@ class Mars64TrapEncodingTest {
         val source = Files.writeString(directory.resolve("break.s"), "$assembly\n")
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(source), null, false, false)
+            val program = session.assemble(listOf(source), null, extended = false, warnings = false)
             assertEquals(encoding.toInt(16), program.machineList!!.single().binaryStatement)
             val failure = assertThrows<ProcessingException> { program.simulate(1) }
             assertTrue(failure.message.orEmpty().contains(message))
@@ -69,7 +69,7 @@ class Mars64TrapEncodingTest {
         val source = Files.writeString(directory.resolve("invalid-break.s"), "$assembly\n")
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
-            assertThrows<ProcessingException> { session.assemble(listOf(source), null, false, false) }
+            assertThrows<ProcessingException> { session.assemble(listOf(source), null, extended = false, warnings = false) }
         }
     }
 }

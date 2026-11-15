@@ -6,8 +6,8 @@ import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
 
 open class InstrLhu : BasicInstruction(
-    "lhu \$t1,-100(\$t2)",
-    "Load halfword unsigned : Set \$t1 to zero-extended 16-bit value from effective memory"
+    $$"lhu $t1,-100($t2)",
+    $$"Load halfword unsigned : Set $t1 to zero-extended 16-bit value from effective memory"
         + " halfword address",
     BasicInstructionFormat.I_FORMAT,
     "100101 ttttt fffff ssssssssssssssss",

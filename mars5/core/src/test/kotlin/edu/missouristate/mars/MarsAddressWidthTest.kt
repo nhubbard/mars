@@ -305,11 +305,11 @@ class MarsAddressWidthTest {
 
     @ParameterizedTest
     @ValueSource(strings = [
-        "lb \$t0,0(\$a0)", "lbu \$t0,0(\$a0)", "lh \$t0,0(\$a0)", "lhu \$t0,0(\$a0)",
-        "lw \$t0,0(\$a0)", "lwu \$t0,0(\$a0)", "ll \$t0,0(\$a0)", "ulw \$t0,1(\$a0)", "ulhu \$t0,1(\$a0)",
-        "ld \$t0,0(\$a0)", "lwc1 \$f0,0(\$a0)", "ldc1 \$f0,0(\$a0)",
-        "sb \$t0,0(\$a0)", "sh \$t0,0(\$a0)", "sw \$t0,0(\$a0)", "sc \$t0,0(\$a0)", "usw \$t0,1(\$a0)",
-        "ush \$t0,1(\$a0)", "sd \$t0,0(\$a0)", "swc1 \$f0,0(\$a0)", "sdc1 \$f0,0(\$a0)",
+        $$"lb $t0,0($a0)", $$"lbu $t0,0($a0)", $$"lh $t0,0($a0)", $$"lhu $t0,0($a0)",
+        $$"lw $t0,0($a0)", $$"lwu $t0,0($a0)", $$"ll $t0,0($a0)", $$"ulw $t0,1($a0)", $$"ulhu $t0,1($a0)",
+        $$"ld $t0,0($a0)", $$"lwc1 $f0,0($a0)", $$"ldc1 $f0,0($a0)",
+        $$"sb $t0,0($a0)", $$"sh $t0,0($a0)", $$"sw $t0,0($a0)", $$"sc $t0,0($a0)", $$"usw $t0,1($a0)",
+        $$"ush $t0,1($a0)", $$"sd $t0,0($a0)", $$"swc1 $f0,0($a0)", $$"sdc1 $f0,0($a0)",
     ])
     fun `unmapped high bits cannot alias mapped data`(instruction: String, @TempDir directory: Path) {
         val source = Files.writeString(directory.resolve("data.s"), ".data\n.word 42,0\n.text\n$instruction\n")
@@ -334,7 +334,7 @@ class MarsAddressWidthTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = ["jr \$a0", "jalr \$a0", "jalr \$ra,\$a0", "jic \$a0,4", "jialc \$a0,4"])
+    @ValueSource(strings = [$$"jr $a0", $$"jalr $a0", $$"jalr $ra,$a0", $$"jic $a0,4", $$"jialc $a0,4"])
     fun `unmapped high bits cannot alias text or change a link`(instruction: String, @TempDir directory: Path) {
         val source = Files.writeString(directory.resolve("jump.s"), "$instruction\nnop\n")
         TestSessions.create().use { machine ->

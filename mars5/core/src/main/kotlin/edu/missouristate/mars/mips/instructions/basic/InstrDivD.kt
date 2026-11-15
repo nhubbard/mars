@@ -5,9 +5,9 @@ import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
 
 open class InstrDivD : BasicInstruction(
-    "div.d \$f2,\$f4,\$f6",
-    "Floating point division double precision : Set \$f2 to double-precision floating point"
-        + " value of \$f4 divided by \$f6",
+    $$"div.d $f2,$f4,$f6",
+    $$"Floating point division double precision : Set $f2 to double-precision floating point"
+        + $$" value of $f4 divided by $f6",
     BasicInstructionFormat.R_FORMAT,
     "010001 10001 ttttt sssss fffff 000011",
     { statement, context ->

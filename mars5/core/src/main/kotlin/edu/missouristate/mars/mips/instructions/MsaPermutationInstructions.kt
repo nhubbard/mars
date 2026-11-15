@@ -30,7 +30,7 @@ private fun branchOnVector(format: Int, suffix: Char, nonzero: Boolean): BasicIn
     val bits = Byte.SIZE_BITS shl format
     val name = if (nonzero) "bnz" else "bz"
     return object : BasicInstruction(
-        "$name.$suffix \$w1,label", "Branch on zero or nonzero vector data",
+        $$"$$name.$$suffix $w1,label", "Branch on zero or nonzero vector data",
         I_BRANCH_FORMAT, "010001 $field fffff ssssssssssssssss",
         { statement, context ->
             val (source, displacement) = statement.operands
@@ -66,7 +66,7 @@ private fun permute(operation: Permutation, format: Int, suffix: Char, bits: Int
     val lanes = 128 / bits
     val half = lanes / 2
     return BasicInstruction(
-        "${operation.mnemonic}.$suffix \$w1,\$w2,\$w3", "Rearrange vector elements",
+        $$"$${operation.mnemonic}.$$suffix $w1,$w2,$w3", "Rearrange vector elements",
         R_FORMAT, "011110 $field ttttt sssss fffff ${operation.function}",
     ) { statement, context ->
         val (destination, source, target) = statement.operands
@@ -106,9 +106,9 @@ private fun indexed(format: Int, suffix: Char, bits: Int, immediate: Boolean, sp
         (if (splat) "001" else "000") + format.toString(2).padStart(2, '0') + "ttttt"
     }
     val function = if (immediate) "011001" else "010100"
-    val selector = if (immediate) "0" else "\$t1"
+    val selector = if (immediate) "0" else $$"$t1"
     return object : BasicInstruction(
-        "$name.$suffix \$w1,\$w2[$selector]", if (splat) "Broadcast a selected vector element" else "Slide each row of vector bytes",
+        $$"$$name.$$suffix $w1,$w2[$$selector]", if (splat) "Broadcast a selected vector element" else "Slide each row of vector bytes",
         R_FORMAT, "011110 $opcode sssss fffff $function",
         { statement, context ->
             val (destination, source, operand) = statement.operands
@@ -138,7 +138,7 @@ private fun indexed(format: Int, suffix: Char, bits: Int, immediate: Boolean, sp
 }
 
 private fun shuffleSet(format: Int, suffix: Char, bits: Int) = object : BasicInstruction(
-    "shf.$suffix \$w1,\$w2,255", "Shuffle each four-element group with a shared immediate",
+    $$"shf.$$suffix $w1,$w2,255", "Shuffle each four-element group with a shared immediate",
     R_FORMAT, "011110 ${format.toString(2).padStart(2, '0')} tttttttt sssss fffff 000010",
     { statement, context ->
         val (destination, source, control) = statement.operands

@@ -1383,7 +1383,7 @@ class MarsDebugPlatformTest {
                     $$"cp0.$14" to "0x00001234",
                     "FCC" to "0x00000001",
                     $$"$f1" to "1.9375 (0x3ff80000)",
-                    "\$入口" to "0x00400000",
+                    $$"$入口" to "0x00400000",
                     "stop" to "0x00400020",
                     " 'A' " to "0x00000041",
                     "(+0x10 - (2 + 3))" to "0x0000000b",
@@ -2280,7 +2280,7 @@ class MarsDebugPlatformTest {
             withDebug(source) { debug ->
                 suspend fun registerValue() = withContext(Dispatchers.EDT) {
                     inspectRegisterNodes(debug.session, requireNotNull(debug.session.currentStackFrame)) { nodes ->
-                        requireNotNull(nodes.single { it.name == "\$t0" }.rawValue)
+                        requireNotNull(nodes.single { it.name == $$"$t0" }.rawValue)
                     }
                 }
                 debug.assertPausedAt(source, 3)
@@ -2288,15 +2288,15 @@ class MarsDebugPlatformTest {
                 withContext(Dispatchers.EDT) {
                     val frame = requireNotNull(debug.session.currentStackFrame)
                     for ((expression, expected) in listOf(
-                        "\$t0" to "0x0000000100000000",
-                        "\$t0 + 1" to "0x0000000100000001",
-                        "~\$t0" to "0xfffffffeffffffff",
-                        "\$t0 | 1" to "0x0000000100000001",
-                        "\$t0 ^ 1" to "0x0000000100000001",
-                        "\$t0 & 1" to "0x0000000000000000",
-                        "-\$t0" to "0xffffffff00000000",
+                        $$"$t0" to "0x0000000100000000",
+                        $$"$t0 + 1" to "0x0000000100000001",
+                        $$"~$t0" to "0xfffffffeffffffff",
+                        $$"$t0 | 1" to "0x0000000100000001",
+                        $$"$t0 ^ 1" to "0x0000000100000001",
+                        $$"$t0 & 1" to "0x0000000000000000",
+                        $$"-$t0" to "0xffffffff00000000",
                         "1 << 32" to "0x0000000100000000",
-                        "\$t0 >> 32" to "0x0000000000000001",
+                        $$"$t0 >> 32" to "0x0000000000000001",
                         "-1 >>> 63" to "0x0000000000000001",
                         "0x20000000000000 == 0x20000000000001" to "0x00000000",
                         "0x20000000000000 == 0x20000000000000" to "0x00000001",
@@ -2323,7 +2323,7 @@ class MarsDebugPlatformTest {
                         "1 >= 1.5" to "0x00000000",
                         "2 >= 1.5" to "0x00000001",
                         "1 + 0.5" to "1.5",
-                        "word(\$t0)" to "0x00000000",
+                        $$"word($t0)" to "0x00000000",
                         "word(0x200000000)" to "The memory address is invalid, unaligned, or unavailable.",
                         "word(0x10010000)" to "0x00000000",
                         "word(0x80400000)" to "The memory address is invalid, unaligned, or unavailable.",
@@ -2343,7 +2343,7 @@ class MarsDebugPlatformTest {
                 withContext(Dispatchers.EDT) {
                     val frame = requireNotNull(debug.session.currentStackFrame)
                     val modifier = inspectRegisterNodes(debug.session, frame) { nodes ->
-                        requireNotNull(nodes.single { it.name == "\$t0" }.valueContainer.modifier)
+                        requireNotNull(nodes.single { it.name == $$"$t0" }.valueContainer.modifier)
                     }
                     assertEquals("Enter a 64-bit integer value.", editValue(modifier, "1.5"))
                     assertNull(editValue(modifier, "0x1234567880000000"))
@@ -2607,19 +2607,19 @@ class MarsDebugPlatformTest {
                 withContext(Dispatchers.EDT) {
                     val frame = requireNotNull(debug.session.currentStackFrame)
                     val modifiers = inspectRegisterNodes(debug.session, frame) { nodes ->
-                        nodes.filter { it.name == "\$f31" }.map { requireNotNull(it.valueContainer.modifier) }
+                        nodes.filter { it.name == $$"$f31" }.map { requireNotNull(it.valueContainer.modifier) }
                     }
                     val (single, doubleword) = modifiers
                     assertEquals("0x00000000", single.initialValueEditorText)
                     assertEquals("0x0000000000000000", doubleword.initialValueEditorText)
                     assertNull(editValue(doubleword, "0x4004000000000000"))
-                    assertEquals("2.5 (0x4004000000000000)", registerValues(debug.session, frame)["\$f31"])
+                    assertEquals("2.5 (0x4004000000000000)", registerValues(debug.session, frame)[$$"$f31"])
                     debug.session.stepInto()
                 }
                 debug.assertPausedAt(source, 2)
                 withContext(Dispatchers.EDT) {
                     val frame = requireNotNull(debug.session.currentStackFrame)
-                    assertEquals("0x4004000000000000", registerValues(debug.session, frame)["\$t0"])
+                    assertEquals("0x4004000000000000", registerValues(debug.session, frame)[$$"$t0"])
                     debug.session.resume()
                 }
                 assertEquals(0, debug.exit.await())

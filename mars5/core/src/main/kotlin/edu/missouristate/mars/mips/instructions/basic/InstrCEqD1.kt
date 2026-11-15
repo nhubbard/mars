@@ -5,8 +5,8 @@ import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
 
 open class InstrCEqD1 : BasicInstruction(
-    "c.eq.d \$f2,\$f4",
-    "Compare equal double precision : If \$f2 is equal to \$f4 (double-precision), set"
+    $$"c.eq.d $f2,$f4",
+    $$"Compare equal double precision : If $f2 is equal to $f4 (double-precision), set"
         + " Coprocessor 1 condition flag 0 true else set it false",
     BasicInstructionFormat.R_FORMAT,
     "010001 10001 sssss fffff 00000 110010",

@@ -29,7 +29,7 @@ class Mars64UnalignedMemoryTest {
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
             session.memory.byteOrder = littleEndian
-            val program = session.assemble(listOf(source), null, false, false)
+            val program = session.assemble(listOf(source), null, extended = false, warnings = false)
             val words = listOf(0xa149ffff.toInt(), 0x814bffff.toInt(), 0x914cffff.toInt())
             assertEquals(words, program.machineList!!.map(ProgramStatement::binaryStatement))
             assertEquals(listOf("sb", "lb", "lbu"), words.map { session.instructionSet.findByBinaryCode(it)?.name })
@@ -60,14 +60,14 @@ class Mars64UnalignedMemoryTest {
             "swl" to 0xa8280000.toInt(), "swr" to 0xb8280000.toInt(),
         )
         TestSessions.create().use { session ->
-            val original = session.assemble(listOf(source), null, true, false).machineList!!
+            val original = session.assemble(listOf(source), null, extended = true, warnings = false).machineList!!
             assertEquals(listOf("lwl", "lwr", "swl", "swr"), original.mapNotNull { it.instruction?.name }.filter { it in legacy })
             for ((mnemonic, word) in legacy) {
                 assertEquals(mnemonic, session.instructionSet.findByBinaryCode(word)?.name)
             }
 
             session.selectTarget(MarsTarget.MARS64)
-            val statements = session.assemble(listOf(source), null, true, false).machineList!!
+            val statements = session.assemble(listOf(source), null, extended = true, warnings = false).machineList!!
             assertEquals(listOf("lw", "sw", "lh", "lhu", "sh"), statements.map { it.instruction?.name })
             assertEquals(32767, statements.first().binaryStatement and 0xffff)
             for ((mnemonic, word) in legacy) {
@@ -96,7 +96,7 @@ class Mars64UnalignedMemoryTest {
         """.trimIndent())
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(source), null, false, false)
+            val program = session.assemble(listOf(source), null, extended = false, warnings = false)
             val memory = session.memory
             memory.byteOrder = little
             val start = memory.dataBaseAddress
@@ -132,7 +132,7 @@ class Mars64UnalignedMemoryTest {
         val source = Files.writeString(directory.resolve("boundary.s"), $$"sw $9,0($8)")
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(source), null, false, false)
+            val program = session.assemble(listOf(source), null, extended = false, warnings = false)
             val memory = session.memory
             val end = memory.dataSegmentLimitAddress - 1
             memory.setByte(end, 7)

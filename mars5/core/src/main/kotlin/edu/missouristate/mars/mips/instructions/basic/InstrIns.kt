@@ -4,7 +4,7 @@ import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat.R_FORMAT
 
 class InstrIns : BasicInstruction(
-    "ins \$t1,\$t2,0,32",
+    $$"ins $t1,$t2,0,32",
     "Replace a bit field with the low bits from another register",
     R_FORMAT,
     "011111 sssss fffff uuuuu ttttt 000100",

@@ -27,7 +27,7 @@ class Mars64InterruptControlTest {
         """.trimIndent())
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(source), null, false, false)
+            val program = session.assemble(listOf(source), null, extended = false, warnings = false)
             val words = listOf(0x41690024, 0x416a0004, 0x41600024, 0x41600004, 0x140)
             assertEquals(words, program.machineList!!.take(5).map(ProgramStatement::binaryStatement))
             assertEquals(listOf("dvp", "evp", "dvp", "evp", "pause"), words.map { session.instructionSet.findByBinaryCode(it)?.name })
@@ -57,7 +57,7 @@ class Mars64InterruptControlTest {
         """.trimIndent())
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(source), null, false, false)
+            val program = session.assemble(listOf(source), null, extended = false, warnings = false)
             assertEquals(listOf(0x41696000, 0x416a6020, 0x41606000, 0x41606020),
                 program.machineList!!.filter { it.instruction?.name in setOf("di", "ei") }.map(ProgramStatement::binaryStatement))
             val status = 0x80000101.toInt()

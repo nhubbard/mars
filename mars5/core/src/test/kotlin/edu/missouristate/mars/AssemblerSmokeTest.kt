@@ -47,7 +47,7 @@ internal class AssemblerSmokeTest {
         val programs: ArrayList<MIPSprogram> =
             program.prepareFilesForAssembly(filenames, path, null)
 
-        val errors = program.assemble(programs, /* extendedAssemblerEnabled= */ true, false)
+        val errors = program.assemble(programs, extended = true, warnings = false)
 
         Assertions.assertThat(errors.errorsOccurred())
             .`as`("Expected no assembly errors for %s but got: %s", filename, errors)
@@ -71,7 +71,7 @@ internal class AssemblerSmokeTest {
 
         // Extended assembler enabled (pseudo-instructions allowed) — should never throw
         Assertions.assertThatCode(
-                ThrowableAssert.ThrowingCallable { program.assemble(programs, true, false) },
+                ThrowableAssert.ThrowingCallable { program.assemble(programs, extended = true, warnings = false) },
             )
             .doesNotThrowAnyException()
     }

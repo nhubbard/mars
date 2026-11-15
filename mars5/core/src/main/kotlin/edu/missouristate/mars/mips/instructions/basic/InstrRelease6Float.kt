@@ -14,7 +14,7 @@ internal val release6FloatFactories: List<() -> BasicInstruction> =
     }
 
 internal class InstrRelease6Float(operation: Release6FloatOperation, double: Boolean) : BasicInstruction(
-    "${operation.mnemonic}.${if (double) "d" else "s"} \$f2,\$f4,\$f6",
+    $$"$${operation.mnemonic}.$${if (double) "d" else "s"} $f2,$f4,$f6",
     operation.description,
     R_FORMAT,
     "010001 ${if (double) "10001" else "10000"} ttttt sssss fffff ${operation.encoding}",

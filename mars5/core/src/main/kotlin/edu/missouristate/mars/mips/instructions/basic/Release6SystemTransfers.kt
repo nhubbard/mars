@@ -24,7 +24,7 @@ internal fun release6SystemTransfers(): List<BasicInstruction> = listOf(
 )
 
 private fun virtualProcessorControl(mnemonic: String, disable: Boolean, hasDestination: Boolean) = BasicInstruction(
-    if (hasDestination) "$mnemonic \$t1" else mnemonic,
+    if (hasDestination) $$"$$mnemonic $t1" else mnemonic,
     "Virtual processor control. No operation on the single-core target without virtual processors.",
     R_FORMAT, "010000 01011 ${if (hasDestination) "fffff" else "00000"} 00000 00000 ${if (disable) 1 else 0}00100",
 ) { _, _ -> }
@@ -32,7 +32,7 @@ private fun virtualProcessorControl(mnemonic: String, disable: Boolean, hasDesti
 private fun interruptControl(enable: Boolean, hasDestination: Boolean): BasicInstruction {
     val mnemonic = if (enable) "ei" else "di"
     return BasicInstruction(
-        if (hasDestination) "$mnemonic \$t1" else mnemonic,
+        if (hasDestination) $$"$$mnemonic $t1" else mnemonic,
         if (enable) "Enable interrupts and optionally return the previous Status" else "Disable interrupts and optionally return the previous Status",
         R_FORMAT, "010000 01011 ${if (hasDestination) "fffff" else "00000"} 01100 00000 ${if (enable) 1 else 0}00000",
     ) { statement, context ->
@@ -53,7 +53,7 @@ private fun systemTransfer(mnemonic: String, encoding: String, explicitSelector:
     val write = mnemonic.endsWith("tc0")
     val description = if (write) "Write an educational CP0 register" else "Read an educational CP0 register"
     return object : BasicInstruction(
-        "$mnemonic \$t1,\$14${if (explicitSelector) ",7" else ""}", description,
+        $$"$$mnemonic $t1,$14$${if (explicitSelector) ",7" else ""}", description,
         R_FORMAT, "010000 $encoding fffff sssss 00000000 ${if (explicitSelector) "ttt" else "000"}",
         { statement, context ->
             val (integer, system) = statement.operands

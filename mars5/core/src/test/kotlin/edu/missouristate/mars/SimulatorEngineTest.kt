@@ -44,7 +44,7 @@ internal class SimulatorEngineTest {
 
     @Test
     fun stepBreakpointUndoResumeAndExitHaveOrderedEvents() {
-        load(".text\naddiu \$t0,\$zero,7\naddiu \$t0,\$t0,2\nli \$v0,10\nsyscall\n").use { session
+        load($$".text\naddiu $t0,$zero,7\naddiu $t0,$t0,2\nli $v0,10\nsyscall\n").use { session
             ->
             val engine: SimulatorEngine = session.simulator()
             val events = ArrayList<Any?>()
@@ -92,7 +92,7 @@ internal class SimulatorEngineTest {
 
     @Test
     fun instructionBudgetSurvivesBreakpointsAndReverseExecution() {
-        load("loop: addiu \$t0,\$t0,1\nj loop\n").use { session ->
+        load($$"loop: addiu $t0,$t0,1\nj loop\n").use { session ->
             val engine: SimulatorEngine = session.simulator()
             Assertions.assertThatThrownBy(
                     ThrowableAssert.ThrowingCallable { engine.setInstructionLimit(-1) },
@@ -135,7 +135,7 @@ internal class SimulatorEngineTest {
 
     @Test
     fun naturalExitOnTheFinalAllowedInstructionRetainsItsExitStatus() {
-        load("addiu \$v0,\$zero,17\naddiu \$a0,\$zero,7\nsyscall\n").use { session ->
+        load($$"addiu $v0,$zero,17\naddiu $a0,$zero,7\nsyscall\n").use { session ->
             val engine: SimulatorEngine = session.simulator()
             engine.setInstructionLimit(3)
             Assertions.assertThat<StopEvent>(engine.runAsync(0, null).get(5, TimeUnit.SECONDS))
@@ -145,7 +145,7 @@ internal class SimulatorEngineTest {
 
     @Test
     fun changingRunSpeedReleasesAnInstructionAlreadyWaitingForItsTick() {
-        load("loop: addiu \$t0,\$t0,1\nj loop\n").use { session ->
+        load($$"loop: addiu $t0,$t0,1\nj loop\n").use { session ->
             val engine: SimulatorEngine = session.simulator()
             val waiting = CountDownLatch(1)
             val unlimited = AtomicBoolean()
@@ -225,7 +225,7 @@ internal class SimulatorEngineTest {
 
     @Test
     fun stoppedRegisterEditStartsNewHistoryOnlyWhenTheValueChanges() {
-        load(".text\naddiu \$t0,\$zero,7\nnop\n").use { session ->
+        load($$".text\naddiu $t0,$zero,7\nnop\n").use { session ->
             val engine: SimulatorEngine = session.simulator()
             engine.runAsync(1, null).get(5, TimeUnit.SECONDS)
             Assertions.assertThat(session.editIntegerRegister(8, 7)).isFalse()
@@ -250,7 +250,7 @@ internal class SimulatorEngineTest {
 
     @Test
     fun stoppedMemoryEditStartsNewHistoryOnlyAfterAValidChange() {
-        load(".data\ncell: .word 7\n.text\nli \$t0,9\nsw \$t0,cell\nnop\n").use { session ->
+        load($$".data\ncell: .word 7\n.text\nli $t0,9\nsw $t0,cell\nnop\n").use { session ->
             val engine: SimulatorEngine = session.simulator()
             val memory: MemoryState = session.memory
             val address = memory.dataBaseAddress
@@ -287,7 +287,7 @@ internal class SimulatorEngineTest {
 
     @Test
     fun stoppedCoprocessor0EditBecomesTheBaselineForReversingInstructionWrites() {
-        load(".text\naddiu \$t0,\$zero,7\nmtc0 \$t0,$14\nnop\n").use { session ->
+        load($$".text\naddiu $t0,$zero,7\nmtc0 $t0,$14\nnop\n").use { session ->
             val engine: SimulatorEngine = session.simulator()
             engine.runAsync(1, null).get(5, TimeUnit.SECONDS)
             Assertions.assertThat(session.editCoprocessor0Register(Coprocessor0State.EPC, 0))
@@ -313,7 +313,7 @@ internal class SimulatorEngineTest {
 
     @Test
     fun stoppedCoprocessor1EditsPreserveRawBitsAndBecomeTheReverseBaseline() {
-        load(".text\nnop\nmov.d \$f30,\$f2\nc.eq.d 7,\$f0,\$f2\nnop\n").use { session ->
+        load($$".text\nnop\nmov.d $f30,$f2\nc.eq.d 7,$f0,$f2\nnop\n").use { session ->
             val engine: SimulatorEngine = session.simulator()
             engine.runAsync(1, null).get(5, TimeUnit.SECONDS)
             Assertions.assertThat(session.editCoprocessor1Register(2, 0)).isFalse()
@@ -400,7 +400,7 @@ internal class SimulatorEngineTest {
 
     @Test
     fun jumpWithZeroLinkRegisterDoesNotReportACall() {
-        load(".text\njalr \$zero,\$t0\n").use { session ->
+        load($$".text\njalr $zero,$t0\n").use { session ->
             val engine: SimulatorEngine = session.simulator()
             val events = ArrayList<Any?>()
             engine.addListener(listener(events))
@@ -440,12 +440,12 @@ internal class SimulatorEngineTest {
     @ValueSource(booleans = [false, true])
     fun onlyTakenLinkingBranchesReportCalls(delayedBranching: Boolean) {
         load(
-                """
+                $$"""
                 .text
-                addiu ${'$'}t0,${'$'}zero,-1
-                bgezal ${'$'}t0,target
+                addiu $t0,$zero,-1
+                bgezal $t0,target
                 nop
-                bgezal ${'$'}zero,target
+                bgezal $zero,target
                 nop
                 nop
                 target: nop
@@ -482,7 +482,7 @@ internal class SimulatorEngineTest {
     fun branchToTheNextInstructionReportsTakenEvenWhenTheProgramCounterLooksSequential(
         delayed: Boolean,
     ) {
-        load(".text\nbeq \$zero,\$zero,next\nnext: nop\n").use { session ->
+        load($$".text\nbeq $zero,$zero,next\nnext: nop\n").use { session ->
             session.settings.setDelayedBranchingEnabled(delayed)
             val engine: SimulatorEngine = session.simulator()
             val events = ArrayList<Any?>()
@@ -505,7 +505,7 @@ internal class SimulatorEngineTest {
 
     @Test
     fun interruptBeforeABranchDoesNotReportAnOutcome() {
-        load(".text\nloop: beq \$zero,\$zero,loop\n.ktext 0x80000180\nnop\n").use { session ->
+        load($$".text\nloop: beq $zero,$zero,loop\n.ktext 0x80000180\nnop\n").use { session ->
             val engine: SimulatorEngine = session.simulator()
             val events = ArrayList<Any?>()
             engine.addListener(listener(events))
@@ -519,7 +519,7 @@ internal class SimulatorEngineTest {
 
     @Test
     fun workerBreakpointCanStopBeforeEntryAndReevaluateAChangedAddressOnResume() {
-        load(".text\naddiu \$t0,\$zero,7\naddiu \$t0,\$t0,2\nnop\n").use { session ->
+        load($$".text\naddiu $t0,$zero,7\naddiu $t0,$t0,2\nnop\n").use { session ->
             val engine: SimulatorEngine = session.simulator()
             val entry: Int = session.registerFile.getPC()
             val breakpoint = AtomicInteger(entry)
@@ -575,7 +575,7 @@ internal class SimulatorEngineTest {
 
     @Test
     fun stoppingWhileTheWorkerChecksABreakpointWinsWithoutExecutingTheInstruction() {
-        load(".text\naddiu \$t0,\$zero,7\n").use { session ->
+        load($$".text\naddiu $t0,$zero,7\n").use { session ->
             val engine: SimulatorEngine = session.simulator()
             val result: CompletableFuture<StopEvent> =
                 engine.runUntilAsync(
@@ -593,7 +593,7 @@ internal class SimulatorEngineTest {
 
     @Test
     fun pauseStopAndMutationRejectionOccurAtInstructionBoundaries() {
-        load(".text\nloop: addiu \$t0,\$t0,1\nb loop\n").use { session ->
+        load($$".text\nloop: addiu $t0,$t0,1\nb loop\n").use { session ->
             val engine: SimulatorEngine = session.simulator()
             val entered = CountDownLatch(1)
             val release = CountDownLatch(1)
@@ -710,8 +710,8 @@ internal class SimulatorEngineTest {
 
     @Test
     fun separateWorkersRunWithoutInterferenceAndCanLoadNewPrograms() {
-        load(".text\naddiu \$t0,\$zero,42\nli \$a0,7\nli \$v0,17\nsyscall\n").use { first ->
-            load(".text\naddiu \$t0,\$zero,99\n").use { second ->
+        load($$".text\naddiu $t0,$zero,42\nli $a0,7\nli $v0,17\nsyscall\n").use { first ->
+            load($$".text\naddiu $t0,$zero,99\n").use { second ->
                 val a: CompletableFuture<StopEvent> = first.simulator().runAsync(0, null)
                 val b: CompletableFuture<StopEvent> = second.simulator().runAsync(0, null)
                 Assertions.assertThat<StopEvent>(a.get(5, TimeUnit.SECONDS))
@@ -721,7 +721,7 @@ internal class SimulatorEngineTest {
                 Assertions.assertThat(first.registerFile.getValue(8)).isEqualTo(42)
                 Assertions.assertThat(second.registerFile.getValue(8)).isEqualTo(99)
                 val file = directory.resolve("replacement.s")
-                Files.writeString(file, ".text\naddiu \$t0,\$zero,12\n")
+                Files.writeString(file, $$".text\naddiu $t0,$zero,12\n")
                 first.assemble(listOf(file))
                 Assertions.assertThat<StopEvent.Reason?>(
                         first.simulator().runAsync(0, null).get(5, TimeUnit.SECONDS).reason,
@@ -734,7 +734,7 @@ internal class SimulatorEngineTest {
 
     @Test
     fun runtimeFailureEmitsErrorThenStopAndPreservesUndo() {
-        load(".text\nli \$t0,0x7fffffff\naddi \$t0,\$t0,1\n").use { session ->
+        load($$".text\nli $t0,0x7fffffff\naddi $t0,$t0,1\n").use { session ->
             val events = ArrayList<Any?>()
             session.simulator().addListener(listener(events))
             Assertions.assertThat<StopEvent.Reason?>(
@@ -756,14 +756,14 @@ internal class SimulatorEngineTest {
         TestSessions.create().use { session ->
             val assembler = SessionAssembler(session)
             val source = directory.resolve("api.s")
-            Files.writeString(source, ".text\naddiu \$t0,\$zero,1\n")
+            Files.writeString(source, $$".text\naddiu $t0,$zero,1\n")
             val success: AssemblyResult = assembler.assemble(listOf(source))
             Assertions.assertThat(success.succeeded()).isTrue()
             Assertions.assertThat(
                     Objects.requireNonNull<Program?>(success.program())!!.instructionCount(),
                 )
                 .isEqualTo(1)
-            Files.writeString(source, ".text\nunknown \$t0\n")
+            Files.writeString(source, $$".text\nunknown $t0\n")
             val failure: AssemblyResult = assembler.assemble(listOf(source))
             Assertions.assertThat(failure.succeeded()).isFalse()
             Assertions.assertThat<Program?>(failure.program()).isNull()
@@ -774,7 +774,7 @@ internal class SimulatorEngineTest {
 
     @Test
     fun closingStopsTheWorkerAtABoundaryAndRejectsNewFrontendWork() {
-        load(".text\nloop: addiu \$t0,\$t0,1\nb loop\n").use { session ->
+        load($$".text\nloop: addiu $t0,$t0,1\nb loop\n").use { session ->
             val engine: SimulatorEngine = session.simulator()
             val entered = CountDownLatch(1)
             val release = CountDownLatch(1)

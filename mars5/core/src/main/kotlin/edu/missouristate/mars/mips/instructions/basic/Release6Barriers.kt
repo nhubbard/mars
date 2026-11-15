@@ -15,7 +15,7 @@ internal fun release6BarrierInstructions(): List<BasicInstruction> = listOf(
     BasicInstruction("pause", "Processor wait hint. No operation on the single-core target without hardware threading.",
         R_FORMAT, "000000 00000 00000 00000 00101 000000") { _, _ -> },
     object : BasicInstruction(
-        "synci -100(\$t2)", "Synchronize instruction writes", I_FORMAT, "000001 sssss 11111 ffffffffffffffff",
+        $$"synci -100($t2)", "Synchronize instruction writes", I_FORMAT, "000001 sssss 11111 ffffffffffffffff",
         { statement, context ->
             val (offset, base) = statement.operands
             try {
@@ -29,12 +29,12 @@ internal fun release6BarrierInstructions(): List<BasicInstruction> = listOf(
             values[0] = values[0].toShort().toInt()
         }
     },
-    delayedJump("jalr.hb \$t1,\$t2", "sssss 00000 fffff", link = null, hazardBarrier = true),
-    delayedJump("jalr.hb \$t1", "fffff 00000 11111", link = 31, hazardBarrier = true),
-    delayedJump("jr.hb \$t1", "fffff 00000 00000", link = 0, hazardBarrier = true),
-    delayedJump("jalr \$t1,\$t2", "sssss 00000 fffff", link = null),
-    delayedJump("jalr \$t1", "fffff 00000 11111", link = 31),
-    delayedJump("jr \$t1", "fffff 00000 00000", link = 0),
+    delayedJump($$"jalr.hb $t1,$t2", "sssss 00000 fffff", link = null, hazardBarrier = true),
+    delayedJump($$"jalr.hb $t1", "fffff 00000 11111", link = 31, hazardBarrier = true),
+    delayedJump($$"jr.hb $t1", "fffff 00000 00000", link = 0, hazardBarrier = true),
+    delayedJump($$"jalr $t1,$t2", "sssss 00000 fffff", link = null),
+    delayedJump($$"jalr $t1", "fffff 00000 11111", link = 31),
+    delayedJump($$"jr $t1", "fffff 00000 00000", link = 0),
 )
 
 private fun delayedJump(example: String, registerFields: String, link: Int?, hazardBarrier: Boolean = false) =

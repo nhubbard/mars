@@ -30,7 +30,7 @@ class Mars64FloatingConversionTest {
         """.trimIndent())
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(source), null, false, false)
+            val program = session.assemble(listOf(source), null, extended = false, warnings = false)
             val word = encoding.toInt(16)
             val statement = program.machineList!!.first()
             assertEquals(word, statement.binaryStatement)
@@ -57,7 +57,7 @@ class Mars64FloatingConversionTest {
         })
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(source), null, false, false)
+            val program = session.assemble(listOf(source), null, extended = false, warnings = false)
             val fpu = session.coprocessor1
             val nearZero = -Math.scalb(1.0, -151)
             val inputs = listOf(Double.MAX_VALUE, -Double.MAX_VALUE, nearZero, Math.scalb(1.0, -149))
@@ -95,7 +95,7 @@ class Mars64FloatingConversionTest {
         """.trimIndent())
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(source), null, false, false)
+            val program = session.assemble(listOf(source), null, extended = false, warnings = false)
             session.editIntegerRegister(8, control.toInt(16))
             session.editCoprocessor1Pair(3, input.toLong(16))
             program.simulate(1)

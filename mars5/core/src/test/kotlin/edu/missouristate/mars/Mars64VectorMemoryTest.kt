@@ -31,7 +31,7 @@ class Mars64VectorMemoryTest {
         """.trimIndent())
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(path), null, false, false)
+            val program = session.assemble(listOf(path), null, extended = false, warnings = false)
             val memory = session.memory
             memory.byteOrder = little
             val start = memory.dataBaseAddress + 1
@@ -55,9 +55,9 @@ class Mars64VectorMemoryTest {
 
             val width = 1 shl "bhwd".indexOf(suffix)
             Files.writeString(path, $$"ld.$$suffix $w31[$$width],$10")
-            assertThrows(ProcessingException::class.java) { session.assemble(listOf(path), null, false, false) }
+            assertThrows(ProcessingException::class.java) { session.assemble(listOf(path), null, extended = false, warnings = false) }
             Files.writeString(path, $$"ld.$$suffix $w31,$${512 * width}($10)")
-            assertThrows(ProcessingException::class.java) { session.assemble(listOf(path), null, false, false) }
+            assertThrows(ProcessingException::class.java) { session.assemble(listOf(path), null, extended = false, warnings = false) }
         }
     }
 }

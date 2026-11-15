@@ -5,7 +5,7 @@ import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
 
 open class InstrJal : BasicInstruction(
     "jal target",
-    "Jump and link : Set \$ra to Program Counter (return address) then jump to statement at"
+    $$"Jump and link : Set $ra to Program Counter (return address) then jump to statement at"
         + " target address",
     BasicInstructionFormat.J_FORMAT,
     "000011 ffffffffffffffffffffffffff",

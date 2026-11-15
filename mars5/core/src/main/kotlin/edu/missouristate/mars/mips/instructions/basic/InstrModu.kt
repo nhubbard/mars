@@ -6,7 +6,7 @@ import edu.missouristate.mars.mips.instructions.BasicInstructionFormat.R_FORMAT
 import edu.missouristate.mars.simulator.Exceptions.TRAP_EXCEPTION
 
 class InstrModu : BasicInstruction(
-    "modu \$t1,\$t2,\$t3",
+    $$"modu $t1,$t2,$t3",
     "Store the remainder of an unsigned division",
     R_FORMAT,
     "000000 sssss ttttt fffff 00011 011011",

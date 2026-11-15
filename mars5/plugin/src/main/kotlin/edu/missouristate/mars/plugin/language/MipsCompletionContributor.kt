@@ -156,7 +156,7 @@ private val registerSpellings by lazy {
         TokenTypes.REGISTER_NAME to integerRegisters,
         TokenTypes.REGISTER_NUMBER to integerRegisters,
         TokenTypes.FP_REGISTER_NAME to RegisterNames.floatingSpellings(),
-        TokenTypes.VECTOR_REGISTER_NAME to List(32) { "\$w$it" },
+        TokenTypes.VECTOR_REGISTER_NAME to List(32) { $$"$w$$it" },
     )
 }
 private val systemRegisters by lazy { RegisterNames.coprocessor0Spellings() }

@@ -4,7 +4,7 @@ import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat.R_FORMAT
 
 class InstrMuhu : BasicInstruction(
-    "muhu \$t1,\$t2,\$t3",
+    $$"muhu $t1,$t2,$t3",
     "Multiply unsigned words and keep the high word",
     R_FORMAT,
     "000000 sssss ttttt fffff 00011 011001",

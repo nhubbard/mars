@@ -5,9 +5,9 @@ import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
 
 open class InstrCvtDS : BasicInstruction(
-    "cvt.d.s \$f2,\$f1",
-    "Convert from single precision to double precision : Set \$f2 to double precision equivalent"
-        + " of single precision value in \$f1",
+    $$"cvt.d.s $f2,$f1",
+    $$"Convert from single precision to double precision : Set $f2 to double precision equivalent"
+        + $$" of single precision value in $f1",
     BasicInstructionFormat.R_FORMAT,
     "010001 10000 00000 sssss fffff 100001",
     { statement, context ->

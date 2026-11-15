@@ -7,8 +7,8 @@ import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
 import edu.missouristate.mars.simulator.Exceptions.ADDRESS_EXCEPTION_STORE
 
 open class InstrSdc1 : BasicInstruction(
-    "sdc1 \$f2,-100(\$t2)",
-    "Store double word from Coprocessor 1 (FPU)) : Store 64 bit value in \$f2 to effective"
+    $$"sdc1 $f2,-100($t2)",
+    $$"Store double word from Coprocessor 1 (FPU)) : Store 64 bit value in $f2 to effective"
         + " memory doubleword address",
     BasicInstructionFormat.I_FORMAT,
     "111101 ttttt fffff ssssssssssssssss",

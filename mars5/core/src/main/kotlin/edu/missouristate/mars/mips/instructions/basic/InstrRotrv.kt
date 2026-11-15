@@ -5,7 +5,7 @@ import edu.missouristate.mars.mips.instructions.BasicInstructionFormat.R_FORMAT
 import java.lang.Integer.rotateRight
 
 class InstrRotrv : BasicInstruction(
-    "rotrv \$t1,\$t2,\$t3",
+    $$"rotrv $t1,$t2,$t3",
     "Rotate a word right by a register count",
     R_FORMAT,
     "000000 ttttt sssss fffff 00001 000110",

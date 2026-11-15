@@ -4,8 +4,8 @@ import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
 
 open class InstrCEqS1 : BasicInstruction(
-    "c.eq.s \$f0,\$f1",
-    "Compare equal single precision : If \$f0 is equal to \$f1, set Coprocessor 1 condition flag"
+    $$"c.eq.s $f0,$f1",
+    $$"Compare equal single precision : If $f0 is equal to $f1, set Coprocessor 1 condition flag"
         + " 0 true else set it false",
     BasicInstructionFormat.R_FORMAT,
     "010001 10000 sssss fffff 00000 110010",

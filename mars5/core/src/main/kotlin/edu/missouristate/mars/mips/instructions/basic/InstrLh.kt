@@ -6,8 +6,8 @@ import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
 
 open class InstrLh : BasicInstruction(
-    "lh \$t1,-100(\$t2)",
-    "Load halfword : Set \$t1 to sign-extended 16-bit value from effective memory halfword"
+    $$"lh $t1,-100($t2)",
+    $$"Load halfword : Set $t1 to sign-extended 16-bit value from effective memory halfword"
         + " address",
     BasicInstructionFormat.I_FORMAT,
     "100001 ttttt fffff ssssssssssssssss",

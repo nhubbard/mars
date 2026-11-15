@@ -41,12 +41,12 @@ class Mars64MsaInventoryTest {
 
     private companion object {
         val operandExamples = mapOf(
-            "rd" to "\$9", "rs" to "\$10", "rt" to "\$11", "sa" to "2",
-            "wd" to "\$w8", "ws" to "\$w10", "wt" to "\$w13",
-            "cd" to "\$1", "cs" to "\$1",
-            "wd[n]" to "\$w8[1]", "ws[n]" to "\$w10[1]", "ws[0]" to "\$w10[0]", "ws[rt]" to "\$w10[\$11]",
+            "rd" to "$9", "rs" to "$10", "rt" to "$11", "sa" to "2",
+            "wd" to $$"$w8", "ws" to $$"$w10", "wt" to $$"$w13",
+            "cd" to "$1", "cs" to "$1",
+            "wd[n]" to $$"$w8[1]", "ws[n]" to $$"$w10[1]", "ws[0]" to $$"$w10[0]", "ws[rt]" to $$"$w10[$11]",
             "s5" to "-2", "u5" to "2", "i8" to "2", "m" to "1",
-            "s10" to "2", "s10(rs)" to "8(\$10)", "s16" to "target",
+            "s10" to "2", "s10(rs)" to "8($10)", "s16" to "target",
         )
     }
 }

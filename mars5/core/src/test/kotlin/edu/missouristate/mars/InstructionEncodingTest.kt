@@ -26,7 +26,7 @@ internal class InstructionEncodingTest {
         TestSessions.create().use { session ->
             val file = directory.resolve("instruction.s")
             Files.writeString(file, ".text\n" + source + "\nlabel:\ntarget: nop\n")
-            val program: MIPSprogram = session.assemble(listOf(file), null, false, false)
+            val program: MIPSprogram = session.assemble(listOf(file), null, extended = false, warnings = false)
             val statement =
                 Objects.requireNonNull<ArrayList<ProgramStatement>?>(
                         program.machineList,

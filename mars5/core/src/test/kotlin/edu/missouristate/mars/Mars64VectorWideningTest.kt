@@ -40,7 +40,7 @@ class Mars64VectorWideningTest {
         }
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(file), null, false, false)
+            val program = session.assemble(listOf(file), null, extended = false, warnings = false)
             val fpu = session.coprocessor1
             val left = lanes(((limit - 3) shl narrow) or 2)
             val right = lanes(((limit - 2) shl narrow) or 5)
@@ -58,7 +58,7 @@ class Mars64VectorWideningTest {
                 program.simulate(1)
             }
             Files.writeString(file, $$"dotp_s.b $w31,$w3,$w5")
-            assertThrows(ProcessingException::class.java) { session.assemble(listOf(file), null, false, false) }
+            assertThrows(ProcessingException::class.java) { session.assemble(listOf(file), null, extended = false, warnings = false) }
         }
     }
     @ParameterizedTest
@@ -82,7 +82,7 @@ class Mars64VectorWideningTest {
             (0 until 64 step bits).fold(0L) { acc, shift -> acc or ((value and mask) shl shift) }
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(file), null, false, false)
+            val program = session.assemble(listOf(file), null, extended = false, warnings = false)
             val fpu = session.coprocessor1
             fpu.updateVector(3, VectorRegister(fill(-scale), fill(1)))
             fpu.updateVector(5, VectorRegister(fill(-scale), fill(scale / 2)))

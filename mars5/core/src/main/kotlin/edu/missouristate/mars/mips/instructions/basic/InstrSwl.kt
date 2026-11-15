@@ -9,8 +9,8 @@ import edu.missouristate.mars.util.Binary
 import edu.missouristate.mars.simulator.Exceptions.ADDRESS_EXCEPTION_STORE
 
 open class InstrSwl : BasicInstruction(
-    "swl \$t1,-100(\$t2)",
-    "Store word left : Store high-order 1 to 4 bytes of \$t1 into memory, starting with"
+    $$"swl $t1,-100($t2)",
+    $$"Store word left : Store high-order 1 to 4 bytes of $t1 into memory, starting with"
         + " effective byte address and continuing through the low-order byte of its word",
     BasicInstructionFormat.I_FORMAT,
     "101010 ttttt fffff ssssssssssssssss",

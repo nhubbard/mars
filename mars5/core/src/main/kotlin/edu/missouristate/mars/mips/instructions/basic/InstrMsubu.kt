@@ -5,8 +5,8 @@ import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
 import edu.missouristate.mars.util.Binary
 
 open class InstrMsubu : BasicInstruction(
-    "msubu \$t1,\$t2",
-    "Multiply subtract unsigned : Multiply \$t1 by \$t2 then decrement HI by high-order 32 bits"
+    $$"msubu $t1,$t2",
+    $$"Multiply subtract unsigned : Multiply $t1 by $t2 then decrement HI by high-order 32 bits"
         + " of product, decement LO by low-order 32 bits of product, unsigned (use mfhi to"
         + " access HI, mflo to access LO)",
     BasicInstructionFormat.R_FORMAT,

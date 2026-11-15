@@ -41,9 +41,9 @@ private fun laneBitInstruction(operation: LaneBitOperation, format: Int, suffix:
     val selector = if (immediate) msaBitImmediateField(format) else format.toString(2).padStart(2, '0') + "ttttt"
     val function = if (immediate) "001001" else "001101"
     val name = operation.mnemonic + if (immediate) "i" else ""
-    val operand = if (immediate) (bits - 1).toString() else "\$w3"
+    val operand = if (immediate) (bits - 1).toString() else $$"$w3"
     return object : BasicInstruction(
-        "$name.$suffix \$w1,\$w2,$operand", "Modify selected bits in each vector element",
+        $$"$$name.$$suffix $w1,$w2,$$operand", "Modify selected bits in each vector element",
         R_FORMAT, "011110 $opcode$selector sssss fffff $function",
         { statement, context ->
             val (destination, source, index) = statement.operands
@@ -85,7 +85,7 @@ private fun maskInstruction(operation: MaskOperation, immediate: Boolean): Basic
     val tail = if (immediate) {
         "${operation.immediateOpcode} tttttttt sssss fffff ${if (merge) "000001" else "000000"}"
     } else "${operation.vectorOpcode} ttttt sssss fffff 011110"
-    val example = if (immediate) "$name.b \$w1,\$w2,255" else "$name.v \$w1,\$w2,\$w3"
+    val example = if (immediate) $$"$$name.b $w1,$w2,255" else $$"$$name.v $w1,$w2,$w3"
     return object : BasicInstruction(
         example, "Apply a bit mask to a vector",
         R_FORMAT, "011110 $tail",

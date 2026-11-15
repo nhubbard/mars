@@ -4,7 +4,7 @@ import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
 
 class InstrWsbh : BasicInstruction(
-    "wsbh \$t1,\$t2",
+    $$"wsbh $t1,$t2",
     "Swap the two bytes in each halfword",
     BasicInstructionFormat.R_FORMAT,
     "011111 00000 sssss fffff 00010 100000",

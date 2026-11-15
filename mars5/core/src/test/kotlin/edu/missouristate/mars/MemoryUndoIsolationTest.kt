@@ -36,7 +36,7 @@ internal class MemoryUndoIsolationTest {
             program.readSource(path)
             program.tokenize()
             val files = arrayListOf(path)
-            program.assemble(program.prepareFilesForAssembly(files, path, null), true, false)
+            program.assemble(program.prepareFilesForAssembly(files, path, null), extended = true, warnings = false)
             val address = machine.memory.dataBaseAddress + 0x100
             TestSessions.execution(machine).setMemoryWord(address, 0x12345678)
             TestSessions.execution(machine).updateRegister(8, 0x76543210)
@@ -67,7 +67,7 @@ internal class MemoryUndoIsolationTest {
                     val statement =
                         ProgramStatement(
                             null,
-                            "sw \$t0,0(\$t1)",
+                            $$"sw $t0,0($t1)",
                             null,
                             null,
                             store,

@@ -21,10 +21,10 @@ class Mars64FloatingRegisterTest {
     fun `floating select uses bit zero and copies raw bits without exceptions`(
         mnemonic: String, encoding: String, resultWithClearBit: Int, resultWithSetBit: Int, @TempDir directory: Path,
     ) {
-        val source = Files.writeString(directory.resolve("select.s"), "$mnemonic \$f3,\$f5,\$f7\n".repeat(2))
+        val source = Files.writeString(directory.resolve("select.s"), $$"$$mnemonic $f3,$f5,$f7\n".repeat(2))
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(source), null, false, false)
+            val program = session.assemble(listOf(source), null, extended = false, warnings = false)
             val word = encoding.toInt(16)
             assertEquals(listOf(word, word), program.machineList!!.map(ProgramStatement::binaryStatement))
             assertEquals(mnemonic, session.instructionSet.findByBinaryCode(word)?.name)
@@ -61,7 +61,7 @@ class Mars64FloatingRegisterTest {
             assertNull(session.instructionSet.findByBinaryCode(words.first()))
             assertNull(session.instructionSet.findByBinaryCode(words[2]))
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(source), null, false, false)
+            val program = session.assemble(listOf(source), null, extended = false, warnings = false)
             assertEquals(words, program.machineList!!.map(ProgramStatement::binaryStatement))
             val original = 0x1234_5678_9abc_def0L
             session.editIntegerRegister(9, original)
@@ -104,7 +104,7 @@ class Mars64FloatingRegisterTest {
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
             session.memory.byteOrder = littleEndian
-            val program = session.assemble(listOf(source), null, false, false)
+            val program = session.assemble(listOf(source), null, extended = false, warnings = false)
             assertEquals(listOf(0xd55f0000.toInt(), 0xf55f0008.toInt(), 0x4621ff40),
                 program.machineList!!.take(3).map(ProgramStatement::binaryStatement))
             val address = session.memory.dataBaseAddress

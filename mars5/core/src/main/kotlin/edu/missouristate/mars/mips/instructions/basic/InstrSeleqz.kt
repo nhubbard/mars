@@ -4,7 +4,7 @@ import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
 
 class InstrSeleqz : BasicInstruction(
-    "seleqz \$t1,\$t2,\$t3",
+    $$"seleqz $t1,$t2,$t3",
     "Select a register value when the condition register is zero",
     BasicInstructionFormat.R_FORMAT,
     "000000 sssss ttttt fffff 00000 110101",

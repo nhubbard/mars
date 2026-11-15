@@ -40,7 +40,7 @@ class Mars64VectorIntegerTest {
         })
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(source), null, false, false)
+            val program = session.assemble(listOf(source), null, extended = false, warnings = false)
             val instructions = program.machineList!!
             val format = "bhwd".indexOf(suffix)
             val bits = 8 shl format
@@ -94,7 +94,7 @@ class Mars64VectorIntegerTest {
         })
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(source), null, false, false)
+            val program = session.assemble(listOf(source), null, extended = false, warnings = false)
             val instructions = program.machineList!!
             val format = "bhwd".indexOf(suffix)
             val bits = 8 shl format
@@ -124,7 +124,7 @@ class Mars64VectorIntegerTest {
                 assertEquals(VectorRegister(repeat(counts[index].toLong()), repeat(counts[index].toLong())), fpu.readVector(31), name)
             }
             Files.writeString(source, $$"slli.$$suffix $w31,$w3,$$bits")
-            assertThrows(ProcessingException::class.java) { session.assemble(listOf(source), null, false, false) }
+            assertThrows(ProcessingException::class.java) { session.assemble(listOf(source), null, extended = false, warnings = false) }
         }
     }
 
@@ -148,7 +148,7 @@ class Mars64VectorIntegerTest {
         })
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(source), null, false, false)
+            val program = session.assemble(listOf(source), null, extended = false, warnings = false)
             val format = "bhwd".indexOf(suffix)
             val bits = 8 shl format
             val mask = -1L ushr (64 - bits)
@@ -167,7 +167,7 @@ class Mars64VectorIntegerTest {
             }
             for ((name, value) in listOf("ceqi" to 16, "ceqi" to -17, "addvi" to 32, "addvi" to -1)) {
                 Files.writeString(source, $$"$$name.$$suffix $w31,$w3,$$value")
-                assertThrows(ProcessingException::class.java) { session.assemble(listOf(source), null, false, false) }
+                assertThrows(ProcessingException::class.java) { session.assemble(listOf(source), null, extended = false, warnings = false) }
             }
         }
     }
@@ -194,7 +194,7 @@ class Mars64VectorIntegerTest {
         })
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(source), null, false, false)
+            val program = session.assemble(listOf(source), null, extended = false, warnings = false)
             fun broadcast(value: BigInteger): VectorRegister {
                 val word = (0 until 64 step bits).fold(0L) { acc, shift -> acc or ((value and mask).toLong() shl shift) }
                 return VectorRegister(word, word)

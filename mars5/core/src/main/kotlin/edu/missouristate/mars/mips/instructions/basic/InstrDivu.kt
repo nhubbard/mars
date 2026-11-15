@@ -4,8 +4,8 @@ import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
 
 open class InstrDivu : BasicInstruction(
-    "divu \$t1,\$t2",
-    "Division unsigned without overflow : Divide unsigned \$t1 by \$t2 then set LO to quotient"
+    $$"divu $t1,$t2",
+    $$"Division unsigned without overflow : Divide unsigned $t1 by $t2 then set LO to quotient"
         + " and HI to remainder (use mfhi to access HI, mflo to access LO)",
     BasicInstructionFormat.R_FORMAT,
     "000000 fffff sssss 00000 00000 011011",

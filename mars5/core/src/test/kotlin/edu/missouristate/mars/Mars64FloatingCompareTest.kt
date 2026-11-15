@@ -35,7 +35,7 @@ class Mars64FloatingCompareTest {
         })
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(source), null, false, false)
+            val program = session.assemble(listOf(source), null, extended = false, warnings = false)
             val base = if (double) 0x46a51fc0 else 0x46851fc0
             for (reserved in listOf(16, 20, 21, 22, 23, 24, 28, 29, 30, 31)) {
                 assertNull(session.instructionSet.findByBinaryCode(base or reserved))
@@ -66,11 +66,11 @@ class Mars64FloatingCompareTest {
     fun `an enabled exception suppresses a comparison result but retains the cause`(
         compare: Boolean, @TempDir directory: Path,
     ) {
-        val second = if (compare) $$"cmp.seq.s $f31,$f3,$f5" else "ctc1 \$t1,\$26"
-        val source = Files.writeString(directory.resolve("trap.s"), "ctc1 \$t0,\$31\n$second\n")
+        val second = if (compare) $$"cmp.seq.s $f31,$f3,$f5" else $$"ctc1 $t1,$26"
+        val source = Files.writeString(directory.resolve("trap.s"), $$"ctc1 $t0,$31\n$$second\n")
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(source), null, false, false)
+            val program = session.assemble(listOf(source), null, extended = false, warnings = false)
             session.editIntegerRegister(8, 0x0800)
             session.editIntegerRegister(9, 0x10000)
             session.editCoprocessor1Pair(3, 0x7fc0_0001L)
@@ -99,7 +99,7 @@ class Mars64FloatingCompareTest {
         """.trimIndent())
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(source), null, false, false)
+            val program = session.assemble(listOf(source), null, extended = false, warnings = false)
             session.editCoprocessor1Pair(3, 0x7ff0_0000_0000_0001L)
             session.editCoprocessor1Pair(5, 1.0.toRawBits())
             session.editCoprocessor1Pair(7, 1L)
@@ -120,12 +120,12 @@ class Mars64FloatingCompareTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = ["cfc1 \$t0,\$25", "ctc1 \$t0,\$0", "ctc1 \$t0,\$25"])
+    @ValueSource(strings = [$$"cfc1 $t0,$25", $$"ctc1 $t0,$0", $$"ctc1 $t0,$25"])
     fun `removed control registers and writes to FIR are reserved`(code: String, @TempDir directory: Path) {
         val source = Files.writeString(directory.resolve("reserved.s"), code)
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(source), null, false, false)
+            val program = session.assemble(listOf(source), null, extended = false, warnings = false)
             assertThrows(ProcessingException::class.java) { program.simulate(1) }
             assertEquals(RESERVED_INSTRUCTION_EXCEPTION, session.coprocessor0.getValue(CAUSE) ushr 2 and 31)
         }

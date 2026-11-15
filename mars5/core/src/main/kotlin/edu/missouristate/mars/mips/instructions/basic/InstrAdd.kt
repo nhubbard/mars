@@ -6,8 +6,8 @@ import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
 import edu.missouristate.mars.simulator.Exceptions.ARITHMETIC_OVERFLOW_EXCEPTION
 
 open class InstrAdd : BasicInstruction(
-    "add \$t1,\$t2,\$t3",
-    "Addition with overflow : set \$t1 to (\$t2 plus \$t3)",
+    $$"add $t1,$t2,$t3",
+    $$"Addition with overflow : set $t1 to ($t2 plus $t3)",
     BasicInstructionFormat.R_FORMAT,
     "000000 sssss ttttt fffff 00000 100000",
     { statement, context ->

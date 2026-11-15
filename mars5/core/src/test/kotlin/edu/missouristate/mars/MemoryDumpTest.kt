@@ -47,7 +47,7 @@ internal class MemoryDumpTest {
         val source = directory.resolve("program.asm")
         Files.writeString(
             source,
-            ".data\n.word 1, 2, 3, 4, 5, 6, 7, 8, 9\n.text\nmain: addiu \$t0, \$zero, 7\n",
+            $$".data\n.word 1, 2, 3, 4, 5, 6, 7, 8, 9\n.text\nmain: addiu $t0, $zero, 7\n",
         )
         TestSessions.create().use { session ->
             session.assemble(listOf(source))
@@ -69,14 +69,14 @@ internal class MemoryDumpTest {
             Assertions.assertThat<String>(lines).hasSize(3)
             Assertions.assertThat(lines.last())
                 .startsWith("0x00400000  0x24080007  ")
-                .endsWith("main: addiu \$t0, \$zero, 7")
+                .endsWith($$"main: addiu $t0, $zero, 7")
         }
     }
 
     @Test
     fun snapshotRetainsSourceAndMappedIoWithoutHoldingTheStoppedMachine() {
         val source = directory.resolve("program.s")
-        Files.writeString(source, ".text\nmain: addiu \$t0, \$zero, 7\n")
+        Files.writeString(source, $$".text\nmain: addiu $t0, $zero, 7\n")
         val listingFormat =
             Objects.requireNonNull<DumpFormat>(
                 DumpFormatLoader.findByCommandDescriptor("SegmentWindow"),
@@ -128,7 +128,7 @@ internal class MemoryDumpTest {
         listingFormat.write(listingFile.toFile(), listing)
         Assertions.assertThat(Files.readAllLines(listingFile).last())
             .startsWith("0x00400000  0x24080007  ")
-            .endsWith("main: addiu \$t0, \$zero, 7")
+            .endsWith($$"main: addiu $t0, $zero, 7")
         val mmioFile = directory.resolve("mmio")
         hexFormat.write(mmioFile.toFile(), mmio)
         Assertions.assertThat<String>(Files.readAllLines(mmioFile)).containsExactly("12345678")

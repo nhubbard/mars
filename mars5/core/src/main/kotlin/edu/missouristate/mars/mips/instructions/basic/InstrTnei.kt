@@ -6,8 +6,8 @@ import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
 import edu.missouristate.mars.simulator.Exceptions.TRAP_EXCEPTION
 
 open class InstrTnei : BasicInstruction(
-    "tnei \$t1,-100",
-    "Trap if not equal to immediate : Trap if \$t1 is not equal to sign-extended 16 bit"
+    $$"tnei $t1,-100",
+    $$"Trap if not equal to immediate : Trap if $t1 is not equal to sign-extended 16 bit"
         + " immediate",
     BasicInstructionFormat.I_FORMAT,
     "000001 fffff 01110 ssssssssssssssss",

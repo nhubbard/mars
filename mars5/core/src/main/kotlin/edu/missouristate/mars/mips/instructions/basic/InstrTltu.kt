@@ -6,8 +6,8 @@ import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
 import edu.missouristate.mars.simulator.Exceptions.TRAP_EXCEPTION
 
 open class InstrTltu : BasicInstruction(
-    "tltu \$t1,\$t2",
-    "Trap if less than unsigned : Trap if \$t1 less than \$t2, unsigned comparison",
+    $$"tltu $t1,$t2",
+    $$"Trap if less than unsigned : Trap if $t1 less than $t2, unsigned comparison",
     BasicInstructionFormat.R_FORMAT,
     "000000 fffff sssss ccccc ccccc 110011",
     { statement, context ->

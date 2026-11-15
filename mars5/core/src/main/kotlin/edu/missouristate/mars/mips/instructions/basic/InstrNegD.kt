@@ -5,9 +5,9 @@ import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
 
 open class InstrNegD : BasicInstruction(
-    "neg.d \$f2,\$f4",
-    "Floating point negate double precision : Set double precision \$f2 to negation of double"
-        + " precision value in \$f4",
+    $$"neg.d $f2,$f4",
+    $$"Floating point negate double precision : Set double precision $f2 to negation of double"
+        + $$" precision value in $f4",
     BasicInstructionFormat.R_FORMAT,
     "010001 10001 00000 sssss fffff 000111",
     { statement, context ->

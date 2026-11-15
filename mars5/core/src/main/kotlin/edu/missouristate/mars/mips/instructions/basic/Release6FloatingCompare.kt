@@ -30,7 +30,7 @@ private val predicates = listOf(
 )
 
 private fun controlMove(toFpu: Boolean) = BasicInstruction(
-    if (toFpu) "ctc1 \$t1,\$31" else "cfc1 \$t1,\$31",
+    if (toFpu) $$"ctc1 $t1,$31" else $$"cfc1 $t1,$31",
     if (toFpu) "Write an FPU control register from a CPU register" else "Read an FPU control register into a CPU register",
     R_FORMAT,
     "010001 ${if (toFpu) "00110" else "00010"} fffff sssss 00000000000",
@@ -51,7 +51,7 @@ private fun compareMask(name: String, predicate: Int, double: Boolean): BasicIns
     val quietBit = (fractionMask + 1) ushr 1
     val field = predicate.toString(2).padStart(5, '0')
     return BasicInstruction(
-        "cmp.$name.${if (double) "d" else "s"} \$f2,\$f4,\$f6",
+        $$"cmp.$$name.$${if (double) "d" else "s"} $f2,$f4,$f6",
         "Compare floating-point operands and write a full-width truth mask",
         R_FORMAT, "010001 ${if (double) "10101" else "10100"} ttttt sssss fffff 0$field",
     ) { statement, context ->

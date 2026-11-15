@@ -29,7 +29,7 @@ internal fun msaFloatingCompareInstructions(): List<BasicInstruction> = buildLis
     for ((format, suffix) in "wd".withIndex()) {
         val bits = 32 shl format
         add(BasicInstruction(
-            "fclass.$suffix \$w1,\$w2", "Classify each floating-point element",
+            $$"fclass.$$suffix $w1,$w2", "Classify each floating-point element",
             R_FORMAT, "011110 11001 0000$format sssss fffff 011110",
         ) { statement, context ->
             val (destination, source) = statement.operands
@@ -72,7 +72,7 @@ private fun compare(name: String, predicate: Int, format: Int, suffix: Char, sig
     val precision = FloatingPrecision(32 shl format)
     val mnemonic = "f${if (signaling) 's' else 'c'}$name.$suffix"
     return BasicInstruction(
-        "$mnemonic \$w1,\$w2,\$w3", "Compare floating-point elements and write truth masks",
+        $$"$$mnemonic $w1,$w2,$w3", "Compare floating-point elements and write truth masks",
         R_FORMAT, "011110 $field ttttt sssss fffff $function",
     ) { statement, context ->
         val (destination, source, target) = statement.operands
@@ -132,7 +132,7 @@ private fun InstructionContext.writeFloatingVector(
 private fun roundingInstruction(format: Int, suffix: Char): BasicInstruction {
     val precision = FloatingPrecision(32 shl format)
     return BasicInstruction(
-        "frint.$suffix \$w1,\$w2", "Round each floating-point element to an integral value",
+        $$"frint.$$suffix $w1,$w2", "Round each floating-point element to an integral value",
         R_FORMAT, "011110 11001 0110$format sssss fffff 011110",
     ) { statement, context ->
         val (destination, source) = statement.operands
@@ -155,7 +155,7 @@ private fun extremumInstruction(name: String, index: Int, format: Int, suffix: C
     val minimum = index < 2
     val magnitude = index and 1 != 0
     return BasicInstruction(
-        "$name.$suffix \$w1,\$w2,\$w3", "Select an extremum from corresponding floating-point elements",
+        $$"$$name.$$suffix $w1,$w2,$w3", "Select an extremum from corresponding floating-point elements",
         R_FORMAT, "011110 $field ttttt sssss fffff 011011",
     ) { statement, context ->
         val (destination, source, target) = statement.operands
@@ -195,7 +195,7 @@ private fun toIntegerInstruction(format: Int, suffix: Char, signed: Boolean, tru
     val minimum = if (signed) -1L shl (precision.bits - 1) else 0L
     val maximum = -1L ushr (64 - precision.bits + if (signed) 1 else 0)
     return BasicInstruction(
-        "$mnemonic.$suffix \$w1,\$w2", "Convert each floating-point element to an integer",
+        $$"$$mnemonic.$$suffix $w1,$w2", "Convert each floating-point element to an integer",
         R_FORMAT, "011110 11001 $field sssss fffff 011110",
     ) { statement, context ->
         val (destination, source) = statement.operands
@@ -222,7 +222,7 @@ private fun fromIntegerInstruction(format: Int, suffix: Char, signed: Boolean): 
     val field = (28 + (if (signed) 0 else 2) + format).toString(2)
     val mnemonic = if (signed) "ffint_s" else "ffint_u"
     return BasicInstruction(
-        "$mnemonic.$suffix \$w1,\$w2", "Convert each integer element to floating point",
+        $$"$$mnemonic.$$suffix $w1,$w2", "Convert each integer element to floating point",
         R_FORMAT, "011110 11001 $field sssss fffff 011110",
     ) { statement, context ->
         val (destination, source) = statement.operands
@@ -240,7 +240,7 @@ private fun fromFixedPointInstruction(format: Int, suffix: Char, left: Boolean):
     val mnemonic = if (left) "ffql" else "ffqr"
     val field = (20 + (if (left) 0 else 2) + format).toString(2)
     return BasicInstruction(
-        "$mnemonic.$suffix \$w1,\$w2", "Convert a half-vector of signed fixed-point elements to floating point",
+        $$"$$mnemonic.$$suffix $w1,$w2", "Convert a half-vector of signed fixed-point elements to floating point",
         R_FORMAT, "011110 11001 $field sssss fffff 011110",
     ) { statement, context ->
         val (destination, source) = statement.operands
@@ -277,7 +277,7 @@ private fun widenFloatingInstruction(format: Int, suffix: Char, left: Boolean): 
     val field = (16 + (if (left) 0 else 2) + format).toString(2)
     val offset = if (left) 128 / precision.bits else 0
     return BasicInstruction(
-        "$mnemonic.$suffix \$w1,\$w2", "Widen floating-point elements from one half of a vector",
+        $$"$$mnemonic.$$suffix $w1,$w2", "Widen floating-point elements from one half of a vector",
         R_FORMAT, "011110 11001 $field sssss fffff 011110",
     ) { statement, context ->
         val (destination, source) = statement.operands
@@ -307,7 +307,7 @@ private fun narrowFloatingInstruction(format: Int, suffix: Char, fixedPoint: Boo
     val name = if (fixedPoint) "ftq" else "fexdo"
     val field = (16 + (if (fixedPoint) 4 else 0) + format).toString(2)
     return BasicInstruction(
-        "$name.$suffix \$w1,\$w2,\$w3", "Narrow and pack floating-point elements from two vectors",
+        $$"$$name.$$suffix $w1,$w2,$w3", "Narrow and pack floating-point elements from two vectors",
         R_FORMAT, "011110 $field ttttt sssss fffff 011011",
     ) { statement, context ->
         val (destination, source, target) = statement.operands
@@ -347,7 +347,7 @@ private fun arithmeticInstruction(operation: FloatingArithmetic, format: Int, su
         FloatingArithmetic.MULTIPLY_SUBTRACT -> "fmsub"
     }
     return BasicInstruction(
-        "$mnemonic.$suffix \$w1,\$w2,\$w3", "Apply floating-point arithmetic independently to each vector element",
+        $$"$$mnemonic.$$suffix $w1,$w2,$w3", "Apply floating-point arithmetic independently to each vector element",
         R_FORMAT, "011110 $field ttttt sssss fffff 011011",
     ) { statement, context ->
         val (destination, source, target) = statement.operands
@@ -374,7 +374,7 @@ private fun unaryInstruction(operation: FloatingUnary, format: Int, suffix: Char
     val precision = FloatingPrecision(32 shl format)
     val field = (operation.selector + format).toString(2).padStart(5, '0')
     return BasicInstruction(
-        "${operation.mnemonic}.$suffix \$w1,\$w2", "Apply ${operation.mnemonic} to each floating-point element",
+        $$"$${operation.mnemonic}.$$suffix $w1,$w2", "Apply ${operation.mnemonic} to each floating-point element",
         R_FORMAT, "011110 11001 $field sssss fffff 011110",
     ) { statement, context ->
         val (destination, source) = statement.operands
@@ -419,7 +419,7 @@ private fun unaryInstruction(operation: FloatingUnary, format: Int, suffix: Char
 private fun scaleInstruction(format: Int, suffix: Char): BasicInstruction {
     val precision = FloatingPrecision(32 shl format)
     return BasicInstruction(
-        "fexp2.$suffix \$w1,\$w2,\$w3", "Scale each floating-point element by a signed power of two",
+        $$"fexp2.$$suffix $w1,$w2,$w3", "Scale each floating-point element by a signed power of two",
         R_FORMAT, "011110 0111$format ttttt sssss fffff 011011",
     ) { statement, context ->
         val (destination, source, target) = statement.operands

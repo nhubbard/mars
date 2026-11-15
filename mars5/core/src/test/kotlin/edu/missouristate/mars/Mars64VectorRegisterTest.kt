@@ -32,7 +32,7 @@ class Mars64VectorRegisterTest {
             val word = encoding.toInt(16)
             assertNull(session.instructionSet.findByBinaryCode(word))
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(path), null, false, false)
+            val program = session.assemble(listOf(path), null, extended = false, warnings = false)
             val instruction = program.machineList!!.first()
             assertEquals(word, instruction.binaryStatement)
             val decoded = ProgramStatement(word, instruction.address, session.instructionSet)
@@ -53,7 +53,7 @@ class Mars64VectorRegisterTest {
             repeat(2) { session.backStepper.backStep() }
             assertEquals(VectorRegister(0, 0), fpu.readVector(31))
             Files.writeString(path, $$"fill.$$suffix $f31,$9\n")
-            assertThrows(ProcessingException::class.java) { session.assemble(listOf(path), null, false, false) }
+            assertThrows(ProcessingException::class.java) { session.assemble(listOf(path), null, extended = false, warnings = false) }
         }
     }
 
@@ -74,7 +74,7 @@ class Mars64VectorRegisterTest {
         })
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(path), null, false, false)
+            val program = session.assemble(listOf(path), null, extended = false, warnings = false)
             val words = listOf(insert, signed, unsigned).filterNot { it == "-" }.map { it.toInt(16) }
             assertEquals(words, program.machineList!!.map { it.binaryStatement })
             program.machineList!!.forEach {
@@ -101,7 +101,7 @@ class Mars64VectorRegisterTest {
             repeat(words.size) { session.backStepper.backStep() }
             assertEquals(initial, session.coprocessor1.readVector(5))
             Files.writeString(path, $$"insert.$$suffix $w5[$${lane + 1}],$9")
-            assertThrows(ProcessingException::class.java) { session.assemble(listOf(path), null, false, false) }
+            assertThrows(ProcessingException::class.java) { session.assemble(listOf(path), null, extended = false, warnings = false) }
         }
     }
 
@@ -116,7 +116,7 @@ class Mars64VectorRegisterTest {
         """.trimIndent())
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(path), null, false, false)
+            val program = session.assemble(listOf(path), null, extended = false, warnings = false)
             assertEquals(listOf(0x78be1fd9, 0x7805ffde, 0x7825ffde, 0x7865ffde, 0x7845ffde),
                 program.machineList!!.map { it.binaryStatement })
             val fpu = session.coprocessor1

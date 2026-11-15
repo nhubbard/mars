@@ -4,7 +4,7 @@ import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat.R_FORMAT
 
 class InstrAlign : BasicInstruction(
-    "align \$t1,\$t2,\$t3,2",
+    $$"align $t1,$t2,$t3,2",
     "Extract a word from two registers at a byte boundary",
     R_FORMAT,
     "011111 sssss ttttt fffff 010uu 100000",

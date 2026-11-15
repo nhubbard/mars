@@ -6,7 +6,7 @@ import edu.missouristate.mars.mips.instructions.BasicInstructionFormat.I_FORMAT
 import edu.missouristate.mars.simulator.Exceptions.RESERVED_INSTRUCTION_EXCEPTION
 
 internal class InstrRelease6Pref : BasicInstruction(
-    "pref 1,-100(\$t2)",
+    $$"pref 1,-100($t2)",
     "Prefetch hint. Supported hints have no effect in MARS64's synchronous memory model.",
     I_FORMAT,
     "011111 ttttt fffff sssssssss 0 110101",

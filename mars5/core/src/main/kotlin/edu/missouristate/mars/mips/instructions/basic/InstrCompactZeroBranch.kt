@@ -4,7 +4,7 @@ import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat.I_BRANCH_FORMAT
 
 internal class InstrCompactZeroBranch(branchOnZero: Boolean) : BasicInstruction(
-    "${if (branchOnZero) "beqzc" else "bnezc"} \$t1,label",
+    $$"$${if (branchOnZero) "beqzc" else "bnezc"} $t1,label",
     if (branchOnZero) "Branch immediately if the register is zero" else "Branch immediately if the register is nonzero",
     I_BRANCH_FORMAT,
     "${if (branchOnZero) "110110" else "111110"} fffff sssssssssssssssssssss",

@@ -6,8 +6,8 @@ import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
 import edu.missouristate.mars.simulator.Exceptions.ARITHMETIC_OVERFLOW_EXCEPTION
 
 open class InstrAddi : BasicInstruction(
-    "addi \$t1,\$t2,-100",
-    "Addition immediate with overflow : set \$t1 to (\$t2 plus signed 16-bit immediate)",
+    $$"addi $t1,$t2,-100",
+    $$"Addition immediate with overflow : set $t1 to ($t2 plus signed 16-bit immediate)",
     BasicInstructionFormat.I_FORMAT,
     "001000 sssss fffff tttttttttttttttt",
     { statement, context ->

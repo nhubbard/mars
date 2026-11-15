@@ -6,7 +6,7 @@ import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
 
 open class InstrLl : BasicInstruction(
-    "ll \$t1,-100(\$t2)",
+    $$"ll $t1,-100($t2)",
     "Load linked : Paired with Store Conditional (sc) to perform atomic read-modify-write. "
         + " Treated as equivalent to Load Word (lw) because MARS does not simulate multiple"
         + " processors.",

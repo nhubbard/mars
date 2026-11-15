@@ -30,7 +30,7 @@ class Mars64VectorFloatingTest {
         })
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(file), null, false, false)
+            val program = session.assemble(listOf(file), null, extended = false, warnings = false)
             val fpu = session.coprocessor1
             fun value(number: Double): Long =
                 if (double) number.toRawBits() else number.toFloat().toRawBits().toUInt().toLong().let { it or (it shl 32) }
@@ -65,7 +65,7 @@ class Mars64VectorFloatingTest {
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
             for (nonTrapping in listOf(false, true)) {
-                val program = session.assemble(listOf(file), null, false, false)
+                val program = session.assemble(listOf(file), null, extended = false, warnings = false)
                 val fpu = session.coprocessor1
                 val nan = if (double) 0x7ff0000000000001L else 0x7f8000017f800001L
                 val subnormal = if (double) 1L else 0x0000000100000001L
@@ -102,7 +102,7 @@ class Mars64VectorFloatingTest {
             else value.toFloat().toRawBits().toUInt().toLong().let { it or (it shl 32) }
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(file), null, false, false)
+            val program = session.assemble(listOf(file), null, extended = false, warnings = false)
             val fpu = session.coprocessor1
             val expected = listOf(-0.0 to -2.0, -0.0 to -2.0, 0.0 to 2.0, 0.0 to 2.0)
             for ((i, pair) in expected.withIndex()) {
@@ -133,7 +133,7 @@ class Mars64VectorFloatingTest {
             else value.toFloat().toRawBits().toUInt().toLong().let { it or (it shl 32) }
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(file), null, false, false)
+            val program = session.assemble(listOf(file), null, extended = false, warnings = false)
             val word = if (double) 0x7b2d1fde else 0x7b2c1fde
             assertEquals(word, program.machineList!!.first().binaryStatement)
             val fpu = session.coprocessor1
@@ -162,7 +162,7 @@ class Mars64VectorFloatingTest {
         val unsignedHigh = if (double) 1L shl 62 else 1L shl 30
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(file), null, false, false)
+            val program = session.assemble(listOf(file), null, extended = false, warnings = false)
             val fpu = session.coprocessor1
             for ((index, case) in cases.withIndex()) {
                 val (name, word) = case
@@ -202,7 +202,7 @@ class Mars64VectorFloatingTest {
             else value.toFloat().toRawBits().toUInt().toLong().let { it or (it shl 32) }
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(file), null, false, false)
+            val program = session.assemble(listOf(file), null, extended = false, warnings = false)
             val format = if (double) 1 shl 16 else 0
             val words = listOf(0x7b3c1fde, 0x7b3e1fde, 0x7b3e1fde, 0x7b342fde, 0x7b362fde)
             assertEquals(words.map { it or format }, program.machineList!!.map { it.binaryStatement })
@@ -239,7 +239,7 @@ class Mars64VectorFloatingTest {
         """.trimIndent())
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(file), null, false, false)
+            val program = session.assemble(listOf(file), null, extended = false, warnings = false)
             val format = if (double) 1 shl 16 else 0
             assertEquals(listOf(0x7b301fde or format, 0x7b321fde or format), program.machineList!!.map { it.binaryStatement })
             val fpu = session.coprocessor1
@@ -276,7 +276,7 @@ class Mars64VectorFloatingTest {
             if (half) low or (low shl 16) or (high shl 32) or (high shl 48) else low or (high shl 32)
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(file), null, false, false)
+            val program = session.assemble(listOf(file), null, extended = false, warnings = false)
             val format = if (half) 0 else 0x200000
             assertEquals(listOf(0x7a051fdb, 0x7a051fdb, 0x7a851fdb).map { it or format },
                 program.machineList!!.map { it.binaryStatement })
@@ -320,7 +320,7 @@ class Mars64VectorFloatingTest {
         fun vector(low: Double, high: Double) = VectorRegister(bits(low), bits(high))
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(file), null, false, false)
+            val program = session.assemble(listOf(file), null, extended = false, warnings = false)
             assertEquals(List(6) { 0x78051fdb + (it shl 22) + if (double) 0x200000 else 0 },
                 program.machineList!!.map { it.binaryStatement })
             val fpu = session.coprocessor1
@@ -385,7 +385,7 @@ class Mars64VectorFloatingTest {
         fun vector(lo: Double, hi: Double) = VectorRegister(bits(lo), bits(hi))
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(file), null, false, false)
+            val program = session.assemble(listOf(file), null, extended = false, warnings = false)
             val unary = listOf(0x7b261fde, 0x7b261fde, 0x7b281fde, 0x7b2a1fde, 0x7b2e1fde, 0x7b2e1fde)
             val expected = unary.map { it + if (double) 0x10000 else 0 } +
                 List(2) { 0x79c51fdb + if (double) 0x200000 else 0 }

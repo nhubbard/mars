@@ -131,12 +131,12 @@ internal class Parser(private val pass: FirstPassProcessor) {
         if (pass.context.session.target == MarsTarget.MARS64 && instruction.name == "addi") {
             val scratch = (1..2).map(tokens::get).firstOrNull { RegisterNames.integer(it.value)?.number == 1 }
             if (scratch != null) {
-                pass.errors.add(ErrorMessage(scratch, "This addi pseudo-instruction uses \$at. Load the immediate into a different temporary and use add."))
+                pass.errors.add(ErrorMessage(scratch, $$"This addi pseudo-instruction uses $at. Load the immediate into a different temporary and use add."))
                 return null
             }
         }
         if (instruction is Release6ImmediateTrap && RegisterNames.integer(tokens[1].value)?.number == 1) {
-            pass.errors.add(ErrorMessage(tokens[1], "This immediate trap uses \$at. Use a different temporary and a register trap."))
+            pass.errors.add(ErrorMessage(tokens[1], $$"This immediate trap uses $at. Use a different temporary and a register trap."))
             return null
         }
         if (instruction is WideAddressMemory) {
@@ -144,7 +144,7 @@ internal class Parser(private val pass: FirstPassProcessor) {
             val sourceIsTemporary = instruction.stores && RegisterNames.integer(tokens[1].value)?.number == 1
             if (baseIsTemporary || sourceIsTemporary) {
                 val operand = if (baseIsTemporary) instruction.baseToken else 1
-                pass.errors.add(ErrorMessage(tokens[operand], "This address expansion uses \$at. Use a different register or write the address calculation explicitly."))
+                pass.errors.add(ErrorMessage(tokens[operand], $$"This address expansion uses $at. Use a different register or write the address calculation explicitly."))
                 return null
             }
         }

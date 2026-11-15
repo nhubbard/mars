@@ -33,9 +33,9 @@ internal class Coprocessor1StateTest {
         for (i in 0..31) {
             Assertions.assertThat(first.updateRegister(i, i + 1)).isZero()
             Assertions.assertThat(second.getValue(i)).isZero()
-            Assertions.assertThat<Register?>(first.getRegister("\$f" + i))
+            Assertions.assertThat<Register?>(first.getRegister($$"$f" + i))
                 .isSameAs(first.registers[i])
-            Assertions.assertThat(first.getRegisterNumber("\$f" + i)).isEqualTo(i)
+            Assertions.assertThat(first.getRegisterNumber($$"$f" + i)).isEqualTo(i)
         }
         first.setConditionFlags()
         Assertions.assertThat(first.conditionFlags).isEqualTo(-1)
@@ -57,11 +57,11 @@ internal class Coprocessor1StateTest {
         val state = Coprocessor1State()
         state.setRegisterToFloat(0, Float.fromBits(bits))
         Assertions.assertThat(state.getIntFromRegister(0)).isEqualTo(bits)
-        state.setRegisterToFloat("\$f31", state.getFloatFromRegister(0))
-        Assertions.assertThat(state.getFloatFromRegister("\$f31").toRawBits())
+        state.setRegisterToFloat($$"$f31", state.getFloatFromRegister(0))
+        Assertions.assertThat(state.getFloatFromRegister($$"$f31").toRawBits())
             .isEqualTo(bits)
-        state.setRegisterToInt("\$f30", bits)
-        Assertions.assertThat(state.getIntFromRegister("\$f30")).isEqualTo(bits)
+        state.setRegisterToInt($$"$f30", bits)
+        Assertions.assertThat(state.getIntFromRegister($$"$f30")).isEqualTo(bits)
     }
 
     @ParameterizedTest
@@ -73,8 +73,8 @@ internal class Coprocessor1StateTest {
         Assertions.assertThat(state.getValue(number)).isEqualTo(-0x76543211)
         Assertions.assertThat(state.getValue(number + 1)).isEqualTo(0x01234567)
         Assertions.assertThat(state.getLongFromRegisterPair(number)).isEqualTo(bits)
-        Assertions.assertThat(state.getLongFromRegisterPair("\$f" + number)).isEqualTo(bits)
-        state.setRegisterPairToLong("\$f" + number, bits.inv())
+        Assertions.assertThat(state.getLongFromRegisterPair($$"$f" + number)).isEqualTo(bits)
+        state.setRegisterPairToLong($$"$f" + number, bits.inv())
         Assertions.assertThat(state.getLongFromRegisterPair(number)).isEqualTo(bits.inv())
     }
 
@@ -89,7 +89,7 @@ internal class Coprocessor1StateTest {
 
         Assertions.assertThat<RegisterAccessNotice>(notices)
             .extracting<String?, RuntimeException>(RegisterAccessNotice::registerName)
-            .containsExactly("\$f5", "\$f4", "\$f5", "\$f4")
+            .containsExactly($$"$f5", $$"$f4", $$"$f5", $$"$f4")
         Assertions.assertThat<RegisterAccessNotice>(notices)
             .extracting<Int?, RuntimeException>(AccessNotice::accessType)
             .containsExactly(
@@ -117,8 +117,8 @@ internal class Coprocessor1StateTest {
         val state = Coprocessor1State()
         state.setRegisterPairToDouble(0, Double.fromBits(bits))
         Assertions.assertThat(state.getLongFromRegisterPair(0)).isEqualTo(bits)
-        state.setRegisterPairToDouble("\$f30", state.getDoubleFromRegisterPair(0))
-        Assertions.assertThat(state.getDoubleFromRegisterPair("\$f30").toRawBits())
+        state.setRegisterPairToDouble($$"$f30", state.getDoubleFromRegisterPair(0))
+        Assertions.assertThat(state.getDoubleFromRegisterPair($$"$f30").toRawBits())
             .isEqualTo(bits)
     }
 
@@ -168,15 +168,15 @@ internal class Coprocessor1StateTest {
         Assertions.assertThat(state.updateRegister(32, 42)).isZero()
         Assertions.assertThat(state.getIntFromRegister(-1)).isZero()
         Assertions.assertThat(state.getFloatFromRegister(32)).isZero()
-        Assertions.assertThat(state.getRegisterNumber("\$missing")).isEqualTo(-1)
+        Assertions.assertThat(state.getRegisterNumber($$"$missing")).isEqualTo(-1)
         Assertions.assertThat(state.getRegisterNumber(null)).isEqualTo(-1)
         Assertions.assertThat(state.getRegisterNumber("")).isEqualTo(-1)
-        Assertions.assertThat(state.getRegisterNumber("\$f")).isEqualTo(-1)
-        Assertions.assertThat(state.getRegisterNumber("\$f32")).isEqualTo(-1)
-        Assertions.assertThat(state.getRegisterNumber("\$f010")).isEqualTo(8)
-        Assertions.assertThat(state.getRegisterNumber("\$f0x1f")).isEqualTo(31)
-        Assertions.assertThat<Register?>(state.getRegister("\$f")).isNull()
-        Assertions.assertThat<Register?>(state.getRegister("\$f32")).isNull()
+        Assertions.assertThat(state.getRegisterNumber($$"$f")).isEqualTo(-1)
+        Assertions.assertThat(state.getRegisterNumber($$"$f32")).isEqualTo(-1)
+        Assertions.assertThat(state.getRegisterNumber($$"$f010")).isEqualTo(8)
+        Assertions.assertThat(state.getRegisterNumber($$"$f0x1f")).isEqualTo(31)
+        Assertions.assertThat<Register?>(state.getRegister($$"$f")).isNull()
+        Assertions.assertThat<Register?>(state.getRegister($$"$f32")).isNull()
         Assertions.assertThat(state.setConditionFlag(-1)).isZero()
         Assertions.assertThat(state.clearConditionFlag(8)).isZero()
         Assertions.assertThat(state.conditionFlags).isZero()
@@ -202,7 +202,7 @@ internal class Coprocessor1StateTest {
                 },
             )
             .extracting<String?, RuntimeException>(RegisterAccessNotice::registerName)
-            .containsExactly("\$f31", "cf")
+            .containsExactly($$"$f31", "cf")
         first.deleteRegistersObserver(listener)
         val count = notices.size
         first.updateRegister(31, 43)

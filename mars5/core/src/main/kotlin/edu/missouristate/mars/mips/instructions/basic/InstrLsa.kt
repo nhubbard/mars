@@ -4,7 +4,7 @@ import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat.R_FORMAT
 
 class InstrLsa : BasicInstruction(
-    "lsa \$t1,\$t2,\$t3,2",
+    $$"lsa $t1,$t2,$t3,2",
     "Shift the first source register left and add the second source register",
     R_FORMAT,
     "000000 sssss ttttt fffff 000uu 000101",

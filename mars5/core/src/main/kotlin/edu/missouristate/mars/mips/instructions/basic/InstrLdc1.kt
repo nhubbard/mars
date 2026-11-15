@@ -7,8 +7,8 @@ import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
 import edu.missouristate.mars.simulator.Exceptions.ADDRESS_EXCEPTION_LOAD
 
 open class InstrLdc1 : BasicInstruction(
-    "ldc1 \$f2,-100(\$t2)",
-    "Load double word Coprocessor 1 (FPU)) : Set \$f2 to 64-bit value from effective memory"
+    $$"ldc1 $f2,-100($t2)",
+    $$"Load double word Coprocessor 1 (FPU)) : Set $f2 to 64-bit value from effective memory"
         + " doubleword address",
     BasicInstructionFormat.I_FORMAT,
     "110101 ttttt fffff ssssssssssssssss",

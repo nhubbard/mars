@@ -6,8 +6,8 @@ import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
 import edu.missouristate.mars.simulator.Exceptions.TRAP_EXCEPTION
 
 open class InstrTltiu : BasicInstruction(
-    "tltiu \$t1,-100",
-    "Trap if less than immediate unsigned : Trap if \$t1 less than sign-extended 16-bit"
+    $$"tltiu $t1,-100",
+    $$"Trap if less than immediate unsigned : Trap if $t1 less than sign-extended 16-bit"
         + " immediate, unsigned comparison",
     BasicInstructionFormat.I_FORMAT,
     "000001 fffff 01011 ssssssssssssssss",

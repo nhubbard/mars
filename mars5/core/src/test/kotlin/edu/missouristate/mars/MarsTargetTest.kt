@@ -65,7 +65,7 @@ class MarsTargetTest {
     @ParameterizedTest
     @ValueSource(strings = ["ddiv", "ddivu", "dmod", "dmodu"])
     fun `wide division by zero reports a trap without storing`(mnemonic: String, @TempDir directory: Path) {
-        val source = Files.writeString(directory.resolve("zero-divisor.s"), "$mnemonic \$t0,\$a0,\$zero\n")
+        val source = Files.writeString(directory.resolve("zero-divisor.s"), $$"$$mnemonic $t0,$a0,$zero\n")
         TestSessions.create().use { machine ->
             machine.selectTarget(MarsTarget.MARS64)
             val program = machine.assemble(listOf(source))

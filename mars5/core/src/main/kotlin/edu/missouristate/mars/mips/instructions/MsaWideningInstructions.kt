@@ -26,7 +26,7 @@ private fun wideningInstruction(operation: WideningOperation, format: Int, signe
     val field = ((opcode shl 2) or format).toString(2).padStart(5, '0')
     val name = "${operation.mnemonic}_${if (signed) 's' else 'u'}.$suffix"
     return BasicInstruction(
-        "$name \$w1,\$w2,\$w3", "Combine narrow elements into a wider integer result",
+        $$"$$name $w1,$w2,$w3", "Combine narrow elements into a wider integer result",
         R_FORMAT, "011110 $field ttttt sssss fffff ${operation.function}",
     ) { statement, context ->
         val (destination, source, target) = statement.operands
@@ -74,7 +74,7 @@ private fun fixedPointInstruction(
     val minimum = -maximum - 1
     val rounding = if (rounded) 1L shl (bits - 2) else 0L
     return BasicInstruction(
-        "$name.$suffix \$w1,\$w2,\$w3", "Multiply signed fixed-point elements with saturation",
+        $$"$$name.$$suffix $w1,$w2,$w3", "Multiply signed fixed-point elements with saturation",
         R_FORMAT, "011110 $field ttttt sssss fffff 011100",
     ) { statement, context ->
         val (destination, source, target) = statement.operands

@@ -24,7 +24,7 @@ internal class CliMachineReport {
 
     fun tryAddRegister(name: String, session: MarsContext): Boolean {
         val label = if (name.startsWith('$')) name else "$$name"
-        if (label.length == 1 || label == "\$f") return false
+        if (label.length == 1 || label == $$"$f") return false
         val integer = session.registerFile.getUserRegister(label)
         if (integer != null) {
             registers.add(RegisterSelection(label, integer, false))

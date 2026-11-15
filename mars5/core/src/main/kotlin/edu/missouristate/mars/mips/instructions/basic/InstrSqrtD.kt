@@ -6,9 +6,9 @@ import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
 import kotlin.math.sqrt
 
 open class InstrSqrtD : BasicInstruction(
-    "sqrt.d \$f2,\$f4",
-    "Square root double precision : Set \$f2 to double-precision floating point square root of"
-        + " \$f4",
+    $$"sqrt.d $f2,$f4",
+    $$"Square root double precision : Set $f2 to double-precision floating point square root of"
+        + $$" $f4",
     BasicInstructionFormat.R_FORMAT,
     "010001 10001 00000 sssss fffff 000100",
     { statement, context ->

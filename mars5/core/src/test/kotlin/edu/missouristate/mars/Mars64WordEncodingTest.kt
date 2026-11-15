@@ -43,7 +43,7 @@ class Mars64WordEncodingTest {
         val source = Files.writeString(directory.resolve("word.s"), "$assembly\n")
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(source), null, false, false)
+            val program = session.assemble(listOf(source), null, extended = false, warnings = false)
             val word = encoding.toUInt(16).toInt()
             assertEquals(word, program.machineList!!.single().binaryStatement)
             assertEquals(assembly.substringBefore(' '), session.instructionSet.findByBinaryCode(word)?.name)
@@ -56,10 +56,10 @@ class Mars64WordEncodingTest {
 
     @Test
     fun `NOR uses both halves of each source register`(@TempDir directory: Path) {
-        val source = Files.writeString(directory.resolve("nor.s"), "nor \$9,\$10,\$11\n")
+        val source = Files.writeString(directory.resolve("nor.s"), "nor $9,$10,$11\n")
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(source), null, false, false)
+            val program = session.assemble(listOf(source), null, extended = false, warnings = false)
             val word = 0x014b4827
             assertEquals(word, program.machineList!!.single().binaryStatement)
             assertEquals("nor", session.instructionSet.findByBinaryCode(word)?.name)
@@ -75,10 +75,10 @@ class Mars64WordEncodingTest {
     fun `trapping word arithmetic preserves the destination on overflow`(
         mnemonic: String, right: Long, @TempDir directory: Path,
     ) {
-        val source = Files.writeString(directory.resolve("overflow.s"), "$mnemonic \$9,\$10,\$11\n")
+        val source = Files.writeString(directory.resolve("overflow.s"), "$mnemonic $9,$10,$11\n")
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(source), null, false, false)
+            val program = session.assemble(listOf(source), null, extended = false, warnings = false)
             session.editIntegerRegister(9, 0x1234_5678_0000_002a)
             session.editIntegerRegister(10, Int.MAX_VALUE.toLong())
             session.editIntegerRegister(11, right)
@@ -89,12 +89,12 @@ class Mars64WordEncodingTest {
 
     @Test
     fun `leading counts decode only their target's encoding`(@TempDir directory: Path) {
-        val source = Files.writeString(directory.resolve("count.s"), "clz \$9,\$10\nclo \$11,\$12\n")
+        val source = Files.writeString(directory.resolve("count.s"), "clz $9,$10\nclo $11,$12\n")
         TestSessions.create().use { session ->
             assertNull(session.instructionSet.findByBinaryCode(0x01404850))
             assertEquals("clz", session.instructionSet.findByBinaryCode(0x71404820)?.name)
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(source), null, false, false)
+            val program = session.assemble(listOf(source), null, extended = false, warnings = false)
             val words = listOf(0x01404850, 0x01805851)
             assertEquals(words, program.machineList!!.map(ProgramStatement::binaryStatement))
             assertEquals(listOf("clz", "clo"), words.map { session.instructionSet.findByBinaryCode(it)?.name })
@@ -109,10 +109,10 @@ class Mars64WordEncodingTest {
 
     @Test
     fun `AUI and LUI encode the full immediate field and sign extend their word results`(@TempDir directory: Path) {
-        val source = Files.writeString(directory.resolve("upper.s"), "aui \$9,\$10,65535\nlui \$11,0xffff\n")
+        val source = Files.writeString(directory.resolve("upper.s"), "aui $9,$10,65535\nlui $11,0xffff\n")
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(source), null, false, false)
+            val program = session.assemble(listOf(source), null, extended = false, warnings = false)
             assertEquals(listOf(0x3d49ffff, 0x3c0bffff), program.machineList!!.map(ProgramStatement::binaryStatement))
             assertEquals("lui", session.instructionSet.findByBinaryCode(0x3c0bffff)?.name)
             session.editIntegerRegister(10, 0x8000)

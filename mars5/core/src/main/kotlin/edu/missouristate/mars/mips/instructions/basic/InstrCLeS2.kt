@@ -4,8 +4,8 @@ import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
 
 open class InstrCLeS2 : BasicInstruction(
-    "c.le.s 1,\$f0,\$f1",
-    "Compare less or equal single precision : If \$f0 is less than or equal to \$f1, set"
+    $$"c.le.s 1,$f0,$f1",
+    $$"Compare less or equal single precision : If $f0 is less than or equal to $f1, set"
         + " Coprocessor 1 condition flag specified by immediate to true else set it to false",
     BasicInstructionFormat.R_FORMAT,
     "010001 10000 ttttt sssss fff 00 111110",

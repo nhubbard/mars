@@ -4,7 +4,7 @@ import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat.I_FORMAT
 
 class InstrJic : BasicInstruction(
-    "jic \$t2,-100",
+    $$"jic $t2,-100",
     "Jump immediately to a register address plus a signed offset",
     I_FORMAT,
     "110110 00000 fffff ssssssssssssssss",

@@ -72,7 +72,7 @@ internal enum class RegisterFields(val mask: String, val isPair: Boolean = false
     ORDERED_PAIR("fffff sssss tttttttttttttttt", true),
     OVERFLOW_PAIR("fffff sssss tttttttttttttttt", true);
 
-    val example: String get() = if (isPair) "\$t1,\$t2" else "\$t1"
+    val example: String get() = if (isPair) $$"$t1,$t2" else $$"$t1"
 }
 
 internal enum class CompactComparison(

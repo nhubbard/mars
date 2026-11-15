@@ -4,8 +4,8 @@ import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
 
 open class InstrBltz : BasicInstruction(
-    "bltz \$t1,label",
-    "Branch if less than zero : Branch to statement at label's address if \$t1 is less than"
+    $$"bltz $t1,label",
+    $$"Branch if less than zero : Branch to statement at label's address if $t1 is less than"
         + " zero",
     BasicInstructionFormat.I_BRANCH_FORMAT,
     "000001 fffff 00000 ssssssssssssssss",

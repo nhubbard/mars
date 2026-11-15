@@ -171,7 +171,7 @@ class AssemblyCase internal constructor(
     }
 
     private fun vector(register: String): VectorRegister {
-        val name = "\$${register.removePrefix("\$")}"
+        val name = "$${register.removePrefix("$")}"
         val number = RegisterNames.vector(name) ?: throw CaseFailure("Unknown vector register $register")
         return machine.coprocessor1.getVectorNoNotify(number)
     }

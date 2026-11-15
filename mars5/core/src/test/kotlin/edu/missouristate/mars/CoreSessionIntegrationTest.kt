@@ -41,14 +41,14 @@ internal class CoreSessionIntegrationTest {
                 val a = directory.resolve("a.s")
                 val b = directory.resolve("b.s")
                 val template: String =
-                    """
+                    $$"""
                     .data
                     value: .word 0
                     .text
-                    li ${'$'}t0,%d
-                    la ${'$'}t1,value
-                    sw ${'$'}t0,0(${'$'}t1)
-                    li ${'$'}v0,10
+                    li $t0,%d
+                    la $t1,value
+                    sw $t0,0($t1)
+                    li $v0,10
                     syscall
 
                     """

@@ -6,7 +6,7 @@ import edu.missouristate.mars.mips.instructions.BasicInstructionFormat.R_FORMAT
 import edu.missouristate.mars.simulator.Exceptions.TRAP_EXCEPTION
 
 class InstrMod : BasicInstruction(
-    "mod \$t1,\$t2,\$t3",
+    $$"mod $t1,$t2,$t3",
     "Store the remainder of a signed division",
     R_FORMAT,
     "000000 sssss ttttt fffff 00011 011010",

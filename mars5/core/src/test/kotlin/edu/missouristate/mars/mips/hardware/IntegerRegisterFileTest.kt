@@ -37,15 +37,15 @@ internal class IntegerRegisterFileTest {
     @Test
     fun namesAndNumbersReferToTheSameRegister() {
         val registers = IntegerRegisterFile()
-        Assertions.assertThat(registers.getNumber("\$t0")).isEqualTo(8)
+        Assertions.assertThat(registers.getNumber($$"$t0")).isEqualTo(8)
         Assertions.assertThat<Register?>(registers.getUserRegister("$8"))
-            .isSameAs(registers.getUserRegister("\$t0"))
-        registers.updateRegister("\$t0", 42)
+            .isSameAs(registers.getUserRegister($$"$t0"))
+        registers.updateRegister($$"$t0", 42)
         Assertions.assertThat(registers.getValue(8)).isEqualTo(42)
         Assertions.assertThat(registers.updateRegister(8, 99)).isEqualTo(42)
         Assertions.assertThat(registers.getValue(8)).isEqualTo(99)
-        Assertions.assertThat(registers.getNumber("\$missing")).isEqualTo(-1)
-        Assertions.assertThat<Register?>(registers.getUserRegister("\$missing")).isNull()
+        Assertions.assertThat(registers.getNumber($$"$missing")).isEqualTo(-1)
+        Assertions.assertThat<Register?>(registers.getUserRegister($$"$missing")).isNull()
     }
 
     @Test
@@ -86,7 +86,7 @@ internal class IntegerRegisterFileTest {
             )
         Assertions.assertThat<RegisterAccessNotice>(notices)
             .extracting<String?, RuntimeException>(RegisterAccessNotice::registerName)
-            .containsExactly("\$t0", "\$t0", "hi", "lo")
+            .containsExactly($$"$t0", $$"$t0", "hi", "lo")
         first.deleteRegistersObserver(listener)
         first.setValue(8, 99)
         Assertions.assertThat<RegisterAccessNotice>(notices).hasSize(4)

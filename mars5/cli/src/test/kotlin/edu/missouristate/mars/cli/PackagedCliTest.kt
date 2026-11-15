@@ -37,15 +37,15 @@ internal class PackagedCliTest {
         val file =
             source(
                 "flags.s",
-                """
-                move ${'$'}s0,${'$'}a1
-                lw ${'$'}a0,0(${'$'}s0)
-                li ${'$'}v0,4
+                $$"""
+                move $s0,$a1
+                lw $a0,0($s0)
+                li $v0,4
                 syscall
-                lw ${'$'}a0,4(${'$'}s0)
-                li ${'$'}v0,4
+                lw $a0,4($s0)
+                li $v0,4
                 syscall
-                li ${'$'}v0,10
+                li $v0,10
                 syscall
 
                 """
@@ -86,7 +86,7 @@ internal class PackagedCliTest {
     @ParameterizedTest
     @ValueSource(strings = ["d", "ad", "da", "a"])
     fun traceAndAssembleOnlyModesReportExpectedPhases(flag: String) {
-        val file = source("trace.s", "li \$a0,42\nli \$v0,1\nsyscall\nli \$v0,10\nsyscall\n")
+        val file = source("trace.s", $$"li $a0,42\nli $v0,1\nsyscall\nli $v0,10\nsyscall\n")
         val arguments = listOf("nc", flag, "me", file.toString())
         val standalone = launch("", arguments)
         assertEquals(0, standalone.status)
@@ -137,11 +137,11 @@ internal class PackagedCliTest {
         val entry =
             source(
                 "wide.s",
-                """
-                daddiu ${'$'}t0, ${'$'}zero, 1
-                dsll32 ${'$'}t0, ${'$'}t0, 0
-                daddiu ${'$'}t0, ${'$'}t0, -1
-                li ${'$'}v0, 10
+                $$"""
+                daddiu $t0, $zero, 1
+                dsll32 $t0, $t0, 0
+                daddiu $t0, $t0, -1
+                li $v0, 10
                 syscall
 
                 """
@@ -149,7 +149,7 @@ internal class PackagedCliTest {
             )
         val wide = launch("--register", "t0", entry.toString())
         assertEquals(0, wide.status, wide.err)
-        assertTrue(wide.out.contains("\$t0\t0x00000000ffffffff"), wide.out)
+        assertTrue(wide.out.contains($$"$t0\t0x00000000ffffffff"), wide.out)
     }
 
     @Test
@@ -157,15 +157,15 @@ internal class PackagedCliTest {
         val entry =
             source(
                 "high-address.s",
-                """
+                $$"""
                 .data 0x100000000
                 pointer: .dword main
                 .text 0x100400000
                 .globl main
                 main:
-                    dla ${'$'}a0,pointer
-                    ld ${'$'}t0,0(${'$'}a0)
-                    li ${'$'}v0,10
+                    dla $a0,pointer
+                    ld $t0,0($a0)
+                    li $v0,10
                     syscall
 
                 """
@@ -174,7 +174,7 @@ internal class PackagedCliTest {
         val run =
             launch("--start-at-main", "--register", "t0", entry.toString())
         assertEquals(0, run.status, run.err)
-        assertTrue(run.out.contains("\$t0\t0x0000000100400000"), run.out)
+        assertTrue(run.out.contains($$"$t0\t0x0000000100400000"), run.out)
     }
 
     @Test
@@ -182,12 +182,12 @@ internal class PackagedCliTest {
         val entry =
             source(
                 "high-dump.s",
-                """
+                $$"""
                 .data 0x100000000
                 .word 0x41424344
                 .text 0x100400000
                 .globl main
-                main: addiu ${'$'}v0,${'$'}zero,10
+                main: addiu $v0,$zero,10
                 syscall
 
                 """
@@ -220,20 +220,20 @@ internal class PackagedCliTest {
         val entry =
             source(
                 "vector.s",
-                """
+                $$"""
                 .data
                 input: .word 1, 2, 3, 4
                 output: .space 16
                 .text
-                la ${'$'}t0,input
-                ld.w ${'$'}w1,0(${'$'}t0)
-                slli.w ${'$'}w1,${'$'}w1,1
-                addv.w ${'$'}w2,${'$'}w1,${'$'}w1
-                st.w ${'$'}w2,16(${'$'}t0)
-                lw ${'$'}a0,24(${'$'}t0)
-                li ${'$'}v0,1
+                la $t0,input
+                ld.w $w1,0($t0)
+                slli.w $w1,$w1,1
+                addv.w $w2,$w1,$w1
+                st.w $w2,16($t0)
+                lw $a0,24($t0)
+                li $v0,1
                 syscall
-                li ${'$'}v0,10
+                li $v0,10
                 syscall
 
                 """
@@ -249,11 +249,11 @@ internal class PackagedCliTest {
         val entry =
             source(
                 "wide-fpu.s",
-                """
-                lui ${'$'}t0, 0x4004
-                dsll32 ${'$'}t0, ${'$'}t0, 0
-                dmtc1 ${'$'}t0, ${'$'}f31
-                li ${'$'}v0, 10
+                $$"""
+                lui $t0, 0x4004
+                dsll32 $t0, $t0, 0
+                dmtc1 $t0, $f31
+                li $v0, 10
                 syscall
 
                 """
@@ -261,7 +261,7 @@ internal class PackagedCliTest {
             )
         val wide = launch("--register", "f31", entry.toString())
         assertEquals(0, wide.status, wide.err)
-        assertTrue(wide.out.contains("\$f31\t0x00000000\t0x4004000000000000"), wide.out)
+        assertTrue(wide.out.contains($$"$f31\t0x00000000\t0x4004000000000000"), wide.out)
     }
 
     @Test
@@ -269,13 +269,13 @@ internal class PackagedCliTest {
         val script =
             source(
                 "assignment64.kts",
-                """
+                $$"""
                 case("wide result") {
                     setRegister("a0", 0x100000000L)
                     runUntil("done")
                     expectRegister("v0", 0x100000003L)
                     expectVector("w1", low = -1L, high = 0L)
-                    expectVectorLane("${'$'}{'${'$'}'}w1", lane = 7, width = 8, expected = 255)
+                    expectVectorLane("${'$'}w1", lane = 7, width = 8, expected = 255)
                     expectVectorLane("w1", lane = 8, width = 8, expected = 0)
                     expectVectorLane("w1", lane = 0, width = 64, expected = -1L)
                     runToExit()
@@ -287,12 +287,12 @@ internal class PackagedCliTest {
         val entry =
             source(
                 "wide.s",
-                """
-                daddiu ${'$'}v0, ${'$'}a0, 3
-                ldi.d ${'$'}w1,0
-                daddiu ${'$'}t0,${'$'}zero,-1
-                dmtc1 ${'$'}t0,${'$'}f1
-                done: li ${'$'}v0, 10
+                $$"""
+                daddiu $v0, $a0, 3
+                ldi.d $w1,0
+                daddiu $t0,$zero,-1
+                dmtc1 $t0,$f1
+                done: li $v0, 10
                 syscall
 
                 """
@@ -321,17 +321,17 @@ internal class PackagedCliTest {
         val entry =
             source(
                 "high-string.mars",
-                """
+                $$"""
                 .data 0x100000000
                 buffer: .space 8
                 .text
-                    dla ${'$'}a0,buffer
-                    addiu ${'$'}a1,${'$'}zero,8
-                    addiu ${'$'}v0,${'$'}zero,8
+                    dla $a0,buffer
+                    addiu $a1,$zero,8
+                    addiu $v0,$zero,8
                     syscall
-                    addiu ${'$'}v0,${'$'}zero,4
+                    addiu $v0,$zero,4
                     syscall
-                    addiu ${'$'}v0,${'$'}zero,10
+                    addiu $v0,$zero,10
                     syscall
 
                 """
@@ -369,16 +369,16 @@ internal class PackagedCliTest {
         val entry =
             source(
                 "high-routine.mars",
-                """
+                $$"""
                 .data 0x100000000
                 cell: .word 0, 0
                 .text 0x100400000
                 routine:
-                    lw ${'$'}t0,0(${'$'}a0)
-                    addiu ${'$'}t0,${'$'}t0,1
+                    lw $t0,0($a0)
+                    addiu $t0,$t0,1
                 store:
-                    sw ${'$'}t0,0(${'$'}a0)
-                    addiu ${'$'}v0,${'$'}zero,10
+                    sw $t0,0($a0)
+                    addiu $v0,$zero,10
                     syscall
 
                 """
@@ -435,24 +435,24 @@ internal class PackagedCliTest {
         val entry =
             source(
                 "grading.s",
-                """
+                $$"""
                 .include "storage.inc"
                 .text
-                double: lw ${'$'}t0, cell
-                combine: addu ${'$'}a0, ${'$'}t0, ${'$'}t0
-                li ${'$'}v0, 1
+                double: lw $t0, cell
+                combine: addu $a0, $t0, $t0
+                li $v0, 1
                 syscall
-                li ${'$'}v0, 10
+                li $v0, 10
                 syscall
                 loop: bc loop
-                file_access: li ${'$'}v0, 13
+                file_access: li $v0, 13
                 syscall
-                read_input: la ${'$'}a0, buffer
-                li ${'$'}a1, 4
-                li ${'$'}v0, 8
+                read_input: la $a0, buffer
+                li $a1, 4
+                li $v0, 8
                 syscall
-                li ${'$'}a0, 3
-                li ${'$'}v0, 17
+                li $a0, 3
+                li $v0, 17
                 syscall
 
                 """
@@ -506,12 +506,12 @@ internal class PackagedCliTest {
         val largeOutput =
             source(
                 "output.s",
-                """
+                $$"""
                 .data
                 message: .asciiz "abcdefghijklmnopqrstuvwxyz0123456789"
                 .text
-                la ${'$'}a0, message
-                li ${'$'}v0, 4
+                la $a0, message
+                li $v0, 4
                 loop: syscall
                 bc loop
 
@@ -528,21 +528,21 @@ internal class PackagedCliTest {
         val file =
             source(
                 "unicode.mars",
-                """
+                $$"""
                 .data
                 greeting: .asciiz "鯉: "
                 buffer: .byte 99, 99, 99, 99, 99, 99
                 .text
-                la ${'$'}a0, greeting
-                li ${'$'}v0, 4
+                la $a0, greeting
+                li $v0, 4
                 syscall
-                la ${'$'}a0, buffer
-                li ${'$'}a1, 6
-                li ${'$'}v0, 8
+                la $a0, buffer
+                li $a1, 6
+                li $v0, 8
                 syscall
-                li ${'$'}v0, 4
+                li $v0, 4
                 syscall
-                li ${'$'}v0, 10
+                li $v0, 10
                 syscall
 
                 """
@@ -558,14 +558,14 @@ internal class PackagedCliTest {
         val file =
             source(
                 "legacy.mars",
-                """
+                $$"""
                 .data
                 greeting: .asciiz "é"
                 .text
-                la ${'$'}a0, greeting
-                li ${'$'}v0, 4
+                la $a0, greeting
+                li $v0, 4
                 syscall
-                li ${'$'}v0, 10
+                li $v0, 10
                 syscall
 
                 """
@@ -579,24 +579,24 @@ internal class PackagedCliTest {
         val main =
             source(
                 "z-entry.s",
-                """
-                move ${'$'}s0,${'$'}a0
-                lw ${'$'}a0,0(${'$'}a1)
+                $$"""
+                move $s0,$a0
+                lw $a0,0($a1)
                 balc print
-                li ${'$'}v0,5
+                li $v0,5
                 syscall
-                move ${'$'}a0,${'$'}v0
+                move $a0,$v0
                 balc number
-                move ${'$'}a0,${'$'}s0
-                li ${'$'}v0,17
+                move $a0,$s0
+                li $v0,17
                 syscall
 
                 """
                     .trimIndent(),
             )
-        source("a-library.asm", ".text\n.globl print\nprint: li \$v0,4\nsyscall\njrc \$ra\n")
+        source("a-library.asm", $$".text\n.globl print\nprint: li $v0,4\nsyscall\njrc $ra\n")
         val extra =
-            source("nested/number.s", ".text\n.globl number\nnumber: li \$v0,1\nsyscall\njrc \$ra\n")
+            source("nested/number.s", $$".text\n.globl number\nnumber: li $v0,1\nsyscall\njrc $ra\n")
         source("ignored.txt", "not assembly\n")
         assertProgramResult(
             listOf("nc", "p", main.toString(), extra.toString(), "pa", "value=", "d"),
@@ -611,12 +611,12 @@ internal class PackagedCliTest {
         val main =
             source(
                 "main.mars",
-                """
+                $$"""
                 balc increment
-                move ${'$'}a0,${'$'}t0
-                li ${'$'}v0,1
+                move $a0,$t0
+                li $v0,1
                 syscall
-                li ${'$'}v0,10
+                li $v0,10
                 syscall
 
                 """
@@ -625,12 +625,12 @@ internal class PackagedCliTest {
         source("values.inc", ".eqv BASE 41\n")
         source(
             "math.MARS",
-            """
+            $$"""
             .include "values.inc"
             .globl increment
-            increment: li ${'$'}t0,BASE
-            addiu ${'$'}t0,${'$'}t0,1
-            jrc ${'$'}ra
+            increment: li $t0,BASE
+            addiu $t0,$t0,1
+            jrc $ra
 
             """
                 .trimIndent(),
@@ -644,12 +644,12 @@ internal class PackagedCliTest {
         val entry =
             source(
                 "entry",
-                """
+                $$"""
                 balc helper
-                move ${'$'}a0,${'$'}t0
-                li ${'$'}v0,1
+                move $a0,$t0
+                li $v0,1
                 syscall
-                li ${'$'}v0,10
+                li $v0,10
                 syscall
 
                 """
@@ -658,10 +658,10 @@ internal class PackagedCliTest {
         val helper =
             source(
                 ".asm",
-                """
+                $$"""
                 .globl helper
-                helper: li ${'$'}t0,42
-                jrc ${'$'}ra
+                helper: li $t0,42
+                jrc $ra
 
                 """
                     .trimIndent(),
@@ -674,13 +674,13 @@ internal class PackagedCliTest {
         val entry =
             source(
                 "entry",
-                """
+                $$"""
                 balc helper
                 balc sibling
-                addu ${'$'}a0,${'$'}t0,${'$'}t1
-                li ${'$'}v0,1
+                addu $a0,$t0,$t1
+                li $v0,1
                 syscall
-                li ${'$'}v0,10
+                li $v0,10
                 syscall
 
                 """
@@ -689,10 +689,10 @@ internal class PackagedCliTest {
         val helper =
             source(
                 ".s",
-                """
+                $$"""
                 .globl helper
-                helper: li ${'$'}t0,42
-                jrc ${'$'}ra
+                helper: li $t0,42
+                jrc $ra
 
                 """
                     .trimIndent(),
@@ -700,10 +700,10 @@ internal class PackagedCliTest {
         val sibling =
             source(
                 ".local.S",
-                """
+                $$"""
                 .globl sibling
-                sibling: li ${'$'}t1,7
-                jrc ${'$'}ra
+                sibling: li $t1,7
+                jrc $ra
 
                 """
                     .trimIndent(),
@@ -723,18 +723,18 @@ internal class PackagedCliTest {
         val file =
             source(
                 "entry.s",
-                """
+                $$"""
                 .text
                 .globl main
-                addiu ${'$'}a0,${'$'}zero,11
-                addiu ${'$'}v0,${'$'}zero,17
+                addiu $a0,$zero,11
+                addiu $v0,$zero,17
                 syscall
                 main:
-                addiu ${'$'}a0,${'$'}zero,19
-                beq ${'$'}zero,${'$'}zero,exit
-                addiu ${'$'}a0,${'$'}a0,1
+                addiu $a0,$zero,19
+                beq $zero,$zero,exit
+                addiu $a0,$a0,1
                 exit:
-                addiu ${'$'}v0,${'$'}zero,17
+                addiu $v0,$zero,17
                 syscall
 
                 """
@@ -750,7 +750,7 @@ internal class PackagedCliTest {
         assertDiagnostics(listOf("a", warning.toString()), 0, "possibly truncated")
         assertDiagnostics(listOf("a", "we", "ae19", warning.toString()), 19, "possibly truncated")
 
-        val pseudo = source("pseudo.s", "li \$v0,999\nsyscall\n")
+        val pseudo = source("pseudo.s", $$"li $v0,999\nsyscall\n")
         assertDiagnostics(listOf("np", "ae19", pseudo.toString()), 19, "li")
         assertDiagnostics(listOf("se23", pseudo.toString()), 23, "syscall")
         assertDiagnostics(listOf("np", "ae0", pseudo.toString()), 0, "li")
@@ -760,7 +760,7 @@ internal class PackagedCliTest {
     @Test
     fun reportsDefaultFailureStatuses() {
         val assembly: Path? = source("assembly-error.s", "bogus\n")
-        val simulation = source("simulation-error.s", "li \$v0,999\nsyscall\n")
+        val simulation = source("simulation-error.s", $$"li $v0,999\nsyscall\n")
         for (file in listOf(assembly, simulation)) {
             val result = launch("nc", "me", file.toString())
             assertEquals(1, result.status)
@@ -770,7 +770,7 @@ internal class PackagedCliTest {
             listOf(
                 listOf("--unknown-option", "nc", "me"),
                 listOf("nc", "me", "mc"),
-                listOf("nc", "me", "\$notARegister", simulation.toString()),
+                listOf("nc", "me", $$"$notARegister", simulation.toString()),
                 listOf("nc", "me"),
             )) {
             val failure = launch("", arguments)
@@ -784,12 +784,12 @@ internal class PackagedCliTest {
         val file =
             source(
                 "patch.s",
-                """
-                la ${'$'}t0,patch
-                li ${'$'}t1,0x2404002a
-                sw ${'$'}t1,0(${'$'}t0)
+                $$"""
+                la $t0,patch
+                li $t1,0x2404002a
+                sw $t1,0($t0)
                 patch: nop
-                li ${'$'}v0,17
+                li $v0,17
                 syscall
 
                 """
@@ -805,17 +805,17 @@ internal class PackagedCliTest {
         val file =
             source(
                 "reports.s",
-                """
+                $$"""
                 .data
                 .word 1,2,3,4,5
                 .text
-                li ${'$'}t0,0x41424344
-                mtc1 ${'$'}t0,${'$'}f0
-                mtc1 ${'$'}t0,${'$'}f1
-                li ${'$'}a0,7
-                li ${'$'}v0,1
+                li $t0,0x41424344
+                mtc1 $t0,$f0
+                mtc1 $t0,$f1
+                li $a0,7
+                li $v0,1
                 syscall
-                li ${'$'}v0,10
+                li $v0,10
                 syscall
 
                 """
@@ -827,7 +827,7 @@ internal class PackagedCliTest {
             listOf(
                 "$8",
                 "f0",
-                "\$f1",
+                $$"$f1",
                 "0x10010000-0x10010010",
                 "0x00400000-0x00400000",
                 file.toString(),
@@ -840,11 +840,11 @@ internal class PackagedCliTest {
         val report: String = if (reportsToError) standalone.err else standalone.out
         if (options.contains(" b")) {
             assertFalse(report.contains("Mem["))
-            assertFalse(report.contains("\$f0"))
+            assertFalse(report.contains($$"$f0"))
             assertTrue(report.lines().any { it.trimEnd() == "1\t2\t3\t4" })
         } else {
             assertTrue(report.contains("Mem["))
-            assertTrue(report.contains("\$f0"))
+            assertTrue(report.contains($$"$f0"))
         }
         if (reportsToError) {
             assertEquals("7", standalone.out)
@@ -859,13 +859,13 @@ internal class PackagedCliTest {
         val file =
             source(
                 "dump.s",
-                """
+                $$"""
                 .data
                 word: .word 11,22
                 .text
-                li ${'$'}t0,42
-                sw ${'$'}t0,word
-                li ${'$'}v0,10
+                li $t0,42
+                sw $t0,word
+                li $v0,10
                 syscall
 
                 """
@@ -921,11 +921,11 @@ internal class PackagedCliTest {
         val file =
             source(
                 "kernel-range.s",
-                """
+                $$"""
                 .ktext 0x80000000
-                addiu ${'$'}k0,${'$'}zero,7
+                addiu $k0,$zero,7
                 .text
-                li ${'$'}v0,10
+                li $v0,10
                 syscall
 
                 """
@@ -956,11 +956,11 @@ internal class PackagedCliTest {
         val file =
             source(
                 "partial-data.s",
-                """
+                $$"""
                 .data
                 .word 11
                 .text
-                addiu ${'$'}t0,${'$'}zero
+                addiu $t0,$zero
 
                 """
                     .trimIndent(),
@@ -995,13 +995,13 @@ internal class PackagedCliTest {
         val file =
             source(
                 "simulation-dump.s",
-                """
+                $$"""
                 .data
                 word: .word 11
                 .text
-                li ${'$'}t0,42
-                sw ${'$'}t0,word
-                li ${'$'}v0,999
+                li $t0,42
+                sw $t0,word
+                li $v0,999
                 syscall
 
                 """
@@ -1035,7 +1035,7 @@ internal class PackagedCliTest {
             assertTrue(standalone.err.contains("step limit"))
         }
 
-        val exitsAtLimit = source("exits-at-limit.s", "li \$a0,17\nli \$v0,17\nsyscall\n")
+        val exitsAtLimit = source("exits-at-limit.s", $$"li $a0,17\nli $v0,17\nsyscall\n")
         assertProgramResult(listOf("nc", "3", exitsAtLimit.toString()), "", 17, "")
     }
 

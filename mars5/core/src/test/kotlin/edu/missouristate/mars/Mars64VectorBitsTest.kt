@@ -28,7 +28,7 @@ class Mars64VectorBitsTest {
         })
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(file), null, false, false)
+            val program = session.assemble(listOf(file), null, extended = false, warnings = false)
             val fpu = session.coprocessor1
             val sign = 1L shl (bits - 1)
             val mask = -1L ushr (64 - bits)
@@ -55,7 +55,7 @@ class Mars64VectorBitsTest {
                 assertEquals(VectorRegister(fill(low[index]), fill(immediateHigh[index])), fpu.readVector(31), name)
             }
             Files.writeString(file, $$"bseti.$$suffix $w31,$w3,$$bits")
-            assertThrows(ProcessingException::class.java) { session.assemble(listOf(file), null, false, false) }
+            assertThrows(ProcessingException::class.java) { session.assemble(listOf(file), null, extended = false, warnings = false) }
         }
     }
 
@@ -79,7 +79,7 @@ class Mars64VectorBitsTest {
         })
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(file), null, false, false)
+            val program = session.assemble(listOf(file), null, extended = false, warnings = false)
             val fpu = session.coprocessor1
             fun fill(byte: Int) = byte.toLong() * 0x0101010101010101L
             fpu.updateVector(3, VectorRegister(fill(0xcc), fill(0x33)))

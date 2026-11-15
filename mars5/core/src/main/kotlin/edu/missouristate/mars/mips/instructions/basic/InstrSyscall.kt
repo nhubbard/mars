@@ -18,7 +18,7 @@ private val dispatchSyscall = SimulationCode { statement, context ->
 
 open class InstrSyscall : BasicInstruction(
     "syscall",
-    "Issue a system call : Execute the system call specified by value in \$v0",
+    $$"Issue a system call : Execute the system call specified by value in $v0",
     BasicInstructionFormat.R_FORMAT,
     "000000 ccccc ccccc ccccc ccccc 001100",
     dispatchSyscall,
@@ -26,7 +26,7 @@ open class InstrSyscall : BasicInstruction(
 
 internal class InstrCodedSyscall : BasicInstruction(
     "syscall 1048575",
-    "Issue a system call with a 20-bit software parameter. The service number is in \$v0.",
+    $$"Issue a system call with a 20-bit software parameter. The service number is in $v0.",
     BasicInstructionFormat.R_FORMAT,
     "000000 ffffffffffffffffffff 001100",
     dispatchSyscall,

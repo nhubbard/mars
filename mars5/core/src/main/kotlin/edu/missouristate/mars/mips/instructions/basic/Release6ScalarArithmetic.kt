@@ -23,7 +23,7 @@ internal fun release6ScalarArithmetic(): List<BasicInstruction> = buildList {
         for ((format, suffix) in "sd".withIndex()) {
             val precision = FloatingPrecision(32 shl format)
             add(BasicInstruction(
-                "$mnemonic.$suffix \$f2,\$f4,\$f6", "Perform floating-point $mnemonic using FCSR rounding and exceptions",
+                $$"$$mnemonic.$$suffix $f2,$f4,$f6", "Perform floating-point $mnemonic using FCSR rounding and exceptions",
                 R_FORMAT, "010001 1000$format ttttt sssss fffff $function",
             ) { statement, context ->
                 val (destination, left, right) = statement.operands
@@ -46,7 +46,7 @@ internal fun release6ScalarRoots(): List<BasicInstruction> = buildList {
         val precision = FloatingPrecision(32 shl format)
         for (operation in ScalarRoot.entries) {
             add(BasicInstruction(
-                "${operation.mnemonic}.$suffix \$f2,\$f4", operation.description,
+                $$"$${operation.mnemonic}.$$suffix $f2,$f4", operation.description,
                 R_FORMAT, "010001 1000$format 00000 sssss fffff ${operation.function}",
             ) { statement, context ->
                 val (destination, source) = statement.operands

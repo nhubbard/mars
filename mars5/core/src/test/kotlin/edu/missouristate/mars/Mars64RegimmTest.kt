@@ -29,7 +29,7 @@ class Mars64RegimmTest {
             for (word in listOf(0x05100000, 0x05110000)) assertNotNull(session.instructionSet.findByBinaryCode(word))
             session.selectTarget(MarsTarget.MARS64)
             for (word in listOf(0x05100000, 0x05110000)) assertNull(session.instructionSet.findByBinaryCode(word))
-            val program = session.assemble(listOf(file), null, false, false)
+            val program = session.assemble(listOf(file), null, extended = false, warnings = false)
             val statements = program.machineList!!
             val address = statements[0].address
             val link = statements[3].address
@@ -61,7 +61,7 @@ class Mars64RegimmTest {
             val binary = 0x0417ffff
             assertNull(session.instructionSet.findByBinaryCode(binary))
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(file), null, false, false)
+            val program = session.assemble(listOf(file), null, extended = false, warnings = false)
             val statement = program.machineList!!.single()
             assertEquals(binary, statement.binaryStatement)
             assertEquals(65535, ProgramStatement(binary, statement.address, session.instructionSet).operands[0])

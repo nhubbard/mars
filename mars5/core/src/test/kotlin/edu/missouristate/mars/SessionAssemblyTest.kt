@@ -114,15 +114,15 @@ internal class SessionAssemblyTest {
         val file =
             source(
                 "image.s",
-                """
+                $$"""
         .macro increment
-          addiu ${'$'}t0, ${'$'}t0, 1
+          addiu $t0, $t0, 1
         .end_macro
         .text
           nop
 
         """
-                    .trimIndent() + program(42, false).replace("addiu \$t0, \$t0, 1", "increment"),
+                    .trimIndent() + program(42, false).replace($$"addiu $t0, $t0, 1", "increment"),
             )
         val neverCancelled = Runnable {}
         val image: AssemblyImage
@@ -257,14 +257,14 @@ internal class SessionAssemblyTest {
             val stack =
                 Objects.requireNonNull<Register?>(
                         session.registerFile.getUserRegister(
-                            "\$sp",
+                            $$"$sp",
                         ),
                     )!!
                     .valueNoNotify
             val argv =
                 Objects.requireNonNull<Register?>(
                         session.registerFile.getUserRegister(
-                            "\$a1",
+                            $$"$a1",
                         ),
                     )!!
                     .valueNoNotify
@@ -301,7 +301,7 @@ internal class SessionAssemblyTest {
             Assertions.assertThat(
                     Objects.requireNonNull<Register?>(
                             session.registerFile.getUserRegister(
-                                "\$sp",
+                                $$"$sp",
                             ),
                         )!!
                         .valueNoNotify,
@@ -310,7 +310,7 @@ internal class SessionAssemblyTest {
             Assertions.assertThat(
                     Objects.requireNonNull<Register?>(
                             session.registerFile.getUserRegister(
-                                "\$a0",
+                                $$"$a0",
                             ),
                         )!!
                         .valueNoNotify,
@@ -383,12 +383,12 @@ internal class SessionAssemblyTest {
         val handler =
             source(
                 "handler.s",
-                """
+                $$"""
                 .ktext 0x80000180
-                li ${'$'}a0, 42
-                li ${'$'}v0, 1
+                li $a0, 42
+                li $v0, 1
                 syscall
-                li ${'$'}v0, 10
+                li $v0, 10
                 syscall
 
                 """
@@ -397,7 +397,7 @@ internal class SessionAssemblyTest {
         val lead = source("lead.s", "break\n")
         val sibling = source("sibling.s", "nop\n")
         session("Default").use { session ->
-            val program: MIPSprogram = session.assemble(listOf(lead, sibling), handler, true, false)
+            val program: MIPSprogram = session.assemble(listOf(lead, sibling), handler, extended = true, warnings = false)
             Assertions.assertThat<Int?>(
                     program.sourceMap().breakpoints().get(InstructionSourceMap.Location(lead, 1)),
                 )
@@ -429,19 +429,19 @@ internal class SessionAssemblyTest {
             val lead =
                 source(
                     "lead.s",
-                    """
+                    $$"""
                     .data
                     .globl ptr
                     ptr: .word target
                     .text
                     .globl main
                     main:
-                      la ${'$'}t0, ptr
-                      lw ${'$'}t1, 0(${'$'}t0)
-                      lw ${'$'}a0, 0(${'$'}t1)
-                      li ${'$'}v0, 1
+                      la $t0, ptr
+                      lw $t1, 0($t0)
+                      lw $a0, 0($t1)
+                      li $v0, 1
                       syscall
-                      li ${'$'}v0, 10
+                      li $v0, 10
                       syscall
 
                     """
@@ -522,15 +522,15 @@ internal class SessionAssemblyTest {
         val main =
             source(
                 "includes.s",
-                """
+                $$"""
                 .include "defs/outer.s"
                 .text
                 .globl main
                 main:
-                  set_value (${'$'}a0)
-                  li ${'$'}v0, 1
+                  set_value ($a0)
+                  li $v0, 1
                   syscall
-                  li ${'$'}v0, 10
+                  li $v0, 10
                   syscall
 
                 """
@@ -552,7 +552,7 @@ internal class SessionAssemblyTest {
             encodedSource(
                 marker,
                 charset,
-                "\r\n.include \"pièce.s\"\r\n.text\r\nentrée: addiu \$t0, \$zero, LIMIT",
+                $$"\r\n.include \"pièce.s\"\r\n.text\r\nentrée: addiu $t0, $zero, LIMIT",
             ),
         )
         Files.write(
@@ -602,12 +602,12 @@ internal class SessionAssemblyTest {
         val texts = HashMap<Path, String>()
         texts.put(
             main,
-            """
+            $$"""
             .include "./outer.s"
             .text
             main:
-              emit (${'$'}a0)
-              li ${'$'}v0, 1
+              emit ($a0)
+              li $v0, 1
               syscall
               jal finish
               nop
@@ -615,8 +615,8 @@ internal class SessionAssemblyTest {
             """
                 .trimIndent(),
         )
-        texts.put(library, ".text\n.globl finish\nfinish: li \$v0, 10\nsyscall\n")
-        texts.put(handler, ".text\naddiu \$s0, \$zero, 17\n")
+        texts.put(library, $$".text\n.globl finish\nfinish: li $v0, 10\nsyscall\n")
+        texts.put(handler, $$".text\naddiu $s0, $zero, 17\n")
         texts.put(outer, ".include \"" + inner + "\"\n")
         texts.put(
             directory.resolve("unused/../inner.s"),
@@ -635,7 +635,7 @@ internal class SessionAssemblyTest {
             .isInstanceOf(UnsupportedOperationException::class.java)
 
         session("Default").use { session ->
-            val result = SessionAssembler(session).assembleSnapshot(snapshot, handler, true, false)
+            val result = SessionAssembler(session).assembleSnapshot(snapshot, handler, extendedAssemblerEnabled = true, warningsAreErrors = false)
             Assertions.assertThat<AssemblyError>(result.errors()).isEmpty()
             Assertions.assertThat(result.succeeded()).isTrue()
             val program = Objects.requireNonNull<MIPSprogram>(session.program)
@@ -688,13 +688,13 @@ internal class SessionAssemblyTest {
                     outer,
                     ".include \"definitions.s\"\n",
                     definitions,
-                    """
+                    $$"""
                     .macro inner (%reg)
                       li %reg, 0x12345678
                       nop
                     .end_macro
                     .macro outer
-                      inner (${'$'}t0)
+                      inner ($t0)
                       nop
                     .end_macro
 
@@ -703,11 +703,11 @@ internal class SessionAssemblyTest {
                     calls,
                     "# A call in an included file.\nouter\n",
                     plain,
-                    "addiu \$t0, \$zero, 1\n",
+                    $$"addiu $t0, $zero, 1\n",
                 ),
             )
         session("Default").use { session ->
-            val result = SessionAssembler(session).assembleSnapshot(snapshot, null, true, false)
+            val result = SessionAssembler(session).assembleSnapshot(snapshot, null, extendedAssemblerEnabled = true, warningsAreErrors = false)
             Assertions.assertThat<AssemblyError>(result.errors()).isEmpty()
             val assembled = Objects.requireNonNull<Program>(result.program())
             val map = assembled.sourceMap()
@@ -898,7 +898,7 @@ internal class SessionAssemblyTest {
                 ),
             )
         session("Default").use { session ->
-            val result = SessionAssembler(session).assembleSnapshot(sources, null, true, false)
+            val result = SessionAssembler(session).assembleSnapshot(sources, null, extendedAssemblerEnabled = true, warningsAreErrors = false)
             Assertions.assertThat<AssemblyError>(result.errors()).isEmpty()
             val map = Objects.requireNonNull<Program?>(result.program())!!.symbolMap()
             val text: Int = session.memory.textBaseAddress
@@ -1044,12 +1044,12 @@ internal class SessionAssemblyTest {
     @Test
     fun assemblyImageComparisonSeparatesMachineChangesFromSourceNames() {
         val file = directory.resolve("compare.asm")
-        val source = ".data\noriginal: .word 42\n.text\naddiu \$a0, \$zero, 7\n"
+        val source = $$".data\noriginal: .word 42\n.text\naddiu $a0, $zero, 7\n"
         session("Default").use { session ->
             val assembler = SessionAssembler(session)
             val first = AssemblySourceSnapshot(listOf(file), immutableMapOf(file, source))
             Assertions.assertThat<AssemblyError>(
-                    assembler.assembleSnapshot(first, null, true, false).errors(),
+                    assembler.assembleSnapshot(first, null, extendedAssemblerEnabled = true, warningsAreErrors = false).errors(),
                 )
                 .isEmpty()
             val image: AssemblyImage = session.captureAssemblyImage(Runnable {})
@@ -1062,7 +1062,7 @@ internal class SessionAssemblyTest {
                 )) {
                 val snapshot = AssemblySourceSnapshot(listOf(file), immutableMapOf(file, changed))
                 Assertions.assertThat<AssemblyError>(
-                        assembler.assembleSnapshot(snapshot, null, true, false).errors(),
+                        assembler.assembleSnapshot(snapshot, null, extendedAssemblerEnabled = true, warningsAreErrors = false).errors(),
                     )
                     .isEmpty()
                 val next: AssemblyImage = session.captureAssemblyImage(Runnable {})
@@ -1118,7 +1118,7 @@ internal class SessionAssemblyTest {
                 ),
             )
         session("Default").use { session ->
-            val result = SessionAssembler(session).assembleSnapshot(sources, null, true, false)
+            val result = SessionAssembler(session).assembleSnapshot(sources, null, extendedAssemblerEnabled = true, warningsAreErrors = false)
             Assertions.assertThat<AssemblyError>(result.errors()).isEmpty()
             Assertions.assertThat(
                     Objects.requireNonNull<Program?>(result.program())!!.symbolMap().macros(),
@@ -1301,7 +1301,7 @@ internal class SessionAssemblyTest {
 
     @Test
     fun aRuntimeTextWriteHasNoSourceOriginInLiveMemory() {
-        val file = source("modified.s", ".text\naddiu \$t0, \$zero, 1\n")
+        val file = source("modified.s", $$".text\naddiu $t0, $zero, 1\n")
         session("Default").use { session ->
             val program: MIPSprogram = session.assemble(listOf(file))
             val pc: Int = session.memory.textBaseAddress
@@ -1431,11 +1431,11 @@ internal class SessionAssemblyTest {
                     main,
                     "# comment\n" + directive + "\n",
                     part,
-                    "addiu \$t0, \$zero, 7\n",
+                    $$"addiu $t0, $zero, 7\n",
                 ),
             )
         session("Default").use { session ->
-            val result = SessionAssembler(session).assembleSnapshot(snapshot, null, true, false)
+            val result = SessionAssembler(session).assembleSnapshot(snapshot, null, extendedAssemblerEnabled = true, warningsAreErrors = false)
             Assertions.assertThat(result.succeeded()).isFalse()
             Assertions.assertThat<AssemblyError>(result.errors())
                 .hasSize(2)
@@ -1665,12 +1665,12 @@ internal class SessionAssemblyTest {
         val throughLink = directory.resolve("shortcut/../value.s")
         val entries: List<Path> = listOf(main)
         val source: String =
-            """
+            $$"""
             .include "shortcut/../value.s"
             .include "value.s"
             .text
-            addiu ${'$'}t0, ${'$'}zero, REMOTE
-            addiu ${'$'}t1, ${'$'}zero, LOCAL
+            addiu $t0, $zero, REMOTE
+            addiu $t1, $zero, LOCAL
 
             """
                 .trimIndent()
@@ -1682,7 +1682,7 @@ internal class SessionAssemblyTest {
 
         session("Default").use { session ->
             val assembler = SessionAssembler(session)
-            val result = assembler.assembleSnapshot(snapshot, null, true, false)
+            val result = assembler.assembleSnapshot(snapshot, null, extendedAssemblerEnabled = true, warningsAreErrors = false)
             Assertions.assertThat(result.succeeded()).isTrue()
             Assertions.assertThat<ProgramStatement>(
                     Objects.requireNonNull<MIPSprogram>(session.program)!!.machineList,
@@ -1697,7 +1697,7 @@ internal class SessionAssemblyTest {
                 )
 
             val missing = AssemblySourceSnapshot(entries, texts, immutableMapOf(local, local))
-            val failure = assembler.assembleSnapshot(missing, null, true, false)
+            val failure = assembler.assembleSnapshot(missing, null, extendedAssemblerEnabled = true, warningsAreErrors = false)
             Assertions.assertThat(failure.succeeded()).isFalse()
             Assertions.assertThat<AssemblyError>(failure.errors())
                 .singleElement()
@@ -1720,7 +1720,7 @@ internal class SessionAssemblyTest {
         Files.writeString(actual.resolve("value.s"), ".eqv VALUE 7\n")
         val regular = source("value.s", ".eqv VALUE 9\n")
         val entry =
-            source("main.s", ".include \"shortcut/../value.s\"\naddiu \$t0, \$zero, VALUE\n")
+            source("main.s", $$".include \"shortcut/../value.s\"\naddiu $t0, $zero, VALUE\n")
 
         session("Default").use { session ->
             val assembler = SessionAssembler(session)
@@ -1790,8 +1790,8 @@ internal class SessionAssemblyTest {
         val right = Files.createDirectory(directory.resolve("right"))
         Files.createSymbolicLink(left.resolve("template.s"), template)
         Files.createSymbolicLink(right.resolve("template.s"), template)
-        Files.writeString(left.resolve("value.s"), "addiu \$t0, \$zero, 7\n")
-        Files.writeString(right.resolve("value.s"), "addiu \$t1, \$zero, 2\n")
+        Files.writeString(left.resolve("value.s"), $$"addiu $t0, $zero, 7\n")
+        Files.writeString(right.resolve("value.s"), $$"addiu $t1, $zero, 2\n")
         session("Default").use { session ->
             val result = SessionAssembler(session).assemble(listOf(main))
             Assertions.assertThat(result.succeeded()).isTrue()
@@ -1807,7 +1807,7 @@ internal class SessionAssemblyTest {
     fun deeplyNestedCapturedIncludesKeepSourceOrderWithoutUsingTheCallStack() {
         val texts = HashMap<Path, String>()
         val main = directory.resolve("main.s")
-        texts.put(main, "addiu \$t0, \$zero, 1\n.include \"part0.s\"\naddiu \$t2, \$zero, 3\n")
+        texts.put(main, $$"addiu $t0, $zero, 1\n.include \"part0.s\"\naddiu $t2, $zero, 3\n")
         val depth = 5000
         for (index in 0..<depth) {
             texts.put(
@@ -1816,10 +1816,10 @@ internal class SessionAssemblyTest {
             )
         }
         val leaf = directory.resolve("part" + depth + ".s")
-        texts.put(leaf, "addiu \$t1, \$zero, 2\n")
+        texts.put(leaf, $$"addiu $t1, $zero, 2\n")
         val snapshot = AssemblySourceSnapshot(listOf(main), texts)
         session("Default").use { session ->
-            val result = SessionAssembler(session).assembleSnapshot(snapshot, null, true, false)
+            val result = SessionAssembler(session).assembleSnapshot(snapshot, null, extendedAssemblerEnabled = true, warningsAreErrors = false)
             Assertions.assertThat(result.succeeded()).isTrue()
             Assertions.assertThat<ProgramStatement>(
                     Objects.requireNonNull<MIPSprogram>(session.program)!!.machineList,
@@ -1852,7 +1852,7 @@ internal class SessionAssemblyTest {
                 immutableMapOf(alias, main),
             )
         session("Default").use { session ->
-            val result = SessionAssembler(session).assembleSnapshot(snapshot, null, true, false)
+            val result = SessionAssembler(session).assembleSnapshot(snapshot, null, extendedAssemblerEnabled = true, warningsAreErrors = false)
             Assertions.assertThat<AssemblyError>(result.errors())
                 .singleElement()
                 .satisfies(
@@ -1875,7 +1875,7 @@ internal class SessionAssemblyTest {
                 immutableMapOf(main, ".include \"sub/.././main.s\"\n"),
             )
         session("Default").use { session ->
-            val result = SessionAssembler(session).assembleSnapshot(snapshot, null, true, false)
+            val result = SessionAssembler(session).assembleSnapshot(snapshot, null, extendedAssemblerEnabled = true, warningsAreErrors = false)
             Assertions.assertThat(result.succeeded()).isFalse()
             Assertions.assertThat<AssemblyError>(result.errors())
                 .singleElement()
@@ -1912,7 +1912,7 @@ internal class SessionAssemblyTest {
 
     @Test
     fun mappedEquivalenceTokensKeepOriginalPositionsAcrossNestedReplacements() {
-        val source = "LABEL OP \$t0, \$zero, COUNT"
+        val source = $$"LABEL OP $t0, $zero, COUNT"
         val replacements: MutableMap<String, String> =
             immutableMapOf(
                 "LABEL",
@@ -1942,7 +1942,7 @@ internal class SessionAssemblyTest {
         val tokens = (0 until mapped.tokens().size()).map(mapped.tokens()::get)
         Assertions.assertThat<Token>(tokens)
             .extracting<String, RuntimeException>(Token::value)
-            .containsExactly("entry", ":", "addiu", "\$t0", "\$zero", "7")
+            .containsExactly("entry", ":", "addiu", $$"$t0", $$"$zero", "7")
         Assertions.assertThat<Token>(tokens)
             .extracting<Int?, RuntimeException>(
                 ThrowingExtractor { token: Token? -> mapped.originalOffset(token!!.startPos - 1) },
@@ -1951,8 +1951,8 @@ internal class SessionAssemblyTest {
                 0,
                 0,
                 source.indexOf("OP"),
-                source.indexOf("\$t0"),
-                source.indexOf("\$zero"),
+                source.indexOf($$"$t0"),
+                source.indexOf($$"$zero"),
                 source.indexOf("COUNT"),
             )
         Assertions.assertThat<Token>(tokens)
@@ -1961,8 +1961,8 @@ internal class SessionAssemblyTest {
                 1,
                 1,
                 source.indexOf("OP") + 1,
-                source.indexOf("\$t0") + 1,
-                source.indexOf("\$zero") + 1,
+                source.indexOf($$"$t0") + 1,
+                source.indexOf($$"$zero") + 1,
                 source.indexOf("COUNT") + 1,
             )
     }
@@ -2030,7 +2030,7 @@ internal class SessionAssemblyTest {
                 immutableMapOf(main, ".include \"body.s\"\n", include, definitions + use + "\n"),
             )
         session("Default").use { session ->
-            val result = SessionAssembler(session).assembleSnapshot(snapshot, null, true, false)
+            val result = SessionAssembler(session).assembleSnapshot(snapshot, null, extendedAssemblerEnabled = true, warningsAreErrors = false)
             Assertions.assertThat<AssemblyError>(result.errors())
                 .singleElement()
                 .satisfies(
@@ -2066,14 +2066,14 @@ internal class SessionAssemblyTest {
                         call +
                         "\n"),
                     include,
-                    (".eqv BAD \$s29\n.eqv ADDRESS -4(\n.macro inner (%argument)\n" +
+                    ($$".eqv BAD $s29\n.eqv ADDRESS -4(\n.macro inner (%argument)\n" +
                         body +
                         "\n.end_macro\n.macro outer (%forwarded)\n" +
                         "inner (%forwarded)\n.end_macro\n"),
                 ),
             )
         session("Default").use { session ->
-            val result = SessionAssembler(session).assembleSnapshot(snapshot, null, true, false)
+            val result = SessionAssembler(session).assembleSnapshot(snapshot, null, extendedAssemblerEnabled = true, warningsAreErrors = false)
             Assertions.assertThat<AssemblyError>(result.errors())
                 .singleElement()
                 .satisfies(
@@ -2175,7 +2175,7 @@ internal class SessionAssemblyTest {
     fun circularEquivalenceExpansionReportsTheOriginalUseInAnInclude() {
         val main = directory.resolve("main.s")
         val include = directory.resolve("cyclic.s")
-        val use = "\tOPERATION \$t0, FIRST"
+        val use = $$"\tOPERATION $t0, FIRST"
         val snapshot =
             AssemblySourceSnapshot(
                 listOf(main),
@@ -2193,7 +2193,7 @@ internal class SessionAssemblyTest {
                 ),
             )
         session("Default").use { session ->
-            val result = SessionAssembler(session).assembleSnapshot(snapshot, null, true, false)
+            val result = SessionAssembler(session).assembleSnapshot(snapshot, null, extendedAssemblerEnabled = true, warningsAreErrors = false)
             Assertions.assertThat(result.succeeded()).isFalse()
             Assertions.assertThat<AssemblyError>(result.errors())
                 .singleElement()
@@ -2233,7 +2233,7 @@ internal class SessionAssemblyTest {
         )
         val snapshot = AssemblySourceSnapshot(listOf(main), immutableMapOf(main, text.toString()))
         session("Default").use { session ->
-            val result = SessionAssembler(session).assembleSnapshot(snapshot, null, true, false)
+            val result = SessionAssembler(session).assembleSnapshot(snapshot, null, extendedAssemblerEnabled = true, warningsAreErrors = false)
             Assertions.assertThat<AssemblyError>(result.errors()).isEmpty()
             Assertions.assertThat(result.succeeded()).isTrue()
             for (i in 0..3) {
@@ -2267,7 +2267,7 @@ internal class SessionAssemblyTest {
                 .trimIndent()
         val snapshot = AssemblySourceSnapshot(listOf(main), immutableMapOf(main, source))
         session("Default").use { session ->
-            val result = SessionAssembler(session).assembleSnapshot(snapshot, null, true, false)
+            val result = SessionAssembler(session).assembleSnapshot(snapshot, null, extendedAssemblerEnabled = true, warningsAreErrors = false)
             Assertions.assertThat<AssemblyError>(result.errors()).isEmpty()
             Assertions.assertThat(result.succeeded()).isTrue()
             val expected = intArrayOf(65, 10, 65, 39, 92, '鯉'.code, 99, 0)
@@ -2316,7 +2316,7 @@ internal class SessionAssemblyTest {
                 .trimIndent()
         val snapshot = AssemblySourceSnapshot(listOf(main), immutableMapOf(main, source))
         session("Default").use { session ->
-            val result = SessionAssembler(session).assembleSnapshot(snapshot, null, true, false)
+            val result = SessionAssembler(session).assembleSnapshot(snapshot, null, extendedAssemblerEnabled = true, warningsAreErrors = false)
             Assertions.assertThat<AssemblyError>(result.errors()).isEmpty()
             Assertions.assertThat(result.succeeded()).isTrue()
             val base: Int = session.memory.dataBaseAddress
@@ -2357,7 +2357,7 @@ internal class SessionAssemblyTest {
                     """
                         .trimIndent(),
                     main,
-                    """
+                    $$"""
                     .include "defs.s"
                     .data
                     .word VALUE:3
@@ -2366,8 +2366,8 @@ internal class SessionAssemblyTest {
                     .text
                     .globl main
                     main:
-                      emit (${'$'}a0)
-                      li ${'$'}t0, 0x12345678
+                      emit ($a0)
+                      li $t0, 0x12345678
                       nop
 
                     """
@@ -2452,17 +2452,17 @@ internal class SessionAssemblyTest {
         val source =
             source(
                 "pseudo.s",
-                """
+                $$"""
                 .text
                 .globl main
                 main:
-                  li ${'$'}t0, 2
-                  li ${'$'}t1, 3
-                  mulo ${'$'}a0, ${'$'}t0, ${'$'}t1
+                  li $t0, 2
+                  li $t1, 3
+                  mulo $a0, $t0, $t1
                 done:
-                  li ${'$'}v0, 1
+                  li $v0, 1
                   syscall
-                  li ${'$'}v0, 10
+                  li $v0, 10
                   syscall
 
                 """
@@ -2620,7 +2620,7 @@ internal class SessionAssemblyTest {
         session("Default").use { regular ->
             session("Default").use { strict ->
                 strict.settings.setBareMachineEnabled(true)
-                val named = source("named-registers.s", ".text\nadd \$t0, \$t1, \$t2\n")
+                val named = source("named-registers.s", $$".text\nadd $t0, $t1, $t2\n")
                 Assertions.assertThat<ProgramStatement>(regular.assemble(listOf(named)).machineList)
                     .hasSize(1)
                 Assertions.assertThatThrownBy(
@@ -2705,11 +2705,11 @@ internal class SessionAssemblyTest {
                     listOf(
                         source(
                             "loop.s",
-                            """
+                            $$"""
                             .text
                             .globl main
                             main:
-                              addiu ${'$'}t0, ${'$'}t0, 1
+                              addiu $t0, $t0, 1
                               b main
                               nop
 
@@ -2742,18 +2742,18 @@ internal class SessionAssemblyTest {
                     listOf(
                         source(
                             "handler.s",
-                            """
+                            $$"""
                             .text
                             .globl main
                             main:
-                              li ${'$'}t0, 0x7fffffff
-                              addi ${'$'}t0, ${'$'}t0, 1
-                              li ${'$'}v0, 10
+                              li $t0, 0x7fffffff
+                              addi $t0, $t0, 1
+                              li $v0, 10
                               syscall
                             .ktext 0x80000180
-                              mfc0 ${'$'}k0, ${'$'}14
-                              addiu ${'$'}k0, ${'$'}k0, 4
-                              mtc0 ${'$'}k0, ${'$'}14
+                              mfc0 $k0, $14
+                              addiu $k0, $k0, 4
+                              mtc0 $k0, $14
                               eret
 
                             """
@@ -2779,13 +2779,13 @@ internal class SessionAssemblyTest {
                     listOf(
                         source(
                             "entry.s",
-                            """
+                            $$"""
                             .text
                               nop
                             .globl main
                             main:
-                              li ${'$'}v0, 17
-                              li ${'$'}a0, 7
+                              li $v0, 17
+                              li $a0, 7
                               syscall
 
                             """
@@ -2845,19 +2845,19 @@ internal class SessionAssemblyTest {
         fun equivalenceDiagnosticCases(): Stream<Arguments?> {
             return Stream.of<Arguments?>(
                 Arguments.of(
-                    ".eqv DEST \$f0\n.eqv ADDRESS OFFSET\n.eqv OFFSET -4(\n",
-                    "\tentry: lwc1 DEST, ADDRESS \$s29)",
-                    "\$s29",
+                    $$".eqv DEST $f0\n.eqv ADDRESS OFFSET\n.eqv OFFSET -4(\n",
+                    $$"\tentry: lwc1 DEST, ADDRESS $s29)",
+                    $$"$s29",
                     "operand is of incorrect type",
                 ),
                 Arguments.of(
-                    ".eqv BOTH -4(\$s29\n",
-                    "lwc1 \$f0, BOTH)",
+                    $$".eqv BOTH -4($s29\n",
+                    $$"lwc1 $f0, BOTH)",
                     "BOTH",
                     "operand is of incorrect type",
                 ),
                 Arguments.of(
-                    ".eqv REGS \$t0, \$t1\n.eqv TARGET nop\n",
+                    $$".eqv REGS $t0, $t1\n.eqv TARGET nop\n",
                     "beq REGS, TARGET",
                     "TARGET",
                     "Symbol \"nop\" not found",
@@ -2881,7 +2881,7 @@ internal class SessionAssemblyTest {
         fun macroDiagnosticCases(): Stream<Arguments?> {
             return Stream.of<Arguments?>(
                 Arguments.of(
-                    "lwc1 \$f0, -4(%argument)",
+                    $$"lwc1 $f0, -4(%argument)",
                     "outer (BAD)",
                     true,
                     "BAD",
@@ -2889,27 +2889,27 @@ internal class SessionAssemblyTest {
                 ),
                 Arguments.of(
                     "lwc1 %argument, ADDRESS invalid)",
-                    "outer (\$f0)",
+                    $$"outer ($f0)",
                     false,
                     "invalid",
                     "operand is of incorrect type",
                 ),
                 Arguments.of(
-                    "beq \$zero, \$zero, %argument",
+                    $$"beq $zero, $zero, %argument",
                     "outer (nop)",
                     true,
                     "nop",
                     "Symbol \"nop\" not found",
                 ),
                 Arguments.of(
-                    "beq \$zero, \$zero, LATER",
+                    $$"beq $zero, $zero, LATER",
                     "outer (0)",
                     false,
                     "LATER",
                     "Symbol \"missing\" not found",
                 ),
                 Arguments.of(
-                    "li \$t0, CYCLE",
+                    $$"li $t0, CYCLE",
                     "outer (0)",
                     false,
                     "CYCLE",
@@ -2939,18 +2939,18 @@ internal class SessionAssemblyTest {
                 ".globl result\nresult: .word " +
                 value +
                 "\n" +
-                """
+                $$"""
                 .text
                 .globl main
                 main:
-                  la ${'$'}t1, result
-                  lw ${'$'}t0, 0(${'$'}t1)
-                  addiu ${'$'}t0, ${'$'}t0, 1
-                  sw ${'$'}t0, 0(${'$'}t1)
-                  move ${'$'}a0, ${'$'}t0
-                  li ${'$'}v0, 1
+                  la $t1, result
+                  lw $t0, 0($t1)
+                  addiu $t0, $t0, 1
+                  sw $t0, 0($t1)
+                  move $a0, $t0
+                  li $v0, 1
                   syscall
-                  li ${'$'}v0, 10
+                  li $v0, 10
                   syscall
 
                 """

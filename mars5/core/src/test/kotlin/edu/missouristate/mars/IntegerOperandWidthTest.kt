@@ -91,9 +91,9 @@ class IntegerOperandWidthTest {
 
     @ParameterizedTest
     @CsvSource(
-        "teq \$a0,\$zero | false", "tne \$a0,\$zero | true", "teqi \$a0,0 | false", "tnei \$a0,0 | true",
-        "tge \$a0,\$zero | false", "tlt \$a0,\$zero | true", "tgei \$a0,-1 | false", "tlti \$a0,-1 | true",
-        "tgeu \$a0,\$zero | true", "tltu \$a0,\$zero | false", "tgeiu \$a0,-1 | false", "tltiu \$a0,-1 | true",
+        $$"teq $a0,$zero | false", $$"tne $a0,$zero | true", $$"teqi $a0,0 | false", $$"tnei $a0,0 | true",
+        $$"tge $a0,$zero | false", $$"tlt $a0,$zero | true", $$"tgei $a0,-1 | false", $$"tlti $a0,-1 | true",
+        $$"tgeu $a0,$zero | true", $$"tltu $a0,$zero | false", $$"tgeiu $a0,-1 | false", $$"tltiu $a0,-1 | true",
         delimiter = '|',
     )
     fun `wide trap predicates use upper bits and sign extend immediates`(instruction: String, traps: Boolean, @TempDir directory: Path) {
@@ -122,7 +122,7 @@ class IntegerOperandWidthTest {
     }
 
     @ParameterizedTest
-    @CsvSource("\$at", "\$1")
+    @CsvSource($$"$at", "$1")
     fun `immediate trap rejects an operand that would be overwritten by expansion`(register: String, @TempDir directory: Path) {
         val file = Files.writeString(directory.resolve("trap.s"), "teqi $register,0\n")
         TestSessions.create().use { machine ->

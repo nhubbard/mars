@@ -5,7 +5,7 @@ import edu.missouristate.mars.mips.instructions.BasicInstructionFormat.R_FORMAT
 
 /** The unsuffixed source form can select any of the three machine encodings. */
 internal class DoublewordBitField(private val insert: Boolean, private val variant: String = "") : BasicInstruction(
-    "${if (insert) "dins" else "dext"}$variant \$t1,\$t2,${if (variant == "m") "1,40" else "32,32"}",
+    $$"$${if (insert) "dins" else "dext"}$$variant $t1,$t2,$${if (variant == "m") "1,40" else "32,32"}",
     if (insert) "Insert low bits into a doubleword field" else "Extract a field from a doubleword",
     R_FORMAT, bitFieldMask(insert, variant),
     { statement, context ->

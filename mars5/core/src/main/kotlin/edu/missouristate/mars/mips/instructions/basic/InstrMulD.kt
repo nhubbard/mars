@@ -5,9 +5,9 @@ import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
 
 open class InstrMulD : BasicInstruction(
-    "mul.d \$f2,\$f4,\$f6",
-    "Floating point multiplication double precision : Set \$f2 to double-precision floating"
-        + " point value of \$f4 times \$f6",
+    $$"mul.d $f2,$f4,$f6",
+    $$"Floating point multiplication double precision : Set $f2 to double-precision floating"
+        + $$" point value of $f4 times $f6",
     BasicInstructionFormat.R_FORMAT,
     "010001 10001 ttttt sssss fffff 000010",
     { statement, context ->

@@ -5,9 +5,9 @@ import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
 import kotlin.math.floor
 
 open class InstrFloorWS : BasicInstruction(
-    "floor.w.s \$f0,\$f1",
-    "Floor single precision to word : Set \$f0 to 32-bit integer floor of single-precision float"
-        + " in \$f1",
+    $$"floor.w.s $f0,$f1",
+    $$"Floor single precision to word : Set $f0 to 32-bit integer floor of single-precision float"
+        + $$" in $f1",
     BasicInstructionFormat.R_FORMAT,
     "010001 10000 00000 sssss fffff 001111",
     { statement, context ->

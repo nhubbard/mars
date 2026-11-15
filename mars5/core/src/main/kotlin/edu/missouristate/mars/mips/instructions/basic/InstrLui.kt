@@ -4,8 +4,8 @@ import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
 
 open class InstrLui : BasicInstruction(
-    "lui \$t1,100",
-    "Load upper immediate : Set high-order 16 bits of \$t1 to 16-bit immediate and low-order 16"
+    $$"lui $t1,100",
+    $$"Load upper immediate : Set high-order 16 bits of $t1 to 16-bit immediate and low-order 16"
         + " bits to 0",
     BasicInstructionFormat.I_FORMAT,
     "001111 00000 fffff ssssssssssssssss",

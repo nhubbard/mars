@@ -4,8 +4,8 @@ import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
 
 open class InstrSubu : BasicInstruction(
-    "subu \$t1,\$t2,\$t3",
-    "Subtraction unsigned without overflow : set \$t1 to (\$t2 minus \$t3), no overflow",
+    $$"subu $t1,$t2,$t3",
+    $$"Subtraction unsigned without overflow : set $t1 to ($t2 minus $t3), no overflow",
     BasicInstructionFormat.R_FORMAT,
     "000000 sssss ttttt fffff 00000 100011",
     { statement, context ->

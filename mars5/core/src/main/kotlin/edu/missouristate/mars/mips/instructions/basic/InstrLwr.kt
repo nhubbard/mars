@@ -8,8 +8,8 @@ import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
 import edu.missouristate.mars.util.Binary
 
 open class InstrLwr : BasicInstruction(
-    "lwr \$t1,-100(\$t2)",
-    "Load word right : Load from 1 to 4 bytes right-justified into \$t1, starting with effective"
+    $$"lwr $t1,-100($t2)",
+    $$"Load word right : Load from 1 to 4 bytes right-justified into $t1, starting with effective"
         + " memory byte address and continuing through the high-order byte of its word",
     BasicInstructionFormat.I_FORMAT,
     "100110 ttttt fffff ssssssssssssssss",

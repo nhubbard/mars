@@ -5,9 +5,9 @@ import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
 
 open class InstrCvtWD : BasicInstruction(
-    "cvt.w.d \$f1,\$f2",
-    "Convert from double precision to word : Set \$f1 to 32-bit integer equivalent of double"
-        + " precision value in \$f2",
+    $$"cvt.w.d $f1,$f2",
+    $$"Convert from double precision to word : Set $f1 to 32-bit integer equivalent of double"
+        + $$" precision value in $f2",
     BasicInstructionFormat.R_FORMAT,
     "010001 10001 00000 sssss fffff 100100",
     { statement, context ->

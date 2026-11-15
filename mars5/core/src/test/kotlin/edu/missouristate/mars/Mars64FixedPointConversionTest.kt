@@ -26,7 +26,7 @@ class Mars64FixedPointConversionTest {
         })
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(source), null, false, false)
+            val program = session.assemble(listOf(source), null, extended = false, warnings = false)
             val fpu = session.coprocessor1
             val input = if (double) (-2.5).toRawBits() else (-2.5f).toRawBits().toUInt().toLong()
             val fixed = listOf(-2L, -2L, -2L, -3L)
@@ -64,7 +64,7 @@ class Mars64FixedPointConversionTest {
         """.trimIndent())
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(source), null, false, false)
+            val program = session.assemble(listOf(source), null, extended = false, warnings = false)
             val fpu = session.coprocessor1
             val word = if (double) 0x46201fda else 0x46001fda
             assertEquals(word, program.machineList!!.first().binaryStatement)
@@ -103,7 +103,7 @@ class Mars64FixedPointConversionTest {
         })
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(source), null, false, false)
+            val program = session.assemble(listOf(source), null, extended = false, warnings = false)
             val fpu = session.coprocessor1
             fun result() = if (longword) fpu.getDoublewordNoNotify(31) else fpu.getValue(31).toLong()
             val inputs = listOf(-limit to minimum, limit to maximum, Double.NEGATIVE_INFINITY to minimum, Double.NaN to 0L)

@@ -5,9 +5,9 @@ import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
 
 open class InstrTruncWD : BasicInstruction(
-    "trunc.w.d \$f1,\$f2",
-    "Truncate double precision to word : Set \$f1 to 32-bit integer truncation of"
-        + " double-precision float in \$f2",
+    $$"trunc.w.d $f1,$f2",
+    $$"Truncate double precision to word : Set $f1 to 32-bit integer truncation of"
+        + $$" double-precision float in $f2",
     BasicInstructionFormat.R_FORMAT,
     "010001 10001 00000 sssss fffff 001101",
     { statement, context ->

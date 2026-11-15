@@ -6,8 +6,8 @@ import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
 import edu.missouristate.mars.simulator.Exceptions.TRAP_EXCEPTION
 
 open class InstrTlti : BasicInstruction(
-    "tlti \$t1,-100",
-    "Trap if less than immediate : Trap if \$t1 less than sign-extended 16-bit immediate",
+    $$"tlti $t1,-100",
+    $$"Trap if less than immediate : Trap if $t1 less than sign-extended 16-bit immediate",
     BasicInstructionFormat.I_FORMAT,
     "000001 fffff 01010 ssssssssssssssss",
     { statement, context ->

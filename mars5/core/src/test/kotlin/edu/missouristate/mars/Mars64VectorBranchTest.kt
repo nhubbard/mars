@@ -32,7 +32,7 @@ class Mars64VectorBranchTest {
                     VectorRegister(0, -1) to (suffix != "v"),
                     VectorRegister(-1, -1) to false,
                 )) {
-                    val program = session.assemble(listOf(file), null, false, false)
+                    val program = session.assemble(listOf(file), null, extended = false, warnings = false)
                     val statement = program.machineList!!.first()
                     val bits = zeroEncoding.toInt(16) or if (nonzero) 0x00800000 else 0
                     assertEquals(bits, statement.binaryStatement)

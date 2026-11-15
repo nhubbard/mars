@@ -6,8 +6,8 @@ import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
 import edu.missouristate.mars.simulator.Exceptions.TRAP_EXCEPTION
 
 open class InstrTgeu : BasicInstruction(
-    "tgeu \$t1,\$t2",
-    "Trap if greater or equal unsigned : Trap if \$t1 is greater than or equal to \$t2 using"
+    $$"tgeu $t1,$t2",
+    $$"Trap if greater or equal unsigned : Trap if $t1 is greater than or equal to $t2 using"
         + " unsigned comparision",
     BasicInstructionFormat.R_FORMAT,
     "000000 fffff sssss ccccc ccccc 110001",

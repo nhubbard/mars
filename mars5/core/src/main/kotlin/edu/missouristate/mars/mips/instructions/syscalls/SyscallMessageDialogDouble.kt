@@ -39,7 +39,7 @@ open class SyscallMessageDialogDouble : AbstractSyscall(58, "MessageDialogDouble
     override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
         val message = context.readSyscallString(statement, context.effectiveAddress(4, 0))
         try {
-            val value = context.coprocessor1.getDoubleFromRegisterPair("\$f12")
+            val value = context.coprocessor1.getDoubleFromRegisterPair($$"$f12")
             context.environment().showMessageDialog(message + value, null, 1)
         } catch (failure: InvalidRegisterAccessException) {
             context.updateRegister(5, -1)

@@ -6,9 +6,9 @@ import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
 import kotlin.math.roundToInt
 
 open class InstrRoundWD : BasicInstruction(
-    "round.w.d \$f1,\$f2",
-    "Round double precision to word : Set \$f1 to 32-bit integer round of double-precision float"
-        + " in \$f2",
+    $$"round.w.d $f1,$f2",
+    $$"Round double precision to word : Set $f1 to 32-bit integer round of double-precision float"
+        + $$" in $f2",
     BasicInstructionFormat.R_FORMAT,
     "010001 10001 00000 sssss fffff 001100",
     { statement, context ->

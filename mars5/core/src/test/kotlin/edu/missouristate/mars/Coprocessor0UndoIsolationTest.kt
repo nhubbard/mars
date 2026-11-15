@@ -28,7 +28,7 @@ internal class Coprocessor0UndoIsolationTest {
             program.readSource(path)
             program.tokenize()
             val filenames = arrayListOf(path)
-            program.assemble(program.prepareFilesForAssembly(filenames, path, null), true, false)
+            program.assemble(program.prepareFilesForAssembly(filenames, path, null), extended = true, warnings = false)
             val backStepper = Objects.requireNonNull<BackStepper>(program.backStepper)
             machine.registerFile.initializeProgramCounter(
                 machine.registerFile.initialProgramCounter + 4,

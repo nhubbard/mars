@@ -6,8 +6,8 @@ import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
 import edu.missouristate.mars.simulator.Exceptions.TRAP_EXCEPTION
 
 open class InstrTlt : BasicInstruction(
-    "tlt \$t1,\$t2",
-    "Trap if less than: Trap if \$t1 less than \$t2",
+    $$"tlt $t1,$t2",
+    $$"Trap if less than: Trap if $t1 less than $t2",
     BasicInstructionFormat.R_FORMAT,
     "000000 fffff sssss ccccc ccccc 110010",
     { statement, context ->

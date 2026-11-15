@@ -4,7 +4,7 @@ import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat.I_FORMAT
 
 class InstrAui : BasicInstruction(
-    "aui \$t1,\$t2,100",
+    $$"aui $t1,$t2,100",
     "Add an immediate shifted left by 16",
     I_FORMAT,
     "001111 sssss fffff tttttttttttttttt",

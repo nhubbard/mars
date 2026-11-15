@@ -32,7 +32,7 @@ open class AssemblerBenchmark {
             .setBareMachineEnabled(false)
             .setExtendedAssemblerEnabled(true)
         source = Files.createTempFile("mars-assembly-benchmark", ".s")
-        Files.writeString(source, ".text\n" + "addiu \$t0,\$t0,1\n".repeat(10_000))
+        Files.writeString(source, ".text\n" + $$"addiu $t0,$t0,1\n".repeat(10_000))
     }
 
     @Benchmark

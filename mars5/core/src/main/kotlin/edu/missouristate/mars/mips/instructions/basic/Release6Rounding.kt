@@ -30,7 +30,7 @@ private fun fixedPointConversion(name: String, operation: Int, double: Boolean, 
     val maximum = if (longword) Long.MAX_VALUE else Int.MAX_VALUE.toLong()
     val minimum = if (longword) Long.MIN_VALUE else Int.MIN_VALUE.toLong()
     return BasicInstruction(
-        "$name.$destinationFormat.$sourceFormat \$f2,\$f4",
+        $$"$$name.$$destinationFormat.$$sourceFormat $f2,$f4",
         "Convert a floating-point value to a signed ${if (longword) "64-bit" else "32-bit"} integer",
         R_FORMAT, "010001 ${if (double) "10001" else "10000"} 00000 sssss fffff $function",
     ) { statement, context ->
@@ -67,7 +67,7 @@ internal fun roundIntegral(value: Double, mode: Int): Double = when (mode) {
 }
 
 private fun roundToIntegral(double: Boolean) = BasicInstruction(
-    "rint.${if (double) "d" else "s"} \$f2,\$f4",
+    $$"rint.$${if (double) "d" else "s"} $f2,$f4",
     "Round a floating-point value to an integral value in the same format",
     R_FORMAT, "010001 ${if (double) "10001" else "10000"} 00000 sssss fffff 011010",
 ) { statement, context ->

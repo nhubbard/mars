@@ -6,7 +6,7 @@ import java.lang.Integer.reverse
 import java.lang.Integer.reverseBytes
 
 class InstrBitswap : BasicInstruction(
-    "bitswap \$t1,\$t2",
+    $$"bitswap $t1,$t2",
     "Reverse the bits within each byte",
     BasicInstructionFormat.R_FORMAT,
     "011111 00000 sssss fffff 00000 100000",

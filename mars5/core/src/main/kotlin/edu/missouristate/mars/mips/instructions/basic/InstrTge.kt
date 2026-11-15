@@ -6,8 +6,8 @@ import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
 import edu.missouristate.mars.simulator.Exceptions.TRAP_EXCEPTION
 
 open class InstrTge : BasicInstruction(
-    "tge \$t1,\$t2",
-    "Trap if greater or equal : Trap if \$t1 is greater than or equal to \$t2",
+    $$"tge $t1,$t2",
+    $$"Trap if greater or equal : Trap if $t1 is greater than or equal to $t2",
     BasicInstructionFormat.R_FORMAT,
     "000000 fffff sssss ccccc ccccc 110000",
     { statement, context ->

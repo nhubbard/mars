@@ -5,9 +5,9 @@ import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
 
 open class InstrAddD : BasicInstruction(
-    "add.d \$f2,\$f4,\$f6",
-    "Floating point addition double precision : Set \$f2 to double-precision floating point"
-        + " value of \$f4 plus \$f6",
+    $$"add.d $f2,$f4,$f6",
+    $$"Floating point addition double precision : Set $f2 to double-precision floating point"
+        + $$" value of $f4 plus $f6",
     BasicInstructionFormat.R_FORMAT,
     "010001 10001 ttttt sssss fffff 000000",
     { statement, context ->

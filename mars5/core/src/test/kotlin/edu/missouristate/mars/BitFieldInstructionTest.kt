@@ -16,10 +16,10 @@ class BitFieldInstructionTest {
         val source = directory.resolve("fields.s")
         TestSessions.create().use { machine ->
             for ((assembly, word, operands) in listOf(
-                Triple("align \$t1,\$t2,\$t3,0", 0x7d4b4a20, intArrayOf(9, 10, 11, 0)),
-                Triple("lsa \$t1,\$t2,\$t3,1", 0x014b4805, intArrayOf(9, 10, 11, 1)),
-                Triple("ext \$t1,\$t2,0,32", 0x7d49f800, intArrayOf(9, 10, 0, 32)),
-                Triple("ins \$t1,\$t2,31,1", 0x7d49ffc4, intArrayOf(9, 10, 31, 1)),
+                Triple($$"align $t1,$t2,$t3,0", 0x7d4b4a20, intArrayOf(9, 10, 11, 0)),
+                Triple($$"lsa $t1,$t2,$t3,1", 0x014b4805, intArrayOf(9, 10, 11, 1)),
+                Triple($$"ext $t1,$t2,0,32", 0x7d49f800, intArrayOf(9, 10, 0, 32)),
+                Triple($$"ins $t1,$t2,31,1", 0x7d49ffc4, intArrayOf(9, 10, 31, 1)),
             )) {
                 Files.writeString(source, ".text\n$assembly\n")
                 val assembled = machine.assemble(listOf(source)).machineList!!.single()
@@ -32,8 +32,8 @@ class BitFieldInstructionTest {
             assertNull(machine.instructionSet.findByBinaryCode(0x7d4907c4))
 
             for (assembly in listOf(
-                "align \$t1,\$t2,\$t3,4", "lsa \$t1,\$t2,\$t3,0",
-                "ext \$t1,\$t2,31,2", "ins \$t1,\$t2,2,0",
+                $$"align $t1,$t2,$t3,4", $$"lsa $t1,$t2,$t3,0",
+                $$"ext $t1,$t2,31,2", $$"ins $t1,$t2,2,0",
             )) {
                 Files.writeString(source, ".text\n$assembly\n")
                 val problem = assertThrows(ProcessingException::class.java) { machine.assemble(listOf(source)) }

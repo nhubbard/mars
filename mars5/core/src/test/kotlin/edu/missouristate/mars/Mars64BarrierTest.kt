@@ -20,7 +20,7 @@ class Mars64BarrierTest {
         """.trimIndent())
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(source), null, false, false)
+            val program = session.assemble(listOf(source), null, extended = false, warnings = false)
             val failure = assertThrows(ProcessingException::class.java) { program.simulate(2) }
             assertTrue(failure.message!!.contains("control transfer in a delay slot"))
         }
@@ -39,7 +39,7 @@ class Mars64BarrierTest {
         """.trimIndent())
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(source), null, false, false)
+            val program = session.assemble(listOf(source), null, extended = false, warnings = false)
             val words = program.machineList!!
             program.simulate(4)
             assertEquals(words[6].address, session.registerFile.programCounter)
@@ -60,7 +60,7 @@ class Mars64BarrierTest {
         TestSessions.create().use { session ->
             assertEquals("jr", session.instructionSet.findByBinaryCode(0x01200008)?.name)
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(source), null, false, false)
+            val program = session.assemble(listOf(source), null, extended = false, warnings = false)
             val statements = program.machineList!!
             assertNull(session.instructionSet.findByBinaryCode(0x01200008))
             assertEquals(0x01404809, statements[0].binaryStatement)
@@ -92,7 +92,7 @@ class Mars64BarrierTest {
         """.trimIndent())
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
-            var program = session.assemble(listOf(source), null, false, false)
+            var program = session.assemble(listOf(source), null, extended = false, warnings = false)
             val statements = program.machineList!!
             val replacement = statements[7].address
             assertEquals(listOf(0x057ffff8, 0x0000000f, 0x0000040f, 0x000000c0, 0x01400409),
@@ -103,7 +103,7 @@ class Mars64BarrierTest {
             assertThrows(ProcessingException::class.java) { program.simulate(1) }
 
             session.settings.setSelfModifyingCodeEnabled(true)
-            program = session.assemble(listOf(source), null, false, false)
+            program = session.assemble(listOf(source), null, extended = false, warnings = false)
             session.editIntegerRegister(9, 0x24080007)
             session.editIntegerRegister(10, replacement)
             session.editIntegerRegister(11, replacement + 8)
@@ -128,7 +128,7 @@ class Mars64BarrierTest {
         """.trimIndent())
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(source), null, false, false)
+            val program = session.assemble(listOf(source), null, extended = false, warnings = false)
             val statements = program.machineList!!
             val address = statements[0].address
             assertEquals(0x01404c09, statements[0].binaryStatement)
@@ -141,7 +141,7 @@ class Mars64BarrierTest {
             program.simulate(2)
             assertEquals(statements[5].address, session.registerFile.getValueNoNotify(31))
             Files.writeString(source, $$"jalr.hb $9,$9\n")
-            assertThrows(ProcessingException::class.java) { session.assemble(listOf(source), null, false, false) }
+            assertThrows(ProcessingException::class.java) { session.assemble(listOf(source), null, extended = false, warnings = false) }
         }
     }
 }

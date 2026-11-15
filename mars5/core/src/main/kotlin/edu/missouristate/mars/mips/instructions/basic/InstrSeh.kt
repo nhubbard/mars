@@ -4,7 +4,7 @@ import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
 
 class InstrSeh : BasicInstruction(
-    "seh \$t1,\$t2",
+    $$"seh $t1,$t2",
     "Sign-extend the low halfword",
     BasicInstructionFormat.R_FORMAT,
     "011111 00000 sssss fffff 11000 100000",

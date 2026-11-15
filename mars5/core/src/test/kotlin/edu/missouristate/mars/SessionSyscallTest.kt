@@ -76,7 +76,7 @@ internal class SessionSyscallTest {
                 Assertions.assertThat(b.readFromFile(3, bytes, 3)).isEqualTo(3)
                 Assertions.assertThat(String(bytes)).isEqualTo("abc")
                 val source = directory.resolve("exit.s")
-                Files.writeString(source, ".text\nli \$v0, 10\nsyscall\n")
+                Files.writeString(source, $$".text\nli $v0, 10\nsyscall\n")
                 first.assemble(listOf(source))
                 Assertions.assertThat(a.readFromFile(3, bytes, 3)).isEqualTo(-1)
                 Assertions.assertThat(b.readFromFile(3, bytes, 3)).isEqualTo(3)
@@ -343,39 +343,39 @@ internal class SessionSyscallTest {
             val source = directory.resolve("files.s")
             Files.writeString(
                 source,
-                """
+                $$"""
                 .data
                 path: .asciiz "%s"
                 bytes: .byte 65, 0, 66
                 buffer: .space 3
                 .text
-                la ${'$'}a0, path
-                li ${'$'}a1, 1
-                li ${'$'}v0, 13
+                la $a0, path
+                li $a1, 1
+                li $v0, 13
                 syscall
-                move ${'$'}s0, ${'$'}v0
-                move ${'$'}a0, ${'$'}s0
-                la ${'$'}a1, bytes
-                li ${'$'}a2, 3
-                li ${'$'}v0, 15
+                move $s0, $v0
+                move $a0, $s0
+                la $a1, bytes
+                li $a2, 3
+                li $v0, 15
                 syscall
-                move ${'$'}s1, ${'$'}v0
-                li ${'$'}v0, 16
+                move $s1, $v0
+                li $v0, 16
                 syscall
-                la ${'$'}a0, path
-                li ${'$'}a1, 0
-                li ${'$'}v0, 13
+                la $a0, path
+                li $a1, 0
+                li $v0, 13
                 syscall
-                move ${'$'}a0, ${'$'}v0
-                la ${'$'}a1, buffer
-                li ${'$'}a2, 3
-                li ${'$'}v0, 14
+                move $a0, $v0
+                la $a1, buffer
+                li $a2, 3
+                li $v0, 14
                 syscall
-                move ${'$'}s2, ${'$'}v0
-                lbu ${'$'}s3, 2(${'$'}a1)
-                li ${'$'}v0, 16
+                move $s2, $v0
+                lbu $s3, 2($a1)
+                li $v0, 16
                 syscall
-                li ${'$'}v0, 10
+                li $v0, 10
                 syscall
 
                 """
@@ -398,26 +398,26 @@ internal class SessionSyscallTest {
             val source = directory.resolve("console.s")
             Files.writeString(
                 source,
-                """
+                $$"""
                 .data
                 buffer: .space 8
                 .text
-                li ${'$'}v0, 5
+                li $v0, 5
                 syscall
-                move ${'$'}a0, ${'$'}v0
-                li ${'$'}v0, 1
+                move $a0, $v0
+                li $v0, 1
                 syscall
-                la ${'$'}a0, buffer
-                li ${'$'}a1, 8
-                li ${'$'}v0, 8
+                la $a0, buffer
+                li $a1, 8
+                li $v0, 8
                 syscall
-                li ${'$'}v0, 4
+                li $v0, 4
                 syscall
-                li ${'$'}v0, 8
+                li $v0, 8
                 syscall
-                lbu ${'$'}s0, 0(${'$'}a0)
-                lbu ${'$'}s1, 1(${'$'}a0)
-                li ${'$'}v0, 10
+                lbu $s0, 0($a0)
+                lbu $s1, 1($a0)
+                li $v0, 10
                 syscall
 
                 """

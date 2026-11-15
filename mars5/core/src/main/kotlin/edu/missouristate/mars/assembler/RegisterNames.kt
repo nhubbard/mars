@@ -20,9 +20,9 @@ object RegisterNames {
 
     @JvmStatic
     fun vector(name: String): Int? {
-        if (!name.startsWith("\$w")) return null
+        if (!name.startsWith($$"$w")) return null
         val index = name.substring(2).toIntOrNull() ?: return null
-        return index.takeIf { it in 0..31 && name == "\$w$it" }
+        return index.takeIf { it in 0..31 && name == $$"$w$$it" }
     }
 
     @JvmStatic

@@ -4,7 +4,7 @@ import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat.I_FORMAT
 
 class InstrAluipc : BasicInstruction(
-    "aluipc \$t1,-100",
+    $$"aluipc $t1,-100",
     "Add an upper immediate to the instruction address and clear its low bits",
     I_FORMAT,
     "111011 fffff 11111 ssssssssssssssss",

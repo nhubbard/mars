@@ -4,7 +4,7 @@ import edu.missouristate.mars.ProcessingException
 import edu.missouristate.mars.mips.hardware.AddressErrorException
 
 class InstrLwpc : PcRelativeWordInstruction(
-    "lwpc \$t1,100000",
+    $$"lwpc $t1,100000",
     "Load a word at a byte displacement from the instruction address",
     "111011 fffff 01 sssssssssssssssssss",
     { statement, context ->

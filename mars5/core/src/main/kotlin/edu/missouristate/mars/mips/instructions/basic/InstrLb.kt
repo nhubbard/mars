@@ -6,8 +6,8 @@ import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
 
 open class InstrLb : BasicInstruction(
-    "lb \$t1,-100(\$t2)",
-    "Load byte : Set \$t1 to sign-extended 8-bit value from effective memory byte address",
+    $$"lb $t1,-100($t2)",
+    $$"Load byte : Set $t1 to sign-extended 8-bit value from effective memory byte address",
     BasicInstructionFormat.I_FORMAT,
     "100000 ttttt fffff ssssssssssssssss",
     { statement, context ->

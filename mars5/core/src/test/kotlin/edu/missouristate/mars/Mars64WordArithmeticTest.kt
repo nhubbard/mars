@@ -20,9 +20,9 @@ class Mars64WordArithmeticTest {
         val editor = InstructionDefaults.editorCatalog()
         val wide = InstructionDefaults.forTarget(MarsTarget.MARS64)
         assertTrue(editor.matchOperator("mflo")!!.isNotEmpty())
-        assertTrue(editor.matchOperator("div")!!.any { it.exampleFormat == "div \$t1,\$t2" })
+        assertTrue(editor.matchOperator("div")!!.any { it.exampleFormat == $$"div $t1,$t2" })
         assertNull(wide.matchOperator("mflo"))
-        assertTrue(wide.matchOperator("div")!!.none { it.exampleFormat == "div \$t1,\$t2" })
+        assertTrue(wide.matchOperator("div")!!.none { it.exampleFormat == $$"div $t1,$t2" })
         assertNull(editor.findByBinaryCode(0x014b001a))
     }
 
@@ -37,10 +37,10 @@ class Mars64WordArithmeticTest {
     fun `Release 6 word arithmetic writes one sign extended result and reverses it`(
         mnemonic: String, encoding: String, left: Long, right: Long, expected: Long, @TempDir directory: Path,
     ) {
-        val file = Files.writeString(directory.resolve("word.s"), "$mnemonic \$9,\$10,\$11\n")
+        val file = Files.writeString(directory.resolve("word.s"), "$mnemonic $9,$10,$11\n")
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(file), null, false, false)
+            val program = session.assemble(listOf(file), null, extended = false, warnings = false)
             val statement = program.machineList!!.single()
             val word = encoding.toInt(16)
             assertEquals(word, statement.binaryStatement)
@@ -62,10 +62,10 @@ class Mars64WordArithmeticTest {
     @ParameterizedTest
     @ValueSource(strings = ["div", "divu", "mod", "modu"])
     fun `division by zero traps without writing the destination`(mnemonic: String, @TempDir directory: Path) {
-        val file = Files.writeString(directory.resolve("zero.s"), "$mnemonic \$9,\$10,\$zero\n")
+        val file = Files.writeString(directory.resolve("zero.s"), $$"$$mnemonic $9,$10,$zero\n")
         TestSessions.create().use { session ->
             session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(file), null, false, false)
+            val program = session.assemble(listOf(file), null, extended = false, warnings = false)
             session.editIntegerRegister(9, Long.MIN_VALUE)
             session.editIntegerRegister(10, -7)
             assertThrows(ProcessingException::class.java) { program.simulate(1) }
@@ -79,10 +79,10 @@ class Mars64WordArithmeticTest {
         val words = mapOf(0x014b001a to "div", 0x014b0018 to "mult", 0x00004812 to "mflo", 0x714b4802 to "mul")
         TestSessions.create().use { session ->
             for ((word, mnemonic) in words) assertEquals(mnemonic, session.instructionSet.findByBinaryCode(word)?.name)
-            session.assemble(listOf(file), null, false, false)
+            session.assemble(listOf(file), null, extended = false, warnings = false)
             session.selectTarget(MarsTarget.MARS64)
             for (word in words.keys) assertNull(session.instructionSet.findByBinaryCode(word))
-            assertThrows(ProcessingException::class.java) { session.assemble(listOf(file), null, false, false) }
+            assertThrows(ProcessingException::class.java) { session.assemble(listOf(file), null, extended = false, warnings = false) }
         }
     }
 

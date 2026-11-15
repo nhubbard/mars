@@ -6,8 +6,8 @@ import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
 
 open class InstrLbu : BasicInstruction(
-    "lbu \$t1,-100(\$t2)",
-    "Load byte unsigned : Set \$t1 to zero-extended 8-bit value from effective memory byte"
+    $$"lbu $t1,-100($t2)",
+    $$"Load byte unsigned : Set $t1 to zero-extended 8-bit value from effective memory byte"
         + " address",
     BasicInstructionFormat.I_FORMAT,
     "100100 ttttt fffff ssssssssssssssss",

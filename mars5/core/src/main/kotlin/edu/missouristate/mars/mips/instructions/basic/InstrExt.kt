@@ -4,7 +4,7 @@ import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat.R_FORMAT
 
 class InstrExt : BasicInstruction(
-    "ext \$t1,\$t2,0,32",
+    $$"ext $t1,$t2,0,32",
     "Extract a bit field into the low bits of a register",
     R_FORMAT,
     "011111 sssss fffff uuuuu ttttt 000000",

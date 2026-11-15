@@ -5,8 +5,8 @@ import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
 
 open class InstrCLtD1 : BasicInstruction(
-    "c.lt.d \$f2,\$f4",
-    "Compare less than double precision : If \$f2 is less than \$f4 (double-precision), set"
+    $$"c.lt.d $f2,$f4",
+    $$"Compare less than double precision : If $f2 is less than $f4 (double-precision), set"
         + " Coprocessor 1 condition flag 0 true else set it false",
     BasicInstructionFormat.R_FORMAT,
     "010001 10001 sssss fffff 00000 111100",
