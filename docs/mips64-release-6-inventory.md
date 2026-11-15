@@ -43,16 +43,17 @@ byte in both byte orders. The output comparison includes guard bytes around stor
 
 | Probe | Execution checked |
 | --- | --- |
-| Scalar integer and memory | Word and doubleword results, rotate, scaled add, high multiply, and unaligned scalar loads and stores. |
+| Scalar integer and memory | Word and doubleword results, rotate, scaled add, high multiply, signed and unsigned division and remainder, and unaligned scalar loads and stores. |
 | Branches | Taken and untaken compact branches, a delay slot, and a compact call and return. |
 | Atomics | Successful word and doubleword linked loads and conditional stores. |
 | Exceptions | Overflow, misaligned linked load, and breakpoints in delay and forbidden slots. A shared handler records the cause, EPC offset, exception level, destination register, and bad-address offset for address errors. |
 | Scalar floating point | Directed rounding, sticky flags, classification, and compare masks. |
 | Memory boundaries | Scalar and vector transfers across a mapped 4 KiB boundary. Separate default-layout stack tests cover the last writable byte and verify that crossing the stack end raises an address error before any write. |
 | MSA memory | Loads and stores in all four element widths at unaligned addresses, including mixed-width transfers that expose byte and lane ordering. |
-| MSA integer | Wrapping and saturating addition, doubleword shifts, and shuffle selectors. |
+| MSA integer | Wrapping addition, signed and unsigned saturation, signed and unsigned division and remainder in all four lane widths, magnitude comparisons at signed limits, doubleword shifts, and shuffle selectors. |
+| MSA branches | Whole-vector and per-lane zero tests in all four lane widths, with delay-slot execution on both taken and untaken branches. |
 | MSA fixed point | Q15 and Q31 multiplication, rounded accumulation, widening sums, and dot products. |
-| MSA floating point | Signed zeros, quiet and signaling NaNs, classification, extrema, and unordered masks. |
+| MSA floating point | Signed zeros, quiet and signaling NaNs, classification, extrema, unordered masks, directed overflow, gradual underflow, and flush-to-zero results and status flags. |
 | MSA rounding | Directed rounding and integer conversion, including subnormals and the status register. |
 
 The checked-in results record the QEMU, LLVM, and LLD versions used to generate
@@ -84,8 +85,8 @@ and hardware timing are outside this model.
 All 30 example words below are in the
 [encoding fixture](../mars5/core/src/test/resources/mars64-basic-encoding-vectors.tsv).
 They were generated with LLVM 23.1.5 for big-endian MIPS64 Release 6.
-The Jupiter test checks that MARS64 assembles each word, recovers the operand
-fields on decode, and that the same raw word has no MARS32 decoding. The current decoder represents negative signed immediates as raw
+The Jupiter test checks that MARS64 assembles each word and recovers the operand
+fields on decode. The decoder represents negative signed immediates as raw
 16-bit fields for these wide forms.
 
 | Original native forms | Release 6 encoding evidence | Behavior |
