@@ -23,7 +23,8 @@ From the smoke folder, with JDK 25 available:
 ## MIPS Binary Workbench
 
 Open `instruction-lab/src/main/mips/workbench.asm` in the linked module
-and use the MARS Run or Debug action. Select the **Default** memory layout.
+and use the MARS Run or Debug action. Select the **MARS32** target and
+**Default** memory layout under **Settings → Build, Execution, Deployment → MARS Assembly**.
 The program supports both delayed-branch settings. It uses an included
 assembly library, nested macros and equivalences, so it also makes a useful
 navigation, formatting, breakpoint, and stepping fixture.
@@ -63,7 +64,7 @@ The interactive workbench exercises a subset of the syscall services.
 ## PNG decoder and Bitmap Display
 
 Open [viewer.asm](png-decoder/src/main/mips/viewer.asm) and choose MARS Run.
-Use the **Default** memory layout and leave the instruction limit at **0**
+Use the **MARS32** target and **Default** memory layout and leave the instruction limit at **0**
 (unlimited). The Run configuration defaults to the source file's directory,
 which contains [torture.png](png-decoder/src/main/mips/torture.png). To try
 another PNG, pass its filename as the first program argument.

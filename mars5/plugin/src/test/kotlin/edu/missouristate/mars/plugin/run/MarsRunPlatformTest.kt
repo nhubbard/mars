@@ -58,7 +58,7 @@ import com.intellij.openapi.util.JDOMExternalizerUtil.writeField
 import com.intellij.openapi.util.Key
 import com.intellij.openapi.vfs.encoding.EncodingManager
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
-import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
+import edu.missouristate.mars.plugin.classicMipsProjectFixture
 import com.intellij.psi.PsiErrorElement
 import com.intellij.psi.PsiFileFactory
 import com.intellij.psi.PsiManager
@@ -118,7 +118,7 @@ import org.junit.jupiter.params.provider.ValueSource
 
 @TestApplication
 class MarsRunPlatformTest {
-    private val projectFixture = codeInsightProjectFixture()
+    private val projectFixture = classicMipsProjectFixture()
     private val fixture by codeInsightFixture(projectFixture)
     private val project get() = projectFixture.get()
     private val type get() = ConfigurationTypeUtil.findConfigurationType(MarsRunType::class.java)
@@ -1017,7 +1017,7 @@ class MarsRunPlatformTest {
             val permissive = launch(ProjectOptionOverride.ENABLED, ProjectOptionOverride.DISABLED)
             assertEquals(0, permissive.exit.await())
             assertEquals("42", permissive.stdout.toString())
-            assertEquals(MarsExecutionOptions(allowPseudoInstructions = false, warningsAreErrors = true),
+            assertEquals(MarsExecutionOptions(allowPseudoInstructions = false, warningsAreErrors = true, target = MarsTarget.MARS32),
                 project.getService(MarsAssemblySettings::class.java).executionOptions)
         } finally {
             withContext(Dispatchers.EDT) { Disposer.dispose(lifetime) }
@@ -1211,7 +1211,8 @@ class MarsRunPlatformTest {
                 try {
                     assertEquals(
                         MarsExecutionOptions(
-                            delayedBranching = delayed.resolve(true), selfModifyingCode = selfModifying.resolve(true), bareMachine = bare.resolve(true),
+                            delayedBranching = delayed.resolve(true), selfModifyingCode = selfModifying.resolve(true),
+                            bareMachine = bare.resolve(true), target = MarsTarget.MARS32,
                         ),
                         launch.options,
                     )

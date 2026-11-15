@@ -1,5 +1,6 @@
 package edu.missouristate.mars
 
+import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.api.MarsGuiProxy
 import edu.missouristate.mars.api.MemoryAccessException
 import edu.missouristate.mars.core.InstructionContext
@@ -229,7 +230,7 @@ internal class SessionMemoryTest {
             val settings = Settings()
             settings.simulationSettings.setMemoryConfiguration("Default")
             return DaggerMarsComponent.builder()
-                .coreModule(CoreModule(settings))
+                .coreModule(CoreModule(settings, target = MarsTarget.MARS32))
                 .guiProxy(NO_GUI)
                 .build()
         }

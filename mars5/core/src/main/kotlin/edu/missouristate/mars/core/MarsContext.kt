@@ -63,12 +63,13 @@ class MarsContext @Inject constructor(
     @Volatile private var controller: SimulatorEngine? = null
     @Volatile var program: MIPSprogram? = null
         private set
-    var target: MarsTarget = MarsTarget.MARS32
+    var target: MarsTarget = instructionSet.target
         private set
     @Volatile var isClosing: Boolean = false
         private set
 
     init {
+        configureTargetHardware()
         backStepper.addInstructionCheckpoint {
             if (target == MarsTarget.MARS32) null
             else {
@@ -250,6 +251,10 @@ class MarsContext @Inject constructor(
         setMemoryConfigurationStopped(settings.memoryConfiguration)
         instructionSet.populate(target)
         this.target = target
+        configureTargetHardware()
+    }
+
+    private fun configureTargetHardware() {
         memory.wideDataEnabled = target == MarsTarget.MARS64
         memory.wideInstructionDecoder = if (target == MarsTarget.MARS64) {
             { word, address -> ProgramStatement(word, address, instructionSet, settings) }

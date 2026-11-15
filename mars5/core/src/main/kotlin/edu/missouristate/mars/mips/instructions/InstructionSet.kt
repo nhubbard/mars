@@ -45,14 +45,14 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /** Ordered instruction forms and their binary decoding tables. */
 open class InstructionSet {
-    internal var target = MarsTarget.MARS32
+    internal var target = MarsTarget.DEFAULT
         private set
     private val forms = ArrayList<Instruction>()
     open val instructionList: ArrayList<Instruction> get() = forms
     private lateinit var opcodeMatchMaps: List<MatchMap>
 
     open fun populate() {
-        populate(MarsTarget.MARS32)
+        populate(MarsTarget.DEFAULT)
     }
 
     internal fun populate(target: MarsTarget, includeLegacySourceForms: Boolean = false) {
@@ -103,7 +103,7 @@ open class InstructionSet {
             }
         if (includeLegacySourceForms) {
             val examples = forms.mapTo(HashSet()) { it.exampleFormat }
-            forms.addAll(InstructionDefaults.get().instructionList.filter { examples.add(it.exampleFormat) })
+            forms.addAll(InstructionDefaults.forTarget(MarsTarget.MARS32).instructionList.filter { examples.add(it.exampleFormat) })
         }
     }
 

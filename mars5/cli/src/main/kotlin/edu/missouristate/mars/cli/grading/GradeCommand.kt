@@ -31,7 +31,7 @@ abstract class AssignmentScript(assignment: Assignment) {
         instructionLimit: Long = 100_000,
         input: String = "",
         utf8Text: Boolean = false,
-        target: MarsTarget = MarsTarget.MARS32,
+        target: MarsTarget = MarsTarget.DEFAULT,
         verify: AssemblyCase.() -> Unit,
     ) = submission.case(name, instructionLimit, input, utf8Text, target, verify)
 }

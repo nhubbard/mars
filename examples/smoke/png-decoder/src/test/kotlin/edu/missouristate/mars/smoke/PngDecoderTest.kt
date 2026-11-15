@@ -1,5 +1,6 @@
 package edu.missouristate.mars.smoke
 
+import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.MIPSprogram
 import edu.missouristate.mars.ProcessingException
 import edu.missouristate.mars.Settings
@@ -117,7 +118,7 @@ internal class PngDecoderTest {
             val output = ByteArrayOutputStream()
             try {
                 DaggerMarsComponent.builder()
-                    .coreModule(CoreModule(settings, 32))
+                    .coreModule(CoreModule(settings, 32, MarsTarget.MARS32))
                     .guiProxy(HEADLESS)
                     .build()
                     .context()

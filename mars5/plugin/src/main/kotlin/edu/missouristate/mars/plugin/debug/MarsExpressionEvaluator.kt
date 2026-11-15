@@ -25,6 +25,7 @@ import edu.missouristate.mars.api.InstructionSourceMap.SourceOperand
 import edu.missouristate.mars.assembler.RegisterNames
 import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.assembler.Tokenizer
+import edu.missouristate.mars.mips.instructions.InstructionDefaults
 import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.mips.hardware.Coprocessor1State.Companion.CONDITION_FLAG_MASK
 import edu.missouristate.mars.mips.hardware.IntegerRegisterFile.Companion.HI_REGISTER
@@ -201,7 +202,7 @@ internal class MarsExpressionEvaluator(
         } else {
             // The expression lexer already determined the numeric boundary, including hexadecimal exponents.
             val value = node.text
-            val type = TokenTypes.matchTokenType(value)
+            val type = TokenTypes.matchTokenType(value, wordCatalog)
             val bits = if (wide) runCatching { Binary.stringToLong(value) }.getOrNull() else null
             when {
                 bits != null -> Immediate(Doubleword(bits))
@@ -255,7 +256,7 @@ internal class MarsExpressionEvaluator(
         // A zero-padded hexadecimal magnitude can exceed the assembler's unsigned spelling
         // rules while the complete signed word still fits.
         val spelling = operator.text + operand.text
-        if (!TokenTypes.isIntegerTokenType(TokenTypes.matchTokenType(spelling))) return null
+        if (!TokenTypes.isIntegerTokenType(TokenTypes.matchTokenType(spelling, wordCatalog))) return null
         return Immediate(Word(Binary.stringToInt(spelling)))
     }
 
@@ -341,6 +342,7 @@ internal class MarsExpressionEvaluator(
     }
 
     private companion object {
+        val wordCatalog = InstructionDefaults.forTarget(MarsTarget.MARS32)
         val literalType = MipsTypes.psi("LITERAL_EXPR")
         val characterType = MipsTypes.psi("CHARACTER")
         val referenceType = MipsTypes.psi("REFERENCE_EXPR")

@@ -1,5 +1,6 @@
 package edu.missouristate.mars
 
+import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.api.MarsGuiProxy
 import edu.missouristate.mars.core.InstructionContext
 import edu.missouristate.mars.core.MarsContext

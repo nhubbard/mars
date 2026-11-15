@@ -838,6 +838,9 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         return prefix.takeIf { following != null && it.equivalence(following) != null }
     }
 
+    internal fun expandedInstruction(file: MipsFile, head: PsiElement): TokenList? =
+        expandedOperation(editorPrefix(file, head.textOffset), sourceLine(head, fromLineStart = true))
+
     private fun expandedOperation(
         prefix: MipsSourceTimeline.Prefix, source: String, allowIncompleteOperand: Boolean = false,
     ): TokenList? = expandedTokens(prefix, source, allowIncompleteOperand)?.operationTokens()

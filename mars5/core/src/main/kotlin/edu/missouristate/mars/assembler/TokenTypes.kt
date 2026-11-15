@@ -136,7 +136,10 @@ enum class TokenTypes {
         private fun hasDoublewordSpelling(value: String): Boolean {
             val unsigned = value.removePrefix("-").removePrefix("+")
             if (unsigned.startsWith("0x", ignoreCase = true)) {
-                return unsigned.length in 11..18 && unsigned.substring(2).toULongOrNull(16) != null
+                if (unsigned.length !in 11..18) return false
+                val magnitude = unsigned.substring(2).toULongOrNull(16) ?: return false
+                // Keep padded signed literals accepted by classic word instructions.
+                return !value.startsWith('-') || magnitude > 0x80000000uL
             }
             if (unsigned.firstOrNull() == '0' || unsigned.length < 10) return false
             val bits = value.toLongOrNull()

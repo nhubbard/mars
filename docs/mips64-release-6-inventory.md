@@ -227,7 +227,8 @@ or PC-relative immediate in this table is the displacement as written to LLVM.
 - **Compact control flow.** Tests cover overlapping encodings, link values,
   both branch paths, and forbidden-slot behavior. MARS64 assigns the
   `addi` primary opcode to `beqc`, `beqzalc`, and `bovc`. The same words
-  still decode as `addi` in MARS32.
+  still decode as `addi` in MARS32. The MARS64 `addi` pseudo loads the immediate
+  into `$at` and uses native `add` to preserve signed overflow trapping.
   `bgtc`, `blec`, `bgtuc`, and `bleuc` are assembler aliases. Each emits one
   native compact branch with its register operands reversed.
   `jrc` and `jalrc` emit `jic` and `jialc` with a zero offset.
@@ -243,8 +244,8 @@ or PC-relative immediate in this table is the displacement as written to LLVM.
   Ordinary scalar halfword, word, and
   doubleword loads and stores may cross word boundaries. Linked and
   conditional accesses still require natural alignment. Both can use the
-  mapped MARS64 data region above 4 GiB. The `ulw`, `usw`, `ulh`, `ulhu`, and `ush` pseudos use
-  the corresponding ordinary memory instruction on MARS64. For a legacy
+  mapped MARS64 data region above 4 GiB. The `ulw`, `usw`, `ulh`, `ulhu`, `ush`, `uld`,
+  and `usd` pseudos use the corresponding ordinary memory instruction on MARS64. For a legacy
   left/right pair that loads or stores a complete unaligned word, use
   `lw` or `sw` at the address of the first byte. Code that uses a single
   merge instruction to preserve selected bytes needs an explicit sequence.

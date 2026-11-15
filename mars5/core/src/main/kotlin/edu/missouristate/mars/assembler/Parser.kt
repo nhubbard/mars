@@ -128,6 +128,13 @@ internal class Parser(private val pass: FirstPassProcessor) {
                 return null
             }
         }
+        if (pass.context.session.target == MarsTarget.MARS64 && instruction.name == "addi") {
+            val scratch = (1..2).map(tokens::get).firstOrNull { RegisterNames.integer(it.value)?.number == 1 }
+            if (scratch != null) {
+                pass.errors.add(ErrorMessage(scratch, "This addi pseudo-instruction uses \$at. Load the immediate into a different temporary and use add."))
+                return null
+            }
+        }
         if (instruction is Release6ImmediateTrap && RegisterNames.integer(tokens[1].value)?.number == 1) {
             pass.errors.add(ErrorMessage(tokens[1], "This immediate trap uses \$at. Use a different temporary and a register trap."))
             return null

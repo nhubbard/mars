@@ -10,7 +10,7 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
-import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
+import edu.missouristate.mars.plugin.classicMipsProjectFixture
 import com.intellij.psi.codeStyle.CodeStyleManager
 import com.intellij.psi.codeStyle.LanguageCodeStyleSettingsProvider
 import com.intellij.testFramework.DumbModeTestUtils
@@ -18,6 +18,7 @@ import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import edu.missouristate.mars.plugin.MarsSessionService
+import edu.missouristate.mars.plugin.build.MarsAssemblySettings
 import edu.missouristate.mars.plugin.build.MarsBuildService
 import java.nio.file.Files
 import java.nio.file.Path
@@ -31,7 +32,7 @@ import org.junit.jupiter.api.io.TempDir
 
 @TestApplication
 class MipsFormattingPlatformTest {
-    private val project = codeInsightProjectFixture()
+    private val project = classicMipsProjectFixture()
     private val fixture by codeInsightFixture(project)
 
     @Test
@@ -948,6 +949,7 @@ class MipsFormattingPlatformTest {
     private fun assemble(path: Path, source: String, dataBytes: Int = 48): Pair<List<Int>, List<Int>> {
         path.writeText(source)
         return MarsSessionService.createMarsComponent().context().use { context ->
+            context.selectTarget(fixture.project.service<MarsAssemblySettings>().target)
             val program = context.assemble(listOf(path), null, extended = true, warnings = false)
             val memory = context.memory
             program.machineList!!.map { it.binaryStatement } to List(dataBytes) { memory.getByte(memory.dataBaseAddress + it) }

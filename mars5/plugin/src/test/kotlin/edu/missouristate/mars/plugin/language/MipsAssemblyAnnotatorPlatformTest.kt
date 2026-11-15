@@ -35,6 +35,7 @@ import com.intellij.testFramework.fixtures.CodeInsightTestFixture
 import com.intellij.testFramework.junit5.TestApplication
 import edu.missouristate.mars.api.AssemblyError
 import edu.missouristate.mars.api.AssemblySymbolMap
+import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.plugin.MarsExecutionOptions
 import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
@@ -108,6 +109,7 @@ class MipsAssemblyAnnotatorPlatformTest {
     @Test
     fun `background assembly follows option changes for the same selected entry`() = timeoutRunBlocking {
         val file = withContext(Dispatchers.EDT) {
+            project.service<MarsAssemblySettings>().changeTarget(MarsTarget.MARS32)
             fixture.addFileToProject("delay-layout.asm", $$"""
                 .macro gen (%label)
                 %label: nop
@@ -131,7 +133,7 @@ class MipsAssemblyAnnotatorPlatformTest {
         assertEquals(1, readAction { annotator.acceptResult(file, withoutDelay).size })
         val original = requireNotNull(withoutDelay.symbols).localSymbols.getValue("marker").address
 
-        val options = MarsExecutionOptions(delayedBranching = true)
+        val options = MarsExecutionOptions(delayedBranching = true, target = MarsTarget.MARS32)
         val analysis = project.service<MarsAnalysisService>()
         suspend fun names() = readAction {
             analysis.labelCompletionNames(file, file.findElementAt(file.text.lastIndexOf("generated"))!!, "generated")

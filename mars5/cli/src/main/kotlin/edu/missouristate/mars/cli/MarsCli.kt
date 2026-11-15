@@ -218,7 +218,7 @@ object MarsCli {
           --start-at-main        Start at the exported main label (sm)
           --no-pseudo            Accept basic instructions only (np)
           --utf8-text            Use UTF-8 text for .ascii, .asciiz, and console string syscalls
-          --target TARGET        Select MARS32 (default) or educational MARS64
+          --target TARGET        Select MARS64 (default) or classic MARS32
           --warnings-as-errors   Fail assembly on warnings (we)
           --memory LAYOUT        Default, CompactDataAtZero, or CompactTextAtZero (mc)
           --dump REGION FORMAT FILE   Export .text, .data, or an inclusive word range (dump)

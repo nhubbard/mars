@@ -249,7 +249,7 @@ internal class MipsCatalogEntry(
 }
 
 internal object MipsDocumentationCatalog {
-    private val byName by lazy { catalog(InstructionDefaults.get()) }
+    private val byName by lazy { catalog(InstructionDefaults.forTarget(MarsTarget.MARS32)) }
     private val wide by lazy { catalog(InstructionDefaults.forTarget(MarsTarget.MARS64)) }
 
     private fun catalog(instructionsForTarget: InstructionSet) =

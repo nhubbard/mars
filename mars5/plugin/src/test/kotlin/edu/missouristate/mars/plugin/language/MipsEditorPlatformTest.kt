@@ -33,7 +33,7 @@ import com.intellij.openapi.options.colors.ColorSettingsPages
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
-import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
+import edu.missouristate.mars.plugin.classicMipsProjectFixture
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.TokenType
 import com.intellij.psi.codeStyle.CodeStyleSettingsManager
@@ -65,7 +65,7 @@ import kotlin.io.path.writeText
 
 @TestApplication
 class MipsEditorPlatformTest {
-    private val project = codeInsightProjectFixture()
+    private val project = classicMipsProjectFixture()
     private val fixture by codeInsightFixture(project)
 
     @Test

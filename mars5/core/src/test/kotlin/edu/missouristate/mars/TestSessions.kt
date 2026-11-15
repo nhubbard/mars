@@ -1,5 +1,6 @@
 package edu.missouristate.mars
 
+import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.api.MarsGuiProxy
 import edu.missouristate.mars.core.InstructionContext
 import edu.missouristate.mars.core.MarsContext
@@ -21,7 +22,7 @@ internal object TestSessions {
             .setExtendedAssemblerEnabled(true)
             .setWarningsAreErrors(false)
         return DaggerMarsComponent.builder()
-            .coreModule(CoreModule(settings))
+            .coreModule(CoreModule(settings, target = MarsTarget.MARS32))
             .guiProxy(NO_GUI)
             .build()
             .context()

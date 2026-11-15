@@ -133,7 +133,7 @@ internal class PackagedCliTest {
     }
 
     @Test
-    fun educationalWideTargetIsExplicitAndReportsFullWidthRegisters() {
+    fun release6IsTheDefaultAndReportsFullWidthRegisters() {
         val entry =
             source(
                 "wide.s",
@@ -147,10 +147,10 @@ internal class PackagedCliTest {
                 """
                     .trimIndent(),
             )
-        val narrow = launch(entry.toString())
+        val narrow = launch("--target", "mars32", entry.toString())
         assertEquals(1, narrow.status)
         assertTrue(narrow.err.contains("daddiu"), narrow.err)
-        val wide = launch("--target", "mars64", "--register", "t0", entry.toString())
+        val wide = launch("", listOf("--register", "t0", entry.toString()), classic = false)
         assertEquals(0, wide.status, wide.err)
         assertTrue(wide.out.contains("\$t0\t0x00000000ffffffff"), wide.out)
     }
@@ -275,9 +275,7 @@ internal class PackagedCliTest {
             source(
                 "assignment64.kts",
                 """
-                import edu.missouristate.mars.api.MarsTarget
-
-                case("wide result", target = MarsTarget.MARS64) {
+                case("wide result") {
                     setRegister("a0", 0x100000000L)
                     runUntil("done")
                     expectRegister("v0", 0x100000003L)
@@ -406,7 +404,7 @@ internal class PackagedCliTest {
             source(
                 "linked-list checks.kts",
                 """
-                case("double a word", instructionLimit = 8) {
+                case("double a word") {
                     requireTextLabel("double")
                     requireDataLabel("cell")
                     setWord("cell", 21)
@@ -455,7 +453,7 @@ internal class PackagedCliTest {
                 syscall
                 li ${'$'}v0, 10
                 syscall
-                loop: j loop
+                loop: bc loop
                 file_access: li ${'$'}v0, 13
                 syscall
                 read_input: la ${'$'}a0, buffer
@@ -524,7 +522,7 @@ internal class PackagedCliTest {
                 la ${'$'}a0, message
                 li ${'$'}v0, 4
                 loop: syscall
-                j loop
+                bc loop
 
                 """
                     .trimIndent(),
@@ -1086,7 +1084,7 @@ internal class PackagedCliTest {
         return launch("", arguments.toList())
     }
 
-    private fun launch(input: String, arguments: List<String>): Result {
+    private fun launch(input: String, arguments: List<String>, classic: Boolean = true): Result {
         val bin = Path.of(System.getProperty("java.home"), "bin")
         val java = bin.resolve(if (Files.exists(bin.resolve("java.exe"))) "java.exe" else "java")
         val command =
@@ -1095,6 +1093,9 @@ internal class PackagedCliTest {
                 "-jar",
                 System.getProperty("mars.cli.jar"),
             )
+        if (classic && arguments.firstOrNull() != "grade" && "--target" !in arguments) {
+            command.addAll(listOf("--target", "mars32"))
+        }
         command.addAll(arguments)
         val stdout = Files.createTempFile(directory, "stdout-", ".txt")
         val stderr = Files.createTempFile(directory, "stderr-", ".txt")

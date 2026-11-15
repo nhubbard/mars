@@ -43,7 +43,7 @@ internal class MarsCliTest {
         val error = ByteArrayOutputStream()
         val code: Int =
             MarsCli.execute(
-                arrayOf(file.toString(), "--", "one", "two"),
+                arrayOf("--target", "mars32", file.toString(), "--", "one", "two"),
                 ByteArrayInputStream("42\n".toByteArray()),
                 PrintStream(output),
                 PrintStream(error),
@@ -651,7 +651,7 @@ internal class MarsCliTest {
             err: ByteArrayOutputStream,
         ): Int {
             return MarsCli.execute(
-                args,
+                arrayOf("--target", "mars32", *args),
                 InputStream.nullInputStream(),
                 PrintStream(out),
                 PrintStream(err),

@@ -24,7 +24,7 @@ internal data class MarsExecutionOptions(
     val memoryLayout: MarsMemoryLayout = MarsMemoryLayout.DEFAULT,
     val bareMachine: Boolean = false,
     val utf8Text: Boolean = false,
-    val target: MarsTarget = MarsTarget.MARS32,
+    val target: MarsTarget = MarsTarget.DEFAULT,
     val assemblerErrorLimit: Int = ApplicationInfo.maximumErrorMessages,
 ) {
     fun applyForAssembly(session: MarsContext) {

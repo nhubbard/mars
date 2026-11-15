@@ -4,7 +4,6 @@ import edu.missouristate.mars.ProcessingException
 import edu.missouristate.mars.ProgramStatement
 import edu.missouristate.mars.core.InstructionContext
 import edu.missouristate.mars.simulator.Exceptions.SYSCALL_EXCEPTION
-import edu.missouristate.mars.util.Binary
 
 /*
 Copyright (c) 2003-2006,  Pete Sanderson and Kenneth Vollmar
@@ -42,8 +41,6 @@ open class SyscallReadDouble : AbstractSyscall(7, "ReadDouble") {
         } catch (failure: NumberFormatException) {
             throw ProcessingException(context, statement, "invalid double input (syscall $number)", SYSCALL_EXCEPTION)
         }
-        val bits = value.toRawBits()
-        context.updateCoprocessor1(1, Binary.highOrderLongToInt(bits))
-        context.updateCoprocessor1(0, Binary.lowOrderLongToInt(bits))
+        context.setRegisterPairToDouble(0, value)
     }
 }

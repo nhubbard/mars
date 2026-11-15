@@ -10,6 +10,10 @@ fun release6Migration(mnemonic: String): String? {
         "sdl", "sdr" -> "Use sd for a complete unaligned doubleword, or explicitly store the bytes you need."
         "mfhi", "mflo", "mthi", "mtlo", "mult", "multu", "dmult", "dmultu", "madd", "maddu", "msub", "msubu" ->
             "Use explicit destination registers with mul, muh, div, or mod and their unsigned or doubleword forms. Rewrite any HI/LO accumulation explicitly."
+        "mulo", "mulou" ->
+            "Use mul and muh (or mulu and muhu) with explicit destination registers. Check the high word for overflow before using the product."
+        "mfc1.d", "mtc1.d" ->
+            "Use dmfc1 or dmtc1 to transfer a doubleword between one GPR and one FPR. Split or combine the words explicitly when the program needs a pair of GPRs."
         "bc1f", "bc1t" -> "Use a cmp instruction to write a truth mask, then test it with bc1eqz or bc1nez."
         "bc1fl", "bc1tl", "beql", "bnel", "bgezl", "bgtzl", "blezl", "bltzl", "bgezall", "bltzall" ->
             "Move the annulled delay-slot instruction onto the taken path before replacing the branch."
@@ -42,7 +46,9 @@ fun release6Migration(mnemonic: String): String? {
     }
 }
 
-internal fun release6DivOperandMigration(tokens: TokenList): String? {
+/** Explains a removed operand form when the mnemonic still has valid Release 6 forms. */
+fun release6DivOperandMigration(tokens: TokenList): String? {
+    if (tokens.isEmpty) return null
     val mnemonic = tokens[0].value.lowercase()
     if (mnemonic !in removedTwoOperandDivides || tokens.size() != 3 ||
         RegisterNames.integer(tokens[1].value) == null || RegisterNames.integer(tokens[2].value) == null) return null

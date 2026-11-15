@@ -10,6 +10,7 @@ import edu.missouristate.mars.api.MarsMemory
 import edu.missouristate.mars.api.MarsRegisterFile
 import edu.missouristate.mars.api.MarsSettings
 import edu.missouristate.mars.api.MarsSimulator
+import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.assembler.SymbolTable
 import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.core.MarsMemoryAdapter
@@ -31,6 +32,7 @@ import javax.inject.Singleton
 class CoreModule @JvmOverloads constructor(
     private val settings: Settings = Settings(),
     private val maximumBacksteps: Int = ApplicationInfo.maximumBacksteps,
+    private val target: MarsTarget = MarsTarget.DEFAULT,
 ) {
     init {
         require(maximumBacksteps >= 1) { "Backstep capacity must be positive" }
@@ -46,6 +48,10 @@ class CoreModule @JvmOverloads constructor(
         memory: MemoryState, registers: IntegerRegisterFile, coprocessor0: Coprocessor0State,
         coprocessor1: Coprocessor1State, branch: DelayedBranchState,
     ): BackStepper = BackStepper(memory, registers, coprocessor0, coprocessor1, branch, maximumBacksteps)
+
+    @Provides
+    @Singleton
+    fun provideInstructionSet(): InstructionSet = InstructionSet().apply { populate(this@CoreModule.target) }
 
     companion object {
         @Provides
@@ -81,10 +87,6 @@ class CoreModule @JvmOverloads constructor(
         @Singleton
         fun provideMemoryConfiguration(settings: SimulationSettings): MemoryConfiguration =
             MemoryConfigurations.createConfiguration(settings.memoryConfiguration)
-
-        @Provides
-        @Singleton
-        fun provideInstructionSet(): InstructionSet = InstructionSet().apply { populate() }
 
         @Provides
         @Singleton

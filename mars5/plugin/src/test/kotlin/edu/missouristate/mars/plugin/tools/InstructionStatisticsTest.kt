@@ -1,5 +1,6 @@
 package edu.missouristate.mars.plugin.tools
 
+import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.mips.instructions.InstructionDefaults
 import edu.missouristate.mars.plugin.tools.InstructionStatistics.Category
 import edu.missouristate.mars.plugin.tools.InstructionStatistics.Category.ALU
@@ -13,7 +14,7 @@ import org.junit.jupiter.api.Test
 class InstructionStatisticsTest {
     @Test
     fun `uses decoded instructions to classify integer and coprocessor operations`() {
-        val instructions = InstructionDefaults.get()
+        val instructions = InstructionDefaults.forTarget(MarsTarget.MARS32)
         val statistics = InstructionStatistics()
         val cases = listOf(
             0x00000000 to ALU, // nop

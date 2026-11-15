@@ -1,14 +1,61 @@
 package edu.missouristate.mars
 
 import edu.missouristate.mars.api.MarsTarget
+import edu.missouristate.mars.di.DaggerMarsComponent
+import edu.missouristate.mars.mips.instructions.InstructionDefaults
 import java.nio.file.Files
 import java.nio.file.Path
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 
 class Release6MigrationTest {
+    @Test
+    fun `new sessions assemble and execute Release 6 and classroom pseudos by default`(@TempDir directory: Path) {
+        val source = Files.writeString(directory.resolve("default.mars"), $$"""
+            .data 0x100000000
+            .align 0
+            input: .byte 0
+            .dword 0x0123456789abcdef
+            .space 16
+            .text
+            dla $t0,input
+            daddiu $t0,$t0,1
+            uld $t1,0($t0)
+            usd $t1,9($t0)
+            ld $t2,9($t0)
+            addi $t3,$zero,-100
+            li $t4,-0x080000000
+        """.trimIndent())
+        DaggerMarsComponent.builder().guiProxy(TestSessions.NO_GUI).build().context().use { machine ->
+            assertEquals(MarsTarget.MARS64, machine.target)
+            assertEquals("beqc", InstructionDefaults.get().findByBinaryCode(0x212a0001)?.name)
+            val program = machine.assemble(listOf(source))
+            assertTrue(program.simulate(100))
+            assertEquals(0x0123456789abcdefL, machine.registerFile.getLongValueNoNotify(10))
+            assertEquals(-100L, machine.registerFile.getLongValueNoNotify(11))
+            assertEquals(Int.MIN_VALUE.toLong(), machine.registerFile.getLongValueNoNotify(12))
+        }
+    }
+
+    @Test
+    fun `the addi pseudo traps on word overflow and diagnoses its scratch source`(@TempDir directory: Path) {
+        val source = Files.writeString(directory.resolve("addi.mars"), $$"addi $t1,$t0,1\n")
+        TestSessions.create().use { machine ->
+            machine.selectTarget(MarsTarget.MARS64)
+            val program = machine.assemble(listOf(source))
+            machine.editIntegerRegister(8, Int.MAX_VALUE)
+            machine.editIntegerRegister(9, 42)
+            assertThrows(ProcessingException::class.java) { program.simulate(5) }
+            assertEquals(42L, machine.registerFile.getLongValueNoNotify(9))
+            Files.writeString(source, $$"addi $t1,$at,100000\n")
+            val failure = assertThrows(ProcessingException::class.java) { machine.assemble(listOf(source)) }
+            assertTrue("Load the immediate into a different temporary" in failure.errors()!!.generateErrorReport())
+        }
+    }
+
     @Test
     fun `legacy two-operand divides explain the quotient and remainder instruction forms`(@TempDir directory: Path) {
         val source = Files.writeString(directory.resolve("divides.mars"), $$"""

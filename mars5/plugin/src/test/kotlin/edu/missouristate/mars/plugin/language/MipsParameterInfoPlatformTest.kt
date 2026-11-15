@@ -1,11 +1,12 @@
 package edu.missouristate.mars.plugin.language
 
+import edu.missouristate.mars.api.MarsTarget
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.components.service
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
-import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
+import edu.missouristate.mars.plugin.classicMipsProjectFixture
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.testFramework.DumbModeTestUtils
 import com.intellij.testFramework.IndexingTestUtil
@@ -30,7 +31,7 @@ import kotlin.io.path.writeText
 
 @TestApplication
 class MipsParameterInfoPlatformTest {
-    private val project = codeInsightProjectFixture()
+    private val project = classicMipsProjectFixture()
     private val fixture by codeInsightFixture(project)
 
     @Test
@@ -43,7 +44,7 @@ class MipsParameterInfoPlatformTest {
         withContext(Dispatchers.EDT) {
             val hint = info($$"entry: DIV $t0 $t1, <caret>").orEmpty()
             val rows = hint.split("\n-\n")
-            val forms = checkNotNull(InstructionDefaults.get().matchOperator("div")).map { it.exampleFormat }.toSet()
+            val forms = checkNotNull(InstructionDefaults.forTarget(MarsTarget.MARS32).matchOperator("div")).map { it.exampleFormat }.toSet()
             assertEquals(forms, rows.map { it.replace("<b>", "").replace("</b>", "") }.toSet())
             assertEquals(forms.size, rows.size)
             assertTrue($$"div $t1,$t2,<b>$t3</b>" in rows, hint)

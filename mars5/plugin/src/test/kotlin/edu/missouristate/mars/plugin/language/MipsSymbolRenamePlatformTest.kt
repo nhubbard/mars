@@ -17,7 +17,7 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.openapi.vfs.limits.FileSizeLimit
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
-import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
+import edu.missouristate.mars.plugin.classicMipsProjectFixture
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
@@ -61,7 +61,7 @@ import org.junit.jupiter.api.assertThrows
 
 @TestApplication
 class MipsSymbolRenamePlatformTest {
-    private val projectFixture = codeInsightProjectFixture()
+    private val projectFixture = classicMipsProjectFixture()
     private val fixture by codeInsightFixture(projectFixture)
     private val project get() = projectFixture.get()
     private val processor = MipsSymbolRenameProcessor()

@@ -42,6 +42,11 @@ class MipsRelease6MergePlatformTest {
                 LIKELY $8,$9,target
                 mflo $8
                 c.eq.s $f0,$f2
+                mfc1.d $v0,$f2
+                .eqv DIVIDE div
+                DIVIDE $8,$9
+                div $10,$8,$9
+                addi $8,$9,-100
                 addi $8,$9,100000
                 target: nop
                 lwl: nop
@@ -76,20 +81,23 @@ class MipsRelease6MergePlatformTest {
                 return holder.results.map { it.psiElement.text }
             }
 
-            assertEquals(emptyList<String>(), mergeWarnings())
-            assertEquals(emptyList<String>(), batchDiagnostics())
-            settings.changeTarget(MarsTarget.MARS64)
+            assertEquals(MarsTarget.MARS64, settings.target)
             try {
                 val plain = fixture.addFileToProject("notes.txt", "lwl")
                 val holder = ProblemsHolder(InspectionManager.getInstance(fixture.project), plain, false)
                 assertEquals(PsiElementVisitor.EMPTY_VISITOR, inspection.buildVisitor(holder, false))
-                val expected = listOf("lwl", "LWR", "swl", "MERGE", "LIKELY", "mflo", "c.eq.s")
+                val expected = listOf("lwl", "LWR", "swl", "MERGE", "LIKELY", "mflo", "c.eq.s", "mfc1.d", "DIVIDE")
                 assertEquals(expected, mergeWarnings())
                 assertEquals(expected, batchDiagnostics())
             } finally {
                 settings.changeTarget(MarsTarget.MARS32)
             }
             assertEquals(emptyList<String>(), mergeWarnings())
+            assertEquals(emptyList<String>(), batchDiagnostics())
+
+            settings.changeTarget(MarsTarget.MARS64)
+            fixture.configureByText("malformed.mars", $$"div $8, @")
+            assertEquals(emptyList<String>(), batchDiagnostics())
         }
     }
 }

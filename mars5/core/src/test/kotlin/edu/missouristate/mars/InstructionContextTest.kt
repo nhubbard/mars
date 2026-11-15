@@ -1,5 +1,6 @@
 package edu.missouristate.mars
 
+import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.core.InstructionContext
 import edu.missouristate.mars.di.CoreModule
 import edu.missouristate.mars.di.DaggerMarsComponent
@@ -264,7 +265,7 @@ internal class InstructionContextTest {
             settings.simulationSettings.setDelayedBranchingEnabled(delayed)
             val session =
                 DaggerMarsComponent.builder()
-                    .coreModule(CoreModule(settings))
+                    .coreModule(CoreModule(settings, target = MarsTarget.MARS32))
                     .guiProxy(TestSessions.NO_GUI)
                     .build()
                     .context()

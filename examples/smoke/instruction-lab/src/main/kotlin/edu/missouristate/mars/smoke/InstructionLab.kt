@@ -1,5 +1,6 @@
 package edu.missouristate.mars.smoke
 
+import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.MIPSprogram
 import edu.missouristate.mars.MIPSprogram.ExecutionStep
 import edu.missouristate.mars.ProcessingException
@@ -107,7 +108,7 @@ object InstructionLab {
                 Files.delete(path)
             }
         }
-        val catalog = InstructionDefaults.get().instructionList
+        val catalog = InstructionDefaults.forTarget(MarsTarget.MARS32).instructionList
         check(!catalog.isEmpty()) { "MARS returned an empty instruction catalog" }
         val lines = ArrayList<String>()
         lines.add(
@@ -282,7 +283,7 @@ object InstructionLab {
             .setSelfModifyingCodeEnabled(false)
             .setWarningsAreErrors(false)
         return DaggerMarsComponent.builder()
-            .coreModule(CoreModule(settings, 32))
+            .coreModule(CoreModule(settings, 32, MarsTarget.MARS32))
             .guiProxy(HEADLESS)
             .build()
             .context()

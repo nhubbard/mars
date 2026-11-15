@@ -11,7 +11,7 @@ import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.platform.backend.documentation.impl.computeDocumentationBlocking
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
-import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
+import edu.missouristate.mars.plugin.classicMipsProjectFixture
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.testFramework.DumbModeTestUtils
 import com.intellij.testFramework.IndexingTestUtil
@@ -34,7 +34,7 @@ import org.junit.jupiter.api.Test
 // These tests also inspect provider callbacks to verify pointers and navigation after edits.
 @Suppress("UnstableApiUsage", "OverrideOnly")
 class MipsDocumentationPlatformTest {
-    private val project = codeInsightProjectFixture()
+    private val project = classicMipsProjectFixture()
     private val fixture by codeInsightFixture(project)
 
     @Test
@@ -53,7 +53,7 @@ class MipsDocumentationPlatformTest {
     @Test
     fun `quick documentation presents the core instruction examples and descriptions`() = timeoutRunBlocking {
         val html = documentation($$"entry: DIV<caret> $t0, $t1, $t2").orEmpty()
-        val forms = checkNotNull(InstructionDefaults.get().matchOperator("div"))
+        val forms = checkNotNull(InstructionDefaults.forTarget(MarsTarget.MARS32).matchOperator("div"))
         for (instruction in forms) {
             assertTrue(StringUtil.escapeXmlEntities(instruction.exampleFormat) in html, html)
             assertTrue(StringUtil.escapeXmlEntities(instruction.description) in html, html)

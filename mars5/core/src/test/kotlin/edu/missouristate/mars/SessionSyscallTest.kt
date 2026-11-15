@@ -1,5 +1,6 @@
 package edu.missouristate.mars
 
+import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.api.MarsGuiProxy
 import edu.missouristate.mars.api.SessionSyscallEnvironment
 import edu.missouristate.mars.core.InstructionContext
@@ -480,7 +481,7 @@ internal class SessionSyscallTest {
                 .setExtendedAssemblerEnabled(true)
                 .setWarningsAreErrors(false)
             return DaggerMarsComponent.builder()
-                .coreModule(CoreModule(settings))
+                .coreModule(CoreModule(settings, target = MarsTarget.MARS32))
                 .guiProxy(
                     object : MarsGuiProxy {
                         override val isGuiMode: Boolean

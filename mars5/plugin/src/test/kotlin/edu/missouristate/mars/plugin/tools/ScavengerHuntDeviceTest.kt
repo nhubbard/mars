@@ -1,6 +1,7 @@
 package edu.missouristate.mars.plugin.tools
 
 import edu.missouristate.mars.api.ErrorEvent
+import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.api.SimulatorListener
 import edu.missouristate.mars.api.StepEvent
 import edu.missouristate.mars.api.StopEvent
@@ -441,6 +442,7 @@ class ScavengerHuntDeviceTest {
     private fun withProgram(source: String, test: (MarsContext, ScavengerHuntDevice) -> Unit) {
         val file = directory.resolve("game.asm").also { it.writeText(source.trimIndent()) }
         MarsSessionService.createMarsComponent().context().use { session ->
+            session.selectTarget(MarsTarget.MARS32)
             session.assemble(listOf(file))
             ScavengerHuntDevice(session).use { device -> test(session, device) }
         }

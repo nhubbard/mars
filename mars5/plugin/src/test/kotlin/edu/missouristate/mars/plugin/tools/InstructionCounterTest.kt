@@ -1,5 +1,6 @@
 package edu.missouristate.mars.plugin.tools
 
+import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.mips.instructions.InstructionDefaults
 import edu.missouristate.mars.plugin.tools.InstructionCounter.Snapshot
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -8,7 +9,7 @@ import org.junit.jupiter.api.Test
 class InstructionCounterTest {
     @Test
     fun `counts execution formats and preserves each run's connection and reset state`() {
-        val instructions = InstructionDefaults.get()
+        val instructions = InstructionDefaults.forTarget(MarsTarget.MARS32)
         val counter = InstructionCounter()
         val otherRun = InstructionCounter()
         fun record(word: Int) = counter.record(instructions.findByBinaryCode(word))

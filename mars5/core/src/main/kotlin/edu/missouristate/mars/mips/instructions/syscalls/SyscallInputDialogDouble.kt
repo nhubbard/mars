@@ -34,7 +34,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 (MIT license, http://www.opensource.org/licenses/mit-license.html)
  */
 
-/** Writes the double to $f0 and $f1 and the dialog status to $a1. */
+/** Writes the double to $f0 (and $f1 in MARS32) and the dialog status to $a1. */
 open class SyscallInputDialogDouble : AbstractSyscall(53, "InputDialogDouble") {
     @Throws(ProcessingException::class)
     override fun simulate(statement: ProgramStatement?, context: InstructionContext) {

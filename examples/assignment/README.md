@@ -82,8 +82,10 @@ captured output. It enables console syscalls, heap allocation, and exit. File de
 dialogs, the clock, sleep, and random services are disabled for graded programs. Supply every
 permitted include with `--include path/to/header.inc` after the assembly entry paths.
 
-For a MARS64 exercise, import `edu.missouristate.mars.api.MarsTarget` and pass
-`target = MarsTarget.MARS64` to `case`. Use Kotlin `Long` values with `setRegister` and
+Grading cases default to MARS64. For a classic MARS32 exercise, import
+`edu.missouristate.mars.api.MarsTarget` and pass `target = MarsTarget.MARS32` to `case`.
+
+In MARS64 cases, use Kotlin `Long` values with `setRegister` and
 `expectRegister` to test all 64 bits. Use `expectVector("w0", low = 1L, high = 2L)`
 to check both halves of an MSA register, or `expectVectorLane("w0", lane = 1, width = 64, expected = 2L)`
 to check a specific lane. Lane zero starts at the least-significant bits of `low`.

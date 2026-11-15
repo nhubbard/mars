@@ -10,7 +10,7 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.util.TextRange
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
-import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
+import edu.missouristate.mars.plugin.classicMipsProjectFixture
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.testFramework.DumbModeTestUtils
 import com.intellij.testFramework.IndexingTestUtil
@@ -38,7 +38,7 @@ import kotlin.io.path.writeText
 
 @TestApplication
 class MipsCompletionPlatformTest {
-    private val project = codeInsightProjectFixture()
+    private val project = classicMipsProjectFixture()
     private val fixture by codeInsightFixture(project)
 
     @Test
@@ -82,7 +82,7 @@ class MipsCompletionPlatformTest {
     @ValueSource(booleans = [true, false])
     fun `statement heads offer enabled catalog instructions and directives once`(allowPseudo: Boolean) = timeoutRunBlocking {
         IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
-        val instructions = InstructionDefaults.get().instructionList
+        val instructions = InstructionDefaults.forTarget(MarsTarget.MARS32).instructionList
         val directives = Directives.getDirectiveList().map { it.name }
         val names = (instructions.map { it.name } + directives).toSet()
         val enabled = (instructions.filter { allowPseudo || it is BasicInstruction }.map { it.name } + directives).toSet()
@@ -274,7 +274,7 @@ class MipsCompletionPlatformTest {
         withContext(Dispatchers.EDT) {
             fixture.configureByText("completion.asm", $$"entry: C.<caret>eq.s $f0, $f2\n")
             val instruction = fixture.completeBasic().orEmpty().single { it.lookupString == "c.eq.s" }
-            val example = InstructionDefaults.get().instructionList.first { it.name == "c.eq.s" }.exampleFormat
+            val example = InstructionDefaults.forTarget(MarsTarget.MARS32).instructionList.first { it.name == "c.eq.s" }.exampleFormat
             val presentation = LookupElementPresentation().also(instruction::renderElement)
             assertEquals(example.removePrefix("c.eq.s"), presentation.tailText)
             fixture.lookup.currentItem = instruction

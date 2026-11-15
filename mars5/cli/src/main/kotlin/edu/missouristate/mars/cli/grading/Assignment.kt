@@ -41,7 +41,7 @@ class Assignment internal constructor(
         instructionLimit: Long = 100_000,
         input: String = "",
         utf8Text: Boolean = false,
-        target: MarsTarget = MarsTarget.MARS32,
+        target: MarsTarget = MarsTarget.DEFAULT,
         verify: AssemblyCase.() -> Unit,
     ) {
         require(name.isNotBlank() && results.none { it.name == name }) { "Choose a unique, non-empty case name" }

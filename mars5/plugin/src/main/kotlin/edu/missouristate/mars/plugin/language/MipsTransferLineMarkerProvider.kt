@@ -61,7 +61,7 @@ internal class MipsTransferLineMarkerProvider : RelatedItemLineMarkerProvider() 
     private companion object {
         val bundle = DynamicBundle(MipsTransferLineMarkerProvider::class.java, "messages.MarsBundle")
         val transferForms by lazy {
-            val forms = InstructionDefaults.get().instructionList
+            val forms = InstructionDefaults.editorCatalog().instructionList
             val basic = forms.filterIsInstance<BasicInstruction>().filter {
                 it.instructionFormat == I_BRANCH_FORMAT || it.instructionFormat == J_FORMAT
             }

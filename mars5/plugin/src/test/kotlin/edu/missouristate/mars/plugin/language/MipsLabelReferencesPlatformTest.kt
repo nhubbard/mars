@@ -15,6 +15,7 @@ import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import edu.missouristate.mars.plugin.MarsSessionService
+import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.analysis.SymbolKind
 import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
@@ -288,6 +289,7 @@ class MipsLabelReferencesPlatformTest {
                     readAction { assertEquals(header.length, referenceAtCaret()?.resolve()?.textOffset) }
                 }
                 val context = project.get().service<MarsSessionService>().context
+                context.selectTarget(MarsTarget.MARS32)
                 val entry = directory.resolve("label-alias.asm").also { it.writeText(source) }
                 context.assemble(listOf(entry), null, extended = true, warnings = false)
                 val memory = context.memory

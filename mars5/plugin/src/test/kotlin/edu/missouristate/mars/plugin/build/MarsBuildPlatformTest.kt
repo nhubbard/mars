@@ -46,7 +46,7 @@ import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
-import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
+import edu.missouristate.mars.plugin.classicMipsProjectFixture
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiErrorElement
@@ -126,7 +126,7 @@ import org.junit.jupiter.params.provider.CsvSource
 
 @TestApplication
 class MarsBuildPlatformTest {
-    private val projectFixture = codeInsightProjectFixture()
+    private val projectFixture = classicMipsProjectFixture()
     private val fixture by codeInsightFixture(projectFixture)
     private val project get() = projectFixture.get()
 
@@ -338,7 +338,8 @@ class MarsBuildPlatformTest {
             assertEquals(upToDate, result.isUpToDate)
             return received.filterIsInstance<FileMessageEvent>().single()
         }
-        suspend fun prepare() = requireNotNull(build.prepare(sourceSet, MarsExecutionOptions(), activateBuildView = false))
+        val options = project.service<MarsAssemblySettings>().executionOptions
+        suspend fun prepare() = requireNotNull(build.prepare(sourceSet, options, activateBuildView = false))
         try {
             val initial = prepare()
             assertEquals(path, warning(upToDate = false).filePosition.path)
@@ -714,14 +715,14 @@ class MarsBuildPlatformTest {
                     assertTrue(configurable.isModified)
                     configurable.apply()
                     configurable.apply()
-                    assertEquals(MarsExecutionOptions(warningsAreErrors = true), settings.executionOptions)
+                    assertEquals(MarsExecutionOptions(warningsAreErrors = true, target = MarsTarget.MARS32), settings.executionOptions)
                     pseudo.isSelected = false
                     utf8.isSelected = true
                     assertTrue(configurable.isModified)
                     configurable.apply()
                     val persisted = XmlSerializer.serialize(settings.getState())
                     settings.loadState(XmlSerializer.deserialize(persisted, MarsAssemblySettings.Settings::class.java))
-                    assertEquals(MarsExecutionOptions(allowPseudoInstructions = false, warningsAreErrors = true, utf8Text = true), settings.executionOptions)
+                    assertEquals(MarsExecutionOptions(allowPseudoInstructions = false, warningsAreErrors = true, utf8Text = true, target = MarsTarget.MARS32), settings.executionOptions)
                     configurable.reset()
                     assertTrue(utf8.isSelected)
                     utf8.isSelected = false
@@ -896,7 +897,7 @@ class MarsBuildPlatformTest {
                 settings.loadState(XmlSerializer.deserialize(saved, MarsAssemblySettings.Settings::class.java))
                 page.reset()
                 assertTrue(listOf(delayed, modify, bare).all { it.isSelected })
-                assertEquals(MarsExecutionOptions(delayedBranching = true, selfModifyingCode = true, bareMachine = true), settings.executionOptions)
+                assertEquals(MarsExecutionOptions(delayedBranching = true, selfModifyingCode = true, bareMachine = true, target = MarsTarget.MARS32), settings.executionOptions)
                 val generation = settings.sourceChanges.modificationCount
                 settings.changeDelayedBranching(true)
                 settings.changeBareMachine(true)

@@ -2,7 +2,6 @@ package edu.missouristate.mars.mips.instructions.syscalls
 
 import edu.missouristate.mars.ProgramStatement
 import edu.missouristate.mars.core.InstructionContext
-import edu.missouristate.mars.util.Binary
 
 /*
 Copyright (c) 2003-2006,  Pete Sanderson and Kenneth Vollmar
@@ -34,8 +33,6 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 open class SyscallPrintDouble : AbstractSyscall(3, "PrintDouble") {
     override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
-        // The higher-numbered register holds the high word.
-        val bits = Binary.twoIntsToLong(context.coprocessor1.getValue(13), context.coprocessor1.getValue(12))
-        context.environment().printDouble(Double.fromBits(bits))
+        context.environment().printDouble(context.coprocessor1.getDoubleFromRegisterPair(12))
     }
 }

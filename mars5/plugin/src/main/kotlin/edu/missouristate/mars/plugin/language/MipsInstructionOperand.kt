@@ -47,7 +47,7 @@ internal fun coprocessor0Operand(head: PsiElement): Int? {
     return head.textOffset + tokens[COPROCESSOR0_REGISTER_INDEX].startPos - 1
 }
 
-internal fun enabledInstructionFormats(name: String, allowPseudo: Boolean, target: MarsTarget = MarsTarget.MARS32): List<Instruction> {
+internal fun enabledInstructionFormats(name: String, allowPseudo: Boolean, target: MarsTarget = MarsTarget.DEFAULT): List<Instruction> {
     val catalog = InstructionDefaults.forTarget(target)
     val formats = catalog.matchOperator(name).orEmpty()
     return if (allowPseudo) formats else formats.filterIsInstance<BasicInstruction>()
@@ -141,7 +141,7 @@ internal class MipsInstructionOperand private constructor(
     }
 
     companion object {
-        fun at(position: PsiElement, sourceFile: MipsFile, allowPseudo: Boolean = true, target: MarsTarget = MarsTarget.MARS32): MipsInstructionOperand? {
+        fun at(position: PsiElement, sourceFile: MipsFile, allowPseudo: Boolean = true, target: MarsTarget = MarsTarget.DEFAULT): MipsInstructionOperand? {
             val instruction = operationOwner(position) ?: return null
             val prefix = instruction.node.chars.subSequence(0, position.textOffset - instruction.textOffset).toString()
             // Navigation and completion use the operand slot while the instruction is being edited.

@@ -1,5 +1,6 @@
 package edu.missouristate.mars.plugin.tools
 
+import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.mips.hardware.MemoryAccessNotice
 import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.tools.MemoryGridDisplay.Base
@@ -66,6 +67,7 @@ class BitmapDisplayTest {
     @Test
     fun `wide data options require a wide execution and can reconnect to a narrow base`() {
         MarsSessionService.createMarsComponent().context().use { session ->
+            session.selectTarget(MarsTarget.MARS32)
             val display = MemoryGridDisplay(captureAtLaunch = true)
             display.configure(Options(base = Base.WIDE_DATA))
             display.observe(session.memory).use {

@@ -75,9 +75,12 @@ Gradle or GitHub Classroom, and checking script registration.
 
 ## Architecture target
 
-MARS32 is the default. Select **MARS64** under **Settings → Build, Execution, Deployment →
-MARS Assembly**, or pass `--target mars64` to the CLI, for the MIPS64 Release 6 source target
-with MSA vectors. The debugger can inspect, edit, and reverse changes to the full integer registers.
+MARS64, the MIPS64 Release 6 source target with MSA vectors, is the default for
+IntelliJ projects, CLI runs, and grading cases without an explicit target.
+For existing classroom programs that depend on
+classic instruction behavior, select **MARS32** under **Settings → Build, Execution, Deployment →
+MARS Assembly**, pass `--target mars32` to the CLI, or set `target = MarsTarget.MARS32` in a
+grading case. The debugger can inspect, edit, and reverse changes to the full integer registers.
 Word instructions such as `addiu` and `sll` use the low 32 bits and write sign-extended word
 results. Bitwise operations, comparisons, branches, and register moves use the selected target's
 integer register width. MARS64 keeps the classroom memory layouts and adds two sparse 4 MiB regions.
@@ -102,8 +105,15 @@ use the three-register `mul`, `mulu`, `div`, and `divu` forms. They write a sign
 word result to the destination register. Use `muh` or `muhu` for the high product word and
 `mod` or `modu` for the remainder. MARS64 reports a trap on division by zero.
 MARS64 executes architectural delay slots for delayed branches and jumps. Compact control
-transfers have no delay slot. Ordinary scalar loads and stores support unaligned data in
-both byte orders. The `ulw`, `usw`, `ulh`, `ulhu`, and `ush` aliases use those same instructions.
+transfers have no delay slot. If an older program assumed delay slots were disabled, add
+explicit slots after delayed transfers or use compact forms where appropriate, such as
+`bc`, `balc`, and `jrc $ra`. Ordinary scalar loads and stores support unaligned data in
+both byte orders. The `ulw`, `usw`, `ulh`, `ulhu`, `ush`, `uld`, and `usd` aliases use
+those instructions. The `addi` pseudo preserves signed overflow trapping and uses `$at`
+as a temporary. Put multi-instruction pseudos outside delay slots. The assembler and
+IntelliJ give migration guidance for removed forms that require source changes, including
+two-operand divides and HI/LO operations. Review classic uses of `ld` and `sd` that expected
+two adjacent 32-bit GPRs. The Release 6 forms transfer one 64-bit GPR.
 MARS64 provides 32 individually addressable 64-bit floating-point registers and supports
 FCSR rounding and exceptions for scalar arithmetic. MSA vector instructions use 32 128-bit
 registers whose low halves share storage with the scalar registers. MARS32 uses paired

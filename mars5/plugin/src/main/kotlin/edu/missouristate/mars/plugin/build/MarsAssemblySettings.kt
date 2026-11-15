@@ -60,7 +60,7 @@ internal class MarsAssemblySettings(private val project: Project) :
         @JvmField var delayedBranching: Boolean = false,
         @JvmField var selfModifyingCode: Boolean = false,
         @JvmField var utf8Text: Boolean = false,
-        @JvmField var target: MarsTarget = MarsTarget.MARS32,
+        @JvmField var target: MarsTarget = MarsTarget.DEFAULT,
         @JvmField var bareMachine: Boolean = false,
         @JvmField var assemblerErrorLimit: Int = ApplicationInfo.maximumErrorMessages,
         @JvmField var backstepLimit: Int = ApplicationInfo.maximumBacksteps,
@@ -257,6 +257,7 @@ internal class MarsAssemblyConfigurable(private val project: Project) :
         row {
             checkBox(messages.getMessage("run.delayed.branching"))
                 .bindSelected({ settings.delayedBranching }, settings::changeDelayedBranching)
+                .comment(messages.getMessage("build.settings.delayed.branching.help"))
         }
         row {
             checkBox(messages.getMessage("run.self.modifying.code"))
@@ -309,7 +310,7 @@ internal class MarsAssemblyConfigurable(private val project: Project) :
         row(messages.getMessage("build.settings.target")) {
             val target = MutableProperty({ settings.target }, settings::changeTarget)
             val renderer = textListCellRenderer<MarsTarget>("") { it.name }
-            comboBox(MarsTarget.entries, renderer).bindItem(target.toNullableProperty(MarsTarget.MARS32))
+            comboBox(MarsTarget.entries, renderer).bindItem(target.toNullableProperty(MarsTarget.DEFAULT))
         }
         row(messages.getMessage("build.settings.memory")) {
             val layout = MutableProperty({ settings.memoryLayout }, settings::changeMemoryLayout)

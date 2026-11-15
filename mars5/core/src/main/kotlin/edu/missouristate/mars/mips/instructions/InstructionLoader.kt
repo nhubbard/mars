@@ -24,6 +24,15 @@ class InstructionLoader {
                 templates.add(wideConstantTemplate(owner, "dla \$t1,label"))
                 templates.addAll(release6TrapTemplates(owner))
                 templates.addAll(release6CompactAliases(owner))
+                templates.add(ExtendedInstruction(
+                    "addi \$t1,\$t2,-100", "addiu \$at, \$zero, VL3\nadd RG1, RG2, \$at", null,
+                    "Add a signed immediate and trap on overflow. Uses \$at as a temporary.", owner,
+                ))
+                for ((alias, operation) in unalignedDoublewords) {
+                    for (operand in listOf("-100(\$t2)", "(\$t2)", "100000", "100000(\$t2)")) {
+                        templates.add(wideMemoryTemplate(owner, operation, "$alias \$t1,$operand"))
+                    }
+                }
                 for ((mnemonic, operation) in wideMemoryOperations) {
                     val register = if (operation in floatingMemoryOperations) "\$f2" else "\$t1"
                     templates.add(WideAddressMemory("$mnemonic $register,0x100000000", operation, 0, false, owner))
@@ -180,7 +189,7 @@ class InstructionLoader {
             "100000(\$t2)" -> "lui \$1, VH2\ndaddu \$1, \$1, RG4\n$mnemonic RG1, VL2(\$1)"
             else -> error("Unknown memory operand form: $example")
         }
-        val description = when (mnemonic) {
+        val description = when (example.substringBefore(' ')) {
             "ld" -> "Load a doubleword"
             "sd" -> "Store a doubleword"
             else -> "Alias for $mnemonic, which also accepts unaligned addresses"
@@ -191,14 +200,15 @@ class InstructionLoader {
     private companion object {
         val doublewordFloatingMemoryPseudos = setOf("ldc1", "sdc1", "l.d", "s.d")
         val floatingMemoryOperations = setOf("lwc1", "swc1", "ldc1", "sdc1")
-        val extraSymbolicMemoryOperations = setOf("lwu", "lld", "scd")
+        val unalignedDoublewords = mapOf("uld" to "ld", "usd" to "sd")
+        val extraSymbolicMemoryOperations = setOf("lwu", "lld", "scd") + unalignedDoublewords.keys
         val wideMemoryOperations = (
             listOf("lb", "lbu", "lh", "lhu", "lw", "lwu", "ld", "sb", "sh", "sw", "sd", "ll", "sc", "lld", "scd") +
                 floatingMemoryOperations
             ).associateWith { it } + mapOf(
             "l.s" to "lwc1", "s.s" to "swc1", "l.d" to "ldc1", "s.d" to "sdc1",
             "ulw" to "lw", "usw" to "sw", "ulh" to "lh", "ulhu" to "lhu", "ush" to "sh",
-        )
+        ) + unalignedDoublewords
     }
 
     private fun pseudoOps(): BufferedReader {

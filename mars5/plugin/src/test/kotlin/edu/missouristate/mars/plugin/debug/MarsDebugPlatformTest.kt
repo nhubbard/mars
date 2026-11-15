@@ -58,7 +58,7 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.limits.FileSizeLimit
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
-import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
+import edu.missouristate.mars.plugin.classicMipsProjectFixture
 import com.intellij.psi.PsiErrorElement
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.testFramework.DumbModeTestUtils
@@ -191,7 +191,7 @@ import org.junit.jupiter.params.provider.ValueSource
 
 @TestApplication
 class MarsDebugPlatformTest {
-    private val projectFixture = codeInsightProjectFixture()
+    private val projectFixture = classicMipsProjectFixture()
     private val fixture by codeInsightFixture(projectFixture)
     private val project get() = projectFixture.get()
     private val debugger get() = XDebuggerManager.getInstance(project)
@@ -4813,6 +4813,7 @@ class MarsDebugPlatformTest {
     @Test
     fun `disassembly window stays within the unsigned address space`() {
         MarsSessionService.createMarsComponent().context().use { machine ->
+            machine.selectTarget(MarsTarget.MARS32)
             val first = disassemblyWindow(machine.memory, 0)
             assertEquals(0L, first.first().address)
             assertEquals(listOf(first.first()), first.filter(DisassemblyRow::current))

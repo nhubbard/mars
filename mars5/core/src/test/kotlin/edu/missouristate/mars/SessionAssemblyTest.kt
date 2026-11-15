@@ -1,5 +1,6 @@
 package edu.missouristate.mars
 
+import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.api.AssembledInstruction
 import edu.missouristate.mars.api.AssemblyError
 import edu.missouristate.mars.api.AssemblyResult
@@ -2966,7 +2967,7 @@ internal class SessionAssemblyTest {
                 .setExtendedAssemblerEnabled(true)
                 .setWarningsAreErrors(false)
             return DaggerMarsComponent.builder()
-                .coreModule(CoreModule(settings))
+                .coreModule(CoreModule(settings, target = MarsTarget.MARS32))
                 .guiProxy(NO_GUI)
                 .build()
                 .context()

@@ -1,8 +1,10 @@
 package edu.missouristate.mars.plugin.language.syntax
 
 import edu.missouristate.mars.ErrorList
+import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.assembler.Tokenizer
+import edu.missouristate.mars.mips.instructions.InstructionDefaults
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -203,12 +205,13 @@ class MipsScannerTest {
             "head, -$unsignedWord" to MipsTokenKind.NUMBER,
             ".word - $unsignedWord" to MipsTokenKind.NUMBER,
         )
+        val tokenizer = Tokenizer(instructions = InstructionDefaults.forTarget(MarsTarget.MARS32))
         for ((source, kind) in cases) {
             val magnitude = MipsScanner.scan(source).last()
             assertEquals(kind, magnitude.kind, source)
             assertEquals(magnitude, MipsScanner.next(source, magnitude.start), source)
             val line = source.substringAfterLast('\n')
-            val tokens = Tokenizer().tokenizeLine(1, line, ErrorList(), false)
+            val tokens = tokenizer.tokenizeLine(1, line, ErrorList(), false)
             // The target-neutral editor accepts the padded hex; the MARS32 assembler rejects its detached form.
             val legacyError = kind == MipsTokenKind.BAD_CHARACTER || source == "head -$minimum"
             assertEquals(legacyError, tokens[tokens.size() - 1].type == TokenTypes.ERROR, source)
