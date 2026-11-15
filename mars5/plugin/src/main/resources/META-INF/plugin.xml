@@ -133,6 +133,8 @@
     <notificationGroup id="MARS Memory Export" displayType="BALLOON" bundle="messages.MarsBundle" key="export.title"/>
   </extensions>
   <applicationListeners>
+    <!-- DevKit 2026.3 sometimes fails to resolve the listener's Kotlin supertype. -->
+    <!--suppress PluginXmlValidity -->
     <listener class="edu.missouristate.mars.plugin.language.MipsEditorLanguageLifecycle"
               topic="com.intellij.ide.plugins.DynamicPluginListener"/>
   </applicationListeners>
