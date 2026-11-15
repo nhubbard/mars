@@ -3,6 +3,7 @@ import java.util.zip.ZipFile
 plugins {
   id("java")
   kotlin("jvm")
+  kotlin("kapt")
   id("com.google.devtools.ksp") version "2.3.12"
   jacoco
 }
@@ -62,9 +63,8 @@ val benchmark = sourceSets.create("benchmark")
 configurations[benchmark.implementationConfigurationName].extendsFrom(configurations.implementation.get())
 dependencies {
   add(benchmark.implementationConfigurationName, sourceSets.main.get().output)
-  add(benchmark.compileOnlyConfigurationName, "org.jetbrains:annotations:26.1.0")
   add(benchmark.implementationConfigurationName, "org.openjdk.jmh:jmh-core:1.37")
-  add(benchmark.annotationProcessorConfigurationName, "org.openjdk.jmh:jmh-generator-annprocess:1.37")
+  add("kaptBenchmark", "org.openjdk.jmh:jmh-generator-annprocess:1.37")
 }
 tasks.register<JavaExec>("benchmark") {
   description = "Measure assembly of 10,000 instructions with JMH."
