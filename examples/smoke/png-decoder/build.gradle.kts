@@ -1,5 +1,5 @@
 plugins {
-  java
+  kotlin("jvm")
 }
 
 repositories {
@@ -13,10 +13,9 @@ dependencies {
   testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
-java {
-  toolchain {
-    languageVersion = JavaLanguageVersion.of(25)
-  }
+kotlin {
+  jvmToolchain(25)
+  compilerOptions { allWarningsAsErrors.set(true) }
 }
 
 tasks.test {
