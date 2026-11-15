@@ -86,7 +86,7 @@ def execute(elf, stop_address, triple, inputs):
     command = [
         f"qemu-system-{triple}", "-machine", "malta", "-cpu", "I6400",
         "-accel", "tcg", "-display", "none", "-monitor", "none", "-serial", "none",
-        "-no-reboot", "-kernel", str(elf), "-S", "-gdb", "stdio",
+        "-nic", "none", "-no-reboot", "-kernel", str(elf), "-S", "-gdb", "stdio",
     ]
     with tempfile.TemporaryFile() as errors, subprocess.Popen(
         command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=errors,

@@ -39,10 +39,19 @@ See the [implementation plan](mips64-source-compatibility.md) for the intended c
 The [execution fixtures](../mars5/core/src/test/resources/qemu-mips64) run the
 same small assembly sequences in QEMU I6400 and MARS64. The harness initializes
 memory with fixed bytes, runs the sequence, and compares the output byte for
-byte in both byte orders. Initial cases cover scalar integer arithmetic,
-unaligned scalar loads and stores, MSA memory transfers at four element widths,
-and vector integer arithmetic and shuffles. The output comparison includes
-guard bytes around stores.
+byte in both byte orders. The output comparison includes guard bytes around stores.
+
+| Probe | Execution checked |
+| --- | --- |
+| Scalar integer and memory | Word and doubleword results, rotate, scaled add, high multiply, and unaligned scalar loads and stores. |
+| Branches | Taken and untaken compact branches, a delay slot, and a compact call and return. |
+| Atomics | Successful word and doubleword linked loads and conditional stores. |
+| Scalar floating point | Directed rounding, sticky flags, classification, and compare masks. |
+| MSA memory | Loads and stores in all four element widths at unaligned addresses, including mixed-width transfers that expose byte and lane ordering. |
+| MSA integer | Wrapping and saturating addition, doubleword shifts, and shuffle selectors. |
+| MSA fixed point | Q15 and Q31 multiplication, rounded accumulation, widening sums, and dot products. |
+| MSA floating point | Signed zeros, quiet and signaling NaNs, classification, extrema, and unordered masks. |
+| MSA rounding | Directed rounding and integer conversion, including subnormals and the status register. |
 
 The checked-in results record the QEMU, LLVM, and LLD versions used to generate
 them. The normal Jupiter suite reads the files and requires only the MARS build.

@@ -22,7 +22,11 @@ class QemuMips64ExecutionTest {
             machine.selectTarget(MarsTarget.MARS64)
             val memory = machine.memory
             memory.byteOrder = byteOrder == "little"
-            val program = machine.assemble(listOf(source), handler = null, extended = false, warnings = false)
+            val program = try {
+                machine.assemble(listOf(source), handler = null, extended = false, warnings = false)
+            } catch (failure: ProcessingException) {
+                throw AssertionError(failure.errors()?.generateErrorAndWarningReport(), failure)
+            }
             val input = memory.dataBaseAddress
             val output = input + 0x1000
             for ((offset, byte) in inputBytes.withIndex()) memory.setByte(input + offset, byte.toInt())
