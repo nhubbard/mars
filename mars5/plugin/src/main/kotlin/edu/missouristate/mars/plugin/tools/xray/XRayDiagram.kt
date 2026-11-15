@@ -38,7 +38,7 @@ internal class XRayDiagram private constructor(
 
     private data class Arrival(val index: Int, val time: Int)
 
-    private val colors = Palette.entries.toTypedArray().take(wires.first().colors().size).associateWith { palette ->
+    private val colors = Palette.entries.toTypedArray().take(wires.first().colors.size).associateWith { palette ->
         wires.map { Color(it.rgb(palette)) }
     }
 
@@ -53,8 +53,8 @@ internal class XRayDiagram private constructor(
             visited[arrival.index] = true
             add(arrival)
             val wire = wires[arrival.index]
-            val nextTime = arrival.time + abs(wire.end() - wire.start())
-            for (target in wire.targets()) pending.add(Arrival(target, nextTime))
+            val nextTime = arrival.time + abs(wire.end - wire.start)
+            for (target in wire.targets) pending.add(Arrival(target, nextTime))
         }
     }
 
@@ -62,7 +62,7 @@ internal class XRayDiagram private constructor(
         val palette = colors.getValue(selectPalette(word, format))
         return arrivalTimes.map { (index, time) ->
             val wire = wires[index]
-            XRaySignal(wire.name(), wire.horizontal(), wire.axis(), wire.start(), wire.end(), wire.label(), palette[index], time)
+            XRaySignal(wire.name, wire.horizontal, wire.axis, wire.start, wire.end, wire.label, palette[index], time)
         }
     }
 
@@ -83,6 +83,6 @@ internal class XRayDiagram private constructor(
     }
 
     companion object {
-        fun load(unit: XRayUnit) = XRayDiagram(unit, DatapathDiagram.forKind(unit.kind).wires())
+        fun load(unit: XRayUnit) = XRayDiagram(unit, DatapathDiagram.forKind(unit.kind).wires)
     }
 }

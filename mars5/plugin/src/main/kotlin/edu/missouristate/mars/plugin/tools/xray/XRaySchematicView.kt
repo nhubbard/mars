@@ -75,7 +75,7 @@ internal fun xRaySchematicContent(
                 val zoom = size.width / schematic.size.width
                 scale(zoom, pivot = Offset.Zero) {
                     for (wire in frame.wires) {
-                        wireSegment(wire.horizontal(), wire.axis(), wire.start(), wire.end(), wireInk, 2f)
+                        wireSegment(wire.horizontal, wire.axis, wire.start, wire.end, wireInk, 2f)
                     }
                     for (junction in schematic.junctions) {
                         drawCircle(wireInk, radius = 4f, center = Offset(junction.x.toFloat(), junction.y.toFloat()))

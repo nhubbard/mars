@@ -38,7 +38,9 @@ dependencies {
     // The standalone CLI bundles this runtime. IntelliJ supplies it for the plugin.
     exclude(group = "org.jetbrains.kotlin", module = "kotlin-stdlib")
   }
-  implementation(project(":datapath"))
+  implementation(project(":datapath")) {
+    exclude(group = "org.jetbrains.kotlin", module = "kotlin-stdlib")
+  }
   implementation(project(path = ":cli", configuration = "assignmentDefinition"))
   testCompileOnly(project(":plugin-jvm-compiler"))
   intellijPlatform {

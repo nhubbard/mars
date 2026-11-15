@@ -17,7 +17,7 @@ class XRayDiagramTest {
             val schematic = xRaySchematics.getValue(unit)
             assertEquals(size, schematic.size.width to schematic.size.height, unit.name)
             assertTrue(diagram.wireSegments.isNotEmpty())
-            assertTrue(diagram.wireSegments.none { it.label() })
+            assertTrue(diagram.wireSegments.none { it.label })
             val signals = diagram.signals(0x012a4020, null)
             assertEquals(listOf(101, 62, 81, 24)[unit.ordinal], signals.size, unit.name)
             assertEquals(0, signals.first().startsAt)
