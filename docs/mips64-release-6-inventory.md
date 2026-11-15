@@ -50,7 +50,9 @@ byte in both byte orders. The output comparison includes guard bytes around stor
 | Scalar floating point | Directed rounding, sticky flags, classification, and compare masks. |
 | Memory boundaries | Scalar and vector transfers across a mapped 4 KiB boundary. Separate default-layout stack tests cover the last writable byte and verify that crossing the stack end raises an address error before any write. |
 | MSA memory | Loads and stores in all four element widths at unaligned addresses, including mixed-width transfers that expose byte and lane ordering. |
-| MSA integer | Wrapping addition, signed and unsigned saturation, signed and unsigned division and remainder in all four lane widths, magnitude comparisons at signed limits, doubleword shifts, and shuffle selectors. |
+| MSA integer | Wrapping addition, signed and unsigned saturation, signed and unsigned division and remainder in all four lane widths, magnitude comparisons at signed limits, and doubleword shifts. |
+| MSA permutations | Packs, interleaves, shuffles, byte slides, and broadcasts across every applicable lane width. Probes include wrapped selectors, shuffle zeroing bits, and destinations that also supply an input. |
+| MSA register transfers and logic | Signed and unsigned extraction into CPU registers, insertion into the upper and lower halves of a vector, whole-vector moves, logical operations, and masks that merge with the previous destination. |
 | MSA branches | Whole-vector and per-lane zero tests in all four lane widths, with delay-slot execution on both taken and untaken branches. |
 | MSA fixed point | Q15 and Q31 multiplication, rounded accumulation, widening sums, and dot products. |
 | MSA floating point | Signed zeros, quiet and signaling NaNs, classification, extrema, unordered masks, directed overflow, gradual underflow, and flush-to-zero results and status flags. |
