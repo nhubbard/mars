@@ -54,7 +54,7 @@ internal class BasicInstructionSemanticsTest {
             registers.updateRegister(34, 2)
             session.memory.setWord(address, -0x76543211)
             session.memory.setWord(address + 4, 0x01234567)
-            val name: String = instruction.javaClass.getSimpleName().substring(5)
+            val name: String = instruction.javaClass.simpleName.substring(5)
             val base =
                 if (
                     name.matches(

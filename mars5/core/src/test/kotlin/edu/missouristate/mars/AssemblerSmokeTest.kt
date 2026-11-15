@@ -96,7 +96,7 @@ internal class AssemblerSmokeTest {
 
         @Throws(URISyntaxException::class)
         fun resourcePath(filename: String?): String {
-            val resource = "/testPrograms/" + filename
+            val resource = "/testPrograms/$filename"
             val url: URL? =
                 Objects.requireNonNull<URL?>(
                     AssemblerSmokeTest::class.java.getResource(resource),

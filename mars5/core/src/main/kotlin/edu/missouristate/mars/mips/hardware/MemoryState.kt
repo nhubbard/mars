@@ -714,8 +714,5 @@ open class MemoryState(
 
         @JvmStatic
         fun wordAligned(address: Int): Boolean = address % WORD_LENGTH_BYTES == 0
-
-        @JvmStatic
-        fun doublewordAligned(address: Int): Boolean = address % (2 * WORD_LENGTH_BYTES) == 0
     }
 }

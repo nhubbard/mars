@@ -46,7 +46,7 @@ internal class Coprocessor0UndoIsolationTest {
             Assertions.assertThat(backStepper.empty()).isTrue()
 
             // The original string overload updates the register without recording undo history.
-            Assertions.assertThat(machine.coprocessor0.updateRegister("$" + number, 43))
+            Assertions.assertThat(machine.coprocessor0.updateRegister("$$number", 43))
                 .isEqualTo(previousValue)
             Assertions.assertThat(machine.coprocessor0.getValue(number)).isEqualTo(43)
             Assertions.assertThat(backStepper.empty()).isTrue()

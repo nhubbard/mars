@@ -28,7 +28,7 @@ internal class Coprocessor0StateTest {
     fun namesResolveToThisInstancesRegister(number: Int) {
         val first = Coprocessor0State()
         val second = Coprocessor0State()
-        val name = "$" + number
+        val name = "$$number"
         val register = checkNotNull(first.getRegister(name))
         Assertions.assertThat(first.getRegister(register.name)).isSameAs(register)
         Assertions.assertThat(first.getNumber(name)).isEqualTo(number)

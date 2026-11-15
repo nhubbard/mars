@@ -27,7 +27,7 @@ internal class FloatingPointEdgeTest {
         TestSessions.create().use { session ->
             val fp: Coprocessor1State = session.coprocessor1
             val context = InstructionContext(session, session.syscallEnvironment)
-            val name: String = instruction.javaClass.getSimpleName().substring(5)
+            val name: String = instruction.javaClass.simpleName.substring(5)
             val base: String = name.replaceFirst("[12]$".toRegex(), "")
             val sourceDouble = base.endsWith("D") || base == "CvtSD"
             val input = if (sourceDouble) value else value.toFloat().toDouble()
@@ -130,7 +130,7 @@ internal class FloatingPointEdgeTest {
                 .loadBasicInstructions()
                 .filter { instruction: BasicInstruction ->
                     instruction.javaClass
-                        .getSimpleName()
+                        .simpleName
                         .matches(
                             "Instr((Add|Sub|Mul|Div|Sqrt|Abs|Neg|Mov|FloorW|CeilW|RoundW|TruncW)[SD]|Cvt(SD|DS|WS|WD)|C(Eq|Le|Lt)[SD][12])"
                                 .toRegex(),

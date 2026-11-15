@@ -58,14 +58,12 @@ internal class AccessOriginTest {
             memory.setWord(address, 0)
             val notices = ArrayList<MemoryAccessNotice>()
             memory.addObserver({ notices.add(it) }, address)
-            AccessOrigin.duringExecution<Any?, AddressErrorException>(
-                ScopedValue.CallableOp {
-                    memory.fetchInstruction(address)
-                    memory.getWord(address)
-                    memory.getStatementNoNotify(address)
-                    null
-                },
-            )
+            AccessOrigin.duringExecution<Any?, AddressErrorException> {
+                memory.fetchInstruction(address)
+                memory.getWord(address)
+                memory.getStatementNoNotify(address)
+                null
+            }
             Assertions.assertThat(notices)
                 .extracting<Boolean?, RuntimeException>(MemoryAccessNotice::isInstructionFetch)
                 .containsExactly(true, false)
@@ -94,22 +92,18 @@ internal class AccessOriginTest {
     @Test
     fun nestedBindingsAndExceptionalExitsRestoreTheOuterOrigin() {
         Assertions.assertThatThrownBy {
-            AccessOrigin.duringExecution<Any?, RuntimeException>(
-                ScopedValue.CallableOp {
+            AccessOrigin.duringExecution<Any?, RuntimeException> {
+                Assertions.assertThat<AccessOrigin?>(AccessOrigin.current())
+                    .isEqualTo(AccessOrigin.EXECUTION)
+                AccessOrigin.duringExecution<Any?, RuntimeException> {
                     Assertions.assertThat<AccessOrigin?>(AccessOrigin.current())
                         .isEqualTo(AccessOrigin.EXECUTION)
-                    AccessOrigin.duringExecution<Any?, RuntimeException>(
-                        ScopedValue.CallableOp {
-                            Assertions.assertThat<AccessOrigin?>(AccessOrigin.current())
-                                .isEqualTo(AccessOrigin.EXECUTION)
-                            null
-                        },
-                    )
-                    Assertions.assertThat<AccessOrigin?>(AccessOrigin.current())
-                        .isEqualTo(AccessOrigin.EXECUTION)
-                    throw IllegalArgumentException("failed invocation")
-                },
-            )
+                    null
+                }
+                Assertions.assertThat<AccessOrigin?>(AccessOrigin.current())
+                    .isEqualTo(AccessOrigin.EXECUTION)
+                throw IllegalArgumentException("failed invocation")
+            }
         }
             .isInstanceOf(IllegalArgumentException::class.java)
         Assertions.assertThat<AccessOrigin?>(AccessOrigin.current())

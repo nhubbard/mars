@@ -1,6 +1,5 @@
 package edu.missouristate.mars.mips.instructions.syscalls
 
-import edu.missouristate.mars.mips.instructions.syscalls.ToneGenerator.SequencerSource
 import java.lang.reflect.InvocationHandler
 import java.lang.reflect.Method
 import java.lang.reflect.Proxy
@@ -28,22 +27,17 @@ internal class ToneGeneratorTest {
         // The worker may be waiting for a MIDI callback, so cleanup must interrupt it.
         val executor = Executors.newSingleThreadExecutor()
         try {
-            ToneGenerator(
-                    SequencerSource { device.proxy() },
-                    { e -> failures.add(e) },
-                )
+            ToneGenerator({ device.proxy() }) { failures.add(it) }
                 .use { generator ->
                     val tone =
-                        executor.submit(
-                            {
-                                generator.generateToneSynchronously(
-                                    65.toByte(),
-                                    120,
-                                    8.toByte(),
-                                    90.toByte(),
-                                )
-                            },
-                        )
+                        executor.submit {
+                            generator.generateToneSynchronously(
+                                65.toByte(),
+                                120,
+                                8.toByte(),
+                                90.toByte(),
+                            )
+                        }
                     Assertions.assertThat(device.started.await(3, TimeUnit.SECONDS)).isTrue()
                     Assertions.assertThat(tone).isNotDone()
                     Assertions.assertThat(device.tempo).isEqualTo(1000f)
@@ -67,10 +61,7 @@ internal class ToneGeneratorTest {
         device.completeAndInterruptOnStart = true
         val failures = ArrayList<Exception?>()
         try {
-            ToneGenerator(
-                    SequencerSource { device.proxy() },
-                    { e -> failures.add(e) },
-                )
+            ToneGenerator({ device.proxy() }) { failures.add(it) }
                 .use { generator ->
                     generator.generateToneSynchronously(60.toByte(), 200, 0.toByte(), 80.toByte())
                     Assertions.assertThat(Thread.currentThread().isInterrupted).isTrue()
@@ -87,10 +78,7 @@ internal class ToneGeneratorTest {
     fun asynchronousToneReturnsWhilePlayingAndSessionCloseInterruptsIt() {
         val device = RecordingSequencer()
         val failures = ArrayList<Exception?>()
-        ToneGenerator(
-                SequencerSource { device.proxy() },
-                { e -> failures.add(e) },
-            )
+        ToneGenerator({ device.proxy() }) { failures.add(it) }
             .use { generator ->
                 generator.generateTone(60.toByte(), 60000, 0.toByte(), 80.toByte())
                 Assertions.assertThat(device.started.await(3, TimeUnit.SECONDS)).isTrue()
@@ -104,28 +92,19 @@ internal class ToneGeneratorTest {
     fun reportsMissingDevicesAndClosesPlayersThatFailDuringInitialization() {
         val unavailable = MidiUnavailableException("Device unavailable")
         val failures = ArrayList<Exception?>()
-        ToneGenerator(
-                SequencerSource { throw unavailable },
-                { e -> failures.add(e) },
-            )
+        ToneGenerator({ throw unavailable }) { failures.add(it) }
             .use { generator ->
                 generator.generateToneSynchronously(60.toByte(), 200, 0.toByte(), 80.toByte())
             }
         val badOpen = RecordingSequencer()
         badOpen.openFailure = MidiUnavailableException("Device busy")
-        ToneGenerator(
-                SequencerSource { badOpen.proxy() },
-                { e -> failures.add(e) },
-            )
+        ToneGenerator({ badOpen.proxy() }) { failures.add(it) }
             .use { generator ->
                 generator.generateToneSynchronously(60.toByte(), 200, 0.toByte(), 80.toByte())
             }
         val badSequence = RecordingSequencer()
         badSequence.sequenceFailure = InvalidMidiDataException("Cannot configure sequence")
-        ToneGenerator(
-                SequencerSource { badSequence.proxy() },
-                { e -> failures.add(e) },
-            )
+        ToneGenerator({ badSequence.proxy() }) { failures.add(it) }
             .use { generator ->
                 generator.generateToneSynchronously(60.toByte(), 200, 0.toByte(), 80.toByte())
             }
@@ -195,8 +174,8 @@ internal class ToneGeneratorTest {
             Assertions.assertThat(event.tick).isEqualTo(tick)
             Assertions.assertThat(message.command).isEqualTo(command)
             Assertions.assertThat(message.channel).isZero()
-            Assertions.assertThat(message.getData1()).isEqualTo(first)
-            Assertions.assertThat(message.getData2()).isEqualTo(second)
+            Assertions.assertThat(message.data1).isEqualTo(first)
+            Assertions.assertThat(message.data2).isEqualTo(second)
         }
     }
 }

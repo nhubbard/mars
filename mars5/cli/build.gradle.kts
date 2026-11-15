@@ -52,6 +52,7 @@ tasks.jar {
 // IntelliJ supplies the Kotlin scripting host. Share the DSL and its discovery marker
 // with the plugin without shipping the CLI entry point or a second Kotlin compiler.
 val assignmentDefinitionJar = tasks.register<Jar>("assignmentDefinitionJar") {
+  description = "Packages the MARS assignment DSL and Kotlin script discovery marker for IntelliJ."
   archiveBaseName.set("mars-assignment-definition")
   from(sourceSets.main.map { it.output })
   include(

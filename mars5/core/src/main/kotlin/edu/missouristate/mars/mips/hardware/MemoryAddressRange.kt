@@ -7,7 +7,7 @@ import kotlin.jvm.JvmRecord
 @JvmRecord
 data class MemoryAddressRange(val first: Long, val last: Long) {
     init {
-        require(first >= 0 && first <= last && first and 3L == 0L && last and 3L == 0L) {
+        require(first in 0..last && first and 3L == 0L && last and 3L == 0L) {
             "Memory range requires ordered, word-aligned endpoints"
         }
     }

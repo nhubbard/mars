@@ -1742,7 +1742,6 @@ class MarsRunPlatformTest {
         }
 
     // Exercise the intercepted dialog's validation and confirmation without showing a window.
-    @Suppress("UnstableApiUsage")
     private fun setDumpDialog(
         dialog: MarsMemoryExportDialog, region: MemoryExportRegion, name: String, first: String = "", last: String = "",
     ) {

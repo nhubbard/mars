@@ -32,9 +32,9 @@ class Release6FloatTest {
             fpu.setRegisterPairToDouble(12, 1.0 + doubleDelta)
             fpu.setRegisterPairToDouble(14, 1.0 - doubleDelta)
             assertTrue(program.simulate(5))
-            assertEquals(-2f.pow(-26), fpu.getFloatFromRegister(0))
+            assertEquals(-(2f.pow(-26)), fpu.getFloatFromRegister(0))
             assertEquals(2f.pow(-26), fpu.getFloatFromRegister(2))
-            assertEquals(-2.0.pow(-54), fpu.getDoubleFromRegisterPair(8))
+            assertEquals(-(2.0.pow(-54)), fpu.getDoubleFromRegisterPair(8))
             assertEquals(2.0.pow(-54), fpu.getDoubleFromRegisterPair(10))
         }
     }

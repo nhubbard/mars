@@ -256,12 +256,11 @@ internal class SessionBackStepperTest {
         val session: MarsContext = session(3)
         val execution: InstructionContext = execution(session)
         for (value in 1..2) {
-            val result = value
             execution.execute(
                 statement(
                     custom { `_`: ProgramStatement?, context: InstructionContext? ->
-                        context!!.updateRegister(8, result)
-                        context.updateRegister(9, result)
+                        context!!.updateRegister(8, value)
+                        context.updateRegister(9, value)
                     },
                 ),
             )

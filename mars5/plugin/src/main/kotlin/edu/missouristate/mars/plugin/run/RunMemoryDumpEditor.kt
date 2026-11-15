@@ -29,7 +29,7 @@ internal class RunMemoryDumpState : BaseState() {
         val output = projectFilePath(project, outputPath) ?: return null
         val format = DumpFormatLoader.findByCommandDescriptor(formatName) ?: return null
         val range = if (region == MemoryExportRegion.RANGE) {
-            if (firstAddress < 0 || lastAddress < firstAddress ||
+            if (firstAddress !in 0..lastAddress ||
                 !MemoryState.wordAligned(firstAddress.toInt()) || !MemoryState.wordAligned(lastAddress.toInt())) return null
             firstAddress..lastAddress
         } else LongRange.EMPTY

@@ -235,7 +235,7 @@ internal class SettingsReconciliationTest {
             values.clear()
         }
 
-        override fun keysSpi(): Array<String?>? {
+        override fun keysSpi(): Array<String?> {
             return values.keys.toTypedArray()
         }
 

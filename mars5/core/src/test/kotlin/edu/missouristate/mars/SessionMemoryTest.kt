@@ -217,7 +217,7 @@ internal class SessionMemoryTest {
             printed.add(c.toString())
         }
 
-        override fun readString(maxLength: Int): String? {
+        override fun readString(maxLength: Int): String {
             return input
         }
     }
@@ -291,8 +291,8 @@ internal class SessionMemoryTest {
         }
 
         private fun writeString(context: InstructionContext, address: Int, value: String) {
-            for (i in 0..<value.length) {
-                context.memory().setByte(address + i, value[i].code)
+            for ((offset, character) in value.withIndex()) {
+                context.memory().setByte(address + offset, character.code)
             }
             context.memory().setByte(address + value.length, 0)
         }

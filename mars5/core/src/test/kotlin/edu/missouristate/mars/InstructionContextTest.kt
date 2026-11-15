@@ -211,7 +211,7 @@ internal class InstructionContextTest {
                 BasicInstructionFormat.R_FORMAT,
                 "00000000000000000000000000000000",
             ) { _, _ -> calls.incrementAndGet() }
-        val syscall: AbstractSyscall? =
+        val syscall: AbstractSyscall =
             object : AbstractSyscall(123, "Legacy") {
                 override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
                     calls.incrementAndGet()
@@ -220,7 +220,7 @@ internal class InstructionContextTest {
         val context: InstructionContext = context(false, RecordingEnvironment())
         val statement: ProgramStatement = statement(instruction)
         instruction.simulationCode.simulate(statement, context)
-        syscall!!.simulate(statement, context)
+        syscall.simulate(statement, context)
         Assertions.assertThat(calls.get()).isEqualTo(2)
     }
 

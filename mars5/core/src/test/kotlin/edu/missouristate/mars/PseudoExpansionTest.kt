@@ -29,8 +29,8 @@ internal class PseudoExpansionTest {
             session.settings.setDelayedBranchingEnabled(delayed)
             Assertions.assertThat<Vector?>(vectors).hasSize(388)
             val source = directory.resolve("pseudo.s")
-            for (vector in vectors) {
-                Files.writeString(source, ".text\n${vector.example}\nlabel:\ntarget: nop\n")
+            for ((example, expectedWords) in vectors) {
+                Files.writeString(source, ".text\n$example\nlabel:\ntarget: nop\n")
                 val program: MIPSprogram = session.assemble(listOf(source))
                 val machine =
                     checkNotNull(program.machineList)
@@ -39,8 +39,8 @@ internal class PseudoExpansionTest {
                         .subList(0, machine.size - 1)
                         .map(ProgramStatement::binaryStatement)
                 Assertions.assertThat<Int?>(words)
-                    .`as`(vector.example)
-                    .containsExactlyElementsOf(vector.words)
+                    .`as`(example)
+                    .containsExactlyElementsOf(expectedWords)
             }
         }
     }
@@ -56,7 +56,7 @@ internal class PseudoExpansionTest {
                     input
                         .bufferedReader(StandardCharsets.UTF_8)
                         .lineSequence()
-                        .filter { line: String -> !line.startsWith("#") && !line.isBlank() }
+                        .filter { line: String -> !line.startsWith("#") && line.isNotBlank() }
                         .forEach { line: String ->
                             val fields = line.split('\t')
                             val words =

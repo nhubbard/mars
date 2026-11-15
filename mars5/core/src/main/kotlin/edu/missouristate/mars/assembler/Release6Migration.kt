@@ -2,8 +2,7 @@ package edu.missouristate.mars.assembler
 
 /** Source migration guidance shared by the assembler and the editor. */
 fun release6Migration(mnemonic: String): String? {
-    val name = mnemonic.lowercase()
-    return when (name) {
+    return when (val name = mnemonic.lowercase()) {
         "lwl", "lwr" -> "Use lw at the first byte of a complete unaligned word, or explicitly merge the bytes you need."
         "swl", "swr" -> "Use sw at the first byte of a complete unaligned word, or explicitly store the bytes you need."
         "ldl", "ldr" -> "Use ld for a complete unaligned doubleword, or explicitly merge the bytes you need."

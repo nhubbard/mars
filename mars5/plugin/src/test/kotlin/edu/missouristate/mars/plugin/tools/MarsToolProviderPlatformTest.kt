@@ -131,7 +131,7 @@ class MarsToolProviderPlatformTest {
     @Test
     // Kotlin exposes the reported Java setters as read-only properties.
     // Exercise launchOnShow headlessly and keep Java setters whose Kotlin properties are read-only.
-    @Suppress("UsePropertyAccessSyntax", "UnstableApiUsage")
+    @Suppress("UsePropertyAccessSyntax")
     fun `registered intro example receives instructions from only the selected execution`() = timeoutRunBlocking(45.seconds) {
         val container = JPanel()
         val tool = withContext(Dispatchers.EDT) {

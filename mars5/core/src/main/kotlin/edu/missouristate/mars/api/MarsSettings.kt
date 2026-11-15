@@ -9,5 +9,5 @@ interface MarsSettings {
     val isWarningsAreErrors: Boolean
     val assemblerErrorLimit: Int
     val isExtendedAssemblerEnabled: Boolean
-    val isUtf8TextEnabled: Boolean get() = false
+    val isUtf8TextEnabled: Boolean
 }

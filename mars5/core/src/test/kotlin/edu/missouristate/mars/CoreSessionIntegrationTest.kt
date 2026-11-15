@@ -3,7 +3,6 @@ package edu.missouristate.mars
 import edu.missouristate.mars.api.StopEvent
 import edu.missouristate.mars.mips.hardware.IntegerRegisterFile
 import edu.missouristate.mars.mips.hardware.MemoryState
-import java.net.URL
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.useDirectoryEntries
@@ -75,9 +74,9 @@ internal class CoreSessionIntegrationTest {
     companion object {
         @JvmStatic
         fun corpus(): List<Path> {
-            val resources: URL? =
+            val resources =
                 checkNotNull(CoreSessionIntegrationTest::class.java.getResource("/testPrograms")) { "testPrograms" }
-            return Path.of(requireNotNull(resources).toURI()).useDirectoryEntries("*.asm") { paths ->
+            return Path.of(resources.toURI()).useDirectoryEntries("*.asm") { paths ->
                 paths.sorted().toList()
             }
         }

@@ -19,7 +19,7 @@ class CompactControlFlowTest {
     fun `reversed compact branch aliases emit one native instruction without a delay slot`(
         alias: String, native: String, encoding: String, left: Long, right: Long, @TempDir directory: Path,
     ) {
-        val source = Files.writeString(directory.resolve("alias.s"), "${alias} $12,$15,target\nnop\ntarget: nop\n")
+        val source = Files.writeString(directory.resolve("alias.s"), "$alias $12,$15,target\nnop\ntarget: nop\n")
         TestSessions.create().use { machine ->
             machine.selectTarget(MarsTarget.MARS64)
             for (taken in listOf(true, false)) {

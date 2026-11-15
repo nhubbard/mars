@@ -292,7 +292,6 @@ class MarsImportVenusSyntaxStylesPlatformTest {
     }
 
     // The public manager supports adding schemes. The fixture must also remove what it creates.
-    @Suppress("UnstableApiUsage")
     private fun removeTestScheme(scheme: EditorColorsScheme) {
         (colors as EditorColorsManagerImpl).removeScheme(scheme)
     }

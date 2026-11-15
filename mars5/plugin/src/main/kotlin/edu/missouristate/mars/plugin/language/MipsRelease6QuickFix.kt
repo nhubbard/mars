@@ -15,9 +15,9 @@ import edu.missouristate.mars.util.Binary
 
 internal fun release6QuickFix(site: PsiElement): MipsRelease6QuickFix? {
     val name = site.text.lowercase()
-    val replacement = when {
-        name == "daddi" -> "daddiu"
-        name in branchLikely -> name.dropLast(1)
+    val replacement = when (name) {
+        "daddi" -> "daddiu"
+        in branchLikely -> name.dropLast(1)
         else -> return null
     }
     return MipsRelease6QuickFix(site, name, replacement).takeIf { it.isApplicable(site) }

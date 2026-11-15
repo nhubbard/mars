@@ -21,14 +21,14 @@ internal class InstructionEncodingTest {
     ) {
         TestSessions.create().use { session ->
             val file = directory.resolve("instruction.s")
-            Files.writeString(file, ".text\n" + source + "\nlabel:\ntarget: nop\n")
+            Files.writeString(file, ".text\n$source\nlabel:\ntarget: nop\n")
             val program: MIPSprogram = session.assemble(listOf(file), null, extended = false, warnings = false)
             val statement =
                 checkNotNull(program.machineList) { "Expected assembled instructions" }
                     .first()
             val instruction =
                 checkNotNull(statement.instruction) { "Expected assembled instruction" }
-            Assertions.assertThat(instruction.javaClass.getSimpleName()).isEqualTo(type)
+            Assertions.assertThat(instruction.javaClass.simpleName).isEqualTo(type)
             Assertions.assertThat(statement.binaryStatement).isEqualTo(expected)
             val decoded = ProgramStatement(expected, statement.address, session.instructionSet)
             val decodedInstruction =
@@ -47,7 +47,7 @@ internal class InstructionEncodingTest {
                     return input
                         .bufferedReader(StandardCharsets.UTF_8)
                         .lineSequence()
-                        .filter { line: String -> !line.startsWith("#") && !line.isBlank() }
+                        .filter { line: String -> !line.startsWith("#") && line.isNotBlank() }
                         .map { line: String ->
                             val fields = line.split('\t')
                             Arguments.of(fields[0], fields[1], fields[2].toLong(16).toInt())

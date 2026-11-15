@@ -85,7 +85,7 @@ class KeyboardDisplayPlatformTest {
     @Test
     // Kotlin exposes the reported Java setters as read-only properties.
     // Exercise launchOnShow headlessly and keep Java setters whose Kotlin properties are read-only.
-    @Suppress("UsePropertyAccessSyntax", "UnstableApiUsage")
+    @Suppress("UsePropertyAccessSyntax")
     fun `tool keyboard drives a real receiver and renders sequential and addressed output`() = timeoutRunBlocking(20.seconds) {
         val project = projectFixture.get()
         val (view, process, content) = withContext(Dispatchers.EDT) {

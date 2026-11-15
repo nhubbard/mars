@@ -82,13 +82,9 @@ open class BackStepper(
         for (checkpoint in checkpoints) {
             val next = checkpoint() ?: continue
             val previous = restore
-            if (previous == null) {
-                restore = next
-            } else {
-                restore = {
-                    previous()
-                    next()
-                }
+            restore = if (previous == null) next else fun() {
+                previous()
+                next()
             }
         }
         activeFrame = ++nextFrame
@@ -264,17 +260,11 @@ open class BackStepper(
         return value
     }
 
-    open fun addPCRestore(value: Int): Int {
-        return addPCRestore(value.toLong()).toInt()
-    }
-
     internal fun addPCRestore(value: Long): Long {
         val address = if (activeFrame == 0L) value - INSTRUCTION_LENGTH else framePc
         backSteps.push(Action.PC, address, second = address)
         return address
     }
-
-    open fun addCoprocessor0Restore(register: Int, value: Int): Int = record(Action.COPROCESSOR_0, register, value)
 
     internal fun addCoprocessor0Restore(register: Int, value: Long) {
         backSteps.push(Action.COPROCESSOR_0, pc(), register, value)

@@ -265,7 +265,7 @@ internal class SyscallContractTest {
                         )
 
                 60 -> Assertions.assertThat(calls).containsExactly("clearConsole[]")
-                else -> throw AssertionError("Missing syscall vector " + number)
+                else -> throw AssertionError("Missing syscall vector $number")
             }
         }
     }

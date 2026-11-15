@@ -31,9 +31,9 @@ internal class Coprocessor1StateTest {
         for (i in 0..31) {
             Assertions.assertThat(first.updateRegister(i, i + 1)).isZero()
             Assertions.assertThat(second.getValue(i)).isZero()
-            Assertions.assertThat(first.getRegister($$"$f" + i))
+            Assertions.assertThat(first.getRegister($$"$f$$i"))
                 .isSameAs(first.registers[i])
-            Assertions.assertThat(first.getRegisterNumber($$"$f" + i)).isEqualTo(i)
+            Assertions.assertThat(first.getRegisterNumber($$"$f$$i")).isEqualTo(i)
         }
         first.setConditionFlags()
         Assertions.assertThat(first.conditionFlags).isEqualTo(-1)
@@ -71,8 +71,8 @@ internal class Coprocessor1StateTest {
         Assertions.assertThat(state.getValue(number)).isEqualTo(-0x76543211)
         Assertions.assertThat(state.getValue(number + 1)).isEqualTo(0x01234567)
         Assertions.assertThat(state.getLongFromRegisterPair(number)).isEqualTo(bits)
-        Assertions.assertThat(state.getLongFromRegisterPair($$"$f" + number)).isEqualTo(bits)
-        state.setRegisterPairToLong($$"$f" + number, bits.inv())
+        Assertions.assertThat(state.getLongFromRegisterPair($$"$f$$number")).isEqualTo(bits)
+        state.setRegisterPairToLong($$"$f$$number", bits.inv())
         Assertions.assertThat(state.getLongFromRegisterPair(number)).isEqualTo(bits.inv())
     }
 

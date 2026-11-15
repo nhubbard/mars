@@ -6,7 +6,6 @@ import edu.missouristate.mars.core.SimulationSettings
 import edu.missouristate.mars.mips.hardware.MemoryConfigurations
 import edu.missouristate.mars.mips.hardware.MemoryState
 import edu.missouristate.mars.mips.instructions.basic.InstrSw
-import edu.missouristate.mars.simulator.BackStepper
 import edu.missouristate.mars.simulator.BackStepper.MemoryWrite
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.AfterEach

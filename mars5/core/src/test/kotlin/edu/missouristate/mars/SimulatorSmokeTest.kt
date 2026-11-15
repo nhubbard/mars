@@ -72,7 +72,7 @@ internal class SimulatorSmokeTest {
     @Test
     fun division_outputContainsBothResults() {
         runProgram("07_division.asm")
-        val out: String? = capturedOut.toString()
+        val out = capturedOut.toString()
         Assertions.assertThat(out).contains("9")
         Assertions.assertThat(out).contains("10")
     }
@@ -172,7 +172,7 @@ internal class SimulatorSmokeTest {
     companion object {
         @Throws(URISyntaxException::class)
         fun resourcePath(filename: String?): String {
-            val resource = "/testPrograms/" + filename
+            val resource = "/testPrograms/$filename"
             val url: URL? =
                 Objects.requireNonNull<URL?>(
                     SimulatorSmokeTest::class.java.getResource(resource),

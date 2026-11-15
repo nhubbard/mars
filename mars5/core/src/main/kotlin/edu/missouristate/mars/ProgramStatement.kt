@@ -260,7 +260,7 @@ open class ProgramStatement private constructor(
                     val displacement = target - (addressBits + Instruction.INSTRUCTION_LENGTH)
                     val operand = if (!relative) target else if (wideTarget) displacement shr 2 else (displacement.toInt() shr 2).toLong()
                     if (relative && wideTarget) {
-                        val mask = checkNotNull(basicInstruction).operationMask
+                        val mask = basicInstruction.operationMask
                         val width = mask.reversed().takeWhile { it == mask.last() }.length
                         val limit = 1L shl (width - 1)
                         if (operand !in -limit..<limit || target and 3 != 0L) {

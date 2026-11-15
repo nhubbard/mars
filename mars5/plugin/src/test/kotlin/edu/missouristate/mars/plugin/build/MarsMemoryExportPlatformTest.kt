@@ -159,7 +159,6 @@ class MarsMemoryExportPlatformTest {
 
     @Test
     // Exercise the intercepted dialog's validation and confirmation without showing a window.
-    @Suppress("UnstableApiUsage")
     fun `registered Build action validates addresses and respects both dialog cancellations`() = timeoutRunBlocking {
         val entry = source("entry.s", ".text\nnop\n")
         val file = withContext(Dispatchers.EDT) { fixture.findFileInTempDir("entry.s") }
@@ -270,7 +269,6 @@ internal fun interceptMemoryExportDialog(onShow: (MarsMemoryExportDialog) -> Uni
     })
 
 // Intercept the native chooser while retaining the platform factory's other behavior.
-@Suppress("UnstableApiUsage")
 internal fun replaceMemoryExportSaveDialog(
     disposable: Disposable, select: (FileSaverDescriptor, Path?, String?) -> Path?,
 ) {

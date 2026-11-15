@@ -76,9 +76,9 @@ object GradeCommand {
                 return 2
             }
             require(assignment.results.isNotEmpty()) { "The assignment must declare at least one case" }
-            for (case in assignment.results) {
-                if (case.failure == null) output.println("PASS ${case.name}")
-                else output.println("FAIL ${case.name}: ${case.failure}")
+            for ((name, failure) in assignment.results) {
+                if (failure == null) output.println("PASS $name")
+                else output.println("FAIL $name: $failure")
             }
             return if (assignment.results.all { it.failure == null }) 0 else 1
         } catch (failure: IllegalArgumentException) {

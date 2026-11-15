@@ -551,7 +551,7 @@ internal class SimulatorEngineTest {
             val engine: SimulatorEngine = session.simulator()
             val entered = CountDownLatch(1)
             val release = CountDownLatch(1)
-            val blocker: SimulatorListener? =
+            val blocker: SimulatorListener =
                 object : SimulatorListener {
                     override fun onStep(event: StepEvent) {
                         entered.countDown()
@@ -568,7 +568,7 @@ internal class SimulatorEngineTest {
 
                     override fun onError(event: ErrorEvent) {}
                 }
-            engine.addListener(blocker!!)
+            engine.addListener(blocker)
             val run: CompletableFuture<StopEvent> = engine.runAsync(0, null)
             Assertions.assertThat(entered.await(5, TimeUnit.SECONDS)).isTrue()
             try {
