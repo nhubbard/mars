@@ -1,5 +1,8 @@
 # Initial research for a MARS 5 assembly textbook
 
+See the [working chapter outline](docs/textbook-chapter-ideas.md) for the proposed
+sequence of labs, assignments, and capstone projects.
+
 ## Source and adoption
 
 Charles W. Kann’s 2015 *Introduction To MIPS Assembly Language Programming* is the closest
