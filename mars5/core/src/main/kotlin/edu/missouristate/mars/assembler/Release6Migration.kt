@@ -8,19 +8,31 @@ fun release6Migration(mnemonic: String): String? {
         "swl", "swr" -> "Use sw at the first byte of a complete unaligned word, or explicitly store the bytes you need."
         "ldl", "ldr" -> "Use ld for a complete unaligned doubleword, or explicitly merge the bytes you need."
         "sdl", "sdr" -> "Use sd for a complete unaligned doubleword, or explicitly store the bytes you need."
-        "mfhi", "mflo", "mthi", "mtlo", "mult", "multu", "dmult", "dmultu", "madd", "maddu", "msub", "msubu" ->
-            "Use explicit destination registers with mul, muh, div, or mod and their unsigned or doubleword forms. Rewrite any HI/LO accumulation explicitly."
+        "mflo" ->
+            "Use explicit destination registers. Write the quotient with div or divu, or the low product with mul or mulu. Use the doubleword forms for doubleword inputs."
+        "mfhi" ->
+            "Use explicit destination registers. Write the remainder with mod or modu, or the high product with muh or muhu. Use the doubleword forms for doubleword inputs."
+        "mult", "multu" ->
+            "Use mul or mulu for the low word and muh or muhu for the high word. Use the destination from each later mflo or mfhi."
+        "dmult", "dmultu" ->
+            "Use dmul or dmulu for the low doubleword and dmuh or dmuhu for the high doubleword. Use the destination from each later mflo or mfhi."
+        "mthi", "mtlo", "madd", "maddu", "msub", "msubu" ->
+            "Keep the accumulator in explicit registers. Compute the product with mul and muh or their unsigned forms, then add or subtract it with carry or borrow."
         "mulo", "mulou" ->
             "Use mul and muh (or mulu and muhu) with explicit destination registers. Check the high word for overflow before using the product."
         "mfc1.d", "mtc1.d" ->
             "Use dmfc1 or dmtc1 to transfer a doubleword between one GPR and one FPR. Split or combine the words explicitly when the program needs a pair of GPRs."
         "bc1f", "bc1t" -> "Use a cmp instruction to write a truth mask, then test it with bc1eqz or bc1nez."
-        "bc1fl", "bc1tl", "beql", "bnel", "bgezl", "bgtzl", "blezl", "bltzl", "bgezall", "bltzall" ->
+        "beql", "bnel", "bgezl", "bgtzl", "blezl", "bltzl" ->
+            "Move the annulled delay-slot instruction onto the taken path before replacing the branch. If the slot contains only nop, use ${name.dropLast(1)} and keep the nop."
+        "bc1fl", "bc1tl", "bgezall", "bltzall" ->
             "Move the annulled delay-slot instruction onto the taken path before replacing the branch."
         "bgezal", "bltzal" ->
             "Use bal for an unconditional call, or review the link and slot behavior before switching to a compact conditional call."
-        "addi", "daddi" ->
-            "Use add or dadd with a register holding the immediate to retain overflow trapping. Use addiu or daddiu when wrapping is intended."
+        "addi" ->
+            "Use add with a register holding the immediate to retain overflow trapping. Use addiu when wrapping is intended."
+        "daddi" ->
+            "Load the immediate into a spare register and use dadd to retain overflow trapping. Use daddiu if wrapping is intended or if either input is zero and the immediate fits in 16 bits."
         "lwxc1", "ldxc1", "luxc1", "swxc1", "sdxc1", "suxc1", "prefx" ->
             "Compute the effective address with daddu, then use the corresponding base-and-offset load, store, or prefetch."
         "movf", "movt", "movn", "movz", "movf.s", "movf.d", "movt.s", "movt.d", "movn.s", "movn.d", "movz.s", "movz.d" ->

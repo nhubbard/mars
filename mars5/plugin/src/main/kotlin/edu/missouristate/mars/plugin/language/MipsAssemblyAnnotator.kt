@@ -47,7 +47,13 @@ internal class MipsAssemblyAnnotator : ExternalAnnotator<MipsAssemblyAnnotator.I
     override fun apply(psiFile: PsiFile, annotationResult: Result, holder: AnnotationHolder) {
         for ((diagnostic, range) in acceptResult(psiFile as MipsFile, annotationResult)) {
             val severity = if (diagnostic.isWarning) HighlightSeverity.WARNING else HighlightSeverity.ERROR
-            holder.newAnnotation(severity, diagnostic.message!!).range(range).create()
+            val message = diagnostic.message!!
+            val annotation = holder.newAnnotation(severity, message).range(range)
+            if (message.startsWith("Release 6 removed")) {
+                val site = psiFile.findElementAt(range.startOffset)!!
+                release6QuickFix(site)?.let(annotation::withFix)
+            }
+            annotation.create()
         }
     }
 

@@ -3,6 +3,7 @@ package edu.missouristate.mars.plugin.language.inspection
 import com.intellij.DynamicBundle
 import com.intellij.codeInspection.LocalInspectionTool
 import com.intellij.codeInspection.ProblemsHolder
+import com.intellij.modcommand.ModCommandService
 import com.intellij.openapi.components.service
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiElementVisitor
@@ -17,6 +18,7 @@ import edu.missouristate.mars.plugin.build.MarsAssemblySettings
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.operationHead
 import edu.missouristate.mars.plugin.language.operationOwners
+import edu.missouristate.mars.plugin.language.release6QuickFix
 
 internal class MipsRelease6MergeInspection : LocalInspectionTool() {
     override fun runForWholeFile() = true
@@ -43,7 +45,9 @@ internal class MipsRelease6MergeInspection : LocalInspectionTool() {
                 }
                 // Operation sites come from this file's PSI during the same read action.
                 val token = file.findElementAt(site.range.startOffset)!!
-                holder.registerProblem(token, guidance)
+                val fix = release6QuickFix(token)
+                if (fix == null) holder.registerProblem(token, guidance)
+                else holder.registerProblem(token, guidance, ModCommandService.getInstance().wrapToQuickFix(fix))
             }
         }
     }

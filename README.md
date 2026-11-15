@@ -104,7 +104,9 @@ both byte orders. The `ulw`, `usw`, `ulh`, `ulhu`, `ush`, `uld`, and `usd` alias
 those instructions. The `addi` pseudo preserves signed overflow trapping and uses `$at`
 as a temporary. Put multi-instruction pseudos outside delay slots. The assembler and
 IntelliJ give migration guidance for removed forms that require source changes, including
-two-operand divides and HI/LO operations. Review classic uses of `ld` and `sd` that expected
+two-operand divides and HI/LO operations. IntelliJ offers a quick fix for branch-likely
+instructions with a `nop` delay slot and for `daddi` when the operands rule out overflow.
+Review classic uses of `ld` and `sd` that expected
 two adjacent 32-bit GPRs. The Release 6 forms transfer one 64-bit GPR.
 MARS64 provides 32 individually addressable 64-bit floating-point registers and supports
 FCSR rounding and exceptions for scalar arithmetic. MSA vector instructions use 32 128-bit
