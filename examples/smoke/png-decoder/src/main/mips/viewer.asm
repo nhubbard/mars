@@ -1,12 +1,14 @@
 # Open this file with MARS Run or Debug.
 # mars:tool bitmap width=1024 height=1024 unitWidth=2 unitHeight=2 base=heap
-# Default memory layout. One optional argument overrides the path to torture.png.
+# Arguments: [PNG path [--scalar]]. The default is torture.png with MSA enabled.
 .eqv FRAME_BYTES 1048576
 .eqv FILE_BYTES 1048576
 .eqv WORK_BYTES 2884096         # framebuffer + file + 512 scanlines of 1537 bytes
 
 .data
 default_file: .asciiz "torture.png"
+scalar_option: .asciiz "--scalar"
+bad_arguments: .asciiz "Usage: viewer.asm [PNG path [--scalar]].\n"
 reading: .asciiz "Reading PNG...\n"
 checking: .asciiz "Checking PNG chunks...\n"
 inflating: .asciiz "Decompressing image...\n"
@@ -19,10 +21,29 @@ bad_format: .asciiz "Expected a non-interlaced 8-bit RGB PNG, up to 512 x 512.\n
 .text
 .globl main
 main:
+    li $s6, 1                     # enable MSA unless --scalar was supplied
     la $s3, default_file
     beqz $a0, get_workspace
     nop
     lw $s3, 0($a1)
+    li $t0, 1
+    beq $a0, $t0, get_workspace
+    nop
+    li $t0, 2
+    bne $a0, $t0, argument_error
+    nop
+    lw $t0, 4($a1)
+    la $t1, scalar_option
+check_option:
+    lbu $t2, 0($t0)
+    lbu $t3, 0($t1)
+    bne $t2, $t3, argument_error
+    nop
+    daddiu $t0, $t0, 1
+    daddiu $t1, $t1, 1
+    bnez $t3, check_option
+    nop
+    move $s6, $zero
 get_workspace:
     la $a0, reading
     li $v0, 4
@@ -94,6 +115,7 @@ close_file:
     jal inflate_zlib
     nop
     move $a0, $s2
+    move $a1, $s6
     jal unfilter_png
     nop
 
@@ -102,6 +124,7 @@ close_file:
     syscall
     move $a0, $s2
     move $a1, $s0
+    move $a2, $s6
     jal blit_rgb
     nop
     la $a0, done
@@ -111,6 +134,10 @@ close_file:
     b exit_program
     nop
 
+argument_error:
+    la $a0, bad_arguments
+    b report_error
+    nop
 file_error:
     la $a0, bad_file
     b report_error

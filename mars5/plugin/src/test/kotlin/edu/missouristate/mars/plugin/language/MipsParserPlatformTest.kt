@@ -2258,7 +2258,7 @@ class MipsParserPlatformTest {
                 }
             }
             for ((name, text) in originals + renamed) directory.resolve(name).writeText(text)
-            val context = classicAssembler
+            val context = project.get().service<MarsSessionService>().context.apply { selectTarget(MarsTarget.MARS64) }
             val originalProgram = context.assemble(listOf(directory.resolve("viewer.asm")), null, extended = true, warnings = false)
             val expected = originalProgram.machineList!!.map { it.address to it.binaryStatement }
             assertTrue(expected.size > 500, "The full decoder and both included libraries must assemble")

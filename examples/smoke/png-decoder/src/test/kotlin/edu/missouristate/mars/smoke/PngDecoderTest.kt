@@ -4,6 +4,7 @@ import edu.missouristate.mars.MIPSprogram
 import edu.missouristate.mars.ProcessingException
 import edu.missouristate.mars.Settings
 import edu.missouristate.mars.api.MarsGuiProxy
+import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.api.SessionSyscallEnvironment
 import edu.missouristate.mars.di.CoreModule
 import edu.missouristate.mars.di.DaggerMarsComponent
@@ -24,6 +25,8 @@ import javax.imageio.ImageIO
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 
 internal class PngDecoderTest {
     @TempDir lateinit var temporary: Path
@@ -34,7 +37,27 @@ internal class PngDecoderTest {
         val expected = ImageIO.read(input.toFile())
         Assertions.assertEquals(DISPLAY_STRIDE, expected.getWidth())
         Assertions.assertEquals(DISPLAY_STRIDE, expected.getHeight())
-        run(input, expected, SUCCESS)
+        val scalar = run(input, expected, SUCCESS, scalar = true)
+        val msa = run(input, expected, SUCCESS)
+        println("Full PNG guest instructions: scalar=$scalar, MSA=$msa")
+        Assertions.assertTrue(msa < scalar, "Expected fewer guest instructions with MSA ($msa vs $scalar)")
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = [true, false])
+    fun handlesUnalignedRowsAndVectorTails(littleEndian: Boolean) {
+        for (width in listOf(1, 5, 6, 15, 16, 17, 31, 32, 33, 511)) {
+            val filters = intArrayOf(2, 2, 0, 1, 3, 4)
+            val stride = 1 + width * 3
+            val scanlines = ByteArray(stride * filters.size) { offset ->
+                if (offset % stride == 0) filters[offset / stride].toByte()
+                else (173 + offset * 53 + offset / stride * 97).toByte()
+            }
+            val input = Files.write(temporary.resolve("rows-$width.png"), png(width, filters.size, 2, storedZlib(scanlines)))
+            val expected = ImageIO.read(input.toFile())
+            run(input, expected, SUCCESS, littleEndian = littleEndian, scalar = true)
+            run(input, expected, SUCCESS, littleEndian = littleEndian)
+        }
     }
 
     @Test
@@ -79,6 +102,7 @@ internal class PngDecoderTest {
     companion object {
         private val SOURCES: Path = Path.of("src/main/mips").toAbsolutePath()
         private const val DISPLAY_STRIDE = 512
+        private const val FRAME_GUARD = 0x55AA_33CC
         private const val SUCCESS = "PNG displayed."
         private const val INVALID = "Invalid PNG or corrupt compressed image."
         private val HEADLESS: MarsGuiProxy =
@@ -104,7 +128,9 @@ internal class PngDecoderTest {
             input: Path,
             expected: BufferedImage?,
             message: String,
-        ) {
+            littleEndian: Boolean = true,
+            scalar: Boolean = false,
+        ): Long {
             val settings = Settings()
             settings.simulationSettings
                 .setMemoryConfiguration("Default")
@@ -117,6 +143,8 @@ internal class PngDecoderTest {
                     .build()
                     .context()
                     .use { session ->
+                        session.selectTarget(MarsTarget.MARS64)
+                        session.memory.byteOrder = littleEndian
                         PrintStream(output, true, StandardCharsets.UTF_8).use { console ->
                             SessionSyscallEnvironment(
                                     session.memory,
@@ -128,17 +156,28 @@ internal class PngDecoderTest {
                                 .use { syscalls ->
                                     val program: MIPSprogram =
                                         session.assemble(listOf(SOURCES.resolve("viewer.asm")))
-                                    if (input.fileName.toString() != "torture.png") {
-                                        ProgramArgumentList(
-                                                arrayOf<String>(
-                                                    input.fileName.toString(),
-                                                ),
-                                            )
-                                            .storeProgramArguments(session)
+                                    val arguments = when {
+                                        scalar -> listOf(input.fileName.toString(), "--scalar")
+                                        input.fileName.toString() != "torture.png" -> listOf(input.fileName.toString())
+                                        else -> emptyList()
                                     }
+                                    ProgramArgumentList(arguments).storeProgramArguments(session)
                                     program.setSyscallEnvironment(syscalls)
+                                    val base = session.memory.heapBaseAddress
+                                    val guards = buildList {
+                                        if (expected != null && expected.width < DISPLAY_STRIDE) {
+                                            for (row in 0..<expected.height) {
+                                                add(base + 4 * (row * DISPLAY_STRIDE + expected.width))
+                                            }
+                                        }
+                                        if (expected != null && expected.height < DISPLAY_STRIDE) {
+                                            add(base + 4 * expected.height * DISPLAY_STRIDE)
+                                        }
+                                    }
+                                    for (address in guards) session.memory.setWord(address, FRAME_GUARD)
+                                    var instructions = 0L
                                     Assertions.assertTrue(
-                                        program.simulate(250000000),
+                                        program.simulate(250_000_000) { instructions = it },
                                         "The decoder must exit within the test budget",
                                     )
                                     Assertions.assertEquals(
@@ -150,7 +189,6 @@ internal class PngDecoderTest {
                                         output.toString(StandardCharsets.UTF_8).contains(message),
                                         output.toString(StandardCharsets.UTF_8),
                                     )
-                                    val base: Int = session.memory.heapBaseAddress
                                     if (expected == null) {
                                         Assertions.assertEquals(
                                             0,
@@ -162,7 +200,7 @@ internal class PngDecoderTest {
                                                 base + 4 * (DISPLAY_STRIDE * DISPLAY_STRIDE - 1),
                                             ),
                                         )
-                                        return
+                                        return instructions
                                     }
                                     for (row in 0..<expected.getHeight()) {
                                         for (column in 0..<expected.getWidth()) {
@@ -180,6 +218,12 @@ internal class PngDecoderTest {
                                             }
                                         }
                                     }
+                                    for (address in guards) {
+                                        Assertions.assertEquals(
+                                            FRAME_GUARD, session.memory.getWordNoNotify(address), "Guard at 0x${address.toString(16)}",
+                                        )
+                                    }
+                                    return instructions
                                 }
                         }
                     }

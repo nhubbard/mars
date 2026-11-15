@@ -80,6 +80,14 @@ dynamic-Huffman DEFLATE blocks, and reverses all five PNG row filters.
 Smaller images appear in the upper-left corner. A breakpoint at
 `blit_rgb` stops just before the display writes begin.
 
-Run `./gradlew :png-decoder:test` to compare every output pixel of the
-included image against ImageIO. The tests also cover split IDAT chunks,
-fixed and stored blocks, both delayed-branch settings, and invalid inputs.
+The default path uses MIPS64 MSA to add 16 bytes at a time for the PNG **Up**
+filter and to pack 16 RGB pixels at a time into framebuffer words. It uses
+scalar code for partial vectors, the other row filters, and DEFLATE. To compare
+the scalar reference in IntelliJ, set **Program arguments** to
+`torture.png --scalar`. Break at `filter_up_vector` or `blit_vector` to inspect
+the working vector registers in the default path.
+
+Run `./gradlew :png-decoder:test` to compare both modes against ImageIO and
+report the simulated instruction counts for the bundled image in the test output. The tests also
+exercise unaligned row starts, widths around vector boundaries, both byte
+orders, fixed and stored DEFLATE blocks, and invalid inputs.

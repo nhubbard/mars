@@ -6,6 +6,15 @@ png_row_bytes: .word 0
 crc_table: .space 1024
 zero_row: .space 1536
 
+# Each mask selects B, G, R, 0 for four consecutive pixels.
+# VSHF.B indices 0..15 select the right input and 16..31 select the left.
+# 0x80 selects zero. The middle masks cross input-vector boundaries.
+rgb_shuffle:
+    .byte 2, 1, 0, 0x80, 5, 4, 3, 0x80, 8, 7, 6, 0x80, 11, 10, 9, 0x80
+    .byte 14, 13, 12, 0x80, 17, 16, 15, 0x80, 20, 19, 18, 0x80, 23, 22, 21, 0x80
+    .byte 10, 9, 8, 0x80, 13, 12, 11, 0x80, 16, 15, 14, 0x80, 19, 18, 17, 0x80
+    .byte 6, 5, 4, 0x80, 9, 8, 7, 0x80, 12, 11, 10, 0x80, 15, 14, 13, 0x80
+
 .text
 # Read a network-order word, regardless of the simulator's byte order.
 be32:
@@ -251,7 +260,9 @@ crc_done:
     nop
 
 # Inverse PNG filters in place. The byte before each row holds the filter number.
+# a0 = filtered rows; a1 = enable MSA.
 unfilter_png:
+    move $v1, $a1
     lw $a1, png_height
     lw $a2, png_row_bytes
     la $a3, zero_row
@@ -265,6 +276,11 @@ filter_row:
     move $t2, $a3                 # corresponding byte in the previous row
     addu $t3, $a0, $a2            # end of current row
     beqz $t0, filter_row_done
+    nop
+    beqz $v1, filter_byte
+    nop
+    li $t4, 2
+    beq $t0, $t4, filter_up_vector
     nop
 filter_byte:
     lbu $t4, 0($t2)               # up
@@ -320,6 +336,31 @@ filter_store:
     addiu $t2, $t2, 1
     bne $t1, $t3, filter_byte
     nop
+# Up depends only on the previous row. ADDV.B wraps each sum modulo 256.
+filter_up_vector:
+    dsubu $t4, $t3, $t1
+    sltiu $t4, $t4, 16
+    bnez $t4, filter_up_tail
+    nop
+    ld.b $w0, 0($t1)
+    ld.b $w1, 0($t2)
+    addv.b $w0, $w0, $w1
+    st.b $w0, 0($t1)
+    daddiu $t1, $t1, 16
+    daddiu $t2, $t2, 16
+    b filter_up_vector
+    nop
+filter_up_tail:
+    beq $t1, $t3, filter_row_done
+    nop
+    lbu $t4, 0($t1)
+    lbu $t5, 0($t2)
+    addu $t4, $t4, $t5
+    sb $t4, 0($t1)
+    daddiu $t1, $t1, 1
+    daddiu $t2, $t2, 1
+    b filter_up_tail
+    nop
 filter_row_done:
     move $a3, $a0
     move $a0, $t3
@@ -330,13 +371,53 @@ filter_row_done:
     nop
 
 # One aligned MARS bitmap word for each RGB pixel. Heap row stride is always 512 words.
+# a0 = reconstructed rows; a1 = framebuffer; a2 = enable MSA.
 blit_rgb:
+    move $v1, $a2
+    beqz $v1, blit_setup
+    nop
+    la $t0, rgb_shuffle
+    ld.b $w4, 0($t0)
+    ld.b $w5, 16($t0)
+    ld.b $w6, 32($t0)
+    ld.b $w7, 48($t0)
+blit_setup:
     lw $a2, png_width
     lw $a3, png_height
 blit_row:
     addiu $a0, $a0, 1
     move $t0, $a1
     move $t1, $a2
+    beqz $v1, blit_pixel
+    nop
+blit_vector:
+    sltiu $t2, $t1, 16
+    bnez $t2, blit_tail
+    nop
+    # Read exactly 48 RGB bytes. ST.W writes numeric words in either byte order.
+    ld.b $w0, 0($a0)
+    ld.b $w1, 16($a0)
+    ld.b $w2, 32($a0)
+    move.v $w3, $w4
+    vshf.b $w3, $w0, $w0
+    st.w $w3, 0($t0)
+    move.v $w3, $w5
+    vshf.b $w3, $w1, $w0
+    st.w $w3, 16($t0)
+    move.v $w3, $w6
+    vshf.b $w3, $w2, $w1
+    st.w $w3, 32($t0)
+    move.v $w3, $w7
+    vshf.b $w3, $w2, $w2
+    st.w $w3, 48($t0)
+    daddiu $a0, $a0, 48
+    daddiu $t0, $t0, 64
+    addiu $t1, $t1, -16
+    b blit_vector
+    nop
+blit_tail:
+    beqz $t1, blit_row_done
+    nop
 blit_pixel:
     lbu $t2, 0($a0)
     lbu $t3, 1($a0)
@@ -351,6 +432,7 @@ blit_pixel:
     addiu $t1, $t1, -1
     bnez $t1, blit_pixel
     nop
+blit_row_done:
     addiu $a1, $a1, 2048
     addiu $a3, $a3, -1
     bnez $a3, blit_row
