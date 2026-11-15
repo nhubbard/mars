@@ -4,6 +4,7 @@
 %waitForSmart
 %goto 10 10
 %action GotoDeclaration
+%delay 1000
 %assertCurrentFile routine.inc
 %assertCaretPosition 1 1
 %openFile -file routine.inc -timeout 45
