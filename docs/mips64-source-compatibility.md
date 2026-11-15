@@ -19,7 +19,7 @@ can assemble to a different word after an upgrade.
 [MIPS64 instruction reference, Rev. 6.06][vol2] ·
 [MIPS64 SIMD Architecture, Rev. 1.12][msa]
 
-## Baseline in the repository
+## Starting baseline
 
 - The current [MARS64 catalog](../mars5/core/src/main/kotlin/edu/missouristate/mars/mips/instructions/WideInstructionCatalog.kt)
   adds 30 native instructions for doubleword arithmetic, shifts, rotates, leading-bit
@@ -37,15 +37,13 @@ can assemble to a different word after an upgrade.
   already cover representative instruction words, register width, both byte orders,
   and reversal. They provide regression coverage for the current target.
 
-## Target selection and encoding policy
+## Instruction selection and encoding policy
 
-Make Release 6 the native instruction set for MARS64. Replace conflicting
-encodings and remove native forms that Release 6 dropped. Keep MARS32 as the
-current project default while introducing the rewrite. Use one catalog for
-target-specific availability and encodings, with shared implementations where
-semantics agree. Check overlapping masks and distinguish intentional aliases
-from ambiguity. Carry the selected target through assembly images, the CLI,
-project and run settings, IntelliJ diagnostics, and grading.
+Use Release 6 for the CLI, IntelliJ projects, and grading. The staged migration
+has removed the public target selectors. The classic execution path still backs
+characterization tests and the existing core API. Migrate those tests to cover
+the equivalent Release 6 behavior or its migration diagnostic before deleting
+the classic catalog, decoder branches, and target fields from the core.
 
 Support older source spellings through MARS64 pseudo-instructions when the
 expansion can preserve their behavior. For example, give `beqc` its Release 6
