@@ -4,11 +4,19 @@ import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.api.StepEvent
 import edu.missouristate.mars.api.StepEvent.BranchOutcome.NOT_TAKEN
 import edu.missouristate.mars.api.StepEvent.BranchOutcome.TAKEN
+import edu.missouristate.mars.api.ErrorEvent
+import edu.missouristate.mars.api.SimulatorListener
+import edu.missouristate.mars.api.StopEvent
+import edu.missouristate.mars.plugin.MarsSessionService
+import java.nio.file.Files
+import java.nio.file.Path
+import java.util.concurrent.TimeUnit
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
 
 class XRayTraceTest {
     @Test
@@ -22,7 +30,50 @@ class XRayTraceTest {
         assertTrue(wide.xRayLabel().contains("0x0000000100400000"))
         val details = XRayInstruction(wide)
         assertTrue(details.describe().contains("beqc"))
-        assertFalse(details.hasDatapath)
+        assertTrue(details.isWide)
+        assertTrue(details.describe().contains("Encoding fields:"))
+        assertEquals(4, XRayWideDiagram.frame(details).signals.size)
+    }
+
+    @Test
+    fun `MARS64 execution replays vector memory accesses above four GiB`(@TempDir directory: Path) {
+        val source = Files.writeString(directory.resolve("xray.mars"), $$"""
+            .data 0x100000000
+            pixels: .word 1, 2, 3, 4
+            .text 0x100400000
+            .globl main
+            main: dla $t0,pixels
+            ld.w $w1,0($t0)
+            st.w $w1,16($t0)
+        """.trimIndent())
+        val trace = XRayTrace()
+        MarsSessionService.createMarsComponent().context().use { machine ->
+            machine.selectTarget(MarsTarget.MARS64)
+            machine.settings.setStartAtMainEnabled(true)
+            machine.assemble(listOf(source))
+            val simulator = machine.simulator()
+            simulator.addListener(object : SimulatorListener {
+                override fun onStep(event: StepEvent) = trace.record(event)
+                override fun onStop(event: StopEvent) = Unit
+                override fun onError(event: ErrorEvent) = Unit
+            })
+            trace.observeMemory(machine.memory).use {
+                assertEquals(StopEvent.Reason.CLIFF_TERMINATION, simulator.runAsync(100, null).get(5, TimeUnit.SECONDS).reason)
+            }
+        }
+        val store = trace.snapshot().last()
+        val accesses = trace.memoryFor(store)
+        assertTrue(accesses.isNotEmpty())
+        assertEquals(0x1_0000_0010L, accesses.first().addressBits)
+        assertTrue(accesses.none { it.isInstructionFetch })
+        val decoded = XRayInstruction(store, accesses)
+        assertTrue(decoded.describe().contains("0x0000000100000010"))
+        assertTrue(decoded.describe().contains("MSA vector registers"))
+        assertTrue(decoded.describe().contains("Next PC: 0x000000010040"))
+        assertEquals(5, XRayWideDiagram.frame(decoded).signals.size)
+        trace.rewind(store.stepCount - 1)
+        assertTrue(trace.memoryFor(store).isEmpty())
+        assertFalse(store in trace.snapshot())
     }
 
     @Test

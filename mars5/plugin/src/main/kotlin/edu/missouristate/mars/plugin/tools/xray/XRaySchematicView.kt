@@ -51,13 +51,14 @@ internal data class XRaySchematicFrame(
     val wires: List<Wire> = emptyList(),
     val signals: List<XRaySignal> = emptyList(),
     val instruction: XRayInstruction? = null,
+    val schematic: XRaySchematic? = null,
 )
 
 internal fun xRaySchematicContent(
     frameState: State<XRaySchematicFrame>, position: State<Int>, openUnit: (XRayUnit) -> Unit,
 ): @Composable () -> Unit = {
     val frame = frameState.value
-    val schematic = xRaySchematics.getValue(frame.unit)
+    val schematic = frame.schematic ?: xRaySchematics.getValue(frame.unit)
     val colors = JewelTheme.globalColors
     val ink = colors.text.normal
     val fill = lerp(colors.panelBackground, ink, 0.10f)

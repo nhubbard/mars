@@ -98,7 +98,7 @@ class XRayDetailsPlatformTest {
 
     @OptIn(ExperimentalJewelApi::class)
     @Test
-    fun `a MARS64 step clears MARS32 datapath playback and still shows instruction details`() = timeoutRunBlocking(20.seconds) {
+    fun `a MARS64 step switches to native playback and exposes full-width instruction details`() = timeoutRunBlocking(20.seconds) {
         val current = project.get()
         withContext(Dispatchers.EDT) {
             val view = XRayView(current)
@@ -108,12 +108,22 @@ class XRayDetailsPlatformTest {
                 val legacy = StepEvent(0x00400000, 0x212a0001, 1)
                 view.selectStep(legacy)
                 assertTrue(view.canPlay)
-                view.selectStep(legacy.copy(target = MarsTarget.MARS64))
-                assertFalse(view.canPlay)
+                val pc = 0x1_0040_0000L
+                view.selectStep(legacy.copy(target = MarsTarget.MARS64, pcBits = pc, nextPcBits = pc + 8))
+                assertTrue(view.canPlay)
+                assertTrue(view.usesWideDatapath)
+                view.resetPlayback()
+                view.togglePlayback()
+                assertTrue(view.playing)
                 scene.render(0).close()
                 val text = scene.semanticsOwners.flatMap { it.rootSemanticsNode.text() }.joinToString("\n")
                 assertTrue("beqc" in text, text)
-                assertTrue(toolsMessages.getMessage("xray.datapath.mars64") in text, text)
+                assertTrue("Next PC: 0x0000000100400008" in text, text)
+                assertTrue(toolsMessages.getMessage("xray.mars64.datapath") in text, text)
+                assertTrue(toolsMessages.getMessage("xray.mars64.registers") in text, text)
+                view.selectStep(legacy)
+                assertFalse(view.usesWideDatapath)
+                assertTrue(view.canPlay)
             } finally {
                 scene.close()
                 Disposer.dispose(view)

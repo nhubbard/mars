@@ -13,6 +13,7 @@ data class StepEvent @JvmOverloads constructor(
     val branchOutcome: BranchOutcome? = null,
     val pcBits: Long = pc.toLong(),
     val target: MarsTarget = MarsTarget.MARS32,
+    val nextPcBits: Long? = null,
 ) {
     enum class BranchOutcome {
         TAKEN,

@@ -8,6 +8,7 @@ import androidx.compose.runtime.setValue
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.project.Project
 import com.intellij.util.ui.launchOnShow
+import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.api.StepEvent
 import edu.missouristate.mars.mips.instructions.InstructionDefaults
 import edu.missouristate.mars.plugin.tools.MarsToolRunContent
@@ -44,6 +45,7 @@ internal class XRayView(private val project: Project) : Disposable {
     private val description = mutableStateOf(toolsMessages.getMessage("xray.noSteps"))
     private val schematicFrame = mutableStateOf(XRaySchematicFrame(unit, diagrams.getValue(unit).wireSegments))
     private val position = mutableIntStateOf(0)
+    val usesWideDatapath get() = step?.target == MarsTarget.MARS64
     val canPlay get() = schematicFrame.value.signals.isNotEmpty()
 
     private val schematic = xRaySchematicContent(schematicFrame, position, ::selectUnit)
@@ -94,7 +96,9 @@ internal class XRayView(private val project: Project) : Disposable {
     fun selectStep(selected: StepEvent?) {
         if (selected == step) return
         step = selected
-        instruction = selected?.let(::XRayInstruction)
+        instruction = selected?.let {
+            XRayInstruction(it, execution?.process?.xray?.memoryFor(it).orEmpty())
+        }
         showDiagram()
     }
 
@@ -129,10 +133,16 @@ internal class XRayView(private val project: Project) : Disposable {
     }
 
     private fun showDiagram() {
-        val diagram = diagrams.getValue(unit)
         val selected = instruction
-        val signals = selected?.takeIf(XRayInstruction::hasDatapath)?.let { diagram.signals(it.word, it.format) }.orEmpty()
-        schematicFrame.value = XRaySchematicFrame(unit, diagram.wireSegments, signals, selected)
+        val frame = if (selected?.isWide == true) {
+            XRayWideDiagram.frame(selected)
+        } else {
+            val diagram = diagrams.getValue(unit)
+            val signals = selected?.let { diagram.signals(it.word, it.format) }.orEmpty()
+            XRaySchematicFrame(unit, diagram.wireSegments, signals, selected)
+        }
+        val signals = frame.signals
+        schematicFrame.value = frame
         playback.show(signals.maxOfOrNull(XRaySignal::endsAt) ?: 0)
         description.value = selected?.let {
             val paths = signals.asSequence()
@@ -140,8 +150,7 @@ internal class XRayView(private val project: Project) : Disposable {
                 .map { signal -> signal.name.trimStart('*').replace('_', ' ') }
                 .distinct()
                 .joinToString(", ")
-            val details = if (it.hasDatapath) toolsMessages.getMessage("xray.paths", paths)
-            else toolsMessages.getMessage("xray.datapath.mars64")
+            val details = toolsMessages.getMessage("xray.paths", paths)
             "${it.describe()}\n$details"
         } ?: toolsMessages.getMessage("xray.noSteps")
         showPosition()

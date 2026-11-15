@@ -20,6 +20,7 @@ import com.intellij.platform.ide.progress.withBackgroundProgress
 import com.intellij.util.EventDispatcher
 import com.intellij.util.io.IOUtil
 import edu.missouristate.mars.ProcessingException
+import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.api.ErrorEvent
 import edu.missouristate.mars.api.InstructionSourceMap.Origin
 import edu.missouristate.mars.api.SessionSyscallEnvironment
@@ -313,12 +314,15 @@ internal class MarsProcessHandler(
                         val floatingRegisters = session.coprocessor1.registers
                         readFloatingRegister = { floatingRegisters[it].valueNoNotify }
                         val stop = try {
-                            bitmapDisplay.observe(session.memory).use {
-                                memoryReferences.observe(session.memory).use {
-                                    dataCache.observe(session.memory).use {
-                                        digitalLab.observe(session).use {
-                                            keyboardDisplay.observe(session).use {
-                                                executeWithWorldDevices(session, sources)
+                            val xRayMemory = if (session.target == MarsTarget.MARS64) xray.observeMemory(session.memory) else null
+                            xRayMemory.use {
+                                bitmapDisplay.observe(session.memory).use {
+                                    memoryReferences.observe(session.memory).use {
+                                        dataCache.observe(session.memory).use {
+                                            digitalLab.observe(session).use {
+                                                keyboardDisplay.observe(session).use {
+                                                    executeWithWorldDevices(session, sources)
+                                                }
                                             }
                                         }
                                     }

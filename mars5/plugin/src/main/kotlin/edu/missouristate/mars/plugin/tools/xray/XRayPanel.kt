@@ -61,9 +61,13 @@ internal fun xRayPanelContent(
                     }
                 }
                 Column(controlWidth, verticalArrangement = controlSpacing) {
-                    XRayChoice("xray.diagram", XRayUnit.entries.map { toolsMessages.getMessage("xray.unit.${it.name}") },
-                        view.unit.ordinal, "xray.diagram", true, Modifier.widthIn(max = 184.dp)) {
-                        view.selectUnit(XRayUnit.entries[it])
+                    if (view.usesWideDatapath) {
+                        Text(toolsMessages.getMessage("xray.mars64.datapath"))
+                    } else {
+                        XRayChoice("xray.diagram", XRayUnit.entries.map { toolsMessages.getMessage("xray.unit.${it.name}") },
+                            view.unit.ordinal, "xray.diagram", true, Modifier.widthIn(max = 184.dp)) {
+                            view.selectUnit(XRayUnit.entries[it])
+                        }
                     }
                     FlowRow(horizontalArrangement = controlSpacing, verticalArrangement = controlSpacing) {
                         XRayButton(if (view.playing) "xray.pause" else "xray.play", view.canPlay, view::togglePlayback)

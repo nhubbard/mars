@@ -3,6 +3,7 @@ package edu.missouristate.mars.simulator
 import edu.missouristate.mars.MIPSprogram
 import edu.missouristate.mars.api.ErrorEvent
 import edu.missouristate.mars.api.MarsSimulator
+import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.api.SimulatorListener
 import edu.missouristate.mars.api.SimulatorState
 import edu.missouristate.mars.api.StepEvent
@@ -174,6 +175,7 @@ class SimulatorEngine(private val session: MarsContext) : MarsSimulator, AutoClo
                 if (instructionLimit > 0) instructionsRemaining--
                 val event = StepEvent(
                     result.pc, result.instruction, stepCount, result.transfer, result.branchOutcome, result.pcBits, session.target,
+                    nextPcBits = if (session.target == MarsTarget.MARS64) session.registerFile.programCounterBits else null,
                 )
                 notifyListeners { it.onStep(event) }
             }
