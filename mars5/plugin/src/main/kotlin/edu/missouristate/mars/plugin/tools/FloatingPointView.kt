@@ -114,6 +114,7 @@ internal class FloatingPointView(private val project: Project) : Disposable {
         refresh()
     }
 
+    @Suppress("UnstableApiUsage")
     private val refreshJob = component.launchOnShow("Refresh MARS floating-point representation") {
         while (true) {
             withContext(Dispatchers.EDT) { refresh() }

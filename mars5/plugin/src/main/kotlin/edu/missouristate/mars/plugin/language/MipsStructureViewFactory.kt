@@ -78,6 +78,7 @@ private class MipsStructureNode(
     override fun getPresentation() = this
     override fun getPresentableText() = element?.let { expandedName ?: (it as NavigationItem).name }
 
+    @Suppress("UnstableApiUsage")
     override fun navigationRequest() = element?.let { item ->
         if (item is LeafPsiElement) {
             OpenFileDescriptor(item.project, item.containingFile.viewProvider.virtualFile, item.textOffset).navigationRequest()

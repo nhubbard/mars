@@ -249,6 +249,7 @@ private class InstructionCountsView(
         refresh()
     }
 
+    @Suppress("UnstableApiUsage")
     private val refreshJob = component.launchOnShow("Refresh MARS instruction counts") {
         while (true) {
             withContext(Dispatchers.EDT) { refresh() }

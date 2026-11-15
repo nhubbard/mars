@@ -58,7 +58,6 @@ class XRayDetailsPlatformTest {
 
     @Test
     // Simulate plugin lifecycle callbacks with the loaded plugin descriptors in the headless IDE.
-    @Suppress("UnstableApiUsage")
     fun `only unloading MARS hides its visible X-Ray tool window`() = timeoutRunBlocking {
         val current = project.get()
         withContext(Dispatchers.EDT) {
@@ -99,6 +98,7 @@ class XRayDetailsPlatformTest {
         }
     }
 
+    @Suppress("UnstableApiUsage")
     @OptIn(ExperimentalJewelApi::class)
     @Test
     fun `a MARS64 step switches to native playback and exposes full-width instruction details`() = timeoutRunBlocking(20.seconds) {
@@ -134,6 +134,7 @@ class XRayDetailsPlatformTest {
         }
     }
 
+    @Suppress("UnstableApiUsage")
     @OptIn(ExperimentalJewelApi::class)
     @Test
     fun `X-Ray exposes complete instruction and signal text to Compose accessibility`() = timeoutRunBlocking(20.seconds) {
@@ -170,6 +171,7 @@ class XRayDetailsPlatformTest {
             val scene = ImageComposeScene(320, 200)
             try {
                 scene.setContent {
+                    @Suppress("UnstableApiUsage")
                     SwingBridgeTheme { Box(Modifier.size(0.dp, 200.dp)) { schematic() } }
                 }
                 scene.render(0).close()
@@ -190,7 +192,10 @@ class XRayDetailsPlatformTest {
             val content = xRaySchematicContent(frame, position) { frame.value = XRaySchematicFrame(it) }
             val scene = ImageComposeScene(1000, 574)
             try {
-                scene.setContent { SwingBridgeTheme(content = content) }
+                scene.setContent {
+                    @Suppress("UnstableApiUsage")
+                    SwingBridgeTheme(content = content)
+                }
                 var time = 0L
                 fun render() = scene.render(time.also { time += 16_000_000 })
                 fun nodes() = scene.semanticsOwners.flatMap { it.rootSemanticsNode.flatten() }

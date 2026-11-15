@@ -78,6 +78,7 @@ internal class DigitalLabView(project: Project) : Disposable {
         selectionChanged()
     }
 
+    @Suppress("UnstableApiUsage")
     private val refreshJob = component.launchOnShow("Refresh MARS Digital Lab Sim") {
         while (true) {
             withContext(Dispatchers.EDT) { refresh() }

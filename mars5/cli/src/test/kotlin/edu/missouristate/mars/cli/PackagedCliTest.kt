@@ -103,24 +103,20 @@ internal class PackagedCliTest {
                     ClassLoader.getPlatformClassLoader(),
                 )
                 .use { loader ->
-                    val template: String = "edu.missouristate.mars.cli.grading.AssignmentScript"
+                    val template = "edu.missouristate.mars.cli.grading.AssignmentScript"
                     assertNotNull(
-                        jar.getEntry("META-INF/kotlin/script/templates/" + template + ".classname"),
+                        jar.getEntry("META-INF/kotlin/script/templates/$template.classname"),
                     )
                     val thread = Thread.currentThread()
                     val previous = thread.contextClassLoader
                     try {
                         thread.contextClassLoader = null
                         val annotation =
-                            Class.forName(template, true, loader)
-                                .declaredAnnotations
-                                .filter(
-                                    { candidate ->
-                                        candidate.annotationClass.java.simpleName == "KotlinScript"
-                                    },
-                                )
-                                .first()
-                        val configuration: Class<*> =
+                          Class.forName(template, true, loader)
+                            .declaredAnnotations.first { candidate ->
+                              candidate.annotationClass.java.simpleName == "KotlinScript"
+                            }
+                      val configuration: Class<*> =
                             annotation.annotationClass.java
                                 .getMethod("compilationConfiguration")
                                 .invoke(annotation) as Class<*>
@@ -759,7 +755,7 @@ internal class PackagedCliTest {
 
     @Test
     fun reportsDefaultFailureStatuses() {
-        val assembly: Path? = source("assembly-error.s", "bogus\n")
+        val assembly = source("assembly-error.s", "bogus\n")
         val simulation = source("simulation-error.s", $$"li $v0,999\nsyscall\n")
         for (file in listOf(assembly, simulation)) {
             val result = launch("nc", "me", file.toString())
@@ -882,8 +878,7 @@ internal class PackagedCliTest {
             arguments.add("a")
         }
         for (descriptor in descriptors) {
-            requireNotNull(descriptor) { "Expected a dump format descriptor" }
-            arguments.addAll(listOf("dump", ".text", descriptor, dump(descriptor).toString()))
+          arguments.addAll(listOf("dump", ".text", descriptor, dump(descriptor).toString()))
         }
         arguments.addAll(
             listOf(
@@ -939,8 +934,8 @@ internal class PackagedCliTest {
             listOf("Mem[0x7ffffffc]\t0x00000000\t0x241a0007", "Mem[0xfffffffc]\t0x00000000"),
             standalone.err
                 .lines()
-                .filter({ line -> !line.isBlank() })
-                .map { it.trimEnd() }
+                .filter { line -> line.isNotBlank() }
+              .map { it.trimEnd() }
                 .toList(),
         )
         for (range in
@@ -972,7 +967,7 @@ internal class PackagedCliTest {
                 launch(
                     "nc",
                     "me",
-                    "ae" + status,
+                    "ae$status",
                     "dump",
                     ".data",
                     "HexText",
@@ -1056,7 +1051,7 @@ internal class PackagedCliTest {
         arguments.addAll(flags)
         val standalone = launch("", arguments)
         assertEquals(status, standalone.status, standalone.err)
-        val diagnostic = standalone.err.lines().filter({ line -> !line.isBlank() }).toList()
+        val diagnostic = standalone.err.lines().filter { line -> line.isNotBlank() }.toList()
         assertTrue(diagnostic.any { it.contains(expected) }, standalone.err)
     }
 
@@ -1067,7 +1062,7 @@ internal class PackagedCliTest {
     }
 
     private fun dump(descriptor: String): Path {
-        return directory.resolve("dump-" + descriptor)
+        return directory.resolve("dump-$descriptor")
     }
 
     private fun launch(vararg arguments: String): Result {
@@ -1095,8 +1090,8 @@ internal class PackagedCliTest {
                 .redirectError(stderr.toFile())
                 .start()
         try {
-            assertTrue(process.waitFor(20, TimeUnit.SECONDS), { "CLI timed out: " + command })
-            return Result(process.exitValue(), Files.readString(stdout), Files.readString(stderr))
+            assertTrue(process.waitFor(20, TimeUnit.SECONDS)) { "CLI timed out: $command" }
+          return Result(process.exitValue(), Files.readString(stdout), Files.readString(stderr))
         } finally {
             if (process.isAlive) {
                 process.destroyForcibly().waitFor(5, TimeUnit.SECONDS)
@@ -1108,7 +1103,7 @@ internal class PackagedCliTest {
 
     companion object {
         private fun phaseLines(result: Result): List<String> {
-            return result.err.lines().filter({ line -> line.startsWith("--------") }).toList()
+            return result.err.lines().filter { line -> line.startsWith("--------") }.toList()
         }
     }
 }

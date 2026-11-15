@@ -227,6 +227,7 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
         return MarsSourceSet(entry, mode)
     }
 
+    @Suppress("UnstableApiUsage")
     override fun getConfigurationEditor(): SettingsEditor<MarsRunConfiguration> = object : SettingsEditor<MarsRunConfiguration>() {
         private var source = ""
         private var programArguments = ""

@@ -39,6 +39,7 @@ internal class MarsExecutionSources(private val capture: CapturedAssemblySources
         init { fileType = MipsFileType }
     }
 
+    @Suppress("UnstableApiUsage")
     private class BackedExcerpt(
         private val original: VirtualFile, path: Path, firstLine: Int, owner: Any, name: String, text: String,
     ) : CapturedFile(path, firstLine, owner, name, text), BackedVirtualFile {

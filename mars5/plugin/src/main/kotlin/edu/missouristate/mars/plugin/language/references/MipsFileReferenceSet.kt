@@ -86,6 +86,7 @@ class MipsFileReferenceSet internal constructor(
         object : FileReference(this, range, index, text) {
             override fun decode(text: String): String = text
 
+            @Suppress("UnstableApiUsage")
             override fun innerResolveInContext(
                 text: String, context: PsiFileSystemItem, result: MutableCollection<in ResolveResult>,
                 caseSensitive: Boolean,

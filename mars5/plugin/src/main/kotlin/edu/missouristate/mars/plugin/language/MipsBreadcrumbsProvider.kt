@@ -38,6 +38,7 @@ internal class MipsBreadcrumbsProvider : BreadcrumbsProvider {
 
     // These crumbs describe ranges between sibling statements, which the sticky-lines API
     // cannot represent using the selected declaration's PSI range.
+    @Suppress("UnstableApiUsage")
     override fun acceptStickyElement(element: PsiElement): Boolean = false
 }
 

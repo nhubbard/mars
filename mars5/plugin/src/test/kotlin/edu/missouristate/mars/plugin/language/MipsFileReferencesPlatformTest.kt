@@ -93,6 +93,7 @@ class MipsFileReferencesPlatformTest {
         }
     }
 
+    @Suppress("UnstableApiUsage")
     @Test
     fun `Go to Declaration opens ignored includes without supplying a file rename target`() = timeoutRunBlocking {
         val source = $$"""

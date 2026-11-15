@@ -129,6 +129,7 @@ internal class KeyboardDisplayView(project: Project) : Disposable {
         selectionChanged()
     }
 
+    @Suppress("UnstableApiUsage")
     private val refreshJob = component.launchOnShow("Refresh MARS keyboard and display") {
         while (true) {
             withContext(Dispatchers.EDT) {

@@ -76,6 +76,7 @@ internal class MarsNewProjectWizard : GeneratorNewProjectWizard {
                 manager.addConfiguration(settings)
                 manager.selectedConfiguration = settings
             }
+            @Suppress("UnstableApiUsage")
             runAfterOpened(project) { opened -> openStarterInEditor(opened, sources.first()) }
         }
     }

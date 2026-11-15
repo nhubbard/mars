@@ -117,7 +117,7 @@ internal class SessionSyscallTest {
             Assertions.assertThat(io.writeToFile(99, bytes, 1)).isEqualTo(-1)
             Assertions.assertThat(io.writeToFile(1, bytes, -1)).isEqualTo(-1)
             for (fd in 4..31) {
-                Assertions.assertThat(io.openFile(directory.resolve("file" + fd).toString(), 1))
+                Assertions.assertThat(io.openFile(directory.resolve("file$fd").toString(), 1))
                     .isEqualTo(fd)
             }
             Assertions.assertThat(io.openFile(directory.resolve("overflow").toString(), 1))
@@ -196,7 +196,7 @@ internal class SessionSyscallTest {
         session().use { session ->
             session.settings.isUtf8TextEnabled = true
             val program: MIPSprogram = session.assemble(listOf(source))
-            val buffer = program.symbolMap().locals()[source]!!.get("buffer")!!.address
+            val buffer = program.symbolMap().locals()[source]!!["buffer"]!!.address
             val input = ByteArrayInputStream("ignored\n鯉\n".toByteArray(StandardCharsets.UTF_8))
             SessionSyscallEnvironment(session.memory, input, System.out, System.err).use { io ->
                 program.setSyscallEnvironment(io)

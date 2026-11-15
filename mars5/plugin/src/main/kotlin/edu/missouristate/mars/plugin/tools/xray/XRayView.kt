@@ -20,6 +20,7 @@ import kotlinx.coroutines.launch
 import org.jetbrains.jewel.bridge.JewelComposePanel
 import kotlin.time.Duration.Companion.milliseconds
 
+@Suppress("UnstableApiUsage")
 internal class XRayView(private val project: Project) : Disposable {
     private val playback = XRayPlayback()
     private val diagrams by lazy { XRayUnit.entries.associateWith(XRayDiagram::load) }
@@ -170,7 +171,7 @@ internal class XRayView(private val project: Project) : Disposable {
     enum class Rate(val ticks: Int) { SLOW(3), NORMAL(6), FAST(12) }
 
     private companion object {
-        val inactiveSignal = Gray._100
+        val inactiveSignal: Gray = Gray._100
     }
 }
 

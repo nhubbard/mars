@@ -21,6 +21,7 @@ import org.jetbrains.annotations.TestOnly
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
+@Suppress("UnstableApiUsage")
 @Service(Service.Level.PROJECT)
 internal class MipsFoldingRefresh(project: Project, scope: CoroutineScope) {
     // IntelliJ tracks dependencies attached to descriptors, so an empty folding result

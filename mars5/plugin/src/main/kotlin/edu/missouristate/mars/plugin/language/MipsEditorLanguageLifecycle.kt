@@ -20,6 +20,7 @@ internal class MipsEditorLanguageLifecycle : DynamicPluginListener {
         updateOpenEditors(pluginDescriptor, loaded = true)
     }
 
+    @Suppress("UnstableApiUsage")
     private fun updateOpenEditors(descriptor: IdeaPluginDescriptor, loaded: Boolean) {
         if (descriptor.pluginId.idString != "edu.missouristate.mars") return
         WriteIntentReadAction.run {

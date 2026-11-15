@@ -133,6 +133,7 @@ internal class DataCacheView(project: Project) : Disposable {
         selectionChanged()
     }
 
+    @Suppress("UnstableApiUsage")
     private val refreshJob = component.launchOnShow("Refresh MARS data cache") {
         while (true) {
             withContext(Dispatchers.EDT) { refresh() }

@@ -1,5 +1,5 @@
 // The headless tests replace the platform file chooser implementation to exercise cancellation and validation.
-@file:Suppress("JetBrainsInternalApiUsage")
+@file:Suppress("JetBrainsInternalApiUsage", "UnstableApiUsage")
 
 package edu.missouristate.mars.plugin.build
 

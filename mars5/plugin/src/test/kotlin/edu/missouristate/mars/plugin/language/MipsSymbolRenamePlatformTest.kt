@@ -66,6 +66,7 @@ class MipsSymbolRenamePlatformTest {
     private val project get() = projectFixture.get()
     private val processor = MipsSymbolRenameProcessor()
 
+    @Suppress("UnstableApiUsage")
     @Test
     fun `Find Usages shows off-preview assembly bindings as read-only results and Rename reports the incomplete file`() =
         timeoutRunBlocking {

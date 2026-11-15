@@ -35,6 +35,7 @@ fun interface MarsToolInstructionListener : EventListener {
 
 class MarsToolContext internal constructor(val project: Project, val disposable: Disposable) {
     /** Creates the native execution selector. Selection changes are delivered on the EDT. */
+    @Suppress("UnstableApiUsage")
     fun executionSelector(onSelectionChanged: (MarsToolExecution?) -> Unit): JComponent {
         lateinit var selector: MarsToolExecutionSelector
         selector = MarsToolExecutionSelector(project) { onSelectionChanged(selector.process) }

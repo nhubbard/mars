@@ -226,6 +226,7 @@ internal class MarsAssemblyConfigurable(private val project: Project) :
         super.apply()
     }
 
+    @Suppress("UnstableApiUsage")
     override fun createPanel() = panel {
         val settings = project.service<MarsAssemblySettings>()
         val rows = CollectionListModel<String>()

@@ -42,6 +42,7 @@ class MipsStructureViewPlatformTest {
     private val project = codeInsightProjectFixture()
     private val fixture by codeInsightFixture(project)
 
+    @Suppress("UnstableApiUsage")
     @Test
     fun `native structure lists declarations in source order and groups macro-local labels`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
@@ -96,7 +97,7 @@ class MipsStructureViewPlatformTest {
 
     @Test
     // Kotlin exposes the reported Java setters as read-only properties.
-    @Suppress("UsePropertyAccessSyntax")
+    @Suppress("UsePropertyAccessSyntax", "UnstableApiUsage")
     fun `outline shows effective macro names and their local declarations in the including entry`() = timeoutRunBlocking {
         val current = project.get()
         val source = """

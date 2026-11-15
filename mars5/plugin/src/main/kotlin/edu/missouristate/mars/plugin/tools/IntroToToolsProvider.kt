@@ -52,6 +52,7 @@ internal class IntroToToolsProvider : MarsToolProvider {
             }.resizableRow()
         }
         render()
+        @Suppress("UnstableApiUsage")
         val job = component.launchOnShow("Refresh Introduction to Tools") {
             while (true) {
                 render()

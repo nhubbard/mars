@@ -758,7 +758,7 @@ class MipsEditorPlatformTest {
 
     @Test
     // Kotlin exposes the reported Java setters as read-only properties.
-    @Suppress("UsePropertyAccessSyntax")
+    @Suppress("UsePropertyAccessSyntax", "UnstableApiUsage")
     fun `native folding pairs aliased boundaries using the including entry`() = timeoutRunBlocking {
         val current = project.get()
         val source = $$"OPEN emit (%dest) # header\n    addiu %dest, $zero, 7\nSTOP # closer\n"

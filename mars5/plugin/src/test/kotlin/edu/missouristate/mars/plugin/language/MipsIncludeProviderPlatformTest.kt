@@ -155,6 +155,7 @@ class MipsIncludeProviderPlatformTest {
         }
     }
 
+    @Suppress("UnstableApiUsage")
     @Test
     fun `shared include index agrees with the target directory case sensitivity in both directions`() = timeoutRunBlocking {
         val (target, exact, alternate) = withContext(Dispatchers.EDT) {

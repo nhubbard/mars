@@ -11,17 +11,23 @@ internal fun msaIntegerInstructions(): List<BasicInstruction> =
         val shifts = ShiftOperation.entries.flatMap { operation ->
             listOf(shiftInstruction(operation, format, suffix, immediate = false), shiftInstruction(operation, format, suffix, immediate = true))
         }
-        IntegerOperation.entries.map { integerInstruction(it, format, suffix) } +
-            WideArithmetic.entries.map { wideArithmetic(it, format, suffix) } +
-            immediateOperations.map { immediateInstruction(it.first, it.second, format, suffix) } + shifts + listOf(
+      buildList {
+        IntegerOperation.entries.mapTo(this) { integerInstruction(it, format, suffix) }
+        WideArithmetic.entries.mapTo(this) { wideArithmetic(it, format, suffix) }
+        immediateOperations.mapTo(this) { immediateInstruction(it.first, it.second, format, suffix) }
+        addAll(shifts)
+        addAll(
+          listOf(
             saturateInstruction(format, suffix, signed = true),
             saturateInstruction(format, suffix, signed = false),
             countInstruction("pcnt", "001", formatField, suffix, bits) { it.countOneBits() },
             countInstruction("nlzc", "011", formatField, suffix, bits) { it.countLeadingZeroBits() - (64 - bits) },
             countInstruction("nloc", "010", formatField, suffix, bits) {
-                (it xor (-1L ushr (64 - bits))).countLeadingZeroBits() - (64 - bits)
+              (it xor (-1L ushr (64 - bits))).countLeadingZeroBits() - (64 - bits)
             },
+          )
         )
+      }
     }
 
 private enum class IntegerOperation(

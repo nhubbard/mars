@@ -169,7 +169,8 @@ open class MemoryState(
 
     // WordMemorySegment transfers its first byte in the least significant bits.
     private fun wideDataValue(value: Int, size: Int): Int {
-        if (byteOrder == LITTLE_ENDIAN || size == 1) return value
+        // byteOrder is true when the endianness is little endian.
+        if (byteOrder || size == 1) return value
         return reverseBytes(value) ushr ((Int.SIZE_BYTES - size) * Byte.SIZE_BITS)
     }
 

@@ -98,6 +98,7 @@ internal class BranchHistoryView(project: Project) : Disposable {
         selectionChanged()
     }
 
+    @Suppress("UnstableApiUsage")
     private val refreshJob = component.launchOnShow("Refresh MARS branch history") {
         while (true) {
             withContext(Dispatchers.EDT) { refresh() }

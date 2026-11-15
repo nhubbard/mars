@@ -36,6 +36,7 @@ import edu.missouristate.mars.plugin.analysis.macroArgumentCount
 import edu.missouristate.mars.plugin.build.MarsAssemblySettings
 import java.util.TreeMap
 
+@Suppress("UnstableApiUsage")
 internal class MipsDocumentationTargetProvider : DocumentationTargetProvider, LookupElementDocumentationTargetProvider {
     override fun documentationTargets(file: PsiFile, offset: Int): List<DocumentationTarget> {
         if (file !is MipsFile) return emptyList()

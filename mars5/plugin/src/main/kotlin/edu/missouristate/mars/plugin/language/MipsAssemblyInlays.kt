@@ -141,6 +141,7 @@ internal fun MipsFile.publishAssemblyHints(snapshot: MipsAssemblyHints) {
 
 @Service(Service.Level.PROJECT)
 internal class MipsAssemblyInlayRefresh(project: Project, scope: CoroutineScope) {
+    @Suppress("UnstableApiUsage")
     private val refresh = DebouncedUpdates.forScope<VirtualFile?>(scope, "Refresh MARS assembly inlays", 100.milliseconds)
         .withContext(Dispatchers.EDT)
         .runBatchedDistinct { files ->
@@ -155,6 +156,7 @@ internal class MipsAssemblyInlayRefresh(project: Project, scope: CoroutineScope)
         project.messageBus.connect(scope).subscribe(MipsAssemblyContextListener.TOPIC, MipsAssemblyContextListener { changed(null) })
     }
 
+    @Suppress("UnstableApiUsage")
     fun changed(file: VirtualFile?) {
         val enabled = runReadActionBlocking {
             val settings = DeclarativeInlayHintsSettings.getInstance()
@@ -163,6 +165,7 @@ internal class MipsAssemblyInlayRefresh(project: Project, scope: CoroutineScope)
         if (enabled) refresh.queue(file)
     }
 
+    @Suppress("UnstableApiUsage")
     @TestOnly
     fun waitForRefresh() = refresh.waitForAllExecuted(5.seconds)
 }

@@ -142,6 +142,7 @@ internal class MemoryGridView(
         selectionChanged()
     }
 
+    @Suppress("UnstableApiUsage")
     private val refreshJob = component.launchOnShow("Refresh MARS memory display") {
         while (true) {
             withContext(Dispatchers.EDT) { refresh() }

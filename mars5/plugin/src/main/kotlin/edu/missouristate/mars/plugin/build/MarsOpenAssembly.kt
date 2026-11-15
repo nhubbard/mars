@@ -30,6 +30,7 @@ internal class MarsOpenAssemblyListener : FileEditorManagerListener {
     }
 }
 
+@Suppress("UnstableApiUsage")
 @Service(Service.Level.PROJECT)
 internal class MarsOpenAssembly(private val project: Project, scope: CoroutineScope) {
     private val updates = DebouncedUpdates.forScope<VirtualFile>(scope, "MARS assembly on open", 300.milliseconds)

@@ -1,25 +1,8 @@
 package edu.missouristate.mars
 
-import edu.missouristate.mars.api.MarsTarget
-import edu.missouristate.mars.api.AssembledInstruction
-import edu.missouristate.mars.api.AssemblyError
-import edu.missouristate.mars.api.AssemblyResult
-import edu.missouristate.mars.api.AssemblySourceSnapshot
-import edu.missouristate.mars.api.AssemblySymbolMap
-import edu.missouristate.mars.api.AssemblySymbolMap.Definition
-import edu.missouristate.mars.api.AssemblySymbolMap.EquivalenceOccurrence
-import edu.missouristate.mars.api.AssemblySymbolMap.MacroDefinition
-import edu.missouristate.mars.api.AssemblySymbolMap.SourceToken
-import edu.missouristate.mars.api.AssemblySymbolMap.SymbolUse
-import edu.missouristate.mars.api.InstructionSourceMap
-import edu.missouristate.mars.api.MarsGuiProxy
-import edu.missouristate.mars.api.Program
-import edu.missouristate.mars.assembler.Assembler
-import edu.missouristate.mars.assembler.Macro
-import edu.missouristate.mars.assembler.SourceLine
-import edu.missouristate.mars.assembler.SymbolTable
-import edu.missouristate.mars.assembler.Token
-import edu.missouristate.mars.assembler.Tokenizer
+import edu.missouristate.mars.api.*
+import edu.missouristate.mars.api.AssemblySymbolMap.*
+import edu.missouristate.mars.assembler.*
 import edu.missouristate.mars.assembler.Tokenizer.EquivalenceDefinition
 import edu.missouristate.mars.assembler.Tokenizer.IncludePath
 import edu.missouristate.mars.core.AssemblyImage
@@ -30,23 +13,6 @@ import edu.missouristate.mars.di.DaggerMarsComponent
 import edu.missouristate.mars.mips.hardware.Coprocessor0State
 import edu.missouristate.mars.mips.hardware.MemoryState
 import edu.missouristate.mars.simulator.ProgramArgumentList
-import java.io.ByteArrayOutputStream
-import java.nio.charset.Charset
-import java.nio.charset.StandardCharsets
-import java.nio.file.Files
-import java.nio.file.Path
-import java.util.HexFormat
-import java.util.Map.entry as mapEntry
-import java.util.Map.of as immutableMapOf
-import java.util.Objects
-import java.util.concurrent.CancellationException
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicInteger
-import java.util.function.Consumer
-import java.util.function.Function
-import java.util.stream.Stream
 import org.assertj.core.api.Assertions
 import org.assertj.core.api.ThrowingConsumer
 import org.assertj.core.api.iterable.ThrowingExtractor
@@ -56,6 +22,18 @@ import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.MethodSource
 import org.junit.jupiter.params.provider.ValueSource
+import java.io.ByteArrayOutputStream
+import java.nio.charset.Charset
+import java.nio.charset.StandardCharsets
+import java.nio.file.Files
+import java.nio.file.Path
+import java.util.*
+import java.util.concurrent.CancellationException
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.stream.Stream
 
 internal class SessionAssemblyTest {
     @TempDir lateinit var directory: Path
@@ -194,12 +172,11 @@ internal class SessionAssemblyTest {
                 Assertions.assertThatThrownBy {
                     first.loadAssemblyImage(
                         image,
-                        {
-                            if (first.program == null) {
-                                throw CancellationException()
-                            }
-                        },
-                    )
+                    ) {
+                      if (first.program == null) {
+                        throw CancellationException()
+                      }
+                    }
                 }
                     .isInstanceOf(CancellationException::class.java)
                 Assertions.assertThat<MIPSprogram>(first.program).isNull()
@@ -214,23 +191,23 @@ internal class SessionAssemblyTest {
     @Test
     fun launchEntryUsesOnlyGlobalMainInAProgramTextSegment() {
         val programs =
-            listOf(
-                mapEntry(".text\nnop\n.globl main\nmain: nop\n", 0x00400004),
-                mapEntry(".text\nnop\nmain: nop\n", 0x00400000),
-                mapEntry(".data\n.globl main\nmain: .word 1\n.text\nnop\n", 0x00400000),
-                mapEntry(".text\nnop\n.ktext 0x80000180\n.globl main\nmain: nop\n", -0x7ffffe80),
-                mapEntry(".text\nnop\n", 0x00400000),
+            mapOf(
+                ".text\nnop\n.globl main\nmain: nop\n" to 0x00400004,
+                ".text\nnop\nmain: nop\n" to 0x00400000,
+                ".data\n.globl main\nmain: .word 1\n.text\nnop\n" to 0x00400000,
+                ".text\nnop\n.ktext 0x80000180\n.globl main\nmain: nop\n" to -0x7ffffe80,
+                ".text\nnop\n" to 0x00400000,
             )
-        for (scenario in programs) {
+        for ((key, value) in programs) {
             session("Default").use { builder ->
                 session("Default").use { launch ->
-                    builder.assemble(listOf(source("launch.s", scenario.key!!)))
-                    val image: AssemblyImage = builder.captureAssemblyImage({})
-                    launch.loadAssemblyImage(image, true, {})
-                    Assertions.assertThat(launch.registerFile.programCounter)
-                        .isEqualTo(scenario.value)
-                    launch.loadAssemblyImage(image, false, {})
-                    Assertions.assertThat(launch.registerFile.programCounter)
+                    builder.assemble(listOf(source("launch.s", key)))
+                    val image: AssemblyImage = builder.captureAssemblyImage {}
+                  launch.loadAssemblyImage(image, true) {}
+                  Assertions.assertThat(launch.registerFile.programCounter)
+                        .isEqualTo(value)
+                    launch.loadAssemblyImage(image, false) {}
+                  Assertions.assertThat(launch.registerFile.programCounter)
                         .isEqualTo(launch.memory.textBaseAddress)
                 }
             }
@@ -347,7 +324,7 @@ internal class SessionAssemblyTest {
     fun assemblyUsesTheSessionsConfiguredAddressLayout(layout: String) {
         session(layout).use { session ->
             val program: MIPSprogram =
-                session.assemble(listOf(source(layout + ".s", program(12, false))))
+                session.assemble(listOf(source("$layout.s", program(12, false))))
             Assertions.assertThat(session.symbolTable.getAddress("result"))
                 .isEqualTo(session.memory.dataBaseAddress)
             Assertions.assertThat(session.symbolTable.getAddress("main"))
@@ -470,14 +447,13 @@ internal class SessionAssemblyTest {
             }
                 .isInstanceOfSatisfying<ProcessingException?>(
                     ProcessingException::class.java,
-                    Consumer { error: ProcessingException? ->
-                        Assertions.assertThat(
-                                Objects.requireNonNull(error!!.errors())!!
-                                    .generateErrorReport(),
-                            )
-                            .contains("private_label", "not found")
-                    },
-                )
+                ) { error: ProcessingException? ->
+                  Assertions.assertThat(
+                    Objects.requireNonNull(error!!.errors())!!
+                      .generateErrorReport(),
+                  )
+                    .contains("private_label", "not found")
+                }
         }
     }
 
@@ -575,31 +551,25 @@ internal class SessionAssemblyTest {
         val handler = directory.resolve("handler.s")
         val outer = directory.resolve("outer.s")
         val inner = source("inner.s", ".eqv VALUE 99\n")
-        val entries = ArrayList<Path>(listOf(main, library))
+        val entries = ArrayList(listOf(main, library))
         val texts = HashMap<Path, String>()
-        texts.put(
-            main,
-            $$"""
-            .include "./outer.s"
-            .text
-            main:
-              emit ($a0)
-              li $v0, 1
-              syscall
-              jal finish
-              nop
+      texts[main] = $$"""
+      .include "./outer.s"
+      .text
+      main:
+        emit ($a0)
+        li $v0, 1
+        syscall
+        jal finish
+        nop
 
-            """
-                .trimIndent(),
-        )
-        texts.put(library, $$".text\n.globl finish\nfinish: li $v0, 10\nsyscall\n")
-        texts.put(handler, $$".text\naddiu $s0, $zero, 17\n")
-        texts.put(outer, ".include \"" + inner + "\"\n")
-        texts.put(
-            directory.resolve("unused/../inner.s"),
-            ".eqv VALUE 42\r\n.macro emit (%reg)\r  li %reg, VALUE\n.end_macro",
-        )
-        val snapshot = AssemblySourceSnapshot(entries, texts)
+      """
+          .trimIndent()
+      texts[library] = $$".text\n.globl finish\nfinish: li $v0, 10\nsyscall\n"
+      texts[handler] = $$".text\naddiu $s0, $zero, 17\n"
+      texts[outer] = ".include \"$inner\"\n"
+      texts[directory.resolve("unused/../inner.s")] = ".eqv VALUE 42\r\n.macro emit (%reg)\r  li %reg, VALUE\n.end_macro"
+      val snapshot = AssemblySourceSnapshot(entries, texts)
         entries.clear()
         texts.clear()
         Assertions.assertThatThrownBy { (snapshot.entries() as MutableList).clear() }
@@ -646,8 +616,8 @@ internal class SessionAssemblyTest {
         val snapshot =
             AssemblySourceSnapshot(
                 listOf(main),
-                immutableMapOf(
-                    main,
+                mapOf(
+                    main to
                     """
                     .include "outer.s"
                     .text
@@ -658,9 +628,9 @@ internal class SessionAssemblyTest {
 
                     """
                         .trimIndent(),
-                    outer,
+                    outer to
                     ".include \"definitions.s\"\n",
-                    definitions,
+                    definitions to
                     $$"""
                     .macro inner (%reg)
                       li %reg, 0x12345678
@@ -673,9 +643,9 @@ internal class SessionAssemblyTest {
 
                     """
                         .trimIndent(),
-                    calls,
+                    calls to
                     "# A call in an included file.\nouter\n",
-                    plain,
+                    plain to
                     $$"addiu $t0, $zero, 1\n",
                 ),
             )
@@ -733,22 +703,22 @@ internal class SessionAssemblyTest {
                 )
             Assertions.assertThat(map.breakpoints())
                 .containsExactlyInAnyOrderEntriesOf(
-                    immutableMapOf(
-                        InstructionSourceMap.Location(definitions, 2),
+                    mapOf(
+                        InstructionSourceMap.Location(definitions, 2) to
                         listOf(pc, pc + 16),
-                        InstructionSourceMap.Location(definitions, 3),
+                        InstructionSourceMap.Location(definitions, 3) to
                         listOf(pc + 8, pc + 24),
-                        InstructionSourceMap.Location(definitions, 6),
+                        InstructionSourceMap.Location(definitions, 6) to
                         listOf(pc, pc + 16),
-                        InstructionSourceMap.Location(definitions, 7),
+                        InstructionSourceMap.Location(definitions, 7) to
                         listOf(pc + 12, pc + 28),
-                        InstructionSourceMap.Location(calls, 2),
+                        InstructionSourceMap.Location(calls, 2) to
                         listOf(pc),
-                        InstructionSourceMap.Location(main, 4),
+                        InstructionSourceMap.Location(main, 4) to
                         listOf(pc + 16),
-                        InstructionSourceMap.Location(plain, 1),
+                        InstructionSourceMap.Location(plain, 1) to
                         listOf(pc + 32),
-                        InstructionSourceMap.Location(main, 6),
+                        InstructionSourceMap.Location(main, 6) to
                         listOf(pc + 36),
                     ),
                 )
@@ -761,8 +731,8 @@ internal class SessionAssemblyTest {
             }
                 .isInstanceOf(UnsupportedOperationException::class.java)
             val expanded: List<AssembledInstruction> =
-                assembled.instructionsAt(InstructionSourceMap.Location(calls, 2), {})
-            Assertions.assertThat(expanded)
+                assembled.instructionsAt(InstructionSourceMap.Location(calls, 2)) {}
+          Assertions.assertThat(expanded)
                 .extracting<Int?, RuntimeException>(AssembledInstruction::address)
                 .containsExactly(pc, pc + 4, pc + 8, pc + 12)
             Assertions.assertThat(expanded.first().assembly).startsWith("lui ")
@@ -775,16 +745,14 @@ internal class SessionAssemblyTest {
                 (map.pseudoAddresses() as MutableSet).clear()
             }
                 .isInstanceOf(UnsupportedOperationException::class.java)
-            Assertions.assertThat(assembled.pseudoInstructions({}))
+            Assertions.assertThat(assembled.pseudoInstructions {})
                 .containsExactly(
                     expanded[0],
                     expanded[1],
-                    assembled
-                        .instructionsAt(InstructionSourceMap.Location(main, 4), {})
-                        .get(0),
-                    assembled
-                        .instructionsAt(InstructionSourceMap.Location(main, 4), {})
-                        .get(1),
+                  assembled
+                    .instructionsAt(InstructionSourceMap.Location(main, 4)) {}[0],
+                  assembled
+                    .instructionsAt(InstructionSourceMap.Location(main, 4)) {}[1],
                 )
             Assertions.assertThat(
                     assembled.instructionsAt(
@@ -792,8 +760,7 @@ internal class SessionAssemblyTest {
                             definitions,
                             2,
                         ),
-                        {},
-                    ),
+                    ) {},
                 )
                 .hasSize(4)
             Assertions.assertThat(
@@ -802,17 +769,15 @@ internal class SessionAssemblyTest {
                             main,
                             1,
                         ),
-                        {},
-                    ),
+                    ) {},
                 )
                 .isEmpty()
             Assertions.assertThatThrownBy {
                 assembled.instructionsAt(
                     InstructionSourceMap.Location(calls, 2),
-                    {
-                        throw CancellationException("stop inspection")
-                    },
-                )
+                ) {
+                  throw CancellationException("stop inspection")
+                }
             }
                 .isInstanceOf(CancellationException::class.java)
         }
@@ -826,8 +791,8 @@ internal class SessionAssemblyTest {
         val sources =
             AssemblySourceSnapshot(
                 listOf(main, other),
-                immutableMapOf(
-                    main,
+                mapOf(
+                    main to
                     """
                     .include "macros.s"
                     .data
@@ -842,7 +807,7 @@ internal class SessionAssemblyTest {
 
                     """
                         .trimIndent(),
-                    macros,
+                    macros to
                     """
                     .macro inner (%entry)
                       %entry:
@@ -858,7 +823,7 @@ internal class SessionAssemblyTest {
 
                     """
                         .trimIndent(),
-                    other,
+                    other to
                     ".text\nprivateLabel: j exported_M0\n.extern storage 64\n.extern nextCell 8\n",
                 ),
             )
@@ -895,29 +860,29 @@ internal class SessionAssemblyTest {
                 )
             Assertions.assertThat<String?, Definition?>(map.globals())
                 .containsExactlyInAnyOrderEntriesOf(
-                    immutableMapOf(
-                        "exported_M0",
-                        Definition(text, AssemblySymbolMap.Kind.TEXT, exported, false, 3),
-                        "storage",
+                    mapOf(
+                        "exported_M0" to
+                        Definition(text, Kind.TEXT, exported, false, 3),
+                        "storage" to
                         Definition(
                             session.memory.externBaseAddress,
-                            AssemblySymbolMap.Kind.EXTERNAL,
+                            Kind.EXTERNAL,
                             storage,
                             false,
                             9,
                         ),
-                        "shared",
+                        "shared" to
                         Definition(
                             session.memory.externBaseAddress + 4,
-                            AssemblySymbolMap.Kind.EXTERNAL,
+                            Kind.EXTERNAL,
                             reserved,
                             false,
                             11,
                         ),
-                        "nextCell",
+                        "nextCell" to
                         Definition(
                             session.memory.externBaseAddress + 8,
-                            AssemblySymbolMap.Kind.EXTERNAL,
+                            Kind.EXTERNAL,
                             InstructionSourceMap.Origin(
                                 InstructionSourceMap.Location(other, 4),
                                 null,
@@ -939,11 +904,11 @@ internal class SessionAssemblyTest {
                 )
             Assertions.assertThat<String?, Definition?>(map.locals()[main])
                 .containsExactlyInAnyOrderEntriesOf(
-                    immutableMapOf(
-                        "word",
+                    mapOf(
+                        "word" to
                         Definition(
                             session.memory.dataBaseAddress + 4,
-                            AssemblySymbolMap.Kind.DATA,
+                            Kind.DATA,
                             InstructionSourceMap.Origin(
                                 InstructionSourceMap.Location(main, 4),
                                 null,
@@ -951,12 +916,12 @@ internal class SessionAssemblyTest {
                             false,
                             1,
                         ),
-                        "privateLabel",
-                        Definition(text + 4, AssemblySymbolMap.Kind.TEXT, local, false, 3),
-                        "privateLoop_M1",
+                        "privateLabel" to
+                        Definition(text + 4, Kind.TEXT, local, false, 3),
+                        "privateLoop_M1" to
                         Definition(
                             text,
-                            AssemblySymbolMap.Kind.TEXT,
+                            Kind.TEXT,
                             InstructionSourceMap.Origin(
                                 InstructionSourceMap.Location(macros, 3),
                                 exported.caller,
@@ -964,10 +929,10 @@ internal class SessionAssemblyTest {
                             true,
                             3,
                         ),
-                        "privateLoop_M3",
+                        "privateLoop_M3" to
                         Definition(
                             text + 4,
-                            AssemblySymbolMap.Kind.TEXT,
+                            Kind.TEXT,
                             InstructionSourceMap.Origin(
                                 InstructionSourceMap.Location(macros, 3),
                                 local.caller,
@@ -979,11 +944,11 @@ internal class SessionAssemblyTest {
                 )
             Assertions.assertThat<String?, Definition?>(map.locals()[other])
                 .containsExactlyEntriesOf(
-                    immutableMapOf(
-                        "privateLabel",
+                    mapOf(
+                        "privateLabel" to
                         Definition(
                             text + 8,
-                            AssemblySymbolMap.Kind.TEXT,
+                            Kind.TEXT,
                             InstructionSourceMap.Origin(
                                 InstructionSourceMap.Location(other, 2),
                                 null,
@@ -1008,26 +973,26 @@ internal class SessionAssemblyTest {
         val source = $$".data\noriginal: .word 42\n.text\naddiu $a0, $zero, 7\n"
         session("Default").use { session ->
             val assembler = SessionAssembler(session)
-            val first = AssemblySourceSnapshot(listOf(file), immutableMapOf(file, source))
+            val first = AssemblySourceSnapshot(listOf(file), mapOf(file to source))
             Assertions.assertThat(
                     assembler.assembleSnapshot(first, null, extendedAssemblerEnabled = true, warningsAreErrors = false).errors(),
                 )
                 .isEmpty()
-            val image: AssemblyImage = session.captureAssemblyImage({})
-            for (changed in
+            val image: AssemblyImage = session.captureAssemblyImage {}
+          for (changed in
                 listOf(
                     source.replace("original", "renamed"),
                     source.replace("42", "43"),
                     source.replace(", 7", ", 8"),
                     source + "nop\n",
                 )) {
-                val snapshot = AssemblySourceSnapshot(listOf(file), immutableMapOf(file, changed))
+                val snapshot = AssemblySourceSnapshot(listOf(file), mapOf(file to changed))
                 Assertions.assertThat(
                         assembler.assembleSnapshot(snapshot, null, extendedAssemblerEnabled = true, warningsAreErrors = false).errors(),
                     )
                     .isEmpty()
-                val next: AssemblyImage = session.captureAssemblyImage({})
-                Assertions.assertThat(image.hasSameMachineImage(next, {}))
+                val next: AssemblyImage = session.captureAssemblyImage {}
+              Assertions.assertThat(image.hasSameMachineImage(next) {})
                     .isEqualTo(changed.contains("renamed"))
             }
         }
@@ -1041,8 +1006,8 @@ internal class SessionAssemblyTest {
         val sources =
             AssemblySourceSnapshot(
                 listOf(main, other),
-                immutableMapOf(
-                    main,
+                mapOf(
+                    main to
                     """
                     .include "macros.txt"
                     .eqv TARGET BASE
@@ -1062,9 +1027,9 @@ internal class SessionAssemblyTest {
 
                     """
                         .trimIndent(),
-                    other,
+                    other to
                     ".text\ntarget: nop\n.globl target\n",
-                    macros,
+                    macros to
                     """
                     .eqv BASE target
                     .macro inner (%label)
@@ -1085,8 +1050,8 @@ internal class SessionAssemblyTest {
                     Objects.requireNonNull(result.program())!!.symbolMap().macros(),
                 )
                 .containsExactlyInAnyOrderEntriesOf(
-                    immutableMapOf(
-                        main,
+                    mapOf(
+                        main to
                         listOf(
                             MacroDefinition(
                                 SourceToken(InstructionSourceMap.Location(macros, 2), 8),
@@ -1099,7 +1064,7 @@ internal class SessionAssemblyTest {
                                 listOf("%label"),
                             ),
                         ),
-                        other,
+                        other to
                         emptyList(),
                     ),
                 )
@@ -1114,9 +1079,8 @@ internal class SessionAssemblyTest {
             val base = SourceToken(InstructionSourceMap.Location(macros, 1), 6)
             val invocation = SourceToken(InstructionSourceMap.Location(main, 7), 3)
             Assertions.assertThat<EquivalenceOccurrence?>(
-                    Objects.requireNonNull(result.program())!!.symbolMap()
-                        .equivalences()
-                        .get(main),
+              Objects.requireNonNull(result.program())!!.symbolMap()
+                .equivalences()[main],
                 )
                 .contains(
                     EquivalenceOccurrence(alias, alias, alias, "TARGET", true),
@@ -1141,35 +1105,35 @@ internal class SessionAssemblyTest {
                 SymbolUse(
                     SourceToken(InstructionSourceMap.Location(main, 8), 1),
                     "local",
-                    symbols.locals()[main]!!.get("local")!!.address,
+                    symbols.locals()[main]!!["local"]!!.address,
                 )
             val future =
                 SymbolUse(
                     SourceToken(InstructionSourceMap.Location(main, 12), 1),
                     "future",
-                    symbols.locals()[main]!!.get("future")!!.address,
+                    symbols.locals()[main]!!["future"]!!.address,
                 )
             val uses: Map<SourceToken, Set<SymbolUse>> = symbols.symbolUses()
             Assertions.assertThat(uses)
                 .containsExactlyInAnyOrderEntriesOf(
-                    immutableMapOf(
-                        SourceToken(InstructionSourceMap.Location(main, 4), 14),
+                    mapOf(
+                        SourceToken(InstructionSourceMap.Location(main, 4), 14) to
                         setOf(target),
-                        SourceToken(InstructionSourceMap.Location(main, 6), 9),
+                        SourceToken(InstructionSourceMap.Location(main, 6), 9) to
                         setOf(target),
-                        SourceToken(InstructionSourceMap.Location(main, 7), 3),
+                        SourceToken(InstructionSourceMap.Location(main, 7), 3) to
                         setOf(aliasedTarget),
-                        SourceToken(InstructionSourceMap.Location(main, 10), 7),
+                        SourceToken(InstructionSourceMap.Location(main, 10), 7) to
                         setOf(local),
-                        SourceToken(InstructionSourceMap.Location(main, 11), 7),
+                        SourceToken(InstructionSourceMap.Location(main, 11), 7) to
                         setOf(future),
-                        SourceToken(InstructionSourceMap.Location(main, 13), 7),
+                        SourceToken(InstructionSourceMap.Location(main, 13), 7) to
                         setOf(aliasedTarget),
-                        SourceToken(InstructionSourceMap.Location(main, 13), 15),
+                        SourceToken(InstructionSourceMap.Location(main, 13), 15) to
                         setOf(aliasedTarget),
-                        SourceToken(InstructionSourceMap.Location(main, 15), 9),
+                        SourceToken(InstructionSourceMap.Location(main, 15), 9) to
                         setOf(aliasedTarget),
-                        SourceToken(InstructionSourceMap.Location(other, 3), 8),
+                        SourceToken(InstructionSourceMap.Location(other, 3), 8) to
                         setOf(target),
                     ),
                 )
@@ -1199,7 +1163,7 @@ internal class SessionAssemblyTest {
                     .assembleSnapshot(
                         AssemblySourceSnapshot(
                             listOf(file),
-                            immutableMapOf(file, Files.readString(file)),
+                            mapOf(file to Files.readString(file)),
                         ),
                         null,
                         extendedAssemblerEnabled = true,
@@ -1294,7 +1258,7 @@ internal class SessionAssemblyTest {
                 )
                 .isSameAs(original)
             Assertions.assertThat(
-                    program.instructionsAt(original.location, {}).first().encoding,
+                    program.instructionsAt(original.location) {}.first().encoding,
                 )
                 .isEqualTo(0x24080001)
         }
@@ -1312,7 +1276,7 @@ internal class SessionAssemblyTest {
             val assembler = SessionAssembler(session)
             val absentMain =
                 assembler.assembleSnapshot(
-                    AssemblySourceSnapshot(entries, immutableMapOf()),
+                    AssemblySourceSnapshot(entries, emptyMap()),
                     null,
                     extendedAssemblerEnabled = true,
                     warningsAreErrors = false,
@@ -1330,7 +1294,7 @@ internal class SessionAssemblyTest {
                 assembler.assembleSnapshot(
                     AssemblySourceSnapshot(
                         entries,
-                        immutableMapOf(main, mainText, outer, outerText),
+                        mapOf(main to mainText, outer to outerText),
                     ),
                     null,
                     extendedAssemblerEnabled = true,
@@ -1351,13 +1315,10 @@ internal class SessionAssemblyTest {
                 assembler.assembleSnapshot(
                     AssemblySourceSnapshot(
                         entries,
-                        immutableMapOf(
-                            main,
-                            mainText,
-                            outer,
-                            outerText,
-                            inner,
-                            "# comment\r\n  j undefined\r\n",
+                        mapOf(
+                            main to mainText,
+                            outer to outerText,
+                            inner to "# comment\r\n  j undefined\r\n",
                         ),
                     ),
                     null,
@@ -1386,11 +1347,9 @@ internal class SessionAssemblyTest {
         val snapshot =
             AssemblySourceSnapshot(
                 listOf(main),
-                immutableMapOf(
-                    main,
-                    "# comment\n" + directive + "\n",
-                    part,
-                    $$"addiu $t0, $zero, 7\n",
+                mapOf(
+                    main to "# comment\n$directive\n",
+                    part to $$"addiu $t0, $zero, 7\n",
                 ),
             )
         session("Default").use { session ->
@@ -1434,10 +1393,10 @@ internal class SessionAssemblyTest {
                 assembler.assembleSnapshot(
                     AssemblySourceSnapshot(
                         listOf(main),
-                        immutableMapOf(
-                            main,
-                            bareQuote + "\r\n" + partialPath + "\r\nnop\r\n",
-                            part,
+                        mapOf(
+                            main to
+                          "$bareQuote\r\n$partialPath\r\nnop\r\n",
+                            part to
                             "j missing\n",
                         ),
                     ),
@@ -1465,7 +1424,7 @@ internal class SessionAssemblyTest {
                 assembler.assembleSnapshot(
                     AssemblySourceSnapshot(
                         listOf(main),
-                        immutableMapOf(main, completePath + "\nj entry\n", part, "entry: nop\n"),
+                        mapOf(main to "$completePath\nj entry\n", part to "entry: nop\n"),
                     ),
                     null,
                     extendedAssemblerEnabled = true,
@@ -1487,7 +1446,7 @@ internal class SessionAssemblyTest {
                 assembler.assembleSnapshot(
                     AssemblySourceSnapshot(
                         listOf(main),
-                        immutableMapOf(main, entry, part, unfinished),
+                        mapOf(main to entry, part to unfinished),
                     ),
                     null,
                     extendedAssemblerEnabled = true,
@@ -1520,7 +1479,7 @@ internal class SessionAssemblyTest {
                 assembler.assembleSnapshot(
                     AssemblySourceSnapshot(
                         listOf(main),
-                        immutableMapOf(main, entry, part, completed),
+                        mapOf(main to entry, part to completed),
                     ),
                     null,
                     extendedAssemblerEnabled = true,
@@ -1529,9 +1488,9 @@ internal class SessionAssemblyTest {
             Assertions.assertThat(valid.succeeded()).isTrue()
             val base: Int = session.memory.dataBaseAddress
             val expected = "OKtail\"\u0000"
-            for (i in 0..<expected.length) {
+            for ((i, element) in expected.withIndex()) {
                 Assertions.assertThat(session.memory.getByte(base + i))
-                    .isEqualTo(expected[i].code)
+                    .isEqualTo(element.code)
             }
         }
     }
@@ -1596,7 +1555,7 @@ internal class SessionAssemblyTest {
             val result =
                 SessionAssembler(machine)
                     .assembleSnapshot(
-                        AssemblySourceSnapshot(listOf(entry), immutableMapOf(entry, source)),
+                        AssemblySourceSnapshot(listOf(entry), mapOf(entry to source)),
                         null,
                         extendedAssemblerEnabled = true,
                         warningsAreErrors = false,
@@ -1633,9 +1592,9 @@ internal class SessionAssemblyTest {
 
             """
                 .trimIndent()
-        val texts: MutableMap<Path, String> =
-            immutableMapOf(main, source, local, ".eqv LOCAL 2\n", remote, ".eqv REMOTE 7\n")
-        val resolved = HashMap<Path, Path>(immutableMapOf(local, local, throughLink, remote))
+        val texts: Map<Path, String> =
+            mapOf(main to source, local to ".eqv LOCAL 2\n", remote to ".eqv REMOTE 7\n")
+        val resolved = hashMapOf(local to local, throughLink to remote)
         val snapshot = AssemblySourceSnapshot(entries, texts, resolved)
         resolved.clear()
 
@@ -1655,7 +1614,7 @@ internal class SessionAssemblyTest {
                     },
                 )
 
-            val missing = AssemblySourceSnapshot(entries, texts, immutableMapOf(local, local))
+            val missing = AssemblySourceSnapshot(entries, texts, mapOf(local to local))
             val failure = assembler.assembleSnapshot(missing, null, extendedAssemblerEnabled = true, warningsAreErrors = false)
             Assertions.assertThat(failure.succeeded()).isFalse()
             Assertions.assertThat(failure.errors())
@@ -1766,17 +1725,14 @@ internal class SessionAssemblyTest {
     fun deeplyNestedCapturedIncludesKeepSourceOrderWithoutUsingTheCallStack() {
         val texts = HashMap<Path, String>()
         val main = directory.resolve("main.s")
-        texts.put(main, $$"addiu $t0, $zero, 1\n.include \"part0.s\"\naddiu $t2, $zero, 3\n")
-        val depth = 5000
+      texts[main] = $$"addiu $t0, $zero, 1\n.include \"part0.s\"\naddiu $t2, $zero, 3\n"
+      val depth = 5000
         for (index in 0..<depth) {
-            texts.put(
-                directory.resolve("part" + index + ".s"),
-                ".include \"part" + (index + 1) + ".s\"\n",
-            )
+          texts[directory.resolve("part$index.s")] = ".include \"part" + (index + 1) + ".s\"\n"
         }
-        val leaf = directory.resolve("part" + depth + ".s")
-        texts.put(leaf, $$"addiu $t1, $zero, 2\n")
-        val snapshot = AssemblySourceSnapshot(listOf(main), texts)
+        val leaf = directory.resolve("part$depth.s")
+      texts[leaf] = $$"addiu $t1, $zero, 2\n"
+      val snapshot = AssemblySourceSnapshot(listOf(main), texts)
         session("Default").use { session ->
             val result = SessionAssembler(session).assembleSnapshot(snapshot, null, extendedAssemblerEnabled = true, warningsAreErrors = false)
             Assertions.assertThat(result.succeeded()).isTrue()
@@ -1799,16 +1755,13 @@ internal class SessionAssemblyTest {
         val snapshot =
             AssemblySourceSnapshot(
                 listOf(main),
-                immutableMapOf(
-                    main,
-                    ".include \"parts/outer.s\"\n",
-                    outer,
-                    "# nested\n.include \"shortcut/main.s\"\n",
-                    alias,
-                    ".include \"parts/outer.s\"\n",
+                mapOf(
+                    main to ".include \"parts/outer.s\"\n",
+                    outer to "# nested\n.include \"shortcut/main.s\"\n",
+                    alias to ".include \"parts/outer.s\"\n",
                 ),
-                immutableMapOf(outer, outer, alias, alias),
-                immutableMapOf(alias, main),
+                mapOf(outer to outer, alias to alias),
+                mapOf(alias to main),
             )
         session("Default").use { session ->
             val result = SessionAssembler(session).assembleSnapshot(snapshot, null, extendedAssemblerEnabled = true, warningsAreErrors = false)
@@ -1831,7 +1784,7 @@ internal class SessionAssemblyTest {
         val snapshot =
             AssemblySourceSnapshot(
                 listOf(main),
-                immutableMapOf(main, ".include \"sub/.././main.s\"\n"),
+                mapOf(main to ".include \"sub/.././main.s\"\n"),
             )
         session("Default").use { session ->
             val result = SessionAssembler(session).assembleSnapshot(snapshot, null, extendedAssemblerEnabled = true, warningsAreErrors = false)
@@ -1850,7 +1803,7 @@ internal class SessionAssemblyTest {
         Assertions.assertThatThrownBy {
             AssemblySourceSnapshot(
                 listOf(main),
-                immutableMapOf(main, "", directory.resolve("./main.s"), "nop"),
+                mapOf(main to "", directory.resolve("./main.s") to "nop"),
             )
         }
             .isInstanceOf(IllegalArgumentException::class.java)
@@ -1858,7 +1811,7 @@ internal class SessionAssemblyTest {
         Assertions.assertThatThrownBy {
             AssemblySourceSnapshot(
                 mutableListOf(),
-                immutableMapOf(),
+                emptyMap(),
             )
         }
             .isInstanceOf(IllegalArgumentException::class.java)
@@ -1868,26 +1821,21 @@ internal class SessionAssemblyTest {
     @Test
     fun mappedEquivalenceTokensKeepOriginalPositionsAcrossNestedReplacements() {
         val source = $$"LABEL OP $t0, $zero, COUNT"
-        val replacements: MutableMap<String, String> =
-            immutableMapOf(
-                "LABEL",
-                "NAME :",
-                "NAME",
-                "entry",
-                "OP",
-                "NEXT",
-                "NEXT",
-                "addiu",
-                "COUNT",
-                "7",
+        val replacements: Map<String, String> =
+            mapOf(
+                "LABEL" to "NAME :",
+                "NAME" to "entry",
+                "OP" to "NEXT",
+                "NEXT" to "addiu",
+                "COUNT" to "7",
             )
         val errors = ErrorList()
         val mapped =
             Tokenizer.tokenizeMappedLine(
                 source,
                 errors,
-                Function { o: String? -> replacements[o!!] },
-                Runnable {},
+              { o: String? -> replacements[o!!] },
+              {},
             )
 
         Assertions.assertThat(errors.errorsOccurred()).isFalse()
@@ -1925,13 +1873,13 @@ internal class SessionAssemblyTest {
     @Test
     fun mappedExpansionRetainsNewEquivalenceDefinitions() {
         val errors = ErrorList()
-        val replacements: MutableMap<String, String> = immutableMapOf("DEFINE", ".eqv", "BASE", "7")
+        val replacements: Map<String, String> = mapOf("DEFINE" to ".eqv", "BASE" to "7")
         val mapped =
             Tokenizer.tokenizeMappedLine(
                 "DEFINE PAIR BASE,   9",
                 errors,
-                Function { o: String? -> replacements[o!!] },
-                Runnable {},
+              { o: String? -> replacements[o!!] },
+              {},
             )
 
         Assertions.assertThat(errors.errorsOccurred()).isFalse()
@@ -1943,15 +1891,15 @@ internal class SessionAssemblyTest {
 
     @Test
     fun mappedExpansionDistinguishesLexicalErrorsFromInterruptedSubstitution() {
-        val replacements: MutableMap<String, String> =
-            immutableMapOf("FORM", "%value", "FIRST", "SECOND", "SECOND", "FIRST")
+        val replacements: Map<String, String> =
+            mapOf("FORM" to "%value", "FIRST" to "SECOND", "SECOND" to "FIRST")
         val lexicalErrors = ErrorList()
         val lexical =
             Tokenizer.tokenizeMappedLine(
                 ".macro emit (FORM, @)",
                 lexicalErrors,
-                Function { o: String? -> replacements[o!!] },
-                Runnable {},
+              { o: String? -> replacements[o!!] },
+              {},
             )
         Assertions.assertThat(lexicalErrors.errorsOccurred()).isTrue()
         Assertions.assertThat(lexical.tokens().hasCompleteEquivalenceExpansion()).isTrue()
@@ -1962,8 +1910,8 @@ internal class SessionAssemblyTest {
             Tokenizer.tokenizeMappedLine(
                 ".macro emit (FORM, FIRST)",
                 cycleErrors,
-                Function { o: String? -> replacements[o!!] },
-                Runnable {},
+              { o: String? -> replacements[o!!] },
+              {},
             )
         Assertions.assertThat(cycleErrors.errorsOccurred()).isTrue()
         Assertions.assertThat(cycle.tokens().hasCompleteEquivalenceExpansion()).isFalse()
@@ -1982,7 +1930,7 @@ internal class SessionAssemblyTest {
         val snapshot =
             AssemblySourceSnapshot(
                 listOf(main),
-                immutableMapOf(main, ".include \"body.s\"\n", include, definitions + use + "\n"),
+                mapOf(main to ".include \"body.s\"\n", include to definitions + use + "\n"),
             )
         session("Default").use { session ->
             val result = SessionAssembler(session).assembleSnapshot(snapshot, null, extendedAssemblerEnabled = true, warningsAreErrors = false)
@@ -2014,13 +1962,13 @@ internal class SessionAssemblyTest {
         val snapshot =
             AssemblySourceSnapshot(
                 listOf(main),
-                immutableMapOf(
-                    main,
+                mapOf(
+                    main to
                     (".include \"macros.s\"\n.eqv LATER missing\n.eqv CYCLE NEXT\n.eqv NEXT CYCLE\n" +
                         ".eqv MAKE .eqv\n.eqv EXISTING 1\n" +
                         call +
                         "\n"),
-                    include,
+                    include to
                     ($$".eqv BAD $s29\n.eqv ADDRESS -4(\n.macro inner (%argument)\n" +
                         body +
                         "\n.end_macro\n.macro outer (%forwarded)\n" +
@@ -2046,24 +1994,20 @@ internal class SessionAssemblyTest {
     @Test
     fun equivalenceLexicalErrorsAreReportedOnceAtTheirWrittenTokensOrAliases() {
         val source = ".byte FIRST, SECOND, OUTER, 'ab', 'ab'"
-        val replacements: MutableMap<String, String> =
-            immutableMapOf(
-                "FIRST",
-                "100",
-                "SECOND",
-                "2000",
-                "OUTER",
-                "INNER",
-                "INNER",
-                "'ab', 'cd'",
+        val replacements: Map<String, String> =
+            mapOf(
+                "FIRST" to "100",
+                "SECOND" to "2000",
+                "OUTER" to "INNER",
+                "INNER" to "'ab', 'cd'",
             )
         val errors = ErrorList()
         val mapped =
             Tokenizer.tokenizeMappedLine(
                 source,
                 errors,
-                Function { o: String? -> replacements[o!!] },
-                Runnable {},
+              { o: String? -> replacements[o!!] },
+              {},
             )
 
         Assertions.assertThat(mapped.tokens().processedLine)
@@ -2080,10 +2024,10 @@ internal class SessionAssemblyTest {
         Assertions.assertThat(diagnostics)
             .extracting<String?, RuntimeException>(ErrorMessage::message)
             .containsExactly(
-                source + "\nInvalid language element: 'ab'",
-                source + "\nInvalid language element: 'ab'",
-                source + "\nInvalid language element: 'ab'",
-                source + "\nInvalid language element: 'cd'",
+              "$source\nInvalid language element: 'ab'",
+              "$source\nInvalid language element: 'ab'",
+              "$source\nInvalid language element: 'ab'",
+              "$source\nInvalid language element: 'cd'",
             )
     }
 
@@ -2095,8 +2039,8 @@ internal class SessionAssemblyTest {
             Tokenizer.tokenizeWithEquivalences(
                 source,
                 errors,
-                Function { o: String? -> immutableMapOf("QUOTE", "\"prefix ")[o] },
-                Runnable {},
+              { o: String? -> mapOf("QUOTE" to "\"prefix ")[o] },
+              {},
             )
         Assertions.assertThat(tokens.processedLine).isEqualTo(".ascii \"prefix  bad%name\"")
         Assertions.assertThat(errors.errorMessages)
@@ -2113,14 +2057,14 @@ internal class SessionAssemblyTest {
     @Test
     fun aMalformedIntermediateExpansionDoesNotLeaveAStaleDiagnostic() {
         val errors = ErrorList()
-        val replacements: MutableMap<String, String> =
-            immutableMapOf("OUTER", "QUOTE bad%name", "QUOTE", "\"prefix ")
+        val replacements =
+            mapOf("OUTER" to "QUOTE bad%name", "QUOTE" to "\"prefix ")
         val tokens =
             Tokenizer.tokenizeWithEquivalences(
                 ".ascii OUTER\"",
                 errors,
-                Function { o: String? -> replacements[o!!] },
-                Runnable {},
+              { o: String? -> replacements[o!!] },
+              {},
             )
         Assertions.assertThat(tokens.processedLine).isEqualTo(".ascii \"prefix  bad%name\"")
         Assertions.assertThat(errors.errorMessages).isEmpty()
@@ -2134,10 +2078,9 @@ internal class SessionAssemblyTest {
         val snapshot =
             AssemblySourceSnapshot(
                 listOf(main),
-                immutableMapOf(
-                    main,
-                    ".include \"cyclic.s\"\nnop\n",
-                    include,
+                mapOf(
+                    main to ".include \"cyclic.s\"\nnop\n",
+                    include to
                     """
                     .eqv OPERATION li
                     .eqv FIRST SECOND
@@ -2168,7 +2111,7 @@ internal class SessionAssemblyTest {
     fun longEquivalenceChainsAndRepeatedAliasesAssembleWithoutRecursion() {
         val main = directory.resolve("main.s")
         val text = StringBuilder()
-        for (i in 0..6000 - 1) {
+        for (i in 0..<6000) {
             text.append(".eqv VALUE").append(i).append(" VALUE").append(i + 1).append('\n')
         }
         text.append(
@@ -2186,7 +2129,7 @@ internal class SessionAssemblyTest {
             """
                 .trimIndent(),
         )
-        val snapshot = AssemblySourceSnapshot(listOf(main), immutableMapOf(main, text.toString()))
+        val snapshot = AssemblySourceSnapshot(listOf(main), mapOf(main to text.toString()))
         session("Default").use { session ->
             val result = SessionAssembler(session).assembleSnapshot(snapshot, null, extendedAssemblerEnabled = true, warningsAreErrors = false)
             Assertions.assertThat(result.errors()).isEmpty()
@@ -2220,7 +2163,7 @@ internal class SessionAssemblyTest {
 
             """
                 .trimIndent()
-        val snapshot = AssemblySourceSnapshot(listOf(main), immutableMapOf(main, source))
+        val snapshot = AssemblySourceSnapshot(listOf(main), mapOf(main to source))
         session("Default").use { session ->
             val result = SessionAssembler(session).assembleSnapshot(snapshot, null, extendedAssemblerEnabled = true, warningsAreErrors = false)
             Assertions.assertThat(result.errors()).isEmpty()
@@ -2269,7 +2212,7 @@ internal class SessionAssemblyTest {
 
             """
                 .trimIndent()
-        val snapshot = AssemblySourceSnapshot(listOf(main), immutableMapOf(main, source))
+        val snapshot = AssemblySourceSnapshot(listOf(main), mapOf(main to source))
         session("Default").use { session ->
             val result = SessionAssembler(session).assembleSnapshot(snapshot, null, extendedAssemblerEnabled = true, warningsAreErrors = false)
             Assertions.assertThat(result.errors()).isEmpty()
@@ -2281,9 +2224,9 @@ internal class SessionAssemblyTest {
                     .isEqualTo(words[i])
             }
             val emitted = "%text\u0000A\u0000"
-            for (i in 0..<emitted.length) {
+            for ((i, element) in emitted.withIndex()) {
                 Assertions.assertThat(session.memory.getByte(base + 20 + i))
-                    .isEqualTo(emitted[i].code)
+                    .isEqualTo(element.code)
             }
             Assertions.assertThat(session.memory.getWordNoNotify(base + 28)).isEqualTo(1)
             Assertions.assertThat(session.memory.getByte(base + 32)).isEqualTo('t'.code)
@@ -2301,8 +2244,8 @@ internal class SessionAssemblyTest {
         val snapshot =
             AssemblySourceSnapshot(
                 listOf(main),
-                immutableMapOf(
-                    definitions,
+                mapOf(
+                    definitions to
                     """
                     .eqv VALUE 7
                     .macro emit (%register)
@@ -2310,8 +2253,7 @@ internal class SessionAssemblyTest {
                     .end_macro
 
                     """
-                        .trimIndent(),
-                    main,
+                        .trimIndent(), main to
                     $$"""
                     .include "defs.s"
                     .data
@@ -2337,11 +2279,10 @@ internal class SessionAssemblyTest {
                         .assembleSnapshot(
                             snapshot,
                             null,
-                            true,
-                            false,
-                            { checkpoints.incrementAndGet() },
-                        )
-                        .succeeded(),
+                          extendedAssemblerEnabled = true,
+                          warningsAreErrors = false,
+                        ) { checkpoints.incrementAndGet() }
+                      .succeeded(),
                 )
                 .isTrue()
         }
@@ -2357,14 +2298,13 @@ internal class SessionAssemblyTest {
                         assembler.assembleSnapshot(
                             snapshot,
                             null,
-                            true,
-                            false,
-                            {
-                                if (remaining.decrementAndGet() == 0) {
-                                    throw cancellation
-                                }
-                            },
-                        )
+                          extendedAssemblerEnabled = true,
+                          warningsAreErrors = false,
+                        ) {
+                          if (remaining.decrementAndGet() == 0) {
+                            throw cancellation
+                          }
+                        }
                     }
                         .isSameAs(cancellation)
                     Assertions.assertThat<MIPSprogram>(session.program).isNull()
@@ -2464,20 +2404,19 @@ internal class SessionAssemblyTest {
                 Assertions.assertThatThrownBy { second.assemble(listOf(invalid)) }
                     .isInstanceOfSatisfying<ProcessingException?>(
                         ProcessingException::class.java,
-                        Consumer { error: ProcessingException? ->
-                            Assertions.assertThat(
-                                    Objects.requireNonNull(error!!.errors())!!
-                                        .errorLimit,
-                                )
-                                .isEqualTo(1)
-                            Assertions.assertThat(
-                                    Objects.requireNonNull(error.errors())!!
-                                        .errorMessages,
-                                )
-                                .hasSize(2)
-                        },
-                    )
-                Assertions.assertThat<MIPSprogram>(second.program).isNull()
+                    ) { error: ProcessingException? ->
+                      Assertions.assertThat(
+                        Objects.requireNonNull(error!!.errors())!!
+                          .errorLimit,
+                      )
+                        .isEqualTo(1)
+                      Assertions.assertThat(
+                        Objects.requireNonNull(error.errors())!!
+                          .errorMessages,
+                      )
+                        .hasSize(2)
+                    }
+              Assertions.assertThat<MIPSprogram>(second.program).isNull()
                 Assertions.assertThat<MIPSprogram>(first.program).isSameAs(valid)
                 Assertions.assertThat(first.memory.getWord(address)).isEqualTo(42)
                 Assertions.assertThat(first.symbolTable.getAddress("result")).isEqualTo(address)
@@ -2485,35 +2424,33 @@ internal class SessionAssemblyTest {
                 Assertions.assertThatThrownBy { second.assemble(listOf(invalid)) }
                     .isInstanceOfSatisfying<ProcessingException?>(
                         ProcessingException::class.java,
-                        Consumer { error: ProcessingException? ->
-                            Assertions.assertThat(
-                                    Objects.requireNonNull(
-                                            error!!.errors(),
-                                        )!!
-                                        .errorMessages,
-                                )
-                                .hasSize(4)
-                        },
-                    )
-                val duplicate = source("duplicate.s", ".data\nitem: .word 1\nitem: .word 2\n")
+                    ) { error: ProcessingException? ->
+                      Assertions.assertThat(
+                        Objects.requireNonNull(
+                          error!!.errors(),
+                        )!!
+                          .errorMessages,
+                      )
+                        .hasSize(4)
+                    }
+              val duplicate = source("duplicate.s", ".data\nitem: .word 1\nitem: .word 2\n")
                 Assertions.assertThatThrownBy { second.assemble(listOf(duplicate)) }
                     .isInstanceOfSatisfying<ProcessingException?>(
                         ProcessingException::class.java,
-                        Consumer { error: ProcessingException? ->
-                            Assertions.assertThat(
-                                    Objects.requireNonNull(error!!.errors())!!
-                                        .generateErrorReport(),
-                                )
-                                .contains("already defined", "duplicate.s")
-                            Assertions.assertThat(
-                                    Objects.requireNonNull(error.errors())!!
-                                        .errorMessages
-                                        .first()
-                                        .line,
-                                )
-                                .isEqualTo(3)
-                        },
-                    )
+                    ) { error: ProcessingException? ->
+                      Assertions.assertThat(
+                        Objects.requireNonNull(error!!.errors())!!
+                          .generateErrorReport(),
+                      )
+                        .contains("already defined", "duplicate.s")
+                      Assertions.assertThat(
+                        Objects.requireNonNull(error.errors())!!
+                          .errorMessages
+                          .first()
+                          .line,
+                      )
+                        .isEqualTo(3)
+                    }
             }
         }
     }
@@ -2528,31 +2465,30 @@ internal class SessionAssemblyTest {
             Assertions.assertThatThrownBy { session.assemble(listOf(invalid)) }
                 .isInstanceOfSatisfying<ProcessingException?>(
                     ProcessingException::class.java,
-                    Consumer { error: ProcessingException? ->
-                        Assertions.assertThat(
-                                Objects.requireNonNull(error!!.errors())!!.errorLimit,
-                            )
-                            .isEqualTo(2)
-                        Assertions.assertThat(
-                                Objects.requireNonNull(error.errors())!!.errorMessages,
-                            )
-                            .satisfiesExactly(
-                                ThrowingConsumer { first: ErrorMessage ->
-                                    Assertions.assertThat(first.message)
-                                        .endsWith("Invalid language element: 'ab'")
-                                },
-                                ThrowingConsumer { second: ErrorMessage ->
-                                    Assertions.assertThat(second.message)
-                                        .endsWith("Invalid language element: 'cd'")
-                                },
-                                ThrowingConsumer { limit: ErrorMessage ->
-                                    Assertions.assertThat(limit.message)
-                                        .isEqualTo("Error Limit of 2 exceeded.")
-                                },
-                            )
-                    },
-                )
-            Assertions.assertThat<MIPSprogram>(session.program).isSameAs(valid)
+                ) { error: ProcessingException? ->
+                  Assertions.assertThat(
+                    Objects.requireNonNull(error!!.errors())!!.errorLimit,
+                  )
+                    .isEqualTo(2)
+                  Assertions.assertThat(
+                    Objects.requireNonNull(error.errors())!!.errorMessages,
+                  )
+                    .satisfiesExactly(
+                      ThrowingConsumer { first: ErrorMessage ->
+                        Assertions.assertThat(first.message)
+                          .endsWith("Invalid language element: 'ab'")
+                      },
+                      ThrowingConsumer { second: ErrorMessage ->
+                        Assertions.assertThat(second.message)
+                          .endsWith("Invalid language element: 'cd'")
+                      },
+                      ThrowingConsumer { limit: ErrorMessage ->
+                        Assertions.assertThat(limit.message)
+                          .isEqualTo("Error Limit of 2 exceeded.")
+                      },
+                    )
+                }
+          Assertions.assertThat<MIPSprogram>(session.program).isSameAs(valid)
             Assertions.assertThat(session.memory.getWord(session.symbolTable.getAddress("result")))
                 .isEqualTo(42)
         }
@@ -2569,17 +2505,16 @@ internal class SessionAssemblyTest {
                 Assertions.assertThatThrownBy { strict.assemble(listOf(named)) }
                     .isInstanceOfSatisfying<ProcessingException?>(
                         ProcessingException::class.java,
-                        Consumer { error: ProcessingException? ->
-                            Assertions.assertThat(
-                                    Objects.requireNonNull(
-                                            error!!.errors(),
-                                        )!!
-                                        .generateErrorReport(),
-                                )
-                                .contains("register number")
-                        },
-                    )
-                val numbered = source("numbered-registers.s", ".text\nadd $8, $9, $10\n")
+                    ) { error: ProcessingException? ->
+                      Assertions.assertThat(
+                        Objects.requireNonNull(
+                          error!!.errors(),
+                        )!!
+                          .generateErrorReport(),
+                      )
+                        .contains("register number")
+                    }
+              val numbered = source("numbered-registers.s", ".text\nadd $8, $9, $10\n")
                 Assertions.assertThat(
                         strict.assemble(listOf(numbered)).machineList,
                     )
@@ -2653,7 +2588,7 @@ internal class SessionAssemblyTest {
                 )
             val base: Int = session.memory.textBaseAddress
             val completed = ArrayList<Long?>()
-            Assertions.assertThat(program.simulate(3, { e: Long -> completed.add(e) }))
+            Assertions.assertThat(program.simulate(3) { e: Long -> completed.add(e) })
                 .isFalse()
             Assertions.assertThat(completed).containsExactly(1L, 2L, 3L)
             Assertions.assertThat(session.registerFile.getValue(8)).isEqualTo(2)

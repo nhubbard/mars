@@ -52,7 +52,7 @@ class MipsAddressInlayPlatformTest {
 
     @Test
     // Kotlin exposes the reported Java setters as read-only properties.
-    @Suppress("UsePropertyAccessSyntax")
+    @Suppress("UsePropertyAccessSyntax", "UnstableApiUsage")
     fun `native inline hints update after unsaved includes and assembly settings change`() = timeoutRunBlocking {
         val source = """
             .data
@@ -135,7 +135,7 @@ class MipsAddressInlayPlatformTest {
     @Test
     // Kotlin exposes the reported Java setters as read-only properties.
     // Inspect the native inlay renderer and clicks in the headless editor fixture.
-    @Suppress("UsePropertyAccessSyntax", "UnstableApiUsage")
+    @Suppress("UsePropertyAccessSyntax")
     fun `native pseudo expansions follow unsaved aliases and outer macro calls`() = timeoutRunBlocking {
         val source = $$"""
             .include "values.txt"
@@ -254,7 +254,6 @@ class MipsAddressInlayPlatformTest {
     }
 
     // Inspect the native inlay renderer and clicks in the headless editor fixture.
-    @Suppress("UnstableApiUsage")
     private suspend fun assertHints(expected: List<String>, providerId: String = MIPS_ADDRESS_HINTS_ID) {
         awaitEditorRefreshes()
         withContext(Dispatchers.EDT) {

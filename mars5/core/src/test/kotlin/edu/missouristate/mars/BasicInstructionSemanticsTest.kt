@@ -289,9 +289,11 @@ internal class BasicInstructionSemanticsTest {
             } else if (mutableSetOf<String?>("J", "Jal", "Jr", "Jalr").contains(base)) {
                 registers.updateRegister(2, pc + 32)
                 operands =
-                    if (base == "J" || base == "Jal") intArrayOf((pc + 32) ushr 2)
-                    else if (base == "Jalr" && name.endsWith("1")) intArrayOf(8, 2)
-                    else intArrayOf(2)
+                  when (base) {
+                    "J", "Jal" -> intArrayOf((pc + 32) ushr 2)
+                    "Jalr" if name.endsWith("1") -> intArrayOf(8, 2)
+                    else -> intArrayOf(2)
+                  }
                 verify = Consumer { s: MarsContext? ->
                     Assertions.assertThat(s!!.registerFile.getPC()).isEqualTo(pc + 32)
                     if (base == "Jal") {
@@ -360,9 +362,11 @@ internal class BasicInstructionSemanticsTest {
                             }
 
                             else -> {
-                                val expectedWord =
-                                    if (base == "Sb") -0x76543288
-                                    else if (base == "Sh") -0x7654a988 else 0x12345678
+                                val expectedWord = when (base) {
+                                  "Sb" -> -0x76543288
+                                  "Sh" -> -0x7654a988
+                                  else -> 0x12345678
+                                }
                                 try {
                                     Assertions.assertThat(s!!.memory.getWord(address))
                                         .isEqualTo(expectedWord)
@@ -422,7 +426,7 @@ internal class BasicInstructionSemanticsTest {
                     }
                 verify = Consumer { s: MarsContext? ->
                     if (doubles) {
-                        Companion.assertDouble(s!!, expected)
+                      assertDouble(s!!, expected)
                     } else {
                         Assertions.assertThat(s!!.coprocessor1.getFloatFromRegister(8))
                             .isEqualTo(expected.toFloat())
@@ -498,14 +502,14 @@ internal class BasicInstructionSemanticsTest {
                         "CvtDS" -> {
                             floating.setRegisterToFloat(2, 4.75f)
                             verify = Consumer { s: MarsContext? ->
-                                Companion.assertDouble(s!!, 4.75)
+                              assertDouble(s!!, 4.75)
                             }
                         }
 
                         "CvtDW" -> {
                             floating.setRegisterToInt(2, 42)
                             verify = Consumer { s: MarsContext? ->
-                                Companion.assertDouble(s!!, 42.0)
+                              assertDouble(s!!, 42.0)
                             }
                         }
 
@@ -545,7 +549,7 @@ internal class BasicInstructionSemanticsTest {
                     }
                     verify = Consumer { s: MarsContext? ->
                         if (doubles) {
-                            Companion.assertDouble(s!!, 4.75)
+                          assertDouble(s!!, 4.75)
                         } else {
                             Assertions.assertThat(s!!.coprocessor1.getFloatFromRegister(8))
                                 .isEqualTo(4.75f)
@@ -572,7 +576,7 @@ internal class BasicInstructionSemanticsTest {
                         }
                     verify = Consumer { s: MarsContext? ->
                         if (doubles) {
-                            Companion.assertDouble(s!!, expected)
+                          assertDouble(s!!, expected)
                         } else {
                             Assertions.assertThat(s!!.coprocessor1.getFloatFromRegister(8))
                                 .isEqualTo(expected.toFloat())
@@ -640,7 +644,7 @@ internal class BasicInstructionSemanticsTest {
             System.arraycopy(
                 operands,
                 0,
-                Objects.requireNonNull<IntArray?>(statement.operands),
+                requireNotNull(statement.operands),
                 0,
                 operands.size,
             )

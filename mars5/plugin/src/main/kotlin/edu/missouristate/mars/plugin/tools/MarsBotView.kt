@@ -81,6 +81,7 @@ internal class MarsBotView(project: Project) : Disposable {
         refresh()
     }
 
+    @Suppress("UnstableApiUsage")
     private val refreshJob = component.launchOnShow("Refresh MARS MarsBot") {
         while (true) {
             withContext(Dispatchers.EDT) { refresh() }
