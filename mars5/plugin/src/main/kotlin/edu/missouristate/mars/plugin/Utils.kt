@@ -1,7 +1,6 @@
 package edu.missouristate.mars.plugin
 
 import com.intellij.DynamicBundle
-import com.intellij.util.PathUtil
 import com.intellij.util.messages.Topic
 
 internal inline fun <reified L : Any> topicOf(name: String, direction: Topic.BroadcastDirection): Topic<L> =
@@ -9,6 +8,3 @@ internal inline fun <reified L : Any> topicOf(name: String, direction: Topic.Bro
 
 internal inline fun <reified T : Any> dynamicBundleOf(path: String): DynamicBundle =
     DynamicBundle(T::class.java, path)
-
-internal inline fun <reified T : Any> jarPathForClass(): String =
-    PathUtil.getJarPathForClass(T::class.java)

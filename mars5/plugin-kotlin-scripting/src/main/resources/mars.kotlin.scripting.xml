@@ -1,4 +1,8 @@
 <idea-plugin>
+  <dependencies>
+    <plugin id="org.jetbrains.kotlin"/>
+    <module name="kotlin.scripting"/>
+  </dependencies>
   <extensions defaultExtensionNs="org.jetbrains.kotlin">
     <scriptDefinitionsProvider implementation="edu.missouristate.mars.plugin.grading.MarsAssignmentDefinitions"/>
   </extensions>

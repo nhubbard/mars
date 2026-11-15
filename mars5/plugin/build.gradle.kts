@@ -52,15 +52,16 @@ dependencies {
     bundledModule("intellij.platform.buildView")
     bundledModule("intellij.platform.debugger")
     bundledPlugin("com.intellij.modules.compose")
-    bundledModule("kotlin.scripting")
-    bundledModule("intellij.libraries.kotlinc.kotlin.scripting.common")
     bundledModule("intellij.platform.jewel.ideLafBridge")
     bundledModule("intellij.platform.jewel.ui")
     bundledModule("intellij.libraries.compose.foundation.desktop")
     bundledModule("intellij.libraries.compose.runtime.desktop")
     pluginModule(project(":plugin-jvm-compiler"))
+    pluginModule(project(":plugin-kotlin-scripting"))
     testBundledPlugin("com.intellij.java")
     testBundledPlugin("org.jetbrains.kotlin")
+    testBundledModule("kotlin.scripting")
+    testBundledModule("intellij.libraries.kotlinc.kotlin.scripting.common")
     testBundledModule("intellij.libraries.kotlinc.kotlin.scripting.compiler.impl")
     testBundledPlugin("org.editorconfig.editorconfigjetbrains")
     testBundledModule("intellij.platform.debugger.impl.ui")
@@ -159,6 +160,9 @@ val verifyPluginNotices = tasks.register("verifyPluginNotices") {
       check(zip.getEntry("${libraryPrefix}modules/mars.jvm.compiler.jar") != null) {
         "The optional JVM compiler module must have its own JAR"
       }
+      check(zip.getEntry("${libraryPrefix}modules/mars.kotlin.scripting.jar") != null) {
+        "The optional Kotlin scripting integration must have its own JAR"
+      }
       check(zip.getEntry(libraryPrefix + assignmentJarName.get()) != null) {
         "The Kotlin script definition must be available as a separate JAR"
       }
@@ -167,7 +171,7 @@ val verifyPluginNotices = tasks.register("verifyPluginNotices") {
         .map { it.name.substringAfterLast('/') }
         .toSet() - setOf(
           pluginJarName.get(), coreJarName.get(), datapathJarName.get(),
-          assignmentJarName.get(), "mars.jvm.compiler.jar",
+          assignmentJarName.get(), "mars.jvm.compiler.jar", "mars.kotlin.scripting.jar",
         )
       val documentedJars = thirdPartyNotices.asFile.useLines { lines ->
         lines.filter { it.startsWith("JAR ") }.map { it.removePrefix("JAR ") }.toSet()
@@ -183,11 +187,13 @@ tasks.named("verifyPlugin") { dependsOn(verifyPluginNotices) }
 
 jacoco { toolVersion = "0.8.16" }
 
-val compilerClasses = project(":plugin-jvm-compiler").layout.buildDirectory.dir("classes/kotlin/main")
+val contentModuleClasses = listOf(":plugin-jvm-compiler", ":plugin-kotlin-scripting").map {
+  project(it).layout.buildDirectory.dir("classes/kotlin/main")
+}
 
 tasks.jacocoTestReport {
   dependsOn(tasks.test)
-  additionalClassDirs.from(compilerClasses)
+  additionalClassDirs.from(contentModuleClasses)
   reports {
     xml.required.set(true)
     html.required.set(true)
@@ -204,7 +210,7 @@ tasks.test {
 
 tasks.jacocoTestCoverageVerification {
   dependsOn(tasks.test)
-  additionalClassDirs.from(compilerClasses)
+  additionalClassDirs.from(contentModuleClasses)
   violationRules {
     rule {
       element = "PACKAGE"

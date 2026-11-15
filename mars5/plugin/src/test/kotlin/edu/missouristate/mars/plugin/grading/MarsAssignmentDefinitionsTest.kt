@@ -20,7 +20,7 @@ class MarsAssignmentDefinitionsTest {
     fun `Kotlin registers MARS grading scripts without a project dependency`() = timeoutRunBlocking {
         val project = projectFixture.get()
         val extension = ScriptDefinitionsProvider.EP_NAME.getExtensions(project)
-            .filterIsInstance<MarsAssignmentDefinitions>().single()
+            .single { it.id == "MARS assignment" }
         assertEquals("MARS assignment", extension.id)
         val definitions = project.service<ScriptDefinitionProvider>()
         fun definitionName(filename: String) = definitions.findDefinition(FileScriptSource(File(filename)))?.name

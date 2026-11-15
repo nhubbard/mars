@@ -15,12 +15,12 @@
     <p><a href="https://github.com/nhubbard/mars">Project source and documentation</a></p>
   ]]></description>
   <resource-bundle>messages.MarsBundle</resource-bundle>
-  <depends>com.intellij.modules.platform</depends>
-  <depends optional="true" config-file="edu.missouristate.mars-withKotlin.xml">org.jetbrains.kotlin</depends>
   <content>
     <module name="mars.jvm.compiler" loading="optional"/>
+    <module name="mars.kotlin.scripting" loading="optional"/>
   </content>
   <dependencies>
+    <module name="intellij.platform.monolith"/>
     <plugin id="com.intellij.modules.compose"/>
     <module name="intellij.libraries.compose.foundation.desktop"/>
     <module name="intellij.libraries.compose.runtime.desktop"/>
