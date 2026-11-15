@@ -1,14 +1,19 @@
 package edu.missouristate.mars
 
 import edu.missouristate.mars.api.MarsTarget
+import edu.missouristate.mars.mips.hardware.Coprocessor0State.Companion.CAUSE
+import edu.missouristate.mars.mips.hardware.Coprocessor0State.Companion.VADDR
 import edu.missouristate.mars.mips.hardware.MemoryState
+import edu.missouristate.mars.simulator.Exceptions.ADDRESS_EXCEPTION_STORE
 import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.CsvSource
 import org.junit.jupiter.params.provider.ValueSource
 
 class Mars64MsaInventoryTest {
@@ -80,6 +85,41 @@ class Mars64MsaInventoryTest {
                     }
                 }
             }
+        }
+    }
+
+    @ParameterizedTest
+    @CsvSource("true, true", "true, false", "false, true", "false, false")
+    fun `vector stores can reach the last stack byte and reject crossing it before writing`(
+        littleEndian: Boolean, crossesTop: Boolean, @TempDir directory: Path,
+    ) {
+        val source = Files.writeString(directory.resolve("vector-stack.mars"), $$"""
+            .text
+            ld.b $w0, 0($5)
+            st.b $w0, 0($4)
+        """.trimIndent())
+        TestSessions.create().use { machine ->
+            machine.selectTarget(MarsTarget.MARS64)
+            val memory = machine.memory
+            memory.byteOrder = littleEndian
+            val program = machine.assemble(listOf(source))
+            val firstByte = memory.stackBaseAddress - if (crossesTop) 3 else 12
+            val writable = firstByte..memory.stackBaseAddress + 3
+            for (address in writable) memory.setByte(address, 0x5a)
+            for (offset in 0 until 16) memory.setByte(memory.dataBaseAddress + offset, 0x40 + offset)
+            machine.editIntegerRegister(4, firstByte)
+            machine.editIntegerRegister(5, memory.dataBaseAddress)
+
+            if (crossesTop) {
+                assertThrows(ProcessingException::class.java) { program.simulate(2) }
+                assertEquals(ADDRESS_EXCEPTION_STORE, (machine.coprocessor0.getValue(CAUSE) ushr 2) and 31)
+                assertEquals(firstByte, machine.coprocessor0.getValue(VADDR))
+            } else {
+                assertTrue(program.simulate(8))
+                for ((offset, address) in writable.withIndex()) assertEquals(0x40 + offset, memory.getByte(address))
+                machine.backStepper.backStep()
+            }
+            for (address in writable) assertEquals(0x5a, memory.getByte(address), "Byte at 0x${address.toString(16)}")
         }
     }
 

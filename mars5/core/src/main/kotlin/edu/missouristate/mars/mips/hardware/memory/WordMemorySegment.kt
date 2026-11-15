@@ -45,7 +45,8 @@ class WordMemorySegment(blocks: Int, private val descending: Boolean, private va
         var address = relativeByteAddress
         // Stack word offsets descend, but bytes within each word are still transferred in order.
         if (descending) {
-            val delta = address % 4
+            // A byte above the stack's last word base has a negative relative address.
+            val delta = address and 3
             if (delta != 0) address += (4 - delta) shl 1
         }
 

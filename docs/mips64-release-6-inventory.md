@@ -48,6 +48,7 @@ byte in both byte orders. The output comparison includes guard bytes around stor
 | Atomics | Successful word and doubleword linked loads and conditional stores. |
 | Exceptions | Overflow, misaligned linked load, and breakpoints in delay and forbidden slots. A shared handler records the cause, EPC offset, exception level, destination register, and bad-address offset for address errors. |
 | Scalar floating point | Directed rounding, sticky flags, classification, and compare masks. |
+| Memory boundaries | Scalar and vector transfers across a mapped 4 KiB boundary. Separate default-layout stack tests cover the last writable byte and verify that crossing the stack end raises an address error before any write. |
 | MSA memory | Loads and stores in all four element widths at unaligned addresses, including mixed-width transfers that expose byte and lane ordering. |
 | MSA integer | Wrapping and saturating addition, doubleword shifts, and shuffle selectors. |
 | MSA fixed point | Q15 and Q31 multiplication, rounded accumulation, widening sums, and dot products. |

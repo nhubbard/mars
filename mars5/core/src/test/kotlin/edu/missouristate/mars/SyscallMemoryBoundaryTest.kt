@@ -16,7 +16,7 @@ class SyscallMemoryBoundaryTest {
                 }
             }
             val context = InstructionContext(session, environment)
-            val address = session.memory.stackBaseAddress
+            val address = session.memory.userHighAddress
             session.memory.setByte(address, 0xe9)
             session.registerFile.updateRegister(4, address)
             val statement = ProgramStatement(0, session.memory.textBaseAddress)
@@ -31,7 +31,7 @@ class SyscallMemoryBoundaryTest {
     fun `file write reads the byte after the requested range before writing to the host`() {
         TestSessions.create().use { session ->
             val context = InstructionContext(session, object : TestEnvironment() {})
-            val address = session.memory.stackBaseAddress
+            val address = session.memory.userHighAddress
             session.memory.setByte(address, 'A'.code)
             session.registerFile.updateRegister(4, 3)
             session.registerFile.updateRegister(5, address)

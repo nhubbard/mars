@@ -97,13 +97,16 @@ open class MemoryState(
     }
 
     private fun checkOrdinaryAccess(address: Int, size: Int, exception: Int) {
-        val last = address + size - 1
-        if (!(inDataSegment(address) && inDataSegment(last) ||
-                inKernelDataSegment(address) && inKernelDataSegment(last) ||
-                inStack(address) && last.toLong() <= stackBaseAddress.toLong() + WORD_LENGTH_BYTES - 1)) {
+        val last = address.toLong() + size - 1
+        if (last > Int.MAX_VALUE || !inSameOrdinarySegment(address, last.toInt())) {
             throw AddressErrorException("address outside ordinary storage ", exception, address)
         }
     }
+
+    private fun inSameOrdinarySegment(first: Int, last: Int): Boolean =
+        inDataSegment(first) && inDataSegment(last) ||
+            inKernelDataSegment(first) && inKernelDataSegment(last) ||
+            inStack(first) && inStack(last)
 
     private fun invalidateReservation(address: Long, length: Int) {
         val linked = reservation ?: return
@@ -610,7 +613,13 @@ open class MemoryState(
 
     // The stack grows down. Keep the lower boundary exclusive without offset arithmetic.
     @Suppress("ConvertTwoComparisonsToRangeCheck")
-    private fun inStack(address: Int): Boolean = address > stackLimitAddress && address <= stackBaseAddress
+    private fun inStack(address: Int): Boolean {
+        if (address <= stackLimitAddress) return false
+        if (address <= stackBaseAddress) return true
+        // Compact layouts share storage with data, including its exclusive limit.
+        return address.toLong() - stackBaseAddress < WORD_LENGTH_BYTES &&
+            (!inDataSegment(stackBaseAddress) || inDataSegment(address))
+    }
 
     private fun inMappedStorage(address: Int): Boolean = address in memoryMapBaseAddress..<memoryMapLimitAddress
 
