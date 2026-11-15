@@ -73,17 +73,14 @@ a sample submission, and an IntelliJ Run configuration. See the
 [assignment setup guide](examples/assignment/README.md) for Kotlin completion, grading from
 Gradle or GitHub Classroom, and checking script registration.
 
-## Architecture target
+## Instruction set
 
-MARS64, the MIPS64 Release 6 source target with MSA vectors, is the default for
-IntelliJ projects, CLI runs, and grading cases without an explicit target.
-For existing classroom programs that depend on
-classic instruction behavior, select **MARS32** under **Settings → Build, Execution, Deployment →
-MARS Assembly**, pass `--target mars32` to the CLI, or set `target = MarsTarget.MARS32` in a
-grading case. The debugger can inspect, edit, and reverse changes to the full integer registers.
+MARS uses the MIPS64 Release 6 instruction set with MSA vectors for IntelliJ, CLI,
+and grading runs. The debugger can inspect, edit, and reverse changes to the full integer registers.
+Remove `--target` from older CLI invocations and `target = ...` from assignment cases.
 Word instructions such as `addiu` and `sll` use the low 32 bits and write sign-extended word
-results. Bitwise operations, comparisons, branches, and register moves use the selected target's
-integer register width. MARS64 keeps the classroom memory layouts and adds two sparse 4 MiB regions.
+results. Bitwise operations, comparisons, branches, and register moves use the full 64-bit integer
+registers. MARS keeps the classroom memory layouts and provides two sparse 4 MiB regions above 4 GiB.
 Place data above 4 GiB with `.data 0x100000000` and executable code with `.text 0x100400000`.
 Use `.dword` for aligned 64-bit constants or label addresses and `ld` and `sd` to load and store them.
 The assembler, simulator, debugger, dump formats, and grading DSL preserve these addresses.
@@ -95,14 +92,9 @@ Reference Visualization, and **Text above 4 GiB** in Memory Reference Visualizat
 observe these regions. The Floating Point tool supports both IEEE 754 precisions and can edit
 a MARS64 doubleword register while Debug is paused.
 
-The MARS32 catalog includes additional user-mode operations from the MIPS32 Release 6 reference,
-including bitfield extraction and insertion, rotates, scaled addressing, PC-relative addressing,
-and compact control transfers, including signed and unsigned comparisons. Compact transfers
-use immediate control flow and are disallowed in a legacy delay slot. MARS32 retains `addi`
-and its historical HI/LO arithmetic. MARS64 uses the Release 6 encodings for `beqc`,
-`beqzalc`, and `bovc` in that opcode space. For MARS64 word multiplication and division,
-use the three-register `mul`, `mulu`, `div`, and `divu` forms. They write a sign-extended
-word result to the destination register. Use `muh` or `muhu` for the high product word and
+For word multiplication and division, use the three-register `mul`, `mulu`, `div`, and
+`divu` forms. They write a sign-extended word result to the destination register.
+Use `muh` or `muhu` for the high product word and
 `mod` or `modu` for the remainder. MARS64 reports a trap on division by zero.
 MARS64 executes architectural delay slots for delayed branches and jumps. Compact control
 transfers have no delay slot. If an older program assumed delay slots were disabled, add
@@ -116,8 +108,8 @@ two-operand divides and HI/LO operations. Review classic uses of `ld` and `sd` t
 two adjacent 32-bit GPRs. The Release 6 forms transfer one 64-bit GPR.
 MARS64 provides 32 individually addressable 64-bit floating-point registers and supports
 FCSR rounding and exceptions for scalar arithmetic. MSA vector instructions use 32 128-bit
-registers whose low halves share storage with the scalar registers. MARS32 uses paired
-registers for doubles. MARS64 runs freestanding source and uses the educational MARS syscall ABI.
+registers whose low halves share storage with the scalar registers. MARS runs freestanding
+source and uses the educational MARS syscall ABI.
 See the [Release 6 inventory](docs/mips64-release-6-inventory.md) for instruction coverage,
 compiler syntax, and the facilities outside the simulator's scope. The [FIR filter example](examples/mars64)
 uses vectors, scalar code, and addresses above 4 GiB in a program you can run, debug, and grade.

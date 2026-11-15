@@ -39,6 +39,7 @@ import edu.missouristate.mars.plugin.dynamicBundleOf
 import java.nio.file.Path
 import javax.swing.JCheckBox
 import kotlin.io.path.invariantSeparatorsPathString
+import org.jetbrains.annotations.TestOnly
 
 private const val MAX_BACKSTEP_LIMIT = 100_000
 
@@ -60,7 +61,6 @@ internal class MarsAssemblySettings(private val project: Project) :
         @JvmField var delayedBranching: Boolean = false,
         @JvmField var selfModifyingCode: Boolean = false,
         @JvmField var utf8Text: Boolean = false,
-        @JvmField var target: MarsTarget = MarsTarget.DEFAULT,
         @JvmField var bareMachine: Boolean = false,
         @JvmField var assemblerErrorLimit: Int = ApplicationInfo.maximumErrorMessages,
         @JvmField var backstepLimit: Int = ApplicationInfo.maximumBacksteps,
@@ -74,7 +74,8 @@ internal class MarsAssemblySettings(private val project: Project) :
     val delayedBranching get() = getState().delayedBranching
     val selfModifyingCode get() = getState().selfModifyingCode
     val utf8Text get() = getState().utf8Text
-    val target get() = getState().target
+    @Volatile var target: MarsTarget = MarsTarget.DEFAULT
+        private set
     val bareMachine get() = getState().bareMachine
     val memoryLayout get() = MarsMemoryLayout.fromIdentifier(getState().memoryLayout)
     val assemblerErrorLimit get() = getState().assemblerErrorLimit.takeIf { it > 0 } ?: ApplicationInfo.maximumErrorMessages
@@ -88,7 +89,7 @@ internal class MarsAssemblySettings(private val project: Project) :
             memoryLayout = MarsMemoryLayout.fromIdentifier(it.memoryLayout),
             bareMachine = it.bareMachine,
             utf8Text = it.utf8Text,
-            target = it.target,
+            target = target,
             assemblerErrorLimit = assemblerErrorLimit,
         )
     }
@@ -161,8 +162,15 @@ internal class MarsAssemblySettings(private val project: Project) :
         if (utf8Text != value) change { it.copy(utf8Text = value) }
     }
 
+    @TestOnly
     fun changeTarget(target: MarsTarget) {
-        if (this.target != target) change { it.copy(target = target) }
+        if (this.target != target) {
+            runWriteAction {
+                this.target = target
+                sourceChanges.incModificationCount()
+            }
+            notifyAssemblyChange()
+        }
     }
 
     fun changeBareMachine(value: Boolean) {
@@ -199,6 +207,10 @@ internal class MarsAssemblySettings(private val project: Project) :
             updateState(transform)
             sourceChanges.incModificationCount()
         }
+        notifyAssemblyChange()
+    }
+
+    private fun notifyAssemblyChange() {
         DaemonCodeAnalyzer.getInstance(project).restart("MARS assembly settings changed")
         project.messageBus.syncPublisher(MipsAssemblyContextListener.TOPIC).assemblyEntryChanged()
     }
@@ -306,11 +318,6 @@ internal class MarsAssemblyConfigurable(private val project: Project) :
                 pseudo.isSelected != options.allowPseudoInstructions || warnings.isSelected != options.warningsAreErrors
             }
             onApply { settings.changeAssemblerOptions(pseudo.isSelected, warnings.isSelected) }
-        }
-        row(messages.getMessage("build.settings.target")) {
-            val target = MutableProperty({ settings.target }, settings::changeTarget)
-            val renderer = textListCellRenderer<MarsTarget>("") { it.name }
-            comboBox(MarsTarget.entries, renderer).bindItem(target.toNullableProperty(MarsTarget.DEFAULT))
         }
         row(messages.getMessage("build.settings.memory")) {
             val layout = MutableProperty({ settings.memoryLayout }, settings::changeMemoryLayout)

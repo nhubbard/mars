@@ -610,13 +610,7 @@ class MarsBuildPlatformTest {
             try {
                 val panel = page.createComponent()
                 page.reset()
-                val layout = UIUtil.findComponentsOfType(panel, JComboBox::class.java).single { it.selectedItem is MarsMemoryLayout }
-                val target = UIUtil.findComponentsOfType(panel, JComboBox::class.java).single { it.selectedItem is MarsTarget }
-                assertEquals(MarsTarget.MARS32, target.selectedItem)
-                target.selectedItem = MarsTarget.MARS64
-                page.apply()
-                assertEquals(MarsTarget.MARS64, settings.executionOptions.target)
-                target.selectedItem = MarsTarget.MARS32
+                val layout = UIUtil.findComponentsOfType(panel, JComboBox::class.java).single()
                 assertEquals(MarsMemoryLayout.DEFAULT, layout.selectedItem)
                 layout.selectedItem = MarsMemoryLayout.DATA_AT_ZERO
                 page.apply()

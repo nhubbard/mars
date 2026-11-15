@@ -11,11 +11,13 @@ import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsigh
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
+import com.intellij.util.xmlb.XmlSerializer
 import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.plugin.build.MarsAssemblySettings
 import edu.missouristate.mars.plugin.language.inspection.MipsRelease6MergeInspection
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.jdom.Element
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -65,6 +67,9 @@ class MipsRelease6MergePlatformTest {
             """.trimIndent()
             fixture.configureByText("migration.mars", source)
             val settings = fixture.project.service<MarsAssemblySettings>()
+            val oldSettings = Element("state").addContent(Element("option")
+                .setAttribute("name", "target").setAttribute("value", "MARS32"))
+            settings.loadState(XmlSerializer.deserialize(oldSettings, MarsAssemblySettings.Settings::class.java))
             suspend fun mergeWarnings() = fixture.highlightAfterMipsRefresh()
                 .filter { it.description?.startsWith("Release 6 removed") == true }
                 .map { source.substring(it.startOffset, it.endOffset) }
