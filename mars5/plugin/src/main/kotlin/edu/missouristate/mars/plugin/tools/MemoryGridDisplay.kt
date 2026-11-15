@@ -59,7 +59,7 @@ internal class MemoryGridDisplay(private val captureAtLaunch: Boolean = false, m
     private val palette = TreeMap(defaultPalette)
     private var cachedFrame: Frame? = null
     private var memory: MemoryState? = null
-    private var observer: Consumer<MemoryAccessNotice>? = null
+    private var unsubscribe: (() -> Unit)? = null
     private var generation = 0L
 
     @Synchronized
@@ -157,19 +157,19 @@ internal class MemoryGridDisplay(private val captureAtLaunch: Boolean = false, m
                 record(source, first, registration, notice)
             }
         }
-        if (first > UInt.MAX_VALUE.toLong()) source.addAddressObserver(callback)
-        else source.addObserver(callback, first.toInt(), last.toInt())
-        observer = callback
+        if (first > UInt.MAX_VALUE.toLong()) {
+            source.addAddressObserver(callback)
+            unsubscribe = { source.deleteAddressObserver(callback) }
+        } else {
+            source.addObserver(callback, first.toInt(), last.toInt())
+            unsubscribe = { source.deleteObserver(callback) }
+        }
     }
 
     private fun stopWatching() {
         generation++
-        observer?.let { callback ->
-            val source = checkNotNull(memory)
-            source.deleteObserver(callback)
-            source.deleteAddressObserver(callback)
-        }
-        observer = null
+        unsubscribe?.invoke()
+        unsubscribe = null
     }
 
     @Synchronized
@@ -185,7 +185,8 @@ internal class MemoryGridDisplay(private val captureAtLaunch: Boolean = false, m
             // The notice is delivered on the writer's thread after the store has completed.
             val address = notice.addressBits and -4L
             val word = if (address <= UInt.MAX_VALUE.toLong()) source.getWordNoNotify(address.toInt())
-                else source.inspectWord(address) ?: return
+                // The observer range contains only mapped addresses, rounded to complete words.
+                else source.inspectWord(address)!!
             word and RGB_MASK
         }
         val colors = pixels ?: IntArray(options.cells).also { pixels = it }

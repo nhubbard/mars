@@ -120,7 +120,12 @@ class DataCacheSimulatorTest {
             val instructions = MemoryGridDisplay(captureAtLaunch = true, mode = Mode.REFERENCES)
             bitmap.configure(GridOptions(base = Base.WIDE_DATA))
             instructions.configure(GridOptions(base = Base.WIDE_TEXT))
+            machine.settings.setSelfModifyingCodeEnabled(true)
             cache.observe(machine.memory).use {
+                val low = machine.memory.dataBaseAddress
+                machine.memory.setWord(low, 0)
+                AccessOrigin.duringExecution<Unit, Exception> { machine.memory.fetchInstruction(low) }
+                assertEquals(0L, cache.snapshot().accesses)
                 bitmap.observe(machine.memory).use {
                     instructions.observe(machine.memory).use {
                         assertTrue(program.simulate(100))

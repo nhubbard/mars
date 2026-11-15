@@ -1,5 +1,6 @@
 package edu.missouristate.mars.plugin.debug
 
+import edu.missouristate.mars.plugin.tools.FloatingPointRepresentation.Format
 import com.intellij.codeInsight.navigation.actions.GotoDeclarationAction
 import com.intellij.execution.ExecutionListener
 import com.intellij.execution.ExecutionManager
@@ -2597,7 +2598,9 @@ class MarsDebugPlatformTest {
                 """.trimIndent()).virtualFile.also { addBreakpoint(it, 1) }
             }
             withDebug(source) { debug ->
+                val process = assertInstanceOf(MarsProcessHandler::class.java, debug.session.debugProcess.processHandler)
                 debug.assertPausedAt(source, 1)
+                assertEquals(0L, process.floatingDoublewordBits(31))
                 withContext(Dispatchers.EDT) {
                     val frame = requireNotNull(debug.session.currentStackFrame)
                     val modifiers = inspectRegisterNodes(debug.session, frame) { nodes ->
@@ -2617,6 +2620,7 @@ class MarsDebugPlatformTest {
                     debug.session.resume()
                 }
                 assertEquals(0, debug.exit.await())
+                assertEquals(0x4004000000000000L, process.floatingDoublewordBits(31))
             }
         } finally {
             withContext(Dispatchers.EDT) {
@@ -5422,6 +5426,7 @@ class MarsDebugPlatformTest {
                 Triple(view, content, other)
             }
             fun hex() = UIUtil.findComponentsOfType(view.component, JBTextField::class.java).single { it.columns == 12 }
+            fun precision() = UIUtil.findComponentsOfType(view.component, JComboBox::class.java).single { it.getItemAt(0) is Format }
             fun register() = UIUtil.findComponentsOfType(view.component, JComboBox::class.java).single { it.itemCount == 33 }
             fun write(bits: String) {
                 hex().text = bits
@@ -5431,9 +5436,16 @@ class MarsDebugPlatformTest {
                 val frame = withContext(Dispatchers.EDT) {
                     register().selectedIndex = 1
                     assertFalse(hex().isEditable)
-                    UIUtil.findComponentsOfType(view.component, JComboBox::class.java).single { it.itemCount == 2 }.selectedIndex = 1
+                    UIUtil.findComponentsOfType(view.component, JComboBox::class.java).single { it.itemCount == 2 && it.getItemAt(0) !is Format }.selectedIndex = 1
                     assertEquals("0x3fc00000", hex().text)
                     assertTrue(hex().isEditable)
+                    precision().selectedIndex = 1
+                    assertEquals("0x000000003fc00000", hex().text)
+                    register().selectedIndex = 2
+                    assertFalse(hex().isEditable)
+                    register().selectedIndex = 1
+                    precision().selectedIndex = 0
+                    assertEquals("0x3fc00000", hex().text)
                     assertTrue(backstepAction(debug.session).second.presentation.isEnabled)
                     write("80000000")
                     write("7fc00123")
@@ -5451,6 +5463,17 @@ class MarsDebugPlatformTest {
                 }
                 pollAssertionsAsync(5.seconds, 20.milliseconds) {
                     withContext(Dispatchers.EDT) { assertEquals("0x00000000", hex().text) }
+                }
+                withContext(Dispatchers.EDT) {
+                    precision().selectedItem = Format.BINARY64
+                    write("4004000000000000")
+                }
+                pollAssertionsAsync(5.seconds, 20.milliseconds) {
+                    withContext(Dispatchers.EDT) {
+                        assertEquals("0x4004000000000000", hex().text)
+                        assertEquals(0x4004000000000000L, process.floatingDoublewordBits(0))
+                        precision().selectedItem = Format.BINARY32
+                    }
                 }
                 val occupied = CompletableDeferred<Unit>()
                 val release = CompletableDeferred<Unit>()

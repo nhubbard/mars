@@ -8,6 +8,8 @@ import edu.missouristate.mars.api.ErrorEvent
 import edu.missouristate.mars.api.SimulatorListener
 import edu.missouristate.mars.api.StopEvent
 import edu.missouristate.mars.plugin.MarsSessionService
+import edu.missouristate.mars.mips.hardware.AccessOrigin
+import edu.missouristate.mars.mips.instructions.InstructionDefaults
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.TimeUnit
@@ -74,6 +76,63 @@ class XRayTraceTest {
         trace.rewind(store.stepCount - 1)
         assertTrue(trace.memoryFor(store).isEmpty())
         assertFalse(store in trace.snapshot())
+    }
+
+    @Test
+    fun `native playback distinguishes branch, link-free jump, nop and invalid encodings`() {
+        val address = 0x1_0040_0000L
+        fun event(word: Int, outcome: StepEvent.BranchOutcome? = null, transfer: StepEvent.Transfer? = null) =
+            StepEvent(address.toInt(), word, 1, transfer, outcome, address, MarsTarget.MARS64)
+
+        val branch = XRayInstruction(event(0x212a0001, TAKEN))
+        assertTrue(branch.describe().contains("Encoded branch destination: 0x0000000100400008"))
+        assertEquals("Next instruction 64-bit PC", XRayWideDiagram.frame(branch).signals[2].name)
+        assertTrue(branch.isControlFlow)
+
+        val nal = XRayInstruction(event(0x04100000, NOT_TAKEN))
+        assertFalse(nal.describe().contains("Encoded branch destination"))
+        assertTrue(nal.describe().contains("Not taken"))
+
+        val jump = XRayInstruction(event(0x08100000, transfer = StepEvent.Jump(0x00400000)))
+        assertTrue(jump.isControlFlow)
+        val nop = XRayInstruction(event(0))
+        assertEquals(3, XRayWideDiagram.frame(nop).signals.size)
+        assertFalse(nop.describe().contains("Register operands"))
+
+        val instructions = InstructionDefaults.forTarget(MarsTarget.MARS64)
+        val unknown = (1..1024).first { instructions.findByBinaryCode(it) == null }
+        val invalid = XRayInstruction(event(unknown))
+        assertFalse(invalid.decoded)
+        assertEquals(1, XRayWideDiagram.frame(invalid).signals.size)
+        assertFalse(invalid.describe().contains("Encoding fields"))
+    }
+
+    @Test
+    fun `wide memory trace excludes application and disconnected I O and bounds each step`() {
+        val trace = XRayTrace()
+        MarsSessionService.createMarsComponent().context().use { machine ->
+            machine.selectTarget(MarsTarget.MARS64)
+            val memory = machine.memory
+            val address = memory.dataBaseAddress
+            val first = StepEvent(0x00400000, 0, 1, target = MarsTarget.MARS64)
+            val next = first.copy(stepCount = 2)
+            trace.observeMemory(memory).use {
+                memory.setWord(address, 42)
+                AccessOrigin.duringExecution<Unit, Exception> {
+                    repeat(12) { memory.getWord(address) }
+                }
+                trace.record(first)
+                assertEquals(8, trace.memoryFor(first).size)
+                val details = XRayInstruction(first, trace.memoryFor(first)).describe()
+                assertTrue(details.contains("Read 4 byte(s)"))
+                assertFalse(details.contains("Wrote"))
+                trace.setCaptureEnabled(false)
+                AccessOrigin.duringExecution<Unit, Exception> { memory.getWord(address) }
+                trace.setCaptureEnabled(true)
+                trace.record(next)
+                assertTrue(trace.memoryFor(next).isEmpty())
+            }
+        }
     }
 
     @Test

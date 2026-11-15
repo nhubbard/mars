@@ -281,4 +281,4 @@ private class InstructionCountsView(
 }
 
 internal fun formatToolHex(bits: Long): String =
-    if (bits in 0..UInt.MAX_VALUE.toLong()) Binary.intToHexString(bits.toInt()) else Binary.longToHexString(bits)
+    if (bits.toULong() <= UInt.MAX_VALUE.toULong()) Binary.intToHexString(bits.toInt()) else Binary.longToHexString(bits)

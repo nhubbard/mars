@@ -1,5 +1,8 @@
 package edu.missouristate.mars.plugin.tools
 
+import edu.missouristate.mars.api.MarsTarget
+import edu.missouristate.mars.plugin.MarsExecutionOptions
+import edu.missouristate.mars.plugin.tools.FloatingPointRepresentation.Format
 import androidx.compose.ui.ImageComposeScene
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.PointerButton
@@ -212,7 +215,7 @@ class InstructionCounterPlatformTest {
         val lab = panels[8]
         val marsBot = panels[10]
         val (floatSelector, floatRegister) = withContext(Dispatchers.EDT) {
-            UIUtil.findComponentsOfType(floating, JComboBox::class.java).sortedBy { it.itemCount }
+            UIUtil.findComponentsOfType(floating, JComboBox::class.java).filterNot { it.getItemAt(0) is Format }.sortedBy { it.itemCount }
         }
         fun floatField(columns: Int) = UIUtil.findComponentsOfType(floating, JBTextField::class.java).single { it.columns == columns }
         fun floatLabels() = UIUtil.findComponentsOfType(floating, JBLabel::class.java).map { it.text } +
@@ -266,10 +269,12 @@ class InstructionCounterPlatformTest {
 
         suspend fun launch(
             executor: Executor, number: Long, source: String, captureGrids: Boolean = false, start: Boolean = true,
+            target: MarsTarget = MarsTarget.MARS32,
         ) = withContext(Dispatchers.EDT) {
             val file = fixture.addFileToProject("counter-$number.asm", source).virtualFile
             val process = project.getService(MarsRunService::class.java).createProcess(
-                file.toNioPath(), memoryDumps = emptyList(), captureBitmap = captureGrids, captureReferences = captureGrids,
+                file.toNioPath(), options = MarsExecutionOptions(target = target), memoryDumps = emptyList(),
+                captureBitmap = captureGrids, captureReferences = captureGrids, startAtMain = target == MarsTarget.MARS64,
             )
             val descriptor = RunContentDescriptor(null, process, JPanel(), "Counter Sample").apply {
                 executionId = number
@@ -315,9 +320,9 @@ class InstructionCounterPlatformTest {
             @Suppress("UNCHECKED_CAST")
             fun baseChoice() = UIUtil.findComponentsOfType(bitmap, JComboBox::class.java)
                 .single { it.itemCount > 0 && it.getItemAt(0) is Base } as JComboBox<Base>
-            fun baseLabel(): String {
+            fun baseLabel(choice: Base = Base.STATIC_DATA): String {
                 val combo = baseChoice()
-                return combo.renderer.getListCellRendererComponent(JList(), Base.STATIC_DATA, 2, false, false)
+                return combo.renderer.getListCellRendererComponent(JList(), choice, -1, false, false)
                     .accessibleContext.accessibleName
             }
             fun layoutDock(panel: JComponent, width: Int, height: Int): JScrollPane {
@@ -949,6 +954,55 @@ class InstructionCounterPlatformTest {
                 assertTrue(checkNotNull(liveTablesRun.manager).removeContent(liveTablesRun, true))
             }
             waitFor(0, "0 (0%)")
+            val wideRun = launch(run, 15, $$"""
+                .text 0x100400000
+                .globl main
+                main: nal
+                nop
+                dli $t0,0x7ff8000012345678
+                dmtc1 $t0,$f31
+                beqc $t0,$t1,done
+                nop
+                done: nop
+            """.trimIndent(), start = false, target = MarsTarget.MARS64)
+            val wideProcess = wideRun.getUserData(RunContentDescriptor.DESCRIPTOR_KEY)!!.processHandler as MarsProcessHandler
+            val precision = withContext(Dispatchers.EDT) {
+                assertNull(wideProcess.floatingDoublewordBits(31))
+                UIUtil.findComponentsOfType(floating, JComboBox::class.java).single { it.getItemAt(0) is Format }
+            }
+            waitFor(1, "0 (0%)")
+            withContext(Dispatchers.EDT) {
+                precision.selectedItem = Format.BINARY64
+                floatRegister.selectedIndex = 32
+                assertTrue("Waiting for register data." in floatLabels())
+                wideProcess.startNotify()
+            }
+            pollAssertionsAsync(5.seconds, 30.milliseconds) {
+                withContext(Dispatchers.EDT) {
+                    assertEquals("0x7ff8000012345678", floatField(12).text)
+                    assertEquals("NaN", floatField(16).text)
+                    assertTrue(floatLabels().any { "0x0008000012345678" in it })
+                    assertTrue((0 until baseChoice().itemCount).any { baseChoice().getItemAt(it) == Base.WIDE_DATA })
+                    val refBases = UIUtil.findComponentsOfType(references, JComboBox::class.java)
+                        .single { it.itemCount > 0 && it.getItemAt(0) is Base }
+                    assertTrue((0 until refBases.itemCount).any { refBases.getItemAt(it) == Base.WIDE_TEXT })
+                    val log = UIUtil.findComponentsOfType(branches, JBTextArea::class.java).single()
+                    assertTrue("0x0000000100400000 to No branch destination" in log.text)
+                    assertTrue("beqc" in latestBranchText())
+                }
+            }
+            withContext(Dispatchers.EDT) {
+                baseChoice().selectedItem = Base.WIDE_DATA
+                button("Apply and Clear", bitmap).doClick()
+                assertEquals("0x0000000100000000 (Data above 4 GiB)", baseLabel(Base.WIDE_DATA))
+                precision.selectedItem = Format.BINARY32
+                floatRegister.selectedIndex = 0
+                assertTrue(checkNotNull(wideRun.manager).removeContent(wideRun, true))
+            }
+            waitFor(0, "0 (0%)")
+            withContext(Dispatchers.EDT) {
+                assertTrue((0 until baseChoice().itemCount).none { baseChoice().getItemAt(it) == Base.WIDE_DATA })
+            }
             val floatRun = launch(run, 5, $$"lui $t0, 0x3fc0\nmtc1 $t0, $f0\n", start = false)
             waitFor(1, "0 (0%)")
             withContext(Dispatchers.EDT) {

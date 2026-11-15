@@ -25,6 +25,7 @@ class BitmapDisplayTest {
             display.observe(memory).use {
                 assertNull(display.snapshot().frame.image)
                 assertEquals(BitmapCell(0, 0, base.toLong(), 0), display.bitmapCell(0))
+                assertNull(display.bitmapCell(-1))
                 assertEquals(0, memory.countObservers())
                 display.setConnected(true)
                 assertEquals(1, memory.countObservers())
@@ -59,6 +60,20 @@ class BitmapDisplayTest {
             assertEquals(0, memory.countObservers())
             display.reset()
             assertNull(display.snapshot().frame.image)
+        }
+    }
+
+    @Test
+    fun `wide data options require a wide execution and can reconnect to a narrow base`() {
+        MarsSessionService.createMarsComponent().context().use { session ->
+            val display = MemoryGridDisplay(captureAtLaunch = true)
+            display.configure(Options(base = Base.WIDE_DATA))
+            display.observe(session.memory).use {
+                assertNull(display.bitmapCell(0))
+                assertEquals(0, session.memory.countObservers())
+                display.configure(Options(base = Base.STATIC_DATA))
+                assertEquals(1, session.memory.countObservers())
+            }
         }
     }
 

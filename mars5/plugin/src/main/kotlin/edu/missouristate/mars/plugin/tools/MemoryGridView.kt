@@ -196,7 +196,7 @@ internal class MemoryGridView(
         val choices = baseChoices()
         if (oldChoices != choices) {
             base.model = DefaultComboBoxModel(choices.toTypedArray())
-            base.selectedItem = previous.takeIf { it in choices } ?: mode.defaults().base
+            base.selectedItem = if (previous in choices) previous else mode.defaults().base
         }
         base.repaint()
     }

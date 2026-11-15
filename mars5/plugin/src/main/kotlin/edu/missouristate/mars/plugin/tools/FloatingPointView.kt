@@ -6,6 +6,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.ui.components.JBLabel
+import com.intellij.ui.dsl.listCellRenderer.textListCellRenderer
 import com.intellij.ui.components.JBTextField
 import com.intellij.ui.dsl.builder.AlignX
 import com.intellij.ui.dsl.builder.LabelPosition
@@ -15,6 +16,7 @@ import com.intellij.util.ui.UIUtil
 import com.intellij.util.ui.launchOnShow
 import com.intellij.xdebugger.XDebuggerManager
 import com.intellij.xdebugger.frame.XValueModifier.XModificationCallback
+import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.assembler.RegisterNames
 import edu.missouristate.mars.plugin.debug.MarsDebugProcess
 import edu.missouristate.mars.plugin.debug.MarsSuspendContext
@@ -23,6 +25,8 @@ import edu.missouristate.mars.plugin.debug.RegisterEditRequest
 import edu.missouristate.mars.plugin.debug.submitEdit
 import edu.missouristate.mars.plugin.run.MarsProcessHandler
 import edu.missouristate.mars.plugin.tools.FloatingPointRepresentation.Kind
+import edu.missouristate.mars.plugin.tools.FloatingPointRepresentation.Format
+import edu.missouristate.mars.plugin.tools.FloatingPointRepresentation.Format.BINARY64
 import edu.missouristate.mars.util.Binary
 import javax.swing.JButton
 import javax.swing.JEditorPane
@@ -35,6 +39,10 @@ internal class FloatingPointView(private val project: Project) : Disposable {
     private val selector = MarsToolExecutionSelector(project, ::bindingChanged)
     private val register = ComboBox((listOf(toolsMessages.getMessage("float.detached")) +
         RegisterNames.floatingSpellings()).toTypedArray())
+    private val precision = ComboBox(Format.entries.toTypedArray()).apply {
+        renderer = textListCellRenderer("") { toolsMessages.getMessage(it.messageKey) }
+    }
+    private val format get() = precision.selectedItem as Format
     private val decimal = JBTextField(16)
     private val hex = JBTextField(12)
     private val sign = JBTextField(1)
@@ -70,6 +78,7 @@ internal class FloatingPointView(private val project: Project) : Disposable {
     private val controls = marsToolPanel {
         marsExecutionRow(selector.component)
         row { cell(register).label(toolsMessages.getMessage("float.register"), LabelPosition.TOP) }
+        row { cell(precision).label(toolsMessages.getMessage("float.precision"), LabelPosition.TOP) }
         row { access = text("").resizableColumn().component }.layout(RowLayout.INDEPENDENT)
         row { cell(decimal).label(toolsMessages.getMessage("float.decimal"), LabelPosition.TOP) }
         row { cell(hex).label(toolsMessages.getMessage("float.hex"), LabelPosition.TOP) }
@@ -89,12 +98,18 @@ internal class FloatingPointView(private val project: Project) : Disposable {
 
     init {
         register.addActionListener { bindingChanged() }
-        decimal.addActionListener { apply(FloatingPointRepresentation.fromDecimal(decimal.text)) }
-        hex.addActionListener { apply(FloatingPointRepresentation.fromHex(hex.text)) }
-        for (field in listOf(sign, exponent, fraction)) {
-            field.addActionListener { apply(FloatingPointRepresentation.fromBinary(sign.text, exponent.text, fraction.text)) }
+        precision.addActionListener {
+            editRevision++
+            feedback.text = ""
+            display(shown.convertTo(format))
+            refreshBinding()
         }
-        reset.addActionListener { apply(FloatingPointRepresentation(0)) }
+        decimal.addActionListener { apply(FloatingPointRepresentation.fromDecimal(decimal.text, format)) }
+        hex.addActionListener { apply(FloatingPointRepresentation.fromHex(hex.text, format)) }
+        for (field in listOf(sign, exponent, fraction)) {
+            field.addActionListener { apply(FloatingPointRepresentation.fromBinary(sign.text, exponent.text, fraction.text, format)) }
+        }
+        reset.addActionListener { apply(FloatingPointRepresentation(0L, format)) }
         display(shown)
         refresh()
     }
@@ -123,13 +138,16 @@ internal class FloatingPointView(private val project: Project) : Disposable {
         val number = register.selectedIndex - 1
         val attached = process?.takeIf { number >= 0 }
         val stopped = attached?.let(::stoppedContext) != null
-        val editable = attached == null || stopped
-        val bits = attached?.floatingRegisterBits(number)
+        val validPair = attached == null || format != BINARY64 || attached.target == MarsTarget.MARS64 || number % 2 == 0
+        val editable = validPair && (attached == null || stopped)
+        val bits = if (format == BINARY64) attached?.floatingDoublewordBits(number)
+            else attached?.floatingRegisterBits(number)?.toUInt()?.toLong()
         register.isEnabled = process != null
         for (field in fields) field.isEditable = editable
         reset.isEnabled = editable
         val nextAccessKey = when {
             attached == null -> "float.local"
+            !validPair -> "float.evenPair"
             bits == null -> "float.waiting"
             stopped -> "float.paused"
             else -> "float.readOnly"
@@ -139,8 +157,8 @@ internal class FloatingPointView(private val project: Project) : Disposable {
             access.text = toolsMessages.getMessage(nextAccessKey)
         }
         if (attached != null) {
-            val current = bits ?: 0
-            if (current != shown.bits) display(FloatingPointRepresentation(current))
+            val current = bits ?: 0L
+            if (current != shown.bits) display(FloatingPointRepresentation(current, format))
         }
     }
 
@@ -168,7 +186,8 @@ internal class FloatingPointView(private val project: Project) : Disposable {
             feedback.text = toolsMessages.getMessage("float.readOnly")
             return
         }
-        val edit = RegisterEditRequest(RegisterBank.FPU_SINGLE, number, value.hex, object : XModificationCallback {
+        val bank = if (value.format == BINARY64) RegisterBank.FPU_DOUBLE else RegisterBank.FPU_SINGLE
+        val edit = RegisterEditRequest(bank, number, value.hex, object : XModificationCallback {
             override fun valueModified() {
                 if (revision == editRevision) display(value)
             }
@@ -184,6 +203,8 @@ internal class FloatingPointView(private val project: Project) : Disposable {
 
     private fun display(value: FloatingPointRepresentation) {
         shown = value
+        exponent.columns = value.format.exponentWidth
+        fraction.columns = value.format.fractionWidth
         decimal.text = value.decimal
         hex.text = value.hex
         sign.text = value.sign.toString()
@@ -194,7 +215,7 @@ internal class FloatingPointView(private val project: Project) : Disposable {
         classification.text = toolsMessages.getMessage(value.kind.messageKey)
         formula.text = when (value.kind) {
             Kind.INFINITY -> toolsMessages.getMessage("float.formula.infinity")
-            Kind.NAN -> toolsMessages.getMessage("float.formula.nan", Binary.intToHexString(value.fraction))
+            Kind.NAN -> toolsMessages.getMessage("float.formula.nan", if (value.format == BINARY64) Binary.longToHexString(value.fraction) else Binary.intToHexString(value.fraction.toInt()))
             else -> toolsMessages.getMessage("float.formula.finite", value.sign.toString(),
                 value.finiteExponent.toString(), if (value.kind == Kind.NORMAL) "1" else "0", value.fractionBits)
         }

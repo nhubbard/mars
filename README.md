@@ -85,6 +85,13 @@ Place data above 4 GiB with `.data 0x100000000` and executable code with `.text 
 Use `.dword` for aligned 64-bit constants or label addresses and `ld` and `sd` to load and store them.
 The assembler, simulator, debugger, dump formats, and grading DSL preserve these addresses.
 
+For MARS64 executions, X-Ray replays a Release 6 instruction path with the full PC,
+the 32-bit instruction encoding, and memory accesses from the simulator. Branch History
+shows the full encoded destination. Choose **Data above 4 GiB** in Bitmap Display or Memory
+Reference Visualization, and **Text above 4 GiB** in Memory Reference Visualization to
+observe these regions. The Floating Point tool supports both IEEE 754 precisions and can edit
+a MARS64 doubleword register while Debug is paused.
+
 The MARS32 catalog includes additional user-mode operations from the MIPS32 Release 6 reference,
 including bitfield extraction and insertion, rotates, scaled addressing, PC-relative addressing,
 and compact control transfers, including signed and unsigned comparisons. Compact transfers

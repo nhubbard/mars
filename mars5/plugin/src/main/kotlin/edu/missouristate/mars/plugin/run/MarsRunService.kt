@@ -181,7 +181,8 @@ internal class MarsProcessHandler(
     val xray = XRayTrace()
     val bitmapDisplay = MemoryGridDisplay(captureBitmap)
     val memoryReferences = MemoryGridDisplay(captureReferences, MemoryGridDisplay.Mode.REFERENCES)
-    @Volatile private var readFloatingRegister: ((Int) -> Int)? = null
+    val target get() = launch.options.target
+    @Volatile private var readFloatingRegisters: ((Int, Boolean) -> Long)? = null
 
     @Synchronized
     fun scavengerHuntSnapshot() = scavengerHunt?.snapshot() ?: finishedHunt
@@ -205,7 +206,10 @@ internal class MarsProcessHandler(
         if (!connectScavengerHunt) setScavengerHuntConnected(false)
     }
 
-    fun floatingRegisterBits(number: Int): Int? = readFloatingRegister?.invoke(number)
+    fun floatingRegisterBits(number: Int): Int? = readFloatingRegisters?.invoke(number, false)?.toInt()
+
+    fun floatingDoublewordBits(number: Int): Long? =
+        if (target == MarsTarget.MARS64 || number % 2 == 0) readFloatingRegisters?.invoke(number, true) else null
 
     // As in IntelliJ's external-task runner, ConsoleView writes to the sink on its input worker.
     private val consoleInput = Channels.newOutputStream(input.sink())
@@ -311,8 +315,12 @@ internal class MarsProcessHandler(
                                 }
                             }
                         })
-                        val floatingRegisters = session.coprocessor1.registers
-                        readFloatingRegister = { floatingRegisters[it].valueNoNotify }
+                        val floatingPoint = session.coprocessor1
+                        val floatingRegisters = floatingPoint.registers
+                        readFloatingRegisters = { number, wide ->
+                            if (wide) floatingPoint.getDoublewordNoNotify(number)
+                            else floatingRegisters[number].valueNoNotify.toUInt().toLong()
+                        }
                         val stop = try {
                             val xRayMemory = if (session.target == MarsTarget.MARS64) xray.observeMemory(session.memory) else null
                             xRayMemory.use {
@@ -329,8 +337,14 @@ internal class MarsProcessHandler(
                                 }
                             }
                         } finally {
-                            // The execution tab can still show the final words after the session closes.
-                            readFloatingRegister = IntArray(floatingRegisters.size) { floatingRegisters[it].valueNoNotify }::get
+                            // Keep both precisions available after the session closes.
+                            val singles = IntArray(floatingRegisters.size) { floatingRegisters[it].valueNoNotify }
+                            val doubles = LongArray(floatingRegisters.size) {
+                                if (target == MarsTarget.MARS64 || it % 2 == 0) floatingPoint.getDoublewordNoNotify(it) else 0L
+                            }
+                            readFloatingRegisters = { number, wide ->
+                                if (wide) doubles[number] else singles[number].toUInt().toLong()
+                            }
                         }
                         if (memoryDumps.isNotEmpty() && stop.reason in dumpReasons) {
                             exportAfterRun(session, program.sources.snapshot.texts().keys.plusElement(entry))
