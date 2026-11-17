@@ -22,7 +22,6 @@ import java.util.concurrent.TimeUnit
 /** Measures sustained PNG execution through the CLI or IntelliJ core entry point. */
 object ExecutionBenchmark {
     private const val LIMIT = 250_000_000
-    private const val EXPECTED_INSTRUCTIONS = 53_035_658L
 
     @JvmStatic
     fun main(args: Array<String>) {
@@ -31,32 +30,43 @@ object ExecutionBenchmark {
         require(mode == "sync" || mode == "async")
         val observer = args.getOrElse(2) { "none" }
         require(observer in setOf("none", "all", "data"))
+        val checkpoints = args.getOrElse(3) { "0" }.toInt()
+        require(checkpoints >= 0)
+        val scalar = args.getOrElse(4) { "false" }.toBooleanStrict()
+        val expectedInstructions = if (scalar) 59_391_652L else 53_035_658L
         val image = newSession().use { session ->
             session.assemble(listOf(source), handler = null, extended = true, warnings = false)
             session.captureAssemblyImage {}
         }
-        println("${System.getProperty("os.arch")}, JDK ${Runtime.version()}, $mode, observer $observer, 1 warmup, 3 measured")
+        println("${System.getProperty("os.arch")}, JDK ${Runtime.version()}, $mode, " +
+            "observer $observer, $checkpoints checkpoints, scalar $scalar, 1 warmup, 3 measured")
         val samples = List(4) { index ->
-            execute(image, source.parent, mode == "async", observer).also { nanos ->
+            execute(image, source.parent, mode == "async", observer, checkpoints, scalar, expectedInstructions).also { nanos ->
                 println(String.format(Locale.ROOT, "%s %.3f s (%d instructions)",
-                    if (index == 0) "warmup" else "sample", nanos / 1e9, EXPECTED_INSTRUCTIONS))
+                    if (index == 0) "warmup" else "sample", nanos / 1e9, expectedInstructions))
             }
         }
         val medianSeconds = samples.drop(1).sorted()[1] / 1e9
         println(String.format(Locale.ROOT, "median %.3f s (%.2f M instructions/s)",
-            medianSeconds, EXPECTED_INSTRUCTIONS / medianSeconds / 1e6))
+            medianSeconds, expectedInstructions / medianSeconds / 1e6))
     }
 
     private fun execute(
-        image: AssemblyImage, directory: Path, asynchronous: Boolean, observer: String,
+        image: AssemblyImage, directory: Path, asynchronous: Boolean, observer: String, checkpoints: Int,
+        scalar: Boolean, expectedInstructions: Long,
     ): Long = newSession().use { session ->
         session.loadAssemblyImage(image, true) {}
-        ProgramArgumentList(listOf("torture.png")).storeProgramArguments(session)
+        val arguments = if (scalar) listOf("torture.png", "--scalar") else listOf("torture.png")
+        ProgramArgumentList(arguments).storeProgramArguments(session)
         var dataAccesses = 0L
         if (observer != "none") {
             session.memory.addAddressObserver({ access ->
                 if (!access.isInstructionFetch) dataAccesses++
             }, includeInstructionFetch = observer == "all")
+        }
+        repeat(checkpoints) {
+            val restore: () -> Unit = {}
+            session.backStepper.addInstructionCheckpoint { restore }
         }
         val bytes = ByteArrayOutputStream()
         PrintStream(bytes, true, Charsets.UTF_8).use { output ->
@@ -89,9 +99,10 @@ object ExecutionBenchmark {
                 }
                 val console = bytes.toString(Charsets.UTF_8)
                 check(console.lineSequence().any { it == "PNG displayed." }) { console }
-                check(steps == EXPECTED_INSTRUCTIONS) { "Expected $EXPECTED_INSTRUCTIONS instructions, got $steps" }
+                check(steps == expectedInstructions) { "Expected $expectedInstructions instructions, got $steps" }
                 if (observer != "none") {
-                    check(dataAccesses == 9_004_117L) { "Expected 9004117 data accesses, got $dataAccesses" }
+                    val expectedAccesses = if (scalar) 8_530_372L else 9_004_117L
+                    check(dataAccesses == expectedAccesses) { "Expected $expectedAccesses data accesses, got $dataAccesses" }
                     println("observed $dataAccesses data accesses")
                 }
                 elapsed
