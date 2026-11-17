@@ -1,9 +1,9 @@
-package edu.missouristate.mars.plugin.tools
+package edu.missouristate.mars.devices
 
 import kotlin.math.abs
 
 /** The 512-pixel MarsBot board and its immutable pen history. */
-internal data class MarsBotWorld(
+data class MarsBotWorld(
     val position: Point = Point(0.0, 0.0),
     val heading: Int = 0,
     val moving: Boolean = false,

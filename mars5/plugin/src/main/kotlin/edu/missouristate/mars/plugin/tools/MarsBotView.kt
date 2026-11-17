@@ -1,5 +1,8 @@
 package edu.missouristate.mars.plugin.tools
 
+import edu.missouristate.mars.devices.MarsBotDevice
+import edu.missouristate.mars.devices.MarsBotWorld
+
 import edu.missouristate.mars.util.Binary
 import com.intellij.ide.setToolTipText
 import com.intellij.openapi.util.text.HtmlChunk
@@ -16,9 +19,9 @@ import com.intellij.ui.dsl.builder.columns
 import com.intellij.ui.scale.JBUIScale
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.launchOnShow
-import edu.missouristate.mars.plugin.tools.MarsBotDevice.Companion.DEFAULT_INSTRUCTIONS_PER_TICK
-import edu.missouristate.mars.plugin.tools.MarsBotDevice.Companion.instructionRange
-import edu.missouristate.mars.plugin.tools.MarsBotWorld.Companion.BOARD_SIZE
+import edu.missouristate.mars.devices.MarsBotDevice.Companion.DEFAULT_INSTRUCTIONS_PER_TICK
+import edu.missouristate.mars.devices.MarsBotDevice.Companion.instructionRange
+import edu.missouristate.mars.devices.MarsBotWorld.Companion.BOARD_SIZE
 import java.awt.BasicStroke
 import java.awt.Graphics
 import java.awt.Graphics2D

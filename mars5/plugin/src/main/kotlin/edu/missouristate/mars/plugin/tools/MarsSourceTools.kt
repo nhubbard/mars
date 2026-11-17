@@ -1,5 +1,7 @@
 package edu.missouristate.mars.plugin.tools
 
+import edu.missouristate.mars.devices.MarsBotDevice
+
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.Project

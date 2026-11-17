@@ -1,10 +1,10 @@
-package edu.missouristate.mars.plugin.tools
+package edu.missouristate.mars.devices
 
 import edu.missouristate.mars.mips.hardware.AccessOrigin.Companion.duringExecution
 import edu.missouristate.mars.mips.hardware.MemoryAccessNotice
-import edu.missouristate.mars.plugin.MarsSessionService
-import edu.missouristate.mars.plugin.tools.MarsBotWorld.Point
-import edu.missouristate.mars.plugin.tools.MarsBotWorld.Stroke
+import edu.missouristate.mars.TestSessions
+import edu.missouristate.mars.devices.MarsBotWorld.Point
+import edu.missouristate.mars.devices.MarsBotWorld.Stroke
 import java.nio.file.Path
 import kotlin.io.path.writeText
 import kotlin.math.sqrt
@@ -57,7 +57,7 @@ class MarsBotDeviceTest {
 
     @Test
     fun `default ports accept CPU control writes and publish coordinates on scheduled ticks`() {
-        MarsSessionService.createMarsComponent().context().use { session ->
+        TestSessions.create().use { session ->
             val memory = session.memory
             val bot = MarsBotDevice()
             bot.setConnected(true)
@@ -127,8 +127,8 @@ class MarsBotDeviceTest {
 
     @Test
     fun `compact ports and movement remain isolated between simultaneous sessions`() {
-        MarsSessionService.createMarsComponent().context().use { first ->
-            MarsSessionService.createMarsComponent().context().use { second ->
+        TestSessions.create().use { first ->
+            TestSessions.create().use { second ->
                 first.setMemoryConfiguration("CompactTextAtZero")
                 val bot = MarsBotDevice(true)
                 val other = MarsBotDevice(true)
@@ -183,7 +183,7 @@ class MarsBotDeviceTest {
                 nop
             """.trimIndent())
         }
-        MarsSessionService.createMarsComponent().context().use { session ->
+        TestSessions.create().use { session ->
             val program = session.assemble(listOf(entry))
             val bot = MarsBotDevice()
             bot.setInstructionsPerTick(2)
@@ -217,7 +217,7 @@ class MarsBotDeviceTest {
 
     @Test
     fun `disconnect ignores a notice already being delivered from the old observer list`() {
-        MarsSessionService.createMarsComponent().context().use { session ->
+        TestSessions.create().use { session ->
             val memory = session.memory
             val bot = MarsBotDevice(true)
             val heading = 0xffff8010.toInt()

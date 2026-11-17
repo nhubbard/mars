@@ -429,6 +429,61 @@ internal class PackagedCliTest {
     }
 
     @Test
+    fun gradingUsesTheIdeMarsBotModelAcrossPausesAndFreshCases() {
+        val script = source("robot.kts", """
+            for (clock in listOf(8, 64, 97)) {
+                case("east leg clock " + clock, instructionLimit = 2000) {
+                    val bot = connectMarsBot(clock)
+                    val readOnlyCoordinates = traceMemoryStores(0xffff8030L, 4)
+                    runUntil("arrived")
+                    bot.expectState(2.0, 0.0, 90, moving = false, penDown = true)
+                    bot.expectTrail(0.0 to 0.0, 2.0 to 0.0)
+                    runToExit()
+                    readOnlyCoordinates.expectNone()
+                    bot.expectState(2.0, 0.0, 90, moving = false, penDown = false)
+                    bot.expectTrail(0.0 to 0.0, 2.0 to 0.0)
+                }
+            }
+        """.trimIndent())
+        val entry = source("robot.asm", $$"""
+            dli $t0, 0xffff8000
+            li $t1, 90
+            sw $t1, 0x10($t0)
+            li $t1, 1
+            sw $t1, 0x20($t0)
+            sw $t1, 0x50($t0)
+            li $t2, 2
+        wait:
+            lw $t3, 0x30($t0)
+            bne $t3, $t2, wait
+            nop
+            sw $zero, 0x50($t0)
+        arrived:
+            sw $zero, 0x20($t0)
+            li $v0, 10
+            syscall
+        """.trimIndent())
+        val result = launch("grade", script.toString(), entry.toString())
+        assertEquals(0, result.status, result.err + result.out)
+        assertEquals(3, result.out.lines().count { it.startsWith("PASS ") })
+        val bad = source("robot-bad.kts", """
+            case("wrong endpoint") {
+                val bot = connectMarsBot()
+                runToExit()
+                bot.expectState(0.0, 0.0, 90, false, false)
+            }
+            case("wrong trail") {
+                val bot = connectMarsBot()
+                runToExit()
+                bot.expectTrail(0.0 to 0.0, 1.0 to 0.0)
+            }
+        """.trimIndent())
+        val rejected = launch("grade", bad.toString(), entry.toString())
+        assertEquals(1, rejected.status, rejected.err + rejected.out)
+        assertEquals(2, rejected.out.lines().count { it.startsWith("FAIL ") })
+    }
+
+    @Test
     fun gradingTracesBytePortsAcrossStopsAndWideAddresses() {
         val script = source(
             "byte ports.kts",

@@ -46,7 +46,7 @@ import edu.missouristate.mars.plugin.tools.ExecutedInstructionCache
 import edu.missouristate.mars.plugin.tools.InstructionCounter
 import edu.missouristate.mars.plugin.tools.InstructionStatistics
 import edu.missouristate.mars.plugin.tools.KeyboardDisplayDevice
-import edu.missouristate.mars.plugin.tools.MarsBotDevice
+import edu.missouristate.mars.devices.MarsBotDevice
 import edu.missouristate.mars.plugin.tools.MarsToolExecution
 import edu.missouristate.mars.plugin.tools.MarsToolInstructionListener
 import edu.missouristate.mars.plugin.tools.ScavengerHuntDevice
