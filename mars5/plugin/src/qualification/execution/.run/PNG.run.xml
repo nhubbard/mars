@@ -1,0 +1,8 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="PNG execution profile" type="MarsMipsRun" factoryName="MarsMipsRun">
+    <option name="sourcePath" value="$PROJECT_DIR$/png/viewer.asm" />
+    <option name="startAtMain" value="ENABLED" />
+    <option name="programArguments" value="torture.png" />
+    <method v="2" />
+  </configuration>
+</component>
