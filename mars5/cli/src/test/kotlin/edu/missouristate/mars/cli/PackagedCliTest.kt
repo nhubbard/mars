@@ -386,6 +386,49 @@ internal class PackagedCliTest {
     }
 
     @Test
+    fun gradingChecksDataAddressesWithoutRequiringWordAlignment() {
+        val script = source(
+            "data-address checks.kts",
+            """
+            case("data addresses") {
+                expectDataAddress("narrow", 0x10010000L)
+                expectDataAddress("unaligned", 0x10010001L)
+                expectDataAddress("wide", 0x100000000L)
+            }
+            case("moved data") {
+                expectDataAddress("narrow", 0x10010004L)
+            }
+            case("missing data") {
+                expectDataAddress("absent", 0x10010000L)
+            }
+            case("text is not data") {
+                expectDataAddress("main", 0x00400000L)
+            }
+            """.trimIndent(),
+        )
+        val entry = source(
+            "data-addresses.asm",
+            $$"""
+            .data 0x10010000
+            narrow: .byte 0
+            unaligned: .byte 0
+            .data 0x100000000
+            wide: .word 0
+            .text
+            main:
+                li $v0, 10
+                syscall
+            """.trimIndent(),
+        )
+        val result = launch("grade", script.toString(), entry.toString())
+        assertEquals(1, result.status, result.err + result.out)
+        assertTrue(result.out.contains("PASS data addresses"), result.out)
+        assertTrue(result.out.contains("Expected address of data label narrow = 0x10010004, got 0x10010000"), result.out)
+        assertTrue(result.out.contains("Missing label: absent"), result.out)
+        assertTrue(result.out.contains("Expected a data label: main"), result.out)
+    }
+
+    @Test
     fun gradingChecksStructureAndIntermediateStateAndIsolatesCases() {
         val script =
             source(
