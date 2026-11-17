@@ -85,13 +85,13 @@ internal class XRayTrace {
 
     fun observeMemory(memory: MemoryState): AutoCloseable {
         val callback = ::recordMemory
-        memory.addAddressObserver(callback)
+        memory.addAddressObserver(callback, includeInstructionFetch = false)
         return AutoCloseable { memory.deleteAddressObserver(callback) }
     }
 
     @Synchronized
     private fun recordMemory(notice: MemoryAccessNotice) {
-        if (connected && notice.origin() == EXECUTION && !notice.isInstructionFetch && pendingMemory.size < MEMORY_LIMIT) {
+        if (connected && notice.origin() == EXECUTION && pendingMemory.size < MEMORY_LIMIT) {
             pendingMemory.add(notice)
         }
     }

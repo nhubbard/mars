@@ -107,7 +107,7 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
     // Written on the simulator worker and drained when its slice completes.
     private val watchpointHits = linkedSetOf<MemoryWatchpoint>()
     private val watchMemory: (MemoryAccessNotice) -> Unit = { access ->
-        if (access.origin() == AccessOrigin.EXECUTION && !access.isInstructionFetch) {
+        if (access.origin() == AccessOrigin.EXECUTION) {
             for ((breakpoint, range) in watchpoints) {
                 if (range.overlaps(access)) watchpointHits.add(breakpoint)
             }
@@ -321,7 +321,7 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
         val wasObserving = watchpoints.isNotEmpty()
         watchpoints = next
         if (wasObserving == next.isNotEmpty()) return
-        if (wasObserving) memory.deleteAddressObserver(watchMemory) else memory.addAddressObserver(watchMemory)
+        if (wasObserving) memory.deleteAddressObserver(watchMemory) else memory.addAddressObserver(watchMemory, includeInstructionFetch = false)
     }
 
     private suspend fun debug(process: MarsProcessHandler, machine: MarsContext): StopEvent {

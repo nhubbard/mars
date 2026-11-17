@@ -70,11 +70,12 @@ internal class DataCacheSimulator {
         val classroom = memory.dataSegmentBaseAddress.toUInt().toLong()..(memory.stackBaseAddress.toUInt().toLong() + 3)
         val listener: (MemoryAccessNotice) -> Unit = { notice ->
             val address = notice.addressBits
-            if (address in classroom || address > UInt.MAX_VALUE.toLong() && memory.inUserData(address)) {
+            // Full-width notices from this data-only subscription use the mapped user data segment.
+            if (address in classroom || address > UInt.MAX_VALUE.toLong()) {
                 record(notice)
             }
         }
-        memory.addAddressObserver(listener)
+        memory.addAddressObserver(listener, includeInstructionFetch = false)
         return AutoCloseable { memory.deleteAddressObserver(listener) }
     }
 
