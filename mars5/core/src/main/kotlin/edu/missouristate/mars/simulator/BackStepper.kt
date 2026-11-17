@@ -89,7 +89,10 @@ open class BackStepper(
     open fun addInstructionCheckpoint(capture: () -> (() -> Unit)?): AutoCloseable {
         checkpoints.add(Checkpoint(capture))
         return AutoCloseable {
-            checkpoints.firstOrNull { it.capture == capture }?.let(checkpoints::remove)
+            // Concurrent closes of duplicate factories must each remove one registration.
+            synchronized(checkpoints) {
+                checkpoints.firstOrNull { it.capture == capture }?.let(checkpoints::remove)
+            }
         }
     }
 
