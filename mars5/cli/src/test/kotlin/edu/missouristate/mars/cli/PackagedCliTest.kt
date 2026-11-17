@@ -429,6 +429,123 @@ internal class PackagedCliTest {
     }
 
     @Test
+    fun gradingTracesBytePortsAcrossStopsAndWideAddresses() {
+        val script = source(
+            "byte ports.kts",
+            """
+            case("stopped trace intervals") {
+                val data = traceMemoryStores(0x10010000L, 4)
+                val unchanged = traceMemoryStores("cell", 1, offset = 1)
+                val ports = traceMemoryStores(0xffff0010L, 4)
+                val wide = traceMemoryStores(0x100000003L)
+                val wideSymbol = traceMemoryStores("wide", 1, offset = 3)
+                setWord("cell", 99)
+                runUntil("next")
+                data.expectByteStores(0x10010000L, 255)
+                ports.expectByteStores(0xffff0010L, 63, 63)
+                val suffix = traceMemoryStores(0xffff0010L, 4)
+                ports.close()
+                runToExit()
+                ports.expectByteStores(0xffff0010L, 63, 63)
+                suffix.expectByteStores(0xffff0010L, 6)
+                wide.expectByteStores(0x100000003L, 6)
+                wideSymbol.expectByteStores(0x100000003L, 6)
+                unchanged.expectNone()
+            }
+            case("fresh trace") {
+                val ports = traceMemoryStores(0xffff0010L, 4)
+                runToExit()
+                ports.expectByteStores(0xffff0010L, 63, 63, 6)
+            }
+            """.trimIndent(),
+        )
+        val entry = source(
+            "ports.asm",
+            $$"""
+            .data
+            cell: .word 0
+            .data 0x100000000
+            wide: .word 0
+            .text
+            main:
+                la $t0, cell
+                li $t2, -1
+                sb $t2, 0($t0)
+                lbu $t3, 0($t0)
+                dli $t1, 0xffff0010
+                li $t2, 63
+                sb $t2, 0($t1)
+                sb $t2, 0($t1)
+            next:
+                li $t2, 6
+                sb $t2, 0($t1)
+                dla $t0, wide
+                sb $t2, 3($t0)
+                li $v0, 10
+                syscall
+            """.trimIndent(),
+        )
+        val result = launch("grade", script.toString(), entry.toString())
+        assertEquals(0, result.status, result.err + result.out)
+        assertTrue(result.out.contains("PASS stopped trace intervals"), result.out)
+        assertTrue(result.out.contains("PASS fresh trace"), result.out)
+    }
+
+    @Test
+    fun gradingRejectsStoresEvenWhenTheOriginalBytesAreRestored() {
+        val script = source(
+            "unchanged source.kts",
+            """
+            case("restored bytes still received writes") {
+                val stores = traceMemoryStores("cell", 4)
+                runToExit()
+                expectWord("cell", 0)
+                stores.expectNone()
+            }
+            case("closed empty interval") {
+                val stores = traceMemoryStores("cell", 4)
+                stores.expectNone()
+                stores.close()
+                runToExit()
+                stores.expectNone()
+            }
+            case("upper half of doubleword store") {
+                val stores = traceMemoryStores("cell", 4, offset = 4)
+                startAt("wide_store")
+                runToExit()
+                expectWord("cell", 0x11223344, offset = 4)
+                stores.expectNone()
+            }
+            """.trimIndent(),
+        )
+        val entry = source(
+            "restore.asm",
+            $$"""
+            .data
+            cell: .dword 0
+            .text
+                la $t0, cell
+                li $t1, 1
+                sw $t1, 0($t0)
+                sw $zero, 0($t0)
+                li $v0, 10
+                syscall
+            wide_store:
+                la $t0, cell
+                dli $t1, 0x1122334455667788
+                sd $t1, 0($t0)
+                li $v0, 10
+                syscall
+            """.trimIndent(),
+        )
+        val result = launch("grade", script.toString(), entry.toString())
+        assertEquals(1, result.status, result.err + result.out)
+        assertTrue(result.out.contains("observed 2"), result.out)
+        assertTrue(result.out.contains("PASS closed empty interval"), result.out)
+        assertTrue(result.out.contains("FAIL upper half of doubleword store: Expected no stores"), result.out)
+    }
+
+    @Test
     fun gradingChecksStructureAndIntermediateStateAndIsolatesCases() {
         val script =
             source(
