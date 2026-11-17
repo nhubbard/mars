@@ -1,4 +1,4 @@
-package edu.missouristate.mars.plugin.tools
+package edu.missouristate.mars.devices
 
 import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.mips.hardware.AccessNotice.Companion.WRITE
@@ -7,7 +7,7 @@ import edu.missouristate.mars.mips.hardware.MemoryAccessNotice
 import edu.missouristate.mars.mips.hardware.MemoryState
 
 /** MarsBot moves on the execution worker and shares its instruction history. */
-internal class MarsBotDevice(private var connectAtLaunch: Boolean = false) {
+class MarsBotDevice(private var connectAtLaunch: Boolean = false) {
     data class Ports(val base: Int) {
         val heading = base + 0x10
         val pen = base + 0x20

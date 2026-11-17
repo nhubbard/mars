@@ -107,3 +107,19 @@ Widths of 8, 16, and 32 compare unsigned values. A width of 64 compares raw `Lon
 
 Keep assignment scripts in the instructor-controlled repository or fetch them from a trusted
 revision. A Kotlin assignment script runs with the privileges of the CLI process.
+
+### MarsBot trajectory checks
+
+`val bot = connectMarsBot(instructionsPerTick = 64)` attaches the same core device
+model used by the IDE, before any instructions run. Each case owns at most one bot;
+its native memory observer, instruction clock, and backstep checkpoint are released
+at case cleanup. The source tool header configures the IDE; headless grading selects
+the clock explicitly through this function.
+
+After stepping or running, `bot.expectState(16.0, 0.0, 90, moving = false, penDown = true)`
+checks the position, heading, and controls. `bot.expectTrail(0.0 to 0.0, 16.0 to 0.0,
+16.0 to 16.0)` checks the complete chronological continuous pen trail, including corners
+and no extra strokes. Straight forward motion is coalesced by the model; specify turn
+vertices rather than one vertex per pixel. An empty argument list requires no trail.
+Both checks accept a finite nonnegative `tolerance` (default `1e-9`). These checks
+verify device state and history, not IDE rendering or wall-clock animation speed.

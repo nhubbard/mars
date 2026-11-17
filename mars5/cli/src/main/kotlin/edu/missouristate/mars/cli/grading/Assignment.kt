@@ -15,6 +15,7 @@ import edu.missouristate.mars.api.SyscallEnvironment
 import edu.missouristate.mars.assembler.RegisterNames
 import edu.missouristate.mars.cli.HeadlessGuiProxy
 import edu.missouristate.mars.core.MarsContext
+import edu.missouristate.mars.devices.MarsBotDevice
 import edu.missouristate.mars.di.DaggerMarsComponent
 import edu.missouristate.mars.mips.hardware.AddressErrorException
 import edu.missouristate.mars.mips.hardware.VectorRegister
@@ -81,6 +82,7 @@ class AssemblyCase internal constructor(
     private val output: ByteArrayOutputStream,
 ) : AutoCloseable {
     private val simulator = machine.simulator()
+    private var marsBot: MarsBotCheck? = null
     private val memoryStoreTraces = mutableListOf<MemoryStoreTrace>()
     private var stop: StopEvent? = null
     private var error: String? = null
@@ -119,7 +121,15 @@ class AssemblyCase internal constructor(
     fun traceMemoryStores(label: String, byteLength: Int = 1, offset: Int = 0): MemoryStoreTrace =
         traceMemoryStores(dataAddress(label, offset.toLong(), alignment = 1), byteLength)
 
+    /** Attach the same instruction-clocked MarsBot model used by the IDE, before execution. */
+    fun connectMarsBot(instructionsPerTick: Int = MarsBotDevice.DEFAULT_INSTRUCTIONS_PER_TICK): MarsBotCheck {
+        requireCase(stop == null && marsBot == null) { "Connect one MarsBot before executing instructions" }
+        return MarsBotCheck(machine, instructionsPerTick).also { marsBot = it }
+    }
+
     override fun close() {
+        marsBot?.close()
+        marsBot = null
         memoryStoreTraces.forEach(MemoryStoreTrace::close)
         memoryStoreTraces.clear()
     }
