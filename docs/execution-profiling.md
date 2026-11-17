@@ -154,17 +154,115 @@ Runtime JFR sampler's native thread-suspension code. A fresh
 `clean cleanSandbox runIde` replay completed with the same runtime and
 profiling settings.
 
-## Remaining execution costs
+## Device checkpoint composition
 
-- Backstep setup appeared in 388 of 2,333 optimized IDE samples. The
-  follow-up above reduces core undo allocations. The sampled IntelliJ
-  profile also shows device checkpoint composition as a separate target.
-  A follow-up can reuse composed callbacks when every captured device
-  action is identical while checking device restore order and rewind.
-- The memory observer follow-up filters discarded instruction fetches.
-  X-Ray's separate map of events to memory accesses still performs lookup
-  and eviction work on each completed step and remains a profiling target.
+Each registered device still captures its undo state before every instruction.
+When a device returns the same callback and the preceding callbacks are
+unchanged, Backstep now reuses their composition. It retains immutable callback
+chains for older instruction frames. Tests exercise capture order, changing
+callbacks, null callbacks, unsubscription, duplicate factories, reservation
+restore order, and undo after the history wraps.
 
-The verification suite passed 2,413 core, 57 CLI, 879 plugin, and five
-PNG smoke tests. The instruction lab executed 867 basic forms and 430
-pseudo-instruction forms. Plugin coverage gates passed.
+The core benchmark accepts an optional count of stable device callbacks and
+a scalar PNG mode.
+
+```sh
+./mars5/gradlew -p mars5 :core:benchmarkExecution -PexecutionBenchmarkCheckpoints=3
+./mars5/gradlew -p mars5 :core:benchmarkExecution   -PexecutionBenchmarkScalar=true -PexecutionBenchmarkObserver=data
+```
+
+Scalar runs assert 59,391,652 completed instructions and 8,530,372 data
+accesses when observation is enabled. The MSA counts remain 53,035,658
+instructions and 9,004,117 data accesses.
+
+Paired core measurements with three stable callbacks were approximately
+4.1 s before and after composition reuse. With no device callbacks the
+medians were 3.906 s before and 3.928 s afterward. The principal benefit is
+allocation reduction. The baseline core JFR attributed 10.46 GB of sampled
+cumulative allocation to composed callbacks over its warmup and three measured
+runs. Those callbacks disappeared from the leading allocation sites after
+the change.
+
+The subsequent clean IntelliJ replay measured 10.236, 9.839, and 9.583
+seconds. Its median overlaps the previous replay's spread. Composition
+callbacks also disappeared from the leading IDE allocation sites, where
+the preceding replay had attributed 7.93 GB to them. These results establish
+the allocation improvement while leaving execution-time improvement uncertain.
+
+## Assembly lookup and token classification
+
+The assembler now indexes instruction forms with the JDK's case-insensitive
+string comparator. Lookups retain registration order, Unicode case matching,
+and independent result lists. The numeric token classifier checks the first
+character before attempting numeric conversion. Register lookup similarly
+recognizes named spellings without raising numeric conversion errors.
+Tests preserve Unicode digits, NaN and Infinity, hexadecimal floats, numeric
+register aliases, and both instruction targets.
+
+JMH assembled 10,000 instructions with two warmup iterations and three measured
+iterations in each of two JVM forks on OpenJDK 25.0.1. Each iteration lasted
+one second. Allocation figures come from JMH's GC profiler.
+
+| Revision | Mean assembly time (ms) | Allocation (MB per assembly) |
+| --- | ---: | ---: |
+| Before lookup changes | 144.136 | 119.243 |
+| Indexed instruction names | 70.473 | 118.602 |
+| Numeric token shortcut added | 44.823 | 85.562 |
+| Named register shortcut added | 7.716 | 34.682 |
+
+The combined changes reduced this workload's assembly time by 95% and
+allocation by 71%. Reproduce the final measurement from the repository root.
+
+```sh
+./mars5/gradlew -p mars5 :core:benchmark   --args='AssemblerBenchmark -wi 2 -i 3 -w 1s -r 1s -f 2 -prof gc'
+```
+
+A final JFR recording spread assembly execution samples across token storage,
+source-map generation, path handling, and assembly passes. Exception-driven
+instruction and register lookup had ceased to dominate.
+
+## X-Ray history and final execution measurements
+
+X-Ray now keeps its bounded event and memory buffers aligned by position.
+Recording and evicting a completed step updates the two buffers together.
+Display requests find the matching event within the retained history.
+The tests verify memory details after wrap, rewind, re-execution, and clear,
+including repeated program counters and value-equivalent event copies.
+
+The final clean IntelliJ replay ran PNG in 9.124, 8.970, and 8.631 seconds,
+giving a median of 8.970 seconds. That is 45% below the original 16.457 s
+baseline and 7% below the 9.630 s observer replay. These latest measurements
+include checkpoint reuse, assembly lookup changes, and X-Ray storage changes.
+The PNG Debug launch paused at its breakpoint and resumed through completion.
+The packaged replay also verified the ordinary Run, Debug, navigation, and
+MARS64 FIR outputs. Its installed ZIP checksum was
+`a50805ec9f070509683e5b278fbea9c43e2ce4fccd109f0797ff9c643eb8551c`.
+
+Across the three PNG Run spans, X-Ray recording appeared in 133 of 2,026
+simulator-thread samples, down from 234 of 2,219 in the preceding checkpoint
+replay. Hash-based eviction and event hashing disappeared from the leading
+execution sites. The composed checkpoint callbacks and X-Ray's map entries
+also disappeared from the leading allocation sites.
+
+The final pass verified 2,420 core tests and 57 CLI tests. The clean IDE
+qualification passed 880 plugin tests and the plugin coverage gates.
+The instruction lab executed 867 basic forms and 430 pseudo-instruction
+forms, and all five PNG pixel smoke tests passed. After the IDE replay,
+the checkpoint concurrency audit added serialization around duplicate-factory
+removal and verified it with the full core suite and focused plugin tests.
+
+## Stopping assessment
+
+The remaining measured execution costs are distributed among instruction
+semantics, register notifications, checkpoint capture, and immutable execution
+events. Further changes to event representation, observer synchronization, or
+provenance would broaden the concurrency and debugger lifecycle work. Assembly
+is now under 8 ms for the measured 10,000-instruction workload, with its samples
+spread across token storage, source maps, path handling, and assembly passes.
+At this point those candidates offer diminishing returns relative to the
+implementation and regression risk. The optimization pass stops here.
+
+The retained checkpoint cache is chiefly an allocation improvement. Its paired
+core execution times overlap the baseline. The larger measured gains came from
+sharing immutable session setup, eliminating repeated lookup and failed parsing,
+and reducing work done for each instruction's tool observations.
