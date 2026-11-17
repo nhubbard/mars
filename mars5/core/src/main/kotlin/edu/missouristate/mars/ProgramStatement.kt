@@ -125,7 +125,6 @@ open class ProgramStatement private constructor(
     open fun captureImage(): Image = Image.capture(this)
 
     class Image private constructor(statement: ProgramStatement) {
-        private val mnemonic = statement.instruction!!.name
         private val format = statement.instruction!!.exampleFormat
         private val sourceFile = statement.sourceFile
         private val source = statement.source
@@ -142,7 +141,9 @@ open class ProgramStatement private constructor(
         private val display = copyList(statement.display)
 
         fun load(instructions: InstructionSet, settings: SimulationSettings): ProgramStatement {
-            val instruction = instructions.matchOperator(mnemonic)!!.first { it.exampleFormat == format }
+            val instruction = checkNotNull(instructions.findByExampleFormat(format)) {
+                "Assembly image instruction form is unavailable: $format"
+            }
             return ProgramStatement(
                 null, sourceFile, source, null, null, instruction, address, line, origin,
                 sourceOperands, settings, operands.copyOf(), numOperands, binary, basicAssembly, machine, ArrayList(display), addressBits,

@@ -53,6 +53,7 @@ open class InstructionSet {
     open val instructionList: List<Instruction> = Collections.unmodifiableList(forms)
     private var shared = false
     private lateinit var opcodeMatchMaps: List<MatchMap>
+    private var formsByExample = emptyMap<String, Instruction>()
 
     open fun populate() {
         populate(MarsTarget.DEFAULT)
@@ -92,6 +93,7 @@ open class InstructionSet {
         }
         forms.addAll(loader.loadExtendedInstructions(this))
         forms.forEach { it.createExampleTokenList(this) }
+        formsByExample = indexExampleForms()
 
         val matchesByMask = HashMap<Int, HashMap<Int, MutableList<BasicInstruction>>>()
         for (instruction in forms) {
@@ -120,6 +122,7 @@ open class InstructionSet {
             editor.target = target
             editor.forms.addAll(forms)
             editor.forms.addAll(legacy.forms.filter { examples.add(it.exampleFormat) })
+            editor.formsByExample = editor.indexExampleForms()
             editor.opcodeMatchMaps = opcodeMatchMaps
             editor.shared = true
         }
@@ -139,6 +142,13 @@ open class InstructionSet {
 
     open fun matchOperator(name: String?): ArrayList<Instruction>? =
         forms.filterTo(ArrayList()) { it.name.equals(name, ignoreCase = true) }.takeIf { it.isNotEmpty() }
+
+    internal fun findByExampleFormat(format: String): Instruction? = formsByExample[format]
+
+    // An assembly image preserves the selected form's exact example, including its operands.
+    private fun indexExampleForms(): Map<String, Instruction> = buildMap {
+        for (form in forms) putIfAbsent(form.exampleFormat, form)
+    }
 
     private data class MatchMap(val mask: Int, val instructions: Map<Int, List<BasicInstruction>>)
 
