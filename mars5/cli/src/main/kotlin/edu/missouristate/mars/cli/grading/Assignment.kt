@@ -162,6 +162,16 @@ class AssemblyCase internal constructor(
         machine.editIntegerRegister(number, value)
     }
 
+    /** Pass a data object's actual address to a function, without fixing its allocation address. */
+    fun setRegisterToDataAddress(register: String, label: String, offset: Long = 0) {
+        setRegister(register, dataAddress(label, offset, alignment = 1))
+    }
+
+    /** Select a return continuation or code pointer using its assembled full-width address. */
+    fun setRegisterToTextAddress(register: String, label: String) {
+        setRegister(register, textAddress(label))
+    }
+
     fun setWord(label: String, value: Int, offset: Int = 0) {
         val address = dataAddress(label, offset)
         try {

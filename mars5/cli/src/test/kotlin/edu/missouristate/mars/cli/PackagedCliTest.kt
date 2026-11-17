@@ -429,6 +429,42 @@ internal class PackagedCliTest {
     }
 
     @Test
+    fun gradingPassesFullWidthLabelAddressesToIndependentFunctions() {
+        val script = source("function-addresses.kts", """
+            case("independent wide function") {
+                setRegisterToDataAddress("a0", "wide", offset = 3)
+                setRegisterToTextAddress("ra", "done")
+                startAt("helper")
+                expectRegister("a0", 0x100000003L)
+                expectRegister("ra", 0x10040000cL)
+                val work = traceExecution()
+                runToExit()
+                work.expectCounts(5, 0, 0)
+                expectRegister("t0", 0x11)
+            }
+            case("data is not code") { setRegisterToTextAddress("ra", "wide") }
+            case("code is not data") { setRegisterToDataAddress("a0", "done") }
+            case("zero cannot hold an argument") { setRegisterToDataAddress("zero", "wide") }
+        """.trimIndent())
+        val entry = source("function-addresses.asm", $$"""
+            .data 0x100000000
+        wide: .word 0x11223344
+            .text 0x100400000
+        helper:
+            lbu $t0, 0($a0)
+            jr $ra
+            nop
+        done:
+            li $v0, 10
+            syscall
+        """.trimIndent())
+        val result = launch("grade", script.toString(), entry.toString())
+        assertEquals(1, result.status, result.err + result.out)
+        assertTrue(result.out.contains("PASS independent wide function"), result.out)
+        assertEquals(3, result.out.lines().count { it.startsWith("FAIL ") })
+    }
+
+    @Test
     fun gradingCountsNativeBranchDecisionsAndCodeRangesInTheStandaloneJar() {
         val script = source("execution-counts.kts", """
             for (index in 0..1) {

@@ -143,3 +143,13 @@ These opt-in counters measure executed instruction work, not physical cycles, br
 prediction misses, or elapsed time. Query and close while execution is stopped. Backstep
 does not subtract forward events; replay contributes new events, matching the IDE counters.
 Do not impose a reference's totals on an otherwise equivalent student implementation.
+
+### Calling a function independently
+
+Use `setRegisterToDataAddress("a0", "values", offset = 4)` for a data pointer and
+`setRegisterToTextAddress("ra", "done")` for a return continuation, then `startAt("render")`
+to enter a function without executing main's setup. Labels are resolved by the assembler;
+code and data kinds are checked, and full 64-bit addresses are retained. These operations
+let a check vary the allocation and caller register values rather than requiring fixed
+addresses or relying on main to prepare the function's arguments. Use the ordinary state,
+output, preservation, and checkpoint checks to verify the function's public contract.
