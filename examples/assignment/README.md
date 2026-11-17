@@ -78,6 +78,20 @@ if the current PC already points there. Check state at each stop with `expectReg
 `expectWord`, `expectBytes`, or `expectOutput`. Use `runToExit` to check syscall 10 or 17
 termination. The default expected exit code is 0.
 
+Use `val ports = traceMemoryStores(0xffff0010L, 4)` before execution to record subsequent
+execution stores overlapping a device region. After stepping or running, call
+`ports.expectByteStores(0xffff0010L, 0x3f, 0x06)` to check the complete ordered sequence.
+Repeated values count as separate stores. Any extra store, wrong port, or wider overlapping
+store fails the byte-port contract. Application edits and reads are excluded. Close a trace
+to freeze a prefix while another trace records a later interval; the case also closes all
+its traces automatically. A trace retains at most 65,536 events and fails assertions on
+overflow. Assertions and explicit closes must occur while simulation is stopped.
+
+Use `val source = traceMemoryStores("glyphs", 16)` and `source.expectNone()` to check
+that a data object received no execution stores of any width, even if its final bytes
+would otherwise have been restored. The label overload accepts a byte offset and supports
+unaligned data and addresses above 4 GiB.
+
 Pass `input = "42\n"` as a case option to provide a console fixture. Set `utf8Text = true`
 when the assignment uses UTF-8 string syscalls. `instructionLimit` defaults to 100,000 and applies
 across all execution steps in the case. The grader also limits source size, assembly work, and

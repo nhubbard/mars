@@ -59,7 +59,7 @@ class Assignment internal constructor(
                     ).use { console ->
                         program.setSyscallEnvironment(GradingEnvironment(console))
                         machine.simulator().setInstructionLimit(instructionLimit)
-                        AssemblyCase(machine, program.symbolMap(), captured).verify()
+                        AssemblyCase(machine, program.symbolMap(), captured).use { it.verify() }
                     }
                 }
             }
@@ -79,8 +79,9 @@ class AssemblyCase internal constructor(
     private val machine: MarsContext,
     private val symbols: AssemblySymbolMap,
     private val output: ByteArrayOutputStream,
-) {
+) : AutoCloseable {
     private val simulator = machine.simulator()
+    private val memoryStoreTraces = mutableListOf<MemoryStoreTrace>()
     private var stop: StopEvent? = null
     private var error: String? = null
 
@@ -108,6 +109,19 @@ class AssemblyCase internal constructor(
         requireCase(actual == expected) {
             "Expected address of data label $label = 0x${expected.toString(16)}, got 0x${actual.toString(16)}"
         }
+    }
+
+    /** Observe subsequent execution stores overlapping a byte-addressed device region. */
+    fun traceMemoryStores(address: Long, byteLength: Int = 1): MemoryStoreTrace =
+        MemoryStoreTrace(machine.memory, address, byteLength).also(memoryStoreTraces::add)
+
+    /** Observe stores to a data object without constraining its allocation address. */
+    fun traceMemoryStores(label: String, byteLength: Int = 1, offset: Int = 0): MemoryStoreTrace =
+        traceMemoryStores(dataAddress(label, offset.toLong(), alignment = 1), byteLength)
+
+    override fun close() {
+        memoryStoreTraces.forEach(MemoryStoreTrace::close)
+        memoryStoreTraces.clear()
     }
 
     fun startAt(label: String) {
