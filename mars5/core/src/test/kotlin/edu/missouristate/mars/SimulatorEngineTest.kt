@@ -268,6 +268,40 @@ internal class SimulatorEngineTest {
     }
 
     @Test
+    fun concurrentClosesRemoveBothDuplicateCheckpointRegistrations() {
+        load("nop\n").use { session ->
+            val history = session.backStepper
+            val pc = session.registerFile.getPC()
+            val statement = session.memory.getStatementNoNotify(pc)
+            val captures = AtomicInteger()
+            val factory: () -> (() -> Unit)? = {
+                captures.incrementAndGet()
+                null
+            }
+            repeat(50) {
+                val first = history.addInstructionCheckpoint(factory)
+                val second = history.addInstructionCheckpoint(factory)
+                val ready = CountDownLatch(2)
+                val start = CountDownLatch(1)
+                fun closeTogether(subscription: AutoCloseable) = CompletableFuture.runAsync {
+                    ready.countDown()
+                    Assertions.assertThat(start.await(5, TimeUnit.SECONDS)).isTrue()
+                    subscription.close()
+                }
+                val firstClose = closeTogether(first)
+                val secondClose = closeTogether(second)
+                Assertions.assertThat(ready.await(5, TimeUnit.SECONDS)).isTrue()
+                start.countDown()
+                CompletableFuture.allOf(firstClose, secondClose).get(5, TimeUnit.SECONDS)
+                history.beginInstruction(pc, statement)
+                history.endInstruction()
+                history.backStep()
+            }
+            Assertions.assertThat(captures.get()).isZero()
+        }
+    }
+
+    @Test
     fun stoppedRegisterEditStartsNewHistoryOnlyWhenTheValueChanges() {
         load($$".text\naddiu $t0,$zero,7\nnop\n").use { session ->
             val engine: SimulatorEngine = session.simulator()
