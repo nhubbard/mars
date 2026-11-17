@@ -17,6 +17,7 @@ import edu.missouristate.mars.mips.instructions.basic.release6ScalarArithmetic
 import edu.missouristate.mars.mips.instructions.basic.release6ScalarRoots
 import edu.missouristate.mars.mips.instructions.basic.release6SystemTransfers
 import java.util.Collections
+import java.util.TreeMap
 /*
 Copyright (c) 2003-2013,  Pete Sanderson and Kenneth Vollmar
 
@@ -54,6 +55,7 @@ open class InstructionSet {
     private var shared = false
     private lateinit var opcodeMatchMaps: List<MatchMap>
     private var formsByExample = emptyMap<String, Instruction>()
+    private val formsByName = TreeMap<String, ArrayList<Instruction>>(String.CASE_INSENSITIVE_ORDER)
 
     open fun populate() {
         populate(MarsTarget.DEFAULT)
@@ -63,6 +65,7 @@ open class InstructionSet {
         check(!shared) { "Cannot repopulate a shared instruction catalog" }
         this.target = target
         forms.clear()
+        formsByName.clear()
         val loader = InstructionLoader()
         val common = loader.loadBasicInstructions()
         forms.addAll(if (target == MarsTarget.MARS64) common.filterNot { it.name in replacedWordInstructions || it is InstrBreak1 } else common)
@@ -91,7 +94,9 @@ open class InstructionSet {
             forms.addAll(release6RoundingInstructions())
             forms.addAll(CompactComparison.entries.filter { it.wideOnly }.map(::InstrCompactCompareBranch))
         }
+        indexOperatorForms()
         forms.addAll(loader.loadExtendedInstructions(this))
+        indexOperatorForms()
         forms.forEach { it.createExampleTokenList(this) }
         formsByExample = indexExampleForms()
 
@@ -123,6 +128,7 @@ open class InstructionSet {
             editor.forms.addAll(forms)
             editor.forms.addAll(legacy.forms.filter { examples.add(it.exampleFormat) })
             editor.formsByExample = editor.indexExampleForms()
+            editor.indexOperatorForms()
             editor.opcodeMatchMaps = opcodeMatchMaps
             editor.shared = true
         }
@@ -141,7 +147,14 @@ open class InstructionSet {
     }
 
     open fun matchOperator(name: String?): ArrayList<Instruction>? =
-        forms.filterTo(ArrayList()) { it.name.equals(name, ignoreCase = true) }.takeIf { it.isNotEmpty() }
+        if (name == null) null else formsByName[name]?.let(::ArrayList)
+
+    private fun indexOperatorForms() {
+        formsByName.clear()
+        for (instruction in forms) {
+            formsByName.getOrPut(instruction.name, ::ArrayList).add(instruction)
+        }
+    }
 
     internal fun findByExampleFormat(format: String): Instruction? = formsByExample[format]
 

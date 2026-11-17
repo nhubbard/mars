@@ -1,8 +1,11 @@
 package edu.missouristate.mars
 
+import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.ExtendedInstruction
 import edu.missouristate.mars.mips.instructions.Instruction
+import edu.missouristate.mars.mips.instructions.InstructionDefaults
+import java.util.Locale
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
@@ -122,6 +125,21 @@ internal class InstructionSetTest {
             Assertions.assertThat<String?>(names)
                 .`as`("Core instruction '%s' is missing from instruction set", core)
                 .contains(core)
+        }
+    }
+
+    @Test
+    fun indexedOperatorsPreserveCaseMatchingAndFormRegistrationOrder() {
+        val catalogs = MarsTarget.entries.map(InstructionDefaults::forTarget) + InstructionDefaults.editorCatalog()
+        for (catalog in catalogs) {
+            val queries = catalog.instructionList.map { it.name.uppercase(Locale.ROOT) }.distinct() +
+                listOf("d\u0131v", "d\u0130v", "\u017Fll")
+            for (query in queries) {
+                val expected = catalog.instructionList.filter { it.name.equals(query, ignoreCase = true) }
+                Assertions.assertThat(catalog.matchOperator(query)).containsExactlyElementsOf(expected)
+            }
+            Assertions.assertThat(catalog.matchOperator(null)).isNull()
+            Assertions.assertThat(catalog.matchOperator("unknown-instruction")).isNull()
         }
     }
 
