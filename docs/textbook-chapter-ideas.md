@@ -8,6 +8,10 @@ fixture that produces an artifact or a measurable result. Use the same
 For bounded assignments, give students a function contract and run the same
 inputs through a C or Kotlin reference.
 
+The first [instructional drafts](book/README.md) turn the opening console,
+debugging, memory, and integer-width exercises into a step-by-step lesson with
+runnable companion programs and grading checks.
+
 ## 1. Hello MARS
 
 | Chapter or lab | Exercise |
