@@ -58,7 +58,27 @@ open class BackStepper(
     private var frameDiscarded = false
     private var frameInDelaySlot = false
     private val backSteps: BackstepStack
-    private val checkpoints = CopyOnWriteArrayList<() -> (() -> Unit)?>()
+    private val checkpoints = CopyOnWriteArrayList<Checkpoint>()
+
+    private class Checkpoint(val capture: () -> (() -> Unit)?) {
+        private var previousAction: (() -> Unit)? = null
+        private var nextAction: (() -> Unit)? = null
+        private var combined: (() -> Unit)? = null
+
+        fun captureAfter(previous: (() -> Unit)?): (() -> Unit)? {
+            val next = capture() ?: return previous
+            if (previous == null) return next
+            if (previousAction !== previous || nextAction !== next) {
+                previousAction = previous
+                nextAction = next
+                combined = {
+                    previous()
+                    next()
+                }
+            }
+            return combined
+        }
+    }
 
     init {
         require(capacity > 0) { "Backstep capacity must be positive" }
@@ -67,8 +87,10 @@ open class BackStepper(
 
     /** Capture device undo before an instruction. Its action runs after CPU and memory restore. */
     open fun addInstructionCheckpoint(capture: () -> (() -> Unit)?): AutoCloseable {
-        checkpoints.add(capture)
-        return AutoCloseable { checkpoints.remove(capture) }
+        checkpoints.add(Checkpoint(capture))
+        return AutoCloseable {
+            checkpoints.firstOrNull { it.capture == capture }?.let(checkpoints::remove)
+        }
     }
 
     /** Open an undo group before incrementing the program counter. */
@@ -85,12 +107,7 @@ open class BackStepper(
             { memory.reservation = reservation }
         } else null
         for (checkpoint in checkpoints) {
-            val next = checkpoint() ?: continue
-            val previous = restore
-            restore = if (previous == null) next else fun() {
-                previous()
-                next()
-            }
+            restore = checkpoint.captureAfter(restore)
         }
         activeFrame = ++nextFrame
         framePc = pc
