@@ -1,5 +1,6 @@
 package edu.missouristate.mars
 
+import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.mips.hardware.AccessOrigin
 import edu.missouristate.mars.mips.hardware.AddressErrorException
 import edu.missouristate.mars.mips.hardware.MemoryAccessNotice
@@ -71,6 +72,41 @@ internal class AccessOriginTest {
                 .allMatch(
                     Predicate { n: MemoryAccessNotice -> n.origin() == AccessOrigin.EXECUTION },
                 )
+        }
+    }
+
+    @Test
+    fun addressObserversCanExcludeFetchesWithoutChangingDeliveryOrder() {
+        TestSessions.create().use { session ->
+            session.selectTarget(MarsTarget.MARS64)
+            session.settings.setSelfModifyingCodeEnabled(true)
+            val memory = session.memory
+            val address = checkNotNull(memory.wideDataRange).first
+            val events = mutableListOf<Pair<String, MemoryAccessNotice>>()
+            val data: (MemoryAccessNotice) -> Unit = { events.add("data" to it) }
+            val all: (MemoryAccessNotice) -> Unit = { events.add("all" to it) }
+            val last: (MemoryAccessNotice) -> Unit = {
+                events.add("last" to it)
+                memory.deleteAddressObserver(all)
+            }
+
+            memory.addAddressObserver(data, includeInstructionFetch = false)
+            memory.addAddressObserver(data)
+            memory.addAddressObserver(last)
+            memory.addAddressObserver(all)
+            AccessOrigin.duringExecution<Unit, AddressErrorException> {
+                memory.fetchInstruction(address)
+                memory.writeData(address, MemoryState.WORD_LENGTH_BYTES, 1)
+            }
+            Assertions.assertThat(events.map { (observer, notice) -> observer to notice.isInstructionFetch })
+                .containsExactly("last" to true, "all" to true, "data" to false, "last" to false)
+            Assertions.assertThat(events.map { it.second.addressBits }).containsOnly(address)
+            Assertions.assertThat(events.map { it.second.origin() }).containsOnly(AccessOrigin.EXECUTION)
+            Assertions.assertThat(events[0].second).isSameAs(events[1].second)
+            memory.deleteAddressObserver(last)
+            memory.deleteAddressObserver(data)
+            memory.readData(address, MemoryState.WORD_LENGTH_BYTES)
+            Assertions.assertThat(events).hasSize(4)
         }
     }
 

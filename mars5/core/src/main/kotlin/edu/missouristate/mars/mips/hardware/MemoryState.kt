@@ -657,15 +657,36 @@ open class MemoryState(
         listeners.removeIf { it.callback === callback }
     }
 
-    private val addressObservers = CopyOnWriteArrayList<(MemoryAccessNotice) -> Unit>()
+    private class AddressObserver(
+        val callback: (MemoryAccessNotice) -> Unit,
+        val includeInstructionFetch: Boolean,
+    )
+
+    private class AddressObservers(val all: List<AddressObserver> = emptyList()) {
+        val instructionFetches = all.filter(AddressObserver::includeInstructionFetch)
+    }
+
+    @Volatile private var addressObservers = AddressObservers()
 
     /** Subscribe to execution and host accesses with full unsigned addresses. */
     fun addAddressObserver(callback: (MemoryAccessNotice) -> Unit) {
-        addressObservers.addIfAbsent(callback)
+        addAddressObserver(callback, includeInstructionFetch = true)
     }
 
+    /** Subscribe once per callback. Remove it before changing its fetch preference. */
+    @Synchronized
+    fun addAddressObserver(callback: (MemoryAccessNotice) -> Unit, includeInstructionFetch: Boolean) {
+        val current = addressObservers.all
+        if (current.none { it.callback == callback }) {
+            addressObservers = AddressObservers(current + AddressObserver(callback, includeInstructionFetch))
+        }
+    }
+
+    @Synchronized
     fun deleteAddressObserver(callback: (MemoryAccessNotice) -> Unit) {
-        addressObservers.remove(callback)
+        val current = addressObservers.all
+        val index = current.indexOfFirst { it.callback == callback }
+        if (index >= 0) addressObservers = AddressObservers(current.toMutableList().apply { removeAt(index) })
     }
 
     open fun countObservers(): Int = listeners.size
@@ -677,16 +698,21 @@ open class MemoryState(
     private fun notifyAnyObservers(type: Int, address: Int, length: Int, value: Int, instructionFetch: Boolean = false) {
         notifyAddressObservers(type, address.toUInt().toLong(), length, value, instructionFetch)
         if (listeners.isEmpty()) return
-        val notice = MemoryAccessNotice(type, address, length, value, instructionFetch)
+        var notice: MemoryAccessNotice? = null
         for (listener in listeners) {
-            if (listener.matches(address)) listener.callback(notice)
+            if (listener.matches(address)) {
+                val access = notice ?: MemoryAccessNotice(type, address, length, value, instructionFetch).also { notice = it }
+                listener.callback(access)
+            }
         }
     }
 
     private fun notifyAddressObservers(type: Int, address: Long, length: Int, value: Int, instructionFetch: Boolean = false) {
-        if (addressObservers.isEmpty()) return
+        val observers = addressObservers
+        val matching = if (instructionFetch) observers.instructionFetches else observers.all
+        if (matching.isEmpty()) return
         val notice = MemoryAccessNotice(type, address.toInt(), length, value, instructionFetch, address)
-        for (observer in addressObservers) observer(notice)
+        for (observer in matching) observer.callback(notice)
     }
 
     companion object {

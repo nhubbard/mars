@@ -93,7 +93,8 @@ tasks.register<JavaExec>("benchmarkExecution") {
   mainClass.set("edu.missouristate.mars.benchmark.ExecutionBenchmark")
   javaLauncher.set(javaToolchains.launcherFor { languageVersion.set(JavaLanguageVersion.of(25)) })
   args(rootProject.file("../examples/smoke/png-decoder/src/main/mips/viewer.asm").absolutePath,
-    providers.gradleProperty("executionBenchmarkMode").getOrElse("async"))
+    providers.gradleProperty("executionBenchmarkMode").getOrElse("async"),
+    providers.gradleProperty("executionBenchmarkObserver").getOrElse("none"))
   val recording = providers.gradleProperty("coreExecutionRecording").orNull
   if (recording != null) jvmArgs("-XX:StartFlightRecording=settings=profile,filename=$recording,dumponexit=true")
 }

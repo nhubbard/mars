@@ -29,13 +29,15 @@ object ExecutionBenchmark {
         val source = Path.of(args[0]).toAbsolutePath()
         val mode = args[1]
         require(mode == "sync" || mode == "async")
+        val observer = args.getOrElse(2) { "none" }
+        require(observer in setOf("none", "all", "data"))
         val image = newSession().use { session ->
             session.assemble(listOf(source), handler = null, extended = true, warnings = false)
             session.captureAssemblyImage {}
         }
-        println("${System.getProperty("os.arch")}, JDK ${Runtime.version()}, $mode, 1 warmup, 3 measured")
+        println("${System.getProperty("os.arch")}, JDK ${Runtime.version()}, $mode, observer $observer, 1 warmup, 3 measured")
         val samples = List(4) { index ->
-            execute(image, source.parent, mode == "async").also { nanos ->
+            execute(image, source.parent, mode == "async", observer).also { nanos ->
                 println(String.format(Locale.ROOT, "%s %.3f s (%d instructions)",
                     if (index == 0) "warmup" else "sample", nanos / 1e9, EXPECTED_INSTRUCTIONS))
             }
@@ -45,9 +47,17 @@ object ExecutionBenchmark {
             medianSeconds, EXPECTED_INSTRUCTIONS / medianSeconds / 1e6))
     }
 
-    private fun execute(image: AssemblyImage, directory: Path, asynchronous: Boolean): Long = newSession().use { session ->
+    private fun execute(
+        image: AssemblyImage, directory: Path, asynchronous: Boolean, observer: String,
+    ): Long = newSession().use { session ->
         session.loadAssemblyImage(image, true) {}
         ProgramArgumentList(listOf("torture.png")).storeProgramArguments(session)
+        var dataAccesses = 0L
+        if (observer != "none") {
+            session.memory.addAddressObserver({ access ->
+                if (!access.isInstructionFetch) dataAccesses++
+            }, includeInstructionFetch = observer == "all")
+        }
         val bytes = ByteArrayOutputStream()
         PrintStream(bytes, true, Charsets.UTF_8).use { output ->
             SessionSyscallEnvironment(session.memory, ByteArrayInputStream(byteArrayOf()), output, output, directory).use { io ->
@@ -80,6 +90,10 @@ object ExecutionBenchmark {
                 val console = bytes.toString(Charsets.UTF_8)
                 check(console.lineSequence().any { it == "PNG displayed." }) { console }
                 check(steps == EXPECTED_INSTRUCTIONS) { "Expected $EXPECTED_INSTRUCTIONS instructions, got $steps" }
+                if (observer != "none") {
+                    check(dataAccesses == 9_004_117L) { "Expected 9004117 data accesses, got $dataAccesses" }
+                    println("observed $dataAccesses data accesses")
+                }
                 elapsed
             }
         }
