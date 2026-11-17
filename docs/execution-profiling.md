@@ -114,6 +114,46 @@ The optimized profile also dropped the per-instruction absent-reservation
 closure from the leading allocation sites. The figures are sampled cumulative
 allocations, rather than resident memory.
 
+## Memory observer follow-up
+
+Address subscriptions can now exclude instruction fetches before constructing
+a notice. The existing single-argument subscription continues receiving all
+accesses. Registration publishes a snapshot containing both the complete list
+and its fetch subset, preserving subscription order and delivery during
+callbacks that change registration. Range observers construct a notice only
+after finding a matching range.
+
+X-Ray, the data-cache simulator, and debugger memory watchpoints use data-only
+subscriptions. Memory-reference displays continue receiving instruction fetches.
+The data-cache recorder also retains its direct-call fetch filter.
+
+To compare delivery modes with the same checked workload, run both commands.
+
+```sh
+./mars5/gradlew -p mars5 :core:benchmarkExecution -PexecutionBenchmarkObserver=all
+./mars5/gradlew -p mars5 :core:benchmarkExecution -PexecutionBenchmarkObserver=data
+```
+
+Both modes assert exactly 9,004,117 delivered data accesses and 53,035,658
+completed instructions per launch. A three-sample comparison measured median
+execution times of 4.024 s with broad delivery and 3.874 s with data-only
+delivery. This compares subscription modes on the same core revision.
+
+The clean IntelliJ replay measured 9.891, 9.630, and 9.440 seconds for
+PNG Run, giving a median of 9.630 seconds compared with 10.481 seconds in
+the preceding qualified replay. This 8% reduction includes the earlier
+backstep follow-up as well as the observer changes. Across the three Run
+spans, JFR sampled cumulative memory-notice allocations of 1.15 GB, down
+from 9.37 GB in that preceding replay. The PNG Debug launch paused at its
+breakpoint and resumed through completion. All 2,414 core, 57 CLI, and
+879 plugin tests passed, together with the plugin coverage gates and
+the instruction lab and PNG pixel checks.
+
+An initial IDE profiling launch aborted before playback in the JetBrains
+Runtime JFR sampler's native thread-suspension code. A fresh
+`clean cleanSandbox runIde` replay completed with the same runtime and
+profiling settings.
+
 ## Remaining execution costs
 
 - Backstep setup appeared in 388 of 2,333 optimized IDE samples. The
@@ -121,11 +161,9 @@ allocations, rather than resident memory.
   profile also shows device checkpoint composition as a separate target.
   A follow-up can reuse composed callbacks when every captured device
   action is identical while checking device restore order and rewind.
-- Memory access notices were the largest sampled allocation class in
-  the optimized IDE runs. X-Ray ignores instruction-fetch notices.
-  A follow-up can measure fetch-aware subscriptions that preserve
-  delivery for the tools and watchpoints that use fetches, and simplify
-  X-Ray's separate map of events to memory accesses.
+- The memory observer follow-up filters discarded instruction fetches.
+  X-Ray's separate map of events to memory accesses still performs lookup
+  and eviction work on each completed step and remains a profiling target.
 
 The verification suite passed 2,413 core, 57 CLI, 879 plugin, and five
 PNG smoke tests. The instruction lab executed 867 basic forms and 430

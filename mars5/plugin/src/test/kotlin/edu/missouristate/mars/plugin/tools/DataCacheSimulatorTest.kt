@@ -124,7 +124,13 @@ class DataCacheSimulatorTest {
             cache.observe(machine.memory).use {
                 val low = machine.memory.dataBaseAddress
                 machine.memory.setWord(low, 0)
-                AccessOrigin.duringExecution<Unit, Exception> { machine.memory.fetchInstruction(low) }
+                machine.memory.getStatement(machine.memory.textBaseAddress)
+                AccessOrigin.duringExecution<Unit, Exception> {
+                    machine.memory.fetchInstruction(low)
+                    cache.record(object : MemoryAccessNotice(READ, low, 0) {
+                        override val isInstructionFetch = true
+                    })
+                }
                 assertEquals(0L, cache.snapshot().accesses)
                 bitmap.observe(machine.memory).use {
                     instructions.observe(machine.memory).use {
