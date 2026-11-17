@@ -1,0 +1,10 @@
+%openFile -file png/viewer.asm -timeout 45
+%runConfiguration -mode=TILL_TERMINATED|-configurationName=PNG execution profile
+%runConfiguration -mode=TILL_TERMINATED|-configurationName=PNG execution profile
+%runConfiguration -mode=TILL_TERMINATED|-configurationName=PNG execution profile
+%setBreakpoint 24, png/viewer.asm
+%debugRunConfiguration PNG execution profile, 45
+%removeBreakpoint all
+%action Resume
+%waitForNoDebugSessions 90000
+%openFile -file fir.mars -timeout 45 -disableCodeAnalysis

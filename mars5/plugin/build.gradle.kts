@@ -237,6 +237,8 @@ tasks.named<RunIdeTask>("runIde") {
   val indexingBaseline = providers.gradleProperty("indexingBaseline").isPresent
   val suppliedArchive = providers.gradleProperty("packagedSmokeArchive").map { rootProject.file(it) }
   val packagedSmoke = providers.gradleProperty("packagedSmoke").isPresent || suppliedArchive.isPresent
+  val executionProfile = providers.gradleProperty("executionProfile").map { rootProject.file(it) }
+  check(!executionProfile.isPresent || packagedSmoke) { "Use executionProfile with packagedSmoke." }
   check(!indexingBaseline || !packagedSmoke) { "Choose either indexing playback or packaged smoke playback." }
   if (indexingBaseline) {
     val baseline = rootProject.layout.projectDirectory.dir(".gradle/indexing-baseline")
@@ -273,14 +275,19 @@ tasks.named<RunIdeTask>("runIde") {
       .zip(candidate) { directory, archive -> directory.file(archive.name).asFile }
     if (!suppliedArchive.isPresent) dependsOn(pluginArchive)
     args(fixture.get().asFile.absolutePath)
-    systemProperty("testscript.filename", scenario.file("packaged-smoke.ijperf").asFile.absolutePath)
+    val smokeScript = scenario.file("packaged-smoke.ijperf").asFile
+    val playback = layout.buildDirectory.file("packaged-smoke-input/execution.ijperf")
+    systemProperty("testscript.filename", if (executionProfile.isPresent) playback.get().asFile else smokeScript)
+    executionProfile.orNull?.let { recording ->
+      jvmArgs("-XX:StartFlightRecording=settings=profile,filename=$recording,dumponexit=true")
+    }
     systemProperty("idea.diagnostic.opentelemetry.file", "packaged-smoke-trace.json")
     systemProperty("performance.plugin.playback.runner.useDirectActionCall", "true")
     // Match IntelliJ IDE Starter's test policies in an unattended, disposable IDE.
     systemProperty("jb.consents.confirmation.enabled", false)
     systemProperty("jb.privacy.policy.text", "<!--999.999-->")
     systemProperty("jb.privacy.policy.ai.assistant.text", "<!--999.999-->")
-    timeout.set(Duration.ofMinutes(5))
+    timeout.set(Duration.ofMinutes(if (executionProfile.isPresent) 10 else 5))
 
     doFirst {
       val log = sandboxLogDirectory.get().asFile
@@ -294,7 +301,18 @@ tasks.named<RunIdeTask>("runIde") {
       project.sync {
         from(scenario.dir("project"))
         from(rootProject.file("../examples/mars64/fir.mars"))
+        if (executionProfile.isPresent) {
+          from(scenario.dir("execution"))
+          from(rootProject.file("../examples/smoke/png-decoder/src/main/mips")) { into("png") }
+        }
         into(fixture)
+      }
+      if (executionProfile.isPresent) {
+        val profiling = scenario.file("packaged-execution.ijperf").asFile.readText()
+        playback.get().asFile.writeText(
+          smokeScript.readText().replace("%storeHighlightingResults packaged-smoke-complete",
+            profiling + "%storeHighlightingResults packaged-smoke-complete")
+        )
       }
       // Exercise CRLF on every host, independent of the checkout's line ending settings.
       val legacySource = fixture.get().file("legacy.asm").asFile
