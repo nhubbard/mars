@@ -109,11 +109,14 @@ class IntegerRegisterFile(globalPointer: Int, stackPointer: Int, textBaseAddress
 
     fun getUserRegister(name: String): Register? {
         if (name[0] != '$') return null
-        val number = try {
-            Binary.stringToInt(name.substring(1))
-        } catch (_: NumberFormatException) {
-            -1
-        }
+        val first = name.getOrNull(1)
+        val number = if (first == null || first.isDigit() || first in "+-#") {
+            try {
+                Binary.stringToInt(name.substring(1))
+            } catch (_: NumberFormatException) {
+                -1
+            }
+        } else -1
         return registers.getOrNull(number) ?: registers.firstOrNull { it.name == name }
     }
 
