@@ -281,7 +281,8 @@ internal class MarsProcessHandler(
             notifyTextAvailable(runMessages.getMessage("run.assembly.failed") + "\n", ProcessOutputTypes.STDERR)
             return 1
         }
-        return MarsSessionService.createMarsComponent(backstepLimit).context().use { session ->
+        val component = MarsSessionService.createMarsComponent(backstepLimit, program.image.target)
+        return component.context().use { session ->
             launch.options.applyTo(session.settings)
             session.loadAssemblyImage(program.image, startAtMain, execution::ensureActive)
             try {

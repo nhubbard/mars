@@ -1,6 +1,8 @@
 %waitForSmart
 %openFile -file entry.mars -timeout 45
 %runConfiguration -mode=TILL_TERMINATED|-configurationName=Release Run
+%runConfiguration -mode=TILL_TERMINATED|-configurationName=Release Run
+%runConfiguration -mode=TILL_TERMINATED|-configurationName=Release Run
 %waitForSmart
 %goto 10 10
 %action GotoDeclaration
@@ -36,6 +38,20 @@
 %assertCurrentFile routine.inc
 %debugStep OVER
 %takeScreenshot packaged-debug
+%action Resume
+%waitForNoDebugSessions 30000
+%openFile -file entry.mars -timeout 45
+%goto 10 10
+%action ToggleTemporaryLineBreakpoint
+%debugRunConfiguration Release Debug, 45
+%assertCurrentFile entry.mars
+%action Resume
+%waitForNoDebugSessions 30000
+%openFile -file entry.mars -timeout 45
+%goto 10 10
+%action ToggleTemporaryLineBreakpoint
+%debugRunConfiguration Release Debug, 45
+%assertCurrentFile entry.mars
 %action Resume
 %waitForNoDebugSessions 30000
 %action ActivateMARSToolsToolWindow

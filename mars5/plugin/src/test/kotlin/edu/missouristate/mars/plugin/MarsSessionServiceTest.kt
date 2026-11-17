@@ -1,8 +1,12 @@
 package edu.missouristate.mars.plugin
 
+import edu.missouristate.mars.api.MarsTarget
+import edu.missouristate.mars.mips.instructions.InstructionDefaults
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.EnumSource
 
 class MarsSessionServiceTest {
     @Test
@@ -14,6 +18,7 @@ class MarsSessionServiceTest {
             val b = second.context
             assertSame(a, first.context)
             assertNotSame(a, b)
+            assertSame(a.instructionSet, b.instructionSet)
             a.registerFile.updateRegister(8, 42)
             assertEquals(0, b.registerFile.getValue(8))
             assertNotSame(a.memory, b.memory)
@@ -24,6 +29,16 @@ class MarsSessionServiceTest {
         } finally {
             first.dispose()
             second.dispose()
+        }
+    }
+
+    @ParameterizedTest
+    @EnumSource(MarsTarget::class)
+    fun `launch factory starts on the requested target`(target: MarsTarget) {
+        MarsSessionService.createMarsComponent(backstepLimit = 4, target = target).context().use { session ->
+            assertEquals(target, session.target)
+            assertSame(InstructionDefaults.forTarget(target), session.instructionSet)
+            assertEquals(4, session.backStepper.capacity())
         }
     }
 
