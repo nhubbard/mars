@@ -429,6 +429,49 @@ internal class PackagedCliTest {
     }
 
     @Test
+    fun gradingCountsNativeBranchDecisionsAndCodeRangesInTheStandaloneJar() {
+        val script = source("execution-counts.kts", """
+            for (index in 0..1) {
+                case("counts " + index) {
+                    val all = traceExecution()
+                    val work = traceExecution("window", "finish")
+                    runUntil("finish")
+                    all.expectCounts(13, 2, 1)
+                    work.expectCounts(8, 1, 1)
+                    work.close()
+                    runToExit()
+                    all.expectCounts(15, 2, 1)
+                    val counts = work.snapshot()
+                    println("METRIC " + counts.instructions + "," + counts.branches + "," + counts.takenBranches)
+                    expectOutput("")
+                }
+            }
+        """.trimIndent())
+        val entry = source("execution-counts.asm", $$"""
+            li $t0, 2
+        window:
+            addiu $t0, $t0, -1
+            bne $t0, $zero, window
+            nop
+            jal helper
+            nop
+        finish:
+            li $v0, 10
+            syscall
+        helper:
+            beq $zero, $zero, helper_done
+            nop
+        helper_done:
+            jr $ra
+            nop
+        """.trimIndent())
+        val result = launch("grade", script.toString(), entry.toString())
+        assertEquals(0, result.status, result.err + result.out)
+        assertEquals(2, result.out.lines().count { it == "METRIC 8,2,1" })
+        assertEquals(2, result.out.lines().count { it.startsWith("PASS ") })
+    }
+
+    @Test
     fun gradingUsesTheIdeMarsBotModelAcrossPausesAndFreshCases() {
         val script = source("robot.kts", """
             for (clock in listOf(8, 64, 97)) {

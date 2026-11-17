@@ -123,3 +123,23 @@ and no extra strokes. Straight forward motion is coalesced by the model; specify
 vertices rather than one vertex per pixel. An empty argument list requires no trail.
 Both checks accept a finite nonnegative `tolerance` (default `1e-9`). These checks
 verify device state and history, not IDE rendering or wall-clock animation speed.
+
+### Execution and branch counts
+
+`val events = traceExecution()` counts subsequent completed forward instructions,
+including delay slots and the terminating syscall. `traceExecution("begin", "end")`
+counts only instruction PCs in the half-open label range. A callee outside the range
+is excluded; a caller's call and delay-slot instructions inside the range still count.
+Choose text labels in increasing address order. Full 64-bit instruction addresses are used.
+
+`events.snapshot()` returns immutable instructions, takenBranches, notTakenBranches,
+and the derived branches total. Branch decisions come from the core StepEvent metadata:
+taken and not-taken branches count, including an always-taken beq or compact bc. Jumps
+such as j, jal, and jr are separate transfers and do not count as branch decisions.
+`events.expectCounts(instructions, takenBranches, notTakenBranches)` checks an exact
+reference fixture. Closing freezes a prefix; each case also closes its counters on exit.
+
+These opt-in counters measure executed instruction work, not physical cycles, branch
+prediction misses, or elapsed time. Query and close while execution is stopped. Backstep
+does not subtract forward events; replay contributes new events, matching the IDE counters.
+Do not impose a reference's totals on an otherwise equivalent student implementation.
