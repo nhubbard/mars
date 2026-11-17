@@ -78,7 +78,12 @@ open class BackStepper(
         check(activeFrame == 0L) { "An instruction is already executing" }
         if (!engaged) return false
         val executed = statement ?: throw NullPointerException()
-        var restore: (() -> Unit)? = null
+        val reservation = memory.reservation
+        // Undo clears an absent reservation directly. A live reservation must be
+        // restored before the device checkpoints, as it was captured before them.
+        var restore: (() -> Unit)? = if (reservation != null && memory.wideDataEnabled) {
+            { memory.reservation = reservation }
+        } else null
         for (checkpoint in checkpoints) {
             val next = checkpoint() ?: continue
             val previous = restore
@@ -187,6 +192,7 @@ open class BackStepper(
                 restoreStep(step)
             } while (!backSteps.empty() && belongsToGroup(backSteps.peek(), frame, statement))
             if (branch != null) delayedBranch.restore(branch)
+            if (frame != 0L && memory.wideDataEnabled) memory.reservation = null
             restore?.invoke()
         } catch (error: AddressErrorException) {
             throw IllegalStateException("Cannot restore memory while back-stepping", error)
@@ -440,7 +446,7 @@ open class BackStepper(
                     size--
                 } while (size > 0 && oldestFrame != 0L && stack[oldest()].frame == oldestFrame)
             }
-            top = if (size == 0) 0 else (top + 1) % capacity
+            top = if (size == 0 || top == capacity - 1) 0 else top + 1
             if (size < capacity) size++
             stack[top].assign(action, address, first, second)
         }
@@ -456,9 +462,12 @@ open class BackStepper(
         @Synchronized
         fun peek(): BackStep = stack[top]
 
-        private fun oldest(): Int = (top - size + 1 + capacity) % capacity
+        private fun oldest(): Int {
+            val index = top - size + 1
+            return if (index < 0) index + capacity else index
+        }
 
-        private fun previous(index: Int): Int = (index + capacity - 1) % capacity
+        private fun previous(index: Int): Int = if (index == 0) capacity - 1 else index - 1
     }
 
     private companion object {

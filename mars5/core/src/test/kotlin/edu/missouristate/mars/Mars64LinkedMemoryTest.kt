@@ -146,11 +146,16 @@ class Mars64LinkedMemoryTest {
             session.editIntegerRegister(10, address.toLong())
             program.simulate(program.machineList!!.size - 2)
             assertEquals(-2L, session.registerFile.getLongValueNoNotify(9))
+            val restoredReservations = mutableListOf<Long?>()
+            session.backStepper.addInstructionCheckpoint {
+                { restoredReservations.add(session.memory.reservation?.address) }
+            }
             program.simulate(2)
             assertEquals(0L, session.registerFile.getLongValueNoNotify(9))
             session.backStepper.backStep()
             session.backStepper.backStep()
             assertEquals(-2, session.memory.getWord(address))
+            assertEquals(listOf(null, address.toLong()), restoredReservations)
             session.memory.setByte(address + 4, 1)
             session.registerFile.setProgramCounter(program.machineList!!.last().address)
             program.simulate(1)
