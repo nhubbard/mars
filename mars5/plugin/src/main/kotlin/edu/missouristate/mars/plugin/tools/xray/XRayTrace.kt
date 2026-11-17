@@ -25,7 +25,7 @@ import edu.missouristate.mars.util.Binary
 /** Holds completed events, including repeated addresses. Backstep rewinds this execution's timeline. */
 internal class XRayTrace {
     private val steps = ArrayDeque<StepEvent>()
-    private val memoryByStep = mutableMapOf<StepEvent, List<MemoryAccessNotice>>()
+    private val memoryByStep = ArrayDeque<List<MemoryAccessNotice>>()
     private val pendingMemory = ArrayList<MemoryAccessNotice>()
     private var cached: List<StepEvent>? = emptyList()
     private var rewindOnConnect: Long? = null
@@ -56,11 +56,12 @@ internal class XRayTrace {
     @Synchronized
     fun record(event: StepEvent) {
         if (!connected) return
-        if (steps.size == CAPACITY) memoryByStep.remove(steps.removeFirst())
-        if (pendingMemory.isNotEmpty()) {
-            memoryByStep[event] = pendingMemory.toList()
-            pendingMemory.clear()
+        if (steps.size == CAPACITY) {
+            steps.removeFirst()
+            memoryByStep.removeFirst()
         }
+        memoryByStep.addLast(pendingMemory.toList())
+        pendingMemory.clear()
         steps.addLast(event)
         cached = null
     }
@@ -78,7 +79,8 @@ internal class XRayTrace {
 
     private fun trimAfter(stepCount: Long) {
         while ((steps.lastOrNull()?.stepCount ?: 0) > stepCount) {
-            memoryByStep.remove(steps.removeLast())
+            steps.removeLast()
+            memoryByStep.removeLast()
             cached = null
         }
     }
@@ -97,7 +99,12 @@ internal class XRayTrace {
     }
 
     @Synchronized
-    fun memoryFor(event: StepEvent): List<MemoryAccessNotice> = memoryByStep[event].orEmpty()
+    fun memoryFor(event: StepEvent): List<MemoryAccessNotice> {
+        for (index in steps.lastIndex downTo 0) {
+            if (steps[index] == event) return memoryByStep[index]
+        }
+        return emptyList()
+    }
 
     @Synchronized
     fun snapshot(): List<StepEvent> = cached ?: steps.toList().also { cached = it }

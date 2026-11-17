@@ -136,6 +136,33 @@ class XRayTraceTest {
     }
 
     @Test
+    fun `memory observations stay with their steps through history wrap and rewind`() {
+        val trace = XRayTrace()
+        MarsSessionService.createMarsComponent().context().use { machine ->
+            val memory = machine.memory
+            val address = memory.dataBaseAddress
+            val events = (1..XRayTrace.CAPACITY + 2).map { StepEvent(0x00400000, 0, it.toLong()) }
+            trace.observeMemory(memory).use {
+                for (event in events) {
+                    AccessOrigin.duringExecution<Unit, Exception> { memory.setWord(address, event.stepCount.toInt()) }
+                    trace.record(event)
+                }
+                assertTrue(trace.memoryFor(events[0]).isEmpty())
+                assertEquals(3, trace.memoryFor(events[2].copy()).single().value)
+                assertEquals(events.last().stepCount.toInt(), trace.memoryFor(events.last()).single().value)
+                trace.rewind(XRayTrace.CAPACITY.toLong())
+                assertTrue(trace.memoryFor(events.last()).isEmpty())
+                assertEquals(3, trace.memoryFor(events[2]).single().value)
+                AccessOrigin.duringExecution<Unit, Exception> { memory.setWord(address, 999) }
+                trace.record(events[XRayTrace.CAPACITY])
+                assertEquals(999, trace.memoryFor(events[XRayTrace.CAPACITY]).single().value)
+                trace.clear()
+                assertTrue(trace.memoryFor(events[2]).isEmpty())
+            }
+        }
+    }
+
+    @Test
     fun `bounded history includes repeated PCs and rewinds by execution step`() {
         val trace = XRayTrace()
         assertTrue(trace.snapshot().isEmpty())
