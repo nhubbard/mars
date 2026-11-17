@@ -3,6 +3,7 @@ package edu.missouristate.mars.devices
 import edu.missouristate.mars.mips.hardware.AccessOrigin.Companion.duringExecution
 import edu.missouristate.mars.mips.hardware.MemoryAccessNotice
 import edu.missouristate.mars.TestSessions
+import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.devices.MarsBotWorld.Point
 import edu.missouristate.mars.devices.MarsBotWorld.Stroke
 import java.nio.file.Path
@@ -16,6 +17,8 @@ import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.EnumSource
 
 class MarsBotDeviceTest {
     @Test
@@ -165,8 +168,11 @@ class MarsBotDeviceTest {
         }
     }
 
-    @Test
-    fun `rewind restores the clock position words and pen history of real instructions`(@TempDir directory: Path) {
+    @ParameterizedTest
+    @EnumSource(MarsTarget::class)
+    fun `rewind restores the clock position words and pen history of real instructions`(
+        target: MarsTarget, @TempDir directory: Path,
+    ) {
         val entry = directory.resolve("robot.asm").also {
             it.writeText(
               $$"""
@@ -184,6 +190,7 @@ class MarsBotDeviceTest {
             """.trimIndent())
         }
         TestSessions.create().use { session ->
+            session.selectTarget(target)
             val program = session.assemble(listOf(entry))
             val bot = MarsBotDevice()
             bot.setInstructionsPerTick(2)
