@@ -68,6 +68,9 @@ Each case assembles the supplied files into a fresh simulator. Use `startAt` to 
 check the expected structure. An exported label takes precedence over private labels. Ambiguous
 private labels cause a case to fail. Word offsets are in bytes and must resolve to aligned
 addresses. `expectBytes` accepts unsigned byte values and supports unaligned addresses.
+Use `expectDataAddress("pixel", 0x10010000L)` when a data symbol must match a device's
+configured address. It checks a byte address without requiring word alignment and preserves
+addresses above 4 GiB. It rejects a missing symbol or a text symbol.
 
 `step` counts machine instructions. A pseudo-instruction may assemble to several machine
 instructions. `runUntil` pauses before the instruction at the named label and can stop immediately

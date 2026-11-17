@@ -102,6 +102,14 @@ class AssemblyCase internal constructor(
         dataAddress(label, 0, alignment = 1)
     }
 
+    /** Check a data symbol's byte address, including addresses above 4 GiB. */
+    fun expectDataAddress(label: String, expected: Long) {
+        val actual = dataAddress(label, 0, alignment = 1)
+        requireCase(actual == expected) {
+            "Expected address of data label $label = 0x${expected.toString(16)}, got 0x${actual.toString(16)}"
+        }
+    }
+
     fun startAt(label: String) {
         requireCase(stop == null) { "Choose an entry label before executing instructions" }
         val address = textAddress(label)
