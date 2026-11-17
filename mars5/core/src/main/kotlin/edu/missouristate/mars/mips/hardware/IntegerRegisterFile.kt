@@ -41,24 +41,18 @@ class IntegerRegisterFile(globalPointer: Int, stackPointer: Int, textBaseAddress
         MemoryConfigurations.getDefaultTextBaseAddress(),
     )
 
+    private val registerEvents = EventEmitter<RegisterAccessNotice>()
     val registers = Array(registerNames.size) { number ->
         val reset = when (number) {
             GLOBAL_POINTER_REGISTER -> globalPointer
             STACK_POINTER_REGISTER -> stackPointer
             else -> 0
         }
-        Register("$${registerNames[number]}", number, reset)
+        Register("$${registerNames[number]}", number, reset, registerEvents)
     }
     val programCounterRegister = Register("pc", PC_REGISTER, textBaseAddress)
-    private val hi = Register("hi", HI_REGISTER, 0)
-    private val lo = Register("lo", LO_REGISTER, 0)
-    private val registerEvents = EventEmitter<RegisterAccessNotice>()
-
-    init {
-        registers.forEach { it.addObserver(registerEvents::emit) }
-        hi.addObserver(registerEvents::emit)
-        lo.addObserver(registerEvents::emit)
-    }
+    private val hi = Register("hi", HI_REGISTER, 0, registerEvents)
+    private val lo = Register("lo", LO_REGISTER, 0, registerEvents)
 
     fun addRegistersObserver(listener: (RegisterAccessNotice) -> Unit) {
         registerEvents.subscribe(listener)

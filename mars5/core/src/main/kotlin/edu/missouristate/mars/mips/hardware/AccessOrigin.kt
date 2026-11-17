@@ -11,6 +11,7 @@ enum class AccessOrigin {
 
     companion object {
         private val currentOrigin = ScopedValue.newInstance<AccessOrigin>()
+        private val executionBinding = ScopedValue.where(currentOrigin, EXECUTION)
 
         @JvmStatic
         fun current(): AccessOrigin = currentOrigin.orElse(APPLICATION)
@@ -18,6 +19,6 @@ enum class AccessOrigin {
         /** Bind execution for this lexical scope, including nested calls and exceptional exits. */
         @JvmStatic
         fun <T, X : Throwable> duringExecution(operation: CallableOp<T, X>): T =
-            if (currentOrigin.isBound) operation.call() else ScopedValue.where(currentOrigin, EXECUTION).call(operation)
+            if (currentOrigin.isBound) operation.call() else executionBinding.call(operation)
     }
 }

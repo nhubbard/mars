@@ -90,6 +90,27 @@ internal class IntegerRegisterFileTest {
         Assertions.assertThat(notices).hasSize(4)
     }
 
+    @Test
+    fun groupObserverChangesToLocalObserversApplyOnTheNextAccess() {
+        val file = IntegerRegisterFile()
+        val register = file.registers[8]
+        val events = mutableListOf<String>()
+        val local: (RegisterAccessNotice) -> Unit = { events.add("local") }
+        val group: (RegisterAccessNotice) -> Unit = {
+            events.add("group")
+            register.deleteObserver(local)
+        }
+        register.addObserver(local)
+        file.addRegistersObserver(group)
+        file.setValue(8, 1)
+        file.getValue(8)
+        Assertions.assertThat(events).containsExactly("group", "local", "group")
+        file.deleteRegistersObserver(group)
+        register.addObserver(local)
+        file.getValue(8)
+        Assertions.assertThat(events).containsExactly("group", "local", "group", "local")
+    }
+
     @ParameterizedTest
     @ValueSource(ints = [-1, 35, Int.MAX_VALUE])
     fun invalidRegisterNumbersAreRejected(number: Int) {

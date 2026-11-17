@@ -31,7 +31,14 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 /** A machine register whose reads and writes can be observed. */
-open class Register(open val name: String, open val number: Int, initial: Int) {
+open class Register internal constructor(
+    open val name: String,
+    open val number: Int,
+    initial: Int,
+    private val group: EventEmitter<RegisterAccessNotice>?,
+) {
+    constructor(name: String, number: Int, initial: Int) : this(name, number, initial, null)
+
     private var initialValue = initial.toLong()
     @Volatile private var currentValue = initial.toLong()
     private val events = EventEmitter<RegisterAccessNotice>()
@@ -85,6 +92,7 @@ open class Register(open val name: String, open val number: Int, initial: Int) {
     }
 
     private fun notifyListeners(type: Int) {
-        events.emit(RegisterAccessNotice(type, name))
+        if (!events.hasListeners() && group?.hasListeners() != true) return
+        events.emit(RegisterAccessNotice(type, name), group)
     }
 }

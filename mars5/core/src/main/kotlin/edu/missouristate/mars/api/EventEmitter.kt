@@ -14,7 +14,16 @@ class EventEmitter<T> {
         listeners.remove(listener)
     }
 
+    internal fun hasListeners(): Boolean = listeners.isNotEmpty()
+
     fun emit(event: T) {
         listeners.forEach { it(event) }
+    }
+
+    /** Take the local snapshot before invoking the register group's listeners. */
+    internal fun emit(event: T, group: EventEmitter<T>?) {
+        val snapshot = listeners.iterator()
+        group?.emit(event)
+        for (listener in snapshot) listener(event)
     }
 }
