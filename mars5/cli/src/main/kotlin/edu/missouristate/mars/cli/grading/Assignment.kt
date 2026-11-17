@@ -84,6 +84,7 @@ class AssemblyCase internal constructor(
     private val simulator = machine.simulator()
     private var marsBot: MarsBotCheck? = null
     private val memoryStoreTraces = mutableListOf<MemoryStoreTrace>()
+    private val executionTraces = mutableListOf<ExecutionTrace>()
     private var stop: StopEvent? = null
     private var error: String? = null
 
@@ -121,6 +122,13 @@ class AssemblyCase internal constructor(
     fun traceMemoryStores(label: String, byteLength: Int = 1, offset: Int = 0): MemoryStoreTrace =
         traceMemoryStores(dataAddress(label, offset.toLong(), alignment = 1), byteLength)
 
+    /** Count subsequent completed instructions and native branch decisions. */
+    fun traceExecution(): ExecutionTrace = ExecutionTrace(simulator).also(executionTraces::add)
+
+    /** Count from fromLabel (inclusive) to untilLabel (exclusive), excluding callees outside that address range. */
+    fun traceExecution(fromLabel: String, untilLabel: String): ExecutionTrace =
+        ExecutionTrace(simulator, textAddress(fromLabel), textAddress(untilLabel)).also(executionTraces::add)
+
     /** Attach the same instruction-clocked MarsBot model used by the IDE, before execution. */
     fun connectMarsBot(instructionsPerTick: Int = MarsBotDevice.DEFAULT_INSTRUCTIONS_PER_TICK): MarsBotCheck {
         requireCase(stop == null && marsBot == null) { "Connect one MarsBot before executing instructions" }
@@ -132,6 +140,8 @@ class AssemblyCase internal constructor(
         marsBot = null
         memoryStoreTraces.forEach(MemoryStoreTrace::close)
         memoryStoreTraces.clear()
+        executionTraces.forEach(ExecutionTrace::close)
+        executionTraces.clear()
     }
 
     fun startAt(label: String) {
