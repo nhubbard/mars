@@ -88,25 +88,29 @@ enum class TokenTypes {
             if (RegisterNames.floating(value) != null) return FP_REGISTER_NAME
             if (instructions.target == MarsTarget.MARS64 && RegisterNames.vector(value) != null) return VECTOR_REGISTER_NAME
 
-            if (instructions.target == MarsTarget.MARS64 && hasDoublewordSpelling(value)) return INTEGER_64
-            val integer = try {
-                Binary.stringToInt(value)
-            } catch (_: NumberFormatException) {
-                null
-            }
-            if (integer != null) {
-                return when (integer) {
-                    in 0..31 -> INTEGER_5
-                    in DataTypes.MIN_UHALF_VALUE..DataTypes.MAX_UHALF_VALUE -> INTEGER_16U
-                    in DataTypes.MIN_HALF_VALUE..DataTypes.MAX_HALF_VALUE -> INTEGER_16
-                    else -> INTEGER_32
+            // Preserve JDK numeric spellings, including NaN, Infinity, Unicode digits,
+            // and its ASCII whitespace trimming, while skipping parsers for ordinary names.
+            if (first.isDigit() || first in "+-.NI" || first <= ' ') {
+                if (instructions.target == MarsTarget.MARS64 && hasDoublewordSpelling(value)) return INTEGER_64
+                val integer = try {
+                    Binary.stringToInt(value)
+                } catch (_: NumberFormatException) {
+                    null
                 }
-            }
-            try {
-                parseDouble(value)
-                return REAL_NUMBER
-            } catch (_: NumberFormatException) {
-                // Continue with nonnumeric spellings.
+                if (integer != null) {
+                    return when (integer) {
+                        in 0..31 -> INTEGER_5
+                        in DataTypes.MIN_UHALF_VALUE..DataTypes.MAX_UHALF_VALUE -> INTEGER_16U
+                        in DataTypes.MIN_HALF_VALUE..DataTypes.MAX_HALF_VALUE -> INTEGER_16
+                        else -> INTEGER_32
+                    }
+                }
+                try {
+                    parseDouble(value)
+                    return REAL_NUMBER
+                } catch (_: NumberFormatException) {
+                    // Continue with nonnumeric spellings.
+                }
             }
             return when {
                 instructions.matchOperator(value) != null -> OPERATOR
