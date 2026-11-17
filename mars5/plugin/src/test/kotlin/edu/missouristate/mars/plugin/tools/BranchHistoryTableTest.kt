@@ -4,6 +4,7 @@ import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.api.StepEvent
 import edu.missouristate.mars.api.StepEvent.BranchOutcome.NOT_TAKEN
 import edu.missouristate.mars.api.StepEvent.BranchOutcome.TAKEN
+import edu.missouristate.mars.mips.instructions.InstructionDefaults
 import edu.missouristate.mars.plugin.tools.BranchHistoryTable.Observation
 import edu.missouristate.mars.plugin.tools.BranchHistoryTable.Options
 import edu.missouristate.mars.plugin.tools.BranchHistoryTable.Row
@@ -12,6 +13,12 @@ import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
 
 class BranchHistoryTableTest {
+    private val decoders = MarsTarget.entries.associateWith { ExecutedInstructionCache(InstructionDefaults.forTarget(it)) }
+
+    private fun BranchHistoryTable.record(event: StepEvent) {
+        record(event, decoders.getValue(event.target).decode(event.instruction).branchTargetOffset)
+    }
+
     @Test
     fun `two outcomes change a two-bit prediction and branches sharing a row train it together`() {
         val table = BranchHistoryTable()

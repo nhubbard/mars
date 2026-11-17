@@ -42,6 +42,7 @@ import edu.missouristate.mars.plugin.tools.MemoryGridDisplay
 import edu.missouristate.mars.plugin.tools.BranchHistoryTable
 import edu.missouristate.mars.plugin.tools.DataCacheSimulator
 import edu.missouristate.mars.plugin.tools.DigitalLabDevice
+import edu.missouristate.mars.plugin.tools.ExecutedInstructionCache
 import edu.missouristate.mars.plugin.tools.InstructionCounter
 import edu.missouristate.mars.plugin.tools.InstructionStatistics
 import edu.missouristate.mars.plugin.tools.KeyboardDisplayDevice
@@ -309,13 +310,14 @@ internal class MarsProcessHandler(
                         val simulator = session.simulator()
                         simulator.setInstructionLimit(instructionLimit.toLong())
                         simulator.setRunSpeedSource { runSpeed.toDouble() }
+                        val decodedInstructions = ExecutedInstructionCache(session.instructionSet)
                         simulator.addListener(object : SimulatorListener {
                             override fun onStep(event: StepEvent) {
                                 val word = event.instruction
-                                val instruction = session.instructionSet.findByBinaryCode(word)
-                                instructionCounter.record(instruction)
-                                instructionStatistics.record(word, instruction)
-                                branchHistory.record(event)
+                                val decoded = decodedInstructions.decode(word)
+                                instructionCounter.record(decoded.instruction)
+                                instructionStatistics.record(word, decoded.instruction)
+                                branchHistory.record(event, decoded.branchTargetOffset)
                                 xray.record(event)
                                 digitalLab.instructionCompleted(session)
                                 keyboardDisplay.instructionCompleted(session)
