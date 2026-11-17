@@ -86,6 +86,18 @@ tasks.register<JavaExec>("benchmarkSessionStartup") {
   if (recording != null) jvmArgs("-XX:StartFlightRecording=settings=profile,filename=$recording,dumponexit=true")
 }
 
+tasks.register<JavaExec>("benchmarkExecution") {
+  description = "Measure sustained execution of the MARS64 PNG decoder."
+  group = "verification"
+  classpath = benchmark.runtimeClasspath
+  mainClass.set("edu.missouristate.mars.benchmark.ExecutionBenchmark")
+  javaLauncher.set(javaToolchains.launcherFor { languageVersion.set(JavaLanguageVersion.of(25)) })
+  args(rootProject.file("../examples/smoke/png-decoder/src/main/mips/viewer.asm").absolutePath,
+    providers.gradleProperty("executionBenchmarkMode").getOrElse("async"))
+  val recording = providers.gradleProperty("coreExecutionRecording").orNull
+  if (recording != null) jvmArgs("-XX:StartFlightRecording=settings=profile,filename=$recording,dumponexit=true")
+}
+
 val verifyCoreIsolation = tasks.register("verifyCoreIsolation") {
   group = "verification"
   description = "Reject desktop, compatibility, and XML dependencies from the core library."
