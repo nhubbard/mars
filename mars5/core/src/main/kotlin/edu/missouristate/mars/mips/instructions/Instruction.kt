@@ -3,6 +3,7 @@ package edu.missouristate.mars.mips.instructions
 import edu.missouristate.mars.ProcessingException
 import edu.missouristate.mars.assembler.TokenList
 import edu.missouristate.mars.assembler.Tokenizer
+import java.util.Collections
 import java.util.StringTokenizer
 
 /*
@@ -47,6 +48,7 @@ abstract class Instruction(
     protected fun extractOperator(example: String): String = StringTokenizer(example, " ,\t").nextToken()
 
     internal fun createExampleTokenList(instructions: InstructionSet?) {
+        check(!::exampleTokens.isInitialized || !exampleTokens.isFrozen)
         try {
             exampleTokens = Tokenizer(null, instructions).tokenizeExampleInstruction(exampleFormat)
         } catch (_: ProcessingException) {
@@ -56,12 +58,12 @@ abstract class Instruction(
 
     companion object {
         /** Transfers whose second operand names a CP0 register even though it uses GPR spelling. */
-        val coprocessor0Transfers: Set<String> = setOf("mfc0", "mtc0", "dmfc0", "dmtc0")
+        val coprocessor0Transfers: Set<String> = Collections.unmodifiableSet(setOf("mfc0", "mtc0", "dmfc0", "dmtc0"))
 
         const val INSTRUCTION_LENGTH = 4
         const val INSTRUCTION_LENGTH_BITS = 32
 
-        /** Operand markers for the first, second, and third operands in an operation mask. */
-        @JvmField val operandMask = charArrayOf('f', 's', 't', 'u')
+        /** Operand markers in order in an operation mask. */
+        const val operandMask = "fstu"
     }
 }

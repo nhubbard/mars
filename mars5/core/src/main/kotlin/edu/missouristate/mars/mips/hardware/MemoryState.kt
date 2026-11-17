@@ -45,7 +45,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 open class MemoryState(
     configuration: MemoryConfiguration,
     private val settings: MarsSettings,
-    private val decoder: (Int, Int) -> ProgramStatement?,
+    decoder: (Int, Int) -> ProgramStatement?,
 ) {
     @JvmField var textBaseAddress: Int = 0
     @JvmField var dataSegmentBaseAddress: Int = 0
@@ -76,6 +76,7 @@ open class MemoryState(
     internal data class Reservation(val address: Long, val size: Int, val paired: Boolean = false)
     internal var reservation: Reservation? = null
     internal var wideDataEnabled = false
+    internal var decoder = decoder
     internal var wideInstructionDecoder: ((Int, Long) -> ProgramStatement)? = null
     private lateinit var wideData: WordMemorySegment
     private lateinit var wideText: TextMemorySegment

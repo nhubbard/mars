@@ -16,6 +16,7 @@ import edu.missouristate.mars.mips.instructions.basic.release6HardwareReads
 import edu.missouristate.mars.mips.instructions.basic.release6ScalarArithmetic
 import edu.missouristate.mars.mips.instructions.basic.release6ScalarRoots
 import edu.missouristate.mars.mips.instructions.basic.release6SystemTransfers
+import java.util.Collections
 /*
 Copyright (c) 2003-2013,  Pete Sanderson and Kenneth Vollmar
 
@@ -49,14 +50,16 @@ open class InstructionSet {
     internal var target = MarsTarget.DEFAULT
         private set
     private val forms = ArrayList<Instruction>()
-    open val instructionList: ArrayList<Instruction> get() = forms
+    open val instructionList: List<Instruction> = Collections.unmodifiableList(forms)
+    private var shared = false
     private lateinit var opcodeMatchMaps: List<MatchMap>
 
     open fun populate() {
         populate(MarsTarget.DEFAULT)
     }
 
-    internal fun populate(target: MarsTarget, includeLegacySourceForms: Boolean = false) {
+    internal fun populate(target: MarsTarget) {
+        check(!shared) { "Cannot repopulate a shared instruction catalog" }
         this.target = target
         forms.clear()
         val loader = InstructionLoader()
@@ -103,9 +106,22 @@ open class InstructionSet {
                 val specificity = right.mask.countOneBits() - left.mask.countOneBits()
                 if (specificity != 0) specificity else left.mask - right.mask
             }
-        if (includeLegacySourceForms) {
-            val examples = forms.mapTo(HashSet()) { it.exampleFormat }
-            forms.addAll(InstructionDefaults.forTarget(MarsTarget.MARS32).instructionList.filter { examples.add(it.exampleFormat) })
+    }
+
+    internal fun freeze() {
+        forms.forEach { it.tokenList.freeze() }
+        shared = true
+    }
+
+    internal fun withLegacySourceForms(legacy: InstructionSet): InstructionSet {
+        check(shared && legacy.shared)
+        val examples = forms.mapTo(HashSet()) { it.exampleFormat }
+        return InstructionSet().also { editor ->
+            editor.target = target
+            editor.forms.addAll(forms)
+            editor.forms.addAll(legacy.forms.filter { examples.add(it.exampleFormat) })
+            editor.opcodeMatchMaps = opcodeMatchMaps
+            editor.shared = true
         }
     }
 

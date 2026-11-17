@@ -33,27 +33,44 @@ open class TokenList : Cloneable {
     private var tokens = ArrayList<Token>()
     private var equivalenceExpansionIncomplete = false
 
+    internal var isFrozen = false
+        private set
+
     open var processedLine: String = ""
+        set(value) {
+            check(!isFrozen)
+            field = value
+        }
+
+    /** Example tokens have no source provenance and are published with the instruction catalog. */
+    internal fun freeze() {
+        tokens.forEach(Token::freeze)
+        isFrozen = true
+    }
 
     open fun hasCompleteEquivalenceExpansion(): Boolean = !equivalenceExpansionIncomplete
 
     fun markEquivalenceExpansionIncomplete() {
+        check(!isFrozen)
         equivalenceExpansionIncomplete = true
     }
 
     open operator fun get(position: Int): Token = tokens[position]
 
     open operator fun set(position: Int, replacement: Token) {
+        check(!isFrozen)
         tokens[position] = replacement
     }
 
     open fun size(): Int = tokens.size
 
     open fun add(token: Token) {
+        check(!isFrozen)
         tokens.add(token)
     }
 
     open fun remove(position: Int) {
+        check(!isFrozen)
         tokens.removeAt(position)
     }
 
@@ -70,5 +87,8 @@ open class TokenList : Cloneable {
         for (token in tokens) append(token.toString()).append(' ')
     }
 
-    public override fun clone(): Any = (super.clone() as TokenList).also { it.tokens = ArrayList(tokens) }
+    public override fun clone(): Any = (super.clone() as TokenList).also { copy ->
+        copy.tokens = if (isFrozen) tokens.mapTo(ArrayList(tokens.size)) { it.withType(it.type) } else ArrayList(tokens)
+        copy.isFrozen = false
+    }
 }
