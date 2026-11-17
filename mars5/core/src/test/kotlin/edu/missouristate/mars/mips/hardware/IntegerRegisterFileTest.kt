@@ -47,6 +47,30 @@ internal class IntegerRegisterFileTest {
     }
 
     @Test
+    fun registerLookupPreservesNumericAliasesAlongsideNamedRegisters() {
+        val file = IntegerRegisterFile()
+        val aliases = mapOf(
+            "$" to 0,
+            "$-0" to 0,
+            "$+8" to 8,
+            "$010" to 8,
+            "$0x8" to 8,
+            "$#8" to 8,
+            "$4294967304" to 8,
+            "$\u0660\u0668" to 8,
+            "$\u0663\u0661" to 31,
+        )
+        for ((spelling, number) in aliases) {
+            Assertions.assertThat(file.getUserRegister(spelling)).isSameAs(file.registers[number])
+        }
+        for (register in file.registers) {
+            Assertions.assertThat(file.getUserRegister(register.name)).isSameAs(register)
+        }
+        Assertions.assertThat(file.getUserRegister("$0x")).isNull()
+        Assertions.assertThat(file.getUserRegister("$32")).isNull()
+    }
+
+    @Test
     fun programCounterSupportsInitializationIncrementAndRestore() {
         val registers = IntegerRegisterFile(1, 2, 0x400000)
         registers.initializeProgramCounter(0x400100)
