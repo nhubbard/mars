@@ -45,7 +45,10 @@ class DelayedBranchState {
         val targetAddressBits: Long = targetAddress.toLong(),
     )
 
-    fun snapshot(): Snapshot = Snapshot(state, targetAddress.toInt(), jump, forbiddenSlot, targetAddress)
+    fun snapshot(): Snapshot =
+        if (state == CLEARED) {
+            if (forbiddenSlot) FORBIDDEN_SLOT_SNAPSHOT else CLEARED_SNAPSHOT
+        } else Snapshot(state, targetAddress.toInt(), jump, forbiddenSlot, targetAddress)
 
     fun restore(snapshot: Snapshot) {
         require(snapshot.state in CLEARED..TRIGGERED) { "Invalid delayed branch state" }
@@ -100,5 +103,7 @@ class DelayedBranchState {
         const val CLEARED = 0
         const val REGISTERED = 1
         const val TRIGGERED = 2
+        val CLEARED_SNAPSHOT = Snapshot(CLEARED, 0, false)
+        val FORBIDDEN_SLOT_SNAPSHOT = Snapshot(CLEARED, 0, false, forbiddenSlot = true)
     }
 }

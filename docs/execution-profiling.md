@@ -97,13 +97,30 @@ resumed execution through debugger termination, and verified the standard
 packaged Run, Debug, and FIR outputs. The tool callback appeared in 643 of
 2,383 simulator-thread execution samples during the three PNG Runs.
 
+## Backstep follow-up
+
+Backstep clears the common absent load-linked reservation directly on undo,
+with the same ordering before device restore callbacks. A live reservation
+is still restored from its captured value. The branch checkpoint reuses
+immutable snapshots when there is no pending transfer, and the undo ring
+wraps its indices without integer remainder.
+
+On the same asynchronous PNG workload, a paired run with a fixed 1 GiB heap
+measured a 3.929 s baseline median and optimized medians of 3.863 and 3.897 s
+in separate JVMs. The timings are close enough to treat this as an allocation
+improvement. Separate JFR recordings of the four launches in each revision
+estimated 7.27 GB and 1.52 GB of cumulative delayed-branch snapshot allocations.
+The optimized profile also dropped the per-instruction absent-reservation
+closure from the leading allocation sites. The figures are sampled cumulative
+allocations, rather than resident memory.
+
 ## Remaining execution costs
 
 - Backstep setup appeared in 388 of 2,333 optimized IDE samples. The
-  allocation profile still shows delayed-branch snapshots and checkpoint
-  closures. A follow-up can compare representing common undo states
-  without per-instruction allocation while testing device checkpoint
-  ordering, reservations, and fault and delay-slot backstep.
+  follow-up above reduces core undo allocations. The sampled IntelliJ
+  profile also shows device checkpoint composition as a separate target.
+  A follow-up can reuse composed callbacks when every captured device
+  action is identical while checking device restore order and rewind.
 - Memory access notices were the largest sampled allocation class in
   the optimized IDE runs. X-Ray ignores instruction-fetch notices.
   A follow-up can measure fetch-aware subscriptions that preserve

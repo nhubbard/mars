@@ -70,13 +70,6 @@ class MarsContext @Inject constructor(
 
     init {
         configureTargetHardware()
-        backStepper.addInstructionCheckpoint {
-            if (target == MarsTarget.MARS32) null
-            else {
-                val reservation = memory.reservation
-                { memory.reservation = reservation }
-            }
-        }
     }
 
     /** Requests an interrupt to be handled at the next instruction boundary. */
