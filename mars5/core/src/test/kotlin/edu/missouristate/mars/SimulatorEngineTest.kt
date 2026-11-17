@@ -206,6 +206,68 @@ internal class SimulatorEngineTest {
     }
 
     @Test
+    fun stableDeviceCheckpointsRetainEachFramesOrderAfterChangesAndUnsubscription() {
+        load("nop\n").use { session ->
+            val history = session.backStepper
+            val pc = session.registerFile.getPC()
+            val statement = session.memory.getStatementNoNotify(pc)
+            val restored = mutableListOf<String>()
+            var captures = 0
+            val first: () -> Unit = { restored.add("first") }
+            val second: () -> Unit = { restored.add("second") }
+            val changed: () -> Unit = { restored.add("changed") }
+            var current: (() -> Unit)? = second
+            val subscription = history.addInstructionCheckpoint {
+                captures++
+                first
+            }
+            history.addInstructionCheckpoint { current }.use {
+                fun capture() {
+                    history.beginInstruction(pc, statement)
+                    history.endInstruction()
+                }
+                capture()
+                capture()
+                current = changed
+                capture()
+                subscription.close()
+                capture()
+                current = null
+                capture()
+                repeat(5) { history.backStep() }
+                Assertions.assertThat(captures).isEqualTo(3)
+                Assertions.assertThat(restored).containsExactly(
+                    "changed", "first", "changed", "first", "second", "first", "second",
+                )
+            }
+            history.beginInstruction(pc, statement)
+            history.endInstruction()
+            history.backStep()
+            Assertions.assertThat(restored).hasSize(7)
+        }
+    }
+
+    @Test
+    fun duplicateCheckpointFactoriesUnsubscribeInRegistrationOrder() {
+        load("nop\n").use { session ->
+            val history = session.backStepper
+            val pc = session.registerFile.getPC()
+            val statement = session.memory.getStatementNoNotify(pc)
+            val restored = mutableListOf<String>()
+            val duplicate: () -> (() -> Unit)? = { { restored.add("duplicate") } }
+            history.addInstructionCheckpoint(duplicate).use {
+                history.addInstructionCheckpoint { { restored.add("middle") } }.use {
+                    history.addInstructionCheckpoint(duplicate).close()
+                    history.beginInstruction(pc, statement)
+                    history.endInstruction()
+                    history.backStep()
+                    Assertions.assertThat(restored).containsExactly("middle", "duplicate")
+                }
+            }
+        }
+    }
+
+    @Test
     fun stoppedRegisterEditStartsNewHistoryOnlyWhenTheValueChanges() {
         load($$".text\naddiu $t0,$zero,7\nnop\n").use { session ->
             val engine: SimulatorEngine = session.simulator()
