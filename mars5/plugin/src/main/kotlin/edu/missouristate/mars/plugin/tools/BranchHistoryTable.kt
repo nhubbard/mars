@@ -1,11 +1,9 @@
 package edu.missouristate.mars.plugin.tools
 
-import edu.missouristate.mars.ProgramStatement
 import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.api.StepEvent
 import edu.missouristate.mars.api.StepEvent.BranchOutcome.TAKEN
 import edu.missouristate.mars.mips.instructions.Instruction.Companion.INSTRUCTION_LENGTH
-import edu.missouristate.mars.mips.instructions.InstructionDefaults
 
 internal class BranchHistoryTable {
     data class Options(val size: Int = 16, val historyBits: Int = 1, val initialTaken: Boolean = false) {
@@ -40,7 +38,7 @@ internal class BranchHistoryTable {
     private val recent = ArrayDeque<Observation>()
 
     @Synchronized
-    fun record(event: StepEvent) {
+    fun record(event: StepEvent, branchTargetOffset: Long?) {
         val outcome = event.branchOutcome ?: return
         if (!connected) return
         val index = ((event.pcBits ushr 2) and (options.size - 1).toLong()).toInt()
@@ -59,8 +57,7 @@ internal class BranchHistoryTable {
         val target = if (event.target == MarsTarget.MARS32) {
             (event.pc + INSTRUCTION_LENGTH + (event.instruction.toShort().toInt() shl 2)).toLong()
         } else {
-            ProgramStatement(event.instruction, event.pcBits, InstructionDefaults.forTarget(event.target))
-                .relativeBranchDestination()
+            branchTargetOffset?.let { event.pcBits + it }
         }
         recent.addLast(Observation(event.pcBits, event.instruction, target, index, predicted, taken, event.target))
     }
