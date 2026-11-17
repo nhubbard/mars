@@ -75,6 +75,17 @@ tasks.register<JavaExec>("benchmark") {
   args("AssemblerBenchmark", "-wi", "1", "-i", "1", "-w", "1s", "-r", "1s", "-f", "1")
 }
 
+tasks.register<JavaExec>("benchmarkSessionStartup") {
+  description = "Measure cold and warm session startup with the PNG decoder assembly image."
+  group = "verification"
+  classpath = benchmark.runtimeClasspath
+  mainClass.set("edu.missouristate.mars.benchmark.SessionStartupBenchmark")
+  javaLauncher.set(javaToolchains.launcherFor { languageVersion.set(JavaLanguageVersion.of(25)) })
+  args(rootProject.file("../examples/smoke/png-decoder/src/main/mips/viewer.asm").absolutePath)
+  val recording = providers.gradleProperty("sessionStartupRecording").orNull
+  if (recording != null) jvmArgs("-XX:StartFlightRecording=settings=profile,filename=$recording,dumponexit=true")
+}
+
 val verifyCoreIsolation = tasks.register("verifyCoreIsolation") {
   group = "verification"
   description = "Reject desktop, compatibility, and XML dependencies from the core library."
