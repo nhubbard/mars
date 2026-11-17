@@ -466,13 +466,11 @@ class InstructionContext(private val session: MarsContext, private val environme
                 if (interrupt != 0) throw ProcessingException(this, statement, "External interrupt", interrupt)
                 val instruction = statement.instruction as? BasicInstruction
                     ?: throw ProcessingException(this, statement, "invalid instruction", RESERVED_INSTRUCTION_EXCEPTION)
-                if (instruction.isControlTransfer()) {
-                    if (delayedBranch.forbiddenSlot) {
-                        throw ProcessingException(this, statement, "control transfer in a forbidden slot", RESERVED_INSTRUCTION_EXCEPTION)
-                    }
-                    if (session.target == MarsTarget.MARS64 && delayedBranch.isTriggered) {
-                        throw ProcessingException(this, statement, "control transfer in a delay slot", RESERVED_INSTRUCTION_EXCEPTION)
-                    }
+                val forbiddenSlot = delayedBranch.forbiddenSlot
+                val restrictedDelaySlot = session.target == MarsTarget.MARS64 && delayedBranch.isTriggered
+                if ((forbiddenSlot || restrictedDelaySlot) && instruction.isControlTransfer()) {
+                    val slot = if (forbiddenSlot) "forbidden slot" else "delay slot"
+                    throw ProcessingException(this, statement, "control transfer in a $slot", RESERVED_INSTRUCTION_EXCEPTION)
                 }
                 // Fault construction needs to see the incoming slot until execution finishes.
                 instruction.simulationCode.simulate(statement, this)

@@ -34,19 +34,12 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /** Owns one simulation's floating-point registers, condition flags, and access listeners. */
 class Coprocessor1State {
     internal var hasWideRegisters = false
-    val registers = Array(32) { Register($$"$f$$it", it, 0) }
-    private val msaControl = Register("MSACSR", 1, 0)
-    private val vectorHigh = LongArray(registers.size)
-    private val fcsr = Register("FCSR", 31, FCSR_IEEE_2008)
-    private val condition = Register("cf", registers.size, 0)
     private val registerEvents = EventEmitter<RegisterAccessNotice>()
-
-    init {
-        registers.forEach { it.addObserver(registerEvents::emit) }
-        msaControl.addObserver(registerEvents::emit)
-        fcsr.addObserver(registerEvents::emit)
-        condition.addObserver(registerEvents::emit)
-    }
+    val registers = Array(32) { Register($$"$f$$it", it, 0, registerEvents) }
+    private val msaControl = Register("MSACSR", 1, 0, registerEvents)
+    private val vectorHigh = LongArray(registers.size)
+    private val fcsr = Register("FCSR", 31, FCSR_IEEE_2008, registerEvents)
+    private val condition = Register("cf", registers.size, 0, registerEvents)
 
     fun addRegistersObserver(listener: (RegisterAccessNotice) -> Unit) {
         registerEvents.subscribe(listener)

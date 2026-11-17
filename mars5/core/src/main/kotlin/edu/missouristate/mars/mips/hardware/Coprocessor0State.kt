@@ -32,17 +32,13 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /** Owns one simulation's interrupt and exception registers. */
 class Coprocessor0State {
-    val registers = arrayOf(
-        Register("$8 (vaddr)", VADDR, 0),
-        Register("$12 (status)", STATUS, DEFAULT_STATUS_VALUE),
-        Register("$13 (cause)", CAUSE, 0),
-        Register("$14 (epc)", EPC, 0),
-    )
     private val registerEvents = EventEmitter<RegisterAccessNotice>()
-
-    init {
-        registers.forEach { it.addObserver(registerEvents::emit) }
-    }
+    val registers = arrayOf(
+        Register("$8 (vaddr)", VADDR, 0, registerEvents),
+        Register("$12 (status)", STATUS, DEFAULT_STATUS_VALUE, registerEvents),
+        Register("$13 (cause)", CAUSE, 0, registerEvents),
+        Register("$14 (epc)", EPC, 0, registerEvents),
+    )
 
     fun addRegistersObserver(listener: (RegisterAccessNotice) -> Unit) {
         registerEvents.subscribe(listener)
