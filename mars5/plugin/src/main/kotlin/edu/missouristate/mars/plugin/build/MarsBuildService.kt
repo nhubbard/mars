@@ -116,7 +116,7 @@ internal class MarsBuildService(private val project: Project, private val scope:
     }
 
     private suspend fun assembleImage(sources: CapturedAssemblySources, options: MarsExecutionOptions): BuildOutput {
-        val component = MarsSessionService.createMarsComponent()
+        val component = MarsSessionService.createMarsComponent(target = options.target)
         val context = currentCoroutineContext()
         return component.context().use { session ->
             val result = assembleInto(sources, options, component)
@@ -176,7 +176,7 @@ internal class MarsBuildService(private val project: Project, private val scope:
         sources: MarsSourceSet, report: suspend (List<AssemblyError>, CapturedAssemblySources) -> Unit,
     ): Boolean {
         val options = projectOptions
-        val component = MarsSessionService.createMarsComponent()
+        val component = MarsSessionService.createMarsComponent(target = options.target)
         val symbolBuild = project.service<MarsAnalysisService>().beginSymbolBuild(sources, options)
         return component.context().use {
             assembleAndReport(symbolBuild, { capture -> assembleInto(capture, options, component) }, report).second.succeeded

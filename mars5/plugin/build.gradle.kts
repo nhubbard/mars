@@ -274,6 +274,7 @@ tasks.named<RunIdeTask>("runIde") {
     if (!suppliedArchive.isPresent) dependsOn(pluginArchive)
     args(fixture.get().asFile.absolutePath)
     systemProperty("testscript.filename", scenario.file("packaged-smoke.ijperf").asFile.absolutePath)
+    systemProperty("idea.diagnostic.opentelemetry.file", "packaged-smoke-trace.json")
     systemProperty("performance.plugin.playback.runner.useDirectActionCall", "true")
     // Match IntelliJ IDE Starter's test policies in an unattended, disposable IDE.
     systemProperty("jb.consents.confirmation.enabled", false)

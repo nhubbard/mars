@@ -6,6 +6,7 @@ import com.intellij.openapi.diagnostic.logger
 import edu.missouristate.mars.ApplicationInfo
 import edu.missouristate.mars.Settings
 import edu.missouristate.mars.api.MarsGuiProxy
+import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.di.CoreModule
 import edu.missouristate.mars.di.DaggerMarsComponent
@@ -35,8 +36,12 @@ class MarsSessionService : Disposable {
     }
 
     companion object {
-        internal fun createMarsComponent(backstepLimit: Int = ApplicationInfo.maximumBacksteps): MarsComponent = DaggerMarsComponent.builder()
-            .coreModule(CoreModule(Settings(), backstepLimit))
+        /** Each launch owns its component and shares the core catalog for its target. */
+        internal fun createMarsComponent(
+            backstepLimit: Int = ApplicationInfo.maximumBacksteps,
+            target: MarsTarget = MarsTarget.DEFAULT,
+        ): MarsComponent = DaggerMarsComponent.builder()
+            .coreModule(CoreModule(Settings(), backstepLimit, target))
             .guiProxy(ProjectFrontend())
             .build()
     }
