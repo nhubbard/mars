@@ -3,6 +3,7 @@ package edu.missouristate.mars.mips.instructions
 import edu.missouristate.mars.MIPSprogram
 import edu.missouristate.mars.assembler.TokenList
 import edu.missouristate.mars.util.Binary
+import java.util.Collections
 import java.util.StringTokenizer
 
 /*
@@ -47,8 +48,8 @@ open class ExtendedInstruction @JvmOverloads constructor(
 
     private val standardTemplates = translationList(translation)
     private val compactTemplates = translationList(compactTranslation)
-    open val basicIntructionTemplateList: ArrayList<String>? get() = standardTemplates
-    open val compactBasicIntructionTemplateList: ArrayList<String>? get() = compactTemplates
+    open val basicIntructionTemplateList: List<String>? get() = standardTemplates
+    open val compactBasicIntructionTemplateList: List<String>? get() = compactTemplates
 
     override val instructionLength: Int get() = getInstructionLength(false)
 
@@ -71,12 +72,12 @@ open class ExtendedInstruction @JvmOverloads constructor(
     private fun expansionLength(templates: List<String>?, delayedBranching: Boolean): Int =
         INSTRUCTION_LENGTH * (templates?.count { delayedBranching || !it.contains("DBNOP") } ?: 0)
 
-    private fun translationList(translation: String?): ArrayList<String>? {
+    private fun translationList(translation: String?): List<String>? {
         if (translation.isNullOrEmpty()) return null
         val tokens = StringTokenizer(translation, "\n")
-        return ArrayList<String>(tokens.countTokens()).apply {
-            while (tokens.hasMoreTokens()) add(tokens.nextToken())
-        }
+        val templates = ArrayList<String>(tokens.countTokens())
+        while (tokens.hasMoreTokens()) templates.add(tokens.nextToken())
+        return Collections.unmodifiableList(templates)
     }
 
     companion object {

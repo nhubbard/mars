@@ -22,6 +22,7 @@ import edu.missouristate.mars.mips.hardware.InvalidRegisterAccessException
 import edu.missouristate.mars.mips.hardware.MemoryConfigurations
 import edu.missouristate.mars.mips.hardware.MemoryState
 import edu.missouristate.mars.mips.hardware.Register
+import edu.missouristate.mars.mips.instructions.InstructionDefaults
 import edu.missouristate.mars.mips.instructions.InstructionSet
 import edu.missouristate.mars.mips.instructions.SyscallRegistry
 import edu.missouristate.mars.mips.instructions.syscalls.RandomStreams
@@ -47,7 +48,7 @@ class MarsContext @Inject constructor(
     @JvmField val coprocessor1: Coprocessor1State,
     @JvmField val delayedBranch: DelayedBranchState,
     @JvmField val memory: MemoryState,
-    @JvmField val instructionSet: InstructionSet,
+    instructionSet: InstructionSet,
     @JvmField val backStepper: BackStepper,
     @JvmField val symbolTable: SymbolTable,
 ) : AutoCloseable {
@@ -61,8 +62,9 @@ class MarsContext @Inject constructor(
     @Volatile private var controller: SimulatorEngine? = null
     @Volatile var program: MIPSprogram? = null
         private set
-    var target: MarsTarget = instructionSet.target
+    var instructionSet: InstructionSet = instructionSet
         private set
+    val target: MarsTarget get() = instructionSet.target
     @Volatile var isClosing: Boolean = false
         private set
 
@@ -247,8 +249,9 @@ class MarsContext @Inject constructor(
     private fun selectTargetStopped(target: MarsTarget) {
         if (this.target == target) return
         setMemoryConfigurationStopped(settings.memoryConfiguration)
-        instructionSet.populate(target)
-        this.target = target
+        val instructions = InstructionDefaults.forTarget(target)
+        instructionSet = instructions
+        memory.decoder = { word, address -> ProgramStatement(word, address, instructions, settings) }
         configureTargetHardware()
     }
 

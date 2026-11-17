@@ -2,20 +2,25 @@ package edu.missouristate.mars.mips.instructions
 
 import edu.missouristate.mars.api.MarsTarget
 
-/** The shared instruction catalog used for reference and disassembly. */
+/** Immutable instruction definitions and decoding tables, shared by sessions and IDE readers. */
 object InstructionDefaults {
-    private object Holder {
-        val legacy = InstructionSet().apply { populate(MarsTarget.MARS32) }
-    }
+    private val legacy by lazy { buildCatalog(MarsTarget.MARS32) }
+    private val wide by lazy { buildCatalog(MarsTarget.MARS64) }
+    private val editor by lazy { wide.withLegacySourceForms(legacy) }
 
     @JvmStatic
     fun get(): InstructionSet = forTarget(MarsTarget.DEFAULT)
 
-    private val wide by lazy { InstructionSet().apply { populate(MarsTarget.MARS64) } }
-    private val editor by lazy { InstructionSet().apply { populate(MarsTarget.MARS64, includeLegacySourceForms = true) } }
-
-    fun forTarget(target: MarsTarget): InstructionSet = if (target == MarsTarget.MARS64) wide else Holder.legacy
+    fun forTarget(target: MarsTarget): InstructionSet = when (target) {
+        MarsTarget.MARS32 -> legacy
+        MarsTarget.MARS64 -> wide
+    }
 
     /** The editor recognizes the union of both targets before project-specific analysis. */
     fun editorCatalog(): InstructionSet = editor
+
+    private fun buildCatalog(target: MarsTarget): InstructionSet = InstructionSet().apply {
+        populate(target)
+        freeze()
+    }
 }

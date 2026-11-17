@@ -35,7 +35,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /** A token and its position before and after include, macro, and equivalence expansion. */
 open class Token internal constructor(
-    open var type: TokenTypes,
+    type: TokenTypes,
     open val value: String,
     open val sourceMIPSprogram: MIPSprogram?,
     open val sourceLine: Int,
@@ -44,6 +44,17 @@ open class Token internal constructor(
 ) {
     constructor(type: TokenTypes, value: String, program: MIPSprogram?, line: Int, start: Int) :
         this(type, value, program, line, start, value.length)
+
+    private var frozen = false
+    open var type: TokenTypes = type
+        set(value) {
+            check(!frozen)
+            field = value
+        }
+
+    internal fun freeze() {
+        frozen = true
+    }
 
     private var originalColumn = startPos
     private var originalMipsProgram = sourceMIPSprogram
@@ -59,6 +70,7 @@ open class Token internal constructor(
     open val originalSourceLine: Int get() = originalLine
 
     open fun setOriginal(program: MIPSprogram?, line: Int) {
+        check(!frozen)
         originalMipsProgram = program
         originalLine = line
     }
@@ -78,6 +90,7 @@ open class Token internal constructor(
     override fun toString(): String = value
 
     fun setOriginalStartPos(column: Int) {
+        check(!frozen)
         originalColumn = column
     }
 
@@ -90,16 +103,19 @@ open class Token internal constructor(
         SourceToken(Location(Path.of(originalProgram!!.filename), originalSourceLine), originalStartPos)
 
     fun setDiagnosticOrigin(origin: Token?) {
+        check(!frozen)
         if (origin != null) diagnosticToken = origin.diagnosticOrigin
     }
 
     fun writtenOrigin(): Token = expansionSource ?: this
 
     fun setExpansionSource(source: Token?) {
+        check(!frozen)
         expansionSource = source
     }
 
     fun setArgumentOrigin(argument: Token?) {
+        check(!frozen)
         argumentOrigin = argument
     }
 
@@ -115,6 +131,7 @@ open class Token internal constructor(
     fun equivalenceSource(): SourceToken? = equivalenceSource
 
     fun setEquivalenceSource(source: SourceToken?) {
+        check(!frozen)
         equivalenceSource = source
     }
 }
