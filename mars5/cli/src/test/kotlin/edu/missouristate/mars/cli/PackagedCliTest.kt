@@ -429,6 +429,44 @@ internal class PackagedCliTest {
     }
 
     @Test
+    fun gradingChecksEquivalentRoutesFromDetachedMemorySnapshots() {
+        val script = source("routes.kts", """
+            import kotlin.math.abs
+
+            val routes = listOf(listOf(0, 1, 9), listOf(0, 8, 9))
+            for ((index, route) in routes.withIndex()) case("route " + index) {
+                for ((position, value) in route.withIndex()) setWord("route", value, offset = position * 4)
+                val actual = (0..2).map { readWord("route", offset = it * 4) }
+                expectCondition(actual.first() == 0 && actual.last() == 9, "route endpoints")
+                expectCondition(actual.zipWithNext().all { (a, b) ->
+                    abs(a / 8 - b / 8) + abs(a % 8 - b % 8) == 1
+                }, "route must use orthogonal neighbors")
+                val copy = readBytes("route", 12)
+                copy[0] = 255
+                expectWord("route", 0)
+                expectCondition(readBytes("route", 1).single() == 0, "snapshot is detached")
+                runToExit()
+            }
+            case("bad relation") { expectCondition(false, "parent chain is not shortest") }
+            case("fresh case after failure") {
+                expectCondition(readWord("route", offset = 4) == 0, "fresh memory")
+                runToExit()
+            }
+        """.trimIndent())
+        val entry = source("routes.asm", $$"""
+            .data 0x100000000
+        route: .word 0, 0, 0
+            .text
+            li $v0, 10
+            syscall
+        """.trimIndent())
+        val result = launch("grade", script.toString(), entry.toString())
+        assertEquals(1, result.status, result.err + result.out)
+        assertEquals(3, result.out.lines().count { it.startsWith("PASS ") }, result.out)
+        assertTrue(result.out.contains("FAIL bad relation: parent chain is not shortest"), result.out)
+    }
+
+    @Test
     fun gradingPassesFullWidthLabelAddressesToIndependentFunctions() {
         val script = source("function-addresses.kts", """
             case("independent wide function") {

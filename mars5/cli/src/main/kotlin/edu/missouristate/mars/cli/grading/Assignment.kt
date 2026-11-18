@@ -233,6 +233,28 @@ class AssemblyCase internal constructor(
         requireCase(actual == expected) { "Expected word at $label + $offset = $expected, got $actual" }
     }
 
+    /** Inspect a word without publishing a simulated access or changing undo history. */
+    fun readWord(label: String, offset: Int = 0): Int =
+        machine.memory.inspectWord(dataAddress(label, offset))
+            ?: throw CaseFailure("Cannot inspect word at $label + $offset")
+
+    /** Copy unsigned bytes so a checker can validate relations between student-produced objects. */
+    fun readBytes(label: String, length: Int, offset: Int = 0): IntArray {
+        require(length >= 0) { "Snapshot length must be nonnegative" }
+        dataAddress(label, offset.toLong(), alignment = 1)
+        return IntArray(length) { index ->
+            val byteOffset = offset.toLong() + index
+            machine.memory.inspectDataByte(dataAddress(label, byteOffset, alignment = 1))
+                ?: throw CaseFailure("Cannot inspect byte at $label + $byteOffset")
+        }
+    }
+
+    /** Report a relational contract failure as this case's result and continue with other cases. */
+    fun expectCondition(condition: Boolean, message: String) {
+        require(message.isNotBlank()) { "Describe the condition being checked" }
+        requireCase(condition) { message }
+    }
+
     fun expectBytes(label: String, vararg expected: Int, offset: Int = 0) {
         for ((index, byte) in expected.withIndex()) {
             require(byte in 0..255) { "Expected bytes must be unsigned values from 0 through 255" }
