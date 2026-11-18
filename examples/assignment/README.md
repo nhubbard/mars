@@ -225,3 +225,20 @@ reading memory. A checker can use it to identify array accesses despite relocate
 or offset function arguments. Keep functional output and bounds checks alongside an
 access-order requirement, and state that requirement in the assignment. Different
 register allocations, unrolling, and tile orders can satisfy the same observable policy.
+
+`traceMemoryAccesses(address, byteLength, maxAccesses = 65536)` and the label/offset
+overload observe native forward execution data reads and writes overlapping a region.
+`snapshot()` returns immutable detached entries with full byte address, native width,
+and a write flag. A crossing access is retained at its full starting address and width,
+not clipped to the observed region. Instruction fetch, external inspection, and backstep
+are excluded; forward replay appends observations. Close freezes the prefix, and case
+cleanup detaches it even after failure. Exceeding the configured capacity fails explicitly.
+
+For a parser, observe its whole input arena including guard bytes, then call
+`input.expectReadsWithin(actualPointer, availableBytes)` while stopped. This checks
+only the reads overlapping the observed arena, and requires every such read to fit
+wholly in the permitted window. A zero permitted length rejects any observed read;
+writes are ignored by this read assertion and can be forbidden with `traceMemoryStores`.
+The permitted window may be smaller than the mapped allocation: physical address
+validity does not establish the caller's logical input bound. This observation does
+not create a cache, affect architectural execution, or change backstep history.

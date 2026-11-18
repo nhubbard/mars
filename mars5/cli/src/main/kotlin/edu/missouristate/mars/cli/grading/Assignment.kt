@@ -85,6 +85,7 @@ class AssemblyCase internal constructor(
     private val simulator = machine.simulator()
     private var marsBot: MarsBotCheck? = null
     private val memoryStoreTraces = mutableListOf<MemoryStoreTrace>()
+    private val memoryAccessTraces = mutableListOf<MemoryAccessTrace>()
     private val executionTraces = mutableListOf<ExecutionTrace>()
     private val dataCaches = mutableListOf<DataCacheCheck>()
     private var stop: StopEvent? = null
@@ -127,6 +128,18 @@ class AssemblyCase internal constructor(
     fun traceMemoryStores(label: String, byteLength: Int = 1, offset: Int = 0): MemoryStoreTrace =
         traceMemoryStores(dataAddress(label, offset.toLong(), alignment = 1), byteLength)
 
+    /** Observe native data reads/writes overlapping a region, without an extra cache or device model. */
+    fun traceMemoryAccesses(address: Long, byteLength: Int = 1, maxAccesses: Int = 65_536): MemoryAccessTrace =
+        MemoryAccessTrace(machine.memory, address, byteLength, maxAccesses).also(memoryAccessTraces::add)
+
+    /** Observe a byte-addressed object, retaining full widths of accesses crossing its boundaries. */
+    fun traceMemoryAccesses(
+        label: String,
+        byteLength: Int = 1,
+        offset: Int = 0,
+        maxAccesses: Int = 65_536,
+    ): MemoryAccessTrace = traceMemoryAccesses(dataAddress(label, offset.toLong(), alignment = 1), byteLength, maxAccesses)
+
     /** Count subsequent completed instructions and native branch decisions. */
     fun traceExecution(): ExecutionTrace = ExecutionTrace(simulator).also(executionTraces::add)
 
@@ -159,6 +172,8 @@ class AssemblyCase internal constructor(
         marsBot = null
         memoryStoreTraces.forEach(MemoryStoreTrace::close)
         memoryStoreTraces.clear()
+        memoryAccessTraces.forEach(MemoryAccessTrace::close)
+        memoryAccessTraces.clear()
         executionTraces.forEach(ExecutionTrace::close)
         executionTraces.clear()
         dataCaches.forEach(DataCacheCheck::close)
