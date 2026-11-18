@@ -107,6 +107,47 @@ class DataCacheCheckTest {
     }
 
     @Test
+    fun `complete access logs are immutable and overflow is explicit`(@TempDir directory: Path) {
+        val source = directory.resolve("log.asm").also { it.writeText($$"""
+            .data
+        value: .word 7
+            .text
+            la $t0, value
+            lw $t1, 0($t0)
+            sb $zero, 1($t0)
+            lw $t1, 0($t0)
+        ready:
+            lw $t2, 0($t0)
+            li $v0, 10
+            syscall
+        """.trimIndent()) }
+        DaggerMarsComponent.builder().guiProxy(HeadlessGuiProxy()).build().context().use { machine ->
+            val program = machine.assemble(listOf(source))
+            AssemblyCase(machine, program.symbolMap(), ByteArrayOutputStream()).use { case ->
+                val ordinary = case.connectDataCache()
+                assertThrows<IllegalStateException> { ordinary.recordedAccesses() }
+                assertThrows<IllegalArgumentException> { case.connectDataCache(logAccesses = true, logLimit = 0) }
+                val complete = case.connectDataCache(logAccesses = true)
+                val small = case.connectDataCache(logAccesses = true, logLimit = 2)
+                case.runUntil("ready")
+                val events = complete.recordedAccesses()
+                assertEquals(listOf(4, 1, 4), events.map { it.length })
+                val address = case.readDataAddress("value")
+                assertEquals(listOf(address, address + 1, address), events.map { it.address })
+                assertEquals(listOf(false, true, false), events.map { it.write })
+                assertThrows<UnsupportedOperationException> { (events as MutableList).clear() }
+                assertThrows<CaseFailure> { small.recordedAccesses() }
+                complete.close()
+                small.reset()
+                assertEquals(emptyList<Any>(), small.recordedAccesses())
+                case.runToExit()
+                assertEquals(1, small.recordedAccesses().size)
+                assertEquals(events, complete.recordedAccesses())
+            }
+        }
+    }
+
+    @Test
     fun `wide addresses preserve tags and backstep keeps forward observations`(@TempDir directory: Path) {
         val source = directory.resolve("wide.asm").also { it.writeText($$"""
             .data 0x100000000

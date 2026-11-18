@@ -435,9 +435,13 @@ internal class PackagedCliTest {
 
             case("shared cache") {
                 runUntil("begin")
-                val cache = connectDataCache(Options(blocks = 1, wordsPerBlock = 2))
+                val cache = connectDataCache(Options(blocks = 1, wordsPerBlock = 2), logAccesses = true)
                 runUntil("boundary")
                 cache.expectCounts(2, 1)
+                val address = readDataAddress("values")
+                expectCondition(address == 0x100000000L, "full-width data address")
+                expectCondition(cache.recordedAccesses().map { it.address } == listOf(address, address + 4), "native access order")
+                expectCondition(cache.recordedAccesses().all { it.length == 4 && !it.write }, "native word widths")
                 readWord("values")
                 expectCondition(cache.snapshot().accesses == 2L, "inspection must not enter the cache")
                 cache.reset()

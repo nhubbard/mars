@@ -14,7 +14,10 @@ import kotlin.math.roundToInt
  * A store miss allocates a line. Each notice counts once at its starting address;
  * instruction fetches and external inspection are excluded. Backstep keeps observations.
  */
-class DataCacheSimulator {
+class DataCacheSimulator(private val logLimit: Int = 128) {
+    init {
+        require(logLimit > 0) { "Cache log capacity must be positive" }
+    }
     enum class Placement {
         DIRECT, FULL, SET_ASSOCIATIVE;
 
@@ -47,6 +50,7 @@ class DataCacheSimulator {
     data class Block(val tag: Long?, val lastAccess: Long, val lastHit: Boolean)
     data class Access(
         val number: Long, val address: Long, val write: Boolean, val set: Int, val tag: Long, val block: Int, val previousTag: Long?,
+        val length: Int = WORD_LENGTH_BYTES,
     ) {
         val hit: Boolean get() = previousTag == tag
     }
@@ -100,8 +104,9 @@ class DataCacheSimulator {
         recency[block] = number
         hit[block] = found
         if (logging) {
-            if (recent.size == LOG_LIMIT) recent.removeFirst()
-            recent.addLast(Access(number, address, notice.accessType == WRITE, set, tag, block, previous.takeUnless { it == EMPTY_TAG }))
+            if (recent.size == logLimit) recent.removeFirst()
+            recent.addLast(Access(number, address, notice.accessType == WRITE, set, tag, block,
+                previous.takeUnless { it == EMPTY_TAG }, notice.length))
         }
         cached = null
     }
@@ -163,6 +168,5 @@ class DataCacheSimulator {
     companion object {
         val sizes: List<Int> = Collections.unmodifiableList((0..11).map { 1 shl it })
         private const val EMPTY_TAG = -1L
-        private const val LOG_LIMIT = 128
     }
 }

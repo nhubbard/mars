@@ -129,6 +129,26 @@ class DataCacheSimulatorTest {
         assertEquals(1L, prefix.hits)
     }
 
+    @Test
+    fun `logging retains native widths and bounded history without splitting crossing notices`() {
+        assertThrows(IllegalArgumentException::class.java) { DataCacheSimulator(0) }
+        val cache = DataCacheSimulator(logLimit = 2)
+        cache.configure(Options(1, 4))
+        cache.setLogging(true)
+        AccessOrigin.duringExecution<Unit, RuntimeException> {
+            cache.record(object : MemoryAccessNotice(READ, 12, 0) { override val length = 16 })
+        }
+        assertEquals(1L, cache.snapshot().accesses)
+        assertEquals(0L, cache.snapshot().blocks.single().tag)
+        assertEquals(16, cache.snapshot().recent.single().length)
+        cache.access(16)
+        cache.access(32, WRITE)
+        val snapshot = cache.snapshot()
+        assertEquals(3L, snapshot.accesses)
+        assertEquals(listOf(2L, 3L), snapshot.recent.map { it.number })
+        assertEquals(listOf(4, 4), snapshot.recent.map { it.length })
+    }
+
     private fun DataCacheSimulator.access(address: Int, type: Int = READ) {
         AccessOrigin.duringExecution<Unit, RuntimeException> { record(MemoryAccessNotice(type, address, 0)) }
     }
