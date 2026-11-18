@@ -242,3 +242,19 @@ writes are ignored by this read assertion and can be forbidden with `traceMemory
 The permitted window may be smaller than the mapped allocation: physical address
 validity does not establish the caller's logical input bound. This observation does
 not create a cache, affect architectural execution, or change backstep history.
+
+`callFunction("scan", returnTo = "continuation")` invokes an independently callable
+function in the same stopped session and pauses before the supplied return label.
+Prepare arguments with the ordinary register and memory setters. Unlike `startAt`,
+which selects the initial entry only, this operation supports repeated calls after
+breakpoints and step limits. It sets the program counter and full return address
+as external edits, establishes a new undo baseline, and then executes normally.
+It preserves memory, other registers, observation histories, and the cumulative
+case instruction budget. Call setup contributes no simulated instruction events.
+
+Both labels must name distinct assembled instructions. A terminal simulator stop
+cannot be restarted. A pending delayed transfer or compact forbidden slot must be
+completed normally before another function can be called; the grader rejects the
+request without clearing that architectural state. A function's return continuation
+should therefore be an ordinary completed-call boundary. This permits stateful
+streaming tests while preserving branch, exception, and backstep behavior.
