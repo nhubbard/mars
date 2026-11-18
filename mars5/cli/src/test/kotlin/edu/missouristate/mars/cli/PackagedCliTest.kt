@@ -953,6 +953,52 @@ internal class PackagedCliTest {
     }
 
     @Test
+    fun gradingReadsOnlyExplicitBinaryFixturesAndChecksCleanup() {
+        val script = source("files.kts", """
+            import edu.missouristate.mars.cli.grading.FileAccess.Operation
+            case("binary fixture") {
+                val files = provideFiles(mapOf("fixture.bin" to byteArrayOf(0, -128, -1)), maxReadSize = 2)
+                runToExit()
+                expectBytes("buffer", 0, 128, 42, 42)
+                files.expectAllClosed()
+                val reads = files.snapshot().filter { it.operation == Operation.READ }
+                expectCondition(reads.size == 1 && reads[0].requestedBytes == 4 && reads[0].result == 2, "Record the actual short read")
+            }
+            case("fresh file policy") {
+                val files = provideFiles(emptyMap())
+                runUntil("opened")
+                expectRegister("v0", -1)
+                files.expectAllClosed()
+            }
+        """.trimIndent())
+        val entry = source("files.asm", $$"""
+            .data
+            path: .asciiz "fixture.bin"
+            buffer: .byte 42:4
+            .text
+            la $a0, path
+            li $a1, 0
+            li $v0, 13
+            syscall
+            opened:
+            move $s0, $v0
+            move $a0, $s0
+            la $a1, buffer
+            li $a2, 4
+            li $v0, 14
+            syscall
+            move $a0, $s0
+            li $v0, 16
+            syscall
+            li $v0, 10
+            syscall
+        """.trimIndent())
+        val result = launch("grade", script.toString(), entry.toString())
+        assertEquals(0, result.status, result.err + result.out)
+        assertEquals("PASS binary fixture\nPASS fresh file policy\n", result.out)
+    }
+
+    @Test
     fun gradingReportsScriptErrorsWithASeparateExitCode() {
         val script = source("assignment2.kts", "case(\"broken\") { missingFunction() }\n")
         val entry = source("entry.s", "nop\n")

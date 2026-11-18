@@ -59,9 +59,10 @@ class Assignment internal constructor(
                         machine.memory, ByteArrayInputStream(input.encodeToByteArray()), output, output,
                         inputCharset = Charsets.UTF_8,
                     ).use { console ->
-                        program.setSyscallEnvironment(GradingEnvironment(console))
+                        val files = GradingFiles()
+                        program.setSyscallEnvironment(GradingEnvironment(console, files))
                         machine.simulator().setInstructionLimit(instructionLimit)
-                        AssemblyCase(machine, program.symbolMap(), captured).use { it.verify() }
+                        AssemblyCase(machine, program.symbolMap(), captured, files).use { it.verify() }
                     }
                 }
             }
@@ -81,6 +82,7 @@ class AssemblyCase internal constructor(
     private val machine: MarsContext,
     private val symbols: AssemblySymbolMap,
     private val output: ByteArrayOutputStream,
+    private val files: GradingFiles = GradingFiles(),
 ) : AutoCloseable {
     private val simulator = machine.simulator()
     private var marsBot: MarsBotCheck? = null
@@ -104,6 +106,19 @@ class AssemblyCase internal constructor(
     fun requireTextLabel(label: String) {
         textAddress(label)
     }
+
+    /**
+     * Enable file open/read/close against these copied in-memory fixtures only.
+     * Paths match exactly; missing paths and write/append opens fail. No host file is opened.
+     * [maxReadSize] forces short reads. A nonzero read at or beyond [failAfterBytes]
+     * returns -1, including at EOF; a preceding read stops at that byte position.
+     * Empty [contents] enables missing-file tests. Other cases keep file syscalls disabled.
+     */
+    fun provideFiles(
+        contents: Map<String, ByteArray>,
+        maxReadSize: Int = Int.MAX_VALUE,
+        failAfterBytes: Int? = null,
+    ): FileAccessCheck = files.configure(contents, maxReadSize, failAfterBytes)
 
     fun requireDataLabel(label: String) {
         dataAddress(label, 0, alignment = 1)
@@ -408,9 +423,15 @@ private class BoundedOutput(private val bytes: ByteArrayOutputStream) : OutputSt
     }
 }
 
-private class GradingEnvironment(console: SyscallEnvironment) : SyscallEnvironment by console {
+private class GradingEnvironment(console: SyscallEnvironment, private val files: GradingFiles) : SyscallEnvironment by console {
     override fun allowsSyscall(number: Int): Boolean = when (number) {
         in 1..12, 17, in 34..36 -> true
+        13, 14, 16 -> files.enabled
         else -> false
     }
+
+    override fun openFile(path: String?, flags: Int): Int = files.open(path, flags)
+    override fun readFromFile(fd: Int, buffer: ByteArray?, lengthRequested: Int): Int =
+        files.read(fd, buffer, lengthRequested)
+    override fun closeFile(fd: Int) = files.close(fd)
 }
