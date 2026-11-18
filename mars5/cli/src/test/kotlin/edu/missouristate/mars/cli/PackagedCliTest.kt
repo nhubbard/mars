@@ -471,6 +471,64 @@ internal class PackagedCliTest {
     }
 
     @Test
+    fun gradingTracesLogicalReadBoundsWithNativeWidthsAndFullAddresses() {
+        val script = source("accesses.kts", """
+            case("bounded input") {
+                val accesses = traceMemoryAccesses("values", 8)
+                val base = readDataAddress("values")
+                runUntil("ready")
+                accesses.expectReadsWithin(base, 4)
+                val snapshot = accesses.snapshot()
+                expectCondition(snapshot.map { it.length } == listOf(1, 4, 1), "native widths")
+                expectCondition(snapshot.map { it.write } == listOf(false, false, true), "read and write kinds")
+                expectCondition(snapshot.all { it.address >= 0x100000000L }, "full-width addresses")
+                readBytes("values", 8)
+                expectCondition(accesses.snapshot() == snapshot, "inspection excluded")
+                accesses.close()
+                runToExit()
+                expectCondition(accesses.snapshot() == snapshot, "closed observation stays frozen")
+            }
+            case("crossing logical byte") {
+                val access = traceMemoryAccesses("values", offset = 1)
+                runUntil("ready")
+                access.expectReadsWithin(readDataAddress("values", 1), 1)
+            }
+            case("overflow is explicit") {
+                val access = traceMemoryAccesses("values", 8, maxAccesses = 2)
+                runUntil("ready")
+                access.snapshot()
+            }
+            case("fresh observation") {
+                val access = traceMemoryAccesses("values", 8)
+                access.expectReadsWithin(readDataAddress("values"), 0)
+                runUntil("ready")
+                expectCondition(access.snapshot().size == 3, "fresh independent history")
+                runToExit()
+            }
+        """.trimIndent())
+        val entry = source("accesses.asm", $$"""
+            .data 0x100000000
+        values: .word 1,2
+            .text
+            dla $t0, values
+            lbu $t1, 0($t0)
+            lw $t2, 0($t0)
+            sb $t1, 4($t0)
+        ready:
+            lw $t3, 4($t0)
+            li $v0, 10
+            syscall
+        """.trimIndent())
+        val result = launch("grade", script.toString(), entry.toString())
+        assertEquals(1, result.status, result.err + result.out)
+        assertTrue(result.out.contains("PASS bounded input"), result.out)
+        assertTrue(result.out.contains("FAIL crossing logical byte"), result.out)
+        assertTrue(result.out.contains("observed 4-byte read at 0x100000000"), result.out)
+        assertTrue(result.out.contains("Memory-access trace exceeds 2 notices"), result.out)
+        assertTrue(result.out.contains("PASS fresh observation"), result.out)
+    }
+
+    @Test
     fun gradingChecksEquivalentRoutesFromDetachedMemorySnapshots() {
         val script = source("routes.kts", """
             import kotlin.math.abs
