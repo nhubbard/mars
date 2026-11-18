@@ -108,20 +108,31 @@ class AssemblyCase internal constructor(
     }
 
     /**
-     * Enable file open/read/close against these copied in-memory fixtures only.
-     * Paths match exactly; missing paths and write/append opens fail. No host file is opened.
+     * Enable file operations against these copied in-memory fixtures only.
+     * Paths match exactly. Only [writablePaths] allow write/truncate (1) or append (9) opens;
+     * other missing paths fail. No host file is opened.
      * [maxReadSize] forces short reads. A nonzero read at or beyond [failAfterBytes]
      * returns -1, including at EOF; a preceding read stops at that byte position.
      * Empty [contents] enables missing-file tests. Other cases keep file syscalls disabled.
      * [firstDescriptor] selects the lowest fixture descriptor (3..31), allowing checks
      * to expose submissions that assume every successful open returns descriptor 3.
+     * [maxWriteSize] forces short writes. [failWriteAfterBytes] counts bytes written per
+     * opened descriptor, including append mode, and a preceding write stops at that count.
+     * [maxFileSize] bounds each output file; a write may fill the remaining space, then
+     * further nonempty writes fail. Empty writes succeed on an open writable descriptor.
+     * An empty [writablePaths] keeps syscall 15 disabled, including writes to stdout/stderr.
      */
     fun provideFiles(
         contents: Map<String, ByteArray>,
         maxReadSize: Int = Int.MAX_VALUE,
         failAfterBytes: Int? = null,
         firstDescriptor: Int = 3,
-    ): FileAccessCheck = files.configure(contents, maxReadSize, failAfterBytes, firstDescriptor)
+        writablePaths: Set<String> = emptySet(),
+        maxWriteSize: Int = Int.MAX_VALUE,
+        failWriteAfterBytes: Int? = null,
+        maxFileSize: Int = 1024 * 1024,
+    ): FileAccessCheck = files.configure(contents, maxReadSize, failAfterBytes, firstDescriptor,
+        writablePaths, maxWriteSize, failWriteAfterBytes, maxFileSize)
 
     fun requireDataLabel(label: String) {
         dataAddress(label, 0, alignment = 1)
@@ -457,11 +468,14 @@ private class GradingEnvironment(console: SyscallEnvironment, private val files:
     override fun allowsSyscall(number: Int): Boolean = when (number) {
         in 1..12, 17, in 34..36 -> true
         13, 14, 16 -> files.enabled
+        15 -> files.writesEnabled
         else -> false
     }
 
     override fun openFile(path: String?, flags: Int): Int = files.open(path, flags)
     override fun readFromFile(fd: Int, buffer: ByteArray?, lengthRequested: Int): Int =
         files.read(fd, buffer, lengthRequested)
+    override fun writeToFile(fd: Int, buffer: ByteArray?, lengthRequested: Int): Int =
+        files.write(fd, buffer, lengthRequested)
     override fun closeFile(fd: Int) = files.close(fd)
 }
