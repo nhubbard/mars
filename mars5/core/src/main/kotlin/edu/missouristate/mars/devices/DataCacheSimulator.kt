@@ -1,17 +1,22 @@
-package edu.missouristate.mars.plugin.tools
+package edu.missouristate.mars.devices
 
 import edu.missouristate.mars.mips.hardware.AccessNotice.Companion.WRITE
 import edu.missouristate.mars.mips.hardware.AccessOrigin.EXECUTION
 import edu.missouristate.mars.mips.hardware.MemoryAccessNotice
 import edu.missouristate.mars.mips.hardware.MemoryState
 import edu.missouristate.mars.mips.hardware.MemoryState.Companion.WORD_LENGTH_BYTES
+import java.util.Collections
 import java.util.Random
 import kotlin.math.roundToInt
 
-/** One cache per execution. The simulator writes observations and the tool window reads snapshots. */
-internal class DataCacheSimulator {
-    enum class Placement(val messageKey: String) {
-        DIRECT("cache.direct"), FULL("cache.full"), SET_ASSOCIATIVE("cache.setAssociative");
+/**
+ * Observes forward data-access notices without affecting architectural memory or execution.
+ * A store miss allocates a line. Each notice counts once at its starting address;
+ * instruction fetches and external inspection are excluded. Backstep keeps observations.
+ */
+class DataCacheSimulator {
+    enum class Placement {
+        DIRECT, FULL, SET_ASSOCIATIVE;
 
         fun wayChoices(blocks: Int): List<Int> = when (this) {
             DIRECT -> listOf(1)
@@ -20,7 +25,7 @@ internal class DataCacheSimulator {
         }
     }
 
-    enum class Replacement(val messageKey: String) { LRU("cache.lru"), RANDOM("cache.random") }
+    enum class Replacement { LRU, RANDOM }
 
     data class Options(
         val blocks: Int = 8,
@@ -114,7 +119,8 @@ internal class DataCacheSimulator {
     @Synchronized
     fun snapshot(): Snapshot = cached ?: Snapshot(
         connected, logging, options, accesses, hits,
-        tags.indices.map { Block(tags[it].takeUnless { tag -> tag == EMPTY_TAG }, recency[it], hit[it]) }, recent.toList(),
+        Collections.unmodifiableList(tags.indices.map { Block(tags[it].takeUnless { tag -> tag == EMPTY_TAG }, recency[it], hit[it]) }),
+        Collections.unmodifiableList(recent.toList()),
     ).also { cached = it }
 
     @Synchronized
@@ -155,7 +161,7 @@ internal class DataCacheSimulator {
     }
 
     companion object {
-        val sizes = (0..11).map { 1 shl it }
+        val sizes: List<Int> = Collections.unmodifiableList((0..11).map { 1 shl it })
         private const val EMPTY_TAG = -1L
         private const val LOG_LIMIT = 128
     }

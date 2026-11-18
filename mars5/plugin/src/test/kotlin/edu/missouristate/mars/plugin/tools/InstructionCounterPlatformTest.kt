@@ -3,6 +3,7 @@
 
 package edu.missouristate.mars.plugin.tools
 
+import edu.missouristate.mars.devices.DataCacheSimulator
 import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.plugin.MarsExecutionOptions
 import edu.missouristate.mars.plugin.tools.FloatingPointRepresentation.Format
@@ -49,8 +50,8 @@ import edu.missouristate.mars.mips.hardware.AccessOrigin
 import edu.missouristate.mars.mips.hardware.MemoryAccessNotice
 import edu.missouristate.mars.plugin.run.MarsProcessHandler
 import edu.missouristate.mars.plugin.run.MarsRunService
-import edu.missouristate.mars.plugin.tools.DataCacheSimulator.Placement
-import edu.missouristate.mars.plugin.tools.DataCacheSimulator.Replacement
+import edu.missouristate.mars.devices.DataCacheSimulator.Placement
+import edu.missouristate.mars.devices.DataCacheSimulator.Replacement
 import edu.missouristate.mars.plugin.tools.MemoryGridDisplay.Base
 import edu.missouristate.mars.plugin.tools.xray.XRayUnit
 import edu.missouristate.mars.plugin.tools.xray.XRayView

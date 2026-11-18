@@ -1,5 +1,6 @@
 package edu.missouristate.mars.plugin.tools
 
+import edu.missouristate.mars.devices.DataCacheSimulator
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.project.Project
@@ -20,10 +21,10 @@ import com.intellij.ui.table.JBTable
 import com.intellij.util.ui.JBDimension
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.launchOnShow
-import edu.missouristate.mars.plugin.tools.DataCacheSimulator.Access
-import edu.missouristate.mars.plugin.tools.DataCacheSimulator.Options
-import edu.missouristate.mars.plugin.tools.DataCacheSimulator.Placement
-import edu.missouristate.mars.plugin.tools.DataCacheSimulator.Replacement
+import edu.missouristate.mars.devices.DataCacheSimulator.Access
+import edu.missouristate.mars.devices.DataCacheSimulator.Options
+import edu.missouristate.mars.devices.DataCacheSimulator.Placement
+import edu.missouristate.mars.devices.DataCacheSimulator.Replacement
 import edu.missouristate.mars.util.Binary
 import javax.swing.JButton
 import javax.swing.JEditorPane
@@ -225,13 +226,27 @@ internal class DataCacheView(project: Project) : Disposable {
 }
 
 private fun logLine(access: Access): String {
+    val previousTag = access.previousTag
     val result = when {
         access.hit -> toolsMessages.getMessage("cache.hit")
-        access.previousTag == null -> toolsMessages.getMessage("cache.fill")
-        else -> toolsMessages.getMessage("cache.evict", formatToolHex(access.previousTag))
+        previousTag == null -> toolsMessages.getMessage("cache.fill")
+        else -> toolsMessages.getMessage("cache.evict", formatToolHex(previousTag))
     }
     return toolsMessages.getMessage(
         "cache.observation", access.number.toString(), toolsMessages.getMessage(if (access.write) "cache.write" else "cache.read"),
         formatToolHex(access.address), formatToolHex(access.tag), access.set.toString(), access.block.toString(), result,
     )
 }
+
+private val Placement.messageKey: String
+    get() = when (this) {
+        Placement.DIRECT -> "cache.direct"
+        Placement.FULL -> "cache.full"
+        Placement.SET_ASSOCIATIVE -> "cache.setAssociative"
+    }
+
+private val Replacement.messageKey: String
+    get() = when (this) {
+        Replacement.LRU -> "cache.lru"
+        Replacement.RANDOM -> "cache.random"
+    }
