@@ -323,6 +323,33 @@ class AssemblyCase internal constructor(
         }
     }
 
+    /**
+     * Copy bytes at a complete mapped address, including private stack storage, without
+     * publishing simulated accesses or changing undo history. The current memory byte
+     * order determines each byte's position in the inspected word. Unmapped bytes fail
+     * the case; an empty interval performs no inspection.
+     */
+    fun readBytes(address: Long, length: Int): IntArray {
+        require(address >= 0 && length >= 0 &&
+            (length == 0 || address <= Long.MAX_VALUE - (length - 1L))) {
+            "Choose a nonnegative byte address and a nonnegative, non-overflowing length"
+        }
+        var inspectedAddress = -1L
+        var word = 0
+        return IntArray(length) { index ->
+            val byteAddress = address + index
+            val wordAddress = byteAddress and -4L
+            if (wordAddress != inspectedAddress) {
+                word = machine.memory.inspectWord(wordAddress)
+                    ?: throw CaseFailure("Cannot inspect byte at 0x${byteAddress.toString(16)}")
+                inspectedAddress = wordAddress
+            }
+            val lane = (byteAddress and 3L).toInt()
+            val shift = (if (machine.memory.byteOrder) lane else 3 - lane) * 8
+            (word ushr shift) and 0xff
+        }
+    }
+
     /** Report a relational contract failure as this case's result and continue with other cases. */
     fun expectCondition(condition: Boolean, message: String) {
         require(message.isNotBlank()) { "Describe the condition being checked" }
