@@ -15,6 +15,26 @@ import org.junit.jupiter.api.io.TempDir
 
 class FileAccessCheckTest {
     @Test
+    fun `fixture descriptor selection validates its range and retains exhaustion and reuse`() {
+        val files = GradingFiles()
+        for (first in listOf(-1, 0, 2, 32, Int.MAX_VALUE)) {
+            assertThrows<IllegalArgumentException> { files.configure(emptyMap(), 1, null, first) }
+            assertFalse(files.enabled)
+        }
+        val check = files.configure(mapOf("a" to byteArrayOf(7), "b" to byteArrayOf(9)), 1, null, 31)
+        assertEquals(31, files.open("a", 0))
+        assertEquals(-1, files.open("b", 0))
+        assertEquals(-1, files.read(3, ByteArray(1), 1))
+        files.close(31)
+        assertEquals(31, files.open("b", 0))
+        val bytes = ByteArray(1)
+        assertEquals(1, files.read(31, bytes, 1))
+        assertEquals(9, bytes.single().toInt())
+        files.close(31)
+        check.expectAllClosed()
+    }
+
+    @Test
     fun `copied binary fixtures support short reads EOF descriptor reuse and detached history`() {
         val files = GradingFiles()
         val bytes = byteArrayOf(0, -128, -1, 10)
@@ -174,9 +194,17 @@ class FileAccessCheckTest {
             startAt("write_attempt"); runToExit()
         }
         assignment.case("unconfigured case remains restricted") { runToExit() }
+        assignment.case("configured descriptor is visible through the actual syscalls") {
+            val files = provideFiles(mapOf(hostFile.toString() to byteArrayOf(1, 2, 3, 4)), firstDescriptor = 9)
+            runUntil("opened"); expectRegister("v0", 9)
+            runUntil("closed"); files.expectAllClosed(); runToExit(); expectOutput("")
+            assertEquals(listOf(9, 9, 9, 9, 9), files.snapshot().map { it.descriptor })
+            assertEquals(listOf(4, 0, 0), files.snapshot().filter { it.operation == Operation.READ }.map { it.result })
+        }
         assertEquals(listOf(null, null), assignment.results.take(2).map { it.failure })
         assertTrue(assignment.results[2].failure.orEmpty().contains("syscall 15 is disabled"))
         assertTrue(assignment.results[3].failure.orEmpty().contains("syscall 13 is disabled"))
+        assertEquals(null, assignment.results[4].failure)
         assertEquals("host bytes must remain untouched", hostFile.readText())
     }
 }

@@ -113,12 +113,15 @@ class AssemblyCase internal constructor(
      * [maxReadSize] forces short reads. A nonzero read at or beyond [failAfterBytes]
      * returns -1, including at EOF; a preceding read stops at that byte position.
      * Empty [contents] enables missing-file tests. Other cases keep file syscalls disabled.
+     * [firstDescriptor] selects the lowest fixture descriptor (3..31), allowing checks
+     * to expose submissions that assume every successful open returns descriptor 3.
      */
     fun provideFiles(
         contents: Map<String, ByteArray>,
         maxReadSize: Int = Int.MAX_VALUE,
         failAfterBytes: Int? = null,
-    ): FileAccessCheck = files.configure(contents, maxReadSize, failAfterBytes)
+        firstDescriptor: Int = 3,
+    ): FileAccessCheck = files.configure(contents, maxReadSize, failAfterBytes, firstDescriptor)
 
     fun requireDataLabel(label: String) {
         dataAddress(label, 0, alignment = 1)
