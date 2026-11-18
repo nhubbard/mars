@@ -156,6 +156,12 @@ output, preservation, and checkpoint checks to verify the function's public cont
 
 ### Relational checks and memory snapshots
 
+`readBytes(address, length)` also accepts a complete numeric address, including private
+stack storage and data above 4 GiB. It returns detached unsigned bytes in the current
+memory byte order without emitting simulated accesses or changing backstep history.
+Unmapped bytes fail the case; a zero-length interval performs no inspection. This is
+useful for checking a documented stack frame at an internal teaching checkpoint.
+
 `readWord("length")` returns an inspected 32-bit word. `readBytes("parents", 64)`
 returns a detached `IntArray` of unsigned bytes; both accept byte offsets. They use
 full label addresses and do not publish simulated memory accesses or change backstep
