@@ -272,6 +272,12 @@ file syscalls disabled until it calls this method, even if the preceding case us
 files. No operation falls back to the host filesystem, and write syscall 15 stays
 disabled. `provideFiles(emptyMap())` permits testing a failed open.
 
+The optional `firstDescriptor` argument (3 through 31, default 3) selects the lowest
+descriptor the fixture allocator may return. For example, `firstDescriptor = 9` exposes
+code that hard-codes descriptor 3 instead of using the open result. Closed fixture slots
+are reused within the selected range; the option changes only explicitly supplied
+grading fixtures, not ordinary host file I/O.
+
 The returned `FileAccessCheck` records open/read/close operations. `snapshot()` gives
 a detached history including descriptors, requested byte counts, results and open
 flags. Use `expectAllClosed()` before leaving a success or failure path to detect a

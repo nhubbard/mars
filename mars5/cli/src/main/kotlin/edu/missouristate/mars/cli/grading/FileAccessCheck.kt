@@ -32,18 +32,26 @@ internal class GradingFiles {
     private val accesses = mutableListOf<FileAccess>()
     private var maxReadSize = Int.MAX_VALUE
     private var failAfterBytes: Int? = null
+    private var firstDescriptor = 3
     var enabled: Boolean = false
         private set
     val openCount: Int get() = handles.size
 
-    fun configure(files: Map<String, ByteArray>, maximumRead: Int, failurePosition: Int?): FileAccessCheck {
+    fun configure(
+        files: Map<String, ByteArray>,
+        maximumRead: Int,
+        failurePosition: Int?,
+        minimumDescriptor: Int = 3,
+    ): FileAccessCheck {
         requireCase(!enabled) { "Provide fixture files only once per case" }
         require(maximumRead > 0) { "Maximum read size must be positive" }
         require(failurePosition == null || failurePosition >= 0) { "Read failure position must be nonnegative" }
+        require(minimumDescriptor in 3..31) { "First fixture descriptor must be between 3 and 31" }
         require(files.keys.all { it.isNotBlank() && '\u0000' !in it }) { "Choose nonempty file paths without NUL" }
         contents = files.mapValues { (_, bytes) -> bytes.copyOf() }
         maxReadSize = maximumRead
         failAfterBytes = failurePosition
+        firstDescriptor = minimumDescriptor
         enabled = true
         return FileAccessCheck(this)
     }
@@ -52,7 +60,7 @@ internal class GradingFiles {
 
     fun open(path: String?, flags: Int): Int {
         val descriptor = if (flags != 0 || path !in contents || handles.values.any { it.path == path }) -1
-        else (3..31).firstOrNull { it !in handles } ?: -1
+        else (firstDescriptor..31).firstOrNull { it !in handles } ?: -1
         if (descriptor >= 0) handles[descriptor] = OpenFile(requireNotNull(path))
         accesses += FileAccess(Operation.OPEN, path, descriptor, result = descriptor, flags = flags)
         return descriptor
