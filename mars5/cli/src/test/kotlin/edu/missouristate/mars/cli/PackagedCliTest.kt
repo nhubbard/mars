@@ -429,6 +429,44 @@ internal class PackagedCliTest {
     }
 
     @Test
+    fun gradingUsesTheSharedCacheWithColdBoundariesAndWideAddresses() {
+        val script = source("cache.kts", """
+            import edu.missouristate.mars.devices.DataCacheSimulator.Options
+
+            case("shared cache") {
+                runUntil("begin")
+                val cache = connectDataCache(Options(blocks = 1, wordsPerBlock = 2))
+                runUntil("boundary")
+                cache.expectCounts(2, 1)
+                readWord("values")
+                expectCondition(cache.snapshot().accesses == 2L, "inspection must not enter the cache")
+                cache.reset()
+                runToExit()
+                cache.expectCounts(1, 0)
+                expectCondition(cache.snapshot().blocks.single().tag == 0x20000001L, "wide cache tag")
+                cache.close()
+                cache.expectCounts(1, 0)
+            }
+        """.trimIndent())
+        val entry = source("cache.asm", $$"""
+            .data 0x100000000
+        values: .word 1,2,3
+            .text
+            dla $t0, values
+        begin:
+            lw $t1, 0($t0)
+            lw $t2, 4($t0)
+        boundary:
+            lw $t3, 8($t0)
+            li $v0, 10
+            syscall
+        """.trimIndent())
+        val result = launch("grade", script.toString(), entry.toString())
+        assertEquals(0, result.status, result.err + result.out)
+        assertTrue(result.out.contains("PASS shared cache"), result.out)
+    }
+
+    @Test
     fun gradingChecksEquivalentRoutesFromDetachedMemorySnapshots() {
         val script = source("routes.kts", """
             import kotlin.math.abs

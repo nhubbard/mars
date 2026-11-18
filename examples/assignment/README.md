@@ -169,3 +169,45 @@ the following cases still run in independent sessions. Supply a nonblank diagnos
 For example, a shortest-path task can inspect the chosen parent chain, check adjacency
 and distance, and accept multiple equally short routes. Keep the full input, bounds,
 side-effect, and termination checks alongside such relational checks.
+
+### Data-cache measurement boundaries
+
+`connectDataCache()` attaches a cold instance of the same core model used by the IDE
+Data Cache Simulator. It can be attached before execution or at a paused text label.
+Each case owns and closes its observations; several independent caches can observe the
+same execution with different geometry. For example:
+
+```kotlin
+import edu.missouristate.mars.devices.DataCacheSimulator.Options
+import edu.missouristate.mars.devices.DataCacheSimulator.Placement
+
+case("cold transpose window") {
+    runUntil("transpose_begin")
+    val cache = connectDataCache(Options(
+        blocks = 8, wordsPerBlock = 4, placement = Placement.FULL, ways = 8,
+    ))
+    runUntil("transpose_done")
+    val result = cache.snapshot()
+    expectCondition(result.accesses == 512L, "one load and one store per matrix element")
+    println("cache hits: " + result.hits + ", misses: " + result.misses)
+    cache.close()
+    runToExit()
+}
+```
+
+Choose the same geometry, input layout, and observation interval in the IDE and CLI.
+A snapshot contains immutable block state and counts. `expectCounts(accesses, hits)`
+checks an exact reference measurement, while behavioral grading can compare results
+without requiring a reference access order or totals. `reset()` clears tags, recency,
+counts, and the deterministic replacement sequence without changing configuration.
+Reset only an open observation while execution is stopped. Closing freezes its prefix;
+subsequent case cleanup is idempotent. Queries remain available after close.
+
+This educational model counts one forward execution data-access notice at its starting
+address. It observes the user data/stack region and wide user data, excludes instruction
+fetches, MMIO, and external inspection, and allocates a cache line on a store miss.
+Aligned word accesses used by the transpose chapter stay within a modeled line. The
+model does not estimate cycles, split a crossing access into multiple line transactions,
+or model dirty writeback, coherence, and prefetching. Backstep retains cache observations
+and state, so replay can hit a line left by an earlier forward pass. Establish a cold
+boundary again before comparing runs that include backstep.

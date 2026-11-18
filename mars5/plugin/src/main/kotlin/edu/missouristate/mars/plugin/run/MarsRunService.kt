@@ -40,7 +40,7 @@ import edu.missouristate.mars.plugin.build.MemoryExportSelection
 import edu.missouristate.mars.plugin.build.memoryExportMessages
 import edu.missouristate.mars.plugin.tools.MemoryGridDisplay
 import edu.missouristate.mars.plugin.tools.BranchHistoryTable
-import edu.missouristate.mars.plugin.tools.DataCacheSimulator
+import edu.missouristate.mars.devices.DataCacheSimulator
 import edu.missouristate.mars.plugin.tools.DigitalLabDevice
 import edu.missouristate.mars.plugin.tools.ExecutedInstructionCache
 import edu.missouristate.mars.plugin.tools.InstructionCounter

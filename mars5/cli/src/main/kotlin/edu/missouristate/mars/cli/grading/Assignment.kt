@@ -16,6 +16,7 @@ import edu.missouristate.mars.assembler.RegisterNames
 import edu.missouristate.mars.cli.HeadlessGuiProxy
 import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.devices.MarsBotDevice
+import edu.missouristate.mars.devices.DataCacheSimulator.Options as CacheOptions
 import edu.missouristate.mars.di.DaggerMarsComponent
 import edu.missouristate.mars.mips.hardware.AddressErrorException
 import edu.missouristate.mars.mips.hardware.VectorRegister
@@ -85,6 +86,7 @@ class AssemblyCase internal constructor(
     private var marsBot: MarsBotCheck? = null
     private val memoryStoreTraces = mutableListOf<MemoryStoreTrace>()
     private val executionTraces = mutableListOf<ExecutionTrace>()
+    private val dataCaches = mutableListOf<DataCacheCheck>()
     private var stop: StopEvent? = null
     private var error: String? = null
 
@@ -129,6 +131,12 @@ class AssemblyCase internal constructor(
     fun traceExecution(fromLabel: String, untilLabel: String): ExecutionTrace =
         ExecutionTrace(simulator, textAddress(fromLabel), textAddress(untilLabel)).also(executionTraces::add)
 
+    /** Attach a cold IDE-equivalent data cache at the current stopped instruction boundary. */
+    fun connectDataCache(options: CacheOptions = CacheOptions()): DataCacheCheck {
+        ensureRunnable()
+        return DataCacheCheck(machine.memory, options).also(dataCaches::add)
+    }
+
     /** Attach the same instruction-clocked MarsBot model used by the IDE, before execution. */
     fun connectMarsBot(instructionsPerTick: Int = MarsBotDevice.DEFAULT_INSTRUCTIONS_PER_TICK): MarsBotCheck {
         requireCase(stop == null && marsBot == null) { "Connect one MarsBot before executing instructions" }
@@ -142,6 +150,8 @@ class AssemblyCase internal constructor(
         memoryStoreTraces.clear()
         executionTraces.forEach(ExecutionTrace::close)
         executionTraces.clear()
+        dataCaches.forEach(DataCacheCheck::close)
+        dataCaches.clear()
     }
 
     fun startAt(label: String) {
