@@ -116,6 +116,9 @@ class AssemblyCase internal constructor(
         }
     }
 
+    /** Resolve an object's byte address without reading memory or emitting a simulated access. */
+    fun readDataAddress(label: String, offset: Long = 0): Long = dataAddress(label, offset, alignment = 1)
+
     /** Observe subsequent execution stores overlapping a byte-addressed device region. */
     fun traceMemoryStores(address: Long, byteLength: Int = 1): MemoryStoreTrace =
         MemoryStoreTrace(machine.memory, address, byteLength).also(memoryStoreTraces::add)
@@ -132,9 +135,17 @@ class AssemblyCase internal constructor(
         ExecutionTrace(simulator, textAddress(fromLabel), textAddress(untilLabel)).also(executionTraces::add)
 
     /** Attach a cold IDE-equivalent data cache at the current stopped instruction boundary. */
-    fun connectDataCache(options: CacheOptions = CacheOptions()): DataCacheCheck {
+    fun connectDataCache(options: CacheOptions = CacheOptions()): DataCacheCheck =
+        connectDataCache(options, logAccesses = false)
+
+    /** Opt into a bounded access log as well as the ordinary cache statistics. */
+    fun connectDataCache(
+        options: CacheOptions = CacheOptions(),
+        logAccesses: Boolean,
+        logLimit: Int = 65_536,
+    ): DataCacheCheck {
         ensureRunnable()
-        return DataCacheCheck(machine.memory, options).also(dataCaches::add)
+        return DataCacheCheck(machine.memory, options, logAccesses, logLimit).also(dataCaches::add)
     }
 
     /** Attach the same instruction-clocked MarsBot model used by the IDE, before execution. */

@@ -36,6 +36,8 @@ class MemorySnapshotTest {
                 assertEquals(0x80ff7f00.toInt(), case.readWord("narrow"))
                 assertArrayEquals(intArrayOf(0, 127, 255, 128, 68, 51), case.readBytes("narrow", 6))
                 assertArrayEquals(intArrayOf(127, 255, 128, 68), case.readBytes("narrow", 4, offset = 1))
+                assertEquals(0x10010000L, case.readDataAddress("narrow"))
+                assertEquals(0x100000003L, case.readDataAddress("wide", offset = 3))
                 assertEquals(0xfedcba98.toInt(), case.readWord("wide"))
                 assertArrayEquals(intArrayOf(152, 186, 220, 254), case.readBytes("wide", 4))
                 assertArrayEquals(intArrayOf(), case.readBytes("wide", 0))
@@ -66,6 +68,9 @@ class MemorySnapshotTest {
         DaggerMarsComponent.builder().guiProxy(HeadlessGuiProxy()).build().context().use { machine ->
             val program = machine.assemble(listOf(source))
             AssemblyCase(machine, program.symbolMap(), ByteArrayOutputStream()).use { case ->
+                assertThrows<CaseFailure> { case.readDataAddress("absent") }
+                assertThrows<CaseFailure> { case.readDataAddress("main") }
+                assertThrows<CaseFailure> { case.readDataAddress("value", Long.MAX_VALUE) }
                 assertThrows<CaseFailure> { case.readWord("absent") }
                 assertThrows<CaseFailure> { case.readBytes("absent", 0) }
                 assertThrows<CaseFailure> { case.readWord("main") }

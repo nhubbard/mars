@@ -211,3 +211,17 @@ model does not estimate cycles, split a crossing access into multiple line trans
 or model dirty writeback, coherence, and prefetching. Backstep retains cache observations
 and state, so replay can hit a line left by an earlier forward pass. Establish a cold
 boundary again before comparing runs that include backstep.
+
+For access-order contracts, use `connectDataCache(options, logAccesses = true,
+logLimit = 65_536)`. `recordedAccesses()` returns the complete immutable chronological
+log, including full byte addresses, read/write direction, native access widths, and
+cache transitions. It fails the case if the bounded history lost an earlier entry;
+a truncated suffix is never returned as a complete trace. The ordinary IDE display
+retains its existing 128 recent entries. Log capacity does not change cache statistics.
+Calling recordedAccesses without enabling logging is an instructor API error.
+
+`readDataAddress("input", offset = 4)` resolves a data label's full byte address without
+reading memory. A checker can use it to identify array accesses despite relocated data
+or offset function arguments. Keep functional output and bounds checks alongside an
+access-order requirement, and state that requirement in the assignment. Different
+register allocations, unrolling, and tile orders can satisfy the same observable policy.

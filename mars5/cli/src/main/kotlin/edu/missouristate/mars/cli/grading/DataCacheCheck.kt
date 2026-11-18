@@ -1,16 +1,33 @@
 package edu.missouristate.mars.cli.grading
 
 import edu.missouristate.mars.devices.DataCacheSimulator
+import edu.missouristate.mars.devices.DataCacheSimulator.Access
 import edu.missouristate.mars.devices.DataCacheSimulator.Options
 import edu.missouristate.mars.devices.DataCacheSimulator.Snapshot
 import edu.missouristate.mars.mips.hardware.MemoryState
 
 /** Owns an opt-in observation of the same data cache model used by the IDE. */
-class DataCacheCheck internal constructor(memory: MemoryState, options: Options) : AutoCloseable {
-    private val cache = DataCacheSimulator().apply { configure(options) }
+class DataCacheCheck internal constructor(
+    memory: MemoryState,
+    options: Options,
+    logAccesses: Boolean,
+    logLimit: Int,
+) : AutoCloseable {
+    private val cache = DataCacheSimulator(logLimit).apply {
+        configure(options)
+        setLogging(logAccesses)
+    }
     private var observation: AutoCloseable? = cache.observe(memory)
 
     fun snapshot(): Snapshot = cache.snapshot()
+
+    /** Return a complete immutable log, failing the case if its configured capacity was exceeded. */
+    fun recordedAccesses(): List<Access> {
+        val snapshot = snapshot()
+        check(snapshot.logging) { "Enable logAccesses when connecting this cache" }
+        requireCase(snapshot.recent.size.toLong() == snapshot.accesses) { "Cache access log exceeds its configured capacity" }
+        return snapshot.recent
+    }
 
     /** Establish a cold measurement boundary while execution is stopped. */
     fun reset() {
