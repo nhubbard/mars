@@ -258,3 +258,25 @@ completed normally before another function can be called; the grader rejects the
 request without clearing that architectural state. A function's return continuation
 should therefore be an ordinary completed-call boundary. This permits stateful
 streaming tests while preserving branch, exception, and backstep behavior.
+
+`provideFiles(mapOf("fixture.bin" to byteArrayOf(0, -128, -1)))` explicitly enables
+read-only in-memory files for the current case. The fixture bytes are copied; paths
+match exactly. A missing path or a write/append open returns -1. A fresh case keeps
+file syscalls disabled until it calls this method, even if the preceding case used
+files. No operation falls back to the host filesystem, and write syscall 15 stays
+disabled. `provideFiles(emptyMap())` permits testing a failed open.
+
+The returned `FileAccessCheck` records open/read/close operations. `snapshot()` gives
+a detached history including descriptors, requested byte counts, results and open
+flags. Use `expectAllClosed()` before leaving a success or failure path to detect a
+leaked descriptor. A closed file can be opened again at position zero. As in the
+normal MARS file environment, descriptors start at three, there are at most 29 open
+files, and opening an already-open path fails.
+
+For a streaming reader, `maxReadSize = 3` forces positive short reads even if the
+program requests a larger buffer. `failAfterBytes = 5` allows bytes up to that offset,
+then returns -1 on the next nonzero read, including when the offset equals file size.
+These options apply independently to each opened file's position. Zero-length reads
+on a valid descriptor return zero. Ordinary EOF returns zero. The fixture service
+implements the existing syscall environment; simulated loads, stores, register
+updates, exceptions and instruction counts continue through the normal core.
