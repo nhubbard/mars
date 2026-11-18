@@ -153,3 +153,19 @@ code and data kinds are checked, and full 64-bit addresses are retained. These o
 let a check vary the allocation and caller register values rather than requiring fixed
 addresses or relying on main to prepare the function's arguments. Use the ordinary state,
 output, preservation, and checkpoint checks to verify the function's public contract.
+
+### Relational checks and memory snapshots
+
+`readWord("length")` returns an inspected 32-bit word. `readBytes("parents", 64)`
+returns a detached `IntArray` of unsigned bytes; both accept byte offsets. They use
+full label addresses and do not publish simulated memory accesses or change backstep
+history. Word offsets must be aligned. Byte reads validate each mapped address, and
+an empty snapshot still validates its label. Snapshot length must be nonnegative.
+Changing the returned array changes only the checker’s copy.
+
+Use `expectCondition(valid, "parent chain must reach the start")` for relationships
+between student-produced values. A false condition reports a failure for that case;
+the following cases still run in independent sessions. Supply a nonblank diagnostic.
+For example, a shortest-path task can inspect the chosen parent chain, check adjacency
+and distance, and accept multiple equally short routes. Keep the full input, bounds,
+side-effect, and termination checks alongside such relational checks.
