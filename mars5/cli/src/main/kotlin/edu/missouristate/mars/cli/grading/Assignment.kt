@@ -188,6 +188,29 @@ class AssemblyCase internal constructor(
         }
     }
 
+    /**
+     * Call a function in the same stopped session and pause before its supplied continuation.
+     * Arguments are prepared with register/memory edits. Entry and RA setup are external edits,
+     * establish a new undo baseline, and do not count as executed instructions. Memory, other
+     * registers, observations and the cumulative instruction budget remain in this session.
+     */
+    fun callFunction(label: String, returnTo: String) {
+        ensureRunnable()
+        val entry = textAddress(label)
+        val continuation = textAddress(returnTo)
+        requireCase(entry != continuation) { "Choose distinct function and return addresses" }
+        machine.claimStoppedSession().use {
+            val branch = machine.delayedBranch.snapshot()
+            requireCase(!machine.delayedBranch.isRegistered && !machine.delayedBranch.isTriggered &&
+                !branch.forbiddenSlot
+            ) { "Complete the pending branch delay or forbidden slot before calling a function" }
+            machine.editIntegerRegister(31, continuation)
+            machine.backStepper.clear()
+            machine.registerFile.setProgramCounterBits(entry)
+        }
+        runUntil(returnTo)
+    }
+
     fun setRegister(register: String, value: Int) {
         setRegister(register, value.toLong())
     }

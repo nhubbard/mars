@@ -20,6 +20,47 @@ internal class PackagedCliTest {
     @TempDir lateinit var directory: Path
 
     @Test
+    fun gradingCallsStatefulFunctionsWithoutResettingTheInstructionBudget() {
+        val script = source("calls.kts", """
+            case("same session") {
+                val trace = traceExecution()
+                setRegisterToDataAddress("a0", "value")
+                for(delta in listOf(2,5,-1)) {
+                    setRegister("a1",delta)
+                    callFunction("worker","done")
+                }
+                expectWord("value",6)
+                expectCondition(trace.snapshot().instructions==18L,"External call setup is excluded")
+                runToExit()
+            }
+            case("shared budget",instructionLimit=10) {
+                setRegisterToDataAddress("a0","value");setRegister("a1",1)
+                callFunction("worker","done")
+                callFunction("worker","done")
+            }
+        """.trimIndent())
+        val entry = source("calls.asm", $$"""
+            .data 0x100000000
+            value: .word 0
+            .text
+            done:
+                li $v0, 10
+                syscall
+            worker:
+                lw $t0, 0($a0)
+                addu $t0, $t0, $a1
+                sw $t0, 0($a0)
+                move $v0, $t0
+                jr $ra
+                nop
+        """.trimIndent())
+        val result = launch("grade",script.toString(),entry.toString())
+        assertEquals(1,result.status,result.err+result.out)
+        assertTrue(result.out.contains("PASS same session"),result.out)
+        assertTrue(result.out.contains("FAIL shared budget: Expected execution to reach BREAKPOINT, stopped at INSTRUCTION_LIMIT"),result.out)
+    }
+
+    @Test
     fun showsHelpAndRunsQuietly() {
         val help = launch("h")
         assertEquals(0, help.status)
