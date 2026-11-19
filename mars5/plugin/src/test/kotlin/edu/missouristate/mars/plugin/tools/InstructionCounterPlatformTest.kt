@@ -15,6 +15,7 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
+import com.intellij.openapi.ui.ComponentValidator
 import com.intellij.execution.Executor
 import com.intellij.execution.executors.DefaultDebugExecutor
 import com.intellij.execution.executors.DefaultRunExecutor
@@ -89,6 +90,7 @@ import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.jetbrains.jewel.bridge.theme.SwingBridgeTheme
@@ -415,6 +417,10 @@ class InstructionCounterPlatformTest {
                 }
                 assertFalse(button("Apply and Reset", branches).isEnabled)
                 assertFalse(button("Apply and Clear", bitmap).isEnabled)
+                val unselectedAddress = UIUtil.findComponentsOfType(bitmap, JBTextField::class.java).single { it.columns == 20 }
+                val addressValidator = ComponentValidator.getInstance(unselectedAddress).orElseThrow()
+                addressValidator.revalidate()
+                assertNull(addressValidator.validationInfo)
                 assertFalse(button("Apply and Reset", cache).isEnabled)
                 val cacheTable = UIUtil.findComponentsOfType(cache, JBTable::class.java).single()
                 assertEquals(0, cacheTable.rowCount)
@@ -925,6 +931,28 @@ class InstructionCounterPlatformTest {
                 button("Connect", bitmap).doClick()
                 button("Reset", bitmap).doClick()
                 assertEquals(Base.HEAP, baseChoice().selectedItem)
+                val custom = UIUtil.findComponentsOfType(bitmap, JBTextField::class.java).single { it.columns == 20 }
+                val customValidator = ComponentValidator.getInstance(custom).orElseThrow()
+                assertFalse(custom.isEnabled)
+                customValidator.revalidate()
+                assertNull(customValidator.validationInfo)
+                val previousOptions = bitmapProcess.bitmapDisplay.controls().options
+                baseChoice().selectedItem = Base.CUSTOM
+                assertTrue(custom.isEnabled)
+                for (invalid in listOf("bad", "0x10040001", "0x100000000")) {
+                    custom.text = invalid
+                    customValidator.revalidate()
+                    assertNotNull(customValidator.validationInfo)
+                    button("Apply and Clear", bitmap).doClick()
+                    assertEquals(previousOptions, bitmapProcess.bitmapDisplay.controls().options)
+                }
+                custom.text = "0x10040004"
+                customValidator.revalidate()
+                assertNull(customValidator.validationInfo)
+                button("Apply and Clear", bitmap).doClick()
+                assertEquals(Base.CUSTOM, bitmapProcess.bitmapDisplay.controls().options.base)
+                assertEquals(0x10040004L, bitmapProcess.bitmapDisplay.controls().options.customAddress)
+                assertEquals(0x10040004L, bitmapProcess.bitmapDisplay.bitmapCell(0)?.address)
                 baseChoice().selectedItem = Base.MMIO
                 button("Apply and Clear", bitmap).doClick()
                 editor.refresh()

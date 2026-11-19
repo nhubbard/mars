@@ -108,8 +108,8 @@ console and the program can still run.
 
 | Tool ID | Settings |
 | --- | --- |
-| `bitmap` | `width`, `height`, `unitWidth`, `unitHeight`, `base` |
-| `references` | The bitmap settings plus `wordsPerCell` |
+| `bitmap` | `width`, `height`, `unitWidth`, `unitHeight`, `base`, `address`, `initial` |
+| `references` | `width`, `height`, `unitWidth`, `unitHeight`, `base`, `address`, `wordsPerCell` |
 | `cache` | `blocks`, `wordsPerBlock`, `placement` (`direct`, `full`, `set_associative`), `ways`, `replacement` (`lru`, `random`), `logging` |
 | `branchHistory` | `size`, `historyBits`, `initialTaken` |
 | `keyboardDisplay` | `delay` (`fixed`, `uniform`, `normal`), `instructions`, `displayAfterDelay` |
@@ -121,6 +121,20 @@ Use `connected=false` to open a tool with capture or its device disconnected. Th
 bitmap bases are `global_data`, `global_pointer`, `static_data`, `heap`, `mmio`, and
 `wide_data`. Memory Reference Visualization also accepts `text` and `wide_text`.
 Installed tool providers can use their own IDs and declare their own settings.
+
+Both memory-grid tools also accept `base=custom address=0x10010004`. The address
+must be word aligned; decimal and hexadecimal forms are accepted. Wide addresses
+must belong to a data or text range provided by the selected memory layout.
+The tool window exposes the same **Custom address** choice. Its **Apply and Clear**
+button starts a new capture at that address.
+
+By default, Bitmap Display captures writes made while connected. Add `initial=true`
+to seed its pixels from initialized memory before the first instruction, then
+capture later writes normally. This is useful for a framebuffer initialized in
+`.data` and updated with deltas. The initial read does not count as a simulated
+memory access or change memory. It occurs only at launch while connected;
+connecting later or applying new settings does not reload those initial pixels.
+Memory Reference Visualization does not accept `initial=true`.
 
 ## Instruction set
 

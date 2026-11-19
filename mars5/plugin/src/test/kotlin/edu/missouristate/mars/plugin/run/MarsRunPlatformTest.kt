@@ -1972,9 +1972,74 @@ class MarsRunPlatformTest {
     }
 
     @ParameterizedTest
+    @ValueSource(strings = ["0x10010040", "268501056"])
+    fun `source custom windows observe decoded output before the first store`(address: String) = timeoutRunBlocking {
+        val (handler, recording) = run($$"""
+            # mars:tool bitmap base=custom address=$$address width=64 height=64 unitWidth=32 unitHeight=32
+            # mars:tool references base=custom address=$$address width=64 height=64 unitWidth=32 unitHeight=32 wordsPerCell=2
+            .data
+            .space 80
+            .text
+            lui $t0, 0x1001
+            ori $t0, $t0, 64
+            li $t1, 0xabcdef
+            sw $t1, 0($t0)
+            li $v0, 5
+            syscall
+        """.trimIndent())
+        try {
+            pollAssertionsAsync(5.seconds, 30.milliseconds) {
+                assertEquals(0x10010040L, handler.bitmapDisplay.controls().options.customAddress)
+                assertEquals(0xffabcdef.toInt(), handler.bitmapDisplay.snapshot().frame.image?.getRGB(0, 0))
+                assertEquals(1L, handler.memoryReferences.referenceCell(0)?.count)
+            }
+            assertEquals("", recording.stderr.toString())
+            withContext(Dispatchers.IO) { handler.processInput.write("0\n".toByteArray()) }
+            assertEquals(0, recording.exit.await())
+        } finally {
+            handler.destroyProcess()
+            withContext(Dispatchers.EDT) { FileEditorManager.getInstance(project).closeFile(handler.bitmapFile) }
+        }
+    }
+
+    @Test
+    fun `source bitmap initial pixels are captured before execution without counting reads`() = timeoutRunBlocking {
+        val (handler, recording) = run($$"""
+            # mars:tool bitmap base=custom address=0x10010040 width=64 height=64 unitWidth=32 unitHeight=32 initial=true
+            # mars:tool references base=custom address=0x10010040 width=64 height=64 unitWidth=32 unitHeight=32
+            .data
+            .space 64
+            .word 0x112233, 0x445566, 0x778899, 0xaabbcc
+            .text
+            li $v0, 5
+            syscall
+        """.trimIndent())
+        try {
+            pollAssertionsAsync(5.seconds, 30.milliseconds) {
+                assertEquals(0xff112233.toInt(), handler.bitmapDisplay.snapshot().frame.image?.getRGB(0, 0))
+                assertEquals(0xffaabbcc.toInt(), handler.bitmapDisplay.snapshot().frame.image?.getRGB(1, 1))
+                assertEquals(0L, handler.memoryReferences.referenceCell(0)?.count)
+            }
+            assertEquals("", recording.stderr.toString())
+            withContext(Dispatchers.IO) { handler.processInput.write("0\n".toByteArray()) }
+            assertEquals(0, recording.exit.await())
+        } finally {
+            handler.destroyProcess()
+            withContext(Dispatchers.EDT) { FileEditorManager.getInstance(project).closeFile(handler.bitmapFile) }
+        }
+    }
+
+    @ParameterizedTest
     @CsvSource(
         "bitmap base=text, Bitmap Display requires a data base",
         "bitmap base=wide_data, Base wide_data is unavailable",
+        "bitmap base=custom, Custom base requires address",
+        "bitmap initial=maybe, Expected true or false for initial",
+        "references initial=true, Initial pixels apply only to Bitmap Display",
+        "bitmap address=0x10010040, address requires base=custom",
+        "bitmap base=custom address=bad, Expected a nonnegative decimal or hexadecimal address",
+        "bitmap base=custom address=0x10010041, Custom address is unavailable or unaligned",
+        "bitmap base=custom address=0x100000000, Custom address is unavailable or unaligned",
         "references width=1920, Use a standard display size",
         "references height=1080, Use a standard display size",
         "cache blocks=-1 placement=set_associative, Failed requirement",
