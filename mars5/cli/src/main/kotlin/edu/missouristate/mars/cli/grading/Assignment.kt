@@ -64,9 +64,10 @@ class Assignment internal constructor(
                         inputCharset = Charsets.UTF_8,
                     ).use { console ->
                         val files = GradingFiles()
-                        program.setSyscallEnvironment(GradingEnvironment(console, files))
+                        val timing = GradingTiming()
+                        program.setSyscallEnvironment(GradingEnvironment(console, files, timing))
                         machine.simulator().setInstructionLimit(instructionLimit)
-                        AssemblyCase(machine, program.symbolMap(), captured, files).use { it.verify() }
+                        AssemblyCase(machine, program.symbolMap(), captured, files, timing).use { it.verify() }
                     }
                 }
             }
@@ -87,6 +88,7 @@ class AssemblyCase internal constructor(
     private val symbols: AssemblySymbolMap,
     private val output: ByteArrayOutputStream,
     private val files: GradingFiles = GradingFiles(),
+    private val timing: GradingTiming = GradingTiming(),
 ) : AutoCloseable {
     private val simulator = machine.simulator()
     private var marsBot: MarsBotCheck? = null
@@ -141,6 +143,16 @@ class AssemblyCase internal constructor(
     fun requireDataLabel(label: String) {
         dataAddress(label, 0, alignment = 1)
     }
+
+    /**
+     * Opt into deterministic time (30) and nonblocking sleep (32) services for this case.
+     * Each time request consumes one copied [readings] value, preserving all 64 bits.
+     * Sleep requests are recorded without advancing the readings or waiting on the host.
+     * Empty readings permit sleep-only checks; an exhausted clock fails the case.
+     * Negative sleep requests and history overflow also fail explicitly.
+     */
+    fun provideTiming(readings: List<Long>, maxEvents: Int = 65_536): TimingCheck =
+        timing.configure(readings, maxEvents)
 
     /** Check a data symbol's byte address, including addresses above 4 GiB. */
     fun expectDataAddress(label: String, expected: Long) {
@@ -284,6 +296,21 @@ class AssemblyCase internal constructor(
         ensureRunnable()
         val address = textAddress(label)
         checkStop(simulator.runUntilAddressAsync(0) { it == address }.join(), Reason.BREAKPOINT)
+    }
+
+    /**
+     * Pause before a syscall instruction whose current service register selects [number].
+     * Uses the simulator's instruction-boundary predicate and non-notifying inspection,
+     * so checks need no submission-private labels. Step once to execute a paused service
+     * before searching for its next occurrence. This does not enable a restricted service.
+     */
+    fun runUntilSyscall(number: Int) {
+        require(number >= 0) { "Syscall number must be nonnegative" }
+        ensureRunnable()
+        checkStop(simulator.runUntilAddressAsync(0) { address ->
+            machine.registerFile.getLongValueNoNotify(2).toInt() == number &&
+                machine.memory.inspectInstruction(address)?.binaryStatement?.let { it and 0xfc00003f.toInt() == 12 } == true
+        }.join(), Reason.BREAKPOINT)
     }
 
     fun runToExit(exitCode: Int = 0) {
@@ -473,11 +500,16 @@ private class BoundedOutput(private val bytes: ByteArrayOutputStream) : OutputSt
     }
 }
 
-private class GradingEnvironment(console: SyscallEnvironment, private val files: GradingFiles) : SyscallEnvironment by console {
+private class GradingEnvironment(
+    console: SyscallEnvironment,
+    private val files: GradingFiles,
+    private val timing: GradingTiming,
+) : SyscallEnvironment by console {
     override fun allowsSyscall(number: Int): Boolean = when (number) {
         in 1..12, 17, in 34..36 -> true
         13, 14, 16 -> files.enabled
         15 -> files.writesEnabled
+        30, 32 -> timing.enabled
         else -> false
     }
 
@@ -487,4 +519,6 @@ private class GradingEnvironment(console: SyscallEnvironment, private val files:
     override fun writeToFile(fd: Int, buffer: ByteArray?, lengthRequested: Int): Int =
         files.write(fd, buffer, lengthRequested)
     override fun closeFile(fd: Int) = files.close(fd)
+    override fun currentTimeMillis(): Long = timing.currentTimeMillis()
+    override fun sleepMillis(milliseconds: Int) = timing.sleepMillis(milliseconds)
 }
