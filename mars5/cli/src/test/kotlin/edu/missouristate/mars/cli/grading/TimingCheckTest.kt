@@ -60,6 +60,46 @@ class TimingCheckTest {
     }
 
     @Test
+    fun `prepared function entries retain real state and allow observations inside repeated calls`(@TempDir directory: Path) {
+        val path = directory.resolve("calls.asm")
+        val source = $$"""
+            .data
+        value: .word 0
+            .text
+        function:
+            addiu $s0, $s0, 1
+            li $v0, 30
+            nop
+            syscall
+            la $t0, value
+            sw $a0, 0($t0)
+            jr $ra
+            nop
+        continuation:
+            nop
+        """.trimIndent()
+        val assignment = Assignment(AssemblySourceSnapshot(listOf(path), mapOf(path to source)))
+        assignment.case("observe repeated calls") {
+            val clock = provideTiming(listOf(7, 9))
+            setRegister("s0", 5)
+            for ((index, value) in listOf(7, 9).withIndex()) {
+                assertThrows<CaseFailure> { enterFunction("function", "function") }
+                enterFunction("function", "continuation")
+                expectRegister("s0", 5 + index)
+                expectWord("value", if (index == 0) 0 else 7)
+                runUntilSyscall(30)
+                expectRegister("s0", 6 + index)
+                assertEquals(index, clock.snapshot().size)
+                step()
+                runUntil("continuation")
+                expectWord("value", value)
+            }
+            assertEquals(listOf(Event(TIME, 7), Event(TIME, 9)), clock.snapshot())
+        }
+        assertEquals(null, assignment.results.single().failure)
+    }
+
+    @Test
     fun `service boundary checks use dynamic low service bits and full text addresses without enabling calls`(@TempDir directory: Path) {
         val path = directory.resolve("boundary.asm")
         val source = $$"""
