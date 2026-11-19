@@ -289,12 +289,16 @@ class AssemblyCase internal constructor(
         requireCase(result.exitCode == exitCode) { "Expected exit code $exitCode, got ${result.exitCode}" }
     }
 
+    /** Inspect all 64 register bits without advancing execution, notifying observers or editing undo history. */
+    fun readRegister(register: String): Long =
+        machine.registerFile.getLongValueNoNotify(registerNumber(register))
+
     fun expectRegister(register: String, expected: Int) {
         expectRegister(register, expected.toLong())
     }
 
     fun expectRegister(register: String, expected: Long) {
-        val actual = machine.registerFile.getLongValueNoNotify(registerNumber(register))
+        val actual = readRegister(register)
         requireCase(actual == expected) { "Expected $register = $expected, got $actual" }
     }
 
@@ -399,6 +403,7 @@ class AssemblyCase internal constructor(
     }
 
     private fun registerNumber(register: String): Int {
+        requireCase(register.isNotBlank() && register != "\$") { "Unknown register: $register" }
         val name = if (register.startsWith('$')) register else "$$register"
         return machine.registerFile.getUserRegister(name)?.number
             ?: throw CaseFailure("Unknown register: $register")
