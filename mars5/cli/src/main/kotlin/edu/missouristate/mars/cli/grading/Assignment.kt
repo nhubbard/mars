@@ -240,6 +240,16 @@ class AssemblyCase internal constructor(
      * registers, observations and the cumulative instruction budget remain in this session.
      */
     fun callFunction(label: String, returnTo: String) {
+        enterFunction(label, returnTo)
+        runUntil(returnTo)
+    }
+
+    /**
+     * Prepare the same stopped-session entry and continuation as [callFunction], without
+     * executing instructions. The checker can then pause at public syscall boundaries or
+     * other observations inside the call, including across repeated calls in one case.
+     */
+    fun enterFunction(label: String, returnTo: String) {
         ensureRunnable()
         val entry = textAddress(label)
         val continuation = textAddress(returnTo)
@@ -253,7 +263,6 @@ class AssemblyCase internal constructor(
             machine.backStepper.clear()
             machine.registerFile.setProgramCounterBits(entry)
         }
-        runUntil(returnTo)
     }
 
     fun setRegister(register: String, value: Int) {

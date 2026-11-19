@@ -37,3 +37,11 @@ This allows frame checks at timing boundaries without requiring private assembly
 labels or reading state while the simulator is running. A missing service fails
 when execution stops for another reason, such as normal termination or its
 instruction limit. The predicate does not publish memory accesses.
+
+Use `enterFunction(label, returnTo)` to prepare a call without running it to its
+continuation. It uses the same stopped-session entry, return-address setup, branch
+boundary checks and undo-baseline behavior as `callFunction`. Inspect state with
+`runUntilSyscall`, execute the paused service with `step`, then finish with
+`runUntil(returnTo)`. Repeating this in one case retains real memory, other registers,
+observations and the cumulative instruction budget. `startAt` remains restricted
+to selecting the initial program entry before any execution.
