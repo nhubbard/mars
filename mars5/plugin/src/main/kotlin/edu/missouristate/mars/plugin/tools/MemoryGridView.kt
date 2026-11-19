@@ -6,11 +6,13 @@ import com.intellij.openapi.application.EDT
 import com.intellij.openapi.observable.util.whenFocusGained
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.ComboBox
+import com.intellij.openapi.ui.ValidationInfo
 import com.intellij.openapi.util.text.HtmlChunk
 import com.intellij.ui.CollectionComboBoxModel
 import com.intellij.ui.ColorPanel
 import com.intellij.ui.ScrollPaneFactory
 import com.intellij.ui.components.JBCheckBox
+import com.intellij.ui.components.JBTextField
 import com.intellij.ui.dsl.builder.Align
 import com.intellij.ui.dsl.builder.CollapsibleRow
 import com.intellij.ui.dsl.builder.LabelPosition
@@ -21,6 +23,7 @@ import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
 import com.intellij.util.ui.launchOnShow
 import edu.missouristate.mars.plugin.run.MarsProcessHandler
+import edu.missouristate.mars.plugin.debug.parseMemoryAddress
 import edu.missouristate.mars.plugin.tools.MemoryGridDisplay.Base
 import edu.missouristate.mars.plugin.tools.MemoryGridDisplay.Frame
 import edu.missouristate.mars.plugin.tools.MemoryGridDisplay.Mode
@@ -65,6 +68,7 @@ internal class MemoryGridView(
             addresses[choice]?.let { toolsMessages.getMessage("bitmap.baseChoice", formatToolHex(it), name) } ?: name
         }
     }
+    private val customAddress = JBTextField("0x0", 20)
     private val apply = JButton(toolsMessages.getMessage("bitmap.apply"))
     private val toggle = JButton()
     private val open = JButton(toolsMessages.getMessage("bitmap.open"))
@@ -79,7 +83,7 @@ internal class MemoryGridView(
     private var selected: MemoryGridDisplay? = null
     private val reference = canvas?.let(::ReferenceControls)
 
-    val component = ScrollPaneFactory.createScrollPane(marsToolPanel {
+    private val controls = marsToolPanel {
         marsExecutionRow(selector.component)
         row {
             cell(toggle)
@@ -87,6 +91,13 @@ internal class MemoryGridView(
         }
         collapsibleGroup(toolsMessages.getMessage("bitmap.configuration"), indent = false) {
             row { cell(base).label(toolsMessages.getMessage("bitmap.base"), LabelPosition.TOP) }
+            row {
+                cell(customAddress).label(toolsMessages.getMessage("bitmap.custom.address"), LabelPosition.TOP)
+                    .validationOnInput { field ->
+                        if (selected == null || base.selectedItem != Base.CUSTOM || parseGridAddress(field.text, selected) != null) null
+                        else ValidationInfo(toolsMessages.getMessage("bitmap.custom.invalid"), field)
+                    }
+            }
             row {
                 panel { row { cell(width).label(toolsMessages.getMessage("bitmap.width"), LabelPosition.TOP) } }
                 panel { row { cell(height).label(toolsMessages.getMessage("bitmap.height"), LabelPosition.TOP) } }
@@ -116,7 +127,9 @@ internal class MemoryGridView(
             row { inspection = text(inspectionHint).resizableColumn().component }.layout(RowLayout.INDEPENDENT)
         }
         row { comment(toolsMessages.getMessage(mode.helpKey)).resizableColumn() }.layout(RowLayout.INDEPENDENT)
-    }, true).apply { horizontalScrollBarPolicy = HORIZONTAL_SCROLLBAR_NEVER }
+    }
+
+    val component = ScrollPaneFactory.createScrollPane(controls, true).apply { horizontalScrollBarPolicy = HORIZONTAL_SCROLLBAR_NEVER }
 
     init {
         UIUtil.uiTraverser(component.viewport.view).filter(JComponent::class.java).forEach { control ->
@@ -133,11 +146,14 @@ internal class MemoryGridView(
             }
         }
         open.addActionListener { selector.process?.let { openBitmapDisplay(project, it, focus = true) } }
+        base.addActionListener { customAddress.isEnabled = selected != null && base.selectedItem == Base.CUSTOM }
         apply.addActionListener {
+            val address = if (base.selectedItem == Base.CUSTOM) parseGridAddress(customAddress.text, selected) ?: return@addActionListener
+                else selected!!.controls().options.customAddress
             selected!!.configure(Options(
                 width.selectedItem as Int, height.selectedItem as Int,
                 unitWidth.selectedItem as Int, unitHeight.selectedItem as Int, base.selectedItem as Base,
-                (reference?.words?.selectedItem as Int?) ?: 1,
+                (reference?.words?.selectedItem as Int?) ?: 1, customAddress = address,
             ))
             render()
         }
@@ -150,6 +166,7 @@ internal class MemoryGridView(
             selected!!.reset()
             selectionChanged()
         }
+        controls.registerValidators(this)
         refresh()
         selectionChanged()
     }
@@ -191,6 +208,7 @@ internal class MemoryGridView(
         unitWidth.selectedItem = options.unitWidth
         unitHeight.selectedItem = options.unitHeight
         updateBaseChoices(controls?.addresses.orEmpty())
+        customAddress.text = formatToolHex(options.customAddress)
         base.selectedItem = options.base
         reference?.let {
             it.words.selectedItem = options.wordsPerCell
@@ -203,6 +221,7 @@ internal class MemoryGridView(
         val snapshot = selected?.controls()
         val available = snapshot != null
         for (control in listOf(width, height, unitWidth, unitHeight, base, apply, toggle, reset, open)) control.isEnabled = available
+        customAddress.isEnabled = available && base.selectedItem == Base.CUSTOM
         reference?.controls?.forEach { it.isEnabled = available }
         toggle.text = toolsMessages.getMessage(if (snapshot?.connected == true) "counter.disconnect" else "counter.connect")
         updateBaseChoices(snapshot?.addresses.orEmpty())
@@ -411,3 +430,7 @@ internal class MemoryGridCanvas(
         }
     }
 }
+
+
+internal fun parseGridAddress(text: String, display: MemoryGridDisplay?): Long? =
+    parseMemoryAddress(text, Long.MAX_VALUE)?.takeIf { display?.acceptsCustomAddress(it) == true }

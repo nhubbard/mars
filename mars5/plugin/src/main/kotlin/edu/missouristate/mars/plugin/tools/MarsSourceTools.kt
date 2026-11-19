@@ -9,6 +9,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Key
 import com.intellij.openapi.wm.ToolWindowManager
 import edu.missouristate.mars.mips.hardware.MemoryState
+import edu.missouristate.mars.plugin.debug.parseMemoryAddress
 import edu.missouristate.mars.plugin.run.MarsProcessHandler
 
 internal val marsToolId = Key.create<String>("MARS_TOOL_ID")
@@ -93,13 +94,24 @@ private fun configureTool(
             require(!bitmap || base !in listOf(MemoryGridDisplay.Base.TEXT, MemoryGridDisplay.Base.WIDE_TEXT)) {
                 "Bitmap Display requires a data base"
             }
-            require(base.range(memory) != null) { "Base ${base.name.lowercase()} is unavailable in this memory layout" }
+            val address = settings.address("address")
+            require(address == null || base == MemoryGridDisplay.Base.CUSTOM) { "address requires base=custom" }
+            require(base != MemoryGridDisplay.Base.CUSTOM || address != null) { "Custom base requires address" }
+            val range = if (base == MemoryGridDisplay.Base.CUSTOM) {
+                MemoryGridDisplay.customRange(address!!, memory.wideDataRange, memory.wideTextRange)
+            } else base.range(memory)
+            require(range != null) {
+                if (base == MemoryGridDisplay.Base.CUSTOM) "Custom address is unavailable or unaligned in this memory layout"
+                else "Base ${base.name.lowercase()} is unavailable in this memory layout"
+            }
+            val initial = settings.boolean("initial", defaults.captureInitial)
+            require(bitmap || !initial) { "Initial pixels apply only to Bitmap Display" }
             val options = defaults.copy(
                 width = settings.integer("width", defaults.width),
                 height = settings.integer("height", defaults.height),
                 unitWidth = settings.integer("unitWidth", defaults.unitWidth),
                 unitHeight = settings.integer("unitHeight", defaults.unitHeight),
-                base = base,
+                base = base, customAddress = address ?: defaults.customAddress, captureInitial = initial,
                 wordsPerCell = if (bitmap) 1 else settings.integer("wordsPerCell", defaults.wordsPerCell),
             )
             require(bitmap || options.width in MemoryGridDisplay.displaySizes && options.height in MemoryGridDisplay.displaySizes) {
@@ -185,6 +197,10 @@ private class ToolSettings(properties: Map<String, String>) {
     fun integer(key: String, default: Int): Int = remaining.remove(key)?.let {
         requireNotNull(it.toIntOrNull()) { "Expected an integer for $key" }
     } ?: default
+
+    fun address(key: String): Long? = remaining.remove(key)?.let {
+        requireNotNull(parseMemoryAddress(it, Long.MAX_VALUE)) { "Expected a nonnegative decimal or hexadecimal address for $key" }
+    }
 
     fun boolean(key: String, default: Boolean): Boolean = remaining.remove(key)?.let {
         requireNotNull(it.toBooleanStrictOrNull()) { "Expected true or false for $key" }
