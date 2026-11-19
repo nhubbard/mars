@@ -4,6 +4,7 @@ import edu.missouristate.mars.api.AssemblySourceReader
 import edu.missouristate.mars.api.AssemblySourceSnapshot
 import java.io.IOException
 import java.io.PrintStream
+import java.nio.ByteOrder
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.script.experimental.annotations.KotlinScript
@@ -32,8 +33,9 @@ abstract class AssignmentScript(assignment: Assignment) {
         instructionLimit: Long = 100_000,
         input: String = "",
         utf8Text: Boolean = false,
+        byteOrder: ByteOrder = ByteOrder.LITTLE_ENDIAN,
         verify: AssemblyCase.() -> Unit,
-    ) = submission.case(name, instructionLimit, input, utf8Text, verify)
+    ) = submission.case(name, instructionLimit, input, utf8Text, byteOrder, verify)
 }
 
 object AssignmentCompilation : ScriptCompilationConfiguration({
