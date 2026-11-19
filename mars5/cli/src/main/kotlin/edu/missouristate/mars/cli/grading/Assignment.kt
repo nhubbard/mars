@@ -23,6 +23,7 @@ import edu.missouristate.mars.mips.hardware.VectorRegister
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.OutputStream
+import java.nio.ByteOrder
 import java.io.PrintStream
 import java.util.concurrent.CancellationException
 
@@ -42,6 +43,7 @@ class Assignment internal constructor(
         instructionLimit: Long = 100_000,
         input: String = "",
         utf8Text: Boolean = false,
+        byteOrder: ByteOrder = ByteOrder.LITTLE_ENDIAN,
         verify: AssemblyCase.() -> Unit,
     ) {
         require(name.isNotBlank() && results.none { it.name == name }) { "Choose a unique, non-empty case name" }
@@ -49,6 +51,8 @@ class Assignment internal constructor(
         try {
             DaggerMarsComponent.builder().guiProxy(HeadlessGuiProxy()).build().context().use { machine ->
                 machine.settings.isUtf8TextEnabled = utf8Text
+                // Select before assembly so data directives and later execution agree.
+                machine.memory.byteOrder = byteOrder == ByteOrder.LITTLE_ENDIAN
                 var assemblyChecks = 0
                 val program = machine.assembleSnapshot(submission, null, extended = true, warnings = false) {
                     if (++assemblyChecks > 1_000_000) throw AssemblyLimitReached()

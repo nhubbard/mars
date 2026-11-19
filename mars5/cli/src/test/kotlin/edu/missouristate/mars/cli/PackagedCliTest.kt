@@ -20,6 +20,59 @@ internal class PackagedCliTest {
     @TempDir lateinit var directory: Path
 
     @Test
+    fun gradingSelectsByteOrderBeforeAssemblyAndKeepsCasesIndependent() {
+        val script = source("byte-order.kts", """
+            import java.nio.ByteOrder
+            fun verifyOrder(first:Int,loaded:Int) = Unit
+            case("big endian", byteOrder=ByteOrder.BIG_ENDIAN) {
+                expectBytes("word",0x11,0x22,0x33,0x44)
+                runUntil("done")
+                expectRegister("s0",0x11)
+                expectRegister("s1",0x01020304)
+                expectWord("output",0x04030201)
+                expectBytes("output",4,3,2,1)
+                setWord("word",0x89abcdef.toInt())
+                expectBytes("word",0x89,0xab,0xcd,0xef)
+            }
+            case("explicit little endian", byteOrder=ByteOrder.LITTLE_ENDIAN) {
+                expectBytes("word",0x44,0x33,0x22,0x11)
+                runUntil("done")
+                expectRegister("s0",0x44)
+                expectRegister("s1",0x04030201)
+                expectWord("output",0x04030201)
+                expectBytes("output",1,2,3,4)
+            }
+            case("default remains little endian") {
+                expectBytes("word",0x44,0x33,0x22,0x11)
+                runUntil("done")
+                expectRegister("s0",0x44)
+                expectRegister("s1",0x04030201)
+                expectWord("output",0x04030201)
+                expectBytes("output",1,2,3,4)
+            }
+        """.trimIndent())
+        val entry = source("byte-order.asm", $$"""
+            .data
+            word: .word 0x11223344
+            bytes: .byte 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16
+            output: .space 16
+            .text
+                la $t0,word
+                lbu $s0,0($t0)
+                la $t0,bytes
+                lw $s1,0($t0)
+                ld.b $w0,0($t0)
+                la $t0,output
+                st.w $w0,0($t0)
+            done:
+                nop
+        """.trimIndent())
+        val result = launch("grade", script.toString(), entry.toString())
+        assertEquals(0, result.status, result.err + result.out)
+        assertEquals(3, result.out.lineSequence().count { it.startsWith("PASS ") }, result.out)
+    }
+
+    @Test
     fun gradingCallsStatefulFunctionsWithoutResettingTheInstructionBudget() {
         val script = source("calls.kts", """
             case("same session") {
