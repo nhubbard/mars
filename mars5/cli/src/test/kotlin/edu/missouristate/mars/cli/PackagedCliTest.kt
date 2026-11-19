@@ -20,6 +20,40 @@ internal class PackagedCliTest {
     @TempDir lateinit var directory: Path
 
     @Test
+    fun gradingUsesCaseLocalScriptedTimeWithoutHostSleep() {
+        val script = source("timing.kts", """
+            import edu.missouristate.mars.cli.grading.TimingCheck.Operation
+            for (index in 0..1) case("scripted clock " + index) {
+                val clock = provideTiming(listOf(0x1234567880000001L, 7L))
+                runToExit()
+                expectRegister("s0", -2147483647)
+                expectRegister("s1", 0x12345678)
+                expectRegister("a0", 7)
+                expectRegister("a1", 0)
+                expectCondition(clock.snapshot().map { it.operation } == listOf(Operation.TIME, Operation.SLEEP, Operation.TIME), "Ordered service events")
+                expectCondition(clock.snapshot().map { it.milliseconds } == listOf(0x1234567880000001L, 2147483647L, 7L), "Exact clock and sleep values")
+            }
+        """.trimIndent())
+        val entry = source("timing.asm", $$"""
+            .text
+            li $v0, 30
+            syscall
+            move $s0, $a0
+            move $s1, $a1
+            li $a0, 2147483647
+            li $v0, 32
+            syscall
+            li $v0, 30
+            syscall
+            li $v0, 10
+            syscall
+        """.trimIndent())
+        val result = launch("grade", script.toString(), entry.toString())
+        assertEquals(0, result.status, result.err + result.out)
+        assertEquals(listOf("PASS scripted clock 0", "PASS scripted clock 1"), result.out.lines().filter { it.isNotBlank() })
+    }
+
+    @Test
     fun gradingSelectsByteOrderBeforeAssemblyAndKeepsCasesIndependent() {
         val script = source("byte-order.kts", """
             import java.nio.ByteOrder
