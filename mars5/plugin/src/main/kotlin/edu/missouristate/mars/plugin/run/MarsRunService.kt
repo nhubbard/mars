@@ -306,75 +306,77 @@ internal class MarsProcessHandler(
                     val dialogs = MarsSyscallDialogs(project, entry.fileName.toString(), execution)
                     val textInput = if (inputMode == MarsInputMode.DIALOG) TextInput(dialogs::readStandardInput) else null
                     SessionSyscallEnvironment(session.memory, stdin, output, error, workingDirectory, inputCharset, textInput).use { io ->
-                        session.program!!.setSyscallEnvironment(MarsIdeSyscallEnvironment(execution, io, dialogs, ::clearConsole))
-                        val simulator = session.simulator()
-                        simulator.setInstructionLimit(instructionLimit.toLong())
-                        simulator.setRunSpeedSource { runSpeed.toDouble() }
-                        val decodedInstructions = ExecutedInstructionCache(session.instructionSet)
-                        simulator.addListener(object : SimulatorListener {
-                            override fun onStep(event: StepEvent) {
-                                val word = event.instruction
-                                val decoded = decodedInstructions.decode(word)
-                                instructionCounter.record(decoded.instruction)
-                                instructionStatistics.record(word, decoded.instruction)
-                                branchHistory.record(event, decoded.branchTargetOffset)
-                                xray.record(event)
-                                digitalLab.instructionCompleted(session)
-                                keyboardDisplay.instructionCompleted(session)
-                                marsBot.instructionCompleted()
-                                if (toolInstructions.hasListeners()) toolInstructions.multicaster.instructionCompleted(event)
-                            }
-                            override fun onBackstep(stepCount: Long) = xray.rewind(stepCount)
-                            override fun onStop(event: StopEvent) = Unit
-                            override fun onError(event: ErrorEvent) {
-                                if (execution.isActive) {
-                                    reportRuntimeError(event, sources)
+                        withCustomizedSyscallEnvironment(project, entry, io) { customizedIo ->
+                            session.program!!.setSyscallEnvironment(MarsIdeSyscallEnvironment(execution, customizedIo, dialogs, ::clearConsole))
+                            val simulator = session.simulator()
+                            simulator.setInstructionLimit(instructionLimit.toLong())
+                            simulator.setRunSpeedSource { runSpeed.toDouble() }
+                            val decodedInstructions = ExecutedInstructionCache(session.instructionSet)
+                            simulator.addListener(object : SimulatorListener {
+                                override fun onStep(event: StepEvent) {
+                                    val word = event.instruction
+                                    val decoded = decodedInstructions.decode(word)
+                                    instructionCounter.record(decoded.instruction)
+                                    instructionStatistics.record(word, decoded.instruction)
+                                    branchHistory.record(event, decoded.branchTargetOffset)
+                                    xray.record(event)
+                                    digitalLab.instructionCompleted(session)
+                                    keyboardDisplay.instructionCompleted(session)
+                                    marsBot.instructionCompleted()
+                                    if (toolInstructions.hasListeners()) toolInstructions.multicaster.instructionCompleted(event)
                                 }
+                                override fun onBackstep(stepCount: Long) = xray.rewind(stepCount)
+                                override fun onStop(event: StopEvent) = Unit
+                                override fun onError(event: ErrorEvent) {
+                                    if (execution.isActive) {
+                                        reportRuntimeError(event, sources)
+                                    }
+                                }
+                            })
+                            val floatingPoint = session.coprocessor1
+                            val floatingRegisters = floatingPoint.registers
+                            readFloatingRegisters = { number, wide ->
+                                if (wide) floatingPoint.getDoublewordNoNotify(number)
+                                else floatingRegisters[number].valueNoNotify.toUInt().toLong()
                             }
-                        })
-                        val floatingPoint = session.coprocessor1
-                        val floatingRegisters = floatingPoint.registers
-                        readFloatingRegisters = { number, wide ->
-                            if (wide) floatingPoint.getDoublewordNoNotify(number)
-                            else floatingRegisters[number].valueNoNotify.toUInt().toLong()
-                        }
-                        val stop = try {
-                            val xRayMemory = if (session.target == MarsTarget.MARS64) xray.observeMemory(session.memory) else null
-                            xRayMemory.use {
-                                bitmapDisplay.observe(session.memory).use {
-                                    memoryReferences.observe(session.memory).use {
-                                        dataCache.observe(session.memory).use {
-                                            digitalLab.observe(session).use {
-                                                keyboardDisplay.observe(session).use {
-                                                    revealSourceTools(project, this, sourceTools)
-                                                    executeWithWorldDevices(session, sources)
+                            val stop = try {
+                                val xRayMemory = if (session.target == MarsTarget.MARS64) xray.observeMemory(session.memory) else null
+                                xRayMemory.use {
+                                    bitmapDisplay.observe(session.memory).use {
+                                        memoryReferences.observe(session.memory).use {
+                                            dataCache.observe(session.memory).use {
+                                                digitalLab.observe(session).use {
+                                                    keyboardDisplay.observe(session).use {
+                                                        revealSourceTools(project, this, sourceTools)
+                                                        executeWithWorldDevices(session, sources)
+                                                    }
                                                 }
                                             }
                                         }
                                     }
                                 }
+                            } finally {
+                                // Keep both precisions available after the session closes.
+                                val singles = IntArray(floatingRegisters.size) { floatingRegisters[it].valueNoNotify }
+                                val doubles = LongArray(floatingRegisters.size) {
+                                    if (target == MarsTarget.MARS64 || it % 2 == 0) floatingPoint.getDoublewordNoNotify(it) else 0L
+                                }
+                                readFloatingRegisters = { number, wide ->
+                                    if (wide) doubles[number] else singles[number].toUInt().toLong()
+                                }
                             }
-                        } finally {
-                            // Keep both precisions available after the session closes.
-                            val singles = IntArray(floatingRegisters.size) { floatingRegisters[it].valueNoNotify }
-                            val doubles = LongArray(floatingRegisters.size) {
-                                if (target == MarsTarget.MARS64 || it % 2 == 0) floatingPoint.getDoublewordNoNotify(it) else 0L
+                            if (memoryDumps.isNotEmpty() && stop.reason in dumpReasons) {
+                                exportAfterRun(session, program.sources.snapshot.texts().keys.plusElement(entry))
                             }
-                            readFloatingRegisters = { number, wide ->
-                                if (wide) doubles[number] else singles[number].toUInt().toLong()
+                            when (stop.reason) {
+                                StopEvent.Reason.NORMAL_EXIT, StopEvent.Reason.CLIFF_TERMINATION -> stop.exitCode
+                                StopEvent.Reason.INSTRUCTION_LIMIT -> {
+                                    notifyTextAvailable(runMessages.getMessage("run.instruction.limit.reached", instructionLimit) + "\n",
+                                        ProcessOutputTypes.STDERR)
+                                    1
+                                }
+                                else -> 1
                             }
-                        }
-                        if (memoryDumps.isNotEmpty() && stop.reason in dumpReasons) {
-                            exportAfterRun(session, program.sources.snapshot.texts().keys.plusElement(entry))
-                        }
-                        when (stop.reason) {
-                            StopEvent.Reason.NORMAL_EXIT, StopEvent.Reason.CLIFF_TERMINATION -> stop.exitCode
-                            StopEvent.Reason.INSTRUCTION_LIMIT -> {
-                                notifyTextAvailable(runMessages.getMessage("run.instruction.limit.reached", instructionLimit) + "\n",
-                                    ProcessOutputTypes.STDERR)
-                                1
-                            }
-                            else -> 1
                         }
                     }
                 }
