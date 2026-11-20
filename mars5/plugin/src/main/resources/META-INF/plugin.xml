@@ -33,6 +33,7 @@
     <module name="intellij.platform.syntax.util"/>
   </dependencies>
   <extensionPoints>
+    <extensionPoint name="syscallEnvironmentCustomizer" interface="edu.missouristate.mars.plugin.run.MarsSyscallEnvironmentCustomizer" dynamic="true"/>
     <extensionPoint name="toolProvider" interface="edu.missouristate.mars.plugin.tools.MarsToolProvider" dynamic="true"/>
   </extensionPoints>
   <extensions defaultExtensionNs="edu.missouristate.mars">
