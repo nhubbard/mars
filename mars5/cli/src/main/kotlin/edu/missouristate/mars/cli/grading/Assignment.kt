@@ -124,6 +124,8 @@ class AssemblyCase internal constructor(
      * to expose submissions that assume every successful open returns descriptor 3.
      * [maxWriteSize] forces short writes. [failWriteAfterBytes] counts bytes written per
      * opened descriptor, including append mode, and a preceding write stops at that count.
+     * [failWriteAfterBytesByPath] overrides that position for each named writable path,
+     * independently of other output files. Its copied entries also count from each open.
      * [maxFileSize] bounds each output file; a write may fill the remaining space, then
      * further nonempty writes fail. Empty writes succeed on an open writable descriptor.
      * An empty [writablePaths] keeps syscall 15 disabled, including writes to stdout/stderr.
@@ -137,8 +139,9 @@ class AssemblyCase internal constructor(
         maxWriteSize: Int = Int.MAX_VALUE,
         failWriteAfterBytes: Int? = null,
         maxFileSize: Int = 1024 * 1024,
+        failWriteAfterBytesByPath: Map<String, Int> = emptyMap(),
     ): FileAccessCheck = files.configure(contents, maxReadSize, failAfterBytes, firstDescriptor,
-        writablePaths, maxWriteSize, failWriteAfterBytes, maxFileSize)
+        writablePaths, maxWriteSize, failWriteAfterBytes, maxFileSize, failWriteAfterBytesByPath)
 
     fun requireDataLabel(label: String) {
         dataAddress(label, 0, alignment = 1)
