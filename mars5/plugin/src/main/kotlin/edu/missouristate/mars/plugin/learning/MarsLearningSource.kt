@@ -12,6 +12,7 @@ import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.openapi.vfs.newvfs.BulkFileListener
 import com.intellij.openapi.vfs.newvfs.events.VFileEvent
 import com.intellij.xdebugger.XSourcePosition
+import edu.missouristate.mars.plugin.analysis.CapturedAssemblySources
 import edu.missouristate.mars.plugin.MarsExecutionOptions
 import edu.missouristate.mars.plugin.build.MarsSourceSet
 import edu.missouristate.mars.plugin.learning.MarsLearningProgress.CheckTicket
@@ -55,8 +56,9 @@ internal class MarsLearningSource(
     }
 
     /** Called with read access; the process capture identifies what actually executed. */
-    fun matches(attempt: Attempt, handler: MarsProcessHandler): Boolean {
-        val capture = handler.capturedProgram?.sources
+    fun matches(attempt: Attempt, handler: MarsProcessHandler): Boolean = matches(attempt, handler.capturedProgram?.sources)
+
+    fun matches(attempt: Attempt, capture: CapturedAssemblySources?): Boolean {
         val sourcesMatch = capture?.let {
             it.exceptionHandler == null && it.snapshot.texts() == mapOf(entry to attempt.text)
         } == true

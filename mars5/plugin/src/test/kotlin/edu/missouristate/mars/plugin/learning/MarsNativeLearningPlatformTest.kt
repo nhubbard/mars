@@ -122,7 +122,7 @@ class MarsNativeLearningPlatformTest {
                 }
             }
         }
-        assertEquals(setOf("first-program.asm", "wrong-output.asm"), Files.list(folder).use { it.map { p -> p.fileName.toString() }.toList().toSet() })
+        assertEquals(setOf("first-program.asm", "wrong-output.asm", "independent.asm"), Files.list(folder).use { it.map { p -> p.fileName.toString() }.toList().toSet() })
     }
 
     @Test
@@ -225,8 +225,8 @@ class MarsNativeLearningPlatformTest {
                     for (preparation in preparations) assertTrue(preparation.await())
                 }
                 for (preparation in preparations) assertTrue(preparation.await())
-                assertEquals(when (lesson) { is MarsConsoleRunLesson -> 1; is MarsConsoleDebugLesson -> 3; is MarsConsoleOutputLesson -> 4; is MarsConsoleDiagnosisLesson -> 5; is MarsConsoleRepairLesson -> 1; else -> 2 }, predicates.size)
-                assertEquals(when (lesson) { is MarsConsoleRunLesson -> 1; is MarsConsoleDebugLesson -> 3; is MarsConsoleOutputLesson -> 3; is MarsConsoleDiagnosisLesson -> 3; is MarsConsoleRepairLesson -> 1; else -> 0 }, timedChecks)
+                assertEquals(when (lesson) { is MarsConsoleRunLesson -> 1; is MarsConsoleDebugLesson -> 3; is MarsConsoleOutputLesson -> 4; is MarsConsoleDiagnosisLesson -> 5; is MarsConsoleRepairLesson -> 1; is MarsIndependentLesson -> 1; else -> 2 }, predicates.size)
+                assertEquals(when (lesson) { is MarsConsoleRunLesson -> 1; is MarsConsoleDebugLesson -> 3; is MarsConsoleOutputLesson -> 3; is MarsConsoleDiagnosisLesson -> 3; is MarsConsoleRepairLesson -> 1; is MarsIndependentLesson -> 1; else -> 0 }, timedChecks)
                 assertTrue(predicates.all { !it(runtime) })
                 val progress = projectFixture.get().service<MarsLearningProgress>()
                 if (lesson is MarsConsoleRunLesson) {
@@ -248,6 +248,9 @@ class MarsNativeLearningPlatformTest {
                     progress.finishCheck(ticket, true)
                 } else if (lesson is MarsConsoleRepairLesson) {
                     val ticket = progress.beginCheck(MarsConsoleRunCheckpoint.repairIdentity, MarsConsoleRunCheckpoint.STEP, "test repair")
+                    progress.finishCheck(ticket, true)
+                } else if (lesson is MarsIndependentLesson) {
+                    val ticket = progress.beginCheck(MarsIndependentCheckpoint.identity, MarsIndependentCheckpoint.STEP, "test independent assessment")
                     progress.finishCheck(ticket, true)
                 } else {
                     progress.recordChoice(MarsPredictions.identity, "doubling", MarsPredictions.doubling.correct)

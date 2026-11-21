@@ -16,6 +16,7 @@ internal object MarsLearningWorkspace {
         EXAMPLE("first-program.asm", "first-program.asm"),
         DIAGNOSIS("wrong-output.asm", "wrong-output.asm"),
         REPAIR("repair-output.asm", "wrong-output.asm"),
+        INDEPENDENT("independent.asm", "independent.asm"),
     }
 
     fun ensureExample(project: Project, exercise: Exercise = Exercise.EXAMPLE): Path = ensureExampleAt(projectRoot(project), exercise)

@@ -22,8 +22,9 @@ import org.junit.jupiter.api.io.TempDir
 class PreparedConsoleChecksTest {
     @TempDir lateinit var directory: Path
     private fun session() = DaggerMarsComponent.builder().guiProxy(HeadlessGuiProxy()).build().context()
-    private fun image(source: String, target: MarsTarget = MarsTarget.DEFAULT): AssemblyImage = session().use { machine ->
+    private fun image(source: String, target: MarsTarget = MarsTarget.DEFAULT, littleEndian: Boolean = true): AssemblyImage = session().use { machine ->
         machine.selectTarget(target)
+        machine.memory.byteOrder = littleEndian
         val path = directory.resolve("submission.asm")
         machine.assembleSnapshot(AssemblySourceSnapshot(listOf(path), mapOf(path to source)), null, true, false)
         machine.captureAssemblyImage {}
@@ -67,6 +68,17 @@ class PreparedConsoleChecksTest {
             val results = PreparedConsoleChecks.evaluate(image(source, target),
                 listOf(ConsoleCheckCase("first", "", "1"), ConsoleCheckCase("second", "", "1")), ::session)
             assertTrue(results.all { it.passed })
+        }
+    }
+
+    @Test
+    fun `prepared images restore their byte order on fresh default sessions`() {
+        val source = ".data\nword: .word 0x01020304\n.text\nlbu \$a0,word\nli \$v0,1\nsyscall\nli \$v0,10\nsyscall\n"
+        for (target in MarsTarget.entries) for (littleEndian in listOf(false, true)) {
+            val expected = if (littleEndian) "4" else "1"
+            val results = PreparedConsoleChecks.evaluate(image(source, target, littleEndian),
+                listOf(ConsoleCheckCase("byte order", "", expected)), ::session)
+            assertTrue(results.single().passed)
         }
     }
 

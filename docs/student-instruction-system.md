@@ -293,6 +293,35 @@ concurrent separate Gradle verifier failed after an extracted JAR disappeared
 from its shared cache. The serial Gradle retry succeeds, including the full test suite and unchanged coverage
 and generated-parser gates. Package verifiers must run serially.
 
+## Independent writing with public behavioral checks
+
+The seventh native segment opens `independent.asm`, a skeleton containing the
+prompt, new answer-prefix and newline data, plus a normal exit. Students write
+input, computation and output for 3x+1 over -1000 through 1000. The check action
+runs public inputs 20, 0, -3, -1000 and 1000, requiring the supplied transcript,
+normal exit and a 2000-instruction bound. It accepts different labels, scratch
+registers and equivalent implementations. It does not inspect a reference source
+or require the worked program's instruction sequence.
+
+The normal build service captures the current editor text and reuses its assembly
+image. `PreparedConsoleChecks` is a new public programmatic entry point in the
+existing assignment-definition library. It uses the grader's existing bounded
+console, host-service restrictions, normal-exit and exact-output checks. Every
+case loads the image into a fresh factory session; the student's Run/Debug machines
+are untouched. Cancellation is checked during loading and between bounded case
+executions. No downloaded Kotlin script is evaluated.
+
+A native background action reports each case through a standard dialog. Source
+revision capabilities, document/VFS invalidation and captured-source comparison
+prevent edited, replaced or closed lesson attempts from earning an earlier pass.
+This first independent task uses one file without a custom exception handler.
+The shared checker API also tests restored target/byte-order data, isolated case
+state, output/instruction bounds and cancellation cleanup. All 131 CLI tests and
+67 focused learning tests pass; the learning package covers all 632 source lines
+and 304 branches. Full-suite and graphical checks for this edition are pending.
+Public formative checks and answers remain inspectable; instructor grading is
+separate. Full project reopen/resume and human review are not yet verified.
+
 ## Remaining first-unit integration
 
 The unit must complete the connection between explanation, prediction, actual Run/Debug observations,
