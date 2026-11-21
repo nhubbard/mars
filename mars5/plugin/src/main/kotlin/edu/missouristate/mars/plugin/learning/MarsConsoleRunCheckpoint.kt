@@ -80,7 +80,7 @@ internal class MarsConsoleRunCheckpoint(
     document: Document,
     lessonIdentity: MarsLessonIdentity = identity,
 ) {
-    private val source = MarsLearningSource(project, lifetime, entry, document, lessonIdentity)
+    private val source = MarsLearningSource(project, entry, document, lessonIdentity)
     @Volatile private var closed = false
 
     init {

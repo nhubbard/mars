@@ -33,7 +33,7 @@ class MarsLearningSourceTest {
             val document = FileDocumentManager.getInstance().getDocument(file)!!
             val lifetime = Disposer.newDisposable()
             val handler = project.service<MarsRunService>().createProcess(file.toNioPath(), memoryDumps = emptyList())
-            val source = MarsLearningSource(project, lifetime, file.toNioPath(), document, MarsConsoleDebugCheckpoint.identity)
+            val source = MarsLearningSource(project, file.toNioPath(), document, MarsConsoleDebugCheckpoint.identity)
             try {
                 val attempt = source.begin("source-boundary")
                 assertTrue(source.current(attempt))
