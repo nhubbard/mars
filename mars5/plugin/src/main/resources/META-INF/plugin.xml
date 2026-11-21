@@ -159,6 +159,9 @@
     <action id="Mars.Learning.Open" class="edu.missouristate.mars.plugin.learning.MarsLearningOpenAction">
       <add-to-group group-id="ToolsMenu" anchor="last"/>
     </action>
+    <action id="Mars.Learning.ImportPackage" class="edu.missouristate.mars.plugin.learning.MarsLessonPackageImportAction">
+      <add-to-group group-id="ToolsMenu" anchor="after" relative-to-action="Mars.Learning.Open"/>
+    </action>
     <action id="Mars.Learning.Reset" class="edu.missouristate.mars.plugin.learning.MarsLearningResetAction">
       <add-to-group group-id="ToolsMenu" anchor="after" relative-to-action="Mars.Learning.Open"/>
     </action>
