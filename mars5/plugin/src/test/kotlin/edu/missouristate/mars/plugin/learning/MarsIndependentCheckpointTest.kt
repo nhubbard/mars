@@ -3,9 +3,11 @@ package edu.missouristate.mars.plugin.learning
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.EDT
+import com.intellij.openapi.application.readAction
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.components.service
 import com.intellij.openapi.util.Disposer
+import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
@@ -110,6 +112,48 @@ class MarsIndependentCheckpointTest {
             assertEquals(MarsIndependentCheckpoint.Feedback.STALE, checkpoint.check())
             policy.update(requirePredictions = false)
             assertFalse(checkpoint.passed())
+        }
+    }
+
+    @Test
+    fun `required source evidence permits checking but an inactive prerequisite edit during execution rejects the result`() = timeoutRunBlocking {
+        val project = projectFixture.get()
+        val requirement = MarsGuidedRequirement.RUN
+        val file = withContext(Dispatchers.IO) {
+            val path = MarsLearningWorkspace.ensureExample(project)
+            checkNotNull(VirtualFileManager.getInstance().refreshAndFindFileByNioPath(path))
+        }
+        val document = readAction { checkNotNull(FileDocumentManager.getInstance().getDocument(file)) }
+        val original = document.text
+        val policy = project.service<MarsLearningPolicy>()
+        policy.setGuidedRequirement(requirement, true)
+        for (changePrerequisite in listOf(false, true)) {
+            withContext(Dispatchers.EDT) {
+                val source = MarsLearningSource(project, file.toNioPath(), document, requirement.identity)
+                assertTrue(source.finish(source.begin(requirement.step), true))
+            }
+            var changed = false
+            exercise(createSession = {
+                if (changePrerequisite && !changed) {
+                    changed = true
+                    ApplicationManager.getApplication().invokeAndWait {
+                        WriteCommandAction.runWriteCommandAction(project) {
+                            document.setText(original + "\n# Changed while another exercise was running\n")
+                            document.setText(original)
+                        }
+                    }
+                }
+                MarsSessionService.createMarsComponent(backstepLimit = 1).context()
+            }) { checkpoint, _ ->
+                val feedback = checkpoint.check()
+                if (changePrerequisite) {
+                    assertEquals(MarsIndependentCheckpoint.Feedback.STALE, feedback)
+                    assertFalse(checkpoint.passed())
+                } else {
+                    assertInstanceOf(MarsIndependentCheckpoint.Feedback.Checked::class.java, feedback)
+                    assertTrue(checkpoint.passed())
+                }
+            }
         }
     }
 

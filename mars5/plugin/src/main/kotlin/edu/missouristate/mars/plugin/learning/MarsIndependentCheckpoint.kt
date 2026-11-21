@@ -26,7 +26,7 @@ internal class MarsIndependentCheckpoint(
     private val project: Project, lifetime: Disposable, private val entry: Path, private val document: Document,
     private val createSession: () -> MarsContext = { MarsSessionService.createMarsComponent(backstepLimit = 1).context() },
 ) {
-    private val source = MarsLearningSource(project, lifetime, entry, document, identity)
+    private val source = MarsLearningSource(project, entry, document, identity)
     @Volatile var active = true
         private set
     init { Disposer.register(lifetime) { active = false } }
@@ -58,19 +58,22 @@ internal class MarsIndependentCheckpoint(
 
     suspend fun check(): Feedback {
         if (!active) return Feedback.STALE
-        if (!project.service<MarsLearningPolicy>().canStartIndependent()) return Feedback.POLICY
+        val policy = project.service<MarsLearningPolicy>()
+        val initialRequirements = policy.refreshGuidedSources()
+        if (!policy.canStartIndependent(initialRequirements)) return Feedback.POLICY
         val attempt = source.begin(STEP)
         try {
             val program = project.service<MarsBuildService>().prepare(MarsSourceSet(entry), MarsLearningSource.options, activateBuildView = true)
                 ?: return Feedback.ASSEMBLY
-            if (!readAction { isCurrent(attempt, program) }) return Feedback.STALE
+            if (!readAction { isCurrent(attempt, program, initialRequirements) }) return Feedback.STALE
             val context = currentCoroutineContext()
             val results = withContext(Dispatchers.Default) {
                 PreparedConsoleChecks.evaluate(program.image, cases,
                     createSession, context::ensureActive)
             }
+            val finalRequirements = policy.refreshGuidedSources()
             return readAction {
-                if (!isCurrent(attempt, program)) Feedback.STALE
+                if (!isCurrent(attempt, program, finalRequirements)) Feedback.STALE
                 else {
                     source.finish(attempt, results.all(ConsoleCheckResult::passed))
                     Feedback.Checked(results)
@@ -81,8 +84,8 @@ internal class MarsIndependentCheckpoint(
         }
     }
 
-    private fun isCurrent(attempt: MarsLearningSource.Attempt, program: MarsAssembledProgram) =
-        active && project.service<MarsLearningPolicy>().canStartIndependent() && source.current(attempt) && source.matches(attempt, program.sources)
+    private fun isCurrent(attempt: MarsLearningSource.Attempt, program: MarsAssembledProgram, refreshedRequirements: Set<String>) =
+        active && project.service<MarsLearningPolicy>().canStartIndependent(refreshedRequirements) && source.current(attempt) && source.matches(attempt, program.sources)
 
     sealed interface Feedback {
         data object POLICY : Feedback

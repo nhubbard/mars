@@ -99,10 +99,12 @@ class MarsLearningPolicyTest {
                 count.value = 1
                 required.isSelected = true
                 free.isSelected = false
+                boxes.single { it.text == MarsGuidedRequirement.RUN.title }.isSelected = true
                 page.apply()
                 assertEquals(1, policy.releasedHints)
                 assertTrue(policy.requirePredictions)
                 assertFalse(policy.allowFreeWriting)
+                assertEquals(setOf("run"), policy.requiredGuidedChecks)
                 assertFalse(page.isModified)
             } finally { page.disposeUIResources() }
         }

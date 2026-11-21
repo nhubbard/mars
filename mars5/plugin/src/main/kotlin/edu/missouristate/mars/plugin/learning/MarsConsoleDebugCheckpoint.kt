@@ -22,7 +22,7 @@ internal class MarsConsoleDebugCheckpoint(
     private val project: Project, private val lifetime: Disposable, private val entry: Path, document: Document,
     private val segment: Segment = Segment.ARITHMETIC,
 ) {
-    private val source = MarsLearningSource(project, lifetime, entry, document, segment.identity)
+    private val source = MarsLearningSource(project, entry, document, segment.identity)
     private data class Observation(val trace: Trace, val attempt: MarsLearningSource.Attempt)
     @Volatile private var active: Observation? = null
     @Volatile private var closed = false
