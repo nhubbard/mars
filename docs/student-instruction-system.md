@@ -209,6 +209,36 @@ indicators need cleanup before publication. Native register values are hexadecim
 input directly; it does not verify keyboard entry and echoed input in the console.
 No new annotated publication figure or human learner review is claimed.
 
+## Following output preparation
+
+The fourth native lesson asks the learner to distinguish the retained answer in
+`$t0`, the output argument in `$a0` and the service selector in `$v0`. Its prediction
+records wrong answers and explanations before allowing a revised choice. It then
+observes a fresh Debug session before `move $a0,$t0`, after that copy, and after
+`li $v0,1` at the integer-output `syscall`. The expected stopped states are:
+
+| Boundary | `$v0` | `$a0` | `$t0` |
+| --- | --- | --- | --- |
+| Before copying the answer | 4 | Answer-prefix address | 41 |
+| After copying it | 4 | 41 | 41 |
+| Before integer output | 1 | 41 | 41 |
+
+The first boundary identifies the actual next instruction and retained answer;
+it does not assert a fixed string address. The next two check both the argument
+and selector. The observer reuses the source-bound Debug lifecycle with a separate
+content identity and numeric trace contract. In the pinned MIPS64 worked example,
+`move` expands to `or $a0,$t0,$zero`; the first matching small `li` template expands
+to `addiu $v0,$zero,1`. Actual native stepping fixtures verify these encodings and
+copied registers. No simulator semantics are changed. This guided worked trace
+requires the demonstrated boundaries; free-writing acceptance remains behavioral
+and must allow equivalent implementations.
+
+The full check passes 947 plugin tests, including 52 learning tests, and the
+unchanged coverage gates. Learning code covers all 451 source lines and 246
+branches. The separate authoring plugin passes 90 tests; both exact packages pass
+paired API verification. Fresh graphical verification for this edition is pending;
+earlier captures are historical evidence only.
+
 ## Remaining first-unit integration
 
 The unit must complete the connection between explanation, prediction, actual Run/Debug observations,

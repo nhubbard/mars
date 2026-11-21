@@ -20,8 +20,9 @@ import java.nio.file.Path
 /** Observes stopped debugger snapshots; it never adds breakpoints, steps or edits a machine. */
 internal class MarsConsoleDebugCheckpoint(
     private val project: Project, private val lifetime: Disposable, private val entry: Path, document: Document,
+    private val segment: Segment = Segment.ARITHMETIC,
 ) {
-    private val source = MarsLearningSource(project, lifetime, entry, document, identity)
+    private val source = MarsLearningSource(project, lifetime, entry, document, segment.identity)
     private data class Observation(val trace: Trace, val attempt: MarsLearningSource.Attempt)
     @Volatile private var active: Observation? = null
     @Volatile private var closed = false
@@ -41,7 +42,7 @@ internal class MarsConsoleDebugCheckpoint(
         val session = XDebuggerManager.getInstance(project).debugSessions.firstOrNull { it.debugProcess is MarsDebugProcess && it.debugProcess.processHandler === process }
             ?: return
         val attempt = source.begin(STEP)
-        val trace = Trace()
+        val trace = Trace(segment)
         val state = Observation(trace, attempt)
         active = state
         val observation = Disposer.newDisposable("MARS learning debug observation")
@@ -59,7 +60,8 @@ internal class MarsConsoleDebugCheckpoint(
                 if (!source.matchesPosition(context.frame.sourcePosition)) return@runReadActionBlocking
                 val evaluator = context.frame.evaluator
                 trace.observe(Pause(context.number, evaluator.integerRegisterBits("pc"), evaluator.instructionWord,
-                    evaluator.integerRegisterBits("\$v0"), evaluator.integerRegisterBits("\$t0")))
+                    evaluator.integerRegisterBits("\$v0"), evaluator.integerRegisterBits("\$t0"),
+                    evaluator.integerRegisterBits("\$a0")))
                 if (trace.phase == 3) source.finish(attempt, true)
             }
 
@@ -74,10 +76,10 @@ internal class MarsConsoleDebugCheckpoint(
             return if (source.current(state.attempt)) state.trace.phase else 0
         }
 
-    internal data class Pause(val number: Long, val pc: Long, val instruction: Int?, val input: Long, val result: Long)
+    internal data class Pause(val number: Long, val pc: Long, val instruction: Int?, val input: Long, val result: Long, val argument: Long = 0)
 
     /** Numeric instruction boundaries avoid parsing student source or depending on line numbers. */
-    internal class Trace {
+    internal class Trace(private val segment: Segment = Segment.ARITHMETIC) {
         @Volatile var phase = 0
             private set
         private var lastPause = 0L
@@ -86,6 +88,13 @@ internal class MarsConsoleDebugCheckpoint(
         fun observe(pause: Pause) {
             if (pause.number <= lastPause) return
             lastPause = pause.number
+            when (segment) {
+                Segment.ARITHMETIC -> observeArithmetic(pause)
+                Segment.OUTPUT -> observeOutput(pause)
+            }
+        }
+
+        private fun observeArithmetic(pause: Pause) {
             when (phase) {
                 0 -> if (pause.instruction == ADDU_T0_V0_V0 && pause.input == 20L) {
                     firstPc = pause.pc
@@ -95,6 +104,22 @@ internal class MarsConsoleDebugCheckpoint(
                 2 -> if (pause.pc == firstPc + 8 && pause.input == 20L && pause.result == 41L) phase = 3
             }
         }
+
+        private fun observeOutput(pause: Pause) {
+            when (phase) {
+                0 -> if (pause.instruction == MOVE_A0_T0 && pause.input == 4L && pause.result == 41L) {
+                    firstPc = pause.pc
+                    phase = 1
+                }
+                1 -> if (pause.pc == firstPc + 4 && pause.instruction == LI_V0_ONE && pause.input == 4L && pause.result == 41L && pause.argument == 41L) phase = 2
+                2 -> if (pause.pc == firstPc + 8 && pause.instruction == SYSCALL && pause.input == 1L && pause.result == 41L && pause.argument == 41L) phase = 3
+            }
+        }
+    }
+
+    internal enum class Segment(val identity: MarsLessonIdentity) {
+        ARITHMETIC(MarsConsoleDebugCheckpoint.identity),
+        OUTPUT(MarsLearningSource.identity("console-output", "ordered output pauses: retained 41; argument 41; selector 1")),
     }
 
     companion object {
@@ -102,6 +127,11 @@ internal class MarsConsoleDebugCheckpoint(
         // Basic MIPS word encodings: addu $t0,$v0,$v0 and addiu $t0,$t0,1.
         const val ADDU_T0_V0_V0 = 0x00424021
         const val ADDIU_T0_T0_ONE = 0x25080001
+        // The MIPS64 move pseudo-instruction expands to or $a0,$t0,$zero.
+        const val MOVE_A0_T0 = 0x01002025
+        // The first matching signed 16-bit li template uses addiu.
+        const val LI_V0_ONE = 0x24020001
+        const val SYSCALL = 0x0000000c
         val identity = MarsLearningSource.identity("console-debug", "ordered pauses: input 20; doubled 40; incremented 41")
     }
 }

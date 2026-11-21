@@ -76,6 +76,30 @@ class MarsConsoleDebugCheckpointTest {
     }
 
     @Test
+    fun `native output pauses distinguish the retained answer argument and selector`() = timeoutRunBlocking {
+        debug(segment = MarsConsoleDebugCheckpoint.Segment.OUTPUT) { checkpoint, session, pauses ->
+            val before = pauses.receive()
+            assertEquals(MarsConsoleDebugCheckpoint.MOVE_A0_T0, before.frame.evaluator.instructionWord)
+            assertEquals(1, checkpoint.phase, "v0=${before.frame.evaluator.integerRegisterBits("\$v0")} t0=${before.frame.evaluator.integerRegisterBits("\$t0")}")
+            assertEquals(4L, before.frame.evaluator.integerRegisterBits("\$v0"))
+            assertEquals(41L, before.frame.evaluator.integerRegisterBits("\$t0"))
+            withContext(Dispatchers.EDT) { session.stepOver(false) }
+            val argument = pauses.receive()
+            assertEquals(MarsConsoleDebugCheckpoint.LI_V0_ONE, argument.frame.evaluator.instructionWord)
+            assertEquals(2, checkpoint.phase)
+            assertEquals(41L, argument.frame.evaluator.integerRegisterBits("\$a0"))
+            assertEquals(4L, argument.frame.evaluator.integerRegisterBits("\$v0"))
+            withContext(Dispatchers.EDT) { session.stepOver(false) }
+            val selector = pauses.receive()
+            assertEquals(3, checkpoint.phase)
+            assertEquals(1L, selector.frame.evaluator.integerRegisterBits("\$v0"))
+            assertEquals(41L, selector.frame.evaluator.integerRegisterBits("\$a0"))
+            assertEquals(41L, selector.frame.evaluator.integerRegisterBits("\$t0"))
+            assertEquals(4L, before.frame.evaluator.integerRegisterBits("\$v0"))
+        }
+    }
+
+    @Test
     fun `edited source invalidates partial observations even after text is restored`() = timeoutRunBlocking {
         debug { checkpoint, session, pauses ->
             pauses.receive()
@@ -236,7 +260,7 @@ class MarsConsoleDebugCheckpointTest {
         return Launch(session, pauses, stopped)
     }
 
-    private suspend fun debug(source: String = example, body: suspend (MarsConsoleDebugCheckpoint, XDebugSession, Channel<MarsSuspendContext>) -> Unit) {
+    private suspend fun debug(source: String = example, segment: MarsConsoleDebugCheckpoint.Segment = MarsConsoleDebugCheckpoint.Segment.ARITHMETIC, body: suspend (MarsConsoleDebugCheckpoint, XDebugSession, Channel<MarsSuspendContext>) -> Unit) {
         val project = projectFixture.get()
         val lifetime = Disposer.newDisposable()
         var launch: Launch? = null
@@ -244,12 +268,14 @@ class MarsConsoleDebugCheckpointTest {
             val (file, checkpoint) = withContext(Dispatchers.EDT) {
                 val file = fixture.addFileToProject("mars-labs/console/first-program.asm", source).virtualFile
                 fixture.configureFromExistingVirtualFile(file)
-                val checkpoint = project.service<MarsLearningExecution>().observeDebug(lifetime, file.toNioPath(), fixture.editor.document)
+                val checkpoint = if (segment == MarsConsoleDebugCheckpoint.Segment.OUTPUT)
+                    project.service<MarsLearningExecution>().observeOutput(lifetime, file.toNioPath(), fixture.editor.document)
+                else project.service<MarsLearningExecution>().observeDebug(lifetime, file.toNioPath(), fixture.editor.document)
                 assertEquals(0, checkpoint.phase)
                 val type = XDebuggerUtil.getInstance().findBreakpointType(MarsLineBreakpointType::class.java)
                 WriteCommandAction.runWriteCommandAction(project) {
                     XDebuggerManager.getInstance(project).breakpointManager.addLineBreakpoint(type, file.url,
-                        source.lines().indexOfFirst { it.trim().startsWith("addu ") }, null)
+                        source.lines().indexOfFirst { it.trim().startsWith(if (segment == MarsConsoleDebugCheckpoint.Segment.OUTPUT) "move " else "addu ") }, null)
                 }
                 file to checkpoint
             }
