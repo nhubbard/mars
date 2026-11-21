@@ -107,7 +107,11 @@ prediction segment only; they do not establish the complete first-unit behavior.
 
 ## Source-bound Run observation
 
-The second native lesson observes an ordinary MARS Run. The implementation uses
+The second native lesson observes an ordinary MARS Run. It uses the public
+`timerCheck` task facility because worker completion need not produce an editor
+action. The host's ordinary `stateCheck` is driven by UI/document activity and
+cannot alone detect a later asynchronous result. The first graphical attempt
+exposed that distinction; fixtures now assert the timed-check registration. The implementation uses
 `ExecutionListener.processStarting`, whose public contract fires before the process
 handler's `startNotify`, and the public `ProcessListener` output and termination
 callbacks. The current platform implementations were inspected in
