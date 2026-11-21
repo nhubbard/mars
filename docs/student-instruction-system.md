@@ -316,9 +316,20 @@ revision capabilities, document/VFS invalidation and captured-source comparison
 prevent edited, replaced or closed lesson attempts from earning an earlier pass.
 This first independent task uses one file without a custom exception handler.
 The shared checker API also tests restored target/byte-order data, isolated case
-state, output/instruction bounds and cancellation cleanup. All 131 CLI tests and
-67 focused learning tests pass; the learning package covers all 632 source lines
-and 304 branches. Full-suite and graphical checks for this edition are pending.
+state, output/instruction bounds and cancellation cleanup. The full check passes 962 plugin tests, including 67 learning tests, and all 131
+CLI tests pass. Learning code covers all 632 source lines and 304 branches. The
+separate authoring plugin passes 90 tests; paired verification finds both exact
+packages compatible (85 and 20 experimental public API uses).
+
+The fresh `native-independent-01` IDE batch observes all seven segments. The empty
+starter fails all five public cases. A private fixture with a different entry
+label and scratch register passes, then a source edit requires rechecking. After
+that new pass, restart preserves the work and produces a third native independent
+completion callback. Its log has no SEVERE entries, and all eleven installed JARs
+match the retained packages. Six new independent-program captures were inspected;
+the batch contains twenty-eight raw light-theme views. Instructor solution views
+remain private and must not be published as student exercise material. Notification,
+scroll/layout, annotation and publication-accessibility work remains open.
 Public formative checks and answers remain inspectable; instructor grading is
 separate. Full project reopen/resume and human review are not yet verified.
 
