@@ -469,3 +469,61 @@ packages compatible (86 MARS and 20 authoring experimental public API uses), wit
 no override-only diagnostics in the final authoring report. Its three direct action
 update calls were replaced by the supported `ActionUtil.updateAction` API; earlier
 reports with those diagnostics remain bound to their old packages.
+
+
+## Explicit guided and free-writing modes
+
+Tools → MARS Learning (also available through Find Action) now opens a native
+project-specific chooser. Guided work initially opens prediction activities; after
+opening other guided segments it returns to the last one opened. Free writing
+opens the independent contract and its separate working file. Every lesson's
+preparation records navigation only after ensuring its source exists. Sources are
+never replaced on mode changes, and choosing a mode neither awards nor resets
+quiz, hint or execution evidence. Native CourseManager still owns the lessons.
+
+A workspace component stores the last mode and a separate guided destination.
+Only the six bundled guided IDs are accepted; malformed saved destinations fall
+back to predictions and cannot navigate into another course. The public toolwindow
+queue coordinates opening with native project UI initialization. Headless tests
+exercise immediate native course preparation separately because the platform's
+headless toolwindow queue deliberately does not execute UI commands. Actual GUI
+batches verify the queued production path. Missing course registration fails
+without routing into an unrelated lesson; disposed projects ignore queued work.
+
+The shared course policy adds Allow free-writing mode. A restriction disables that
+choice and defaults the chooser to guided work while preserving the saved sources
+and navigation history. The independent lesson and checker enforce it as well, so
+entering through the native lesson list cannot bypass it. An already open chooser
+also rejects free writing if policy changes before acceptance. Defaults preserve
+existing free-writing availability; older policy files omit the new default field.
+
+The native-modes-01 initial IDE batch uses the production action, real dialogs and
+native course settings. Cancel creates no exercise files; guided work opens the
+prediction lesson, then Run becomes the remembered guided destination. Two fixture
+comments are the only source edits. Repeated mode changes preserve both files and
+one revealed hint. The unfinished independent source still fails all five public
+cases. Settings disable free writing, the chooser and direct lesson entry both
+respect that restriction, and releasing it restores access without losing history.
+The batch does not execute normal Run/Debug and does not claim an observed runtime
+result from the pending Run lesson.
+
+After native save/close and process termination, a fresh clean cleanSandbox runIde
+launch loads the same project. Its chooser selects free writing, shows Run as the
+guided destination, opens that edited source, then returns to the edited independent
+source and saved hint. No source, quiz, hint, progress or policy is injected on that
+path and no execution check is invoked. Both native saves close successfully and
+eleven installed JARs match each phase's exact archives. The initial log has no
+SEVERE entries; the short reopened phase records a cancellation error attributed
+to the bundled Air agent-provisioning plugin during close. That log is not error-free.
+
+The full plugin check passes 979 tests, including 84 learning tests, with all 819
+learning lines and 416 branches covered under unchanged gates. The final separate
+authoring package passes 94 Jupiter tests; paired API verification is compatible
+with 86 MARS and 20 authoring experimental public API uses and no override-only
+diagnostics. All 391 publication-tooling tests pass. The directly edited four-page
+lab proof explains when to choose each mode, retains its required embedded fonts,
+and passes automated PDF/UA-2 validation: 1,728 rules, 13,614 checks, zero failures.
+All four proof pages and twenty-five raw light-theme capture views were inspected
+by AI. One immediate post-edit view caught the prior paint; later resumed views
+show the retained comment. None is an annotated publication figure. Initial raw
+capture imperfections, human review and publication selection remain explicit.
