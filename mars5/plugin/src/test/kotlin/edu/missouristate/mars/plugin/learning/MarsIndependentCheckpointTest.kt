@@ -6,6 +6,7 @@ import com.intellij.openapi.application.EDT
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.components.service
 import com.intellij.openapi.util.Disposer
+import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
@@ -68,6 +69,45 @@ class MarsIndependentCheckpointTest {
                     assertFalse(checkpoint.passed())
                 }
             }
+        }
+    }
+
+    @Test
+    fun `prediction prerequisites block execution and completion without erasing genuine source evidence`() = timeoutRunBlocking {
+        val policy = projectFixture.get().service<MarsLearningPolicy>()
+        val progress = projectFixture.get().service<MarsLearningProgress>()
+        var machines = 0
+        exercise(createSession = { machines++; MarsSessionService.createMarsComponent(backstepLimit = 1).context() }) { checkpoint, _ ->
+            policy.update(requirePredictions = true)
+            assertEquals(MarsIndependentCheckpoint.Feedback.POLICY, checkpoint.check())
+            assertEquals(0, machines)
+            assertFalse(checkpoint.passed())
+            val dialog = withContext(Dispatchers.EDT) { MarsIndependentFeedbackDialog(projectFixture.get(), MarsIndependentCheckpoint.Feedback.POLICY) }
+            try { assertTrue(dialog.report.contains("Your course requires both prediction quizzes")) }
+            finally { withContext(Dispatchers.EDT) { dialog.close(DialogWrapper.OK_EXIT_CODE) } }
+            policy.update(requirePredictions = false)
+            assertInstanceOf(MarsIndependentCheckpoint.Feedback.Checked::class.java, checkpoint.check())
+            assertTrue(checkpoint.passed())
+            policy.update(requirePredictions = true)
+            assertFalse(checkpoint.passed())
+            assertTrue(MarsIndependentCheckpoint.STEP in progress.snapshot(MarsIndependentCheckpoint.identity)!!.successfulChecks)
+            progress.open(MarsPredictions.identity, MarsPredictions.identity.contentSha256)
+            progress.recordChoice(MarsPredictions.identity, "doubling", MarsPredictions.doubling.correct)
+            progress.recordChoice(MarsPredictions.identity, "negative", MarsPredictions.negative.correct)
+            assertTrue(checkpoint.passed())
+        }
+    }
+
+    @Test
+    fun `a policy restriction during execution prevents otherwise correct results from earning a pass`() = timeoutRunBlocking {
+        val policy = projectFixture.get().service<MarsLearningPolicy>()
+        exercise(createSession = {
+            policy.update(requirePredictions = true)
+            MarsSessionService.createMarsComponent(backstepLimit = 1).context()
+        }) { checkpoint, _ ->
+            assertEquals(MarsIndependentCheckpoint.Feedback.STALE, checkpoint.check())
+            policy.update(requirePredictions = false)
+            assertFalse(checkpoint.passed())
         }
     }
 

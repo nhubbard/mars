@@ -59,6 +59,35 @@ class MarsIndependentHintTest {
     }
 
     @Test
+    fun `course release limits gate new hints while preserving knowledge already revealed`() = timeoutRunBlocking {
+        exercise { checkpoint, _ ->
+            val policy = projectFixture.get().service<MarsLearningPolicy>()
+            val original = fixture.editor.document.text
+            policy.update(releasedHints = 0)
+            val dialog = MarsIndependentHintDialog(projectFixture.get(), checkpoint)
+            try {
+                assertFalse(checkpoint.canRevealNextHint())
+                assertFalse(checkpoint.revealNextHint())
+                assertFalse(dialog.revealAction.isEnabled)
+                assertTrue(dialog.report.contains("releases 0 of 4"))
+                policy.update(releasedHints = 2)
+                assertTrue(checkpoint.canRevealNextHint())
+                repeat(2) { assertTrue(checkpoint.revealNextHint()) }
+                assertFalse(checkpoint.canRevealNextHint())
+                assertFalse(checkpoint.revealNextHint())
+                policy.update(releasedHints = 0)
+                assertEquals(MarsIndependentCheckpoint.hints.take(2), checkpoint.revealedHints())
+                assertFalse(checkpoint.revealNextHint())
+                policy.update(releasedHints = 4)
+                repeat(2) { assertTrue(checkpoint.revealNextHint()) }
+                assertFalse(checkpoint.canRevealNextHint())
+                assertEquals(original, fixture.editor.document.text)
+                assertFalse(checkpoint.passed())
+            } finally { dialog.close(DialogWrapper.OK_EXIT_CODE) }
+        }
+    }
+
+    @Test
     fun `reveals preserve an in-flight ticket and completed check while edits preserve hint history`() = timeoutRunBlocking {
         exercise { checkpoint, _ ->
             val progress = projectFixture.get().service<MarsLearningProgress>()
@@ -79,6 +108,7 @@ class MarsIndependentHintTest {
             assertEquals(MarsIndependentCheckpoint.hints.take(3), checkpoint.revealedHints())
             assertFalse(checkpoint.passed())
             progress.reset(identity)
+            assertTrue(checkpoint.canRevealNextHint())
             assertTrue(checkpoint.revealedHints().isEmpty())
             assertTrue(checkpoint.revealNextHint())
             assertEquals(MarsIndependentCheckpoint.hints.take(1), checkpoint.revealedHints())
