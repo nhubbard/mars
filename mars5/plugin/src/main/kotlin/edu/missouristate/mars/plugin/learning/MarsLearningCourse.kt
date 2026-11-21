@@ -134,7 +134,8 @@ internal class MarsConsoleRunLesson : KLesson("mars.console.run", learningMessag
                 )
             }
             text(learningMessages.getMessage("lesson.run.text"))
-            stateCheck { observation.passed() }
+            // Run completion arrives without a new editor action; use the host's timed check.
+            timerCheck { observation.passed() }
         }
         text(learningMessages.getMessage("lesson.run.conclusion"))
     }

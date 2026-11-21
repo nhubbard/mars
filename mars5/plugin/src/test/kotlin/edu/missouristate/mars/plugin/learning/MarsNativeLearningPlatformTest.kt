@@ -191,11 +191,17 @@ class MarsNativeLearningPlatformTest {
                     .newInstance(executor, recorder, {}, previous) as TaskRuntimeContext
                 val predicates = mutableListOf<TaskRuntimeContext.() -> Boolean>()
                 val preparations = mutableListOf<CompletableFuture<Boolean>>()
+                var timedChecks = 0
                 val taskContext = object : TaskContext() {
                     override val project: Project get() = projectFixture.get()
                     override fun before(preparation: TaskRuntimeContext.() -> Unit) { preparation(runtime) }
                     override fun stateCheck(checkState: TaskRuntimeContext.() -> Boolean) =
                         super.stateCheck(checkState).also { predicates += checkState }
+                    override fun timerCheck(delayMillis: Int, checkState: TaskRuntimeContext.() -> Boolean): CompletableFuture<Boolean> {
+                        timedChecks++
+                        predicates += checkState
+                        return super.timerCheck(delayMillis, checkState)
+                    }
                     override fun addFutureStep(p: DoneStepContext.() -> Unit) {
                         val future = CompletableFuture<Boolean>()
                         preparations += future
@@ -211,6 +217,7 @@ class MarsNativeLearningPlatformTest {
                 }
                 for (preparation in preparations) assertTrue(preparation.await())
                 assertEquals(if (lesson is MarsConsoleRunLesson) 1 else 2, predicates.size)
+                assertEquals(if (lesson is MarsConsoleRunLesson) 1 else 0, timedChecks)
                 assertTrue(predicates.all { !it(runtime) })
                 val progress = projectFixture.get().service<MarsLearningProgress>()
                 if (lesson is MarsConsoleRunLesson) {
