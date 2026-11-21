@@ -527,3 +527,13 @@ All four proof pages and twenty-five raw light-theme capture views were inspecte
 by AI. One immediate post-edit view caught the prior paint; later resumed views
 show the retained comment. None is an annotated publication figure. Initial raw
 capture imperfections, human review and publication selection remain explicit.
+
+## Guided restoration after a fresh IDE process
+
+The separate authoring plugin now has a constrained resume-only driver. It opens the six existing guided lessons through the public CourseManager and LessonListener contracts inspected in the pinned reference checkout. It verifies source hashes before and after, observes native lesson-pass callbacks and counts process starts. It does not inject source, answers, progress or execution. Its plan rejects mixed capture modes and requires all three existing source digests. New capture code remains outside MARS.
+
+The private `guided-resume-01` batch uses the actual clean cleanSandbox runIde tasks for both fresh IDE processes. After native save/close of the earlier observed work, all six guided segments report one native pass callback with zero simulator process starts. A subsequent offline comment edit to first-program.asm makes Run, arithmetic Debug and output preparation remain pending, with zero pass callbacks. Predictions, diagnosis and the separate repaired program still complete. Native workspace XML confirms that exactly the three source-bound execution records lost successful checks; other histories remain unchanged. Both phases preserve source and complete native save/close.
+
+The exact unchanged MARS package reuses its earlier full-suite and coverage evidence. The new separate authoring package passes 95 Jupiter tests; paired verification against the pinned IDE reports compatibility, 86 MARS and 20 authoring experimental public API uses, without internal or override-only diagnostics. Eleven installed JARs match the retained package members in each phase. Controlled termination of the owned welcome-screen IDE yields a nonzero runIde exit after completed observations. The unchanged phase also records the known bundled Air provisioning cancellation error during project close; its log is not error-free.
+
+This proves restoration of completed guided evidence and offline-edit invalidation for the first unit. It does not serialize running machines, restore an unfinished multi-pause trace, establish all interruption paths, or complete reset and finer instructor policies. All twelve raw views were inspected by AI; horizontal clipping of some native lesson text and long navigation buttons remains a usability issue at the captured panel width. Author and representative learner review remain open.
