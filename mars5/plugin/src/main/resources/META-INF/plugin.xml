@@ -159,6 +159,12 @@
     <action id="Mars.Learning.Open" class="edu.missouristate.mars.plugin.learning.MarsLearningOpenAction">
       <add-to-group group-id="ToolsMenu" anchor="last"/>
     </action>
+    <action id="Mars.Learning.Reset" class="edu.missouristate.mars.plugin.learning.MarsLearningResetAction">
+      <add-to-group group-id="ToolsMenu" anchor="after" relative-to-action="Mars.Learning.Open"/>
+    </action>
+    <action id="Mars.Learning.Recover" class="edu.missouristate.mars.plugin.learning.MarsLearningRecoverAction">
+      <add-to-group group-id="ToolsMenu" anchor="after" relative-to-action="Mars.Learning.Reset"/>
+    </action>
     <action id="Mars.Learning.PredictDoubling" class="edu.missouristate.mars.plugin.learning.MarsPredictDoublingAction"/>
     <action id="Mars.Learning.PredictNegative" class="edu.missouristate.mars.plugin.learning.MarsPredictNegativeAction"/>
     <action id="Mars.Learning.PredictOutput" class="edu.missouristate.mars.plugin.learning.MarsPredictOutputAction"/>

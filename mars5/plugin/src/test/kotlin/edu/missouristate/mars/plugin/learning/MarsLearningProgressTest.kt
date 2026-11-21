@@ -145,6 +145,126 @@ class MarsLearningProgressTest {
     }
 
     @Test
+    fun `recoverable reset persists a scoped copy and recovery keeps newer formative work without execution credit`() {
+        val progress = MarsLearningProgress()
+        val scope = setOf(lesson, other)
+        val unrelated = lesson.copy(course = "another-course")
+        assertFalse(progress.canReset(scope))
+        assertFalse(progress.canRecover(scope))
+        assertFalse(progress.resetRecoverably(scope))
+        assertFalse(progress.recover(scope))
+        progress.open(lesson, "source-a")
+        progress.recordChoice(lesson, "q", "old")
+        progress.revealHint(lesson, "first")
+        assertTrue(progress.finishCheck(progress.beginCheck(lesson, "done", "source-a"), true))
+        val stale = progress.beginCheck(lesson, "pending", "source-a")
+        progress.open(other, "other-source")
+        progress.recordChoice(other, "other-q", "choice")
+        val outside = progress.beginCheck(unrelated, "outside", "outside-source")
+        assertTrue(progress.canReset(scope))
+        assertTrue(progress.resetRecoverably(scope))
+        assertFalse(progress.isCurrent(stale))
+        assertFalse(progress.finishCheck(stale, true))
+        assertNull(progress.snapshot(lesson))
+        assertNull(progress.snapshot(other))
+        assertTrue(progress.canRecover(scope))
+        assertFalse(progress.resetRecoverably(scope)) // Must not replace the saved copy with empty history.
+        assertTrue(progress.finishCheck(outside, true))
+        val restored = MarsLearningProgress()
+        restored.loadState(XmlSerializer.deserialize(XmlSerializer.serialize(progress.getState()), MarsLearningProgress.Progress::class.java))
+        assertTrue(restored.canRecover(scope))
+        restored.open(lesson, "edited-source")
+        restored.recordChoice(lesson, "q", "new")
+        restored.revealHint(lesson, "second")
+        assertTrue(restored.finishCheck(restored.beginCheck(lesson, "new-pass", "edited-source"), true))
+        val interrupted = restored.beginCheck(lesson, "pending", "edited-source")
+        assertTrue(restored.recover(scope))
+        assertFalse(restored.finishCheck(interrupted, true))
+        assertEquals("edited-source", restored.snapshot(lesson)!!.sourceRevision)
+        assertEquals(listOf("old", "new"), restored.snapshot(lesson)!!.quizAttempts.map { it.choice })
+        assertEquals(setOf("first", "second"), restored.snapshot(lesson)!!.revealedHints)
+        assertTrue(restored.snapshot(lesson)!!.successfulChecks.isEmpty())
+        assertEquals("other-source", restored.snapshot(other)!!.sourceRevision)
+        assertEquals("choice", restored.snapshot(other)!!.quizAttempts.single().choice)
+        assertEquals(setOf("outside"), restored.snapshot(unrelated)!!.successfulChecks)
+        assertFalse(restored.canRecover(scope))
+        assertFalse(restored.recover(scope))
+        // The original instance still owns its separate recovery copy.
+        assertTrue(progress.canRecover(scope))
+    }
+
+    @Test
+    fun `an opened empty lesson cannot replace recovery and each kind of real history permits reset`() {
+        val scope = setOf(lesson)
+        for (kind in listOf("quiz", "hint", "check")) {
+            val progress = MarsLearningProgress()
+            progress.open(lesson, "source")
+            assertFalse(progress.canReset(scope))
+            assertFalse(progress.resetRecoverably(scope))
+            when (kind) {
+                "quiz" -> progress.recordChoice(lesson, "q", "a")
+                "hint" -> progress.revealHint(lesson, "hint")
+                else -> assertTrue(progress.finishCheck(progress.beginCheck(lesson, "done", "source"), true))
+            }
+            assertTrue(progress.canReset(scope))
+            assertTrue(progress.resetRecoverably(scope))
+            val backup = progress.getState().recovery
+            progress.open(lesson, "reopened-source")
+            assertFalse(progress.canReset(scope))
+            assertFalse(progress.resetRecoverably(scope))
+            assertEquals(backup, progress.getState().recovery)
+            assertTrue(progress.recover(scope))
+        }
+    }
+
+    @Test
+    fun `recovery also requires rechecking a segment first attempted after the reset`() {
+        val progress = MarsLearningProgress()
+        val scope = setOf(lesson, other)
+        val unrelated = lesson.copy(course = "unrelated")
+        progress.open(lesson, "source")
+        progress.recordChoice(lesson, "q", "a")
+        assertTrue(progress.resetRecoverably(scope))
+        progress.open(other, "new-segment-source")
+        progress.recordChoice(other, "new-q", "new-choice")
+        progress.revealHint(other, "new-hint")
+        assertTrue(progress.finishCheck(progress.beginCheck(other, "done", "new-segment-source"), true))
+        val pending = progress.beginCheck(other, "pending", "new-segment-source")
+        val outside = progress.beginCheck(unrelated, "outside", "outside-source")
+        assertTrue(progress.recover(scope))
+        assertTrue(progress.snapshot(other)!!.successfulChecks.isEmpty())
+        assertEquals("new-choice", progress.snapshot(other)!!.quizAttempts.single().choice)
+        assertEquals(setOf("new-hint"), progress.snapshot(other)!!.revealedHints)
+        assertFalse(progress.finishCheck(pending, true))
+        assertTrue(progress.finishCheck(outside, true))
+    }
+
+    @Test
+    fun `a later nonempty reset replaces that scope only and editions cannot recover each others histories`() {
+        val progress = MarsLearningProgress()
+        val newer = lesson.copy(contentSha256 = "b".repeat(64))
+        for (identity in listOf(lesson, other, newer)) {
+            progress.open(identity, "source")
+            progress.recordChoice(identity, "q", identity.lesson)
+        }
+        assertTrue(progress.resetRecoverably(setOf(lesson, other)))
+        assertTrue(progress.resetRecoverably(setOf(newer)))
+        progress.open(lesson, "new-source")
+        progress.recordChoice(lesson, "q", "replacement")
+        assertTrue(progress.resetRecoverably(setOf(lesson)))
+        assertTrue(progress.recover(setOf(lesson)))
+        assertEquals(listOf("replacement"), progress.snapshot(lesson)!!.quizAttempts.map { it.choice })
+        assertTrue(progress.canRecover(setOf(other, newer)))
+        assertFalse(progress.canRecover(emptySet()))
+        assertFalse(progress.canReset(emptySet()))
+        assertFalse(progress.resetRecoverably(emptySet()))
+        assertFalse(progress.recover(emptySet()))
+        assertTrue(progress.recover(setOf(other, newer)))
+        assertEquals("pixel", progress.snapshot(other)!!.quizAttempts.single().choice)
+        assertEquals("console", progress.snapshot(newer)!!.quizAttempts.single().choice)
+    }
+
+    @Test
     fun `different service instances cannot complete each others requests`() {
         val first = MarsLearningProgress()
         val second = MarsLearningProgress()
