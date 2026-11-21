@@ -35,7 +35,7 @@ internal class MarsLearningCourse : LearningCourseBase(MARS_LEARNING_LANGUAGE) {
         object : IftModule(
             "mars.console", learningMessages.getMessage("module.name"),
             learningMessages.getMessage("module.description"), langSupport, LessonType.USER_PROJECT,
-            { listOf(MarsRegisterPredictionLesson(), MarsConsoleRunLesson(), MarsConsoleDebugLesson()) },
+            { listOf(MarsRegisterPredictionLesson(), MarsConsoleRunLesson(), MarsConsoleDebugLesson(), MarsConsoleOutputLesson()) },
         ) {
             override val sampleFilePath = "mars-labs/console/first-program.asm"
             override fun preferredLearnWindowAnchor(project: Project) = ToolWindowAnchor.LEFT
@@ -94,6 +94,7 @@ internal object MarsPredictions {
 
     val doubling = prediction("doubling", "a")
     val negative = prediction("negative", "c")
+    val output = prediction("output", "b")
     val identity = MarsLessonIdentity(
         "mars-book", "console-predictions", "0.1.0",
         MessageDigest.getInstance("SHA-256").apply {
@@ -170,5 +171,43 @@ internal class MarsConsoleDebugLesson : KLesson("mars.console.debug", learningMe
             timerCheck { observation.phase >= 3 }
         }
         text(learningMessages.getMessage("lesson.debug.conclusion"))
+    }
+}
+
+/** Distinguishes the retained answer, output argument and service selector. */
+internal class MarsConsoleOutputLesson : KLesson("mars.console.output", learningMessages.getMessage("lesson.output.name")) {
+    override val properties = LessonProperties(openFileAtStart = false)
+    override val alwaysRestart = true
+    override fun prepare(project: Project) { MarsLearningWorkspace.ensureExample(project) }
+
+    override val lessonContent: LessonContext.() -> Unit = {
+        lateinit var observation: MarsConsoleDebugCheckpoint
+        task {
+            val task = this
+            before { task.addStep(MarsLearningWorkspace.openExample(project)) }
+        }
+        task {
+            text(learningMessages.getMessage("lesson.output.predict", action("Mars.Learning.PredictOutput")))
+            stateCheck { MarsPredictions.hasCorrectAnswer(project, MarsPredictions.output) }
+        }
+        text(MarsPredictions.output.answerExplanation)
+        task {
+            before {
+                observation = project.service<MarsLearningExecution>().observeOutput(
+                    lessonDisposable, virtualFile.toNioPath(), editor.document,
+                )
+            }
+            text(learningMessages.getMessage("lesson.output.before"))
+            timerCheck { observation.phase >= 1 }
+        }
+        task {
+            text(learningMessages.getMessage("lesson.output.argument"))
+            timerCheck { observation.phase >= 2 }
+        }
+        task {
+            text(learningMessages.getMessage("lesson.output.selector"))
+            timerCheck { observation.phase >= 3 }
+        }
+        text(learningMessages.getMessage("lesson.output.conclusion"))
     }
 }

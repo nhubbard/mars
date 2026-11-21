@@ -125,7 +125,8 @@ class MarsNativeLearningPlatformTest {
     fun `prediction actions are repeatable and preserve wrong attempts before a correct choice`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             for ((id, prediction) in listOf("Mars.Learning.PredictDoubling" to MarsPredictions.doubling,
-                "Mars.Learning.PredictNegative" to MarsPredictions.negative)) {
+                "Mars.Learning.PredictNegative" to MarsPredictions.negative,
+                "Mars.Learning.PredictOutput" to MarsPredictions.output)) {
                 val progress = projectFixture.get().service<MarsLearningProgress>()
                 progress.reset(MarsPredictions.identity)
                 assertFalse(MarsPredictions.hasCorrectAnswer(projectFixture.get(), prediction))
@@ -156,7 +157,7 @@ class MarsNativeLearningPlatformTest {
 
     @Test
     fun `prediction actions are unavailable without a project`() {
-        for (id in listOf("Mars.Learning.PredictDoubling", "Mars.Learning.PredictNegative")) {
+        for (id in listOf("Mars.Learning.PredictDoubling", "Mars.Learning.PredictNegative", "Mars.Learning.PredictOutput")) {
             val action = ActionManager.getInstance().getAction(id)
             assertEquals(ActionUpdateThread.BGT, action.actionUpdateThread)
             val event = AnActionEvent.createEvent(action, DataContext.EMPTY_CONTEXT, null, ActionPlaces.MAIN_MENU, ActionUiKind.NONE, null)
@@ -216,8 +217,8 @@ class MarsNativeLearningPlatformTest {
                     content?.invoke(taskContext)
                 }
                 for (preparation in preparations) assertTrue(preparation.await())
-                assertEquals(when (lesson) { is MarsConsoleRunLesson -> 1; is MarsConsoleDebugLesson -> 3; else -> 2 }, predicates.size)
-                assertEquals(when (lesson) { is MarsConsoleRunLesson -> 1; is MarsConsoleDebugLesson -> 3; else -> 0 }, timedChecks)
+                assertEquals(when (lesson) { is MarsConsoleRunLesson -> 1; is MarsConsoleDebugLesson -> 3; is MarsConsoleOutputLesson -> 4; else -> 2 }, predicates.size)
+                assertEquals(when (lesson) { is MarsConsoleRunLesson -> 1; is MarsConsoleDebugLesson -> 3; is MarsConsoleOutputLesson -> 3; else -> 0 }, timedChecks)
                 assertTrue(predicates.all { !it(runtime) })
                 val progress = projectFixture.get().service<MarsLearningProgress>()
                 if (lesson is MarsConsoleRunLesson) {
@@ -225,6 +226,11 @@ class MarsNativeLearningPlatformTest {
                     progress.finishCheck(ticket, true)
                 } else if (lesson is MarsConsoleDebugLesson) {
                     val ticket = progress.beginCheck(MarsConsoleDebugCheckpoint.identity, MarsConsoleDebugCheckpoint.STEP, "test debug observation")
+                    progress.finishCheck(ticket, true)
+                } else if (lesson is MarsConsoleOutputLesson) {
+                    progress.recordChoice(MarsPredictions.identity, "output", MarsPredictions.output.correct)
+                    val ticket = progress.beginCheck(MarsConsoleDebugCheckpoint.Segment.OUTPUT.identity,
+                        MarsConsoleDebugCheckpoint.STEP, "test output observation")
                     progress.finishCheck(ticket, true)
                 } else {
                     progress.recordChoice(MarsPredictions.identity, "doubling", MarsPredictions.doubling.correct)

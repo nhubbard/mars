@@ -26,6 +26,9 @@ internal class MarsLearningExecution(private val project: Project, private val s
     fun observeDebug(lifetime: Disposable, entry: Path, document: Document) =
         MarsConsoleDebugCheckpoint(project, lifetime, entry, document)
 
+    fun observeOutput(lifetime: Disposable, entry: Path, document: Document) =
+        MarsConsoleDebugCheckpoint(project, lifetime, entry, document, MarsConsoleDebugCheckpoint.Segment.OUTPUT)
+
     fun observeRun(lifetime: Disposable, entry: Path, document: Document) =
         MarsConsoleRunCheckpoint(project, scope, lifetime, entry, document)
 }

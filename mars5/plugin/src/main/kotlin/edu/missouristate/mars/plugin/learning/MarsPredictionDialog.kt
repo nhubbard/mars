@@ -68,3 +68,5 @@ internal abstract class MarsPredictionAction(private val prediction: () -> MarsP
 
 internal class MarsPredictDoublingAction : MarsPredictionAction({ MarsPredictions.doubling })
 internal class MarsPredictNegativeAction : MarsPredictionAction({ MarsPredictions.negative })
+
+internal class MarsPredictOutputAction : MarsPredictionAction({ MarsPredictions.output })
