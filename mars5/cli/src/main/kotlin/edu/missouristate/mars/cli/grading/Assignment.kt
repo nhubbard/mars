@@ -496,7 +496,7 @@ internal inline fun requireCase(condition: Boolean, message: () -> String) {
 
 private fun String.quote() = "\"${take(200).replace("\n", "\\n").replace("\r", "\\r")}\""
 
-private class BoundedOutput(private val bytes: ByteArrayOutputStream) : OutputStream() {
+internal class BoundedOutput(private val bytes: ByteArrayOutputStream) : OutputStream() {
     override fun write(value: Int) {
         checkCapacity(1)
         bytes.write(value)
@@ -512,7 +512,7 @@ private class BoundedOutput(private val bytes: ByteArrayOutputStream) : OutputSt
     }
 }
 
-private class GradingEnvironment(
+internal class GradingEnvironment(
     console: SyscallEnvironment,
     private val files: GradingFiles,
     private val timing: GradingTiming,
