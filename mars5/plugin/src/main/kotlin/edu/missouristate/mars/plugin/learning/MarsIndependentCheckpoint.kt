@@ -31,8 +31,23 @@ internal class MarsIndependentCheckpoint(
         private set
     init { Disposer.register(lifetime) { active = false } }
 
-    fun accepts(path: Path, selected: Document) = active && path == entry && selected === document
+    fun accepts(path: Path, selected: Document) = path == entry && acceptsLessonEditor(selected)
+    fun acceptsLessonEditor(selected: Document) = active && selected === document && source.isBound()
     fun passed() = source.passed(STEP)
+
+    fun revealedHints(): List<LearningHint> {
+        val revealed = project.service<MarsLearningProgress>().snapshot(identity)?.revealedHints.orEmpty()
+        return hints.filter { it.id in revealed }
+    }
+
+    fun revealNextHint(): Boolean {
+        if (!active) return false
+        source.refreshRevision()
+        val revealed = project.service<MarsLearningProgress>().snapshot(identity)!!.revealedHints
+        val next = hints.firstOrNull { it.id !in revealed } ?: return false
+        project.service<MarsLearningProgress>().revealHint(identity, next.id)
+        return true
+    }
 
     suspend fun check(): Feedback {
         if (!active) return Feedback.STALE
@@ -67,7 +82,13 @@ internal class MarsIndependentCheckpoint(
         data class Checked(val results: List<ConsoleCheckResult>) : Feedback
     }
 
+    data class LearningHint(val id: String, val title: String, val text: String)
+
     companion object {
+        val hints = copyOf(listOf("plan", "lifetime", "combine", "trace").map { id ->
+            LearningHint(id, learningMessages.getMessage("independent.hint.$id.title"),
+                learningMessages.getMessage("independent.hint.$id.text"))
+        })
         const val STEP = "independent-cases"
         val cases = copyOf(listOf(20, 0, -3, -1000, 1000).map { value ->
             ConsoleCheckCase("input $value", "$value\n",

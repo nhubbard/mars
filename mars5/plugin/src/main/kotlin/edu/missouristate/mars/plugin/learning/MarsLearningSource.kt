@@ -28,9 +28,9 @@ internal class MarsLearningSource(
 ) {
     data class Attempt(val ticket: CheckTicket, val text: String, val stamp: Long)
     private val progress = project.service<MarsLearningProgress>()
+    private val file = requireNotNull(FileDocumentManager.getInstance().getFile(document))
 
     init {
-        val file = requireNotNull(FileDocumentManager.getInstance().getFile(document))
         require(file.toNioPath() == entry)
         progress.open(identity, revision(document.text))
         EditorFactory.getInstance().eventMulticaster.addDocumentListener(object : BulkAwareDocumentListener.Simple {
@@ -48,6 +48,11 @@ internal class MarsLearningSource(
         })
     }
 
+    /** Synchronize after a reset without changing evidence for unchanged source. */
+    fun refreshRevision() = runReadActionBlocking { progress.open(identity, revision(document.text)) }
+
+    fun isBound() = file.isValid && file.toNioPath() == entry
+
     fun supports(handler: MarsProcessHandler) = handler.sourceSet == MarsSourceSet(entry) && handler.executionOptions == options
 
     fun begin(step: String): Attempt = runReadActionBlocking {
@@ -62,7 +67,7 @@ internal class MarsLearningSource(
         val sourcesMatch = capture?.let {
             it.exceptionHandler == null && it.snapshot.texts() == mapOf(entry to attempt.text)
         } == true
-        return document.modificationStamp == attempt.stamp && sourcesMatch
+        return isBound() && document.modificationStamp == attempt.stamp && sourcesMatch
     }
 
     fun matchesPosition(position: XSourcePosition?): Boolean {
