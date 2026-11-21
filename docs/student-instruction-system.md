@@ -90,9 +90,20 @@ The native lesson opens its prepared source with the supported nonblocking
 history. The host's ID-only passed recap is bypassed with its public `alwaysRestart`
 contract so the current content edition's evidence is evaluated again.
 
-The dedicated authoring plugin will verify and capture the actual lesson UI.
-Desktop control could not attach to the Java-launched IDE window; no graphical
-lesson success is claimed from the platform tests alone.
+The separate authoring plugin verified this segment in the real IDE after the
+required clean, cleanSandbox and runIde tasks. It exercised both wrong-answer
+feedback dialogs, accepted corrected answers, observed native lesson progression,
+and verified that a source comment survived a lesson restart. Five light-theme
+captures were inspected. Their full-window views retain an IDE plugin-update
+notification; they are verification evidence, not finished publication figures.
+
+The paired packaged-plugin API check reports both plugins compatible on
+IU-263.7307.200. The full MARS plugin suite passes 926 tests; the learning package
+has 31 passing Jupiter tests with all 207 source lines and 68 branches covered.
+The separate authoring driver passes 88 tests. Exact artifacts, logs and receipts
+are retained in the private instructor verification directory
+`verification/restructuring/native-predictions-02/`. These results cover the
+prediction segment only; they do not establish the complete first-unit behavior.
 
 ## Remaining first-unit integration
 
