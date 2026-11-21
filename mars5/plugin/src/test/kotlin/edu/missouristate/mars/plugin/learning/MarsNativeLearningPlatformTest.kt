@@ -70,9 +70,9 @@ class MarsNativeLearningPlatformTest {
         assertEquals(LessonType.USER_PROJECT, module.moduleType)
         assertEquals("mars-labs/console/first-program.asm", module.sampleFilePath)
         assertEquals("left", module.preferredLearnWindowAnchor(projectFixture.get()).toString())
-        assertEquals(MARS_LEARNING_LANGUAGE, module.lessons.single().languageId)
-        assertFalse(module.lessons.single().properties.openFileAtStart)
-        assertTrue(module.lessons.single().alwaysRestart)
+        assertEquals(MARS_LEARNING_LANGUAGE, module.lessons.first().languageId)
+        assertFalse(module.lessons.first().properties.openFileAtStart)
+        assertTrue(module.lessons.first().alwaysRestart)
         assertTrue(support.isSdkConfigured(projectFixture.get()))
         assertNull(support.getSdkForProject(projectFixture.get(), null))
         support.checkSdk(null, projectFixture.get())
@@ -84,7 +84,7 @@ class MarsNativeLearningPlatformTest {
         withContext(Dispatchers.EDT) {
             val file = fixture.addFileToProject("mars-labs/console/first-program.asm", "# student work\n")
             val support = MarsLearningLanguageSupport()
-            val lesson = MarsLearningCourse().modules().single().lessons.single()
+            val lesson = MarsLearningCourse().modules().single().lessons.first()
             lesson.prepare(projectFixture.get())
             projectFixture.get().service<MarsLearningProgress>().recordChoice(MarsPredictions.identity, "doubling", "b")
             support.cleanupBeforeLessons(projectFixture.get())
@@ -169,8 +169,9 @@ class MarsNativeLearningPlatformTest {
     @Test
     fun `native lesson DSL registers meaningful predicates without modifying its document`() = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
-            fixture.configureByText("first-program.asm", "# unchanged student text\n")
-            val lesson = MarsLearningCourse().modules().single().lessons.single()
+            val source = fixture.addFileToProject("mars-labs/console/first-program.asm", "# unchanged student text\n")
+            fixture.configureFromExistingVirtualFile(source.virtualFile)
+            for (lesson in MarsLearningCourse().modules().single().lessons) {
             lesson.prepare(projectFixture.get())
             // The host's DSL construction types are internal. Test-only reflection exercises its
             // actual registrar; packaged MARS code uses only public course/task APIs.
@@ -182,7 +183,7 @@ class MarsNativeLearningPlatformTest {
                 val context = contextClass.constructors.single().newInstance(executor) as LessonContext
                 lesson.fullLessonContent(context)
                 val tasks = executorClass.getDeclaredField("taskActions").apply { isAccessible = true }.get(executor) as List<*>
-                assertTrue(tasks.size >= 5)
+                assertTrue(tasks.size >= 3)
                 val recorderClass = Class.forName("training.learn.ActionsRecorder", true, loader)
                 val recorder = recorderClass.constructors.single().newInstance(projectFixture.get(), fixture.editor.document, executor)
                 val previous: () -> PreviousTaskInfo = { error("No restore state needed by this lesson") }
@@ -209,15 +210,21 @@ class MarsNativeLearningPlatformTest {
                     content?.invoke(taskContext)
                 }
                 for (preparation in preparations) assertTrue(preparation.await())
-                assertEquals(2, predicates.size)
+                assertEquals(if (lesson is MarsConsoleRunLesson) 1 else 2, predicates.size)
                 assertTrue(predicates.all { !it(runtime) })
                 val progress = projectFixture.get().service<MarsLearningProgress>()
-                progress.recordChoice(MarsPredictions.identity, "doubling", MarsPredictions.doubling.correct)
-                progress.recordChoice(MarsPredictions.identity, "negative", MarsPredictions.negative.correct)
+                if (lesson is MarsConsoleRunLesson) {
+                    val ticket = progress.beginCheck(MarsConsoleRunCheckpoint.identity, MarsConsoleRunCheckpoint.STEP, "test observation")
+                    progress.finishCheck(ticket, true)
+                } else {
+                    progress.recordChoice(MarsPredictions.identity, "doubling", MarsPredictions.doubling.correct)
+                    progress.recordChoice(MarsPredictions.identity, "negative", MarsPredictions.negative.correct)
+                }
                 assertTrue(predicates.all { it(runtime) })
                 assertEquals("# unchanged student text\n", fixture.editor.document.text)
             } finally {
                 Disposer.dispose(executor as Disposable)
+            }
             }
         }
     }

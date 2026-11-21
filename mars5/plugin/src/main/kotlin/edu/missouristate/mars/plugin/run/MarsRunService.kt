@@ -150,6 +150,8 @@ internal class MarsProcessHandler(
     private val execute: suspend MarsProcessHandler.(MarsContext, MarsExecutionSources) -> StopEvent,
 ) : ProcessHandler(), MarsToolExecution {
     private val entry = launch.sources.entry
+    val sourceSet get() = launch.sources
+    val executionOptions get() = launch.options
     private val toolInstructions = EventDispatcher.create(MarsToolInstructionListener::class.java)
     @Volatile var runSpeed = initialRunSpeed
     @Volatile private var console: ConsoleView? = null
