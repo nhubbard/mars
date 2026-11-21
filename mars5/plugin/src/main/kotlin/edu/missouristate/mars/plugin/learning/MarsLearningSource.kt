@@ -58,6 +58,7 @@ internal class MarsLearningSource(
 
     fun current(attempt: Attempt) = progress.isCurrent(attempt.ticket)
     fun finish(attempt: Attempt, passed: Boolean) = progress.finishCheck(attempt.ticket, passed)
+    fun finishAssessment(attempt: Attempt, passed: Boolean, limit: Int) = progress.finishAssessment(attempt.ticket, passed, limit)
     fun passed(step: String): Boolean {
         val record = progress.snapshot(identity) ?: return false
         return step in record.successfulChecks

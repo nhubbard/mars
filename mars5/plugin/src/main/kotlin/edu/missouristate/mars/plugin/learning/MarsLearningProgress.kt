@@ -45,6 +45,7 @@ internal class MarsLearningProgress :
         @JvmField var successfulChecks: Set<String> = emptySet(),
         @JvmField var quizAttempts: List<QuizAttempt> = emptyList(),
         @JvmField var revealedHints: Set<String> = emptySet(),
+        @JvmField var completedAssessments: Int = 0,
     )
 
     data class QuizAttempt(
@@ -126,6 +127,24 @@ internal class MarsLearningProgress :
         return true
     }
 
+    /** Only a current, completed assessment consumes an attempt; interrupted checks use finishCheck. */
+    @Synchronized
+    fun finishAssessment(ticket: CheckTicket, passed: Boolean, limit: Int): Boolean {
+        require(limit >= 0)
+        if (!isCurrent(ticket)) return false
+        val record = record(ticket.identity)
+        if (limit != 0 && record.completedAssessments >= limit) {
+            pendingChecks.remove(ticket.identity.key to ticket.step)
+            return false
+        }
+        pendingChecks.remove(ticket.identity.key to ticket.step)
+        put(ticket.identity, record.copy(
+            successfulChecks = if (passed) record.successfulChecks + ticket.step else record.successfulChecks,
+            completedAssessments = (record.completedAssessments.toLong() + 1).coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
+        ))
+        return true
+    }
+
     /** A deliberate reset forgets this content edition only, including its outstanding results. */
     @Synchronized
     fun reset(identity: MarsLessonIdentity) {
@@ -136,7 +155,7 @@ internal class MarsLearningProgress :
     @Synchronized
     fun canReset(identities: Set<MarsLessonIdentity>): Boolean = identities.any {
         val record = getState().lessons[it.key] ?: return@any false
-        record.successfulChecks.isNotEmpty() || record.quizAttempts.isNotEmpty() || record.revealedHints.isNotEmpty()
+        record.successfulChecks.isNotEmpty() || record.quizAttempts.isNotEmpty() || record.revealedHints.isNotEmpty() || record.completedAssessments > 0
     }
 
     @Synchronized
@@ -166,6 +185,8 @@ internal class MarsLearningProgress :
                 successfulChecks = emptySet(),
                 quizAttempts = (backup.quizAttempts + current.quizAttempts).map { it.copy() },
                 revealedHints = backup.revealedHints + current.revealedHints,
+                completedAssessments = (backup.completedAssessments.toLong() + current.completedAssessments)
+                    .coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
             )
         }
         updateState {
@@ -180,7 +201,10 @@ internal class MarsLearningProgress :
     @Synchronized
     override fun loadState(state: Progress) {
         pendingChecks.clear()
-        super.loadState(state)
+        super.loadState(state.copy(
+            lessons = state.lessons.mapValues { (_, record) -> record.copy(completedAssessments = record.completedAssessments.coerceAtLeast(0)) },
+            recovery = state.recovery.mapValues { (_, record) -> record.copy(completedAssessments = record.completedAssessments.coerceAtLeast(0)) },
+        ))
     }
 
     private fun record(identity: MarsLessonIdentity): LessonRecord =

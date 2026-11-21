@@ -16,6 +16,7 @@ import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.plugin.MarsSessionService
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -148,6 +149,7 @@ class MarsIndependentCheckpointTest {
                 val feedback = checkpoint.check()
                 if (changePrerequisite) {
                     assertEquals(MarsIndependentCheckpoint.Feedback.STALE, feedback)
+                    assertEquals(1, policy.completedIndependentAssessments())
                     assertFalse(checkpoint.passed())
                 } else {
                     assertInstanceOf(MarsIndependentCheckpoint.Feedback.Checked::class.java, feedback)
@@ -236,4 +238,92 @@ class MarsIndependentCheckpointTest {
             } finally { Disposer.dispose(first); Disposer.dispose(second) }
         }
     }
+    @Test
+    fun `the final permitted assessment keeps a successful pass and blocked retries preserve it`() = timeoutRunBlocking {
+        val policy = projectFixture.get().service<MarsLearningPolicy>()
+        policy.update(maxIndependentAssessments = 1)
+        exercise { checkpoint, _ ->
+            val result = assertInstanceOf(MarsIndependentCheckpoint.Feedback.Checked::class.java, checkpoint.check())
+            assertEquals(1, result.completedAssessments)
+            assertEquals(1, result.assessmentLimit)
+            assertTrue(checkpoint.passed())
+            assertEquals(MarsIndependentCheckpoint.Feedback.LIMIT, checkpoint.check())
+            assertTrue(checkpoint.passed())
+            assertEquals(1, policy.completedIndependentAssessments())
+            withContext(Dispatchers.EDT) {
+                val success = MarsIndependentFeedbackDialog(projectFixture.get(), result)
+                val limited = MarsIndependentFeedbackDialog(projectFixture.get(), MarsIndependentCheckpoint.Feedback.LIMIT)
+                try {
+                    assertTrue(success.report.contains("Completed assessments: 1 of 1"))
+                    assertTrue(limited.report.contains("used 1 of the 1"))
+                } finally { success.close(DialogWrapper.CANCEL_EXIT_CODE); limited.close(DialogWrapper.CANCEL_EXIT_CODE) }
+            }
+            policy.update(maxIndependentAssessments = 2)
+            assertInstanceOf(MarsIndependentCheckpoint.Feedback.Checked::class.java, checkpoint.check())
+            assertEquals(2, policy.completedIndependentAssessments())
+            assertTrue(checkpoint.passed())
+        }
+    }
+
+    @Test
+    fun `failed completed checks use attempts but assembly errors and edited results do not`() = timeoutRunBlocking {
+        val policy = projectFixture.get().service<MarsLearningPolicy>()
+        policy.update(maxIndependentAssessments = 1)
+        exercise(".text\nnot_an_instruction\n") { checkpoint, _ ->
+            assertEquals(MarsIndependentCheckpoint.Feedback.ASSEMBLY, checkpoint.check())
+            assertEquals(0, policy.completedIndependentAssessments())
+        }
+        exercise(worked) { checkpoint, _ ->
+            val result = assertInstanceOf(MarsIndependentCheckpoint.Feedback.Checked::class.java, checkpoint.check())
+            assertTrue(result.results.any { !it.passed })
+            assertEquals(1, policy.completedIndependentAssessments())
+            assertFalse(checkpoint.passed())
+            withContext(Dispatchers.EDT) {
+                WriteCommandAction.runWriteCommandAction(projectFixture.get()) { fixture.editor.document.setText(correct) }
+            }
+            assertEquals(MarsIndependentCheckpoint.Feedback.LIMIT, checkpoint.check())
+            assertEquals(1, policy.completedIndependentAssessments())
+            assertFalse(checkpoint.passed())
+            policy.update(maxIndependentAssessments = 0)
+            assertInstanceOf(MarsIndependentCheckpoint.Feedback.Checked::class.java, checkpoint.check())
+            assertEquals(2, policy.completedIndependentAssessments())
+            assertTrue(checkpoint.passed())
+        }
+    }
+
+    @Test
+    fun `a newly exhausted limit during execution rejects the result without charging it`() = timeoutRunBlocking {
+        val policy = projectFixture.get().service<MarsLearningPolicy>()
+        exercise { checkpoint, _ ->
+            assertInstanceOf(MarsIndependentCheckpoint.Feedback.Checked::class.java, checkpoint.check())
+        }
+        var restricted = false
+        exercise(createSession = {
+            if (!restricted) { restricted = true; policy.update(maxIndependentAssessments = 1) }
+            MarsSessionService.createMarsComponent(backstepLimit = 1).context()
+        }) { checkpoint, _ ->
+            assertEquals(MarsIndependentCheckpoint.Feedback.STALE, checkpoint.check())
+            assertEquals(1, policy.completedIndependentAssessments())
+            assertFalse(checkpoint.passed())
+        }
+    }
+
+    @Test
+    fun `a cancelled assessment does not consume the last released attempt`() = timeoutRunBlocking {
+        val policy = projectFixture.get().service<MarsLearningPolicy>()
+        policy.update(maxIndependentAssessments = 1)
+        var cancel = true
+        exercise(createSession = {
+            if (cancel) { cancel = false; throw CancellationException("Cancelled assessment fixture") }
+            MarsSessionService.createMarsComponent(backstepLimit = 1).context()
+        }) { checkpoint, _ ->
+            assertThrows<CancellationException> { checkpoint.check() }
+            assertEquals(0, policy.completedIndependentAssessments())
+            assertFalse(checkpoint.passed())
+            assertInstanceOf(MarsIndependentCheckpoint.Feedback.Checked::class.java, checkpoint.check())
+            assertEquals(1, policy.completedIndependentAssessments())
+            assertTrue(checkpoint.passed())
+        }
+    }
+
 }

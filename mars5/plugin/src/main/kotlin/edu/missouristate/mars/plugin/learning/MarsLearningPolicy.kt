@@ -9,6 +9,7 @@ import com.intellij.openapi.options.BoundConfigurable
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.openapi.ui.DialogPanel
+import com.intellij.ui.dsl.builder.bindIntText
 import com.intellij.ui.dsl.builder.bindIntValue
 import com.intellij.ui.dsl.builder.bindSelected
 import com.intellij.ui.dsl.builder.panel
@@ -25,20 +26,23 @@ internal class MarsLearningPolicy(private val project: Project) :
         @JvmField var requirePredictions: Boolean = false,
         @JvmField var allowFreeWriting: Boolean = true,
         @JvmField var requiredGuidedChecks: Set<String> = emptySet(),
+        @JvmField var maxIndependentAssessments: Int = 0,
     )
 
     val requiredGuidedChecks: Set<String> get() = getState().requiredGuidedChecks.toSet()
     val releasedHints: Int get() = getState().releasedHints
+    val maxIndependentAssessments: Int get() = getState().maxIndependentAssessments
     val requirePredictions: Boolean get() = getState().requirePredictions
     val allowFreeWriting: Boolean get() = getState().allowFreeWriting
 
-    fun update(releasedHints: Int = this.releasedHints, requirePredictions: Boolean = this.requirePredictions, allowFreeWriting: Boolean = this.allowFreeWriting) {
+    fun update(releasedHints: Int = this.releasedHints, requirePredictions: Boolean = this.requirePredictions, allowFreeWriting: Boolean = this.allowFreeWriting, maxIndependentAssessments: Int = this.maxIndependentAssessments) {
         require(releasedHints in 0..4)
-        updateState { it.copy(releasedHints = releasedHints, requirePredictions = requirePredictions, allowFreeWriting = allowFreeWriting) }
+        require(maxIndependentAssessments in 0..1000)
+        updateState { it.copy(releasedHints = releasedHints, requirePredictions = requirePredictions, allowFreeWriting = allowFreeWriting, maxIndependentAssessments = maxIndependentAssessments) }
     }
 
     override fun loadState(state: Policy) {
-        super.loadState(state.copy(releasedHints = state.releasedHints.coerceIn(0, 4)))
+        super.loadState(state.copy(releasedHints = state.releasedHints.coerceIn(0, 4), maxIndependentAssessments = state.maxIndependentAssessments.coerceIn(0, 1000)))
     }
 
     fun setGuidedRequirement(check: MarsGuidedRequirement, required: Boolean) {
@@ -58,6 +62,13 @@ internal class MarsLearningPolicy(private val project: Project) :
         val policy = getState()
         if (refreshedRequirements != null && policy.requiredGuidedChecks != refreshedRequirements) return false
         return policy.allowFreeWriting && predictionsReady(policy) && supportedRequirements(policy) && missingObservations(policy).isEmpty()
+    }
+
+    fun completedIndependentAssessments(): Int = project.service<MarsLearningProgress>()
+        .snapshot(MarsIndependentCheckpoint.identity)?.completedAssessments ?: 0
+
+    fun canAssessIndependent(limit: Int = maxIndependentAssessments): Boolean {
+        return limit == 0 || completedIndependentAssessments() < limit
     }
 
     /** Refresh outside read actions before both starting and accepting an assessment. */
@@ -102,6 +113,10 @@ internal class MarsLearningConfigurable(project: Project) : BoundConfigurable(le
         row {
             checkBox(learningMessages.getMessage("policy.free"))
                 .bindSelected(policy::allowFreeWriting) { policy.update(allowFreeWriting = it) }
+        }
+        row(learningMessages.getMessage("policy.assessments")) {
+            intTextField(0..1000).bindIntText(policy::maxIndependentAssessments) { policy.update(maxIndependentAssessments = it) }
+                .applyToComponent { accessibleContext.accessibleName = learningMessages.getMessage("policy.assessments") }
         }
         row { label(learningMessages.getMessage("policy.observations")) }
         for (check in MarsGuidedRequirement.entries) {

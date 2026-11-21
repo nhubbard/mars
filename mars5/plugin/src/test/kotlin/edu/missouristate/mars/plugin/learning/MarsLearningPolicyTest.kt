@@ -9,6 +9,7 @@ import com.intellij.util.ui.UIUtil
 import com.intellij.util.xmlb.XmlSerializer
 import javax.swing.JCheckBox
 import javax.swing.JSpinner
+import javax.swing.JTextField
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -100,7 +101,9 @@ class MarsLearningPolicyTest {
                 required.isSelected = true
                 free.isSelected = false
                 boxes.single { it.text == MarsGuidedRequirement.RUN.title }.isSelected = true
+                UIUtil.findComponentsOfType(root, JTextField::class.java).single { it.accessibleContext.accessibleName == learningMessages.getMessage("policy.assessments") }.text = "3"
                 page.apply()
+                assertEquals(3, policy.maxIndependentAssessments)
                 assertEquals(1, policy.releasedHints)
                 assertTrue(policy.requirePredictions)
                 assertFalse(policy.allowFreeWriting)
@@ -109,4 +112,33 @@ class MarsLearningPolicyTest {
             } finally { page.disposeUIResources() }
         }
     }
+    @Test
+    fun `assessment policy defaults unlimited and preserves bounded persisted instructor settings`() {
+        val project = fixture.get()
+        val policy = project.service<MarsLearningPolicy>()
+        assertEquals(0, policy.maxIndependentAssessments)
+        assertEquals(0, policy.completedIndependentAssessments())
+        assertTrue(policy.canAssessIndependent())
+        policy.update(maxIndependentAssessments = 1)
+        val progress = project.service<MarsLearningProgress>()
+        val identity = MarsIndependentCheckpoint.identity
+        assertTrue(progress.finishAssessment(progress.beginCheck(identity, MarsIndependentCheckpoint.STEP, "source"), false, 1))
+        assertFalse(policy.canAssessIndependent())
+        assertTrue(policy.canStartIndependent()) // Exhaustion must not revoke an earned pass or hide optional hints.
+        policy.update(releasedHints = 2)
+        assertEquals(1, policy.maxIndependentAssessments)
+        policy.update(maxIndependentAssessments = 2)
+        assertTrue(policy.canAssessIndependent())
+        val restored = MarsLearningPolicy(project)
+        restored.loadState(XmlSerializer.deserialize(XmlSerializer.serialize(policy.getState()), MarsLearningPolicy.Policy::class.java))
+        assertEquals(2, restored.maxIndependentAssessments)
+        for ((stored, expected) in listOf(-1 to 0, 1001 to 1000)) {
+            restored.loadState(MarsLearningPolicy.Policy(maxIndependentAssessments = stored))
+            assertEquals(expected, restored.maxIndependentAssessments)
+        }
+        for (invalid in listOf(-1, 1001)) assertThrows<IllegalArgumentException> { policy.update(maxIndependentAssessments = invalid) }
+        policy.update(maxIndependentAssessments = 0)
+        assertTrue(policy.canAssessIndependent())
+    }
+
 }
