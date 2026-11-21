@@ -1,9 +1,7 @@
 package edu.missouristate.mars.plugin.learning
 
-import com.intellij.openapi.fileEditor.FileEditorManager
-import com.intellij.openapi.fileEditor.FileEditorOpenRequest
+import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.vfs.LocalFileSystem
 import java.nio.file.FileAlreadyExistsException
 import java.nio.file.Files
 import java.nio.file.LinkOption.NOFOLLOW_LINKS
@@ -40,11 +38,7 @@ internal object MarsLearningWorkspace {
 
     fun openExample(project: Project): CompletableFuture<Boolean> {
         val path = projectRoot(project).resolve("mars-labs/console/first-program.asm")
-        val file = checkNotNull(LocalFileSystem.getInstance().refreshAndFindFileByNioFile(path)) {
-            "Prepare the lesson source before opening it"
-        }
-        return FileEditorManager.getInstance(project).requestOpenFile(file, FileEditorOpenRequest.withFocus(true))
-            .thenApply { true }
+        return project.service<MarsLearningExecution>().openLessonFile(path)
     }
 
     private fun projectRoot(project: Project): Path = Path.of(

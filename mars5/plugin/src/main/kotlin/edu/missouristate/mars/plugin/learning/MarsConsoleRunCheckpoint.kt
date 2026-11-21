@@ -12,17 +12,36 @@ import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
+import com.intellij.openapi.fileEditor.FileEditorManager
+import com.intellij.openapi.fileEditor.FileEditorOpenRequest
+import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.openapi.editor.Document
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.Key
 import edu.missouristate.mars.plugin.run.MarsProcessHandler
 import java.nio.file.Path
+import java.util.concurrent.CompletableFuture
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.future.future
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 @Service(Service.Level.PROJECT)
 internal class MarsLearningExecution(private val project: Project, private val scope: CoroutineScope) {
+    fun openLessonFile(entry: Path): CompletableFuture<Boolean> = scope.future {
+        // The native lesson host may call before() from a write-unsafe EDT context.
+        // Refresh outside it; the public suspending editor API owns EDT placement.
+        val file = withContext(Dispatchers.IO) {
+            checkNotNull(VirtualFileManager.getInstance().refreshAndFindFileByNioPath(entry)) {
+                "Prepare the lesson source before opening it"
+            }
+        }
+        FileEditorManager.getInstance(project).openFile(file, FileEditorOpenRequest.withFocus(true))
+        true
+    }
+
     fun observeDebug(lifetime: Disposable, entry: Path, document: Document) =
         MarsConsoleDebugCheckpoint(project, lifetime, entry, document)
 

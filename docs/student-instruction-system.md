@@ -233,11 +233,19 @@ copied registers. No simulator semantics are changed. This guided worked trace
 requires the demonstrated boundaries; free-writing acceptance remains behavioral
 and must allow equivalent implementations.
 
-The full check passes 947 plugin tests, including 52 learning tests, and the
-unchanged coverage gates. Learning code covers all 451 source lines and 246
-branches. The separate authoring plugin passes 90 tests; both exact packages pass
-paired API verification. Fresh graphical verification for this edition is pending;
-earlier captures are historical evidence only.
+The first graphical output batch observed native completion and correct register
+rows, but its log exposed a write-unsafe VFS refresh during lesson restart.
+`native-output-02` retains that defect, not final acceptance. File opening now runs
+in the project service coroutine scope, refreshes through `VirtualFileManager` on
+IO and uses the public suspending editor API. The native host's write-unsafe caller
+context is reproduced in a Jupiter regression test. Project disposal owns the
+opening operation rather than an unscoped background task.
+
+The corrected full check passes 948 plugin tests, including 53 learning tests,
+and the unchanged coverage gates. Learning code covers all 456 source lines and
+246 branches. The separate authoring plugin passes 90 tests; both exact packages
+pass paired API verification. Fresh graphical verification for this corrected
+edition is pending; earlier captures are historical evidence only.
 
 ## Remaining first-unit integration
 
