@@ -418,3 +418,54 @@ recorded separately. Seven new successful reopen views were inspected by AI;
 clipped lesson text and notifications still need publication layout and annotations.
 This verifies the independent exercise's reopen behavior, not automatic resumption
 at every Run/Debug task, instructor policy enforcement or full curriculum delivery.
+
+
+## First-unit instructor policy
+
+Settings → Tools → MARS Learning now exposes two project-shared course controls:
+the number of released independent-program hints (0–4), and whether both current
+prediction quizzes are required before independent assessment. Native
+`LessonProperties` has no MARS course-policy facility. A normal project persistent
+component and native `BoundConfigurable` supply those MARS semantics, while the
+public trainer task DSL continues to own lesson presentation and progression.
+The policy is stored in `.idea/mars-learning.xml`; personal evidence stays in the
+workspace file. Client-side policy is inspectable/editable and does not replace
+private instructor grading.
+
+The independent source opens before a native prerequisite task. That task explains
+which quizzes are required; the assessment/hint checkpoint is not installed until
+the requirement is met. The checker also validates policy before execution and
+before accepting results, so invoking it programmatically or changing policy during
+execution cannot bypass an unsatisfied prerequisite. Genuine source evidence is
+retained, but native completion also consults current prerequisites. Changes to task
+display require lesson restart; hint dialogs refresh on reopening. Hint release
+limits new reveals to the first N hints and never erase previously read help.
+
+The final `native-policy-01` batch uses the actual clean cleanSandbox runIde tasks
+and invokes the real native project Settings dialog. It requires the independent
+assembly file alongside the blocked lesson, verifies both actions disabled, answers
+the two real prediction dialogs, then observes independent assessment become
+available. Releases 0, 2, 0 and 4 respectively disable help, allow two hints, retain
+those hints under restriction, and allow the remainder. Neither policy nor hints
+edit source or complete a task. The unchanged starter fails all five public cases.
+Native save/close writes the shared policy file. Eleven installed JARs match the
+exact retained archives, and the final IDE log has no SEVERE entries.
+
+Earlier attempts remain distinct: the first functional batch captured a settings
+loading overlay; the next waited for native settings painting but showed an empty
+editor's agent welcome screen beside the prerequisite. The final lesson opens the
+student source before its gate, and the separate driver verifies that source is
+selected. All sixteen final views were inspected by AI. They are raw light-theme captures,
+with notification, clipping/scrolling and publication annotation work still open.
+Per-step required-check policy, retry limits, explicit mode controls and remote
+policy delivery remain future work. Two first-unit controls are not full curriculum
+policy enforcement.
+
+The final full check passes 974 plugin tests, including 79 learning tests. Learning
+code covers all 729 lines and 374 branches under unchanged gates. The authoring
+package passes 92 Jupiter tests; all 391 public Python tests pass and the existing
+student package validates and rebuilds. Paired API verification finds both final
+packages compatible (86 MARS and 20 authoring experimental public API uses), with
+no override-only diagnostics in the final authoring report. Its three direct action
+update calls were replaced by the supported `ActionUtil.updateAction` API; earlier
+reports with those diagnostics remain bound to their old packages.
