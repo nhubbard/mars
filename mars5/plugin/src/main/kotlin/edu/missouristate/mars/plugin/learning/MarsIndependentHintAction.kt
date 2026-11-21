@@ -56,8 +56,9 @@ internal class MarsIndependentHintDialog(project: Project, private val checkpoin
         val hints = checkpoint.revealedHints()
         body.text = learningMessages.getMessage("independent.hint.intro") + "\n\n" +
             hints.mapIndexed { index, hint -> "${index + 1}. ${hint.title}\n${hint.text}" }.joinToString("\n\n") +
+            "\n\n" + learningMessages.getMessage("policy.hint.status", checkpoint.releasedHintCount(), MarsIndependentCheckpoint.hints.size) +
             "\n\n" + learningMessages.getMessage("independent.hint.history")
-        revealAction.isEnabled = checkpoint.active && hints.size < MarsIndependentCheckpoint.hints.size
+        revealAction.isEnabled = checkpoint.canRevealNextHint()
         body.caretPosition = if (scrollToLatest) body.document.length else 0
     }
 

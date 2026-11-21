@@ -50,6 +50,7 @@ import org.junit.jupiter.api.io.TempDir
 import training.dsl.LessonContext
 import training.dsl.PreviousTaskInfo
 import training.dsl.TaskContext
+import training.dsl.RuntimeTextContext
 import training.dsl.TaskRuntimeContext
 import training.lang.LangManager
 import training.learn.CourseManager
@@ -181,6 +182,10 @@ class MarsNativeLearningPlatformTest {
             fixture.configureFromExistingVirtualFile(source.virtualFile)
             for (lesson in MarsLearningCourse().modules().single().lessons) {
             lesson.prepare(projectFixture.get())
+            if (lesson is MarsIndependentLesson) {
+                projectFixture.get().service<MarsLearningPolicy>().update(requirePredictions = true)
+                projectFixture.get().service<MarsLearningProgress>().reset(MarsPredictions.identity)
+            }
             // The host's DSL construction types are internal. Test-only reflection exercises its
             // actual registrar; packaged MARS code uses only public course/task APIs.
             val loader = LessonContext::class.java.classLoader
@@ -199,9 +204,11 @@ class MarsNativeLearningPlatformTest {
                     .newInstance(executor, recorder, {}, previous) as TaskRuntimeContext
                 val predicates = mutableListOf<TaskRuntimeContext.() -> Boolean>()
                 val preparations = mutableListOf<CompletableFuture<Boolean>>()
+                val runtimeTexts = mutableListOf<RuntimeTextContext.() -> String?>()
                 var timedChecks = 0
                 val taskContext = object : TaskContext() {
                     override val project: Project get() = projectFixture.get()
+                    override fun runtimeText(callback: RuntimeTextContext.() -> String?) { runtimeTexts += callback }
                     override fun before(preparation: TaskRuntimeContext.() -> Unit) { preparation(runtime) }
                     override fun stateCheck(checkState: TaskRuntimeContext.() -> Boolean) =
                         super.stateCheck(checkState).also { predicates += checkState }
@@ -225,9 +232,10 @@ class MarsNativeLearningPlatformTest {
                     for (preparation in preparations) assertTrue(preparation.await())
                 }
                 for (preparation in preparations) assertTrue(preparation.await())
-                assertEquals(when (lesson) { is MarsConsoleRunLesson -> 1; is MarsConsoleDebugLesson -> 3; is MarsConsoleOutputLesson -> 4; is MarsConsoleDiagnosisLesson -> 5; is MarsConsoleRepairLesson -> 1; is MarsIndependentLesson -> 1; else -> 2 }, predicates.size)
-                assertEquals(when (lesson) { is MarsConsoleRunLesson -> 1; is MarsConsoleDebugLesson -> 3; is MarsConsoleOutputLesson -> 3; is MarsConsoleDiagnosisLesson -> 3; is MarsConsoleRepairLesson -> 1; is MarsIndependentLesson -> 1; else -> 0 }, timedChecks)
+                assertEquals(when (lesson) { is MarsConsoleRunLesson -> 1; is MarsConsoleDebugLesson -> 3; is MarsConsoleOutputLesson -> 4; is MarsConsoleDiagnosisLesson -> 5; is MarsConsoleRepairLesson -> 1; is MarsIndependentLesson -> 2; else -> 2 }, predicates.size)
+                assertEquals(when (lesson) { is MarsConsoleRunLesson -> 1; is MarsConsoleDebugLesson -> 3; is MarsConsoleOutputLesson -> 3; is MarsConsoleDiagnosisLesson -> 3; is MarsConsoleRepairLesson -> 1; is MarsIndependentLesson -> 2; else -> 0 }, timedChecks)
                 assertTrue(predicates.all { !it(runtime) })
+                if (lesson is MarsIndependentLesson) assertTrue(runtimeTexts.single()(RuntimeTextContext(runtime))!!.contains("Your course requires"))
                 val progress = projectFixture.get().service<MarsLearningProgress>()
                 if (lesson is MarsConsoleRunLesson) {
                     val ticket = progress.beginCheck(MarsConsoleRunCheckpoint.identity, MarsConsoleRunCheckpoint.STEP, "test observation")
@@ -250,6 +258,9 @@ class MarsNativeLearningPlatformTest {
                     val ticket = progress.beginCheck(MarsConsoleRunCheckpoint.repairIdentity, MarsConsoleRunCheckpoint.STEP, "test repair")
                     progress.finishCheck(ticket, true)
                 } else if (lesson is MarsIndependentLesson) {
+                    progress.open(MarsPredictions.identity, MarsPredictions.identity.contentSha256)
+                    progress.recordChoice(MarsPredictions.identity, "doubling", MarsPredictions.doubling.correct)
+                    progress.recordChoice(MarsPredictions.identity, "negative", MarsPredictions.negative.correct)
                     val ticket = progress.beginCheck(MarsIndependentCheckpoint.identity, MarsIndependentCheckpoint.STEP, "test independent assessment")
                     progress.finishCheck(ticket, true)
                 } else {
@@ -257,6 +268,7 @@ class MarsNativeLearningPlatformTest {
                     progress.recordChoice(MarsPredictions.identity, "negative", MarsPredictions.negative.correct)
                 }
                 assertTrue(predicates.all { it(runtime) })
+                if (lesson is MarsIndependentLesson) assertNull(runtimeTexts.single()(RuntimeTextContext(runtime)))
                 assertEquals("# unchanged student text\n", fixture.editor.document.text)
             } finally {
                 Disposer.dispose(executor as Disposable)

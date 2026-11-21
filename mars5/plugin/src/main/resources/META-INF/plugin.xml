@@ -55,6 +55,9 @@
     <projectConfigurable id="mars.assembly" groupId="build" nonDefaultProject="true"
                          bundle="messages.MarsBundle" key="build.settings.title"
                          instance="edu.missouristate.mars.plugin.build.MarsAssemblyConfigurable"/>
+    <projectConfigurable id="mars.learning" groupId="tools" nonDefaultProject="true"
+                         bundle="messages.MarsLearningBundle" key="policy.title"
+                         instance="edu.missouristate.mars.plugin.learning.MarsLearningConfigurable"/>
     <!-- The provider accepts only plugin-created virtual files backed by a running or completed simulation. -->
     <fileEditorProvider implementation="edu.missouristate.mars.plugin.tools.BitmapDisplayEditorProvider"
                         allowedInUntrustedFiles="true"/>
