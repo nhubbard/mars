@@ -3384,8 +3384,12 @@ class MarsDebugPlatformTest {
             val suspension = requireNotNull(debug.session.suspendContext)
             readAction { assertNull(analysis.selectedAssembly(other)) }
             withContext(Dispatchers.EDT) {
+                val editors = FileEditorManager.getInstance(project)
+                // The pause callback can precede queued source navigation. Open that source before
+                // enabling automatic assembly, so its later navigation cannot replace this selection.
+                editors.openFile(entry, FileEditorOpenRequest.withFocus(false))
                 project.service<MarsAssemblySettings>().changeAssembleOnOpen(true)
-                FileEditorManager.getInstance(project).openFile(other.virtualFile, FileEditorOpenRequest.withFocus(false))
+                editors.openFile(other.virtualFile, FileEditorOpenRequest.withFocus(false))
             }
             pollAssertionsAsync(5.seconds, 10.milliseconds) {
                 readAction { assertEquals(other.virtualFile.toNioPath(), analysis.selectedAssembly(other)?.entry) }
