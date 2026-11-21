@@ -299,7 +299,7 @@ internal class MarsIndependentLesson : KLesson("mars.console.independent", learn
                     lessonDisposable, virtualFile.toNioPath(), editor.document,
                 )
             }
-            text(learningMessages.getMessage("lesson.independent.text", action("Mars.Learning.CheckIndependent")))
+            text(learningMessages.getMessage("lesson.independent.text", action("Mars.Learning.CheckIndependent"), action("Mars.Learning.IndependentHint")))
             timerCheck { assessment.passed() }
         }
         text(learningMessages.getMessage("lesson.independent.conclusion"))

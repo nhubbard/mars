@@ -157,6 +157,7 @@
     <action id="Mars.Learning.PredictNegative" class="edu.missouristate.mars.plugin.learning.MarsPredictNegativeAction"/>
     <action id="Mars.Learning.PredictOutput" class="edu.missouristate.mars.plugin.learning.MarsPredictOutputAction"/>
     <action id="Mars.Learning.PredictWrongOutput" class="edu.missouristate.mars.plugin.learning.MarsPredictWrongOutputAction"/>
+    <action id="Mars.Learning.IndependentHint" class="edu.missouristate.mars.plugin.learning.MarsIndependentHintAction"/>
     <action id="Mars.Learning.CheckIndependent" class="edu.missouristate.mars.plugin.learning.MarsIndependentCheckAction"/>
     <action id="Mars.Learning.DiagnoseOutput" class="edu.missouristate.mars.plugin.learning.MarsDiagnoseOutputAction"/>
     <action id="Mars.ImportVenusPreferences" class="edu.missouristate.mars.plugin.project.MarsImportVenusPreferencesAction">

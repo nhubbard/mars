@@ -1,11 +1,13 @@
 package edu.missouristate.mars.plugin.learning
 
+import com.intellij.openapi.actionSystem.ActionPlaces
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.components.service
+import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.platform.ide.progress.withBackgroundProgress
@@ -23,6 +25,13 @@ internal class MarsIndependentCheckAction : AnAction() {
     override fun getActionUpdateThread() = ActionUpdateThread.BGT
     private fun target(event: AnActionEvent): Pair<Project, MarsIndependentCheckpoint>? {
         val project = event.project ?: return null
+        if (event.place == ActionPlaces.LEARN_TOOLWINDOW) {
+            // Native lesson links use the Learn pane's focus context. The public
+            // lock-free selection API supports this background action update.
+            val editor = FileEditorManager.getInstance(project).getSelectedTextEditor(true) ?: return null
+            val checkpoint = project.service<MarsLearningExecution>().independent ?: return null
+            return if (checkpoint.acceptsLessonEditor(editor.document)) project to checkpoint else null
+        }
         val file = event.getData(CommonDataKeys.VIRTUAL_FILE) ?: return null
         if (!file.isInLocalFileSystem) return null
         val editor = event.getData(CommonDataKeys.EDITOR) ?: return null

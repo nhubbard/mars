@@ -47,6 +47,12 @@ class MarsLearningSourceTest {
                 assertFalse(runReadActionBlocking { source.matches(attempt, handler) })
                 assertFalse(source.current(attempt))
                 assertFalse(source.finish(attempt, true))
+                WriteCommandAction.runWriteCommandAction(project) { file.rename(this, "renamed.asm") }
+                assertFalse(source.isBound())
+                assertFalse(runReadActionBlocking { source.matches(attempt, handler) })
+                WriteCommandAction.runWriteCommandAction(project) { file.delete(this) }
+                assertFalse(source.isBound())
+                assertFalse(runReadActionBlocking { source.matches(attempt, handler) })
             } finally {
                 handler.destroyProcess()
                 Disposer.dispose(lifetime)

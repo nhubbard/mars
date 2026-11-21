@@ -9,6 +9,9 @@ import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.impl.SimpleDataContext
+import com.intellij.openapi.command.WriteCommandAction
+import com.intellij.openapi.fileEditor.FileEditorManager
+import com.intellij.openapi.fileEditor.FileEditorOpenRequest
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.components.service
 import com.intellij.openapi.ui.DialogWrapper
@@ -70,6 +73,42 @@ class MarsIndependentCheckActionTest {
                 val wrong = event(SimpleDataContext.builder().add(CommonDataKeys.PROJECT, project)
                     .add(CommonDataKeys.VIRTUAL_FILE, other).add(CommonDataKeys.EDITOR, fixture.editor).build())
                 action.update(wrong); assertFalse(wrong.presentation.isEnabled)
+            } finally { Disposer.dispose(lifetime) }
+        }
+    }
+
+    @Test
+    fun `native Learn context uses the selected editor while rejecting other renamed and deleted files`() = timeoutRunBlocking {
+        withContext(Dispatchers.EDT) {
+            val project = projectFixture.get()
+            val lifetime = Disposer.newDisposable()
+            val data = SimpleDataContext.builder().add(CommonDataKeys.PROJECT, project).build()
+            val e = AnActionEvent.createEvent(action, data, null, ActionPlaces.LEARN_TOOLWINDOW, ActionUiKind.NONE, null)
+            try {
+                action.update(e)
+                assertFalse(e.presentation.isEnabled)
+                action.actionPerformed(e)
+                val file = fixture.addFileToProject("independent.asm", correct).virtualFile
+                fixture.configureFromExistingVirtualFile(file)
+                val manager = FileEditorManager.getInstance(project)
+                manager.openFile(file, FileEditorOpenRequest.withFocus(true))
+                action.update(e)
+                assertFalse(e.presentation.isEnabled)
+                project.service<MarsLearningExecution>().observeIndependent(lifetime, file.toNioPath(), fixture.editor.document)
+                action.update(e)
+                assertTrue(e.presentation.isEnabled)
+                val other = fixture.addFileToProject("other.asm", correct).virtualFile
+                manager.openFile(other, FileEditorOpenRequest.withFocus(true))
+                action.update(e)
+                assertFalse(e.presentation.isEnabled)
+                action.actionPerformed(e)
+                manager.openFile(file, FileEditorOpenRequest.withFocus(true))
+                WriteCommandAction.runWriteCommandAction(project) { file.rename(this, "renamed.asm") }
+                action.update(e)
+                assertFalse(e.presentation.isEnabled)
+                WriteCommandAction.runWriteCommandAction(project) { file.delete(this) }
+                action.update(e)
+                assertFalse(e.presentation.isEnabled)
             } finally { Disposer.dispose(lifetime) }
         }
     }
