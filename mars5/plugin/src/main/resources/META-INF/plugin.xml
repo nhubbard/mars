@@ -22,6 +22,7 @@
   <dependencies>
     <module name="intellij.platform.monolith"/>
     <plugin id="com.intellij.modules.compose"/>
+    <plugin id="training"/>
     <module name="intellij.libraries.compose.foundation.desktop"/>
     <module name="intellij.libraries.compose.runtime.desktop"/>
     <module name="intellij.platform.buildView"/>
@@ -36,6 +37,10 @@
     <extensionPoint name="syscallEnvironmentCustomizer" interface="edu.missouristate.mars.plugin.run.MarsSyscallEnvironmentCustomizer" dynamic="true"/>
     <extensionPoint name="toolProvider" interface="edu.missouristate.mars.plugin.tools.MarsToolProvider" dynamic="true"/>
   </extensionPoints>
+  <extensions defaultExtensionNs="training">
+    <ift.language.extension language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.learning.MarsLearningLanguageSupport"/>
+    <ift.learning.course language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.learning.MarsLearningCourse"/>
+  </extensions>
   <extensions defaultExtensionNs="edu.missouristate.mars">
     <toolProvider id="edu.missouristate.mars.introToTools" implementation="edu.missouristate.mars.plugin.tools.IntroToToolsProvider"/>
   </extensions>
@@ -148,6 +153,8 @@
               topic="com.intellij.openapi.fileEditor.FileEditorManagerListener"/>
   </projectListeners>
   <actions resource-bundle="messages.MarsBundle">
+    <action id="Mars.Learning.PredictDoubling" class="edu.missouristate.mars.plugin.learning.MarsPredictDoublingAction"/>
+    <action id="Mars.Learning.PredictNegative" class="edu.missouristate.mars.plugin.learning.MarsPredictNegativeAction"/>
     <action id="Mars.ImportVenusPreferences" class="edu.missouristate.mars.plugin.project.MarsImportVenusPreferencesAction">
       <add-to-group group-id="FileMenu" anchor="last"/>
     </action>

@@ -64,12 +64,37 @@ source changes including editing back to the same source, concurrent attempts,
 retries, independent steps and content editions, resets and stale results.
 This increment is a progress foundation, not a completed student-facing lesson.
 
-## Remaining first-unit integration
+## Native prediction lesson and project preservation
 
-Select the supported Features Trainer course registration and entry action after
-checking the actual packaged SDK and compatibility verifier. Inspect public quiz
-and choice presentation facilities before introducing any MARS assessment UI; record
-a concrete gap if the host cannot provide the required interaction.
+The main plugin now registers the MARS language and course with Features Trainer.
+The first prediction segment presents two questions, records wrong attempts,
+provides misconception-specific feedback and accepts a revised prediction. The
+correct explanations remain in the native lesson text. The public task DSL has
+text, action and state-check facilities but no multiple-choice feedback widget;
+a standard IntelliJ `DialogWrapper` supplies that small MARS assessment surface.
+It is not a separate lesson framework. Formative client feedback is inspectable;
+private instructor grading and book quiz keys remain separate.
+
+Use the native Learn IDE Features window and select MARS. The course uses
+`LessonType.USER_PROJECT` and `openFileAtStart=false`. The native dedicated-project
+installer deletes/replaces its demo directory when its training-version marker
+changes (`ProjectUtils.importOrOpenProject`), before a language support hook can
+preserve student files. That concrete lifecycle gap makes it unsuitable as the
+owner of editable MARS student work.
+
+`MarsLearningWorkspace` creates only missing files under the current project's
+`mars-labs/console/`. It never overwrites an existing source. Occupied directory
+paths, source directories and symlinks are rejected without changing their targets.
+The native lesson opens its prepared source with the supported nonblocking
+`requestOpenFile` API and waits for its future. Restarts retain edits and prediction
+history. The host's ID-only passed recap is bypassed with its public `alwaysRestart`
+contract so the current content edition's evidence is evaluated again.
+
+The dedicated authoring plugin will verify and capture the actual lesson UI.
+Desktop control could not attach to the Java-launched IDE window; no graphical
+lesson success is claimed from the platform tests alone.
+
+## Remaining first-unit integration
 
 The unit must connect explanation, prediction, actual Run/Debug observations,
 source-bound checking, diagnostic feedback, graduated hints and an independent
