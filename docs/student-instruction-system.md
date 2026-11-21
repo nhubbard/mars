@@ -275,9 +275,23 @@ The workspace creates only missing exercise files and refuses occupied/symlinked
 paths. Edits survive initialization; the worked example, counterexample and repair
 are independent. The native USER_PROJECT lesson runtime follows the selected editor
 when opening each file. Public course/task and debugger contracts were inspected
-in the pinned reference checkout. Focused Jupiter checks pass 57 learning tests,
-covering all 535 learning lines and 258 branches. Full and graphical checks for
-this edition are still pending.
+in the pinned reference checkout. Jupiter verification passes 952 plugin tests, including 57 learning tests, covering
+all 535 learning lines and 258 branches. The separate authoring plugin passes 90
+tests. The actual `native-diagnosis-01` batch observes all six native segments,
+including wrong-answer feedback, faulty argument pauses, an equivalent `or` repair,
+normal Run exit with output 41, and a second native repair pass after restart.
+The repair survives restart while the counterexample remains unchanged. The log
+has no SEVERE entries and all eleven installed JARs match the saved packages.
+
+The batch retains twenty-two raw light-theme captures; the eight new diagnosis and
+repair views were visually inspected. Publication cleanup, annotations and
+accessibility verification remain open. Direct process input does not verify
+console typing/echo. The faulty Debug observation stops before output and does not
+claim normal termination or an observed faulty console transcript. The repaired
+Run verifies normal exit separately. Paired API verification is compatible; the
+concurrent separate Gradle verifier failed after an extracted JAR disappeared
+from its shared cache. The serial Gradle retry succeeds, including the full test suite and unchanged coverage
+and generated-parser gates. Package verifiers must run serially.
 
 ## Remaining first-unit integration
 
