@@ -322,4 +322,58 @@ class MarsLearningProgressTest {
     fun `content identity requires a canonical SHA-256`(invalid: String) {
         assertThrows<IllegalArgumentException> { lesson.copy(contentSha256 = invalid) }
     }
+    @Test
+    fun `completed assessments consume one attempt while stale interrupted and over-limit results do not`() {
+        val progress = MarsLearningProgress()
+        val old = progress.beginCheck(lesson, "assessment", "source")
+        val current = progress.beginCheck(lesson, "assessment", "source")
+        assertFalse(progress.finishAssessment(old, true, 1))
+        assertTrue(progress.finishAssessment(current, false, 1))
+        assertFalse(progress.finishAssessment(current, false, 1))
+        assertEquals(1, progress.snapshot(lesson)!!.completedAssessments)
+        val denied = progress.beginCheck(lesson, "assessment", "source")
+        assertFalse(progress.finishAssessment(denied, true, 1))
+        assertFalse(progress.isCurrent(denied))
+        assertEquals(1, progress.snapshot(lesson)!!.completedAssessments)
+        assertTrue(progress.snapshot(lesson)!!.successfulChecks.isEmpty())
+        val interrupted = progress.beginCheck(lesson, "assessment", "edited")
+        assertTrue(progress.finishCheck(interrupted, false))
+        assertEquals(1, progress.snapshot(lesson)!!.completedAssessments)
+        assertTrue(progress.finishAssessment(progress.beginCheck(lesson, "assessment", "edited"), true, 0))
+        assertEquals(2, progress.snapshot(lesson)!!.completedAssessments)
+        assertEquals(setOf("assessment"), progress.snapshot(lesson)!!.successfulChecks)
+        assertThrows<IllegalArgumentException> { progress.finishAssessment(current, true, -1) }
+    }
+
+    @Test
+    fun `assessment history survives edits serialization and recoverable reset without overflow`() {
+        val progress = MarsLearningProgress()
+        assertTrue(progress.finishAssessment(progress.beginCheck(lesson, "assessment", "source"), false, 0))
+        assertTrue(progress.canReset(setOf(lesson)))
+        progress.open(lesson, "edited")
+        val restored = MarsLearningProgress()
+        restored.loadState(XmlSerializer.deserialize(XmlSerializer.serialize(progress.getState()), MarsLearningProgress.Progress::class.java))
+        assertEquals(1, restored.snapshot(lesson)!!.completedAssessments)
+        assertTrue(restored.resetRecoverably(setOf(lesson)))
+        assertNull(restored.snapshot(lesson))
+        assertTrue(restored.finishAssessment(restored.beginCheck(lesson, "assessment", "new"), false, 0))
+        assertTrue(restored.recover(setOf(lesson)))
+        assertEquals(2, restored.snapshot(lesson)!!.completedAssessments)
+        assertTrue(restored.snapshot(lesson)!!.successfulChecks.isEmpty())
+        restored.loadState(MarsLearningProgress.Progress(
+            lessons = mapOf(lesson.key to MarsLearningProgress.LessonRecord("source", completedAssessments = Int.MAX_VALUE)),
+            recovery = mapOf(lesson.key to MarsLearningProgress.LessonRecord("source", completedAssessments = 1)),
+        ))
+        assertTrue(restored.finishAssessment(restored.beginCheck(lesson, "assessment", "source"), true, 0))
+        assertEquals(Int.MAX_VALUE, restored.snapshot(lesson)!!.completedAssessments)
+        assertTrue(restored.recover(setOf(lesson)))
+        assertEquals(Int.MAX_VALUE, restored.snapshot(lesson)!!.completedAssessments)
+        restored.loadState(MarsLearningProgress.Progress(
+            lessons = mapOf(lesson.key to MarsLearningProgress.LessonRecord(completedAssessments = -1)),
+            recovery = mapOf(lesson.key to MarsLearningProgress.LessonRecord(completedAssessments = -3)),
+        ))
+        assertEquals(0, restored.snapshot(lesson)!!.completedAssessments)
+        assertEquals(0, restored.getState().recovery[lesson.key]!!.completedAssessments)
+    }
+
 }

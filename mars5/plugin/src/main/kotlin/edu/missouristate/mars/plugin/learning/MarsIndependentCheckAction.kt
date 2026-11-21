@@ -56,11 +56,15 @@ internal class MarsIndependentCheckAction : AnAction() {
 internal class MarsIndependentFeedbackDialog(project: Project, feedback: MarsIndependentCheckpoint.Feedback) : DialogWrapper(project) {
     val report: String = when (feedback) {
         MarsIndependentCheckpoint.Feedback.POLICY -> project.service<MarsLearningPolicy>().independentRestriction()
+        MarsIndependentCheckpoint.Feedback.LIMIT -> learningMessages.getMessage("independent.check.limit",
+            project.service<MarsLearningPolicy>().completedIndependentAssessments(),
+            project.service<MarsLearningPolicy>().maxIndependentAssessments)
         MarsIndependentCheckpoint.Feedback.ASSEMBLY -> learningMessages.getMessage("independent.check.assembly")
         MarsIndependentCheckpoint.Feedback.STALE -> learningMessages.getMessage("independent.check.stale")
         is MarsIndependentCheckpoint.Feedback.Checked -> feedback.results.joinToString("\n\n") {
             if (it.passed) "PASS ${it.name}" else "FAIL ${it.name}\n${it.failure}"
-        } + "\n\n" + learningMessages.getMessage("independent.check.scope")
+        } + "\n\n" + learningMessages.getMessage("independent.check.scope") +
+            if (feedback.assessmentLimit == 0) "" else "\n\n" + learningMessages.getMessage("independent.check.attempts", feedback.completedAssessments, feedback.assessmentLimit)
     }
     init {
         title = learningMessages.getMessage("independent.check.title")

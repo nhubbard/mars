@@ -61,6 +61,7 @@ internal class MarsIndependentCheckpoint(
         val policy = project.service<MarsLearningPolicy>()
         val initialRequirements = policy.refreshGuidedSources()
         if (!policy.canStartIndependent(initialRequirements)) return Feedback.POLICY
+        if (!policy.canAssessIndependent()) return Feedback.LIMIT
         val attempt = source.begin(STEP)
         try {
             val program = project.service<MarsBuildService>().prepare(MarsSourceSet(entry), MarsLearningSource.options, activateBuildView = true)
@@ -73,10 +74,14 @@ internal class MarsIndependentCheckpoint(
             }
             val finalRequirements = policy.refreshGuidedSources()
             return readAction {
-                if (!isCurrent(attempt, program, finalRequirements)) Feedback.STALE
-                else {
-                    source.finish(attempt, results.all(ConsoleCheckResult::passed))
-                    Feedback.Checked(results)
+                // Validate and consume the same capability/count atomically against retries and resets.
+                synchronized(project.service<MarsLearningProgress>()) {
+                    val limit = policy.maxIndependentAssessments
+                    if (!isCurrent(attempt, program, finalRequirements) || !policy.canAssessIndependent(limit)) Feedback.STALE
+                    else {
+                        source.finishAssessment(attempt, results.all(ConsoleCheckResult::passed), limit)
+                        Feedback.Checked(results, policy.completedIndependentAssessments(), limit)
+                    }
                 }
             }
         } finally {
@@ -89,9 +94,10 @@ internal class MarsIndependentCheckpoint(
 
     sealed interface Feedback {
         data object POLICY : Feedback
+        data object LIMIT : Feedback
         data object ASSEMBLY : Feedback
         data object STALE : Feedback
-        data class Checked(val results: List<ConsoleCheckResult>) : Feedback
+        data class Checked(val results: List<ConsoleCheckResult>, val completedAssessments: Int = 0, val assessmentLimit: Int = 0) : Feedback
     }
 
     data class LearningHint(val id: String, val title: String, val text: String)
