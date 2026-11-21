@@ -185,8 +185,29 @@ therefore reads `MarsSuspendContext`. Foreign debugger sessions are ignored. Nat
 `timerCheck` consumes the asynchronous observations. New fixtures exercise actual
 source stepping, simultaneous Debug sessions, restored source edits, extra includes,
 a source-less instruction pause, foreign sessions and stopped-snapshot stability.
-Graphical Debug verification is a separate required step; existing Run screenshots
-are not proof that the new lesson works in the IDE.
+The fresh graphical batch `native-debug-03` verifies all three implemented lessons
+in IU-263.7307.200 after the actual `clean cleanSandbox runIde` tasks. The separate
+authoring plugin observes two prediction-pass callbacks, retained student edits,
+normal Run exit with result 41, and the native Debug-pass callback. Actual debugger
+rows show input 20 and results 0, 40 and 41 at the three pauses. The new Debug
+session starts with result zero even after the preceding Run computed 41.
+
+The first Debug capture attempt stopped at an incorrect register-group caption in
+the authoring driver; it is retained as partial evidence, not a successful Debug
+check. The corrected driver checks the actual packaged `Integer registers` caption
+and selects the owned native register tab before reading its rows. The intervening
+`native-debug-02` batch contains prelaunch validation only. The final batch retains
+exact tested packages, 945 passing plugin tests (50 learning tests), 90 passing
+authoring tests, and paired compatible API reports (85 and 20 experimental public
+API uses). The unchanged coverage gate passes; learning code covers all 398 source
+lines and 202 branches. All eleven installed JARs match the retained package bytes.
+
+All ten final light-theme screenshots were inspected. They remain raw verification
+artifacts: update notifications, clipped/scrolled lesson text and transient analysis
+indicators need cleanup before publication. Native register values are hexadecimal;
+20, 40 and 41 display as 0x14, 0x28 and 0x29. The driver supplies standard process
+input directly; it does not verify keyboard entry and echoed input in the console.
+No new annotated publication figure or human learner review is claimed.
 
 ## Remaining first-unit integration
 
