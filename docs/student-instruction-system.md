@@ -609,3 +609,28 @@ The separate authoring plugin passes 101 tests. The private lesson-import-01 bat
 A fresh clean cleanSandbox runIde process loads the saved final project, verifies all 37 entry hashes, reimports the edited first package and retains every source. Both final phases save/close before controlled termination of their owned welcome-screen IDE, so the Gradle termination exits are nonzero cleanup results. Eleven installed JARs per phase match the exact final archives. Paired API verification is compatible (91 MARS and 20 authoring experimental public API uses), with no internal, override-only or compatibility diagnostics. An intermediate report that inspected the previous distribution before buildPlugin finished is retained under its actual earlier archive binding; final verification is bound to the completed build.
 
 The repeatable private audit reconstructs every captured regular file from exact input distributions plus small overlays and compares full sizes/hashes. It verifies 37 native import receipts, version/content isolation, the edited entry, fresh-process preservation, the two debugger observations, installed packages and thirteen final raw-image receipts. Negative variants reject missing import coverage, altered source preservation and corrupted tree evidence. Selected preview and debugger views are visually reviewed; update notifications and long native digest-based tab names remain in these verification screenshots. They are not new publication figures or human usability evidence. All 391 public tooling tests pass; original manuscript and unrelated source edits are preserved. The author's independent walkthrough and the full main-book/lab/native-curriculum revision remain open.
+
+## Inline prediction checkpoint (21 November 2026)
+
+Guided predictions use native Learn-pane callback links for answer choices and
+inline wrong-answer feedback. A native source highlight follows the relevant
+instruction. Independent work also exposes “Check my program” and “Open a hint”
+as lesson links. The legacy prediction actions remain available for compatibility;
+the guided path does not require Find Action. Existing prediction identity and
+history remain compatible because the presentation strings have a separate bundle.
+
+The trainer queries highlight geometry from a Swing repaint timer without the
+lesson task's read context. The callback explicitly acquires read access for PSI
+lookup and editor geometry. A raw Swing timer regression starts without read
+access and checks that the callback succeeds. The isolated full plugin check passes
+1,039 tests, with all 1,287 learning lines and 748 branches covered. The integrated
+checkout's 18 focused tests also pass alongside the author's separate cleanup.
+
+The exact packaged MARS and separate authoring plugins pass API verification on
+IU-263.7307.200. Native interaction verification remains incomplete: the corrected
+IDE run timed out waiting for the first question, before any answer clicks or new
+screenshots. Its log did not reproduce the previous read-access exception, but
+this does not establish that the complete inline walkthrough works. Resume by
+investigating that first-question wait, then exercise all five questions, retries,
+source highlights, ordinary Run/Debug, independent check/hint links and restart.
+Do not treat the earlier dialog-based captures as evidence for the new controls.
