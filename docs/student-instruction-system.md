@@ -333,6 +333,27 @@ scroll/layout, annotation and publication-accessibility work remains open.
 Public formative checks and answers remain inspectable; instructor grading is
 separate. Full project reopen/resume and human review are not yet verified.
 
+## Graduated hints for independent writing
+
+The independent exercise offers four optional hints: plan the value flow, retain
+needed values, combine them deliberately, and compare with a concrete trace.
+`Mars.Learning.IndependentHint` uses a standard accessible native dialog. Revealing
+help records stable hint IDs in the content-specific progress history; it neither
+edits source nor completes an execution check. Reopening shows only the hints
+already requested. Edits retain that history while invalidating source checks.
+Explicit progress reset starts a fresh hint history. Help is scoped to the active
+lesson and becomes unavailable when the native trainer disposes that lesson.
+
+Hint actions work from the Learn pane without editor-specific data keys. The
+independent check action also accepts native Learn-pane invocations, but still
+requires the selected editor to be the bound lesson document. The public,
+experimental lock-free selected-editor API supports its background update.
+Renaming or deleting the bound file prevents the old document from earning a pass.
+Jupiter fixtures cover those cases, reveal order/exhaustion, stale dialogs, reset,
+persistence, and preserving current source evidence when revealing a hint.
+The full check passes 968 plugin tests, including 73 learning tests; learning
+coverage is all 687 lines and 346 branches, with unchanged coverage gates.
+
 ## Remaining first-unit integration
 
 The unit must complete the connection between explanation, prediction, actual Run/Debug observations,
@@ -348,3 +369,16 @@ Retain Minion Pro, Noto Sans Math, the actual IntelliJ highlighter bridge and na
 accessible teaching figures. Verify revised code, screenshots and final PDFs rather
 than transferring old receipts to changed artifacts. Before every actual IDE launch,
 run the real `clean cleanSandbox runIde` tasks.
+
+The `native-hints-01` batch verifies all seven segments in the actual light-theme
+IDE. From the real Learn-pane context, the driver reveals two hints, reopens and
+reveals the remaining two, verifies no source edit or completion from help, then
+checks an equivalent solution. After an edit/restart it observes the same four
+hints with reveal disabled, requires rechecking and verifies retained work on a
+further restart. Three native independent completion callbacks are observed.
+The thirty-five raw captures include seven new hint views inspected by AI.
+Both exact packages pass paired API verification (86 MARS and 20 authoring
+experimental public API uses); eleven installed JARs match the retained archives.
+The successful IDE log has no SEVERE entries. A prior authoring attempt incorrectly
+requested help after native completion disposed the lesson; that failed receipt is
+retained separately, and the corrected capture stays within the active lesson.
