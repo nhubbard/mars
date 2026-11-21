@@ -84,9 +84,12 @@ class MarsLearningPolicyTest {
                 val root = page.createComponent()
                 page.reset()
                 val count = UIUtil.findComponentsOfType(root, JSpinner::class.java).single()
-                val required = UIUtil.findComponentsOfType(root, JCheckBox::class.java).single()
+                val boxes = UIUtil.findComponentsOfType(root, JCheckBox::class.java)
+                val required = boxes.single { it.text == learningMessages.getMessage("policy.predictions") }
+                val free = boxes.single { it.text == learningMessages.getMessage("policy.free") }
                 assertEquals(4, count.value)
                 assertFalse(required.isSelected)
+                assertTrue(free.isSelected)
                 assertFalse(page.isModified)
                 count.value = 2
                 required.isSelected = true
@@ -95,9 +98,11 @@ class MarsLearningPolicyTest {
                 assertEquals(4, count.value)
                 count.value = 1
                 required.isSelected = true
+                free.isSelected = false
                 page.apply()
                 assertEquals(1, policy.releasedHints)
                 assertTrue(policy.requirePredictions)
+                assertFalse(policy.allowFreeWriting)
                 assertFalse(page.isModified)
             } finally { page.disposeUIResources() }
         }

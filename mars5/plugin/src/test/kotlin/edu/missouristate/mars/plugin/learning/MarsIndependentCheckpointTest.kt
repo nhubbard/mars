@@ -78,7 +78,9 @@ class MarsIndependentCheckpointTest {
         val progress = projectFixture.get().service<MarsLearningProgress>()
         var machines = 0
         exercise(createSession = { machines++; MarsSessionService.createMarsComponent(backstepLimit = 1).context() }) { checkpoint, _ ->
-            policy.update(requirePredictions = true)
+            policy.update(allowFreeWriting = false)
+            assertEquals(MarsIndependentCheckpoint.Feedback.POLICY, checkpoint.check())
+            policy.update(requirePredictions = true, allowFreeWriting = true)
             assertEquals(MarsIndependentCheckpoint.Feedback.POLICY, checkpoint.check())
             assertEquals(0, machines)
             assertFalse(checkpoint.passed())

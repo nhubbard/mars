@@ -55,7 +55,7 @@ internal class MarsIndependentCheckAction : AnAction() {
 
 internal class MarsIndependentFeedbackDialog(project: Project, feedback: MarsIndependentCheckpoint.Feedback) : DialogWrapper(project) {
     val report: String = when (feedback) {
-        MarsIndependentCheckpoint.Feedback.POLICY -> learningMessages.getMessage("policy.predictions.required")
+        MarsIndependentCheckpoint.Feedback.POLICY -> project.service<MarsLearningPolicy>().independentRestriction()
         MarsIndependentCheckpoint.Feedback.ASSEMBLY -> learningMessages.getMessage("independent.check.assembly")
         MarsIndependentCheckpoint.Feedback.STALE -> learningMessages.getMessage("independent.check.stale")
         is MarsIndependentCheckpoint.Feedback.Checked -> feedback.results.joinToString("\n\n") {

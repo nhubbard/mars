@@ -53,6 +53,7 @@ internal class MarsRegisterPredictionLesson : KLesson(
 
     override fun prepare(project: Project) {
         MarsLearningWorkspace.ensureExample(project)
+        project.service<MarsLearningNavigation>().opened("mars.console.predictions")
         project.service<MarsLearningProgress>().open(MarsPredictions.identity, MarsPredictions.identity.contentSha256)
     }
 
@@ -122,7 +123,10 @@ internal class MarsConsoleRunLesson : KLesson("mars.console.run", learningMessag
     override val properties = LessonProperties(openFileAtStart = false)
     override val alwaysRestart = true
 
-    override fun prepare(project: Project) { MarsLearningWorkspace.ensureExample(project) }
+    override fun prepare(project: Project) {
+        MarsLearningWorkspace.ensureExample(project)
+        project.service<MarsLearningNavigation>().opened("mars.console.run")
+    }
 
     override val lessonContent: LessonContext.() -> Unit = {
         lateinit var observation: MarsConsoleRunCheckpoint
@@ -147,7 +151,10 @@ internal class MarsConsoleRunLesson : KLesson("mars.console.run", learningMessag
 internal class MarsConsoleDebugLesson : KLesson("mars.console.debug", learningMessages.getMessage("lesson.debug.name")) {
     override val properties = LessonProperties(openFileAtStart = false)
     override val alwaysRestart = true
-    override fun prepare(project: Project) { MarsLearningWorkspace.ensureExample(project) }
+    override fun prepare(project: Project) {
+        MarsLearningWorkspace.ensureExample(project)
+        project.service<MarsLearningNavigation>().opened("mars.console.debug")
+    }
 
     override val lessonContent: LessonContext.() -> Unit = {
         lateinit var observation: MarsConsoleDebugCheckpoint
@@ -180,7 +187,10 @@ internal class MarsConsoleDebugLesson : KLesson("mars.console.debug", learningMe
 internal class MarsConsoleOutputLesson : KLesson("mars.console.output", learningMessages.getMessage("lesson.output.name")) {
     override val properties = LessonProperties(openFileAtStart = false)
     override val alwaysRestart = true
-    override fun prepare(project: Project) { MarsLearningWorkspace.ensureExample(project) }
+    override fun prepare(project: Project) {
+        MarsLearningWorkspace.ensureExample(project)
+        project.service<MarsLearningNavigation>().opened("mars.console.output")
+    }
 
     override val lessonContent: LessonContext.() -> Unit = {
         lateinit var observation: MarsConsoleDebugCheckpoint
@@ -218,7 +228,10 @@ internal class MarsConsoleDiagnosisLesson : KLesson("mars.console.diagnosis", le
     override val sampleFilePath = "mars-labs/console/wrong-output.asm"
     override val properties = LessonProperties(openFileAtStart = false)
     override val alwaysRestart = true
-    override fun prepare(project: Project) { MarsLearningWorkspace.ensureExample(project, MarsLearningWorkspace.Exercise.DIAGNOSIS) }
+    override fun prepare(project: Project) {
+        MarsLearningWorkspace.ensureExample(project, MarsLearningWorkspace.Exercise.DIAGNOSIS)
+        project.service<MarsLearningNavigation>().opened("mars.console.diagnosis")
+    }
 
     override val lessonContent: LessonContext.() -> Unit = {
         lateinit var observation: MarsConsoleDebugCheckpoint
@@ -261,7 +274,10 @@ internal class MarsConsoleRepairLesson : KLesson("mars.console.repair", learning
     override val sampleFilePath = "mars-labs/console/repair-output.asm"
     override val properties = LessonProperties(openFileAtStart = false)
     override val alwaysRestart = true
-    override fun prepare(project: Project) { MarsLearningWorkspace.ensureExample(project, MarsLearningWorkspace.Exercise.REPAIR) }
+    override fun prepare(project: Project) {
+        MarsLearningWorkspace.ensureExample(project, MarsLearningWorkspace.Exercise.REPAIR)
+        project.service<MarsLearningNavigation>().opened("mars.console.repair")
+    }
 
     override val lessonContent: LessonContext.() -> Unit = {
         lateinit var observation: MarsConsoleRunCheckpoint
@@ -286,7 +302,10 @@ internal class MarsIndependentLesson : KLesson("mars.console.independent", learn
     override val sampleFilePath = "mars-labs/console/independent.asm"
     override val properties = LessonProperties(openFileAtStart = false)
     override val alwaysRestart = true
-    override fun prepare(project: Project) { MarsLearningWorkspace.ensureExample(project, MarsLearningWorkspace.Exercise.INDEPENDENT) }
+    override fun prepare(project: Project) {
+        MarsLearningWorkspace.ensureExample(project, MarsLearningWorkspace.Exercise.INDEPENDENT)
+        project.service<MarsLearningNavigation>().opened("mars.console.independent")
+    }
     override val lessonContent: LessonContext.() -> Unit = {
         lateinit var assessment: MarsIndependentCheckpoint
         task {
@@ -296,7 +315,7 @@ internal class MarsIndependentLesson : KLesson("mars.console.independent", learn
         task {
             runtimeText {
                 if (project.service<MarsLearningPolicy>().canStartIndependent()) null
-                else learningMessages.getMessage("policy.predictions.required")
+                else project.service<MarsLearningPolicy>().independentRestriction()
             }
             timerCheck { project.service<MarsLearningPolicy>().canStartIndependent() }
         }
