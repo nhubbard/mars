@@ -160,6 +160,34 @@ XML test archives and GUI receipts are retained privately under
 retains the asynchronous-check failure and must not be treated as a successful
 lesson verification. Debug and the complete first-unit acceptance remain open.
 
+## Source-bound Debug observation
+
+The third native lesson follows one Debug session through a pause before
+`addu $t0,$v0,$v0`, a pause after it produces 40, and a pause after
+`addiu $t0,$t0,1` produces 41. It reads the evaluator's existing stopped-register
+snapshot and a copied instruction word; no live register or memory evaluation is
+required. The checker compares the basic instruction encodings, PC boundaries,
+fresh suspension numbers and the input/result values. It does not parse source or
+require fixed line numbers. A valid local source position is still required.
+
+Both Run and Debug now share `MarsLearningSource` for document/VFS invalidation,
+actual assembled-source comparison, execution options and per-attempt capabilities.
+The progress service exposes a read-only capability test for intermediate pauses.
+A new matching Debug attempt supersedes the previous one. Old pauses and cleanup
+cannot advance or clear the new attempt. Native session listeners and disposables
+own observation cleanup. Completed Run observations now release their per-process
+cleanup registration rather than retaining old handlers until the lesson closes.
+
+The public debugger session-listener contracts were inspected in the reference
+checkout. The native paused notification installs its suspend context before
+calling listeners; the observer binds only to MARS's concrete debug process and
+therefore reads `MarsSuspendContext`. Foreign debugger sessions are ignored. Native
+`timerCheck` consumes the asynchronous observations. New fixtures exercise actual
+source stepping, simultaneous Debug sessions, restored source edits, extra includes,
+a source-less instruction pause, foreign sessions and stopped-snapshot stability.
+Graphical Debug verification is a separate required step; existing Run screenshots
+are not proof that the new lesson works in the IDE.
+
 ## Remaining first-unit integration
 
 The unit must complete the connection between explanation, prediction, actual Run/Debug observations,

@@ -108,6 +108,10 @@ internal class MarsLearningProgress :
         }
     }
 
+    /** Read-only capability test for an observation with several intermediate pauses. */
+    @Synchronized
+    fun isCurrent(ticket: CheckTicket): Boolean = pendingChecks[ticket.identity.key to ticket.step] === ticket
+
     /** Returns whether the result is current, independently of whether the student's check passed. */
     @Synchronized
     fun finishCheck(ticket: CheckTicket, passed: Boolean): Boolean {

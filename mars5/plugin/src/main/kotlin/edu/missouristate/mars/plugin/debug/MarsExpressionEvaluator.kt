@@ -56,8 +56,13 @@ internal class MarsExpressionEvaluator(
     private val watchRequests: SendChannel<WatchMemoryRequest>,
 ) : XDebuggerEvaluator() {
     private val wide = machine.target == MarsTarget.MARS64
-    private val expandedOperands = machine.memory.sourceStatement(machine.registerFile.programCounterBits)
-        ?.sourceOperands.orEmpty()
+    val instructionWord: Int?
+    private val expandedOperands: List<SourceOperand>
+    init {
+        val statement = machine.memory.sourceStatement(machine.registerFile.programCounterBits)
+        instructionWord = statement?.binaryStatement
+        expandedOperands = statement?.sourceOperands.orEmpty()
+    }
     private val registers = buildMap<String, Scalar> {
         val cpu = machine.registerFile
         for (register in cpu.registers) {
@@ -76,6 +81,10 @@ internal class MarsExpressionEvaluator(
         }
         put("FCC", Word(fpu.conditionFlagsNoNotify and CONDITION_FLAG_MASK))
     }
+
+    /** Reads the same stopped snapshot used by the native debugger, without evaluating source or memory. */
+    fun integerRegisterBits(name: String): Long = registers.getValue(name).integerBits
+        ?: error("Not an integer register: $name")
 
     override fun isCodeFragmentEvaluationSupported() = false
 
