@@ -35,7 +35,7 @@ internal class MarsLearningCourse : LearningCourseBase(MARS_LEARNING_LANGUAGE) {
         object : IftModule(
             "mars.console", learningMessages.getMessage("module.name"),
             learningMessages.getMessage("module.description"), langSupport, LessonType.USER_PROJECT,
-            { listOf(MarsRegisterPredictionLesson(), MarsConsoleRunLesson(), MarsConsoleDebugLesson(), MarsConsoleOutputLesson(), MarsConsoleDiagnosisLesson(), MarsConsoleRepairLesson()) },
+            { listOf(MarsRegisterPredictionLesson(), MarsConsoleRunLesson(), MarsConsoleDebugLesson(), MarsConsoleOutputLesson(), MarsConsoleDiagnosisLesson(), MarsConsoleRepairLesson(), MarsIndependentLesson()) },
         ) {
             override val sampleFilePath = "mars-labs/console/first-program.asm"
             override fun preferredLearnWindowAnchor(project: Project) = ToolWindowAnchor.LEFT
@@ -279,5 +279,29 @@ internal class MarsConsoleRepairLesson : KLesson("mars.console.repair", learning
             timerCheck { observation.passed() }
         }
         text(learningMessages.getMessage("lesson.repair.conclusion"))
+    }
+}
+
+internal class MarsIndependentLesson : KLesson("mars.console.independent", learningMessages.getMessage("lesson.independent.name")) {
+    override val sampleFilePath = "mars-labs/console/independent.asm"
+    override val properties = LessonProperties(openFileAtStart = false)
+    override val alwaysRestart = true
+    override fun prepare(project: Project) { MarsLearningWorkspace.ensureExample(project, MarsLearningWorkspace.Exercise.INDEPENDENT) }
+    override val lessonContent: LessonContext.() -> Unit = {
+        lateinit var assessment: MarsIndependentCheckpoint
+        task {
+            val task = this
+            before { task.addStep(MarsLearningWorkspace.openExample(project, MarsLearningWorkspace.Exercise.INDEPENDENT)) }
+        }
+        task {
+            before {
+                assessment = project.service<MarsLearningExecution>().observeIndependent(
+                    lessonDisposable, virtualFile.toNioPath(), editor.document,
+                )
+            }
+            text(learningMessages.getMessage("lesson.independent.text", action("Mars.Learning.CheckIndependent")))
+            timerCheck { assessment.passed() }
+        }
+        text(learningMessages.getMessage("lesson.independent.conclusion"))
     }
 }

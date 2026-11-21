@@ -44,6 +44,15 @@ internal class MarsLearningExecution(private val project: Project, private val s
         true
     }
 
+    @Volatile var independent: MarsIndependentCheckpoint? = null
+        private set
+
+    fun observeIndependent(lifetime: Disposable, entry: Path, document: Document): MarsIndependentCheckpoint =
+        MarsIndependentCheckpoint(project, lifetime, entry, document).also { checkpoint ->
+            independent = checkpoint
+            Disposer.register(lifetime) { if (independent === checkpoint) independent = null }
+        }
+
     fun observeDebug(lifetime: Disposable, entry: Path, document: Document) =
         MarsConsoleDebugCheckpoint(project, lifetime, entry, document)
 
