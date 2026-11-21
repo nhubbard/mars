@@ -9,7 +9,10 @@ import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.impl.SimpleDataContext
+import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.EDT
+import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ProjectManager
@@ -32,6 +35,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.CompletableFuture
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.future.await
 import kotlinx.coroutines.withContext
@@ -291,9 +295,27 @@ class MarsNativeLearningPlatformTest {
         val emptyProject = ProjectManager.getInstance().defaultProject
         assertThrows<IllegalArgumentException> { MarsLearningWorkspace.ensureExample(emptyProject) }
         withContext(Dispatchers.EDT) {
-            assertThrows<IllegalStateException> { MarsLearningWorkspace.openExample(projectFixture.get()) }
+            assertThrows<IllegalStateException> { MarsLearningWorkspace.openExample(projectFixture.get()).await() }
         }
         Unit
+    }
+
+    @Test
+    fun `a fresh lesson file opens from the host write unsafe context without refreshing on that thread`() = timeoutRunBlocking {
+        val project = projectFixture.get()
+        val source = MarsLearningWorkspace.ensureExample(project)
+        val requested = CompletableDeferred<CompletableFuture<Boolean>>()
+        ApplicationManager.getApplication().invokeLater({
+            try {
+                requested.complete(MarsLearningWorkspace.openExample(project))
+            } catch (error: Throwable) {
+                requested.completeExceptionally(error)
+            }
+        }, ModalityState.any())
+        assertTrue(requested.await().await())
+        withContext(Dispatchers.EDT) {
+            assertEquals(source, FileEditorManager.getInstance(project).selectedFiles.single().toNioPath())
+        }
     }
 
     private fun inspectPrediction(actionId: String, inspect: (MarsPredictionDialog) -> Unit) {
