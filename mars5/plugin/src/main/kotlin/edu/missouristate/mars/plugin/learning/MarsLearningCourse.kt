@@ -290,15 +290,15 @@ internal class MarsIndependentLesson : KLesson("mars.console.independent", learn
     override val lessonContent: LessonContext.() -> Unit = {
         lateinit var assessment: MarsIndependentCheckpoint
         task {
+            val task = this
+            before { task.addStep(MarsLearningWorkspace.openExample(project, MarsLearningWorkspace.Exercise.INDEPENDENT)) }
+        }
+        task {
             runtimeText {
                 if (project.service<MarsLearningPolicy>().canStartIndependent()) null
                 else learningMessages.getMessage("policy.predictions.required")
             }
             timerCheck { project.service<MarsLearningPolicy>().canStartIndependent() }
-        }
-        task {
-            val task = this
-            before { task.addStep(MarsLearningWorkspace.openExample(project, MarsLearningWorkspace.Exercise.INDEPENDENT)) }
         }
         task {
             before {
