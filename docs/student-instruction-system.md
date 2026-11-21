@@ -634,3 +634,34 @@ this does not establish that the complete inline walkthrough works. Resume by
 investigating that first-question wait, then exercise all five questions, retries,
 source highlights, ordinary Run/Debug, independent check/hint links and restart.
 Do not treat the earlier dialog-based captures as evidence for the new controls.
+
+### Resumed inline walkthrough verified
+
+The resumed `inline-prediction-02` batch supersedes the pending native walkthrough
+above. A fresh IDE process completed all five quizzes through visible answer links,
+with wrong-answer feedback, correct retries, instruction focus and retirement of
+completed choices. Correct explanations appear at their runtime step rather than
+as inactive previews. The trainer's paragraph-based removal requires the quiz to
+be one message; XML line feeds inside its text parts preserve visible choice lines
+without creating separately completed paragraphs.
+
+Normal Run, arithmetic Debug, output preparation, diagnosis and repair completed.
+The independent starter failed, an equivalent implementation passed all five
+public cases, edits required reassessment, and check/hint links worked directly.
+Prediction restart produced two native passes with source retained; independent
+restart preserved edited work and hint history. The project saved and closed
+normally. All 35 captured images and the native receipts are retained privately.
+The final IDE log has no SEVERE or ERROR entries, including no read-access failure.
+
+The full plugin check passes 1,039 tests with all 1,288 learning lines and 748
+branches covered. Eighteen focused tests pass alongside the author's cleanup.
+The separate authoring plugin passes 104 tests; the exact plugin pair passes
+packaged API verification. Native logs confirm zero-width caret rectangles, which
+the capture driver now normalizes to one pixel for visibility checks. The driver
+also waits for the current diagnosis wording. Both corrections remain outside MARS.
+
+This batch verifies the ordinary first-unit path and lesson restart. It does not
+repeat fresh-process policy, reset or recovery scenarios, and it is not human
+learner review. The complete curriculum and downloaded native lesson delivery
+remain unfinished. The revised written lab now explains the inline controls and
+includes an accessible native LaTeX figure from this successful capture.
