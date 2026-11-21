@@ -382,3 +382,39 @@ experimental public API uses); eleven installed JARs match the retained archives
 The successful IDE log has no SEVERE entries. A prior authoring attempt incorrectly
 requested help after native completion disposed the lesson; that failed receipt is
 retained separately, and the corrected capture stays within the active lesson.
+
+
+## Independent exercise across native project close and fresh IDE processes
+
+`native-reopen-01` now verifies persistence beyond a lesson restart. The separate
+authoring driver first executes all seven segments, then uses the public
+`ProjectManager.closeAndDispose` contract to save and close the fixture. The native
+workspace contains the content-specific source revision, execution checks, quiz
+attempts and four hint IDs. A new IDE process opens that existing project after
+actual `clean cleanSandbox runIde` tasks. The unchanged independent program earns
+one native completion callback without invoking its check action or installing a
+solution. The source remains byte-identical, and native save/close succeeds again.
+
+After confirmed termination of that IDE process, one comment is prepended outside
+the IDE. The workspace/progress file is untouched. Another fresh process requires
+a new execution check, retains all four hints with reveal disabled, passes the five
+public cases and completes once. The driver never injects progress or a solution
+on either resume path. Before and after source hashes, saved workspaces, exact
+packages and installed JAR checks are retained privately.
+
+The driver uses the public toolwindow command queue before opening lessons and the
+public asynchronous Learn-window show callback. Two earlier observations timed out
+with the restored editor visible and Learn hidden; their partial evidence remains
+separate. The synchronized driver succeeds on the same saved project. This change
+is confined to the separate authoring plugin; student persistence code is unchanged.
+Its 91 Jupiter tests and paired package API verification pass. The MARS package is
+the unchanged one previously checked by 968 plugin tests, including 73 learning
+tests; this step does not claim another full MARS suite invocation.
+
+Both successful reopen logs report a cancellation error attributed to the bundled
+Air agent-provisioning plugin when closing the project. They are not error-free
+logs. The successful MARS lesson callbacks and native save/close receipts are
+recorded separately. Seven new successful reopen views were inspected by AI;
+clipped lesson text and notifications still need publication layout and annotations.
+This verifies the independent exercise's reopen behavior, not automatic resumption
+at every Run/Debug task, instructor policy enforcement or full curriculum delivery.
