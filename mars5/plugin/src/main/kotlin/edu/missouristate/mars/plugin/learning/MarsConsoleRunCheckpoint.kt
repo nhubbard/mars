@@ -9,6 +9,7 @@ import com.intellij.execution.process.ProcessListener
 import com.intellij.execution.process.ProcessOutputTypes
 import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
@@ -30,9 +31,10 @@ import kotlinx.coroutines.launch
 
 @Service(Service.Level.PROJECT)
 internal class MarsLearningExecution(private val project: Project, private val scope: CoroutineScope) {
-    fun openLessonFile(entry: Path): CompletableFuture<Boolean> = scope.future {
+    fun openLessonFile(entry: Path): CompletableFuture<Boolean> = scope.future(Dispatchers.EDT) {
         // The native lesson host may call before() from a write-unsafe EDT context.
-        // Refresh outside it; the public suspending editor API owns EDT placement.
+        // Refresh outside it; the public suspending editor API owns editor placement.
+        // Native task futures must also complete on EDT for the host continuation.
         val file = withContext(Dispatchers.IO) {
             checkNotNull(VirtualFileManager.getInstance().refreshAndFindFileByNioPath(entry)) {
                 "Prepare the lesson source before opening it"
