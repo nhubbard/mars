@@ -35,7 +35,7 @@ internal class MarsLearningCourse : LearningCourseBase(MARS_LEARNING_LANGUAGE) {
         object : IftModule(
             "mars.console", learningMessages.getMessage("module.name"),
             learningMessages.getMessage("module.description"), langSupport, LessonType.USER_PROJECT,
-            { listOf(MarsRegisterPredictionLesson(), MarsConsoleRunLesson(), MarsConsoleDebugLesson(), MarsConsoleOutputLesson()) },
+            { listOf(MarsRegisterPredictionLesson(), MarsConsoleRunLesson(), MarsConsoleDebugLesson(), MarsConsoleOutputLesson(), MarsConsoleDiagnosisLesson(), MarsConsoleRepairLesson()) },
         ) {
             override val sampleFilePath = "mars-labs/console/first-program.asm"
             override fun preferredLearnWindowAnchor(project: Project) = ToolWindowAnchor.LEFT
@@ -95,6 +95,8 @@ internal object MarsPredictions {
     val doubling = prediction("doubling", "a")
     val negative = prediction("negative", "c")
     val output = prediction("output", "b")
+    val wrongOutput = prediction("wrong-output", "a")
+    val diagnosis = prediction("diagnosis", "c")
     val identity = MarsLessonIdentity(
         "mars-book", "console-predictions", "0.1.0",
         MessageDigest.getInstance("SHA-256").apply {
@@ -209,5 +211,73 @@ internal class MarsConsoleOutputLesson : KLesson("mars.console.output", learning
             timerCheck { observation.phase >= 3 }
         }
         text(learningMessages.getMessage("lesson.output.conclusion"))
+    }
+}
+
+internal class MarsConsoleDiagnosisLesson : KLesson("mars.console.diagnosis", learningMessages.getMessage("lesson.diagnosis.name")) {
+    override val sampleFilePath = "mars-labs/console/wrong-output.asm"
+    override val properties = LessonProperties(openFileAtStart = false)
+    override val alwaysRestart = true
+    override fun prepare(project: Project) { MarsLearningWorkspace.ensureExample(project, MarsLearningWorkspace.Exercise.DIAGNOSIS) }
+
+    override val lessonContent: LessonContext.() -> Unit = {
+        lateinit var observation: MarsConsoleDebugCheckpoint
+        task {
+            val task = this
+            before { task.addStep(MarsLearningWorkspace.openExample(project, MarsLearningWorkspace.Exercise.DIAGNOSIS)) }
+        }
+        task {
+            text(learningMessages.getMessage("lesson.diagnosis.predict", action("Mars.Learning.PredictWrongOutput")))
+            stateCheck { MarsPredictions.hasCorrectAnswer(project, MarsPredictions.wrongOutput) }
+        }
+        text(MarsPredictions.wrongOutput.answerExplanation)
+        task {
+            before {
+                observation = project.service<MarsLearningExecution>().observeDiagnosis(
+                    lessonDisposable, virtualFile.toNioPath(), editor.document,
+                )
+            }
+            text(learningMessages.getMessage("lesson.diagnosis.before"))
+            timerCheck { observation.phase >= 1 }
+        }
+        task {
+            text(learningMessages.getMessage("lesson.diagnosis.argument"))
+            timerCheck { observation.phase >= 2 }
+        }
+        task {
+            text(learningMessages.getMessage("lesson.diagnosis.selector"))
+            timerCheck { observation.phase >= 3 }
+        }
+        task {
+            text(learningMessages.getMessage("lesson.diagnosis.explain", action("Mars.Learning.DiagnoseOutput")))
+            stateCheck { MarsPredictions.hasCorrectAnswer(project, MarsPredictions.diagnosis) }
+        }
+        text(MarsPredictions.diagnosis.answerExplanation)
+        text(learningMessages.getMessage("lesson.diagnosis.conclusion"))
+    }
+}
+
+internal class MarsConsoleRepairLesson : KLesson("mars.console.repair", learningMessages.getMessage("lesson.repair.name")) {
+    override val sampleFilePath = "mars-labs/console/repair-output.asm"
+    override val properties = LessonProperties(openFileAtStart = false)
+    override val alwaysRestart = true
+    override fun prepare(project: Project) { MarsLearningWorkspace.ensureExample(project, MarsLearningWorkspace.Exercise.REPAIR) }
+
+    override val lessonContent: LessonContext.() -> Unit = {
+        lateinit var observation: MarsConsoleRunCheckpoint
+        task {
+            val task = this
+            before { task.addStep(MarsLearningWorkspace.openExample(project, MarsLearningWorkspace.Exercise.REPAIR)) }
+        }
+        task {
+            before {
+                observation = project.service<MarsLearningExecution>().observeRepair(
+                    lessonDisposable, virtualFile.toNioPath(), editor.document,
+                )
+            }
+            text(learningMessages.getMessage("lesson.repair.text"))
+            timerCheck { observation.passed() }
+        }
+        text(learningMessages.getMessage("lesson.repair.conclusion"))
     }
 }

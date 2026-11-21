@@ -100,6 +100,26 @@ class MarsConsoleDebugCheckpointTest {
     }
 
     @Test
+    fun `faulty copy changes the argument while the arithmetic and selector remain correct`() = timeoutRunBlocking {
+        val faulty = example.replace("move \$a0, \$t0", "move \$a0, \$v0")
+        debug(source = faulty, segment = MarsConsoleDebugCheckpoint.Segment.DIAGNOSIS) { checkpoint, session, pauses ->
+            val before = pauses.receive()
+            assertEquals(1, checkpoint.phase)
+            assertEquals(41L, before.frame.evaluator.integerRegisterBits("\$t0"))
+            withContext(Dispatchers.EDT) { session.stepOver(false) }
+            val copied = pauses.receive()
+            assertEquals(2, checkpoint.phase)
+            assertEquals(4L, copied.frame.evaluator.integerRegisterBits("\$a0"))
+            withContext(Dispatchers.EDT) { session.stepOver(false) }
+            val selected = pauses.receive()
+            assertEquals(3, checkpoint.phase)
+            assertEquals(1L, selected.frame.evaluator.integerRegisterBits("\$v0"))
+            assertEquals(4L, selected.frame.evaluator.integerRegisterBits("\$a0"))
+            assertEquals(41L, selected.frame.evaluator.integerRegisterBits("\$t0"))
+        }
+    }
+
+    @Test
     fun `edited source invalidates partial observations even after text is restored`() = timeoutRunBlocking {
         debug { checkpoint, session, pauses ->
             pauses.receive()
@@ -268,14 +288,17 @@ class MarsConsoleDebugCheckpointTest {
             val (file, checkpoint) = withContext(Dispatchers.EDT) {
                 val file = fixture.addFileToProject("mars-labs/console/first-program.asm", source).virtualFile
                 fixture.configureFromExistingVirtualFile(file)
-                val checkpoint = if (segment == MarsConsoleDebugCheckpoint.Segment.OUTPUT)
-                    project.service<MarsLearningExecution>().observeOutput(lifetime, file.toNioPath(), fixture.editor.document)
-                else project.service<MarsLearningExecution>().observeDebug(lifetime, file.toNioPath(), fixture.editor.document)
+                val execution = project.service<MarsLearningExecution>()
+                val checkpoint = when (segment) {
+                    MarsConsoleDebugCheckpoint.Segment.OUTPUT -> execution.observeOutput(lifetime, file.toNioPath(), fixture.editor.document)
+                    MarsConsoleDebugCheckpoint.Segment.DIAGNOSIS -> execution.observeDiagnosis(lifetime, file.toNioPath(), fixture.editor.document)
+                    MarsConsoleDebugCheckpoint.Segment.ARITHMETIC -> execution.observeDebug(lifetime, file.toNioPath(), fixture.editor.document)
+                }
                 assertEquals(0, checkpoint.phase)
                 val type = XDebuggerUtil.getInstance().findBreakpointType(MarsLineBreakpointType::class.java)
                 WriteCommandAction.runWriteCommandAction(project) {
                     XDebuggerManager.getInstance(project).breakpointManager.addLineBreakpoint(type, file.url,
-                        source.lines().indexOfFirst { it.trim().startsWith(if (segment == MarsConsoleDebugCheckpoint.Segment.OUTPUT) "move " else "addu ") }, null)
+                        source.lines().indexOfFirst { it.trim().startsWith(if (segment == MarsConsoleDebugCheckpoint.Segment.ARITHMETIC) "addu " else "move ") }, null)
                 }
                 file to checkpoint
             }

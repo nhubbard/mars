@@ -199,27 +199,39 @@ class MarsConsoleRunCheckpointTest {
         Unit
     }
 
-    private suspend fun exercise(expected: Boolean, source: String = example, options: MarsExecutionOptions = MarsExecutionOptions(), after: suspend (MarsConsoleRunCheckpoint) -> Unit = {}, body: suspend (MarsConsoleRunCheckpoint, MarsProcessHandler) -> Unit) {
+    @Test
+    fun `repair rejects the counterexample and accepts different correct argument preparations`() = timeoutRunBlocking {
+        val faulty = example.replace("move \$a0, \$t0", "move \$a0, \$v0")
+        val alternative = example.replace("move \$a0, \$t0", "or \$a0, \$t0, \$zero")
+        for ((source, expected) in listOf(faulty to false, example to true, alternative to true)) {
+            exercise(expected, source, lessonIdentity = MarsConsoleRunCheckpoint.repairIdentity, fileName = "repair-output.asm") { checkpoint, handler ->
+                checkpoint.starting(DefaultRunExecutor.EXECUTOR_ID, handler)
+                run(handler, "20\n")
+            }
+        }
+    }
+
+    private suspend fun exercise(expected: Boolean, source: String = example, options: MarsExecutionOptions = MarsExecutionOptions(), lessonIdentity: MarsLessonIdentity = MarsConsoleRunCheckpoint.identity, fileName: String = "first-program.asm", after: suspend (MarsConsoleRunCheckpoint) -> Unit = {}, body: suspend (MarsConsoleRunCheckpoint, MarsProcessHandler) -> Unit) {
         val project = projectFixture.get()
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         val lifetime = Disposer.newDisposable()
-        val file = withContext(Dispatchers.EDT) { fixture.addFileToProject("mars-labs/console/first-program.asm", source).virtualFile.also { fixture.configureFromExistingVirtualFile(it) } }
+        val file = withContext(Dispatchers.EDT) { fixture.addFileToProject("mars-labs/console/$fileName", source).virtualFile.also { fixture.configureFromExistingVirtualFile(it) } }
         val document = withContext(Dispatchers.EDT) { FileDocumentManager.getInstance().getDocument(file)!! }
         val handler = project.service<MarsRunService>().createProcess(file.toNioPath(), options = options, memoryDumps = emptyList())
-        val checkpoint = withContext(Dispatchers.EDT) { MarsConsoleRunCheckpoint(project, scope, lifetime, file.toNioPath(), document) }
+        val checkpoint = withContext(Dispatchers.EDT) { MarsConsoleRunCheckpoint(project, scope, lifetime, file.toNioPath(), document, lessonIdentity) }
         try {
             body(checkpoint, handler)
             scope.coroutineContext[Job]!!.children.toList().joinAll()
             assertEquals(expected, checkpoint.passed())
             after(checkpoint)
-            project.service<MarsLearningProgress>().reset(MarsConsoleRunCheckpoint.identity)
+            project.service<MarsLearningProgress>().reset(lessonIdentity)
             assertFalse(checkpoint.passed())
         } finally {
             withContext(Dispatchers.EDT) {
                 Disposer.dispose(lifetime)
-                val before = project.service<MarsLearningProgress>().snapshot(MarsConsoleRunCheckpoint.identity)
+                val before = project.service<MarsLearningProgress>().snapshot(lessonIdentity)
                 checkpoint.starting(DefaultRunExecutor.EXECUTOR_ID, handler)
-                assertEquals(before, project.service<MarsLearningProgress>().snapshot(MarsConsoleRunCheckpoint.identity))
+                assertEquals(before, project.service<MarsLearningProgress>().snapshot(lessonIdentity))
                 if (!handler.isProcessTerminated) handler.destroyProcess()
             }
             scope.cancel()

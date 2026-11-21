@@ -256,6 +256,29 @@ cleanup, annotations and publication accessibility verification. Input still use
 the public process stream, so console typing and echo require separate checking.
 This completes four segments; diagnostic repair and independent writing remain open.
 
+## Diagnosing and repairing the output argument
+
+Two further native lessons separate the faulty counterexample from the student's
+repair. `wrong-output.asm` copies `$v0` into `$a0` after prefix output. A prediction
+uses the last writer to explain why it prints 4 for input 20. Actual Debug pauses
+then establish retained result 41, copied argument 4 and integer selector 1. A
+second question asks which instruction introduced the incorrect state and diagnoses
+misplaced arithmetic or service changes.
+
+`repair-output.asm` starts from that same fault in a separate file. The ordinary
+Run checker uses its own content identity and exact source capture. It accepts a
+correct transcript independently of instruction spelling; fixtures reject the
+fault and accept both `move` and equivalent `or` repairs. This is one observed Run
+for input 20, not independent multi-case acceptance or authoritative grading.
+
+The workspace creates only missing exercise files and refuses occupied/symlinked
+paths. Edits survive initialization; the worked example, counterexample and repair
+are independent. The native USER_PROJECT lesson runtime follows the selected editor
+when opening each file. Public course/task and debugger contracts were inspected
+in the pinned reference checkout. Focused Jupiter checks pass 57 learning tests,
+covering all 535 learning lines and 258 branches. Full and graphical checks for
+this edition are still pending.
+
 ## Remaining first-unit integration
 
 The unit must complete the connection between explanation, prediction, actual Run/Debug observations,
