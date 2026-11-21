@@ -305,14 +305,18 @@ class MarsNativeLearningPlatformTest {
         val project = projectFixture.get()
         val source = MarsLearningWorkspace.ensureExample(project)
         val requested = CompletableDeferred<CompletableFuture<Boolean>>()
+        val completionOnEdt = CompletableDeferred<Boolean>()
         ApplicationManager.getApplication().invokeLater({
             try {
-                requested.complete(MarsLearningWorkspace.openExample(project))
+                val opening = MarsLearningWorkspace.openExample(project)
+                opening.thenRun { completionOnEdt.complete(ApplicationManager.getApplication().isDispatchThread) }
+                requested.complete(opening)
             } catch (error: Throwable) {
                 requested.completeExceptionally(error)
             }
         }, ModalityState.any())
         assertTrue(requested.await().await())
+        assertTrue(completionOnEdt.await())
         withContext(Dispatchers.EDT) {
             assertEquals(source, FileEditorManager.getInstance(project).selectedFiles.single().toNioPath())
         }
