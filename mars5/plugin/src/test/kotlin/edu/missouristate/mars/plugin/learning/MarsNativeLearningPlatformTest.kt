@@ -43,6 +43,7 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -53,6 +54,7 @@ import training.dsl.TaskContext
 import training.dsl.RuntimeTextContext
 import training.dsl.TaskRuntimeContext
 import training.lang.LangManager
+import training.ui.LearningUiManager
 import training.learn.CourseManager
 import training.learn.course.LessonType
 
@@ -235,7 +237,16 @@ class MarsNativeLearningPlatformTest {
                 assertEquals(when (lesson) { is MarsConsoleRunLesson -> 1; is MarsConsoleDebugLesson -> 3; is MarsConsoleOutputLesson -> 4; is MarsConsoleDiagnosisLesson -> 5; is MarsConsoleRepairLesson -> 1; is MarsIndependentLesson -> 2; else -> 2 }, predicates.size)
                 assertEquals(when (lesson) { is MarsConsoleRunLesson -> 1; is MarsConsoleDebugLesson -> 3; is MarsConsoleOutputLesson -> 3; is MarsConsoleDiagnosisLesson -> 3; is MarsConsoleRepairLesson -> 1; is MarsIndependentLesson -> 2; else -> 0 }, timedChecks)
                 assertTrue(predicates.all { !it(runtime) })
-                if (lesson is MarsIndependentLesson) assertTrue(runtimeTexts.single()(RuntimeTextContext(runtime))!!.contains("Your course requires"))
+                if (lesson is MarsIndependentLesson) {
+                    assertTrue(runtimeTexts.first()(RuntimeTextContext(runtime))!!.contains("Your course requires"))
+                    val controls = runtimeTexts.last()(RuntimeTextContext(runtime))!!
+                    assertTrue(controls.contains("Check my program"))
+                    assertTrue(controls.contains("Open a hint"))
+                    assertFalse(controls.contains("<action>"))
+                    Regex("id=\"([0-9]+)\"").findAll(controls).forEach {
+                        assertNotNull(LearningUiManager.getAndClearCallback(it.groupValues[1]))
+                    }
+                }
                 val progress = projectFixture.get().service<MarsLearningProgress>()
                 if (lesson is MarsConsoleRunLesson) {
                     val ticket = progress.beginCheck(MarsConsoleRunCheckpoint.identity, MarsConsoleRunCheckpoint.STEP, "test observation")
@@ -268,7 +279,7 @@ class MarsNativeLearningPlatformTest {
                     progress.recordChoice(MarsPredictions.identity, "negative", MarsPredictions.negative.correct)
                 }
                 assertTrue(predicates.all { it(runtime) })
-                if (lesson is MarsIndependentLesson) assertNull(runtimeTexts.single()(RuntimeTextContext(runtime)))
+                if (lesson is MarsIndependentLesson) assertNull(runtimeTexts.first()(RuntimeTextContext(runtime)))
                 assertEquals("# unchanged student text\n", fixture.editor.document.text)
             } finally {
                 Disposer.dispose(executor as Disposable)
