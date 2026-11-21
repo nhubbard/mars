@@ -238,14 +238,23 @@ rows, but its log exposed a write-unsafe VFS refresh during lesson restart.
 `native-output-02` retains that defect, not final acceptance. File opening now runs
 in the project service coroutine scope, refreshes through `VirtualFileManager` on
 IO and uses the public suspending editor API. The native host's write-unsafe caller
-context is reproduced in a Jupiter regression test. Project disposal owns the
-opening operation rather than an unscoped background task.
+context is reproduced in a Jupiter regression test. The first coroutine correction
+also exposed the host's requirement that a task future complete on EDT; that
+partial attempt is retained as `native-output-03`. The opening coroutine now uses
+`Dispatchers.EDT`, with the refresh isolated on IO, and the regression test asserts
+the completion callback's thread. Project disposal owns the opening operation.
 
 The corrected full check passes 948 plugin tests, including 53 learning tests,
 and the unchanged coverage gates. Learning code covers all 456 source lines and
 246 branches. The separate authoring plugin passes 90 tests; both exact packages
-pass paired API verification. Fresh graphical verification for this corrected
-edition is pending; earlier captures are historical evidence only.
+pass paired API verification. The final fresh `native-output-04` IDE batch observes
+native completion of prediction/restart, Run, arithmetic Debug and output
+preparation. Its log has no SEVERE entries, and all eleven installed JARs match the
+retained tested ZIP members. All fourteen light-theme captures were inspected.
+They remain raw verification views requiring notification removal, scroll/layout
+cleanup, annotations and publication accessibility verification. Input still uses
+the public process stream, so console typing and echo require separate checking.
+This completes four segments; diagnostic repair and independent writing remain open.
 
 ## Remaining first-unit integration
 
