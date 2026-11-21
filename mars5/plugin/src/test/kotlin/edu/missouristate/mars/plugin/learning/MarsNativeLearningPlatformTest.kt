@@ -216,12 +216,15 @@ class MarsNativeLearningPlatformTest {
                     content?.invoke(taskContext)
                 }
                 for (preparation in preparations) assertTrue(preparation.await())
-                assertEquals(if (lesson is MarsConsoleRunLesson) 1 else 2, predicates.size)
-                assertEquals(if (lesson is MarsConsoleRunLesson) 1 else 0, timedChecks)
+                assertEquals(when (lesson) { is MarsConsoleRunLesson -> 1; is MarsConsoleDebugLesson -> 3; else -> 2 }, predicates.size)
+                assertEquals(when (lesson) { is MarsConsoleRunLesson -> 1; is MarsConsoleDebugLesson -> 3; else -> 0 }, timedChecks)
                 assertTrue(predicates.all { !it(runtime) })
                 val progress = projectFixture.get().service<MarsLearningProgress>()
                 if (lesson is MarsConsoleRunLesson) {
                     val ticket = progress.beginCheck(MarsConsoleRunCheckpoint.identity, MarsConsoleRunCheckpoint.STEP, "test observation")
+                    progress.finishCheck(ticket, true)
+                } else if (lesson is MarsConsoleDebugLesson) {
+                    val ticket = progress.beginCheck(MarsConsoleDebugCheckpoint.identity, MarsConsoleDebugCheckpoint.STEP, "test debug observation")
                     progress.finishCheck(ticket, true)
                 } else {
                     progress.recordChoice(MarsPredictions.identity, "doubling", MarsPredictions.doubling.correct)

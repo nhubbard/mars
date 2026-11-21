@@ -35,7 +35,7 @@ internal class MarsLearningCourse : LearningCourseBase(MARS_LEARNING_LANGUAGE) {
         object : IftModule(
             "mars.console", learningMessages.getMessage("module.name"),
             learningMessages.getMessage("module.description"), langSupport, LessonType.USER_PROJECT,
-            { listOf(MarsRegisterPredictionLesson(), MarsConsoleRunLesson()) },
+            { listOf(MarsRegisterPredictionLesson(), MarsConsoleRunLesson(), MarsConsoleDebugLesson()) },
         ) {
             override val sampleFilePath = "mars-labs/console/first-program.asm"
             override fun preferredLearnWindowAnchor(project: Project) = ToolWindowAnchor.LEFT
@@ -138,5 +138,37 @@ internal class MarsConsoleRunLesson : KLesson("mars.console.run", learningMessag
             timerCheck { observation.passed() }
         }
         text(learningMessages.getMessage("lesson.run.conclusion"))
+    }
+}
+
+internal class MarsConsoleDebugLesson : KLesson("mars.console.debug", learningMessages.getMessage("lesson.debug.name")) {
+    override val properties = LessonProperties(openFileAtStart = false)
+    override val alwaysRestart = true
+    override fun prepare(project: Project) { MarsLearningWorkspace.ensureExample(project) }
+
+    override val lessonContent: LessonContext.() -> Unit = {
+        lateinit var observation: MarsConsoleDebugCheckpoint
+        task {
+            val task = this
+            before { task.addStep(MarsLearningWorkspace.openExample(project)) }
+        }
+        task {
+            before {
+                observation = project.service<MarsLearningExecution>().observeDebug(
+                    lessonDisposable, virtualFile.toNioPath(), editor.document,
+                )
+            }
+            text(learningMessages.getMessage("lesson.debug.before"))
+            timerCheck { observation.phase >= 1 }
+        }
+        task {
+            text(learningMessages.getMessage("lesson.debug.doubled"))
+            timerCheck { observation.phase >= 2 }
+        }
+        task {
+            text(learningMessages.getMessage("lesson.debug.incremented"))
+            timerCheck { observation.phase >= 3 }
+        }
+        text(learningMessages.getMessage("lesson.debug.conclusion"))
     }
 }
