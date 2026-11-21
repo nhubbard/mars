@@ -142,8 +142,23 @@ Real-process Jupiter fixtures cover actual input/output, the native starting eve
 wrong results, source edits, save/rename behavior, additional includes, custom
 exception handlers, ignored executions and invalid document bindings. Both lesson
 bodies are also exercised through the actual native DSL registrar. The previous
-prediction-only GUI evidence does not establish graphical Run integration; that
-has its own separate authoring-driver verification.
+prediction-only GUI evidence does not establish graphical Run integration. The
+separate authoring driver now verifies both segments in a fresh actual IDE after
+`clean cleanSandbox runIde`. It observes two prediction-pass callbacks (including
+restart), preserved student edits, the exact Run transcript and normal exit, then
+the native Run-pass callback without a subsequent editor action. Seven actual
+light-theme captures were inspected. Full-window views retain an update notification;
+the completed Run view also needs scroll/layout cleanup for publication.
+
+The corrected implementation passes 937 plugin tests, including 42 learning tests,
+and the unchanged coverage gate: all 298 learning source lines and 124 branches.
+The separate authoring plugin passes 88 tests. Paired package verification reports
+both plugins compatible on IU-263.7307.200 (85 and 20 experimental public API uses).
+All eleven installed JARs match the retained tested package bytes. Exact packages,
+XML test archives and GUI receipts are retained privately under
+`verification/restructuring/native-run-02/`. The preceding `native-run-01/` batch
+retains the asynchronous-check failure and must not be treated as a successful
+lesson verification. Debug and the complete first-unit acceptance remain open.
 
 ## Remaining first-unit integration
 
