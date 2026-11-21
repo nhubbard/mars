@@ -63,13 +63,11 @@ internal class MarsRegisterPredictionLesson : KLesson(
             before { task.addStep(MarsLearningWorkspace.openExample(project)) }
         }
         task {
-            text(learningMessages.getMessage("lesson.doubling.text", action("Mars.Learning.PredictDoubling")))
-            stateCheck { MarsPredictions.hasCorrectAnswer(project, MarsPredictions.doubling) }
+            prediction(MarsPredictions.doubling)
         }
         text(MarsPredictions.doubling.answerExplanation)
         task {
-            text(learningMessages.getMessage("lesson.negative.text", action("Mars.Learning.PredictNegative")))
-            stateCheck { MarsPredictions.hasCorrectAnswer(project, MarsPredictions.negative) }
+            prediction(MarsPredictions.negative)
         }
         text(MarsPredictions.negative.answerExplanation)
         text(learningMessages.getMessage("lesson.predictions.conclusion"))
@@ -199,8 +197,7 @@ internal class MarsConsoleOutputLesson : KLesson("mars.console.output", learning
             before { task.addStep(MarsLearningWorkspace.openExample(project)) }
         }
         task {
-            text(learningMessages.getMessage("lesson.output.predict", action("Mars.Learning.PredictOutput")))
-            stateCheck { MarsPredictions.hasCorrectAnswer(project, MarsPredictions.output) }
+            prediction(MarsPredictions.output)
         }
         text(MarsPredictions.output.answerExplanation)
         task {
@@ -240,8 +237,7 @@ internal class MarsConsoleDiagnosisLesson : KLesson("mars.console.diagnosis", le
             before { task.addStep(MarsLearningWorkspace.openExample(project, MarsLearningWorkspace.Exercise.DIAGNOSIS)) }
         }
         task {
-            text(learningMessages.getMessage("lesson.diagnosis.predict", action("Mars.Learning.PredictWrongOutput")))
-            stateCheck { MarsPredictions.hasCorrectAnswer(project, MarsPredictions.wrongOutput) }
+            prediction(MarsPredictions.wrongOutput)
         }
         text(MarsPredictions.wrongOutput.answerExplanation)
         task {
@@ -262,8 +258,7 @@ internal class MarsConsoleDiagnosisLesson : KLesson("mars.console.diagnosis", le
             timerCheck { observation.phase >= 3 }
         }
         task {
-            text(learningMessages.getMessage("lesson.diagnosis.explain", action("Mars.Learning.DiagnoseOutput")))
-            stateCheck { MarsPredictions.hasCorrectAnswer(project, MarsPredictions.diagnosis) }
+            prediction(MarsPredictions.diagnosis)
         }
         text(MarsPredictions.diagnosis.answerExplanation)
         text(learningMessages.getMessage("lesson.diagnosis.conclusion"))
@@ -325,7 +320,12 @@ internal class MarsIndependentLesson : KLesson("mars.console.independent", learn
                     lessonDisposable, virtualFile.toNioPath(), editor.document,
                 )
             }
-            text(learningMessages.getMessage("lesson.independent.text", action("Mars.Learning.CheckIndependent"), action("Mars.Learning.IndependentHint")))
+            runtimeText {
+                learningMessages.getMessage("lesson.independent.text",
+                    lessonActionLink("Mars.Learning.CheckIndependent", "independent.check"),
+                    lessonActionLink("Mars.Learning.IndependentHint", "independent.hint"),
+                )
+            }
             timerCheck { assessment.passed() }
         }
         text(learningMessages.getMessage("lesson.independent.conclusion"))
