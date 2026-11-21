@@ -53,6 +53,7 @@ dependencies {
     bundledModule("intellij.platform.buildView")
     bundledModule("intellij.platform.debugger")
     bundledPlugin("com.intellij.modules.compose")
+    bundledPlugin("training")
     bundledModule("intellij.platform.jewel.ideLafBridge")
     bundledModule("intellij.platform.jewel.ui")
     bundledModule("intellij.libraries.compose.foundation.desktop")
