@@ -70,3 +70,6 @@ internal class MarsPredictDoublingAction : MarsPredictionAction({ MarsPrediction
 internal class MarsPredictNegativeAction : MarsPredictionAction({ MarsPredictions.negative })
 
 internal class MarsPredictOutputAction : MarsPredictionAction({ MarsPredictions.output })
+
+internal class MarsPredictWrongOutputAction : MarsPredictionAction({ MarsPredictions.wrongOutput })
+internal class MarsDiagnoseOutputAction : MarsPredictionAction({ MarsPredictions.diagnosis })

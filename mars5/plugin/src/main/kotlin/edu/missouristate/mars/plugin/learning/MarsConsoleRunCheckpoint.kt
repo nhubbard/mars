@@ -50,6 +50,12 @@ internal class MarsLearningExecution(private val project: Project, private val s
     fun observeOutput(lifetime: Disposable, entry: Path, document: Document) =
         MarsConsoleDebugCheckpoint(project, lifetime, entry, document, MarsConsoleDebugCheckpoint.Segment.OUTPUT)
 
+    fun observeDiagnosis(lifetime: Disposable, entry: Path, document: Document) =
+        MarsConsoleDebugCheckpoint(project, lifetime, entry, document, MarsConsoleDebugCheckpoint.Segment.DIAGNOSIS)
+
+    fun observeRepair(lifetime: Disposable, entry: Path, document: Document) =
+        MarsConsoleRunCheckpoint(project, scope, lifetime, entry, document, MarsConsoleRunCheckpoint.repairIdentity)
+
     fun observeRun(lifetime: Disposable, entry: Path, document: Document) =
         MarsConsoleRunCheckpoint(project, scope, lifetime, entry, document)
 }
@@ -61,8 +67,9 @@ internal class MarsConsoleRunCheckpoint(
     private val lifetime: Disposable,
     entry: Path,
     document: Document,
+    lessonIdentity: MarsLessonIdentity = identity,
 ) {
-    private val source = MarsLearningSource(project, lifetime, entry, document, identity)
+    private val source = MarsLearningSource(project, lifetime, entry, document, lessonIdentity)
     @Volatile private var closed = false
 
     init {
@@ -129,5 +136,6 @@ internal class MarsConsoleRunCheckpoint(
         const val EXPECTED = "Enter a small integer: Twice your number plus one is: 41\n"
         val options = MarsLearningSource.options
         val identity = MarsLearningSource.identity("console-run", EXPECTED)
+        val repairIdentity = MarsLearningSource.identity("console-repair", EXPECTED)
     }
 }

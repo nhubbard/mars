@@ -66,4 +66,22 @@ class MarsDebugTraceTest {
         assertEquals(3, trace.phase)
     }
 
+    @Test
+    fun `diagnosis trace distinguishes a faulty argument from the correct output trace`() {
+        val trace = Trace(MarsConsoleDebugCheckpoint.Segment.DIAGNOSIS)
+        val first = Pause(1, 0x400040, MarsConsoleDebugCheckpoint.MOVE_A0_V0, 4, 41)
+        trace.observe(first)
+        assertEquals(1, trace.phase)
+        val second = first.copy(number = 2, pc = first.pc + 4, instruction = MarsConsoleDebugCheckpoint.LI_V0_ONE, argument = 4)
+        trace.observe(second.copy(argument = 41))
+        assertEquals(1, trace.phase)
+        trace.observe(second.copy(number = 3))
+        assertEquals(2, trace.phase)
+        val third = second.copy(number = 4, pc = first.pc + 8, instruction = MarsConsoleDebugCheckpoint.SYSCALL, input = 1)
+        trace.observe(third.copy(argument = 41))
+        assertEquals(2, trace.phase)
+        trace.observe(third.copy(number = 5))
+        assertEquals(3, trace.phase)
+    }
+
 }

@@ -156,6 +156,8 @@
     <action id="Mars.Learning.PredictDoubling" class="edu.missouristate.mars.plugin.learning.MarsPredictDoublingAction"/>
     <action id="Mars.Learning.PredictNegative" class="edu.missouristate.mars.plugin.learning.MarsPredictNegativeAction"/>
     <action id="Mars.Learning.PredictOutput" class="edu.missouristate.mars.plugin.learning.MarsPredictOutputAction"/>
+    <action id="Mars.Learning.PredictWrongOutput" class="edu.missouristate.mars.plugin.learning.MarsPredictWrongOutputAction"/>
+    <action id="Mars.Learning.DiagnoseOutput" class="edu.missouristate.mars.plugin.learning.MarsDiagnoseOutputAction"/>
     <action id="Mars.ImportVenusPreferences" class="edu.missouristate.mars.plugin.project.MarsImportVenusPreferencesAction">
       <add-to-group group-id="FileMenu" anchor="last"/>
     </action>

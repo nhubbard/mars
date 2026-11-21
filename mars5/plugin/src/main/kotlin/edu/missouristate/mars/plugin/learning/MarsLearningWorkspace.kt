@@ -12,11 +12,15 @@ import java.util.concurrent.CompletableFuture
 
 /** Exercise initialization only: native Features Trainer owns the lesson UI and task lifecycle. */
 internal object MarsLearningWorkspace {
-    private const val EXAMPLE = "/learnProjects/mars_mips/MARSLearningProject/first-program.asm"
+    internal enum class Exercise(val fileName: String, val resourceName: String) {
+        EXAMPLE("first-program.asm", "first-program.asm"),
+        DIAGNOSIS("wrong-output.asm", "wrong-output.asm"),
+        REPAIR("repair-output.asm", "wrong-output.asm"),
+    }
 
-    fun ensureExample(project: Project): Path = ensureExampleAt(projectRoot(project))
+    fun ensureExample(project: Project, exercise: Exercise = Exercise.EXAMPLE): Path = ensureExampleAt(projectRoot(project), exercise)
 
-    fun ensureExampleAt(root: Path): Path {
+    fun ensureExampleAt(root: Path, exercise: Exercise = Exercise.EXAMPLE): Path {
         var folder = root
         for (name in listOf("mars-labs", "console")) {
             folder = folder.resolve(name)
@@ -26,9 +30,9 @@ internal object MarsLearningWorkspace {
                 require(Files.isDirectory(folder, NOFOLLOW_LINKS)) { "Lesson folder is not a regular directory: $folder" }
             }
         }
-        val file = folder.resolve("first-program.asm")
+        val file = folder.resolve(exercise.fileName)
         try {
-            val bytes = MarsLearningWorkspace::class.java.getResourceAsStream(EXAMPLE)!!.use { it.readBytes() }
+            val bytes = MarsLearningWorkspace::class.java.getResourceAsStream("/learnProjects/mars_mips/MARSLearningProject/${exercise.resourceName}")!!.use { it.readBytes() }
             Files.write(file, bytes, CREATE_NEW, WRITE)
         } catch (_: FileAlreadyExistsException) {
             require(Files.isRegularFile(file, NOFOLLOW_LINKS)) { "Lesson source is not a regular file: $file" }
@@ -36,8 +40,8 @@ internal object MarsLearningWorkspace {
         return file
     }
 
-    fun openExample(project: Project): CompletableFuture<Boolean> {
-        val path = projectRoot(project).resolve("mars-labs/console/first-program.asm")
+    fun openExample(project: Project, exercise: Exercise = Exercise.EXAMPLE): CompletableFuture<Boolean> {
+        val path = projectRoot(project).resolve("mars-labs/console").resolve(exercise.fileName)
         return project.service<MarsLearningExecution>().openLessonFile(path)
     }
 

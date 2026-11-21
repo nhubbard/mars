@@ -122,7 +122,7 @@ class MarsNativeLearningPlatformTest {
                 }
             }
         }
-        assertEquals(setOf("first-program.asm"), Files.list(folder).use { it.map { p -> p.fileName.toString() }.toList().toSet() })
+        assertEquals(setOf("first-program.asm", "wrong-output.asm"), Files.list(folder).use { it.map { p -> p.fileName.toString() }.toList().toSet() })
     }
 
     @Test
@@ -130,7 +130,9 @@ class MarsNativeLearningPlatformTest {
         withContext(Dispatchers.EDT) {
             for ((id, prediction) in listOf("Mars.Learning.PredictDoubling" to MarsPredictions.doubling,
                 "Mars.Learning.PredictNegative" to MarsPredictions.negative,
-                "Mars.Learning.PredictOutput" to MarsPredictions.output)) {
+                "Mars.Learning.PredictOutput" to MarsPredictions.output,
+                "Mars.Learning.PredictWrongOutput" to MarsPredictions.wrongOutput,
+                "Mars.Learning.DiagnoseOutput" to MarsPredictions.diagnosis)) {
                 val progress = projectFixture.get().service<MarsLearningProgress>()
                 progress.reset(MarsPredictions.identity)
                 assertFalse(MarsPredictions.hasCorrectAnswer(projectFixture.get(), prediction))
@@ -161,7 +163,8 @@ class MarsNativeLearningPlatformTest {
 
     @Test
     fun `prediction actions are unavailable without a project`() {
-        for (id in listOf("Mars.Learning.PredictDoubling", "Mars.Learning.PredictNegative", "Mars.Learning.PredictOutput")) {
+        for (id in listOf("Mars.Learning.PredictDoubling", "Mars.Learning.PredictNegative", "Mars.Learning.PredictOutput",
+            "Mars.Learning.PredictWrongOutput", "Mars.Learning.DiagnoseOutput")) {
             val action = ActionManager.getInstance().getAction(id)
             assertEquals(ActionUpdateThread.BGT, action.actionUpdateThread)
             val event = AnActionEvent.createEvent(action, DataContext.EMPTY_CONTEXT, null, ActionPlaces.MAIN_MENU, ActionUiKind.NONE, null)
@@ -219,10 +222,11 @@ class MarsNativeLearningPlatformTest {
                     @Suppress("UNCHECKED_CAST")
                     val content = field.get(task) as? (TaskContext.() -> Unit)
                     content?.invoke(taskContext)
+                    for (preparation in preparations) assertTrue(preparation.await())
                 }
                 for (preparation in preparations) assertTrue(preparation.await())
-                assertEquals(when (lesson) { is MarsConsoleRunLesson -> 1; is MarsConsoleDebugLesson -> 3; is MarsConsoleOutputLesson -> 4; else -> 2 }, predicates.size)
-                assertEquals(when (lesson) { is MarsConsoleRunLesson -> 1; is MarsConsoleDebugLesson -> 3; is MarsConsoleOutputLesson -> 3; else -> 0 }, timedChecks)
+                assertEquals(when (lesson) { is MarsConsoleRunLesson -> 1; is MarsConsoleDebugLesson -> 3; is MarsConsoleOutputLesson -> 4; is MarsConsoleDiagnosisLesson -> 5; is MarsConsoleRepairLesson -> 1; else -> 2 }, predicates.size)
+                assertEquals(when (lesson) { is MarsConsoleRunLesson -> 1; is MarsConsoleDebugLesson -> 3; is MarsConsoleOutputLesson -> 3; is MarsConsoleDiagnosisLesson -> 3; is MarsConsoleRepairLesson -> 1; else -> 0 }, timedChecks)
                 assertTrue(predicates.all { !it(runtime) })
                 val progress = projectFixture.get().service<MarsLearningProgress>()
                 if (lesson is MarsConsoleRunLesson) {
@@ -235,6 +239,15 @@ class MarsNativeLearningPlatformTest {
                     progress.recordChoice(MarsPredictions.identity, "output", MarsPredictions.output.correct)
                     val ticket = progress.beginCheck(MarsConsoleDebugCheckpoint.Segment.OUTPUT.identity,
                         MarsConsoleDebugCheckpoint.STEP, "test output observation")
+                    progress.finishCheck(ticket, true)
+                } else if (lesson is MarsConsoleDiagnosisLesson) {
+                    progress.recordChoice(MarsPredictions.identity, "wrong-output", MarsPredictions.wrongOutput.correct)
+                    progress.recordChoice(MarsPredictions.identity, "diagnosis", MarsPredictions.diagnosis.correct)
+                    val ticket = progress.beginCheck(MarsConsoleDebugCheckpoint.Segment.DIAGNOSIS.identity,
+                        MarsConsoleDebugCheckpoint.STEP, "test faulty argument observation")
+                    progress.finishCheck(ticket, true)
+                } else if (lesson is MarsConsoleRepairLesson) {
+                    val ticket = progress.beginCheck(MarsConsoleRunCheckpoint.repairIdentity, MarsConsoleRunCheckpoint.STEP, "test repair")
                     progress.finishCheck(ticket, true)
                 } else {
                     progress.recordChoice(MarsPredictions.identity, "doubling", MarsPredictions.doubling.correct)
@@ -260,6 +273,23 @@ class MarsNativeLearningPlatformTest {
         assertEquals(source, MarsLearningWorkspace.ensureExampleAt(first))
         assertEquals("# retained edits\n", Files.readString(source))
         assertEquals(original, Files.readString(MarsLearningWorkspace.ensureExampleAt(second)))
+    }
+
+    @Test
+    fun `counterexample and repair sources are independent and edits survive initialization`(@TempDir root: Path) {
+        val files = MarsLearningWorkspace.Exercise.entries.associateWith { MarsLearningWorkspace.ensureExampleAt(root, it) }
+        val worked = files.getValue(MarsLearningWorkspace.Exercise.EXAMPLE)
+        val faulty = files.getValue(MarsLearningWorkspace.Exercise.DIAGNOSIS)
+        val repair = files.getValue(MarsLearningWorkspace.Exercise.REPAIR)
+        assertTrue(Files.readString(worked).contains("move \$a0, \$t0"))
+        val originalFault = Files.readString(faulty)
+        assertTrue(originalFault.contains("move \$a0, \$v0"))
+        assertEquals(originalFault, Files.readString(repair))
+        Files.writeString(repair, "# student repair retained\n")
+        for (exercise in MarsLearningWorkspace.Exercise.entries) MarsLearningWorkspace.ensureExampleAt(root, exercise)
+        assertEquals("# student repair retained\n", Files.readString(repair))
+        assertEquals(originalFault, Files.readString(faulty))
+        assertTrue(Files.readString(worked).contains("move \$a0, \$t0"))
     }
 
     @Test

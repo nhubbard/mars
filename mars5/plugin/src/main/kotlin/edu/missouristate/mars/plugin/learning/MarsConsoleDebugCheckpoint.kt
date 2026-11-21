@@ -90,7 +90,7 @@ internal class MarsConsoleDebugCheckpoint(
             lastPause = pause.number
             when (segment) {
                 Segment.ARITHMETIC -> observeArithmetic(pause)
-                Segment.OUTPUT -> observeOutput(pause)
+                Segment.OUTPUT, Segment.DIAGNOSIS -> observeOutput(pause)
             }
         }
 
@@ -106,13 +106,16 @@ internal class MarsConsoleDebugCheckpoint(
         }
 
         private fun observeOutput(pause: Pause) {
+            val faulty = segment == Segment.DIAGNOSIS
+            val copyInstruction = if (faulty) MOVE_A0_V0 else MOVE_A0_T0
+            val expectedArgument = if (faulty) 4L else 41L
             when (phase) {
-                0 -> if (pause.instruction == MOVE_A0_T0 && pause.input == 4L && pause.result == 41L) {
+                0 -> if (pause.instruction == copyInstruction && pause.input == 4L && pause.result == 41L) {
                     firstPc = pause.pc
                     phase = 1
                 }
-                1 -> if (pause.pc == firstPc + 4 && pause.instruction == LI_V0_ONE && pause.input == 4L && pause.result == 41L && pause.argument == 41L) phase = 2
-                2 -> if (pause.pc == firstPc + 8 && pause.instruction == SYSCALL && pause.input == 1L && pause.result == 41L && pause.argument == 41L) phase = 3
+                1 -> if (pause.pc == firstPc + 4 && pause.instruction == LI_V0_ONE && pause.input == 4L && pause.result == 41L && pause.argument == expectedArgument) phase = 2
+                2 -> if (pause.pc == firstPc + 8 && pause.instruction == SYSCALL && pause.input == 1L && pause.result == 41L && pause.argument == expectedArgument) phase = 3
             }
         }
     }
@@ -120,6 +123,7 @@ internal class MarsConsoleDebugCheckpoint(
     internal enum class Segment(val identity: MarsLessonIdentity) {
         ARITHMETIC(MarsConsoleDebugCheckpoint.identity),
         OUTPUT(MarsLearningSource.identity("console-output", "ordered output pauses: retained 41; argument 41; selector 1")),
+        DIAGNOSIS(MarsLearningSource.identity("console-diagnosis", "ordered faulty copy: retained 41; argument 4; selector 1")),
     }
 
     companion object {
@@ -129,6 +133,7 @@ internal class MarsConsoleDebugCheckpoint(
         const val ADDIU_T0_T0_ONE = 0x25080001
         // The MIPS64 move pseudo-instruction expands to or $a0,$t0,$zero.
         const val MOVE_A0_T0 = 0x01002025
+        const val MOVE_A0_V0 = 0x00402025
         // The first matching signed 16-bit li template uses addiu.
         const val LI_V0_ONE = 0x24020001
         const val SYSCALL = 0x0000000c
