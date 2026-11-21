@@ -116,7 +116,7 @@ internal class MarsLessonPackagePreviewDialog(project: Project, prepared: MarsLe
     override fun createCenterPanel(): JComponent = JBScrollPane(JBTextArea(report).apply {
         isEditable = false
         lineWrap = true
-        wrapStyleWord = false
+        wrapStyleWord = true
         accessibleContext.accessibleName = packageMessages.getMessage("import.confirm")
         caretPosition = 0
     }).apply { preferredSize = Dimension(700, 300) }
