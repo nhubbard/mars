@@ -35,7 +35,7 @@ internal class MarsLearningCourse : LearningCourseBase(MARS_LEARNING_LANGUAGE) {
         object : IftModule(
             "mars.console", learningMessages.getMessage("module.name"),
             learningMessages.getMessage("module.description"), langSupport, LessonType.USER_PROJECT,
-            { listOf(MarsRegisterPredictionLesson()) },
+            { listOf(MarsRegisterPredictionLesson(), MarsConsoleRunLesson()) },
         ) {
             override val sampleFilePath = "mars-labs/console/first-program.asm"
             override fun preferredLearnWindowAnchor(project: Project) = ToolWindowAnchor.LEFT
@@ -112,4 +112,30 @@ internal object MarsPredictions {
     fun hasCorrectAnswer(project: Project, prediction: MarsPrediction): Boolean =
         project.service<MarsLearningProgress>().snapshot(identity)?.quizAttempts
             ?.lastOrNull { it.quiz == prediction.id }?.choice == prediction.correct
+}
+
+/** The Run observation follows the predictions; Debug and independent grading remain distinct. */
+internal class MarsConsoleRunLesson : KLesson("mars.console.run", learningMessages.getMessage("lesson.run.name")) {
+    override val properties = LessonProperties(openFileAtStart = false)
+    override val alwaysRestart = true
+
+    override fun prepare(project: Project) { MarsLearningWorkspace.ensureExample(project) }
+
+    override val lessonContent: LessonContext.() -> Unit = {
+        lateinit var observation: MarsConsoleRunCheckpoint
+        task {
+            val task = this
+            before { task.addStep(MarsLearningWorkspace.openExample(project)) }
+        }
+        task {
+            before {
+                observation = project.service<MarsLearningExecution>().observeRun(
+                    lessonDisposable, virtualFile.toNioPath(), editor.document,
+                )
+            }
+            text(learningMessages.getMessage("lesson.run.text"))
+            stateCheck { observation.passed() }
+        }
+        text(learningMessages.getMessage("lesson.run.conclusion"))
+    }
 }

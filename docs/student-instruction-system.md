@@ -105,9 +105,45 @@ are retained in the private instructor verification directory
 `verification/restructuring/native-predictions-02/`. These results cover the
 prediction segment only; they do not establish the complete first-unit behavior.
 
+## Source-bound Run observation
+
+The second native lesson observes an ordinary MARS Run. The implementation uses
+`ExecutionListener.processStarting`, whose public contract fires before the process
+handler's `startNotify`, and the public `ProcessListener` output and termination
+callbacks. The current platform implementations were inspected in
+`platform/execution/src/com/intellij/execution/ExecutionListener.java` and
+`platform/util/src/com/intellij/execution/process/ProcessHandler.java`.
+No instruction, register or console input is changed by the student observer.
+
+The checkpoint is intentionally the worked single-file observation, separate from
+independent-program grading. It requires the selected example entry, the documented
+default execution options, normal exit and the exact expected output transcript.
+The process handler supplies its actual source set, options and retained assembly
+capture through read-only properties. A different source set, additional include,
+custom exception handler, different executor or different options cannot satisfy
+this checkpoint. Source text in the executed capture must match the document that
+was observed when that process started. Transcript retention is bounded.
+
+A document stamp rejects edits during a Run, including editing away and back.
+The native bulk-aware document listener invalidates progress before an edit;
+synchronous VFS notifications invalidate it before relevant rename, delete or disk
+refresh events. Ordinary document saves are not new edits. Completion is accepted
+under a read action with the existing progress service's per-attempt capability,
+so a superseded or reset attempt cannot restore progress. Listeners belong to the
+native lesson lifetime, and observation work uses the project service's injected
+coroutine scope. Closing the lesson cancels its pending capability and removes its
+listeners while leaving the student's process alone.
+
+Real-process Jupiter fixtures cover actual input/output, the native starting event,
+wrong results, source edits, save/rename behavior, additional includes, custom
+exception handlers, ignored executions and invalid document bindings. Both lesson
+bodies are also exercised through the actual native DSL registrar. The previous
+prediction-only GUI evidence does not establish graphical Run integration; that
+has its own separate authoring-driver verification.
+
 ## Remaining first-unit integration
 
-The unit must connect explanation, prediction, actual Run/Debug observations,
+The unit must complete the connection between explanation, prediction, actual Run/Debug observations,
 source-bound checking, diagnostic feedback, graduated hints and an independent
 variation. Provide complete public source and checks; do not execute arbitrary
 Kotlin downloaded as lesson content. Lesson imports require a versioned content
