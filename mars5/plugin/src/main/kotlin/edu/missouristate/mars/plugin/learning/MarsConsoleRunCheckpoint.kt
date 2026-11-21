@@ -15,6 +15,7 @@ import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.FileEditorOpenRequest
+import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.openapi.editor.Document
 import com.intellij.openapi.project.Project
@@ -41,6 +42,7 @@ internal class MarsLearningExecution(private val project: Project, private val s
             }
         }
         FileEditorManager.getInstance(project).openFile(file, FileEditorOpenRequest.withFocus(true))
+        MarsLearningPresentation.fit(ToolWindowManager.getInstance(project).getToolWindow("Learn"))
         true
     }
 
