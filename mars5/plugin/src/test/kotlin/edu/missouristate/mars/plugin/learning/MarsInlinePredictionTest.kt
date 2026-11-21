@@ -10,6 +10,7 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ex.ProjectManagerEx
+import com.intellij.openapi.util.JDOMUtil
 import com.intellij.openapi.util.Disposer
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
@@ -206,7 +207,12 @@ class MarsInlinePredictionTest {
                         override fun stateCheck(checkState: TaskRuntimeContext.() -> Boolean) = finished
                     }
                     context.prediction(prediction)
-                    val choices = callbacks(text!!(RuntimeTextContext(runtime))!!)
+                    val presentation = RuntimeTextContext(runtime)
+                    val rendered = text!!(presentation)!!
+                    assertTrue(presentation.removeAfterDone)
+                    assertFalse(rendered.contains('\n'))
+                    assertEquals(5, JDOMUtil.load("<root>$rendered</root>").value.lines().filter { it.isNotEmpty() }.size)
+                    val choices = callbacks(rendered)
                     stale += choices
                     assertFalse(finished.isDone)
                     choices[prediction.choices.indexOfFirst { it.id != prediction.correct }]()

@@ -31,6 +31,7 @@ internal fun TaskContext.prediction(prediction: MarsPrediction) {
     // click is not an IDE action/key event, so it must complete this check directly.
     val answered = stateCheck { MarsPredictions.hasCorrectAnswer(project, prediction) }
     runtimeText {
+        removeAfterDone = true
         MarsInlinePrediction.instructionRange(editor, prediction)?.let { range ->
             editor.caretModel.moveToOffset(range.startOffset)
             editor.scrollingModel.scrollToCaret(ScrollType.MAKE_VISIBLE)
@@ -63,8 +64,8 @@ internal object MarsInlinePrediction {
         project.service<MarsLearningProgress>().open(MarsPredictions.identity, MarsPredictions.identity.contentSha256)
         var completed = MarsPredictions.hasCorrectAnswer(project, prediction)
         val lines = mutableListOf(
-            escapeXmlEntities(inlineMessages.getMessage("${prediction.id}.intro")),
-            "<strong>${escapeXmlEntities(prediction.question)}</strong>",
+            escapeXmlEntities(inlineMessages.getMessage("${prediction.id}.intro")) + "&#10;",
+            "<strong>${escapeXmlEntities(prediction.question)}&#10;</strong>",
         )
         for ((id, text, feedback1) in prediction.choices) {
             val callback = LearningUiManager.addCallback {
@@ -78,9 +79,12 @@ internal object MarsInlinePrediction {
                     }
                 }
             }
-            lines += "<callback id=\"$callback\">${escapeXmlEntities(id.uppercase() + ". " + text)}</callback>"
+            lines += "<callback id=\"$callback\">${escapeXmlEntities(id.uppercase() + ". " + text)}&#10;</callback>"
         }
-        return lines.joinToString("\n")
+        // The trainer removes a message by paragraph index. Keep the quiz in one
+        // message, with XML line feeds for its visible choice lines, so all controls
+        // retire together rather than acquiring completion marks on wrong choices.
+        return lines.joinToString("")
     }
 
     fun instructionRange(editor: Editor, prediction: MarsPrediction): TextRange? = runReadActionBlocking {
