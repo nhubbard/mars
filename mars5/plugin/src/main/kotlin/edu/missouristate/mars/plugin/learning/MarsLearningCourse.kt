@@ -65,11 +65,11 @@ internal class MarsRegisterPredictionLesson : KLesson(
         task {
             prediction(MarsPredictions.doubling)
         }
-        text(MarsPredictions.doubling.answerExplanation)
+        task { runtimeText { MarsPredictions.doubling.answerExplanation } }
         task {
             prediction(MarsPredictions.negative)
         }
-        text(MarsPredictions.negative.answerExplanation)
+        task { runtimeText { MarsPredictions.negative.answerExplanation } }
         text(learningMessages.getMessage("lesson.predictions.conclusion"))
     }
 }
@@ -199,7 +199,7 @@ internal class MarsConsoleOutputLesson : KLesson("mars.console.output", learning
         task {
             prediction(MarsPredictions.output)
         }
-        text(MarsPredictions.output.answerExplanation)
+        task { runtimeText { MarsPredictions.output.answerExplanation } }
         task {
             before {
                 observation = project.service<MarsLearningExecution>().observeOutput(
@@ -239,7 +239,7 @@ internal class MarsConsoleDiagnosisLesson : KLesson("mars.console.diagnosis", le
         task {
             prediction(MarsPredictions.wrongOutput)
         }
-        text(MarsPredictions.wrongOutput.answerExplanation)
+        task { runtimeText { MarsPredictions.wrongOutput.answerExplanation } }
         task {
             before {
                 observation = project.service<MarsLearningExecution>().observeDiagnosis(
@@ -260,7 +260,7 @@ internal class MarsConsoleDiagnosisLesson : KLesson("mars.console.diagnosis", le
         task {
             prediction(MarsPredictions.diagnosis)
         }
-        text(MarsPredictions.diagnosis.answerExplanation)
+        task { runtimeText { MarsPredictions.diagnosis.answerExplanation } }
         text(learningMessages.getMessage("lesson.diagnosis.conclusion"))
     }
 }

@@ -48,6 +48,7 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
+import training.dsl.LearningBalloonConfig
 import training.dsl.LessonContext
 import training.dsl.PreviousTaskInfo
 import training.dsl.TaskContext
@@ -207,10 +208,12 @@ class MarsNativeLearningPlatformTest {
                 val predicates = mutableListOf<TaskRuntimeContext.() -> Boolean>()
                 val preparations = mutableListOf<CompletableFuture<Boolean>>()
                 val runtimeTexts = mutableListOf<RuntimeTextContext.() -> String?>()
+                val eagerTexts = mutableListOf<String>()
                 var timedChecks = 0
                 val taskContext = object : TaskContext() {
                     override val project: Project get() = projectFixture.get()
                     override fun runtimeText(callback: RuntimeTextContext.() -> String?) { runtimeTexts += callback }
+                    override fun text(text: String, useBalloon: LearningBalloonConfig?) { eagerTexts += text }
                     override fun before(preparation: TaskRuntimeContext.() -> Unit) { preparation(runtime) }
                     override fun stateCheck(checkState: TaskRuntimeContext.() -> Boolean) =
                         super.stateCheck(checkState).also { predicates += checkState }
@@ -236,6 +239,10 @@ class MarsNativeLearningPlatformTest {
                 for (preparation in preparations) assertTrue(preparation.await())
                 assertEquals(when (lesson) { is MarsConsoleRunLesson -> 1; is MarsConsoleDebugLesson -> 3; is MarsConsoleOutputLesson -> 4; is MarsConsoleDiagnosisLesson -> 5; is MarsConsoleRepairLesson -> 1; is MarsIndependentLesson -> 2; else -> 2 }, predicates.size)
                 assertEquals(when (lesson) { is MarsConsoleRunLesson -> 1; is MarsConsoleDebugLesson -> 3; is MarsConsoleOutputLesson -> 3; is MarsConsoleDiagnosisLesson -> 3; is MarsConsoleRepairLesson -> 1; is MarsIndependentLesson -> 2; else -> 0 }, timedChecks)
+                for (prediction in listOf(MarsPredictions.doubling, MarsPredictions.negative,
+                    MarsPredictions.output, MarsPredictions.wrongOutput, MarsPredictions.diagnosis)) {
+                    assertFalse(eagerTexts.any { it.contains(prediction.answerExplanation) })
+                }
                 assertTrue(predicates.all { !it(runtime) })
                 if (lesson is MarsIndependentLesson) {
                     assertTrue(runtimeTexts.first()(RuntimeTextContext(runtime))!!.contains("Your course requires"))
