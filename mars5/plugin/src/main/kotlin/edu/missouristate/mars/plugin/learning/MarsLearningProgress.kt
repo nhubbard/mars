@@ -35,7 +35,10 @@ internal data class MarsLessonIdentity(
 internal class MarsLearningProgress :
     SerializablePersistentStateComponent<MarsLearningProgress.Progress>(Progress()) {
 
-    data class Progress(@JvmField var lessons: Map<String, LessonRecord> = emptyMap())
+    data class Progress(
+        @JvmField var lessons: Map<String, LessonRecord> = emptyMap(),
+        @JvmField var recovery: Map<String, LessonRecord> = emptyMap(),
+    )
 
     data class LessonRecord(
         @JvmField var sourceRevision: String = "",
@@ -128,6 +131,50 @@ internal class MarsLearningProgress :
     fun reset(identity: MarsLessonIdentity) {
         pendingChecks.keys.removeAll { it.first == identity.key }
         updateState { it.copy(lessons = it.lessons - identity.key) }
+    }
+
+    @Synchronized
+    fun canReset(identities: Set<MarsLessonIdentity>): Boolean = identities.any {
+        val record = getState().lessons[it.key] ?: return@any false
+        record.successfulChecks.isNotEmpty() || record.quizAttempts.isNotEmpty() || record.revealedHints.isNotEmpty()
+    }
+
+    @Synchronized
+    fun canRecover(identities: Set<MarsLessonIdentity>): Boolean = identities.any { it.key in getState().recovery }
+
+    /** One persisted recovery copy for this scope; an empty reset never replaces it. */
+    @Synchronized
+    fun resetRecoverably(identities: Set<MarsLessonIdentity>): Boolean {
+        if (!canReset(identities)) return false
+        val keys = identities.map { it.key }.toSet()
+        val records = getState().lessons.filterKeys { it in keys }
+        pendingChecks.keys.removeAll { it.first in keys }
+        updateState { it.copy(lessons = it.lessons - keys, recovery = it.recovery - keys + records) }
+        return true
+    }
+
+    /** Restore formative history, keeping newer attempts; execution must be checked afresh. */
+    @Synchronized
+    fun recover(identities: Set<MarsLessonIdentity>): Boolean {
+        val keys = identities.map { it.key }.toSet()
+        val records = getState().recovery.filterKeys { it in keys }
+        if (records.isEmpty()) return false
+        pendingChecks.keys.removeAll { it.first in keys }
+        val restored = records.mapValues { (key, backup) ->
+            val current = getState().lessons[key] ?: LessonRecord(sourceRevision = backup.sourceRevision)
+            current.copy(
+                successfulChecks = emptySet(),
+                quizAttempts = (backup.quizAttempts + current.quizAttempts).map { it.copy() },
+                revealedHints = backup.revealedHints + current.revealedHints,
+            )
+        }
+        updateState {
+            val recheck = it.lessons.filterKeys { key -> key in keys }.mapValues { (_, record) ->
+                record.copy(successfulChecks = emptySet())
+            }
+            it.copy(lessons = it.lessons + recheck + restored, recovery = it.recovery - keys)
+        }
+        return true
     }
 
     @Synchronized
