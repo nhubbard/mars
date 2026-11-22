@@ -1,6 +1,7 @@
 package edu.missouristate.mars.plugin.learning
 
 import com.google.gson.JsonParseException
+import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.application.runReadActionBlocking
@@ -11,11 +12,16 @@ import com.intellij.openapi.components.Storage
 import com.intellij.openapi.components.StoragePathMacros
 import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.ScrollType
+import com.intellij.openapi.fileEditor.FileDocumentManager
+import com.intellij.openapi.fileEditor.FileEditorManager
+import com.intellij.openapi.fileEditor.FileEditorManagerEvent
+import com.intellij.openapi.fileEditor.FileEditorManagerListener
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.text.StringUtil.escapeXmlEntities
+import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.wm.ToolWindowAnchor
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.platform.ide.progress.ModalTaskOwner
@@ -27,7 +33,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import training.dsl.LessonContext
 import training.dsl.TaskContext
-import training.dsl.TaskRuntimeContext
 import training.lang.LangManager
 import training.learn.CourseManager
 import training.learn.course.IftModule
@@ -148,7 +153,7 @@ internal class MarsDownloadedLesson(private val content: MarsDownloadedLessonCon
         for (step in content.plan.steps) {
             when (step) {
                 is MarsNativeLessonStep -> {
-                    task { downloadedPrediction(content.identity, step) }
+                    task { downloadedPrediction(content.identity, step, content.installed.entry) }
                     task { runtimeText { escapeXmlEntities(step.prediction.answerExplanation) } }
                 }
                 is MarsNativeRunStep -> {
@@ -196,7 +201,7 @@ internal fun LessonContext.downloadedDebug(content: MarsDownloadedLessonContent,
             }
             runtimeText {
                 removeAfterDone = true
-                highlightDownloadedInstruction(stop.anchor)
+                highlightDownloadedInstruction(project, content.installed.entry, stop.anchor, taskDisposable)
                 val active = { !disposed && checkpoint.phase == index }
                 val feedback = { text: String -> LessonManager.instance.addMessage(text, isInformer = true) }
                 val introduction = if (index == 0) escapeXmlEntities(step.explanation) + "&#10;" +
@@ -211,11 +216,11 @@ internal fun LessonContext.downloadedDebug(content: MarsDownloadedLessonContent,
     task { runtimeText { escapeXmlEntities(step.success) } }
 }
 
-internal fun TaskContext.downloadedPrediction(identity: MarsLessonIdentity, step: MarsNativeLessonStep) {
+internal fun TaskContext.downloadedPrediction(identity: MarsLessonIdentity, step: MarsNativeLessonStep, source: Path) {
     val answered = stateCheck { MarsInlinePrediction.answered(project, identity, step.prediction) }
     runtimeText {
         removeAfterDone = true
-        highlightDownloadedInstruction(step.anchor)
+        highlightDownloadedInstruction(project, source, step.anchor, taskDisposable)
         MarsInlinePrediction.text(project, identity, step.prediction, step.explanation, step.hints,
             active = { !disposed }, feedback = { LessonManager.instance.addMessage(it, isInformer = true) },
             correct = { answered.complete(true) })
@@ -238,7 +243,7 @@ internal fun TaskContext.downloadedRun(content: MarsDownloadedLessonContent, ste
     }
     runtimeText {
         removeAfterDone = true
-        highlightDownloadedInstruction(step.anchor)
+        highlightDownloadedInstruction(project, content.installed.entry, step.anchor, taskDisposable)
         escapeXmlEntities(step.explanation) + "&#10;" + MarsLessonHints.text(project, identity, step.id, step.hints,
             active = { !disposed && !checkpoint.passed() },
             feedback = { LessonManager.instance.addMessage(it, isInformer = true) })
@@ -246,17 +251,25 @@ internal fun TaskContext.downloadedRun(content: MarsDownloadedLessonContent, ste
     timerCheck { checkpoint.passed() }
 }
 
-private fun TaskRuntimeContext.highlightDownloadedInstruction(anchor: MarsLessonAnchor?) {
+/** A non-text tab has no trainer editor. Keep observing native selection without stealing focus. */
+internal fun highlightDownloadedInstruction(project: Project, source: Path, anchor: MarsLessonAnchor?, lifetime: Disposable) {
     if (anchor == null) return
-    runReadActionBlocking {
-        MarsLessonAnchors.range(editor, anchor)?.let { range ->
-            editor.caretModel.moveToOffset(range.startOffset)
-            editor.scrollingModel.scrollToCaret(ScrollType.MAKE_VISIBLE)
-        }
+    val file = LocalFileSystem.getInstance().findFileByNioFile(source) ?: return
+    fun refresh() {
+        LearningUiHighlightingManager.clearHighlights()
+        val editor = FileEditorManager.getInstance(project).selectedTextEditor ?: return
+        if (FileDocumentManager.getInstance().getFile(editor.document) != file) return
+        val range = runReadActionBlocking { MarsLessonAnchors.range(editor, anchor) } ?: return
+        editor.caretModel.moveToOffset(range.startOffset)
+        editor.scrollingModel.scrollToCaret(ScrollType.MAKE_VISIBLE)
+        LearningUiHighlightingManager.highlightPartOfComponent(editor.contentComponent,
+            HighlightingOptions(highlightInside = false), rectangle = MarsLessonAnchors.highlight(editor, anchor))
     }
-    LearningUiHighlightingManager.highlightPartOfComponent(editor.contentComponent,
-        HighlightingOptions(highlightInside = false), rectangle = MarsLessonAnchors.highlight(editor, anchor))
-    Disposer.register(taskDisposable) { LearningUiHighlightingManager.clearHighlights() }
+    project.messageBus.connect(lifetime).subscribe(FileEditorManagerListener.FILE_EDITOR_MANAGER, object : FileEditorManagerListener {
+        override fun selectionChanged(event: FileEditorManagerEvent) = refresh()
+    })
+    Disposer.register(lifetime) { LearningUiHighlightingManager.clearHighlights() }
+    refresh()
 }
 
 internal class MarsContinueDownloadedLessonAction : DumbAwareAction() {
