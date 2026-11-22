@@ -423,6 +423,18 @@ class AssemblyCase internal constructor(
         requireCase(condition) { message }
     }
 
+    /** Check mapped bytes at a complete address without labels, simulated reads or undo-history changes. */
+    fun expectBytes(address: Long, vararg expected: Int) {
+        require(expected.all { it in 0..255 }) { "Expected bytes must be unsigned values from 0 through 255" }
+        val actual = readBytes(address, expected.size)
+        for (index in expected.indices) {
+            requireCase(actual[index] == expected[index]) {
+                "Expected byte at 0x${(address + index).toString(16)} = 0x${expected[index].toString(16).padStart(2, '0')}, " +
+                    "got 0x${actual[index].toString(16).padStart(2, '0')}"
+            }
+        }
+    }
+
     fun expectBytes(label: String, vararg expected: Int, offset: Int = 0) {
         for ((index, byte) in expected.withIndex()) {
             require(byte in 0..255) { "Expected bytes must be unsigned values from 0 through 255" }

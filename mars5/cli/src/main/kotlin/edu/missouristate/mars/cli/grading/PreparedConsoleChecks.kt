@@ -14,10 +14,17 @@ data class ConsoleCheckCase(
     val input: String,
     val expectedOutput: String,
     val instructionLimit: Long = 100_000,
+    val memory: List<ConsoleMemoryCheck> = emptyList(),
 ) {
     init {
         require(name.isNotBlank()) { "Choose a non-empty case name" }
         require(instructionLimit > 0) { "Instruction limit must be positive" }
+        require(memory.size <= ConsoleMemoryCheck.MAX_RANGES && memory.sumOf { it.byteLength.toLong() } <= ConsoleMemoryCheck.MAX_BYTES) {
+            "Memory expectations exceed 64 ranges or 1 MiB per case"
+        }
+        require(memory.sortedBy { it.address }.zipWithNext().all { (a, b) -> a.address + (a.byteLength - 1L) < b.address }) {
+            "Memory expectation ranges must not overlap"
+        }
         require(input.toByteArray(Charsets.UTF_8).size <= 64 * 1024) { "Case input exceeds 64 KiB" }
         require(expectedOutput.toByteArray(Charsets.UTF_8).size <= 64 * 1024) { "Expected output exceeds 64 KiB" }
     }
@@ -28,7 +35,7 @@ data class ConsoleCheckResult(val name: String, val failure: String?) {
 }
 
 /**
- * Reuses an assembled image and the assignment DSL's execution/output checks.
+ * Reuses an assembled image and the assignment DSL's execution, output and memory checks.
  * [createSession] must return a fresh caller-configured session for every case;
  * this checker owns and closes it. It never uses a student's active Run/Debug machine.
  * The existing grader bounds output and disables host files, clocks and GUI syscalls.
@@ -42,7 +49,7 @@ object PreparedConsoleChecks {
         createSession: () -> MarsContext,
         checkCancellation: () -> Unit = {},
     ): List<ConsoleCheckResult> {
-        val capturedCases = copyOf(cases)
+        val capturedCases = copyOf(cases).map { it.copy(memory = copyOf(it.memory)) }
         require(capturedCases.isNotEmpty()) { "Declare at least one console case" }
         require(capturedCases.map { it.name }.distinct().size == capturedCases.size) { "Case names must be unique" }
         val results = capturedCases.map { case ->
@@ -62,6 +69,7 @@ object PreparedConsoleChecks {
                             AssemblyCase(machine, program.symbolMap(), captured).use { execution ->
                                 execution.runToExit()
                                 execution.expectOutput(case.expectedOutput)
+                                for (range in case.memory) execution.expectBytes(range.address, *range.decoded())
                             }
                         }
                     }
