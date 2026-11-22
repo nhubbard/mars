@@ -456,6 +456,8 @@ class MarsDownloadedLessonsTest {
                         .get(project.service<MarsLearningExecution>()) as CoroutineScope
                     suspend fun waitChecks() { scope.coroutineContext[Job]!!.children.toList().joinAll() }
                     assertEquals(2, timers.size)
+                    assertTrue(rendered.single { it.contains("Check &lt;this&gt; program.") }
+                        .contains("Check this program&#10;</callback>"))
                     assertTrue(timers.none { it(runtime) })
                     assessmentControls[1]()
                     assertEquals(setOf("hints/independent/one"), history.snapshot(assessmentId)!!.revealedHints)
