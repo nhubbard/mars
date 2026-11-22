@@ -177,7 +177,7 @@ internal fun LessonContext.downloadedDebug(content: MarsDownloadedLessonContent,
                 val active = { !disposed && checkpoint.phase == index }
                 val feedback = { text: String -> LessonManager.instance.addMessage(text, isInformer = true) }
                 val introduction = if (index == 0) escapeXmlEntities(step.explanation) + "&#10;" +
-                    MarsLessonHints.text(project, identity, step.id, step.hints, active, feedback) else ""
+                    MarsLessonHints.text(project, identity, step.id, step.hints, active, feedback) + "&#10;" else ""
                 introduction + escapeXmlEntities(stop.explanation) + "&#10;" +
                     MarsLessonHints.text(project, identity, "${step.id}/${stop.id}", stop.hints, active, feedback)
             }
