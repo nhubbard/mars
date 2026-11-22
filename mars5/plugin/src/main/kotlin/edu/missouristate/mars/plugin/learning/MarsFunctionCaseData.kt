@@ -5,6 +5,7 @@ import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.google.gson.JsonPrimitive
 import edu.missouristate.mars.cli.grading.FunctionCallCheck
+import edu.missouristate.mars.cli.grading.FunctionAccessCheck
 import edu.missouristate.mars.cli.grading.FunctionCheckCase
 import edu.missouristate.mars.cli.grading.FunctionDataAddress
 import edu.missouristate.mars.cli.grading.FunctionMemoryCheck
@@ -24,11 +25,12 @@ internal object MarsFunctionCaseData {
         val root = MarsLessonJson.parse(bytes, MAX_BYTES)
         root.fields(setOf("formatVersion", "cases"))
         val version = root.get("formatVersion").toString()
-        require(version in setOf("1", "2", "3")) { "Unsupported function-case format" }
+        require(version in setOf("1", "2", "3", "4")) { "Unsupported function-case format" }
         val cases = root.array("cases", 1, 256).map { value ->
             val row = value.objectValue()
             val required = setOf("name", "calls", "instructionLimit")
             val extensions = when (version) {
+                "4" -> setOf("initialMemory", "noStores", "accessBounds", "protectCallerStack")
                 "3" -> setOf("initialMemory", "noStores")
                 "2" -> setOf("initialMemory")
                 else -> emptySet()
@@ -54,13 +56,31 @@ internal object MarsFunctionCaseData {
                 if (row.has("initialRegisters")) registers(row, "initialRegisters") else emptyMap(), copyOf(preserved), copyOf(helpers),
                 if (row.has("stackAlignment")) row.number("stackAlignment") else 16,
                 if (row.has("callerStackBytes")) row.number("callerStackBytes") else 32,
-                memory(row, "initialMemory"), protectedRegions(row))
+                memory(row, "initialMemory"), protectedRegions(row), accessBounds(row), row.callerStackProtection())
         }
         require(cases.map { it.name }.distinct().size == cases.size) { "Function-case names must be unique" }
         require(cases.sumOf { it.calls.size.toLong() } <= 4096 && cases.sumOf { it.instructionLimit } <= 10_000_000) {
             "Combined function cases exceed the call or instruction budget"
         }
         return copyOf(cases)
+    }
+
+    private fun accessBounds(row: JsonObject): List<FunctionAccessCheck> {
+        if (!row.has("accessBounds")) return emptyList()
+        return copyOf(row.array("accessBounds", 0, 64).map {
+            val region = it.objectValue()
+            val required = setOf("label", "length", "permittedOffset", "permittedLength")
+            region.fields(required + "offset", required)
+            FunctionAccessCheck(region.string("label", 128), region.number("length"),
+                region.offset("permittedOffset"), region.number("permittedLength"), region.offset())
+        })
+    }
+
+    private fun JsonObject.callerStackProtection(): Boolean {
+        if (!has("protectCallerStack")) return false
+        val value = get("protectCallerStack")
+        require(value is JsonPrimitive && value.isBoolean) { "Expected boolean caller stack protection" }
+        return value.asBoolean
     }
 
     private fun protectedRegions(row: JsonObject): List<FunctionNoStoreCheck> {
@@ -93,9 +113,9 @@ internal object MarsFunctionCaseData {
         })
     }
 
-    private fun JsonObject.offset(): Int {
-        if (!has("offset")) return 0
-        val value = get("offset")
+    private fun JsonObject.offset(field: String = "offset"): Int {
+        if (!has(field)) return 0
+        val value = get(field)
         require(value is JsonPrimitive && value.isNumber && Regex("0|-?[1-9][0-9]{0,6}").matches(value.asString)) {
             "Expected an exact bounded byte offset"
         }
