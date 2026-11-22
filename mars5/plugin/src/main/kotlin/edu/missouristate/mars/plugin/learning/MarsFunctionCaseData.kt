@@ -14,6 +14,7 @@ import edu.missouristate.mars.cli.grading.FunctionHelperCheck
 import edu.missouristate.mars.cli.grading.FunctionTransferCheck
 import edu.missouristate.mars.cli.grading.FunctionStoreBoundsCheck
 import edu.missouristate.mars.cli.grading.FunctionAddressMemoryCheck
+import edu.missouristate.mars.cli.grading.FunctionInitializationCheck
 import java.util.List.copyOf
 import java.util.Map.copyOf as copyMap
 
@@ -28,11 +29,12 @@ internal object MarsFunctionCaseData {
         val root = MarsLessonJson.parse(bytes, MAX_BYTES)
         root.fields(setOf("formatVersion", "cases"))
         val version = root.get("formatVersion").toString()
-        require(version in setOf("1", "2", "3", "4", "5", "6")) { "Unsupported function-case format" }
+        require(version in setOf("1", "2", "3", "4", "5", "6", "7")) { "Unsupported function-case format" }
         val cases = root.array("cases", 1, 256).map { value ->
             val row = value.objectValue()
             val required = setOf("name", "calls", "instructionLimit")
             val extensions = when (version) {
+                "7" -> setOf("initialMemory", "noStores", "accessBounds", "protectCallerStack", "transfers", "storeBounds", "noExecution", "initializedOutput")
                 "6" -> setOf("initialMemory", "noStores", "accessBounds", "protectCallerStack", "transfers", "storeBounds", "noExecution")
                 "5" -> setOf("initialMemory", "noStores", "accessBounds", "protectCallerStack", "transfers")
                 "4" -> setOf("initialMemory", "noStores", "accessBounds", "protectCallerStack")
@@ -47,7 +49,7 @@ internal object MarsFunctionCaseData {
                 val call = it.objectValue()
                 val callRequired = setOf("entry", "returnTo", "arguments", "expectedRegisters")
                 call.fields(callRequired + (if (version != "1") setOf("argumentAddresses", "memory") else emptySet()) +
-                    (if (version == "6") setOf("expectedAddresses", "addressMemory") else emptySet()), callRequired)
+                    (if (version in setOf("6", "7")) setOf("expectedAddresses", "addressMemory") else emptySet()), callRequired)
                 FunctionCallCheck(call.string("entry", 128), call.string("returnTo", 128),
                     registers(call, "arguments"), registers(call, "expectedRegisters"),
                     addresses(call), memory(call, "memory"), addresses(call, "expectedAddresses"), addressMemory(call))
@@ -58,7 +60,7 @@ internal object MarsFunctionCaseData {
                 if (row.has("initialRegisters")) registers(row, "initialRegisters") else emptyMap(), copyOf(preserved), copyOf(helpers),
                 if (row.has("stackAlignment")) row.number("stackAlignment") else 16,
                 if (row.has("callerStackBytes")) row.number("callerStackBytes") else 32,
-                memory(row, "initialMemory"), protectedRegions(row), accessBounds(row), row.callerStackProtection(), transfers(row), storeBounds(row), intervals(row, "noExecution"))
+                memory(row, "initialMemory"), protectedRegions(row), accessBounds(row), row.callerStackProtection(), transfers(row), storeBounds(row), intervals(row, "noExecution"), initializedOutput(row))
         }
         require(cases.map { it.name }.distinct().size == cases.size) { "Function-case names must be unique" }
         require(cases.sumOf { it.calls.size.toLong() } <= 4096 && cases.sumOf { it.instructionLimit } <= 10_000_000) {
@@ -73,6 +75,15 @@ internal object MarsFunctionCaseData {
             val helper = it.objectValue()
             helper.fields(setOf("from", "until"))
             FunctionHelperCheck(helper.string("from", 128), helper.string("until", 128))
+        })
+    }
+
+    private fun initializedOutput(row: JsonObject): List<FunctionInitializationCheck> {
+        if (!row.has("initializedOutput")) return emptyList()
+        return copyOf(row.array("initializedOutput", 0, 64).map {
+            val range = it.objectValue()
+            range.fields(setOf("at", "length"))
+            FunctionInitializationCheck(dataAddress(range.get("at")), range.number("length"))
         })
     }
 

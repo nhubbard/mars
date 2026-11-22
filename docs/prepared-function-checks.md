@@ -331,3 +331,39 @@ private helper names or order beyond the explicitly declared public interval.
 Missing/reversed assembled intervals fail as source contracts; duplicate or
 excessive definitions reject before execution. Existing helper-presence checks
 and all prior formats retain their behavior.
+
+## Initializing an output before reading partial sums
+
+Native function-profile **version 7** adds case-level `initializedOutput`, using
+`FunctionInitializationCheck`. Versions 1–6 reject this field. Version 7 retains
+all earlier fields, including version 6's address results and store bounds.
+
+```json
+"initializedOutput": [
+  {"at":{"label":"output","offset":8},"length":16}
+]
+```
+
+Each byte in the assembled range must receive an execution store during every
+call, before its first execution read. Later reads and repeated stores are
+allowed. This accepts register accumulators, zero-then-accumulate schedules,
+different byte widths and traversal orders. It rejects a partial-sum load from
+old caller data even if a later repair produces correct final bytes. Every byte
+must be written even when its original value already equals the expected result.
+Check final values separately with ordinary memory results.
+
+The observation resets before each call. Setup writes, debugger inspection,
+instruction fetch and prior calls do not initialize the current call's output.
+An access crossing a range edge affects only its intersecting bytes for this
+check; use access/store bounds separately to enforce ownership of the whole
+access. Native split notices for doublewords initialize all affected bytes.
+The check does not prescribe an instruction count, cache count or private frame.
+
+Ranges use the existing assembled data-label and bounded-offset contracts. Their
+lengths may be zero for empty outputs. At most 64 ranges with a combined one MiB
+of bitmap storage are allowed per case. Missing data labels and overflowing
+resolved intervals fail as source contracts. Immutable definitions are captured
+and revalidated before a machine opens. Streaming byte bitmaps avoid retaining
+an additional access history; existing cumulative instruction limits still apply.
+All observers detach on completion, failure or cancellation. This is bounded
+data interpreted by the grader, not an executable predicate.
