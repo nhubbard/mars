@@ -21,12 +21,15 @@ import kotlinx.coroutines.withContext
 @State(name = "MarsLearningPolicy", storages = [Storage("mars-learning.xml")])
 internal class MarsLearningPolicy(private val project: Project) :
     SerializablePersistentStateComponent<MarsLearningPolicy.Policy>(Policy()) {
+    // XMLb map values need concrete state beans, as in the existing lesson-progress records.
+    data class DownloadedRequirements(@JvmField var activities: Set<String> = emptySet())
     data class Policy(
         @JvmField var releasedHints: Int = 4,
         @JvmField var requirePredictions: Boolean = false,
         @JvmField var allowFreeWriting: Boolean = true,
         @JvmField var requiredGuidedChecks: Set<String> = emptySet(),
         @JvmField var maxIndependentAssessments: Int = 0,
+        @JvmField var downloadedPrerequisites: Map<String, DownloadedRequirements> = emptyMap(),
     )
 
     val requiredGuidedChecks: Set<String> get() = getState().requiredGuidedChecks.toSet()
@@ -42,7 +45,23 @@ internal class MarsLearningPolicy(private val project: Project) :
     }
 
     override fun loadState(state: Policy) {
-        super.loadState(state.copy(releasedHints = state.releasedHints.coerceIn(0, 4), maxIndependentAssessments = state.maxIndependentAssessments.coerceIn(0, 1000)))
+        super.loadState(state.copy(releasedHints = state.releasedHints.coerceIn(0, 4), maxIndependentAssessments = state.maxIndependentAssessments.coerceIn(0, 1000),
+            downloadedPrerequisites = state.downloadedPrerequisites.mapValues { it.value.copy(activities = it.value.activities.toSet()) }))
+    }
+
+    fun downloadedRequirements(identity: MarsLessonIdentity): Set<String> =
+        getState().downloadedPrerequisites[identity.key]?.activities.orEmpty().toSet()
+
+    fun setDownloadedRequirements(content: MarsDownloadedLessonContent, required: Map<String, Set<String>>) {
+        val assessments = content.plan.steps.filterIsInstance<MarsNativeAssessmentStep>().associateBy { it.id }
+        require(required.keys.all { it in assessments }) { "Choose an independent activity in this content edition" }
+        val changes = required.map { (id, ids) ->
+            val step = assessments.getValue(id)
+            val allowed = content.preceding(step).map { it.id }.toSet()
+            require(ids.all { it in allowed }) { "Only earlier activities in this content edition can be prerequisites" }
+            content.assessmentIdentity(step).key to ids.toSet()
+        }.toMap()
+        updateState { it.copy(downloadedPrerequisites = (it.downloadedPrerequisites - changes.keys) + changes.filterValues { ids -> ids.isNotEmpty() }.mapValues { entry -> DownloadedRequirements(entry.value) }) }
     }
 
     fun setGuidedRequirement(check: MarsGuidedRequirement, required: Boolean) {

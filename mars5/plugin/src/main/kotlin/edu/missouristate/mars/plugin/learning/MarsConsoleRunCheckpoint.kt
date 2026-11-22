@@ -82,8 +82,13 @@ internal class MarsLearningExecution(private val project: Project, private val s
         MarsDownloadedRunCheckpoint(project, scope, lifetime, entry, document, identity, step, feedback)
 
     fun observeAssessment(lifetime: Disposable, entry: Path, document: Document, identity: MarsLessonIdentity,
-                          step: MarsNativeAssessmentStep, predictionsReady: () -> Boolean) =
-        MarsDownloadedAssessmentCheckpoint(project, lifetime, entry, document, identity, step, predictionsReady)
+                          step: MarsNativeAssessmentStep, requirements: MarsDownloadedRequirements) =
+        MarsDownloadedAssessmentCheckpoint(project, lifetime, entry, document, identity, step, requirements::ready,
+            refreshRequirements = requirements::refresh)
+
+    fun prepareAssessmentRequirements(lifetime: Disposable, requirements: MarsDownloadedRequirements): CompletableFuture<Boolean> =
+        scope.future(Dispatchers.EDT) { requirements.refresh(); true }
+            .also { future -> Disposer.register(lifetime) { future.cancel(true) } }
 
     fun checkAssessment(lifetime: Disposable, checkpoint: MarsDownloadedAssessmentCheckpoint,
                         feedback: (MarsDownloadedAssessmentCheckpoint.Feedback) -> Unit): Job =
