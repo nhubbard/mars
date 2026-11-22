@@ -6,9 +6,10 @@ relative-path rules as its entry and assignment. Archive preparation validates
 the definition before returning the immutable import preview. Older packages
 without the field keep their existing file-import behavior.
 
-The current implementation parses and validates this format. Connecting it to
-the Learn pane and project-specific resumption is the next implementation step;
-importing the field alone does not yet render a native lesson.
+Importing a package with this field opens its predictions in the native Learn
+pane. Tools → Continue Downloaded MARS Lab reopens the project's selected edition.
+Questions, feedback and graduated hints use inline links; no Find Action step is
+needed. This runtime supports conceptual predictions, not execution-check steps.
 
 ```json
 {
@@ -47,12 +48,32 @@ changing the selected ZIP after preparation cannot replace it.
 
 Definitions use strict UTF-8 and strict JSON, at most 1 MiB of decoded content
 and nesting depth 32. Duplicate fields at every depth, unknown fields and trailing
-top-level content are rejected. The parsed lists cannot be mutated.
+top-level content are rejected. Display text must contain valid XML characters;
+the runtime escapes markup before passing it to the native renderer. The parsed
+lists cannot be mutated.
 
-Anchors describe instruction matches within a named label's block. Parsing does
-not establish that edited source still contains the anchor or that an instruction
-has executed. PSI resolution and highlighting belong to runtime integration.
-Likewise, hint release policy and revealed-hint history are runtime concerns.
+Titles use the host's plain label API, so punctuation is retained literally.
+An HTML-prefixed title is rejected before preview to prevent the label from
+interpreting downloaded markup. Body text follows the XML message contract above.
+
+Anchors describe instruction matches within a named label's block. The runtime
+resolves the current committed PSI, requires a unique label, and counts matching
+mnemonics within that block. Missing or ambiguous anchors produce no highlight.
+The native highlight callback acquires read access when its timer asks for fresh
+geometry. An anchor does not establish that an instruction has executed.
+
+Each project's history is scoped by course, package ID, version and complete ZIP
+digest. Correct answers are skipped when continuing that edition. Wrong attempts
+and revealed hints remain in history; requesting a hint does not answer a question.
+The instructor's existing hint-release policy is checked on each request.
+
+The selected edition is persisted separately in the project's workspace. Continuing
+revalidates the retained archive and its location before opening it. Definitions
+come from that immutable archive, while the working source keeps student edits.
+Missing working files cause a visible error rather than being silently regenerated.
+The native platform caches course catalogs globally, so downloaded lessons are
+opened directly through its public lesson host with a project-specific module.
+They do not alter the bundled course catalog or its navigation.
 
 Format 1 describes prediction steps and explanatory feedback. It accepts no
 action IDs, class names, executable scripts, execution predicates or grading code.

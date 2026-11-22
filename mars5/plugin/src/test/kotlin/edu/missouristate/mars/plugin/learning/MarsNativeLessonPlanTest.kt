@@ -74,6 +74,25 @@ class MarsNativeLessonPlanTest {
     }
 
     @Test
+    fun `native message text rejects XML control characters before rendering`() {
+        for (invalid in listOf("\u0000", "\u0001", "\u000b")) {
+            reject { addProperty("introduction", "Invalid $invalid text") }
+        }
+        assertThrows<IllegalArgumentException> {
+            MarsNativeLessonPlan.parse(content.replace("Interpret one byte.", "Invalid \\ud800 text").toByteArray())
+        }
+        assertEquals("Valid < & >\n\ttext", MarsNativeLessonPlan.parse(changed {
+            addProperty("introduction", "Valid < & >\n\ttext")
+        }).introduction)
+        assertThrows<IllegalArgumentException> {
+            MarsLessonPackages.prepare(archive(manifest.replace("Native predictions", "Invalid\\u0001title"), content.toByteArray())).close()
+        }
+        assertThrows<IllegalArgumentException> {
+            MarsLessonPackages.prepare(archive(manifest.replace("Native predictions", "<html><b>Title</b></html>"), content.toByteArray())).close()
+        }
+    }
+
+    @Test
     fun `step and choice identities and the declared answer must be coherent`() {
         reject { step().addProperty("id", "bad id") }
         reject { step().addProperty("id", "x".repeat(65)) }

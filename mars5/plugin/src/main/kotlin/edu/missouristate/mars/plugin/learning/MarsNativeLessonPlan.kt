@@ -12,6 +12,8 @@ import java.io.StringReader
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets.UTF_8
 import java.util.List.copyOf
+import javax.swing.plaf.basic.BasicHTML
+import org.jdom.Verifier
 
 internal data class MarsLessonAnchor(val label: String, val mnemonic: String, val occurrence: Int)
 internal data class MarsLessonHint(val id: String, val text: String)
@@ -102,7 +104,22 @@ internal data class MarsNativeLessonPlan(
         private fun JsonObject.text(name: String, maximum: Int): String {
             val value = get(name)
             require(value is JsonPrimitive && value.isString) { "Expected lesson text: $name" }
-            return value.asString.also { require(it.isNotBlank() && it.length <= maximum) { "Invalid lesson text: $name" } }
+            return value.asString.also {
+                require(it.isNotBlank() && it.length <= maximum) { "Invalid lesson text: $name" }
+                requireDisplayText(it)
+            }
+        }
+
+        /** Native Learn messages use XML; escaping markup cannot make illegal XML characters valid. */
+        fun requireDisplayText(text: String) {
+            require(Verifier.checkCharacterData(text) == null) { "Lesson text contains unsupported display characters" }
+        }
+
+        fun requireDisplayTitle(title: String) {
+            requireDisplayText(title)
+            // The public lesson host gives names directly to JLabel, which auto-detects
+            // HTML. Names are plain text; body messages are separately XML-escaped.
+            require(!BasicHTML.isHTMLString(title)) { "Lesson titles must be plain text" }
         }
         private fun JsonObject.fields(allowed: Set<String>, required: Set<String> = allowed) {
             require(keySet().all { it in allowed } && keySet().containsAll(required)) { "Unsupported or missing native lesson fields" }

@@ -42,10 +42,17 @@ result before the preview appears.
 Included grading scripts are copied as files. Importing does not execute them.
 The student may run appropriate public checks separately using the documented
 MARS tools. Downloading an original assignment does not register its steps as a
-native interactive lesson. An optional `nativeLesson` definition is now validated
-before preview; its [data contract](native-lesson-format.md) is implemented while
-Learn-pane integration remains in progress. The first unit's bundled native course remains the
-implemented example; revised downloadable native lesson content is further work.
+native interactive lesson. Packages may explicitly opt into an optional
+`nativeLesson` prediction definition, validated before preview using the
+[native lesson contract](native-lesson-format.md). Importing that package opens
+its inline questions, feedback, hints and source pointers in Learn. The preview
+states how many guided prediction steps it includes.
+
+Use **Tools → Continue Downloaded MARS Lab** to reopen the project's selected
+edition with saved answers and hints. Continuation revalidates the retained
+archive and preserves student source edits. These conceptual predictions do not
+award execution or independent-writing credit; follow the written lab for those
+activities. Legacy assignment packages keep their file-import behavior.
 
 ## Verification
 
@@ -61,3 +68,10 @@ action from an HTTPS fixture. Its local plan binds the downloaded archive's dige
 uses a certificate only in the disposable authoring IDE configuration, and checks
 normal Run and Debug afterward. All capture and fixture code stays outside the
 main MARS plugin. Actual run evidence is retained separately from these procedures.
+
+The revised byte-inspector native prediction draft has also been exercised through
+this HTTPS import route, including actual inline answer and hint clicks. A separate
+fresh-process walkthrough verifies saved selection, answer history, source edits
+and resumed instruction highlighting. The private `native-lesson-runtime-01`
+record retains the exact archives and observations. Human learner review remains
+pending.
