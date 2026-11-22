@@ -173,6 +173,8 @@ class PreparedFunctionChecksTest {
             { call().copy(returnTo = " ") }, { call().copy(arguments = mapOf("pc" to 1)) },
             { call().copy(arguments = mapOf("zero" to 1)) }, { call().copy(arguments = mapOf("sp" to 1)) },
             { call().copy(arguments = mapOf("ra" to 1)) }, { call().copy(expectedRegisters = emptyMap()) },
+            { call().copy(expectedRegisters = mapOf("" to 0)) }, { call().copy(expectedRegisters = mapOf("$" to 0)) },
+            { case().copy(preservedRegisters = listOf("")) }, { case().copy(preservedRegisters = listOf("$")) },
             { call().copy(expectedRegisters = mapOf("v0" to 1, "\$2" to 1)) },
             { FunctionHelperCheck("helper", "helper") },
             { case().copy(name = " ") }, { case().copy(calls = emptyList()) },

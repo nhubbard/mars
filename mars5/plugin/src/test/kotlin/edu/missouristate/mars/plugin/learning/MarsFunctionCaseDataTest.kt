@@ -129,6 +129,10 @@ class MarsFunctionCaseDataTest {
         reject { call().getAsJsonObject("arguments").addProperty("\$4", "0x0000000000000016") }
         reject { row().getAsJsonArray("preservedRegisters").add("\$16") }
         reject { call().add("expectedRegisters", JsonObject()) }
+        for (name in listOf("", "$")) {
+            reject { call().add("expectedRegisters", JsonObject().apply { addProperty(name, "0x0000000000000000") }) }
+            reject { row().add("preservedRegisters", JsonArray().apply { add(name) }) }
+        }
         reject { call().addProperty("entry", "../outside") }; reject { call().addProperty("returnTo", "function") }
         reject { row().getAsJsonArray("helpers").add(row().getAsJsonArray("helpers")[0].deepCopy()) }
         for (register in listOf("pc", "f0", "w0", "sp", "ra", "zero", "")) {

@@ -70,6 +70,7 @@ private fun functionLabel(label: String) {
 }
 
 private fun functionRegister(name: String): Int {
+    require(name.isNotBlank() && name != "$") { "Unknown integer register: $name" }
     val spelling = if (name.startsWith('$')) name else "$$name"
     return requireNotNull(RegisterNames.integer(spelling)) { "Unknown integer register: $name" }.number
 }
