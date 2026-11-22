@@ -128,6 +128,28 @@ class MarsDownloadedAssessmentCheckpointTest {
     }
 
     @Test
+    fun `matching console output cannot grant memory credit until the current image satisfies the byte contract`() = timeoutRunBlocking {
+        val profile="""{"formatVersion":2,"cases":[{"name":"memory","input":"","stdout":"","instructionLimit":1000,"memory":[{"address":"0x0000000010010000","bytes":"9966aa00df9b5713"}]}]}"""
+        val memoryStep=step.copy(cases=MarsConsoleCaseData.parse(profile.toByteArray()))
+        val failed=$$".data\n.word 0, 0x13579bdf\n.text\nli $v0,10\nsyscall\n"
+        val lifetime=Disposer.newDisposable()
+        try {
+            val checkpoint=withContext(Dispatchers.EDT) {
+                val file=fixture.addFileToProject("memory-check.asm",failed).virtualFile
+                fixture.configureFromExistingVirtualFile(file)
+                MarsDownloadedAssessmentCheckpoint(projects.get(),lifetime,file.toNioPath(),fixture.editor.document,identity,memoryStep,{true})
+            }
+            val wrong=assertInstanceOf(Feedback.Checked::class.java,checkpoint.check())
+            assertFalse(wrong.results.single().passed); assertTrue(wrong.results.single().failure!!.contains("Expected byte"))
+            assertFalse(checkpoint.passed()); assertEquals(1,count())
+            val correct=failed.replace(".text",$$".text\nli $t5,0xaa6699\nli $s1,0x10010000\nsw $t5,0($s1)")
+            edit(fixture.editor.document,correct)
+            assertTrue(assertInstanceOf(Feedback.Checked::class.java,checkpoint.check()).results.single().passed)
+            assertTrue(checkpoint.passed()); assertEquals(2,count())
+        } finally { withContext(Dispatchers.EDT) { Disposer.dispose(lifetime) } }
+    }
+
+    @Test
     fun `instructor gates and per-activity budgets are checked without erasing previously valid evidence`() = timeoutRunBlocking {
         val policy = projects.get().service<MarsLearningPolicy>()
         var predictions = false
