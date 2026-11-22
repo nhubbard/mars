@@ -42,7 +42,7 @@ data class FunctionCallCheck(
     }
 }
 
-/** Require actual completed execution in a public helper's half-open instruction interval. */
+/** A public half-open instruction interval for required or forbidden completed execution. */
 data class FunctionHelperCheck(val from: String, val until: String) {
     init {
         functionLabel(from)
