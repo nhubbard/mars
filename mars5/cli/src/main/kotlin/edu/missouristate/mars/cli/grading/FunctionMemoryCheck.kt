@@ -28,3 +28,14 @@ internal fun functionMemory(ranges: List<FunctionMemoryCheck>) {
         "Function memory checks exceed 64 ranges or one MiB"
     }
 }
+
+
+/** Forbid any completed execution store overlapping this label-relative region. */
+data class FunctionNoStoreCheck(val label: String, val byteLength: Int, val offset: Int = 0) {
+    init {
+        FunctionDataAddress(label, offset)
+        require(byteLength in 1..ConsoleMemoryCheck.MAX_BYTES) {
+            "Protected function regions need one through 1048576 bytes"
+        }
+    }
+}

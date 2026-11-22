@@ -142,3 +142,28 @@ complete write history. The caller-stack comparison and optional helper traces
 remain separate obligations. The label-relative `AssemblyCase.setBytes` overload
 uses the same stopped-session byte editor as absolute-address setup and preserves
 unmentioned bytes of partial words.
+
+## Protecting input objects from execution stores
+
+A case may declare `noStores: List<FunctionNoStoreCheck>`. Each item names a public
+data label, a positive byte length and an optional signed byte offset. The checker
+starts the existing `MemoryStoreTrace` observers after initial memory preparation
+and before the first function call. After every return, each protected region
+must have received no execution store of any width. Same-value writes, temporary
+writes followed by restoration, and wider stores starting outside but overlapping
+the region all fail. Application-origin setup and inspection are not simulated
+execution stores.
+
+These observers span every call in that case and close with its existing
+`AssemblyCase` lifetime, including failures and cancellation. At most 64 regions
+and a combined one MiB of protected spans are allowed per case. Label and offset
+validation is the same as for other function data references. The definitions are
+captured and revalidated before any grading session is created.
+
+For example, `FunctionNoStoreCheck("endpoints", 16)` protects a four-word input
+record while allowing a student to reorder its values in working registers. A
+raster may use a different algorithm and store its output cells in a different
+order; protection does not prescribe those implementation choices. Returned
+values and final output words remain separate assertions. Declared protected
+regions do not constitute a whole-address-space write audit. Caller-stack bytes
+continue to use the separately documented after-return comparison.
