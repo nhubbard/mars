@@ -235,6 +235,10 @@ internal fun LessonContext.downloadedDebug(content: MarsDownloadedLessonContent,
 }
 
 internal fun TaskContext.downloadedPrediction(identity: MarsLessonIdentity, step: MarsNativeLessonStep, source: Path) {
+    val task = this
+    // A Run may open a Bitmap Display editor even when the next activity uses the same source.
+    // Re-select that source before the native host renders its prediction and anchor.
+    before { task.addStep(project.service<MarsLearningExecution>().openLessonFile(source)) }
     val answered = stateCheck { MarsInlinePrediction.answered(project, identity, step.prediction) }
     runtimeText {
         removeAfterDone = true

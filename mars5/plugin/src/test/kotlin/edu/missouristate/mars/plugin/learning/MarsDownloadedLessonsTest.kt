@@ -46,6 +46,7 @@ import com.intellij.openapi.application.edtWriteAction
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.components.service
 import com.intellij.openapi.fileEditor.FileEditorManager
+import com.intellij.openapi.fileEditor.FileEditorOpenRequest
 import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.extensions.ExtensionPointName
 import com.intellij.testFramework.ExtensionTestUtil
@@ -515,10 +516,18 @@ class MarsDownloadedLessonsTest {
                     assertEquals(2, history.snapshot(assessmentId)!!.completedAssessments)
                 }
                 if (!withRun && !withDebug && !withAssessment) {
+                    val other = fixture.addFileToProject("tool-view.txt", "A different editor selected after execution.").virtualFile
+                    FileEditorManager.getInstance(project).openFile(other, FileEditorOpenRequest.withFocus(true))
+                    assertEquals(other, FileEditorManager.getInstance(project).selectedFiles.single())
                     val missing = anchored.copy(anchor = MarsLessonAnchor("missing", "nop", 0))
                     taskContext.downloadedPrediction(content.identity, missing, content.installed.entry)
+                    for (future in preparations) assertTrue(future.await())
+                    preparations.clear()
+                    assertEquals(content.installed.entry, FileEditorManager.getInstance(project).selectedFiles.single().toNioPath())
                     callbacks(texts.last()(RuntimeTextContext(runtime))!!)
                     taskContext.downloadedPrediction(content.identity, anchored.copy(anchor = null), content.installed.entry)
+                    for (future in preparations) assertTrue(future.await())
+                    preparations.clear()
                     val retired = callbacks(texts.last()(RuntimeTextContext(runtime))!!)
                     Disposer.dispose(recorder as Disposable)
                     retired.forEach { it() }
