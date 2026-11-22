@@ -103,6 +103,47 @@ class MarsNativeFunctionPlanTest {
     }
 
     @Test
+    fun `actual Life archive protects both physical role orders and repeated snapshot calls`() {
+        val archive = temporary.resolve("life-student.zip")
+        javaClass.getResourceAsStream("/learning/life-buffers-0.1.0-student.zip")!!.use { Files.copy(it, archive) }
+        MarsLessonPackages.prepare(archive).use { prepared ->
+            val plan = prepared.nativeLesson!!
+            assertEquals("008-life-buffers", prepared.metadata.id)
+            assertEquals(5, plan.steps.filterIsInstance<MarsNativeLessonStep>().size)
+            assertEquals(8, plan.steps.filterIsInstance<MarsNativeDebugStep>().single().stops.size)
+            assertEquals("", plan.steps.filterIsInstance<MarsNativeRunStep>().single().stdout)
+            val step = plan.steps.filterIsInstance<MarsNativeAssessmentStep>().single()
+            assertEquals("independent/life-changes.asm", step.source)
+            assertEquals(14, step.functionCases.size)
+            assertTrue(step.cases.isEmpty())
+            for ((index, case) in step.functionCases.withIndex()) {
+                val source = if (index % 2 == 0) "board_a" else "board_b"
+                val destination = if (index % 2 == 0) "board_b" else "board_a"
+                assertEquals(25, case.noStores.size)
+                assertEquals(160, case.noStores.sumOf { it.byteLength })
+                assertEquals(100, case.noStores.single { it.label == source }.byteLength)
+                val halo = case.noStores.filter { it.label == destination }
+                    .flatMap { it.offset until it.offset + it.byteLength }.toSet()
+                assertEquals((0 until 100).filter { it / 10 in setOf(0, 9) || it % 10 in setOf(0, 9) }.toSet(), halo)
+                assertEquals(8, case.initialMemory.size)
+                assertEquals(10, case.preservedRegisters.size)
+                assertEquals(50000L, case.instructionLimit)
+                assertTrue(case.helpers.isEmpty())
+                assertEquals(listOf("generation_built", "life_done"), case.calls.map { it.returnTo })
+                for (call in case.calls) {
+                    assertEquals("life_changes", call.entry)
+                    assertEquals(source, call.argumentAddresses.getValue("a0").label)
+                    assertEquals(destination, call.argumentAddresses.getValue("a1").label)
+                    assertEquals(100, call.memory.single { it.label == source }.byteLength)
+                    assertEquals(100, call.memory.single { it.label == destination }.byteLength)
+                    assertEquals(setOf("v0"), call.expectedRegisters.keys)
+                    assertTrue(call.arguments.isEmpty())
+                }
+            }
+        }
+    }
+
+    @Test
     fun `format six explicitly selects function data and retains console assessments`() {
         val step = parse().steps.single() as MarsNativeAssessmentStep
         assertTrue(step.cases.isEmpty()); assertEquals(151L, step.functionCases.single().calls.single().expectedRegisters.getValue("v0"))
