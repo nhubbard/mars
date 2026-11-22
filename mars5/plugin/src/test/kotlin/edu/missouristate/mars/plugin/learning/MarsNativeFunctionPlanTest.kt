@@ -1,0 +1,94 @@
+package edu.missouristate.mars.plugin.learning
+
+import com.google.gson.JsonParser
+import java.nio.file.Files
+import java.nio.file.Path
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertSame
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
+import org.junit.jupiter.api.io.TempDir
+
+class MarsNativeFunctionPlanTest {
+    @TempDir lateinit var temporary: Path
+    private val profile = """{"formatVersion":1,"cases":[{"name":"one call","instructionLimit":1000,"calls":[{"entry":"invert","returnTo":"returned","arguments":{"a0":"0x0000000000000016"},"expectedRegisters":{"v0":"0x0000000000000097"}}]}]}""".toByteArray()
+    private val console = """{"formatVersion":1,"cases":[{"name":"silence","input":"","stdout":"","instructionLimit":1000}]}""".toByteArray()
+    private val lesson = """{"formatVersion":6,"introduction":"Follow the continuation.","conclusion":"Explain what survived.","steps":[{"kind":"assessment","id":"invert","explanation":"Write a callable function.","source":"independent/invert.asm","caseProfile":"function.cases.json","checkKind":"function","success":"Explain the return."}]}"""
+    private fun parse(text: String = lesson) = MarsNativeLessonPlan.parse(text.toByteArray()) { if (it == "console.cases.json") console else profile }
+
+    @Test
+    fun `actual student function archive retains the complete instructional and callable case grid`() {
+        val archive = temporary.resolve("student.zip")
+        javaClass.getResourceAsStream("/learning/row-functions-0.1.0-student.zip")!!.use { Files.copy(it, archive) }
+        MarsLessonPackages.prepare(archive).use { prepared ->
+            val plan = prepared.nativeLesson!!
+            assertEquals("003-row-functions", prepared.metadata.id)
+            assertEquals(5, plan.steps.filterIsInstance<MarsNativeLessonStep>().size)
+            assertEquals(8, plan.steps.filterIsInstance<MarsNativeDebugStep>().single().stops.size)
+            assertEquals("", plan.steps.filterIsInstance<MarsNativeRunStep>().single().stdout)
+            val step = plan.steps.filterIsInstance<MarsNativeAssessmentStep>().single()
+            assertTrue(step.cases.isEmpty()); assertEquals(3, step.functionCases.size)
+            assertEquals(768, step.functionCases.sumOf { it.calls.size })
+        }
+    }
+
+    @Test
+    fun `format six explicitly selects function data and retains console assessments`() {
+        val step = parse().steps.single() as MarsNativeAssessmentStep
+        assertTrue(step.cases.isEmpty()); assertEquals(151L, step.functionCases.single().calls.single().expectedRegisters.getValue("v0"))
+        val root = JsonParser.parseString(lesson).asJsonObject
+        val another = root.getAsJsonArray("steps")[0].deepCopy().asJsonObject.apply { addProperty("id", "again") }
+        root.getAsJsonArray("steps").add(another)
+        var reads = 0
+        val repeated = MarsNativeLessonPlan.parse(root.toString().toByteArray()) { reads++; profile }
+        assertEquals(1, reads)
+        assertSame((repeated.steps[0] as MarsNativeAssessmentStep).functionCases, (repeated.steps[1] as MarsNativeAssessmentStep).functionCases)
+        another.addProperty("id", "console"); another.addProperty("checkKind", "console"); another.addProperty("caseProfile", "console.cases.json")
+        val mixed = parse(root.toString()).steps.filterIsInstance<MarsNativeAssessmentStep>()
+        assertEquals(1, mixed[0].functionCases.size); assertEquals(1, mixed[1].cases.size)
+        another.remove("checkKind")
+        assertEquals(1, (parse(root.toString()).steps.last() as MarsNativeAssessmentStep).cases.size)
+        assertThrows<IllegalArgumentException> { step.copy(functionCases = emptyList()) }
+        assertThrows<IllegalArgumentException> { step.copy(cases = mixed[1].cases) }
+    }
+
+    @Test
+    fun `older formats unknown kinds and crossed profile types reject rather than acquire function execution`() {
+        for (version in 1..5) assertThrows<IllegalArgumentException> {
+            parse(lesson.replace("\"formatVersion\":6", "\"formatVersion\":$version"))
+        }
+        for (kind in listOf("script", "Function", "", "console")) assertThrows<IllegalArgumentException> {
+            parse(lesson.replace("\"function\"", "\"$kind\""))
+        }
+        assertThrows<IllegalArgumentException> { parse(lesson.replace("function.cases.json", "console.cases.json")) }
+        assertThrows<IllegalArgumentException> { parse(lesson.replace("function.cases.json", "../private.kts")) }
+    }
+
+    @Test
+    fun `archive preview binds function definitions to its snapshot and requires both source and case data`() {
+        val manifest = """{"formatVersion":1,"id":"003-row-functions","version":"0.1.0","title":"Calls and saved state","entry":"main.asm","assignment":"assignment.md","nativeLesson":"lesson.json","environment":{"isa":"MIPS64 Release 6","syscallAbi":"MARS educational"}}"""
+        for (missing in listOf(null, "function.cases.json", "independent/invert.asm")) {
+            val archive = Files.createTempFile(temporary, "function-", ".zip")
+            val files = mapOf("package.json" to manifest.toByteArray(), "lesson.json" to lesson.toByteArray(),
+                "main.asm" to ".text\nnop\n".toByteArray(), "assignment.md" to "Explain the call.".toByteArray(),
+                "independent/invert.asm" to ".text\nnop\n".toByteArray(), "function.cases.json" to profile)
+            ZipOutputStream(Files.newOutputStream(archive)).use { zip ->
+                for ((name, bytes) in files) if (name != missing) {
+                    zip.putNextEntry(ZipEntry("003-row-functions/$name")); zip.write(bytes); zip.closeEntry()
+                }
+            }
+            if (missing != null) assertThrows<IllegalArgumentException> { MarsLessonPackages.prepare(archive).close() }
+            else MarsLessonPackages.prepare(archive).use { prepared ->
+                val installed = prepared.install(Files.createDirectory(temporary.resolve("project")))
+                Files.writeString(installed.directory.resolve("function.cases.json"), "changed working profile")
+                Files.writeString(archive, "changed original ZIP")
+                val step = prepared.nativeLesson!!.steps.single() as MarsNativeAssessmentStep
+                assertEquals("invert", step.functionCases.single().calls.single().entry)
+                assertTrue(step.cases.isEmpty())
+            }
+        }
+    }
+}

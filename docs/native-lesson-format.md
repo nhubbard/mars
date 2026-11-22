@@ -13,6 +13,8 @@ needed. Format 1 retains conceptual predictions. Format 2 permits an ordered
 sequence of predictions and observations of ordinary student Run launches.
 Format 5 adds optional source files to Run and Debug activities, for example to
 compare full and empty ranges without editing a previously observed program.
+Format 6 adds an explicit function assessment kind, with the same source-bound
+progress, instructor controls and native Check this program interaction.
 
 ## Format 1 predictions
 
@@ -355,3 +357,90 @@ still requires fresh execution after an edit.
 An empty console transcript proves no console output, not correct display
 writes. Use independent memory/store/read checks where the learning objective
 depends on a display-port sequence or the absence of an out-of-range access.
+
+## Format 6 function assessments
+
+Use integer `formatVersion: 6` to add `"checkKind": "function"` to an assessment.
+All existing activities and source-selection rules remain available. An absent
+`checkKind` retains console checking; explicit `"console"` also selects it.
+Formats 1–5 reject the new field. Unknown kinds and crossed profile schemas are
+rejected before the import preview. No kind can name an executable script,
+expression, action or implementation class.
+
+```json
+{
+  "kind": "assessment",
+  "id": "reverse-and-invert",
+  "explanation": "Write a function that returns through its incoming continuation.",
+  "source": "independent/reverse-and-invert.asm",
+  "caseProfile": "independent/reverse-and-invert.cases.json",
+  "checkKind": "function",
+  "success": "Explain which state survived the helper call."
+}
+```
+
+A function profile has its own integer `formatVersion: 1` and a `cases` array.
+Each case requires `name`, `instructionLimit` and `calls`. Optional fields are
+`initialRegisters`, `preservedRegisters`, `helpers`, `stackAlignment` and
+`callerStackBytes`. A call requires exactly `entry`, `returnTo`, `arguments` and
+`expectedRegisters`; a helper interval requires exactly `from` and `until`.
+
+```json
+{
+  "formatVersion": 1,
+  "cases": [{
+    "name": "one function call",
+    "instructionLimit": 1000,
+    "initialRegisters": {"s0": "0x1122334455667788"},
+    "preservedRegisters": ["s0"],
+    "stackAlignment": 16,
+    "callerStackBytes": 32,
+    "helpers": [{"from": "reverse_byte", "until": "reverse_byte_return"}],
+    "calls": [{
+      "entry": "reverse_and_invert",
+      "returnTo": "after_invert",
+      "arguments": {"a0": "0x8000000000000016"},
+      "expectedRegisters": {"v0": "0x0000000000000097"}
+    }]
+  }]
+}
+```
+
+Register maps contain exactly sixteen hexadecimal digits after lowercase `0x`,
+including the high bit when set. Values represent register bits, not floating
+point JSON numbers. Names resolve through the core's integer-register bank,
+with or without the leading dollar sign. Aliases for one register cannot be
+declared twice. Expected registers are nonempty; arguments may be empty.
+Initial values cannot write zero, and arguments cannot replace the stack or
+return pointer. Labels follow the public assembly-label grammar and are at most
+128 characters. The default initial map, preservation list and helper list are
+empty; authors must declare the preservation and helper obligations they intend
+to check.
+
+Profiles are strict UTF-8/JSON, at most 1 MiB and depth 32. Duplicate keys, unknown
+fields, coercions, nonprintable names and oversized containers are rejected.
+Names are nonblank and at most 128 UTF-16 code units. All integer control values
+must use exact nonnegative JSON integer syntax. A profile admits 1–256 unique
+case names, 1–512 calls per case, at most 4096 total calls, a positive per-case
+budget through 1,000,000 instructions, and at most 10,000,000 instructions overall.
+Register maps and preservation lists admit at most 32 distinct registers; helpers
+admit at most 32 unique intervals. Alignment defaults to 16 and must be a power
+of two through 4096. Caller-byte observation defaults to 32 and permits 0–65536.
+
+Preparation parses retained archive data into immutable collections. Changing a
+working profile does not change the imported checks. Execution uses
+[`PreparedFunctionChecks`](prepared-function-checks.md) and a fresh detached
+machine per case. Repeated calls within that case share memory and a cumulative
+budget. Caller setup aligns the pointer before calling, then each invocation must
+return to its requested continuation with its expected results and incoming
+preserved values. Helper intervals count actual completed instructions. Caller
+bytes are compared after each return; this does not claim an intermediate write
+history. Execution is silent and uses the existing restricted grading environment.
+
+The existing Check this program control, source/edition identity, attempt limits,
+hints, prerequisite graph, cancellation and stale-result checks remain in force.
+Unsaved source text is assembled through the same build service. A failed call
+produces an ordinary named case failure; malformed content fails import validation.
+Assembly failure, cancellation and stale results do not earn credit or consume an
+assessment. Source edits invalidate a previous function pass. No active student
+Run or Debug machine is used or modified by grading.
