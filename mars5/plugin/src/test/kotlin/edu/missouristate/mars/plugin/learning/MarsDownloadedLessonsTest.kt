@@ -343,6 +343,8 @@ class MarsDownloadedLessonsTest {
                 controls[1](); assertTrue(checks.single()(runtime))
                 if (withDebug) {
                     assertEquals(3, timers.size)
+                    assertTrue(rendered.single { it.contains("Debug &lt;this&gt; program.") }
+                        .contains("</callback>&#10;Inspect &lt;the first load&gt;."))
                     assertTrue(timers.none { it(runtime) })
                     debugControls.forEach { it() }
                     val history = project.service<MarsLearningProgress>()
