@@ -75,6 +75,30 @@ activity through its public module and lesson APIs. Course definitions remain in
 the retained archive, with no global project-specific course registration.
 Legacy assignment packages keep their file-import behavior.
 
+## Instructor progression
+
+Import the exact course edition before configuring its prerequisites. Use
+**Tools → Configure Downloaded MARS Lab Prerequisites…**, choose an independent
+exercise, and select the earlier questions or execution activities that it
+requires. Selecting an earlier independent check includes that check's own
+requirements. The dialog supports a scrollable activity list; changes remain
+drafts until **Save requirements**. Cancel preserves the saved configuration.
+
+These rules use the same evidence in guided and direct independent modes.
+Required Run, Debug and independent observations must match their current source.
+Editing a prerequisite, restoring edited text, or changing its file while the
+IDE is closed cannot reuse its old execution credit. Blocked checks do not
+consume an assessment attempt. The learner sees the required activity IDs and
+can return to guided work to obtain current observations.
+
+Share the saved project policy (`.idea/mars-learning.xml` in a directory-based
+project), rather than personal `workspace.xml` progress. Rules are specific to
+the exact content edition; review them when adopting a different archive.
+Global access, preceding-prediction, hint and attempt-limit controls remain in
+**Settings → Tools → MARS Learning**. That page labels the built-in first
+program's named guided requirements separately. Private instructor checks remain
+the authority for formal grading.
+
 ## Verification
 
 Jupiter tests use a real loopback HTTPS server with a test certificate installed
