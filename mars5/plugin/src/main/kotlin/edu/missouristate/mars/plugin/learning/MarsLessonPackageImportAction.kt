@@ -14,17 +14,16 @@ import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.ui.TextFieldWithBrowseButton
 import com.intellij.openapi.ui.ValidationInfo
 import com.intellij.openapi.util.Disposer
-import com.intellij.openapi.util.io.OSAgnosticPathUtil.expandUserHome
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.platform.ide.progress.ModalTaskOwner
 import com.intellij.platform.ide.progress.runWithModalProgressBlocking
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTextArea
+import com.intellij.ui.dsl.builder.AlignX
 import com.intellij.ui.dsl.builder.panel
 import edu.missouristate.mars.plugin.dynamicBundleOf
 import java.awt.Dimension
 import java.io.IOException
-import java.nio.file.InvalidPathException
 import java.nio.file.Path
 import javax.swing.JComponent
 import kotlinx.coroutines.Dispatchers
@@ -41,23 +40,24 @@ internal class MarsLessonPackageImportAction : DumbAwareAction() {
         val source = MarsLessonPackageFileDialog(project)
         source.show()
         if (!source.isOK) return
-        val archive = source.archive
+        // Own the prepared snapshot even if coroutine cancellation discards the modal result.
+        var prepared: MarsLessonPackages.Prepared? = null
         try {
-            val prepared = runWithModalProgressBlocking(ModalTaskOwner.project(project), packageMessages.getMessage("import.inspect")) {
-                withContext(Dispatchers.IO) { MarsLessonPackages.prepare(archive) }
+            val location = source.source
+            val snapshot = runWithModalProgressBlocking(ModalTaskOwner.project(project), packageMessages.getMessage("import.inspect")) {
+                withContext(Dispatchers.IO) { location.prepare().also { prepared = it } }
             }
-            prepared.use {
-                val preview = MarsLessonPackagePreviewDialog(project, prepared)
-                preview.show()
-                if (!preview.isOK) return
-                runWithModalProgressBlocking(ModalTaskOwner.project(project), packageMessages.getMessage("import.install")) {
-                    val installed = withContext(Dispatchers.IO) { prepared.install(Path.of(root)) }
-                    openInstalledPackage(project, installed)
-                }
+            val preview = MarsLessonPackagePreviewDialog(project, snapshot)
+            preview.show()
+            if (!preview.isOK) return
+            runWithModalProgressBlocking(ModalTaskOwner.project(project), packageMessages.getMessage("import.install")) {
+                val installed = withContext(Dispatchers.IO) { snapshot.install(Path.of(root)) }
+                openInstalledPackage(project, installed)
             }
         } catch (error: IOException) { showFailure(project, error) }
         catch (error: IllegalArgumentException) { showFailure(project, error) }
         catch (error: JsonParseException) { showFailure(project, error) }
+        finally { prepared?.close() }
     }
 
     private fun showFailure(project: Project, error: Exception) = Messages.showErrorDialog(
@@ -81,14 +81,14 @@ internal suspend fun openInstalledPackage(project: Project, installed: MarsLesso
     }
 }
 
-/** Native path entry and Browse use the same chooser as other IDE file settings. */
+/** Accept a course link directly; Browse retains the native chooser for local archives. */
 internal class MarsLessonPackageFileDialog(project: Project) : DialogWrapper(project) {
     val archiveField = TextFieldWithBrowseButton().apply {
         addBrowseFolderListener(project, FileChooserDescriptorFactory.singleFile().withExtensionFilter("zip")
             .withTitle(packageMessages.getMessage("import.choose")))
         textField.accessibleContext.accessibleName = packageMessages.getMessage("import.path")
     }
-    val archive: Path get() = Path.of(expandUserHome(archiveField.text.trim()))
+    val source: MarsLessonPackageSource get() = MarsLessonPackageSource.parse(archiveField.text)
     init {
         Disposer.register(disposable, archiveField)
         title = packageMessages.getMessage("import.choose")
@@ -96,13 +96,14 @@ internal class MarsLessonPackageFileDialog(project: Project) : DialogWrapper(pro
         init()
     }
     override fun createCenterPanel(): JComponent = panel {
-        row(packageMessages.getMessage("import.path")) { cell(archiveField).resizableColumn() }
+        row(packageMessages.getMessage("import.path")) { cell(archiveField).align(AlignX.FILL).resizableColumn() }
         row { comment(packageMessages.getMessage("import.choose.help")) }
     }.apply { preferredSize = Dimension(650, preferredSize.height) }
     override fun getPreferredFocusedComponent(): JComponent = archiveField.textField
     public override fun doValidate(): ValidationInfo? = try {
-        if (archive.isAbsolute) null else ValidationInfo(packageMessages.getMessage("import.path.invalid"), archiveField)
-    } catch (_: InvalidPathException) { ValidationInfo(packageMessages.getMessage("import.path.invalid"), archiveField) }
+        source
+        null
+    } catch (_: IllegalArgumentException) { ValidationInfo(packageMessages.getMessage("import.path.invalid"), archiveField) }
 }
 
 internal class MarsLessonPackagePreviewDialog(project: Project, prepared: MarsLessonPackages.Prepared) : DialogWrapper(project) {

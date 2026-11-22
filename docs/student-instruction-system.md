@@ -665,3 +665,34 @@ repeat fresh-process policy, reset or recovery scenarios, and it is not human
 learner review. The complete curriculum and downloaded native lesson delivery
 remain unfinished. The revised written lab now explains the inline controls and
 includes an accessible native LaTeX figure from this successful capture.
+
+
+## Course-server archive retrieval
+
+The existing Import MARS Lab action now accepts an HTTPS course link as well as
+an absolute local archive path. Both routes use the same immutable package
+preview and installation path, preserving edited imports and isolating different
+versions/content. The public platform `HttpRequests` API supplies proxy, TLS and
+redirect handling. Its bounded input-stream loop adds the archive-byte limit
+that `Request.saveToFile` does not expose; no parallel networking framework is
+introduced. See [lesson delivery](lesson-delivery.md) for student and server behavior.
+
+This retrieves assignment files; it does not interpret old package steps as native
+trainer lessons. Downloadable native lesson execution remains a separate part of
+the active curriculum goal. Publication capture automation remains in the separate
+authoring plugin. Source and test bindings, API verification and actual IDE
+observations are retained in the private `lesson-download-01` evidence record.
+
+
+Verified in `lesson-download-01`: the full plugin check passes 1,046 Jupiter
+tests and strict learning-package line/branch coverage; the separate authoring
+plugin passes 106 tests. Both exact packaged plugins pass paired IntelliJ
+2026.3 API verification with experimental public usages and no internal or
+override-only problems. A real light-theme IDE downloads the bound public ZIP,
+cancels preview without creating a working copy, imports and preserves an ordinary
+student edit on reimport, runs the unfinished starter, observes `v0=0` and then
+`v0=10` at adjacent Debug boundaries, and saves/closes the project normally.
+All eleven installed JARs match the verified archives. Source-field width and
+screen-paint timing were corrected after visual inspection; the initial captures
+remain historical evidence. These are development observations, not newly
+published book figures or proof of downloaded native lesson execution.
