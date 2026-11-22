@@ -17,14 +17,30 @@ import org.jdom.Verifier
 
 internal data class MarsLessonAnchor(val label: String, val mnemonic: String, val occurrence: Int)
 internal data class MarsLessonHint(val id: String, val text: String)
+
+internal sealed interface MarsNativeLessonActivity {
+    val id: String
+    val explanation: String
+    val anchor: MarsLessonAnchor?
+    val hints: List<MarsLessonHint>
+}
+
 internal data class MarsNativeLessonStep(
-    val explanation: String, val prediction: MarsPrediction,
-    val anchor: MarsLessonAnchor?, val hints: List<MarsLessonHint>,
-)
+    override val explanation: String, val prediction: MarsPrediction,
+    override val anchor: MarsLessonAnchor?, override val hints: List<MarsLessonHint>,
+) : MarsNativeLessonActivity {
+    override val id: String get() = prediction.id
+}
+
+internal data class MarsNativeRunStep(
+    override val id: String, override val explanation: String,
+    val integerInputs: List<Int>, val stdout: String, val success: String,
+    override val anchor: MarsLessonAnchor?, override val hints: List<MarsLessonHint>,
+) : MarsNativeLessonActivity
 
 /** Data interpreted by the native trainer; downloaded content cannot name executable actions or scripts. */
 internal data class MarsNativeLessonPlan(
-    val introduction: String, val conclusion: String, val steps: List<MarsNativeLessonStep>,
+    val introduction: String, val conclusion: String, val steps: List<MarsNativeLessonActivity>,
 ) {
     companion object {
         const val MAX_BYTES = 1024 * 1024
@@ -41,16 +57,26 @@ internal data class MarsNativeLessonPlan(
             }
             val root = element.objectValue()
             root.fields(setOf("formatVersion", "introduction", "conclusion", "steps"))
-            require(root.get("formatVersion").toString() == "1") { "Unsupported native lesson format" }
+            val version = root.get("formatVersion").toString()
+            require(version in setOf("1", "2")) { "Unsupported native lesson format" }
             val steps = root.array("steps")
             require(steps.size() in 1..128) { "A native lesson needs 1 through 128 steps" }
-            val parsed = steps.map { parseStep(it.objectValue()) }
-            require(parsed.map { it.prediction.id }.distinct().size == parsed.size) { "Duplicate native lesson step ID" }
+            val parsed = steps.map {
+                val step = it.objectValue()
+                if (version == "1") parsePrediction(step, false)
+                else when (step.text("kind", 32)) {
+                    "prediction" -> parsePrediction(step, true)
+                    "run" -> parseRun(step)
+                    else -> throw IllegalArgumentException("Unsupported native lesson activity")
+                }
+            }
+            require(parsed.map { it.id }.distinct().size == parsed.size) { "Duplicate native lesson step ID" }
             return MarsNativeLessonPlan(root.text("introduction", 8192), root.text("conclusion", 8192), copyOf(parsed))
         }
 
-        private fun parseStep(step: JsonObject): MarsNativeLessonStep {
-            val required = setOf("id", "explanation", "question", "choices", "correctChoice")
+        private fun parsePrediction(step: JsonObject, tagged: Boolean): MarsNativeLessonStep {
+            val required = setOf("id", "explanation", "question", "choices", "correctChoice") +
+                if (tagged) setOf("kind") else emptySet()
             step.fields(required + setOf("anchor", "hints"), required)
             val id = step.identifier("id")
             val choices = step.array("choices")
@@ -63,17 +89,37 @@ internal data class MarsNativeLessonPlan(
             require(parsedChoices.map { it.id }.distinct().size == parsedChoices.size) { "Duplicate prediction choice ID" }
             val correct = step.identifier("correctChoice")
             require(parsedChoices.any { it.id == correct }) { "The correct choice must exist" }
-            val anchor = if (step.has("anchor")) parseAnchor(step.get("anchor").objectValue()) else null
+            return MarsNativeLessonStep(
+                step.text("explanation", 8192),
+                MarsPrediction(id, step.text("question", 2048), copyOf(parsedChoices), correct), anchor(step), hints(step),
+            )
+        }
+
+        private fun parseRun(step: JsonObject): MarsNativeRunStep {
+            val required = setOf("kind", "id", "explanation", "integerInputs", "stdout", "success")
+            step.fields(required + setOf("anchor", "hints"), required)
+            val inputs = step.array("integerInputs")
+            require(inputs.size() <= 64) { "A Run observation supports at most 64 integer inputs" }
+            val parsed = inputs.map {
+                require(it is JsonPrimitive && it.isNumber && Regex("-?(0|[1-9][0-9]{0,9})").matches(it.asString)) {
+                    "Expected a signed 32-bit integer input"
+                }
+                requireNotNull(it.asString.toIntOrNull()) { "Integer input exceeds its 32-bit range" }
+            }
+            return MarsNativeRunStep(step.identifier("id"), step.text("explanation", 8192), copyOf(parsed),
+                step.text("stdout", 16384), step.text("success", 8192), anchor(step), hints(step))
+        }
+
+        private fun anchor(step: JsonObject) = if (step.has("anchor")) parseAnchor(step.get("anchor").objectValue()) else null
+
+        private fun hints(step: JsonObject): List<MarsLessonHint> {
             val hints = if (step.has("hints")) step.array("hints").map {
                 val hint = it.objectValue()
                 hint.fields(setOf("id", "text"))
                 MarsLessonHint(hint.identifier("id"), hint.text("text", 8192))
             } else emptyList()
             require(hints.size <= 4 && hints.map { it.id }.distinct().size == hints.size) { "Invalid graduated hints" }
-            return MarsNativeLessonStep(
-                step.text("explanation", 8192),
-                MarsPrediction(id, step.text("question", 2048), copyOf(parsedChoices), correct), anchor, copyOf(hints),
-            )
+            return copyOf(hints)
         }
 
         private fun parseAnchor(anchor: JsonObject): MarsLessonAnchor {

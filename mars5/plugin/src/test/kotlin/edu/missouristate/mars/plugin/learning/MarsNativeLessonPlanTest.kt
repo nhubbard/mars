@@ -30,7 +30,7 @@ class MarsNativeLessonPlanTest {
         val plan = MarsNativeLessonPlan.parse(content.toByteArray())
         assertEquals("Interpret one byte.", plan.introduction)
         assertEquals("Explain its width.", plan.conclusion)
-        val step = plan.steps.single()
+        val step = plan.steps.single() as MarsNativeLessonStep
         assertEquals("The same bits may have different meanings.", step.explanation)
         assertEquals("unsigned", step.prediction.id)
         assertEquals("What is 0x96 unsigned?", step.prediction.question)
@@ -50,7 +50,7 @@ class MarsNativeLessonPlanTest {
         for (raw in listOf("", "[]", "true", "null", "1", "\"text\"", "{bad", content + " {}")) {
             assertThrows<Exception>(raw) { MarsNativeLessonPlan.parse(raw.toByteArray()) }
         }
-        reject { addProperty("formatVersion", 2) }
+        reject { addProperty("formatVersion", 3) }
         reject { addProperty("formatVersion", "1") }
         reject { addProperty("runAction", "ExecuteAnything") }
         reject { remove("conclusion") }
@@ -151,7 +151,7 @@ class MarsNativeLessonPlanTest {
         val path=archive(manifest,content.toByteArray())
         MarsLessonPackages.prepare(path).use { preview ->
             assertEquals("lesson.json",preview.metadata.nativeLesson)
-            assertEquals("unsigned",preview.nativeLesson!!.steps.single().prediction.id)
+            assertEquals("unsigned",(preview.nativeLesson!!.steps.single() as MarsNativeLessonStep).prediction.id)
             Files.writeString(path,"changed after preparation")
             assertEquals("Interpret one byte.",preview.nativeLesson.introduction)
             val project=Files.createDirectory(temporary.resolve("project"))

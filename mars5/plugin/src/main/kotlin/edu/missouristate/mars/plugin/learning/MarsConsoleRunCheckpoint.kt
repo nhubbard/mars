@@ -69,6 +69,10 @@ internal class MarsLearningExecution(private val project: Project, private val s
 
     fun observeRun(lifetime: Disposable, entry: Path, document: Document) =
         MarsConsoleRunCheckpoint(project, scope, lifetime, entry, document)
+
+    fun observeRun(lifetime: Disposable, entry: Path, document: Document, identity: MarsLessonIdentity,
+                   step: MarsNativeRunStep, feedback: (MarsDownloadedRunCheckpoint.Outcome) -> Unit) =
+        MarsDownloadedRunCheckpoint(project, scope, lifetime, entry, document, identity, step, feedback)
 }
 
 /** Observes the first unit's ordinary Run; it never launches or alters a simulated program. */

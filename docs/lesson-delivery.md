@@ -45,14 +45,17 @@ MARS tools. Downloading an original assignment does not register its steps as a
 native interactive lesson. Packages may explicitly opt into an optional
 `nativeLesson` prediction definition, validated before preview using the
 [native lesson contract](native-lesson-format.md). Importing that package opens
-its inline questions, feedback, hints and source pointers in Learn. The preview
-states how many guided prediction steps it includes.
+its inline questions, feedback, hints and source pointers in Learn. Format-2
+lessons can interleave these with observations of ordinary Run. The preview
+states how many guided activities it includes.
 
 Use **Tools → Continue Downloaded MARS Lab** to reopen the project's selected
 edition with saved answers and hints. Continuation revalidates the retained
-archive and preserves student source edits. These conceptual predictions do not
-award execution or independent-writing credit; follow the written lab for those
-activities. Legacy assignment packages keep their file-import behavior.
+archive and preserves student source edits. Predictions retain their answer
+history. Run observations require matching source, consumed integer inputs,
+console output and normal termination, and must be repeated after source edits.
+Follow the written lab for Debug investigations and independent-writing work.
+Legacy assignment packages keep their file-import behavior.
 
 ## Verification
 

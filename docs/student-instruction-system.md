@@ -753,3 +753,38 @@ These are development observations. They do not constitute a learner review,
 new publication figures, or completion of the written lab. Downloaded execution
 checks, independent-writing assessment and the remaining curriculum segments are
 still part of the active goal. Native LaTeX remains the publication authority.
+
+## Ordered prediction and Run activities
+
+Native format 2 adds explicit activity kinds while retaining format-1 predictions.
+A lesson can interleave predictions and observations of ordinary student Run
+launches. The revised byte-inspector draft now uses this sequence: predict the
+150 results, observe that run, predict the 128 boundary, then observe 128, zero,
+127 and 255. Native LaTeX remains the reading source; runtime data does not compose
+or reorder the publication.
+
+Run checks reuse the source-binding and progress capabilities already used by the
+first unit. Each activity has its own edition-scoped source history. The new
+read-only integer accessor follows the process handler's existing floating-point
+inspection pattern and retains a detached snapshot after termination. The observer
+uses completed service-5 results, rather than treating matching stdout as proof of
+input. It does not launch, supply input, step, or alter a machine. The accepted
+contract requires consumed integer inputs, exact output, normal termination and
+matching captured source. Equivalent instruction sequences are accepted.
+
+The existing lifecycle-owned execution service creates these observers. The latest
+supported launch owns its attempt; edits, resets, disposal and queued results
+cannot award another attempt credit or deliver stale feedback. Shared hint controls
+honor the instructor release policy. Completed controls retire with their task,
+and a final gate requires all Run observations to remain valid after source edits.
+
+Actual light-theme IDE verification includes HTTPS import, fresh-process resume,
+406 producing the same output as 150 but failing the input check, a source edit
+while a run waits for input, rechecking after an edit to previously observed source,
+and all five accepted current-source runs. The native lesson retains prediction
+and hint history through those retries. Evidence is retained privately in
+`native-execution-01`. The lab book describes the checked workflow and distinguishes
+the remaining manual Debug and independent activities. Automated publication
+accessibility verification is renewed for its native PDF; human review remains
+pending. Downloaded Debug and independent assessment, broader I/O contracts and
+the remaining curriculum still belong to the active goal.

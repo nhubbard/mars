@@ -27,6 +27,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import training.dsl.LessonContext
 import training.dsl.TaskContext
+import training.dsl.TaskRuntimeContext
 import training.lang.LangManager
 import training.learn.CourseManager
 import training.learn.course.IftModule
@@ -37,11 +38,13 @@ import training.learn.lesson.LessonManager
 import training.statistic.LessonStartingWay
 import training.ui.LearningUiHighlightingManager
 import training.ui.LearningUiHighlightingManager.HighlightingOptions
+import training.util.getCallBackActionId
 
 internal val downloadedLessonMessages = dynamicBundleOf<MarsDownloadedLesson>("messages.MarsDownloadedLessonBundle")
 
 internal data class MarsDownloadedLessonContent(val installed: MarsLessonPackages.Installed, val plan: MarsNativeLessonPlan) {
     val identity = MarsLessonIdentity("mars-book", installed.metadata.id + ".guided", installed.metadata.version, installed.sha256)
+    fun runIdentity(step: MarsNativeRunStep) = identity.copy(lesson = installed.metadata.id + ".run." + step.id)
 }
 
 /** Project selection only. The retained archive owns definitions; edited working files own source. */
@@ -118,11 +121,31 @@ internal class MarsDownloadedLesson(private val content: MarsDownloadedLessonCon
             before { task.addStep(project.service<MarsLearningExecution>().openLessonFile(content.installed.entry)) }
         }
         text(escapeXmlEntities(content.plan.introduction))
+        val runs = mutableListOf<MarsDownloadedRunCheckpoint>()
         for (step in content.plan.steps) {
-            task { downloadedPrediction(content.identity, step) }
-            task { runtimeText { escapeXmlEntities(step.prediction.answerExplanation) } }
+            when (step) {
+                is MarsNativeLessonStep -> {
+                    task { downloadedPrediction(content.identity, step) }
+                    task { runtimeText { escapeXmlEntities(step.prediction.answerExplanation) } }
+                }
+                is MarsNativeRunStep -> {
+                    task { downloadedRun(content, step) { runs += it } }
+                    task { runtimeText { escapeXmlEntities(step.success) } }
+                }
+            }
         }
-        text(escapeXmlEntities(content.plan.conclusion))
+        if (content.plan.steps.any { it is MarsNativeRunStep }) {
+            task {
+                runtimeText {
+                    if (runs.all { it.passed() }) null
+                    else escapeXmlEntities(downloadedLessonMessages.getMessage("run.recheck")) + " " +
+                        "<callback id=\"${getCallBackActionId("Mars.Learning.ContinueDownloaded")}\">" +
+                        escapeXmlEntities(downloadedLessonMessages.getMessage("run.continue")) + "</callback>"
+                }
+                timerCheck { runs.all { it.passed() } }
+            }
+        }
+        task { runtimeText { escapeXmlEntities(content.plan.conclusion) } }
     }
 }
 
@@ -130,21 +153,48 @@ internal fun TaskContext.downloadedPrediction(identity: MarsLessonIdentity, step
     val answered = stateCheck { MarsInlinePrediction.answered(project, identity, step.prediction) }
     runtimeText {
         removeAfterDone = true
-        step.anchor?.let { anchor ->
-            runReadActionBlocking {
-                MarsLessonAnchors.range(editor, anchor)?.let { range ->
-                    editor.caretModel.moveToOffset(range.startOffset)
-                    editor.scrollingModel.scrollToCaret(ScrollType.MAKE_VISIBLE)
-                }
-            }
-            LearningUiHighlightingManager.highlightPartOfComponent(editor.contentComponent,
-                HighlightingOptions(highlightInside = false), rectangle = MarsLessonAnchors.highlight(editor, anchor))
-            Disposer.register(taskDisposable) { LearningUiHighlightingManager.clearHighlights() }
-        }
+        highlightDownloadedInstruction(step.anchor)
         MarsInlinePrediction.text(project, identity, step.prediction, step.explanation, step.hints,
             active = { !disposed }, feedback = { LessonManager.instance.addMessage(it, isInformer = true) },
             correct = { answered.complete(true) })
     }
+}
+
+internal fun TaskContext.downloadedRun(content: MarsDownloadedLessonContent, step: MarsNativeRunStep,
+                                       observed: (MarsDownloadedRunCheckpoint) -> Unit) {
+    lateinit var checkpoint: MarsDownloadedRunCheckpoint
+    val identity = content.runIdentity(step)
+    before {
+        checkpoint = project.service<MarsLearningExecution>().observeRun(taskDisposable, content.installed.entry,
+            editor.document, identity, step) { outcome ->
+            if (outcome != MarsDownloadedRunCheckpoint.Outcome.PASSED) taskInvokeLater {
+                if (!disposed) LessonManager.instance.addMessage(escapeXmlEntities(downloadedLessonMessages
+                    .getMessage("run.feedback.${outcome.name.lowercase()}")), isInformer = true)
+            }
+        }
+        observed(checkpoint)
+    }
+    runtimeText {
+        removeAfterDone = true
+        highlightDownloadedInstruction(step.anchor)
+        escapeXmlEntities(step.explanation) + "&#10;" + MarsLessonHints.text(project, identity, step.id, step.hints,
+            active = { !disposed && !checkpoint.passed() },
+            feedback = { LessonManager.instance.addMessage(it, isInformer = true) })
+    }
+    timerCheck { checkpoint.passed() }
+}
+
+private fun TaskRuntimeContext.highlightDownloadedInstruction(anchor: MarsLessonAnchor?) {
+    if (anchor == null) return
+    runReadActionBlocking {
+        MarsLessonAnchors.range(editor, anchor)?.let { range ->
+            editor.caretModel.moveToOffset(range.startOffset)
+            editor.scrollingModel.scrollToCaret(ScrollType.MAKE_VISIBLE)
+        }
+    }
+    LearningUiHighlightingManager.highlightPartOfComponent(editor.contentComponent,
+        HighlightingOptions(highlightInside = false), rectangle = MarsLessonAnchors.highlight(editor, anchor))
+    Disposer.register(taskDisposable) { LearningUiHighlightingManager.clearHighlights() }
 }
 
 internal class MarsContinueDownloadedLessonAction : DumbAwareAction() {
