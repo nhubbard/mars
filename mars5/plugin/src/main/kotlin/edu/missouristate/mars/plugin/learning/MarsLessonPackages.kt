@@ -137,6 +137,7 @@ internal object MarsLessonPackages {
             require(data.id == root) { "Package ID does not match its archive root" }
             require("${data.id}/${data.entry}" in assets && "${data.id}/${data.assignment}" in assets) { "Missing starter or assignment" }
             val lesson = data.nativeLesson?.let { relative ->
+                MarsNativeLessonPlan.requireDisplayTitle(data.title)
                 val name = "${data.id}/$relative"
                 val asset = requireNotNull(assets[name]) { "Missing native lesson content" }
                 require(asset.size <= MarsNativeLessonPlan.MAX_BYTES) { "Native lesson content is too large" }
@@ -203,7 +204,7 @@ internal object MarsLessonPackages {
         catch (_: FileAlreadyExistsException) { require(Files.isDirectory(it, NOFOLLOW_LINKS)) { "Package parent is not a regular directory" } }
     }
 
-    private fun regular(root: Path, relative: String): Path {
+    internal fun regular(root: Path, relative: String): Path {
         val parts = relative.split('/')
         var parent = root
         for (part in parts.dropLast(1)) {

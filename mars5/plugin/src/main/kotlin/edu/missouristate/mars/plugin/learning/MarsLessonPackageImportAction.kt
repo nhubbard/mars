@@ -53,6 +53,9 @@ internal class MarsLessonPackageImportAction : DumbAwareAction() {
             runWithModalProgressBlocking(ModalTaskOwner.project(project), packageMessages.getMessage("import.install")) {
                 val installed = withContext(Dispatchers.IO) { snapshot.install(Path.of(root)) }
                 openInstalledPackage(project, installed)
+                withContext(Dispatchers.EDT) {
+                    snapshot.nativeLesson?.let { MarsDownloadedLessons.open(project, MarsDownloadedLessonContent(installed, it)) }
+                }
             }
         } catch (error: IOException) { showFailure(project, error) }
         catch (error: IllegalArgumentException) { showFailure(project, error) }
@@ -108,7 +111,8 @@ internal class MarsLessonPackageFileDialog(project: Project) : DialogWrapper(pro
 
 internal class MarsLessonPackagePreviewDialog(project: Project, prepared: MarsLessonPackages.Prepared) : DialogWrapper(project) {
     val report: String = packageMessages.getMessage("import.summary", prepared.metadata.title, prepared.metadata.id,
-        prepared.metadata.version, prepared.metadata.isa, prepared.sha256)
+        prepared.metadata.version, prepared.metadata.isa, prepared.sha256) +
+        (prepared.nativeLesson?.let { "\n\n" + downloadedLessonMessages.getMessage("import.guided", it.steps.size) } ?: "")
     init {
         title = packageMessages.getMessage("import.confirm")
         setOKButtonText(packageMessages.getMessage("import.accept"))

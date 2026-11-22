@@ -719,3 +719,37 @@ This step validates definitions. Native Learn-pane rendering, scoped feedback,
 source highlighting, hint release and saved/resumable downloaded selection are
 still to be connected. No new IDE lesson walkthrough is claimed for this reader
 milestone. The first unit's bundled native implementation remains unchanged.
+
+## Downloaded prediction runtime
+
+Packages carrying a validated native definition now open their predictions in
+the native Learn pane after import. The public host receives a project-specific
+module directly because its normal course catalogs are cached globally. The
+bundled course catalog remains stable. The new continuation action revalidates
+the selected edition's retained archive before reopening it.
+
+The renderer shares the bundled inline-choice mechanism, with an explicit lesson
+identity for downloaded content. It escapes explanatory text, records wrong and
+correct attempts, retires completed controls, and records graduated hints without
+granting answer credit. Hint availability follows the project's instructor policy.
+History is scoped by package version and full archive digest. Working source is
+preserved when continuing; a missing working file produces an error.
+
+Source pointers resolve committed MIPS PSI by unique label, mnemonic and occurrence
+within that block. Ambiguous, deleted or uncommitted anchors produce no pointer.
+Both instruction resolution and the native timer's geometry callback acquire read
+access. A source pointer does not count as observing execution.
+
+The revised byte-inspector draft supplies the first downloaded prediction segment.
+Actual light-theme IDE walkthroughs click its wrong answers, correct answers and
+graduated hints, then save and close after the second question. A fresh process
+uses the continuation action, resumes the third question at `seb`, preserves an
+ordinary student source comment, and completes the remaining predictions. Capture
+automation remains entirely in the separate authoring plugin. The first capture
+attempt exposed an authoring write-context error; it was corrected and the full
+workflow repeated. All attempts are retained in `native-lesson-runtime-01`.
+
+These are development observations. They do not constitute a learner review,
+new publication figures, or completion of the written lab. Downloaded execution
+checks, independent-writing assessment and the remaining curriculum segments are
+still part of the active goal. Native LaTeX remains the publication authority.
