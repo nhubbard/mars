@@ -507,9 +507,9 @@ class MarsDownloadedLessonsTest {
                 }
                 if (!withRun && !withDebug && !withAssessment) {
                     val missing = anchored.copy(anchor = MarsLessonAnchor("missing", "nop", 0))
-                    taskContext.downloadedPrediction(content.identity, missing)
+                    taskContext.downloadedPrediction(content.identity, missing, content.installed.entry)
                     callbacks(texts.last()(RuntimeTextContext(runtime))!!)
-                    taskContext.downloadedPrediction(content.identity, anchored.copy(anchor = null))
+                    taskContext.downloadedPrediction(content.identity, anchored.copy(anchor = null), content.installed.entry)
                     val retired = callbacks(texts.last()(RuntimeTextContext(runtime))!!)
                     Disposer.dispose(recorder as Disposable)
                     retired.forEach { it() }
