@@ -74,7 +74,7 @@ class MarsFunctionCaseDataTest {
             assertThrows<Exception> { MarsFunctionCaseData.parse(raw.toByteArray()) }
         }
         assertThrows<Exception> { MarsFunctionCaseData.parse(byteArrayOf(0xc3.toByte())) }
-        reject { addProperty("formatVersion", 6) }; reject { addProperty("formatVersion", "1") }
+        reject { addProperty("formatVersion", 7) }; reject { addProperty("formatVersion", "1") }
         reject { remove("cases") }; reject { addProperty("script", "anything.kts") }
         reject { row().remove("instructionLimit") }; reject { row().addProperty("action", "RunWhatever") }
         reject { call().remove("returnTo") }; reject { call().addProperty("predicate", "true") }

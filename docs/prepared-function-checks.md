@@ -259,3 +259,75 @@ Place this object in the case's `transfers` array. Offsets are bytes relative to
 assembled data labels. Version 5 retains version 4's access and caller-stack
 checks. Older versions reject the new field; an omitted or empty array retains
 the earlier behavior. Content remains bounded data and cannot run a script.
+
+## Comparing borrowed and stored addresses
+
+Native function-profile **version 6** adds `expectedAddresses` to a call. It maps
+integer result registers to `FunctionDataAddress` values, resolving each label and
+byte offset from the submitted image. For example, `"v1": {"label":"input",
+"offset":8}` checks the returned borrowed payload pointer without assuming a
+particular load address. Numeric and address expectations cannot name the same
+register, including aliases. A call can declare only an address result, using an
+empty `expectedRegisters` object, or combine addresses with numeric and byte results.
+
+`addressMemory` checks an eight-byte native-endian stored pointer. Each item is
+`{"at":{"label":"payload_address"},"value":{"label":"input"}}`.
+The grader resolves both addresses and uses the captured image's byte order;
+it never dereferences the expected pointer. This distinguishes a complete pointer
+store from truncation at addresses above four GiB. The same definition works after
+relocation and with either byte order. Address-memory and literal-memory results
+share the 64-range / one-MiB limits, and all calls' expected bytes count toward the
+existing combined case budget. Missing data labels are source-check failures.
+
+## Restricting stores across an assembled caller layout
+
+Version 6 also adds case-level `storeBounds`, using `FunctionStoreBoundsCheck`:
+
+```json
+{
+  "from": {"label":"input_guard"},
+  "until": {"label":"state_end","offset":4},
+  "permittedFrom": {"label":"line_a"},
+  "permittedLength": 8
+}
+```
+
+The watched interval is half-open: `from` is included and `until` excluded.
+Every execution store overlapping that interval must fit wholly in the permitted
+window. Reads are not restricted by this assertion. Omit `permittedFrom` and
+`permittedLength` to forbid all watched stores; a zero permitted length has the
+same effect. Use ordinary `accessBounds` for permitted input reads and `noStores`
+for separately protected objects. Temporary or same-value forbidden writes fail,
+including writes into unnamed alignment padding. A wider crossing store is checked
+as a whole notice rather than only its starting address.
+
+Both endpoints and the permitted address resolve from data labels and bounded
+offsets. This avoids assuming the distance between caller objects. Reversed,
+empty or oversized assembled watch intervals fail the source contract. At most
+64 windows and one MiB of combined resolved watched bytes are accepted per case.
+Permitted lengths are bounded to one MiB; a nonzero length requires an address.
+The permitted window can lie outside the watched interval, as when a correct
+submission reorders a selected record. This assertion still governs only stores
+that overlap its watch interval; other protections remain necessary.
+
+The implementation reuses `MemoryAccessTrace`, with its complete 65,536-notice
+history limit and explicit overflow failure. Reads contribute to that bounded
+history even though only stores are checked here. Setup, debugger inspection and
+instruction fetch do not count. Histories span the calls in a case, while existing
+instruction limits still bound execution. The owning `AssemblyCase` detaches all
+observers on completion, failure or cancellation. Nested result maps and lists are
+captured and revalidated before a machine opens. Older profile versions reject
+these new fields instead of silently weakening their meaning; version 6 without
+them retains the earlier behavior. No executable script is supplied by this data.
+
+Version 6's `noExecution` case field declares up to 32 distinct half-open
+instruction intervals, using the same `{ "from":"label", "until":"label" }`
+data as `helpers`. Every call must complete without executing an instruction in
+any such interval. The grader compares completed instruction counts before and
+after the call. Stopping at the interval's first instruction does not execute it.
+This can distinguish a correct return to a supplied continuation from jumping to
+an earlier continuation and falling through to the requested stop. It imposes no
+private helper names or order beyond the explicitly declared public interval.
+Missing/reversed assembled intervals fail as source contracts; duplicate or
+excessive definitions reject before execution. Existing helper-presence checks
+and all prior formats retain their behavior.

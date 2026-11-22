@@ -12,6 +12,8 @@ import edu.missouristate.mars.cli.grading.FunctionMemoryCheck
 import edu.missouristate.mars.cli.grading.FunctionNoStoreCheck
 import edu.missouristate.mars.cli.grading.FunctionHelperCheck
 import edu.missouristate.mars.cli.grading.FunctionTransferCheck
+import edu.missouristate.mars.cli.grading.FunctionStoreBoundsCheck
+import edu.missouristate.mars.cli.grading.FunctionAddressMemoryCheck
 import java.util.List.copyOf
 import java.util.Map.copyOf as copyMap
 
@@ -26,11 +28,12 @@ internal object MarsFunctionCaseData {
         val root = MarsLessonJson.parse(bytes, MAX_BYTES)
         root.fields(setOf("formatVersion", "cases"))
         val version = root.get("formatVersion").toString()
-        require(version in setOf("1", "2", "3", "4", "5")) { "Unsupported function-case format" }
+        require(version in setOf("1", "2", "3", "4", "5", "6")) { "Unsupported function-case format" }
         val cases = root.array("cases", 1, 256).map { value ->
             val row = value.objectValue()
             val required = setOf("name", "calls", "instructionLimit")
             val extensions = when (version) {
+                "6" -> setOf("initialMemory", "noStores", "accessBounds", "protectCallerStack", "transfers", "storeBounds", "noExecution")
                 "5" -> setOf("initialMemory", "noStores", "accessBounds", "protectCallerStack", "transfers")
                 "4" -> setOf("initialMemory", "noStores", "accessBounds", "protectCallerStack")
                 "3" -> setOf("initialMemory", "noStores")
@@ -43,28 +46,55 @@ internal object MarsFunctionCaseData {
             val calls = row.array("calls", 1, 512).map {
                 val call = it.objectValue()
                 val callRequired = setOf("entry", "returnTo", "arguments", "expectedRegisters")
-                call.fields(callRequired + if (version != "1") setOf("argumentAddresses", "memory") else emptySet(), callRequired)
+                call.fields(callRequired + (if (version != "1") setOf("argumentAddresses", "memory") else emptySet()) +
+                    (if (version == "6") setOf("expectedAddresses", "addressMemory") else emptySet()), callRequired)
                 FunctionCallCheck(call.string("entry", 128), call.string("returnTo", 128),
                     registers(call, "arguments"), registers(call, "expectedRegisters"),
-                    addresses(call), memory(call, "memory"))
+                    addresses(call), memory(call, "memory"), addresses(call, "expectedAddresses"), addressMemory(call))
             }
-            val helpers = if (row.has("helpers")) row.array("helpers", 0, 32).map {
-                val helper = it.objectValue()
-                helper.fields(setOf("from", "until"))
-                FunctionHelperCheck(helper.string("from", 128), helper.string("until", 128))
-            } else emptyList()
+            val helpers = intervals(row, "helpers")
             val preserved = if (row.has("preservedRegisters")) row.array("preservedRegisters", 0, 32).map { text(it, 32) } else emptyList()
             FunctionCheckCase(name, copyOf(calls), row.number("instructionLimit").toLong(),
                 if (row.has("initialRegisters")) registers(row, "initialRegisters") else emptyMap(), copyOf(preserved), copyOf(helpers),
                 if (row.has("stackAlignment")) row.number("stackAlignment") else 16,
                 if (row.has("callerStackBytes")) row.number("callerStackBytes") else 32,
-                memory(row, "initialMemory"), protectedRegions(row), accessBounds(row), row.callerStackProtection(), transfers(row))
+                memory(row, "initialMemory"), protectedRegions(row), accessBounds(row), row.callerStackProtection(), transfers(row), storeBounds(row), intervals(row, "noExecution"))
         }
         require(cases.map { it.name }.distinct().size == cases.size) { "Function-case names must be unique" }
         require(cases.sumOf { it.calls.size.toLong() } <= 4096 && cases.sumOf { it.instructionLimit } <= 10_000_000) {
             "Combined function cases exceed the call or instruction budget"
         }
         return copyOf(cases)
+    }
+
+    private fun intervals(row: JsonObject, field: String): List<FunctionHelperCheck> {
+        if (!row.has(field)) return emptyList()
+        return copyOf(row.array(field, 0, 32).map {
+            val helper = it.objectValue()
+            helper.fields(setOf("from", "until"))
+            FunctionHelperCheck(helper.string("from", 128), helper.string("until", 128))
+        })
+    }
+
+    private fun addressMemory(call: JsonObject): List<FunctionAddressMemoryCheck> {
+        if (!call.has("addressMemory")) return emptyList()
+        return copyOf(call.array("addressMemory", 0, 64).map {
+            val region = it.objectValue()
+            region.fields(setOf("at", "value"))
+            FunctionAddressMemoryCheck(dataAddress(region.get("at")), dataAddress(region.get("value")))
+        })
+    }
+
+    private fun storeBounds(row: JsonObject): List<FunctionStoreBoundsCheck> {
+        if (!row.has("storeBounds")) return emptyList()
+        return copyOf(row.array("storeBounds", 0, 64).map {
+            val range = it.objectValue()
+            val required = setOf("from", "until")
+            range.fields(required + setOf("permittedFrom", "permittedLength"), required)
+            FunctionStoreBoundsCheck(dataAddress(range.get("from")), dataAddress(range.get("until")),
+                if (range.has("permittedFrom")) dataAddress(range.get("permittedFrom")) else null,
+                if (range.has("permittedLength")) range.number("permittedLength") else 0)
+        })
     }
 
     private fun transfers(row: JsonObject): List<FunctionTransferCheck> {
@@ -117,9 +147,9 @@ internal object MarsFunctionCaseData {
         })
     }
 
-    private fun addresses(row: JsonObject): Map<String, FunctionDataAddress> {
-        if (!row.has("argumentAddresses")) return emptyMap()
-        val values = row.get("argumentAddresses").objectValue()
+    private fun addresses(row: JsonObject, field: String = "argumentAddresses"): Map<String, FunctionDataAddress> {
+        if (!row.has(field)) return emptyMap()
+        val values = row.get(field).objectValue()
         require(values.size() <= 32) { "Declare at most 32 data-address arguments" }
         return copyMap(values.entrySet().associate { (name, value) ->
             require(name.length <= 32) { "Register name is too long" }
