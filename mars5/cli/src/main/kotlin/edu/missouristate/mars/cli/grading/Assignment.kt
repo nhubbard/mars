@@ -303,6 +303,11 @@ class AssemblyCase internal constructor(
         }
     }
 
+    /** Prepare bytes relative to a submitted data label rather than fixing its allocation address. */
+    fun setBytes(label: String, vararg bytes: Int, offset: Int = 0) {
+        setBytes(dataAddress(label, offset.toLong(), alignment = 1), *bytes)
+    }
+
     /** Prepare ordinary user-data bytes before execution, preserving surrounding bytes and byte order. */
     fun setBytes(address: Long, vararg bytes: Int) {
         require(address >= 0 && (bytes.isEmpty() || address <= Long.MAX_VALUE - (bytes.size - 1L))) {

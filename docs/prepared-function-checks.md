@@ -87,3 +87,58 @@ have at most 32 unique registers; a case has at most 32 unique helper intervals.
 Cancellation is checked before each case, during image loading, and before and
 after each bounded call. Cancellation propagates rather than becoming a failed
 student case.
+
+## Functions that return results in memory
+
+`FunctionCallCheck.argumentAddresses` passes the submitted assembly's actual data
+addresses. Each `FunctionDataAddress` names a public data label and an optional
+signed byte offset. These arguments are separate from integer literals and share
+the same unique-register validation: neither form can initialize zero, `sp` or
+`ra`, or supply two aliases for one register. A moved data allocation therefore
+does not change the contract.
+
+`FunctionCheckCase.initialMemory` prepares exact bytes before execution, once per
+fresh case. `FunctionCallCheck.memory` compares exact bytes after that invocation
+returns. Both use `FunctionMemoryCheck(label, bytes, offset)`, with hexadecimal
+byte pairs in increasing address order. This is a byte contract, not an implicit
+host-endian word encoding. Authors must encode numerical words for the intended
+image byte order. An offset defaults to zero and is bounded to plus or minus one
+MiB. Data labels must resolve to accessible user data in the assembled submission;
+a missing label, a text label or an inaccessible byte fails the named case.
+
+For example, a renderer can accept a source and frame pointer, preserve incoming
+saved registers, and return with a known byte pattern in the destination without
+promising any value in `v0`:
+
+```kotlin
+FunctionCheckCase(
+    name = "overwrite a prefilled destination",
+    calls = listOf(FunctionCallCheck(
+        entry = "render",
+        returnTo = "after_render",
+        arguments = emptyMap(),
+        expectedRegisters = emptyMap(),
+        argumentAddresses = mapOf(
+            "a0" to FunctionDataAddress("source"),
+            "a1" to FunctionDataAddress("frame"),
+        ),
+        memory = listOf(FunctionMemoryCheck("frame", "00000000ffffff00")),
+    )),
+    initialMemory = listOf(FunctionMemoryCheck("frame", "5a5a5a5a5a5a5a5a")),
+)
+```
+
+At least one expected register or memory range is required for every call. A call
+admits at most 64 expected ranges; a case admits at most 64 setup ranges. Individual
+ranges and the sum of setup bytes plus all per-call expected bytes are bounded to
+one MiB per case. Setup ranges are applied in declared order; overlapping setup
+bytes take the last declared value, as successive setup writes in the assignment
+DSL do. Expected ranges are independent assertions. All nested lists and address
+maps are captured and revalidated before opening a session.
+
+These checks compare bytes at return boundaries. They do not require a particular
+store width, prohibit temporary writes that are later restored, or establish a
+complete write history. The caller-stack comparison and optional helper traces
+remain separate obligations. The label-relative `AssemblyCase.setBytes` overload
+uses the same stopped-session byte editor as absolute-address setup and preserves
+unmentioned bytes of partial words.

@@ -16,15 +16,20 @@ data class FunctionCallCheck(
     val returnTo: String,
     val arguments: Map<String, Long>,
     val expectedRegisters: Map<String, Long>,
+    val argumentAddresses: Map<String, FunctionDataAddress> = emptyMap(),
+    val memory: List<FunctionMemoryCheck> = emptyList(),
 ) {
     init {
         functionLabel(entry)
         functionLabel(returnTo)
         require(entry != returnTo) { "Function entry and continuation must differ" }
-        functionRegisters(arguments, writable = true)
-        require(arguments.keys.none { functionRegister(it) in setOf(29, 31) }) { "Arguments cannot replace the stack or return pointer" }
+        require(arguments.keys.intersect(argumentAddresses.keys).isEmpty()) { "An argument cannot have both integer and address setup" }
+        val prepared = arguments + argumentAddresses.mapValues { 0L }
+        functionRegisters(prepared, writable = true)
+        require(prepared.keys.none { functionRegister(it) in setOf(29, 31) }) { "Arguments cannot replace the stack or return pointer" }
         functionRegisters(expectedRegisters, writable = false)
-        require(expectedRegisters.isNotEmpty()) { "Declare a function result" }
+        functionMemory(memory)
+        require(expectedRegisters.isNotEmpty() || memory.isNotEmpty()) { "Declare a register or memory function result" }
     }
 }
 
@@ -52,6 +57,7 @@ data class FunctionCheckCase(
     val helpers: List<FunctionHelperCheck> = emptyList(),
     val stackAlignment: Int = 16,
     val callerStackBytes: Int = 32,
+    val initialMemory: List<FunctionMemoryCheck> = emptyList(),
 ) {
     init {
         require(name.isNotBlank() && name.length <= 128) { "Choose a nonempty function case name of at most 128 characters" }
@@ -62,10 +68,15 @@ data class FunctionCheckCase(
         require(helpers.size <= 32 && helpers.distinct().size == helpers.size) { "Duplicate or excessive helper intervals" }
         require(stackAlignment in 1..4096 && stackAlignment and (stackAlignment - 1) == 0) { "Stack alignment must be a power of two through 4096" }
         require(callerStackBytes in 0..65536) { "Observe at most 65536 caller stack bytes" }
+        functionMemory(initialMemory)
+        require(initialMemory.sumOf { it.byteLength.toLong() } +
+            calls.sumOf { call -> call.memory.sumOf { it.byteLength.toLong() } } <= ConsoleMemoryCheck.MAX_BYTES) {
+            "Combined function setup and expected memory exceed one MiB per case"
+        }
     }
 }
 
-private fun functionLabel(label: String) {
+internal fun functionLabel(label: String) {
     require(label.length <= 128 && Regex("[A-Za-z_.$][A-Za-z0-9_.$]*").matches(label)) { "Expected a public assembly label" }
 }
 
@@ -93,9 +104,10 @@ object PreparedFunctionChecks {
         // containers cannot change a later call or bypass constructor validation.
         val captured = copyOf(cases).map { case ->
             case.copy(calls = copyOf(case.calls).map {
-                it.copy(arguments = copyMap(it.arguments), expectedRegisters = copyMap(it.expectedRegisters))
+                it.copy(arguments = copyMap(it.arguments), expectedRegisters = copyMap(it.expectedRegisters),
+                    argumentAddresses = copyMap(it.argumentAddresses), memory = copyOf(it.memory))
             }, initialRegisters = copyMap(case.initialRegisters), preservedRegisters = copyOf(case.preservedRegisters),
-                helpers = copyOf(case.helpers))
+                helpers = copyOf(case.helpers), initialMemory = copyOf(case.initialMemory))
         }
         require(captured.size in 1..256 && captured.map { it.name }.distinct().size == captured.size) { "Declare 1 through 256 uniquely named function cases" }
         require(captured.sumOf { it.calls.size.toLong() } <= 4096 && captured.sumOf { it.instructionLimit } <= 10_000_000) {
@@ -127,6 +139,7 @@ object PreparedFunctionChecks {
     }
 
     private fun evaluateCalls(execution: AssemblyCase, case: FunctionCheckCase, checkCancellation: () -> Unit) {
+        for (range in case.initialMemory) execution.setBytes(range.label, *range.decoded(), offset = range.offset)
         for ((register, value) in case.initialRegisters) execution.setRegister(register, value)
         val top = execution.readRegister("sp") and -case.stackAlignment.toLong()
         execution.setRegister("sp", top)
@@ -143,11 +156,13 @@ object PreparedFunctionChecks {
         for ((index, call) in case.calls.withIndex()) {
             checkCancellation()
             for ((register, value) in call.arguments) execution.setRegister(register, value)
+            for ((register, address) in call.argumentAddresses) execution.setRegisterToDataAddress(register, address.label, address.offset.toLong())
             execution.enterFunction(call.entry, call.returnTo)
             val saved = case.preservedRegisters.associateWith(execution::readRegister)
             val before = helpers.map { it.snapshot().instructions }
             execution.runUntil(call.returnTo)
             for ((register, value) in call.expectedRegisters) execution.expectRegister(register, value)
+            for (range in call.memory) execution.expectBytes(range.label, *range.decoded(), offset = range.offset)
             execution.expectRegister("sp", top)
             for ((register, value) in saved) execution.expectRegister(register, value)
             execution.expectCondition(execution.readBytes(top, case.callerStackBytes).contentEquals(callerBytes),
