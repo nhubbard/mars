@@ -565,3 +565,30 @@ remain permitted. The existing after-return stack-byte and pointer comparisons
 are unchanged. Versions 1 through 3 reject either new field, even an empty array
 or false, rather than silently skipping the check. Native lesson format 6 is
 unchanged; this version belongs to the separate function-case profile.
+
+## Function profile version 7: output initialization
+
+Native lesson format 6 also accepts function-profile version 7. This separate
+profile version retains the earlier register/address, ownership, transfer and
+execution-interval checks. It adds optional case-level `initializedOutput`:
+
+```json
+"initializedOutput": [
+  {"at":{"label":"output","offset":8},"length":16}
+]
+```
+
+Each range requires exactly `at` and `length`. `at` has the existing data-address
+form, with a public data label and optional bounded signed byte offset. Length
+is an exact integer from zero through 1048576. At most 64 ranges and a combined
+one MiB per case are allowed. An absent field or empty array imposes no new rule;
+versions 1–6 reject the field rather than silently ignoring it.
+
+Every selected byte must be written during each call, before its first execution
+read. Later reads and repeated writes are allowed in any order. A zero range has
+no bytes to initialize. Setup, previous calls and host inspection do not count.
+The grader observes each intersecting byte of a native data notice; existing
+access/store bounds separately govern ownership of the complete access. Check
+final values with the ordinary memory expectations. This permits equivalent
+reduction schedules without requiring exact instructions, notices or cache
+counts. See `prepared-function-checks.md` for the observation lifecycle and limits.
