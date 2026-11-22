@@ -21,6 +21,7 @@ import com.intellij.xdebugger.evaluation.ExpressionInfo
 import com.intellij.xdebugger.evaluation.XDebuggerEvaluator
 import edu.missouristate.mars.api.AssemblySymbolMap.Definition
 import edu.missouristate.mars.api.AssemblySymbolMap.SourceToken
+import edu.missouristate.mars.api.InstructionSourceMap
 import edu.missouristate.mars.api.InstructionSourceMap.SourceOperand
 import edu.missouristate.mars.assembler.RegisterNames
 import edu.missouristate.mars.assembler.TokenTypes
@@ -56,6 +57,8 @@ internal class MarsExpressionEvaluator(
     private val watchRequests: SendChannel<WatchMemoryRequest>,
 ) : XDebuggerEvaluator() {
     private val wide = machine.target == MarsTarget.MARS64
+    /** Immutable assembly metadata for this stopped snapshot; no live machine access is needed by consumers. */
+    val instructionSources: InstructionSourceMap = machine.program!!.sourceMap()
     val instructionWord: Int?
     private val expandedOperands: List<SourceOperand>
     init {
