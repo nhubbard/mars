@@ -68,6 +68,10 @@ resolves the current committed PSI, requires a unique label, and counts matching
 mnemonics within that block. Missing or ambiguous anchors produce no highlight.
 The native highlight callback acquires read access when its timer asks for fresh
 geometry. An anchor does not establish that an instruction has executed.
+Each prediction's preparation reopens its working source with the public editor
+API, including after a Run has selected a non-text tool tab such as Bitmap Display.
+The highlight then follows native editor selection; its timer does not repeatedly
+steal focus from tools the student chooses to inspect.
 
 Each project's history is scoped by course, package ID, version and complete ZIP
 digest. Correct answers are skipped when continuing that edition. Wrong attempts
