@@ -43,7 +43,8 @@ internal fun LessonContext.downloadedAssessment(content: MarsDownloadedLessonCon
                 }
             }
             escapeXmlEntities(step.explanation) + "&#10;<callback id=\"$callback\">" +
-                escapeXmlEntities(downloadedLessonMessages.getMessage("assessment.check")) + "</callback>&#10;" +
+                // Keep the line feed inside the link: the host discards a whitespace-only text node.
+                escapeXmlEntities(downloadedLessonMessages.getMessage("assessment.check")) + "&#10;</callback>" +
                 MarsLessonHints.text(project, identity, step.id, step.hints, active = { !disposed && !checkpoint.passed() }, feedback = show)
         }
         timerCheck { checkpoint.passed() }
