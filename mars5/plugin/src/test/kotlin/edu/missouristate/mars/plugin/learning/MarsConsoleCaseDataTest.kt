@@ -34,7 +34,7 @@ class MarsConsoleCaseDataTest {
             valid.replace("\"input 0\"", "\"a\",\"name\":\"b\""))) {
             assertThrows<Exception> { MarsConsoleCaseData.parse(raw.toByteArray()) }
         }
-        for (version in listOf("true", "\"1\"", "1.0", "3")) reject { add("formatVersion", JsonParser.parseString(version)) }
+        for (version in listOf("true", "\"1\"", "1.0", "4")) reject { add("formatVersion", JsonParser.parseString(version)) }
         reject { remove("formatVersion") }
         reject { addProperty("action", "RunWhatever") }
         reject { add("cases", JsonObject()) }

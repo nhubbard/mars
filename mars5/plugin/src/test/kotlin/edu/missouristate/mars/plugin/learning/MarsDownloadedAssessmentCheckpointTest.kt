@@ -150,6 +150,28 @@ class MarsDownloadedAssessmentCheckpointTest {
     }
 
     @Test
+    fun `matching final state cannot replace the required repeated device transactions`() = timeoutRunBlocking {
+        val profile = """{"formatVersion":3,"cases":[{"name":"two writes","input":"","stdout":"","instructionLimit":1000,"initialMemory":[{"address":"0x0000000010010000","bytes":"07000000"}],"memory":[{"address":"0x0000000010010000","bytes":"07000000"}],"stores":[{"kind":"bytes","address":"0x00000000ffff0000","length":65536,"port":"0x00000000ffff0010","bytes":"0707"},{"kind":"none","address":"0x0000000010010000","length":4}],"reads":[{"address":"0x0000000010010000","length":4,"allowedAddress":"0x0000000010010000","allowedLength":1}]}]}"""
+        val traceStep = step.copy(cases = MarsConsoleCaseData.parse(profile.toByteArray()))
+        val failed = $$".data\n.word 0\n.text\nlbu $t0,0x10010000\ndli $t7,0xffff0010\nsb $t0,0($t7)\nli $v0,10\nsyscall\n"
+        val lifetime = Disposer.newDisposable()
+        try {
+            val checkpoint = withContext(Dispatchers.EDT) {
+                val file = fixture.addFileToProject("trace-check.asm", failed).virtualFile
+                fixture.configureFromExistingVirtualFile(file)
+                MarsDownloadedAssessmentCheckpoint(projects.get(), lifetime, file.toNioPath(), fixture.editor.document, identity, traceStep, { true })
+            }
+            val wrong = assertInstanceOf(Feedback.Checked::class.java, checkpoint.check())
+            assertFalse(wrong.results.single().passed)
+            assertTrue(wrong.results.single().failure!!.contains("Expected 2 byte stores"))
+            assertFalse(checkpoint.passed()); assertEquals(1, count())
+            edit(fixture.editor.document, failed.replace($$"li $v0,10", $$"sb $t0,0($t7)\nli $v0,10"))
+            assertTrue(assertInstanceOf(Feedback.Checked::class.java, checkpoint.check()).results.single().passed)
+            assertTrue(checkpoint.passed()); assertEquals(2, count())
+        } finally { withContext(Dispatchers.EDT) { Disposer.dispose(lifetime) } }
+    }
+
+    @Test
     fun `instructor gates and per-activity budgets are checked without erasing previously valid evidence`() = timeoutRunBlocking {
         val policy = projects.get().service<MarsLearningPolicy>()
         var predictions = false
