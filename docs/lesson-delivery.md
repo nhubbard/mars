@@ -43,18 +43,36 @@ Included grading scripts are copied as files. Importing does not execute them.
 The student may run appropriate public checks separately using the documented
 MARS tools. Downloading an original assignment does not register its steps as a
 native interactive lesson. Packages may explicitly opt into an optional
-`nativeLesson` prediction definition, validated before preview using the
+`nativeLesson` activity definition, validated before preview using the
 [native lesson contract](native-lesson-format.md). Importing that package opens
 its inline questions, feedback, hints and source pointers in Learn. Format-2
-lessons can interleave these with observations of ordinary Run. The preview
-states how many guided activities it includes.
+lessons can interleave these with observations of ordinary Run. Format 3 adds
+ordered Debug observations, and format 4 adds independent console assessments
+bound to immutable public case data. The preview states the activity count.
 
 Use **Tools → Continue Downloaded MARS Lab** to reopen the project's selected
-edition with saved answers and hints. Continuation revalidates the retained
+edition and last selected activity with saved answers and hints. Continuation revalidates the retained
 archive and preserves student source edits. Predictions retain their answer
 history. Run observations require matching source, consumed integer inputs,
 console output and normal termination, and must be repeated after source edits.
-Follow the written lab for Debug investigations and independent-writing work.
+Debug observations also require the requested source boundaries, full register
+values and coherent forward execution. Independent checks evaluate the activity's
+current editor text in separate machines and retain completed-attempt counts.
+Each route preserves source-bound evidence; switching modes grants no credit.
+
+Use **Tools → Choose Downloaded MARS Lab Activity…** to open guided work or choose
+an independent exercise directly. The selected destination is personal workspace
+state bound to this exact package directory and edition. Importing an edition
+starts in guided work. Opening an independent exercise uses the same source,
+immutable case profile, progress identity and instructor limits as reaching it
+from guided work. Instructor prediction prerequisites still apply to checking;
+navigation cannot satisfy or reset them. A course restriction removes independent
+choices from the dialog and blocks continuation into them. Choosing guided work
+remains available. Cancellation preserves the previous destination.
+
+The native host receives a guided lesson and one lesson for each independent
+activity through its public module and lesson APIs. Course definitions remain in
+the retained archive, with no global project-specific course registration.
 Legacy assignment packages keep their file-import behavior.
 
 ## Verification

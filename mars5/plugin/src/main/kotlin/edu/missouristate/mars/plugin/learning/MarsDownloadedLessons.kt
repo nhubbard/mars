@@ -54,11 +54,18 @@ internal data class MarsDownloadedLessonContent(val installed: MarsLessonPackage
 @State(name = "MarsDownloadedLessonSelection", storages = [Storage(StoragePathMacros.WORKSPACE_FILE)])
 internal class MarsDownloadedLessonSelection(private val project: Project) :
     SerializablePersistentStateComponent<MarsDownloadedLessonSelection.Selection>(Selection()) {
-    data class Selection(@JvmField var directory: String = "")
+    data class Selection(@JvmField var directory: String = "", @JvmField var activity: String = "")
     val hasSelection: Boolean get() = getState().directory.isNotBlank()
 
-    fun remember(installed: MarsLessonPackages.Installed) {
-        updateState { Selection(relative(installed)) }
+    fun remember(installed: MarsLessonPackages.Installed, activity: String = "") {
+        updateState { Selection(relative(installed), activity) }
+    }
+
+    fun activity(content: MarsDownloadedLessonContent): String {
+        if (getState().directory != relative(content.installed)) return ""
+        return getState().activity.takeIf { id ->
+            content.plan.steps.filterIsInstance<MarsNativeAssessmentStep>().any { it.id == id }
+        } ?: ""
     }
 
     /** Blocking archive validation, called outside EDT. Missing student files are never rebuilt. */
@@ -85,10 +92,14 @@ internal class MarsDownloadedLessonSelection(private val project: Project) :
 
 /** Native courses are globally cached; directly open this project's immutable content through the public host. */
 internal object MarsDownloadedLessons {
-    fun open(project: Project, content: MarsDownloadedLessonContent) {
-        project.service<MarsDownloadedLessonSelection>().remember(content.installed)
+    fun open(project: Project, content: MarsDownloadedLessonContent, activity: String = "") {
+        require(activity.isEmpty() || content.plan.steps.filterIsInstance<MarsNativeAssessmentStep>().any { it.id == activity })
+        require(activity.isEmpty() || project.service<MarsLearningPolicy>().allowFreeWriting) {
+            downloadedLessonMessages.getMessage("activity.restricted")
+        }
+        project.service<MarsDownloadedLessonSelection>().remember(content.installed, activity)
         ToolWindowManager.getInstance(project).invokeLater {
-            openNow(project, content)
+            openNow(project, content, activity)
         }
     }
 
@@ -96,16 +107,20 @@ internal object MarsDownloadedLessons {
         val support = checkNotNull(LangManager.getInstance().getLangSupportById(MARS_LEARNING_LANGUAGE))
         return object : IftModule("mars.downloaded", content.installed.metadata.title,
             downloadedLessonMessages.getMessage("module.description"), support, LessonType.USER_PROJECT,
-            { listOf(MarsDownloadedLesson(content)) }) {
+            { listOf(MarsDownloadedLesson(content)) + content.plan.steps.filterIsInstance<MarsNativeAssessmentStep>()
+                .map { MarsDownloadedIndependentLesson(content, it) } }) {
             override val sampleFilePath: String? = null
             override fun preferredLearnWindowAnchor(project: Project) = ToolWindowAnchor.LEFT
         }
     }
 
-    internal fun openNow(project: Project, content: MarsDownloadedLessonContent) {
+    internal fun openNow(project: Project, content: MarsDownloadedLessonContent, activity: String = "") {
         if (project.isDisposed) return
         LangManager.getInstance().updateLangSupport(MARS_LEARNING_LANGUAGE)
-        CourseManager.instance.openLesson(project, module(content).lessons.single(), LessonStartingWay.LEARN_TAB, forceStartLesson = true)
+        val lessons = module(content).lessons
+        val lesson = if (activity.isEmpty()) lessons.first()
+            else lessons.filterIsInstance<MarsDownloadedIndependentLesson>().single { it.activity == activity }
+        CourseManager.instance.openLesson(project, lesson, LessonStartingWay.LEARN_TAB, forceStartLesson = true)
     }
 }
 
@@ -115,6 +130,7 @@ internal class MarsDownloadedLesson(private val content: MarsDownloadedLessonCon
     override val properties = LessonProperties(openFileAtStart = false)
     override val alwaysRestart = true
     override fun prepare(project: Project) {
+        project.service<MarsDownloadedLessonSelection>().remember(content.installed)
         project.service<MarsLearningProgress>().open(content.identity, content.identity.contentSha256)
     }
     override val lessonContent: LessonContext.() -> Unit = {
@@ -249,7 +265,8 @@ internal class MarsContinueDownloadedLessonAction : DumbAwareAction() {
             val content = runWithModalProgressBlocking(ModalTaskOwner.project(project), downloadedLessonMessages.getMessage("resume.loading")) {
                 withContext(Dispatchers.IO) { project.service<MarsDownloadedLessonSelection>().load() }
             }
-            MarsDownloadedLessons.open(project, content)
+            val activity = project.service<MarsDownloadedLessonSelection>().activity(content)
+            MarsDownloadedLessons.open(project, content, activity)
         } catch (error: IOException) { failure(project, error) }
         catch (error: IllegalArgumentException) { failure(project, error) }
         catch (error: JsonParseException) { failure(project, error) }

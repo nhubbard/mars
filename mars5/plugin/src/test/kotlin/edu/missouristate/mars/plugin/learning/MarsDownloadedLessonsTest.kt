@@ -269,11 +269,12 @@ class MarsDownloadedLessonsTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = ["prediction", "run", "debug", "assessment"])
+    @ValueSource(strings = ["prediction", "run", "debug", "assessment", "independent"])
     fun `downloaded DSL opens its entry and binds only its own answers and source anchors`(mode: String) = timeoutRunBlocking {
         val withRun = mode == "run"
         val withDebug = mode == "debug"
-        val withAssessment = mode == "assessment"
+        val independent = mode == "independent"
+        val withAssessment = mode == "assessment" || independent
         withContext(Dispatchers.EDT) {
             val project = projects.get()
             val installed = install(project)
@@ -295,7 +296,8 @@ class MarsDownloadedLessonsTest {
             }
             fixture.configureFromExistingVirtualFile(virtual)
             val file = fixture.file
-            val lesson = MarsDownloadedLessons.module(content).lessons.single()
+            val lessons = MarsDownloadedLessons.module(content).lessons
+            val lesson = if (independent) lessons.last() else lessons.first()
             lesson.prepare(project)
             // The native registrar is internal. Reflection is confined to tests;
             // the packaged implementation only calls the public task DSL.
@@ -335,18 +337,26 @@ class MarsDownloadedLessonsTest {
                     (field.get(task) as? (TaskContext.() -> Unit))?.invoke(taskContext)
                 }
                 for (future in preparations) assertTrue(future.await())
-                assertEquals(1, checks.size); assertFalse(checks.single()(runtime))
+                assertEquals(if (independent) 0 else 1, checks.size)
+                if (!independent) assertFalse(checks.single()(runtime))
                 val rendered = eagerTexts + texts.mapNotNull { it(RuntimeTextContext(runtime)) }
-                assertTrue(rendered.any { it.contains("Intro &lt; &amp; &gt;") }, "Introduction must be escaped")
-                assertTrue(rendered.any { it.contains("End &lt; &amp; &gt;") }, "Conclusion must be escaped")
-                val controls = callbacks(rendered.single { it.contains("Which value?") })
+                if (independent) {
+                    assertTrue(rendered.any { it.contains("Write and investigate this program") })
+                    assertFalse(rendered.any { it.contains("Which value?") })
+                } else {
+                    assertTrue(rendered.any { it.contains("Intro &lt; &amp; &gt;") }, "Introduction must be escaped")
+                    assertTrue(rendered.any { it.contains("End &lt; &amp; &gt;") }, "Conclusion must be escaped")
+                }
+                val controls = if (independent) emptyList() else callbacks(rendered.single { it.contains("Which value?") })
                 val runControls = if (withRun) callbacks(rendered.single { it.contains("Run &lt;this&gt; program.") }) else emptyList()
                 val assessmentControls = if (withAssessment) callbacks(rendered.single { it.contains("Check &lt;this&gt; program.") }) else emptyList()
                 val debugControls = if (withDebug) callbacks(rendered.single { it.contains("Debug &lt;this&gt; program.") }) else emptyList()
                 rendered.filter { it.contains("<callback") && !it.contains("Which value?") && !it.contains("Run &lt;this&gt; program.") &&
                     !it.contains("Debug &lt;this&gt; program.") && !it.contains("Check &lt;this&gt; program.") }.forEach { callbacks(it) }
-                controls[0](); assertFalse(checks.single()(runtime))
-                controls[1](); assertTrue(checks.single()(runtime))
+                if (!independent) {
+                    controls[0](); assertFalse(checks.single()(runtime))
+                    controls[1](); assertTrue(checks.single()(runtime))
+                }
                 if (withDebug) {
                     assertEquals(3, timers.size)
                     assertTrue(rendered.single { it.contains("Debug &lt;this&gt; program.") }
@@ -455,7 +465,7 @@ class MarsDownloadedLessonsTest {
                     val scope = MarsLearningExecution::class.java.getDeclaredField("scope").apply { isAccessible = true }
                         .get(project.service<MarsLearningExecution>()) as CoroutineScope
                     suspend fun waitChecks() { scope.coroutineContext[Job]!!.children.toList().joinAll() }
-                    assertEquals(2, timers.size)
+                    assertEquals(if (independent) 1 else 2, timers.size)
                     assertTrue(rendered.single { it.contains("Check &lt;this&gt; program.") }
                         .contains("Check this program&#10;</callback>"))
                     assertTrue(timers.none { it(runtime) })
