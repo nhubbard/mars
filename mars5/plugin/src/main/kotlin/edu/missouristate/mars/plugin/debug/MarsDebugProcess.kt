@@ -114,6 +114,9 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
         }
     }
     private var suspensionNumber = 0L
+    // A pause number also advances after reverse execution. Keep a separate history
+    // revision so instructional checks can require an unmodified forward execution.
+    private var executionRevision = 0L
     @Volatile private lateinit var sources: MarsExecutionSources
     private val loadedSymbols = MutableStateFlow<LoadedSymbols?>(null)
     private val handler = state.createProcess { machine, executionSources ->
@@ -340,6 +343,7 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
             while (true) {
                 val backstep = command.backstep
                 if (backstep != null) {
+                    executionRevision++
                     process.backstepSlice(engine, wholeSource = backstep == ReverseStep.SOURCE)
                     withSuspension(machine, calls) { pause ->
                         withContext(Dispatchers.EDT) { session.positionReached(pause.context) }
@@ -485,10 +489,11 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
             return
         }
         if (changed) {
+            executionRevision++
             machine.claimStoppedSession().use {
                 val pc = machine.registerFile.programCounterBits
                 val origin = machine.memory.sourceStatement(pc)?.instructionOrigin
-                context.refresh(machine, sourcePosition(origin), origin?.let { SourceStep(pc, it) })
+                context.refresh(machine, sourcePosition(origin), origin?.let { SourceStep(pc, it) }, executionRevision)
             }
         }
         withContext(Dispatchers.EDT) { request.callback.valueModified() }
@@ -546,6 +551,7 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
             origin?.let { SourceStep(pc, it) },
             stepOutTarget,
             MarsExecutionStack(frame, callers, ::sourcePosition, frameScope),
+            executionRevision,
         )
     }
 
@@ -583,7 +589,11 @@ internal class MarsSuspendContext(
     sourceStep: SourceStep?,
     val stepOutTarget: DebuggerCallStack.StepOutTarget?,
     private val stack: MarsExecutionStack,
+    executionRevision: Long,
 ) : XSuspendContext() {
+    /** Changes only for an applied machine edit or reverse execution, never for inspection or a failed edit. */
+    @Volatile var executionRevision = executionRevision
+        private set
     @Volatile var canBackstep = canBackstep
         private set
     @Volatile var memoryRegions = memoryRegions
@@ -596,8 +606,9 @@ internal class MarsSuspendContext(
     @Volatile var sourceStep = sourceStep
         private set
 
-    fun refresh(machine: MarsContext, position: XSourcePosition?, step: SourceStep?) {
+    fun refresh(machine: MarsContext, position: XSourcePosition?, step: SourceStep?, revision: Long) {
         frame.refresh(machine, position)
+        executionRevision = revision
         sourceStep = step
         canBackstep = machine.backStepper.canBackstep()
         memoryRegions = MemoryRegion.entries.associateWith { it.address(machine) }
