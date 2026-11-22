@@ -34,7 +34,10 @@ internal object MarsLessonPackages {
         init { require(listOf(archiveBytes, fileBytes, expandedBytes, entries.toLong()).all { it > 0 }) }
     }
 
-    data class Metadata(val id: String, val version: String, val title: String, val isa: String, val entry: String, val assignment: String)
+    data class Metadata(
+        val id: String, val version: String, val title: String, val isa: String,
+        val entry: String, val assignment: String, val nativeLesson: String?,
+    )
     data class Installed(val metadata: Metadata, val sha256: String, val directory: Path, val reused: Boolean) {
         val entry: Path get() = directory.resolve(metadata.entry)
         val assignment: Path get() = directory.resolve(metadata.assignment)
@@ -44,7 +47,7 @@ internal object MarsLessonPackages {
     /** The bounded private snapshot binds preview and installation even if the selected ZIP changes. */
     class Prepared internal constructor(
         val metadata: Metadata, val sha256: String, private val snapshot: Path,
-        private val assets: Map<String, Asset>,
+        private val assets: Map<String, Asset>, val nativeLesson: MarsNativeLessonPlan?,
     ) : AutoCloseable {
         private var closed = false
 
@@ -133,7 +136,15 @@ internal object MarsLessonPackages {
             val data = metadata(requireNotNull(manifest) { "Missing package.json" })
             require(data.id == root) { "Package ID does not match its archive root" }
             require("${data.id}/${data.entry}" in assets && "${data.id}/${data.assignment}" in assets) { "Missing starter or assignment" }
-            return Prepared(data, sha256, snapshot, assets.toMap())
+            val lesson = data.nativeLesson?.let { relative ->
+                val name = "${data.id}/$relative"
+                val asset = requireNotNull(assets[name]) { "Missing native lesson content" }
+                require(asset.size <= MarsNativeLessonPlan.MAX_BYTES) { "Native lesson content is too large" }
+                ZipFile(snapshot.toFile()).use { zip ->
+                    MarsNativeLessonPlan.parse(zip.getInputStream(zip.getEntry(name)).use { it.readAllBytes() })
+                }
+            }
+            return Prepared(data, sha256, snapshot, assets.toMap(), lesson)
         } catch (error: Throwable) {
             FileUtil.delete(temporary.toFile())
             throw error
@@ -168,7 +179,8 @@ internal object MarsLessonPackages {
         val isa = environment.string("isa")
         require(isa in setOf("MIPS64 Release 6", "MIPS64 Release 6 with MSA")) { "Unsupported package ISA" }
         require(environment.string("syscallAbi") == "MARS educational") { "Unsupported package syscall ABI" }
-        return Metadata(id, version, title, isa, path(json.string("entry")), path(json.string("assignment")))
+        val nativeLesson = if (json.has("nativeLesson")) path(json.string("nativeLesson")) else null
+        return Metadata(id, version, title, isa, path(json.string("entry")), path(json.string("assignment")), nativeLesson)
     }
 
     private fun JsonObject.string(name: String): String {
