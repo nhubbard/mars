@@ -78,7 +78,7 @@ The native platform caches course catalogs globally, so downloaded lessons are
 opened directly through its public lesson host with a project-specific module.
 They do not alter the bundled course catalog or its navigation.
 
-Format 1 describes prediction steps and explanatory feedback. Both formats accept no
+Format 1 describes prediction steps and explanatory feedback. All formats accept no
 action IDs, class names, executable scripts, execution predicates or grading code.
 Text is data and must be escaped by its renderer. Additional step kinds require
 an explicit format change rather than silently ignored fields.
@@ -138,3 +138,75 @@ Formative client feedback explains material already taught in the publication.
 Private instructor solutions, summative answer keys and hidden grading cases
 remain in the instructor distribution. Native LaTeX remains the book's composition
 authority; this runtime asset does not generate or reorder edited book prose.
+
+## Format 3 ordered Debug observations
+
+Integer `formatVersion: 3` retains the format-2 prediction and Run contracts and
+adds `kind: "debug"`. A Debug activity requires `id`, `explanation`,
+`integerInputs`, `stops` and `success`, with optional graduated `hints`. It has
+one through 32 ordered stops, with distinct stop IDs. Each stop requires `id`,
+`explanation`, `anchor`, `registers` and `success`; stop-specific `hints` are
+optional. The existing text, ID, hint, input and archive limits apply.
+
+```json
+{
+  "kind": "debug",
+  "id": "inspect-extension",
+  "explanation": "Launch a fresh Debug session with input 150. Follow each requested stop in order.",
+  "integerInputs": [150],
+  "stops": [
+    {
+      "id": "after-extension",
+      "explanation": "Pause before the first la under report. Inspect all sixteen hexadecimal digits of t1.",
+      "anchor": {"label": "report", "mnemonic": "la", "occurrence": 0},
+      "registers": {"$t0": "0x0000000000000096", "$t1": "0xffffffffffffff96"},
+      "success": "The sign-extended byte occupies a full 64-bit register. Its upper bits are ones."
+    }
+  ],
+  "success": "Explain why both registers have the same low byte but different upper bits."
+}
+```
+
+`registers` contains one through 32 integer registers. Register names follow the
+assembler's spellings and are normalized to their canonical names. Aliases for
+the same register cannot occur twice in a stop. Values are strings containing
+`0x` followed by exactly sixteen hexadecimal digits, including leading zeroes.
+They denote raw 64-bit patterns, not signed decimal numbers or expressions.
+Floating-point, vector and system registers and `pc` are outside this contract.
+The source anchor establishes the expected program counter separately.
+
+The observer attaches to the native Debug pre-start event for the package entry
+and default assembly options. It checks the captured single-file source and the
+same completed service-5 inputs as Run observations. All declared input must have
+been consumed before the first accepted stop. Each accepted stop requires a new
+pause, the requested complete register values, and the first emitted machine
+instruction of the anchored source operation. A later stop also requires actual
+instruction execution since the preceding accepted stop. A second instruction
+inside a multi-instruction pseudo-operation cannot count as its starting boundary.
+Missing anchors, non-emitting source and ambiguous source-line expansions cannot
+grant evidence.
+
+The debugger captures the immutable instruction source map with its scalar
+snapshot. A separate history revision records applied register or memory edits
+and both reverse commands. Inspection, failed edits, no-op edits and forward
+steps leave that revision unchanged. This initial Debug contract requires an
+unmodified forward session: after an edit or backstep, students can continue
+exploring, then launch a fresh Debug session to record the ordered observations.
+No lesson observer adds breakpoints, supplies input, steps or edits the machine.
+
+Only the newest eligible session can advance an active activity. Source changes,
+history resets, disposal and callbacks retained from an older session cannot
+award progress to the current attempt. Each stop has its own explanatory text,
+source pointer and hint controls. The observer spans the lesson lifetime while
+individual controls retire with their native task. Feedback distinguishes the
+wrong boundary, missing anchor, wrong full-width values, wrong input, modified
+execution history and changed source.
+
+Completion is committed atomically only after every stop succeeds in one
+session. Partial execution evidence is transient; continuing an incomplete
+activity requires a fresh Debug sequence. Completed Debug evidence is saved
+under the activity's separate identity and package digest, and is invalidated
+by a source change. The final lesson gate checks both Run and Debug evidence
+against the current source. These are guided intermediate-state observations;
+they do not impose register names or source anchors on independent-writing
+assessment.

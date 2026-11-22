@@ -8,10 +8,12 @@ import com.google.gson.JsonPrimitive
 import com.google.gson.Strictness
 import com.google.gson.stream.JsonReader
 import com.google.gson.stream.JsonToken
+import edu.missouristate.mars.assembler.RegisterNames
 import java.io.StringReader
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets.UTF_8
 import java.util.List.copyOf
+import java.util.Map.copyOf as copyMap
 import javax.swing.plaf.basic.BasicHTML
 import org.jdom.Verifier
 
@@ -38,6 +40,18 @@ internal data class MarsNativeRunStep(
     override val anchor: MarsLessonAnchor?, override val hints: List<MarsLessonHint>,
 ) : MarsNativeLessonActivity
 
+internal data class MarsNativeDebugStop(
+    val id: String, val explanation: String, val anchor: MarsLessonAnchor,
+    val registers: Map<String, Long>, val success: String, val hints: List<MarsLessonHint>,
+)
+
+internal data class MarsNativeDebugStep(
+    override val id: String, override val explanation: String, val integerInputs: List<Int>,
+    val stops: List<MarsNativeDebugStop>, val success: String, override val hints: List<MarsLessonHint>,
+) : MarsNativeLessonActivity {
+    override val anchor: MarsLessonAnchor get() = stops.first().anchor
+}
+
 /** Data interpreted by the native trainer; downloaded content cannot name executable actions or scripts. */
 internal data class MarsNativeLessonPlan(
     val introduction: String, val conclusion: String, val steps: List<MarsNativeLessonActivity>,
@@ -58,7 +72,7 @@ internal data class MarsNativeLessonPlan(
             val root = element.objectValue()
             root.fields(setOf("formatVersion", "introduction", "conclusion", "steps"))
             val version = root.get("formatVersion").toString()
-            require(version in setOf("1", "2")) { "Unsupported native lesson format" }
+            require(version in setOf("1", "2", "3")) { "Unsupported native lesson format" }
             val steps = root.array("steps")
             require(steps.size() in 1..128) { "A native lesson needs 1 through 128 steps" }
             val parsed = steps.map {
@@ -67,6 +81,10 @@ internal data class MarsNativeLessonPlan(
                 else when (step.text("kind", 32)) {
                     "prediction" -> parsePrediction(step, true)
                     "run" -> parseRun(step)
+                    "debug" -> {
+                        require(version == "3") { "Debug observations require native lesson format 3" }
+                        parseDebug(step)
+                    }
                     else -> throw IllegalArgumentException("Unsupported native lesson activity")
                 }
             }
@@ -98,6 +116,11 @@ internal data class MarsNativeLessonPlan(
         private fun parseRun(step: JsonObject): MarsNativeRunStep {
             val required = setOf("kind", "id", "explanation", "integerInputs", "stdout", "success")
             step.fields(required + setOf("anchor", "hints"), required)
+            return MarsNativeRunStep(step.identifier("id"), step.text("explanation", 8192), integerInputs(step),
+                step.text("stdout", 16384), step.text("success", 8192), anchor(step), hints(step))
+        }
+
+        private fun integerInputs(step: JsonObject): List<Int> {
             val inputs = step.array("integerInputs")
             require(inputs.size() <= 64) { "A Run observation supports at most 64 integer inputs" }
             val parsed = inputs.map {
@@ -106,8 +129,36 @@ internal data class MarsNativeLessonPlan(
                 }
                 requireNotNull(it.asString.toIntOrNull()) { "Integer input exceeds its 32-bit range" }
             }
-            return MarsNativeRunStep(step.identifier("id"), step.text("explanation", 8192), copyOf(parsed),
-                step.text("stdout", 16384), step.text("success", 8192), anchor(step), hints(step))
+            return copyOf(parsed)
+        }
+
+        private fun parseDebug(step: JsonObject): MarsNativeDebugStep {
+            val required = setOf("kind", "id", "explanation", "integerInputs", "stops", "success")
+            step.fields(required + "hints", required)
+            val stops = step.array("stops")
+            require(stops.size() in 1..32) { "A Debug observation needs 1 through 32 stops" }
+            val parsed = stops.map {
+                val stop = it.objectValue()
+                val fields = setOf("id", "explanation", "anchor", "registers", "success")
+                stop.fields(fields + "hints", fields)
+                val registers = stop.get("registers").objectValue()
+                require(registers.size() in 1..32) { "A Debug stop needs 1 through 32 integer register values" }
+                val values = linkedMapOf<String, Long>()
+                for ((spelling, value) in registers.entrySet()) {
+                    require(spelling.isNotEmpty()) { "Unknown Debug integer register" }
+                    val register = requireNotNull(RegisterNames.integer(spelling)) { "Unknown Debug integer register" }
+                    require(register.name !in values) { "Duplicate Debug register aliases" }
+                    require(value is JsonPrimitive && value.isString && Regex("0x[0-9a-fA-F]{16}").matches(value.asString)) {
+                        "Debug register values must contain exactly 64 hexadecimal bits"
+                    }
+                    values[register.name] = value.asString.substring(2).toULong(16).toLong()
+                }
+                MarsNativeDebugStop(stop.identifier("id"), stop.text("explanation", 8192),
+                    parseAnchor(stop.get("anchor").objectValue()), copyMap(values), stop.text("success", 8192), hints(stop))
+            }
+            require(parsed.map { it.id }.distinct().size == parsed.size) { "Duplicate Debug stop ID" }
+            return MarsNativeDebugStep(step.identifier("id"), step.text("explanation", 8192), integerInputs(step),
+                copyOf(parsed), step.text("success", 8192), hints(step))
         }
 
         private fun anchor(step: JsonObject) = if (step.has("anchor")) parseAnchor(step.get("anchor").objectValue()) else null

@@ -88,23 +88,13 @@ internal class MarsDownloadedRunCheckpoint(
     internal enum class Outcome { PASSED, INPUT, OUTPUT, TERMINATION, SOURCE_CHANGED }
 
     /** Bounded storage and completed service-5 results, independent of source instruction spelling. */
-    internal class Transcript(private val inputs: List<Int>, private val expected: String) {
+    internal class Transcript(inputs: List<Int>, private val expected: String) {
         private val stdout = StringBuilder()
-        private val observed = mutableListOf<Long>()
+        private val input = MarsIntegerInputObservation(inputs)
         private var outputFailure = false
-        private var inputOverflow = false
-        private var previousV0: Long? = null
 
         @Synchronized
-        fun instruction(event: StepEvent, v0: Long) {
-            // SYSCALL's optional code field does not change its function. A completed
-            // service 5 has placed the consumed signed integer in v0 at this boundary.
-            if (event.instruction ushr 26 == 0 && event.instruction and 63 == 12 &&
-                event.transfer != StepEvent.ExceptionEntry.INSTANCE && previousV0 == 5L) {
-                if (observed.size < inputs.size) observed += v0 else inputOverflow = true
-            }
-            previousV0 = v0
-        }
+        fun instruction(event: StepEvent, v0: Long) = input.instruction(event, v0)
 
         @Synchronized
         fun append(text: String, type: Key<*>) {
@@ -115,7 +105,7 @@ internal class MarsDownloadedRunCheckpoint(
         }
 
         @Synchronized
-        fun inputsMatch() = !inputOverflow && observed == inputs.map(Int::toLong)
+        fun inputsMatch() = input.matches()
 
         @Synchronized
         fun outputMatches() = !outputFailure && stdout.toString() == expected
