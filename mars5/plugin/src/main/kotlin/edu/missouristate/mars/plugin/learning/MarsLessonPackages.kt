@@ -142,7 +142,16 @@ internal object MarsLessonPackages {
                 val asset = requireNotNull(assets[name]) { "Missing native lesson content" }
                 require(asset.size <= MarsNativeLessonPlan.MAX_BYTES) { "Native lesson content is too large" }
                 ZipFile(snapshot.toFile()).use { zip ->
-                    MarsNativeLessonPlan.parse(zip.getInputStream(zip.getEntry(name)).use { it.readAllBytes() })
+                    MarsNativeLessonPlan.parse(zip.getInputStream(zip.getEntry(name)).use { it.readAllBytes() }) { profile ->
+                        val profileName = "${data.id}/$profile"
+                        val size = requireNotNull(assets[profileName]) { "Missing assessment case data" }.size
+                        require(size <= MarsConsoleCaseData.MAX_BYTES) { "Assessment case data is too large" }
+                        zip.getInputStream(zip.getEntry(profileName)).use { it.readAllBytes() }
+                    }.also { plan ->
+                        for (assessment in plan.steps.filterIsInstance<MarsNativeAssessmentStep>()) {
+                            require("${data.id}/${assessment.source}" in assets) { "Missing independent assessment source" }
+                        }
+                    }
                 }
             }
             return Prepared(data, sha256, snapshot, assets.toMap(), lesson)
@@ -190,7 +199,7 @@ internal object MarsLessonPackages {
         return value.asString
     }
 
-    private fun path(value: String): String {
+    internal fun path(value: String): String {
         require(value.length <= 240 && value.split('/').all { part ->
             Regex("[A-Za-z0-9_][A-Za-z0-9_.-]*").matches(part) && !part.endsWith('.') &&
                 part.lowercase(Locale.ROOT) !in setOf("instructor", "reference", "solutions", "private") &&

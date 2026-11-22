@@ -2,6 +2,7 @@
 
 package edu.missouristate.mars.plugin.learning
 
+import edu.missouristate.mars.cli.grading.ConsoleCheckCase
 import com.intellij.mock.MockProject
 import com.intellij.toolWindow.ToolWindowHeadlessManagerImpl
 import com.intellij.openapi.wm.ToolWindowManager
@@ -44,6 +45,7 @@ import com.intellij.util.ui.UIUtil
 import com.intellij.openapi.application.edtWriteAction
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.components.service
+import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.extensions.ExtensionPointName
 import com.intellij.testFramework.ExtensionTestUtil
@@ -267,10 +269,11 @@ class MarsDownloadedLessonsTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = ["prediction", "run", "debug"])
+    @ValueSource(strings = ["prediction", "run", "debug", "assessment"])
     fun `downloaded DSL opens its entry and binds only its own answers and source anchors`(mode: String) = timeoutRunBlocking {
         val withRun = mode == "run"
         val withDebug = mode == "debug"
+        val withAssessment = mode == "assessment"
         withContext(Dispatchers.EDT) {
             val project = projects.get()
             val installed = install(project)
@@ -283,7 +286,9 @@ class MarsDownloadedLessonsTest {
                 MarsNativeDebugStop("after-load", "Inspect <the next load>.", MarsLessonAnchor("main", "li", 1),
                     mapOf("\$a0" to 1L), "One is retained.", hints),
             ), "Explain the changed argument.", hints)
-            val steps = when { withRun -> listOf(anchored, run); withDebug -> listOf(anchored, debug); else -> listOf(anchored) }
+            val assessment = MarsNativeAssessmentStep("independent", "Check <this> program.", "main.asm", "cases.json",
+                listOf(ConsoleCheckCase("one", "", "1", 20_000)), "Explain the result.", hints)
+            val steps = when { withAssessment -> listOf(anchored, assessment); withRun -> listOf(anchored, run); withDebug -> listOf(anchored, debug); else -> listOf(anchored) }
             val content = installed.copy(plan = MarsNativeLessonPlan("Intro < & >", "End < & >", steps))
             val virtual = withContext(Dispatchers.IO) {
                 VirtualFileManager.getInstance().refreshAndFindFileByNioPath(installed.installed.entry)!!
@@ -336,9 +341,10 @@ class MarsDownloadedLessonsTest {
                 assertTrue(rendered.any { it.contains("End &lt; &amp; &gt;") }, "Conclusion must be escaped")
                 val controls = callbacks(rendered.single { it.contains("Which value?") })
                 val runControls = if (withRun) callbacks(rendered.single { it.contains("Run &lt;this&gt; program.") }) else emptyList()
+                val assessmentControls = if (withAssessment) callbacks(rendered.single { it.contains("Check &lt;this&gt; program.") }) else emptyList()
                 val debugControls = if (withDebug) callbacks(rendered.single { it.contains("Debug &lt;this&gt; program.") }) else emptyList()
                 rendered.filter { it.contains("<callback") && !it.contains("Which value?") && !it.contains("Run &lt;this&gt; program.") &&
-                    !it.contains("Debug &lt;this&gt; program.") }.forEach { callbacks(it) }
+                    !it.contains("Debug &lt;this&gt; program.") && !it.contains("Check &lt;this&gt; program.") }.forEach { callbacks(it) }
                 controls[0](); assertFalse(checks.single()(runtime))
                 controls[1](); assertTrue(checks.single()(runtime))
                 if (withDebug) {
@@ -443,7 +449,51 @@ class MarsDownloadedLessonsTest {
                     runControls.single()() // Retired controls cannot reveal another hint.
                     assertEquals(1, project.service<MarsLearningProgress>().snapshot(content.runIdentity(run))!!.revealedHints.size)
                 }
-                if (!withRun && !withDebug) {
+                if (withAssessment) {
+                    val history = project.service<MarsLearningProgress>()
+                    val assessmentId = content.assessmentIdentity(assessment)
+                    val scope = MarsLearningExecution::class.java.getDeclaredField("scope").apply { isAccessible = true }
+                        .get(project.service<MarsLearningExecution>()) as CoroutineScope
+                    suspend fun waitChecks() { scope.coroutineContext[Job]!!.children.toList().joinAll() }
+                    assertEquals(2, timers.size)
+                    assertTrue(timers.none { it(runtime) })
+                    assessmentControls[1]()
+                    assertEquals(setOf("hints/independent/one"), history.snapshot(assessmentId)!!.revealedHints)
+                    val other = fixture.addFileToProject("other.asm", ".text\nmain: nop\n").virtualFile
+                    project.service<MarsLearningExecution>().openLessonFile(other.toNioPath()).await()
+                    assessmentControls[0](); waitChecks()
+                    assertEquals(0, history.snapshot(assessmentId)!!.completedAssessments)
+                    FileEditorManager.getInstance(project).let { manager -> manager.openFiles.forEach(manager::closeFile) }
+                    assessmentControls[0](); waitChecks()
+                    assertEquals(0, history.snapshot(assessmentId)!!.completedAssessments)
+                    project.service<MarsLearningExecution>().openLessonFile(content.installed.entry).await()
+                    val policy = project.service<MarsLearningPolicy>()
+                    policy.update(requirePredictions = true)
+                    history.reset(content.identity)
+                    assessmentControls[0](); waitChecks()
+                    assertEquals(0, history.snapshot(assessmentId)!!.completedAssessments)
+                    history.open(content.identity, content.identity.contentSha256)
+                    history.recordChoice(content.identity, anchored.prediction.id, "b")
+                    val original = fixture.editor.document.text
+                    WriteCommandAction.runWriteCommandAction(project) {
+                        fixture.editor.document.setText(original.replace("li \$a0, 1", "li \$a0, 2"))
+                    }
+                    assessmentControls[0](); assessmentControls[0](); waitChecks()
+                    assertEquals(1, history.snapshot(assessmentId)!!.completedAssessments)
+                    assertTrue(timers.none { it(runtime) })
+                    WriteCommandAction.runWriteCommandAction(project) { fixture.editor.document.setText(original) }
+                    assessmentControls[0](); waitChecks()
+                    assertEquals(2, history.snapshot(assessmentId)!!.completedAssessments)
+                    assertTrue(timers.all { it(runtime) })
+                    assessmentControls[1]()
+                    assertEquals(1, history.snapshot(assessmentId)!!.revealedHints.size)
+                    WriteCommandAction.runWriteCommandAction(project) { fixture.editor.document.insertString(0, "# changed\n") }
+                    assertTrue(timers.none { it(runtime) })
+                    Disposer.dispose(recorder as Disposable)
+                    assessmentControls.forEach { it() }; waitChecks()
+                    assertEquals(2, history.snapshot(assessmentId)!!.completedAssessments)
+                }
+                if (!withRun && !withDebug && !withAssessment) {
                     val missing = anchored.copy(anchor = MarsLessonAnchor("missing", "nop", 0))
                     taskContext.downloadedPrediction(content.identity, missing)
                     callbacks(texts.last()(RuntimeTextContext(runtime))!!)

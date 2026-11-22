@@ -210,3 +210,71 @@ by a source change. The final lesson gate checks both Run and Debug evidence
 against the current source. These are guided intermediate-state observations;
 they do not impose register names or source anchors on independent-writing
 assessment.
+
+## Format 4 independent console assessments
+
+Integer `formatVersion: 4` retains the prediction, Run and Debug contracts and
+adds `kind: "assessment"`. This activity opens a student source file and provides
+an inline **Check this program** control. It requires `id`, `explanation`, `source`,
+`caseProfile` and `success`, with optional graduated `hints`.
+
+```json
+{
+  "kind": "assessment",
+  "id": "independent-output",
+  "explanation": "Write the requested program in independent/output.asm, then check its behavior.",
+  "source": "independent/output.asm",
+  "caseProfile": "independent/output.cases.json",
+  "success": "Explain why your implementation satisfies the boundary cases."
+}
+```
+
+Both paths must name exported files in the same package and satisfy its portable
+relative-path rules. Case data is validated before import and read from the retained
+archive. Editing an extracted case file cannot change the lesson's expectations.
+Profiles shared by several activities are parsed once into an immutable list.
+The host does not execute downloaded Kotlin grading scripts.
+
+A case profile has exactly `formatVersion: 1` and `cases`. Each case has exactly
+`name`, `input`, `stdout` and `instructionLimit`:
+
+```json
+{"formatVersion":1,"cases":[
+  {"name":"zero","input":"0\n","stdout":"2","instructionLimit":20000},
+  {"name":"positive","input":"3\n","stdout":"5","instructionLimit":20000}
+]}
+```
+
+The profile must be strict UTF-8 JSON, at most 1 MiB, without duplicate keys,
+unknown fields or trailing content. There must be one through 256 cases with
+unique, nonblank printable names of at most 128 Unicode code points. Input and
+stdout are strings of at most 64 KiB each in UTF-8; either may be empty and may
+contain control characters. Each instruction limit is a positive JSON integer
+of at most 1,000,000; the sum across the profile must not exceed 10,000,000.
+Feedback escapes markup and displays disallowed message control characters
+visibly. These bounds constrain each check; cases are formative public material.
+
+Checking assembles the activity's current editor text with the default lesson
+options, then loads the resulting image into an independent machine for each
+case. The current contract requires a single source file. The existing console
+grader checks stdout, errors, normal termination and the instruction bound.
+It does not prescribe labels, scratch registers or an instruction sequence.
+A student's ordinary Run or Debug session is unaffected. A successful result
+means that these declared cases passed, rather than proving all possible inputs.
+
+The check button requires the activity's source editor to be selected. It disables
+overlapping button launches while its check is active. Background work is cancellable
+and tied to the task lifetime. The source revision, progress ticket and current
+instructor policy are rechecked before accepting results; edits, resets, disposal
+and superseding checks cannot grant stale credit. Assembly errors, cancellation
+and stale results consume no assessment attempt. Each completed case set consumes
+one attempt, including a failing set. The instructor's independent-assessment
+limit applies separately to each activity and package digest; zero is unlimited.
+
+`allowFreeWriting` gates these independent activities. When `requirePredictions`
+is enabled, all preceding prediction activities in this plan must be answered
+correctly. Existing hint release controls apply. These controls are local
+instructional policy, not a secure examination boundary. Assessment history and
+valid source-bound passes survive continuation. Edits invalidate a pass while
+preserving attempts and hints. The final gate checks all Run, Debug and assessment
+evidence against their respective current source documents.

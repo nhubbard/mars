@@ -1,0 +1,51 @@
+package edu.missouristate.mars.plugin.learning
+
+import com.google.gson.JsonArray
+import com.google.gson.JsonObject
+import com.google.gson.JsonPrimitive
+import edu.missouristate.mars.cli.grading.ConsoleCheckCase
+import java.nio.charset.StandardCharsets.UTF_8
+import java.util.List.copyOf
+
+/** The same data-only public case contract used by the book's existing-DSL generator. */
+internal object MarsConsoleCaseData {
+    const val MAX_BYTES = 1024 * 1024
+    private val nonPrintable = Regex("[\\p{C}\\p{Z}]")
+
+    fun parse(bytes: ByteArray): List<ConsoleCheckCase> {
+        val root = MarsLessonJson.parse(bytes, MAX_BYTES)
+        require(root.keySet() == setOf("formatVersion", "cases") && root.get("formatVersion").toString() == "1") {
+            "Unsupported console-case format or fields"
+        }
+        val rows = root.get("cases")
+        require(rows is JsonArray && rows.size() in 1..256) { "Declare one through 256 console cases" }
+        val cases = rows.map {
+            require(it is JsonObject && it.keySet() == setOf("name", "input", "stdout", "instructionLimit")) {
+                "Unsupported or missing console-case fields"
+            }
+            val name = text(it, "name")
+            require(name.isNotBlank() && name.codePointCount(0, name.length) <= 128 &&
+                !nonPrintable.containsMatchIn(name.replace(" ", ""))) { "Invalid console-case name" }
+            val limit = it.get("instructionLimit")
+            require(limit is JsonPrimitive && limit.isNumber && Regex("[1-9][0-9]{0,6}").matches(limit.asString)) {
+                "Expected a positive integer instruction limit"
+            }
+            val instructions = limit.asLong
+            require(instructions <= 1_000_000) { "Console-case instruction limit exceeds 1000000" }
+            ConsoleCheckCase(name, text(it, "input"), text(it, "stdout"), instructions)
+        }
+        require(cases.map { it.name }.distinct().size == cases.size) { "Console-case names must be unique" }
+        require(cases.sumOf { it.instructionLimit } <= 10_000_000) { "Combined console-case limits exceed 10000000" }
+        return copyOf(cases)
+    }
+
+    private fun text(row: JsonObject, field: String): String {
+        val value = row.get(field)
+        require(value is JsonPrimitive && value.isString) { "Expected console-case text: $field" }
+        return value.asString.also {
+            require(UTF_8.newEncoder().canEncode(it) && it.toByteArray(UTF_8).size <= 64 * 1024) {
+                "Console-case text must be UTF-8 and at most 64 KiB"
+            }
+        }
+    }
+}
