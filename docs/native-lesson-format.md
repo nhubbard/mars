@@ -444,3 +444,52 @@ produces an ordinary named case failure; malformed content fails import validati
 Assembly failure, cancellation and stale results do not earn credit or consume an
 assessment. Source edits invalidate a previous function pass. No active student
 Run or Debug machine is used or modified by grading.
+
+### Function-case profile version 2: data pointers and memory results
+
+Native lesson format 6 also accepts a function-case profile with integer
+`formatVersion: 2`. Version 1 retains its exact field set. Version 2 adds optional
+`initialMemory` to each case and optional `argumentAddresses` and `memory` to each
+call. Existing function controls, source binding, budgets and preservation rules
+continue to apply.
+
+```json
+{
+  "formatVersion": 2,
+  "cases": [{
+    "name": "overwrite prefilled pixels",
+    "instructionLimit": 10000,
+    "initialMemory": [{"label": "frame", "bytes": "5a5a5a5a5a5a5a5a"}],
+    "calls": [{
+      "entry": "render",
+      "returnTo": "after_render",
+      "arguments": {},
+      "argumentAddresses": {"a0": {"label": "source"}, "a1": {"label": "frame"}},
+      "expectedRegisters": {},
+      "memory": [{"label": "frame", "bytes": "00000000ffffff00"}]
+    }]
+  }]
+}
+```
+
+An address object contains required `label` and optional `offset`. A memory range
+contains required `label` and `bytes`, and optional `offset`. Offsets use exact
+signed JSON integer syntax, with zero written `0`; their magnitude is at most
+1048576. Each byte string is nonempty even-length hexadecimal text, in increasing
+address order. Numerical words must be encoded for the selected image byte order.
+The default offset is zero. Lists and maps default empty when omitted.
+
+Address arguments have at most 32 unique integer registers, combined with scalar
+arguments. The same register cannot appear in both forms, including through an
+alias. Memory may supply a function's result when `expectedRegisters` is empty;
+each call must declare a register or memory expectation. Setup and per-call
+memory lists each admit at most 64 ranges, and their combined byte count over all
+calls is at most one MiB per case. Setup occurs once, in declared order, before
+calling; comparisons occur after every requested return. Memory is retained
+between calls. These are byte comparisons, not store-history assertions.
+
+Labels resolve from the assembled submission rather than fixed addresses. Public
+fixture labels can move with their allocations, while private implementation
+labels, scratch registers and frame layouts remain unrestricted. Missing or
+invalid submitted data labels fail a named case; malformed profile shapes fail
+validation before preview. Version-1 profiles reject all three new fields.

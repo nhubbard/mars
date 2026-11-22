@@ -6,6 +6,8 @@ import com.google.gson.JsonObject
 import com.google.gson.JsonPrimitive
 import edu.missouristate.mars.cli.grading.FunctionCallCheck
 import edu.missouristate.mars.cli.grading.FunctionCheckCase
+import edu.missouristate.mars.cli.grading.FunctionDataAddress
+import edu.missouristate.mars.cli.grading.FunctionMemoryCheck
 import edu.missouristate.mars.cli.grading.FunctionHelperCheck
 import java.util.List.copyOf
 import java.util.Map.copyOf as copyMap
@@ -20,18 +22,22 @@ internal object MarsFunctionCaseData {
     fun parse(bytes: ByteArray): List<FunctionCheckCase> {
         val root = MarsLessonJson.parse(bytes, MAX_BYTES)
         root.fields(setOf("formatVersion", "cases"))
-        require(root.get("formatVersion").toString() == "1") { "Unsupported function-case format" }
+        val version = root.get("formatVersion").toString()
+        require(version in setOf("1", "2")) { "Unsupported function-case format" }
         val cases = root.array("cases", 1, 256).map { value ->
             val row = value.objectValue()
             val required = setOf("name", "calls", "instructionLimit")
-            row.fields(required + setOf("initialRegisters", "preservedRegisters", "helpers", "stackAlignment", "callerStackBytes"), required)
+            row.fields(required + setOf("initialRegisters", "preservedRegisters", "helpers", "stackAlignment", "callerStackBytes") +
+                if (version == "2") setOf("initialMemory") else emptySet(), required)
             val name = row.string("name", 128)
             require(name.isNotBlank() && !nonPrintable.containsMatchIn(name.replace(" ", ""))) { "Invalid function-case name" }
             val calls = row.array("calls", 1, 512).map {
                 val call = it.objectValue()
-                call.fields(setOf("entry", "returnTo", "arguments", "expectedRegisters"))
+                val callRequired = setOf("entry", "returnTo", "arguments", "expectedRegisters")
+                call.fields(callRequired + if (version == "2") setOf("argumentAddresses", "memory") else emptySet(), callRequired)
                 FunctionCallCheck(call.string("entry", 128), call.string("returnTo", 128),
-                    registers(call, "arguments"), registers(call, "expectedRegisters"))
+                    registers(call, "arguments"), registers(call, "expectedRegisters"),
+                    addresses(call), memory(call, "memory"))
             }
             val helpers = if (row.has("helpers")) row.array("helpers", 0, 32).map {
                 val helper = it.objectValue()
@@ -42,13 +48,44 @@ internal object MarsFunctionCaseData {
             FunctionCheckCase(name, copyOf(calls), row.number("instructionLimit").toLong(),
                 if (row.has("initialRegisters")) registers(row, "initialRegisters") else emptyMap(), copyOf(preserved), copyOf(helpers),
                 if (row.has("stackAlignment")) row.number("stackAlignment") else 16,
-                if (row.has("callerStackBytes")) row.number("callerStackBytes") else 32)
+                if (row.has("callerStackBytes")) row.number("callerStackBytes") else 32,
+                memory(row, "initialMemory"))
         }
         require(cases.map { it.name }.distinct().size == cases.size) { "Function-case names must be unique" }
         require(cases.sumOf { it.calls.size.toLong() } <= 4096 && cases.sumOf { it.instructionLimit } <= 10_000_000) {
             "Combined function cases exceed the call or instruction budget"
         }
         return copyOf(cases)
+    }
+
+    private fun addresses(row: JsonObject): Map<String, FunctionDataAddress> {
+        if (!row.has("argumentAddresses")) return emptyMap()
+        val values = row.get("argumentAddresses").objectValue()
+        require(values.size() <= 32) { "Declare at most 32 data-address arguments" }
+        return copyMap(values.entrySet().associate { (name, value) ->
+            require(name.length <= 32) { "Register name is too long" }
+            val address = value.objectValue()
+            address.fields(setOf("label", "offset"), setOf("label"))
+            name to FunctionDataAddress(address.string("label", 128), address.offset())
+        })
+    }
+
+    private fun memory(row: JsonObject, field: String): List<FunctionMemoryCheck> {
+        if (!row.has(field)) return emptyList()
+        return copyOf(row.array(field, 0, 64).map {
+            val range = it.objectValue()
+            range.fields(setOf("label", "bytes", "offset"), setOf("label", "bytes"))
+            FunctionMemoryCheck(range.string("label", 128), range.string("bytes", 2 * MAX_BYTES), range.offset())
+        })
+    }
+
+    private fun JsonObject.offset(): Int {
+        if (!has("offset")) return 0
+        val value = get("offset")
+        require(value is JsonPrimitive && value.isNumber && Regex("0|-?[1-9][0-9]{0,6}").matches(value.asString)) {
+            "Expected an exact bounded byte offset"
+        }
+        return value.asInt
     }
 
     private fun registers(row: JsonObject, field: String): Map<String, Long> {

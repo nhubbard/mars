@@ -36,6 +36,35 @@ class MarsNativeFunctionPlanTest {
     }
 
     @Test
+    fun `actual sprite archive retains memory results data pointers and both caller continuations`() {
+        val archive = temporary.resolve("sprite-student.zip")
+        javaClass.getResourceAsStream("/learning/sprite-rows-0.1.0-student.zip")!!.use { Files.copy(it, archive) }
+        MarsLessonPackages.prepare(archive).use { prepared ->
+            val plan = prepared.nativeLesson!!
+            assertEquals("003-sprite-rows", prepared.metadata.id)
+            assertEquals(5, plan.steps.filterIsInstance<MarsNativeLessonStep>().size)
+            assertEquals(8, plan.steps.filterIsInstance<MarsNativeDebugStep>().single().stops.size)
+            assertEquals("", plan.steps.filterIsInstance<MarsNativeRunStep>().single().stdout)
+            val step = plan.steps.filterIsInstance<MarsNativeAssessmentStep>().single()
+            assertTrue(step.cases.isEmpty()); assertEquals(5, step.functionCases.size)
+            assertEquals("independent/vertical-sprite.asm", step.source)
+            for (case in step.functionCases) {
+                assertEquals(4, case.initialMemory.size)
+                assertEquals(10, case.preservedRegisters.size)
+                assertTrue(case.helpers.isEmpty())
+                assertEquals(listOf("after_vertical", "after_repeat"), case.calls.map { it.returnTo })
+                for (call in case.calls) {
+                    assertTrue(call.expectedRegisters.isEmpty())
+                    assertEquals("sprite", call.argumentAddresses.getValue("a0").label)
+                    assertEquals("frame", call.argumentAddresses.getValue("a1").label)
+                    assertEquals(512, call.memory.first { it.label == "frame" }.byteLength)
+                    assertEquals(setOf("frame", "sprite", "frame_guard", "rows_guard"), call.memory.map { it.label }.toSet())
+                }
+            }
+        }
+    }
+
+    @Test
     fun `format six explicitly selects function data and retains console assessments`() {
         val step = parse().steps.single() as MarsNativeAssessmentStep
         assertTrue(step.cases.isEmpty()); assertEquals(151L, step.functionCases.single().calls.single().expectedRegisters.getValue("v0"))
