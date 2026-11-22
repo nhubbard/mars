@@ -11,6 +11,7 @@ import edu.missouristate.mars.cli.grading.FunctionDataAddress
 import edu.missouristate.mars.cli.grading.FunctionMemoryCheck
 import edu.missouristate.mars.cli.grading.FunctionNoStoreCheck
 import edu.missouristate.mars.cli.grading.FunctionHelperCheck
+import edu.missouristate.mars.cli.grading.FunctionTransferCheck
 import java.util.List.copyOf
 import java.util.Map.copyOf as copyMap
 
@@ -25,11 +26,12 @@ internal object MarsFunctionCaseData {
         val root = MarsLessonJson.parse(bytes, MAX_BYTES)
         root.fields(setOf("formatVersion", "cases"))
         val version = root.get("formatVersion").toString()
-        require(version in setOf("1", "2", "3", "4")) { "Unsupported function-case format" }
+        require(version in setOf("1", "2", "3", "4", "5")) { "Unsupported function-case format" }
         val cases = root.array("cases", 1, 256).map { value ->
             val row = value.objectValue()
             val required = setOf("name", "calls", "instructionLimit")
             val extensions = when (version) {
+                "5" -> setOf("initialMemory", "noStores", "accessBounds", "protectCallerStack", "transfers")
                 "4" -> setOf("initialMemory", "noStores", "accessBounds", "protectCallerStack")
                 "3" -> setOf("initialMemory", "noStores")
                 "2" -> setOf("initialMemory")
@@ -56,13 +58,36 @@ internal object MarsFunctionCaseData {
                 if (row.has("initialRegisters")) registers(row, "initialRegisters") else emptyMap(), copyOf(preserved), copyOf(helpers),
                 if (row.has("stackAlignment")) row.number("stackAlignment") else 16,
                 if (row.has("callerStackBytes")) row.number("callerStackBytes") else 32,
-                memory(row, "initialMemory"), protectedRegions(row), accessBounds(row), row.callerStackProtection())
+                memory(row, "initialMemory"), protectedRegions(row), accessBounds(row), row.callerStackProtection(), transfers(row))
         }
         require(cases.map { it.name }.distinct().size == cases.size) { "Function-case names must be unique" }
         require(cases.sumOf { it.calls.size.toLong() } <= 4096 && cases.sumOf { it.instructionLimit } <= 10_000_000) {
             "Combined function cases exceed the call or instruction budget"
         }
         return copyOf(cases)
+    }
+
+    private fun transfers(row: JsonObject): List<FunctionTransferCheck> {
+        if (!row.has("transfers")) return emptyList()
+        return copyOf(row.array("transfers", 0, 32).map {
+            val transfer = it.objectValue()
+            val required = setOf("source", "destination", "destinationIndices")
+            transfer.fields(required + "elementBytes", required)
+            val indices = transfer.array("destinationIndices", 0, 65536).map { index ->
+                require(index is JsonPrimitive && index.isNumber && integer.matches(index.asString)) {
+                    "Expected an exact nonnegative transfer destination index"
+                }
+                index.asInt
+            }
+            FunctionTransferCheck(dataAddress(transfer.get("source")), dataAddress(transfer.get("destination")), copyOf(indices),
+                if (transfer.has("elementBytes")) transfer.number("elementBytes") else 4)
+        })
+    }
+
+    private fun dataAddress(value: JsonElement?): FunctionDataAddress {
+        val address = value.objectValue()
+        address.fields(setOf("label", "offset"), setOf("label"))
+        return FunctionDataAddress(address.string("label", 128), address.offset())
     }
 
     private fun accessBounds(row: JsonObject): List<FunctionAccessCheck> {
@@ -98,9 +123,7 @@ internal object MarsFunctionCaseData {
         require(values.size() <= 32) { "Declare at most 32 data-address arguments" }
         return copyMap(values.entrySet().associate { (name, value) ->
             require(name.length <= 32) { "Register name is too long" }
-            val address = value.objectValue()
-            address.fields(setOf("label", "offset"), setOf("label"))
-            name to FunctionDataAddress(address.string("label", 128), address.offset())
+            name to dataAddress(value)
         })
     }
 

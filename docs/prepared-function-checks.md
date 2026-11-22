@@ -208,3 +208,54 @@ come from the captured definition, so a callee that overwrites an argument
 register cannot replace the reported counterexample. Cancellation still
 propagates rather than becoming a failed student case. Case-setup failures before
 a call retain their original setup diagnostic.
+
+## Checking a mapped element transfer
+
+`FunctionCheckCase.transfers` accepts `FunctionTransferCheck` data. Each definition
+names a source and destination `FunctionDataAddress`, a destination index for
+each source element, and `elementBytes` (one, two or four; default four). The
+index list must be a permutation of zero through element count minus one. Empty
+lists describe empty active windows. At most 32 maps, 65,536 elements per map,
+and one MiB of combined active source/destination bytes per case are accepted.
+
+For example, source indices `[0,1,2,3,4,5]` in a two-by-three matrix rotate
+clockwise using destination indices `[1,3,5,0,2,4]`. The checker requires exactly
+one aligned element-sized execution read at each source element and exactly one
+aligned element-sized execution write at each destination element. It rejects
+source writes, destination reads, duplicate visits, incomplete visits, partial
+or crossing notices and a destination write before its mapped source read.
+Reading every source first, or copying in another valid order, is accepted.
+The checker does not require private labels, scratch registers or a tile order.
+
+These are **data-notice** contracts. MARS currently emits two word notices for
+an aligned doubleword load/store; a word map can observe those as two elements.
+The check does not infer an instruction mnemonic or require one instruction per
+element. It does not compare the transferred values; declare expected final
+memory separately. Pair it with `accessBounds` covering the allocations to
+reject inactive traffic, including an empty window's first accidental read.
+Traffic outside the two active windows belongs to those separate checks.
+
+Resolved source/destination addresses must be aligned, nonnegative,
+non-overflowing and nonoverlapping. Invalid assembled addresses fail the source
+contract. Streaming Boolean arrays retain only bounded visit state and the first
+failure; no full access history or cache model is needed. Visit state resets for
+each call, so a second call cannot inherit the first call's traffic. Setup and
+external inspection do not count. Observers detach on return, failure and
+cancellation; execution, memory values and backstep semantics are unchanged.
+Nested map lists are copied and revalidated before any machine opens.
+
+Native function-profile **format version 5** adds optional `transfers`:
+
+```json
+{
+  "source": {"label": "input", "offset": 4},
+  "destination": {"label": "output", "offset": 12},
+  "destinationIndices": [1, 3, 5, 0, 2, 4],
+  "elementBytes": 4
+}
+```
+
+Place this object in the case's `transfers` array. Offsets are bytes relative to
+assembled data labels. Version 5 retains version 4's access and caller-stack
+checks. Older versions reject the new field; an omitted or empty array retains
+the earlier behavior. Content remains bounded data and cannot run a script.

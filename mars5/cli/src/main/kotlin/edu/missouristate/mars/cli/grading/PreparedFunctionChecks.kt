@@ -4,6 +4,7 @@ import edu.missouristate.mars.api.SessionSyscallEnvironment
 import edu.missouristate.mars.assembler.RegisterNames
 import edu.missouristate.mars.core.AssemblyImage
 import edu.missouristate.mars.core.MarsContext
+import edu.missouristate.mars.mips.hardware.MemoryState
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.PrintStream
@@ -61,6 +62,7 @@ data class FunctionCheckCase(
     val noStores: List<FunctionNoStoreCheck> = emptyList(),
     val accessBounds: List<FunctionAccessCheck> = emptyList(),
     val protectCallerStack: Boolean = false,
+    val transfers: List<FunctionTransferCheck> = emptyList(),
 ) {
     init {
         require(name.isNotBlank() && name.length <= 128) { "Choose a nonempty function case name of at most 128 characters" }
@@ -71,6 +73,9 @@ data class FunctionCheckCase(
         require(helpers.size <= 32 && helpers.distinct().size == helpers.size) { "Duplicate or excessive helper intervals" }
         require(stackAlignment in 1..4096 && stackAlignment and (stackAlignment - 1) == 0) { "Stack alignment must be a power of two through 4096" }
         require(callerStackBytes in 0..65536) { "Observe at most 65536 caller stack bytes" }
+        require(transfers.size <= 32 && transfers.sumOf { 2L * it.byteLength } <= ConsoleMemoryCheck.MAX_BYTES) {
+            "Function transfers exceed 32 maps or one MiB of active source/destination bytes"
+        }
         functionMemory(initialMemory)
         require(noStores.size <= ConsoleMemoryCheck.MAX_RANGES &&
             noStores.sumOf { it.byteLength.toLong() } <= ConsoleMemoryCheck.MAX_BYTES) {
@@ -119,7 +124,8 @@ object PreparedFunctionChecks {
                     argumentAddresses = copyMap(it.argumentAddresses), memory = copyOf(it.memory))
             }, initialRegisters = copyMap(case.initialRegisters), preservedRegisters = copyOf(case.preservedRegisters),
                 helpers = copyOf(case.helpers), initialMemory = copyOf(case.initialMemory), noStores = copyOf(case.noStores),
-                accessBounds = copyOf(case.accessBounds))
+                accessBounds = copyOf(case.accessBounds),
+                transfers = copyOf(case.transfers).map { it.copy(destinationIndices = copyOf(it.destinationIndices)) })
         }
         require(captured.size in 1..256 && captured.map { it.name }.distinct().size == captured.size) { "Declare 1 through 256 uniquely named function cases" }
         require(captured.sumOf { it.calls.size.toLong() } <= 4096 && captured.sumOf { it.instructionLimit } <= 10_000_000) {
@@ -138,7 +144,7 @@ object PreparedFunctionChecks {
                             program.setSyscallEnvironment(GradingEnvironment(console, GradingFiles(), GradingTiming()))
                             machine.simulator().setInstructionLimit(case.instructionLimit)
                             AssemblyCase(machine, program.symbolMap(), capturedOutput).use { execution ->
-                                evaluateCalls(execution, case, checkCancellation)
+                                evaluateCalls(execution, case, machine.memory, checkCancellation)
                             }
                         }
                     }
@@ -150,7 +156,21 @@ object PreparedFunctionChecks {
         })
     }
 
-    private fun evaluateCalls(execution: AssemblyCase, case: FunctionCheckCase, checkCancellation: () -> Unit) {
+    private fun evaluateCalls(execution: AssemblyCase, case: FunctionCheckCase, memory: MemoryState, checkCancellation: () -> Unit) {
+        val observations = mutableListOf<FunctionTransferObservation>()
+        try {
+            for (transfer in case.transfers) observations += FunctionTransferObservation(memory, transfer,
+                execution.readDataAddress(transfer.source.label, transfer.source.offset.toLong()),
+                execution.readDataAddress(transfer.destination.label, transfer.destination.offset.toLong()))
+            evaluateObservedCalls(execution, case, observations, checkCancellation)
+        } finally {
+            observations.forEach(FunctionTransferObservation::close)
+        }
+    }
+
+    private fun evaluateObservedCalls(
+        execution: AssemblyCase, case: FunctionCheckCase, transfers: List<FunctionTransferObservation>, checkCancellation: () -> Unit,
+    ) {
         for (range in case.initialMemory) execution.setBytes(range.label, *range.decoded(), offset = range.offset)
         for ((register, value) in case.initialRegisters) execution.setRegister(register, value)
         val top = execution.readRegister("sp") and -case.stackAlignment.toLong()
@@ -177,12 +197,14 @@ object PreparedFunctionChecks {
                 checkCancellation()
                 for ((register, value) in call.arguments) execution.setRegister(register, value)
                 for ((register, address) in call.argumentAddresses) execution.setRegisterToDataAddress(register, address.label, address.offset.toLong())
+                transfers.forEach(FunctionTransferObservation::beginCall)
                 execution.enterFunction(call.entry, call.returnTo)
                 val saved = case.preservedRegisters.associateWith(execution::readRegister)
                 val before = helpers.map { it.snapshot().instructions }
                 execution.runUntil(call.returnTo)
                 for ((register, value) in call.expectedRegisters) execution.expectRegister(register, value)
                 for (range in call.memory) execution.expectBytes(range.label, *range.decoded(), offset = range.offset)
+                transfers.forEach(FunctionTransferObservation::expectComplete)
                 protected.forEach(MemoryStoreTrace::expectNone)
                 callerStores?.expectNone()
                 for ((trace, first, length) in accessBounds) for (access in trace.snapshot()) {
