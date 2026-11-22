@@ -525,3 +525,43 @@ still fails. Wider overlapping stores are retained by the existing grader trace.
 No exact output-store order, scratch register, private label or raster algorithm
 is required. Protection applies to the declared regions; it is not a claim of a
 whole-memory write audit or a changed caller-stack contract.
+
+### Function profile version 4: access windows and caller stack protection
+
+Version 4 retains version 3 and adds two optional case fields:
+
+```json
+{
+  "accessBounds": [
+    {"label": "values", "length": 40, "offset": -4,
+     "permittedOffset": 8, "permittedLength": 16}
+  ],
+  "protectCallerStack": true
+}
+```
+
+`accessBounds` defaults empty. Each object requires `label`, `length`,
+`permittedOffset`, and `permittedLength`; only `offset` is optional and defaults
+zero. Both offsets are byte displacements from the label. They use the existing
+bounded exact signed-integer syntax. Length is positive through 1048576;
+permitted length is nonnegative through 1048576. The permitted subwindow must
+fit inside the watched window, including a possible empty window at its end.
+The existing data-address checks also apply to the assembled addresses. At most
+64 watched regions with a combined one MiB are permitted per case. Parsing
+returns immutable definitions, never executable predicates or scripts.
+
+The grader observes native execution reads and stores overlapping each watched
+window. Their full widths must fit within its permitted subwindow. An empty
+permitted window forbids all observed accesses, which supports zero-length array
+arguments. Setup and host inspection are excluded. Each trace retains at most
+65,536 notices; overflow fails explicitly. Accesses outside every watched window
+are outside this assertion; this is not a whole-address-space access policy.
+
+`protectCallerStack` is a strict JSON boolean, defaulting false. True watches
+stores to the existing `callerStackBytes` above the caller's aligned entry stack
+pointer throughout the calls. Zero caller bytes means an empty protection window.
+Same-value or restored stores are violations; private frames below the pointer
+remain permitted. The existing after-return stack-byte and pointer comparisons
+are unchanged. Versions 1 through 3 reject either new field, even an empty array
+or false, rather than silently skipping the check. Native lesson format 6 is
+unchanged; this version belongs to the separate function-case profile.
