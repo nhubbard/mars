@@ -144,6 +144,46 @@ class MarsNativeFunctionPlanTest {
     }
 
     @Test
+    fun `actual sorting archive keeps the half exchange and all bounded active spans`() {
+        val archive = temporary.resolve("sorting-student.zip")
+        javaClass.getResourceAsStream("/learning/sorting-costs-0.1.0-student.zip")!!.use { Files.copy(it, archive) }
+        MarsLessonPackages.prepare(archive).use { prepared ->
+            val plan = prepared.nativeLesson!!
+            assertEquals("009-sorting-costs", prepared.metadata.id)
+            assertEquals(5, plan.steps.filterIsInstance<MarsNativeLessonStep>().size)
+            val stops = plan.steps.filterIsInstance<MarsNativeDebugStep>().single().stops
+            assertEquals(8, stops.size)
+            assertEquals("insertion_compare_end", stops[2].anchor.label)
+            assertEquals("sw", stops[2].anchor.mnemonic)
+            assertEquals(1, stops[2].anchor.occurrence)
+            assertEquals("", plan.steps.filterIsInstance<MarsNativeRunStep>().single().stdout)
+            val step = plan.steps.filterIsInstance<MarsNativeAssessmentStep>().single()
+            assertEquals("independent/partition-negative.asm", step.source)
+            assertEquals(56, step.functionCases.size)
+            assertTrue(step.cases.isEmpty())
+            for (case in step.functionCases) {
+                assertTrue(case.protectCallerStack)
+                assertEquals(32, case.callerStackBytes)
+                assertEquals(10, case.preservedRegisters.size)
+                assertEquals(6, case.noStores.size)
+                assertEquals(listOf("partition_done", "partition_exit"), case.calls.map { it.returnTo })
+                val range = case.accessBounds.single()
+                assertEquals("values", range.label)
+                assertEquals(40, range.byteLength)
+                assertEquals(-4, range.offset)
+                for (call in case.calls) {
+                    val address = call.argumentAddresses.getValue("a0")
+                    assertEquals("values", address.label)
+                    assertEquals(address.offset, range.permittedOffset)
+                    assertEquals(4 * call.arguments.getValue("a1").toInt(), range.permittedByteLength)
+                    assertEquals(32, call.memory.single { it.label == "values" }.byteLength)
+                }
+                assertEquals(case.calls[0].memory, case.calls[1].memory)
+            }
+        }
+    }
+
+    @Test
     fun `format six explicitly selects function data and retains console assessments`() {
         val step = parse().steps.single() as MarsNativeAssessmentStep
         assertTrue(step.cases.isEmpty()); assertEquals(151L, step.functionCases.single().calls.single().expectedRegisters.getValue("v0"))
