@@ -65,6 +65,44 @@ class MarsNativeFunctionPlanTest {
     }
 
     @Test
+    fun `actual raster archive retains protected inputs painted ties and repeated continuations`() {
+        val archive = temporary.resolve("raster-student.zip")
+        javaClass.getResourceAsStream("/learning/integer-raster-0.1.0-student.zip")!!.use { Files.copy(it, archive) }
+        MarsLessonPackages.prepare(archive).use { prepared ->
+            val plan = prepared.nativeLesson!!
+            assertEquals("007-integer-raster", prepared.metadata.id)
+            assertEquals(5, plan.steps.filterIsInstance<MarsNativeLessonStep>().size)
+            assertEquals(8, plan.steps.filterIsInstance<MarsNativeDebugStep>().single().stops.size)
+            assertEquals("", plan.steps.filterIsInstance<MarsNativeRunStep>().single().stdout)
+            val step = plan.steps.filterIsInstance<MarsNativeAssessmentStep>().single()
+            assertEquals("independent/dashed-line.asm", step.source)
+            assertEquals(16, step.functionCases.size)
+            assertTrue(step.cases.isEmpty())
+            for (case in step.functionCases) {
+                assertEquals(8, case.initialMemory.size)
+                assertEquals(10, case.preservedRegisters.size)
+                assertEquals(32, case.callerStackBytes)
+                assertEquals(16, case.stackAlignment)
+                assertEquals(10000L, case.instructionLimit)
+                assertEquals(mapOf("endpoints" to 16, "color" to 4, "frame_guard" to 4,
+                    "endpoints_guard" to 4, "color_guard" to 4, "count_guard" to 4),
+                    case.noStores.associate { it.label to it.byteLength })
+                assertEquals(listOf("line_complete", "line_repeat"), case.calls.map { it.returnTo })
+                for (call in case.calls) {
+                    assertEquals("draw_dashed", call.entry)
+                    assertEquals("endpoints", call.argumentAddresses.getValue("a0").label)
+                    assertEquals("frame", call.argumentAddresses.getValue("a1").label)
+                    assertEquals(256, call.memory.first { it.label == "frame" }.byteLength)
+                    assertEquals(setOf("v0"), call.expectedRegisters.keys)
+                    assertEquals(setOf("a2"), call.arguments.keys)
+                }
+            }
+            assertTrue(step.functionCases.any { it.name == "dashed 0,0 to 4,1" })
+            assertTrue(step.functionCases.any { it.name == "dashed 0,0 to 1,4" })
+        }
+    }
+
+    @Test
     fun `format six explicitly selects function data and retains console assessments`() {
         val step = parse().steps.single() as MarsNativeAssessmentStep
         assertTrue(step.cases.isEmpty()); assertEquals(151L, step.functionCases.single().calls.single().expectedRegisters.getValue("v0"))
