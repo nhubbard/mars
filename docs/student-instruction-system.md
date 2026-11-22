@@ -696,3 +696,26 @@ All eleven installed JARs match the verified archives. Source-field width and
 screen-paint timing were corrected after visual inspection; the initial captures
 remain historical evidence. These are development observations, not newly
 published book figures or proof of downloaded native lesson execution.
+
+
+## Versioned native content reader
+
+Packages may opt into a bounded prediction definition through `nativeLesson`.
+`MarsNativeLessonPlan` reads strict UTF-8/JSON, rejects nested duplicate and unknown
+fields, validates stable question/choice/hint IDs and label/instruction anchors,
+and returns immutable definition lists. Validation occurs against the private
+archive snapshot before preview. Legacy packages keep their existing import path.
+The protocol and its current limits are documented in
+[native lesson format](native-lesson-format.md).
+
+The reader is verified by 1,053 plugin Jupiter tests and complete learning-package
+line/branch coverage. The actual four-question byte-inspector draft passes through
+the packaged reader; its unchanged underlying programs pass all 256 byte inputs,
+three outside-range observations, the width boundary and four meaningful fault
+checks. The public book repository keeps this runtime draft separate from native
+LaTeX composition. Evidence is retained in `native-lesson-content-01`.
+
+This step validates definitions. Native Learn-pane rendering, scoped feedback,
+source highlighting, hint release and saved/resumable downloaded selection are
+still to be connected. No new IDE lesson walkthrough is claimed for this reader
+milestone. The first unit's bundled native implementation remains unchanged.

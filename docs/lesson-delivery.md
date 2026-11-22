@@ -42,7 +42,9 @@ result before the preview appears.
 Included grading scripts are copied as files. Importing does not execute them.
 The student may run appropriate public checks separately using the documented
 MARS tools. Downloading an original assignment does not register its steps as a
-native interactive lesson. The first unit's bundled native course remains the
+native interactive lesson. An optional `nativeLesson` definition is now validated
+before preview; its [data contract](native-lesson-format.md) is implemented while
+Learn-pane integration remains in progress. The first unit's bundled native course remains the
 implemented example; revised downloadable native lesson content is further work.
 
 ## Verification
