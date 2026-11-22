@@ -497,3 +497,31 @@ fixture labels can move with their allocations, while private implementation
 labels, scratch registers and frame layouts remain unrestricted. Missing or
 invalid submitted data labels fail a named case; malformed profile shapes fail
 validation before preview. Version-1 profiles reject all three new fields.
+
+### Function-case profile version 3: protected input stores
+
+Native lesson format 6 accepts function-case profile version 3. It retains
+version-2 memory setup, data arguments and per-return memory expectations, and
+adds an optional case-level `noStores` array:
+
+```json
+"noStores": [
+  {"label": "endpoints", "length": 16},
+  {"label": "frame_guard", "length": 4, "offset": 0}
+]
+```
+
+A region contains required `label` and `length`, and optional `offset`. Length is
+an exact positive JSON integer through 1048576. Offset defaults to zero and uses
+the existing bounded signed byte-offset syntax. There may be at most 64 regions,
+with combined length at most one MiB per case. The array defaults empty and is
+immutable after parsing. Versions 1 and 2 reject `noStores`, including an empty
+array, rather than silently acquiring a new check.
+
+Initial memory setup precedes these observers. They then watch completed native
+execution stores across all calls in that case and check for no overlapping
+stores after each return. Writing the same value or restoring an earlier value
+still fails. Wider overlapping stores are retained by the existing grader trace.
+No exact output-store order, scratch register, private label or raster algorithm
+is required. Protection applies to the declared regions; it is not a claim of a
+whole-memory write audit or a changed caller-stack contract.

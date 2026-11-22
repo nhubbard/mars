@@ -8,6 +8,7 @@ import edu.missouristate.mars.cli.grading.FunctionCallCheck
 import edu.missouristate.mars.cli.grading.FunctionCheckCase
 import edu.missouristate.mars.cli.grading.FunctionDataAddress
 import edu.missouristate.mars.cli.grading.FunctionMemoryCheck
+import edu.missouristate.mars.cli.grading.FunctionNoStoreCheck
 import edu.missouristate.mars.cli.grading.FunctionHelperCheck
 import java.util.List.copyOf
 import java.util.Map.copyOf as copyMap
@@ -23,18 +24,22 @@ internal object MarsFunctionCaseData {
         val root = MarsLessonJson.parse(bytes, MAX_BYTES)
         root.fields(setOf("formatVersion", "cases"))
         val version = root.get("formatVersion").toString()
-        require(version in setOf("1", "2")) { "Unsupported function-case format" }
+        require(version in setOf("1", "2", "3")) { "Unsupported function-case format" }
         val cases = root.array("cases", 1, 256).map { value ->
             val row = value.objectValue()
             val required = setOf("name", "calls", "instructionLimit")
-            row.fields(required + setOf("initialRegisters", "preservedRegisters", "helpers", "stackAlignment", "callerStackBytes") +
-                if (version == "2") setOf("initialMemory") else emptySet(), required)
+            val extensions = when (version) {
+                "3" -> setOf("initialMemory", "noStores")
+                "2" -> setOf("initialMemory")
+                else -> emptySet()
+            }
+            row.fields(required + setOf("initialRegisters", "preservedRegisters", "helpers", "stackAlignment", "callerStackBytes") + extensions, required)
             val name = row.string("name", 128)
             require(name.isNotBlank() && !nonPrintable.containsMatchIn(name.replace(" ", ""))) { "Invalid function-case name" }
             val calls = row.array("calls", 1, 512).map {
                 val call = it.objectValue()
                 val callRequired = setOf("entry", "returnTo", "arguments", "expectedRegisters")
-                call.fields(callRequired + if (version == "2") setOf("argumentAddresses", "memory") else emptySet(), callRequired)
+                call.fields(callRequired + if (version != "1") setOf("argumentAddresses", "memory") else emptySet(), callRequired)
                 FunctionCallCheck(call.string("entry", 128), call.string("returnTo", 128),
                     registers(call, "arguments"), registers(call, "expectedRegisters"),
                     addresses(call), memory(call, "memory"))
@@ -49,13 +54,22 @@ internal object MarsFunctionCaseData {
                 if (row.has("initialRegisters")) registers(row, "initialRegisters") else emptyMap(), copyOf(preserved), copyOf(helpers),
                 if (row.has("stackAlignment")) row.number("stackAlignment") else 16,
                 if (row.has("callerStackBytes")) row.number("callerStackBytes") else 32,
-                memory(row, "initialMemory"))
+                memory(row, "initialMemory"), protectedRegions(row))
         }
         require(cases.map { it.name }.distinct().size == cases.size) { "Function-case names must be unique" }
         require(cases.sumOf { it.calls.size.toLong() } <= 4096 && cases.sumOf { it.instructionLimit } <= 10_000_000) {
             "Combined function cases exceed the call or instruction budget"
         }
         return copyOf(cases)
+    }
+
+    private fun protectedRegions(row: JsonObject): List<FunctionNoStoreCheck> {
+        if (!row.has("noStores")) return emptyList()
+        return copyOf(row.array("noStores", 0, 64).map {
+            val region = it.objectValue()
+            region.fields(setOf("label", "length", "offset"), setOf("label", "length"))
+            FunctionNoStoreCheck(region.string("label", 128), region.number("length"), region.offset())
+        })
     }
 
     private fun addresses(row: JsonObject): Map<String, FunctionDataAddress> {
