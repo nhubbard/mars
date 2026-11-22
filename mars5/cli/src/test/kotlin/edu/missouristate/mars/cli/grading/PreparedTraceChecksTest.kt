@@ -52,7 +52,10 @@ class PreparedTraceChecksTest {
     @Test
     fun `prepared input octets keep byte order and real repeated port transactions on both targets`() {
         for (target in MarsTarget.entries) for (little in listOf(false, true)) {
-            val cases = listOf(case(), case("070700").copy(name = "repeated values"))
+            val untouched = case().copy(name = "original image", initialMemory = emptyList(),
+                memory = listOf(ConsoleMemoryCheck(base, "11223344")),
+                stores = listOf(ConsoleStoreCheck(0xffff0000L, 65536, port, "222233"), ConsoleStoreCheck(base, 8)))
+            val cases = listOf(case(), case("070700").copy(name = "repeated values"), untouched)
             val results = PreparedConsoleChecks.evaluate(image(source(target), target, little), cases, ::session)
             assertTrue(results.all { it.passed }, results.toString())
         }
