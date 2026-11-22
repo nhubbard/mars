@@ -58,6 +58,7 @@ data class FunctionCheckCase(
     val stackAlignment: Int = 16,
     val callerStackBytes: Int = 32,
     val initialMemory: List<FunctionMemoryCheck> = emptyList(),
+    val noStores: List<FunctionNoStoreCheck> = emptyList(),
 ) {
     init {
         require(name.isNotBlank() && name.length <= 128) { "Choose a nonempty function case name of at most 128 characters" }
@@ -69,6 +70,10 @@ data class FunctionCheckCase(
         require(stackAlignment in 1..4096 && stackAlignment and (stackAlignment - 1) == 0) { "Stack alignment must be a power of two through 4096" }
         require(callerStackBytes in 0..65536) { "Observe at most 65536 caller stack bytes" }
         functionMemory(initialMemory)
+        require(noStores.size <= ConsoleMemoryCheck.MAX_RANGES &&
+            noStores.sumOf { it.byteLength.toLong() } <= ConsoleMemoryCheck.MAX_BYTES) {
+            "Protected function regions exceed 64 ranges or one MiB per case"
+        }
         require(initialMemory.sumOf { it.byteLength.toLong() } +
             calls.sumOf { call -> call.memory.sumOf { it.byteLength.toLong() } } <= ConsoleMemoryCheck.MAX_BYTES) {
             "Combined function setup and expected memory exceed one MiB per case"
@@ -107,7 +112,7 @@ object PreparedFunctionChecks {
                 it.copy(arguments = copyMap(it.arguments), expectedRegisters = copyMap(it.expectedRegisters),
                     argumentAddresses = copyMap(it.argumentAddresses), memory = copyOf(it.memory))
             }, initialRegisters = copyMap(case.initialRegisters), preservedRegisters = copyOf(case.preservedRegisters),
-                helpers = copyOf(case.helpers), initialMemory = copyOf(case.initialMemory))
+                helpers = copyOf(case.helpers), initialMemory = copyOf(case.initialMemory), noStores = copyOf(case.noStores))
         }
         require(captured.size in 1..256 && captured.map { it.name }.distinct().size == captured.size) { "Declare 1 through 256 uniquely named function cases" }
         require(captured.sumOf { it.calls.size.toLong() } <= 4096 && captured.sumOf { it.instructionLimit } <= 10_000_000) {
@@ -144,6 +149,7 @@ object PreparedFunctionChecks {
         val top = execution.readRegister("sp") and -case.stackAlignment.toLong()
         execution.setRegister("sp", top)
         val callerBytes = execution.readBytes(top, case.callerStackBytes)
+        val protected = case.noStores.map { execution.traceMemoryStores(it.label, it.byteLength, it.offset) }
         val helpers = case.helpers.map { helper ->
             try {
                 execution.traceExecution(helper.from, helper.until)
@@ -163,6 +169,7 @@ object PreparedFunctionChecks {
             execution.runUntil(call.returnTo)
             for ((register, value) in call.expectedRegisters) execution.expectRegister(register, value)
             for (range in call.memory) execution.expectBytes(range.label, *range.decoded(), offset = range.offset)
+            protected.forEach(MemoryStoreTrace::expectNone)
             execution.expectRegister("sp", top)
             for ((register, value) in saved) execution.expectRegister(register, value)
             execution.expectCondition(execution.readBytes(top, case.callerStackBytes).contentEquals(callerBytes),
