@@ -303,6 +303,33 @@ class AssemblyCase internal constructor(
         }
     }
 
+    /** Prepare ordinary user-data bytes before execution, preserving surrounding bytes and byte order. */
+    fun setBytes(address: Long, vararg bytes: Int) {
+        require(address >= 0 && (bytes.isEmpty() || address <= Long.MAX_VALUE - (bytes.size - 1L))) {
+            "Choose a nonnegative, non-overflowing setup range"
+        }
+        require(bytes.size <= ConsoleMemoryCheck.MAX_BYTES && bytes.all { it in 0..255 }) {
+            "Setup needs unsigned bytes, at most 1 MiB"
+        }
+        requireCase(stop == null) { "Prepare input bytes before executing instructions" }
+        machine.claimStoppedSession().use {
+            // Validate and calculate all word edits before changing any byte. The existing
+            // stopped-session word editor supplies policy, application provenance and undo reset.
+            val edits = linkedMapOf<Long, Int>()
+            for ((index, byte) in bytes.withIndex()) {
+                val at = address + index
+                requireCase(machine.memory.inUserData(at)) { "Cannot prepare user-data byte at 0x${at.toString(16)}" }
+                val word = at and -4L
+                val prior = edits[word] ?: machine.memory.inspectWord(word)
+                    ?: throw CaseFailure("Cannot prepare user-data word at 0x${word.toString(16)}")
+                val offset = (at - word).toInt()
+                val shift = (if (machine.memory.byteOrder) offset else 3 - offset) * 8
+                edits[word] = (prior and (0xff shl shift).inv()) or (byte shl shift)
+            }
+            for ((at, value) in edits) machine.editMemoryWord(at, value)
+        }
+    }
+
     fun step(instructions: Long = 1) {
         require(instructions > 0) { "Step count must be positive" }
         ensureRunnable()

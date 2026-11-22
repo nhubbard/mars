@@ -15,6 +15,9 @@ data class ConsoleCheckCase(
     val expectedOutput: String,
     val instructionLimit: Long = 100_000,
     val memory: List<ConsoleMemoryCheck> = emptyList(),
+    val initialMemory: List<ConsoleMemoryCheck> = emptyList(),
+    val stores: List<ConsoleStoreCheck> = emptyList(),
+    val reads: List<ConsoleReadCheck> = emptyList(),
 ) {
     init {
         require(name.isNotBlank()) { "Choose a non-empty case name" }
@@ -24,6 +27,15 @@ data class ConsoleCheckCase(
         }
         require(memory.sortedBy { it.address }.zipWithNext().all { (a, b) -> a.address + (a.byteLength - 1L) < b.address }) {
             "Memory expectation ranges must not overlap"
+        }
+        require(initialMemory.size <= ConsoleMemoryCheck.MAX_RANGES &&
+            initialMemory.sumOf { it.byteLength.toLong() } <= ConsoleMemoryCheck.MAX_BYTES &&
+            initialMemory.sortedBy { it.address }.zipWithNext().all { (a, b) -> a.address + (a.byteLength - 1L) < b.address }) {
+            "Initial memory exceeds its range or byte bounds, or its ranges overlap"
+        }
+        require(stores.size + reads.size <= ConsoleStoreCheck.MAX_CHECKS &&
+            stores.sumOf { it.bytes.length.toLong() / 2 } <= ConsoleStoreCheck.MAX_EXPECTED_BYTES) {
+            "Declare at most 64 trace checks and 65536 expected store bytes per case"
         }
         require(input.toByteArray(Charsets.UTF_8).size <= 64 * 1024) { "Case input exceeds 64 KiB" }
         require(expectedOutput.toByteArray(Charsets.UTF_8).size <= 64 * 1024) { "Expected output exceeds 64 KiB" }
@@ -49,7 +61,9 @@ object PreparedConsoleChecks {
         createSession: () -> MarsContext,
         checkCancellation: () -> Unit = {},
     ): List<ConsoleCheckResult> {
-        val capturedCases = copyOf(cases).map { it.copy(memory = copyOf(it.memory)) }
+        val capturedCases = copyOf(cases).map {
+            it.copy(memory = copyOf(it.memory), initialMemory = copyOf(it.initialMemory), stores = copyOf(it.stores), reads = copyOf(it.reads))
+        }
         require(capturedCases.isNotEmpty()) { "Declare at least one console case" }
         require(capturedCases.map { it.name }.distinct().size == capturedCases.size) { "Case names must be unique" }
         val results = capturedCases.map { case ->
@@ -67,9 +81,14 @@ object PreparedConsoleChecks {
                             program.setSyscallEnvironment(GradingEnvironment(console, GradingFiles(), GradingTiming()))
                             machine.simulator().setInstructionLimit(case.instructionLimit)
                             AssemblyCase(machine, program.symbolMap(), captured).use { execution ->
+                                for (range in case.initialMemory) execution.setBytes(range.address, *range.decoded())
+                                val stores = case.stores.map { it to execution.traceMemoryStores(it.address, it.byteLength) }
+                                val reads = case.reads.map { it to execution.traceMemoryAccesses(it.address, it.byteLength) }
                                 execution.runToExit()
                                 execution.expectOutput(case.expectedOutput)
                                 for (range in case.memory) execution.expectBytes(range.address, *range.decoded())
+                                for ((check, trace) in stores) check.verify(trace)
+                                for ((check, trace) in reads) check.verify(trace)
                             }
                         }
                     }
