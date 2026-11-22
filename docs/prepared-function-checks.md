@@ -4,8 +4,9 @@
 existing `AssemblyImage`. It is the data-only counterpart of the assignment DSL's
 `enterFunction`, `runUntil`, register assertions, caller-byte comparisons and
 execution traces. It does not evaluate an assignment script or change the ISA.
-The native lesson JSON reader does not yet expose this new checker; its versioned
-content and UI integration are a separate implementation step.
+Native lesson format 6 exposes this checker through an explicit function
+assessment kind. See [the native content contract](native-lesson-format.md#format-6-function-assessments)
+for the bounded JSON profile and its existing Learn controls.
 
 A `FunctionCheckCase` declares an ordered list of `FunctionCallCheck` values.
 Each call names a public entry and continuation, supplies full-width integer

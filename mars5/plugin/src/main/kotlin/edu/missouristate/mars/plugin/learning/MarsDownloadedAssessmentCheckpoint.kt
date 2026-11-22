@@ -7,6 +7,7 @@ import com.intellij.openapi.editor.Document
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import edu.missouristate.mars.cli.grading.ConsoleCheckResult
+import edu.missouristate.mars.cli.grading.PreparedFunctionChecks
 import edu.missouristate.mars.cli.grading.PreparedConsoleChecks
 import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.plugin.MarsSessionService
@@ -54,7 +55,8 @@ internal class MarsDownloadedAssessmentCheckpoint(
             if (!readAction { current(attempt, program) }) return Feedback.STALE
             val context = currentCoroutineContext()
             val results = withContext(Dispatchers.Default) {
-                PreparedConsoleChecks.evaluate(program.image, step.cases, createSession, context::ensureActive)
+                if (step.functionCases.isEmpty()) PreparedConsoleChecks.evaluate(program.image, step.cases, createSession, context::ensureActive)
+                else PreparedFunctionChecks.evaluate(program.image, step.functionCases, createSession, context::ensureActive)
             }
             return readAction {
                 synchronized(progress) {

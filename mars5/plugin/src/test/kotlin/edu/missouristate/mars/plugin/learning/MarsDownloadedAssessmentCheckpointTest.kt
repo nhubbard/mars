@@ -17,6 +17,9 @@ import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsigh
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
+import edu.missouristate.mars.cli.grading.FunctionCallCheck
+import edu.missouristate.mars.cli.grading.FunctionCheckCase
+import edu.missouristate.mars.cli.grading.FunctionHelperCheck
 import edu.missouristate.mars.cli.grading.ConsoleCheckCase
 import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.plugin.MarsSessionService
@@ -65,14 +68,14 @@ class MarsDownloadedAssessmentCheckpointTest {
 
     private data class Fixture(val checkpoint: MarsDownloadedAssessmentCheckpoint, val document: Document, val lifetime: Disposable)
     private suspend fun exercise(text: String = correct, predictions: () -> Boolean = { true }, create: () -> MarsContext = ::machine,
-                                 body: suspend (Fixture) -> Unit) {
+                                 selectedStep: MarsNativeAssessmentStep = step, body: suspend (Fixture) -> Unit) {
         val lifetime = Disposer.newDisposable()
         try {
             val state = withContext(Dispatchers.EDT) {
                 val file = fixture.addFileToProject("assessment-${fileNumber++}.asm", text).virtualFile
                 fixture.configureFromExistingVirtualFile(file)
                 Fixture(MarsDownloadedAssessmentCheckpoint(projects.get(), lifetime, file.toNioPath(), fixture.editor.document,
-                    identity, step, predictions, create), fixture.editor.document, lifetime)
+                    identity, selectedStep, predictions, create), fixture.editor.document, lifetime)
             }
             body(state)
         } finally { withContext(Dispatchers.EDT) { Disposer.dispose(lifetime) } }
@@ -102,6 +105,57 @@ class MarsDownloadedAssessmentCheckpointTest {
                 assertTrue(resumed.passed())
                 assertEquals(1, count())
             } finally { withContext(Dispatchers.EDT) { Disposer.dispose(resumedLifetime) } }
+        }
+    }
+
+    @Test
+    fun `callable checks reject lost saved state and accept unsaved wrapper and tail implementations`() = timeoutRunBlocking {
+        val header = $$"""
+            .text
+            .globl main
+            main: li $v0,10
+            syscall
+            returned: bc main
+            another_return: bc main
+            invert:
+        """.trimIndent() + "\n"
+        val wrapper = $$"""
+            daddiu $sp,$sp,-16
+            sd $ra,8($sp)
+            balc mask_byte
+            xori $v0,$v0,255
+            ld $ra,8($sp)
+            daddiu $sp,$sp,16
+            jrc $ra
+        """.trimIndent() + "\n"
+        val helper = $$"mask_byte: andi $v0,$a0,255\nhelper_return: jrc $ra\n"
+        val cases = listOf(0, 1, 128).map { input ->
+            FunctionCheckCase("byte $input", listOf("returned", "another_return").map { continuation ->
+                FunctionCallCheck("invert", continuation, mapOf("a0" to (0x1234567800000000L or input.toLong())),
+                    mapOf("v0" to (input xor 255).toLong()))
+            }, initialRegisters = mapOf("s0" to 0x123456789abcdef0L), preservedRegisters = listOf("s0"),
+                helpers = listOf(FunctionHelperCheck("mask_byte", "helper_return")))
+        }
+        val functionStep = step.copy(cases = emptyList(), functionCases = cases)
+        val machines = mutableListOf<MarsContext>()
+        exercise(header + "li $" + "s0,0\n" + wrapper + helper,
+            create = { machine().also(machines::add) }, selectedStep = functionStep) { f ->
+            val failed = assertInstanceOf(Feedback.Checked::class.java, f.checkpoint.check())
+            assertEquals(3, failed.results.size); assertTrue(failed.results.none { it.passed })
+            assertTrue(failed.results.all { it.failure!!.contains("Expected s0") }); assertEquals(1, failed.completed)
+            assertFalse(f.checkpoint.passed())
+            suspend fun edit(body: String) = withContext(Dispatchers.EDT) {
+                WriteCommandAction.runWriteCommandAction(projects.get()) { f.document.setText(header + body + helper) }
+            }
+            edit(wrapper)
+            val passed = assertInstanceOf(Feedback.Checked::class.java, f.checkpoint.check())
+            assertTrue(passed.results.all { it.passed }); assertEquals(2, passed.completed); assertTrue(f.checkpoint.passed())
+            edit($$"xori $a0,$a0,255\nbc mask_byte\n")
+            assertFalse(f.checkpoint.passed())
+            val equivalent = assertInstanceOf(Feedback.Checked::class.java, f.checkpoint.check())
+            assertTrue(equivalent.results.all { it.passed }); assertEquals(3, equivalent.completed)
+            assertEquals(9, machines.toSet().size)
+            machines.forEach { assertThrows<IllegalStateException> { it.claimStoppedSession() } }
         }
     }
 

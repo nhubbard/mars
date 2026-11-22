@@ -28,7 +28,7 @@ class MarsNativeActivitySourceTest {
         for ((activity, version) in listOf(run to 2, debug to 3)) {
             // A nonempty output is compatible with the original Run schema too.
             val old = activity.replace("\"stdout\":\"\"", "\"stdout\":\"ok\"")
-            for (edition in version..5) {
+            for (edition in version..6) {
                 val step = MarsNativeLessonPlan.parse(lesson(old, edition)).steps.single()
                 assertNull(when (step) {
                     is MarsNativeRunStep -> step.source
