@@ -6,6 +6,11 @@ import com.intellij.mock.MockProject
 import com.intellij.toolWindow.ToolWindowHeadlessManagerImpl
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.testFramework.replaceService
+import com.intellij.execution.process.ProcessEvent
+import com.intellij.execution.process.ProcessListener
+import com.intellij.execution.executors.DefaultRunExecutor
+import edu.missouristate.mars.plugin.run.MarsRunService
+import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.openapi.Disposable
 import com.intellij.ide.impl.OpenProjectTask
 import com.intellij.openapi.actionSystem.ActionUpdateThread
@@ -18,6 +23,10 @@ import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.impl.SimpleDataContext
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.EDT
+import com.intellij.openapi.application.ModalityState
+import com.intellij.openapi.application.asContextElement
+import com.intellij.openapi.application.impl.LaterInvocator
+import com.intellij.util.ui.UIUtil
 import com.intellij.openapi.application.edtWriteAction
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.components.service
@@ -44,6 +53,9 @@ import java.util.concurrent.CompletableFuture
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 import javax.swing.Timer
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -55,6 +67,8 @@ import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
@@ -184,7 +198,7 @@ class MarsDownloadedLessonsTest {
         val optional = if (native) "\"nativeLesson\":\"lesson.json\"," else ""
         val json = """{"formatVersion":1,"id":"004-byte-inspector","version":"$version","title":"Byte <lesson>","entry":"main.asm","assignment":"assignment.md",$optional"environment":{"isa":"MIPS64 Release 6","syscallAbi":"MARS educational"}}"""
         ZipOutputStream(Files.newOutputStream(file)).use { zip ->
-            for ((name, text) in mapOf("package.json" to json, "main.asm" to ".text\nmain:\nnop\n", "assignment.md" to "Explain.", "lesson.json" to plan)) {
+            for ((name, text) in mapOf("package.json" to json, "main.asm" to ".text\nmain:\nnop\nli \$a0, 1\nli \$v0, 1\nsyscall\nli \$v0, 10\nsyscall\n", "assignment.md" to "Explain.", "lesson.json" to plan)) {
                 zip.putNextEntry(ZipEntry("004-byte-inspector/$name")); zip.write(text.toByteArray()); zip.closeEntry()
             }
         }
@@ -237,16 +251,22 @@ class MarsDownloadedLessonsTest {
         assertThrows<Exception> { selection.load() }
     }
 
-    @Test
-    fun `downloaded DSL opens its entry and binds only its own answers and source anchors`() = timeoutRunBlocking {
+    @ParameterizedTest
+    @ValueSource(booleans = [false, true])
+    fun `downloaded DSL opens its entry and binds only its own answers and source anchors`(withRun: Boolean) = timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
             val project = projects.get()
             val installed = install(project)
-            val anchored = MarsNativeLessonPlan.parse(plan.toByteArray()).steps.single().copy(
+            val anchored = (MarsNativeLessonPlan.parse(plan.toByteArray()).steps.single() as MarsNativeLessonStep).copy(
                 anchor = MarsLessonAnchor("main", "nop", 0), hints = hints)
-            val content = installed.copy(plan = MarsNativeLessonPlan("Intro < & >", "End < & >", listOf(anchored)))
-            val file = fixture.addFileToProject("runtime.asm", ".text\nmain:\nnop\n")
-            fixture.configureFromExistingVirtualFile(file.virtualFile)
+            val run = MarsNativeRunStep("run-one", "Run <this> program.", emptyList(), "1", "One printed.", null, hints)
+            val steps = if (withRun) listOf(anchored, run) else listOf(anchored)
+            val content = installed.copy(plan = MarsNativeLessonPlan("Intro < & >", "End < & >", steps))
+            val virtual = withContext(Dispatchers.IO) {
+                VirtualFileManager.getInstance().refreshAndFindFileByNioPath(installed.installed.entry)!!
+            }
+            fixture.configureFromExistingVirtualFile(virtual)
+            val file = fixture.file
             val lesson = MarsDownloadedLessons.module(content).lessons.single()
             lesson.prepare(project)
             // The native registrar is internal. Reflection is confined to tests;
@@ -266,6 +286,7 @@ class MarsDownloadedLessonsTest {
                 val texts = mutableListOf<RuntimeTextContext.() -> String?>()
                 val eagerTexts = mutableListOf<String>()
                 val checks = mutableListOf<TaskRuntimeContext.() -> Boolean>()
+                val timers = mutableListOf<TaskRuntimeContext.() -> Boolean>()
                 val preparations = mutableListOf<CompletableFuture<Boolean>>()
                 val taskContext = object : TaskContext() {
                     override val project: Project get() = projects.get()
@@ -274,6 +295,10 @@ class MarsDownloadedLessonsTest {
                     override fun text(text: String, useBalloon: LearningBalloonConfig?) { eagerTexts += text }
                     override fun stateCheck(checkState: TaskRuntimeContext.() -> Boolean) =
                         super.stateCheck(checkState).also { checks += checkState }
+                    override fun timerCheck(delayMillis: Int, checkState: TaskRuntimeContext.() -> Boolean): CompletableFuture<Boolean> {
+                        timers += checkState
+                        return super.timerCheck(delayMillis, checkState)
+                    }
                     override fun addStep(step: CompletableFuture<Boolean>) { preparations += step }
                 }
                 for (task in tasks) {
@@ -286,16 +311,63 @@ class MarsDownloadedLessonsTest {
                 val rendered = eagerTexts + texts.mapNotNull { it(RuntimeTextContext(runtime)) }
                 assertTrue(rendered.any { it.contains("Intro &lt; &amp; &gt;") }, "Introduction must be escaped")
                 assertTrue(rendered.any { it.contains("End &lt; &amp; &gt;") }, "Conclusion must be escaped")
-                val controls = callbacks(rendered.single { it.contains("<callback") })
+                val controls = callbacks(rendered.single { it.contains("Which value?") })
+                val runControls = if (withRun) callbacks(rendered.single { it.contains("Run &lt;this&gt; program.") }) else emptyList()
+                rendered.filter { it.contains("<callback") && !it.contains("Which value?") && !it.contains("Run &lt;this&gt; program.") }.forEach { callbacks(it) }
                 controls[0](); assertFalse(checks.single()(runtime))
                 controls[1](); assertTrue(checks.single()(runtime))
-                val missing = anchored.copy(anchor = MarsLessonAnchor("missing", "nop", 0))
-                taskContext.downloadedPrediction(content.identity, missing)
-                callbacks(texts.last()(RuntimeTextContext(runtime))!!)
-                taskContext.downloadedPrediction(content.identity, anchored.copy(anchor = null))
-                val retired = callbacks(texts.last()(RuntimeTextContext(runtime))!!)
-                Disposer.dispose(recorder as Disposable)
-                retired.forEach { it() }
+                if (withRun) {
+                    assertEquals(2, timers.size)
+                    assertTrue(timers.none { it(runtime) })
+                    assertTrue(rendered.any { it.contains("Run &lt;this&gt; program.") })
+                    assertTrue(rendered.any { it.contains("An earlier Run observation") })
+                    runControls.single()()
+                    assertTrue(project.service<MarsLearningProgress>().snapshot(content.runIdentity(run))!!.revealedHints.contains("hints/run-one/one"))
+                    var observed: MarsDownloadedRunCheckpoint? = null
+                    taskContext.downloadedRun(content, run.copy(stdout = "2")) { observed = it }
+                    val service = project.service<MarsLearningExecution>()
+                    val scope = MarsLearningExecution::class.java.getDeclaredField("scope").apply { isAccessible = true }.get(service) as CoroutineScope
+                    suspend fun launch() {
+                        val process = project.service<MarsRunService>().createProcess(content.installed.entry, memoryDumps = emptyList())
+                        val stopped = CompletableDeferred<Unit>()
+                        process.addProcessListener(object : ProcessListener {
+                            override fun processTerminated(event: ProcessEvent) { stopped.complete(Unit) }
+                        })
+                        observed!!.starting(DefaultRunExecutor.EXECUTOR_ID, process)
+                        process.startNotify(); stopped.await()
+                        scope.coroutineContext[Job]!!.children.toList().joinAll()
+                    }
+                    launch(); assertFalse(observed!!.passed())
+                    taskContext.downloadedRun(content, run) { observed = it }
+                    launch(); assertTrue(requireNotNull(observed).passed())
+                    runControls.single()() // Completed execution cannot reveal another hint.
+                    assertEquals(1, project.service<MarsLearningProgress>().snapshot(content.runIdentity(run))!!.revealedHints.size)
+                    assertTrue(timers.all { it(runtime) })
+                    val gate = texts.first { it(RuntimeTextContext(runtime)) == null }
+                    assertNull(gate(RuntimeTextContext(runtime)))
+                    WriteCommandAction.runWriteCommandAction(project) { fixture.editor.document.insertString(0, "# changed\n") }
+                    assertTrue(timers.none { it(runtime) })
+                    assertTrue(gate(RuntimeTextContext(runtime))!!.contains("An earlier Run observation"))
+                    taskContext.downloadedRun(content, run.copy(stdout = "2")) { observed = it }
+                    val modal = Any()
+                    LaterInvocator.enterModal(modal)
+                    try {
+                        withContext(Dispatchers.EDT + ModalityState.any().asContextElement()) { launch() }
+                        Disposer.dispose(recorder as Disposable)
+                    } finally { LaterInvocator.leaveModal(modal) }
+                    UIUtil.dispatchAllInvocationEvents()
+                    runControls.single()() // Retired controls cannot reveal another hint.
+                    assertEquals(1, project.service<MarsLearningProgress>().snapshot(content.runIdentity(run))!!.revealedHints.size)
+                }
+                if (!withRun) {
+                    val missing = anchored.copy(anchor = MarsLessonAnchor("missing", "nop", 0))
+                    taskContext.downloadedPrediction(content.identity, missing)
+                    callbacks(texts.last()(RuntimeTextContext(runtime))!!)
+                    taskContext.downloadedPrediction(content.identity, anchored.copy(anchor = null))
+                    val retired = callbacks(texts.last()(RuntimeTextContext(runtime))!!)
+                    Disposer.dispose(recorder as Disposable)
+                    retired.forEach { it() }
+                }
             } finally { Disposer.dispose(executor as Disposable) }
         }
     }
@@ -323,7 +395,7 @@ class MarsDownloadedLessonsTest {
             })
             UiInterceptors.register(object : UiInterceptors.UiInterceptor<MarsLessonPackagePreviewDialog>(MarsLessonPackagePreviewDialog::class.java) {
                 override fun doIntercept(dialog: MarsLessonPackagePreviewDialog) {
-                    assertTrue(dialog.report.contains("1 guided prediction steps"))
+                    assertTrue(dialog.report.contains("1 guided activities"))
                     dialog.close(DialogWrapper.OK_EXIT_CODE)
                 }
             })
