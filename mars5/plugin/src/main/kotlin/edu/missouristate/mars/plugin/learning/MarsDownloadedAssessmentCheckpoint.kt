@@ -23,8 +23,9 @@ import kotlinx.coroutines.withContext
 internal class MarsDownloadedAssessmentCheckpoint(
     private val project: Project, lifetime: Disposable, private val entry: Path, private val document: Document,
     private val identity: MarsLessonIdentity, private val step: MarsNativeAssessmentStep,
-    private val predictionsReady: () -> Boolean,
+    private val requirementsReady: () -> Boolean,
     private val createSession: () -> MarsContext = { MarsSessionService.createMarsComponent(backstepLimit = 1).context() },
+    private val refreshRequirements: suspend () -> Unit = {},
 ) {
     private val source = MarsLearningSource(project, entry, document, identity)
     private val progress = project.service<MarsLearningProgress>()
@@ -35,12 +36,14 @@ internal class MarsDownloadedAssessmentCheckpoint(
     init { Disposer.register(lifetime) { active = false } }
 
     fun accepts(selected: Document?) = active && selected === document && source.isBound()
-    private fun permitted() = policy.allowFreeWriting && (!policy.requirePredictions || predictionsReady())
+    private fun permitted() = policy.allowFreeWriting && requirementsReady()
     fun passed() = permitted() && source.passed(step.id)
     private fun completed() = progress.snapshot(identity)?.completedAssessments ?: 0
     private fun available(limit: Int) = limit == 0 || completed() < limit
 
     suspend fun check(): Feedback {
+        if (!active) return Feedback.STALE
+        refreshRequirements()
         if (!active) return Feedback.STALE
         if (!permitted()) return Feedback.POLICY
         if (!available(policy.maxIndependentAssessments)) return Feedback.LIMIT

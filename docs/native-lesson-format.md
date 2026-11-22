@@ -287,3 +287,36 @@ it does not establish execution evidence or reset a retry count. The project's
 saved selection identifies the exact retained package edition and activity.
 Continuing an independent activity does not replay the guided tasks. Returning
 to guided work still checks all required source-bound observations.
+
+### Instructor-selected prerequisites
+
+**Tools → Configure Downloaded MARS Lab Prerequisites…** configures each
+independent activity in the selected edition. It offers only earlier activities:
+predictions, Run or Debug observations, and independent checks. This ordering
+prevents cycles. Requirements of an earlier independent check also apply, so
+requiring that check cannot bypass its current prerequisites. The global
+prediction switch adds all preceding questions; access, hints and assessment
+limits retain their existing meanings.
+
+Draft choices survive switching exercises inside the dialog. Cancel leaves
+saved policy unchanged. Save applies the selected edition's rules atomically in
+the project's shareable `mars-learning.xml` policy, with separate entries keyed
+by each assessment's full content identity. Other editions' rules remain
+separate. The standard Settings page explicitly identifies the built-in first
+program's named requirements; downloaded-course selection uses this dialog.
+
+The host refreshes prerequisite files outside read access before binding their
+documents, both when opening an independent task and before checking it. Current
+document text establishes each prerequisite's source revision. Document and VFS
+events invalidate old observations even after leaving guided work; restoring
+edited text does not restore its old pass. Missing files and source changes
+made while the IDE was closed cannot reuse saved execution credit. Prediction
+answers stay independent of source edits.
+
+Before accepting an assessment, the host checks the live prerequisite graph and
+current evidence again. A stricter policy or prerequisite edit during grading
+cannot accept a stale result or consume an attempt. Blocked checks consume no
+attempt. The task and policy feedback list required activity IDs. Unknown saved
+IDs or forward references block checking; the dialog explains that saving its
+displayed choices repairs such entries. Cancel preserves them. These remain
+formative client controls, separate from private instructor grading authority.

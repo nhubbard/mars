@@ -47,6 +47,11 @@ internal data class MarsDownloadedLessonContent(val installed: MarsLessonPackage
     fun runIdentity(step: MarsNativeRunStep) = identity.copy(lesson = installed.metadata.id + ".run." + step.id)
     fun debugIdentity(step: MarsNativeDebugStep) = identity.copy(lesson = installed.metadata.id + ".debug." + step.id)
     fun assessmentIdentity(step: MarsNativeAssessmentStep) = identity.copy(lesson = installed.metadata.id + ".assessment." + step.id)
+    fun preceding(step: MarsNativeAssessmentStep): List<MarsNativeLessonActivity> {
+        val index = plan.steps.indexOf(step)
+        require(index >= 0) { "The independent activity must belong to this content edition" }
+        return plan.steps.take(index)
+    }
 }
 
 /** Project selection only. The retained archive owns definitions; edited working files own source. */

@@ -14,18 +14,21 @@ internal fun LessonContext.downloadedAssessment(content: MarsDownloadedLessonCon
                                                observed: (MarsDownloadedAssessmentCheckpoint) -> Unit) {
     val entry = content.installed.directory.resolve(step.source)
     val identity = content.assessmentIdentity(step)
+    lateinit var requirements: MarsDownloadedRequirements
     task {
         val task = this
-        before { task.addStep(project.service<MarsLearningExecution>().openLessonFile(entry)) }
+        before {
+            requirements = MarsDownloadedRequirements(project, content, step)
+            val execution = project.service<MarsLearningExecution>()
+            task.addStep(execution.openLessonFile(entry))
+            task.addStep(execution.prepareAssessmentRequirements(taskDisposable, requirements))
+        }
     }
     task {
         lateinit var checkpoint: MarsDownloadedAssessmentCheckpoint
         var job: Job? = null
         before {
-            checkpoint = project.service<MarsLearningExecution>().observeAssessment(taskDisposable, entry, editor.document, identity, step) {
-                content.plan.steps.takeWhile { it.id != step.id }.filterIsInstance<MarsNativeLessonStep>()
-                    .all { MarsInlinePrediction.answered(project, content.identity, it.prediction) }
-            }
+            checkpoint = project.service<MarsLearningExecution>().observeAssessment(taskDisposable, entry, editor.document, identity, step, requirements)
             observed(checkpoint)
         }
         runtimeText {
@@ -37,12 +40,13 @@ internal fun LessonContext.downloadedAssessment(content: MarsDownloadedLessonCon
                         show(escapeXmlEntities(downloadedLessonMessages.getMessage("assessment.editor")))
                     } else {
                         job = project.service<MarsLearningExecution>().checkAssessment(taskDisposable, checkpoint) { result ->
-                            show(MarsAssessmentFeedback.text(result))
+                            val reason = if (result == Feedback.POLICY) requirements.description() else ""
+                            show(MarsAssessmentFeedback.text(result) + if (reason.isEmpty()) "" else "&#10;" + escapeXmlEntities(reason))
                         }
                     }
                 }
             }
-            escapeXmlEntities(step.explanation) + "&#10;<callback id=\"$callback\">" +
+            escapeXmlEntities(step.explanation) + "&#10;" + escapeXmlEntities(requirements.description()) + "&#10;<callback id=\"$callback\">" +
                 // Keep the line feed inside the link: the host discards a whitespace-only text node.
                 escapeXmlEntities(downloadedLessonMessages.getMessage("assessment.check")) + "&#10;</callback>" +
                 MarsLessonHints.text(project, identity, step.id, step.hints, active = { !disposed && !checkpoint.passed() }, feedback = show)
