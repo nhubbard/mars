@@ -74,6 +74,7 @@ data class FunctionCheckCase(
     val storeBounds: List<FunctionStoreBoundsCheck> = emptyList(),
     val noExecution: List<FunctionHelperCheck> = emptyList(),
     val initializedOutput: List<FunctionInitializationCheck> = emptyList(),
+    val accessPolicies: List<FunctionAccessPolicyCheck> = emptyList(),
 ) {
     init {
         require(name.isNotBlank() && name.length <= 128) { "Choose a nonempty function case name of at most 128 characters" }
@@ -92,6 +93,9 @@ data class FunctionCheckCase(
         require(initializedOutput.size <= 64 && initializedOutput.sumOf { it.byteLength.toLong() } <= ConsoleMemoryCheck.MAX_BYTES) {
             "Initialized output exceeds 64 ranges or one MiB per case"
         }
+        require(accessPolicies.size <= 64 && accessPolicies.sumOf { policy ->
+            policy.readable.sumOf { it.byteLength.toLong() } + policy.writable.sumOf { it.byteLength.toLong() }
+        } <= ConsoleMemoryCheck.MAX_BYTES) { "Access policies exceed 64 watched intervals or one MiB of permitted data per case" }
         functionMemory(initialMemory)
         require(noStores.size <= ConsoleMemoryCheck.MAX_RANGES &&
             noStores.sumOf { it.byteLength.toLong() } <= ConsoleMemoryCheck.MAX_BYTES) {
@@ -142,7 +146,8 @@ object PreparedFunctionChecks {
                 helpers = copyOf(case.helpers), initialMemory = copyOf(case.initialMemory), noStores = copyOf(case.noStores),
                 accessBounds = copyOf(case.accessBounds),
                 transfers = copyOf(case.transfers).map { it.copy(destinationIndices = copyOf(it.destinationIndices)) },
-                storeBounds = copyOf(case.storeBounds), noExecution = copyOf(case.noExecution), initializedOutput = copyOf(case.initializedOutput))
+                storeBounds = copyOf(case.storeBounds), noExecution = copyOf(case.noExecution), initializedOutput = copyOf(case.initializedOutput),
+                accessPolicies = copyOf(case.accessPolicies).map { it.copy(readable = copyOf(it.readable), writable = copyOf(it.writable)) })
         }
         require(captured.size in 1..256 && captured.map { it.name }.distinct().size == captured.size) { "Declare 1 through 256 uniquely named function cases" }
         require(captured.sumOf { it.calls.size.toLong() } <= 4096 && captured.sumOf { it.instructionLimit } <= 10_000_000) {
@@ -219,6 +224,21 @@ object PreparedFunctionChecks {
                 "Permitted store window overflows")
             Triple(execution.traceMemoryAccesses(first, (until - first).toInt()), permitted, range.permittedByteLength)
         }
+        var watchedAccessBytes = 0L
+        val accessPolicies = case.accessPolicies.map { policy ->
+            val first = execution.readDataAddress(policy.from.label, policy.from.offset.toLong())
+            val until = execution.readDataAddress(policy.until.label, policy.until.offset.toLong())
+            execution.expectCondition(until > first && until - first <= ConsoleMemoryCheck.MAX_BYTES,
+                "Assembled access interval must contain one through one MiB of bytes")
+            watchedAccessBytes += until - first
+            execution.expectCondition(watchedAccessBytes <= ConsoleMemoryCheck.MAX_BYTES, "Combined assembled access intervals exceed one MiB")
+            fun resolve(windows: List<FunctionDataWindow>) = windows.map { window ->
+                val address = execution.readDataAddress(window.at.label, window.at.offset.toLong())
+                execution.expectCondition(address <= Long.MAX_VALUE - window.byteLength, "Permitted data window overflows")
+                address to window.byteLength
+            }
+            Triple(execution.traceMemoryAccesses(first, (until - first).toInt()), resolve(policy.readable), resolve(policy.writable))
+        }
         fun intervalTrace(helper: FunctionHelperCheck): ExecutionTrace {
             try {
                 return execution.traceExecution(helper.from, helper.until)
@@ -269,6 +289,12 @@ object PreparedFunctionChecks {
                         access.address - first <= length.toLong() - access.length,
                         "Expected stores within $length bytes at 0x${first.toString(16)}, observed " +
                             "${access.length}-byte store at 0x${access.address.toString(16)}")
+                }
+                for ((trace, readable, writable) in accessPolicies) for (access in trace.snapshot()) {
+                    val windows = if (access.write) writable else readable
+                    execution.expectCondition(windows.any { (first, length) ->
+                        access.address >= first && access.length <= length && access.address - first <= length.toLong() - access.length
+                    }, "Execution ${if (access.write) "store" else "read"} of ${access.length} bytes at 0x${access.address.toString(16)} is outside its permitted caller windows")
                 }
                 execution.expectRegister("sp", top)
                 for ((register, value) in saved) execution.expectRegister(register, value)

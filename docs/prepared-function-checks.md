@@ -367,3 +367,49 @@ and revalidated before a machine opens. Streaming byte bitmaps avoid retaining
 an additional access history; existing cumulative instruction limits still apply.
 All observers detach on completion, failure or cancellation. This is bounded
 data interpreted by the grader, not an executable predicate.
+
+## Access policies over an assembled caller layout
+
+Native function-profile **version 8** adds case-level `accessPolicies`, using
+`FunctionAccessPolicyCheck` and `FunctionDataWindow`. It retains all earlier
+fields; versions 1–7 reject the new field.
+
+```json
+"accessPolicies": [{
+  "from":{"label":"matrix_guard"},
+  "until":{"label":"completed","offset":4},
+  "readable":[
+    {"at":{"label":"matrix","offset":8},"length":24},
+    {"at":{"label":"vector"},"length":12},
+    {"at":{"label":"output"},"length":16},
+    {"at":{"label":"shape"},"length":8}
+  ],
+  "writable":[{"at":{"label":"output"},"length":16}]
+}]
+```
+
+Every execution data notice overlapping the half-open assembled interval must
+fit wholly within one permitted window of its access type. This covers unnamed
+alignment padding without assuming a fixed distance between caller objects.
+An omitted or empty `readable`/`writable` array permits no corresponding access.
+Zero-length windows likewise permit no traffic. A notice spanning two adjacent
+windows must still fit within one window; the checker does not merge them.
+Windows may lie outside the watched interval, as when a submission reorders
+caller data. Traffic not overlapping a watched interval remains outside this
+assertion, including private stack use. This is not a whole-address-space policy.
+
+Endpoints and windows resolve from data labels and bounded offsets. A watched
+interval must contain one through one MiB of bytes; at most 64 intervals and
+one MiB of combined resolved watched bytes are allowed per case. Each policy
+permits at most 64 windows across both access types, and their combined byte
+lengths across a case are bounded to one MiB. Missing data labels, reversed or
+empty assembled watch intervals and overflowing permitted ranges fail as source
+contracts. Definitions are deeply captured and revalidated before opening a
+machine, including caller-owned mutable window lists.
+
+The implementation reuses the existing execution-only `MemoryAccessTrace`.
+Histories span repeated calls and fail explicitly above 65,536 native notices;
+they never silently drop later accesses. Setup, host inspection and instruction
+fetch do not count. The owning assignment closes traces on success, failure or
+cancellation. Use `initializedOutput` to require current-call initialization
+before partial-sum reads, and memory results to check arithmetic separately.
