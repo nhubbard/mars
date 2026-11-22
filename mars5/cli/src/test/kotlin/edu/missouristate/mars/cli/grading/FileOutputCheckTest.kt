@@ -89,6 +89,63 @@ class FileOutputCheckTest {
     }
 
     @Test
+    fun `zero progress preserves exact prefixes and resets per descriptor and open`() {
+        for (threshold in listOf(0, 2, 4)) {
+            val files = GradingFiles()
+            val check = files.configure(mapOf("a" to byteArrayOf(99)), 1, null,
+                writable = setOf("a", "b"), maximumWrite = 3, zeroWritePosition = threshold)
+            val a = files.open("a", 9)
+            val b = files.open("b", 1)
+            var accepted = 0
+            val expected = mutableListOf<Byte>(99)
+            while (accepted < threshold) {
+                val count = files.write(a, byteArrayOf(1, 2, 3, 4), 4)
+                assertEquals(minOf(3, threshold - accepted), count)
+                expected.addAll(byteArrayOf(1, 2, 3, 4).take(count))
+                accepted += count
+            }
+            repeat(2) { assertEquals(0, files.write(a, byteArrayOf(7), 1)) }
+            assertEquals(0, files.write(a, byteArrayOf(), 0))
+            assertEquals(if (threshold == 0) 0 else 1, files.write(b, byteArrayOf(8), 1))
+            check.expectFile("a", expected.toByteArray())
+            val history = check.snapshot()
+            assertEquals(listOf(0, 0), history.filter {
+                it.operation == Operation.WRITE && it.descriptor == a && it.requestedBytes == 1
+            }.map { it.result })
+            files.close(a); files.close(b); check.expectAllClosed()
+            val reopened = files.open("a", 9)
+            assertEquals(if (threshold == 0) 0 else 1, files.write(reopened, byteArrayOf(9), 1))
+            files.close(reopened); check.expectAllClosed()
+            assertTrue(history.size < check.snapshot().size)
+        }
+    }
+
+    @Test
+    fun `invalid writes and errors take precedence over zero progress`() {
+        for (options in listOf("failure", "size", "invalid")) {
+            val files = GradingFiles()
+            val check = files.configure(emptyMap(), 1, null, writable = setOf("out"),
+                zeroWritePosition = if (options == "size") 1 else 0,
+                writeFailurePosition = if (options == "failure") 0 else null,
+                maximumFileSize = 1)
+            val fd = files.open("out", 1)
+            if (options == "size") assertEquals(1, files.write(fd, byteArrayOf(9), 1))
+            if (options == "invalid") {
+                assertEquals(-1, files.write(fd, null, 0))
+                assertEquals(-1, files.write(fd, byteArrayOf(9), 2))
+                assertEquals(-1, files.write(-1, byteArrayOf(9), 1))
+            } else assertEquals(-1, files.write(fd, byteArrayOf(9), 1))
+            assertEquals(0, files.write(fd, byteArrayOf(), 0))
+            files.close(fd); check.expectAllClosed()
+        }
+        val files = GradingFiles()
+        assertThrows<IllegalArgumentException> { files.configure(emptyMap(), 1, null, zeroWritePosition = -1) }
+        assertFalse(files.enabled)
+        files.configure(emptyMap(), 1, null, zeroWritePosition = 0)
+        assertTrue(files.enabled)
+    }
+
+    @Test
     fun `invalid writes do not change files or enable undeclared host access`() {
         val files = GradingFiles()
         val check = files.configure(mapOf("input" to byteArrayOf(7)), 1, null, writable = setOf("out"))
@@ -191,13 +248,21 @@ class FileOutputCheckTest {
             files.expectFile(hostFile.toString(), byteArrayOf())
             runUntil("closed"); files.expectAllClosed(); runToExit()
         }
+        assignment.case("zero progress through the public DSL and syscall") {
+            val files = provideFiles(emptyMap(), writablePaths = setOf(hostFile.toString()),
+                zeroWriteAfterBytes = 0)
+            startAt("main"); runUntil("written"); expectRegister("v0", 0)
+            files.expectFile(hostFile.toString(), byteArrayOf())
+            runUntil("closed"); files.expectAllClosed(); runToExit()
+            assertEquals(listOf(0), files.snapshot().filter { it.operation == Operation.WRITE }.map { it.result })
+        }
         assignment.case("read-only configuration keeps writes disabled") {
             provideFiles(emptyMap())
             startAt("main"); runUntil("opened"); expectRegister("v0", -1)
             runToExit()
         }
-        assertEquals(listOf(null, null), assignment.results.take(2).map { it.failure })
-        assertTrue(assignment.results[2].failure.orEmpty().contains("syscall 15 is disabled"))
+        assertEquals(listOf(null, null, null), assignment.results.take(3).map { it.failure })
+        assertTrue(assignment.results[3].failure.orEmpty().contains("syscall 15 is disabled"))
         assertEquals("host stays unchanged", hostFile.readText())
     }
 }
