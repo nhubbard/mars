@@ -11,6 +11,8 @@ pane. Tools → Continue Downloaded MARS Lab reopens the project's selected edit
 Questions, feedback and graduated hints use inline links; no Find Action step is
 needed. Format 1 retains conceptual predictions. Format 2 permits an ordered
 sequence of predictions and observations of ordinary student Run launches.
+Format 5 adds optional source files to Run and Debug activities, for example to
+compare full and empty ranges without editing a previously observed program.
 
 ## Format 1 predictions
 
@@ -106,7 +108,9 @@ interleaved; they are not separate start/end templates.
 `kind`, `id`, `explanation`, `integerInputs`, `stdout` and `success` are required.
 Anchors and graduated hints follow the same rules as predictions. Inputs are an
 ordered list of zero through 64 exact signed 32-bit integers. Expected stdout is
-nonblank XML-compatible text of at most 16,384 characters. Success feedback and
+XML-compatible text of at most 16,384 characters. Empty output and whitespace-only
+output are valid exact transcripts, including for programs that only write to a
+memory-mapped display. Success feedback and
 explanations retain the 8,192-character limit. The whole definition remains bounded
 by the existing 1 MiB, 128-activity and JSON-depth limits.
 
@@ -320,3 +324,34 @@ attempt. The task and policy feedback list required activity IDs. Unknown saved
 IDs or forward references block checking; the dialog explains that saving its
 displayed choices repairs such entries. Cancel preserves them. These remain
 formative client controls, separate from private instructor grading authority.
+
+## Format 5 source-specific Run and Debug activities
+
+Use integer `formatVersion: 5` for a lesson whose guided execution activities
+need different files. All format-4 activities remain available. A `run` or
+`debug` activity may add a `source` field, for example
+`"source": "ranges/empty.asm"`. Without it, execution continues to use the
+manifest's `entry`. Formats 1–4 reject this new field. Independent assessments
+retain their required `source` field; predictions remain anchored to the entry.
+
+Each source is a nonblank relative archive path of at most 240 characters and
+must follow the package's existing safe-path rules. Archive preparation rejects
+a missing source before presenting the import preview. Definitions remain in the
+retained immutable archive, while each installed source file remains editable.
+
+When the next activity uses a different file, the lesson waits for IntelliJ's
+file-opening operation to finish before attaching its Run or Debug observer.
+Source pointers resolve against that activity's file. Returning to a prediction
+returns to the entry file. File opening neither executes the program nor credits
+an observation.
+
+Run and Debug results retain separate activity identities and bind to the actual
+file's current revision. Launching another file cannot satisfy the activity,
+even if it prints the same output. Instructor prerequisites use the same file
+binding. Editing a full-range exercise invalidates that exercise's observations;
+an unchanged empty-range exercise retains its own evidence. Restoring old text
+still requires fresh execution after an edit.
+
+An empty console transcript proves no console output, not correct display
+writes. Use independent memory/store/read checks where the learning objective
+depends on a display-port sequence or the absence of an out-of-range access.

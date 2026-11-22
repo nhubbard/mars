@@ -44,8 +44,15 @@ class MarsNativeExecutionPlanTest {
         reject { run().addProperty("id", "before") }
         reject { addProperty("formatVersion", 1) }
         reject { addProperty("formatVersion", "2") }
-        reject { run().addProperty("stdout", " ") }
         reject { run().addProperty("stdout", "x".repeat(16385)) }
+    }
+
+    @Test
+    fun `Run observations preserve empty and whitespace-only console output`() {
+        for (output in listOf("", " ", "\n\t")) {
+            val run = MarsNativeLessonPlan.parse(changed { run().addProperty("stdout", output) }).steps[1] as MarsNativeRunStep
+            assertEquals(output, run.stdout)
+        }
     }
 
     @Test
