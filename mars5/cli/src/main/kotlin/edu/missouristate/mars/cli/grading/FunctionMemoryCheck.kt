@@ -39,3 +39,25 @@ data class FunctionNoStoreCheck(val label: String, val byteLength: Int, val offs
         }
     }
 }
+
+/** Every execution access overlapping the watched window must fit in its permitted subwindow. */
+data class FunctionAccessCheck(
+    val label: String,
+    val byteLength: Int,
+    val permittedOffset: Int,
+    val permittedByteLength: Int,
+    val offset: Int = 0,
+) {
+    init {
+        FunctionDataAddress(label, offset)
+        FunctionDataAddress(label, permittedOffset)
+        require(byteLength in 1..ConsoleMemoryCheck.MAX_BYTES &&
+            permittedByteLength in 0..ConsoleMemoryCheck.MAX_BYTES) {
+            "Watch one through 1048576 bytes and permit zero through 1048576 bytes"
+        }
+        require(permittedOffset >= offset &&
+            permittedOffset.toLong() + permittedByteLength <= offset.toLong() + byteLength) {
+            "The permitted function access window must lie within its watched window"
+        }
+    }
+}

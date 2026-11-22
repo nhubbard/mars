@@ -167,3 +167,37 @@ order; protection does not prescribe those implementation choices. Returned
 values and final output words remain separate assertions. Declared protected
 regions do not constitute a whole-address-space write audit. Caller-stack bytes
 continue to use the separately documented after-return comparison.
+
+## Restricting observed accesses and caller stack stores
+
+`FunctionCheckCase.accessBounds` accepts immutable `FunctionAccessCheck` values.
+Each definition names a data label, watched byte length, permitted byte offset,
+permitted byte length, and optional watched offset. Both offsets are relative to
+the **label**, not to each other. The permitted subwindow must fit wholly inside
+the watched window. A zero-length permitted window allows no observed accesses;
+the watched length must be positive. Labels and offsets follow the existing
+function data-address rules. At most 64 watched regions with a combined one MiB
+are accepted per case, separately from the existing protected-store regions.
+
+For example, `FunctionAccessCheck("values", 40, 8, 16, offset = -4)` watches a
+32-byte array and its adjacent four-byte guards, while permitting reads and
+stores only to its four active words at offsets 8 through 23. Every completed
+execution data access overlapping the watched window must fit wholly inside the
+permitted subwindow. A wider access beginning outside the watched window is
+still checked if it overlaps. This reuses `MemoryAccessTrace`; instruction fetch,
+tool inspection and backstep do not supply forward execution data notices.
+The default 65,536-notice limit applies per trace. Overflow fails the case instead
+of accepting a truncated history. The observation is bounded: accesses that do
+not overlap a watched window remain outside this particular assertion.
+
+`protectCallerStack = true` additionally rejects execution stores overlapping
+the `callerStackBytes` starting at the caller's initially aligned stack pointer.
+Same-value and later-restored stores fail. When `callerStackBytes` is zero there
+is no protected caller window. Private frames below the initial pointer remain
+allowed. The existing after-return comparison and stack-pointer checks still
+apply; the default `false` retains their original comparison-only behavior.
+
+All observers begin after setup and span the calls in one case. They close with
+the existing `AssemblyCase`, including failure and cancellation. New definitions
+are copied and revalidated before a session opens. These checks do not prescribe
+a private frame layout, temporary registers, algorithm, or order of valid stores.
