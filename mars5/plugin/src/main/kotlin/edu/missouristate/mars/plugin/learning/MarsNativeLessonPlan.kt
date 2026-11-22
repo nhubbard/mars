@@ -3,15 +3,9 @@ package edu.missouristate.mars.plugin.learning
 import com.google.gson.JsonArray
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
-import com.google.gson.JsonParser
 import com.google.gson.JsonPrimitive
-import com.google.gson.Strictness
-import com.google.gson.stream.JsonReader
-import com.google.gson.stream.JsonToken
 import edu.missouristate.mars.assembler.RegisterNames
-import java.io.StringReader
-import java.nio.ByteBuffer
-import java.nio.charset.StandardCharsets.UTF_8
+import edu.missouristate.mars.cli.grading.ConsoleCheckCase
 import java.util.List.copyOf
 import java.util.Map.copyOf as copyMap
 import javax.swing.plaf.basic.BasicHTML
@@ -52,6 +46,14 @@ internal data class MarsNativeDebugStep(
     override val anchor: MarsLessonAnchor get() = stops.first().anchor
 }
 
+internal data class MarsNativeAssessmentStep(
+    override val id: String, override val explanation: String,
+    val source: String, val caseProfile: String, val cases: List<ConsoleCheckCase>, val success: String,
+    override val hints: List<MarsLessonHint>,
+) : MarsNativeLessonActivity {
+    override val anchor: MarsLessonAnchor? get() = null
+}
+
 /** Data interpreted by the native trainer; downloaded content cannot name executable actions or scripts. */
 internal data class MarsNativeLessonPlan(
     val introduction: String, val conclusion: String, val steps: List<MarsNativeLessonActivity>,
@@ -60,21 +62,16 @@ internal data class MarsNativeLessonPlan(
         const val MAX_BYTES = 1024 * 1024
         private val ID = Regex("[A-Za-z][A-Za-z0-9._-]{0,63}")
 
-        fun parse(bytes: ByteArray): MarsNativeLessonPlan {
-            require(bytes.size <= MAX_BYTES) { "Native lesson content is too large" }
-            val text = UTF_8.newDecoder().decode(ByteBuffer.wrap(bytes)).toString()
-            val element = JsonReader(StringReader(text)).use { reader ->
-                reader.strictness = Strictness.STRICT
-                reader.nestingLimit = 32
-                // STRICT throws on trailing top-level tokens when the next token is requested.
-                readValue(reader).also { reader.peek() }
-            }
-            val root = element.objectValue()
+        fun parse(bytes: ByteArray, caseData: (String) -> ByteArray = {
+            throw IllegalArgumentException("Assessment case data must come from the course archive")
+        }): MarsNativeLessonPlan {
+            val root = MarsLessonJson.parse(bytes, MAX_BYTES)
             root.fields(setOf("formatVersion", "introduction", "conclusion", "steps"))
             val version = root.get("formatVersion").toString()
-            require(version in setOf("1", "2", "3")) { "Unsupported native lesson format" }
+            require(version in setOf("1", "2", "3", "4")) { "Unsupported native lesson format" }
             val steps = root.array("steps")
             require(steps.size() in 1..128) { "A native lesson needs 1 through 128 steps" }
+            val profiles = mutableMapOf<String, List<ConsoleCheckCase>>()
             val parsed = steps.map {
                 val step = it.objectValue()
                 if (version == "1") parsePrediction(step, false)
@@ -82,8 +79,17 @@ internal data class MarsNativeLessonPlan(
                     "prediction" -> parsePrediction(step, true)
                     "run" -> parseRun(step)
                     "debug" -> {
-                        require(version == "3") { "Debug observations require native lesson format 3" }
+                        require(version in setOf("3", "4")) { "Debug observations require native lesson format 3 or later" }
                         parseDebug(step)
+                    }
+                    "assessment" -> {
+                        require(version == "4") { "Independent assessment requires native lesson format 4" }
+                        val fields = setOf("kind", "id", "explanation", "source", "caseProfile", "success")
+                        step.fields(fields + "hints", fields)
+                        val source = MarsLessonPackages.path(step.text("source", 240))
+                        val profile = MarsLessonPackages.path(step.text("caseProfile", 240))
+                        MarsNativeAssessmentStep(step.identifier("id"), step.text("explanation", 8192), source, profile,
+                            profiles.getOrPut(profile) { MarsConsoleCaseData.parse(caseData(profile)) }, step.text("success", 8192), hints(step))
                     }
                     else -> throw IllegalArgumentException("Unsupported native lesson activity")
                 }
@@ -222,25 +228,5 @@ internal data class MarsNativeLessonPlan(
             require(keySet().all { it in allowed } && keySet().containsAll(required)) { "Unsupported or missing native lesson fields" }
         }
 
-        /** Gson's DOM accepts duplicate keys by default; reject ambiguity at every object depth. */
-        private fun readValue(reader: JsonReader): JsonElement = when (reader.peek()) {
-            JsonToken.BEGIN_OBJECT -> JsonObject().apply {
-                reader.beginObject()
-                while (reader.hasNext()) {
-                    val name = reader.nextName()
-                    require(!has(name)) { "Duplicate native lesson field: $name" }
-                    add(name, readValue(reader))
-                }
-                reader.endObject()
-            }
-            JsonToken.BEGIN_ARRAY -> JsonArray().apply {
-                reader.beginArray()
-                while (reader.hasNext()) add(readValue(reader))
-                reader.endArray()
-            }
-            // The public parser handles scalar syntax and unexpected tokens. Objects and
-            // arrays stay here so nested duplicate fields cannot be silently overwritten.
-            else -> JsonParser.parseReader(reader)
-        }
     }
 }

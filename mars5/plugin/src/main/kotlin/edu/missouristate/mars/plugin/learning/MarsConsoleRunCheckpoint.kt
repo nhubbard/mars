@@ -22,10 +22,12 @@ import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.Key
+import com.intellij.platform.ide.progress.withBackgroundProgress
 import edu.missouristate.mars.plugin.run.MarsProcessHandler
 import java.nio.file.Path
 import java.util.concurrent.CompletableFuture
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.future.future
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.CoroutineScope
@@ -78,6 +80,17 @@ internal class MarsLearningExecution(private val project: Project, private val s
     fun observeRun(lifetime: Disposable, entry: Path, document: Document, identity: MarsLessonIdentity,
                    step: MarsNativeRunStep, feedback: (MarsDownloadedRunCheckpoint.Outcome) -> Unit) =
         MarsDownloadedRunCheckpoint(project, scope, lifetime, entry, document, identity, step, feedback)
+
+    fun observeAssessment(lifetime: Disposable, entry: Path, document: Document, identity: MarsLessonIdentity,
+                          step: MarsNativeAssessmentStep, predictionsReady: () -> Boolean) =
+        MarsDownloadedAssessmentCheckpoint(project, lifetime, entry, document, identity, step, predictionsReady)
+
+    fun checkAssessment(lifetime: Disposable, checkpoint: MarsDownloadedAssessmentCheckpoint,
+                        feedback: (MarsDownloadedAssessmentCheckpoint.Feedback) -> Unit): Job =
+        scope.launch(Dispatchers.Default) {
+            val result = withBackgroundProgress(project, downloadedLessonMessages.getMessage("assessment.progress")) { checkpoint.check() }
+            withContext(Dispatchers.EDT) { if (checkpoint.active) feedback(result) }
+        }.also { job -> Disposer.register(lifetime) { job.cancel() } }
 }
 
 /** Observes the first unit's ordinary Run; it never launches or alters a simulated program. */

@@ -46,6 +46,7 @@ internal data class MarsDownloadedLessonContent(val installed: MarsLessonPackage
     val identity = MarsLessonIdentity("mars-book", installed.metadata.id + ".guided", installed.metadata.version, installed.sha256)
     fun runIdentity(step: MarsNativeRunStep) = identity.copy(lesson = installed.metadata.id + ".run." + step.id)
     fun debugIdentity(step: MarsNativeDebugStep) = identity.copy(lesson = installed.metadata.id + ".debug." + step.id)
+    fun assessmentIdentity(step: MarsNativeAssessmentStep) = identity.copy(lesson = installed.metadata.id + ".assessment." + step.id)
 }
 
 /** Project selection only. The retained archive owns definitions; edited working files own source. */
@@ -134,9 +135,10 @@ internal class MarsDownloadedLesson(private val content: MarsDownloadedLessonCon
                     task { runtimeText { escapeXmlEntities(step.success) } }
                 }
                 is MarsNativeDebugStep -> downloadedDebug(content, step) { checks += it::passed }
+                is MarsNativeAssessmentStep -> downloadedAssessment(content, step) { checks += it::passed }
             }
         }
-        if (content.plan.steps.any { it is MarsNativeRunStep || it is MarsNativeDebugStep }) {
+        if (content.plan.steps.any { it !is MarsNativeLessonStep }) {
             task {
                 runtimeText {
                     if (checks.all { it() }) null
