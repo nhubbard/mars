@@ -252,6 +252,25 @@ class MarsDownloadedRequirementsTest {
         }
     }
 
+    @Test
+    fun `long prerequisite lists keep their natural height inside a bounded native scroll pane`() = timeoutRunBlocking {
+        val content=content(); val target=assessment(content,"second")
+        val prediction=content.plan.steps.first() as MarsNativeLessonStep
+        val long=content.copy(plan=content.plan.copy(steps=(0..49).map { prediction.copy(prediction=prediction.prediction.copy(id="question-$it")) }+target))
+        withContext(Dispatchers.EDT) {
+            val dialog=MarsDownloadedPrerequisitesDialog.create(project,long)
+            try {
+                assertEquals(50,UIUtil.findComponentsOfType(dialog.requirementsPanel,JCheckBox::class.java).size)
+                assertTrue(dialog.requirementsPanel.preferredSize.height>dialog.requirementsScroll.preferredSize.height)
+                dialog.requirementsScroll.size=dialog.requirementsScroll.preferredSize
+                dialog.requirementsScroll.doLayout()
+                dialog.requirementsScroll.viewport.doLayout()
+                assertTrue(dialog.requirementsScroll.verticalScrollBar.isVisible)
+                assertTrue(dialog.requirementsScroll.viewport.viewSize.height>dialog.requirementsScroll.viewport.extentSize.height)
+            } finally { dialog.close(DialogWrapper.CANCEL_EXIT_CODE) }
+        }
+    }
+
     @ParameterizedTest
     @ValueSource(booleans=[false,true])
     fun `source or stricter policy changes while grading cannot accept stale evidence or consume an attempt`(changePolicy:Boolean) = timeoutRunBlocking {

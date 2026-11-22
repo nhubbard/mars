@@ -12,6 +12,7 @@ import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.util.text.StringUtil.escapeXmlEntities
 import com.intellij.platform.ide.progress.ModalTaskOwner
 import com.intellij.platform.ide.progress.runWithModalProgressBlocking
+import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.dsl.builder.Align
 import com.intellij.ui.dsl.builder.panel
 import com.intellij.util.ui.JBUI
@@ -43,13 +44,13 @@ internal class MarsDownloadedPrerequisitesDialog private constructor(
         MarsDownloadedActivityChoice(downloadedLessonMessages.getMessage("activity.independent", Path.of(it.source).fileName.toString()), it.id)
     }.toTypedArray())
     val requirementsPanel = JPanel(BorderLayout())
+    val requirementsScroll = JBScrollPane(requirementsPanel).apply { preferredSize = JBUI.size(580, 280) }
     private val selected: MarsNativeAssessmentStep get() = assessments[activityBox.selectedIndex]
 
     init {
         title = downloadedLessonMessages.getMessage("requirements.title")
         setOKButtonText(downloadedLessonMessages.getMessage("requirements.save"))
         activityBox.accessibleContext.accessibleName = downloadedLessonMessages.getMessage("requirements.exercise")
-        requirementsPanel.preferredSize = JBUI.size(580, 280)
         activityBox.addActionListener { renderRequirements() }
         renderRequirements()
         init()
@@ -85,7 +86,7 @@ internal class MarsDownloadedPrerequisitesDialog private constructor(
         row { text(escapeXmlEntities(downloadedLessonMessages.getMessage("requirements.edition", content.installed.metadata.title,
             content.installed.metadata.version)), maxLineLength = 65) }
         row(downloadedLessonMessages.getMessage("requirements.exercise")) { cell(activityBox) }
-        row { scrollCell(requirementsPanel).align(Align.FILL) }.resizableRow()
+        row { cell(requirementsScroll).align(Align.FILL) }.resizableRow()
         if (unknown) row { text(escapeXmlEntities(downloadedLessonMessages.getMessage("requirements.unknown")), maxLineLength = 65) }
         row { text(escapeXmlEntities(downloadedLessonMessages.getMessage("requirements.explanation")), maxLineLength = 65) }
     }
