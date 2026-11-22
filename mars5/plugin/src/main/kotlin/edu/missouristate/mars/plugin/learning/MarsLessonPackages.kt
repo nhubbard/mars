@@ -148,8 +148,14 @@ internal object MarsLessonPackages {
                         require(size <= MarsConsoleCaseData.MAX_BYTES) { "Assessment case data is too large" }
                         zip.getInputStream(zip.getEntry(profileName)).use { it.readAllBytes() }
                     }.also { plan ->
-                        for (assessment in plan.steps.filterIsInstance<MarsNativeAssessmentStep>()) {
-                            require("${data.id}/${assessment.source}" in assets) { "Missing independent assessment source" }
+                        for (activity in plan.steps) {
+                            val source = when (activity) {
+                                is MarsNativeRunStep -> activity.source
+                                is MarsNativeDebugStep -> activity.source
+                                is MarsNativeAssessmentStep -> activity.source
+                                is MarsNativeLessonStep -> null
+                            }
+                            require(source == null || "${data.id}/$source" in assets) { "Missing native activity source" }
                         }
                     }
                 }

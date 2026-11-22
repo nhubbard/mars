@@ -122,7 +122,7 @@ class MarsDownloadedRequirementsTest {
             is MarsNativeAssessmentStep -> content.assessmentIdentity(activity)
             else -> error("Use answer for a prediction")
         }
-        val path = if (activity is MarsNativeAssessmentStep) content.installed.directory.resolve(activity.source) else content.installed.entry
+        val path = content.source(activity)
         val file = withContext(Dispatchers.IO) { VirtualFileManager.getInstance().refreshAndFindFileByNioPath(path)!! }
         val document = FileDocumentManager.getInstance().getDocument(file)!!
         val source = MarsLearningSource(project, path, document, identity)
@@ -172,6 +172,33 @@ class MarsDownloadedRequirementsTest {
         assertFalse(model.ready()); model.refresh(); assertFalse(model.ready())
         withContext(Dispatchers.IO) { Files.createDirectory(first) }
         model.refresh(); assertFalse(model.ready())
+    }
+
+    @Test
+    fun `Run and Debug prerequisites retain separate source revisions`() = timeoutRunBlocking {
+        val original = content()
+        val content = original.copy(plan = original.plan.copy(steps = original.plan.steps.map {
+            when (it) {
+                is MarsNativeRunStep -> if (it.id == "run-one") it.copy(source = "first.asm") else it
+                is MarsNativeDebugStep -> it.copy(source = "second.asm")
+                else -> it
+            }
+        }))
+        require(content, "second", "run-one", "debug-one")
+        val model = MarsDownloadedRequirements(project, content, assessment(content, "second"))
+        model.refresh()
+        assertFalse(model.ready())
+        grant(content, "run-one"); assertFalse(model.ready())
+        grant(content, "debug-one"); assertTrue(model.ready())
+        edit(content.installed.entry, program + "# unrelated guided entry edit\n")
+        assertTrue(model.ready())
+        edit(content.installed.directory.resolve("first.asm"), program + "# full range edit\n")
+        assertFalse(model.ready())
+        grant(content, "run-one"); assertTrue(model.ready())
+        edit(content.installed.directory.resolve("second.asm"), program + "# empty range edit\n")
+        assertFalse(model.ready())
+        grant(content, "run-one"); assertFalse(model.ready())
+        grant(content, "debug-one"); assertTrue(model.ready())
     }
 
     @Test

@@ -40,11 +40,6 @@ internal class MarsDownloadedRequirements(
         return Plan(supported, required.toSet())
     }
 
-    private fun entry(activity: MarsNativeLessonActivity): Path = when (activity) {
-        is MarsNativeAssessmentStep -> content.installed.directory.resolve(activity.source)
-        else -> content.installed.entry
-    }
-
     private data class Execution(val id: String, val entry: Path, val identity: MarsLessonIdentity)
     private fun execution(activity: MarsNativeLessonActivity): Execution? {
         val identity = when (activity) {
@@ -53,7 +48,7 @@ internal class MarsDownloadedRequirements(
             is MarsNativeAssessmentStep -> content.assessmentIdentity(activity)
             is MarsNativeLessonStep -> return null
         }
-        return Execution(activity.id, entry(activity), identity)
+        return Execution(activity.id, content.source(activity), identity)
     }
 
     /** Refresh VFS outside read access before binding documents, including sources edited while the IDE was closed. */

@@ -269,10 +269,11 @@ class MarsDownloadedLessonsTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = ["prediction", "run", "debug", "assessment", "independent"])
+    @ValueSource(strings = ["prediction", "run", "debug", "assessment", "independent", "source-run", "source-debug"])
     fun `downloaded DSL opens its entry and binds only its own answers and source anchors`(mode: String) = timeoutRunBlocking {
-        val withRun = mode == "run"
-        val withDebug = mode == "debug"
+        val withRun = mode == "run" || mode == "source-run"
+        val withDebug = mode == "debug" || mode == "source-debug"
+        val source = if (mode.startsWith("source-")) "range.asm" else null
         val independent = mode == "independent"
         val withAssessment = mode == "assessment" || independent
         withContext(Dispatchers.EDT) {
@@ -280,19 +281,22 @@ class MarsDownloadedLessonsTest {
             val installed = install(project)
             val anchored = (MarsNativeLessonPlan.parse(plan.toByteArray()).steps.single() as MarsNativeLessonStep).copy(
                 anchor = MarsLessonAnchor("main", "nop", 0), hints = hints)
-            val run = MarsNativeRunStep("run-one", "Run <this> program.", emptyList(), "1", "One printed.", null, hints)
+            val run = MarsNativeRunStep("run-one", "Run <this> program.", emptyList(), "1", "One printed.", null, hints, source)
             val debug = MarsNativeDebugStep("debug-one", "Debug <this> program.", emptyList(), listOf(
                 MarsNativeDebugStop("before-load", "Inspect <the first load>.", MarsLessonAnchor("main", "li", 0),
                     mapOf("\$zero" to 0L), "First boundary.", hints),
                 MarsNativeDebugStop("after-load", "Inspect <the next load>.", MarsLessonAnchor("main", "li", 1),
                     mapOf("\$a0" to 1L), "One is retained.", hints),
-            ), "Explain the changed argument.", hints)
+            ), "Explain the changed argument.", hints, source)
             val assessment = MarsNativeAssessmentStep("independent", "Check <this> program.", "main.asm", "cases.json",
                 listOf(ConsoleCheckCase("one", "", "1", 20_000)), "Explain the result.", hints)
             val steps = when { withAssessment -> listOf(anchored, assessment); withRun -> listOf(anchored, run); withDebug -> listOf(anchored, debug); else -> listOf(anchored) }
             val content = installed.copy(plan = MarsNativeLessonPlan("Intro < & >", "End < & >", steps))
             val virtual = withContext(Dispatchers.IO) {
-                VirtualFileManager.getInstance().refreshAndFindFileByNioPath(installed.installed.entry)!!
+                val path = source?.let { installed.installed.directory.resolve(it).also { target ->
+                    Files.copy(installed.installed.entry, target)
+                } } ?: installed.installed.entry
+                VirtualFileManager.getInstance().refreshAndFindFileByNioPath(path)!!
             }
             fixture.configureFromExistingVirtualFile(virtual)
             val file = fixture.file
@@ -335,8 +339,12 @@ class MarsDownloadedLessonsTest {
                     val field = task!!.javaClass.getDeclaredField("taskContent").apply { isAccessible = true }
                     @Suppress("UNCHECKED_CAST")
                     (field.get(task) as? (TaskContext.() -> Unit))?.invoke(taskContext)
+                    // Match native task ordering: finish a source-opening future
+                    // before the following task binds its execution observer.
+                    for (future in preparations) assertTrue(future.await())
+                    preparations.clear()
                 }
-                for (future in preparations) assertTrue(future.await())
+                assertEquals(virtual, runtime.virtualFile)
                 assertEquals(if (independent) 0 else 1, checks.size)
                 if (!independent) assertFalse(checks.single()(runtime))
                 val rendered = eagerTexts + texts.mapNotNull { it(RuntimeTextContext(runtime)) }
@@ -427,8 +435,8 @@ class MarsDownloadedLessonsTest {
                     taskContext.downloadedRun(content, run.copy(stdout = "2")) { observed = it }
                     val service = project.service<MarsLearningExecution>()
                     val scope = MarsLearningExecution::class.java.getDeclaredField("scope").apply { isAccessible = true }.get(service) as CoroutineScope
-                    suspend fun launch() {
-                        val process = project.service<MarsRunService>().createProcess(content.installed.entry, memoryDumps = emptyList())
+                    suspend fun launch(path: Path = content.source(run)) {
+                        val process = project.service<MarsRunService>().createProcess(path, memoryDumps = emptyList())
                         val stopped = CompletableDeferred<Unit>()
                         process.addProcessListener(object : ProcessListener {
                             override fun processTerminated(event: ProcessEvent) { stopped.complete(Unit) }
@@ -439,6 +447,7 @@ class MarsDownloadedLessonsTest {
                     }
                     launch(); assertFalse(observed!!.passed())
                     taskContext.downloadedRun(content, run) { observed = it }
+                    if (source != null) { launch(content.installed.entry); assertFalse(observed!!.passed()) }
                     launch(); assertTrue(requireNotNull(observed).passed())
                     runControls.single()() // Completed execution cannot reveal another hint.
                     assertEquals(1, project.service<MarsLearningProgress>().snapshot(content.runIdentity(run))!!.revealedHints.size)
