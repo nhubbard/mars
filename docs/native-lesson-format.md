@@ -592,3 +592,23 @@ access/store bounds separately govern ownership of the complete access. Check
 final values with the ordinary memory expectations. This permits equivalent
 reduction schedules without requiring exact instructions, notices or cache
 counts. See `prepared-function-checks.md` for the observation lifecycle and limits.
+
+## Function profile version 8: assembled access policies
+
+Native lesson format 6 accepts function-profile version 8. The new optional
+`accessPolicies` case field retains prior assertions while declaring assembled
+caller spans with separate read and write permissions. Each policy requires
+`from` and `until` data addresses; optional `readable` and `writable` arrays
+contain `{ "at":{"label":"output","offset":8}, "length":16 }` windows.
+Missing permission arrays default empty. Each observed execution notice must fit
+wholly within one permitted window of its access type if it overlaps the watched
+span. This includes unnamed caller padding. Unwatched traffic is unaffected.
+
+The normal strict data-address and exact-integer syntax applies. Permit zero
+through one MiB per window, with at most 64 windows across both arrays in each
+policy. A case permits at most 64 policies and one MiB of combined permitted
+lengths; resolved watched spans also have a combined one-MiB limit. Parsing
+captures immutable nested lists. Unknown fields and executable extensions reject
+before execution. Versions 1–7 reject `accessPolicies`; an absent or empty field
+in version 8 retains earlier behavior. See `prepared-function-checks.md` for
+assembled interval validation, trace bounds and examples.
