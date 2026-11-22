@@ -45,6 +45,7 @@ internal class GradingFiles {
     private var writablePaths = emptySet<String>()
     private var maxWriteSize = Int.MAX_VALUE
     private var failWriteAfterBytes: Int? = null
+    private var zeroWriteAfterBytes: Int? = null
     private var writeFailurePositions = emptyMap<String, Int>()
     private var maxFileSize = 1024 * 1024
     private val handles = mutableMapOf<Int, OpenFile>()
@@ -67,6 +68,7 @@ internal class GradingFiles {
         writeFailurePosition: Int? = null,
         maximumFileSize: Int = 1024 * 1024,
         writeFailuresByPath: Map<String, Int> = emptyMap(),
+        zeroWritePosition: Int? = null,
     ): FileAccessCheck {
         requireCase(!enabled) { "Provide fixture files only once per case" }
         require(maximumRead > 0) { "Maximum read size must be positive" }
@@ -78,11 +80,13 @@ internal class GradingFiles {
         require(writeFailurePosition == null || writeFailurePosition >= 0) { "Write failure position must be nonnegative" }
         require(writeFailuresByPath.keys.all { it in writable }) { "Write failure paths must be declared writable" }
         require(writeFailuresByPath.values.all { it >= 0 }) { "Write failure positions must be nonnegative" }
+        require(zeroWritePosition == null || zeroWritePosition >= 0) { "Zero-write position must be nonnegative" }
         require(maximumFileSize > 0) { "Maximum fixture file size must be positive" }
         contents = files.mapValues { (_, bytes) -> bytes.copyOf() }.toMutableMap()
         writablePaths = writable.toSet()
         maxWriteSize = maximumWrite
         failWriteAfterBytes = writeFailurePosition
+        zeroWriteAfterBytes = zeroWritePosition
         writeFailurePositions = writeFailuresByPath.toMap()
         maxFileSize = maximumFileSize
         maxReadSize = maximumRead
@@ -148,9 +152,11 @@ internal class GradingFiles {
             handle == null || handle.flags == 0 || buffer == null || requested !in 0..buffer.size -> -1
             requested == 0 -> 0
             handle.position >= maxFileSize || failurePosition?.let { handle.written >= it } == true -> -1
+            zeroWriteAfterBytes?.let { handle.written >= it } == true -> 0
             else -> {
                 val count = minOf(requested, maxWriteSize, maxFileSize - handle.position,
-                    failurePosition?.minus(handle.written) ?: Int.MAX_VALUE)
+                    failurePosition?.minus(handle.written) ?: Int.MAX_VALUE,
+                    zeroWriteAfterBytes?.minus(handle.written) ?: Int.MAX_VALUE)
                 // Grow the output amortized, rather than copying the complete prefix on every short write.
                 requireNotNull(handle.output).write(buffer, 0, count)
                 handle.position += count
