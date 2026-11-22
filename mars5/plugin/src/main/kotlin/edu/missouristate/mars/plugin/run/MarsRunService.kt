@@ -191,6 +191,7 @@ internal class MarsProcessHandler(
     val memoryReferences = MemoryGridDisplay(captureReferences, MemoryGridDisplay.Mode.REFERENCES)
     val target get() = launch.options.target
     @Volatile private var readFloatingRegisters: ((Int, Boolean) -> Long)? = null
+    @Volatile private var readIntegerRegisters: ((Int) -> Long)? = null
 
     @Synchronized
     fun scavengerHuntSnapshot() = scavengerHunt?.snapshot() ?: finishedHunt
@@ -215,6 +216,12 @@ internal class MarsProcessHandler(
     }
 
     fun floatingRegisterBits(number: Int): Int? = readFloatingRegisters?.invoke(number, false)?.toInt()
+
+    /** Read on the simulator worker from an instruction listener, or after termination. */
+    fun integerRegisterBits(number: Int): Long? {
+        require(number in 0..31)
+        return readIntegerRegisters?.invoke(number)
+    }
 
     fun floatingDoublewordBits(number: Int): Long? =
         if (target == MarsTarget.MARS64 || number % 2 == 0) readFloatingRegisters?.invoke(number, true) else null
@@ -337,6 +344,8 @@ internal class MarsProcessHandler(
                             })
                             val floatingPoint = session.coprocessor1
                             val floatingRegisters = floatingPoint.registers
+                            val integerRegisters = session.registerFile
+                            readIntegerRegisters = integerRegisters::getLongValueNoNotify
                             readFloatingRegisters = { number, wide ->
                                 if (wide) floatingPoint.getDoublewordNoNotify(number)
                                 else floatingRegisters[number].valueNoNotify.toUInt().toLong()
@@ -358,6 +367,8 @@ internal class MarsProcessHandler(
                                     }
                                 }
                             } finally {
+                                val integers = LongArray(32, integerRegisters::getLongValueNoNotify)
+                                readIntegerRegisters = { integers[it] }
                                 // Keep both precisions available after the session closes.
                                 val singles = IntArray(floatingRegisters.size) { floatingRegisters[it].valueNoNotify }
                                 val doubles = LongArray(floatingRegisters.size) {
