@@ -46,7 +46,7 @@ data class FunctionHelperCheck(val from: String, val until: String) {
  * Repeated calls share one case's machine and cumulative instruction budget. Each case
  * gets a fresh machine. Stack alignment is caller setup before the first call, not a
  * callee action; each call must restore that pointer and its incoming preserved values.
- * Caller stack bytes are compared after every return, not claimed as a write history.
+ * Caller stack bytes are compared after every return; optional store protection also forbids writes.
  */
 data class FunctionCheckCase(
     val name: String,
@@ -59,6 +59,8 @@ data class FunctionCheckCase(
     val callerStackBytes: Int = 32,
     val initialMemory: List<FunctionMemoryCheck> = emptyList(),
     val noStores: List<FunctionNoStoreCheck> = emptyList(),
+    val accessBounds: List<FunctionAccessCheck> = emptyList(),
+    val protectCallerStack: Boolean = false,
 ) {
     init {
         require(name.isNotBlank() && name.length <= 128) { "Choose a nonempty function case name of at most 128 characters" }
@@ -77,6 +79,10 @@ data class FunctionCheckCase(
         require(initialMemory.sumOf { it.byteLength.toLong() } +
             calls.sumOf { call -> call.memory.sumOf { it.byteLength.toLong() } } <= ConsoleMemoryCheck.MAX_BYTES) {
             "Combined function setup and expected memory exceed one MiB per case"
+        }
+        require(accessBounds.size <= ConsoleMemoryCheck.MAX_RANGES &&
+            accessBounds.sumOf { it.byteLength.toLong() } <= ConsoleMemoryCheck.MAX_BYTES) {
+            "Function access windows exceed 64 ranges or one MiB per case"
         }
     }
 }
@@ -112,7 +118,8 @@ object PreparedFunctionChecks {
                 it.copy(arguments = copyMap(it.arguments), expectedRegisters = copyMap(it.expectedRegisters),
                     argumentAddresses = copyMap(it.argumentAddresses), memory = copyOf(it.memory))
             }, initialRegisters = copyMap(case.initialRegisters), preservedRegisters = copyOf(case.preservedRegisters),
-                helpers = copyOf(case.helpers), initialMemory = copyOf(case.initialMemory), noStores = copyOf(case.noStores))
+                helpers = copyOf(case.helpers), initialMemory = copyOf(case.initialMemory), noStores = copyOf(case.noStores),
+                accessBounds = copyOf(case.accessBounds))
         }
         require(captured.size in 1..256 && captured.map { it.name }.distinct().size == captured.size) { "Declare 1 through 256 uniquely named function cases" }
         require(captured.sumOf { it.calls.size.toLong() } <= 4096 && captured.sumOf { it.instructionLimit } <= 10_000_000) {
@@ -150,6 +157,12 @@ object PreparedFunctionChecks {
         execution.setRegister("sp", top)
         val callerBytes = execution.readBytes(top, case.callerStackBytes)
         val protected = case.noStores.map { execution.traceMemoryStores(it.label, it.byteLength, it.offset) }
+        val callerStores = if (case.protectCallerStack && case.callerStackBytes > 0)
+            execution.traceMemoryStores(top, case.callerStackBytes) else null
+        val accessBounds = case.accessBounds.map { range ->
+            Triple(execution.traceMemoryAccesses(range.label, range.byteLength, range.offset),
+                execution.readDataAddress(range.label, range.permittedOffset.toLong()), range.permittedByteLength)
+        }
         val helpers = case.helpers.map { helper ->
             try {
                 execution.traceExecution(helper.from, helper.until)
@@ -170,6 +183,13 @@ object PreparedFunctionChecks {
             for ((register, value) in call.expectedRegisters) execution.expectRegister(register, value)
             for (range in call.memory) execution.expectBytes(range.label, *range.decoded(), offset = range.offset)
             protected.forEach(MemoryStoreTrace::expectNone)
+            callerStores?.expectNone()
+            for ((trace, first, length) in accessBounds) for (access in trace.snapshot()) {
+                execution.expectCondition(access.address >= first && access.length <= length &&
+                    access.address - first <= length.toLong() - access.length,
+                    "Expected accesses within $length bytes at 0x${first.toString(16)}, observed " +
+                        "${access.length}-byte ${if (access.write) "store" else "read"} at 0x${access.address.toString(16)}")
+            }
             execution.expectRegister("sp", top)
             for ((register, value) in saved) execution.expectRegister(register, value)
             execution.expectCondition(execution.readBytes(top, case.callerStackBytes).contentEquals(callerBytes),
