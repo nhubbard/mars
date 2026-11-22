@@ -18,6 +18,7 @@ import com.intellij.openapi.fileEditor.FileEditorOpenRequest
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.openapi.editor.Document
+import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.Key
@@ -57,6 +58,10 @@ internal class MarsLearningExecution(private val project: Project, private val s
 
     fun observeDebug(lifetime: Disposable, entry: Path, document: Document) =
         MarsConsoleDebugCheckpoint(project, lifetime, entry, document)
+
+    fun observeDebug(lifetime: Disposable, entry: Path, editor: Editor, identity: MarsLessonIdentity,
+                     step: MarsNativeDebugStep, feedback: (MarsDownloadedDebugCheckpoint.Outcome) -> Unit) =
+        MarsDownloadedDebugCheckpoint(project, lifetime, entry, editor, identity, step, feedback)
 
     fun observeOutput(lifetime: Disposable, entry: Path, document: Document) =
         MarsConsoleDebugCheckpoint(project, lifetime, entry, document, MarsConsoleDebugCheckpoint.Segment.OUTPUT)

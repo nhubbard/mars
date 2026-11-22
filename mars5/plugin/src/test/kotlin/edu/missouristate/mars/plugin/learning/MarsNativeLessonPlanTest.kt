@@ -50,7 +50,7 @@ class MarsNativeLessonPlanTest {
         for (raw in listOf("", "[]", "true", "null", "1", "\"text\"", "{bad", content + " {}")) {
             assertThrows<Exception>(raw) { MarsNativeLessonPlan.parse(raw.toByteArray()) }
         }
-        reject { addProperty("formatVersion", 3) }
+        reject { addProperty("formatVersion", 4) }
         reject { addProperty("formatVersion", "1") }
         reject { addProperty("runAction", "ExecuteAnything") }
         reject { remove("conclusion") }

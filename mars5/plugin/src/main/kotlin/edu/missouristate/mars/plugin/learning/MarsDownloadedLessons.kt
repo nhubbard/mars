@@ -45,6 +45,7 @@ internal val downloadedLessonMessages = dynamicBundleOf<MarsDownloadedLesson>("m
 internal data class MarsDownloadedLessonContent(val installed: MarsLessonPackages.Installed, val plan: MarsNativeLessonPlan) {
     val identity = MarsLessonIdentity("mars-book", installed.metadata.id + ".guided", installed.metadata.version, installed.sha256)
     fun runIdentity(step: MarsNativeRunStep) = identity.copy(lesson = installed.metadata.id + ".run." + step.id)
+    fun debugIdentity(step: MarsNativeDebugStep) = identity.copy(lesson = installed.metadata.id + ".debug." + step.id)
 }
 
 /** Project selection only. The retained archive owns definitions; edited working files own source. */
@@ -121,7 +122,7 @@ internal class MarsDownloadedLesson(private val content: MarsDownloadedLessonCon
             before { task.addStep(project.service<MarsLearningExecution>().openLessonFile(content.installed.entry)) }
         }
         text(escapeXmlEntities(content.plan.introduction))
-        val runs = mutableListOf<MarsDownloadedRunCheckpoint>()
+        val checks = mutableListOf<() -> Boolean>()
         for (step in content.plan.steps) {
             when (step) {
                 is MarsNativeLessonStep -> {
@@ -129,24 +130,62 @@ internal class MarsDownloadedLesson(private val content: MarsDownloadedLessonCon
                     task { runtimeText { escapeXmlEntities(step.prediction.answerExplanation) } }
                 }
                 is MarsNativeRunStep -> {
-                    task { downloadedRun(content, step) { runs += it } }
+                    task { downloadedRun(content, step) { checks += it::passed } }
                     task { runtimeText { escapeXmlEntities(step.success) } }
                 }
+                is MarsNativeDebugStep -> downloadedDebug(content, step) { checks += it::passed }
             }
         }
-        if (content.plan.steps.any { it is MarsNativeRunStep }) {
+        if (content.plan.steps.any { it is MarsNativeRunStep || it is MarsNativeDebugStep }) {
             task {
                 runtimeText {
-                    if (runs.all { it.passed() }) null
+                    if (checks.all { it() }) null
                     else escapeXmlEntities(downloadedLessonMessages.getMessage("run.recheck")) + " " +
                         "<callback id=\"${getCallBackActionId("Mars.Learning.ContinueDownloaded")}\">" +
                         escapeXmlEntities(downloadedLessonMessages.getMessage("run.continue")) + "</callback>"
                 }
-                timerCheck { runs.all { it.passed() } }
+                timerCheck { checks.all { it() } }
             }
         }
         task { runtimeText { escapeXmlEntities(content.plan.conclusion) } }
     }
+}
+
+internal fun LessonContext.downloadedDebug(content: MarsDownloadedLessonContent, step: MarsNativeDebugStep,
+                                          observed: (MarsDownloadedDebugCheckpoint) -> Unit) {
+    lateinit var checkpoint: MarsDownloadedDebugCheckpoint
+    val identity = content.debugIdentity(step)
+    for ((index, stop) in step.stops.withIndex()) {
+        task {
+            if (index == 0) before {
+                // Ordered stops span several native tasks; their observer belongs to
+                // the lesson, not the first task's retired controls.
+                val lifetime = lessonDisposable
+                checkpoint = project.service<MarsLearningExecution>().observeDebug(lifetime, content.installed.entry,
+                    editor, identity, step) { outcome ->
+                    taskInvokeLater {
+                        // The native lesson executor discards this callback after the lesson stops.
+                        LessonManager.instance.addMessage(escapeXmlEntities(downloadedLessonMessages
+                            .getMessage("debug.feedback.${outcome.name.lowercase()}")), isInformer = true)
+                    }
+                }
+                observed(checkpoint)
+            }
+            runtimeText {
+                removeAfterDone = true
+                highlightDownloadedInstruction(stop.anchor)
+                val active = { !disposed && checkpoint.phase == index }
+                val feedback = { text: String -> LessonManager.instance.addMessage(text, isInformer = true) }
+                val introduction = if (index == 0) escapeXmlEntities(step.explanation) + "&#10;" +
+                    MarsLessonHints.text(project, identity, step.id, step.hints, active, feedback) else ""
+                introduction + escapeXmlEntities(stop.explanation) + "&#10;" +
+                    MarsLessonHints.text(project, identity, "${step.id}/${stop.id}", stop.hints, active, feedback)
+            }
+            timerCheck { checkpoint.phase > index }
+        }
+        task { runtimeText { escapeXmlEntities(stop.success) } }
+    }
+    task { runtimeText { escapeXmlEntities(step.success) } }
 }
 
 internal fun TaskContext.downloadedPrediction(identity: MarsLessonIdentity, step: MarsNativeLessonStep) {

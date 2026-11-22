@@ -9,6 +9,20 @@ import com.intellij.testFramework.replaceService
 import com.intellij.execution.process.ProcessEvent
 import com.intellij.execution.process.ProcessListener
 import com.intellij.execution.executors.DefaultRunExecutor
+import com.intellij.execution.executors.DefaultDebugExecutor
+import com.intellij.execution.ExecutionListener
+import com.intellij.execution.ExecutionManager
+import com.intellij.execution.configurations.ConfigurationTypeUtil
+import com.intellij.execution.process.ProcessHandler
+import com.intellij.execution.runners.ExecutionEnvironment
+import com.intellij.execution.runners.ExecutionEnvironmentBuilder
+import com.intellij.xdebugger.XDebugSession
+import com.intellij.xdebugger.XDebugSessionListener
+import com.intellij.xdebugger.XDebuggerManager
+import com.intellij.xdebugger.XDebuggerUtil
+import edu.missouristate.mars.plugin.debug.MarsDebugRunner
+import edu.missouristate.mars.plugin.debug.MarsLineBreakpointType
+import edu.missouristate.mars.plugin.run.MarsRunType
 import edu.missouristate.mars.plugin.run.MarsRunService
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.openapi.Disposable
@@ -62,6 +76,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.future.await
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.channels.Channel
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotNull
@@ -252,15 +267,23 @@ class MarsDownloadedLessonsTest {
     }
 
     @ParameterizedTest
-    @ValueSource(booleans = [false, true])
-    fun `downloaded DSL opens its entry and binds only its own answers and source anchors`(withRun: Boolean) = timeoutRunBlocking {
+    @ValueSource(strings = ["prediction", "run", "debug"])
+    fun `downloaded DSL opens its entry and binds only its own answers and source anchors`(mode: String) = timeoutRunBlocking {
+        val withRun = mode == "run"
+        val withDebug = mode == "debug"
         withContext(Dispatchers.EDT) {
             val project = projects.get()
             val installed = install(project)
             val anchored = (MarsNativeLessonPlan.parse(plan.toByteArray()).steps.single() as MarsNativeLessonStep).copy(
                 anchor = MarsLessonAnchor("main", "nop", 0), hints = hints)
             val run = MarsNativeRunStep("run-one", "Run <this> program.", emptyList(), "1", "One printed.", null, hints)
-            val steps = if (withRun) listOf(anchored, run) else listOf(anchored)
+            val debug = MarsNativeDebugStep("debug-one", "Debug <this> program.", emptyList(), listOf(
+                MarsNativeDebugStop("before-load", "Inspect <the first load>.", MarsLessonAnchor("main", "li", 0),
+                    mapOf("\$zero" to 0L), "First boundary.", hints),
+                MarsNativeDebugStop("after-load", "Inspect <the next load>.", MarsLessonAnchor("main", "li", 1),
+                    mapOf("\$a0" to 1L), "One is retained.", hints),
+            ), "Explain the changed argument.", hints)
+            val steps = when { withRun -> listOf(anchored, run); withDebug -> listOf(anchored, debug); else -> listOf(anchored) }
             val content = installed.copy(plan = MarsNativeLessonPlan("Intro < & >", "End < & >", steps))
             val virtual = withContext(Dispatchers.IO) {
                 VirtualFileManager.getInstance().refreshAndFindFileByNioPath(installed.installed.entry)!!
@@ -313,14 +336,73 @@ class MarsDownloadedLessonsTest {
                 assertTrue(rendered.any { it.contains("End &lt; &amp; &gt;") }, "Conclusion must be escaped")
                 val controls = callbacks(rendered.single { it.contains("Which value?") })
                 val runControls = if (withRun) callbacks(rendered.single { it.contains("Run &lt;this&gt; program.") }) else emptyList()
-                rendered.filter { it.contains("<callback") && !it.contains("Which value?") && !it.contains("Run &lt;this&gt; program.") }.forEach { callbacks(it) }
+                val debugControls = if (withDebug) callbacks(rendered.single { it.contains("Debug &lt;this&gt; program.") }) else emptyList()
+                rendered.filter { it.contains("<callback") && !it.contains("Which value?") && !it.contains("Run &lt;this&gt; program.") &&
+                    !it.contains("Debug &lt;this&gt; program.") }.forEach { callbacks(it) }
                 controls[0](); assertFalse(checks.single()(runtime))
                 controls[1](); assertTrue(checks.single()(runtime))
+                if (withDebug) {
+                    assertEquals(3, timers.size)
+                    assertTrue(timers.none { it(runtime) })
+                    debugControls.forEach { it() }
+                    val history = project.service<MarsLearningProgress>()
+                    assertEquals(setOf("hints/debug-one/one", "hints/debug-one/before-load/one"),
+                        history.snapshot(content.debugIdentity(debug))!!.revealedHints)
+                    val debugLife = Disposer.newDisposable()
+                    var session: XDebugSession? = null
+                    val started = CompletableDeferred<XDebugSession>()
+                    val stopped = CompletableDeferred<Unit>()
+                    val paused = Channel<Unit>(Channel.UNLIMITED)
+                    try {
+                        val type = XDebuggerUtil.getInstance().findBreakpointType(MarsLineBreakpointType::class.java)
+                        WriteCommandAction.runWriteCommandAction(project) {
+                            XDebuggerManager.getInstance(project).breakpointManager.addLineBreakpoint(type, file.virtualFile.url, 2, null)
+                        }
+                        val config = ConfigurationTypeUtil.findConfigurationType(MarsRunType::class.java).createTemplateConfiguration(project)
+                        config.options.sourcePath = file.virtualFile.path
+                        val env = ExecutionEnvironmentBuilder.create(DefaultDebugExecutor.getDebugExecutorInstance(), config).build()
+                        project.messageBus.connect(debugLife).subscribe(ExecutionManager.EXECUTION_TOPIC, object : ExecutionListener {
+                            override fun processStarting(executorId: String, environment: ExecutionEnvironment, handler: ProcessHandler) {
+                                if (environment !== env) return
+                                val current = XDebuggerManager.getInstance(project).debugSessions.single { it.debugProcess.processHandler === handler }
+                                current.addSessionListener(object : XDebugSessionListener {
+                                    override fun sessionPaused() { paused.trySend(Unit) }
+                                    override fun sessionStopped() { stopped.complete(Unit) }
+                                }, debugLife)
+                                started.complete(current)
+                            }
+                        })
+                        assertTrue(env.runner is MarsDebugRunner)
+                        env.runner.execute(env)
+                        val current = started.await()
+                        session = current
+                        paused.receive(); assertTrue(timers.none { it(runtime) })
+                        UIUtil.dispatchAllInvocationEvents() // Deliver boundary feedback through the native lesson executor.
+                        current.stepOver(false); paused.receive()
+                        assertTrue(timers[0](runtime)); assertFalse(timers[1](runtime))
+                        current.stepOver(false); paused.receive()
+                        assertTrue(timers.all { it(runtime) })
+                        debugControls.forEach { it() }
+                        assertEquals(2, history.snapshot(content.debugIdentity(debug))!!.revealedHints.size)
+                        val gate = texts.first { it(RuntimeTextContext(runtime)) == null }
+                        assertNull(gate(RuntimeTextContext(runtime)))
+                        WriteCommandAction.runWriteCommandAction(project) { fixture.editor.document.insertString(0, "# changed\n") }
+                        assertTrue(timers.none { it(runtime) })
+                        assertTrue(gate(RuntimeTextContext(runtime))!!.contains("An earlier execution observation"))
+                    } finally {
+                        session?.stop()
+                        if (session != null) stopped.await()
+                        Disposer.dispose(debugLife)
+                        paused.close()
+                    }
+                    Disposer.dispose(recorder as Disposable)
+                    debugControls.forEach { it() } // Retired task controls cannot reveal another hint after an edit.
+                }
                 if (withRun) {
                     assertEquals(2, timers.size)
                     assertTrue(timers.none { it(runtime) })
                     assertTrue(rendered.any { it.contains("Run &lt;this&gt; program.") })
-                    assertTrue(rendered.any { it.contains("An earlier Run observation") })
+                    assertTrue(rendered.any { it.contains("An earlier execution observation") })
                     runControls.single()()
                     assertTrue(project.service<MarsLearningProgress>().snapshot(content.runIdentity(run))!!.revealedHints.contains("hints/run-one/one"))
                     var observed: MarsDownloadedRunCheckpoint? = null
@@ -347,7 +429,7 @@ class MarsDownloadedLessonsTest {
                     assertNull(gate(RuntimeTextContext(runtime)))
                     WriteCommandAction.runWriteCommandAction(project) { fixture.editor.document.insertString(0, "# changed\n") }
                     assertTrue(timers.none { it(runtime) })
-                    assertTrue(gate(RuntimeTextContext(runtime))!!.contains("An earlier Run observation"))
+                    assertTrue(gate(RuntimeTextContext(runtime))!!.contains("An earlier execution observation"))
                     taskContext.downloadedRun(content, run.copy(stdout = "2")) { observed = it }
                     val modal = Any()
                     LaterInvocator.enterModal(modal)
@@ -359,7 +441,7 @@ class MarsDownloadedLessonsTest {
                     runControls.single()() // Retired controls cannot reveal another hint.
                     assertEquals(1, project.service<MarsLearningProgress>().snapshot(content.runIdentity(run))!!.revealedHints.size)
                 }
-                if (!withRun) {
+                if (!withRun && !withDebug) {
                     val missing = anchored.copy(anchor = MarsLessonAnchor("missing", "nop", 0))
                     taskContext.downloadedPrediction(content.identity, missing)
                     callbacks(texts.last()(RuntimeTextContext(runtime))!!)
