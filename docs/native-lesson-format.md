@@ -278,3 +278,12 @@ instructional policy, not a secure examination boundary. Assessment history and
 valid source-bound passes survive continuation. Edits invalidate a pass while
 preserving attempts and hints. The final gate checks all Run, Debug and assessment
 evidence against their respective current source documents.
+
+Format 4 needs no additional mode metadata. Each assessment can also be opened
+directly through **Choose Downloaded MARS Lab Activity**. This uses the same
+source file, archived cases, progress identity, prediction prerequisites, hints
+and attempt limit as the guided route. Choosing an activity is navigation;
+it does not establish execution evidence or reset a retry count. The project's
+saved selection identifies the exact retained package edition and activity.
+Continuing an independent activity does not replay the guided tasks. Returning
+to guided work still checks all required source-bound observations.

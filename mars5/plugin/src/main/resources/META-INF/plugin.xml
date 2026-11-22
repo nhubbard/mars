@@ -165,6 +165,9 @@
     <action id="Mars.Learning.ContinueDownloaded" class="edu.missouristate.mars.plugin.learning.MarsContinueDownloadedLessonAction">
       <add-to-group group-id="ToolsMenu" anchor="after" relative-to-action="Mars.Learning.ImportPackage"/>
     </action>
+    <action id="Mars.Learning.ChooseDownloaded" class="edu.missouristate.mars.plugin.learning.MarsChooseDownloadedActivityAction">
+      <add-to-group group-id="ToolsMenu" anchor="after" relative-to-action="Mars.Learning.ContinueDownloaded"/>
+    </action>
     <action id="Mars.Learning.Reset" class="edu.missouristate.mars.plugin.learning.MarsLearningResetAction">
       <add-to-group group-id="ToolsMenu" anchor="after" relative-to-action="Mars.Learning.Open"/>
     </action>
