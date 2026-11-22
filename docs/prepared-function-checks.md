@@ -201,3 +201,10 @@ All observers begin after setup and span the calls in one case. They close with
 the existing `AssemblyCase`, including failure and cancellation. New definitions
 are copied and revalidated before a session opens. These checks do not prescribe
 a private frame layout, temporary registers, algorithm, or order of valid stores.
+
+Failures during a call identify its one-based index, entry and continuation,
+followed by supplied scalar arguments and the original failure detail. Arguments
+come from the captured definition, so a callee that overwrites an argument
+register cannot replace the reported counterexample. Cancellation still
+propagates rather than becoming a failed student case. Case-setup failures before
+a call retain their original setup diagnostic.

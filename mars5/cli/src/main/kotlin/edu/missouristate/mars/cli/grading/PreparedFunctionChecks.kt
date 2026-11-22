@@ -173,31 +173,38 @@ object PreparedFunctionChecks {
             }
         }
         for ((index, call) in case.calls.withIndex()) {
-            checkCancellation()
-            for ((register, value) in call.arguments) execution.setRegister(register, value)
-            for ((register, address) in call.argumentAddresses) execution.setRegisterToDataAddress(register, address.label, address.offset.toLong())
-            execution.enterFunction(call.entry, call.returnTo)
-            val saved = case.preservedRegisters.associateWith(execution::readRegister)
-            val before = helpers.map { it.snapshot().instructions }
-            execution.runUntil(call.returnTo)
-            for ((register, value) in call.expectedRegisters) execution.expectRegister(register, value)
-            for (range in call.memory) execution.expectBytes(range.label, *range.decoded(), offset = range.offset)
-            protected.forEach(MemoryStoreTrace::expectNone)
-            callerStores?.expectNone()
-            for ((trace, first, length) in accessBounds) for (access in trace.snapshot()) {
-                execution.expectCondition(access.address >= first && access.length <= length &&
-                    access.address - first <= length.toLong() - access.length,
-                    "Expected accesses within $length bytes at 0x${first.toString(16)}, observed " +
-                        "${access.length}-byte ${if (access.write) "store" else "read"} at 0x${access.address.toString(16)}")
+            try {
+                checkCancellation()
+                for ((register, value) in call.arguments) execution.setRegister(register, value)
+                for ((register, address) in call.argumentAddresses) execution.setRegisterToDataAddress(register, address.label, address.offset.toLong())
+                execution.enterFunction(call.entry, call.returnTo)
+                val saved = case.preservedRegisters.associateWith(execution::readRegister)
+                val before = helpers.map { it.snapshot().instructions }
+                execution.runUntil(call.returnTo)
+                for ((register, value) in call.expectedRegisters) execution.expectRegister(register, value)
+                for (range in call.memory) execution.expectBytes(range.label, *range.decoded(), offset = range.offset)
+                protected.forEach(MemoryStoreTrace::expectNone)
+                callerStores?.expectNone()
+                for ((trace, first, length) in accessBounds) for (access in trace.snapshot()) {
+                    execution.expectCondition(access.address >= first && access.length <= length &&
+                        access.address - first <= length.toLong() - access.length,
+                        "Expected accesses within $length bytes at 0x${first.toString(16)}, observed " +
+                            "${access.length}-byte ${if (access.write) "store" else "read"} at 0x${access.address.toString(16)}")
+                }
+                execution.expectRegister("sp", top)
+                for ((register, value) in saved) execution.expectRegister(register, value)
+                execution.expectCondition(execution.readBytes(top, case.callerStackBytes).contentEquals(callerBytes),
+                    "Caller-owned stack bytes changed after call ${index + 1}")
+                for ((helper, count) in helpers.zip(before)) execution.expectCondition(helper.snapshot().instructions > count,
+                    "Required helper interval was not executed in call ${index + 1}")
+                execution.expectOutput("")
+                checkCancellation()
+            } catch (failure: CaseFailure) {
+                val arguments = call.arguments.entries.sortedBy { it.key }
+                    .joinToString(", ") { (register, value) -> "$register=$value" }
+                val supplied = if (arguments.isEmpty()) "" else " ($arguments)"
+                throw CaseFailure("Call ${index + 1} to ${call.entry} returning at ${call.returnTo}$supplied: ${failure.message}")
             }
-            execution.expectRegister("sp", top)
-            for ((register, value) in saved) execution.expectRegister(register, value)
-            execution.expectCondition(execution.readBytes(top, case.callerStackBytes).contentEquals(callerBytes),
-                "Caller-owned stack bytes changed after call ${index + 1}")
-            for ((helper, count) in helpers.zip(before)) execution.expectCondition(helper.snapshot().instructions > count,
-                "Required helper interval was not executed in call ${index + 1}")
-            execution.expectOutput("")
-            checkCancellation()
         }
     }
 }
