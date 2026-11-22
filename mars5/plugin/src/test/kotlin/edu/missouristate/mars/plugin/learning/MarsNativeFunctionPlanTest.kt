@@ -184,6 +184,53 @@ class MarsNativeFunctionPlanTest {
     }
 
     @Test
+    fun `actual fixed point archive retains every scalar trial and separate caller boundaries`() {
+        val archive = temporary.resolve("fixed-student.zip")
+        javaClass.getResourceAsStream("/learning/fixed-point-0.1.0-student.zip")!!.use { Files.copy(it, archive) }
+        MarsLessonPackages.prepare(archive).use { prepared ->
+            val plan = prepared.nativeLesson!!
+            assertEquals("012-fixed-point", prepared.metadata.id)
+            assertEquals(5, plan.steps.filterIsInstance<MarsNativeLessonStep>().size)
+            val stops = plan.steps.filterIsInstance<MarsNativeDebugStep>().single().stops
+            assertEquals(8, stops.size)
+            assertEquals(listOf("frame_ready", "advance_axis", "advance_axis", "frame_ready",
+                "reflect_high", "frame_ready", "reflect_high", "frame_ready"), stops.map { it.anchor.label })
+            assertEquals("", plan.steps.filterIsInstance<MarsNativeRunStep>().single().stdout)
+            val assessments = plan.steps.filterIsInstance<MarsNativeAssessmentStep>()
+            assertEquals(listOf("interpolate-raw", "caller-exit"), assessments.map { it.id })
+            assertEquals(1, assessments.map { it.source }.distinct().size)
+            val functions = assessments.first().functionCases
+            assertEquals(8, functions.size)
+            assertEquals(3368, functions.dropLast(1).sumOf { it.calls.size })
+            assertTrue(functions.dropLast(1).all { it.calls.size <= 512 && it.noStores.size == 6 })
+            for (case in functions) {
+                assertTrue(case.protectCallerStack)
+                assertEquals(32, case.callerStackBytes)
+                assertEquals(10, case.preservedRegisters.size)
+            }
+            for ((index, call) in functions.dropLast(1).flatMap { it.calls }.withIndex()) {
+                assertEquals("interpolate_raw", call.entry)
+                assertEquals(if (index % 2 == 0) "interpolate_done" else "interpolate_exit", call.returnTo)
+                val a = call.arguments.getValue("a0")
+                val b = call.arguments.getValue("a1")
+                val w = call.arguments.getValue("a2")
+                assertEquals(a.toInt().toLong(), a)
+                assertEquals(b.toInt().toLong(), b)
+                assertTrue(w in 0L..256L)
+                assertEquals(Math.floorDiv((256L - w) * a + w * b + 128L, 256L), call.expectedRegisters.getValue("v0"))
+            }
+            val caller = functions.last().calls.single()
+            assertEquals("main", caller.entry)
+            assertEquals("interpolate_exit", caller.returnTo)
+            assertEquals(-64L, caller.expectedRegisters.getValue("v0"))
+            assertEquals(6, caller.memory.size)
+            assertEquals(5, functions.last().noStores.size)
+            assertTrue(assessments.last().functionCases.isEmpty())
+            assertEquals("", assessments.last().cases.single().expectedOutput)
+        }
+    }
+
+    @Test
     fun `format six explicitly selects function data and retains console assessments`() {
         val step = parse().steps.single() as MarsNativeAssessmentStep
         assertTrue(step.cases.isEmpty()); assertEquals(151L, step.functionCases.single().calls.single().expectedRegisters.getValue("v0"))
