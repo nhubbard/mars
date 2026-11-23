@@ -99,7 +99,7 @@ data class FunctionCheckCase(
 ) {
     init {
         require(name.isNotBlank() && name.length <= 128) { "Choose a nonempty function case name of at most 128 characters" }
-        require(calls.size in 1..512 && instructionLimit in 1..6_000_000) { "Function cases need 1 through 512 calls and an instruction limit through six million" }
+        require(calls.size in 1..512 && instructionLimit in 1..40_000_000) { "Function cases need 1 through 512 calls and an instruction limit through forty million" }
         require((fileRead != null) == calls.any { it.readFile }) { "A read fixture is required exactly when an invocation declares readFile" }
         require(initialRegisters.keys.intersect(initialRegisterAddresses.keys).isEmpty()) { "An initial register cannot have both integer and address setup" }
         functionRegisters(initialRegisters + initialRegisterAddresses.mapValues { 0L }, writable = true)
@@ -177,8 +177,8 @@ object PreparedFunctionChecks {
                 exit = case.exit?.let { it.copy(memory = copyOf(it.memory)) })
         }
         require(captured.size in 1..256 && captured.map { it.name }.distinct().size == captured.size) { "Declare 1 through 256 uniquely named function cases" }
-        require(captured.sumOf { it.calls.size.toLong() } <= 4096 && captured.sumOf { it.instructionLimit } <= 10_000_000) {
-            "Function profiles exceed 4096 calls or a ten-million-instruction budget"
+        require(captured.sumOf { it.calls.size.toLong() } <= 4096 && captured.sumOf { it.instructionLimit } <= 40_000_000) {
+            "Function profiles exceed 4096 calls or a forty-million-instruction budget"
         }
         return copyOf(captured.map { case ->
             checkCancellation()
