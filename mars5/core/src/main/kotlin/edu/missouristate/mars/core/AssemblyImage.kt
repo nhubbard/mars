@@ -5,6 +5,7 @@ import edu.missouristate.mars.api.AssemblySymbolMap
 import edu.missouristate.mars.api.InstructionSourceMap
 import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.mips.hardware.MemoryState.DataImage
+import java.nio.ByteOrder
 import java.util.List.copyOf
 
 /** Detached instructions, initialized memory, and source metadata from a successful assembly. */
@@ -19,6 +20,9 @@ class AssemblyImage internal constructor(
     @JvmField internal val symbols: AssemblySymbolMap,
 ) {
     @JvmField internal val instructions: List<ProgramStatement.Image> = copyOf(instructions)
+
+    /** Byte order used when assembling initialized data, retained when loading this image. */
+    val byteOrder: ByteOrder get() = if (data.littleEndian) ByteOrder.LITTLE_ENDIAN else ByteOrder.BIG_ENDIAN
 
     /** Compare executable output independently of source names and positions. */
     fun hasSameMachineImage(other: AssemblyImage, checkCancellation: () -> Unit): Boolean {

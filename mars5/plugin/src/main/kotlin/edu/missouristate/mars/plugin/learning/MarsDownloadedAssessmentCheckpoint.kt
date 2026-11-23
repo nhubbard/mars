@@ -15,6 +15,7 @@ import edu.missouristate.mars.plugin.build.MarsAssembledProgram
 import edu.missouristate.mars.plugin.build.MarsBuildService
 import edu.missouristate.mars.plugin.build.MarsSourceSet
 import java.nio.file.Path
+import java.nio.ByteOrder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
@@ -50,9 +51,16 @@ internal class MarsDownloadedAssessmentCheckpoint(
         if (!available(policy.maxIndependentAssessments)) return Feedback.LIMIT
         val attempt = source.begin(step.id)
         try {
-            val program = project.service<MarsBuildService>().prepare(MarsSourceSet(entry), MarsLearningSource.options, activateBuildView = true)
-                ?: return Feedback.ASSEMBLY
-            if (!readAction { current(attempt, program) }) return Feedback.STALE
+            val programs = mutableMapOf<ByteOrder, MarsAssembledProgram>()
+            val orders = (listOf(ByteOrder.LITTLE_ENDIAN) + step.functionCases.mapNotNull { it.byteOrder }).distinct()
+            for (order in orders) {
+                val program = project.service<MarsBuildService>().prepare(MarsSourceSet(entry), MarsLearningSource.options,
+                    activateBuildView = true, byteOrder = order) ?: return Feedback.ASSEMBLY
+                if (!readAction { current(attempt, program) }) return Feedback.STALE
+                programs[order] = program
+            }
+            val program = programs.getValue(ByteOrder.LITTLE_ENDIAN)
+            val images = programs.mapValues { it.value.image }
             val context = currentCoroutineContext()
             val results = withContext(Dispatchers.Default) {
                 if (step.functionCases.isEmpty()) {
@@ -61,7 +69,7 @@ internal class MarsDownloadedAssessmentCheckpoint(
                     }
                 } else {
                     (step.functionCaseBatches.ifEmpty { listOf(step.functionCases) }).flatMap { batch ->
-                        PreparedFunctionChecks.evaluate(program.image, batch, createSession, context::ensureActive)
+                        PreparedFunctionChecks.evaluate(program.image, batch, images, createSession, context::ensureActive)
                     }
                 }
             }

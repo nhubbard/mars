@@ -959,3 +959,27 @@ bytes count toward the existing combined one-MiB fixture/result budget. All maps
 and path sets are detached and revalidated before machine acquisition. Older
 formats reject both new fields explicitly. Existing fixture formats and the
 legacy assignment DSL retain their earlier behavior.
+
+### Function-case version 21: native assembly byte order
+
+Version 21 inherits version 20 and permits optional case-level `byteOrder` with
+exact string `"little"` or `"big"`. Earlier formats reject the field, including
+an explicit default. Omission retains the supplied image's assembly order.
+
+The plugin assembles each requested byte order through the existing build service
+and cache, whose key now includes byte order. Declared native words, doublewords
+and candidate-owned constants therefore have the requested byte representation;
+the checker does not reinterpret a little-endian image as big-endian memory.
+Byte-string fixtures and exact byte results remain address-ordered byte strings.
+Native settings fixtures must encode their own fields in the declared order.
+
+Every case retains its fresh independent machine, while calls within one case
+share that machine and cumulative allowance. Cases and batches retain their
+original ordering. Source edits, changed prerequisites, disposal or cancellation
+while preparing either image prevent credit; all variants must match the captured
+assessment attempt. A multi-order assessment consumes one attempt. Ordinary Run
+and Debug settings and previous lesson source-identity strings are unchanged.
+The original prepared-check API retains its signature and trailing-lambda
+cancellation parameter. A new overload accepts an immutable snapshot of explicit
+assembled variants; a missing variant fails the named case instead of silently
+using the wrong order, and a mislabelled image map rejects before acquisition.
