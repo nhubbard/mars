@@ -554,3 +554,20 @@ Another order needs its matching image; otherwise that case fails without openin
 a session. Native data must be reassembled, not reinterpreted after loading.
 `AssemblyImage.byteOrder` reports its immutable data order. Native function-case
 format 21 exposes these bounded choices to downloaded lessons.
+
+## Relocated pointers in per-call fixtures
+
+`FunctionCallCheck.setupAddressMemory` installs native-endian data pointers using
+the existing `FunctionAddressMemoryCheck(at, value)` label-relative pair. Each
+invocation applies byte `setupMemory` first, then pointer entries in declared order.
+Both destination and value resolve against that submission's assembled symbols;
+the pointer is eight bytes even at an unaligned destination. This supports contexts
+whose input pointer must follow student-owned data layout without executing a
+fixture initialization function in the student's program.
+
+Fixtures precede per-call access observations and do not reset the machine,
+instruction allowance or existing caller-stack guards. Pointer setup shares the
+64-range/one-MiB setup allowance with byte fixtures; its eight bytes per entry also
+count toward the enclosing case's combined memory allowance. Lists are captured and
+revalidated before acquiring sessions. An unresolved or invalid destination/value
+fails that invocation and closes its session. Native format 22 exposes this operation.

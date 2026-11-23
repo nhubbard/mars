@@ -32,6 +32,8 @@ data class FunctionCallCheck(
     val fileReadInvocation: FunctionFileReadInvocation? = null,
     val callerAccess: FunctionCallerAccessCheck? = null,
     val expectedFiles: Map<String, String?>? = null,
+    /** Relocated native pointers installed after byte fixtures, before execution observations. */
+    val setupAddressMemory: List<FunctionAddressMemoryCheck> = emptyList(),
 ) {
     init {
         require(fileReadInvocation == null || readFile) { "A per-call file contract requires readFile" }
@@ -48,6 +50,10 @@ data class FunctionCallCheck(
         functionExpectedFiles(expectedFiles)
         functionMemory(memory)
         functionMemory(setupMemory)
+        require(setupMemory.size + setupAddressMemory.size <= ConsoleMemoryCheck.MAX_RANGES &&
+            setupMemory.sumOf { it.byteLength.toLong() } + 8L * setupAddressMemory.size <= ConsoleMemoryCheck.MAX_BYTES) {
+            "Function setup exceeds 64 memory ranges or one MiB"
+        }
         functionAccessPolicies(accessPolicies, accessHistory, callerAccess)
         require(memory.size + addressMemory.size <= ConsoleMemoryCheck.MAX_RANGES &&
             memory.sumOf { it.byteLength.toLong() } + 8L * addressMemory.size <= ConsoleMemoryCheck.MAX_BYTES) {
@@ -138,7 +144,7 @@ data class FunctionCheckCase(
             calls.sumOf { call -> call.expectedFiles?.values?.sumOf { (it?.length ?: 0).toLong() / 2 } ?: 0 } + initialMemory.sumOf { it.byteLength.toLong() } +
             (exit?.memory?.sumOf { it.byteLength.toLong() } ?: 0) +
             calls.sumOf { call -> call.memory.sumOf { it.byteLength.toLong() } +
-                call.setupMemory.sumOf { it.byteLength.toLong() } + 8L * call.addressMemory.size } <= ConsoleMemoryCheck.MAX_BYTES) {
+                call.setupMemory.sumOf { it.byteLength.toLong() } + 8L * (call.addressMemory.size + call.setupAddressMemory.size) } <= ConsoleMemoryCheck.MAX_BYTES) {
             "Combined function setup and expected memory exceed one MiB per case"
         }
         require(accessBounds.size <= ConsoleMemoryCheck.MAX_RANGES &&
@@ -189,7 +195,7 @@ object PreparedFunctionChecks {
             case.copy(calls = copyOf(case.calls).map {
                 it.copy(arguments = copyMap(it.arguments), expectedFiles = it.expectedFiles?.let { expected -> unmodifiableMap(LinkedHashMap(expected)) }, expectedRegisters = copyMap(it.expectedRegisters),
                     argumentAddresses = copyMap(it.argumentAddresses), memory = copyOf(it.memory), expectedAddresses = copyMap(it.expectedAddresses), addressMemory = copyOf(it.addressMemory),
-                    accessPolicies = capturePolicies(it.accessPolicies), setupMemory = copyOf(it.setupMemory),
+                    accessPolicies = capturePolicies(it.accessPolicies), setupMemory = copyOf(it.setupMemory), setupAddressMemory = copyOf(it.setupAddressMemory),
                     callerAccess = it.callerAccess?.let { caller -> caller.copy(objects = copyOf(caller.objects),
                         readable = copyOf(caller.readable), writable = copyOf(caller.writable)) },
                     accessHistory = it.accessHistory?.let { history -> history.copy(regions = copyOf(history.regions)) })
@@ -307,6 +313,14 @@ object PreparedFunctionChecks {
             try {
                 checkCancellation()
                 for (range in call.setupMemory) execution.setBytes(range.label, *range.decoded(), offset = range.offset)
+                for (range in call.setupAddressMemory) {
+                    val value = execution.readDataAddress(range.value.label, range.value.offset.toLong())
+                    val bytes = IntArray(8) { byte ->
+                        val shift = 8 * if (littleEndian) byte else 7 - byte
+                        (value ushr shift and 255L).toInt()
+                    }
+                    execution.setBytes(range.at.label, *bytes, offset = range.at.offset)
+                }
                 for ((register, value) in call.arguments) execution.setRegister(register, value)
                 for ((register, address) in call.argumentAddresses) execution.setRegisterToDataAddress(register, address.label, address.offset.toLong())
                 transfers.forEach(FunctionTransferObservation::beginCall)

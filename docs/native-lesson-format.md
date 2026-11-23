@@ -983,3 +983,30 @@ The original prepared-check API retains its signature and trailing-lambda
 cancellation parameter. A new overload accepts an immutable snapshot of explicit
 assembled variants; a missing variant fails the named case instead of silently
 using the wrong order, and a mislabelled image map rejects before acquisition.
+
+### Function-case version 22: relocated context pointer fixtures
+
+Version 22 inherits version 21 and permits invocation-level `setupAddressMemory`:
+
+```json
+"setupAddressMemory": [
+  {"at": {"label": "reader_context", "offset": 0},
+   "value": {"label": "reader_bytes", "offset": 3}}
+]
+```
+
+Each entry has exactly `at` and `value`, using the existing label-relative data
+address schema. After applying that invocation's byte `setupMemory`, the grader
+resolves each value against the current assembly and writes its eight native-order
+bytes at the resolved destination. Entries apply in order, including overlaps;
+unaligned destinations are permitted. An omitted or empty list does no work.
+Earlier formats reject this field. Ordinary pointer-result `addressMemory` remains
+an observation and does not initialize memory.
+
+The combined number of byte and pointer setup ranges is at most 64, with at most
+one MiB of expanded setup bytes. Each pointer contributes eight bytes to both that
+allowance and the existing per-case combined memory allowance. Per-call histories
+start after fixtures; existing case-level stack guards, machine state and cumulative
+instruction allowance remain in force. Unresolved symbols or invalid destinations
+fail the named invocation, rather than substituting a zero pointer. No executable
+host predicate or student initialization helper is introduced.
