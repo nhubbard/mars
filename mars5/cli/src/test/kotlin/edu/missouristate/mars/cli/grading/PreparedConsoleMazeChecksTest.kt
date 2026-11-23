@@ -187,6 +187,14 @@ class PreparedConsoleMazeChecksTest {
     }
 
     @Test
+    fun `renderer rejects unaligned public byte arrays rather than silently accepting a different ABI`() {
+        val source = renderer(0).replace("walls: .space 64", ".space 1\nwalls: .space 64")
+        val result = evaluate(source, ConsoleMazeCheck.Renderer(0))
+        assertFalse(result.passed)
+        assertTrue(result.failure!!.contains("walls must have a four-byte-aligned base"), result.failure)
+    }
+
+    @Test
     fun `missing labels traps and exhausted instruction budgets are formative failures`() {
         val check = ConsoleMazeCheck.Search("00".repeat(64), 0, 63, 0)
         assertFalse(evaluate(".text\nli \$v0,10\nsyscall\n", check).passed)

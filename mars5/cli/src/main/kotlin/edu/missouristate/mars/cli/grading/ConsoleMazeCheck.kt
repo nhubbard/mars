@@ -142,6 +142,8 @@ sealed class ConsoleMazeCheck {
             "parents_guard", "distance_guard", "queue_guard", "path_guard", "metadata_guard")
 
         private fun prepareBytes(execution: AssemblyCase, label: String, bytes: List<Int>) {
+            execution.expectCondition((execution.readDataAddress(label) and 3L) == 0L,
+                "$label must have a four-byte-aligned base")
             execution.setBytes(label, *bytes.toIntArray())
         }
 
