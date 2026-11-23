@@ -32,6 +32,7 @@ import edu.missouristate.mars.mips.hardware.Coprocessor1State.Companion.CONDITIO
 import edu.missouristate.mars.mips.hardware.IntegerRegisterFile.Companion.HI_REGISTER
 import edu.missouristate.mars.mips.hardware.IntegerRegisterFile.Companion.LO_REGISTER
 import edu.missouristate.mars.mips.hardware.MemoryState
+import edu.missouristate.mars.mips.hardware.VectorRegister
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.MipsFileType
 import edu.missouristate.mars.plugin.language.MipsLanguage
@@ -47,7 +48,7 @@ import edu.missouristate.mars.util.Binary
 import edu.missouristate.mars.api.MarsTarget
 import kotlinx.coroutines.channels.SendChannel
 
-/** An evaluator captures scalar values and delegates memory reads to the owner of its suspension. */
+/** An evaluator captures register values and delegates memory reads to the owner of its suspension. */
 internal class MarsExpressionEvaluator(
     private val project: Project,
     machine: MarsContext,
@@ -84,10 +85,17 @@ internal class MarsExpressionEvaluator(
         }
         put("FCC", Word(fpu.conditionFlagsNoNotify and CONDITION_FLAG_MASK))
     }
+    private val vectors = if (wide) List(32) { machine.coprocessor1.getVectorNoNotify(it) } else emptyList()
 
     /** Reads the same stopped snapshot used by the native debugger, without evaluating source or memory. */
     fun integerRegisterBits(name: String): Long = registers.getValue(name).integerBits
         ?: error("Not an integer register: $name")
+
+    /** The same immutable 128-bit value displayed by this frame; absent on a scalar-only target. */
+    fun vectorRegisterBits(name: String): VectorRegister? = RegisterNames.vector(name)?.let(vectors::getOrNull)
+
+    /** Native Variables enumerates the captured bank's known indices on a vector-capable target. */
+    fun vectorRegisterBits(number: Int): VectorRegister = vectors[number]
 
     override fun isCodeFragmentEvaluationSupported() = false
 

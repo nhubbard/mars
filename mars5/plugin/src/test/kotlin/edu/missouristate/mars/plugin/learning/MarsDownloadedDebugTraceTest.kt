@@ -1,5 +1,6 @@
 package edu.missouristate.mars.plugin.learning
 
+import edu.missouristate.mars.mips.hardware.VectorRegister
 import edu.missouristate.mars.plugin.learning.MarsDownloadedDebugCheckpoint.Outcome
 import edu.missouristate.mars.plugin.learning.MarsDownloadedDebugCheckpoint.Pause
 import edu.missouristate.mars.plugin.learning.MarsDownloadedDebugCheckpoint.Trace
@@ -11,6 +12,23 @@ class MarsDownloadedDebugTraceTest {
     private fun stop(id: String, value: Long) = MarsNativeDebugStop(id, "Explain $id.", MarsLessonAnchor("interpret", "andi", 0),
         mapOf("\$t0" to value), "Observe $id.", emptyList())
     private val first = Pause(1, 0, 10, 0x100400000, 0x100400000, mapOf("\$t0" to 150L), true)
+
+    @Test
+    fun `both vector halves must match and unavailable or extra vectors cannot grant credit`() {
+        val bits = VectorRegister(0x1234567800000001, Long.MIN_VALUE)
+        val stop = stop("lanes", 150).copy(vectorRegisters = mapOf("\$w4" to bits))
+        val trace = Trace(listOf(stop))
+        assertEquals(Outcome.VALUES, trace.observe(first))
+        assertEquals(Outcome.VALUES, trace.observe(first.copy(number = 2, vectorRegisters = mapOf("\$w4" to null))))
+        assertEquals(Outcome.VALUES, trace.observe(first.copy(number = 3, vectorRegisters = mapOf("\$w4" to bits.copy(low = 1)))))
+        assertEquals(Outcome.VALUES, trace.observe(first.copy(number = 4, vectorRegisters = mapOf("\$w4" to bits.copy(high = 0)))))
+        assertEquals(Outcome.VALUES, trace.observe(first.copy(number = 5, vectorRegisters = mapOf("\$w4" to bits, "\$w5" to bits))))
+        assertEquals(Outcome.HISTORY, trace.observe(first.copy(number = 6, revision = 1, vectorRegisters = mapOf("\$w4" to bits))))
+        assertEquals(0, trace.phase)
+        assertEquals(Outcome.PASSED, trace.observe(first.copy(number = 7, vectorRegisters = mapOf("\$w4" to bits))))
+        val onlyVector = Trace(listOf(stop.copy(registers = emptyMap())))
+        assertEquals(Outcome.PASSED, onlyVector.observe(first.copy(registers = emptyMap(), vectorRegisters = mapOf("\$w4" to bits))))
+    }
 
     @Test
     fun `ordered observations require new forward execution and full-width values`() {

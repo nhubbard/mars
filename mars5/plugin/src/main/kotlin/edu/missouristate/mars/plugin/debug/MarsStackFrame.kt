@@ -53,10 +53,10 @@ internal class MarsStackFrame(
 
     private fun capture(machine: MarsContext): Snapshot {
         val evaluator = MarsExpressionEvaluator(project, machine, localSymbols, globalSymbols, loadedSymbols, watchRequests)
-        return Snapshot(evaluator, registerGroups(machine))
+        return Snapshot(evaluator, registerGroups(machine, evaluator))
     }
 
-    private fun registerGroups(machine: MarsContext) = XValueChildrenList().apply {
+    private fun registerGroups(machine: MarsContext, evaluator: MarsExpressionEvaluator) = XValueChildrenList().apply {
         val cpu = machine.registerFile
         val wide = machine.target == MarsTarget.MARS64
         val writes = machine.backStepper.previousRegisterWrites()
@@ -116,7 +116,7 @@ internal class MarsStackFrame(
         if (wide) {
             addTopGroup(RegisterGroup("debug.registers.vector", XValueChildrenList().apply {
                 for (number in registers.indices) {
-                    val bits = fpu.getVectorNoNotify(number)
+                    val bits = evaluator.vectorRegisterBits(number)
                     add(VectorRegisterValue($$"$w$$number", bits, written(RegisterWriteBank.COPROCESSOR_1, number)))
                 }
             }))

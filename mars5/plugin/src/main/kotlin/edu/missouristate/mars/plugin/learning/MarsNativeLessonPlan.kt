@@ -5,6 +5,7 @@ import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.google.gson.JsonPrimitive
 import edu.missouristate.mars.assembler.RegisterNames
+import edu.missouristate.mars.mips.hardware.VectorRegister
 import edu.missouristate.mars.cli.grading.FunctionCheckCase
 import edu.missouristate.mars.cli.grading.ConsoleCheckCase
 import java.util.List.copyOf
@@ -39,6 +40,7 @@ internal data class MarsNativeRunStep(
 internal data class MarsNativeDebugStop(
     val id: String, val explanation: String, val anchor: MarsLessonAnchor,
     val registers: Map<String, Long>, val success: String, val hints: List<MarsLessonHint>,
+    val vectorRegisters: Map<String, VectorRegister> = emptyMap(),
 )
 
 internal data class MarsNativeDebugStep(
@@ -73,7 +75,7 @@ internal data class MarsNativeLessonPlan(
             val root = MarsLessonJson.parse(bytes, MAX_BYTES)
             root.fields(setOf("formatVersion", "introduction", "conclusion", "steps"))
             val version = root.get("formatVersion").toString()
-            require(version in setOf("1", "2", "3", "4", "5", "6")) { "Unsupported native lesson format" }
+            require(version in setOf("1", "2", "3", "4", "5", "6", "7")) { "Unsupported native lesson format" }
             val steps = root.array("steps")
             require(steps.size() in 1..128) { "A native lesson needs 1 through 128 steps" }
             val profiles = mutableMapOf<String, List<ConsoleCheckCase>>()
@@ -85,13 +87,13 @@ internal data class MarsNativeLessonPlan(
                     "prediction" -> parsePrediction(step, true)
                     "run" -> parseRun(step, version)
                     "debug" -> {
-                        require(version in setOf("3", "4", "5", "6")) { "Debug observations require native lesson format 3 or later" }
+                        require(version in setOf("3", "4", "5", "6", "7")) { "Debug observations require native lesson format 3 or later" }
                         parseDebug(step, version)
                     }
                     "assessment" -> {
-                        require(version in setOf("4", "5", "6")) { "Independent assessment requires native lesson format 4 or later" }
+                        require(version in setOf("4", "5", "6", "7")) { "Independent assessment requires native lesson format 4 or later" }
                         val fields = setOf("kind", "id", "explanation", "source", "caseProfile", "success")
-                        step.fields(fields + "hints" + if (version == "6") setOf("checkKind") else emptySet(), fields)
+                        step.fields(fields + "hints" + if (version in setOf("6", "7")) setOf("checkKind") else emptySet(), fields)
                         val source = MarsLessonPackages.path(step.text("source", 240))
                         val profile = MarsLessonPackages.path(step.text("caseProfile", 240))
                         val kind = if (step.has("checkKind")) step.text("checkKind", 32) else "console"
@@ -160,9 +162,9 @@ internal data class MarsNativeLessonPlan(
             val parsed = stops.map {
                 val stop = it.objectValue()
                 val fields = setOf("id", "explanation", "anchor", "registers", "success")
-                stop.fields(fields + "hints", fields)
+                stop.fields(fields + "hints" + if (version == "7") setOf("vectorRegisters") else emptySet(), fields)
                 val registers = stop.get("registers").objectValue()
-                require(registers.size() in 1..32) { "A Debug stop needs 1 through 32 integer register values" }
+                require(registers.size() <= 32) { "A Debug stop supports at most 32 integer register values" }
                 val values = linkedMapOf<String, Long>()
                 for ((spelling, value) in registers.entrySet()) {
                     require(spelling.isNotEmpty()) { "Unknown Debug integer register" }
@@ -173,15 +175,31 @@ internal data class MarsNativeLessonPlan(
                     }
                     values[register.name] = value.asString.substring(2).toULong(16).toLong()
                 }
+                val vectors = vectorRegisters(stop)
+                require(values.isNotEmpty() || vectors.isNotEmpty()) { "A Debug stop needs integer or vector register values" }
                 MarsNativeDebugStop(stop.identifier("id"), stop.text("explanation", 8192),
-                    parseAnchor(stop.get("anchor").objectValue()), copyMap(values), stop.text("success", 8192), hints(stop))
+                    parseAnchor(stop.get("anchor").objectValue()), copyMap(values), stop.text("success", 8192), hints(stop), vectors)
             }
             require(parsed.map { it.id }.distinct().size == parsed.size) { "Duplicate Debug stop ID" }
             return MarsNativeDebugStep(step.identifier("id"), step.text("explanation", 8192), integerInputs(step),
                 copyOf(parsed), step.text("success", 8192), hints(step), source(step))
         }
 
-        private fun sourceField(version: String) = if (version in setOf("5", "6")) setOf("source") else emptySet()
+        private fun vectorRegisters(stop: JsonObject): Map<String, VectorRegister> {
+            if (!stop.has("vectorRegisters")) return emptyMap()
+            val fields = stop.get("vectorRegisters").objectValue()
+            require(fields.size() <= 32) { "A Debug stop supports at most 32 vector registers" }
+            return copyMap(fields.entrySet().associate { (name, value) ->
+                require(RegisterNames.vector(name) != null) { "Unknown Debug vector register" }
+                require(value is JsonPrimitive && value.isString && Regex("0x[0-9a-fA-F]{32}").matches(value.asString)) {
+                    "Debug vector values must contain exactly 128 hexadecimal bits"
+                }
+                name to VectorRegister(value.asString.substring(18).toULong(16).toLong(),
+                    value.asString.substring(2, 18).toULong(16).toLong())
+            })
+        }
+
+        private fun sourceField(version: String) = if (version in setOf("5", "6", "7")) setOf("source") else emptySet()
         private fun source(step: JsonObject) = if (step.has("source")) MarsLessonPackages.path(step.text("source", 240)) else null
 
         private fun anchor(step: JsonObject) = if (step.has("anchor")) parseAnchor(step.get("anchor").objectValue()) else null
