@@ -12,6 +12,8 @@ import com.intellij.build.progress.BuildProgressDescriptor
 import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.application.EDT
+import com.intellij.openapi.application.ModalityState
+import com.intellij.openapi.application.asContextElement
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.fileEditor.FileDocumentManager
@@ -155,10 +157,13 @@ internal class MarsBuildService(private val project: Project, private val scope:
         }
         val progressDescriptor = MarsBuildProgressDescriptor(descriptor)
         // StartBuildEvent can synchronously clear the platform's Swing build list.
+        // These handoffs only update Build UI, like FrontendBuildViewManager: allow
+        // any modality so a background run can finish while a dialog is open.
+        // PSI/source capture and diagnostic construction remain outside them.
         // Keep the caller dispatcher in the outer block: prompt cancellation on an EDT return
         // must not discard an acquired progress handle before its finally block can finish it.
         val progress = withContext(NonCancellable) {
-            withContext(Dispatchers.EDT) {
+            withContext(Dispatchers.EDT + ModalityState.any().asContextElement()) {
                 BuildViewManager.createBuildProgress(project).start(progressDescriptor.title, progressDescriptor)
             }
         }
@@ -170,7 +175,7 @@ internal class MarsBuildService(private val project: Project, private val scope:
             val completed = assembleAndReport(symbolBuild, assemble) { diagnostics, capture ->
                 val events = readAction { diagnosticEvents(project, progress.id, diagnostics, capture) }
                 checkCanceled()
-                withContext(Dispatchers.EDT) {
+                withContext(Dispatchers.EDT + ModalityState.any().asContextElement()) {
                     val view = project.service<BuildViewManager>()
                     for (event in events) {
                         checkCanceled()
@@ -185,7 +190,7 @@ internal class MarsBuildService(private val project: Project, private val scope:
             cancelled = true
             throw cancel
         } finally {
-            withContext(NonCancellable + Dispatchers.EDT) {
+            withContext(NonCancellable + Dispatchers.EDT + ModalityState.any().asContextElement()) {
                 finish(progress, cancelled, succeeded, reused)
             }
         }
