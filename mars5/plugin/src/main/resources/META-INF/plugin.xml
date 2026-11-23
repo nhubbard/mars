@@ -42,6 +42,7 @@
     <ift.learning.course language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.learning.MarsLearningCourse"/>
   </extensions>
   <extensions defaultExtensionNs="edu.missouristate.mars">
+    <syscallEnvironmentCustomizer implementation="edu.missouristate.mars.plugin.learning.MarsLearningFileEnvironmentCustomizer"/>
     <toolProvider id="edu.missouristate.mars.introToTools" implementation="edu.missouristate.mars.plugin.tools.IntroToToolsProvider"/>
   </extensions>
   <extensions defaultExtensionNs="com.intellij">

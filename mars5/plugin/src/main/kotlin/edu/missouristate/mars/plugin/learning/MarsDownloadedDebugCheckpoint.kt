@@ -7,6 +7,7 @@ import com.intellij.execution.process.ProcessHandler
 import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.runReadActionBlocking
+import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
@@ -35,6 +36,7 @@ internal class MarsDownloadedDebugCheckpoint(
     @Volatile private var closed = false
 
     init {
+        step.fileRead?.let { project.service<MarsLearningFileInputs>().bind(entry, it, lifetime) }
         Disposer.register(lifetime) { closed = true }
         project.messageBus.connect(lifetime).subscribe(ExecutionManager.EXECUTION_TOPIC, object : ExecutionListener {
             override fun processStarting(executorId: String, env: ExecutionEnvironment, handler: ProcessHandler) {

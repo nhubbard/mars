@@ -32,6 +32,7 @@ import com.intellij.xdebugger.XDebuggerUtil
 import com.intellij.xdebugger.frame.XValueModifier.XModificationCallback
 import edu.missouristate.mars.plugin.MarsExecutionOptions
 import edu.missouristate.mars.api.MarsTarget
+import edu.missouristate.mars.cli.grading.FunctionFileReadCheck
 import edu.missouristate.mars.mips.hardware.VectorRegister
 import edu.missouristate.mars.plugin.build.MarsAssemblySettings
 import edu.missouristate.mars.plugin.debug.MarsDebugRunner
@@ -324,6 +325,67 @@ class MarsDownloadedDebugCheckpointTest {
             }
         } finally {
             withContext(Dispatchers.EDT) { settings.changeTarget(target) }
+        }
+    }
+
+    @Test
+    fun `native Debug keeps its short-read fixture after the Learn observation is disposed`() = timeoutRunBlocking {
+        val source = $$"""
+            .data
+            path: .asciiz "input.bin"
+            buffer: .space 7
+            .text
+            main:
+                la $a0,path
+                li $a1,0
+                li $v0,13
+                syscall
+                move $t5,$v0
+            observed:
+                andi $t0,$zero,255
+                move $a0,$t5
+                la $a1,buffer
+                li $a2,7
+                li $v0,14
+                syscall
+                move $s0,$v0
+                li $v0,14
+                syscall
+                move $s1,$v0
+                li $v0,14
+                syscall
+                move $s2,$v0
+                li $v0,16
+                syscall
+            finished:
+                nop
+                li $v0,10
+                syscall
+        """.trimIndent()
+        val plan = contract.copy(integerInputs = emptyList(),
+            stops = listOf(stop("opened", "observed", "andi", mapOf("\$t5" to 19L))),
+            fileRead = FunctionFileReadCheck("input.bin", "313233343536373839", 7, 3, 5, 19))
+        withDebug(plan, source) { f ->
+            val launch = f.start()
+            launch.pauses.receive()
+            assertTrue(f.checkpoint.passed())
+            withContext(Dispatchers.EDT) {
+                val project = projects.get()
+                Disposer.dispose(f.observationLifetime)
+                assertNull(project.service<MarsLearningFileInputs>().definition(f.file.toNioPath()))
+                val type = XDebuggerUtil.getInstance().findBreakpointType(MarsLineBreakpointType::class.java)
+                WriteCommandAction.runWriteCommandAction(project) {
+                    XDebuggerManager.getInstance(project).breakpointManager.addLineBreakpoint(type, f.file.url,
+                        source.lines().indexOfFirst { it.trim() == "finished:" } + 1, null)
+                }
+                launch.session.resume()
+            }
+            val finished = launch.pauses.receive().frame.evaluator
+            assertEquals(3L, finished.integerRegisterBits("\$s0"))
+            assertEquals(2L, finished.integerRegisterBits("\$s1"))
+            assertEquals(-1L, finished.integerRegisterBits("\$s2"))
+            withContext(Dispatchers.EDT) { launch.session.resume() }
+            launch.stopped.await()
         }
     }
 

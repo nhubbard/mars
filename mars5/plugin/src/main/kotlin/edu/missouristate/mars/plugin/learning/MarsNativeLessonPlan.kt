@@ -6,6 +6,7 @@ import com.google.gson.JsonObject
 import com.google.gson.JsonPrimitive
 import edu.missouristate.mars.assembler.RegisterNames
 import edu.missouristate.mars.mips.hardware.VectorRegister
+import edu.missouristate.mars.cli.grading.FunctionFileReadCheck
 import edu.missouristate.mars.cli.grading.FunctionCheckCase
 import edu.missouristate.mars.cli.grading.ConsoleCheckCase
 import java.util.List.copyOf
@@ -47,6 +48,7 @@ internal data class MarsNativeDebugStep(
     override val id: String, override val explanation: String, val integerInputs: List<Int>,
     val stops: List<MarsNativeDebugStop>, val success: String, override val hints: List<MarsLessonHint>,
     val source: String? = null,
+    val fileRead: FunctionFileReadCheck? = null,
 ) : MarsNativeLessonActivity {
     override val anchor: MarsLessonAnchor get() = stops.first().anchor
 }
@@ -81,7 +83,7 @@ internal data class MarsNativeLessonPlan(
             val root = MarsLessonJson.parse(bytes, MAX_BYTES)
             root.fields(setOf("formatVersion", "introduction", "conclusion", "steps"))
             val version = root.get("formatVersion").toString()
-            require(version in setOf("1", "2", "3", "4", "5", "6", "7", "8")) { "Unsupported native lesson format" }
+            require(version in setOf("1", "2", "3", "4", "5", "6", "7", "8", "9")) { "Unsupported native lesson format" }
             val steps = root.array("steps")
             require(steps.size() in 1..128) { "A native lesson needs 1 through 128 steps" }
             val profiles = mutableMapOf<String, List<ConsoleCheckCase>>()
@@ -93,14 +95,14 @@ internal data class MarsNativeLessonPlan(
                     "prediction" -> parsePrediction(step, true)
                     "run" -> parseRun(step, version)
                     "debug" -> {
-                        require(version in setOf("3", "4", "5", "6", "7", "8")) { "Debug observations require native lesson format 3 or later" }
+                        require(version in setOf("3", "4", "5", "6", "7", "8", "9")) { "Debug observations require native lesson format 3 or later" }
                         parseDebug(step, version)
                     }
                     "assessment" -> {
-                        require(version in setOf("4", "5", "6", "7", "8")) { "Independent assessment requires native lesson format 4 or later" }
+                        require(version in setOf("4", "5", "6", "7", "8", "9")) { "Independent assessment requires native lesson format 4 or later" }
                         val fields = setOf("kind", "id", "explanation", "source", "success")
-                        val references = if (version == "8") setOf("caseProfile", "caseProfiles") else setOf("caseProfile")
-                        step.fields(fields + references + "hints" + if (version in setOf("6", "7", "8")) setOf("checkKind") else emptySet(), fields)
+                        val references = if (version in setOf("8", "9")) setOf("caseProfile", "caseProfiles") else setOf("caseProfile")
+                        step.fields(fields + references + "hints" + if (version in setOf("6", "7", "8", "9")) setOf("checkKind") else emptySet(), fields)
                         val source = MarsLessonPackages.path(step.text("source", 240))
                         val paths = assessmentProfiles(step)
                         val kind = if (step.has("checkKind")) step.text("checkKind", 32) else "console"
@@ -186,13 +188,13 @@ internal data class MarsNativeLessonPlan(
 
         private fun parseDebug(step: JsonObject, version: String): MarsNativeDebugStep {
             val required = setOf("kind", "id", "explanation", "integerInputs", "stops", "success")
-            step.fields(required + "hints" + sourceField(version), required)
+            step.fields(required + "hints" + sourceField(version) + if (version == "9") setOf("fileRead") else emptySet(), required)
             val stops = step.array("stops")
             require(stops.size() in 1..32) { "A Debug observation needs 1 through 32 stops" }
             val parsed = stops.map {
                 val stop = it.objectValue()
                 val fields = setOf("id", "explanation", "anchor", "registers", "success")
-                stop.fields(fields + "hints" + if (version in setOf("7", "8")) setOf("vectorRegisters") else emptySet(), fields)
+                stop.fields(fields + "hints" + if (version in setOf("7", "8", "9")) setOf("vectorRegisters") else emptySet(), fields)
                 val registers = stop.get("registers").objectValue()
                 require(registers.size() <= 32) { "A Debug stop supports at most 32 integer register values" }
                 val values = linkedMapOf<String, Long>()
@@ -212,7 +214,7 @@ internal data class MarsNativeLessonPlan(
             }
             require(parsed.map { it.id }.distinct().size == parsed.size) { "Duplicate Debug stop ID" }
             return MarsNativeDebugStep(step.identifier("id"), step.text("explanation", 8192), integerInputs(step),
-                copyOf(parsed), step.text("success", 8192), hints(step), source(step))
+                copyOf(parsed), step.text("success", 8192), hints(step), source(step), MarsFunctionCaseData.fileRead(step))
         }
 
         private fun vectorRegisters(stop: JsonObject): Map<String, VectorRegister> {
@@ -229,7 +231,7 @@ internal data class MarsNativeLessonPlan(
             })
         }
 
-        private fun sourceField(version: String) = if (version in setOf("5", "6", "7", "8")) setOf("source") else emptySet()
+        private fun sourceField(version: String) = if (version in setOf("5", "6", "7", "8", "9")) setOf("source") else emptySet()
         private fun source(step: JsonObject) = if (step.has("source")) MarsLessonPackages.path(step.text("source", 240)) else null
 
         private fun anchor(step: JsonObject) = if (step.has("anchor")) parseAnchor(step.get("anchor").objectValue()) else null
