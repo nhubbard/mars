@@ -11,6 +11,7 @@ import com.intellij.build.progress.BuildProgress
 import com.intellij.build.progress.BuildProgressDescriptor
 import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer
 import com.intellij.openapi.application.readAction
+import com.intellij.openapi.application.EDT
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.fileEditor.FileDocumentManager
@@ -39,10 +40,12 @@ import edu.missouristate.mars.plugin.run.MarsExecutionSources
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.async
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.future.asCompletableFuture
+import kotlinx.coroutines.withContext
 import org.jetbrains.concurrency.asPromise
 import java.nio.file.Path
 import java.nio.ByteOrder
@@ -151,18 +154,28 @@ internal class MarsBuildService(private val project: Project, private val scope:
             isActivateToolWindowWhenFailed = activateOnFailure
         }
         val progressDescriptor = MarsBuildProgressDescriptor(descriptor)
-        val progress = BuildViewManager.createBuildProgress(project).start(progressDescriptor.title, progressDescriptor)
+        // StartBuildEvent can synchronously clear the platform's Swing build list.
+        // Keep the caller dispatcher in the outer block: prompt cancellation on an EDT return
+        // must not discard an acquired progress handle before its finally block can finish it.
+        val progress = withContext(NonCancellable) {
+            withContext(Dispatchers.EDT) {
+                BuildViewManager.createBuildProgress(project).start(progressDescriptor.title, progressDescriptor)
+            }
+        }
         var cancelled = false
         var succeeded = false
         var reused = false
         try {
+            currentCoroutineContext().ensureActive()
             val completed = assembleAndReport(symbolBuild, assemble) { diagnostics, capture ->
                 val events = readAction { diagnosticEvents(project, progress.id, diagnostics, capture) }
                 checkCanceled()
-                val view = project.service<BuildViewManager>()
-                for (event in events) {
-                    checkCanceled()
-                    view.onEvent(progress.id, event)
+                withContext(Dispatchers.EDT) {
+                    val view = project.service<BuildViewManager>()
+                    for (event in events) {
+                        checkCanceled()
+                        view.onEvent(progress.id, event)
+                    }
                 }
             }
             succeeded = completed.second.succeeded
@@ -172,7 +185,9 @@ internal class MarsBuildService(private val project: Project, private val scope:
             cancelled = true
             throw cancel
         } finally {
-            finish(progress, cancelled, succeeded, reused)
+            withContext(NonCancellable + Dispatchers.EDT) {
+                finish(progress, cancelled, succeeded, reused)
+            }
         }
     }
 
