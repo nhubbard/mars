@@ -58,11 +58,23 @@ class MarsFirLessonPackageTest {
                 val cut = case.calls[1].arguments.getValue("a3").toInt()
                 assertEquals(listOf(32L, cut.toLong(), (32 - cut).toLong()), case.calls.map { it.arguments.getValue("a3") })
                 assertEquals(13 + 4 * cut, case.calls.last().argumentAddresses.getValue("a0").offset)
+                for (call in case.calls) {
+                    val count = call.arguments.getValue("a3").toInt()
+                    val policy = call.accessPolicies.single()
+                    assertEquals(listOf(if (count == 0) 0 else 4 * count + 12, if (count == 0) 0 else 16, 2 * count), policy.readable.map { it.byteLength })
+                    assertEquals(call.argumentAddresses.getValue("a0"), policy.readable.first().at)
+                    assertEquals(call.argumentAddresses.getValue("a2"), policy.writable.single().at)
+                    assertEquals(2 * count, policy.writable.single().byteLength)
+                }
                 val output = case.calls.last().memory.single { it.label == "output" }.bytes
                 assertEquals(output.substring(6, 134), output.substring(198, 326))
             }
             val clipped = splits.single { it.name.endsWith("family-2") }
             assertEquals(listOf(32L, 5L, 27L), clipped.calls.map { it.expectedRegisters.getValue("v1") })
+            val caller = cases.single { it.calls.first().entry == "main" }
+            assertEquals(listOf("output"), caller.calls.first().accessPolicies.single().writable.map { it.at.label })
+            assertTrue(caller.calls.last().accessPolicies.single().readable.isEmpty())
+            assertEquals(listOf("processed", "clipped"), caller.calls.last().accessPolicies.single().writable.map { it.at.label })
             assertTrue(assessments.last().functionCases.isEmpty())
             assertEquals("", assessments.last().cases.single().expectedOutput)
         }

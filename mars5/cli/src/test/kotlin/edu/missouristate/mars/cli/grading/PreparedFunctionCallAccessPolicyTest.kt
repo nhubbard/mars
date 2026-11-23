@@ -89,6 +89,10 @@ class PreparedFunctionCallAccessPolicyTest {
         assertFalse(evaluate("lw \$t1,0(\$a1)\n$copy", case).passed)
         val crossing = first.copy(accessPolicies = listOf(policy(0, 4).copy(readable = listOf(window("input", 0, 2), window("input", 2, 2)))))
         assertFalse(evaluate(copy, case.copy(calls = listOf(crossing))).passed)
+        val broadCall = first.copy(accessPolicies = listOf(policy()))
+        val narrowCase = case.copy(calls = listOf(broadCall), accessPolicies = listOf(policy(0, 4)))
+        assertTrue(evaluate(copy, narrowCase).passed)
+        assertFalse(evaluate("lw \$t1,4(\$a0)\n$copy", narrowCase).passed)
     }
 
     @Test
