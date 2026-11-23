@@ -57,7 +57,7 @@ internal data class MarsDownloadedLessonContent(val installed: MarsLessonPackage
             is MarsNativeRunStep -> activity.source
             is MarsNativeDebugStep -> activity.source
             is MarsNativeAssessmentStep -> activity.source
-            is MarsNativeLessonStep -> null
+            is MarsNativeLessonStep -> activity.source
         }
         return relative?.let { installed.directory.resolve(it) } ?: installed.entry
     }
@@ -171,7 +171,7 @@ internal class MarsDownloadedLesson(private val content: MarsDownloadedLessonCon
             }
             when (step) {
                 is MarsNativeLessonStep -> {
-                    task { downloadedPrediction(content.identity, step, content.installed.entry) }
+                    task { downloadedPrediction(content.identity, step, source) }
                     task { runtimeText { escapeXmlEntities(step.prediction.answerExplanation) } }
                 }
                 is MarsNativeRunStep -> {

@@ -153,7 +153,7 @@ internal object MarsLessonPackages {
                                 is MarsNativeRunStep -> activity.source
                                 is MarsNativeDebugStep -> activity.source
                                 is MarsNativeAssessmentStep -> activity.source
-                                is MarsNativeLessonStep -> null
+                                is MarsNativeLessonStep -> activity.source
                             }
                             require(source == null || "${data.id}/$source" in assets) { "Missing native activity source" }
                         }

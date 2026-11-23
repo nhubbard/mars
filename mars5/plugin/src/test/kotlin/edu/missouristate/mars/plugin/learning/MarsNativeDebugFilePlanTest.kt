@@ -42,7 +42,7 @@ class MarsNativeDebugFilePlanTest {
     @Test
     fun `old versions cannot silently start injecting files and malformed fixtures fail closed`() {
         for (version in 1..8) assertThrows<IllegalArgumentException> { parse { addProperty("formatVersion", version) } }
-        assertThrows<IllegalArgumentException> { parse { addProperty("formatVersion", 11) } }
+        assertThrows<IllegalArgumentException> { parse { addProperty("formatVersion", 12) } }
         for (field in listOf("path", "bytes", "maxRequest")) {
             assertThrows<IllegalArgumentException> { parse { step().getAsJsonObject("fileRead").remove(field) } }
         }
