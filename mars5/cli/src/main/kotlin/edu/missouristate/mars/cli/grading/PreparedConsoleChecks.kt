@@ -19,6 +19,7 @@ data class ConsoleCheckCase(
     val stores: List<ConsoleStoreCheck> = emptyList(),
     val reads: List<ConsoleReadCheck> = emptyList(),
     val marsBot: ConsoleMarsBotCheck? = null,
+    val maze: ConsoleMazeCheck? = null,
 ) {
     init {
         require(name.isNotBlank()) { "Choose a non-empty case name" }
@@ -87,7 +88,8 @@ object PreparedConsoleChecks {
                                 for (range in case.initialMemory) execution.setBytes(range.address, *range.decoded())
                                 val stores = case.stores.map { it to execution.traceMemoryStores(it.address, it.byteLength) }
                                 val reads = case.reads.map { it to execution.traceMemoryAccesses(it.address, it.byteLength) }
-                                execution.runToExit()
+                                if (case.maze == null) execution.runToExit()
+                                else case.maze.run(execution, checkCancellation)
                                 bot?.let { (check, device) -> check.verify(device) }
                                 execution.expectOutput(case.expectedOutput)
                                 for (range in case.memory) execution.expectBytes(range.address, *range.decoded())
