@@ -25,7 +25,7 @@ class MarsNativeAssessmentPlanTest {
     fun `format four binds assessment sources and immutable profiles in the authored activity order`() {
         val step = parse().steps.single() as MarsNativeAssessmentStep
         assertEquals("independent/plus-one.asm", step.source)
-        assertEquals("independent/plus-one.cases.json", step.caseProfile)
+        assertEquals("independent/plus-one.cases.json", step.caseProfiles.single())
         assertEquals(7, step.cases.size)
         assertNull(step.anchor)
         assertEquals(listOf(MarsLessonHint("retain", "Retain all three results.")), step.hints)
@@ -71,7 +71,7 @@ class MarsNativeAssessmentPlanTest {
             val step = prepared.nativeLesson!!.steps.single() as MarsNativeAssessmentStep
             val folder = Files.createDirectory(temporary.resolve("project"))
             val installed = prepared.install(folder)
-            Files.writeString(installed.directory.resolve(step.caseProfile), "changed working profile")
+            Files.writeString(installed.directory.resolve(step.caseProfiles.single()), "changed working profile")
             Files.writeString(path, "changed selected ZIP")
             assertEquals(7, step.cases.size)
             assertEquals("0\n", step.cases.first().input)

@@ -40,7 +40,7 @@ class MarsMemoryLessonPackageTest {
             assertTrue(Files.isRegularFile(installed.entry))
             for (assessment in assessments) {
                 assertTrue(Files.isRegularFile(installed.directory.resolve(assessment.source)))
-                assertTrue(Files.isRegularFile(installed.directory.resolve(assessment.caseProfile)))
+                assertTrue(Files.isRegularFile(installed.directory.resolve(assessment.caseProfiles.single())))
             }
         }
     }

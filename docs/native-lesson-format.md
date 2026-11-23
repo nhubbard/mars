@@ -689,3 +689,36 @@ call/instruction budgets and profile bounds remain unchanged. Parsing and
 evaluation capture immutable nested lists before opening a machine. An absent
 or empty call field adds no restriction; versions 1–8 reject the field even when
 empty. A violation reports the invocation number and entry/continuation context.
+
+### Native lesson version 8: one assessment over bounded profile batches
+
+Version 8 inherits version 7's prediction, source-bound Run/Debug, vector and
+function assessment behavior. An assessment declares exactly one of `caseProfile`
+(a single relative path, as before) or `caseProfiles` (one through 32 distinct
+relative paths). `checkKind` selects the same console or function reader for all
+referenced files; mixed kinds in one assessment are not supported. For example:
+
+```json
+{"kind":"assessment","id":"scan-sequences","source":"independent/delta-scan.asm",
+ "explanation":"Check the complete sequence and limit corpus.",
+ "caseProfiles":["independent/sequence-00.json","independent/sequence-01.json"],
+ "checkKind":"function","success":"Explain the first boundary you checked."}
+```
+
+Every profile must be present in the imported archive and pass its existing
+strict parser before preview. Profiles retain their one-MiB content limit,
+per-case instruction bounds and ten-million combined instruction budget. At
+most 512 cases and 4096 function calls may belong to one assessment, and case
+names must be unique across its files. The 32-file bound therefore also caps
+the declared instruction budget at 320 million; a typical correct program
+executes far less. This preserves a large published corpus and its original
+budgets without requiring one student activity per data file. All checks use
+the existing cancellable background grader, source revision and completion
+policy; no new execution mechanism or executable downloaded content is added.
+
+Profiles run in listed order and retain their own case/call boundaries. Their
+immutable parsed data are captured at import; editing a working profile cannot
+change the imported assessment. Repeated references in different activities
+share the validated profile data. Versions 1–7 reject `caseProfiles`, and version
+8 rejects both reference spellings together, duplicates, unsafe paths, missing
+files, malformed later files and exceeded aggregate limits.

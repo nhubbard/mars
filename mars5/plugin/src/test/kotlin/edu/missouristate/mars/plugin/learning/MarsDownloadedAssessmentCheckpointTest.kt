@@ -61,7 +61,7 @@ class MarsDownloadedAssessmentCheckpointTest {
             li $v0, 10
             syscall
         """.trimIndent() + "\n"
-    private val step = MarsNativeAssessmentStep("offset", "Write a generic console program.", "task.asm", "cases.json",
+    private val step = MarsNativeAssessmentStep("offset", "Write a generic console program.", "task.asm", listOf("cases.json"),
         listOf(0, 3, -3).map { ConsoleCheckCase("input $it", "$it\n", "${it + 2}", 20_000) }, "Explain the calculation.", emptyList())
     private var fileNumber = 0
     private fun machine() = MarsSessionService.createMarsComponent(backstepLimit = 1).context()
@@ -79,6 +79,48 @@ class MarsDownloadedAssessmentCheckpointTest {
             }
             body(state)
         } finally { withContext(Dispatchers.EDT) { Disposer.dispose(lifetime) } }
+    }
+
+    @Test
+    fun `function profile batches retain original budgets and complete as one assessment`() = timeoutRunBlocking {
+        val cases = (0..19).map { input -> FunctionCheckCase("value $input", listOf(
+            FunctionCallCheck("identity", "returned", mapOf("a0" to input.toLong()), mapOf("v0" to input.toLong()))), instructionLimit = 1_000_000) }
+        val selected = step.copy(cases = emptyList(), functionCases = cases, functionCaseBatches = cases.chunked(10))
+        val source = $$".text\n.globl main\nmain: li $v0,10\nsyscall\nreturned: nop\nidentity: move $v0,$a0\njrc $ra\n"
+        val machines = mutableListOf<MarsContext>()
+        exercise(source, create = { machine().also(machines::add) }, selectedStep = selected) { f ->
+            val result = assertInstanceOf(Feedback.Checked::class.java, f.checkpoint.check())
+            assertEquals(cases.map { it.name }, result.results.map { it.name })
+            assertTrue(result.results.all { it.passed }); assertTrue(f.checkpoint.passed())
+            assertEquals(1, result.completed); assertEquals(20, machines.toSet().size)
+            machines.forEach { assertThrows<IllegalStateException> { it.claimStoppedSession() } }
+        }
+    }
+
+    @Test
+    fun `console batches retain failures in later profiles and consume one attempt`() = timeoutRunBlocking {
+        val cases = step.cases.mapIndexed { index, case -> if (index == 2) case.copy(expectedOutput = "incorrect") else case }
+        val selected = step.copy(cases = cases, consoleCaseBatches = cases.chunked(2))
+        exercise(selectedStep = selected) { f ->
+            val result = assertInstanceOf(Feedback.Checked::class.java, f.checkpoint.check())
+            assertEquals(listOf(true, true, false), result.results.map { it.passed })
+            assertEquals(1, result.completed); assertFalse(f.checkpoint.passed())
+        }
+    }
+
+    @Test
+    fun `cancellation between profile batches consumes no attempt and closes earlier machines`() = timeoutRunBlocking {
+        val selected = step.copy(consoleCaseBatches = step.cases.chunked(2))
+        val machines = mutableListOf<MarsContext>()
+        exercise(selectedStep = selected, create = {
+            if (machines.size == 2) throw CancellationException("Cancel the next profile")
+            machine().also(machines::add)
+        }) { f ->
+            assertThrows<CancellationException> { f.checkpoint.check() }
+            assertEquals(0, count()); assertFalse(f.checkpoint.passed())
+            assertEquals(2, machines.size)
+            machines.forEach { assertThrows<IllegalStateException> { it.claimStoppedSession() } }
+        }
     }
 
     @Test
