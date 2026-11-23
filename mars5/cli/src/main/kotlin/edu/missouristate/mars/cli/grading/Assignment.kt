@@ -153,6 +153,10 @@ class AssemblyCase internal constructor(
         dataAddress(label, 0, alignment = 1)
     }
 
+    /** The loaded image's native byte order, including a case loaded into a fresh default session. */
+    val byteOrder: ByteOrder
+        get() = if (machine.memory.byteOrder) ByteOrder.LITTLE_ENDIAN else ByteOrder.BIG_ENDIAN
+
     /**
      * Opt into deterministic time (30) and nonblocking sleep (32) services for this case.
      * Each time request consumes one copied [readings] value, preserving all 64 bits.

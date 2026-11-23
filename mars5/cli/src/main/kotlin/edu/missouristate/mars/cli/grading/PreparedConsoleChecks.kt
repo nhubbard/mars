@@ -20,8 +20,10 @@ data class ConsoleCheckCase(
     val reads: List<ConsoleReadCheck> = emptyList(),
     val marsBot: ConsoleMarsBotCheck? = null,
     val maze: ConsoleMazeCheck? = null,
+    val publication: ConsolePublicationCheck? = null,
 ) {
     init {
+        require(maze == null || publication == null) { "Choose one console execution protocol" }
         require(name.isNotBlank()) { "Choose a non-empty case name" }
         require(instructionLimit > 0) { "Instruction limit must be positive" }
         require(memory.size <= ConsoleMemoryCheck.MAX_RANGES && memory.sumOf { it.byteLength.toLong() } <= ConsoleMemoryCheck.MAX_BYTES) {
@@ -65,7 +67,8 @@ object PreparedConsoleChecks {
     ): List<ConsoleCheckResult> {
         val capturedCases = copyOf(cases).map {
             it.copy(memory = copyOf(it.memory), initialMemory = copyOf(it.initialMemory), stores = copyOf(it.stores), reads = copyOf(it.reads),
-                marsBot = it.marsBot?.let { bot -> bot.copy(trail = copyOf(bot.trail)) })
+                marsBot = it.marsBot?.let { bot -> bot.copy(trail = copyOf(bot.trail)) },
+                publication = it.publication?.detached())
         }
         require(capturedCases.isNotEmpty()) { "Declare at least one console case" }
         require(capturedCases.map { it.name }.distinct().size == capturedCases.size) { "Case names must be unique" }
@@ -88,8 +91,11 @@ object PreparedConsoleChecks {
                                 for (range in case.initialMemory) execution.setBytes(range.address, *range.decoded())
                                 val stores = case.stores.map { it to execution.traceMemoryStores(it.address, it.byteLength) }
                                 val reads = case.reads.map { it to execution.traceMemoryAccesses(it.address, it.byteLength) }
-                                if (case.maze == null) execution.runToExit()
-                                else case.maze.run(execution, checkCancellation)
+                                when {
+                                    case.maze != null -> case.maze.run(execution, checkCancellation)
+                                    case.publication != null -> case.publication.run(execution, checkCancellation)
+                                    else -> execution.runToExit()
+                                }
                                 bot?.let { (check, device) -> check.verify(device) }
                                 execution.expectOutput(case.expectedOutput)
                                 for (range in case.memory) execution.expectBytes(range.address, *range.decoded())
