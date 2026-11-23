@@ -18,6 +18,7 @@ data class ConsoleCheckCase(
     val initialMemory: List<ConsoleMemoryCheck> = emptyList(),
     val stores: List<ConsoleStoreCheck> = emptyList(),
     val reads: List<ConsoleReadCheck> = emptyList(),
+    val marsBot: ConsoleMarsBotCheck? = null,
 ) {
     init {
         require(name.isNotBlank()) { "Choose a non-empty case name" }
@@ -62,7 +63,8 @@ object PreparedConsoleChecks {
         checkCancellation: () -> Unit = {},
     ): List<ConsoleCheckResult> {
         val capturedCases = copyOf(cases).map {
-            it.copy(memory = copyOf(it.memory), initialMemory = copyOf(it.initialMemory), stores = copyOf(it.stores), reads = copyOf(it.reads))
+            it.copy(memory = copyOf(it.memory), initialMemory = copyOf(it.initialMemory), stores = copyOf(it.stores), reads = copyOf(it.reads),
+                marsBot = it.marsBot?.let { bot -> bot.copy(trail = copyOf(bot.trail)) })
         }
         require(capturedCases.isNotEmpty()) { "Declare at least one console case" }
         require(capturedCases.map { it.name }.distinct().size == capturedCases.size) { "Case names must be unique" }
@@ -81,10 +83,12 @@ object PreparedConsoleChecks {
                             program.setSyscallEnvironment(GradingEnvironment(console, GradingFiles(), GradingTiming()))
                             machine.simulator().setInstructionLimit(case.instructionLimit)
                             AssemblyCase(machine, program.symbolMap(), captured).use { execution ->
+                                val bot = case.marsBot?.let { it to execution.connectMarsBot(it.instructionsPerTick) }
                                 for (range in case.initialMemory) execution.setBytes(range.address, *range.decoded())
                                 val stores = case.stores.map { it to execution.traceMemoryStores(it.address, it.byteLength) }
                                 val reads = case.reads.map { it to execution.traceMemoryAccesses(it.address, it.byteLength) }
                                 execution.runToExit()
+                                bot?.let { (check, device) -> check.verify(device) }
                                 execution.expectOutput(case.expectedOutput)
                                 for (range in case.memory) execution.expectBytes(range.address, *range.decoded())
                                 for ((check, trace) in stores) check.verify(trace)

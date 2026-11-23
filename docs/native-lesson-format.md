@@ -260,7 +260,7 @@ unknown fields or trailing content. There must be one through 256 cases with
 unique, nonblank printable names of at most 128 Unicode code points. Input and
 stdout are strings of at most 64 KiB each in UTF-8; either may be empty and may
 contain control characters. Each instruction limit is a positive JSON integer
-of at most 1,000,000 (3,000,000 in console-profile version 4); the sum across
+of at most 1,000,000 (3,000,000 in console-profile versions 4–5); the sum across
 the profile must not exceed 10,000,000.
 Feedback escapes markup and displays disallowed message control characters
 visibly. These bounds constrain each check; cases are formative public material.
@@ -755,6 +755,52 @@ and permits a positive `instructionLimit` through 3,000,000 per case. This
 preserves the PPM caller's original complete-program allowance, including normal
 termination. Versions 1–3 retain their one-million ceiling. The profile's
 ten-million total and all content, case-count and memory bounds remain unchanged.
+
+### Console-case version 5: actual MarsBot state and trail
+
+Version 5 retains version 4 and permits one optional case-level `marsBot` object:
+
+```json
+"marsBot": {
+  "instructionsPerTick": 64,
+  "x": 16, "y": 0, "heading": 90,
+  "moving": false, "penDown": false,
+  "trail": [{"x": 0, "y": 0}, {"x": 16, "y": 0}]
+}
+```
+
+These seven fields are required when the object is present; unknown fields and
+null values are rejected. The movement rate is an exact integer in the actual
+device range, 1 through 1,000,000 completed instructions per tick. Expected x/y
+coordinates and trail vertices are exact integers from 0 through 511. Heading
+is an exact integer from 0 through 359, and the two flags are JSON booleans.
+This profile format describes integral board positions; it does not round
+fractional coordinates from noncardinal motion into an expected integer.
+
+`trail` is either empty or contains two through 256 vertices, each an object
+with only x and y. The actual device's complete continuous stroke history must
+match those vertices in chronological order, including every corner and no
+extra stroke. An intended route stored by the student does not establish that
+the robot traveled it. The underlying grader compares actual coordinates with
+its existing 1e-9 tolerance. Final movement and pen state are checked separately
+from position, so reaching an endpoint while still moving is insufficient.
+
+The checker connects a fresh instance of the same instruction-clocked device
+used by the IDE before the student's program executes. The explicit profile
+rate controls this isolated assessment; source tool comments configure ordinary
+Run/Debug rather than this checker. The device and its subscriptions belong to
+that case and close with it after success or failure. Trail expectations are
+detached from caller collections before session creation. No student's active
+Run/Debug device is reused or reset by an independent assessment.
+
+Use existing `initialMemory`, `memory` and no-store `stores` checks for input
+fixtures, unchanged RAM and forbidden coordinate-feedback writes. Device feedback
+publication is distinct from execution-origin stores. Checking only final bytes
+would miss a forbidden write later restored. The new object grants no additional
+file, timing, host-code or GUI-syscall capability. Versions 1–4 reject it; omitting
+it in version 5 retains ordinary console assessment. All existing case, byte,
+instruction and total-work bounds remain in force. The console-profile version
+is separate from the lesson definition's `formatVersion`.
 
 ### Function-case version 12: explicit access-history capacities
 

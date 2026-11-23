@@ -5,6 +5,7 @@ import com.google.gson.JsonObject
 import com.google.gson.JsonPrimitive
 import edu.missouristate.mars.cli.grading.ConsoleCheckCase
 import edu.missouristate.mars.cli.grading.ConsoleMemoryCheck
+import edu.missouristate.mars.cli.grading.ConsoleMarsBotCheck
 import edu.missouristate.mars.cli.grading.ConsoleReadCheck
 import edu.missouristate.mars.cli.grading.ConsoleStoreCheck
 import java.nio.charset.StandardCharsets.UTF_8
@@ -19,13 +20,14 @@ internal object MarsConsoleCaseData {
     fun parse(bytes: ByteArray): List<ConsoleCheckCase> {
         val root = MarsLessonJson.parse(bytes, MAX_BYTES)
         val version = root.get("formatVersion")?.toString()
-        require(root.keySet() == setOf("formatVersion", "cases") && version in setOf("1", "2", "3", "4")) {
+        require(root.keySet() == setOf("formatVersion", "cases") && version in setOf("1", "2", "3", "4", "5")) {
             "Unsupported console-case format or fields"
         }
         val rows = root.get("cases")
         require(rows is JsonArray && rows.size() in 1..256) { "Declare one through 256 console cases" }
         val required = setOf("name", "input", "stdout", "instructionLimit")
         val allowed = required + when (version) {
+            "5" -> setOf("memory", "initialMemory", "stores", "reads", "marsBot")
             "3", "4" -> setOf("memory", "initialMemory", "stores", "reads")
             "2" -> setOf("memory")
             else -> emptySet()
@@ -38,10 +40,10 @@ internal object MarsConsoleCaseData {
             require(name.isNotBlank() && name.codePointCount(0, name.length) <= 128 &&
                 !nonPrintable.containsMatchIn(name.replace(" ", ""))) { "Invalid console-case name" }
             val instructions = integer(it, "instructionLimit").toLong()
-            val maximum = if (version == "4") 3_000_000 else 1_000_000
+            val maximum = if (version in setOf("4", "5")) 3_000_000 else 1_000_000
             require(instructions <= maximum) { "Console-case instruction limit exceeds $maximum" }
             ConsoleCheckCase(name, text(it, "input"), text(it, "stdout"), instructions,
-                memory(it, "memory"), memory(it, "initialMemory"), stores(it), reads(it))
+                memory(it, "memory"), memory(it, "initialMemory"), stores(it), reads(it), marsBot(it))
         }
         require(cases.map { it.name }.distinct().size == cases.size) { "Console-case names must be unique" }
         require(cases.sumOf { it.instructionLimit } <= 10_000_000) { "Combined console-case limits exceed 10000000" }
@@ -56,6 +58,29 @@ internal object MarsConsoleCaseData {
             require(it is JsonObject) { "Expected a $field range object" }
             it
         }
+    }
+
+    private fun marsBot(row: JsonObject): ConsoleMarsBotCheck? {
+        if (!row.has("marsBot")) return null
+        val bot = row.get("marsBot")
+        require(bot is JsonObject && bot.keySet() == setOf("instructionsPerTick", "x", "y", "heading", "moving", "penDown", "trail")) {
+            "MarsBot needs its movement rate, final state and complete trail"
+        }
+        val trail = bot.get("trail")
+        require(trail is JsonArray && trail.size() <= ConsoleMarsBotCheck.MAX_VERTICES) { "Declare at most 256 MarsBot trail vertices" }
+        val vertices = trail.map {
+            require(it is JsonObject && it.keySet() == setOf("x", "y")) { "A MarsBot vertex needs x and y only" }
+            integer(it, "x", zero = true) to integer(it, "y", zero = true)
+        }
+        return ConsoleMarsBotCheck(integer(bot, "instructionsPerTick"), integer(bot, "x", zero = true),
+            integer(bot, "y", zero = true), integer(bot, "heading", zero = true), boolean(bot, "moving"),
+            boolean(bot, "penDown"), copyOf(vertices))
+    }
+
+    private fun boolean(row: JsonObject, field: String): Boolean {
+        val value = row.get(field)
+        require(value is JsonPrimitive && value.isBoolean) { "Expected a boolean: $field" }
+        return value.asBoolean
     }
 
     private fun memory(row: JsonObject, field: String): List<ConsoleMemoryCheck> = copyOf(array(row, field).map {

@@ -1,0 +1,200 @@
+{
+  "formatVersion": 5,
+  "cases": [
+    {
+      "name": "side 16 clock 64",
+      "input": "",
+      "stdout": "",
+      "instructionLimit": 100000,
+      "initialMemory": [
+        {
+          "address": "0x0000000010010000",
+          "bytes": "100000008f9d5713"
+        }
+      ],
+      "memory": [
+        {
+          "address": "0x0000000010010000",
+          "bytes": "100000008f9d5713"
+        }
+      ],
+      "stores": [
+        {
+          "kind": "none",
+          "address": "0x0000000010010000",
+          "length": 8
+        },
+        {
+          "kind": "none",
+          "address": "0x00000000ffff8030",
+          "length": 4
+        },
+        {
+          "kind": "none",
+          "address": "0x00000000ffff8040",
+          "length": 4
+        }
+      ],
+      "marsBot": {
+        "instructionsPerTick": 64,
+        "x": 0,
+        "y": 0,
+        "heading": 0,
+        "moving": false,
+        "penDown": false,
+        "trail": [
+          {
+            "x": 0,
+            "y": 0
+          },
+          {
+            "x": 16,
+            "y": 0
+          },
+          {
+            "x": 16,
+            "y": 16
+          },
+          {
+            "x": 0,
+            "y": 16
+          },
+          {
+            "x": 0,
+            "y": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "side 1 clock 64",
+      "input": "",
+      "stdout": "",
+      "instructionLimit": 100000,
+      "initialMemory": [
+        {
+          "address": "0x0000000010010000",
+          "bytes": "010000007e9b5713"
+        }
+      ],
+      "memory": [
+        {
+          "address": "0x0000000010010000",
+          "bytes": "010000007e9b5713"
+        }
+      ],
+      "stores": [
+        {
+          "kind": "none",
+          "address": "0x0000000010010000",
+          "length": 8
+        },
+        {
+          "kind": "none",
+          "address": "0x00000000ffff8030",
+          "length": 4
+        },
+        {
+          "kind": "none",
+          "address": "0x00000000ffff8040",
+          "length": 4
+        }
+      ],
+      "marsBot": {
+        "instructionsPerTick": 64,
+        "x": 0,
+        "y": 0,
+        "heading": 0,
+        "moving": false,
+        "penDown": false,
+        "trail": [
+          {
+            "x": 0,
+            "y": 0
+          },
+          {
+            "x": 1,
+            "y": 0
+          },
+          {
+            "x": 1,
+            "y": 1
+          },
+          {
+            "x": 0,
+            "y": 1
+          },
+          {
+            "x": 0,
+            "y": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "side 63 clock 17",
+      "input": "",
+      "stdout": "",
+      "instructionLimit": 100000,
+      "initialMemory": [
+        {
+          "address": "0x0000000010010000",
+          "bytes": "3f0000002f8c5713"
+        }
+      ],
+      "memory": [
+        {
+          "address": "0x0000000010010000",
+          "bytes": "3f0000002f8c5713"
+        }
+      ],
+      "stores": [
+        {
+          "kind": "none",
+          "address": "0x0000000010010000",
+          "length": 8
+        },
+        {
+          "kind": "none",
+          "address": "0x00000000ffff8030",
+          "length": 4
+        },
+        {
+          "kind": "none",
+          "address": "0x00000000ffff8040",
+          "length": 4
+        }
+      ],
+      "marsBot": {
+        "instructionsPerTick": 17,
+        "x": 0,
+        "y": 0,
+        "heading": 0,
+        "moving": false,
+        "penDown": false,
+        "trail": [
+          {
+            "x": 0,
+            "y": 0
+          },
+          {
+            "x": 63,
+            "y": 0
+          },
+          {
+            "x": 63,
+            "y": 63
+          },
+          {
+            "x": 0,
+            "y": 63
+          },
+          {
+            "x": 0,
+            "y": 0
+          }
+        ]
+      }
+    }
+  ]
+}
