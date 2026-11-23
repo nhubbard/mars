@@ -17,6 +17,7 @@ class MarsNativeDebugFilePlanTest {
     @Test
     fun `version nine retains source registers and immutable input definition`() {
         val step = parse()
+        assertEquals(step, parse { addProperty("formatVersion", 10) })
         assertEquals("worked/file.asm", step.source)
         assertEquals(2L, step.stops.single().registers["\$v1"])
         val fixture = requireNotNull(step.fileRead)
@@ -41,7 +42,7 @@ class MarsNativeDebugFilePlanTest {
     @Test
     fun `old versions cannot silently start injecting files and malformed fixtures fail closed`() {
         for (version in 1..8) assertThrows<IllegalArgumentException> { parse { addProperty("formatVersion", version) } }
-        assertThrows<IllegalArgumentException> { parse { addProperty("formatVersion", 10) } }
+        assertThrows<IllegalArgumentException> { parse { addProperty("formatVersion", 11) } }
         for (field in listOf("path", "bytes", "maxRequest")) {
             assertThrows<IllegalArgumentException> { parse { step().getAsJsonObject("fileRead").remove(field) } }
         }

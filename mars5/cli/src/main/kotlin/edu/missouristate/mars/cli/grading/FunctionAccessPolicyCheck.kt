@@ -31,8 +31,8 @@ data class FunctionAccessPolicyCheck(
     }
 }
 
-internal fun functionAccessPolicies(policies: List<FunctionAccessPolicyCheck>) {
-    require(policies.sumOf { it.maxAccesses.toLong() } <= 64L * 65_536) {
+internal fun functionAccessPolicies(policies: List<FunctionAccessPolicyCheck>, history: FunctionAccessHistoryCheck? = null) {
+    require(policies.sumOf { it.maxAccesses.toLong() } + (history?.maxAccesses ?: 0) <= 64L * 65_536) {
         "Access policies exceed the combined 4194304-notice history allowance"
     }
     require(policies.size <= 64 && policies.sumOf { policy ->

@@ -32,6 +32,30 @@ class MarsNativeAssessmentProfilesTest {
         MarsNativeLessonPlan.parse(root.toString().toByteArray(), data)
 
     @Test
+    fun `format ten groups full-budget profiles without changing earlier limits or aggregate bounds`() {
+        val larger = root().apply {
+            addProperty("formatVersion", 10)
+            step().add("caseProfiles", paths(*(0 until 256).map { "part$it.json" }.toTypedArray()))
+        }
+        val read = mutableListOf<String>()
+        val step = parse(larger) { path ->
+            read += path
+            profile(path).toString(Charsets.UTF_8).replace("\"formatVersion\":9", "\"formatVersion\":14")
+                .replace("\"instructionLimit\":1000000", "\"instructionLimit\":6000000").toByteArray()
+        }.steps.single() as MarsNativeAssessmentStep
+        assertEquals(256, step.caseProfiles.size)
+        assertEquals(step.caseProfiles, read)
+        assertTrue(step.functionCases.all { it.instructionLimit == 6_000_000L })
+        for (version in 8..9) assertThrows<IllegalArgumentException> {
+            parse(larger.deepCopy().apply { addProperty("formatVersion", version) }) { error("Reject references before reading data") }
+        }
+        assertThrows<IllegalArgumentException> {
+            parse(larger.deepCopy().apply { step().getAsJsonArray("caseProfiles").add("excess.json") })
+        }
+        assertThrows<IllegalArgumentException> { parse(larger) { profile(it, count = 3) } }
+    }
+
+    @Test
     fun `one student check retains profile order budgets and immutable results`() {
         val reads = mutableListOf<String>()
         val plan = parse(data = { reads += it; profile(it, count = 10) })

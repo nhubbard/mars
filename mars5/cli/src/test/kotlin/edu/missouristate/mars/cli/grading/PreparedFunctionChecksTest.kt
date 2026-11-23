@@ -179,7 +179,7 @@ class PreparedFunctionChecksTest {
             { FunctionHelperCheck("helper", "helper") },
             { case().copy(name = " ") }, { case().copy(calls = emptyList()) },
             { case().copy(calls = List(513) { call() }) }, { case().copy(instructionLimit = 0) },
-            { case().copy(instructionLimit = 3_000_001) }, { case().copy(stackAlignment = 3) },
+            { case().copy(instructionLimit = 6_000_001) }, { case().copy(stackAlignment = 3) },
             { case().copy(callerStackBytes = 65537) }, { case().copy(preservedRegisters = listOf("s0", "\$16")) },
             { case().copy(helpers = List(33) { FunctionHelperCheck("a$it", "b$it") }) },
         )) assertThrows<IllegalArgumentException> { change() }
