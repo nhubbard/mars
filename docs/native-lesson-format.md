@@ -859,3 +859,44 @@ access-observation and content-size bounds remain unchanged. Formats 1–16 reta
 their original per-case limits and 10,000,000-instruction profile bound. Cancellation
 checks, actual simulator instruction counting and cumulative repeated-call limits
 remain active for the expanded format.
+
+### Function-case version 18: caller objects with private gaps
+
+Version 18 inherits version 17 and adds optional `callerAccess` to each call:
+
+```json
+"callerAccess": {
+  "objects": [
+    {"at": {"label": "left"}, "length": 128},
+    {"at": {"label": "output"}, "length": 256}
+  ],
+  "readable": [{"at": {"label": "left", "offset": 4}, "length": 16}],
+  "writable": [{"at": {"label": "output", "offset": 8}, "length": 16}],
+  "maxAccesses": 2000000
+}
+```
+
+The grader resolves each object's address from the student's assembled image.
+Object order and addresses need not match the template. One execution-access trace
+covers the smallest enclosing span. Every notice overlapping a caller object must
+fit wholly within one permitted window of its access type. A store of the original
+value still counts as a store. Caller bytes outside the writable windows must also
+remain unchanged after the call. Input/output aliases are permitted when the
+exercise declares them through overlapping readable and writable windows.
+
+Accesses wholly in gaps between objects have no caller permission restriction;
+they still consume the shared history capacity. Accesses outside the enclosing
+span are unaffected. This represents RSA's original caller-ownership contract,
+which allows candidate-owned constants, workspace and gaps. For exercises that
+forbid access throughout an interval, use the existing `accessPolicies` instead.
+
+Declare 1–64 positive objects totaling at most one MiB. The assembled enclosing
+span may include large private gaps and must fit within 2,147,483,647 bytes, the
+existing trace API’s positive byte-length range. No buffer is allocated for gaps. Readable and writable windows together permit
+at most 64 windows totaling one MiB. The history defaults to 65,536 notices and
+permits 1–2,000,000; overflowing it fails the case. Its capacity counts toward the
+existing aggregate 4,194,304-notice allowance alongside call-level access policies
+and access history. Definitions are copied and revalidated before opening a
+machine. Setup writes precede observation; each invocation gets a new observation,
+while calls continue to share the same machine and instruction budget. Earlier
+formats reject `callerAccess` explicitly.

@@ -520,3 +520,11 @@ are not refreshed, so setup cannot excuse a modified caller stack. This facility
 lets a checker replace data at the same address, move data between calls or inject
 an error after success while detecting stale state. Native function format 15
 exposes the field; earlier formats reject it.
+
+`FunctionCallerAccessCheck`, attached to an invocation's `callerAccess`, supports
+caller objects separated by candidate-owned gaps. It resolves object order from
+the assembled image, checks read/write windows only for notices overlapping those
+objects, and compares caller bytes outside the selected output after return. Its
+single enclosing history also counts accesses in gaps and rejects overflow. See
+native function-case format 18 for the data schema and resource bounds. Existing
+whole-interval access policies retain their stronger interval-wide semantics.
