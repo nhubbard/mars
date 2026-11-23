@@ -20,7 +20,8 @@ class MemoryAccessTrace internal constructor(
     data class Access(val address: Long, val length: Int, val write: Boolean)
 
     private val lastAddress: Long
-    private val accesses = ArrayList<Access>()
+    private var accesses = ArrayList<Access>()
+    private var discarded = false
     private var overflow = false
     private var subscribedMemory: MemoryState? = memory
     private val observer = ::record
@@ -36,6 +37,7 @@ class MemoryAccessTrace internal constructor(
 
     /** Complete immutable detached history; a truncated observation fails explicitly. */
     fun snapshot(): List<Access> {
+        check(!discarded) { "Private observation history has already been released" }
         requireCase(!overflow) { "Memory-access trace exceeds $maxAccesses notices" }
         return Collections.unmodifiableList(accesses.toList())
     }
@@ -60,6 +62,13 @@ class MemoryAccessTrace internal constructor(
     override fun close() {
         subscribedMemory?.deleteAddressObserver(observer)
         subscribedMemory = null
+    }
+
+    /** Private policies have no post-close history consumer; release storage between bounded intervals. */
+    internal fun closeAndDiscard() {
+        close()
+        accesses = ArrayList()
+        discarded = true
     }
 
     private fun record(notice: MemoryAccessNotice) {
