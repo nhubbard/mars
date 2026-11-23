@@ -36,6 +36,7 @@ class MarsNativeAssessmentProfilesTest {
         val reads = mutableListOf<String>()
         val plan = parse(data = { reads += it; profile(it, count = 10) })
         val step = plan.steps.single() as MarsNativeAssessmentStep
+        assertEquals(step, parse(root().apply { addProperty("formatVersion", 9) }, data = { profile(it, count = 10) }).steps.single())
         assertEquals(listOf("first.json", "second.json"), step.caseProfiles)
         assertEquals(reads, step.caseProfiles)
         assertEquals(20, step.functionCases.size)

@@ -76,7 +76,7 @@ internal object MarsFunctionCaseData {
         return copyOf(cases)
     }
 
-    private fun fileRead(row: JsonObject): FunctionFileReadCheck? {
+    internal fun fileRead(row: JsonObject): FunctionFileReadCheck? {
         if (!row.has("fileRead")) return null
         val fixture = row.get("fileRead").objectValue()
         val required = setOf("path", "bytes", "maxRequest")

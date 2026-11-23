@@ -32,7 +32,7 @@ class FileAccessCheck internal constructor(private val files: GradingFiles) {
     }
 }
 
-internal class GradingFiles {
+internal class GradingFiles(private val recordAccesses: Boolean = true) {
     private data class OpenFile(
         val path: String,
         val flags: Int,
@@ -114,7 +114,7 @@ internal class GradingFiles {
             }
             handles[descriptor] = OpenFile(name, flags, output?.size() ?: 0, output = output)
         }
-        accesses += FileAccess(Operation.OPEN, path, descriptor, result = descriptor, flags = flags)
+        if (recordAccesses) accesses += FileAccess(Operation.OPEN, path, descriptor, result = descriptor, flags = flags)
         return descriptor
     }
 
@@ -133,7 +133,7 @@ internal class GradingFiles {
                 count
             }
         }
-        accesses += FileAccess(Operation.READ, handle?.path, descriptor, requested, result)
+        if (recordAccesses) accesses += FileAccess(Operation.READ, handle?.path, descriptor, requested, result)
         return result
     }
 
@@ -164,14 +164,14 @@ internal class GradingFiles {
                 count
             }
         }
-        accesses += FileAccess(Operation.WRITE, handle?.path, descriptor, requested, result)
+        if (recordAccesses) accesses += FileAccess(Operation.WRITE, handle?.path, descriptor, requested, result)
         return result
     }
 
     fun close(descriptor: Int) {
         val handle = handles.remove(descriptor)
         handle?.output?.let { contents[handle.path] = it.toByteArray() }
-        accesses += FileAccess(Operation.CLOSE, handle?.path, descriptor,
+        if (recordAccesses) accesses += FileAccess(Operation.CLOSE, handle?.path, descriptor,
             result = if (handle == null) -1 else 0)
     }
 }
