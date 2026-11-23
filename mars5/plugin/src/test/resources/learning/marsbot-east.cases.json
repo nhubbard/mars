@@ -1,0 +1,853 @@
+{
+  "formatVersion": 5,
+  "cases": [
+    {
+      "name": "east 1 rate8",
+      "input": "",
+      "stdout": "",
+      "instructionLimit": 100000,
+      "initialMemory": [
+        {
+          "address": "0x0000000010010000",
+          "bytes": "01000000df9b5713"
+        }
+      ],
+      "memory": [
+        {
+          "address": "0x0000000010010000",
+          "bytes": "01000000df9b5713"
+        }
+      ],
+      "stores": [
+        {
+          "kind": "none",
+          "address": "0x0000000010010000",
+          "length": 8
+        },
+        {
+          "kind": "none",
+          "address": "0x00000000ffff8030",
+          "length": 4
+        },
+        {
+          "kind": "none",
+          "address": "0x00000000ffff8040",
+          "length": 4
+        }
+      ],
+      "marsBot": {
+        "instructionsPerTick": 8,
+        "x": 1,
+        "y": 0,
+        "heading": 90,
+        "moving": false,
+        "penDown": false,
+        "trail": [
+          {
+            "x": 0,
+            "y": 0
+          },
+          {
+            "x": 1,
+            "y": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "east 1 rate17",
+      "input": "",
+      "stdout": "",
+      "instructionLimit": 100000,
+      "initialMemory": [
+        {
+          "address": "0x0000000010010000",
+          "bytes": "01000000df9b5713"
+        }
+      ],
+      "memory": [
+        {
+          "address": "0x0000000010010000",
+          "bytes": "01000000df9b5713"
+        }
+      ],
+      "stores": [
+        {
+          "kind": "none",
+          "address": "0x0000000010010000",
+          "length": 8
+        },
+        {
+          "kind": "none",
+          "address": "0x00000000ffff8030",
+          "length": 4
+        },
+        {
+          "kind": "none",
+          "address": "0x00000000ffff8040",
+          "length": 4
+        }
+      ],
+      "marsBot": {
+        "instructionsPerTick": 17,
+        "x": 1,
+        "y": 0,
+        "heading": 90,
+        "moving": false,
+        "penDown": false,
+        "trail": [
+          {
+            "x": 0,
+            "y": 0
+          },
+          {
+            "x": 1,
+            "y": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "east 1 rate64",
+      "input": "",
+      "stdout": "",
+      "instructionLimit": 100000,
+      "initialMemory": [
+        {
+          "address": "0x0000000010010000",
+          "bytes": "01000000df9b5713"
+        }
+      ],
+      "memory": [
+        {
+          "address": "0x0000000010010000",
+          "bytes": "01000000df9b5713"
+        }
+      ],
+      "stores": [
+        {
+          "kind": "none",
+          "address": "0x0000000010010000",
+          "length": 8
+        },
+        {
+          "kind": "none",
+          "address": "0x00000000ffff8030",
+          "length": 4
+        },
+        {
+          "kind": "none",
+          "address": "0x00000000ffff8040",
+          "length": 4
+        }
+      ],
+      "marsBot": {
+        "instructionsPerTick": 64,
+        "x": 1,
+        "y": 0,
+        "heading": 90,
+        "moving": false,
+        "penDown": false,
+        "trail": [
+          {
+            "x": 0,
+            "y": 0
+          },
+          {
+            "x": 1,
+            "y": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "east 1 rate128",
+      "input": "",
+      "stdout": "",
+      "instructionLimit": 100000,
+      "initialMemory": [
+        {
+          "address": "0x0000000010010000",
+          "bytes": "01000000df9b5713"
+        }
+      ],
+      "memory": [
+        {
+          "address": "0x0000000010010000",
+          "bytes": "01000000df9b5713"
+        }
+      ],
+      "stores": [
+        {
+          "kind": "none",
+          "address": "0x0000000010010000",
+          "length": 8
+        },
+        {
+          "kind": "none",
+          "address": "0x00000000ffff8030",
+          "length": 4
+        },
+        {
+          "kind": "none",
+          "address": "0x00000000ffff8040",
+          "length": 4
+        }
+      ],
+      "marsBot": {
+        "instructionsPerTick": 128,
+        "x": 1,
+        "y": 0,
+        "heading": 90,
+        "moving": false,
+        "penDown": false,
+        "trail": [
+          {
+            "x": 0,
+            "y": 0
+          },
+          {
+            "x": 1,
+            "y": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "east 2 rate8",
+      "input": "",
+      "stdout": "",
+      "instructionLimit": 100000,
+      "initialMemory": [
+        {
+          "address": "0x0000000010010000",
+          "bytes": "02000000df9b5713"
+        }
+      ],
+      "memory": [
+        {
+          "address": "0x0000000010010000",
+          "bytes": "02000000df9b5713"
+        }
+      ],
+      "stores": [
+        {
+          "kind": "none",
+          "address": "0x0000000010010000",
+          "length": 8
+        },
+        {
+          "kind": "none",
+          "address": "0x00000000ffff8030",
+          "length": 4
+        },
+        {
+          "kind": "none",
+          "address": "0x00000000ffff8040",
+          "length": 4
+        }
+      ],
+      "marsBot": {
+        "instructionsPerTick": 8,
+        "x": 2,
+        "y": 0,
+        "heading": 90,
+        "moving": false,
+        "penDown": false,
+        "trail": [
+          {
+            "x": 0,
+            "y": 0
+          },
+          {
+            "x": 2,
+            "y": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "east 2 rate17",
+      "input": "",
+      "stdout": "",
+      "instructionLimit": 100000,
+      "initialMemory": [
+        {
+          "address": "0x0000000010010000",
+          "bytes": "02000000df9b5713"
+        }
+      ],
+      "memory": [
+        {
+          "address": "0x0000000010010000",
+          "bytes": "02000000df9b5713"
+        }
+      ],
+      "stores": [
+        {
+          "kind": "none",
+          "address": "0x0000000010010000",
+          "length": 8
+        },
+        {
+          "kind": "none",
+          "address": "0x00000000ffff8030",
+          "length": 4
+        },
+        {
+          "kind": "none",
+          "address": "0x00000000ffff8040",
+          "length": 4
+        }
+      ],
+      "marsBot": {
+        "instructionsPerTick": 17,
+        "x": 2,
+        "y": 0,
+        "heading": 90,
+        "moving": false,
+        "penDown": false,
+        "trail": [
+          {
+            "x": 0,
+            "y": 0
+          },
+          {
+            "x": 2,
+            "y": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "east 2 rate64",
+      "input": "",
+      "stdout": "",
+      "instructionLimit": 100000,
+      "initialMemory": [
+        {
+          "address": "0x0000000010010000",
+          "bytes": "02000000df9b5713"
+        }
+      ],
+      "memory": [
+        {
+          "address": "0x0000000010010000",
+          "bytes": "02000000df9b5713"
+        }
+      ],
+      "stores": [
+        {
+          "kind": "none",
+          "address": "0x0000000010010000",
+          "length": 8
+        },
+        {
+          "kind": "none",
+          "address": "0x00000000ffff8030",
+          "length": 4
+        },
+        {
+          "kind": "none",
+          "address": "0x00000000ffff8040",
+          "length": 4
+        }
+      ],
+      "marsBot": {
+        "instructionsPerTick": 64,
+        "x": 2,
+        "y": 0,
+        "heading": 90,
+        "moving": false,
+        "penDown": false,
+        "trail": [
+          {
+            "x": 0,
+            "y": 0
+          },
+          {
+            "x": 2,
+            "y": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "east 2 rate128",
+      "input": "",
+      "stdout": "",
+      "instructionLimit": 100000,
+      "initialMemory": [
+        {
+          "address": "0x0000000010010000",
+          "bytes": "02000000df9b5713"
+        }
+      ],
+      "memory": [
+        {
+          "address": "0x0000000010010000",
+          "bytes": "02000000df9b5713"
+        }
+      ],
+      "stores": [
+        {
+          "kind": "none",
+          "address": "0x0000000010010000",
+          "length": 8
+        },
+        {
+          "kind": "none",
+          "address": "0x00000000ffff8030",
+          "length": 4
+        },
+        {
+          "kind": "none",
+          "address": "0x00000000ffff8040",
+          "length": 4
+        }
+      ],
+      "marsBot": {
+        "instructionsPerTick": 128,
+        "x": 2,
+        "y": 0,
+        "heading": 90,
+        "moving": false,
+        "penDown": false,
+        "trail": [
+          {
+            "x": 0,
+            "y": 0
+          },
+          {
+            "x": 2,
+            "y": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "east 16 rate8",
+      "input": "",
+      "stdout": "",
+      "instructionLimit": 100000,
+      "initialMemory": [
+        {
+          "address": "0x0000000010010000",
+          "bytes": "10000000df9b5713"
+        }
+      ],
+      "memory": [
+        {
+          "address": "0x0000000010010000",
+          "bytes": "10000000df9b5713"
+        }
+      ],
+      "stores": [
+        {
+          "kind": "none",
+          "address": "0x0000000010010000",
+          "length": 8
+        },
+        {
+          "kind": "none",
+          "address": "0x00000000ffff8030",
+          "length": 4
+        },
+        {
+          "kind": "none",
+          "address": "0x00000000ffff8040",
+          "length": 4
+        }
+      ],
+      "marsBot": {
+        "instructionsPerTick": 8,
+        "x": 16,
+        "y": 0,
+        "heading": 90,
+        "moving": false,
+        "penDown": false,
+        "trail": [
+          {
+            "x": 0,
+            "y": 0
+          },
+          {
+            "x": 16,
+            "y": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "east 16 rate17",
+      "input": "",
+      "stdout": "",
+      "instructionLimit": 100000,
+      "initialMemory": [
+        {
+          "address": "0x0000000010010000",
+          "bytes": "10000000df9b5713"
+        }
+      ],
+      "memory": [
+        {
+          "address": "0x0000000010010000",
+          "bytes": "10000000df9b5713"
+        }
+      ],
+      "stores": [
+        {
+          "kind": "none",
+          "address": "0x0000000010010000",
+          "length": 8
+        },
+        {
+          "kind": "none",
+          "address": "0x00000000ffff8030",
+          "length": 4
+        },
+        {
+          "kind": "none",
+          "address": "0x00000000ffff8040",
+          "length": 4
+        }
+      ],
+      "marsBot": {
+        "instructionsPerTick": 17,
+        "x": 16,
+        "y": 0,
+        "heading": 90,
+        "moving": false,
+        "penDown": false,
+        "trail": [
+          {
+            "x": 0,
+            "y": 0
+          },
+          {
+            "x": 16,
+            "y": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "east 16 rate64",
+      "input": "",
+      "stdout": "",
+      "instructionLimit": 100000,
+      "initialMemory": [
+        {
+          "address": "0x0000000010010000",
+          "bytes": "10000000df9b5713"
+        }
+      ],
+      "memory": [
+        {
+          "address": "0x0000000010010000",
+          "bytes": "10000000df9b5713"
+        }
+      ],
+      "stores": [
+        {
+          "kind": "none",
+          "address": "0x0000000010010000",
+          "length": 8
+        },
+        {
+          "kind": "none",
+          "address": "0x00000000ffff8030",
+          "length": 4
+        },
+        {
+          "kind": "none",
+          "address": "0x00000000ffff8040",
+          "length": 4
+        }
+      ],
+      "marsBot": {
+        "instructionsPerTick": 64,
+        "x": 16,
+        "y": 0,
+        "heading": 90,
+        "moving": false,
+        "penDown": false,
+        "trail": [
+          {
+            "x": 0,
+            "y": 0
+          },
+          {
+            "x": 16,
+            "y": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "east 16 rate128",
+      "input": "",
+      "stdout": "",
+      "instructionLimit": 100000,
+      "initialMemory": [
+        {
+          "address": "0x0000000010010000",
+          "bytes": "10000000df9b5713"
+        }
+      ],
+      "memory": [
+        {
+          "address": "0x0000000010010000",
+          "bytes": "10000000df9b5713"
+        }
+      ],
+      "stores": [
+        {
+          "kind": "none",
+          "address": "0x0000000010010000",
+          "length": 8
+        },
+        {
+          "kind": "none",
+          "address": "0x00000000ffff8030",
+          "length": 4
+        },
+        {
+          "kind": "none",
+          "address": "0x00000000ffff8040",
+          "length": 4
+        }
+      ],
+      "marsBot": {
+        "instructionsPerTick": 128,
+        "x": 16,
+        "y": 0,
+        "heading": 90,
+        "moving": false,
+        "penDown": false,
+        "trail": [
+          {
+            "x": 0,
+            "y": 0
+          },
+          {
+            "x": 16,
+            "y": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "east 63 rate8",
+      "input": "",
+      "stdout": "",
+      "instructionLimit": 100000,
+      "initialMemory": [
+        {
+          "address": "0x0000000010010000",
+          "bytes": "3f000000df9b5713"
+        }
+      ],
+      "memory": [
+        {
+          "address": "0x0000000010010000",
+          "bytes": "3f000000df9b5713"
+        }
+      ],
+      "stores": [
+        {
+          "kind": "none",
+          "address": "0x0000000010010000",
+          "length": 8
+        },
+        {
+          "kind": "none",
+          "address": "0x00000000ffff8030",
+          "length": 4
+        },
+        {
+          "kind": "none",
+          "address": "0x00000000ffff8040",
+          "length": 4
+        }
+      ],
+      "marsBot": {
+        "instructionsPerTick": 8,
+        "x": 63,
+        "y": 0,
+        "heading": 90,
+        "moving": false,
+        "penDown": false,
+        "trail": [
+          {
+            "x": 0,
+            "y": 0
+          },
+          {
+            "x": 63,
+            "y": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "east 63 rate17",
+      "input": "",
+      "stdout": "",
+      "instructionLimit": 100000,
+      "initialMemory": [
+        {
+          "address": "0x0000000010010000",
+          "bytes": "3f000000df9b5713"
+        }
+      ],
+      "memory": [
+        {
+          "address": "0x0000000010010000",
+          "bytes": "3f000000df9b5713"
+        }
+      ],
+      "stores": [
+        {
+          "kind": "none",
+          "address": "0x0000000010010000",
+          "length": 8
+        },
+        {
+          "kind": "none",
+          "address": "0x00000000ffff8030",
+          "length": 4
+        },
+        {
+          "kind": "none",
+          "address": "0x00000000ffff8040",
+          "length": 4
+        }
+      ],
+      "marsBot": {
+        "instructionsPerTick": 17,
+        "x": 63,
+        "y": 0,
+        "heading": 90,
+        "moving": false,
+        "penDown": false,
+        "trail": [
+          {
+            "x": 0,
+            "y": 0
+          },
+          {
+            "x": 63,
+            "y": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "east 63 rate64",
+      "input": "",
+      "stdout": "",
+      "instructionLimit": 100000,
+      "initialMemory": [
+        {
+          "address": "0x0000000010010000",
+          "bytes": "3f000000df9b5713"
+        }
+      ],
+      "memory": [
+        {
+          "address": "0x0000000010010000",
+          "bytes": "3f000000df9b5713"
+        }
+      ],
+      "stores": [
+        {
+          "kind": "none",
+          "address": "0x0000000010010000",
+          "length": 8
+        },
+        {
+          "kind": "none",
+          "address": "0x00000000ffff8030",
+          "length": 4
+        },
+        {
+          "kind": "none",
+          "address": "0x00000000ffff8040",
+          "length": 4
+        }
+      ],
+      "marsBot": {
+        "instructionsPerTick": 64,
+        "x": 63,
+        "y": 0,
+        "heading": 90,
+        "moving": false,
+        "penDown": false,
+        "trail": [
+          {
+            "x": 0,
+            "y": 0
+          },
+          {
+            "x": 63,
+            "y": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "east 63 rate128",
+      "input": "",
+      "stdout": "",
+      "instructionLimit": 100000,
+      "initialMemory": [
+        {
+          "address": "0x0000000010010000",
+          "bytes": "3f000000df9b5713"
+        }
+      ],
+      "memory": [
+        {
+          "address": "0x0000000010010000",
+          "bytes": "3f000000df9b5713"
+        }
+      ],
+      "stores": [
+        {
+          "kind": "none",
+          "address": "0x0000000010010000",
+          "length": 8
+        },
+        {
+          "kind": "none",
+          "address": "0x00000000ffff8030",
+          "length": 4
+        },
+        {
+          "kind": "none",
+          "address": "0x00000000ffff8040",
+          "length": 4
+        }
+      ],
+      "marsBot": {
+        "instructionsPerTick": 128,
+        "x": 63,
+        "y": 0,
+        "heading": 90,
+        "moving": false,
+        "penDown": false,
+        "trail": [
+          {
+            "x": 0,
+            "y": 0
+          },
+          {
+            "x": 63,
+            "y": 0
+          }
+        ]
+      }
+    }
+  ]
+}
