@@ -1,6 +1,7 @@
 package edu.missouristate.mars.cli.grading
 
 import edu.missouristate.mars.api.SyscallEnvironment
+import java.util.Map.copyOf
 
 /**
  * One execution's deterministic lesson input. All file operations use the same in-memory
@@ -18,7 +19,7 @@ class ReadOnlyFileEnvironment(
 ) : SyscallEnvironment by delegate, AutoCloseable {
     private var files: GradingFiles? = GradingFiles(recordAccesses = false).also {
         it.configure(
-            if (definition.missing) emptyMap() else mapOf(definition.path to definition.decoded()),
+            definition.copy(additionalFiles = copyOf(definition.additionalFiles)).decoded(),
             definition.maxReadSize, definition.failAfterBytes, definition.firstDescriptor,
         )
     }

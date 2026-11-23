@@ -38,6 +38,31 @@ class ReadOnlyFileEnvironmentTest {
     }
 
     @Test
+    fun `multiple read-only inputs are captured once and reopened with independent cursors`() = withIo { io, _ ->
+        val extra = mutableMapOf("other" to "80ff")
+        val definition = FunctionFileReadCheck("input", "01", 7, additionalFiles = extra)
+        ReadOnlyFileEnvironment(io, definition).use { files ->
+            extra["other"] = "00"
+            val buffer = ByteArray(4)
+            val first = files.openFile("input", 0)
+            assertEquals(1, files.readFromFile(first, buffer, 4))
+            assertEquals(1, buffer[0].toInt())
+            files.closeFile(first)
+            repeat(2) {
+                val second = files.openFile("other", 0)
+                assertEquals(2, files.readFromFile(second, buffer, 4))
+                assertEquals(-128, buffer[0].toInt())
+                assertEquals(-1, buffer[1].toInt())
+                assertEquals(0, files.readFromFile(second, buffer, 4))
+                files.closeFile(second)
+            }
+            assertEquals(-1, files.openFile("missing", 0))
+        }
+        extra["other"] = "bad hex"
+        assertThrows<IllegalArgumentException> { ReadOnlyFileEnvironment(io, definition) }
+    }
+
+    @Test
     fun `short transfers descriptor reuse EOF and console delegation are independent of cleanup`() = withIo { io, output ->
         val definition = FunctionFileReadCheck("input", "0080ff01", 1, maxReadSize = 3, firstDescriptor = 19)
         val first = ReadOnlyFileEnvironment(io, definition)

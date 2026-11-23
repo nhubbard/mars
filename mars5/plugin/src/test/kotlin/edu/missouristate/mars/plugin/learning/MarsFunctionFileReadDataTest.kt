@@ -4,6 +4,7 @@ import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import edu.missouristate.mars.cli.grading.FunctionFileReadCheck
+import edu.missouristate.mars.cli.grading.FunctionFileReadInvocation
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
@@ -126,4 +127,46 @@ class MarsFunctionFileReadDataTest {
         reject { row().remove("fileRead") }
         reject { row().remove("fileRead"); call().addProperty("readFile", true) }
     }
+    @Test
+    fun `format sixteen selects per-call paths and bounded requests without resetting files`() {
+        val case = parse {
+            addProperty("formatVersion", 16)
+            fixture().add("additionalFiles", JsonParser.parseString("""{"other.bin":"ff00","empty.bin":""}"""))
+            call().add("fileReadInvocation", JsonParser.parseString("""{"path":"other.bin","maxRequest":3}"""))
+        }
+        assertEquals(mapOf("other.bin" to "ff00", "empty.bin" to ""), case.fileRead!!.additionalFiles)
+        assertEquals(FunctionFileReadInvocation("other.bin", 3), case.calls.single().fileReadInvocation)
+        assertThrows<UnsupportedOperationException> { (case.fileRead!!.additionalFiles as MutableMap).clear() }
+        assertEquals(parse(), parse { addProperty("formatVersion", 16) })
+        for (version in 1..15) {
+            reject {
+                addProperty("formatVersion", version)
+                fixture().add("additionalFiles", JsonObject())
+            }
+            reject {
+                addProperty("formatVersion", version)
+                call().add("fileReadInvocation", JsonParser.parseString("""{"path":"other.bin","maxRequest":3}"""))
+            }
+        }
+    }
+
+    @Test
+    fun `file sequences reject malformed duplicate excessive and undeclared contracts`() {
+        fun sequence(edit: JsonObject.() -> Unit) = reject { addProperty("formatVersion", 16); edit() }
+        for (bad in listOf("null", "[]", "true", "1", "\"files\"")) sequence { fixture().add("additionalFiles", JsonParser.parseString(bad)) }
+        for (bad in listOf("null", "[]", "true", "1", "\"hex\"", "{}")) sequence { call().add("fileReadInvocation", JsonParser.parseString(bad)) }
+        for (bad in listOf("null", "[]", "true", "1", "\"0\"")) sequence {
+            fixture().add("additionalFiles", JsonObject().apply { add("other.bin", JsonParser.parseString(bad)) })
+        }
+        sequence { fixture().add("additionalFiles", JsonParser.parseString("""{"fixture.bin":"00"}""")) }
+        sequence { fixture().add("additionalFiles", JsonObject().apply { repeat(64) { addProperty("file-$it", "") } }) }
+        sequence { fixture().add("additionalFiles", JsonObject().apply { addProperty("", "00") }) }
+        sequence { call().addProperty("readFile", false); call().add("fileReadInvocation", JsonParser.parseString("""{"path":"other.bin","maxRequest":3}""")) }
+        for (bad in listOf(
+            """{"path":"other.bin"}""", """{"maxRequest":3}""", """{"path":"","maxRequest":3}""",
+            """{"path":"other.bin","maxRequest":0}""", """{"path":"other.bin","maxRequest":1048577}""",
+            """{"path":"other.bin","maxRequest":"3"}""", """{"path":"other.bin","maxRequest":3,"script":"run()"}""",
+        )) sequence { call().add("fileReadInvocation", JsonParser.parseString(bad)) }
+    }
+
 }

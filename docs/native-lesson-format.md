@@ -821,3 +821,24 @@ execution-history allowances remain cumulative where already defined. Existing
 caller-stack snapshots and preservation checks stay active. See
 [prepared function checks](prepared-function-checks.md#replacing-fixture-bytes-between-invocations)
 for ordering, observation and failure semantics.
+
+### Function-case version 16: several files in one session
+
+Version 16 inherits version 15, including per-call memory setup and all existing
+case, profile, instruction and memory bounds. The case-level `fileRead` object
+may add `additionalFiles`, an object mapping up to 63 other UTF-8 paths to
+hexadecimal byte strings. Paths must be nonblank, NUL-free and at most 4096 UTF-8
+bytes; the default path cannot appear again. Empty contents represent an existing
+empty file. All supplied contents count toward the same one-MiB case bound.
+
+A call marked `readFile: true` may add
+`"fileReadInvocation": {"path":"second.bin","maxRequest":7}`. Both fields are
+required. The positive request bound is at most one MiB. Omission uses the
+case-level path and request bound. A selected path absent from the supplied files
+must fail to open, with no reads or closes. Supplied paths must be opened once,
+read through their own EOF or injected error, and closed before returning.
+The configured short-read and failure settings apply independently on each open.
+Changing paths never reloads the machine, resets guest memory or replaces the
+shared file environment. Other invocations must perform no file operations.
+Formats 1–15 reject both new fields. Native Run/Debug lesson fixture syntax is
+unchanged; these additions belong to assessment function-case profiles.
