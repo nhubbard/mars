@@ -426,7 +426,8 @@ fields, coercions, nonprintable names and oversized containers are rejected.
 Names are nonblank and at most 128 UTF-16 code units. All integer control values
 must use exact nonnegative JSON integer syntax. A profile admits 1–256 unique
 case names, 1–512 calls per case, at most 4096 total calls, a positive per-case
-budget through 1,000,000 instructions, and at most 10,000,000 instructions overall.
+budget through 1,000,000 instructions (3,000,000 in function-profile version 11),
+and at most 10,000,000 instructions overall.
 Register maps and preservation lists admit at most 32 distinct registers; helpers
 admit at most 32 unique intervals. Alignment defaults to 16 and must be a power
 of two through 4096. Caller-byte observation defaults to 32 and permits 0–65536.
@@ -735,3 +736,13 @@ alignment and caller-stack preservation rules still apply. An integer and an
 address initializer cannot overlap, including register aliases. Setup maps are
 immutable after import; labels and bounded offsets are data, never expressions.
 Versions 1–9 reject this field even when empty. Omission preserves prior setup.
+
+### Function-case version 11: larger bounded instruction allowances
+
+Version 11 inherits all version 10 fields and permits a positive per-case
+`instructionLimit` through 3,000,000. This preserves the existing PPM exercise's
+published allowance when delivering its checks as native lesson data. Versions
+1–10 retain their one-million per-case ceiling. The profile's ten-million total,
+case and call counts, content size and memory bounds remain unchanged. Authors
+partition larger corpora into bounded profiles using native lesson version 8's
+`caseProfiles`; they do not reset the budget between calls within a case.
