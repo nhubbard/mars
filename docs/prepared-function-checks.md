@@ -528,3 +528,16 @@ objects, and compares caller bytes outside the selected output after return. Its
 single enclosing history also counts accesses in gaps and rejects overflow. See
 native function-case format 18 for the data schema and resource bounds. Existing
 whole-interval access policies retain their stronger interval-wide semantics.
+
+## Complete calls with virtual writable files
+
+`FunctionFileSystemCheck` supplies initial hexadecimal contents, writable paths,
+transfer limits, failure positions, first descriptor, and per-file output bound. It uses the existing virtual file engine. Each
+`FunctionCallCheck.expectedFiles` declares all writable results, with null for
+absence; the checker verifies exact bytes, read-only preservation and descriptor
+closure after that invocation. A later call shares the same environment but may
+declare different results. Unmarked calls and exit continuations permit no file
+operations, detected by a constant-memory counter. No event log or additional
+I/O-count limit is needed. No host filesystem access is introduced. Native format 20 documents
+the strict data schema and bounds; the sequential-read `fileRead` contract retains
+its stronger read-sequence checks for exercises that require them.

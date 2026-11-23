@@ -19,11 +19,19 @@ data class FileAccess(
 class FileAccessCheck internal constructor(private val files: GradingFiles) {
     fun snapshot(): List<FileAccess> = files.snapshot()
 
+    /** Constant-memory count, also available when detailed event recording is disabled. */
+    val operationCount: Long get() = files.operationCount
+
     /** A copy of a fixture file, including output written so far; missing files fail the case. */
     fun readFile(path: String): ByteArray = files.readFile(path)
 
     fun expectFile(path: String, expected: ByteArray) {
         requireCase(readFile(path).contentEquals(expected)) { "Unexpected fixture file contents: $path" }
+    }
+
+    /** Assert that a failed operation did not create a fixture file. */
+    fun expectMissing(path: String) {
+        requireCase(!files.exists(path)) { "Unexpected fixture file: $path" }
     }
 
     /** A program must close every successfully opened descriptor on every return path. */
@@ -33,6 +41,10 @@ class FileAccessCheck internal constructor(private val files: GradingFiles) {
 }
 
 internal class GradingFiles(private val recordAccesses: Boolean = true) {
+    var operationCount: Long = 0
+        private set
+    fun exists(path: String): Boolean = path in contents
+
     private data class OpenFile(
         val path: String,
         val flags: Int,
@@ -99,6 +111,7 @@ internal class GradingFiles(private val recordAccesses: Boolean = true) {
     fun snapshot(): List<FileAccess> = accesses.toList()
 
     fun open(path: String?, flags: Int): Int {
+        operationCount++
         val allowed = path != null && when (flags) {
             0 -> path in contents
             1, 9 -> path in writablePaths
@@ -119,6 +132,7 @@ internal class GradingFiles(private val recordAccesses: Boolean = true) {
     }
 
     fun read(descriptor: Int, buffer: ByteArray?, requested: Int): Int {
+        operationCount++
         val handle = handles[descriptor]
         val result = when {
             handle == null || handle.flags != 0 || buffer == null || requested !in 0..buffer.size -> -1
@@ -146,6 +160,7 @@ internal class GradingFiles(private val recordAccesses: Boolean = true) {
     }
 
     fun write(descriptor: Int, buffer: ByteArray?, requested: Int): Int {
+        operationCount++
         val handle = handles[descriptor]
         val failurePosition = writeFailurePositions[handle?.path] ?: failWriteAfterBytes
         val result = when {
@@ -169,6 +184,7 @@ internal class GradingFiles(private val recordAccesses: Boolean = true) {
     }
 
     fun close(descriptor: Int) {
+        operationCount++
         val handle = handles.remove(descriptor)
         handle?.output?.let { contents[handle.path] = it.toByteArray() }
         if (recordAccesses) accesses += FileAccess(Operation.CLOSE, handle?.path, descriptor,

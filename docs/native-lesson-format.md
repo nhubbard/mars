@@ -917,3 +917,45 @@ size arithmetic to reject overflow. Earlier formats reject the new field even
 when its value is one. This compact representation lets maximum-size PCM cases
 retain both complete input and complete expected output without exceeding the
 existing one-MiB JSON profile size bound or replacing byte equality with a digest.
+
+### Function-case version 20: virtual writable files
+
+Version 20 inherits version 19 and adds case-level `fileSystem` and per-call
+`expectedFiles`. It reuses the grader's existing in-memory `provideFiles` engine;
+no fixture path accesses a host file, even when the supplied path is absolute.
+The specialized sequential-read `fileRead` contract remains available, but a case
+must choose one file environment.
+
+```json
+"fileSystem": {
+  "files": {"input.wav":"003180ff", "output.wav":"6f6c64"},
+  "writablePaths": ["output.wav"],
+  "maxReadSize": 7,
+  "maxWriteSize": 5,
+  "firstDescriptor": 19
+}
+```
+
+A call declaring `"expectedFiles":{"output.wav":"003180ff"}` may perform
+virtual file operations. Each such call must declare every writable path's exact
+result. A null result means the file must be absent; an empty string means an
+existing empty file. All acquired descriptors must close before that call returns.
+All initially read-only files remain byte-identical. No particular open/read/write
+sequence is imposed, so equivalent buffering strategies are accepted. A call
+without `expectedFiles`, and the later exit continuation, must perform no file
+operations. One fixture environment persists across calls.
+
+Optional `failReadAfterBytes`, `failWriteAfterBytes` and `zeroWriteAfterBytes`
+reuse the existing deterministic injection rules. Negative failures and zero
+progress remain distinct. Read/write transfer limits and `maxFileSize` are positive
+integers through one MiB; defaults are one MiB. Failure positions are zero through
+one MiB. `firstDescriptor` defaults to three and permits three through 31. Descriptor
+allocation and permission checks remain in the existing file engine.
+
+The environment counts operations without retaining a detailed event history.
+The existing simulator instruction budget bounds execution; no additional I/O-count
+limit is imposed. At most 64 initial/writable paths are declared. Initial and expected file
+bytes count toward the existing combined one-MiB fixture/result budget. All maps
+and path sets are detached and revalidated before machine acquisition. Older
+formats reject both new fields explicitly. Existing fixture formats and the
+legacy assignment DSL retain their earlier behavior.

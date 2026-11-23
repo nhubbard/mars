@@ -8,6 +8,8 @@ import edu.missouristate.mars.mips.hardware.MemoryState
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.PrintStream
+import java.util.Collections.unmodifiableMap
+import java.util.Set.copyOf as copySet
 import java.util.List.copyOf
 import java.util.Map.copyOf as copyMap
 
@@ -28,6 +30,7 @@ data class FunctionCallCheck(
     val setupMemory: List<FunctionMemoryCheck> = emptyList(),
     val fileReadInvocation: FunctionFileReadInvocation? = null,
     val callerAccess: FunctionCallerAccessCheck? = null,
+    val expectedFiles: Map<String, String?>? = null,
 ) {
     init {
         require(fileReadInvocation == null || readFile) { "A per-call file contract requires readFile" }
@@ -41,6 +44,7 @@ data class FunctionCallCheck(
         require(expectedRegisters.keys.intersect(expectedAddresses.keys).isEmpty()) { "A result cannot have both integer and address expectations" }
         val expected = expectedRegisters + expectedAddresses.mapValues { 0L }
         functionRegisters(expected, writable = false)
+        functionExpectedFiles(expectedFiles)
         functionMemory(memory)
         functionMemory(setupMemory)
         functionAccessPolicies(accessPolicies, accessHistory, callerAccess)
@@ -97,10 +101,15 @@ data class FunctionCheckCase(
     val initialRegisterAddresses: Map<String, FunctionDataAddress> = emptyMap(),
     val fileRead: FunctionFileReadCheck? = null,
     val exit: FunctionExitCheck? = null,
+    val fileSystem: FunctionFileSystemCheck? = null,
 ) {
     init {
         require(name.isNotBlank() && name.length <= 128) { "Choose a nonempty function case name of at most 128 characters" }
         require(calls.size in 1..512 && instructionLimit in 1..40_000_000) { "Function cases need 1 through 512 calls and an instruction limit through forty million" }
+        require(fileRead == null || fileSystem == null) { "Choose one fixture file environment" }
+        require((fileSystem != null) == calls.any { it.expectedFiles != null }) { "A file environment is required exactly when an invocation declares file results" }
+        for (call in calls) if (call.expectedFiles != null)
+            require(call.expectedFiles.keys == fileSystem?.writablePaths) { "Each file invocation must declare every writable path result" }
         require((fileRead != null) == calls.any { it.readFile }) { "A read fixture is required exactly when an invocation declares readFile" }
         require(initialRegisters.keys.intersect(initialRegisterAddresses.keys).isEmpty()) { "An initial register cannot have both integer and address setup" }
         functionRegisters(initialRegisters + initialRegisterAddresses.mapValues { 0L }, writable = true)
@@ -123,7 +132,8 @@ data class FunctionCheckCase(
             noStores.sumOf { it.byteLength.toLong() } <= ConsoleMemoryCheck.MAX_BYTES) {
             "Protected function regions exceed 64 ranges or one MiB per case"
         }
-        require((fileRead?.byteLength ?: 0) + initialMemory.sumOf { it.byteLength.toLong() } +
+        require((fileRead?.byteLength ?: 0) + (fileSystem?.byteLength ?: 0) +
+            calls.sumOf { call -> call.expectedFiles?.values?.sumOf { (it?.length ?: 0).toLong() / 2 } ?: 0 } + initialMemory.sumOf { it.byteLength.toLong() } +
             (exit?.memory?.sumOf { it.byteLength.toLong() } ?: 0) +
             calls.sumOf { call -> call.memory.sumOf { it.byteLength.toLong() } +
                 call.setupMemory.sumOf { it.byteLength.toLong() } + 8L * call.addressMemory.size } <= ConsoleMemoryCheck.MAX_BYTES) {
@@ -164,7 +174,7 @@ object PreparedFunctionChecks {
         // containers cannot change a later call or bypass constructor validation.
         val captured = copyOf(cases).map { case ->
             case.copy(calls = copyOf(case.calls).map {
-                it.copy(arguments = copyMap(it.arguments), expectedRegisters = copyMap(it.expectedRegisters),
+                it.copy(arguments = copyMap(it.arguments), expectedFiles = it.expectedFiles?.let { expected -> unmodifiableMap(LinkedHashMap(expected)) }, expectedRegisters = copyMap(it.expectedRegisters),
                     argumentAddresses = copyMap(it.argumentAddresses), memory = copyOf(it.memory), expectedAddresses = copyMap(it.expectedAddresses), addressMemory = copyOf(it.addressMemory),
                     accessPolicies = capturePolicies(it.accessPolicies), setupMemory = copyOf(it.setupMemory),
                     callerAccess = it.callerAccess?.let { caller -> caller.copy(objects = copyOf(caller.objects),
@@ -176,6 +186,7 @@ object PreparedFunctionChecks {
                 transfers = copyOf(case.transfers).map { it.copy(destinationIndices = copyOf(it.destinationIndices)) },
                 storeBounds = copyOf(case.storeBounds), noExecution = copyOf(case.noExecution), initializedOutput = copyOf(case.initializedOutput),
                 accessPolicies = capturePolicies(case.accessPolicies), initialRegisterAddresses = copyMap(case.initialRegisterAddresses),
+                fileSystem = case.fileSystem?.let { it.copy(files = copyMap(it.files), writablePaths = copySet(it.writablePaths)) },
                 fileRead = case.fileRead?.let { it.copy(additionalFiles = copyMap(it.additionalFiles)) },
                 exit = case.exit?.let { it.copy(memory = copyOf(it.memory)) })
         }
@@ -193,7 +204,7 @@ object PreparedFunctionChecks {
                     PrintStream(BoundedOutput(capturedOutput), true, Charsets.UTF_8).use { output ->
                         SessionSyscallEnvironment(machine.memory, ByteArrayInputStream(byteArrayOf()), output, output,
                             inputCharset = Charsets.UTF_8).use { console ->
-                            val files = GradingFiles()
+                            val files = GradingFiles(recordAccesses = case.fileSystem == null)
                             program.setSyscallEnvironment(GradingEnvironment(console, files, GradingTiming()))
                             machine.simulator().setInstructionLimit(case.instructionLimit)
                             AssemblyCase(machine, program.symbolMap(), capturedOutput, files).use { execution ->
@@ -233,6 +244,7 @@ object PreparedFunctionChecks {
         execution: AssemblyCase, case: FunctionCheckCase, transfers: List<FunctionTransferObservation>,
         initialized: List<FunctionInitializationObservation>, littleEndian: Boolean, checkCancellation: () -> Unit,
     ) {
+        val fileSystem = case.fileSystem?.let { FunctionFileSystemObservation(execution, it) }
         val fileObservation = case.fileRead?.let { FunctionFileReadObservation(execution, it) }
         for (range in case.initialMemory) execution.setBytes(range.label, *range.decoded(), offset = range.offset)
         for ((register, value) in case.initialRegisters) execution.setRegister(register, value)
@@ -295,6 +307,7 @@ object PreparedFunctionChecks {
                 callHistory?.expectComplete()
                 callerAccess?.expectAllowed()
                 fileObservation?.expectReturned(call.readFile, call.fileReadInvocation)
+                fileSystem?.expectReturned(call.expectedFiles)
                 for ((register, value) in call.expectedRegisters) execution.expectRegister(register, value)
                 for ((register, address) in call.expectedAddresses)
                     execution.expectRegister(register, execution.readDataAddress(address.label, address.offset.toLong()))
@@ -361,6 +374,7 @@ object PreparedFunctionChecks {
             checkCancellation()
             execution.runToExit(exit.code)
             fileObservation?.expectReturned(false)
+            fileSystem?.expectReturned(null)
             for (range in exit.memory) execution.expectBytes(range.label, *range.decoded(), offset = range.offset)
             execution.expectOutput("")
             checkCancellation()

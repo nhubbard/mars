@@ -11,13 +11,13 @@ data class FunctionFileReadInvocation(val path: String, val maxRequest: Int) {
     }
 }
 
-private fun fixturePath(path: String) {
+internal fun fixturePath(path: String) {
     require(path.isNotBlank() && '\u0000' !in path && UTF_8.newEncoder().canEncode(path) && path.toByteArray(UTF_8).size <= 4096) {
         "Choose a nonempty UTF-8 fixture path through 4096 bytes without NUL"
     }
 }
 
-private fun fixtureBytes(bytes: String) {
+internal fun fixtureBytes(bytes: String) {
     require(bytes.length <= ConsoleMemoryCheck.MAX_BYTES * 2 && bytes.length % 2 == 0 &&
         bytes.all { it in '0'..'9' || it in 'a'..'f' || it in 'A'..'F' }) {
         "Fixture input needs hexadecimal byte pairs through one MiB, including empty input"
