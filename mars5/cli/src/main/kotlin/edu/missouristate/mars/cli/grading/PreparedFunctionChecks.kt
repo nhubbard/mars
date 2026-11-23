@@ -27,6 +27,7 @@ data class FunctionCallCheck(
     /** Host fixture bytes installed before this invocation, without resetting the machine. */
     val setupMemory: List<FunctionMemoryCheck> = emptyList(),
     val fileReadInvocation: FunctionFileReadInvocation? = null,
+    val callerAccess: FunctionCallerAccessCheck? = null,
 ) {
     init {
         require(fileReadInvocation == null || readFile) { "A per-call file contract requires readFile" }
@@ -42,7 +43,7 @@ data class FunctionCallCheck(
         functionRegisters(expected, writable = false)
         functionMemory(memory)
         functionMemory(setupMemory)
-        functionAccessPolicies(accessPolicies, accessHistory)
+        functionAccessPolicies(accessPolicies, accessHistory, callerAccess)
         require(memory.size + addressMemory.size <= ConsoleMemoryCheck.MAX_RANGES &&
             memory.sumOf { it.byteLength.toLong() } + 8L * addressMemory.size <= ConsoleMemoryCheck.MAX_BYTES) {
             "Function results exceed 64 memory ranges or one MiB"
@@ -166,6 +167,8 @@ object PreparedFunctionChecks {
                 it.copy(arguments = copyMap(it.arguments), expectedRegisters = copyMap(it.expectedRegisters),
                     argumentAddresses = copyMap(it.argumentAddresses), memory = copyOf(it.memory), expectedAddresses = copyMap(it.expectedAddresses), addressMemory = copyOf(it.addressMemory),
                     accessPolicies = capturePolicies(it.accessPolicies), setupMemory = copyOf(it.setupMemory),
+                    callerAccess = it.callerAccess?.let { caller -> caller.copy(objects = copyOf(caller.objects),
+                        readable = copyOf(caller.readable), writable = copyOf(caller.writable)) },
                     accessHistory = it.accessHistory?.let { history -> history.copy(regions = copyOf(history.regions)) })
             }, initialRegisters = copyMap(case.initialRegisters), preservedRegisters = copyOf(case.preservedRegisters),
                 helpers = copyOf(case.helpers), initialMemory = copyOf(case.initialMemory), noStores = copyOf(case.noStores),
@@ -273,6 +276,7 @@ object PreparedFunctionChecks {
         for ((index, call) in case.calls.withIndex()) {
             var callPolicies: FunctionAccessPolicyObservation? = null
             var callHistory: FunctionAccessHistoryObservation? = null
+            var callerAccess: FunctionCallerAccessObservation? = null
             try {
                 checkCancellation()
                 for (range in call.setupMemory) execution.setBytes(range.label, *range.decoded(), offset = range.offset)
@@ -283,11 +287,13 @@ object PreparedFunctionChecks {
                 execution.enterFunction(call.entry, call.returnTo)
                 if (call.accessPolicies.isNotEmpty()) callPolicies = FunctionAccessPolicyObservation(execution, call.accessPolicies)
                 callHistory = call.accessHistory?.let { FunctionAccessHistoryObservation(execution, it) }
+                callerAccess = call.callerAccess?.let { FunctionCallerAccessObservation(execution, it) }
                 val saved = case.preservedRegisters.associateWith(execution::readRegister)
                 val before = helpers.map { it.snapshot().instructions }
                 val forbiddenBefore = forbidden.map { it.snapshot().instructions }
                 execution.runUntil(call.returnTo)
                 callHistory?.expectComplete()
+                callerAccess?.expectAllowed()
                 fileObservation?.expectReturned(call.readFile, call.fileReadInvocation)
                 for ((register, value) in call.expectedRegisters) execution.expectRegister(register, value)
                 for ((register, address) in call.expectedAddresses)
@@ -336,6 +342,7 @@ object PreparedFunctionChecks {
                 val supplied = if (arguments.isEmpty()) "" else " ($arguments)"
                 throw CaseFailure("Call ${index + 1} to ${call.entry} returning at ${call.returnTo}$supplied: ${failure.message}")
             } finally {
+                callerAccess?.close()
                 callHistory?.close()
                 callPolicies?.close()
             }
