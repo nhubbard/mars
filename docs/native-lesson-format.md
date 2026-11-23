@@ -900,3 +900,20 @@ and access history. Definitions are copied and revalidated before opening a
 machine. Setup writes precede observation; each invocation gets a new observation,
 while calls continue to share the same machine and instruction budget. Earlier
 formats reject `callerAccess` explicitly.
+
+### Function-case version 19: exact repeated byte patterns
+
+Version 19 inherits version 18 and permits an optional positive `repeat` on
+`initialMemory`, per-call `setupMemory` and result `memory`, and exit `memory`
+ranges. For example, `{"label":"samples","bytes":"003180ff","repeat":3}`
+specifies those four bytes three times in increasing address order. The default
+is one. This is lossless byte repetition, independent of target endianness;
+results still compare every byte exactly. It does not prescribe how the student
+produces those bytes.
+
+The expanded range and all existing combined setup/result limits remain bounded
+by one MiB. Repetition is checked before allocating decoded arrays, using wide
+size arithmetic to reject overflow. Earlier formats reject the new field even
+when its value is one. This compact representation lets maximum-size PCM cases
+retain both complete input and complete expected output without exceeding the
+existing one-MiB JSON profile size bound or replacing byte equality with a digest.
