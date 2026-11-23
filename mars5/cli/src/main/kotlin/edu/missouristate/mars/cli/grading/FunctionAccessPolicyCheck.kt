@@ -26,3 +26,9 @@ data class FunctionAccessPolicyCheck(
         }
     }
 }
+
+internal fun functionAccessPolicies(policies: List<FunctionAccessPolicyCheck>) {
+    require(policies.size <= 64 && policies.sumOf { policy ->
+        policy.readable.sumOf { it.byteLength.toLong() } + policy.writable.sumOf { it.byteLength.toLong() }
+    } <= ConsoleMemoryCheck.MAX_BYTES) { "Access policies exceed 64 watched intervals or one MiB of permitted data" }
+}
