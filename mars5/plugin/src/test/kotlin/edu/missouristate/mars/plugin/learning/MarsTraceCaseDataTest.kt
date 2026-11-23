@@ -23,6 +23,15 @@ class MarsTraceCaseDataTest {
     }
 
     @Test
+    fun `version four inherits all memory and access obligations at the larger budget`() {
+        val larger = parse { addProperty("formatVersion", 4); row().addProperty("instructionLimit", 3_000_000) }
+        assertEquals(parse().copy(instructionLimit = 3_000_000), larger)
+        for (list in listOf(larger.initialMemory, larger.memory, larger.stores, larger.reads)) {
+            assertThrows<UnsupportedOperationException> { (list as MutableList).clear() }
+        }
+    }
+
+    @Test
     fun `version three retains immutable setup and complete trace contracts without changing older versions`() {
         val case = parse()
         assertEquals(listOf(ConsoleMemoryCheck(0x10010001, "aabbcc")), case.initialMemory)
