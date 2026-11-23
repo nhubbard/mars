@@ -40,5 +40,5 @@ internal class FunctionAccessPolicyObservation(
         }
     }
 
-    override fun close() { observed.forEach { it.trace.close() } }
+    override fun close() { observed.forEach { it.trace.closeAndDiscard() } }
 }
