@@ -88,6 +88,14 @@ Cancellation is checked before each case, during image loading, and before and
 after each bounded call. Cancellation propagates rather than becoming a failed
 student case.
 
+Access policies can retain an explicit `maxAccesses` history allowance from one
+through 1,000,000 events. The default is the original 65,536. Each case policy
+list and each call policy list permits at most 4,194,304 combined events, the
+former maximum of 64 default-sized histories. Overflow fails the check; the
+evaluator does not drop events. Case histories accumulate across calls while
+invocation histories restart at the next invocation. These capacities change
+observation storage, not permitted memory intervals or instruction budgets.
+
 ## Functions that return results in memory
 
 `FunctionCallCheck.argumentAddresses` passes the submitted assembly's actual data

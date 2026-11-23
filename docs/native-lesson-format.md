@@ -755,3 +755,19 @@ and permits a positive `instructionLimit` through 3,000,000 per case. This
 preserves the PPM caller's original complete-program allowance, including normal
 termination. Versions 1–3 retain their one-million ceiling. The profile's
 ten-million total and all content, case-count and memory bounds remain unchanged.
+
+### Function-case version 12: explicit access-history capacities
+
+Version 12 inherits version 11 and permits `maxAccesses` in each case-level or
+invocation-level `accessPolicies` object. It is a positive exact JSON integer
+through 1,000,000; omission retains the previous 65,536-event default. For example,
+`"maxAccesses": 200000` preserves the original CRC chunk check's explicit trace
+allowance. Versions 1–11 reject this field, even when it names the default.
+
+Each case's policy list and each invocation's policy list permit a combined
+4,194,304 events, matching the former maximum of 64 default-sized histories.
+An invocation's history is fresh for that call; a case's history is cumulative
+across all its calls. Setup and host inspection do not count. Overflow fails
+the named check; it never truncates a history and then accepts the remaining
+evidence. Larger histories do not permit any additional read or store window,
+alter simulator execution or reset the cumulative instruction budget.

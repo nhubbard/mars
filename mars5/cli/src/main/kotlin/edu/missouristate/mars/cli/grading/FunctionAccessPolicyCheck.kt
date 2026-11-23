@@ -18,8 +18,10 @@ data class FunctionAccessPolicyCheck(
     val until: FunctionDataAddress,
     val readable: List<FunctionDataWindow> = emptyList(),
     val writable: List<FunctionDataWindow> = emptyList(),
+    val maxAccesses: Int = 65_536,
 ) {
     init {
+        require(maxAccesses in 1..1_000_000) { "Observe one through one million memory accesses per policy" }
         require(readable.size + writable.size <= 64 &&
             readable.sumOf { it.byteLength.toLong() } + writable.sumOf { it.byteLength.toLong() } <= ConsoleMemoryCheck.MAX_BYTES) {
             "Access policy permits at most 64 windows or one MiB of data"
@@ -28,6 +30,9 @@ data class FunctionAccessPolicyCheck(
 }
 
 internal fun functionAccessPolicies(policies: List<FunctionAccessPolicyCheck>) {
+    require(policies.sumOf { it.maxAccesses.toLong() } <= 64L * 65_536) {
+        "Access policies exceed the combined 4194304-notice history allowance"
+    }
     require(policies.size <= 64 && policies.sumOf { policy ->
         policy.readable.sumOf { it.byteLength.toLong() } + policy.writable.sumOf { it.byteLength.toLong() }
     } <= ConsoleMemoryCheck.MAX_BYTES) { "Access policies exceed 64 watched intervals or one MiB of permitted data" }

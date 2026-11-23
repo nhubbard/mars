@@ -34,6 +34,44 @@ class PreparedFunctionAccessPolicyTest {
         PreparedFunctionChecks.evaluate(image(body), listOf(case), ::session).single()
 
     @Test
+    fun `explicit history capacities preserve cumulative and invocation scopes without truncating evidence`() {
+        val body = "li \$t0,70000\nread_again: lw \$t1,0(\$a0)\ndaddiu \$t0,\$t0,-1\nbnezc \$t0,read_again\nnop"
+        val single = contract().copy(instructionLimit = 900_000)
+        val legacy = evaluate(body, single)
+        assertFalse(legacy.passed)
+        assertTrue(legacy.failure!!.contains("65536 notices"), legacy.failure)
+        val expanded = single.copy(calls = listOf(call(), call()), accessPolicies = listOf(policy().copy(maxAccesses = 200_000)))
+        val accepted = evaluate(body, expanded)
+        assertTrue(accepted.passed, accepted.failure)
+        val cumulative = evaluate(body, expanded.copy(accessPolicies = listOf(policy().copy(maxAccesses = 100_000))))
+        assertFalse(cumulative.passed)
+        assertTrue(cumulative.failure!!.contains("100000 notices"), cumulative.failure)
+        val perCall = expanded.copy(calls = List(2) { call().copy(accessPolicies = listOf(policy().copy(maxAccesses = 100_000))) })
+        val scoped = evaluate(body, perCall)
+        assertTrue(scoped.passed, scoped.failure)
+        val tooSmall = evaluate(body, single.copy(calls = listOf(call().copy(accessPolicies = listOf(policy().copy(maxAccesses = 60_000)))),
+            accessPolicies = listOf(policy().copy(maxAccesses = 200_000))))
+        assertFalse(tooSmall.passed)
+        assertTrue(tooSmall.failure!!.contains("60000 notices"), tooSmall.failure)
+    }
+
+    @Test
+    fun `history capacities are bounded independently and in aggregate before acquiring a session`() {
+        for (capacity in listOf(0, -1, 1_000_001)) assertThrows<IllegalArgumentException> { policy().copy(maxAccesses = capacity) }
+        contract().copy(accessPolicies = List(64) { policy() })
+        contract().copy(accessPolicies = List(4) { policy().copy(maxAccesses = 1_000_000) })
+        assertThrows<IllegalArgumentException> { contract().copy(accessPolicies = List(5) { policy().copy(maxAccesses = 1_000_000) }) }
+        assertThrows<IllegalArgumentException> { call().copy(accessPolicies = List(5) { policy().copy(maxAccesses = 1_000_000) }) }
+        val policies = mutableListOf(policy())
+        val changed = contract().copy(accessPolicies = policies)
+        policies.clear()
+        policies += List(5) { policy().copy(maxAccesses = 1_000_000) }
+        assertThrows<IllegalArgumentException> {
+            PreparedFunctionChecks.evaluate(image(copy), listOf(changed), { error("Validate history bounds before creating a machine") })
+        }
+    }
+
+    @Test
     fun `assembled endpoints allow relocation reordering wide pointers and repeated calls`() {
         for (padding in listOf(0, 260)) for (wide in listOf(false, true)) for (reordered in listOf(false, true)) {
             val body = copy + "\nlw \$t0,0(\$a1)\ndaddiu \$sp,\$sp,-16\nsd \$ra,0(\$sp)\nld \$ra,0(\$sp)\ndaddiu \$sp,\$sp,16"

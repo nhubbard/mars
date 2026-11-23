@@ -25,7 +25,7 @@ internal class FunctionAccessPolicyObservation(
                 execution.expectCondition(address <= Long.MAX_VALUE - window.byteLength, "Permitted data window overflows")
                 address to window.byteLength
             }
-            Observed(execution.traceMemoryAccesses(first, (until - first).toInt()), resolve(policy.readable), resolve(policy.writable))
+            Observed(execution.traceMemoryAccesses(first, (until - first).toInt(), policy.maxAccesses), resolve(policy.readable), resolve(policy.writable))
         }
     }
 
