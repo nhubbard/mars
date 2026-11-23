@@ -78,9 +78,10 @@ class PreparedFunctionFileReadTest {
 
     private fun fixture() = FunctionFileReadCheck("file.bin", "000180ff0203040506", 7, maxReadSize = 3, firstDescriptor = 19)
     private fun call(definition: FunctionFileReadCheck = fixture(), request: Long = 7): FunctionCallCheck {
-        val error = definition.failAfterBytes?.let { it <= definition.byteLength } == true
+        val length = definition.bytes.length / 2
+        val error = definition.failAfterBytes?.let { it <= length } == true
         return FunctionCallCheck("function", "returned", mapOf("a2" to request),
-            mapOf("v0" to if (definition.missing || error) 0L else definition.byteLength.toLong(),
+            mapOf("v0" to if (definition.missing || error) 0L else length.toLong(),
                 "v1" to if (definition.missing) 1L else if (error) 2L else 0L),
             argumentAddresses = mapOf("a0" to FunctionDataAddress("path"), "a1" to FunctionDataAddress("buffer")), readFile = true)
     }
@@ -222,4 +223,63 @@ class PreparedFunctionFileReadTest {
         }
         assertTrue(PreparedFunctionChecks.evaluate(image, listOf(contract()), ::session).single().passed)
     }
+    @Test
+    fun `different files missing paths and changed request bounds share one execution session`() {
+        for (failure in listOf<Int?>(null, 3)) {
+            val definition = fixture().copy(bytes = "01", maxReadSize = 2, failAfterBytes = failure,
+                additionalFiles = mapOf("other.bin" to "0203040506"))
+            val other = call(definition, 3).copy(
+                argumentAddresses = mapOf("a0" to FunctionDataAddress("other"), "a1" to FunctionDataAddress("buffer")),
+                expectedRegisters = mapOf("v0" to if (failure == null) 5L else 0L, "v1" to if (failure == null) 0L else 2L),
+                fileReadInvocation = FunctionFileReadInvocation("other.bin", 3))
+            val missing = call(definition, 1).copy(
+                setupMemory = listOf(FunctionMemoryCheck("path", "6d697373696e6700")),
+                expectedRegisters = mapOf("v0" to 0L, "v1" to 1L),
+                fileReadInvocation = FunctionFileReadInvocation("missing", 1))
+            val calls = listOf(call(definition), other, other, missing)
+            var created = 0
+            val result = PreparedFunctionChecks.evaluate(image(), listOf(contract(definition).copy(calls = calls)), {
+                created++
+                session()
+            }).single()
+            assertTrue(result.passed, result.failure)
+            assertEquals(1, created, "File changes must not create new machines")
+            val wrongPath = other.copy(fileReadInvocation = FunctionFileReadInvocation("file.bin", 3))
+            val wrongBound = other.copy(fileReadInvocation = FunctionFileReadInvocation("other.bin", 2))
+            for (bad in listOf(wrongPath, wrongBound)) {
+                assertFalse(evaluate(case = contract(definition).copy(calls = listOf(bad))).passed)
+            }
+        }
+    }
+
+    @Test
+    fun `additional file data is bounded validated and copied before session creation`() {
+        val invalid = listOf<() -> Any>(
+            { fixture().copy(additionalFiles = mapOf("file.bin" to "00")) },
+            { fixture().copy(additionalFiles = mapOf("" to "00")) },
+            { fixture().copy(additionalFiles = mapOf("other.bin" to "0")) },
+            { fixture().copy(additionalFiles = (0..63).associate { "file-$it" to "" }) },
+            { fixture().copy(additionalFiles = mapOf("other.bin" to "00".repeat(ConsoleMemoryCheck.MAX_BYTES))) },
+            { FunctionFileReadInvocation("", 1) }, { FunctionFileReadInvocation("other.bin", 0) },
+            { FunctionFileReadInvocation("other.bin", ConsoleMemoryCheck.MAX_BYTES + 1) },
+            { call().copy(readFile = false, fileReadInvocation = FunctionFileReadInvocation("other.bin", 1)) },
+        )
+        for (change in invalid) assertThrows<IllegalArgumentException> { change() }
+        val extra = mutableMapOf("other.bin" to "ff")
+        val definition = fixture().copy(additionalFiles = extra)
+        val other = call(definition).copy(expectedRegisters = mapOf("v0" to 1L, "v1" to 0L),
+            argumentAddresses = mapOf("a0" to FunctionDataAddress("other"), "a1" to FunctionDataAddress("buffer")),
+            fileReadInvocation = FunctionFileReadInvocation("other.bin", 7))
+        val case = contract(definition).copy(calls = listOf(other))
+        val result = PreparedFunctionChecks.evaluate(image(), listOf(case), {
+            extra["other.bin"] = "0001"
+            session()
+        }).single()
+        assertTrue(result.passed, result.failure)
+        extra["other.bin"] = "not hex"
+        assertThrows<IllegalArgumentException> {
+            PreparedFunctionChecks.evaluate(image(), listOf(case), { error("Validate before creating a machine") })
+        }
+    }
+
 }

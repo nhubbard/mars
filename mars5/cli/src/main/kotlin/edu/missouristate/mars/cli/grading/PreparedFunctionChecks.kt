@@ -26,8 +26,10 @@ data class FunctionCallCheck(
     val accessHistory: FunctionAccessHistoryCheck? = null,
     /** Host fixture bytes installed before this invocation, without resetting the machine. */
     val setupMemory: List<FunctionMemoryCheck> = emptyList(),
+    val fileReadInvocation: FunctionFileReadInvocation? = null,
 ) {
     init {
+        require(fileReadInvocation == null || readFile) { "A per-call file contract requires readFile" }
         functionLabel(entry)
         functionLabel(returnTo)
         require(entry != returnTo) { "Function entry and continuation must differ" }
@@ -171,6 +173,7 @@ object PreparedFunctionChecks {
                 transfers = copyOf(case.transfers).map { it.copy(destinationIndices = copyOf(it.destinationIndices)) },
                 storeBounds = copyOf(case.storeBounds), noExecution = copyOf(case.noExecution), initializedOutput = copyOf(case.initializedOutput),
                 accessPolicies = capturePolicies(case.accessPolicies), initialRegisterAddresses = copyMap(case.initialRegisterAddresses),
+                fileRead = case.fileRead?.let { it.copy(additionalFiles = copyMap(it.additionalFiles)) },
                 exit = case.exit?.let { it.copy(memory = copyOf(it.memory)) })
         }
         require(captured.size in 1..256 && captured.map { it.name }.distinct().size == captured.size) { "Declare 1 through 256 uniquely named function cases" }
@@ -285,7 +288,7 @@ object PreparedFunctionChecks {
                 val forbiddenBefore = forbidden.map { it.snapshot().instructions }
                 execution.runUntil(call.returnTo)
                 callHistory?.expectComplete()
-                fileObservation?.expectReturned(call.readFile)
+                fileObservation?.expectReturned(call.readFile, call.fileReadInvocation)
                 for ((register, value) in call.expectedRegisters) execution.expectRegister(register, value)
                 for ((register, address) in call.expectedAddresses)
                     execution.expectRegister(register, execution.readDataAddress(address.label, address.offset.toLong()))

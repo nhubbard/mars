@@ -108,6 +108,19 @@ The existing in-memory `provideFiles` engine handles all operations; host files
 are never opened and writes remain disabled. Repeated calls reopen independent
 cursors in the same case, while each case owns fresh fixture state.
 
+A fixture may also supply `additionalFiles`, a map from at most 63 distinct paths
+(other than the default path) to hexadecimal contents. `byteLength` counts all
+supplied input bytes. A call with `readFile = true` may select a different path
+and positive request bound using `fileReadInvocation = FunctionFileReadInvocation(path,
+maxRequest)`. Omission selects the original default contract. A path absent from
+all supplied files requires a failed open; an empty supplied file requires EOF.
+All files share the configured short-read limit, failure position and descriptor
+allocator. These settings and all input bytes are installed once per case, so
+repeated calls retain guest memory and must close their descriptors before the
+next call. They do not reset the session or install a replacement file environment.
+Every supplied file must retain its contents. Per-call request bounds are checks,
+not artificial restrictions imposed on guest reads.
+
 Fixture bytes and the existing setup/result memory share the one-MiB case bound.
 Cases and their flags are captured and revalidated before creating a machine.
 Cancellation propagates and disposes the owned session as before. All ordinary
