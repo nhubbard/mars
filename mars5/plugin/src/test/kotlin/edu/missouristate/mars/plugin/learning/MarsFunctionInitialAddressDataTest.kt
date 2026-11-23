@@ -24,6 +24,27 @@ class MarsFunctionInitialAddressDataTest {
     }
 
     @Test
+    fun `format eleven inherits symbolic setup memory and invocation restrictions at the larger budget`() {
+        val policy = """[{"from":{"label":"input"},"until":{"label":"end"},"readable":[{"at":{"label":"input"},"length":4}],"writable":[]}]"""
+        fun definition(version: Int) = parse {
+            addProperty("formatVersion", version)
+            row().add("accessPolicies", JsonParser.parseString(policy))
+            val call = row().getAsJsonArray("calls")[0].asJsonObject
+            call.add("accessPolicies", JsonParser.parseString(policy))
+            call.add("argumentAddresses", JsonParser.parseString("""{"a0":{"label":"input","offset":1}}"""))
+            call.add("expectedAddresses", JsonParser.parseString("""{"v1":{"label":"input"}}"""))
+            call.add("memory", JsonParser.parseString("""[{"label":"output","bytes":"0102"}]"""))
+            call.add("addressMemory", JsonParser.parseString("""[{"at":{"label":"pointer"},"value":{"label":"input","offset":1}}]"""))
+            if (version == 11) row().addProperty("instructionLimit", 3_000_000)
+        }
+        val previous = definition(10)
+        val larger = definition(11)
+        assertEquals(previous.copy(instructionLimit = 3_000_000), larger)
+        assertThrows<UnsupportedOperationException> { (larger.calls.single().accessPolicies as MutableList).clear() }
+        assertThrows<UnsupportedOperationException> { (larger.initialRegisterAddresses as MutableMap).clear() }
+    }
+
+    @Test
     fun `older profiles reject the new setup rather than silently ignoring it`() {
         for (version in 1..9) {
             assertThrows<IllegalArgumentException> { parse { addProperty("formatVersion", version) } }

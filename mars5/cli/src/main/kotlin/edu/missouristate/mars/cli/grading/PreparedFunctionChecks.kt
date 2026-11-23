@@ -81,7 +81,7 @@ data class FunctionCheckCase(
 ) {
     init {
         require(name.isNotBlank() && name.length <= 128) { "Choose a nonempty function case name of at most 128 characters" }
-        require(calls.size in 1..512 && instructionLimit in 1..1_000_000) { "Function cases need 1 through 512 calls and a bounded instruction limit" }
+        require(calls.size in 1..512 && instructionLimit in 1..3_000_000) { "Function cases need 1 through 512 calls and an instruction limit through three million" }
         require(initialRegisters.keys.intersect(initialRegisterAddresses.keys).isEmpty()) { "An initial register cannot have both integer and address setup" }
         functionRegisters(initialRegisters + initialRegisterAddresses.mapValues { 0L }, writable = true)
         val preserved = preservedRegisters.map(::functionRegister)

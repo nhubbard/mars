@@ -179,17 +179,47 @@ class PreparedFunctionChecksTest {
             { FunctionHelperCheck("helper", "helper") },
             { case().copy(name = " ") }, { case().copy(calls = emptyList()) },
             { case().copy(calls = List(513) { call() }) }, { case().copy(instructionLimit = 0) },
-            { case().copy(instructionLimit = 1_000_001) }, { case().copy(stackAlignment = 3) },
+            { case().copy(instructionLimit = 3_000_001) }, { case().copy(stackAlignment = 3) },
             { case().copy(callerStackBytes = 65537) }, { case().copy(preservedRegisters = listOf("s0", "\$16")) },
             { case().copy(helpers = List(33) { FunctionHelperCheck("a$it", "b$it") }) },
         )) assertThrows<IllegalArgumentException> { change() }
         val image = image(program(wrapper))
         val invalidProfiles = listOf(emptyList(), listOf(case(), case()), List(257) { case().copy(name = "case$it") },
             List(9) { case(List(512) { call() }).copy(name = "case$it") },
-            List(11) { case().copy(name = "case$it", instructionLimit = 1_000_000) })
+            List(11) { case().copy(name = "case$it", instructionLimit = 1_000_000) },
+            List(4) { case().copy(name = "larger case$it", instructionLimit = 3_000_000) })
         for (profile in invalidProfiles) assertThrows<IllegalArgumentException> {
             PreparedFunctionChecks.evaluate(image, profile, { error("Must reject invalid profile first") })
         }
+    }
+
+    @Test
+    fun `larger function budgets execute beyond one million and remain cumulative across calls`() {
+        val image = image($$"""
+            .text
+            main: li $v0,10
+                syscall
+            returned: bc main
+            count_down:
+                li $t0,500001
+            again:
+                daddiu $t0,$t0,-1
+                bnezc $t0,again
+                li $v0,23
+                jrc $ra
+        """.trimIndent())
+        val call = FunctionCallCheck("count_down", "returned", emptyMap(), mapOf("v0" to 23L))
+        val cases = listOf(
+            FunctionCheckCase("old budget stops", listOf(call), 1_000_000),
+            FunctionCheckCase("PPM budget completes", listOf(call), 3_000_000),
+            FunctionCheckCase("second call shares exhausted budget", listOf(call, call), 1_500_000),
+            FunctionCheckCase("PPM budget completes both calls", listOf(call, call), 3_000_000),
+        )
+        val results = PreparedFunctionChecks.evaluate(image, cases, ::session)
+        assertFalse(results[0].passed)
+        assertTrue(results[1].passed, results[1].failure)
+        assertFalse(results[2].passed)
+        assertTrue(results[3].passed, results[3].failure)
     }
 
     @Test

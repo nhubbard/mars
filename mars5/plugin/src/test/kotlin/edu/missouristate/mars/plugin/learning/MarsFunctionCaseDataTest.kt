@@ -74,7 +74,7 @@ class MarsFunctionCaseDataTest {
             assertThrows<Exception> { MarsFunctionCaseData.parse(raw.toByteArray()) }
         }
         assertThrows<Exception> { MarsFunctionCaseData.parse(byteArrayOf(0xc3.toByte())) }
-        reject { addProperty("formatVersion", 11) }; reject { addProperty("formatVersion", "1") }
+        reject { addProperty("formatVersion", 12) }; reject { addProperty("formatVersion", "1") }
         reject { remove("cases") }; reject { addProperty("script", "anything.kts") }
         reject { row().remove("instructionLimit") }; reject { row().addProperty("action", "RunWhatever") }
         reject { call().remove("returnTo") }; reject { call().addProperty("predicate", "true") }
@@ -122,6 +122,36 @@ class MarsFunctionCaseDataTest {
         }
         val boundary = parse { row().addProperty("instructionLimit", 1_000_000); row().addProperty("stackAlignment", 4096); row().addProperty("callerStackBytes", 65536) }.single()
         assertEquals(65536, boundary.callerStackBytes)
+    }
+
+    @Test
+    fun `version eleven admits the PPM budget without changing older contracts or profile bounds`() {
+        for (version in 1..10) {
+            reject { addProperty("formatVersion", version); row().addProperty("instructionLimit", 1_000_001) }
+        }
+        for (limit in listOf(1L, 1_000_000L, 1_000_001L, 3_000_000L)) {
+            assertEquals(limit, parse { addProperty("formatVersion", 11); row().addProperty("instructionLimit", limit) }.single().instructionLimit)
+        }
+        for (limit in listOf(0L, 3_000_001L)) {
+            reject { addProperty("formatVersion", 11); row().addProperty("instructionLimit", limit) }
+        }
+        val tenMillion = parse {
+            addProperty("formatVersion", 11)
+            val template = row().deepCopy()
+            add("cases", JsonArray().apply {
+                for ((index, limit) in listOf(3_000_000, 3_000_000, 3_000_000, 1_000_000).withIndex()) {
+                    add(template.deepCopy().apply { addProperty("name", "case$index"); addProperty("instructionLimit", limit) })
+                }
+            })
+        }
+        assertEquals(10_000_000L, tenMillion.sumOf { it.instructionLimit })
+        reject {
+            addProperty("formatVersion", 11)
+            val template = row().deepCopy()
+            add("cases", JsonArray().apply {
+                repeat(4) { add(template.deepCopy().apply { addProperty("name", "case$it"); addProperty("instructionLimit", 3_000_000) }) }
+            })
+        }
     }
 
     @Test

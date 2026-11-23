@@ -31,12 +31,12 @@ internal object MarsFunctionCaseData {
         val root = MarsLessonJson.parse(bytes, MAX_BYTES)
         root.fields(setOf("formatVersion", "cases"))
         val version = root.get("formatVersion").toString()
-        require(version in setOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "10")) { "Unsupported function-case format" }
+        require(version in setOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11")) { "Unsupported function-case format" }
         val cases = root.array("cases", 1, 256).map { value ->
             val row = value.objectValue()
             val required = setOf("name", "calls", "instructionLimit")
             val extensions = when (version) {
-                "8", "9", "10" -> setOf("initialMemory", "noStores", "accessBounds", "protectCallerStack", "transfers", "storeBounds", "noExecution", "initializedOutput", "accessPolicies")
+                "8", "9", "10", "11" -> setOf("initialMemory", "noStores", "accessBounds", "protectCallerStack", "transfers", "storeBounds", "noExecution", "initializedOutput", "accessPolicies")
                 "7" -> setOf("initialMemory", "noStores", "accessBounds", "protectCallerStack", "transfers", "storeBounds", "noExecution", "initializedOutput")
                 "6" -> setOf("initialMemory", "noStores", "accessBounds", "protectCallerStack", "transfers", "storeBounds", "noExecution")
                 "5" -> setOf("initialMemory", "noStores", "accessBounds", "protectCallerStack", "transfers")
@@ -45,22 +45,24 @@ internal object MarsFunctionCaseData {
                 "2" -> setOf("initialMemory")
                 else -> emptySet()
             }
-            row.fields(required + setOf("initialRegisters", "preservedRegisters", "helpers", "stackAlignment", "callerStackBytes") + extensions + (if (version == "10") setOf("initialRegisterAddresses") else emptySet()), required)
+            row.fields(required + setOf("initialRegisters", "preservedRegisters", "helpers", "stackAlignment", "callerStackBytes") + extensions + (if (version in setOf("10", "11")) setOf("initialRegisterAddresses") else emptySet()), required)
             val name = row.string("name", 128)
             require(name.isNotBlank() && !nonPrintable.containsMatchIn(name.replace(" ", ""))) { "Invalid function-case name" }
             val calls = row.array("calls", 1, 512).map {
                 val call = it.objectValue()
                 val callRequired = setOf("entry", "returnTo", "arguments", "expectedRegisters")
                 call.fields(callRequired + (if (version != "1") setOf("argumentAddresses", "memory") else emptySet()) +
-                    (if (version in setOf("6", "7", "8", "9", "10")) setOf("expectedAddresses", "addressMemory") else emptySet()) +
-                    (if (version in setOf("9", "10")) setOf("accessPolicies") else emptySet()), callRequired)
+                    (if (version in setOf("6", "7", "8", "9", "10", "11")) setOf("expectedAddresses", "addressMemory") else emptySet()) +
+                    (if (version in setOf("9", "10", "11")) setOf("accessPolicies") else emptySet()), callRequired)
                 FunctionCallCheck(call.string("entry", 128), call.string("returnTo", 128),
                     registers(call, "arguments"), registers(call, "expectedRegisters"),
                     addresses(call), memory(call, "memory"), addresses(call, "expectedAddresses"), addressMemory(call), accessPolicies(call))
             }
             val helpers = intervals(row, "helpers")
             val preserved = if (row.has("preservedRegisters")) row.array("preservedRegisters", 0, 32).map { text(it, 32) } else emptyList()
-            FunctionCheckCase(name, copyOf(calls), row.number("instructionLimit").toLong(),
+            val instructionLimit = row.number("instructionLimit").toLong()
+            require(version == "11" || instructionLimit <= 1_000_000) { "Function-case versions 1 through 10 permit at most one million instructions per case" }
+            FunctionCheckCase(name, copyOf(calls), instructionLimit,
                 if (row.has("initialRegisters")) registers(row, "initialRegisters") else emptyMap(), copyOf(preserved), copyOf(helpers),
                 if (row.has("stackAlignment")) row.number("stackAlignment") else 16,
                 if (row.has("callerStackBytes")) row.number("callerStackBytes") else 32,
