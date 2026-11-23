@@ -219,7 +219,7 @@ internal data class MarsNativeLessonPlan(
             val label = anchor.text("label", 128)
             val mnemonic = anchor.text("mnemonic", 32)
             require(Regex("[A-Za-z_.$][A-Za-z0-9_.$]*").matches(label)) { "Invalid source label anchor" }
-            require(Regex("[a-z][a-z0-9.]*").matches(mnemonic)) { "Invalid instruction anchor" }
+            require(Regex("[a-z][a-z0-9._]*").matches(mnemonic)) { "Invalid instruction anchor" }
             val occurrence = anchor.get("occurrence")
             require(occurrence is JsonPrimitive && occurrence.isNumber && Regex("0|[1-9][0-9]{0,2}").matches(occurrence.asString)) {
                 "Invalid anchor occurrence"
