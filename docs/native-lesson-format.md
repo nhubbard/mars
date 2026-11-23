@@ -722,3 +722,16 @@ change the imported assessment. Repeated references in different activities
 share the validated profile data. Versions 1–7 reject `caseProfiles`, and version
 8 rejects both reference spellings together, duplicates, unsafe paths, missing
 files, malformed later files and exceeded aggregate limits.
+
+### Function-case version 10: label-relative initial registers
+
+Function-profile version 10 inherits version 9 and adds an optional case-level
+`initialRegisterAddresses` object. Its keys are writable integer registers and
+its values use the existing `{ "label": "workspace", "offset": 256 }` data
+address form. For example, `"initialRegisterAddresses": { "sp": { "label":
+"workspace", "offset": 256 } }` initializes the stack at the assembled end of
+a public workspace rather than a fixed absolute address. The ordinary stack
+alignment and caller-stack preservation rules still apply. An integer and an
+address initializer cannot overlap, including register aliases. Setup maps are
+immutable after import; labels and bounded offsets are data, never expressions.
+Versions 1–9 reject this field even when empty. Omission preserves prior setup.

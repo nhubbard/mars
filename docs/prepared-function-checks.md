@@ -439,3 +439,13 @@ prefix or suffix. A later call cannot read the preceding slice or write its
 already correct output merely because the complete-case policy permits it.
 Function-profile version 9 exposes this field as bounded data; previous formats
 reject it. Omission retains the earlier behavior.
+
+Initial registers may use assembled data addresses through
+`FunctionCheckCase.initialRegisterAddresses`, mapping writable integer register
+names to `FunctionDataAddress(label, offset)`. This supports a caller-provided
+workspace stack and full-width data pointers after relocation. Integer and
+address initializers cannot select the same register, including aliases. The
+map is copied and revalidated before a session opens. Resolution happens after
+initial memory setup and before stack alignment, caller-stack snapshots and
+execution observers; this host preparation is not a simulated memory access.
+The existing stack alignment and preservation checks then apply normally.

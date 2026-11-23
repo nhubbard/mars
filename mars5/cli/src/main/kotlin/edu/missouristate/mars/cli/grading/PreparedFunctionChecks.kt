@@ -77,11 +77,13 @@ data class FunctionCheckCase(
     val noExecution: List<FunctionHelperCheck> = emptyList(),
     val initializedOutput: List<FunctionInitializationCheck> = emptyList(),
     val accessPolicies: List<FunctionAccessPolicyCheck> = emptyList(),
+    val initialRegisterAddresses: Map<String, FunctionDataAddress> = emptyMap(),
 ) {
     init {
         require(name.isNotBlank() && name.length <= 128) { "Choose a nonempty function case name of at most 128 characters" }
         require(calls.size in 1..512 && instructionLimit in 1..1_000_000) { "Function cases need 1 through 512 calls and a bounded instruction limit" }
-        functionRegisters(initialRegisters, writable = true)
+        require(initialRegisters.keys.intersect(initialRegisterAddresses.keys).isEmpty()) { "An initial register cannot have both integer and address setup" }
+        functionRegisters(initialRegisters + initialRegisterAddresses.mapValues { 0L }, writable = true)
         val preserved = preservedRegisters.map(::functionRegister)
         require(preserved.size <= 32 && preserved.distinct().size == preserved.size) { "Duplicate or excessive preserved registers" }
         require(noExecution.size <= 32 && noExecution.distinct().size == noExecution.size) { "Duplicate or excessive forbidden execution intervals" }
@@ -148,7 +150,7 @@ object PreparedFunctionChecks {
                 accessBounds = copyOf(case.accessBounds),
                 transfers = copyOf(case.transfers).map { it.copy(destinationIndices = copyOf(it.destinationIndices)) },
                 storeBounds = copyOf(case.storeBounds), noExecution = copyOf(case.noExecution), initializedOutput = copyOf(case.initializedOutput),
-                accessPolicies = capturePolicies(case.accessPolicies))
+                accessPolicies = capturePolicies(case.accessPolicies), initialRegisterAddresses = copyMap(case.initialRegisterAddresses))
         }
         require(captured.size in 1..256 && captured.map { it.name }.distinct().size == captured.size) { "Declare 1 through 256 uniquely named function cases" }
         require(captured.sumOf { it.calls.size.toLong() } <= 4096 && captured.sumOf { it.instructionLimit } <= 10_000_000) {
@@ -205,6 +207,8 @@ object PreparedFunctionChecks {
     ) {
         for (range in case.initialMemory) execution.setBytes(range.label, *range.decoded(), offset = range.offset)
         for ((register, value) in case.initialRegisters) execution.setRegister(register, value)
+        for ((register, address) in case.initialRegisterAddresses)
+            execution.setRegisterToDataAddress(register, address.label, address.offset.toLong())
         val top = execution.readRegister("sp") and -case.stackAlignment.toLong()
         execution.setRegister("sp", top)
         val callerBytes = execution.readBytes(top, case.callerStackBytes)
