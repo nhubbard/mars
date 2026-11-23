@@ -23,6 +23,7 @@ class MarsFunctionFileReadDataTest {
     @Test
     fun `format thirteen retains fixture configuration history capacity and explicit read invocations`() {
         val case = parse()
+        assertEquals(case, parse { addProperty("formatVersion", 14) })
         assertEquals(FunctionFileReadCheck("fixture.bin", "003180ff", 7, 3, 2, 19, false), case.fileRead)
         assertTrue(case.calls.single().readFile)
         assertEquals(2_000_000L, case.instructionLimit)

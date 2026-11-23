@@ -23,6 +23,7 @@ data class FunctionCallCheck(
     val addressMemory: List<FunctionAddressMemoryCheck> = emptyList(),
     val accessPolicies: List<FunctionAccessPolicyCheck> = emptyList(),
     val readFile: Boolean = false,
+    val accessHistory: FunctionAccessHistoryCheck? = null,
 ) {
     init {
         functionLabel(entry)
@@ -36,7 +37,7 @@ data class FunctionCallCheck(
         val expected = expectedRegisters + expectedAddresses.mapValues { 0L }
         functionRegisters(expected, writable = false)
         functionMemory(memory)
-        functionAccessPolicies(accessPolicies)
+        functionAccessPolicies(accessPolicies, accessHistory)
         require(memory.size + addressMemory.size <= ConsoleMemoryCheck.MAX_RANGES &&
             memory.sumOf { it.byteLength.toLong() } + 8L * addressMemory.size <= ConsoleMemoryCheck.MAX_BYTES) {
             "Function results exceed 64 memory ranges or one MiB"
@@ -52,6 +53,15 @@ data class FunctionHelperCheck(val from: String, val until: String) {
         functionLabel(until)
         require(from != until) { "Choose distinct helper interval labels" }
     }
+}
+
+/**
+ * Continue the last return to actual termination, then inspect relocated caller results.
+ * Function observations end before this continuation: the caller may publish its own
+ * data after the callee's preservation and access contracts have been checked.
+ */
+data class FunctionExitCheck(val code: Int = 0, val memory: List<FunctionMemoryCheck> = emptyList()) {
+    init { functionMemory(memory) }
 }
 
 /**
@@ -80,10 +90,11 @@ data class FunctionCheckCase(
     val accessPolicies: List<FunctionAccessPolicyCheck> = emptyList(),
     val initialRegisterAddresses: Map<String, FunctionDataAddress> = emptyMap(),
     val fileRead: FunctionFileReadCheck? = null,
+    val exit: FunctionExitCheck? = null,
 ) {
     init {
         require(name.isNotBlank() && name.length <= 128) { "Choose a nonempty function case name of at most 128 characters" }
-        require(calls.size in 1..512 && instructionLimit in 1..3_000_000) { "Function cases need 1 through 512 calls and an instruction limit through three million" }
+        require(calls.size in 1..512 && instructionLimit in 1..6_000_000) { "Function cases need 1 through 512 calls and an instruction limit through six million" }
         require((fileRead != null) == calls.any { it.readFile }) { "A read fixture is required exactly when an invocation declares readFile" }
         require(initialRegisters.keys.intersect(initialRegisterAddresses.keys).isEmpty()) { "An initial register cannot have both integer and address setup" }
         functionRegisters(initialRegisters + initialRegisterAddresses.mapValues { 0L }, writable = true)
@@ -107,6 +118,7 @@ data class FunctionCheckCase(
             "Protected function regions exceed 64 ranges or one MiB per case"
         }
         require((fileRead?.byteLength ?: 0) + initialMemory.sumOf { it.byteLength.toLong() } +
+            (exit?.memory?.sumOf { it.byteLength.toLong() } ?: 0) +
             calls.sumOf { call -> call.memory.sumOf { it.byteLength.toLong() } + 8L * call.addressMemory.size } <= ConsoleMemoryCheck.MAX_BYTES) {
             "Combined function setup and expected memory exceed one MiB per case"
         }
@@ -147,13 +159,15 @@ object PreparedFunctionChecks {
             case.copy(calls = copyOf(case.calls).map {
                 it.copy(arguments = copyMap(it.arguments), expectedRegisters = copyMap(it.expectedRegisters),
                     argumentAddresses = copyMap(it.argumentAddresses), memory = copyOf(it.memory), expectedAddresses = copyMap(it.expectedAddresses), addressMemory = copyOf(it.addressMemory),
-                    accessPolicies = capturePolicies(it.accessPolicies))
+                    accessPolicies = capturePolicies(it.accessPolicies),
+                    accessHistory = it.accessHistory?.let { history -> history.copy(regions = copyOf(history.regions)) })
             }, initialRegisters = copyMap(case.initialRegisters), preservedRegisters = copyOf(case.preservedRegisters),
                 helpers = copyOf(case.helpers), initialMemory = copyOf(case.initialMemory), noStores = copyOf(case.noStores),
                 accessBounds = copyOf(case.accessBounds),
                 transfers = copyOf(case.transfers).map { it.copy(destinationIndices = copyOf(it.destinationIndices)) },
                 storeBounds = copyOf(case.storeBounds), noExecution = copyOf(case.noExecution), initializedOutput = copyOf(case.initializedOutput),
-                accessPolicies = capturePolicies(case.accessPolicies), initialRegisterAddresses = copyMap(case.initialRegisterAddresses))
+                accessPolicies = capturePolicies(case.accessPolicies), initialRegisterAddresses = copyMap(case.initialRegisterAddresses),
+                exit = case.exit?.let { it.copy(memory = copyOf(it.memory)) })
         }
         require(captured.size in 1..256 && captured.map { it.name }.distinct().size == captured.size) { "Declare 1 through 256 uniquely named function cases" }
         require(captured.sumOf { it.calls.size.toLong() } <= 4096 && captured.sumOf { it.instructionLimit } <= 10_000_000) {
@@ -251,6 +265,7 @@ object PreparedFunctionChecks {
         val forbidden = case.noExecution.map(::intervalTrace)
         for ((index, call) in case.calls.withIndex()) {
             var callPolicies: FunctionAccessPolicyObservation? = null
+            var callHistory: FunctionAccessHistoryObservation? = null
             try {
                 checkCancellation()
                 for ((register, value) in call.arguments) execution.setRegister(register, value)
@@ -259,10 +274,12 @@ object PreparedFunctionChecks {
                 initialized.forEach(FunctionInitializationObservation::beginCall)
                 execution.enterFunction(call.entry, call.returnTo)
                 if (call.accessPolicies.isNotEmpty()) callPolicies = FunctionAccessPolicyObservation(execution, call.accessPolicies)
+                callHistory = call.accessHistory?.let { FunctionAccessHistoryObservation(execution, it) }
                 val saved = case.preservedRegisters.associateWith(execution::readRegister)
                 val before = helpers.map { it.snapshot().instructions }
                 val forbiddenBefore = forbidden.map { it.snapshot().instructions }
                 execution.runUntil(call.returnTo)
+                callHistory?.expectComplete()
                 fileObservation?.expectReturned(call.readFile)
                 for ((register, value) in call.expectedRegisters) execution.expectRegister(register, value)
                 for ((register, address) in call.expectedAddresses)
@@ -311,8 +328,27 @@ object PreparedFunctionChecks {
                 val supplied = if (arguments.isEmpty()) "" else " ($arguments)"
                 throw CaseFailure("Call ${index + 1} to ${call.entry} returning at ${call.returnTo}$supplied: ${failure.message}")
             } finally {
+                callHistory?.close()
                 callPolicies?.close()
             }
+        }
+        case.exit?.let { exit ->
+            // The continuation is caller code, outside the completed function observations.
+            transfers.forEach(FunctionTransferObservation::close)
+            initialized.forEach(FunctionInitializationObservation::close)
+            protected.forEach(MemoryStoreTrace::close)
+            callerStores?.close()
+            accessBounds.forEach { it.first.close() }
+            storeBounds.forEach { it.first.close() }
+            accessPolicies.close()
+            helpers.forEach(ExecutionTrace::close)
+            forbidden.forEach(ExecutionTrace::close)
+            checkCancellation()
+            execution.runToExit(exit.code)
+            fileObservation?.expectReturned(false)
+            for (range in exit.memory) execution.expectBytes(range.label, *range.decoded(), offset = range.offset)
+            execution.expectOutput("")
+            checkCancellation()
         }
     }
 }

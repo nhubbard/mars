@@ -19,6 +19,7 @@ class MarsNativeVectorDebugPlanTest {
     fun `format seven retains all 128 bits and immutable vector-only or mixed stops`() {
         val step = parse(); val stop = step.stops.single()
         assertEquals(step, parse { addProperty("formatVersion", 9) })
+        assertEquals(step, parse { addProperty("formatVersion", 10) })
         assertEquals("worked/lanes.asm", step.source)
         assertEquals(VectorRegister(-2, Long.MIN_VALUE + 1), stop.vectorRegisters.getValue("\$w4"))
         assertTrue(stop.registers.isEmpty())
@@ -41,7 +42,7 @@ class MarsNativeVectorDebugPlanTest {
             }
             assertTrue(old.stops.single().vectorRegisters.isEmpty())
         }
-        assertThrows<IllegalArgumentException> { parse { addProperty("formatVersion", 10) } }
+        assertThrows<IllegalArgumentException> { parse { addProperty("formatVersion", 11) } }
         assertTrue(parse {
             stop().remove("vectorRegisters"); stop().getAsJsonObject("registers").addProperty("\$t0", "0x0000000000000000")
         }.stops.single().vectorRegisters.isEmpty())
