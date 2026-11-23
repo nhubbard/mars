@@ -197,6 +197,12 @@ class AssemblyCase internal constructor(
     /** Count subsequent completed instructions and native branch decisions. */
     fun traceExecution(): ExecutionTrace = ExecutionTrace(simulator).also(executionTraces::add)
 
+    /** Count completed executions at this public instruction label, regardless of nearby code. */
+    fun traceExecution(label: String): ExecutionTrace {
+        val address = textAddress(label)
+        return ExecutionTrace(simulator, address, address + 1).also(executionTraces::add)
+    }
+
     /** Count from fromLabel (inclusive) to untilLabel (exclusive), excluding callees outside that address range. */
     fun traceExecution(fromLabel: String, untilLabel: String): ExecutionTrace =
         ExecutionTrace(simulator, textAddress(fromLabel), textAddress(untilLabel)).also(executionTraces::add)

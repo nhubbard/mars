@@ -6,6 +6,7 @@ import com.google.gson.JsonPrimitive
 import edu.missouristate.mars.cli.grading.ConsoleCheckCase
 import edu.missouristate.mars.cli.grading.ConsoleMemoryCheck
 import edu.missouristate.mars.cli.grading.ConsoleMarsBotCheck
+import edu.missouristate.mars.cli.grading.ConsoleMazeCheck
 import edu.missouristate.mars.cli.grading.ConsoleReadCheck
 import edu.missouristate.mars.cli.grading.ConsoleStoreCheck
 import java.nio.charset.StandardCharsets.UTF_8
@@ -20,13 +21,14 @@ internal object MarsConsoleCaseData {
     fun parse(bytes: ByteArray): List<ConsoleCheckCase> {
         val root = MarsLessonJson.parse(bytes, MAX_BYTES)
         val version = root.get("formatVersion")?.toString()
-        require(root.keySet() == setOf("formatVersion", "cases") && version in setOf("1", "2", "3", "4", "5")) {
+        require(root.keySet() == setOf("formatVersion", "cases") && version in setOf("1", "2", "3", "4", "5", "6")) {
             "Unsupported console-case format or fields"
         }
         val rows = root.get("cases")
         require(rows is JsonArray && rows.size() in 1..256) { "Declare one through 256 console cases" }
         val required = setOf("name", "input", "stdout", "instructionLimit")
         val allowed = required + when (version) {
+            "6" -> setOf("memory", "initialMemory", "stores", "reads", "marsBot", "maze")
             "5" -> setOf("memory", "initialMemory", "stores", "reads", "marsBot")
             "3", "4" -> setOf("memory", "initialMemory", "stores", "reads")
             "2" -> setOf("memory")
@@ -40,10 +42,10 @@ internal object MarsConsoleCaseData {
             require(name.isNotBlank() && name.codePointCount(0, name.length) <= 128 &&
                 !nonPrintable.containsMatchIn(name.replace(" ", ""))) { "Invalid console-case name" }
             val instructions = integer(it, "instructionLimit").toLong()
-            val maximum = if (version in setOf("4", "5")) 3_000_000 else 1_000_000
+            val maximum = if (version in setOf("4", "5", "6")) 3_000_000 else 1_000_000
             require(instructions <= maximum) { "Console-case instruction limit exceeds $maximum" }
             ConsoleCheckCase(name, text(it, "input"), text(it, "stdout"), instructions,
-                memory(it, "memory"), memory(it, "initialMemory"), stores(it), reads(it), marsBot(it))
+                memory(it, "memory"), memory(it, "initialMemory"), stores(it), reads(it), marsBot(it), maze(it))
         }
         require(cases.map { it.name }.distinct().size == cases.size) { "Console-case names must be unique" }
         require(cases.sumOf { it.instructionLimit } <= 10_000_000) { "Combined console-case limits exceed 10000000" }
@@ -81,6 +83,24 @@ internal object MarsConsoleCaseData {
         val value = row.get(field)
         require(value is JsonPrimitive && value.isBoolean) { "Expected a boolean: $field" }
         return value.asBoolean
+    }
+
+    private fun maze(row: JsonObject): ConsoleMazeCheck? {
+        if (!row.has("maze")) return null
+        val value = row.get("maze")
+        require(value is JsonObject) { "Expected a maze expectation object" }
+        return when (string(value, "kind")) {
+            "search" -> {
+                require(value.keySet() == setOf("kind", "walls", "start", "goal", "fixtureIndex")) { "A maze search needs walls, endpoints and fixture index" }
+                ConsoleMazeCheck.Search(string(value, "walls"), integer(value, "start", zero = true),
+                    integer(value, "goal", zero = true), integer(value, "fixtureIndex", zero = true))
+            }
+            "renderer" -> {
+                require(value.keySet() == setOf("kind", "fixture")) { "A maze renderer needs one fixture index" }
+                ConsoleMazeCheck.Renderer(integer(value, "fixture", zero = true))
+            }
+            else -> throw IllegalArgumentException("Unknown maze expectation kind")
+        }
     }
 
     private fun memory(row: JsonObject, field: String): List<ConsoleMemoryCheck> = copyOf(array(row, field).map {
