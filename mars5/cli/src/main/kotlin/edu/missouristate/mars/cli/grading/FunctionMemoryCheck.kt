@@ -11,15 +11,21 @@ data class FunctionDataAddress(val label: String, val offset: Int = 0) {
 }
 
 /** Exact bytes in increasing address order; no target-endian reinterpretation or executable predicate. */
-data class FunctionMemoryCheck(val label: String, val bytes: String, val offset: Int = 0) {
+data class FunctionMemoryCheck(val label: String, val bytes: String, val offset: Int = 0, val repeat: Int = 1) {
     private val contents = ConsoleMemoryCheck(0, bytes)
 
     init {
         FunctionDataAddress(label, offset)
+        require(repeat in 1..ConsoleMemoryCheck.MAX_BYTES && contents.byteLength.toLong() * repeat <= ConsoleMemoryCheck.MAX_BYTES) {
+            "Repeated memory bytes must expand to at most one MiB"
+        }
     }
 
-    val byteLength: Int get() = contents.byteLength
-    internal fun decoded(): IntArray = contents.decoded()
+    val byteLength: Int get() = contents.byteLength * repeat
+    internal fun decoded(): IntArray {
+        val pattern = contents.decoded()
+        return if (repeat == 1) pattern else IntArray(byteLength) { pattern[it % pattern.size] }
+    }
 }
 
 internal fun functionMemory(ranges: List<FunctionMemoryCheck>) {
