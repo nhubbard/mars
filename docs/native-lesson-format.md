@@ -615,6 +615,12 @@ assembled interval validation, trace bounds and examples.
 
 ## Native lesson format 7: full vector observations
 
+Instruction anchors accept lowercase mnemonic letters, digits, dots and underscores
+(with an initial letter), including MSA names such as `copy_s.d` and `adds_s.h`.
+They remain lexical source references; whitespace and executable punctuation are
+rejected. The ordinary PSI operation-head matching resolves them within the
+selected label block and occurrence.
+
 Lesson format 7 retains the previous prediction, Run, source selection, hint and
 assessment fields. Each Debug stop may additionally declare `vectorRegisters`:
 
