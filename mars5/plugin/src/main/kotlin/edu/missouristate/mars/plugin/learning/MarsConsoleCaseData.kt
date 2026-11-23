@@ -23,14 +23,14 @@ internal object MarsConsoleCaseData {
     fun parse(bytes: ByteArray): List<ConsoleCheckCase> {
         val root = MarsLessonJson.parse(bytes, MAX_BYTES)
         val version = root.get("formatVersion")?.toString()
-        require(root.keySet() == setOf("formatVersion", "cases") && version in setOf("1", "2", "3", "4", "5", "6", "7")) {
+        require(root.keySet() == setOf("formatVersion", "cases") && version in setOf("1", "2", "3", "4", "5", "6", "7", "8")) {
             "Unsupported console-case format or fields"
         }
         val rows = root.get("cases")
         require(rows is JsonArray && rows.size() in 1..256) { "Declare one through 256 console cases" }
         val required = setOf("name", "input", "stdout", "instructionLimit")
         val allowed = required + when (version) {
-            "7" -> setOf("memory", "initialMemory", "stores", "reads", "marsBot", "maze", "publication")
+            "7", "8" -> setOf("memory", "initialMemory", "stores", "reads", "marsBot", "maze", "publication")
             "6" -> setOf("memory", "initialMemory", "stores", "reads", "marsBot", "maze")
             "5" -> setOf("memory", "initialMemory", "stores", "reads", "marsBot")
             "3", "4" -> setOf("memory", "initialMemory", "stores", "reads")
@@ -45,10 +45,10 @@ internal object MarsConsoleCaseData {
             require(name.isNotBlank() && name.codePointCount(0, name.length) <= 128 &&
                 !nonPrintable.containsMatchIn(name.replace(" ", ""))) { "Invalid console-case name" }
             val instructions = integer(it, "instructionLimit").toLong()
-            val maximum = if (version in setOf("4", "5", "6", "7")) 3_000_000 else 1_000_000
+            val maximum = if (version in setOf("4", "5", "6", "7", "8")) 3_000_000 else 1_000_000
             require(instructions <= maximum) { "Console-case instruction limit exceeds $maximum" }
             ConsoleCheckCase(name, text(it, "input"), text(it, "stdout"), instructions,
-                memory(it, "memory"), memory(it, "initialMemory"), stores(it), reads(it), marsBot(it), maze(it), publication(it))
+                memory(it, "memory"), memory(it, "initialMemory"), stores(it), reads(it), marsBot(it), maze(it), publication(it, version))
         }
         require(cases.map { it.name }.distinct().size == cases.size) { "Console-case names must be unique" }
         require(cases.sumOf { it.instructionLimit } <= 10_000_000) { "Combined console-case limits exceed 10000000" }
@@ -65,7 +65,7 @@ internal object MarsConsoleCaseData {
         }
     }
 
-    private fun publication(row: JsonObject): ConsolePublicationCheck? {
+    private fun publication(row: JsonObject, version: String?): ConsolePublicationCheck? {
         if (!row.has("publication")) return null
         val value = row.get("publication")
         require(value is JsonObject && value.keySet() == setOf("label", "initialMemory", "snapshots", "finalState")) {
@@ -74,11 +74,15 @@ internal object MarsConsoleCaseData {
         val snapshots = value.get("snapshots")
         require(snapshots is JsonArray && snapshots.size() <= 256) { "Observe at most 256 public marker visits" }
         fun state(raw: JsonElement?): ConsolePublicationCheck.State {
-            require(raw is JsonObject && raw.keySet() == setOf("memory", "addressMemory", "accessPolicies")) {
+            require(raw is JsonObject && raw.keySet().containsAll(setOf("memory", "addressMemory", "accessPolicies")) &&
+                raw.keySet().all { it in setOf("memory", "addressMemory", "accessPolicies") ||
+                    version == "8" && it in setOf("label", "expectedRegisters") }) {
                 "A publication state needs memory, relocated pointers and access policies"
             }
             return ConsolePublicationCheck.State(MarsFunctionCaseData.memory(raw, "memory", "22"),
-                MarsFunctionCaseData.addressMemory(raw), MarsFunctionCaseData.accessPolicies(raw, "22"))
+                MarsFunctionCaseData.addressMemory(raw), MarsFunctionCaseData.accessPolicies(raw, "22"),
+                if (raw.has("label")) string(raw, "label") else null,
+                if (raw.has("expectedRegisters")) MarsFunctionCaseData.registers(raw, "expectedRegisters") else emptyMap())
         }
         require(value.get("initialMemory") is JsonArray) { "Publication setup must be an array" }
         return ConsolePublicationCheck(string(value, "label"), MarsFunctionCaseData.memory(value, "initialMemory", "22"),

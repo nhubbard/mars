@@ -63,4 +63,35 @@ class MarsConsolePublicationDataTest {
         val root = """{"formatVersion":7,"cases":[{"name":"mixed","input":"","stdout":"","instructionLimit":1,"publication":$valid,"maze":{"kind":"renderer","fixture":0}}]}"""
         assertThrows<IllegalArgumentException> { MarsConsoleCaseData.parse(root.toByteArray()) }
     }
+    @Test
+    fun `version eight names ordered boundaries and full-width register observations without broadening older formats`() {
+        val root = json().apply {
+            getAsJsonArray("snapshots")[0].asJsonObject.apply {
+                addProperty("label", "blit_ready")
+                add("expectedRegisters", JsonParser.parseString("""{"v0":"0xffffffffffffffff","v1":"0x0000000100000008"}"""))
+            }
+            getAsJsonObject("finalState").add("expectedRegisters", JsonObject())
+        }
+        val result = parse(root.toString(), 8).publication!!
+        assertEquals("blit_ready", result.snapshots.single().label)
+        assertEquals(mapOf("v0" to -1L, "v1" to 0x100000008L), result.snapshots.single().expectedRegisters)
+        assertTrue(result.finalState.expectedRegisters.isEmpty())
+        assertEquals(1, parse(version = 8).publication!!.snapshots.size)
+        assertThrows<IllegalArgumentException> { parse(root.toString(), 7) }
+        for (field in listOf("label", "expectedRegisters")) {
+            val legacy = json().apply { getAsJsonArray("snapshots")[0].asJsonObject.add(field, root.getAsJsonArray("snapshots")[0].asJsonObject.get(field)) }
+            assertThrows<IllegalArgumentException> { parse(legacy.toString(), 7) }
+        }
+        for (bad in listOf("null", "true", "[]", "5", "\"not a label\"")) {
+            val invalid = root.deepCopy().apply { getAsJsonArray("snapshots")[0].asJsonObject.add("label", JsonParser.parseString(bad)) }
+            assertThrows<IllegalArgumentException> { parse(invalid.toString(), 8) }
+        }
+        for (bad in listOf("null", "true", "[]", "5", """{"v0":"0x1"}""", """{"v0":"0x0000000000000000","${'$'}v0":"0x0000000000000000"}""")) {
+            val invalid = root.deepCopy().apply { getAsJsonArray("snapshots")[0].asJsonObject.add("expectedRegisters", JsonParser.parseString(bad)) }
+            assertThrows<IllegalArgumentException> { parse(invalid.toString(), 8) }
+        }
+        assertThrows<IllegalArgumentException> { parse(root.deepCopy().apply { getAsJsonObject("finalState").addProperty("label", "done") }.toString(), 8) }
+        assertThrows<IllegalArgumentException> { parse(root.deepCopy().apply { getAsJsonArray("snapshots")[0].asJsonObject.addProperty("predicate", "run anything") }.toString(), 8) }
+    }
+
 }

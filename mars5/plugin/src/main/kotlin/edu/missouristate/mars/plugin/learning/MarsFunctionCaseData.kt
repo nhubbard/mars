@@ -323,7 +323,7 @@ internal object MarsFunctionCaseData {
         return value.asInt
     }
 
-    private fun registers(row: JsonObject, field: String): Map<String, Long> {
+    internal fun registers(row: JsonObject, field: String): Map<String, Long> {
         val values = row.get(field).objectValue()
         require(values.size() <= 32) { "Declare at most 32 integer registers" }
         return copyMap(values.entrySet().associate { (name, value) ->
