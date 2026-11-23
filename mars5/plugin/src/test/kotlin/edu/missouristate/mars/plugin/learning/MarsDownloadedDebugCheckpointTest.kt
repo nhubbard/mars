@@ -31,6 +31,9 @@ import com.intellij.xdebugger.XDebuggerManager
 import com.intellij.xdebugger.XDebuggerUtil
 import com.intellij.xdebugger.frame.XValueModifier.XModificationCallback
 import edu.missouristate.mars.plugin.MarsExecutionOptions
+import edu.missouristate.mars.api.MarsTarget
+import edu.missouristate.mars.mips.hardware.VectorRegister
+import edu.missouristate.mars.plugin.build.MarsAssemblySettings
 import edu.missouristate.mars.plugin.debug.MarsDebugRunner
 import edu.missouristate.mars.plugin.debug.MarsDebugEditors
 import edu.missouristate.mars.plugin.debug.MarsLineBreakpointType
@@ -75,7 +78,8 @@ class MarsDownloadedDebugCheckpointTest {
     fun `normal native Debug records all ordered boundaries and resumes a saved completed observation`() = timeoutRunBlocking {
         withDebug { f ->
             val launch = f.start()
-            launch.pauses.receive(); assertEquals(1, f.checkpoint.phase)
+            val first = launch.pauses.receive(); assertEquals(1, f.checkpoint.phase)
+            assertNull(first.frame.evaluator.vectorRegisterBits("not-a-register"))
             assertFalse(f.checkpoint.passed())
             step(launch); assertEquals(2, f.checkpoint.phase)
             val extended = step(launch)
@@ -258,6 +262,68 @@ class MarsDownloadedDebugCheckpointTest {
         val listeners = dispatcher.javaClass.getMethod("getListeners").invoke(dispatcher) as List<*>
         return listeners.filterIsInstance<XDebugSessionListener>().single {
             it.javaClass.name.startsWith(MarsDownloadedDebugCheckpoint::class.java.name + "$")
+        }
+    }
+
+    @Test
+    fun `scalar target snapshots report vector state unavailable without inventing zero vectors`() = timeoutRunBlocking {
+        val settings = projects.get().service<MarsAssemblySettings>()
+        val target = settings.target
+        try {
+            withContext(Dispatchers.EDT) { settings.changeTarget(MarsTarget.MARS32) }
+            val source = $$"""
+                .text
+                main:
+                observed:
+                    andi $t0,$zero,255
+                    li $v0,10
+                    syscall
+            """.trimIndent()
+            val plan = contract.copy(integerInputs = emptyList(), stops = listOf(stop("scalar", "observed", "andi", mapOf("\$t0" to 0L))))
+            withDebug(plan, source) { f ->
+                val first = f.start().pauses.receive().frame.evaluator
+                assertNull(first.vectorRegisterBits("\$w0"))
+                assertNull(first.vectorRegisterBits("\$w32"))
+            }
+        } finally {
+            withContext(Dispatchers.EDT) { settings.changeTarget(target) }
+        }
+    }
+
+    @Test
+    fun `MSA lesson reads immutable vector snapshots through a scalar alias write`() = timeoutRunBlocking {
+        val settings = projects.get().service<MarsAssemblySettings>()
+        val target = settings.target
+        try {
+            withContext(Dispatchers.EDT) { settings.changeTarget(MarsTarget.MARS64) }
+            val source = $$"""
+                .text
+                main:
+                    ldi.d $w4,-1
+                observed:
+                    andi $t0,$zero,255
+                    dmtc1 $zero,$f4
+                changed:
+                    nop
+                    li $v0,10
+                    syscall
+            """.trimIndent()
+            val before = stop("loaded", "observed", "andi", mapOf("\$t0" to 0L)).copy(vectorRegisters = mapOf("\$w4" to VectorRegister(-1, -1)))
+            val after = stop("alias-written", "changed", "nop", emptyMap()).copy(vectorRegisters = mapOf("\$w4" to VectorRegister(0, -1)))
+            val plan = contract.copy(integerInputs = emptyList(), stops = listOf(before, after))
+            withDebug(plan, source) { f ->
+                val launch = f.start(); val first = launch.pauses.receive().frame.evaluator
+                assertEquals(VectorRegister(-1, -1), first.vectorRegisterBits("\$w4"))
+                assertNull(first.vectorRegisterBits("\$w32"))
+                assertEquals(1, f.checkpoint.phase)
+                step(launch)
+                val changed = step(launch).frame.evaluator
+                assertEquals(VectorRegister(0, -1), changed.vectorRegisterBits("\$w4"))
+                assertEquals(VectorRegister(-1, -1), first.vectorRegisterBits("\$w4"), "Retained snapshots must not read the live machine")
+                assertEquals(2, f.checkpoint.phase); assertTrue(f.checkpoint.passed())
+            }
+        } finally {
+            withContext(Dispatchers.EDT) { settings.changeTarget(target) }
         }
     }
 

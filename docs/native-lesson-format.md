@@ -612,3 +612,38 @@ captures immutable nested lists. Unknown fields and executable extensions reject
 before execution. Versions 1–7 reject `accessPolicies`; an absent or empty field
 in version 8 retains earlier behavior. See `prepared-function-checks.md` for
 assembled interval validation, trace bounds and examples.
+
+## Native lesson format 7: full vector observations
+
+Lesson format 7 retains the previous prediction, Run, source selection, hint and
+assessment fields. Each Debug stop may additionally declare `vectorRegisters`:
+
+```json
+{
+  "registers": {"$a2":"0x0000000000000008"},
+  "vectorRegisters": {"$w4":"0x001f00f800080007008000ff0000007b"}
+}
+```
+
+Keys are canonical MSA register names `$w0` through `$w31`. Each value is exactly
+`0x` followed by 32 hexadecimal digits: high 64 bits first, low 64 bits last.
+Lane zero begins at the least-significant bits. Byte, halfword and wider lane
+rows are interpretations of the same captured 128 bits; the expected string is
+not a byte stream in memory address order. Scalar floating-point aliases do not
+replace an expected vector's high half.
+
+The `registers` object remains required and accepts the earlier 64-bit integer
+syntax. It may be empty in format 7 if at least one vector value is specified.
+At most 32 integer and 32 vector registers may be requested per stop; at least
+one register across the two banks is required. An omitted `vectorRegisters`
+defaults empty. Earlier formats reject the new field, including an empty object.
+Expressions, scripts, unsupported bank names and shortened bit strings reject
+before lesson execution. Parsed vector maps are immutable.
+
+The learning observer compares both banks against the immutable snapshot used
+by native Variables. A scalar-only target has unavailable vector state, which
+cannot match a declared vector. Matching bits still require the correct source
+operation boundary, current source, expected input and forward execution without
+backstep or machine edits. Existing history and repeated-pause protections apply
+unchanged; no checkpoint reads the live machine after suspension. This is state
+observation, not source evaluation or a request to modify a register.

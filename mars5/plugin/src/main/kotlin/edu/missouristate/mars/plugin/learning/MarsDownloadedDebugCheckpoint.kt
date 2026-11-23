@@ -13,6 +13,7 @@ import com.intellij.openapi.util.Disposer
 import com.intellij.xdebugger.XDebugSessionListener
 import com.intellij.xdebugger.XDebuggerManager
 import edu.missouristate.mars.api.InstructionSourceMap.Location
+import edu.missouristate.mars.mips.hardware.VectorRegister
 import edu.missouristate.mars.plugin.debug.MarsDebugProcess
 import edu.missouristate.mars.plugin.debug.MarsSuspendContext
 import edu.missouristate.mars.plugin.run.MarsProcessHandler
@@ -86,8 +87,9 @@ internal class MarsDownloadedDebugCheckpoint(
                     evaluator.instructionSources.breakpointsByAddress[Location(entry, line)]?.singleOrNull()
                 }
                 val values = stop.registers.mapValues { (name, _) -> evaluator.integerRegisterBits(name) }
+                val vectors = stop.vectorRegisters.mapValues { (name, _) -> evaluator.vectorRegisterBits(name) }
                 val outcome = state.trace.observe(Pause(context.number, context.executionRevision, state.input.instructions,
-                    evaluator.integerRegisterBits("pc"), address, values, state.input.matches())) ?: return@runReadActionBlocking
+                    evaluator.integerRegisterBits("pc"), address, values, state.input.matches(), vectors)) ?: return@runReadActionBlocking
                 when (outcome) {
                     Outcome.PASSED -> {
                         // The ticket decides acceptance atomically. The native task reads
@@ -113,7 +115,8 @@ internal class MarsDownloadedDebugCheckpoint(
 
     internal enum class Outcome { ADVANCED, PASSED, ANCHOR, BOUNDARY, VALUES, INPUT, HISTORY, SOURCE_CHANGED }
     internal data class Pause(val number: Long, val revision: Long, val instructions: Long, val pc: Long,
-                             val address: Long?, val registers: Map<String, Long>, val inputsMatch: Boolean)
+                             val address: Long?, val registers: Map<String, Long>, val inputsMatch: Boolean,
+                             val vectorRegisters: Map<String, VectorRegister?> = emptyMap())
 
     /** Accept ordered source-operation starts, with full-width values and actual forward execution between stops. */
     internal class Trace(private val stops: List<MarsNativeDebugStop>) {
@@ -129,7 +132,7 @@ internal class MarsDownloadedDebugCheckpoint(
             val address = pause.address ?: return Outcome.ANCHOR
             if (pause.pc != address || pause.instructions <= lastInstructions) return Outcome.BOUNDARY
             if (!pause.inputsMatch) return Outcome.INPUT
-            if (pause.registers != stops[phase].registers) return Outcome.VALUES
+            if (pause.registers != stops[phase].registers || pause.vectorRegisters != stops[phase].vectorRegisters) return Outcome.VALUES
             lastInstructions = pause.instructions
             phase++
             return if (phase == stops.size) Outcome.PASSED else Outcome.ADVANCED
