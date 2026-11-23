@@ -480,3 +480,29 @@ map is copied and revalidated before a session opens. Resolution happens after
 initial memory setup and before stack alignment, caller-stack snapshots and
 execution observers; this host preparation is not a simulated memory access.
 The existing stack alignment and preservation checks then apply normally.
+
+## Replacing fixture bytes between invocations
+
+`FunctionCallCheck.setupMemory` installs an ordered list of label-relative byte
+ranges before that call's register/address arguments and execution observations.
+It uses the same `FunctionMemoryCheck(label, bytes, offset)` representation as
+case initialization. Omission leaves the previous session bytes intact. Overlapping
+ranges are applied in list order, and bytes outside those ranges remain unchanged.
+The existing stopped-session byte editor supports unaligned input and either
+assembly-image byte order. Like word setup, byte setup can now be used between
+live pauses; it rejects terminal execution.
+
+A repeated call keeps the same simulator, registers, private memory and cumulative
+instruction allowance. Setup does not reload the image or reset hidden algorithm
+state. The grader captures and validates the range list before acquiring a session;
+it permits at most 64 ranges and one MiB per call. Setup bytes also count toward
+the case's existing combined one-MiB initialization/result bound. Missing labels
+or invalid resolved data addresses fail the named invocation and close its session.
+
+These are host fixture edits, not simulated stores. Execution-only access/store
+observers exclude them. Invocation-level observations begin after the edits;
+case-level execution histories remain cumulative. Existing caller-stack snapshots
+are not refreshed, so setup cannot excuse a modified caller stack. This facility
+lets a checker replace data at the same address, move data between calls or inject
+an error after success while detecting stale state. Native function format 15
+exposes the field; earlier formats reject it.

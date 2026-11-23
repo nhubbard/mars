@@ -308,7 +308,7 @@ class AssemblyCase internal constructor(
         setBytes(dataAddress(label, offset.toLong(), alignment = 1), *bytes)
     }
 
-    /** Prepare ordinary user-data bytes before execution, preserving surrounding bytes and byte order. */
+    /** Prepare ordinary user-data bytes in a runnable stopped session, preserving surrounding bytes and byte order. */
     fun setBytes(address: Long, vararg bytes: Int) {
         require(address >= 0 && (bytes.isEmpty() || address <= Long.MAX_VALUE - (bytes.size - 1L))) {
             "Choose a nonnegative, non-overflowing setup range"
@@ -316,7 +316,7 @@ class AssemblyCase internal constructor(
         require(bytes.size <= ConsoleMemoryCheck.MAX_BYTES && bytes.all { it in 0..255 }) {
             "Setup needs unsigned bytes, at most 1 MiB"
         }
-        requireCase(stop == null) { "Prepare input bytes before executing instructions" }
+        ensureRunnable()
         machine.claimStoppedSession().use {
             // Validate and calculate all word edits before changing any byte. The existing
             // stopped-session word editor supplies policy, application provenance and undo reset.

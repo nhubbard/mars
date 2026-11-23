@@ -802,3 +802,22 @@ Access policies also gain `checkReads` (default true). False requires an empty
 policies on named objects to permit unnamed-padding reads while forbidding writes
 there. This preserves the original CRC file checks without hard-coded layout
 lengths. Older formats reject the field, even when it names the default.
+
+### Function-case version 15: input setup between invocations
+
+Version 15 inherits format 14, including its six-million per-case instruction
+ceiling, enclosing access histories and optional caller exit checks. Each call
+may additionally declare `setupMemory`, an ordered array of at most 64 existing
+label-relative memory objects, for example
+`[{"label":"state","offset":48,"bytes":"ffffffff"}]`. The hexadecimal byte string
+is nonempty, even-length and bounded to one MiB; label and displacement validation
+are unchanged. Omitting the array preserves prior behavior. Formats 1–14 reject
+this field rather than ignoring it.
+
+Fixture bytes are installed before argument setup and invocation observations,
+without executing instructions or reloading the session. The case's aggregate
+one-MiB setup/result bound includes every call's setup bytes. Instruction and
+execution-history allowances remain cumulative where already defined. Existing
+caller-stack snapshots and preservation checks stay active. See
+[prepared function checks](prepared-function-checks.md#replacing-fixture-bytes-between-invocations)
+for ordering, observation and failure semantics.

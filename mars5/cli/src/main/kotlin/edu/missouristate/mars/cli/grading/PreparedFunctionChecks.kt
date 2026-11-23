@@ -24,6 +24,8 @@ data class FunctionCallCheck(
     val accessPolicies: List<FunctionAccessPolicyCheck> = emptyList(),
     val readFile: Boolean = false,
     val accessHistory: FunctionAccessHistoryCheck? = null,
+    /** Host fixture bytes installed before this invocation, without resetting the machine. */
+    val setupMemory: List<FunctionMemoryCheck> = emptyList(),
 ) {
     init {
         functionLabel(entry)
@@ -37,6 +39,7 @@ data class FunctionCallCheck(
         val expected = expectedRegisters + expectedAddresses.mapValues { 0L }
         functionRegisters(expected, writable = false)
         functionMemory(memory)
+        functionMemory(setupMemory)
         functionAccessPolicies(accessPolicies, accessHistory)
         require(memory.size + addressMemory.size <= ConsoleMemoryCheck.MAX_RANGES &&
             memory.sumOf { it.byteLength.toLong() } + 8L * addressMemory.size <= ConsoleMemoryCheck.MAX_BYTES) {
@@ -119,7 +122,8 @@ data class FunctionCheckCase(
         }
         require((fileRead?.byteLength ?: 0) + initialMemory.sumOf { it.byteLength.toLong() } +
             (exit?.memory?.sumOf { it.byteLength.toLong() } ?: 0) +
-            calls.sumOf { call -> call.memory.sumOf { it.byteLength.toLong() } + 8L * call.addressMemory.size } <= ConsoleMemoryCheck.MAX_BYTES) {
+            calls.sumOf { call -> call.memory.sumOf { it.byteLength.toLong() } +
+                call.setupMemory.sumOf { it.byteLength.toLong() } + 8L * call.addressMemory.size } <= ConsoleMemoryCheck.MAX_BYTES) {
             "Combined function setup and expected memory exceed one MiB per case"
         }
         require(accessBounds.size <= ConsoleMemoryCheck.MAX_RANGES &&
@@ -159,7 +163,7 @@ object PreparedFunctionChecks {
             case.copy(calls = copyOf(case.calls).map {
                 it.copy(arguments = copyMap(it.arguments), expectedRegisters = copyMap(it.expectedRegisters),
                     argumentAddresses = copyMap(it.argumentAddresses), memory = copyOf(it.memory), expectedAddresses = copyMap(it.expectedAddresses), addressMemory = copyOf(it.addressMemory),
-                    accessPolicies = capturePolicies(it.accessPolicies),
+                    accessPolicies = capturePolicies(it.accessPolicies), setupMemory = copyOf(it.setupMemory),
                     accessHistory = it.accessHistory?.let { history -> history.copy(regions = copyOf(history.regions)) })
             }, initialRegisters = copyMap(case.initialRegisters), preservedRegisters = copyOf(case.preservedRegisters),
                 helpers = copyOf(case.helpers), initialMemory = copyOf(case.initialMemory), noStores = copyOf(case.noStores),
@@ -268,6 +272,7 @@ object PreparedFunctionChecks {
             var callHistory: FunctionAccessHistoryObservation? = null
             try {
                 checkCancellation()
+                for (range in call.setupMemory) execution.setBytes(range.label, *range.decoded(), offset = range.offset)
                 for ((register, value) in call.arguments) execution.setRegister(register, value)
                 for ((register, address) in call.argumentAddresses) execution.setRegisterToDataAddress(register, address.label, address.offset.toLong())
                 transfers.forEach(FunctionTransferObservation::beginCall)
