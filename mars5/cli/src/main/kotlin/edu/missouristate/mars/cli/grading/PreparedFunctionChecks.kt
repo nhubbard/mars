@@ -171,7 +171,7 @@ private fun functionRegister(name: String): Int {
     return requireNotNull(RegisterNames.integer(spelling)) { "Unknown integer register: $name" }.number
 }
 
-private fun functionRegisters(registers: Map<String, Long>, writable: Boolean) {
+internal fun functionRegisters(registers: Map<String, Long>, writable: Boolean) {
     val numbers = registers.keys.map(::functionRegister)
     require(numbers.size <= 32 && numbers.distinct().size == numbers.size) { "Duplicate register aliases or excessive registers" }
     require(!writable || 0 !in numbers) { "Cannot initialize the zero register" }
