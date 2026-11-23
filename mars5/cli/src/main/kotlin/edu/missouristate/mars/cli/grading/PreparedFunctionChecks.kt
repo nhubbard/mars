@@ -22,6 +22,7 @@ data class FunctionCallCheck(
     val expectedAddresses: Map<String, FunctionDataAddress> = emptyMap(),
     val addressMemory: List<FunctionAddressMemoryCheck> = emptyList(),
     val accessPolicies: List<FunctionAccessPolicyCheck> = emptyList(),
+    val readFile: Boolean = false,
 ) {
     init {
         functionLabel(entry)
@@ -78,10 +79,12 @@ data class FunctionCheckCase(
     val initializedOutput: List<FunctionInitializationCheck> = emptyList(),
     val accessPolicies: List<FunctionAccessPolicyCheck> = emptyList(),
     val initialRegisterAddresses: Map<String, FunctionDataAddress> = emptyMap(),
+    val fileRead: FunctionFileReadCheck? = null,
 ) {
     init {
         require(name.isNotBlank() && name.length <= 128) { "Choose a nonempty function case name of at most 128 characters" }
         require(calls.size in 1..512 && instructionLimit in 1..3_000_000) { "Function cases need 1 through 512 calls and an instruction limit through three million" }
+        require((fileRead != null) == calls.any { it.readFile }) { "A read fixture is required exactly when an invocation declares readFile" }
         require(initialRegisters.keys.intersect(initialRegisterAddresses.keys).isEmpty()) { "An initial register cannot have both integer and address setup" }
         functionRegisters(initialRegisters + initialRegisterAddresses.mapValues { 0L }, writable = true)
         val preserved = preservedRegisters.map(::functionRegister)
@@ -103,7 +106,7 @@ data class FunctionCheckCase(
             noStores.sumOf { it.byteLength.toLong() } <= ConsoleMemoryCheck.MAX_BYTES) {
             "Protected function regions exceed 64 ranges or one MiB per case"
         }
-        require(initialMemory.sumOf { it.byteLength.toLong() } +
+        require((fileRead?.byteLength ?: 0) + initialMemory.sumOf { it.byteLength.toLong() } +
             calls.sumOf { call -> call.memory.sumOf { it.byteLength.toLong() } + 8L * call.addressMemory.size } <= ConsoleMemoryCheck.MAX_BYTES) {
             "Combined function setup and expected memory exceed one MiB per case"
         }
@@ -166,9 +169,10 @@ object PreparedFunctionChecks {
                     PrintStream(BoundedOutput(capturedOutput), true, Charsets.UTF_8).use { output ->
                         SessionSyscallEnvironment(machine.memory, ByteArrayInputStream(byteArrayOf()), output, output,
                             inputCharset = Charsets.UTF_8).use { console ->
-                            program.setSyscallEnvironment(GradingEnvironment(console, GradingFiles(), GradingTiming()))
+                            val files = GradingFiles()
+                            program.setSyscallEnvironment(GradingEnvironment(console, files, GradingTiming()))
                             machine.simulator().setInstructionLimit(case.instructionLimit)
-                            AssemblyCase(machine, program.symbolMap(), capturedOutput).use { execution ->
+                            AssemblyCase(machine, program.symbolMap(), capturedOutput, files).use { execution ->
                                 evaluateCalls(execution, case, machine.memory, checkCancellation)
                             }
                         }
@@ -205,6 +209,7 @@ object PreparedFunctionChecks {
         execution: AssemblyCase, case: FunctionCheckCase, transfers: List<FunctionTransferObservation>,
         initialized: List<FunctionInitializationObservation>, littleEndian: Boolean, checkCancellation: () -> Unit,
     ) {
+        val fileObservation = case.fileRead?.let { FunctionFileReadObservation(execution, it) }
         for (range in case.initialMemory) execution.setBytes(range.label, *range.decoded(), offset = range.offset)
         for ((register, value) in case.initialRegisters) execution.setRegister(register, value)
         for ((register, address) in case.initialRegisterAddresses)
@@ -258,6 +263,7 @@ object PreparedFunctionChecks {
                 val before = helpers.map { it.snapshot().instructions }
                 val forbiddenBefore = forbidden.map { it.snapshot().instructions }
                 execution.runUntil(call.returnTo)
+                fileObservation?.expectReturned(call.readFile)
                 for ((register, value) in call.expectedRegisters) execution.expectRegister(register, value)
                 for ((register, address) in call.expectedAddresses)
                     execution.expectRegister(register, execution.readDataAddress(address.label, address.offset.toLong()))

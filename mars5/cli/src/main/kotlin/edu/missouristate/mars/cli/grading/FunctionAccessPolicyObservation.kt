@@ -9,6 +9,7 @@ internal class FunctionAccessPolicyObservation(
         val trace: MemoryAccessTrace,
         val readable: List<Pair<Long, Int>>,
         val writable: List<Pair<Long, Int>>,
+        val checkReads: Boolean,
     )
 
     private val observed = run {
@@ -25,12 +26,13 @@ internal class FunctionAccessPolicyObservation(
                 execution.expectCondition(address <= Long.MAX_VALUE - window.byteLength, "Permitted data window overflows")
                 address to window.byteLength
             }
-            Observed(execution.traceMemoryAccesses(first, (until - first).toInt(), policy.maxAccesses), resolve(policy.readable), resolve(policy.writable))
+            Observed(execution.traceMemoryAccesses(first, (until - first).toInt(), policy.maxAccesses), resolve(policy.readable), resolve(policy.writable), policy.checkReads)
         }
     }
 
     fun expectAllowed() {
-        for ((trace, readable, writable) in observed) for (access in trace.snapshot()) {
+        for ((trace, readable, writable, checkReads) in observed) for (access in trace.snapshot()) {
+            if (!access.write && !checkReads) continue
             val windows = if (access.write) writable else readable
             execution.expectCondition(windows.any { (first, length) ->
                 access.address >= first && access.length <= length && access.address - first <= length.toLong() - access.length
