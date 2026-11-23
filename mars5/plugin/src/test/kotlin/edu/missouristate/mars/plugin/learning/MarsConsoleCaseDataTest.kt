@@ -34,7 +34,7 @@ class MarsConsoleCaseDataTest {
             valid.replace("\"input 0\"", "\"a\",\"name\":\"b\""))) {
             assertThrows<Exception> { MarsConsoleCaseData.parse(raw.toByteArray()) }
         }
-        for (version in listOf("true", "\"1\"", "1.0", "4")) reject { add("formatVersion", JsonParser.parseString(version)) }
+        for (version in listOf("true", "\"1\"", "1.0", "5")) reject { add("formatVersion", JsonParser.parseString(version)) }
         reject { remove("formatVersion") }
         reject { addProperty("action", "RunWhatever") }
         reject { add("cases", JsonObject()) }
@@ -56,6 +56,27 @@ class MarsConsoleCaseDataTest {
         val unicode = "🙂".repeat(128)
         assertEquals(unicode, MarsConsoleCaseData.parse(changed { row().addProperty("name", unicode) }).single().name)
         assertEquals("<html>literal & text", MarsConsoleCaseData.parse(changed { row().addProperty("name", "<html>literal & text") }).single().name)
+    }
+
+    @Test
+    fun `version four retains larger published allowances without changing legacy or total limits`() {
+        for (version in 1..3) reject { addProperty("formatVersion", version); row().addProperty("instructionLimit", 1_000_001) }
+        for (limit in listOf(1L, 1_000_000L, 1_000_001L, 3_000_000L)) {
+            val parsed = MarsConsoleCaseData.parse(changed { addProperty("formatVersion", 4); row().addProperty("instructionLimit", limit) })
+            assertEquals(limit, parsed.single().instructionLimit)
+        }
+        for (limit in listOf(0L, 3_000_001L)) reject { addProperty("formatVersion", 4); row().addProperty("instructionLimit", limit) }
+        fun profile(last: Int) = changed {
+            addProperty("formatVersion", 4)
+            val template = row().deepCopy()
+            add("cases", JsonArray().apply {
+                for ((index, limit) in listOf(3_000_000, 3_000_000, 3_000_000, last).withIndex()) {
+                    add(template.deepCopy().apply { addProperty("name", "input $index"); addProperty("instructionLimit", limit) })
+                }
+            })
+        }
+        assertEquals(10_000_000L, MarsConsoleCaseData.parse(profile(1_000_000)).sumOf { it.instructionLimit })
+        assertThrows<IllegalArgumentException> { MarsConsoleCaseData.parse(profile(1_000_001)) }
     }
 
     @Test

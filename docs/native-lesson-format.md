@@ -260,7 +260,8 @@ unknown fields or trailing content. There must be one through 256 cases with
 unique, nonblank printable names of at most 128 Unicode code points. Input and
 stdout are strings of at most 64 KiB each in UTF-8; either may be empty and may
 contain control characters. Each instruction limit is a positive JSON integer
-of at most 1,000,000; the sum across the profile must not exceed 10,000,000.
+of at most 1,000,000 (3,000,000 in console-profile version 4); the sum across
+the profile must not exceed 10,000,000.
 Feedback escapes markup and displays disallowed message control characters
 visibly. These bounds constrain each check; cases are formative public material.
 
@@ -746,3 +747,11 @@ published allowance when delivering its checks as native lesson data. Versions
 case and call counts, content size and memory bounds remain unchanged. Authors
 partition larger corpora into bounded profiles using native lesson version 8's
 `caseProfiles`; they do not reset the budget between calls within a case.
+
+### Console-case version 4: larger bounded instruction allowances
+
+Version 4 inherits version 3's console, memory, setup and access-trace fields,
+and permits a positive `instructionLimit` through 3,000,000 per case. This
+preserves the PPM caller's original complete-program allowance, including normal
+termination. Versions 1–3 retain their one-million ceiling. The profile's
+ten-million total and all content, case-count and memory bounds remain unchanged.

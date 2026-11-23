@@ -19,14 +19,14 @@ internal object MarsConsoleCaseData {
     fun parse(bytes: ByteArray): List<ConsoleCheckCase> {
         val root = MarsLessonJson.parse(bytes, MAX_BYTES)
         val version = root.get("formatVersion")?.toString()
-        require(root.keySet() == setOf("formatVersion", "cases") && version in setOf("1", "2", "3")) {
+        require(root.keySet() == setOf("formatVersion", "cases") && version in setOf("1", "2", "3", "4")) {
             "Unsupported console-case format or fields"
         }
         val rows = root.get("cases")
         require(rows is JsonArray && rows.size() in 1..256) { "Declare one through 256 console cases" }
         val required = setOf("name", "input", "stdout", "instructionLimit")
         val allowed = required + when (version) {
-            "3" -> setOf("memory", "initialMemory", "stores", "reads")
+            "3", "4" -> setOf("memory", "initialMemory", "stores", "reads")
             "2" -> setOf("memory")
             else -> emptySet()
         }
@@ -38,7 +38,8 @@ internal object MarsConsoleCaseData {
             require(name.isNotBlank() && name.codePointCount(0, name.length) <= 128 &&
                 !nonPrintable.containsMatchIn(name.replace(" ", ""))) { "Invalid console-case name" }
             val instructions = integer(it, "instructionLimit").toLong()
-            require(instructions <= 1_000_000) { "Console-case instruction limit exceeds 1000000" }
+            val maximum = if (version == "4") 3_000_000 else 1_000_000
+            require(instructions <= maximum) { "Console-case instruction limit exceeds $maximum" }
             ConsoleCheckCase(name, text(it, "input"), text(it, "stdout"), instructions,
                 memory(it, "memory"), memory(it, "initialMemory"), stores(it), reads(it))
         }
