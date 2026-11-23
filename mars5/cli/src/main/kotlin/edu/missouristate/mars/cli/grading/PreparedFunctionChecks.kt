@@ -77,8 +77,15 @@ data class FunctionHelperCheck(val from: String, val until: String) {
  * Function observations end before this continuation: the caller may publish its own
  * data after the callee's preservation and access contracts have been checked.
  */
-data class FunctionExitCheck(val code: Int = 0, val memory: List<FunctionMemoryCheck> = emptyList()) {
-    init { functionMemory(memory) }
+data class FunctionExitCheck(
+    val code: Int = 0,
+    val memory: List<FunctionMemoryCheck> = emptyList(),
+    val accessPolicies: List<FunctionAccessPolicyCheck> = emptyList(),
+) {
+    init {
+        functionMemory(memory)
+        functionAccessPolicies(accessPolicies)
+    }
 }
 
 /**
@@ -207,7 +214,7 @@ object PreparedFunctionChecks {
                 accessPolicies = capturePolicies(case.accessPolicies), initialRegisterAddresses = copyMap(case.initialRegisterAddresses),
                 fileSystem = case.fileSystem?.let { it.copy(files = copyMap(it.files), writablePaths = copySet(it.writablePaths)) },
                 fileRead = case.fileRead?.let { it.copy(additionalFiles = copyMap(it.additionalFiles)) },
-                exit = case.exit?.let { it.copy(memory = copyOf(it.memory)) })
+                exit = case.exit?.let { it.copy(memory = copyOf(it.memory), accessPolicies = capturePolicies(it.accessPolicies)) })
         }
         require(captured.size in 1..256 && captured.map { it.name }.distinct().size == captured.size) { "Declare 1 through 256 uniquely named function cases" }
         require(captured.sumOf { it.calls.size.toLong() } <= 4096 && captured.sumOf { it.instructionLimit } <= 40_000_000) {
@@ -401,7 +408,10 @@ object PreparedFunctionChecks {
             helpers.forEach(ExecutionTrace::close)
             forbidden.forEach(ExecutionTrace::close)
             checkCancellation()
-            execution.runToExit(exit.code)
+            FunctionAccessPolicyObservation(execution, exit.accessPolicies).use { policies ->
+                execution.runToExit(exit.code)
+                policies.expectAllowed()
+            }
             fileObservation?.expectReturned(false)
             fileSystem?.expectReturned(null)
             for (range in exit.memory) execution.expectBytes(range.label, *range.decoded(), offset = range.offset)
