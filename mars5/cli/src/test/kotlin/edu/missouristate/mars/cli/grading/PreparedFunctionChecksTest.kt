@@ -179,15 +179,15 @@ class PreparedFunctionChecksTest {
             { FunctionHelperCheck("helper", "helper") },
             { case().copy(name = " ") }, { case().copy(calls = emptyList()) },
             { case().copy(calls = List(513) { call() }) }, { case().copy(instructionLimit = 0) },
-            { case().copy(instructionLimit = 6_000_001) }, { case().copy(stackAlignment = 3) },
+            { case().copy(instructionLimit = 40_000_001) }, { case().copy(stackAlignment = 3) },
             { case().copy(callerStackBytes = 65537) }, { case().copy(preservedRegisters = listOf("s0", "\$16")) },
             { case().copy(helpers = List(33) { FunctionHelperCheck("a$it", "b$it") }) },
         )) assertThrows<IllegalArgumentException> { change() }
         val image = image(program(wrapper))
         val invalidProfiles = listOf(emptyList(), listOf(case(), case()), List(257) { case().copy(name = "case$it") },
             List(9) { case(List(512) { call() }).copy(name = "case$it") },
-            List(11) { case().copy(name = "case$it", instructionLimit = 1_000_000) },
-            List(4) { case().copy(name = "larger case$it", instructionLimit = 3_000_000) })
+            List(41) { case().copy(name = "case$it", instructionLimit = 1_000_000) },
+            List(2) { case().copy(name = "larger case$it", instructionLimit = 20_000_001) })
         for (profile in invalidProfiles) assertThrows<IllegalArgumentException> {
             PreparedFunctionChecks.evaluate(image, profile, { error("Must reject invalid profile first") })
         }
@@ -223,6 +223,33 @@ class PreparedFunctionChecksTest {
     }
 
     @Test
+    fun `RSA budgets execute beyond six million and retain one cumulative machine budget`() {
+        val image = image($$"""
+            .text
+            main: li $v0,10
+                syscall
+            returned: bc main
+            count_down:
+                li $t0,3000001
+            again:
+                daddiu $t0,$t0,-1
+                bnezc $t0,again
+                li $v0,23
+                jrc $ra
+        """.trimIndent())
+        val call = FunctionCallCheck("count_down", "returned", emptyMap(), mapOf("v0" to 23L))
+        val cases = listOf(
+            FunctionCheckCase("previous ceiling stops", listOf(call), 6_000_000),
+            FunctionCheckCase("second invocation shares the budget", listOf(call, call), 7_000_000),
+            FunctionCheckCase("repeated arithmetic completes", listOf(call, call), 27_000_000),
+        )
+        val results = PreparedFunctionChecks.evaluate(image, cases, ::session)
+        assertFalse(results[0].passed)
+        assertFalse(results[1].passed)
+        assertTrue(results[2].passed, results[2].failure)
+    }
+
+    @Test
     fun `cancellation between returned calls propagates and disposes the owned machine`() {
         val image = image(program(wrapper))
         assertThrows<CancellationException> {
@@ -231,7 +258,7 @@ class PreparedFunctionChecksTest {
         var machine: MarsContext? = null
         var callsCompleted = false
         assertThrows<CancellationException> {
-            PreparedFunctionChecks.evaluate(image, listOf(case(listOf(call(), call(0)))), {
+            PreparedFunctionChecks.evaluate(image, listOf(case(listOf(call(), call(0))).copy(instructionLimit = 40_000_000)), {
                 session().also { machine = it }
             }, {
                 val active = machine

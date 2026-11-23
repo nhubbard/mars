@@ -81,8 +81,9 @@ checks: a case name and optional failure, with `passed` derived from that failur
 
 Definitions are captured and revalidated before creating any machine, including
 nested caller-owned maps and lists. A profile permits 1–256 uniquely named cases,
-1–512 calls per case, at most 4096 calls overall, 1–3,000,000 instructions per case,
-and at most ten million instructions overall. Register maps and preservation lists
+1–512 calls per case, at most 4096 calls overall, and at most forty million
+instructions per case and per profile; repeated calls share that case’s cumulative budget. Native lesson formats
+through version 16 retain their original, smaller limits. Register maps and preservation lists
 have at most 32 unique registers; a case has at most 32 unique helper intervals.
 Cancellation is checked before each case, during image loading, and before and
 after each bounded call. Cancellation propagates rather than becoming a failed

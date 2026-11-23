@@ -842,3 +842,20 @@ Changing paths never reloads the machine, resets guest memory or replaces the
 shared file environment. Other invocations must perform no file operations.
 Formats 1–15 reject both new fields. Native Run/Debug lesson fixture syntax is
 unchanged; these additions belong to assessment function-case profiles.
+
+
+### Function-case version 17: RSA arithmetic budgets
+
+Version 17 inherits every version 16 field and permits up to 40,000,000 instructions
+per case and per profile. This accommodates the original RSA checks: individual
+power cases allow 20,000,000 instructions, and the repeated-power case allows
+40,000,000 across its three calls in one machine. Profile authors must partition
+cases whose combined declared budgets exceed 40,000,000; they must not split a
+same-session case into independent machines or reduce its original budget.
+
+Instruction limits remain exact positive JSON integers. The expanded numeric
+range applies only to instruction limits. All file, memory, case-count, call-count,
+access-observation and content-size bounds remain unchanged. Formats 1–16 retain
+their original per-case limits and 10,000,000-instruction profile bound. Cancellation
+checks, actual simulator instruction counting and cumulative repeated-call limits
+remain active for the expanded format.

@@ -1,5 +1,6 @@
 package edu.missouristate.mars.plugin.learning
 
+import com.google.gson.JsonParser
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.zip.ZipFile
@@ -21,7 +22,15 @@ class MarsShaFunctionProfileTest {
             assertEquals(33, entries.size)
             entries.map { entry ->
                 assertTrue(entry.size in 1..MarsFunctionCaseData.MAX_BYTES.toLong())
-                zip.getInputStream(entry).use { MarsFunctionCaseData.parse(it.readBytes()) }
+                zip.getInputStream(entry).use {
+                    val bytes = it.readBytes()
+                    val original = MarsFunctionCaseData.parse(bytes)
+                    val upgraded = JsonParser.parseString(bytes.toString(Charsets.UTF_8)).asJsonObject.apply {
+                        addProperty("formatVersion", 17)
+                    }
+                    assertEquals(original, MarsFunctionCaseData.parse(upgraded.toString().toByteArray()))
+                    original
+                }
             }
         }
         val cases = profiles.flatten()
