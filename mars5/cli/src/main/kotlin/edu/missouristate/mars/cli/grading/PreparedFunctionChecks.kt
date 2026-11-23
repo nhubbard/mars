@@ -8,6 +8,7 @@ import edu.missouristate.mars.mips.hardware.MemoryState
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.PrintStream
+import java.nio.ByteOrder
 import java.util.Collections.unmodifiableMap
 import java.util.Set.copyOf as copySet
 import java.util.List.copyOf
@@ -102,6 +103,7 @@ data class FunctionCheckCase(
     val fileRead: FunctionFileReadCheck? = null,
     val exit: FunctionExitCheck? = null,
     val fileSystem: FunctionFileSystemCheck? = null,
+    val byteOrder: ByteOrder? = null,
 ) {
     init {
         require(name.isNotBlank() && name.length <= 128) { "Choose a nonempty function case name of at most 128 characters" }
@@ -169,7 +171,18 @@ object PreparedFunctionChecks {
         cases: List<FunctionCheckCase>,
         createSession: () -> MarsContext,
         checkCancellation: () -> Unit = {},
+    ): List<ConsoleCheckResult> = evaluate(image, cases, emptyMap(), createSession, checkCancellation)
+
+    /** Explicitly assembled variants preserve native declarations as well as execution byte order. */
+    fun evaluate(
+        image: AssemblyImage,
+        cases: List<FunctionCheckCase>,
+        images: Map<ByteOrder, AssemblyImage>,
+        createSession: () -> MarsContext,
+        checkCancellation: () -> Unit = {},
     ): List<ConsoleCheckResult> {
+        val variants = copyMap(images)
+        require(variants.all { (order, variant) -> order == variant.byteOrder }) { "Assembly image byte order differs from its map key" }
         // Reconstruct nested values before opening any machine: caller-owned mutable
         // containers cannot change a later call or bypass constructor validation.
         val captured = copyOf(cases).map { case ->
@@ -197,8 +210,10 @@ object PreparedFunctionChecks {
         return copyOf(captured.map { case ->
             checkCancellation()
             try {
+                val selected = if (case.byteOrder == null || case.byteOrder == image.byteOrder) image else variants[case.byteOrder]
+                requireCase(selected != null) { "No assembled image for requested byte order: ${case.byteOrder}" }
                 createSession().use { machine ->
-                    machine.loadAssemblyImage(image, checkCancellation)
+                    machine.loadAssemblyImage(checkNotNull(selected), checkCancellation)
                     val program = checkNotNull(machine.program)
                     val capturedOutput = ByteArrayOutputStream()
                     PrintStream(BoundedOutput(capturedOutput), true, Charsets.UTF_8).use { output ->

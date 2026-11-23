@@ -45,6 +45,7 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.future.asCompletableFuture
 import org.jetbrains.concurrency.asPromise
 import java.nio.file.Path
+import java.nio.ByteOrder
 
 private class MarsBuildProgressDescriptor(private val descriptor: BuildDescriptor) : BuildProgressDescriptor {
     override fun getTitle() = descriptor.title
@@ -61,6 +62,7 @@ internal class MarsBuildService(private val project: Project, private val scope:
         val snapshot: AssemblySourceSnapshot,
         val exceptionHandler: Path?,
         val options: MarsExecutionOptions,
+        val byteOrder: ByteOrder,
     )
 
     private data class BuildOutput(
@@ -92,7 +94,8 @@ internal class MarsBuildService(private val project: Project, private val scope:
 
     internal suspend fun prepare(
         sources: MarsSourceSet, options: MarsExecutionOptions, activateBuildView: Boolean,
-    ): MarsAssembledProgram? = buildImage(sources, options, activateBuildView, reuse = true)
+        byteOrder: ByteOrder = ByteOrder.LITTLE_ENDIAN,
+    ): MarsAssembledProgram? = buildImage(sources, options, activateBuildView, reuse = true, byteOrder = byteOrder)
 
     internal suspend fun assembleOpened(sources: MarsSourceSet) {
         buildImage(sources, projectOptions, activateBuildView = false, reuse = true, activateOnFailure = false)
@@ -101,25 +104,26 @@ internal class MarsBuildService(private val project: Project, private val scope:
     private suspend fun buildImage(
         sourceSet: MarsSourceSet, options: MarsExecutionOptions, activateBuildView: Boolean, reuse: Boolean,
         activateOnFailure: Boolean = true,
+        byteOrder: ByteOrder = ByteOrder.LITTLE_ENDIAN,
     ): MarsAssembledProgram? {
         val (capture, output) = buildWithProgress(sourceSet, options, activateBuildView, activateOnFailure) { sources ->
-            val revision = Revision(sources.snapshot, sources.exceptionHandler, options)
+            val revision = Revision(sources.snapshot, sources.exceptionHandler, options, byteOrder)
             val cached = if (reuse) synchronized(images) { images[revision] } else null
-            cached?.copy(reused = true) ?: assembleImage(sources, options)
+            cached?.copy(reused = true) ?: assembleImage(sources, options, byteOrder)
         }
         val image = output.image ?: return null
         checkCanceled()
         if (!output.reused) {
-            synchronized(images) { images.put(Revision(capture.snapshot, capture.exceptionHandler, options), output) }
+            synchronized(images) { images.put(Revision(capture.snapshot, capture.exceptionHandler, options, byteOrder), output) }
         }
         return MarsAssembledProgram(image, capture)
     }
 
-    private suspend fun assembleImage(sources: CapturedAssemblySources, options: MarsExecutionOptions): BuildOutput {
+    private suspend fun assembleImage(sources: CapturedAssemblySources, options: MarsExecutionOptions, byteOrder: ByteOrder): BuildOutput {
         val component = MarsSessionService.createMarsComponent(target = options.target)
         val context = currentCoroutineContext()
         return component.context().use { session ->
-            val result = assembleInto(sources, options, component)
+            val result = assembleInto(sources, options, component, byteOrder)
             if (result.succeeded) result.copy(image = session.captureAssemblyImage(context::ensureActive)) else result
         }
     }
@@ -185,8 +189,10 @@ internal class MarsBuildService(private val project: Project, private val scope:
 
     private suspend fun assembleInto(
         sources: CapturedAssemblySources, options: MarsExecutionOptions, component: MarsComponent,
+        byteOrder: ByteOrder? = null,
     ): BuildOutput {
         options.applyForAssembly(component.context())
+        if (byteOrder != null) component.context().memory.byteOrder = byteOrder == ByteOrder.LITTLE_ENDIAN
         val result = sources.assembleIn(component)
         return BuildOutput(result.errors(), if (result.succeeded()) result.program()!!.symbolMap() else null)
     }

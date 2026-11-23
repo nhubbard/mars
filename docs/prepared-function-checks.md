@@ -541,3 +541,16 @@ operations, detected by a constant-memory counter. No event log or additional
 I/O-count limit is needed. No host filesystem access is introduced. Native format 20 documents
 the strict data schema and bounds; the sequential-read `fileRead` contract retains
 its stronger read-sequence checks for exercises that require them.
+
+## Cases requiring a native byte order
+
+`FunctionCheckCase.byteOrder` optionally selects an explicitly assembled image.
+The existing `evaluate(image, cases, createSession, checkCancellation)` API retains
+its behavior and signature. The new `evaluate(image, cases, images, createSession,
+checkCancellation)` overload accepts `Map<ByteOrder, AssemblyImage>` variants,
+checks their declared order, and captures the map before acquiring a machine.
+The baseline image serves an omitted order or its own matching explicit order.
+Another order needs its matching image; otherwise that case fails without opening
+a session. Native data must be reassembled, not reinterpreted after loading.
+`AssemblyImage.byteOrder` reports its immutable data order. Native function-case
+format 21 exposes these bounded choices to downloaded lessons.

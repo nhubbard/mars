@@ -23,6 +23,7 @@ import edu.missouristate.mars.cli.grading.FunctionAddressMemoryCheck
 import edu.missouristate.mars.cli.grading.FunctionInitializationCheck
 import edu.missouristate.mars.cli.grading.FunctionAccessPolicyCheck
 import edu.missouristate.mars.cli.grading.FunctionDataWindow
+import java.nio.ByteOrder
 import java.util.Collections.unmodifiableMap
 import java.util.List.copyOf
 import java.util.Map.copyOf as copyMap
@@ -38,12 +39,12 @@ internal object MarsFunctionCaseData {
         val root = MarsLessonJson.parse(bytes, MAX_BYTES)
         root.fields(setOf("formatVersion", "cases"))
         val version = root.get("formatVersion").toString()
-        require(version in setOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20")) { "Unsupported function-case format" }
+        require(version in setOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21")) { "Unsupported function-case format" }
         val cases = root.array("cases", 1, 256).map { value ->
             val row = value.objectValue()
             val required = setOf("name", "calls", "instructionLimit")
             val extensions = when (version) {
-                "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20" -> setOf("initialMemory", "noStores", "accessBounds", "protectCallerStack", "transfers", "storeBounds", "noExecution", "initializedOutput", "accessPolicies")
+                "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21" -> setOf("initialMemory", "noStores", "accessBounds", "protectCallerStack", "transfers", "storeBounds", "noExecution", "initializedOutput", "accessPolicies")
                 "7" -> setOf("initialMemory", "noStores", "accessBounds", "protectCallerStack", "transfers", "storeBounds", "noExecution", "initializedOutput")
                 "6" -> setOf("initialMemory", "noStores", "accessBounds", "protectCallerStack", "transfers", "storeBounds", "noExecution")
                 "5" -> setOf("initialMemory", "noStores", "accessBounds", "protectCallerStack", "transfers")
@@ -52,15 +53,15 @@ internal object MarsFunctionCaseData {
                 "2" -> setOf("initialMemory")
                 else -> emptySet()
             }
-            row.fields(required + (if (version == "20") setOf("fileSystem") else emptySet()) + setOf("initialRegisters", "preservedRegisters", "helpers", "stackAlignment", "callerStackBytes") + extensions + (if (version in setOf("10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20")) setOf("initialRegisterAddresses") else emptySet()) + (if (version in setOf("13", "14", "15", "16", "17", "18", "19", "20")) setOf("fileRead") else emptySet()) + (if (version in setOf("14", "15", "16", "17", "18", "19", "20")) setOf("exit") else emptySet()), required)
+            row.fields(required + (if (version == "21") setOf("byteOrder") else emptySet()) + (if (version in setOf("20", "21")) setOf("fileSystem") else emptySet()) + setOf("initialRegisters", "preservedRegisters", "helpers", "stackAlignment", "callerStackBytes") + extensions + (if (version in setOf("10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21")) setOf("initialRegisterAddresses") else emptySet()) + (if (version in setOf("13", "14", "15", "16", "17", "18", "19", "20", "21")) setOf("fileRead") else emptySet()) + (if (version in setOf("14", "15", "16", "17", "18", "19", "20", "21")) setOf("exit") else emptySet()), required)
             val name = row.string("name", 128)
             require(name.isNotBlank() && !nonPrintable.containsMatchIn(name.replace(" ", ""))) { "Invalid function-case name" }
             val calls = row.array("calls", 1, 512).map {
                 val call = it.objectValue()
                 val callRequired = setOf("entry", "returnTo", "arguments", "expectedRegisters")
-                call.fields(callRequired + (if (version == "20") setOf("expectedFiles") else emptySet()) + (if (version in setOf("18", "19", "20")) setOf("callerAccess") else emptySet()) + (if (version in setOf("16", "17", "18", "19", "20")) setOf("fileReadInvocation") else emptySet()) + (if (version in setOf("15", "16", "17", "18", "19", "20")) setOf("setupMemory") else emptySet()) + (if (version != "1") setOf("argumentAddresses", "memory") else emptySet()) +
-                    (if (version in setOf("6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20")) setOf("expectedAddresses", "addressMemory") else emptySet()) +
-                    (if (version in setOf("9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20")) setOf("accessPolicies") else emptySet()) + (if (version in setOf("13", "14", "15", "16", "17", "18", "19", "20")) setOf("readFile") else emptySet()) + (if (version in setOf("14", "15", "16", "17", "18", "19", "20")) setOf("accessHistory") else emptySet()), callRequired)
+                call.fields(callRequired + (if (version in setOf("20", "21")) setOf("expectedFiles") else emptySet()) + (if (version in setOf("18", "19", "20", "21")) setOf("callerAccess") else emptySet()) + (if (version in setOf("16", "17", "18", "19", "20", "21")) setOf("fileReadInvocation") else emptySet()) + (if (version in setOf("15", "16", "17", "18", "19", "20", "21")) setOf("setupMemory") else emptySet()) + (if (version != "1") setOf("argumentAddresses", "memory") else emptySet()) +
+                    (if (version in setOf("6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21")) setOf("expectedAddresses", "addressMemory") else emptySet()) +
+                    (if (version in setOf("9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21")) setOf("accessPolicies") else emptySet()) + (if (version in setOf("13", "14", "15", "16", "17", "18", "19", "20", "21")) setOf("readFile") else emptySet()) + (if (version in setOf("14", "15", "16", "17", "18", "19", "20", "21")) setOf("accessHistory") else emptySet()), callRequired)
                 FunctionCallCheck(call.string("entry", 128), call.string("returnTo", 128),
                     registers(call, "arguments"), registers(call, "expectedRegisters"),
                     addresses(call), memory(call, "memory", version), addresses(call, "expectedAddresses"), addressMemory(call), accessPolicies(call, version), call.boolean("readFile"), accessHistory(call), memory(call, "setupMemory", version), fileReadInvocation(call), callerAccess(call), expectedFiles(call))
@@ -68,20 +69,26 @@ internal object MarsFunctionCaseData {
             val helpers = intervals(row, "helpers")
             val preserved = if (row.has("preservedRegisters")) row.array("preservedRegisters", 0, 32).map { text(it, 32) } else emptyList()
             val instructionLimit = row.instructionLimit(version)
-            val maximum = when (version) { "17", "18", "19", "20" -> 40_000_000; "14", "15", "16" -> 6_000_000; "11", "12", "13" -> 3_000_000; else -> 1_000_000 }
+            val maximum = when (version) { "17", "18", "19", "20", "21" -> 40_000_000; "14", "15", "16" -> 6_000_000; "11", "12", "13" -> 3_000_000; else -> 1_000_000 }
             require(instructionLimit <= maximum) { "Function-case format $version permits at most $maximum instructions per case" }
             FunctionCheckCase(name, copyOf(calls), instructionLimit,
                 if (row.has("initialRegisters")) registers(row, "initialRegisters") else emptyMap(), copyOf(preserved), copyOf(helpers),
                 if (row.has("stackAlignment")) row.number("stackAlignment") else 16,
                 if (row.has("callerStackBytes")) row.number("callerStackBytes") else 32,
-                memory(row, "initialMemory", version), protectedRegions(row), accessBounds(row), row.callerStackProtection(), transfers(row), storeBounds(row), intervals(row, "noExecution"), initializedOutput(row), accessPolicies(row, version), addresses(row, "initialRegisterAddresses"), fileRead(row, version), exit(row, version), fileSystem(row))
+                memory(row, "initialMemory", version), protectedRegions(row), accessBounds(row), row.callerStackProtection(), transfers(row), storeBounds(row), intervals(row, "noExecution"), initializedOutput(row), accessPolicies(row, version), addresses(row, "initialRegisterAddresses"), fileRead(row, version), exit(row, version), fileSystem(row), byteOrder(row))
         }
         require(cases.map { it.name }.distinct().size == cases.size) { "Function-case names must be unique" }
-        val profileMaximum = if (version in setOf("17", "18", "19", "20")) 40_000_000 else 10_000_000
+        val profileMaximum = if (version in setOf("17", "18", "19", "20", "21")) 40_000_000 else 10_000_000
         require(cases.sumOf { it.calls.size.toLong() } <= 4096 && cases.sumOf { it.instructionLimit } <= profileMaximum) {
             "Combined function cases exceed the call or instruction budget"
         }
         return copyOf(cases)
+    }
+
+    private fun byteOrder(row: JsonObject): ByteOrder? = if (!row.has("byteOrder")) null else when (row.string("byteOrder", 6)) {
+        "little" -> ByteOrder.LITTLE_ENDIAN
+        "big" -> ByteOrder.BIG_ENDIAN
+        else -> throw IllegalArgumentException("Choose little or big byte order")
     }
 
     private fun expectedFiles(call: JsonObject): Map<String, String?>? {
@@ -149,7 +156,7 @@ internal object MarsFunctionCaseData {
         if (!row.has("fileRead")) return null
         val fixture = row.get("fileRead").objectValue()
         val required = setOf("path", "bytes", "maxRequest")
-        fixture.fields(required + (if (version in setOf("16", "17", "18", "19", "20")) setOf("additionalFiles") else emptySet()) + setOf("maxReadSize", "failAfterBytes", "firstDescriptor", "missing"), required)
+        fixture.fields(required + (if (version in setOf("16", "17", "18", "19", "20", "21")) setOf("additionalFiles") else emptySet()) + setOf("maxReadSize", "failAfterBytes", "firstDescriptor", "missing"), required)
         return FunctionFileReadCheck(fixture.string("path", 4096), fixture.string("bytes", MAX_BYTES * 2), fixture.number("maxRequest"),
             if (fixture.has("maxReadSize")) fixture.number("maxReadSize") else MAX_BYTES,
             if (fixture.has("failAfterBytes")) fixture.number("failAfterBytes") else null,
@@ -200,8 +207,8 @@ internal object MarsFunctionCaseData {
         return copyOf(row.array("accessPolicies", 0, 64).map {
             val policy = it.objectValue()
             policy.fields(setOf("from", "until", "readable", "writable") +
-                (if (version in setOf("12", "13", "14", "15", "16", "17", "18", "19", "20")) setOf("maxAccesses") else emptySet()) +
-                (if (version in setOf("13", "14", "15", "16", "17", "18", "19", "20")) setOf("checkReads") else emptySet()), setOf("from", "until"))
+                (if (version in setOf("12", "13", "14", "15", "16", "17", "18", "19", "20", "21")) setOf("maxAccesses") else emptySet()) +
+                (if (version in setOf("13", "14", "15", "16", "17", "18", "19", "20", "21")) setOf("checkReads") else emptySet()), setOf("from", "until"))
             FunctionAccessPolicyCheck(dataAddress(policy.get("from")), dataAddress(policy.get("until")),
                 dataWindows(policy, "readable"), dataWindows(policy, "writable"), if (policy.has("maxAccesses")) policy.number("maxAccesses") else 65_536,
                 policy.boolean("checkReads", default = true))
@@ -302,7 +309,7 @@ internal object MarsFunctionCaseData {
         if (!row.has(field)) return emptyList()
         return copyOf(row.array(field, 0, 64).map {
             val range = it.objectValue()
-            range.fields(setOf("label", "bytes", "offset") + (if (version in setOf("19", "20")) setOf("repeat") else emptySet()), setOf("label", "bytes"))
+            range.fields(setOf("label", "bytes", "offset") + (if (version in setOf("19", "20", "21")) setOf("repeat") else emptySet()), setOf("label", "bytes"))
             FunctionMemoryCheck(range.string("label", 128), range.string("bytes", 2 * MAX_BYTES), range.offset(), if (range.has("repeat")) range.number("repeat") else 1)
         })
     }
@@ -329,7 +336,7 @@ internal object MarsFunctionCaseData {
 
     // Older formats retain their seven-digit numeric grammar and original limits.
     private fun JsonObject.instructionLimit(version: String): Long {
-        if (version !in setOf("17", "18", "19", "20")) return number("instructionLimit").toLong()
+        if (version !in setOf("17", "18", "19", "20", "21")) return number("instructionLimit").toLong()
         val value = get("instructionLimit")
         require(value is JsonPrimitive && value.isNumber && Regex("0|[1-9][0-9]{0,7}").matches(value.asString)) {
             "Expected an exact bounded instruction limit"
