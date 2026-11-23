@@ -413,3 +413,29 @@ they never silently drop later accesses. Setup, host inspection and instruction
 fetch do not count. The owning assignment closes traces on success, failure or
 cancellation. Use `initializedOutput` to require current-call initialization
 before partial-sum reads, and memory results to check arithmetic separately.
+
+## Access permissions for one invocation
+
+`FunctionCallCheck.accessPolicies` uses the same bounded, label-relative policies
+as `FunctionCheckCase.accessPolicies`, but its native memory history belongs to
+one call. It begins after argument/continuation setup and ends before another
+call starts. Host setup and inspections remain excluded. Each observed notice
+must fit in full within one permitted read or write window. Empty permission
+sets can forbid all caller traffic for an empty call following nonempty work.
+Same-value stores are still stores. Complete-case policies stay active; a call
+policy cannot widen their permissions where watched spans overlap.
+
+Each call independently permits at most 64 policies, one MiB of permitted data
+and one MiB of resolved watched spans. Trace overflow fails explicitly, using
+the existing 65536-notice bound. Per-call histories close on normal completion,
+failed checks and cancellation, before a later invocation can append notices.
+The owning AssemblyCase also closes any partially prepared trace when setup
+fails. All nested policy containers are captured before a session opens.
+
+This matters for stream and split checks. A case may permit its whole input and
+two output slices so it can compare a complete result with two partial calls.
+Each call can then narrow those permissions to its own input/history and output
+prefix or suffix. A later call cannot read the preceding slice or write its
+already correct output merely because the complete-case policy permits it.
+Function-profile version 9 exposes this field as bounded data; previous formats
+reject it. Omission retains the earlier behavior.

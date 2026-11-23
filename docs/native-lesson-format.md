@@ -653,3 +653,39 @@ operation boundary, current source, expected input and forward execution without
 backstep or machine edits. Existing history and repeated-pause protections apply
 unchanged; no checkpoint reads the live machine after suspension. This is state
 observation, not source evaluation or a request to modify a register.
+
+## Function profile version 9: invocation access policies
+
+Native lesson formats 6 and 7 accept function-profile version 9. It retains all
+version-8 case fields and adds optional `accessPolicies` inside an individual
+call, using the same assembled `from`/`until`, `readable` and `writable` forms as
+case policies. This allows a whole-call result and its split calls to share a
+machine while each invocation retains its own selected data slices:
+
+```json
+"calls": [{
+  "entry": "filter", "returnTo": "returned",
+  "arguments": {"a3":"0x0000000000000000"},
+  "expectedRegisters": {"v0":"0x0000000000000000"},
+  "accessPolicies": [{
+    "from":{"label":"caller_begin"}, "until":{"label":"caller_end"},
+    "readable":[], "writable":[]
+  }]
+}]
+```
+
+The watched notices begin for that invocation and its history closes before the
+next call. Setup and host inspection do not count. The complete width of each
+execution read/store must fit one permitted window of its type; zero lengths
+permit no access. Earlier invocations do not leave notices in a later call's
+history. Same-value or restored stores outside this call's permitted output
+still fail. Case-wide policies remain active, so both restrictions apply where
+their watched spans overlap. Traffic outside a watched span is unaffected.
+
+Each call permits at most 64 policies and one MiB of combined readable/writable
+lengths; its assembled watched spans also have a combined one-MiB limit. These
+limits apply independently from the complete-case limits. The existing per-case
+call/instruction budgets and profile bounds remain unchanged. Parsing and
+evaluation capture immutable nested lists before opening a machine. An absent
+or empty call field adds no restriction; versions 1–8 reject the field even when
+empty. A violation reports the invocation number and entry/continuation context.
