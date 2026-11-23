@@ -96,6 +96,29 @@ evaluator does not drop events. Case histories accumulate across calls while
 invocation histories restart at the next invocation. These capacities change
 observation storage, not permitted memory intervals or instruction budgets.
 
+## Complete sequential reads from fixture files
+
+`FunctionCheckCase.fileRead` optionally declares a `FunctionFileReadCheck` with
+one copied path/input and bounded read settings. `FunctionCallCheck.readFile`
+marks the invocations that must open it once, consume the complete available
+prefix through EOF or an injected failure, and close the acquired descriptor
+before returning. Unmarked calls must add no file operations. Smaller positive
+requests remain equivalent. Missing-file tests require the failed open only.
+The existing in-memory `provideFiles` engine handles all operations; host files
+are never opened and writes remain disabled. Repeated calls reopen independent
+cursors in the same case, while each case owns fresh fixture state.
+
+Fixture bytes and the existing setup/result memory share the one-MiB case bound.
+Cases and their flags are captured and revalidated before creating a machine.
+Cancellation propagates and disposes the owned session as before. All ordinary
+function result, access, preserved-register, silence and instruction checks apply
+alongside file lifecycle checks.
+
+`FunctionAccessPolicyCheck.checkReads = false` adds a store-only policy. Its
+readable list must be empty, but read notices still consume history capacity.
+This can protect stores over a whole caller span while other policies restrict
+reads only in the named objects, leaving unnamed-padding reads permitted.
+
 ## Functions that return results in memory
 
 `FunctionCallCheck.argumentAddresses` passes the submitted assembly's actual data

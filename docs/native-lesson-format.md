@@ -771,3 +771,34 @@ across all its calls. Setup and host inspection do not count. Overflow fails
 the named check; it never truncates a history and then accepts the remaining
 evidence. Larger histories do not permit any additional read or store window,
 alter simulator execution or reset the cumulative instruction budget.
+
+### Function-case version 13: read-only fixture files and store-only policies
+
+Version 13 inherits version 12. An optional case-level `fileRead` object supplies
+one in-memory input: required `path`, hexadecimal `bytes` (possibly empty) and
+`maxRequest`, with optional `maxReadSize` (default 1048576), `failAfterBytes`,
+`firstDescriptor` (default 3) and `missing` (default false). Paths are nonblank
+UTF-8 through 4096 bytes without NUL; request/transfer bounds are positive through
+one MiB and descriptor numbers are 3–31. Input bytes count toward the case's
+existing one-MiB combined setup/result memory bound. Failure positions are zero
+through one MiB; omission means no injected error. A missing input declares no
+bytes or failure position. No host file is opened and fixture writes are disabled.
+
+A call's `readFile: true` requires one read-only open of that exact path, positive
+read requests no larger than `maxRequest`, complete consumption through EOF or
+the injected error, and exactly one close of the acquired descriptor before
+return. Smaller equivalent requests are accepted; a short positive transfer is
+not EOF. A configured failure at EOF still returns error, as in `provideFiles`.
+A missing input requires only the failed open, with no read or close. Calls that
+omit `readFile` or declare false must perform no file operations. The case has a
+fixture exactly when at least one call declares a read. Fixture state is fresh
+per case; repeated read calls independently reopen it. A later publication call
+cannot repair a callee's leaked descriptor. Other return, memory, silence and
+cumulative instruction checks remain active. Older formats reject both fields.
+
+Access policies also gain `checkReads` (default true). False requires an empty
+`readable` list and checks stores only; its history still counts reads toward
+`maxAccesses`. Combine a store-only policy over the whole caller span with normal
+policies on named objects to permit unnamed-padding reads while forbidding writes
+there. This preserves the original CRC file checks without hard-coded layout
+lengths. Older formats reject the field, even when it names the default.

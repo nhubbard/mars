@@ -72,6 +72,20 @@ class PreparedFunctionAccessPolicyTest {
     }
 
     @Test
+    fun `store-only global policy allows padding reads while named objects retain stricter read windows`() {
+        val stores = policy().copy(readable = emptyList(), checkReads = false)
+        val named = FunctionAccessPolicyCheck(FunctionDataAddress("input"), FunctionDataAddress("input", 8))
+        val case = contract().copy(accessPolicies = listOf(stores, named))
+        val padding = evaluate("lw \$t0,8(\$a0)\nsw \$zero,0(\$a1)", case)
+        assertTrue(padding.passed, padding.failure)
+        assertFalse(evaluate("lw \$t0,0(\$a0)", case).passed)
+        assertFalse(evaluate("sw \$zero,8(\$a0)", case).passed)
+        assertThrows<IllegalArgumentException> { policy().copy(checkReads = false) }
+        val noisyReads = stores.copy(maxAccesses = 1)
+        assertFalse(evaluate("lw \$t0,8(\$a0)\nlw \$t0,8(\$a0)", contract().copy(accessPolicies = listOf(noisyReads))).passed)
+    }
+
+    @Test
     fun `assembled endpoints allow relocation reordering wide pointers and repeated calls`() {
         for (padding in listOf(0, 260)) for (wide in listOf(false, true)) for (reordered in listOf(false, true)) {
             val body = copy + "\nlw \$t0,0(\$a1)\ndaddiu \$sp,\$sp,-16\nsd \$ra,0(\$sp)\nld \$ra,0(\$sp)\ndaddiu \$sp,\$sp,16"

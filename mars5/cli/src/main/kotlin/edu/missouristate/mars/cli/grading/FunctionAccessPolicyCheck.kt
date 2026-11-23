@@ -19,9 +19,11 @@ data class FunctionAccessPolicyCheck(
     val readable: List<FunctionDataWindow> = emptyList(),
     val writable: List<FunctionDataWindow> = emptyList(),
     val maxAccesses: Int = 65_536,
+    val checkReads: Boolean = true,
 ) {
     init {
         require(maxAccesses in 1..1_000_000) { "Observe one through one million memory accesses per policy" }
+        require(checkReads || readable.isEmpty()) { "A store-only policy must not declare ignored read windows" }
         require(readable.size + writable.size <= 64 &&
             readable.sumOf { it.byteLength.toLong() } + writable.sumOf { it.byteLength.toLong() } <= ConsoleMemoryCheck.MAX_BYTES) {
             "Access policy permits at most 64 windows or one MiB of data"
