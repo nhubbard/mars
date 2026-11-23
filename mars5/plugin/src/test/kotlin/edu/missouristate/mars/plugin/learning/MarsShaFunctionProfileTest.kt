@@ -25,7 +25,7 @@ class MarsShaFunctionProfileTest {
                 zip.getInputStream(entry).use {
                     val bytes = it.readBytes()
                     val original = MarsFunctionCaseData.parse(bytes)
-                    for (version in listOf(17, 18)) {
+                    for (version in listOf(17, 18, 19, 20)) {
                         val upgraded = JsonParser.parseString(bytes.toString(Charsets.UTF_8)).asJsonObject.apply {
                             addProperty("formatVersion", version)
                         }
