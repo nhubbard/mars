@@ -55,8 +55,15 @@ internal class MarsDownloadedAssessmentCheckpoint(
             if (!readAction { current(attempt, program) }) return Feedback.STALE
             val context = currentCoroutineContext()
             val results = withContext(Dispatchers.Default) {
-                if (step.functionCases.isEmpty()) PreparedConsoleChecks.evaluate(program.image, step.cases, createSession, context::ensureActive)
-                else PreparedFunctionChecks.evaluate(program.image, step.functionCases, createSession, context::ensureActive)
+                if (step.functionCases.isEmpty()) {
+                    (step.consoleCaseBatches.ifEmpty { listOf(step.cases) }).flatMap { batch ->
+                        PreparedConsoleChecks.evaluate(program.image, batch, createSession, context::ensureActive)
+                    }
+                } else {
+                    (step.functionCaseBatches.ifEmpty { listOf(step.functionCases) }).flatMap { batch ->
+                        PreparedFunctionChecks.evaluate(program.image, batch, createSession, context::ensureActive)
+                    }
+                }
             }
             return readAction {
                 synchronized(progress) {

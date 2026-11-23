@@ -289,7 +289,7 @@ class MarsDownloadedLessonsTest {
                 MarsNativeDebugStop("after-load", "Inspect <the next load>.", MarsLessonAnchor("main", "li", 1),
                     mapOf("\$a0" to 1L), "One is retained.", hints),
             ), "Explain the changed argument.", hints, source)
-            val assessment = MarsNativeAssessmentStep("independent", "Check <this> program.", "main.asm", "cases.json",
+            val assessment = MarsNativeAssessmentStep("independent", "Check <this> program.", "main.asm", listOf("cases.json"),
                 listOf(ConsoleCheckCase("one", "", "1", 20_000)), "Explain the result.", hints)
             val steps = when { withAssessment -> listOf(anchored, assessment); withRun -> listOf(anchored, run); withDebug -> listOf(anchored, debug); else -> listOf(anchored) }
             val content = installed.copy(plan = MarsNativeLessonPlan("Intro < & >", "End < & >", steps))

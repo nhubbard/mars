@@ -53,11 +53,17 @@ internal data class MarsNativeDebugStep(
 
 internal data class MarsNativeAssessmentStep(
     override val id: String, override val explanation: String,
-    val source: String, val caseProfile: String, val cases: List<ConsoleCheckCase>, val success: String,
+    val source: String, val caseProfiles: List<String>, val cases: List<ConsoleCheckCase>, val success: String,
     override val hints: List<MarsLessonHint>,
     val functionCases: List<FunctionCheckCase> = emptyList(),
+    val functionCaseBatches: List<List<FunctionCheckCase>> = emptyList(),
+    val consoleCaseBatches: List<List<ConsoleCheckCase>> = emptyList(),
 ) : MarsNativeLessonActivity {
-    init { require(cases.isEmpty() != functionCases.isEmpty()) { "An assessment needs exactly one nonempty check kind" } }
+    init {
+        require(cases.isEmpty() != functionCases.isEmpty()) { "An assessment needs exactly one nonempty check kind" }
+        require(functionCaseBatches.isEmpty() || functionCaseBatches.flatten() == functionCases) { "Function batches must match assessment order" }
+        require(consoleCaseBatches.isEmpty() || consoleCaseBatches.flatten() == cases) { "Console batches must match assessment order" }
+    }
     override val anchor: MarsLessonAnchor? get() = null
 }
 
@@ -75,7 +81,7 @@ internal data class MarsNativeLessonPlan(
             val root = MarsLessonJson.parse(bytes, MAX_BYTES)
             root.fields(setOf("formatVersion", "introduction", "conclusion", "steps"))
             val version = root.get("formatVersion").toString()
-            require(version in setOf("1", "2", "3", "4", "5", "6", "7")) { "Unsupported native lesson format" }
+            require(version in setOf("1", "2", "3", "4", "5", "6", "7", "8")) { "Unsupported native lesson format" }
             val steps = root.array("steps")
             require(steps.size() in 1..128) { "A native lesson needs 1 through 128 steps" }
             val profiles = mutableMapOf<String, List<ConsoleCheckCase>>()
@@ -87,31 +93,55 @@ internal data class MarsNativeLessonPlan(
                     "prediction" -> parsePrediction(step, true)
                     "run" -> parseRun(step, version)
                     "debug" -> {
-                        require(version in setOf("3", "4", "5", "6", "7")) { "Debug observations require native lesson format 3 or later" }
+                        require(version in setOf("3", "4", "5", "6", "7", "8")) { "Debug observations require native lesson format 3 or later" }
                         parseDebug(step, version)
                     }
                     "assessment" -> {
-                        require(version in setOf("4", "5", "6", "7")) { "Independent assessment requires native lesson format 4 or later" }
-                        val fields = setOf("kind", "id", "explanation", "source", "caseProfile", "success")
-                        step.fields(fields + "hints" + if (version in setOf("6", "7")) setOf("checkKind") else emptySet(), fields)
+                        require(version in setOf("4", "5", "6", "7", "8")) { "Independent assessment requires native lesson format 4 or later" }
+                        val fields = setOf("kind", "id", "explanation", "source", "success")
+                        val references = if (version == "8") setOf("caseProfile", "caseProfiles") else setOf("caseProfile")
+                        step.fields(fields + references + "hints" + if (version in setOf("6", "7", "8")) setOf("checkKind") else emptySet(), fields)
                         val source = MarsLessonPackages.path(step.text("source", 240))
-                        val profile = MarsLessonPackages.path(step.text("caseProfile", 240))
+                        val paths = assessmentProfiles(step)
                         val kind = if (step.has("checkKind")) step.text("checkKind", 32) else "console"
                         require(kind in setOf("console", "function")) { "Unsupported assessment check kind" }
-                        val functions = if (kind == "function") functionProfiles.getOrPut(profile) {
-                            MarsFunctionCaseData.parse(caseData(profile))
+                        val functionBatches = if (kind == "function") paths.map { profile ->
+                            functionProfiles.getOrPut(profile) { MarsFunctionCaseData.parse(caseData(profile)) }
                         } else emptyList()
-                        val console = if (kind == "console") profiles.getOrPut(profile) {
-                            MarsConsoleCaseData.parse(caseData(profile))
+                        val consoleBatches = if (kind == "console") paths.map { profile ->
+                            profiles.getOrPut(profile) { MarsConsoleCaseData.parse(caseData(profile)) }
                         } else emptyList()
-                        MarsNativeAssessmentStep(step.identifier("id"), step.text("explanation", 8192), source, profile,
-                            console, step.text("success", 8192), hints(step), functions)
+                        val functions = combineProfiles(functionBatches)
+                        val console = combineProfiles(consoleBatches)
+                        require(functions.map { it.name }.distinct().size == functions.size &&
+                            console.map { it.name }.distinct().size == console.size) { "Assessment case names must be unique across profiles" }
+                        require(functions.sumOf { it.calls.size.toLong() } <= 4096) { "Assessment exceeds 4096 function calls" }
+                        MarsNativeAssessmentStep(step.identifier("id"), step.text("explanation", 8192), source, paths,
+                            console, step.text("success", 8192), hints(step), functions, copyOf(functionBatches), copyOf(consoleBatches))
                     }
                     else -> throw IllegalArgumentException("Unsupported native lesson activity")
                 }
             }
             require(parsed.map { it.id }.distinct().size == parsed.size) { "Duplicate native lesson step ID" }
             return MarsNativeLessonPlan(root.text("introduction", 8192), root.text("conclusion", 8192), copyOf(parsed))
+        }
+
+        private fun assessmentProfiles(step: JsonObject): List<String> {
+            require(step.has("caseProfile") != step.has("caseProfiles")) { "Choose exactly one caseProfile or caseProfiles" }
+            if (step.has("caseProfile")) return listOf(MarsLessonPackages.path(step.text("caseProfile", 240)))
+            val paths = step.array("caseProfiles")
+            require(paths.size() in 1..32) { "An assessment needs 1 through 32 profiles" }
+            val parsed = paths.map {
+                require(it is JsonPrimitive && it.isString && it.asString.length <= 240) { "Expected a bounded profile path" }
+                MarsLessonPackages.path(it.asString)
+            }
+            require(parsed.distinct().size == parsed.size) { "Duplicate assessment profile path" }
+            return copyOf(parsed)
+        }
+
+        private fun <T> combineProfiles(profiles: List<List<T>>): List<T> {
+            require(profiles.sumOf { it.size } <= 512) { "Assessment exceeds 512 cases" }
+            return if (profiles.size == 1) profiles.single() else copyOf(profiles.flatten())
         }
 
         private fun parsePrediction(step: JsonObject, tagged: Boolean): MarsNativeLessonStep {
@@ -162,7 +192,7 @@ internal data class MarsNativeLessonPlan(
             val parsed = stops.map {
                 val stop = it.objectValue()
                 val fields = setOf("id", "explanation", "anchor", "registers", "success")
-                stop.fields(fields + "hints" + if (version == "7") setOf("vectorRegisters") else emptySet(), fields)
+                stop.fields(fields + "hints" + if (version in setOf("7", "8")) setOf("vectorRegisters") else emptySet(), fields)
                 val registers = stop.get("registers").objectValue()
                 require(registers.size() <= 32) { "A Debug stop supports at most 32 integer register values" }
                 val values = linkedMapOf<String, Long>()
@@ -199,7 +229,7 @@ internal data class MarsNativeLessonPlan(
             })
         }
 
-        private fun sourceField(version: String) = if (version in setOf("5", "6", "7")) setOf("source") else emptySet()
+        private fun sourceField(version: String) = if (version in setOf("5", "6", "7", "8")) setOf("source") else emptySet()
         private fun source(step: JsonObject) = if (step.has("source")) MarsLessonPackages.path(step.text("source", 240)) else null
 
         private fun anchor(step: JsonObject) = if (step.has("anchor")) parseAnchor(step.get("anchor").objectValue()) else null
