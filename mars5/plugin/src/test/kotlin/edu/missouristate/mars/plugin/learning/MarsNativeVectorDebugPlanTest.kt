@@ -42,7 +42,7 @@ class MarsNativeVectorDebugPlanTest {
             }
             assertTrue(old.stops.single().vectorRegisters.isEmpty())
         }
-        assertThrows<IllegalArgumentException> { parse { addProperty("formatVersion", 11) } }
+        assertThrows<IllegalArgumentException> { parse { addProperty("formatVersion", 12) } }
         assertTrue(parse {
             stop().remove("vectorRegisters"); stop().getAsJsonObject("registers").addProperty("\$t0", "0x0000000000000000")
         }.stops.single().vectorRegisters.isEmpty())
