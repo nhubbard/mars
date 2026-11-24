@@ -12,11 +12,12 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
 class InstructionStatisticsTest {
-    @Test
-    fun `uses decoded instructions to classify integer and coprocessor operations`() {
-        val instructions = InstructionDefaults.forTarget(MarsTarget.MARS32)
-        val statistics = InstructionStatistics()
-        val cases = listOf(
+  @Test
+  fun `uses decoded instructions to classify integer and coprocessor operations`() {
+    val instructions = InstructionDefaults.forTarget(MarsTarget.MARS32)
+    val statistics = InstructionStatistics()
+    val cases =
+        listOf(
             0x00000000 to ALU, // nop
             0x00094042 to ALU, // srl
             0x012a4021 to ALU, // addu
@@ -35,18 +36,25 @@ class InstructionStatisticsTest {
             0x40086000 to OTHER, // mfc0
             -1 to OTHER, // unknown encoding
         )
-        for ((word, expected) in cases) {
-            statistics.reset()
-            statistics.record(word, instructions.findByBinaryCode(word))
-            val counts = statistics.countsSnapshot()
-            assertEquals(Category.entries.map { if (it == expected) 1L else 0L }, counts.counts, word.toUInt().toString(16))
-        }
-        statistics.setConnected(false)
-        statistics.reset()
-        statistics.record(0, instructions.findByBinaryCode(0))
-        assertEquals(InstructionCountsSnapshot(false, List(5) { 0L }), statistics.countsSnapshot())
-        statistics.setConnected(true)
-        statistics.record(0, instructions.findByBinaryCode(0))
-        assertEquals(InstructionCountsSnapshot(true, listOf(1L, 0L, 0L, 0L, 0L)), statistics.countsSnapshot())
+    for ((word, expected) in cases) {
+      statistics.reset()
+      statistics.record(word, instructions.findByBinaryCode(word))
+      val counts = statistics.countsSnapshot()
+      assertEquals(
+          Category.entries.map { if (it == expected) 1L else 0L },
+          counts.counts,
+          word.toUInt().toString(16),
+      )
     }
+    statistics.setConnected(false)
+    statistics.reset()
+    statistics.record(0, instructions.findByBinaryCode(0))
+    assertEquals(InstructionCountsSnapshot(false, List(5) { 0L }), statistics.countsSnapshot())
+    statistics.setConnected(true)
+    statistics.record(0, instructions.findByBinaryCode(0))
+    assertEquals(
+        InstructionCountsSnapshot(true, listOf(1L, 0L, 0L, 0L, 0L)),
+        statistics.countsSnapshot(),
+    )
+  }
 }

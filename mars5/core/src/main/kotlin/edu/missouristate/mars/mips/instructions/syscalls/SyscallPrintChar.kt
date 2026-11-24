@@ -32,8 +32,8 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 open class SyscallPrintChar : AbstractSyscall(11, "PrintChar") {
-    override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
-        val character = (context.registerFile.getValue(4) and 0xff).toChar()
-        context.environment().printChar(character)
-    }
+  override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
+    val character = (context.registerFile.getValue(4) and 0xff).toChar()
+    context.environment().printChar(character)
+  }
 }

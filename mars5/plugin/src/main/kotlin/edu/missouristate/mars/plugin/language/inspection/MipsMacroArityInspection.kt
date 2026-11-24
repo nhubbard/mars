@@ -14,29 +14,36 @@ import edu.missouristate.mars.plugin.language.operationHead
 import edu.missouristate.mars.plugin.language.operationOwners
 
 internal class MipsMacroArityInspection : LocalInspectionTool() {
-    // A change to an earlier macro or equivalence can affect calls anywhere below it.
-    override fun runForWholeFile() = true
+  // A change to an earlier macro or equivalence can affect calls anywhere below it.
+  override fun runForWholeFile() = true
 
-    override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): PsiElementVisitor {
-        val file = holder.file as MipsFile
-        val analysis = file.project.service<MarsAnalysisService>()
-        val timeline = analysis.editorTimeline(file)
-        if (timeline.macroNames.isEmpty()) return PsiElementVisitor.EMPTY_VISITOR
-        return object : PsiElementVisitor() {
-            override fun visitElement(element: PsiElement) {
-                if (element.elementType != statement) return
-                val head = element.node.findChildByType(operationOwners)?.psi?.operationHead ?: run {
-                    val leadingLabel = element.node.findChildByType(label) ?: return
-                    leadingLabel.firstChildNode.psi
+  override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): PsiElementVisitor {
+    val file = holder.file as MipsFile
+    val analysis = file.project.service<MarsAnalysisService>()
+    val timeline = analysis.editorTimeline(file)
+    if (timeline.macroNames.isEmpty()) return PsiElementVisitor.EMPTY_VISITOR
+    return object : PsiElementVisitor() {
+      override fun visitElement(element: PsiElement) {
+        if (element.elementType != statement) return
+        val head =
+            element.node.findChildByType(operationOwners)?.psi?.operationHead
+                ?: run {
+                  val leadingLabel = element.node.findChildByType(label) ?: return
+                  leadingLabel.firstChildNode.psi
                 }
-                val mismatch = analysis.macroArityMismatch(file, timeline, head) ?: return
-                holder.registerProblem(
-                    mismatch.site,
-                    messages.getMessage("inspection.macro.wrongArity", mismatch.name, mismatch.expected.joinToString(", "), mismatch.actual),
-                )
-            }
-        }
+        val mismatch = analysis.macroArityMismatch(file, timeline, head) ?: return
+        holder.registerProblem(
+            mismatch.site,
+            messages.getMessage(
+                "inspection.macro.wrongArity",
+                mismatch.name,
+                mismatch.expected.joinToString(", "),
+                mismatch.actual,
+            ),
+        )
+      }
     }
+  }
 }
 
 private val messages = DynamicBundle(MipsMacroArityInspection::class.java, "messages.MarsBundle")

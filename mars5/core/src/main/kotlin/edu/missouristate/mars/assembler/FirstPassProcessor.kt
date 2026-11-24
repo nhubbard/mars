@@ -51,727 +51,906 @@ internal class FirstPassProcessor(
     val checkCancellation: () -> Unit,
     private val symbolUses: AssemblySymbolUses,
 ) {
-    val macroCalls = HashMap<SourceToken, MutableSet<MacroCall>>()
-    private val parser = Parser(this)
+  val macroCalls = HashMap<SourceToken, MutableSet<MacroCall>>()
+  private val parser = Parser(this)
 
-    lateinit var errors: ErrorList
-        private set
-    var inDataSegment = false
-        private set
-    var inMacroSegment = false
-        private set
-    lateinit var fileCurrentlyBeingAssembled: MIPSprogram
-        private set
-    lateinit var textAddress: UserKernelAddressSpace
-        private set
+  lateinit var errors: ErrorList
+    private set
 
-    private var externAddress = 0
-    private var autoAlign = false
-    private var dataDirective = Directives.WORD
-    private lateinit var globalDeclarations: TokenList
-    private lateinit var dataAddress: UserKernelAddressSpace
-    private val fileReferences = DataSegmentForwardReferences()
-    var numericLabels = LocalNumericLabels()
-        private set
+  var inDataSegment = false
+    private set
 
-    @Throws(ProcessingException::class)
-    fun process(programs: List<MIPSprogram>, extendedAssemblerEnabled: Boolean): ErrorList {
-        require(programs.isNotEmpty()) { "At least one source file is required" }
-        require(programs.all { context.sharesSession(it.assemblyContext()) }) {
-            "All source files must belong to the assembler's session"
-        }
+  var inMacroSegment = false
+    private set
+
+  lateinit var fileCurrentlyBeingAssembled: MIPSprogram
+    private set
+
+  lateinit var textAddress: UserKernelAddressSpace
+    private set
+
+  private var externAddress = 0
+  private var autoAlign = false
+  private var dataDirective = Directives.WORD
+  private lateinit var globalDeclarations: TokenList
+  private lateinit var dataAddress: UserKernelAddressSpace
+  private val fileReferences = DataSegmentForwardReferences()
+  var numericLabels = LocalNumericLabels()
+    private set
+
+  @Throws(ProcessingException::class)
+  fun process(programs: List<MIPSprogram>, extendedAssemblerEnabled: Boolean): ErrorList {
+    require(programs.isNotEmpty()) { "At least one source file is required" }
+    require(programs.all { context.sharesSession(it.assemblyContext()) }) {
+      "All source files must belong to the assembler's session"
+    }
+    checkCancellation()
+    context.beginAssembly(programs.first())
+    val memory = context.memory()
+    textAddress = UserKernelAddressSpace(memory.textBaseAddress, memory.kernelTextBaseAddress)
+    dataAddress = UserKernelAddressSpace(memory.dataBaseAddress, memory.kernelDataBaseAddress)
+    externAddress = memory.externBaseAddress
+    val unresolved = DataSegmentForwardReferences()
+    context.symbols().clear()
+    context.clearMemory()
+    errors = context.newErrorList()
+
+    for (program in programs) {
+      checkCancellation()
+      if (errors.errorLimitExceeded()) break
+      fileCurrentlyBeingAssembled = program
+      numericLabels = LocalNumericLabels()
+      globalDeclarations = TokenList()
+      // Each file starts in user text and retains the addresses accumulated so far.
+      inDataSegment = false
+      textAddress.kernel = false
+      inMacroSegment = false
+      autoAlign = true
+      dataDirective = Directives.WORD
+      val symbols = program.localSymbolTable!!
+      symbols.clear()
+      fileReferences.clear()
+      val lines = program.sourceLineList!!
+      val tokenLists = program.tokenList!!
+      val parsed = program.createParsedList()
+      val macroPool = program.createMacroPool()
+      for (index in tokenLists.indices) {
         checkCancellation()
-        context.beginAssembly(programs.first())
-        val memory = context.memory()
-        textAddress = UserKernelAddressSpace(memory.textBaseAddress, memory.kernelTextBaseAddress)
-        dataAddress = UserKernelAddressSpace(memory.dataBaseAddress, memory.kernelDataBaseAddress)
-        externAddress = memory.externBaseAddress
-        val unresolved = DataSegmentForwardReferences()
-        context.symbols().clear()
-        context.clearMemory()
-        errors = context.newErrorList()
-
-        for (program in programs) {
-            checkCancellation()
-            if (errors.errorLimitExceeded()) break
-            fileCurrentlyBeingAssembled = program
-            numericLabels = LocalNumericLabels()
-            globalDeclarations = TokenList()
-            // Each file starts in user text and retains the addresses accumulated so far.
-            inDataSegment = false
-            textAddress.kernel = false
-            inMacroSegment = false
-            autoAlign = true
-            dataDirective = Directives.WORD
-            val symbols = program.localSymbolTable!!
-            symbols.clear()
-            fileReferences.clear()
-            val lines = program.sourceLineList!!
-            val tokenLists = program.tokenList!!
-            val parsed = program.createParsedList()
-            val macroPool = program.createMacroPool()
-            for (index in tokenLists.indices) {
-                checkCancellation()
-                if (errors.errorLimitExceeded()) break
-                val line = lines[index]
-                val tokens = tokenLists[index]
-                for (tokenIndex in 0 until tokens.size()) {
-                    tokens[tokenIndex].setOriginal(line.getMIPSprogram(), line.lineNumber)
-                }
-                parser.parseLine(tokens, line, extendedAssemblerEnabled)?.let(parsed::addAll)
-            }
-            if (inMacroSegment) {
-                errors.add(ErrorMessage(program, macroPool.current!!.fromLine, 0, "Macro started but not ended (no .end_macro directive)"))
-            }
-            transferGlobals()
-            fileReferences.resolve(symbols)
-            unresolved.add(fileReferences)
-            fileReferences.clear()
+        if (errors.errorLimitExceeded()) break
+        val line = lines[index]
+        val tokens = tokenLists[index]
+        for (tokenIndex in 0 until tokens.size()) {
+          tokens[tokenIndex].setOriginal(line.getMIPSprogram(), line.lineNumber)
         }
-        unresolved.resolve(context.symbols())
-        unresolved.reportMissing()
-        if (errors.errorsOccurred()) throw ProcessingException(errors)
-        return errors
-    }
-
-    fun detectLabels(tokens: TokenList, current: Macro?) {
-        if (tokens.beginsWithLabel()) current!!.addLabel(tokens[0].value)
-    }
-
-    fun compactTranslationCanBeApplied(statement: ProgramStatement): Boolean =
-        PseudoInstructionExpander.compact(context, statement)
-
-    fun stripLabels(tokens: TokenList, physicalLine: SourceLine, caller: Origin?, renamedLabels: Set<String>) {
-        val number = if (context.session.target == MarsTarget.MARS64 && tokens.size() >= 2 &&
-            tokens[1].type == TokenTypes.COLON && (!inDataSegment || tokens.size() == 2 || tokens[2].type == TokenTypes.DIRECTIVE)) {
-            LocalNumericLabels.decimal(tokens[0].value)
-        } else null
-        if (number == null && !tokens.beginsWithLabel()) return
-        val token = tokens[0]
-        tokens.remove(0)
-        tokens.remove(0) // The colon shifted to the first position.
-        if (token.type == TokenTypes.OPERATOR) token.type = TokenTypes.IDENTIFIER
-        val address = if (inDataSegment) dataAddress.get() else textAddress.get()
-        val kind = if (inDataSegment) Kind.DATA else Kind.TEXT
-        val origin = Parser.origin(physicalLine, caller)
-        if (number != null) {
-            numericLabels.define(number, Symbol(token.value, address, kind, origin, false, token.writtenOrigin().originalStartPos))
-            return
-        }
-        fileCurrentlyBeingAssembled.localSymbolTable!!.addSymbol(
-            token, address, kind, origin, token.value in renamedLabels, errors,
+        parser.parseLine(tokens, line, extendedAssemblerEnabled)?.let(parsed::addAll)
+      }
+      if (inMacroSegment) {
+        errors.add(
+            ErrorMessage(
+                program,
+                macroPool.current!!.fromLine,
+                0,
+                "Macro started but not ended (no .end_macro directive)",
+            ),
         )
+      }
+      transferGlobals()
+      fileReferences.resolve(symbols)
+      unresolved.add(fileReferences)
+      fileReferences.clear()
     }
+    unresolved.resolve(context.symbols())
+    unresolved.reportMissing()
+    if (errors.errorsOccurred()) throw ProcessingException(errors)
+    return errors
+  }
 
-    fun executeDirective(tokens: TokenList, physicalLine: SourceLine, caller: Origin?, renamedLabels: Set<String>) {
-        val token = tokens[0]
-        when (val directive = Directives.matchDirective(token.value)) {
-            null -> errors.add(ErrorMessage(token, "\"$token\" directive is invalid or not implemented in MARS"))
-            Directives.EQV -> Unit // Already processed by the tokenizer.
-            Directives.MACRO -> beginMacro(tokens)
-            Directives.END_MACRO -> endMacro(tokens)
-            else -> if (!inMacroSegment) applyDirective(tokens, directive, physicalLine, caller, renamedLabels)
-        }
-    }
+  fun detectLabels(tokens: TokenList, current: Macro?) {
+    if (tokens.beginsWithLabel()) current!!.addLabel(tokens[0].value)
+  }
 
-    private fun beginMacro(tokens: TokenList) {
-        val token = tokens[0]
-        if (tokens.size() < 2) {
-            errors.add(ErrorMessage(token, "\"$token\" directive requires at least one argument."))
-            return
-        }
-        val name = tokens[1]
-        if (name.type != TokenTypes.IDENTIFIER) {
-            errors.add(ErrorMessage(name, "Invalid Macro name \"$name\""))
-            return
-        }
-        if (inMacroSegment) {
-            errors.add(ErrorMessage(token, "Nested macros are not allowed"))
-            return
-        }
-        inMacroSegment = true
-        val pool = fileCurrentlyBeingAssembled.localMacroPool!!
-        pool.beginMacro(name)
-        for (index in 2 until tokens.size()) {
-            val argument = tokens[index]
-            if (argument.type == TokenTypes.RIGHT_PAREN || argument.type == TokenTypes.LEFT_PAREN) continue
-            if (argument.type == TokenTypes.VECTOR_REGISTER_NAME || !Macro.tokenIsMacroParameter(argument.value, true)) {
-                errors.add(ErrorMessage(argument, "Invalid macro argument '$argument'"))
-                return
-            }
-            pool.current!!.addArg(argument.value)
-        }
-    }
+  fun compactTranslationCanBeApplied(statement: ProgramStatement): Boolean =
+      PseudoInstructionExpander.compact(context, statement)
 
-    private fun endMacro(tokens: TokenList) {
-        val token = tokens[0]
-        if (tokens.size() > 1) {
-            errors.add(ErrorMessage(token, "invalid text after .END_MACRO"))
-            return
-        }
-        if (!inMacroSegment) {
-            errors.add(ErrorMessage(token, ".END_MACRO without .MACRO"))
-            return
-        }
-        inMacroSegment = false
-        fileCurrentlyBeingAssembled.localMacroPool!!.commitMacro(token)
-    }
-
-    private fun applyDirective(
-        tokens: TokenList, directive: Directives, physicalLine: SourceLine, caller: Origin?, renamedLabels: Set<String>,
-    ) {
-        val token = tokens[0]
-        when (directive) {
-            Directives.DATA, Directives.KDATA, Directives.TEXT, Directives.KTEXT -> {
-                val address = switchSegment(directive)
-                if (tokens.size() > 1) {
-                    val operand = tokens[1]
-                    if (context.session.target == MarsTarget.MARS64) {
-                        try {
-                            val bits = Binary.stringToDoubleword(operand.value)
-                            address.set(if (bits == bits.toUInt().toLong()) bits.toInt().toLong() else bits)
-                        } catch (_: NumberFormatException) {
-                            errors.add(ErrorMessage(operand, "Invalid segment address"))
-                        }
-                    } else if (TokenTypes.isIntegerTokenType(operand.type)) {
-                        address.set(Binary.stringToInt(operand.value).toLong())
-                    }
-                }
-            }
-            Directives.WORD, Directives.DWORD, Directives.HALF, Directives.BYTE, Directives.FLOAT, Directives.DOUBLE -> {
-                dataDirective = directive
-                if (passesDataSegmentCheck(token)) {
-                    if (directive == Directives.DWORD && context.session.target != MarsTarget.MARS64) {
-                        errors.add(ErrorMessage(token, ".dword requires the MARS64 target"))
-                    } else if (tokens.size() > 1) storeNumeric(tokens, directive)
-                }
-            }
-            Directives.ASCII, Directives.ASCIIZ, Directives.UTF8, Directives.UTF8Z -> {
-                dataDirective = directive
-                if (passesDataSegmentCheck(token)) storeStrings(tokens, directive)
-            }
-            Directives.ALIGN -> if (!inDataSegment && context.session.target == MarsTarget.MARS64) {
-                alignSection(tokens, directive, physicalLine, caller)
-            } else applyDataLayout(tokens, directive)
-            Directives.SPACE -> applyDataLayout(tokens, directive)
-            Directives.P2ALIGN, Directives.BALIGN -> alignSection(tokens, directive, physicalLine, caller)
-            Directives.EXTERN -> declareExternal(tokens, physicalLine, caller, renamedLabels)
-            Directives.SET -> applySet(tokens)
-            Directives.GLOBL -> declareGlobals(tokens)
-            Directives.SECTION -> applySection(tokens)
-            Directives.NAN -> if (context.session.target != MarsTarget.MARS64 || tokens.size() != 2 || tokens[1].value != "2008") {
-                errors.add(ErrorMessage(token, "Only .nan 2008 is supported, with the MARS64 target"))
-            } else Unit
-            in Directives.compilerMetadata -> if (context.session.target != MarsTarget.MARS64) {
-                errors.add(ErrorMessage(token, "$directive requires the MARS64 target"))
-            } else Unit
-            else -> errors.add(ErrorMessage(token, "\"$token\" directive recognized but not yet implemented."))
-        }
-    }
-
-    private fun switchSegment(directive: Directives): UserKernelAddressSpace {
-        inDataSegment = directive == Directives.DATA || directive == Directives.KDATA
-        val address = if (inDataSegment) {
-            autoAlign = true
-            dataAddress
-        } else textAddress
-        address.kernel = directive == Directives.KDATA || directive == Directives.KTEXT
-        return address
-    }
-
-    private fun applySection(tokens: TokenList) {
-        val token = tokens[0]
-        if (context.session.target != MarsTarget.MARS64 || tokens.size() < 2) {
-            errors.add(ErrorMessage(token, ".section requires a section name and the MARS64 target"))
-            return
-        }
-        val name = tokens[1].value.removeSurrounding("\"")
-        if (name == ".mdebug.abi64" || name == ".note.GNU-stack") return
-        val segment = Directives.sectionSegment(name)
-        if (segment == null) {
-            errors.add(ErrorMessage(tokens[1], "Unsupported section \"$name\". Use a freestanding text or data section."))
-            return
-        }
-        switchSegment(segment)
-    }
-
-    private fun applySet(tokens: TokenList) {
-        if (context.session.target == MarsTarget.MARS64 && tokens.size() == 2 && tokens[1].value in sourceModeDeclarations) return
-        errors.add(ErrorMessage(ErrorMessage.WARNING, tokens[0], "MARS currently ignores the .set directive."))
-    }
-
-    private fun alignSection(tokens: TokenList, directive: Directives, line: SourceLine, caller: Origin?) {
-        val token = tokens[0]
-        if (context.session.target != MarsTarget.MARS64) {
-            errors.add(ErrorMessage(token, "$directive requires the MARS64 target"))
-            return
-        }
-        val exponent = directive != Directives.BALIGN
-        val operandCount = if (directive == Directives.ALIGN) 2..2 else 2..3
-        val value = if (tokens.size() in operandCount) nonNegativeInteger(tokens[1]) else null
-        if (value == null || (exponent && value > 31) || (!exponent && value == 0)) {
-            val allowed = if (exponent) "an exponent from 0 through 31" else "a positive byte boundary"
-            val fill = if (directive == Directives.ALIGN) "" else " and an optional fill byte"
-            errors.add(ErrorMessage(token, "$directive requires $allowed$fill"))
-            return
-        }
-        val fill = if (tokens.size() == 3) nonNegativeInteger(tokens[2]) else 0
-        if (fill == null || fill > 255 || !inDataSegment && fill != 0) {
-            errors.add(ErrorMessage(token, "$directive requires a fill byte from 0 through 255 in data, or zero in text"))
-            return
-        }
-        val boundary = if (exponent) 1L shl value else value.toLong()
-        val address = if (inDataSegment) dataAddress else textAddress
-        val start = address.get()
-        val misalignment = start.mod(boundary)
-        if (misalignment == 0L) return
-        val aligned = start + boundary - misalignment
-        val memory = context.memory()
-        val contains: (Long) -> Boolean = when {
-            inDataSegment && address.kernel -> { location -> location == location.toInt().toLong() && memory.inKernelDataSegment(location.toInt()) }
-            inDataSegment -> memory::inUserData
-            address.kernel -> { location -> location == location.toInt().toLong() && memory.inKernelTextSegment(location.toInt()) }
-            else -> memory::inUserText
-        }
-        if (!contains(start) || !contains(aligned - 1) || aligned <= start) {
-            errors.add(ErrorMessage(token, "$directive crosses the bounds of the active segment"))
-            return
-        }
-
-        if (inDataSegment) {
-            for (location in start until aligned) {
-                checkCancellation()
-                memory.setAssemblyData(location, fill, DataTypes.CHAR_SIZE)
-            }
-        } else {
-            if ((start or aligned) and 3L != 0L) {
-                errors.add(ErrorMessage(token, "$directive must align text using whole instruction words"))
-                return
-            }
-            val nop = context.instructions().matchOperator("nop")!!.first()
-            val origin = Parser.origin(line, caller)
-            for (location in start until aligned step Int.SIZE_BYTES.toLong()) {
-                checkCancellation()
-                fileCurrentlyBeingAssembled.parsedList!!.add(ProgramStatement(
-                    fileCurrentlyBeingAssembled, line.source, tokens, nop.tokenList, nop, location.toInt(), line.lineNumber,
-                    origin, addressBits = location,
-                ))
-            }
-        }
-        address.set(aligned)
-    }
-
-    private fun applyDataLayout(tokens: TokenList, directive: Directives) {
-        val token = tokens[0]
-        if (!passesDataSegmentCheck(token)) return
-        if (tokens.size() != 2) {
-            errors.add(ErrorMessage(token, "\"$token\" requires one operand"))
-            return
-        }
-        val value = nonNegativeInteger(tokens[1])
-        if (value == null) {
-            errors.add(ErrorMessage(token, "\"$token\" requires a non-negative integer"))
-            return
-        }
-        when {
-            directive == Directives.SPACE -> dataAddress.increment(value)
-            value == 0 -> autoAlign = false
-            else -> dataAddress.set(alignToBoundary(dataAddress.get(), 2.0.pow(value).toInt()))
-        }
-    }
-
-    private fun nonNegativeInteger(token: Token): Int? =
-        if (TokenTypes.isIntegerTokenType(token.type)) Binary.stringToInt(token.value).takeIf { it >= 0 } else null
-
-    private fun declareExternal(tokens: TokenList, physicalLine: SourceLine, caller: Origin?, renamedLabels: Set<String>) {
-        val token = tokens[0]
-        if (tokens.size() != 3) {
-            errors.add(ErrorMessage(token, "\"$token\" directive requires two operands (label and size)."))
-            return
-        }
-        val size = nonNegativeInteger(tokens[2])
-        if (size == null) {
-            errors.add(ErrorMessage(token, "\"$token\" requires a non-negative integer size"))
-            return
-        }
-        val name = tokens[1]
-        val existing = context.symbols().getSymbol(name.value)
-        if (existing == null || existing.address == SymbolTable.NOT_FOUND) {
-            context.symbols().addSymbol(
-                name, externAddress, Kind.EXTERNAL, Parser.origin(physicalLine, caller), name.value in renamedLabels, errors,
-            )
-            externAddress += size
-        } else {
-            symbolUses.record(name, existing)
-        }
-    }
-
-    private fun declareGlobals(tokens: TokenList) {
-        val token = tokens[0]
-        if (tokens.size() < 2) {
-            errors.add(ErrorMessage(token, "\"$token\" directive requires at least one argument."))
-            return
-        }
-        for (index in 1 until tokens.size()) {
-            val label = tokens[index]
-            if (label.type != TokenTypes.IDENTIFIER && label.type != TokenTypes.OPERATOR) {
-                errors.add(ErrorMessage(token, "\"$token\" directive argument must be label."))
-                return
-            }
-            globalDeclarations.add(label)
-        }
-    }
-
-    private fun transferGlobals() {
-        val local = fileCurrentlyBeingAssembled.localSymbolTable!!
-        val global = context.symbols()
-        for (index in 0 until globalDeclarations.size()) {
-            checkCancellation()
-            val label = globalDeclarations[index]
-            val symbol = local.getSymbol(label.value)
-            when {
-                symbol == null -> errors.add(ErrorMessage(label, "\"$label\" declared global label but not defined."))
-                global.getSymbol(label.value) != null ->
-                    errors.add(ErrorMessage(label, "\"$label\" already defined as global in a different file."))
-                else -> {
-                    local.removeSymbol(label)
-                    global.addSymbol(label, symbol, errors)
-                    symbolUses.record(label, symbol)
-                }
-            }
-        }
-    }
-
-    fun executeDirectiveContinuation(tokens: TokenList) {
-        when (val directive = dataDirective) {
-            Directives.WORD, Directives.DWORD, Directives.HALF, Directives.BYTE, Directives.FLOAT, Directives.DOUBLE ->
-                if (!tokens.isEmpty) storeNumeric(tokens, directive)
-            Directives.ASCII, Directives.ASCIIZ, Directives.UTF8, Directives.UTF8Z -> if (passesDataSegmentCheck(tokens[0])) storeStrings(tokens, directive)
-            else -> Unit
-        }
-    }
-
-    fun matchInstruction(token: Token): ArrayList<Instruction>? {
-        if (token.type != TokenTypes.OPERATOR) {
-            val wide = context.session.target == MarsTarget.MARS64
-            val requirement = if (wide) release6HardwareRequirement(token.value) else null
-            val migration = if (wide) release6Migration(token.value) else null
-            val message = when {
-                token.sourceMIPSprogram!!.localMacroPool!!.matchesAnyMacroName(token.value) ->
-                    "forward reference or invalid parameters for macro \"$token\""
-                requirement != null -> "\"$token\" requires $requirement, which MARS64 does not simulate"
-                migration != null -> "Release 6 removed \"$token\". $migration"
-                else -> "\"$token\" is not a recognized operator"
-            }
-            errors.add(ErrorMessage(token, message))
-            return null
-        }
-        val matches = context.instructions().matchOperator(token.value)
-        if (matches == null) errors.add(ErrorMessage(token, "Internal Assembler error: \"$token\" tokenized OPERATOR then not recognized"))
-        return matches
-    }
-
-    private fun storeNumeric(tokens: TokenList, directive: Directives) {
-        if (!passesDataSegmentCheck(tokens[0])) return
-        val wide = directive == Directives.DWORD
-        if (wide && context.session.target != MarsTarget.MARS64) return
-        val integer = Directives.isIntegerDirective(directive)
-        if (tokens.hasNumericRepetitionShape()) {
-            val value = tokens[1]
-            val count = tokens[3]
-            val validValue = wide || TokenTypes.isIntegerTokenType(value.type) || !integer && TokenTypes.isFloatingTokenType(value.type)
-            if (!validValue || !TokenTypes.isIntegerTokenType(count.type)) {
-                errors.add(ErrorMessage(value, "malformed expression"))
-                return
-            }
-            val repetitions = Binary.stringToInt(count.value)
-            if (repetitions <= 0) {
-                errors.add(ErrorMessage(count, "repetition factor must be positive"))
-                return
-            }
-            alignData(DataTypes.getLengthInBytes(directive))
-            repeat(repetitions) {
-                checkCancellation()
-                storeNumericValue(value, directive)
-            }
-            return
-        }
-
-        val firstValue = if (tokens[0].type == TokenTypes.DIRECTIVE) 1 else 0
-        for (index in firstValue until tokens.size()) {
-            checkCancellation()
-            val token = tokens[index]
-            storeNumericValue(token, directive)
-        }
-    }
-
-    private fun storeNumericValue(token: Token, directive: Directives) {
-        when {
-            directive == Directives.DWORD -> storeDoubleword(token)
-            Directives.isIntegerDirective(directive) -> storeInteger(token, directive)
-            else -> storeRealNumber(token, directive)
-        }
-    }
-
-    private fun storeDoubleword(token: Token) {
-        if (token.type == TokenTypes.IDENTIFIER) {
-            val symbol = fileCurrentlyBeingAssembled.localSymbolTable!!.getSymbolLocalOrGlobal(token.value)
-            if (symbol == null) {
-                val address = writeDoubleword(0, token)
-                fileReferences.add(address, Long.SIZE_BYTES, token)
-            } else {
-                symbolUses.record(token, symbol)
-                writeDoubleword(symbol.addressBits, token)
-            }
-            return
-        }
-        val bits = try {
-            Binary.stringToDoubleword(token.value)
-        } catch (_: NumberFormatException) {
-            errors.add(ErrorMessage(token, "\"$token\" is not a valid 64-bit integer constant"))
-            return
-        }
-        writeDoubleword(bits, token)
-    }
-
-    private fun writeDoubleword(bits: Long, token: Token): Long {
-        alignData(Long.SIZE_BYTES)
-        val address = dataAddress.get()
-        try {
-            context.memory().setAssemblyDoubleword(address, bits)
-        } catch (_: AddressErrorException) {
-            reportInvalidDataAddress(token)
-            return address
-        }
-        dataAddress.increment(Long.SIZE_BYTES)
-        return address
-    }
-
-    private fun storeInteger(token: Token, directive: Directives) {
-        val length = DataTypes.getLengthInBytes(directive)
-        when {
-            TokenTypes.isIntegerTokenType(token.type) -> {
-                val fullValue = Binary.stringToInt(token.value)
-                val value = when (directive) {
-                    Directives.BYTE -> fullValue and 0xff
-                    Directives.HALF -> fullValue and 0xffff
-                    else -> fullValue
-                }
-                if (DataTypes.outOfRange(directive, fullValue)) {
-                    errors.add(ErrorMessage(
-                        ErrorMessage.WARNING, token, "\"$token\" is out-of-range for a signed value and possibly truncated",
-                    ))
-                }
-                writeToDataSegment(value, length, token)
-            }
-            token.type == TokenTypes.IDENTIFIER -> {
-                val symbol = fileCurrentlyBeingAssembled.localSymbolTable!!.getSymbolLocalOrGlobal(token.value)
-                if (symbol == null || symbol.addressBits == SymbolTable.NOT_FOUND.toLong()) {
-                    val address = writeToDataSegment(0, length, token)
-                    fileReferences.add(address, length, token)
-                } else {
-                    symbolUses.record(token, symbol)
-                    writeToDataSegment(narrowDataSymbol(symbol, token), length, token)
-                }
-            }
-            else -> errors.add(ErrorMessage(token, "\"$token\" is not a valid integer constant or label"))
-        }
-    }
-
-    private fun narrowDataSymbol(symbol: Symbol, token: Token): Int {
-        if (symbol.addressBits != symbol.address.toLong()) {
-            errors.add(ErrorMessage(token, "Label address requires .dword"))
-        }
-        return symbol.address
-    }
-
-    private fun storeRealNumber(token: Token, directive: Directives) {
-        val value = if (TokenTypes.isIntegerTokenType(token.type) || TokenTypes.isFloatingTokenType(token.type)) {
-            token.value.toDoubleOrNull()
+  fun stripLabels(
+      tokens: TokenList,
+      physicalLine: SourceLine,
+      caller: Origin?,
+      renamedLabels: Set<String>,
+  ) {
+    val number =
+        if (
+            context.session.target == MarsTarget.MARS64 &&
+                tokens.size() >= 2 &&
+                tokens[1].type == TokenTypes.COLON &&
+                (!inDataSegment || tokens.size() == 2 || tokens[2].type == TokenTypes.DIRECTIVE)
+        ) {
+          LocalNumericLabels.decimal(tokens[0].value)
         } else null
+    if (number == null && !tokens.beginsWithLabel()) return
+    val token = tokens[0]
+    tokens.remove(0)
+    tokens.remove(0) // The colon shifted to the first position.
+    if (token.type == TokenTypes.OPERATOR) token.type = TokenTypes.IDENTIFIER
+    val address = if (inDataSegment) dataAddress.get() else textAddress.get()
+    val kind = if (inDataSegment) Kind.DATA else Kind.TEXT
+    val origin = Parser.origin(physicalLine, caller)
+    if (number != null) {
+      numericLabels.define(
+          number,
+          Symbol(token.value, address, kind, origin, false, token.writtenOrigin().originalStartPos),
+      )
+      return
+    }
+    fileCurrentlyBeingAssembled.localSymbolTable!!.addSymbol(
+        token,
+        address,
+        kind,
+        origin,
+        token.value in renamedLabels,
+        errors,
+    )
+  }
+
+  fun executeDirective(
+      tokens: TokenList,
+      physicalLine: SourceLine,
+      caller: Origin?,
+      renamedLabels: Set<String>,
+  ) {
+    val token = tokens[0]
+    when (val directive = Directives.matchDirective(token.value)) {
+      null ->
+          errors.add(
+              ErrorMessage(token, "\"$token\" directive is invalid or not implemented in MARS"),
+          )
+      Directives.EQV -> Unit // Already processed by the tokenizer.
+      Directives.MACRO -> beginMacro(tokens)
+      Directives.END_MACRO -> endMacro(tokens)
+      else ->
+          if (!inMacroSegment)
+              applyDirective(tokens, directive, physicalLine, caller, renamedLabels)
+    }
+  }
+
+  private fun beginMacro(tokens: TokenList) {
+    val token = tokens[0]
+    if (tokens.size() < 2) {
+      errors.add(ErrorMessage(token, "\"$token\" directive requires at least one argument."))
+      return
+    }
+    val name = tokens[1]
+    if (name.type != TokenTypes.IDENTIFIER) {
+      errors.add(ErrorMessage(name, "Invalid Macro name \"$name\""))
+      return
+    }
+    if (inMacroSegment) {
+      errors.add(ErrorMessage(token, "Nested macros are not allowed"))
+      return
+    }
+    inMacroSegment = true
+    val pool = fileCurrentlyBeingAssembled.localMacroPool!!
+    pool.beginMacro(name)
+    for (index in 2 until tokens.size()) {
+      val argument = tokens[index]
+      if (argument.type == TokenTypes.RIGHT_PAREN || argument.type == TokenTypes.LEFT_PAREN)
+          continue
+      if (
+          argument.type == TokenTypes.VECTOR_REGISTER_NAME ||
+              !Macro.tokenIsMacroParameter(argument.value, true)
+      ) {
+        errors.add(ErrorMessage(argument, "Invalid macro argument '$argument'"))
+        return
+      }
+      pool.current!!.addArg(argument.value)
+    }
+  }
+
+  private fun endMacro(tokens: TokenList) {
+    val token = tokens[0]
+    if (tokens.size() > 1) {
+      errors.add(ErrorMessage(token, "invalid text after .END_MACRO"))
+      return
+    }
+    if (!inMacroSegment) {
+      errors.add(ErrorMessage(token, ".END_MACRO without .MACRO"))
+      return
+    }
+    inMacroSegment = false
+    fileCurrentlyBeingAssembled.localMacroPool!!.commitMacro(token)
+  }
+
+  private fun applyDirective(
+      tokens: TokenList,
+      directive: Directives,
+      physicalLine: SourceLine,
+      caller: Origin?,
+      renamedLabels: Set<String>,
+  ) {
+    val token = tokens[0]
+    when (directive) {
+      Directives.DATA,
+      Directives.KDATA,
+      Directives.TEXT,
+      Directives.KTEXT -> {
+        val address = switchSegment(directive)
+        if (tokens.size() > 1) {
+          val operand = tokens[1]
+          if (context.session.target == MarsTarget.MARS64) {
+            try {
+              val bits = Binary.stringToDoubleword(operand.value)
+              address.set(if (bits == bits.toUInt().toLong()) bits.toInt().toLong() else bits)
+            } catch (_: NumberFormatException) {
+              errors.add(ErrorMessage(operand, "Invalid segment address"))
+            }
+          } else if (TokenTypes.isIntegerTokenType(operand.type)) {
+            address.set(Binary.stringToInt(operand.value).toLong())
+          }
+        }
+      }
+      Directives.WORD,
+      Directives.DWORD,
+      Directives.HALF,
+      Directives.BYTE,
+      Directives.FLOAT,
+      Directives.DOUBLE -> {
+        dataDirective = directive
+        if (passesDataSegmentCheck(token)) {
+          if (directive == Directives.DWORD && context.session.target != MarsTarget.MARS64) {
+            errors.add(ErrorMessage(token, ".dword requires the MARS64 target"))
+          } else if (tokens.size() > 1) storeNumeric(tokens, directive)
+        }
+      }
+      Directives.ASCII,
+      Directives.ASCIIZ,
+      Directives.UTF8,
+      Directives.UTF8Z -> {
+        dataDirective = directive
+        if (passesDataSegmentCheck(token)) storeStrings(tokens, directive)
+      }
+      Directives.ALIGN ->
+          if (!inDataSegment && context.session.target == MarsTarget.MARS64) {
+            alignSection(tokens, directive, physicalLine, caller)
+          } else applyDataLayout(tokens, directive)
+      Directives.SPACE -> applyDataLayout(tokens, directive)
+      Directives.P2ALIGN,
+      Directives.BALIGN -> alignSection(tokens, directive, physicalLine, caller)
+      Directives.EXTERN -> declareExternal(tokens, physicalLine, caller, renamedLabels)
+      Directives.SET -> applySet(tokens)
+      Directives.GLOBL -> declareGlobals(tokens)
+      Directives.SECTION -> applySection(tokens)
+      Directives.NAN ->
+          if (
+              context.session.target != MarsTarget.MARS64 ||
+                  tokens.size() != 2 ||
+                  tokens[1].value != "2008"
+          ) {
+            errors.add(ErrorMessage(token, "Only .nan 2008 is supported, with the MARS64 target"))
+          } else Unit
+      in Directives.compilerMetadata ->
+          if (context.session.target != MarsTarget.MARS64) {
+            errors.add(ErrorMessage(token, "$directive requires the MARS64 target"))
+          } else Unit
+      else ->
+          errors.add(
+              ErrorMessage(token, "\"$token\" directive recognized but not yet implemented."),
+          )
+    }
+  }
+
+  private fun switchSegment(directive: Directives): UserKernelAddressSpace {
+    inDataSegment = directive == Directives.DATA || directive == Directives.KDATA
+    val address =
+        if (inDataSegment) {
+          autoAlign = true
+          dataAddress
+        } else textAddress
+    address.kernel = directive == Directives.KDATA || directive == Directives.KTEXT
+    return address
+  }
+
+  private fun applySection(tokens: TokenList) {
+    val token = tokens[0]
+    if (context.session.target != MarsTarget.MARS64 || tokens.size() < 2) {
+      errors.add(ErrorMessage(token, ".section requires a section name and the MARS64 target"))
+      return
+    }
+    val name = tokens[1].value.removeSurrounding("\"")
+    if (name == ".mdebug.abi64" || name == ".note.GNU-stack") return
+    val segment = Directives.sectionSegment(name)
+    if (segment == null) {
+      errors.add(
+          ErrorMessage(
+              tokens[1],
+              "Unsupported section \"$name\". Use a freestanding text or data section.",
+          ),
+      )
+      return
+    }
+    switchSegment(segment)
+  }
+
+  private fun applySet(tokens: TokenList) {
+    if (
+        context.session.target == MarsTarget.MARS64 &&
+            tokens.size() == 2 &&
+            tokens[1].value in sourceModeDeclarations
+    )
+        return
+    errors.add(
+        ErrorMessage(ErrorMessage.WARNING, tokens[0], "MARS currently ignores the .set directive."),
+    )
+  }
+
+  private fun alignSection(
+      tokens: TokenList,
+      directive: Directives,
+      line: SourceLine,
+      caller: Origin?,
+  ) {
+    val token = tokens[0]
+    if (context.session.target != MarsTarget.MARS64) {
+      errors.add(ErrorMessage(token, "$directive requires the MARS64 target"))
+      return
+    }
+    val exponent = directive != Directives.BALIGN
+    val operandCount = if (directive == Directives.ALIGN) 2..2 else 2..3
+    val value = if (tokens.size() in operandCount) nonNegativeInteger(tokens[1]) else null
+    if (value == null || (exponent && value > 31) || (!exponent && value == 0)) {
+      val allowed = if (exponent) "an exponent from 0 through 31" else "a positive byte boundary"
+      val fill = if (directive == Directives.ALIGN) "" else " and an optional fill byte"
+      errors.add(ErrorMessage(token, "$directive requires $allowed$fill"))
+      return
+    }
+    val fill = if (tokens.size() == 3) nonNegativeInteger(tokens[2]) else 0
+    if (fill == null || fill > 255 || !inDataSegment && fill != 0) {
+      errors.add(
+          ErrorMessage(
+              token,
+              "$directive requires a fill byte from 0 through 255 in data, or zero in text",
+          ),
+      )
+      return
+    }
+    val boundary = if (exponent) 1L shl value else value.toLong()
+    val address = if (inDataSegment) dataAddress else textAddress
+    val start = address.get()
+    val misalignment = start.mod(boundary)
+    if (misalignment == 0L) return
+    val aligned = start + boundary - misalignment
+    val memory = context.memory()
+    val contains: (Long) -> Boolean =
         when {
-            value == null -> errors.add(ErrorMessage(token, "\"$token\" is not a valid floating point constant"))
-            DataTypes.outOfRange(directive, value) -> errors.add(ErrorMessage(token, "\"$token\" is an out-of-range value"))
-            directive == Directives.FLOAT -> writeToDataSegment(value.toFloat().toBits(), DataTypes.FLOAT_SIZE, token)
-            directive == Directives.DOUBLE -> writeDoubleToDataSegment(value, token)
+          inDataSegment && address.kernel -> { location ->
+            location == location.toInt().toLong() && memory.inKernelDataSegment(location.toInt())
+          }
+          inDataSegment -> memory::inUserData
+          address.kernel -> { location ->
+            location == location.toInt().toLong() && memory.inKernelTextSegment(location.toInt())
+          }
+          else -> memory::inUserText
         }
+    if (!contains(start) || !contains(aligned - 1) || aligned <= start) {
+      errors.add(ErrorMessage(token, "$directive crosses the bounds of the active segment"))
+      return
     }
 
-    private fun storeStrings(tokens: TokenList, directive: Directives) {
-        val firstValue = if (tokens[0].type == TokenTypes.DIRECTIVE) 1 else 0
-        for (index in firstValue until tokens.size()) {
-            checkCancellation()
-            val token = tokens[index]
-            if (token.type != TokenTypes.QUOTED_STRING) {
-                errors.add(ErrorMessage(token, "\"$token\" is not a valid character string"))
-                continue
-            }
-            if (!token.hasClosingDoubleQuote()) {
-                errors.add(ErrorMessage(token, "Unterminated string literal"))
-                continue
-            }
-            val string = unescapeString(token.value)
-            if (directive == Directives.UTF8 || directive == Directives.UTF8Z || context.settings().isUtf8TextEnabled) {
-                val encoded = try {
-                    string.encodeToByteArray(throwOnInvalidSequence = true)
-                } catch (_: CharacterCodingException) {
-                    errors.add(ErrorMessage(token, "Invalid Unicode in UTF-8 string literal"))
-                    continue
-                }
-                for (byte in encoded) storeCharacter(byte.toUByte().toInt(), token)
-            } else {
-                for (character in string) storeCharacter(character.code, token)
-            }
-            if (directive == Directives.ASCIIZ || directive == Directives.UTF8Z) storeCharacter(0, token)
+    if (inDataSegment) {
+      for (location in start until aligned) {
+        checkCancellation()
+        memory.setAssemblyData(location, fill, DataTypes.CHAR_SIZE)
+      }
+    } else {
+      if ((start or aligned) and 3L != 0L) {
+        errors.add(ErrorMessage(token, "$directive must align text using whole instruction words"))
+        return
+      }
+      val nop = context.instructions().matchOperator("nop")!!.first()
+      val origin = Parser.origin(line, caller)
+      for (location in start until aligned step Int.SIZE_BYTES.toLong()) {
+        checkCancellation()
+        fileCurrentlyBeingAssembled.parsedList!!.add(
+            ProgramStatement(
+                fileCurrentlyBeingAssembled,
+                line.source,
+                tokens,
+                nop.tokenList,
+                nop,
+                location.toInt(),
+                line.lineNumber,
+                origin,
+                addressBits = location,
+            ),
+        )
+      }
+    }
+    address.set(aligned)
+  }
+
+  private fun applyDataLayout(tokens: TokenList, directive: Directives) {
+    val token = tokens[0]
+    if (!passesDataSegmentCheck(token)) return
+    if (tokens.size() != 2) {
+      errors.add(ErrorMessage(token, "\"$token\" requires one operand"))
+      return
+    }
+    val value = nonNegativeInteger(tokens[1])
+    if (value == null) {
+      errors.add(ErrorMessage(token, "\"$token\" requires a non-negative integer"))
+      return
+    }
+    when {
+      directive == Directives.SPACE -> dataAddress.increment(value)
+      value == 0 -> autoAlign = false
+      else -> dataAddress.set(alignToBoundary(dataAddress.get(), 2.0.pow(value).toInt()))
+    }
+  }
+
+  private fun nonNegativeInteger(token: Token): Int? =
+      if (TokenTypes.isIntegerTokenType(token.type))
+          Binary.stringToInt(token.value).takeIf { it >= 0 }
+      else null
+
+  private fun declareExternal(
+      tokens: TokenList,
+      physicalLine: SourceLine,
+      caller: Origin?,
+      renamedLabels: Set<String>,
+  ) {
+    val token = tokens[0]
+    if (tokens.size() != 3) {
+      errors.add(
+          ErrorMessage(token, "\"$token\" directive requires two operands (label and size)."),
+      )
+      return
+    }
+    val size = nonNegativeInteger(tokens[2])
+    if (size == null) {
+      errors.add(ErrorMessage(token, "\"$token\" requires a non-negative integer size"))
+      return
+    }
+    val name = tokens[1]
+    val existing = context.symbols().getSymbol(name.value)
+    if (existing == null || existing.address == SymbolTable.NOT_FOUND) {
+      context
+          .symbols()
+          .addSymbol(
+              name,
+              externAddress,
+              Kind.EXTERNAL,
+              Parser.origin(physicalLine, caller),
+              name.value in renamedLabels,
+              errors,
+          )
+      externAddress += size
+    } else {
+      symbolUses.record(name, existing)
+    }
+  }
+
+  private fun declareGlobals(tokens: TokenList) {
+    val token = tokens[0]
+    if (tokens.size() < 2) {
+      errors.add(ErrorMessage(token, "\"$token\" directive requires at least one argument."))
+      return
+    }
+    for (index in 1 until tokens.size()) {
+      val label = tokens[index]
+      if (label.type != TokenTypes.IDENTIFIER && label.type != TokenTypes.OPERATOR) {
+        errors.add(ErrorMessage(token, "\"$token\" directive argument must be label."))
+        return
+      }
+      globalDeclarations.add(label)
+    }
+  }
+
+  private fun transferGlobals() {
+    val local = fileCurrentlyBeingAssembled.localSymbolTable!!
+    val global = context.symbols()
+    for (index in 0 until globalDeclarations.size()) {
+      checkCancellation()
+      val label = globalDeclarations[index]
+      val symbol = local.getSymbol(label.value)
+      when {
+        symbol == null ->
+            errors.add(ErrorMessage(label, "\"$label\" declared global label but not defined."))
+        global.getSymbol(label.value) != null ->
+            errors.add(
+                ErrorMessage(label, "\"$label\" already defined as global in a different file."),
+            )
+        else -> {
+          local.removeSymbol(label)
+          global.addSymbol(label, symbol, errors)
+          symbolUses.record(label, symbol)
         }
+      }
+    }
+  }
+
+  fun executeDirectiveContinuation(tokens: TokenList) {
+    when (val directive = dataDirective) {
+      Directives.WORD,
+      Directives.DWORD,
+      Directives.HALF,
+      Directives.BYTE,
+      Directives.FLOAT,
+      Directives.DOUBLE -> if (!tokens.isEmpty) storeNumeric(tokens, directive)
+      Directives.ASCII,
+      Directives.ASCIIZ,
+      Directives.UTF8,
+      Directives.UTF8Z -> if (passesDataSegmentCheck(tokens[0])) storeStrings(tokens, directive)
+      else -> Unit
+    }
+  }
+
+  fun matchInstruction(token: Token): ArrayList<Instruction>? {
+    if (token.type != TokenTypes.OPERATOR) {
+      val wide = context.session.target == MarsTarget.MARS64
+      val requirement = if (wide) release6HardwareRequirement(token.value) else null
+      val migration = if (wide) release6Migration(token.value) else null
+      val message =
+          when {
+            token.sourceMIPSprogram!!.localMacroPool!!.matchesAnyMacroName(token.value) ->
+                "forward reference or invalid parameters for macro \"$token\""
+            requirement != null ->
+                "\"$token\" requires $requirement, which MARS64 does not simulate"
+            migration != null -> "Release 6 removed \"$token\". $migration"
+            else -> "\"$token\" is not a recognized operator"
+          }
+      errors.add(ErrorMessage(token, message))
+      return null
+    }
+    val matches = context.instructions().matchOperator(token.value)
+    if (matches == null)
+        errors.add(
+            ErrorMessage(
+                token,
+                "Internal Assembler error: \"$token\" tokenized OPERATOR then not recognized",
+            ),
+        )
+    return matches
+  }
+
+  private fun storeNumeric(tokens: TokenList, directive: Directives) {
+    if (!passesDataSegmentCheck(tokens[0])) return
+    val wide = directive == Directives.DWORD
+    if (wide && context.session.target != MarsTarget.MARS64) return
+    val integer = Directives.isIntegerDirective(directive)
+    if (tokens.hasNumericRepetitionShape()) {
+      val value = tokens[1]
+      val count = tokens[3]
+      val validValue =
+          wide ||
+              TokenTypes.isIntegerTokenType(value.type) ||
+              !integer && TokenTypes.isFloatingTokenType(value.type)
+      if (!validValue || !TokenTypes.isIntegerTokenType(count.type)) {
+        errors.add(ErrorMessage(value, "malformed expression"))
+        return
+      }
+      val repetitions = Binary.stringToInt(count.value)
+      if (repetitions <= 0) {
+        errors.add(ErrorMessage(count, "repetition factor must be positive"))
+        return
+      }
+      alignData(DataTypes.getLengthInBytes(directive))
+      repeat(repetitions) {
+        checkCancellation()
+        storeNumericValue(value, directive)
+      }
+      return
     }
 
-    private fun unescapeString(quote: String): String = buildString(quote.length - 2) {
+    val firstValue = if (tokens[0].type == TokenTypes.DIRECTIVE) 1 else 0
+    for (index in firstValue until tokens.size()) {
+      checkCancellation()
+      val token = tokens[index]
+      storeNumericValue(token, directive)
+    }
+  }
+
+  private fun storeNumericValue(token: Token, directive: Directives) {
+    when {
+      directive == Directives.DWORD -> storeDoubleword(token)
+      Directives.isIntegerDirective(directive) -> storeInteger(token, directive)
+      else -> storeRealNumber(token, directive)
+    }
+  }
+
+  private fun storeDoubleword(token: Token) {
+    if (token.type == TokenTypes.IDENTIFIER) {
+      val symbol =
+          fileCurrentlyBeingAssembled.localSymbolTable!!.getSymbolLocalOrGlobal(token.value)
+      if (symbol == null) {
+        val address = writeDoubleword(0, token)
+        fileReferences.add(address, Long.SIZE_BYTES, token)
+      } else {
+        symbolUses.record(token, symbol)
+        writeDoubleword(symbol.addressBits, token)
+      }
+      return
+    }
+    val bits =
+        try {
+          Binary.stringToDoubleword(token.value)
+        } catch (_: NumberFormatException) {
+          errors.add(ErrorMessage(token, "\"$token\" is not a valid 64-bit integer constant"))
+          return
+        }
+    writeDoubleword(bits, token)
+  }
+
+  private fun writeDoubleword(bits: Long, token: Token): Long {
+    alignData(Long.SIZE_BYTES)
+    val address = dataAddress.get()
+    try {
+      context.memory().setAssemblyDoubleword(address, bits)
+    } catch (_: AddressErrorException) {
+      reportInvalidDataAddress(token)
+      return address
+    }
+    dataAddress.increment(Long.SIZE_BYTES)
+    return address
+  }
+
+  private fun storeInteger(token: Token, directive: Directives) {
+    val length = DataTypes.getLengthInBytes(directive)
+    when {
+      TokenTypes.isIntegerTokenType(token.type) -> {
+        val fullValue = Binary.stringToInt(token.value)
+        val value =
+            when (directive) {
+              Directives.BYTE -> fullValue and 0xff
+              Directives.HALF -> fullValue and 0xffff
+              else -> fullValue
+            }
+        if (DataTypes.outOfRange(directive, fullValue)) {
+          errors.add(
+              ErrorMessage(
+                  ErrorMessage.WARNING,
+                  token,
+                  "\"$token\" is out-of-range for a signed value and possibly truncated",
+              ),
+          )
+        }
+        writeToDataSegment(value, length, token)
+      }
+      token.type == TokenTypes.IDENTIFIER -> {
+        val symbol =
+            fileCurrentlyBeingAssembled.localSymbolTable!!.getSymbolLocalOrGlobal(token.value)
+        if (symbol == null || symbol.addressBits == SymbolTable.NOT_FOUND.toLong()) {
+          val address = writeToDataSegment(0, length, token)
+          fileReferences.add(address, length, token)
+        } else {
+          symbolUses.record(token, symbol)
+          writeToDataSegment(narrowDataSymbol(symbol, token), length, token)
+        }
+      }
+      else -> errors.add(ErrorMessage(token, "\"$token\" is not a valid integer constant or label"))
+    }
+  }
+
+  private fun narrowDataSymbol(symbol: Symbol, token: Token): Int {
+    if (symbol.addressBits != symbol.address.toLong()) {
+      errors.add(ErrorMessage(token, "Label address requires .dword"))
+    }
+    return symbol.address
+  }
+
+  private fun storeRealNumber(token: Token, directive: Directives) {
+    val value =
+        if (
+            TokenTypes.isIntegerTokenType(token.type) || TokenTypes.isFloatingTokenType(token.type)
+        ) {
+          token.value.toDoubleOrNull()
+        } else null
+    when {
+      value == null ->
+          errors.add(ErrorMessage(token, "\"$token\" is not a valid floating point constant"))
+      DataTypes.outOfRange(directive, value) ->
+          errors.add(ErrorMessage(token, "\"$token\" is an out-of-range value"))
+      directive == Directives.FLOAT ->
+          writeToDataSegment(value.toFloat().toBits(), DataTypes.FLOAT_SIZE, token)
+      directive == Directives.DOUBLE -> writeDoubleToDataSegment(value, token)
+    }
+  }
+
+  private fun storeStrings(tokens: TokenList, directive: Directives) {
+    val firstValue = if (tokens[0].type == TokenTypes.DIRECTIVE) 1 else 0
+    for (index in firstValue until tokens.size()) {
+      checkCancellation()
+      val token = tokens[index]
+      if (token.type != TokenTypes.QUOTED_STRING) {
+        errors.add(ErrorMessage(token, "\"$token\" is not a valid character string"))
+        continue
+      }
+      if (!token.hasClosingDoubleQuote()) {
+        errors.add(ErrorMessage(token, "Unterminated string literal"))
+        continue
+      }
+      val string = unescapeString(token.value)
+      if (
+          directive == Directives.UTF8 ||
+              directive == Directives.UTF8Z ||
+              context.settings().isUtf8TextEnabled
+      ) {
+        val encoded =
+            try {
+              string.encodeToByteArray(throwOnInvalidSequence = true)
+            } catch (_: CharacterCodingException) {
+              errors.add(ErrorMessage(token, "Invalid Unicode in UTF-8 string literal"))
+              continue
+            }
+        for (byte in encoded) storeCharacter(byte.toUByte().toInt(), token)
+      } else {
+        for (character in string) storeCharacter(character.code, token)
+      }
+      if (directive == Directives.ASCIIZ || directive == Directives.UTF8Z) storeCharacter(0, token)
+    }
+  }
+
+  private fun unescapeString(quote: String): String =
+      buildString(quote.length - 2) {
         var position = 1
         while (position < quote.lastIndex) {
-            val character = quote[position++]
-            append(if (character == '\\') {
+          val character = quote[position++]
+          append(
+              if (character == '\\') {
                 when (val escaped = quote[position++]) {
-                    'n' -> '\n'
-                    't' -> '\t'
-                    'r' -> '\r'
-                    'b' -> '\b'
-                    'f' -> '\u000c'
-                    '0' -> '\u0000'
-                    else -> escaped
+                  'n' -> '\n'
+                  't' -> '\t'
+                  'r' -> '\r'
+                  'b' -> '\b'
+                  'f' -> '\u000c'
+                  '0' -> '\u0000'
+                  else -> escaped
                 }
-            } else character)
+              } else character,
+          )
         }
+      }
+
+  private fun storeCharacter(value: Int, token: Token) {
+    try {
+      context.memory().setAssemblyData(dataAddress.get(), value, DataTypes.CHAR_SIZE)
+    } catch (_: AddressErrorException) {
+      reportInvalidDataAddress(token)
+    }
+    dataAddress.increment(DataTypes.CHAR_SIZE)
+  }
+
+  private fun passesDataSegmentCheck(token: Token): Boolean {
+    if (inDataSegment) return true
+    errors.add(ErrorMessage(token, "\"$token\" directive cannot appear in text segment"))
+    return false
+  }
+
+  /** Returns the address to use when backpatching a forward reference. */
+  private fun writeToDataSegment(value: Int, length: Int, token: Token): Long {
+    alignData(length)
+    val address = dataAddress.get()
+    try {
+      context.memory().setAssemblyData(address, value, length)
+    } catch (_: AddressErrorException) {
+      reportInvalidDataAddress(token)
+      return address
+    }
+    dataAddress.increment(length)
+    return address
+  }
+
+  private fun writeDoubleToDataSegment(value: Double, token: Token) {
+    alignData(DataTypes.DOUBLE_SIZE)
+    try {
+      val address = dataAddress.get()
+      val memory = context.memory()
+      if (address == address.toInt().toLong()) {
+        memory.setDouble(address.toInt(), value)
+      } else {
+        memory.setAssemblyDoubleword(address, value.toRawBits())
+      }
+    } catch (_: AddressErrorException) {
+      reportInvalidDataAddress(token)
+      return
+    }
+    dataAddress.increment(DataTypes.DOUBLE_SIZE)
+  }
+
+  private fun reportInvalidDataAddress(token: Token) {
+    errors.add(ErrorMessage(token, "\"${dataAddress.get()}\" is not a valid data segment address"))
+  }
+
+  private fun alignData(length: Int) {
+    if (autoAlign) dataAddress.set(alignToBoundary(dataAddress.get(), length))
+  }
+
+  private fun alignToBoundary(address: Long, boundary: Int): Long {
+    val remainder = address % boundary
+    if (remainder == 0L) return address
+    val aligned = address + boundary - remainder
+    fileCurrentlyBeingAssembled.localSymbolTable!!.fixSymbolTableAddress(address, aligned)
+    numericLabels.align(address, aligned)
+    return aligned
+  }
+
+  class UserKernelAddressSpace(userBase: Int, kernelBase: Int) {
+    private val addresses = longArrayOf(userBase.toLong(), kernelBase.toLong())
+    var kernel = false
+
+    private val index: Int
+      get() = if (kernel) 1 else 0
+
+    fun get(): Long = addresses[index]
+
+    fun set(value: Long) {
+      addresses[index] = value
     }
 
-    private fun storeCharacter(value: Int, token: Token) {
+    fun increment(increment: Int) {
+      addresses[index] += increment
+    }
+  }
+
+  private data class DataSegmentForwardReference(
+      val patchAddress: Long,
+      val length: Int,
+      val token: Token,
+  )
+
+  private inner class DataSegmentForwardReferences {
+    private val entries = ArrayList<DataSegmentForwardReference>()
+
+    fun add(address: Long, length: Int, token: Token) {
+      entries.add(DataSegmentForwardReference(address, length, token))
+    }
+
+    fun add(other: DataSegmentForwardReferences) {
+      entries.addAll(other.entries)
+    }
+
+    fun clear() {
+      entries.clear()
+    }
+
+    fun resolve(symbols: SymbolTable) {
+      val iterator = entries.iterator()
+      while (iterator.hasNext()) {
+        checkCancellation()
+        val entry = iterator.next()
+        val symbol = symbols.getSymbolLocalOrGlobal(entry.token.value)
+        if (symbol == null || symbol.addressBits == SymbolTable.NOT_FOUND.toLong()) continue
         try {
-            context.memory().setAssemblyData(dataAddress.get(), value, DataTypes.CHAR_SIZE)
+          if (entry.length == Long.SIZE_BYTES) {
+            context.memory().setAssemblyDoubleword(entry.patchAddress, symbol.addressBits)
+          } else {
+            context
+                .memory()
+                .setAssemblyData(
+                    entry.patchAddress,
+                    narrowDataSymbol(symbol, entry.token),
+                    entry.length,
+                )
+          }
         } catch (_: AddressErrorException) {
-            reportInvalidDataAddress(token)
+          // The initial data write already reported an invalid patch address.
         }
-        dataAddress.increment(DataTypes.CHAR_SIZE)
+        symbolUses.record(entry.token, symbol)
+        iterator.remove()
+      }
     }
 
-    private fun passesDataSegmentCheck(token: Token): Boolean {
-        if (inDataSegment) return true
-        errors.add(ErrorMessage(token, "\"$token\" directive cannot appear in text segment"))
-        return false
+    fun reportMissing() {
+      for (entry in entries) {
+        checkCancellation()
+        errors.add(
+            ErrorMessage(entry.token, "Symbol \"${entry.token}\" not found in symbol table."),
+        )
+      }
     }
+  }
 
-    /** Returns the address to use when backpatching a forward reference. */
-    private fun writeToDataSegment(value: Int, length: Int, token: Token): Long {
-        alignData(length)
-        val address = dataAddress.get()
-        try {
-            context.memory().setAssemblyData(address, value, length)
-        } catch (_: AddressErrorException) {
-            reportInvalidDataAddress(token)
-            return address
-        }
-        dataAddress.increment(length)
-        return address
-    }
-
-    private fun writeDoubleToDataSegment(value: Double, token: Token) {
-        alignData(DataTypes.DOUBLE_SIZE)
-        try {
-            val address = dataAddress.get()
-            val memory = context.memory()
-            if (address == address.toInt().toLong()) {
-                memory.setDouble(address.toInt(), value)
-            } else {
-                memory.setAssemblyDoubleword(address, value.toRawBits())
-            }
-        } catch (_: AddressErrorException) {
-            reportInvalidDataAddress(token)
-            return
-        }
-        dataAddress.increment(DataTypes.DOUBLE_SIZE)
-    }
-
-    private fun reportInvalidDataAddress(token: Token) {
-        errors.add(ErrorMessage(token, "\"${dataAddress.get()}\" is not a valid data segment address"))
-    }
-
-    private fun alignData(length: Int) {
-        if (autoAlign) dataAddress.set(alignToBoundary(dataAddress.get(), length))
-    }
-
-    private fun alignToBoundary(address: Long, boundary: Int): Long {
-        val remainder = address % boundary
-        if (remainder == 0L) return address
-        val aligned = address + boundary - remainder
-        fileCurrentlyBeingAssembled.localSymbolTable!!.fixSymbolTableAddress(address, aligned)
-        numericLabels.align(address, aligned)
-        return aligned
-    }
-
-    class UserKernelAddressSpace(userBase: Int, kernelBase: Int) {
-        private val addresses = longArrayOf(userBase.toLong(), kernelBase.toLong())
-        var kernel = false
-
-        private val index: Int get() = if (kernel) 1 else 0
-
-        fun get(): Long = addresses[index]
-
-        fun set(value: Long) {
-            addresses[index] = value
-        }
-
-        fun increment(increment: Int) {
-            addresses[index] += increment
-        }
-    }
-
-    private data class DataSegmentForwardReference(val patchAddress: Long, val length: Int, val token: Token)
-
-    private inner class DataSegmentForwardReferences {
-        private val entries = ArrayList<DataSegmentForwardReference>()
-
-        fun add(address: Long, length: Int, token: Token) {
-            entries.add(DataSegmentForwardReference(address, length, token))
-        }
-
-        fun add(other: DataSegmentForwardReferences) {
-            entries.addAll(other.entries)
-        }
-
-        fun clear() {
-            entries.clear()
-        }
-
-        fun resolve(symbols: SymbolTable) {
-            val iterator = entries.iterator()
-            while (iterator.hasNext()) {
-                checkCancellation()
-                val entry = iterator.next()
-                val symbol = symbols.getSymbolLocalOrGlobal(entry.token.value)
-                if (symbol == null || symbol.addressBits == SymbolTable.NOT_FOUND.toLong()) continue
-                try {
-                    if (entry.length == Long.SIZE_BYTES) {
-                        context.memory().setAssemblyDoubleword(entry.patchAddress, symbol.addressBits)
-                    } else {
-                        context.memory().setAssemblyData(entry.patchAddress, narrowDataSymbol(symbol, entry.token), entry.length)
-                    }
-                } catch (_: AddressErrorException) {
-                    // The initial data write already reported an invalid patch address.
-                }
-                symbolUses.record(entry.token, symbol)
-                iterator.remove()
-            }
-        }
-
-        fun reportMissing() {
-            for (entry in entries) {
-                checkCancellation()
-                errors.add(ErrorMessage(entry.token, "Symbol \"${entry.token}\" not found in symbol table."))
-            }
-        }
-    }
-
-    private companion object {
-        // MARS64 always uses fixed-width instructions in the order they appear in the source.
-        val sourceModeDeclarations = setOf("nomicromips", "nomips16", "noreorder", "reorder", "at", "macro")
-    }
+  private companion object {
+    // MARS64 always uses fixed-width instructions in the order they appear in the source.
+    val sourceModeDeclarations =
+        setOf("nomicromips", "nomips16", "noreorder", "reorder", "at", "macro")
+  }
 }

@@ -9,6 +9,7 @@ plugins {
 }
 
 group = "edu.missouristate"
+
 version = "1.0-SNAPSHOT"
 
 repositories {
@@ -43,6 +44,7 @@ tasks.processTestResources {
 }
 
 jacoco { toolVersion = "0.8.16" }
+
 tasks.jacocoTestReport {
   dependsOn(tasks.test)
   reports {
@@ -60,12 +62,17 @@ tasks.withType<JavaCompile>().configureEach {
 }
 
 val benchmark = sourceSets.create("benchmark")
-configurations[benchmark.implementationConfigurationName].extendsFrom(configurations.implementation.get())
+
+configurations[benchmark.implementationConfigurationName].extendsFrom(
+    configurations.implementation.get(),
+)
+
 dependencies {
   add(benchmark.implementationConfigurationName, sourceSets.main.get().output)
   add(benchmark.implementationConfigurationName, "org.openjdk.jmh:jmh-core:1.37")
   add("kaptBenchmark", "org.openjdk.jmh:jmh-generator-annprocess:1.37")
 }
+
 tasks.register<JavaExec>("benchmark") {
   description = "Measure assembly of 10,000 instructions with JMH."
   group = "verification"
@@ -83,7 +90,8 @@ tasks.register<JavaExec>("benchmarkSessionStartup") {
   javaLauncher.set(javaToolchains.launcherFor { languageVersion.set(JavaLanguageVersion.of(25)) })
   args(rootProject.file("../examples/smoke/png-decoder/src/main/mips/viewer.asm").absolutePath)
   val recording = providers.gradleProperty("sessionStartupRecording").orNull
-  if (recording != null) jvmArgs("-XX:StartFlightRecording=settings=profile,filename=$recording,dumponexit=true")
+  if (recording != null)
+      jvmArgs("-XX:StartFlightRecording=settings=profile,filename=$recording,dumponexit=true")
 }
 
 tasks.register<JavaExec>("benchmarkExecution") {
@@ -92,34 +100,50 @@ tasks.register<JavaExec>("benchmarkExecution") {
   classpath = benchmark.runtimeClasspath
   mainClass.set("edu.missouristate.mars.benchmark.ExecutionBenchmark")
   javaLauncher.set(javaToolchains.launcherFor { languageVersion.set(JavaLanguageVersion.of(25)) })
-  args(rootProject.file("../examples/smoke/png-decoder/src/main/mips/viewer.asm").absolutePath,
-    providers.gradleProperty("executionBenchmarkMode").getOrElse("async"),
-    providers.gradleProperty("executionBenchmarkObserver").getOrElse("none"),
-    providers.gradleProperty("executionBenchmarkCheckpoints").getOrElse("0"),
-    providers.gradleProperty("executionBenchmarkScalar").getOrElse("false"))
+  args(
+      rootProject.file("../examples/smoke/png-decoder/src/main/mips/viewer.asm").absolutePath,
+      providers.gradleProperty("executionBenchmarkMode").getOrElse("async"),
+      providers.gradleProperty("executionBenchmarkObserver").getOrElse("none"),
+      providers.gradleProperty("executionBenchmarkCheckpoints").getOrElse("0"),
+      providers.gradleProperty("executionBenchmarkScalar").getOrElse("false"),
+  )
   val recording = providers.gradleProperty("coreExecutionRecording").orNull
-  if (recording != null) jvmArgs("-XX:StartFlightRecording=settings=profile,filename=$recording,dumponexit=true")
+  if (recording != null)
+      jvmArgs("-XX:StartFlightRecording=settings=profile,filename=$recording,dumponexit=true")
 }
 
-val verifyCoreIsolation = tasks.register("verifyCoreIsolation") {
-  group = "verification"
-  description = "Reject desktop, compatibility, and XML dependencies from the core library."
-  val sources = fileTree("src/main") { include("**/*.java", "**/*.kt") }
-  val archive = tasks.jar.flatMap { it.archiveFile }
-  inputs.files(sources)
-  inputs.file(archive)
-  doLast {
-    val forbidden = Regex("(?m)^\\s*import\\s+(javax\\.swing|java\\.awt|edu\\.missouristate\\.mars\\.(Globals|plugin\\.|desktop\\.|util\\.SystemIO))")
-    val xmlApi = Regex("""\b(?:javax\.xml|org\.(?:xml\.sax|w3c\.dom|jdom2?|dom4j))\b""")
-    val violations = sources.files.filter { file ->
-      val text = file.readText()
-      forbidden.containsMatchIn(text) || xmlApi.containsMatchIn(text)
+val verifyCoreIsolation =
+    tasks.register("verifyCoreIsolation") {
+      group = "verification"
+      description = "Reject desktop, compatibility, and XML dependencies from the core library."
+      val sources = fileTree("src/main") { include("**/*.java", "**/*.kt") }
+      val archive = tasks.jar.flatMap { it.archiveFile }
+      inputs.files(sources)
+      inputs.file(archive)
+      doLast {
+        val forbidden =
+            Regex(
+                "(?m)^\\s*import\\s+(javax\\.swing|java\\.awt|edu\\.missouristate\\.mars\\.(Globals|plugin\\.|desktop\\.|util\\.SystemIO))",
+            )
+        val xmlApi = Regex("""\b(?:javax\.xml|org\.(?:xml\.sax|w3c\.dom|jdom2?|dom4j))\b""")
+        val violations =
+            sources.files.filter { file ->
+              val text = file.readText()
+              forbidden.containsMatchIn(text) || xmlApi.containsMatchIn(text)
+            }
+        check(violations.isEmpty()) {
+          "Core has UI, compatibility, or XML dependencies: $violations"
+        }
+        ZipFile(archive.get().asFile).use { jar ->
+          val xmlFiles =
+              jar.entries()
+                  .asSequence()
+                  .map { it.name }
+                  .filter { it.endsWith(".xml", ignoreCase = true) }
+                  .toList()
+          check(xmlFiles.isEmpty()) { "Core archive contains XML resources: $xmlFiles" }
+        }
+      }
     }
-    check(violations.isEmpty()) { "Core has UI, compatibility, or XML dependencies: $violations" }
-    ZipFile(archive.get().asFile).use { jar ->
-      val xmlFiles = jar.entries().asSequence().map { it.name }.filter { it.endsWith(".xml", ignoreCase = true) }.toList()
-      check(xmlFiles.isEmpty()) { "Core archive contains XML resources: $xmlFiles" }
-    }
-  }
-}
+
 tasks.check { dependsOn(verifyCoreIsolation, tasks.jacocoTestReport) }

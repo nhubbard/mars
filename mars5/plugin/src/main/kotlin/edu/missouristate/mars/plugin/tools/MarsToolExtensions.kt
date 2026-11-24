@@ -26,85 +26,95 @@ import kotlinx.coroutines.launch
 private val toolInitializer = Key.create<(Content) -> Unit>("MARS_TOOL_TAB_INITIALIZER")
 
 internal fun Content.initializeMarsToolOnSelection(initializer: (Content) -> Unit) {
-    putUserData(toolInitializer, initializer)
+  putUserData(toolInitializer, initializer)
 }
 
-internal class MarsToolExtensions(private val project: Project, private val manager: ContentManager, parent: Disposable) {
-    private val firstExtensionIndex = manager.contentCount
-    private val tabs = IdentityHashMap<MarsToolProvider, Content>()
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.EDT)
+internal class MarsToolExtensions(
+    private val project: Project,
+    private val manager: ContentManager,
+    parent: Disposable,
+) {
+  private val firstExtensionIndex = manager.contentCount
+  private val tabs = IdentityHashMap<MarsToolProvider, Content>()
+  private val scope = CoroutineScope(SupervisorJob() + Dispatchers.EDT)
 
-    init {
-        val selection = object : ContentManagerListener {
-            override fun selectionChanged(event: ContentManagerEvent) = loadSelected()
+  init {
+    val selection =
+        object : ContentManagerListener {
+          override fun selectionChanged(event: ContentManagerEvent) = loadSelected()
         }
-        manager.addContentManagerListener(selection)
-        Disposer.register(parent) {
-            scope.cancel()
-            manager.removeContentManagerListener(selection)
-            tabs.clear()
-        }
-        MarsToolProvider.EP.addExtensionPointListener(scope, object : ExtensionPointAdapter<MarsToolProvider>() {
-            override fun extensionListChanged() = scheduleRefresh()
-        })
-        refresh()
+    manager.addContentManagerListener(selection)
+    Disposer.register(parent) {
+      scope.cancel()
+      manager.removeContentManagerListener(selection)
+      tabs.clear()
     }
+    MarsToolProvider.EP.addExtensionPointListener(
+        scope,
+        object : ExtensionPointAdapter<MarsToolProvider>() {
+          override fun extensionListChanged() = scheduleRefresh()
+        },
+    )
+    refresh()
+  }
 
-    private fun scheduleRefresh() {
-        if (ApplicationManager.getApplication().isDispatchThread) refresh()
-        else scope.launch { refresh() }
-    }
+  private fun scheduleRefresh() {
+    if (ApplicationManager.getApplication().isDispatchThread) refresh()
+    else scope.launch { refresh() }
+  }
 
-    private fun refresh() {
-        val ids = mutableSetOf<String>()
-        val providers = MarsToolProvider.EP.extensionList.filter { provider ->
-            val id = provider.id
-            val unique = id.isNotBlank() && ids.add(id)
-            if (!unique) thisLogger().warn("Ignoring an empty or duplicate MARS tool ID: $id")
-            unique
+  private fun refresh() {
+    val ids = mutableSetOf<String>()
+    val providers =
+        MarsToolProvider.EP.extensionList.filter { provider ->
+          val id = provider.id
+          val unique = id.isNotBlank() && ids.add(id)
+          if (!unique) thisLogger().warn("Ignoring an empty or duplicate MARS tool ID: $id")
+          unique
         }
-        val removed = tabs.keys.filter { existing -> providers.none { it === existing } }
+    val removed =
+        tabs.keys
+            .filter { existing -> providers.none { it === existing } }
             .map { tabs.remove(it)!! }
-        removed.forEach { manager.removeContent(it, true) }
-        providers.forEachIndexed { index, provider ->
-            if (provider !in tabs) {
-                val content = ContentFactory.getInstance().createContent(JBLabel(), provider.title, false)
-                content.putUserData(marsToolId, provider.id)
-                val lifetime = Disposer.newDisposable()
-                // Kotlin exposes this Java accessor as a read-only property.
-                @Suppress("UsePropertyAccessSyntax")
-                content.setDisposer(lifetime)
-                content.initializeMarsToolOnSelection { initializeProvider(it, provider, lifetime) }
-                tabs[provider] = content
-                manager.addContent(content, minOf(firstExtensionIndex + index, manager.contentCount))
-            }
-        }
-        loadSelected()
+    removed.forEach { manager.removeContent(it, true) }
+    providers.forEachIndexed { index, provider ->
+      if (provider !in tabs) {
+        val content = ContentFactory.getInstance().createContent(JBLabel(), provider.title, false)
+        content.putUserData(marsToolId, provider.id)
+        val lifetime = Disposer.newDisposable()
+        // Kotlin exposes this Java accessor as a read-only property.
+        @Suppress("UsePropertyAccessSyntax") content.setDisposer(lifetime)
+        content.initializeMarsToolOnSelection { initializeProvider(it, provider, lifetime) }
+        tabs[provider] = content
+        manager.addContent(content, minOf(firstExtensionIndex + index, manager.contentCount))
+      }
     }
+    loadSelected()
+  }
 
-    private fun loadSelected() {
-        val selected = manager.selectedContent ?: return
-        val initialize = selected.getUserData(toolInitializer) ?: return
-        selected.putUserData(toolInitializer, null)
-        try {
-            initialize(selected)
-        } catch (error: CancellationException) {
-            selected.initializeMarsToolOnSelection(initialize)
-            throw error
-        }
+  private fun loadSelected() {
+    val selected = manager.selectedContent ?: return
+    val initialize = selected.getUserData(toolInitializer) ?: return
+    selected.putUserData(toolInitializer, null)
+    try {
+      initialize(selected)
+    } catch (error: CancellationException) {
+      selected.initializeMarsToolOnSelection(initialize)
+      throw error
     }
+  }
 
-    private fun initializeProvider(content: Content, provider: MarsToolProvider, parent: Disposable) {
-        val lifetime = Disposer.newDisposable(parent)
-        try {
-            content.component = provider.createContent(MarsToolContext(project, lifetime))
-        } catch (error: CancellationException) {
-            Disposer.dispose(lifetime)
-            throw error
-        } catch (error: Exception) {
-            Disposer.dispose(lifetime)
-            thisLogger().warn("Could not open MARS tool ${provider.id}", error)
-            content.component = JBLabel(toolsMessages.getMessage("tools.provider.failed", provider.title))
-        }
+  private fun initializeProvider(content: Content, provider: MarsToolProvider, parent: Disposable) {
+    val lifetime = Disposer.newDisposable(parent)
+    try {
+      content.component = provider.createContent(MarsToolContext(project, lifetime))
+    } catch (error: CancellationException) {
+      Disposer.dispose(lifetime)
+      throw error
+    } catch (error: Exception) {
+      Disposer.dispose(lifetime)
+      thisLogger().warn("Could not open MARS tool ${provider.id}", error)
+      content.component = JBLabel(toolsMessages.getMessage("tools.provider.failed", provider.title))
     }
+  }
 }

@@ -17,48 +17,59 @@ import edu.missouristate.mars.plugin.language.psi.MipsStringLiteral
 import edu.missouristate.mars.plugin.language.references.MipsFileReferenceSet
 import edu.missouristate.mars.plugin.language.syntax.inspectMipsInclude
 
-/** Supplies unresolved paths to IntelliJ's shared include index, matching MARS's include prepass. */
-class MipsIncludeProvider internal constructor(private val windowsPaths: Boolean) : FileIncludeProvider() {
-    constructor() : this(SystemInfoRt.isWindows)
+/**
+ * Supplies unresolved paths to IntelliJ's shared include index, matching MARS's include prepass.
+ */
+class MipsIncludeProvider internal constructor(private val windowsPaths: Boolean) :
+    FileIncludeProvider() {
+  constructor() : this(SystemInfoRt.isWindows)
 
-    override fun getId(): String = "mars"
-    override fun getVersion(): Int = 10
-    override fun acceptFile(indexedFile: IndexedFile): Boolean = indexedFile.fileType == MipsFileType
-    override fun registerFileTypesUsedForIndexing(fileTypeSink: Consumer<in FileType>) = fileTypeSink.consume(MipsFileType)
+  override fun getId(): String = "mars"
 
-    override fun getIncludeInfos(content: FileContent): Array<FileIncludeInfo> {
-        val includes = ArrayList<FileIncludeInfo>()
-        forEachMipsInclude(content.contentAsText) { start, include ->
-            val path = include.path ?: return@forEachMipsInclude
-            val normalized = if (windowsPaths) path.replace('\\', '/') else path
-            val name = includeKey(normalized.substringAfterLast('/'))
-            includes.add(FileIncludeInfo(name, path, start + include.offset, false))
-        }
-        return includes.toTypedArray()
+  override fun getVersion(): Int = 10
+
+  override fun acceptFile(indexedFile: IndexedFile): Boolean = indexedFile.fileType == MipsFileType
+
+  override fun registerFileTypesUsedForIndexing(fileTypeSink: Consumer<in FileType>) =
+      fileTypeSink.consume(MipsFileType)
+
+  override fun getIncludeInfos(content: FileContent): Array<FileIncludeInfo> {
+    val includes = ArrayList<FileIncludeInfo>()
+    forEachMipsInclude(content.contentAsText) { start, include ->
+      val path = include.path ?: return@forEachMipsInclude
+      val normalized = if (windowsPaths) path.replace('\\', '/') else path
+      val name = includeKey(normalized.substringAfterLast('/'))
+      includes.add(FileIncludeInfo(name, path, start + include.offset, false))
     }
+    return includes.toTypedArray()
+  }
 
-    override fun getIncludeName(file: PsiFile, originalName: String): String = includeKey(originalName)
+  override fun getIncludeName(file: PsiFile, originalName: String): String =
+      includeKey(originalName)
 
-    // The native reverse index uses exact keys and resolves candidates against the actual directory.
-    private fun includeKey(name: String): String = name.lowercase()
+  // The native reverse index uses exact keys and resolves candidates against the actual directory.
+  private fun includeKey(name: String): String = name.lowercase()
 
-    override fun resolveIncludedFile(info: FileIncludeInfo, context: PsiFile): PsiFileSystemItem? =
-        resolveIndexedMipsInclude(info, context)
+  override fun resolveIncludedFile(info: FileIncludeInfo, context: PsiFile): PsiFileSystemItem? =
+      resolveIndexedMipsInclude(info, context)
 }
 
-internal fun resolveIndexedMipsInclude(info: FileIncludeInfo, context: PsiFile): PsiFileSystemItem? {
-    if (info.offset < 0) return null
-    val literal = context.findElementAt(info.offset) as? MipsStringLiteral ?: return null
-    return MipsFileReferenceSet(info.path, literal).resolve()
+internal fun resolveIndexedMipsInclude(
+    info: FileIncludeInfo,
+    context: PsiFile,
+): PsiFileSystemItem? {
+  if (info.offset < 0) return null
+  val literal = context.findElementAt(info.offset) as? MipsStringLiteral ?: return null
+  return MipsFileReferenceSet(info.path, literal).resolve()
 }
 
 internal fun forEachMipsInclude(text: CharSequence, visit: (Int, Tokenizer.IncludePath) -> Unit) {
-    val lines = LineTokenizer(text)
-    while (!lines.atEnd()) {
-        ProgressManager.checkCanceled()
-        val start = lines.offset
-        val include = inspectMipsInclude(text, start, start + lines.length)
-        if (include != null) visit(start, include)
-        lines.advance()
-    }
+  val lines = LineTokenizer(text)
+  while (!lines.atEnd()) {
+    ProgressManager.checkCanceled()
+    val start = lines.offset
+    val include = inspectMipsInclude(text, start, start + lines.length)
+    if (include != null) visit(start, include)
+    lines.advance()
+  }
 }

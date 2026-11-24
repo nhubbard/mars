@@ -30,65 +30,71 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /** Tokens for one source line, with the text and status of equivalence expansion. */
 open class TokenList : Cloneable {
-    private var tokens = ArrayList<Token>()
-    private var equivalenceExpansionIncomplete = false
+  private var tokens = ArrayList<Token>()
+  private var equivalenceExpansionIncomplete = false
 
-    internal var isFrozen = false
-        private set
+  internal var isFrozen = false
+    private set
 
-    open var processedLine: String = ""
-        set(value) {
-            check(!isFrozen)
-            field = value
-        }
-
-    /** Example tokens have no source provenance and are published with the instruction catalog. */
-    internal fun freeze() {
-        tokens.forEach(Token::freeze)
-        isFrozen = true
+  open var processedLine: String = ""
+    set(value) {
+      check(!isFrozen)
+      field = value
     }
 
-    open fun hasCompleteEquivalenceExpansion(): Boolean = !equivalenceExpansionIncomplete
+  /** Example tokens have no source provenance and are published with the instruction catalog. */
+  internal fun freeze() {
+    tokens.forEach(Token::freeze)
+    isFrozen = true
+  }
 
-    fun markEquivalenceExpansionIncomplete() {
-        check(!isFrozen)
-        equivalenceExpansionIncomplete = true
-    }
+  open fun hasCompleteEquivalenceExpansion(): Boolean = !equivalenceExpansionIncomplete
 
-    open operator fun get(position: Int): Token = tokens[position]
+  fun markEquivalenceExpansionIncomplete() {
+    check(!isFrozen)
+    equivalenceExpansionIncomplete = true
+  }
 
-    open operator fun set(position: Int, replacement: Token) {
-        check(!isFrozen)
-        tokens[position] = replacement
-    }
+  open operator fun get(position: Int): Token = tokens[position]
 
-    open fun size(): Int = tokens.size
+  open operator fun set(position: Int, replacement: Token) {
+    check(!isFrozen)
+    tokens[position] = replacement
+  }
 
-    open fun add(token: Token) {
-        check(!isFrozen)
-        tokens.add(token)
-    }
+  open fun size(): Int = tokens.size
 
-    open fun remove(position: Int) {
-        check(!isFrozen)
-        tokens.removeAt(position)
-    }
+  open fun add(token: Token) {
+    check(!isFrozen)
+    tokens.add(token)
+  }
 
-    open val isEmpty: Boolean get() = tokens.isEmpty()
+  open fun remove(position: Int) {
+    check(!isFrozen)
+    tokens.removeAt(position)
+  }
 
-    open fun beginsWithLabel(): Boolean =
-        size() >= 2 && (get(0).type == TokenTypes.IDENTIFIER || get(0).type == TokenTypes.OPERATOR) &&
-            get(1).type == TokenTypes.COLON
+  open val isEmpty: Boolean
+    get() = tokens.isEmpty()
 
-    open fun hasNumericRepetitionShape(): Boolean =
-        (size() == 4 || size() == 5 && get(4).type == TokenTypes.COMMENT) && get(2).type == TokenTypes.COLON
+  open fun beginsWithLabel(): Boolean =
+      size() >= 2 &&
+          (get(0).type == TokenTypes.IDENTIFIER || get(0).type == TokenTypes.OPERATOR) &&
+          get(1).type == TokenTypes.COLON
 
-    override fun toString(): String = buildString {
-        for (token in tokens) append(token.toString()).append(' ')
-    }
+  open fun hasNumericRepetitionShape(): Boolean =
+      (size() == 4 || size() == 5 && get(4).type == TokenTypes.COMMENT) &&
+          get(2).type == TokenTypes.COLON
 
-    public override fun clone(): Any = (super.clone() as TokenList).also { copy ->
-        copy.tokens = if (isFrozen) tokens.mapTo(ArrayList(tokens.size)) { it.withType(it.type) } else ArrayList(tokens)
+  override fun toString(): String = buildString {
+    for (token in tokens) append(token.toString()).append(' ')
+  }
+
+  public override fun clone(): Any =
+      (super.clone() as TokenList).also { copy ->
+        copy.tokens =
+            if (isFrozen) tokens.mapTo(ArrayList(tokens.size)) { it.withType(it.type) }
+            else ArrayList(tokens)
         copy.isFrozen = false
-    }
+      }
 }

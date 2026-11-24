@@ -35,48 +35,53 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /** Reads a console line with MARS fgets-style padding. */
 open class SyscallReadString : AbstractSyscall(8, "ReadString") {
-    @Throws(ProcessingException::class)
-    override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
-        val address = context.effectiveAddress(4, 0)
-        val capacity = context.registerFile.getValue(5)
-        if (context.settings().isUtf8TextEnabled) {
-            readUtf8(statement, context, address, capacity)
-            return
-        }
-        val requestedLength = capacity - 1
-        val maxLength = requestedLength.coerceAtLeast(0)
-        val input = context.environment().readString(maxLength).orEmpty()
-        var length = minOf(maxLength, input.length)
-        try {
-            for (index in 0 until length) {
-                context.storeData(address + index, 1, input[index].code)
-            }
-            if (length < maxLength) {
-                context.storeData(address + length, 1, '\n'.code)
-                length++
-            }
-            if (requestedLength >= 0) {
-                context.storeData(address + length, 1, 0)
-            }
-        } catch (failure: AddressErrorException) {
-            throw ProcessingException(context, statement, failure)
-        }
+  @Throws(ProcessingException::class)
+  override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
+    val address = context.effectiveAddress(4, 0)
+    val capacity = context.registerFile.getValue(5)
+    if (context.settings().isUtf8TextEnabled) {
+      readUtf8(statement, context, address, capacity)
+      return
     }
+    val requestedLength = capacity - 1
+    val maxLength = requestedLength.coerceAtLeast(0)
+    val input = context.environment().readString(maxLength).orEmpty()
+    var length = minOf(maxLength, input.length)
+    try {
+      for (index in 0 until length) {
+        context.storeData(address + index, 1, input[index].code)
+      }
+      if (length < maxLength) {
+        context.storeData(address + length, 1, '\n'.code)
+        length++
+      }
+      if (requestedLength >= 0) {
+        context.storeData(address + length, 1, 0)
+      }
+    } catch (failure: AddressErrorException) {
+      throw ProcessingException(context, statement, failure)
+    }
+  }
 
-    private fun readUtf8(statement: ProgramStatement?, context: InstructionContext, address: Long, capacity: Int) {
-        val maxBytes = if (capacity > 0) capacity - 1 else 0
-        val input = context.environment().readUtf8String(maxBytes).orEmpty()
-        if (capacity <= 0) return
-        val bytes = input.encodeToByteArray()
-        var length = minOf(bytes.size, maxBytes)
-        // A continuation byte at the cut means the previous code point did not fit.
-        while (length < bytes.size && (bytes[length].toInt() and 0xc0) == 0x80) length--
-        try {
-            for (index in 0 until length) context.storeData(address + index, 1, bytes[index].toInt())
-            if (bytes.size < maxBytes) context.storeData(address + length++, 1, '\n'.code)
-            context.storeData(address + length, 1, 0)
-        } catch (failure: AddressErrorException) {
-            throw ProcessingException(context, statement, failure)
-        }
+  private fun readUtf8(
+      statement: ProgramStatement?,
+      context: InstructionContext,
+      address: Long,
+      capacity: Int,
+  ) {
+    val maxBytes = if (capacity > 0) capacity - 1 else 0
+    val input = context.environment().readUtf8String(maxBytes).orEmpty()
+    if (capacity <= 0) return
+    val bytes = input.encodeToByteArray()
+    var length = minOf(bytes.size, maxBytes)
+    // A continuation byte at the cut means the previous code point did not fit.
+    while (length < bytes.size && (bytes[length].toInt() and 0xc0) == 0x80) length--
+    try {
+      for (index in 0 until length) context.storeData(address + index, 1, bytes[index].toInt())
+      if (bytes.size < maxBytes) context.storeData(address + length++, 1, '\n'.code)
+      context.storeData(address + length, 1, 0)
+    } catch (failure: AddressErrorException) {
+      throw ProcessingException(context, statement, failure)
     }
+  }
 }

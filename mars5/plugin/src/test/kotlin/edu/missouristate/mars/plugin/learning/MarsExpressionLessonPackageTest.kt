@@ -16,61 +16,91 @@ import org.junit.jupiter.api.io.TempDir
 
 @TestApplication
 class MarsExpressionLessonPackageTest {
-    @TempDir lateinit var directory: Path
-    private val projects = codeInsightProjectFixture()
-    private val fixture by codeInsightFixture(projects)
-    private fun archive(): Path = directory.resolve("student.zip").also { target ->
-        javaClass.getResourceAsStream("/learning/expression-order-0.1.0-student.zip")!!.use { Files.copy(it, target) }
-    }
+  @TempDir lateinit var directory: Path
+  private val projects = codeInsightProjectFixture()
+  private val fixture by codeInsightFixture(projects)
 
-    @Test
-    fun `actual expression archive retains every public trial and continuous caller observation`() {
-        MarsLessonPackages.prepare(archive()).use { prepared ->
-            assertEquals("017-expression-order", prepared.metadata.id)
-            val plan = prepared.nativeLesson!!
-            assertEquals(17, plan.steps.size)
-            assertEquals(8, plan.steps.filterIsInstance<MarsNativeLessonStep>().size)
-            val debug = plan.steps.filterIsInstance<MarsNativeDebugStep>()
-            assertEquals(listOf(3,4,3), debug.map { it.stops.size })
-            assertEquals(listOf("expression_call", "expression_ready", "expression_stored"), debug.last().stops.map { it.anchor.label })
-            assertEquals(2147488281L, debug[1].stops[1].registers.getValue("\$t0"))
-            val assessments = plan.steps.filterIsInstance<MarsNativeAssessmentStep>()
-            assertEquals(listOf(251,289), assessments.take(2).map { it.functionCases.size })
-            assertEquals(List(5) { 50 } + 1, assessments.first().functionCaseBatches.map { it.size })
-            assertEquals(List(5) { 50 } + 39, assessments[1].functionCaseBatches.map { it.size })
-            assertTrue(assessments.take(2).flatMap { it.functionCases }.all { it.instructionLimit == 100000L && it.exit!!.accessPolicies.isNotEmpty() })
-            assertEquals(6, assessments[2].functionCases.size)
-            assertTrue(assessments[2].functionCases.all { it.calls.size == 3 })
-            assertEquals(List(20) { 3 }, assessments.last().cases.map { it.publication!!.snapshots.size })
-            assertTrue(assessments.last().cases.all { it.publication!!.snapshots.last().label == "expression_stored" && it.publication!!.snapshots.last().expectedRegisters.keys == setOf("v0", "v1") })
-            assertTrue(assessments.last().cases.all { it.instructionLimit == 100000L })
-            assertEquals(List(4) { "independent/expression.asm" }, assessments.map { it.source })
+  private fun archive(): Path =
+      directory.resolve("student.zip").also { target ->
+        javaClass.getResourceAsStream("/learning/expression-order-0.1.0-student.zip")!!.use {
+          Files.copy(it, target)
         }
-    }
+      }
 
-    @Test
-    fun `native expression sources resolve all twenty PSI pointers while the evaluator remains unfinished`() = timeoutRunBlocking {
+  @Test
+  fun `actual expression archive retains every public trial and continuous caller observation`() {
+    MarsLessonPackages.prepare(archive()).use { prepared ->
+      assertEquals("017-expression-order", prepared.metadata.id)
+      val plan = prepared.nativeLesson!!
+      assertEquals(17, plan.steps.size)
+      assertEquals(8, plan.steps.filterIsInstance<MarsNativeLessonStep>().size)
+      val debug = plan.steps.filterIsInstance<MarsNativeDebugStep>()
+      assertEquals(listOf(3, 4, 3), debug.map { it.stops.size })
+      assertEquals(
+          listOf("expression_call", "expression_ready", "expression_stored"),
+          debug.last().stops.map { it.anchor.label },
+      )
+      assertEquals(2147488281L, debug[1].stops[1].registers.getValue("\$t0"))
+      val assessments = plan.steps.filterIsInstance<MarsNativeAssessmentStep>()
+      assertEquals(listOf(251, 289), assessments.take(2).map { it.functionCases.size })
+      assertEquals(List(5) { 50 } + 1, assessments.first().functionCaseBatches.map { it.size })
+      assertEquals(List(5) { 50 } + 39, assessments[1].functionCaseBatches.map { it.size })
+      assertTrue(
+          assessments
+              .take(2)
+              .flatMap { it.functionCases }
+              .all { it.instructionLimit == 100000L && it.exit!!.accessPolicies.isNotEmpty() },
+      )
+      assertEquals(6, assessments[2].functionCases.size)
+      assertTrue(assessments[2].functionCases.all { it.calls.size == 3 })
+      assertEquals(List(20) { 3 }, assessments.last().cases.map { it.publication!!.snapshots.size })
+      assertTrue(
+          assessments.last().cases.all {
+            it.publication!!.snapshots.last().label == "expression_stored" &&
+                it.publication!!.snapshots.last().expectedRegisters.keys == setOf("v0", "v1")
+          },
+      )
+      assertTrue(assessments.last().cases.all { it.instructionLimit == 100000L })
+      assertEquals(List(4) { "independent/expression.asm" }, assessments.map { it.source })
+    }
+  }
+
+  @Test
+  fun `native expression sources resolve all twenty PSI pointers while the evaluator remains unfinished`() =
+      timeoutRunBlocking {
         MarsLessonPackages.prepare(archive()).use { prepared ->
-            val installed = prepared.install(Files.createDirectory(directory.resolve("project")))
-            val content = MarsDownloadedLessonContent(installed, prepared.nativeLesson!!)
-            var count = 0
-            for (step in content.plan.steps) {
-                val source = content.source(step)
-                val anchors = if (step is MarsNativeDebugStep) step.stops.map { it.anchor } else listOfNotNull(step.anchor)
-                if (anchors.isEmpty()) continue
-                val text = Files.readString(source)
-                withContext(Dispatchers.EDT) {
-                    fixture.configureByText(source.fileName.toString(), text)
-                    for (anchor in anchors) {
-                        val range = requireNotNull(MarsLessonAnchors.range(fixture.editor, anchor)) { "$source: $anchor" }
-                        assertEquals(anchor.mnemonic, text.substring(range.startOffset,range.endOffset).substringBefore(' ').substringBefore('\t'))
-                        count++
+          val installed = prepared.install(Files.createDirectory(directory.resolve("project")))
+          val content = MarsDownloadedLessonContent(installed, prepared.nativeLesson!!)
+          var count = 0
+          for (step in content.plan.steps) {
+            val source = content.source(step)
+            val anchors =
+                if (step is MarsNativeDebugStep) step.stops.map { it.anchor }
+                else listOfNotNull(step.anchor)
+            if (anchors.isEmpty()) continue
+            val text = Files.readString(source)
+            withContext(Dispatchers.EDT) {
+              fixture.configureByText(source.fileName.toString(), text)
+              for (anchor in anchors) {
+                val range =
+                    requireNotNull(MarsLessonAnchors.range(fixture.editor, anchor)) {
+                      "$source: $anchor"
                     }
-                }
+                assertEquals(
+                    anchor.mnemonic,
+                    text
+                        .substring(range.startOffset, range.endOffset)
+                        .substringBefore(' ')
+                        .substringBefore('\t'),
+                )
+                count++
+              }
             }
-            assertEquals(20, count)
-            val independent = Files.readString(installed.directory.resolve("independent/expression.asm"))
-            assertEquals(1, independent.lines().count { it.trim() == "break" })
+          }
+          assertEquals(20, count)
+          val independent =
+              Files.readString(installed.directory.resolve("independent/expression.asm"))
+          assertEquals(1, independent.lines().count { it.trim() == "break" })
         }
-    }
+      }
 }

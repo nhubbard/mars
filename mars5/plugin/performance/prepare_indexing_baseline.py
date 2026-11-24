@@ -20,13 +20,16 @@ def prepare() -> None:
         for part in range(100):
             index = group * 100 + part
             name = f"part-{index:04d}.s"
-            write(source / f"group-{group:02d}" / name, f"""\
+            write(
+                source / f"group-{group:02d}" / name,
+                f"""\
 .eqv BENCH_VALUE_{index} {index}
 .macro bench_emit_{index} (%register)
     addiu %register, $zero, BENCH_VALUE_{index}
 .end_macro
 bench_target_{index}: bench_emit_{index}($t0)
-""")
+""",
+            )
             includes.append(f'.include "group-{group:02d}/{name}"\n')
         name = f"group-{group:02d}.asm"
         write(source / name, "".join(includes))
@@ -34,7 +37,9 @@ bench_target_{index}: bench_emit_{index}($t0)
 
     entry = ".text\n" + "".join(groups) + "    j bench_target_1999\n"
     write(source / "entry.asm", entry)
-    write(project / ".idea" / "modules.xml", """\
+    write(
+        project / ".idea" / "modules.xml",
+        """\
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
@@ -42,8 +47,11 @@ bench_target_{index}: bench_emit_{index}($t0)
     </modules>
   </component>
 </project>
-""")
-    write(project / "indexing.iml", """\
+""",
+    )
+    write(
+        project / "indexing.iml",
+        """\
 <module type="EMPTY_MODULE" version="4">
   <component name="NewModuleRootManager">
     <content url="file://$MODULE_DIR$">
@@ -52,8 +60,11 @@ bench_target_{index}: bench_emit_{index}($t0)
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
 </module>
-""")
-    write(project / ".idea" / "runConfigurations" / "CorpusDebug.xml", """\
+""",
+    )
+    write(
+        project / ".idea" / "runConfigurations" / "CorpusDebug.xml",
+        """\
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="CorpusDebug" type="MarsMipsRun" marsExecutionDefaults="1">
     <option name="sourcePath" value="$PROJECT_DIR$/src/entry.asm" />
@@ -61,11 +72,14 @@ bench_target_{index}: bench_emit_{index}($t0)
     <method v="2" />
   </configuration>
 </component>
-""")
+""",
+    )
 
     caret = entry.index("bench_target_1999") + len("bench_target_199")
     branch_line = entry.count("\n", 0, caret) + 1
-    write(root / "indexing.ijperf", f"""\
+    write(
+        root / "indexing.ijperf",
+        f"""\
 %waitForSmart
 %openFile -file src/entry.asm -timeout 60
 %waitForFinishedCodeAnalysis
@@ -88,7 +102,8 @@ bench_target_{index}: bench_emit_{index}($t0)
 %stopDebugProcess
 %waitForNoDebugSessions
 %exitApp
-""")
+""",
+    )
     print(project)
 
 

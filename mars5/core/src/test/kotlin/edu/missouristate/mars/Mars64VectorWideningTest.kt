@@ -11,15 +11,19 @@ import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 
 class Mars64VectorWideningTest {
-    @ParameterizedTest
-    @ValueSource(strings = ["h", "w", "d"])
-    fun `widening reads the correct half-width elements and old destination`(suffix: String, @TempDir directory: Path) {
-        val format = "bhwd".indexOf(suffix)
-        val bits = 8 shl format
-        val narrow = bits / 2
-        val limit = 1L shl narrow
-        val dotUnsigned = 16L - 5 * limit
-        val cases = listOf(
+  @ParameterizedTest
+  @ValueSource(strings = ["h", "w", "d"])
+  fun `widening reads the correct half-width elements and old destination`(
+      suffix: String,
+      @TempDir directory: Path,
+  ) {
+    val format = "bhwd".indexOf(suffix)
+    val bits = 8 shl format
+    val narrow = bits / 2
+    val limit = 1L shl narrow
+    val dotUnsigned = 16L - 5 * limit
+    val cases =
+        listOf(
             Triple("hadd_s", 0x7a251fd5, 2L),
             Triple("hadd_u", 0x7aa51fd5, limit + 2),
             Triple("hsub_s", 0x7b251fd5, -8L),
@@ -31,43 +35,58 @@ class Mars64VectorWideningTest {
             Triple("dpsub_s", 0x7a251fd3, -9L),
             Triple("dpsub_u", 0x7aa51fd3, 7 - dotUnsigned),
         )
-        val file = Files.writeString(directory.resolve("widen.s"), cases.joinToString("\n") { (name) ->
-            $$"$$name.$$suffix $w31,$w3,$w5"
-        })
-        fun lanes(value: Long): Long {
-            val mask = -1L ushr (64 - bits)
-            return (0 until 64 step bits).fold(0L) { acc, shift -> acc or ((value and mask) shl shift) }
-        }
-        TestSessions.create().use { session ->
-            session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(file), null, extended = false, warnings = false)
-            val fpu = session.coprocessor1
-            val left = lanes(((limit - 3) shl narrow) or 2)
-            val right = lanes(((limit - 2) shl narrow) or 5)
-            fpu.updateVector(3, VectorRegister(left, left))
-            fpu.updateVector(5, VectorRegister(right, right))
-            val old = VectorRegister(lanes(7), lanes(7))
-            for ((index, case) in cases.withIndex()) {
-                val (name, word, expected) = case
-                assertEquals(word + ((format - 1) shl 21), program.machineList!![index].binaryStatement, name)
-                fpu.updateVector(31, old)
-                program.simulate(1)
-                assertEquals(VectorRegister(lanes(expected), lanes(expected)), fpu.readVector(31), name)
-                session.backStepper.backStep()
-                assertEquals(old, fpu.readVector(31), name)
-                program.simulate(1)
-            }
-            Files.writeString(file, $$"dotp_s.b $w31,$w3,$w5")
-            assertThrows(ProcessingException::class.java) { session.assemble(listOf(file), null, extended = false, warnings = false) }
-        }
+    val file =
+        Files.writeString(
+            directory.resolve("widen.s"),
+            cases.joinToString("\n") { (name) ->
+              $$"$$name.$$suffix $w31,$w3,$w5"
+            },
+        )
+    fun lanes(value: Long): Long {
+      val mask = -1L ushr (64 - bits)
+      return (0 until 64 step bits).fold(0L) { acc, shift -> acc or ((value and mask) shl shift) }
     }
-    @ParameterizedTest
-    @ValueSource(strings = ["h", "w"])
-    fun `fixed point multiply rounds after accumulation and saturates at the lane bounds`(suffix: String, @TempDir directory: Path) {
-        val bits = if (suffix == "h") 16 else 32
-        val scale = 1L shl (bits - 1)
-        val mask = -1L ushr (64 - bits)
-        val cases = listOf(
+    TestSessions.create().use { session ->
+      session.selectTarget(MarsTarget.MARS64)
+      val program = session.assemble(listOf(file), null, extended = false, warnings = false)
+      val fpu = session.coprocessor1
+      val left = lanes(((limit - 3) shl narrow) or 2)
+      val right = lanes(((limit - 2) shl narrow) or 5)
+      fpu.updateVector(3, VectorRegister(left, left))
+      fpu.updateVector(5, VectorRegister(right, right))
+      val old = VectorRegister(lanes(7), lanes(7))
+      for ((index, case) in cases.withIndex()) {
+        val (name, word, expected) = case
+        assertEquals(
+            word + ((format - 1) shl 21),
+            program.machineList!![index].binaryStatement,
+            name,
+        )
+        fpu.updateVector(31, old)
+        program.simulate(1)
+        assertEquals(VectorRegister(lanes(expected), lanes(expected)), fpu.readVector(31), name)
+        session.backStepper.backStep()
+        assertEquals(old, fpu.readVector(31), name)
+        program.simulate(1)
+      }
+      Files.writeString(file, $$"dotp_s.b $w31,$w3,$w5")
+      assertThrows(ProcessingException::class.java) {
+        session.assemble(listOf(file), null, extended = false, warnings = false)
+      }
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = ["h", "w"])
+  fun `fixed point multiply rounds after accumulation and saturates at the lane bounds`(
+      suffix: String,
+      @TempDir directory: Path,
+  ) {
+    val bits = if (suffix == "h") 16 else 32
+    val scale = 1L shl (bits - 1)
+    val mask = -1L ushr (64 - bits)
+    val cases =
+        listOf(
             Triple("mul_q", 0x79051fdc, listOf(scale - 1, 0L)),
             Triple("mulr_q", 0x7b051fdc, listOf(scale - 1, 1L)),
             Triple("madd_q", 0x79451fdc, listOf(scale - 1, 3L)),
@@ -75,25 +94,32 @@ class Mars64VectorWideningTest {
             Triple("msub_q", 0x79851fdc, listOf(-scale, 2L)),
             Triple("msubr_q", 0x7b851fdc, listOf(-scale, 3L)),
         )
-        val file = Files.writeString(directory.resolve("fixed.s"), cases.joinToString("\n") { (name) ->
-            $$"$$name.$$suffix $w31,$w3,$w5"
-        })
-        fun fill(value: Long): Long =
-            (0 until 64 step bits).fold(0L) { acc, shift -> acc or ((value and mask) shl shift) }
-        TestSessions.create().use { session ->
-            session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(file), null, extended = false, warnings = false)
-            val fpu = session.coprocessor1
-            fpu.updateVector(3, VectorRegister(fill(-scale), fill(1)))
-            fpu.updateVector(5, VectorRegister(fill(-scale), fill(scale / 2)))
-            for ((index, case) in cases.withIndex()) {
-                val (name, word, output) = case
-                assertEquals(word + if (bits == 32) (1 shl 21) else 0, program.machineList!![index].binaryStatement, name)
-                fpu.updateVector(31, VectorRegister(fill(-1), fill(3)))
-                program.simulate(1)
-                assertEquals(VectorRegister(fill(output[0]), fill(output[1])), fpu.readVector(31), name)
-            }
-        }
+    val file =
+        Files.writeString(
+            directory.resolve("fixed.s"),
+            cases.joinToString("\n") { (name) ->
+              $$"$$name.$$suffix $w31,$w3,$w5"
+            },
+        )
+    fun fill(value: Long): Long =
+        (0 until 64 step bits).fold(0L) { acc, shift -> acc or ((value and mask) shl shift) }
+    TestSessions.create().use { session ->
+      session.selectTarget(MarsTarget.MARS64)
+      val program = session.assemble(listOf(file), null, extended = false, warnings = false)
+      val fpu = session.coprocessor1
+      fpu.updateVector(3, VectorRegister(fill(-scale), fill(1)))
+      fpu.updateVector(5, VectorRegister(fill(-scale), fill(scale / 2)))
+      for ((index, case) in cases.withIndex()) {
+        val (name, word, output) = case
+        assertEquals(
+            word + if (bits == 32) (1 shl 21) else 0,
+            program.machineList!![index].binaryStatement,
+            name,
+        )
+        fpu.updateVector(31, VectorRegister(fill(-1), fill(3)))
+        program.simulate(1)
+        assertEquals(VectorRegister(fill(output[0]), fill(output[1])), fpu.readVector(31), name)
+      }
     }
-
+  }
 }

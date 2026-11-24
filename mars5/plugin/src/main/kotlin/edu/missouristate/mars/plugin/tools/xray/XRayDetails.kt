@@ -15,16 +15,16 @@ import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.VerticallyScrollableContainer
 
 internal fun xRayDetailsContent(description: State<String>): @Composable () -> Unit = {
-    VerticallyScrollableContainer(modifier = Modifier.fillMaxSize()) {
-        SelectionContainer(Modifier.padding(8.dp)) {
-            val details = description.value
-            val headingLength = details.substringBefore('\n').length
-            val text = buildAnnotatedString {
-                append(details)
-                addStyle(SpanStyle(fontWeight = FontWeight.SemiBold), 0, headingLength)
-                addStyle(SpanStyle(fontFamily = FontFamily.Monospace), headingLength, details.length)
-            }
-            Text(text)
-        }
+  VerticallyScrollableContainer(modifier = Modifier.fillMaxSize()) {
+    SelectionContainer(Modifier.padding(8.dp)) {
+      val details = description.value
+      val headingLength = details.substringBefore('\n').length
+      val text = buildAnnotatedString {
+        append(details)
+        addStyle(SpanStyle(fontWeight = FontWeight.SemiBold), 0, headingLength)
+        addStyle(SpanStyle(fontFamily = FontFamily.Monospace), headingLength, details.length)
+      }
+      Text(text)
     }
+  }
 }

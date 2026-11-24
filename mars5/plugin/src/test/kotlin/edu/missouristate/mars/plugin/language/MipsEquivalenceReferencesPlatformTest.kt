@@ -34,34 +34,41 @@ import org.junit.jupiter.api.io.TempDir
 
 @TestApplication
 class MipsEquivalenceReferencesPlatformTest {
-    private val project = codeInsightProjectFixture()
-    private val fixture by codeInsightFixture(project)
+  private val project = codeInsightProjectFixture()
+  private val fixture by codeInsightFixture(project)
 
-    @Test
-    fun `a short equivalence can acquire its definition from a prior alias`(@TempDir directory: Path) =
-        timeoutRunBlocking {
-            val definition = ".eqv DECLARE VALUE 7\n"
-            val shortForm = ".eqv DECLARE\n"
-            val use = $$"addiu $t0, $zero, VALUE\n"
-            val source = definition + shortForm + use
-            val entry = directory.resolve("short-equivalence.asm").also { it.writeText(source) }
-            val program = project.get().service<MarsSessionService>().context.assemble(listOf(entry), null, extended = true, warnings = false)
-            assertEquals(listOf(0x24080007), program.machineList!!.map { it.binaryStatement })
+  @Test
+  fun `a short equivalence can acquire its definition from a prior alias`(
+      @TempDir directory: Path,
+  ) = timeoutRunBlocking {
+    val definition = ".eqv DECLARE VALUE 7\n"
+    val shortForm = ".eqv DECLARE\n"
+    val use = $$"addiu $t0, $zero, VALUE\n"
+    val source = definition + shortForm + use
+    val entry = directory.resolve("short-equivalence.asm").also { it.writeText(source) }
+    val program =
+        project
+            .get()
+            .service<MarsSessionService>()
+            .context
+            .assemble(listOf(entry), null, extended = true, warnings = false)
+    assertEquals(listOf(0x24080007), program.machineList!!.map { it.binaryStatement })
 
-            val alias = target(definition + shortForm.replace("DECLARE", "DEC<caret>LARE") + use)
-            assertEquals("DECLARE", alias?.name)
-            assertEquals(SymbolKind.CONSTANT, alias?.kind)
-            val generated = target(definition + shortForm + use.replace("VALUE", "VAL<caret>UE"))
-            assertEquals(".eqv", generated?.name)
-            assertEquals(definition.length, generated?.offset)
-            assertNull(target(shortForm + definition + use.replace("VALUE", "VAL<caret>UE")))
-        }
+    val alias = target(definition + shortForm.replace("DECLARE", "DEC<caret>LARE") + use)
+    assertEquals("DECLARE", alias?.name)
+    assertEquals(SymbolKind.CONSTANT, alias?.kind)
+    val generated = target(definition + shortForm + use.replace("VALUE", "VAL<caret>UE"))
+    assertEquals(".eqv", generated?.name)
+    assertEquals(definition.length, generated?.offset)
+    assertNull(target(shortForm + definition + use.replace("VALUE", "VAL<caret>UE")))
+  }
 
-    @Test
-    fun `go to declaration reaches the first definition in include expansion order`() = timeoutRunBlocking {
+  @Test
+  fun `go to declaration reaches the first definition in include expansion order`() =
+      timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("parts/outer.s", ".include \"inner.s\"\n.eqv COUNT 4\n")
-            fixture.addFileToProject("parts/inner.s", ".eqv COUNT 4\n")
+          fixture.addFileToProject("parts/outer.s", ".include \"inner.s\"\n.eqv COUNT 4\n")
+          fixture.addFileToProject("parts/inner.s", ".eqv COUNT 4\n")
         }
         val include = ".include \"parts/outer.s\"\n"
         val definition = ".eqv COUNT 4\n"
@@ -70,205 +77,240 @@ class MipsEquivalenceReferencesPlatformTest {
         assertTrue(target("$definition$include$use")?.inEntry == true)
         assertNull(target("$use$include"))
         assertNull(target("$definition${use.replace("CO<caret>UNT", "co<caret>unt")}"))
-    }
+      }
 
-    @Test
-    fun `equivalence lookup terminates on include cycles and waits for the index`() = timeoutRunBlocking {
+  @Test
+  fun `equivalence lookup terminates on include cycles and waits for the index`() =
+      timeoutRunBlocking {
         val current = project.get()
         withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("cycle.s", ".include \"cycle.s\"\n.eqv COUNT 4\n")
-            fixture.configureByText("entry.asm", $$".include \"cycle.s\"\nli $t0, CO<caret>UNT\n")
+          fixture.addFileToProject("cycle.s", ".include \"cycle.s\"\n.eqv COUNT 4\n")
+          fixture.configureByText("entry.asm", $$".include \"cycle.s\"\nli $t0, CO<caret>UNT\n")
         }
         IndexingTestUtil.suspendUntilIndexesAreReady(current)
         withContext(Dispatchers.EDT) {
-            val file = fixture.file as MipsFile
-            val position = file.findElementAt(fixture.editor.caretModel.offset)!!
-            val analysis = current.service<MarsAnalysisService>()
-            DumbModeTestUtils.runInDumbModeSynchronously(current) {
-                assertNull(analysis.equivalenceTarget(file, position))
-            }
-            assertEquals("cycle.s", analysis.equivalenceTarget(file, position)?.containingFile?.name)
+          val file = fixture.file as MipsFile
+          val position = file.findElementAt(fixture.editor.caretModel.offset)!!
+          val analysis = current.service<MarsAnalysisService>()
+          DumbModeTestUtils.runInDumbModeSynchronously(current) {
+            assertNull(analysis.equivalenceTarget(file, position))
+          }
+          assertEquals("cycle.s", analysis.equivalenceTarget(file, position)?.containingFile?.name)
         }
-    }
+      }
 
-    @Test
-    fun `equivalences bind in immediate segment macro argument and operation positions`() = timeoutRunBlocking {
-        for ((source, name) in listOf(
-            $$".eqv VALUE 4\nsll $t0, $t1, VA<caret>LUE\n" to "VALUE",
-            ".eqv BASE 0x10010000\n.data BA<caret>SE\n" to "BASE",
-            ".eqv EMIT nop\nEM<caret>IT\n" to "EMIT",
-            ".eqv VALUE 4\nemit(VA<caret>LUE)\n" to "VALUE",
-            $$".eqv END )\nlw $t0, 4($sp E<caret>ND\n" to "END",
-            $$".eqv VALUE 4\n.eqv ALIAS VALUE\nli $t0, AL<caret>IAS\n" to "ALIAS",
-            ".macro emit\n.eqv VALUE 4\n.end_macro\n.word VA<caret>LUE\n" to "VALUE",
-        )) {
-            val declaration = target(source)
-            assertEquals(name, declaration?.name, source)
-            assertEquals(SymbolKind.CONSTANT, declaration?.kind, source)
+  @Test
+  fun `equivalences bind in immediate segment macro argument and operation positions`() =
+      timeoutRunBlocking {
+        for ((source, name) in
+            listOf(
+                $$".eqv VALUE 4\nsll $t0, $t1, VA<caret>LUE\n" to "VALUE",
+                ".eqv BASE 0x10010000\n.data BA<caret>SE\n" to "BASE",
+                ".eqv EMIT nop\nEM<caret>IT\n" to "EMIT",
+                ".eqv VALUE 4\nemit(VA<caret>LUE)\n" to "VALUE",
+                $$".eqv END )\nlw $t0, 4($sp E<caret>ND\n" to "END",
+                $$".eqv VALUE 4\n.eqv ALIAS VALUE\nli $t0, AL<caret>IAS\n" to "ALIAS",
+                ".macro emit\n.eqv VALUE 4\n.end_macro\n.word VA<caret>LUE\n" to "VALUE",
+            )) {
+          val declaration = target(source)
+          assertEquals(name, declaration?.name, source)
+          assertEquals(SymbolKind.CONSTANT, declaration?.kind, source)
         }
         assertNull(target(".eqv VALUE 4\n.eqv ALIAS VA<caret>LUE\n"))
         assertNull(target($$".eqv VALUE\nli $t0, VA<caret>LUE\n"))
+      }
+
+  @Test
+  fun `generated equivalences follow physical include order and use the first valid definition`(
+      @TempDir directory: Path,
+  ) = timeoutRunBlocking {
+    val generator = ".eqv DEFINE .eqv\n.eqv MAKE DEFINE\n"
+    val definitions = "start: MAKE COUNT 7\nMAKE LIMIT COUNT\n"
+    val include = ".include \"definitions.s\"\n"
+    val use = $$"addiu $t0, $zero, LI<caret>MIT\n"
+    withContext(Dispatchers.EDT) { fixture.addFileToProject("definitions.s", definitions) }
+    val source = "$generator$include$use"
+    assertEquals(
+        Target("definitions.s", "MAKE", null, false, definitions.lastIndexOf("MAKE")),
+        target(source),
+    )
+    assertNull(target("$generator$use$include"))
+    assertEquals("MAKE", target("$generator$include.eqv LIMIT 9\n$use")?.name)
+    assertEquals("LIMIT", target("$generator.eqv LIMIT 9\n$include$use")?.name)
+    val malformed = "$generator.eqv LIMIT LIMIT\nMAKE LIMIT\nMAKE LIMIT LIMIT\n"
+    assertEquals("MAKE", target("$malformed$include$use")?.name)
+    assertNull(target("$malformed$use"))
+
+    directory.resolve("definitions.s").writeText(definitions)
+    val entry = directory.resolve("entry.asm").also { it.writeText(source.replace("<caret>", "")) }
+    val program =
+        project
+            .get()
+            .service<MarsSessionService>()
+            .context
+            .assemble(listOf(entry), null, extended = true, warnings = false)
+    assertEquals(listOf(0x24080007), program.machineList!!.map { it.binaryStatement })
+  }
+
+  @Test
+  fun `macro operands that record equivalences are visible after the call`(
+      @TempDir directory: Path,
+  ) = timeoutRunBlocking {
+    val macro = ".macro discard (%first, %directive, %name, %value)\nnop\n.end_macro\n"
+    val use = $$"addiu $t0, $zero, CO<caret>UNT\n"
+    val context = project.get().service<MarsSessionService>().context
+    for (directive in listOf(".eQv", "DEFINE")) {
+      val call = "discard ignored $directive COUNT 7\n"
+      val source = ".eqv DEFINE .eqv\n$macro$call$use"
+      val entry =
+          directory.resolve("entry.asm").also { it.writeText(source.replace("<caret>", "")) }
+      val program = context.assemble(listOf(entry), null, extended = true, warnings = false)
+      assertEquals(listOf(0, 0x24080007), program.machineList!!.map { it.binaryStatement })
+      val declaration = target(source)
+      assertTrue(declaration?.inEntry == true)
+      assertEquals(directive, declaration?.name)
+      assertEquals(source.indexOf(directive, source.indexOf(call)), declaration?.offset)
+      assertNull(target(".eqv DEFINE .eqv\n$macro$use$call"))
     }
+  }
 
-    @Test
-    fun `generated equivalences follow physical include order and use the first valid definition`(@TempDir directory: Path) = timeoutRunBlocking {
-        val generator = ".eqv DEFINE .eqv\n.eqv MAKE DEFINE\n"
-        val definitions = "start: MAKE COUNT 7\nMAKE LIMIT COUNT\n"
-        val include = ".include \"definitions.s\"\n"
-        val use = $$"addiu $t0, $zero, LI<caret>MIT\n"
-        withContext(Dispatchers.EDT) { fixture.addFileToProject("definitions.s", definitions) }
-        val source = "$generator$include$use"
-        assertEquals(Target("definitions.s", "MAKE", null, false, definitions.lastIndexOf("MAKE")), target(source))
-        assertNull(target("$generator$use$include"))
-        assertEquals("MAKE", target("$generator$include.eqv LIMIT 9\n$use")?.name)
-        assertEquals("LIMIT", target("$generator.eqv LIMIT 9\n$include$use")?.name)
-        val malformed = "$generator.eqv LIMIT LIMIT\nMAKE LIMIT\nMAKE LIMIT LIMIT\n"
-        assertEquals("MAKE", target("$malformed$include$use")?.name)
-        assertNull(target("$malformed$use"))
-
-        directory.resolve("definitions.s").writeText(definitions)
-        val entry = directory.resolve("entry.asm").also { it.writeText(source.replace("<caret>", "")) }
-        val program = project.get().service<MarsSessionService>().context.assemble(listOf(entry), null, extended = true, warnings = false)
-        assertEquals(listOf(0x24080007), program.machineList!!.map { it.binaryStatement })
+  @Test
+  fun `third token equivalences in unused macro bodies are visible in later source`(
+      @TempDir directory: Path,
+  ) = timeoutRunBlocking {
+    val aliases = ".eqv DEFINE .eqv\n.eqv WHOLE .eqv COUNT 7\n.eqv PREFIX 2 .eqv COUNT 7\n"
+    val beforeBody = "$aliases.macro unused\n"
+    val use = $$"addiu $t0, $zero, CO<caret>UNT\n"
+    val context = project.get().service<MarsSessionService>().context
+    for ((body, site) in
+        listOf(
+            $$"li $t0 .eqv COUNT 7" to ".eqv",
+            $$"li $t0 DEFINE COUNT 7" to "DEFINE",
+            "1 2 .eqv COUNT 7" to ".eqv",
+            "-1 , 'A' DEFINE COUNT 7" to "DEFINE",
+            "1 2 WHOLE" to "WHOLE",
+            "-1 PREFIX" to "PREFIX",
+        )) {
+      val macro = "$beforeBody$body\n.end_macro\n"
+      val source = macro + use
+      val entry =
+          directory.resolve("positional.asm").also { it.writeText(source.replace("<caret>", "")) }
+      val program = context.assemble(listOf(entry), null, extended = true, warnings = false)
+      assertEquals(listOf(0x24080007), program.machineList!!.map { it.binaryStatement }, body)
+      val declaration = target(source)
+      assertEquals(site, declaration?.name, body)
+      assertEquals(beforeBody.length + body.indexOf(site), declaration?.offset, body)
+      readAction {
+        assertTrue(
+            PsiTreeUtil.findChildrenOfType(fixture.file, PsiErrorElement::class.java).isEmpty(),
+            body,
+        )
+      }
+      assertNull(target(use + macro), body)
     }
-
-    @Test
-    fun `macro operands that record equivalences are visible after the call`(@TempDir directory: Path) = timeoutRunBlocking {
-        val macro = ".macro discard (%first, %directive, %name, %value)\nnop\n.end_macro\n"
-        val use = $$"addiu $t0, $zero, CO<caret>UNT\n"
-        val context = project.get().service<MarsSessionService>().context
-        for (directive in listOf(".eQv", "DEFINE")) {
-            val call = "discard ignored $directive COUNT 7\n"
-            val source = ".eqv DEFINE .eqv\n$macro$call$use"
-            val entry = directory.resolve("entry.asm").also { it.writeText(source.replace("<caret>", "")) }
-            val program = context.assemble(listOf(entry), null, extended = true, warnings = false)
-            assertEquals(listOf(0, 0x24080007), program.machineList!!.map { it.binaryStatement })
-            val declaration = target(source)
-            assertTrue(declaration?.inEntry == true)
-            assertEquals(directive, declaration?.name)
-            assertEquals(source.indexOf(directive, source.indexOf(call)), declaration?.offset)
-            assertNull(target(".eqv DEFINE .eqv\n$macro$use$call"))
-        }
+    for (body in listOf("li .eqv COUNT 7", ".word 1 .eqv COUNT 7", "1 2 .set COUNT 7")) {
+      assertNull(target("$beforeBody$body\n.end_macro\n$use"), body)
     }
+  }
 
-    @Test
-    fun `third token equivalences in unused macro bodies are visible in later source`(@TempDir directory: Path) =
-        timeoutRunBlocking {
-            val aliases = ".eqv DEFINE .eqv\n.eqv WHOLE .eqv COUNT 7\n.eqv PREFIX 2 .eqv COUNT 7\n"
-            val beforeBody = "$aliases.macro unused\n"
-            val use = $$"addiu $t0, $zero, CO<caret>UNT\n"
-            val context = project.get().service<MarsSessionService>().context
-            for ((body, site) in listOf(
-                $$"li $t0 .eqv COUNT 7" to ".eqv",
-                $$"li $t0 DEFINE COUNT 7" to "DEFINE",
-                "1 2 .eqv COUNT 7" to ".eqv",
-                "-1 , 'A' DEFINE COUNT 7" to "DEFINE",
-                "1 2 WHOLE" to "WHOLE",
-                "-1 PREFIX" to "PREFIX",
-            )) {
-                val macro = "$beforeBody$body\n.end_macro\n"
-                val source = macro + use
-                val entry = directory.resolve("positional.asm").also { it.writeText(source.replace("<caret>", "")) }
-                val program = context.assemble(listOf(entry), null, extended = true, warnings = false)
-                assertEquals(listOf(0x24080007), program.machineList!!.map { it.binaryStatement }, body)
-                val declaration = target(source)
-                assertEquals(site, declaration?.name, body)
-                assertEquals(beforeBody.length + body.indexOf(site), declaration?.offset, body)
-                readAction { assertTrue(PsiTreeUtil.findChildrenOfType(fixture.file, PsiErrorElement::class.java).isEmpty(), body) }
-                assertNull(target(use + macro), body)
-            }
-            for (body in listOf("li .eqv COUNT 7", ".word 1 .eqv COUNT 7", "1 2 .set COUNT 7")) {
-                assertNull(target("$beforeBody$body\n.end_macro\n$use"), body)
-            }
-        }
+  @Test
+  fun `references follow actual substitutions when a line defines an equivalence`(
+      @TempDir directory: Path,
+  ) = timeoutRunBlocking {
+    val definitions = ".eqv VALUE 7\n.eqv MAKE .eqv\n"
+    val macro = ".macro discard (%first, %directive, %name, %value)\n.end_macro\n"
+    for (line in listOf("MAKE RESULT VALUE", "discard VALUE .eqv RESULT VALUE")) {
+      val before = definitions + macro
+      val use = $$"addiu $t0, $zero, RESULT\n"
+      val source = "$before$line\n$use"
+      val entry = directory.resolve("definition.asm").also { it.writeText(source) }
+      val program =
+          project
+              .get()
+              .service<MarsSessionService>()
+              .context
+              .assemble(listOf(entry), null, extended = true, warnings = false)
+      assertEquals(listOf(0x24080007), program.machineList!!.map { it.binaryStatement })
+      for (value in Regex("VALUE").findAll(line)) {
+        val atValue = line.replaceRange(value.range.first, value.range.first, "<caret>")
+        assertNull(target("$before$atValue\n$use"), atValue)
+      }
+      val result = target("$before$line\n" + use.replace("RESULT", "RES<caret>ULT"))
+      assertEquals(if (line.startsWith("MAKE")) "MAKE" else ".eqv", result?.name)
+    }
+    val usageSource = $$"$${definitions}MAKE RESULT VALUE\nli $t0, VALUE\n"
+    assertEquals("MAKE", target(usageSource.replace("MAKE RESULT", "MA<caret>KE RESULT"))?.name)
+    readAction {
+      val definition =
+          fixture.file.findElementAt(usageSource.indexOf("VALUE"))!!.parent as MipsDeclaration
+      val usages = fixture.findUsages(definition).map { it.reference!!.element.textOffset }
+      assertEquals(listOf(usageSource.lastIndexOf("VALUE")), usages)
+    }
+    val cycle = $$".eqv FIRST SECOND\n.eqv SECOND FIRST\nli $t0, F<caret>IRST\n"
+    assertEquals("FIRST", target(cycle)?.name)
+  }
 
-    @Test
-    fun `references follow actual substitutions when a line defines an equivalence`(@TempDir directory: Path) =
-        timeoutRunBlocking {
-            val definitions = ".eqv VALUE 7\n.eqv MAKE .eqv\n"
-            val macro = ".macro discard (%first, %directive, %name, %value)\n.end_macro\n"
-            for (line in listOf("MAKE RESULT VALUE", "discard VALUE .eqv RESULT VALUE")) {
-                val before = definitions + macro
-                val use = $$"addiu $t0, $zero, RESULT\n"
-                val source = "$before$line\n$use"
-                val entry = directory.resolve("definition.asm").also { it.writeText(source) }
-                val program = project.get().service<MarsSessionService>().context.assemble(listOf(entry), null, extended = true, warnings = false)
-                assertEquals(listOf(0x24080007), program.machineList!!.map { it.binaryStatement })
-                for (value in Regex("VALUE").findAll(line)) {
-                    val atValue = line.replaceRange(value.range.first, value.range.first, "<caret>")
-                    assertNull(target("$before$atValue\n$use"), atValue)
-                }
-                val result = target("$before$line\n" + use.replace("RESULT", "RES<caret>ULT"))
-                assertEquals(if (line.startsWith("MAKE")) "MAKE" else ".eqv", result?.name)
-            }
-            val usageSource = $$"$${definitions}MAKE RESULT VALUE\nli $t0, VALUE\n"
-            assertEquals("MAKE", target(usageSource.replace("MAKE RESULT", "MA<caret>KE RESULT"))?.name)
-            readAction {
-                val definition = fixture.file.findElementAt(usageSource.indexOf("VALUE"))!!.parent as MipsDeclaration
-                val usages = fixture.findUsages(definition).map { it.reference!!.element.textOffset }
-                assertEquals(listOf(usageSource.lastIndexOf("VALUE")), usages)
-            }
-            val cycle = $$".eqv FIRST SECOND\n.eqv SECOND FIRST\nli $t0, F<caret>IRST\n"
-            assertEquals("FIRST", target(cycle)?.name)
-        }
-
-    @Test
-    // Kotlin exposes the reported Java setters as read-only properties.
-    @Suppress("UsePropertyAccessSyntax")
-    fun `generated lookups refresh when an include appears or its unsaved PSI changes`() = timeoutRunBlocking {
+  @Test
+  // Kotlin exposes the reported Java setters as read-only properties.
+  @Suppress("UsePropertyAccessSyntax")
+  fun `generated lookups refresh when an include appears or its unsaved PSI changes`() =
+      timeoutRunBlocking {
         val current = project.get()
         val source = $$".eqv DEFINE .eqv\n.include \"late.s\"\nli $t0, CO<caret>UNT\n"
         assertNull(target(source))
-        val included = withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("late.s", "DEFINE COUNT 7\n").virtualFile
-        }
+        val included =
+            withContext(Dispatchers.EDT) {
+              fixture.addFileToProject("late.s", "DEFINE COUNT 7\n").virtualFile
+            }
         IndexingTestUtil.suspendUntilIndexesAreReady(current)
         assertEquals("late.s", targetAtCaret()?.file)
         withContext(Dispatchers.EDT) {
-            val document = FileDocumentManager.getInstance().getDocument(included)!!
-            WriteCommandAction.runWriteCommandAction(current) {
-                document.setText("DEFINE OTHER 7\n")
-                PsiDocumentManager.getInstance(current).commitAllDocuments()
-            }
+          val document = FileDocumentManager.getInstance().getDocument(included)!!
+          WriteCommandAction.runWriteCommandAction(current) {
+            document.setText("DEFINE OTHER 7\n")
+            PsiDocumentManager.getInstance(current).commitAllDocuments()
+          }
         }
         assertNull(targetAtCaret())
-    }
+      }
 
-    @Test
-    // Kotlin exposes the reported Java setters as read-only properties.
-    @Suppress("UsePropertyAccessSyntax")
-    fun `included sources follow a unique entry before assembly and respect explicit entry selection`() = timeoutRunBlocking {
+  @Test
+  // Kotlin exposes the reported Java setters as read-only properties.
+  @Suppress("UsePropertyAccessSyntax")
+  fun `included sources follow a unique entry before assembly and respect explicit entry selection`() =
+      timeoutRunBlocking {
         val current = project.get()
         val source = $$"li $t0, VALUE\n"
         val include = ".include \"part.s\"\n"
         val firstSource = ".eqv VALUE 7\n$include"
         val secondSource = ".eqv VALUE 8\n$include"
-        val (first, second, part) = withContext(Dispatchers.EDT) {
-            val first = fixture.addFileToProject("first.asm", firstSource).virtualFile
-            val second = fixture.addFileToProject("second.asm", ".eqv VALUE 8\n").virtualFile
-            val part = fixture.addFileToProject("part.s", source).virtualFile
-            fixture.configureFromExistingVirtualFile(part)
-            fixture.editor.caretModel.moveToOffset(source.indexOf("VALUE"))
-            Triple(first, second, part)
-        }
-        suspend fun edit(file: VirtualFile, text: String) {
+        val (first, second, part) =
             withContext(Dispatchers.EDT) {
-                val document = FileDocumentManager.getInstance().getDocument(file)!!
-                WriteCommandAction.runWriteCommandAction(current) {
-                    document.setText(text)
-                    PsiDocumentManager.getInstance(current).commitAllDocuments()
-                }
+              val first = fixture.addFileToProject("first.asm", firstSource).virtualFile
+              val second = fixture.addFileToProject("second.asm", ".eqv VALUE 8\n").virtualFile
+              val part = fixture.addFileToProject("part.s", source).virtualFile
+              fixture.configureFromExistingVirtualFile(part)
+              fixture.editor.caretModel.moveToOffset(source.indexOf("VALUE"))
+              Triple(first, second, part)
             }
-            IndexingTestUtil.suspendUntilIndexesAreReady(current)
+        suspend fun edit(file: VirtualFile, text: String) {
+          withContext(Dispatchers.EDT) {
+            val document = FileDocumentManager.getInstance().getDocument(file)!!
+            WriteCommandAction.runWriteCommandAction(current) {
+              document.setText(text)
+              PsiDocumentManager.getInstance(current).commitAllDocuments()
+            }
+          }
+          IndexingTestUtil.suspendUntilIndexesAreReady(current)
         }
         IndexingTestUtil.suspendUntilIndexesAreReady(current)
         assertEquals(first.name, targetAtCaret()?.file)
         withContext(Dispatchers.EDT) {
-            DumbModeTestUtils.runInDumbModeSynchronously(current) {
-                val file = fixture.file as MipsFile
-                val timeline = current.service<MarsAnalysisService>().editorTimeline(file)
-                assertFalse(timeline.sourceFiles().any { it.virtualFile == first })
-            }
+          DumbModeTestUtils.runInDumbModeSynchronously(current) {
+            val file = fixture.file as MipsFile
+            val timeline = current.service<MarsAnalysisService>().editorTimeline(file)
+            assertFalse(timeline.sourceFiles().any { it.virtualFile == first })
+          }
         }
         edit(first, "$include.eqv VALUE 7\n")
         assertNull(targetAtCaret())
@@ -285,21 +327,36 @@ class MipsEquivalenceReferencesPlatformTest {
         assertEquals(first.name, targetAtCaret()?.file)
         build.assemble(part.toNioPath())
         assertNull(targetAtCaret())
-    }
+      }
 
-    private data class Target(val file: String, val name: String?, val kind: SymbolKind?, val inEntry: Boolean, val offset: Int)
+  private data class Target(
+      val file: String,
+      val name: String?,
+      val kind: SymbolKind?,
+      val inEntry: Boolean,
+      val offset: Int,
+  )
 
-    private suspend fun target(source: String): Target? {
-        withContext(Dispatchers.EDT) { fixture.configureByText("entry.asm", source) }
-        IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
-        return targetAtCaret()
-    }
+  private suspend fun target(source: String): Target? {
+    withContext(Dispatchers.EDT) { fixture.configureByText("entry.asm", source) }
+    IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
+    return targetAtCaret()
+  }
 
-    private suspend fun targetAtCaret(): Target? = readAction {
-        val element = GotoDeclarationAction.findTargetElement(project.get(), fixture.editor, fixture.editor.caretModel.offset)
-            ?: return@readAction null
-        val declaration = element as? MipsDeclaration
-        Target(element.containingFile.name, declaration?.name ?: element.text, declaration?.kind,
-            element.containingFile == fixture.file, element.textOffset)
-    }
+  private suspend fun targetAtCaret(): Target? = readAction {
+    val element =
+        GotoDeclarationAction.findTargetElement(
+            project.get(),
+            fixture.editor,
+            fixture.editor.caretModel.offset,
+        ) ?: return@readAction null
+    val declaration = element as? MipsDeclaration
+    Target(
+        element.containingFile.name,
+        declaration?.name ?: element.text,
+        declaration?.kind,
+        element.containingFile == fixture.file,
+        element.textOffset,
+    )
+  }
 }

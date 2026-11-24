@@ -11,12 +11,15 @@ import edu.missouristate.mars.plugin.language.parser.MipsParser
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.COMMA
 
 class MipsSyntaxDefinition : GrammarKitLanguageDefinition {
-    override val comments = syntaxElementTypeSetOf(MipsTypes.syntax.getValue("COMMENT"))
-    // The assembler ignores separators. Keep their distinct lexer and PSI type for the editor.
-    override val whitespaces = syntaxElementTypeSetOf(WHITE_SPACE, COMMA)
-    override fun createLexer() = MipsLexer()
-    override fun parse(elementType: SyntaxElementType, runtime: SyntaxGeneratedParserRuntime) =
-        MipsParser.parse(elementType, runtime)
-    override fun parse(builder: SyntaxTreeBuilder) =
-        parse(MipsTypes.fileSyntax, createSyntaxGeneratedParserRuntime(MipsLanguage, builder))
+  override val comments = syntaxElementTypeSetOf(MipsTypes.syntax.getValue("COMMENT"))
+  // The assembler ignores separators. Keep their distinct lexer and PSI type for the editor.
+  override val whitespaces = syntaxElementTypeSetOf(WHITE_SPACE, COMMA)
+
+  override fun createLexer() = MipsLexer()
+
+  override fun parse(elementType: SyntaxElementType, runtime: SyntaxGeneratedParserRuntime) =
+      MipsParser.parse(elementType, runtime)
+
+  override fun parse(builder: SyntaxTreeBuilder) =
+      parse(MipsTypes.fileSyntax, createSyntaxGeneratedParserRuntime(MipsLanguage, builder))
 }

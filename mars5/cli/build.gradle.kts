@@ -6,6 +6,7 @@ plugins {
 }
 
 group = "edu.missouristate"
+
 version = "1.0-SNAPSHOT"
 
 repositories {
@@ -51,17 +52,19 @@ tasks.jar {
 
 // IntelliJ supplies the Kotlin scripting host. Share the DSL and its discovery marker
 // with the plugin without shipping the CLI entry point or a second Kotlin compiler.
-val assignmentDefinitionJar = tasks.register<Jar>("assignmentDefinitionJar") {
-  description = "Packages the MARS assignment DSL and Kotlin script discovery marker for IntelliJ."
-  archiveBaseName.set("mars-assignment-definition")
-  from(sourceSets.main.map { it.output })
-  include(
-    "edu/missouristate/mars/cli/grading/**",
-    "edu/missouristate/mars/cli/HeadlessGuiProxy.class",
-    "META-INF/kotlin/script/templates/**",
-  )
-  exclude("edu/missouristate/mars/cli/grading/GradeCommand*.class")
-}
+val assignmentDefinitionJar =
+    tasks.register<Jar>("assignmentDefinitionJar") {
+      description =
+          "Packages the MARS assignment DSL and Kotlin script discovery marker for IntelliJ."
+      archiveBaseName.set("mars-assignment-definition")
+      from(sourceSets.main.map { it.output })
+      include(
+          "edu/missouristate/mars/cli/grading/**",
+          "edu/missouristate/mars/cli/HeadlessGuiProxy.class",
+          "META-INF/kotlin/script/templates/**",
+      )
+      exclude("edu/missouristate/mars/cli/grading/GradeCommand*.class")
+    }
 
 configurations.consumable("assignmentDefinition") {
   outgoing.artifact(assignmentDefinitionJar)

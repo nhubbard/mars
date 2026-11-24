@@ -20,35 +20,35 @@ import com.intellij.platform.ide.progress.withBackgroundProgress
 import com.intellij.util.EventDispatcher
 import com.intellij.util.io.IOUtil
 import edu.missouristate.mars.ProcessingException
-import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.api.ErrorEvent
 import edu.missouristate.mars.api.InstructionSourceMap.Origin
+import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.api.SessionSyscallEnvironment
 import edu.missouristate.mars.api.SessionSyscallEnvironment.TextInput
 import edu.missouristate.mars.api.SimulatorListener
 import edu.missouristate.mars.api.StepEvent
 import edu.missouristate.mars.api.StopEvent
 import edu.missouristate.mars.core.MarsContext
+import edu.missouristate.mars.devices.DataCacheSimulator
+import edu.missouristate.mars.devices.MarsBotDevice
 import edu.missouristate.mars.plugin.MarsExecutionOptions
 import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.build.MarsAssembledProgram
 import edu.missouristate.mars.plugin.build.MarsAssemblySettings
 import edu.missouristate.mars.plugin.build.MarsBuildService
-import edu.missouristate.mars.plugin.build.MarsSourceSet
 import edu.missouristate.mars.plugin.build.MarsMemoryExportService
+import edu.missouristate.mars.plugin.build.MarsSourceSet
 import edu.missouristate.mars.plugin.build.MemoryExportSelection
 import edu.missouristate.mars.plugin.build.memoryExportMessages
-import edu.missouristate.mars.plugin.tools.MemoryGridDisplay
 import edu.missouristate.mars.plugin.tools.BranchHistoryTable
-import edu.missouristate.mars.devices.DataCacheSimulator
 import edu.missouristate.mars.plugin.tools.DigitalLabDevice
 import edu.missouristate.mars.plugin.tools.ExecutedInstructionCache
 import edu.missouristate.mars.plugin.tools.InstructionCounter
 import edu.missouristate.mars.plugin.tools.InstructionStatistics
 import edu.missouristate.mars.plugin.tools.KeyboardDisplayDevice
-import edu.missouristate.mars.devices.MarsBotDevice
 import edu.missouristate.mars.plugin.tools.MarsToolExecution
 import edu.missouristate.mars.plugin.tools.MarsToolInstructionListener
+import edu.missouristate.mars.plugin.tools.MemoryGridDisplay
 import edu.missouristate.mars.plugin.tools.ScavengerHuntDevice
 import edu.missouristate.mars.plugin.tools.bitmapDisplayFile
 import edu.missouristate.mars.plugin.tools.configureSourceTools
@@ -59,6 +59,7 @@ import edu.missouristate.mars.simulator.SimulatorEngine
 import java.io.BufferedInputStream
 import java.io.ByteArrayOutputStream
 import java.io.IOException
+import java.io.OutputStream
 import java.io.PrintStream
 import java.nio.ByteBuffer
 import java.nio.CharBuffer
@@ -68,6 +69,7 @@ import java.nio.charset.CodingErrorAction.REPLACE
 import java.nio.file.Path
 import java.util.concurrent.CompletableFuture
 import java.util.function.LongPredicate
+import kotlin.io.path.invariantSeparatorsPathString
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -78,61 +80,94 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.future.asDeferred
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.OutputStream
-import kotlin.io.path.invariantSeparatorsPathString
 
 @Service(Service.Level.PROJECT)
-internal class MarsRunService(private val project: Project, private val scope: CoroutineScope) : Disposable {
-    init {
-        project.messageBus.connect(this).subscribe(ExecutionManager.EXECUTION_TOPIC, object : ExecutionListener {
-            override fun processNotStarted(executorId: String, env: ExecutionEnvironment) {
+internal class MarsRunService(private val project: Project, private val scope: CoroutineScope) :
+    Disposable {
+  init {
+    project.messageBus
+        .connect(this)
+        .subscribe(
+            ExecutionManager.EXECUTION_TOPIC,
+            object : ExecutionListener {
+              override fun processNotStarted(executorId: String, env: ExecutionEnvironment) {
                 env.getUserData(launchAssemblyKey)?.let(Disposer::dispose)
-            }
-        })
-    }
-
-    override fun dispose() = Unit
-
-    fun prepareLaunch(launch: MarsLaunchAssembly) = scope.async(Dispatchers.Default) {
-        withBackgroundProgress(project, runMessages.getMessage("run.before.launch.assemble")) {
-            if (launch.hasProgram()) return@withBackgroundProgress true
-            if (!Disposer.tryRegister(this@MarsRunService, launch)) return@withBackgroundProgress false
-            val program = project.service<MarsBuildService>().prepare(launch.sources, launch.options, activateBuildView = true)
-            program != null && launch.store(program)
-        }
-    }
-
-    fun createProcess(
-        entry: Path,
-        options: MarsExecutionOptions = project.service<MarsAssemblySettings>().executionOptions,
-        memoryDumps: List<MemoryExportSelection>,
-        captureBitmap: Boolean = false,
-        captureReferences: Boolean = false,
-        connectDigitalLab: Boolean = false,
-        connectKeyboardDisplay: Boolean = false,
-        connectMarsBot: Boolean = false,
-        connectScavengerHunt: Boolean = false,
-        launch: MarsLaunchAssembly = MarsLaunchAssembly(MarsSourceSet(entry), options),
-        arguments: List<String> = emptyList(),
-        workingDirectory: Path = entry.parent,
-        inputMode: MarsInputMode = MarsInputMode.CONSOLE,
-        instructionLimit: Int = 0,
-        runSpeed: Float = 0f,
-        startAtMain: Boolean = false,
-        backstepLimit: Int = project.service<MarsAssemblySettings>().backstepLimit,
-        execute: suspend MarsProcessHandler.(MarsContext, MarsExecutionSources) -> StopEvent = { machine, _ -> runSlice(machine.simulator()) },
-    ): MarsProcessHandler {
-        require(!connectMarsBot || !connectScavengerHunt) { runMessages.getMessage("run.connect.deviceConflict") }
-        return MarsProcessHandler(
-            project, scope, launch, Pipe.open(), memoryDumps, arguments, workingDirectory, inputMode, instructionLimit, runSpeed,
-            startAtMain, captureBitmap, captureReferences, connectDigitalLab, connectKeyboardDisplay, connectMarsBot,
-            connectScavengerHunt, backstepLimit, execute,
+              }
+            },
         )
+  }
+
+  override fun dispose() = Unit
+
+  fun prepareLaunch(launch: MarsLaunchAssembly) =
+      scope.async(Dispatchers.Default) {
+        withBackgroundProgress(project, runMessages.getMessage("run.before.launch.assemble")) {
+          if (launch.hasProgram()) return@withBackgroundProgress true
+          if (!Disposer.tryRegister(this@MarsRunService, launch))
+              return@withBackgroundProgress false
+          val program =
+              project
+                  .service<MarsBuildService>()
+                  .prepare(launch.sources, launch.options, activateBuildView = true)
+          program != null && launch.store(program)
+        }
+      }
+
+  fun createProcess(
+      entry: Path,
+      options: MarsExecutionOptions = project.service<MarsAssemblySettings>().executionOptions,
+      memoryDumps: List<MemoryExportSelection>,
+      captureBitmap: Boolean = false,
+      captureReferences: Boolean = false,
+      connectDigitalLab: Boolean = false,
+      connectKeyboardDisplay: Boolean = false,
+      connectMarsBot: Boolean = false,
+      connectScavengerHunt: Boolean = false,
+      launch: MarsLaunchAssembly = MarsLaunchAssembly(MarsSourceSet(entry), options),
+      arguments: List<String> = emptyList(),
+      workingDirectory: Path = entry.parent,
+      inputMode: MarsInputMode = MarsInputMode.CONSOLE,
+      instructionLimit: Int = 0,
+      runSpeed: Float = 0f,
+      startAtMain: Boolean = false,
+      backstepLimit: Int = project.service<MarsAssemblySettings>().backstepLimit,
+      execute: suspend MarsProcessHandler.(MarsContext, MarsExecutionSources) -> StopEvent =
+          { machine, _ ->
+            runSlice(machine.simulator())
+          },
+  ): MarsProcessHandler {
+    require(!connectMarsBot || !connectScavengerHunt) {
+      runMessages.getMessage("run.connect.deviceConflict")
     }
+    return MarsProcessHandler(
+        project,
+        scope,
+        launch,
+        Pipe.open(),
+        memoryDumps,
+        arguments,
+        workingDirectory,
+        inputMode,
+        instructionLimit,
+        runSpeed,
+        startAtMain,
+        captureBitmap,
+        captureReferences,
+        connectDigitalLab,
+        connectKeyboardDisplay,
+        connectMarsBot,
+        connectScavengerHunt,
+        backstepLimit,
+        execute,
+    )
+  }
 }
 
 internal class MarsProcessHandler(
-    private val project: Project, scope: CoroutineScope, private val launch: MarsLaunchAssembly, private val input: Pipe,
+    private val project: Project,
+    scope: CoroutineScope,
+    private val launch: MarsLaunchAssembly,
+    private val input: Pipe,
     private val memoryDumps: List<MemoryExportSelection>,
     private val arguments: List<String>,
     private val workingDirectory: Path,
@@ -147,333 +182,429 @@ internal class MarsProcessHandler(
     connectMarsBot: Boolean,
     connectScavengerHunt: Boolean,
     private val backstepLimit: Int,
-    private val execute: suspend MarsProcessHandler.(MarsContext, MarsExecutionSources) -> StopEvent,
+    private val execute:
+        suspend MarsProcessHandler.(MarsContext, MarsExecutionSources) -> StopEvent,
 ) : ProcessHandler(), MarsToolExecution {
-    private val entry = launch.sources.entry
-    val sourceSet get() = launch.sources
-    val executionOptions get() = launch.options
-    private val toolInstructions = EventDispatcher.create(MarsToolInstructionListener::class.java)
-    @Volatile var runSpeed = initialRunSpeed
-    @Volatile private var console: ConsoleView? = null
-    @Volatile var capturedProgram: MarsAssembledProgram? = null
-        private set
+  private val entry = launch.sources.entry
+  val sourceSet
+    get() = launch.sources
 
-    fun bindConsole(view: ConsoleView) {
-        console = view
-        Disposer.register(view) { console = null }
+  val executionOptions
+    get() = launch.options
+
+  private val toolInstructions = EventDispatcher.create(MarsToolInstructionListener::class.java)
+  @Volatile var runSpeed = initialRunSpeed
+  @Volatile private var console: ConsoleView? = null
+  @Volatile
+  var capturedProgram: MarsAssembledProgram? = null
+    private set
+
+  fun bindConsole(view: ConsoleView) {
+    console = view
+    Disposer.register(view) { console = null }
+  }
+
+  private fun clearConsole() {
+    console?.let { view ->
+      // A console can receive output before its editor is initialized, especially in Debug.
+      view.component
+      view.clear()
     }
+  }
 
-    private fun clearConsole() {
-        console?.let { view ->
-            // A console can receive output before its editor is initialized, especially in Debug.
-            view.component
-            view.clear()
-        }
-    }
+  override fun addInstructionListener(listener: MarsToolInstructionListener, lifetime: Disposable) {
+    toolInstructions.addListener(listener, lifetime)
+  }
 
-    override fun addInstructionListener(listener: MarsToolInstructionListener, lifetime: Disposable) {
-        toolInstructions.addListener(listener, lifetime)
-    }
+  val instructionCounter = InstructionCounter()
+  val instructionStatistics = InstructionStatistics()
+  val branchHistory = BranchHistoryTable()
+  val dataCache = DataCacheSimulator()
+  val digitalLab = DigitalLabDevice(connectDigitalLab)
+  val keyboardDisplay = KeyboardDisplayDevice(connectKeyboardDisplay)
+  val marsBot = MarsBotDevice(connectMarsBot)
+  internal var connectScavengerHunt = connectScavengerHunt
+  private var scavengerHunt: ScavengerHuntDevice? = null
+  private var finishedHunt: ScavengerHuntDevice.Snapshot? = null
+  val xray = XRayTrace()
+  val bitmapDisplay = MemoryGridDisplay(captureBitmap)
+  val bitmapFile by lazy { bitmapDisplayFile(entry.fileName.toString(), bitmapDisplay) }
+  val memoryReferences = MemoryGridDisplay(captureReferences, MemoryGridDisplay.Mode.REFERENCES)
+  val target
+    get() = launch.options.target
 
-    val instructionCounter = InstructionCounter()
-    val instructionStatistics = InstructionStatistics()
-    val branchHistory = BranchHistoryTable()
-    val dataCache = DataCacheSimulator()
-    val digitalLab = DigitalLabDevice(connectDigitalLab)
-    val keyboardDisplay = KeyboardDisplayDevice(connectKeyboardDisplay)
-    val marsBot = MarsBotDevice(connectMarsBot)
-    internal var connectScavengerHunt = connectScavengerHunt
-    private var scavengerHunt: ScavengerHuntDevice? = null
-    private var finishedHunt: ScavengerHuntDevice.Snapshot? = null
-    val xray = XRayTrace()
-    val bitmapDisplay = MemoryGridDisplay(captureBitmap)
-    val bitmapFile by lazy { bitmapDisplayFile(entry.fileName.toString(), bitmapDisplay) }
-    val memoryReferences = MemoryGridDisplay(captureReferences, MemoryGridDisplay.Mode.REFERENCES)
-    val target get() = launch.options.target
-    @Volatile private var readFloatingRegisters: ((Int, Boolean) -> Long)? = null
-    @Volatile private var readIntegerRegisters: ((Int) -> Long)? = null
+  @Volatile private var readFloatingRegisters: ((Int, Boolean) -> Long)? = null
+  @Volatile private var readIntegerRegisters: ((Int) -> Long)? = null
 
-    @Synchronized
-    fun scavengerHuntSnapshot() = scavengerHunt?.snapshot() ?: finishedHunt
+  @Synchronized fun scavengerHuntSnapshot() = scavengerHunt?.snapshot() ?: finishedHunt
 
-    @Synchronized
-    fun setScavengerHuntConnected(value: Boolean) {
-        if (!value || !marsBot.snapshot().connected) scavengerHunt?.setConnected(value)
-    }
+  @Synchronized
+  fun setScavengerHuntConnected(value: Boolean) {
+    if (!value || !marsBot.snapshot().connected) scavengerHunt?.setConnected(value)
+  }
 
-    @Synchronized
-    fun setMarsBotConnected(value: Boolean) {
-        if (!value || scavengerHunt?.snapshot()?.connected != true) marsBot.setConnected(value)
-    }
+  @Synchronized
+  fun setMarsBotConnected(value: Boolean) {
+    if (!value || scavengerHunt?.snapshot()?.connected != true) marsBot.setConnected(value)
+  }
 
-    @Synchronized
-    fun resetScavengerHunt() {
-        scavengerHunt?.requestReset()
-    }
+  @Synchronized
+  fun resetScavengerHunt() {
+    scavengerHunt?.requestReset()
+  }
 
-    fun releaseScavengerHuntView() {
-        if (!connectScavengerHunt) setScavengerHuntConnected(false)
-    }
+  fun releaseScavengerHuntView() {
+    if (!connectScavengerHunt) setScavengerHuntConnected(false)
+  }
 
-    fun floatingRegisterBits(number: Int): Int? = readFloatingRegisters?.invoke(number, false)?.toInt()
+  fun floatingRegisterBits(number: Int): Int? =
+      readFloatingRegisters?.invoke(number, false)?.toInt()
 
-    /** Read on the simulator worker from an instruction listener, or after termination. */
-    fun integerRegisterBits(number: Int): Long? {
-        require(number in 0..31)
-        return readIntegerRegisters?.invoke(number)
-    }
+  /** Read on the simulator worker from an instruction listener, or after termination. */
+  fun integerRegisterBits(number: Int): Long? {
+    require(number in 0..31)
+    return readIntegerRegisters?.invoke(number)
+  }
 
-    fun floatingDoublewordBits(number: Int): Long? =
-        if (target == MarsTarget.MARS64 || number % 2 == 0) readFloatingRegisters?.invoke(number, true) else null
+  fun floatingDoublewordBits(number: Int): Long? =
+      if (target == MarsTarget.MARS64 || number % 2 == 0)
+          readFloatingRegisters?.invoke(number, true)
+      else null
 
-    // As in IntelliJ's external-task runner, ConsoleView writes to the sink on its input worker.
-    private val consoleInput = Channels.newOutputStream(input.sink())
-    private val inputCharset = EncodingManager.getInstance().defaultCharset
-    private var status = 1
-    private val execution = scope.launch(Dispatchers.Default, start = CoroutineStart.LAZY) {
+  // As in IntelliJ's external-task runner, ConsoleView writes to the sink on its input worker.
+  private val consoleInput = Channels.newOutputStream(input.sink())
+  private val inputCharset = EncodingManager.getInstance().defaultCharset
+  private var status = 1
+  private val execution =
+      scope.launch(Dispatchers.Default, start = CoroutineStart.LAZY) {
         val toolLifetime = Disposer.newDisposable("MARS source tool execution")
         try {
-            status = runProgram(toolLifetime)
+          status = runProgram(toolLifetime)
         } finally {
-            Disposer.dispose(toolLifetime)
+          Disposer.dispose(toolLifetime)
         }
-    }
+      }
 
-    init {
-        execution.invokeOnCompletion { cause ->
-            try {
-                IOUtil.closeSafe(thisLogger(), input.source(), input.sink())
-            } finally {
-                // Native debugger listeners clean up services even when the simulation was canceled.
-                ProgressManager.getInstance().executeNonCancelableSection {
-                    notifyProcessTerminated(if (cause is CancellationException) 130 else status)
-                }
-            }
+  init {
+    execution.invokeOnCompletion { cause ->
+      try {
+        IOUtil.closeSafe(thisLogger(), input.source(), input.sink())
+      } finally {
+        // Native debugger listeners clean up services even when the simulation was canceled.
+        ProgressManager.getInstance().executeNonCancelableSection {
+          notifyProcessTerminated(if (cause is CancellationException) 130 else status)
         }
+      }
     }
+  }
 
-    override fun startNotify() {
-        super.startNotify()
-        execution.start()
+  override fun startNotify() {
+    super.startNotify()
+    execution.start()
+  }
+
+  override fun destroyProcessImpl() {
+    execution.cancel()
+  }
+
+  override fun detachProcessImpl() = destroyProcessImpl()
+
+  override fun detachIsDefault() = false
+
+  override fun getProcessInput(): OutputStream = consoleInput
+
+  suspend fun runSlice(
+      simulator: SimulatorEngine,
+      steps: Long = 0,
+      breakpoint: LongPredicate? = null,
+  ): StopEvent =
+      awaitSlice(simulator) {
+        if (breakpoint == null) simulator.runAsync(steps, null)
+        else simulator.runUntilAddressAsync(steps, breakpoint)
+      }
+
+  suspend fun backstepSlice(simulator: SimulatorEngine, wholeSource: Boolean) {
+    awaitSlice(simulator) {
+      if (wholeSource) simulator.backstepSourceAsync() else simulator.backstepAsync()
     }
+  }
 
-    override fun destroyProcessImpl() { execution.cancel() }
-    override fun detachProcessImpl() = destroyProcessImpl()
-    override fun detachIsDefault() = false
-    override fun getProcessInput(): OutputStream = consoleInput
-
-    suspend fun runSlice(simulator: SimulatorEngine, steps: Long = 0, breakpoint: LongPredicate? = null): StopEvent =
-        awaitSlice(simulator) {
-            if (breakpoint == null) simulator.runAsync(steps, null) else simulator.runUntilAddressAsync(steps, breakpoint)
-        }
-
-    suspend fun backstepSlice(simulator: SimulatorEngine, wholeSource: Boolean) {
-        awaitSlice(simulator) { if (wholeSource) simulator.backstepSourceAsync() else simulator.backstepAsync() }
+  private suspend fun <T> awaitSlice(
+      simulator: SimulatorEngine,
+      start: () -> CompletableFuture<T>,
+  ): T {
+    execution.ensureActive()
+    val completion = start().asDeferred()
+    try {
+      return completion.await()
+    } catch (cancel: CancellationException) {
+      simulator.close()
+      // Closing the source releases the simulator even if a syscall is blocked in read().
+      IOUtil.closeSafe(thisLogger(), input.source())
+      withContext(NonCancellable) { completion.join() }
+      throw cancel
     }
+  }
 
-    private suspend fun <T> awaitSlice(simulator: SimulatorEngine, start: () -> CompletableFuture<T>): T {
-        execution.ensureActive()
-        val completion = start().asDeferred()
-        try {
-            return completion.await()
-        } catch (cancel: CancellationException) {
-            simulator.close()
-            // Closing the source releases the simulator even if a syscall is blocked in read().
-            IOUtil.closeSafe(thisLogger(), input.source())
-            withContext(NonCancellable) { completion.join() }
-            throw cancel
-        }
+  private suspend fun runProgram(toolLifetime: Disposable): Int {
+    val program =
+        launch.take()
+            ?: project
+                .service<MarsBuildService>()
+                .prepare(launch.sources, launch.options, activateBuildView = false)
+    if (program == null) {
+      notifyTextAvailable(
+          runMessages.getMessage("run.assembly.failed") + "\n",
+          ProcessOutputTypes.STDERR,
+      )
+      return 1
     }
-
-    private suspend fun runProgram(toolLifetime: Disposable): Int {
-        val program = launch.take() ?: project.service<MarsBuildService>().prepare(launch.sources, launch.options, activateBuildView = false)
-        if (program == null) {
-            notifyTextAvailable(runMessages.getMessage("run.assembly.failed") + "\n", ProcessOutputTypes.STDERR)
-            return 1
-        }
-        val component = MarsSessionService.createMarsComponent(backstepLimit, program.image.target)
-        return component.context().use { session ->
-            launch.options.applyTo(session.settings)
-            session.loadAssemblyImage(program.image, startAtMain, execution::ensureActive)
-            try {
-                ProgramArgumentList(arguments).storeProgramArguments(session, execution::ensureActive)
-            } catch (_: IllegalArgumentException) {
-                notifyTextAvailable(runMessages.getMessage("run.arguments.stack") + "\n", ProcessOutputTypes.STDERR)
-                return 1
-            }
-            val entryText = program.sources.snapshot.texts().getValue(entry)
-            val sourceTools = configureSourceTools(this, session.memory, entryText, toolLifetime) { line, message ->
-                notifyTextAvailable(runMessages.getMessage("run.tools.invalid", line, message) + "\n", ProcessOutputTypes.STDERR)
-            }
-            capturedProgram = program
-            val sources = MarsExecutionSources(program.sources)
-            val stdout = ConsoleOutput { notifyTextAvailable(it, ProcessOutputTypes.STDOUT) }
-            val stderr = ConsoleOutput { notifyTextAvailable(it, ProcessOutputTypes.STDERR) }
-            PrintStream(stdout, true, Charsets.UTF_8).use { output ->
-                PrintStream(stderr, true, Charsets.UTF_8).use { error ->
-                    val stdin = BufferedInputStream(Channels.newInputStream(input.source()))
-                    val dialogs = MarsSyscallDialogs(project, entry.fileName.toString(), execution)
-                    val textInput = if (inputMode == MarsInputMode.DIALOG) TextInput(dialogs::readStandardInput) else null
-                    SessionSyscallEnvironment(session.memory, stdin, output, error, workingDirectory, inputCharset, textInput).use { io ->
-                        withCustomizedSyscallEnvironment(project, entry, io) { customizedIo ->
-                            session.program!!.setSyscallEnvironment(MarsIdeSyscallEnvironment(execution, customizedIo, dialogs, ::clearConsole))
-                            val simulator = session.simulator()
-                            simulator.setInstructionLimit(instructionLimit.toLong())
-                            simulator.setRunSpeedSource { runSpeed.toDouble() }
-                            val decodedInstructions = ExecutedInstructionCache(session.instructionSet)
-                            simulator.addListener(object : SimulatorListener {
-                                override fun onStep(event: StepEvent) {
-                                    val word = event.instruction
-                                    val decoded = decodedInstructions.decode(word)
-                                    instructionCounter.record(decoded.instruction)
-                                    instructionStatistics.record(word, decoded.instruction)
-                                    branchHistory.record(event, decoded.branchTargetOffset)
-                                    xray.record(event)
-                                    digitalLab.instructionCompleted(session)
-                                    keyboardDisplay.instructionCompleted(session)
-                                    marsBot.instructionCompleted()
-                                    if (toolInstructions.hasListeners()) toolInstructions.multicaster.instructionCompleted(event)
-                                }
-                                override fun onBackstep(stepCount: Long) = xray.rewind(stepCount)
-                                override fun onStop(event: StopEvent) = Unit
-                                override fun onError(event: ErrorEvent) {
-                                    if (execution.isActive) {
-                                        reportRuntimeError(event, sources)
-                                    }
-                                }
-                            })
-                            val floatingPoint = session.coprocessor1
-                            val floatingRegisters = floatingPoint.registers
-                            val integerRegisters = session.registerFile
-                            readIntegerRegisters = integerRegisters::getLongValueNoNotify
-                            readFloatingRegisters = { number, wide ->
-                                if (wide) floatingPoint.getDoublewordNoNotify(number)
-                                else floatingRegisters[number].valueNoNotify.toUInt().toLong()
-                            }
-                            val stop = try {
-                                val xRayMemory = if (session.target == MarsTarget.MARS64) xray.observeMemory(session.memory) else null
-                                xRayMemory.use {
-                                    bitmapDisplay.observe(session.memory).use {
-                                        memoryReferences.observe(session.memory).use {
-                                            dataCache.observe(session.memory).use {
-                                                digitalLab.observe(session).use {
-                                                    keyboardDisplay.observe(session).use {
-                                                        revealSourceTools(project, this, sourceTools)
-                                                        executeWithWorldDevices(session, sources)
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            } finally {
-                                val integers = LongArray(32, integerRegisters::getLongValueNoNotify)
-                                readIntegerRegisters = { integers[it] }
-                                // Keep both precisions available after the session closes.
-                                val singles = IntArray(floatingRegisters.size) { floatingRegisters[it].valueNoNotify }
-                                val doubles = LongArray(floatingRegisters.size) {
-                                    if (target == MarsTarget.MARS64 || it % 2 == 0) floatingPoint.getDoublewordNoNotify(it) else 0L
-                                }
-                                readFloatingRegisters = { number, wide ->
-                                    if (wide) doubles[number] else singles[number].toUInt().toLong()
-                                }
-                            }
-                            if (memoryDumps.isNotEmpty() && stop.reason in dumpReasons) {
-                                exportAfterRun(session, program.sources.snapshot.texts().keys.plusElement(entry))
-                            }
-                            when (stop.reason) {
-                                StopEvent.Reason.NORMAL_EXIT, StopEvent.Reason.CLIFF_TERMINATION -> stop.exitCode
-                                StopEvent.Reason.INSTRUCTION_LIMIT -> {
-                                    notifyTextAvailable(runMessages.getMessage("run.instruction.limit.reached", instructionLimit) + "\n",
-                                        ProcessOutputTypes.STDERR)
-                                    1
-                                }
-                                else -> 1
-                            }
+    val component = MarsSessionService.createMarsComponent(backstepLimit, program.image.target)
+    return component.context().use { session ->
+      launch.options.applyTo(session.settings)
+      session.loadAssemblyImage(program.image, startAtMain, execution::ensureActive)
+      try {
+        ProgramArgumentList(arguments).storeProgramArguments(session, execution::ensureActive)
+      } catch (_: IllegalArgumentException) {
+        notifyTextAvailable(
+            runMessages.getMessage("run.arguments.stack") + "\n",
+            ProcessOutputTypes.STDERR,
+        )
+        return 1
+      }
+      val entryText = program.sources.snapshot.texts().getValue(entry)
+      val sourceTools =
+          configureSourceTools(this, session.memory, entryText, toolLifetime) { line, message ->
+            notifyTextAvailable(
+                runMessages.getMessage("run.tools.invalid", line, message) + "\n",
+                ProcessOutputTypes.STDERR,
+            )
+          }
+      capturedProgram = program
+      val sources = MarsExecutionSources(program.sources)
+      val stdout = ConsoleOutput { notifyTextAvailable(it, ProcessOutputTypes.STDOUT) }
+      val stderr = ConsoleOutput { notifyTextAvailable(it, ProcessOutputTypes.STDERR) }
+      PrintStream(stdout, true, Charsets.UTF_8).use { output ->
+        PrintStream(stderr, true, Charsets.UTF_8).use { error ->
+          val stdin = BufferedInputStream(Channels.newInputStream(input.source()))
+          val dialogs = MarsSyscallDialogs(project, entry.fileName.toString(), execution)
+          val textInput =
+              if (inputMode == MarsInputMode.DIALOG) TextInput(dialogs::readStandardInput) else null
+          SessionSyscallEnvironment(
+                  session.memory,
+                  stdin,
+                  output,
+                  error,
+                  workingDirectory,
+                  inputCharset,
+                  textInput,
+              )
+              .use { io ->
+                withCustomizedSyscallEnvironment(project, entry, io) { customizedIo ->
+                  session.program!!.setSyscallEnvironment(
+                      MarsIdeSyscallEnvironment(execution, customizedIo, dialogs, ::clearConsole),
+                  )
+                  val simulator = session.simulator()
+                  simulator.setInstructionLimit(instructionLimit.toLong())
+                  simulator.setRunSpeedSource { runSpeed.toDouble() }
+                  val decodedInstructions = ExecutedInstructionCache(session.instructionSet)
+                  simulator.addListener(
+                      object : SimulatorListener {
+                        override fun onStep(event: StepEvent) {
+                          val word = event.instruction
+                          val decoded = decodedInstructions.decode(word)
+                          instructionCounter.record(decoded.instruction)
+                          instructionStatistics.record(word, decoded.instruction)
+                          branchHistory.record(event, decoded.branchTargetOffset)
+                          xray.record(event)
+                          digitalLab.instructionCompleted(session)
+                          keyboardDisplay.instructionCompleted(session)
+                          marsBot.instructionCompleted()
+                          if (toolInstructions.hasListeners())
+                              toolInstructions.multicaster.instructionCompleted(event)
                         }
+
+                        override fun onBackstep(stepCount: Long) = xray.rewind(stepCount)
+
+                        override fun onStop(event: StopEvent) = Unit
+
+                        override fun onError(event: ErrorEvent) {
+                          if (execution.isActive) {
+                            reportRuntimeError(event, sources)
+                          }
+                        }
+                      },
+                  )
+                  val floatingPoint = session.coprocessor1
+                  val floatingRegisters = floatingPoint.registers
+                  val integerRegisters = session.registerFile
+                  readIntegerRegisters = integerRegisters::getLongValueNoNotify
+                  readFloatingRegisters = { number, wide ->
+                    if (wide) floatingPoint.getDoublewordNoNotify(number)
+                    else floatingRegisters[number].valueNoNotify.toUInt().toLong()
+                  }
+                  val stop =
+                      try {
+                        val xRayMemory =
+                            if (session.target == MarsTarget.MARS64)
+                                xray.observeMemory(session.memory)
+                            else null
+                        xRayMemory.use {
+                          bitmapDisplay.observe(session.memory).use {
+                            memoryReferences.observe(session.memory).use {
+                              dataCache.observe(session.memory).use {
+                                digitalLab.observe(session).use {
+                                  keyboardDisplay.observe(session).use {
+                                    revealSourceTools(project, this, sourceTools)
+                                    executeWithWorldDevices(session, sources)
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      } finally {
+                        val integers = LongArray(32, integerRegisters::getLongValueNoNotify)
+                        readIntegerRegisters = { integers[it] }
+                        // Keep both precisions available after the session closes.
+                        val singles =
+                            IntArray(floatingRegisters.size) { floatingRegisters[it].valueNoNotify }
+                        val doubles =
+                            LongArray(floatingRegisters.size) {
+                              if (target == MarsTarget.MARS64 || it % 2 == 0)
+                                  floatingPoint.getDoublewordNoNotify(it)
+                              else 0L
+                            }
+                        readFloatingRegisters = { number, wide ->
+                          if (wide) doubles[number] else singles[number].toUInt().toLong()
+                        }
+                      }
+                  if (memoryDumps.isNotEmpty() && stop.reason in dumpReasons) {
+                    exportAfterRun(
+                        session,
+                        program.sources.snapshot.texts().keys.plusElement(entry),
+                    )
+                  }
+                  when (stop.reason) {
+                    StopEvent.Reason.NORMAL_EXIT,
+                    StopEvent.Reason.CLIFF_TERMINATION -> stop.exitCode
+                    StopEvent.Reason.INSTRUCTION_LIMIT -> {
+                      notifyTextAvailable(
+                          runMessages.getMessage(
+                              "run.instruction.limit.reached",
+                              instructionLimit,
+                          ) + "\n",
+                          ProcessOutputTypes.STDERR,
+                      )
+                      1
                     }
+                    else -> 1
+                  }
                 }
-            }
+              }
         }
+      }
     }
+  }
 
-    private fun reportRuntimeError(event: ErrorEvent, sources: MarsExecutionSources) {
-        notifyTextAvailable(runMessages.getMessage("run.runtime.error", event.message) + "\n", ProcessOutputTypes.STDERR)
-        val origin = (event.cause as? ProcessingException)?.instructionOrigin() ?: return
-        val view = console ?: return
-        for ((index, frame) in generateSequence(origin, Origin::caller).withIndex()) {
-            val location = frame.location
-            val label = if (index == 0) "run.runtime.source" else "run.runtime.caller"
-            view.print(runMessages.getMessage(label) + " ", ConsoleViewContentType.SYSTEM_OUTPUT)
-            view.printHyperlink("${location.file().invariantSeparatorsPathString}:${location.line()}", sources.hyperlink(project, location))
-            view.print("\n", ConsoleViewContentType.SYSTEM_OUTPUT)
-        }
+  private fun reportRuntimeError(event: ErrorEvent, sources: MarsExecutionSources) {
+    notifyTextAvailable(
+        runMessages.getMessage("run.runtime.error", event.message) + "\n",
+        ProcessOutputTypes.STDERR,
+    )
+    val origin = (event.cause as? ProcessingException)?.instructionOrigin() ?: return
+    val view = console ?: return
+    for ((index, frame) in generateSequence(origin, Origin::caller).withIndex()) {
+      val location = frame.location
+      val label = if (index == 0) "run.runtime.source" else "run.runtime.caller"
+      view.print(runMessages.getMessage(label) + " ", ConsoleViewContentType.SYSTEM_OUTPUT)
+      view.printHyperlink(
+          "${location.file().invariantSeparatorsPathString}:${location.line()}",
+          sources.hyperlink(project, location),
+      )
+      view.print("\n", ConsoleViewContentType.SYSTEM_OUTPUT)
     }
+  }
 
-    private suspend fun executeWithWorldDevices(session: MarsContext, sources: MarsExecutionSources): StopEvent {
-        val (bot, hunt) = synchronized(this) {
-            val hunt = if (ScavengerHuntDevice.supports(session.memory)) ScavengerHuntDevice(session, connectScavengerHunt) else null
-            scavengerHunt = hunt
-            marsBot.observe(session) to hunt
+  private suspend fun executeWithWorldDevices(
+      session: MarsContext,
+      sources: MarsExecutionSources,
+  ): StopEvent {
+    val (bot, hunt) =
+        synchronized(this) {
+          val hunt =
+              if (ScavengerHuntDevice.supports(session.memory))
+                  ScavengerHuntDevice(session, connectScavengerHunt)
+              else null
+          scavengerHunt = hunt
+          marsBot.observe(session) to hunt
         }
-        return bot.use {
-            try {
-                execute(session, sources)
-            } finally {
-                synchronized(this) {
-                    finishedHunt = hunt?.let {
-                        it.close()
-                        it.snapshot()
-                    }
-                    scavengerHunt = null
+    return bot.use {
+      try {
+        execute(session, sources)
+      } finally {
+        synchronized(this) {
+          finishedHunt = hunt?.let {
+            it.close()
+            it.snapshot()
+          }
+          scavengerHunt = null
+        }
+      }
+    }
+  }
+
+  private suspend fun exportAfterRun(session: MarsContext, sources: Set<Path>) {
+    val exporter = project.service<MarsMemoryExportService>()
+    for (selection in memoryDumps) {
+      val output = selection.output
+      val error =
+          try {
+            val overwritesSource =
+                withContext(Dispatchers.IO) {
+                  val target =
+                      output.parent.toRealPath().resolve(output.fileName).toFile().canonicalFile
+                  sources.any { FileUtil.filesEqual(it.toFile().canonicalFile, target) }
                 }
-            }
-        }
+            if (overwritesSource) runMessages.getMessage("run.export.source", output)
+            else exporter.exportSession(session, selection)
+          } catch (e: IOException) {
+            memoryExportMessages.getMessage("export.io.error", output, e.localizedMessage)
+          }
+      if (error == null) {
+        val message = memoryExportMessages.getMessage("export.done", output)
+        notifyTextAvailable("$message\n", ProcessOutputTypes.SYSTEM)
+      } else {
+        val message = runMessages.getMessage("run.export.failed", output, error)
+        notifyTextAvailable("$message\n", ProcessOutputTypes.STDERR)
+      }
     }
-
-    private suspend fun exportAfterRun(session: MarsContext, sources: Set<Path>) {
-        val exporter = project.service<MarsMemoryExportService>()
-        for (selection in memoryDumps) {
-            val output = selection.output
-            val error = try {
-                val overwritesSource = withContext(Dispatchers.IO) {
-                    val target = output.parent.toRealPath().resolve(output.fileName).toFile().canonicalFile
-                    sources.any { FileUtil.filesEqual(it.toFile().canonicalFile, target) }
-                }
-                if (overwritesSource) runMessages.getMessage("run.export.source", output)
-                else exporter.exportSession(session, selection)
-            } catch (e: IOException) {
-                memoryExportMessages.getMessage("export.io.error", output, e.localizedMessage)
-            }
-            if (error == null) {
-                val message = memoryExportMessages.getMessage("export.done", output)
-                notifyTextAvailable("$message\n", ProcessOutputTypes.SYSTEM)
-            } else {
-                val message = runMessages.getMessage("run.export.failed", output, error)
-                notifyTextAvailable("$message\n", ProcessOutputTypes.STDERR)
-            }
-        }
-    }
-
+  }
 }
 
-private val dumpReasons = setOf(
-    StopEvent.Reason.NORMAL_EXIT, StopEvent.Reason.CLIFF_TERMINATION, StopEvent.Reason.EXCEPTION, StopEvent.Reason.INSTRUCTION_LIMIT,
-)
+private val dumpReasons =
+    setOf(
+        StopEvent.Reason.NORMAL_EXIT,
+        StopEvent.Reason.CLIFF_TERMINATION,
+        StopEvent.Reason.EXCEPTION,
+        StopEvent.Reason.INSTRUCTION_LIMIT,
+    )
 
 /** A descriptor write can split a UTF-8 code point across multiple flushes. */
 internal class ConsoleOutput(private val emit: (String) -> Unit) : ByteArrayOutputStream() {
-    private val decoder = Charsets.UTF_8.newDecoder().onMalformedInput(REPLACE).onUnmappableCharacter(REPLACE)
+  private val decoder =
+      Charsets.UTF_8.newDecoder().onMalformedInput(REPLACE).onUnmappableCharacter(REPLACE)
 
-    override fun flush() = drain(false)
-    override fun close() = drain(true)
+  override fun flush() = drain(false)
 
-    private fun drain(endOfInput: Boolean) {
-        val input = ByteBuffer.wrap(buf, 0, count)
-        val decoded = CharBuffer.allocate(count)
-        decoder.decode(input, decoded, endOfInput)
-        count = input.remaining()
-        input.get(buf, 0, count)
-        if (decoded.position() > 0) emit(decoded.flip().toString())
-    }
+  override fun close() = drain(true)
+
+  private fun drain(endOfInput: Boolean) {
+    val input = ByteBuffer.wrap(buf, 0, count)
+    val decoded = CharBuffer.allocate(count)
+    decoder.decode(input, decoded, endOfInput)
+    count = input.remaining()
+    input.get(buf, 0, count)
+    if (decoded.position() > 0) emit(decoded.flip().toString())
+  }
 }

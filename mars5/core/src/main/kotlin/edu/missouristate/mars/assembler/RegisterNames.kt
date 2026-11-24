@@ -8,33 +8,29 @@ import java.util.List.copyOf
 
 /** Register spellings for the assembler and its editor integrations. */
 object RegisterNames {
-    private val integerBank = IntegerRegisterFile()
-    private val floatBank = Coprocessor1State()
-    private val systemBank = Coprocessor0State()
+  private val integerBank = IntegerRegisterFile()
+  private val floatBank = Coprocessor1State()
+  private val systemBank = Coprocessor0State()
 
-    @JvmStatic
-    fun integer(name: String): Register? = integerBank.getUserRegister(name)
+  @JvmStatic fun integer(name: String): Register? = integerBank.getUserRegister(name)
 
-    @JvmStatic
-    fun floating(name: String?): Register? = floatBank.getRegister(name)
+  @JvmStatic fun floating(name: String?): Register? = floatBank.getRegister(name)
 
-    @JvmStatic
-    fun vector(name: String): Int? {
-        if (!name.startsWith($$"$w")) return null
-        val index = name.substring(2).toIntOrNull() ?: return null
-        return index.takeIf { it in 0..31 && name == $$"$w$$it" }
-    }
+  @JvmStatic
+  fun vector(name: String): Int? {
+    if (!name.startsWith($$"$w")) return null
+    val index = name.substring(2).toIntOrNull() ?: return null
+    return index.takeIf { it in 0..31 && name == $$"$w$$it" }
+  }
 
-    @JvmStatic
-    fun coprocessor0(name: String?): Register? = systemBank.getRegister(name)
+  @JvmStatic fun coprocessor0(name: String?): Register? = systemBank.getRegister(name)
 
-    @JvmStatic
-    fun integerSpellings(): List<String> =
-        copyOf(integerBank.registers.flatMap { listOf(it.name, "$${it.number}") })
+  @JvmStatic
+  fun integerSpellings(): List<String> =
+      copyOf(integerBank.registers.flatMap { listOf(it.name, "$${it.number}") })
 
-    @JvmStatic
-    fun floatingSpellings(): List<String> = copyOf(floatBank.registers.map(Register::name))
+  @JvmStatic fun floatingSpellings(): List<String> = copyOf(floatBank.registers.map(Register::name))
 
-    @JvmStatic
-    fun coprocessor0Spellings(): List<String> = copyOf(systemBank.registers.map { "$${it.number}" })
+  @JvmStatic
+  fun coprocessor0Spellings(): List<String> = copyOf(systemBank.registers.map { "$${it.number}" })
 }

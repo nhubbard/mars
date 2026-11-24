@@ -21,42 +21,58 @@ import org.junit.jupiter.api.Test
 
 @TestApplication
 class MarsLearningSourceTest {
-    private val projectFixture = codeInsightProjectFixture()
-    private val fixture by codeInsightFixture(projectFixture)
+  private val projectFixture = codeInsightProjectFixture()
+  private val fixture by codeInsightFixture(projectFixture)
 
-    @Test
-    fun `source evidence requires a loaded image current capability and correct local source position`() = timeoutRunBlocking {
+  @Test
+  fun `source evidence requires a loaded image current capability and correct local source position`() =
+      timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
-            val project = projectFixture.get()
-            val file = fixture.addFileToProject("observed.asm", ".text\nnop\n").virtualFile
-            val other = fixture.addFileToProject("other.asm", ".text\nnop\n").virtualFile
-            val document = FileDocumentManager.getInstance().getDocument(file)!!
-            val lifetime = Disposer.newDisposable()
-            val handler = project.service<MarsRunService>().createProcess(file.toNioPath(), memoryDumps = emptyList())
-            val source = MarsLearningSource(project, file.toNioPath(), document, MarsConsoleDebugCheckpoint.identity)
-            try {
-                val attempt = source.begin("source-boundary")
-                assertTrue(source.current(attempt))
-                assertFalse(runReadActionBlocking { source.matches(attempt, handler) })
-                val positions = XDebuggerUtil.getInstance()
-                assertTrue(source.matchesPosition(positions.createPosition(file, 0)))
-                assertFalse(source.matchesPosition(null))
-                assertFalse(source.matchesPosition(positions.createPosition(other, 0)))
-                assertFalse(source.matchesPosition(positions.createPosition(LightVirtualFile("captured.asm", "nop"), 0)))
-                WriteCommandAction.runWriteCommandAction(project) { document.setText(".text\nnop\nnop\n") }
-                assertFalse(runReadActionBlocking { source.matches(attempt, handler) })
-                assertFalse(source.current(attempt))
-                assertFalse(source.finish(attempt, true))
-                WriteCommandAction.runWriteCommandAction(project) { file.rename(this, "renamed.asm") }
-                assertFalse(source.isBound())
-                assertFalse(runReadActionBlocking { source.matches(attempt, handler) })
-                WriteCommandAction.runWriteCommandAction(project) { file.delete(this) }
-                assertFalse(source.isBound())
-                assertFalse(runReadActionBlocking { source.matches(attempt, handler) })
-            } finally {
-                handler.destroyProcess()
-                Disposer.dispose(lifetime)
+          val project = projectFixture.get()
+          val file = fixture.addFileToProject("observed.asm", ".text\nnop\n").virtualFile
+          val other = fixture.addFileToProject("other.asm", ".text\nnop\n").virtualFile
+          val document = FileDocumentManager.getInstance().getDocument(file)!!
+          val lifetime = Disposer.newDisposable()
+          val handler =
+              project
+                  .service<MarsRunService>()
+                  .createProcess(file.toNioPath(), memoryDumps = emptyList())
+          val source =
+              MarsLearningSource(
+                  project,
+                  file.toNioPath(),
+                  document,
+                  MarsConsoleDebugCheckpoint.identity,
+              )
+          try {
+            val attempt = source.begin("source-boundary")
+            assertTrue(source.current(attempt))
+            assertFalse(runReadActionBlocking { source.matches(attempt, handler) })
+            val positions = XDebuggerUtil.getInstance()
+            assertTrue(source.matchesPosition(positions.createPosition(file, 0)))
+            assertFalse(source.matchesPosition(null))
+            assertFalse(source.matchesPosition(positions.createPosition(other, 0)))
+            assertFalse(
+                source.matchesPosition(
+                    positions.createPosition(LightVirtualFile("captured.asm", "nop"), 0),
+                ),
+            )
+            WriteCommandAction.runWriteCommandAction(project) {
+              document.setText(".text\nnop\nnop\n")
             }
+            assertFalse(runReadActionBlocking { source.matches(attempt, handler) })
+            assertFalse(source.current(attempt))
+            assertFalse(source.finish(attempt, true))
+            WriteCommandAction.runWriteCommandAction(project) { file.rename(this, "renamed.asm") }
+            assertFalse(source.isBound())
+            assertFalse(runReadActionBlocking { source.matches(attempt, handler) })
+            WriteCommandAction.runWriteCommandAction(project) { file.delete(this) }
+            assertFalse(source.isBound())
+            assertFalse(runReadActionBlocking { source.matches(attempt, handler) })
+          } finally {
+            handler.destroyProcess()
+            Disposer.dispose(lifetime)
+          }
         }
-    }
+      }
 }

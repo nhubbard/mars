@@ -31,7 +31,8 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 /** An assembler or simulator diagnostic at its original written source. */
-open class ErrorMessage private constructor(
+open class ErrorMessage
+private constructor(
     open val isWarning: Boolean,
     open val filename: String?,
     open val line: Int,
@@ -39,49 +40,86 @@ open class ErrorMessage private constructor(
     open val message: String?,
     private val expansionHistory: String?,
 ) {
-    constructor(sourceMIPSprogram: MIPSprogram?, line: Int, position: Int, message: String?) :
-        this(ERROR, sourceMIPSprogram, line, position, message)
+  constructor(
+      sourceMIPSprogram: MIPSprogram?,
+      line: Int,
+      position: Int,
+      message: String?,
+  ) : this(ERROR, sourceMIPSprogram, line, position, message)
 
-    constructor(token: Token, message: String?) : this(ERROR, token, message)
+  constructor(token: Token, message: String?) : this(ERROR, token, message)
 
-    constructor(isWarning: Boolean, token: Token, message: String?) :
-        this(isWarning, message, token.diagnosticOrigin)
+  constructor(
+      isWarning: Boolean,
+      token: Token,
+      message: String?,
+  ) : this(isWarning, message, token.diagnosticOrigin)
 
-    private constructor(isWarning: Boolean, message: String?, origin: Token) :
-        this(isWarning, origin.sourceMIPSprogram, origin.sourceLine, origin.originalStartPos, message)
+  private constructor(
+      isWarning: Boolean,
+      message: String?,
+      origin: Token,
+  ) : this(isWarning, origin.sourceMIPSprogram, origin.sourceLine, origin.originalStartPos, message)
 
-    constructor(isWarning: Boolean, sourceMIPSprogram: MIPSprogram?, line: Int, position: Int, message: String?) :
-        this(isWarning, assemblyLine(sourceMIPSprogram, line), position, message, sourceMIPSprogram?.localMacroPool?.expansionHistory)
+  constructor(
+      isWarning: Boolean,
+      sourceMIPSprogram: MIPSprogram?,
+      line: Int,
+      position: Int,
+      message: String?,
+  ) : this(
+      isWarning,
+      assemblyLine(sourceMIPSprogram, line),
+      position,
+      message,
+      sourceMIPSprogram?.localMacroPool?.expansionHistory,
+  )
 
-    private constructor(isWarning: Boolean, source: WrittenLine, position: Int, message: String?, history: String?) :
-        this(isWarning, source.filename, source.line, position, message, history)
+  private constructor(
+      isWarning: Boolean,
+      source: WrittenLine,
+      position: Int,
+      message: String?,
+      history: String?,
+  ) : this(isWarning, source.filename, source.line, position, message, history)
 
-    /** Recover the macro definition's line from the source attached to a runtime instruction. */
-    constructor(statement: ProgramStatement, message: String?) :
-        this(statement, message, firstMacroLine(statement.source!!))
+  /** Recover the macro definition's line from the source attached to a runtime instruction. */
+  constructor(
+      statement: ProgramStatement,
+      message: String?,
+  ) : this(statement, message, firstMacroLine(statement.source!!))
 
-    private constructor(statement: ProgramStatement, message: String?, definitionLine: Int?) : this(
-        ERROR, statement.sourceFile, definitionLine ?: statement.sourceLine, 0, message,
-        if (definitionLine == null) "" else statement.sourceLine.toString(),
-    )
+  private constructor(
+      statement: ProgramStatement,
+      message: String?,
+      definitionLine: Int?,
+  ) : this(
+      ERROR,
+      statement.sourceFile,
+      definitionLine ?: statement.sourceLine,
+      0,
+      message,
+      if (definitionLine == null) "" else statement.sourceLine.toString(),
+  )
 
-    open val macroExpansionHistory: String
-        get() = if (expansionHistory.isNullOrEmpty()) "" else "$expansionHistory->"
+  open val macroExpansionHistory: String
+    get() = if (expansionHistory.isNullOrEmpty()) "" else "$expansionHistory->"
 
-    private data class WrittenLine(val filename: String?, val line: Int)
+  private data class WrittenLine(val filename: String?, val line: Int)
 
-    companion object {
-        const val WARNING = true
-        const val ERROR = false
-        private val macroLine = Regex("<\\d+>")
+  companion object {
+    const val WARNING = true
+    const val ERROR = false
+    private val macroLine = Regex("<\\d+>")
 
-        private fun assemblyLine(program: MIPSprogram?, line: Int): WrittenLine {
-            if (program == null) return WrittenLine("", line)
-            val original = program.sourceLineList?.get(line - 1) ?: return WrittenLine(program.filename, line)
-            return WrittenLine(original.filename, original.lineNumber)
-        }
-
-        private fun firstMacroLine(source: String): Int? =
-            macroLine.matchAt(source.trim { it <= ' ' }, 0)?.value?.drop(1)?.dropLast(1)?.toIntOrNull()
+    private fun assemblyLine(program: MIPSprogram?, line: Int): WrittenLine {
+      if (program == null) return WrittenLine("", line)
+      val original =
+          program.sourceLineList?.get(line - 1) ?: return WrittenLine(program.filename, line)
+      return WrittenLine(original.filename, original.lineNumber)
     }
+
+    private fun firstMacroLine(source: String): Int? =
+        macroLine.matchAt(source.trim { it <= ' ' }, 0)?.value?.drop(1)?.dropLast(1)?.toIntOrNull()
+  }
 }

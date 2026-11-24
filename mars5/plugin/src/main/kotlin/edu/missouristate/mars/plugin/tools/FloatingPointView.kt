@@ -4,15 +4,15 @@ import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.ComboBox
-import com.intellij.ui.CollectionComboBoxModel
 import com.intellij.openapi.util.text.StringUtil
+import com.intellij.ui.CollectionComboBoxModel
 import com.intellij.ui.components.JBLabel
-import com.intellij.ui.dsl.listCellRenderer.textListCellRenderer
 import com.intellij.ui.components.JBTextField
 import com.intellij.ui.dsl.builder.AlignX
 import com.intellij.ui.dsl.builder.LabelPosition
 import com.intellij.ui.dsl.builder.RowLayout
 import com.intellij.ui.dsl.builder.panel
+import com.intellij.ui.dsl.listCellRenderer.textListCellRenderer
 import com.intellij.util.ui.UIUtil
 import com.intellij.util.ui.launchOnShow
 import com.intellij.xdebugger.XDebuggerManager
@@ -25,207 +25,254 @@ import edu.missouristate.mars.plugin.debug.RegisterBank
 import edu.missouristate.mars.plugin.debug.RegisterEditRequest
 import edu.missouristate.mars.plugin.debug.submitEdit
 import edu.missouristate.mars.plugin.run.MarsProcessHandler
-import edu.missouristate.mars.plugin.tools.FloatingPointRepresentation.Kind
 import edu.missouristate.mars.plugin.tools.FloatingPointRepresentation.Format
 import edu.missouristate.mars.plugin.tools.FloatingPointRepresentation.Format.BINARY64
+import edu.missouristate.mars.plugin.tools.FloatingPointRepresentation.Kind
 import edu.missouristate.mars.util.Binary
 import javax.swing.JButton
 import javax.swing.JEditorPane
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
-import kotlin.time.Duration.Companion.milliseconds
 
 internal class FloatingPointView(private val project: Project) : Disposable {
-    private val selector = MarsToolExecutionSelector(project, ::bindingChanged)
-    private val register = ComboBox(CollectionComboBoxModel(mutableListOf(toolsMessages.getMessage("float.detached")).apply {
-        addAll(RegisterNames.floatingSpellings())
-    }))
-    private val precision = ComboBox(CollectionComboBoxModel(Format.entries.toMutableList())).apply {
+  private val selector = MarsToolExecutionSelector(project, ::bindingChanged)
+  private val register =
+      ComboBox(
+          CollectionComboBoxModel(
+              mutableListOf(toolsMessages.getMessage("float.detached")).apply {
+                addAll(RegisterNames.floatingSpellings())
+              },
+          ),
+      )
+  private val precision =
+      ComboBox(CollectionComboBoxModel(Format.entries.toMutableList())).apply {
         renderer = textListCellRenderer("") { toolsMessages.getMessage(it.messageKey) }
-    }
-    private val format get() = precision.selectedItem as Format
-    private val decimal = JBTextField(16)
-    private val hex = JBTextField(12)
-    private val sign = JBTextField(1)
-    private val exponent = JBTextField(8)
-    private val fraction = object : JBTextField(23) {
+      }
+  private val format
+    get() = precision.selectedItem as Format
+
+  private val decimal = JBTextField(16)
+  private val hex = JBTextField(12)
+  private val sign = JBTextField(1)
+  private val exponent = JBTextField(8)
+  private val fraction =
+      object : JBTextField(23) {
         override fun getColumnWidth(): Int {
-            // JTextField normally sizes columns with 'm'. The fraction contains only binary digits.
-            val metrics = getFontMetrics(font)
-            return maxOf(metrics.charWidth('0'), metrics.charWidth('1'))
+          // JTextField normally sizes columns with 'm'. The fraction contains only binary digits.
+          val metrics = getFontMetrics(font)
+          return maxOf(metrics.charWidth('0'), metrics.charWidth('1'))
         }
 
-        override fun getPreferredSize() = super.getPreferredSize().apply {
-            // Leave room for the look-and-feel padding and the caret after the last bit.
-            width += 3 * getColumnWidth()
-        }
-    }
-    private val fields = listOf(decimal, hex, sign, exponent, fraction)
-    private val classification = JBLabel()
-    private lateinit var formula: JEditorPane
-    private lateinit var access: JEditorPane
-    private lateinit var feedback: JEditorPane
-    private var accessKey: String? = null
-    private val reset = JButton(toolsMessages.getMessage("counter.reset"))
-    private var shown = FloatingPointRepresentation(0)
-    private var editRevision = 0L
+        override fun getPreferredSize() =
+            super.getPreferredSize().apply {
+              // Leave room for the look-and-feel padding and the caret after the last bit.
+              width += 3 * getColumnWidth()
+            }
+      }
+  private val fields = listOf(decimal, hex, sign, exponent, fraction)
+  private val classification = JBLabel()
+  private lateinit var formula: JEditorPane
+  private lateinit var access: JEditorPane
+  private lateinit var feedback: JEditorPane
+  private var accessKey: String? = null
+  private val reset = JButton(toolsMessages.getMessage("counter.reset"))
+  private var shown = FloatingPointRepresentation(0)
+  private var editRevision = 0L
 
-    private val fractionControl = panel {
-        row {
-            cell(fraction).label(toolsMessages.getMessage("float.fraction"), LabelPosition.TOP)
-                .align(AlignX.FILL).resizableColumn()
-        }
+  private val fractionControl = panel {
+    row {
+      cell(fraction)
+          .label(toolsMessages.getMessage("float.fraction"), LabelPosition.TOP)
+          .align(AlignX.FILL)
+          .resizableColumn()
     }
-    private val controls = marsToolPanel {
-        marsExecutionRow(selector.component)
-        row { cell(register).label(toolsMessages.getMessage("float.register"), LabelPosition.TOP) }
-        row { cell(precision).label(toolsMessages.getMessage("float.precision"), LabelPosition.TOP) }
-        row { access = text("").resizableColumn().component }.layout(RowLayout.INDEPENDENT)
-        row { cell(decimal).label(toolsMessages.getMessage("float.decimal"), LabelPosition.TOP) }
-        row { cell(hex).label(toolsMessages.getMessage("float.hex"), LabelPosition.TOP) }
-        row {
-            cell(sign).label(toolsMessages.getMessage("float.sign"), LabelPosition.TOP)
-            cell(exponent).label(toolsMessages.getMessage("float.exponent"), LabelPosition.TOP)
-        }
-        row { cell(fractionControl).resizableColumn() }
-        row(toolsMessages.getMessage("float.classification")) { cell(classification) }
-        row { label(toolsMessages.getMessage("float.interpretation")) }
-        row { formula = text("").resizableColumn().component }.layout(RowLayout.INDEPENDENT)
-        row { cell(reset) }
-        row { feedback = text("").resizableColumn().component }.layout(RowLayout.INDEPENDENT)
-        row { comment(toolsMessages.getMessage("float.help")).resizableColumn() }.layout(RowLayout.INDEPENDENT)
+  }
+  private val controls = marsToolPanel {
+    marsExecutionRow(selector.component)
+    row { cell(register).label(toolsMessages.getMessage("float.register"), LabelPosition.TOP) }
+    row { cell(precision).label(toolsMessages.getMessage("float.precision"), LabelPosition.TOP) }
+    row { access = text("").resizableColumn().component }.layout(RowLayout.INDEPENDENT)
+    row { cell(decimal).label(toolsMessages.getMessage("float.decimal"), LabelPosition.TOP) }
+    row { cell(hex).label(toolsMessages.getMessage("float.hex"), LabelPosition.TOP) }
+    row {
+      cell(sign).label(toolsMessages.getMessage("float.sign"), LabelPosition.TOP)
+      cell(exponent).label(toolsMessages.getMessage("float.exponent"), LabelPosition.TOP)
     }
-    val component = scrollableToolPanel(this, controls, mapOf(fraction to fractionControl))
+    row { cell(fractionControl).resizableColumn() }
+    row(toolsMessages.getMessage("float.classification")) { cell(classification) }
+    row { label(toolsMessages.getMessage("float.interpretation")) }
+    row { formula = text("").resizableColumn().component }.layout(RowLayout.INDEPENDENT)
+    row { cell(reset) }
+    row { feedback = text("").resizableColumn().component }.layout(RowLayout.INDEPENDENT)
+    row { comment(toolsMessages.getMessage("float.help")).resizableColumn() }
+        .layout(RowLayout.INDEPENDENT)
+  }
+  val component = scrollableToolPanel(this, controls, mapOf(fraction to fractionControl))
 
-    init {
-        register.addActionListener { bindingChanged() }
-        precision.addActionListener {
-            editRevision++
-            feedback.text = ""
-            display(shown.convertTo(format))
-            refreshBinding()
-        }
-        decimal.addActionListener { apply(FloatingPointRepresentation.fromDecimal(decimal.text, format)) }
-        hex.addActionListener { apply(FloatingPointRepresentation.fromHex(hex.text, format)) }
-        for (field in listOf(sign, exponent, fraction)) {
-            field.addActionListener { apply(FloatingPointRepresentation.fromBinary(sign.text, exponent.text, fraction.text, format)) }
-        }
-        reset.addActionListener { apply(FloatingPointRepresentation(0L, format)) }
-        display(shown)
-        refresh()
+  init {
+    register.addActionListener { bindingChanged() }
+    precision.addActionListener {
+      editRevision++
+      feedback.text = ""
+      display(shown.convertTo(format))
+      refreshBinding()
     }
+    decimal.addActionListener {
+      apply(FloatingPointRepresentation.fromDecimal(decimal.text, format))
+    }
+    hex.addActionListener { apply(FloatingPointRepresentation.fromHex(hex.text, format)) }
+    for (field in listOf(sign, exponent, fraction)) {
+      field.addActionListener {
+        apply(
+            FloatingPointRepresentation.fromBinary(sign.text, exponent.text, fraction.text, format),
+        )
+      }
+    }
+    reset.addActionListener { apply(FloatingPointRepresentation(0L, format)) }
+    display(shown)
+    refresh()
+  }
 
-    @Suppress("UnstableApiUsage")
-    private val refreshJob = component.launchOnShow("Refresh MARS floating-point representation") {
+  @Suppress("UnstableApiUsage")
+  private val refreshJob =
+      component.launchOnShow("Refresh MARS floating-point representation") {
         while (true) {
-            withContext(Dispatchers.EDT) { refresh() }
-            delay(200.milliseconds)
+          withContext(Dispatchers.EDT) { refresh() }
+          delay(200.milliseconds)
         }
-    }
+      }
 
-    private fun refresh() {
-        selector.refresh()
-        refreshBinding()
-    }
+  private fun refresh() {
+    selector.refresh()
+    refreshBinding()
+  }
 
-    private fun bindingChanged() {
-        editRevision++
-        feedback.text = ""
-        display(shown)
-        refreshBinding()
-    }
+  private fun bindingChanged() {
+    editRevision++
+    feedback.text = ""
+    display(shown)
+    refreshBinding()
+  }
 
-    private fun refreshBinding() {
-        val process = selector.process
-        val number = register.selectedIndex - 1
-        val attached = process?.takeIf { number >= 0 }
-        val stopped = attached?.let(::stoppedContext) != null
-        val validPair = attached == null || format != BINARY64 || attached.target == MarsTarget.MARS64 || number % 2 == 0
-        val editable = validPair && (attached == null || stopped)
-        val bits = if (format == BINARY64) attached?.floatingDoublewordBits(number)
-            else attached?.floatingRegisterBits(number)?.toUInt()?.toLong()
-        register.isEnabled = process != null
-        for (field in fields) field.isEditable = editable
-        reset.isEnabled = editable
-        val nextAccessKey = when {
-            attached == null -> "float.local"
-            !validPair -> "float.evenPair"
-            bits == null -> "float.waiting"
-            stopped -> "float.paused"
-            else -> "float.readOnly"
+  private fun refreshBinding() {
+    val process = selector.process
+    val number = register.selectedIndex - 1
+    val attached = process?.takeIf { number >= 0 }
+    val stopped = attached?.let(::stoppedContext) != null
+    val validPair =
+        attached == null ||
+            format != BINARY64 ||
+            attached.target == MarsTarget.MARS64 ||
+            number % 2 == 0
+    val editable = validPair && (attached == null || stopped)
+    val bits =
+        if (format == BINARY64) attached?.floatingDoublewordBits(number)
+        else attached?.floatingRegisterBits(number)?.toUInt()?.toLong()
+    register.isEnabled = process != null
+    for (field in fields) field.isEditable = editable
+    reset.isEnabled = editable
+    val nextAccessKey =
+        when {
+          attached == null -> "float.local"
+          !validPair -> "float.evenPair"
+          bits == null -> "float.waiting"
+          stopped -> "float.paused"
+          else -> "float.readOnly"
         }
-        if (nextAccessKey != accessKey) {
-            accessKey = nextAccessKey
-            access.text = toolsMessages.getMessage(nextAccessKey)
-        }
-        if (attached != null) {
-            val current = bits ?: 0L
-            if (current != shown.bits) display(FloatingPointRepresentation(current, format))
-        }
+    if (nextAccessKey != accessKey) {
+      accessKey = nextAccessKey
+      access.text = toolsMessages.getMessage(nextAccessKey)
     }
+    if (attached != null) {
+      val current = bits ?: 0L
+      if (current != shown.bits) display(FloatingPointRepresentation(current, format))
+    }
+  }
 
-    private fun stoppedContext(process: MarsProcessHandler): MarsSuspendContext? {
-        val debugger = XDebuggerManager.getInstance(project).getDebugProcesses(MarsDebugProcess::class.java)
+  private fun stoppedContext(process: MarsProcessHandler): MarsSuspendContext? {
+    val debugger =
+        XDebuggerManager.getInstance(project)
+            .getDebugProcesses(MarsDebugProcess::class.java)
             .firstOrNull { it.processHandler === process } ?: return null
-        return debugger.session.suspendContext as? MarsSuspendContext
-    }
+    return debugger.session.suspendContext as? MarsSuspendContext
+  }
 
-    private fun apply(value: FloatingPointRepresentation?) {
-        val revision = ++editRevision
-        if (value == null) {
-            feedback.text = toolsMessages.getMessage("float.invalid")
-            return
-        }
-        feedback.text = ""
-        val process = selector.process
-        val number = register.selectedIndex - 1
-        if (process == null || number < 0) {
-            display(value)
-            return
-        }
-        val stopped = stoppedContext(process)
-        if (stopped == null) {
-            feedback.text = toolsMessages.getMessage("float.readOnly")
-            return
-        }
-        val bank = if (value.format == BINARY64) RegisterBank.FPU_DOUBLE else RegisterBank.FPU_SINGLE
-        val edit = RegisterEditRequest(bank, number, value.hex, object : XModificationCallback {
-            override fun valueModified() {
+  private fun apply(value: FloatingPointRepresentation?) {
+    val revision = ++editRevision
+    if (value == null) {
+      feedback.text = toolsMessages.getMessage("float.invalid")
+      return
+    }
+    feedback.text = ""
+    val process = selector.process
+    val number = register.selectedIndex - 1
+    if (process == null || number < 0) {
+      display(value)
+      return
+    }
+    val stopped = stoppedContext(process)
+    if (stopped == null) {
+      feedback.text = toolsMessages.getMessage("float.readOnly")
+      return
+    }
+    val bank = if (value.format == BINARY64) RegisterBank.FPU_DOUBLE else RegisterBank.FPU_SINGLE
+    val edit =
+        RegisterEditRequest(
+            bank,
+            number,
+            value.hex,
+            object : XModificationCallback {
+              override fun valueModified() {
                 if (revision == editRevision) display(value)
-            }
+              }
 
-            override fun errorOccurred(errorMessage: String) {
+              override fun errorOccurred(errorMessage: String) {
                 UIUtil.invokeLaterIfNeeded {
-                    if (revision == editRevision) feedback.text = StringUtil.escapeXmlEntities(errorMessage)
+                  if (revision == editRevision)
+                      feedback.text = StringUtil.escapeXmlEntities(errorMessage)
                 }
-            }
-        })
-        stopped.machineEdits.submitEdit(edit)
-    }
+              }
+            },
+        )
+    stopped.machineEdits.submitEdit(edit)
+  }
 
-    private fun display(value: FloatingPointRepresentation) {
-        shown = value
-        exponent.columns = value.format.exponentWidth
-        fraction.columns = value.format.fractionWidth
-        decimal.text = value.decimal
-        hex.text = value.hex
-        sign.text = value.sign.toString()
-        exponent.text = value.exponentBits
-        fraction.text = value.fractionBits
-        fraction.caretPosition = 0
-        fraction.scrollOffset = 0
-        classification.text = toolsMessages.getMessage(value.kind.messageKey)
-        formula.text = when (value.kind) {
-            Kind.INFINITY -> toolsMessages.getMessage("float.formula.infinity")
-            Kind.NAN -> toolsMessages.getMessage("float.formula.nan", if (value.format == BINARY64) Binary.longToHexString(value.fraction) else Binary.intToHexString(value.fraction.toInt()))
-            else -> toolsMessages.getMessage("float.formula.finite", value.sign.toString(),
-                value.finiteExponent.toString(), if (value.kind == Kind.NORMAL) "1" else "0", value.fractionBits)
+  private fun display(value: FloatingPointRepresentation) {
+    shown = value
+    exponent.columns = value.format.exponentWidth
+    fraction.columns = value.format.fractionWidth
+    decimal.text = value.decimal
+    hex.text = value.hex
+    sign.text = value.sign.toString()
+    exponent.text = value.exponentBits
+    fraction.text = value.fractionBits
+    fraction.caretPosition = 0
+    fraction.scrollOffset = 0
+    classification.text = toolsMessages.getMessage(value.kind.messageKey)
+    formula.text =
+        when (value.kind) {
+          Kind.INFINITY -> toolsMessages.getMessage("float.formula.infinity")
+          Kind.NAN ->
+              toolsMessages.getMessage(
+                  "float.formula.nan",
+                  if (value.format == BINARY64) Binary.longToHexString(value.fraction)
+                  else Binary.intToHexString(value.fraction.toInt()),
+              )
+          else ->
+              toolsMessages.getMessage(
+                  "float.formula.finite",
+                  value.sign.toString(),
+                  value.finiteExponent.toString(),
+                  if (value.kind == Kind.NORMAL) "1" else "0",
+                  value.fractionBits,
+              )
         }
-    }
+  }
 
-    override fun dispose() {
-        editRevision++
-        refreshJob.cancel()
-    }
+  override fun dispose() {
+    editRevision++
+    refreshJob.cancel()
+  }
 }

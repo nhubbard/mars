@@ -33,9 +33,9 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 open class SyscallTime : AbstractSyscall(30, "Time") {
-    override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
-        val value = context.environment().currentTimeMillis()
-        context.updateRegister(4, Binary.lowOrderLongToInt(value))
-        context.updateRegister(5, Binary.highOrderLongToInt(value))
-    }
+  override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
+    val value = context.environment().currentTimeMillis()
+    context.updateRegister(4, Binary.lowOrderLongToInt(value))
+    context.updateRegister(5, Binary.highOrderLongToInt(value))
+  }
 }

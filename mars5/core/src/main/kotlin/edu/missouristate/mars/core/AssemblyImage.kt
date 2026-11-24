@@ -9,7 +9,8 @@ import java.nio.ByteOrder
 import java.util.List.copyOf
 
 /** Detached instructions, initialized memory, and source metadata from a successful assembly. */
-class AssemblyImage internal constructor(
+class AssemblyImage
+internal constructor(
     @JvmField internal val filename: String?,
     @JvmField internal val layout: String,
     val target: MarsTarget,
@@ -19,18 +20,25 @@ class AssemblyImage internal constructor(
     @JvmField internal val sources: InstructionSourceMap,
     @JvmField internal val symbols: AssemblySymbolMap,
 ) {
-    @JvmField internal val instructions: List<ProgramStatement.Image> = copyOf(instructions)
+  @JvmField internal val instructions: List<ProgramStatement.Image> = copyOf(instructions)
 
-    /** Byte order used when assembling initialized data, retained when loading this image. */
-    val byteOrder: ByteOrder get() = if (data.littleEndian) ByteOrder.LITTLE_ENDIAN else ByteOrder.BIG_ENDIAN
+  /** Byte order used when assembling initialized data, retained when loading this image. */
+  val byteOrder: ByteOrder
+    get() = if (data.littleEndian) ByteOrder.LITTLE_ENDIAN else ByteOrder.BIG_ENDIAN
 
-    /** Compare executable output independently of source names and positions. */
-    fun hasSameMachineImage(other: AssemblyImage, checkCancellation: () -> Unit): Boolean {
-        if (target != other.target || entry != other.entry || layout != other.layout || instructions.size != other.instructions.size) return false
-        for (index in instructions.indices) {
-            checkCancellation()
-            if (!instructions[index].hasSameMachineWord(other.instructions[index])) return false
-        }
-        return data.hasSameContents(other.data, checkCancellation)
+  /** Compare executable output independently of source names and positions. */
+  fun hasSameMachineImage(other: AssemblyImage, checkCancellation: () -> Unit): Boolean {
+    if (
+        target != other.target ||
+            entry != other.entry ||
+            layout != other.layout ||
+            instructions.size != other.instructions.size
+    )
+        return false
+    for (index in instructions.indices) {
+      checkCancellation()
+      if (!instructions[index].hasSameMachineWord(other.instructions[index])) return false
     }
+    return data.hasSameContents(other.data, checkCancellation)
+  }
 }

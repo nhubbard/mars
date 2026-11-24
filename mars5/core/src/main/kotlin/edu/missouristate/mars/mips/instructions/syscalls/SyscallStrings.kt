@@ -6,18 +6,21 @@ import edu.missouristate.mars.core.InstructionContext
 import edu.missouristate.mars.mips.hardware.AddressErrorException
 
 /** Reads a null-terminated syscall argument using the simulator's normal memory reads. */
-internal fun InstructionContext.readSyscallString(statement: ProgramStatement?, address: Long): String {
-    val memory = memory()
-    var cursor = address
-    return try {
-        buildString {
-            while (true) {
-                val character = memory.readData(cursor++, 1).toChar()
-                if (character == '\u0000') break
-                append(character)
-            }
-        }
-    } catch (failure: AddressErrorException) {
-        throw ProcessingException(this, statement, failure)
+internal fun InstructionContext.readSyscallString(
+    statement: ProgramStatement?,
+    address: Long,
+): String {
+  val memory = memory()
+  var cursor = address
+  return try {
+    buildString {
+      while (true) {
+        val character = memory.readData(cursor++, 1).toChar()
+        if (character == '\u0000') break
+        append(character)
+      }
     }
+  } catch (failure: AddressErrorException) {
+    throw ProcessingException(this, statement, failure)
+  }
 }

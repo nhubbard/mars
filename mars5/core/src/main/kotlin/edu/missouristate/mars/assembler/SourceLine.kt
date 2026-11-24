@@ -31,8 +31,12 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 /** One line of source with its original file and line number through include expansion. */
-open class SourceLine(open val source: String, private val program: MIPSprogram?, open val lineNumber: Int) {
-    open val filename: String? = program?.filename
+open class SourceLine(
+    open val source: String,
+    private val program: MIPSprogram?,
+    open val lineNumber: Int,
+) {
+  open val filename: String? = program?.filename
 
-    open fun getMIPSprogram(): MIPSprogram? = program
+  open fun getMIPSprogram(): MIPSprogram? = program
 }

@@ -1,7 +1,5 @@
 package edu.missouristate.mars.plugin.language
 
-import edu.missouristate.mars.plugin.language.index.referenceIndexId
-import edu.missouristate.mars.plugin.language.index.declarationIndexId
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.command.WriteCommandAction
@@ -25,6 +23,8 @@ import edu.missouristate.mars.plugin.analysis.SymbolKind
 import edu.missouristate.mars.plugin.language.index.MipsReferenceExternalizer
 import edu.missouristate.mars.plugin.language.index.MipsReferenceIndex
 import edu.missouristate.mars.plugin.language.index.MipsReferenceSite
+import edu.missouristate.mars.plugin.language.index.declarationIndexId
+import edu.missouristate.mars.plugin.language.index.referenceIndexId
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.DataInputStream
@@ -42,12 +42,14 @@ import org.junit.jupiter.api.Test
 
 @TestApplication
 class MipsReferenceIndexPlatformTest {
-    private val project = codeInsightProjectFixture()
-    private val fixture by codeInsightFixture(project)
+  private val project = codeInsightProjectFixture()
+  private val fixture by codeInsightFixture(project)
 
-    @Test
-    fun `native index records unresolved symbol kinds offsets and physical macro ownership`() = timeoutRunBlocking {
-        val source = $$"""
+  @Test
+  fun `native index records unresolved symbol kinds offsets and physical macro ownership`() =
+      timeoutRunBlocking {
+        val source =
+            $$"""
             .eqv Alias .emit
             .eqv Literal NOP
             ,,.macro,, .emit (%arg FORMALS, 7)
@@ -74,137 +76,232 @@ class MipsReferenceIndexPlatformTest {
             .asciiz "literal"
             # comment
             erased: .eqv BAD hidden @ .include "missing.s"
-        """.trimIndent() + "\n"
-        val file = withContext(Dispatchers.EDT) { fixture.addFileToProject("references.asm", source).virtualFile }
+            """
+                .trimIndent() + "\n"
+        val file =
+            withContext(Dispatchers.EDT) {
+              fixture.addFileToProject("references.asm", source).virtualFile
+            }
         IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
         readAction {
-            val index = FileBasedIndex.getInstance()
-            val scope = GlobalSearchScope.fileScope(project.get(), file)
-            fun sites(name: String) = index.getValues(referenceIndexId, name, scope).flatten()
-            val macro = source.indexOf(".macro")
-            val operandKinds = listOf(SymbolKind.LABEL, SymbolKind.EXTERNAL, SymbolKind.CONSTANT)
+          val index = FileBasedIndex.getInstance()
+          val scope = GlobalSearchScope.fileScope(project.get(), file)
+          fun sites(name: String) = index.getValues(referenceIndexId, name, scope).flatten()
+          val macro = source.indexOf(".macro")
+          val operandKinds = listOf(SymbolKind.LABEL, SymbolKind.EXTERNAL, SymbolKind.CONSTANT)
+          assertEquals(
+              buildList {
+                operandKinds.mapTo(this) { MipsReferenceSite(it, source.indexOf("Shared+"), macro) }
+                SymbolKind.entries.mapTo(this) {
+                  MipsReferenceSite(it, source.indexOf("Shared,"), -1)
+                }
+                operandKinds.mapTo(this) { MipsReferenceSite(it, source.lastIndexOf("Shared"), -1) }
+              },
+              sites("Shared"),
+          )
+          assertEquals(
+              operandKinds.map { MipsReferenceSite(it, source.indexOf("CLOSE"), macro) },
+              sites("CLOSE"),
+          )
+          assertEquals(
+              operandKinds.map { MipsReferenceSite(it, source.indexOf("BODY_SYMBOL"), macro) },
+              sites("BODY_SYMBOL"),
+          )
+          assertEquals(
+              listOf(source.indexOf("NOP"), source.indexOf("NOP)"), source.lastIndexOf("NOP"))
+                  .flatMap { offset ->
+                    listOf(SymbolKind.LABEL, SymbolKind.EXTERNAL).map {
+                      MipsReferenceSite(it, offset, -1)
+                    }
+                  },
+              sites("NOP"),
+          )
+          assertEquals(
+              buildList {
+                SymbolKind.entries.mapTo(this) {
+                  MipsReferenceSite(it, source.indexOf(".emit"), -1)
+                }
+                add(MipsReferenceSite(SymbolKind.CONSTANT, source.indexOf(".emit ("), macro))
+                SymbolKind.entries.mapTo(this) {
+                  MipsReferenceSite(it, source.indexOf(".emit("), -1)
+                }
+              },
+              sites(".emit"),
+          )
+          assertEquals(
+              listOf(MipsReferenceSite(SymbolKind.CONSTANT, source.indexOf("FORMALS"), macro)),
+              sites("FORMALS"),
+          )
+          assertEquals(
+              listOf(MipsReferenceSite(SymbolKind.CONSTANT, source.indexOf("rejected"), macro)),
+              sites("rejected"),
+          )
+          assertEquals(
+              listOf(MipsReferenceSite(SymbolKind.CONSTANT, source.indexOf("local:"), macro)),
+              sites("local"),
+          )
+          assertEquals(
+              listOf(MipsReferenceSite(SymbolKind.CONSTANT, source.indexOf("top,,"), -1)),
+              sites("top"),
+          )
+          assertEquals(
+              operandKinds.map { MipsReferenceSite(it, source.indexOf($$"$gcc"), -1) },
+              sites($$"$gcc"),
+          )
+          assertEquals(
+              operandKinds.map { MipsReferenceSite(it, source.indexOf(".1_private"), -1) },
+              sites(".1_private"),
+          )
+          for (name in listOf("DATA_ADDRESS", $$"$textAddress", "STORAGE_NAME")) {
             assertEquals(
-                buildList {
-                    operandKinds.mapTo(this) { MipsReferenceSite(it, source.indexOf("Shared+"), macro) }
-                    SymbolKind.entries.mapTo(this) { MipsReferenceSite(it, source.indexOf("Shared,"), -1) }
-                    operandKinds.mapTo(this) { MipsReferenceSite(it, source.lastIndexOf("Shared"), -1) }
-                },
-                sites("Shared"),
+                listOf(MipsReferenceSite(SymbolKind.CONSTANT, source.indexOf(name), -1)),
+                sites(name),
             )
-            assertEquals(
-                operandKinds.map { MipsReferenceSite(it, source.indexOf("CLOSE"), macro) }, sites("CLOSE"),
-            )
-            assertEquals(operandKinds.map { MipsReferenceSite(it, source.indexOf("BODY_SYMBOL"), macro) }, sites("BODY_SYMBOL"))
-            assertEquals(
-                listOf(source.indexOf("NOP"), source.indexOf("NOP)"), source.lastIndexOf("NOP"))
-                    .flatMap { offset -> listOf(SymbolKind.LABEL, SymbolKind.EXTERNAL).map { MipsReferenceSite(it, offset, -1) } },
-                sites("NOP"),
-            )
-            assertEquals(
-                buildList {
-                    SymbolKind.entries.mapTo(this) { MipsReferenceSite(it, source.indexOf(".emit"), -1) }
-                    add(MipsReferenceSite(SymbolKind.CONSTANT, source.indexOf(".emit ("), macro))
-                    SymbolKind.entries.mapTo(this) { MipsReferenceSite(it, source.indexOf(".emit("), -1) }
-                },
-                sites(".emit"),
-            )
-            assertEquals(listOf(MipsReferenceSite(SymbolKind.CONSTANT, source.indexOf("FORMALS"), macro)), sites("FORMALS"))
-            assertEquals(listOf(MipsReferenceSite(SymbolKind.CONSTANT, source.indexOf("rejected"), macro)), sites("rejected"))
-            assertEquals(listOf(MipsReferenceSite(SymbolKind.CONSTANT, source.indexOf("local:"), macro)), sites("local"))
-            assertEquals(listOf(MipsReferenceSite(SymbolKind.CONSTANT, source.indexOf("top,,"), -1)), sites("top"))
-            assertEquals(operandKinds.map { MipsReferenceSite(it, source.indexOf($$"$gcc"), -1) }, sites($$"$gcc"))
-            assertEquals(operandKinds.map { MipsReferenceSite(it, source.indexOf(".1_private"), -1) }, sites(".1_private"))
-            for (name in listOf("DATA_ADDRESS", $$"$textAddress", "STORAGE_NAME")) {
-                assertEquals(listOf(MipsReferenceSite(SymbolKind.CONSTANT, source.indexOf(name), -1)), sites(name))
-            }
-            for (name in listOf("Alias", "Literal", "shared", "%arg", $$"$t0", "lw", "NaN", "Infinity",
-                "trailing", "unused", "ignored", "stray",
-                "noat", "invalid%name", "literal", "comment", "erased", "BAD", "hidden", "missing.s", "nop")) {
-                assertTrue(sites(name).isEmpty(), name)
-            }
-            val extension = MipsReferenceIndex()
-            assertSame(referenceIndexId, extension.name)
-            assertEquals(34, extension.version)
-            assertTrue(extension.dependsOnFileContent())
-            assertTrue(extension.inputFilter.acceptInput(file))
-            assertTrue(extension.keyDescriptor.isEqual("Shared", "Shared"))
-            assertSame(MipsReferenceExternalizer, extension.valueExternalizer)
+          }
+          for (name in
+              listOf(
+                  "Alias",
+                  "Literal",
+                  "shared",
+                  "%arg",
+                  $$"$t0",
+                  "lw",
+                  "NaN",
+                  "Infinity",
+                  "trailing",
+                  "unused",
+                  "ignored",
+                  "stray",
+                  "noat",
+                  "invalid%name",
+                  "literal",
+                  "comment",
+                  "erased",
+                  "BAD",
+                  "hidden",
+                  "missing.s",
+                  "nop",
+              )) {
+            assertTrue(sites(name).isEmpty(), name)
+          }
+          val extension = MipsReferenceIndex()
+          assertSame(referenceIndexId, extension.name)
+          assertEquals(34, extension.version)
+          assertTrue(extension.dependsOnFileContent())
+          assertTrue(extension.inputFilter.acceptInput(file))
+          assertTrue(extension.keyDescriptor.isEqual("Shared", "Shared"))
+          assertSame(MipsReferenceExternalizer, extension.valueExternalizer)
         }
-    }
+      }
 
-    @Test
-    // Kotlin exposes the reported Java setters as read-only properties.
-    @Suppress("UsePropertyAccessSyntax")
-    fun `references survive declaration changes and follow unsaved edits and file deletion`() = timeoutRunBlocking {
+  @Test
+  // Kotlin exposes the reported Java setters as read-only properties.
+  @Suppress("UsePropertyAccessSyntax")
+  fun `references survive declaration changes and follow unsaved edits and file deletion`() =
+      timeoutRunBlocking {
         val project = project.get()
-        val use = withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("ignored.txt", "b remote\n")
-            fixture.addFileToProject("use.s", "b remote\n")
-        }
+        val use =
+            withContext(Dispatchers.EDT) {
+              fixture.addFileToProject("ignored.txt", "b remote\n")
+              fixture.addFileToProject("use.s", "b remote\n")
+            }
         val index = FileBasedIndex.getInstance()
         val scope = GlobalSearchScope.projectScope(project)
         IndexingTestUtil.suspendUntilIndexesAreReady(project)
         readAction {
-            assertEquals(setOf(use.virtualFile), index.getContainingFiles(referenceIndexId, "remote", scope).toSet())
-            assertTrue(index.getContainingFiles(declarationIndexId, "remote", scope).isEmpty())
+          assertEquals(
+              setOf(use.virtualFile),
+              index.getContainingFiles(referenceIndexId, "remote", scope).toSet(),
+          )
+          assertTrue(index.getContainingFiles(declarationIndexId, "remote", scope).isEmpty())
         }
-        val definition = withContext(Dispatchers.EDT) { fixture.addFileToProject("def.asm", "remote: nop\n") }
+        val definition =
+            withContext(Dispatchers.EDT) { fixture.addFileToProject("def.asm", "remote: nop\n") }
         IndexingTestUtil.suspendUntilIndexesAreReady(project)
         readAction {
-            assertEquals(setOf(definition.virtualFile), index.getContainingFiles(declarationIndexId, "remote", scope).toSet())
-            assertEquals(setOf(use.virtualFile, definition.virtualFile), index.getContainingFiles(referenceIndexId, "remote", scope).toSet())
+          assertEquals(
+              setOf(definition.virtualFile),
+              index.getContainingFiles(declarationIndexId, "remote", scope).toSet(),
+          )
+          assertEquals(
+              setOf(use.virtualFile, definition.virtualFile),
+              index.getContainingFiles(referenceIndexId, "remote", scope).toSet(),
+          )
         }
         val editedSource = ",,b,,,unsaved,,\n"
         withContext(Dispatchers.EDT) {
-            fixture.configureFromExistingVirtualFile(use.virtualFile)
-            val document = fixture.editor.document
-            WriteCommandAction.runWriteCommandAction(project) { document.setText(editedSource) }
-            PsiDocumentManager.getInstance(project).commitAllDocuments()
-            assertTrue(FileDocumentManager.getInstance().isDocumentUnsaved(document))
+          fixture.configureFromExistingVirtualFile(use.virtualFile)
+          val document = fixture.editor.document
+          WriteCommandAction.runWriteCommandAction(project) { document.setText(editedSource) }
+          PsiDocumentManager.getInstance(project).commitAllDocuments()
+          assertTrue(FileDocumentManager.getInstance().isDocumentUnsaved(document))
         }
         readAction {
-            assertEquals(setOf(definition.virtualFile), index.getContainingFiles(referenceIndexId, "remote", scope).toSet())
-            assertEquals(setOf(use.virtualFile), index.getContainingFiles(referenceIndexId, "unsaved", scope).toSet())
+          assertEquals(
+              setOf(definition.virtualFile),
+              index.getContainingFiles(referenceIndexId, "remote", scope).toSet(),
+          )
+          assertEquals(
+              setOf(use.virtualFile),
+              index.getContainingFiles(referenceIndexId, "unsaved", scope).toSet(),
+          )
         }
-        val edited = project.service<MarsAnalysisService>().lookupCandidates(SymbolKey("unsaved", SymbolKind.LABEL), scope)
+        val edited =
+            project
+                .service<MarsAnalysisService>()
+                .lookupCandidates(SymbolKey("unsaved", SymbolKind.LABEL), scope)
         assertEquals(
-            IndexedSymbolCandidates(emptyList(), listOf(IndexedSymbolSite(SourceId(use.virtualFile.url), editedSource.indexOf("unsaved"), -1))),
+            IndexedSymbolCandidates(
+                emptyList(),
+                listOf(
+                    IndexedSymbolSite(
+                        SourceId(use.virtualFile.url),
+                        editedSource.indexOf("unsaved"),
+                        -1,
+                    ),
+                ),
+            ),
             edited,
         )
         withContext(Dispatchers.EDT) {
-            WriteCommandAction.runWriteCommandAction(project) { use.virtualFile.delete(this) }
+          WriteCommandAction.runWriteCommandAction(project) { use.virtualFile.delete(this) }
         }
         IndexingTestUtil.suspendUntilIndexesAreReady(project)
         readAction {
-            assertTrue(index.getContainingFiles(referenceIndexId, "unsaved", scope).isEmpty())
+          assertTrue(index.getContainingFiles(referenceIndexId, "unsaved", scope).isEmpty())
         }
-    }
+      }
 
-    @Test
-    fun `reference index values round trip without resolving their target`() {
-        val values = SymbolKind.entries.mapIndexed { index, kind -> MipsReferenceSite(kind, 2 + index, -1) }
-        for (sites in listOf(emptyList(), values)) {
-            val bytes = ByteArrayOutputStream()
-            DataOutputStream(bytes).use { MipsReferenceExternalizer.save(it, sites) }
-            DataInputStream(ByteArrayInputStream(bytes.toByteArray())).use {
-                assertEquals(sites, MipsReferenceExternalizer.read(it))
-                assertEquals(-1, it.read())
-            }
-        }
+  @Test
+  fun `reference index values round trip without resolving their target`() {
+    val values =
+        SymbolKind.entries.mapIndexed { index, kind -> MipsReferenceSite(kind, 2 + index, -1) }
+    for (sites in listOf(emptyList(), values)) {
+      val bytes = ByteArrayOutputStream()
+      DataOutputStream(bytes).use { MipsReferenceExternalizer.save(it, sites) }
+      DataInputStream(ByteArrayInputStream(bytes.toByteArray())).use {
+        assertEquals(sites, MipsReferenceExternalizer.read(it))
+        assertEquals(-1, it.read())
+      }
     }
+  }
 
-    @Test
-    fun `project service joins exact names and kinds across the supplied native scope`() = timeoutRunBlocking {
+  @Test
+  fun `project service joins exact names and kinds across the supplied native scope`() =
+      timeoutRunBlocking {
         val project = project.get()
-        val (label, macro, constant, branch, call) = withContext(Dispatchers.EDT) {
-            listOf(
-                fixture.addFileToProject("label.asm", "shared: nop\n").virtualFile,
-                fixture.addFileToProject("macro.s", ".macro shared (%x)\n.end_macro\n").virtualFile,
-                fixture.addFileToProject("constant.asm", ".eqv shared 7\n").virtualFile,
-                fixture.addFileToProject("branch.s", "b shared\n").virtualFile,
-                fixture.addFileToProject("call.asm", "shared(7)\n").virtualFile,
-            )
-        }
+        val (label, macro, constant, branch, call) =
+            withContext(Dispatchers.EDT) {
+              listOf(
+                  fixture.addFileToProject("label.asm", "shared: nop\n").virtualFile,
+                  fixture
+                      .addFileToProject("macro.s", ".macro shared (%x)\n.end_macro\n")
+                      .virtualFile,
+                  fixture.addFileToProject("constant.asm", ".eqv shared 7\n").virtualFile,
+                  fixture.addFileToProject("branch.s", "b shared\n").virtualFile,
+                  fixture.addFileToProject("call.asm", "shared(7)\n").virtualFile,
+              )
+            }
         IndexingTestUtil.suspendUntilIndexesAreReady(project)
         val service = project.service<MarsAnalysisService>()
         val before = service.snapshot
@@ -220,8 +317,19 @@ class MipsReferenceIndexPlatformTest {
         assertEquals(listOf(IndexedSymbolSite(SourceId(macro.url), 7, -1)), macros.declarations)
         assertEquals(listOf(expectedCall), macros.references)
         val constants = service.lookupCandidates(SymbolKey("shared", SymbolKind.CONSTANT), scope)
-        assertEquals(listOf(IndexedSymbolSite(SourceId(constant.url), 5, -1)), constants.declarations)
-        assertEquals(setOf(expectedBranch, expectedCall, expectedLabel, IndexedSymbolSite(SourceId(macro.url), 7, 0)), constants.references.toSet())
+        assertEquals(
+            listOf(IndexedSymbolSite(SourceId(constant.url), 5, -1)),
+            constants.declarations,
+        )
+        assertEquals(
+            setOf(
+                expectedBranch,
+                expectedCall,
+                expectedLabel,
+                IndexedSymbolSite(SourceId(macro.url), 7, 0),
+            ),
+            constants.references.toSet(),
+        )
 
         val narrow = GlobalSearchScope.filesScope(project, listOf(label, call))
         assertEquals(
@@ -230,35 +338,47 @@ class MipsReferenceIndexPlatformTest {
         )
         val empty = IndexedSymbolCandidates(emptyList(), emptyList())
         assertEquals(empty, service.lookupCandidates(SymbolKey("Shared", SymbolKind.LABEL), scope))
-        assertEquals(empty, service.lookupCandidates(SymbolKey("shared", SymbolKind.LABEL), GlobalSearchScope.EMPTY_SCOPE))
-        assertSame(before, service.snapshot)
-    }
-
-    @Test
-    fun `lookup can wait for smart mode or be cancelled while indexing`() = timeoutRunBlocking {
-        val project = project.get()
-        val file = withContext(Dispatchers.EDT) { fixture.addFileToProject("code.s", "entry: b entry\n").virtualFile }
-        IndexingTestUtil.suspendUntilIndexesAreReady(project)
-        val service = project.service<MarsAnalysisService>()
-        val scope = GlobalSearchScope.fileScope(project, file)
-        val key = SymbolKey("entry", SymbolKind.LABEL)
-        val dumbTask = DumbModeTestUtils.startEternalDumbModeTask(project)
-        val waiting = try {
-            val lookup = async(start = CoroutineStart.UNDISPATCHED) { service.lookupCandidates(key, scope) }
-            val cancelled = async(start = CoroutineStart.UNDISPATCHED) { service.lookupCandidates(key, scope) }
-            cancelled.cancelAndJoin()
-            assertTrue(cancelled.isCancelled)
-            assertFalse(lookup.isCompleted)
-            lookup
-        } finally {
-            DumbModeTestUtils.endEternalDumbModeTaskAndWaitForSmartMode(project, dumbTask)
-        }
         assertEquals(
-            IndexedSymbolCandidates(
-                listOf(IndexedSymbolSite(SourceId(file.url), 0, -1)),
-                listOf(IndexedSymbolSite(SourceId(file.url), 9, -1)),
+            empty,
+            service.lookupCandidates(
+                SymbolKey("shared", SymbolKind.LABEL),
+                GlobalSearchScope.EMPTY_SCOPE,
             ),
-            waiting.await(),
         )
-    }
+        assertSame(before, service.snapshot)
+      }
+
+  @Test
+  fun `lookup can wait for smart mode or be cancelled while indexing`() = timeoutRunBlocking {
+    val project = project.get()
+    val file =
+        withContext(Dispatchers.EDT) {
+          fixture.addFileToProject("code.s", "entry: b entry\n").virtualFile
+        }
+    IndexingTestUtil.suspendUntilIndexesAreReady(project)
+    val service = project.service<MarsAnalysisService>()
+    val scope = GlobalSearchScope.fileScope(project, file)
+    val key = SymbolKey("entry", SymbolKind.LABEL)
+    val dumbTask = DumbModeTestUtils.startEternalDumbModeTask(project)
+    val waiting =
+        try {
+          val lookup =
+              async(start = CoroutineStart.UNDISPATCHED) { service.lookupCandidates(key, scope) }
+          val cancelled =
+              async(start = CoroutineStart.UNDISPATCHED) { service.lookupCandidates(key, scope) }
+          cancelled.cancelAndJoin()
+          assertTrue(cancelled.isCancelled)
+          assertFalse(lookup.isCompleted)
+          lookup
+        } finally {
+          DumbModeTestUtils.endEternalDumbModeTaskAndWaitForSmartMode(project, dumbTask)
+        }
+    assertEquals(
+        IndexedSymbolCandidates(
+            listOf(IndexedSymbolSite(SourceId(file.url), 0, -1)),
+            listOf(IndexedSymbolSite(SourceId(file.url), 9, -1)),
+        ),
+        waiting.await(),
+    )
+  }
 }

@@ -35,35 +35,35 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 open class SyscallPrintString : AbstractSyscall(4, "PrintString") {
-    @Throws(ProcessingException::class)
-    override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
-        var address = context.effectiveAddress(4, 0)
-        if (context.settings().isUtf8TextEnabled) {
-            val bytes = ByteArrayOutputStream()
-            try {
-                val memory = context.memory()
-                while (true) {
-                    val byte = memory.readData(address++, 1)
-                    if (byte == 0) break
-                    bytes.write(byte)
-                }
-            } catch (failure: AddressErrorException) {
-                throw ProcessingException(context, statement, failure)
-            } finally {
-                // Preserve the readable prefix if simulated memory faults.
-                context.environment().printString(bytes.toByteArray().decodeToString())
-            }
-            return
+  @Throws(ProcessingException::class)
+  override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
+    var address = context.effectiveAddress(4, 0)
+    if (context.settings().isUtf8TextEnabled) {
+      val bytes = ByteArrayOutputStream()
+      try {
+        val memory = context.memory()
+        while (true) {
+          val byte = memory.readData(address++, 1)
+          if (byte == 0) break
+          bytes.write(byte)
         }
-        try {
-            // Emit each character before reading the next address so a fault preserves partial output.
-            while (true) {
-                val character = context.memory().readData(address++, 1).toChar()
-                if (character == '\u0000') break
-                context.environment().printChar(character)
-            }
-        } catch (failure: AddressErrorException) {
-            throw ProcessingException(context, statement, failure)
-        }
+      } catch (failure: AddressErrorException) {
+        throw ProcessingException(context, statement, failure)
+      } finally {
+        // Preserve the readable prefix if simulated memory faults.
+        context.environment().printString(bytes.toByteArray().decodeToString())
+      }
+      return
     }
+    try {
+      // Emit each character before reading the next address so a fault preserves partial output.
+      while (true) {
+        val character = context.memory().readData(address++, 1).toChar()
+        if (character == '\u0000') break
+        context.environment().printChar(character)
+      }
+    } catch (failure: AddressErrorException) {
+      throw ProcessingException(context, statement, failure)
+    }
+  }
 }

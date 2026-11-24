@@ -12,56 +12,67 @@ import edu.missouristate.mars.api.StopEvent
 
 /** Tracks observed calls on the simulator worker and is read after the worker has suspended. */
 internal class DebuggerCallStack(
-    private val undoCapacity: Int, private val sourceAt: (Long) -> Origin?,
+    private val undoCapacity: Int,
+    private val sourceAt: (Long) -> Origin?,
 ) : SimulatorListener {
-    data class StepOutTarget(val depth: Int, val handlerDepth: Int)
-    data class CallerSite(val id: Long, val pc: Long, val origin: Origin?, val call: Call?)
+  data class StepOutTarget(val depth: Int, val handlerDepth: Int)
 
-    private class Frame(val parent: Frame?, val site: CallerSite) {
-        val returnAddress = site.call?.returnAddressBits
-        val depth: Int = (parent?.depth ?: 0) + 1
-        val handlerDepth: Int = if (returnAddress == null) depth else parent?.handlerDepth ?: 0
-    }
+  data class CallerSite(val id: Long, val pc: Long, val origin: Origin?, val call: Call?)
 
-    private data class Change(val step: Long, val previous: Frame?)
+  private class Frame(val parent: Frame?, val site: CallerSite) {
+    val returnAddress = site.call?.returnAddressBits
+    val depth: Int = (parent?.depth ?: 0) + 1
+    val handlerDepth: Int = if (returnAddress == null) depth else parent?.handlerDepth ?: 0
+  }
 
-    private var head: Frame? = null
-    private var nextId = 0L
-    private val history = ArrayDeque<Change>()
+  private data class Change(val step: Long, val previous: Frame?)
 
-    fun stepOutTarget(): StepOutTarget? {
-        val frame = head ?: return null
-        if (frame.returnAddress == null) return null
-        return StepOutTarget(frame.depth, frame.handlerDepth)
-    }
+  private var head: Frame? = null
+  private var nextId = 0L
+  private val history = ArrayDeque<Change>()
 
-    fun callers(): Sequence<CallerSite> = generateSequence(head, Frame::parent).map(Frame::site)
+  fun stepOutTarget(): StepOutTarget? {
+    val frame = head ?: return null
+    if (frame.returnAddress == null) return null
+    return StepOutTarget(frame.depth, frame.handlerDepth)
+  }
 
-    fun reached(target: StepOutTarget): Boolean {
-        val frame = head ?: return true
-        return frame.depth < target.depth || frame.handlerDepth != target.handlerDepth
-    }
+  fun callers(): Sequence<CallerSite> = generateSequence(head, Frame::parent).map(Frame::site)
 
-    override fun onStep(event: StepEvent) {
-        val before = head
-        head = when (val transfer = event.transfer) {
-            is Call -> Frame(before, CallerSite(++nextId, event.pcBits, sourceAt(event.pcBits), transfer))
-            ExceptionEntry.INSTANCE -> Frame(before, CallerSite(++nextId, event.pcBits, sourceAt(event.pcBits), null))
-            ExceptionReturn.INSTANCE -> generateSequence(before, Frame::parent).firstOrNull { it.returnAddress == null }?.parent
-            is Jump -> if (before != null && before.returnAddress == transfer.targetBits) before.parent else before
-            else -> before
+  fun reached(target: StepOutTarget): Boolean {
+    val frame = head ?: return true
+    return frame.depth < target.depth || frame.handlerDepth != target.handlerDepth
+  }
+
+  override fun onStep(event: StepEvent) {
+    val before = head
+    head =
+        when (val transfer = event.transfer) {
+          is Call ->
+              Frame(before, CallerSite(++nextId, event.pcBits, sourceAt(event.pcBits), transfer))
+          ExceptionEntry.INSTANCE ->
+              Frame(before, CallerSite(++nextId, event.pcBits, sourceAt(event.pcBits), null))
+          ExceptionReturn.INSTANCE ->
+              generateSequence(before, Frame::parent)
+                  .firstOrNull { it.returnAddress == null }
+                  ?.parent
+          is Jump ->
+              if (before != null && before.returnAddress == transfer.targetBits) before.parent
+              else before
+          else -> before
         }
-        if (head === before) return
-        if (history.size == undoCapacity) history.removeFirst()
-        history.addLast(Change(event.stepCount, before))
-    }
+    if (head === before) return
+    if (history.size == undoCapacity) history.removeFirst()
+    history.addLast(Change(event.stepCount, before))
+  }
 
-    override fun onBackstep(stepCount: Long) {
-        while ((history.lastOrNull()?.step ?: 0) > stepCount) {
-            head = history.removeLast().previous
-        }
+  override fun onBackstep(stepCount: Long) {
+    while ((history.lastOrNull()?.step ?: 0) > stepCount) {
+      head = history.removeLast().previous
     }
+  }
 
-    override fun onStop(event: StopEvent) = Unit
-    override fun onError(event: ErrorEvent) = Unit
+  override fun onStop(event: StopEvent) = Unit
+
+  override fun onError(event: ErrorEvent) = Unit
 }

@@ -13,13 +13,20 @@ import edu.missouristate.mars.plugin.run.MarsRunConfiguration
 import edu.missouristate.mars.plugin.run.MarsRunState
 
 internal class MarsDebugRunner : GenericProgramRunner<RunnerSettings>() {
-    override fun getRunnerId() = "MarsMipsDebugger"
+  override fun getRunnerId() = "MarsMipsDebugger"
 
-    override fun canRun(executorId: String, profile: RunProfile) =
-        executorId == DefaultDebugExecutor.EXECUTOR_ID && profile is MarsRunConfiguration
+  override fun canRun(executorId: String, profile: RunProfile) =
+      executorId == DefaultDebugExecutor.EXECUTOR_ID && profile is MarsRunConfiguration
 
-    override fun doExecute(state: RunProfileState, environment: ExecutionEnvironment) =
-        XDebuggerManager.getInstance(environment.project).newSessionBuilder(object : XDebugProcessStarter() {
-            override fun start(session: XDebugSession) = MarsDebugProcess(session, state as MarsRunState)
-        }).environment(environment).startSession().runContentDescriptor
+  override fun doExecute(state: RunProfileState, environment: ExecutionEnvironment) =
+      XDebuggerManager.getInstance(environment.project)
+          .newSessionBuilder(
+              object : XDebugProcessStarter() {
+                override fun start(session: XDebugSession) =
+                    MarsDebugProcess(session, state as MarsRunState)
+              },
+          )
+          .environment(environment)
+          .startSession()
+          .runContentDescriptor
 }

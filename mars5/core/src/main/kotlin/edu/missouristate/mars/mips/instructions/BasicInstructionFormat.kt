@@ -30,8 +30,8 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /** The operand formats recognized by the assembler and decoder. */
 enum class BasicInstructionFormat {
-    R_FORMAT,
-    I_FORMAT,
-    I_BRANCH_FORMAT,
-    J_FORMAT,
+  R_FORMAT,
+  I_FORMAT,
+  I_BRANCH_FORMAT,
+  J_FORMAT,
 }

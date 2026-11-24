@@ -6,9 +6,10 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
 internal class TokenTypesTest {
-    @Test
-    fun numericClassificationPreservesSpecialValuesWhitespaceAndUnicodeDigits() {
-        val examples = mapOf(
+  @Test
+  fun numericClassificationPreservesSpecialValuesWhitespaceAndUnicodeDigits() {
+    val examples =
+        mapOf(
             "0" to TokenTypes.INTEGER_5,
             "+31" to TokenTypes.INTEGER_5,
             "32" to TokenTypes.INTEGER_16U,
@@ -35,11 +36,11 @@ internal class TokenTypesTest {
             ".word" to TokenTypes.DIRECTIVE,
             "12xyz" to TokenTypes.ERROR,
         )
-        for (target in MarsTarget.entries) {
-            val catalog = InstructionDefaults.forTarget(target)
-            for ((source, expected) in examples) {
-                assertEquals(expected, TokenTypes.matchTokenType(source, catalog), "$target $source")
-            }
-        }
+    for (target in MarsTarget.entries) {
+      val catalog = InstructionDefaults.forTarget(target)
+      for ((source, expected) in examples) {
+        assertEquals(expected, TokenTypes.matchTokenType(source, catalog), "$target $source")
+      }
     }
+  }
 }

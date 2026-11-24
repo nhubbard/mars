@@ -5,20 +5,21 @@ import edu.missouristate.mars.mips.hardware.AddressErrorException
 import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
 
-open class InstrSwc1 : BasicInstruction(
-    $$"swc1 $f1,-100($t2)",
-    $$"Store word from Coprocessor 1 (FPU) : Store 32 bit value in $f1 to effective memory word"
-        + " address",
-    BasicInstructionFormat.I_FORMAT,
-    "111001 ttttt fffff ssssssssssssssss",
-    { statement, context ->
-        val operands = statement.operands
-        try {
+open class InstrSwc1 :
+    BasicInstruction(
+        $$"swc1 $f1,-100($t2)",
+        $$"Store word from Coprocessor 1 (FPU) : Store 32 bit value in $f1 to effective memory word" +
+            " address",
+        BasicInstructionFormat.I_FORMAT,
+        "111001 ttttt fffff ssssssssssssssss",
+        { statement, context ->
+          val operands = statement.operands
+          try {
             val address = context.effectiveAddress(operands[2], operands[1])
             val value = context.coprocessor1.getValue(operands[0])
             context.storeWord(address, value)
-        } catch (failure: AddressErrorException) {
+          } catch (failure: AddressErrorException) {
             throw ProcessingException(context, statement, failure)
-        }
-    },
-)
+          }
+        },
+    )

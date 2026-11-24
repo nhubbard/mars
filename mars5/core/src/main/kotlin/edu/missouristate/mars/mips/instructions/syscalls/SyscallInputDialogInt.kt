@@ -34,22 +34,24 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /** Writes the integer to $a0 and the dialog status to $a1. */
 open class SyscallInputDialogInt : AbstractSyscall(51, "InputDialogInt") {
-    @Throws(ProcessingException::class)
-    override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
-        val message = context.readSyscallString(statement, context.effectiveAddress(4, 0))
-        val input = context.environment().showInputDialog(message)
-        val value = try {
-            input?.let(Integer::parseInt)
+  @Throws(ProcessingException::class)
+  override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
+    val message = context.readSyscallString(statement, context.effectiveAddress(4, 0))
+    val input = context.environment().showInputDialog(message)
+    val value =
+        try {
+          input?.let(Integer::parseInt)
         } catch (failure: NumberFormatException) {
-            null
+          null
         }
-        val status = when {
-            input == null -> -2
-            input.isEmpty() -> -3
-            value == null -> -1
-            else -> 0
+    val status =
+        when {
+          input == null -> -2
+          input.isEmpty() -> -3
+          value == null -> -1
+          else -> 0
         }
-        context.updateRegister(4, value ?: 0)
-        context.updateRegister(5, status)
-    }
+    context.updateRegister(4, value ?: 0)
+    context.updateRegister(5, status)
+  }
 }

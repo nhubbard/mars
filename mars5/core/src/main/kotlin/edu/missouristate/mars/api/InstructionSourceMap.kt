@@ -11,107 +11,128 @@ import kotlin.jvm.JvmSuppressWildcards
 
 /** Emitted instruction origins and the first breakpoint address of each source-line occurrence. */
 @JvmSuppressWildcards
-class InstructionSourceMap @JvmOverloads constructor(
+class InstructionSourceMap
+@JvmOverloads
+constructor(
     origins: Map<Int, Origin>,
     breakpoints: Map<Location, List<Int>>,
     pseudoAddresses: Set<Int> = emptySet(),
     originsByAddress: Map<Long, Origin> = origins.mapKeys { it.key.toLong() },
-    breakpointsByAddress: Map<Location, List<Long>> = breakpoints.mapValues { (_, values) -> values.map(Int::toLong) },
+    breakpointsByAddress: Map<Location, List<Long>> = breakpoints.mapValues { (_, values) ->
+      values.map(Int::toLong)
+    },
     pseudoAddressBits: Set<Long> = pseudoAddresses.mapTo(HashSet(), Int::toLong),
 ) {
-    private val origins: Map<Int, Origin> = copyMap(origins)
-    private val breakpoints: Map<Location, List<Int>> = copyMap(breakpoints.mapValues { copyList(it.value) })
-    private val pseudoAddresses: Set<Int> = copySet(pseudoAddresses)
-    val originsByAddress: Map<Long, Origin> = copyMap(originsByAddress)
-    val breakpointsByAddress: Map<Location, List<Long>> = copyMap(breakpointsByAddress.mapValues { copyList(it.value) })
-    val pseudoAddressBits: Set<Long> = copySet(pseudoAddressBits)
+  private val origins: Map<Int, Origin> = copyMap(origins)
+  private val breakpoints: Map<Location, List<Int>> =
+      copyMap(breakpoints.mapValues { copyList(it.value) })
+  private val pseudoAddresses: Set<Int> = copySet(pseudoAddresses)
+  val originsByAddress: Map<Long, Origin> = copyMap(originsByAddress)
+  val breakpointsByAddress: Map<Location, List<Long>> =
+      copyMap(breakpointsByAddress.mapValues { copyList(it.value) })
+  val pseudoAddressBits: Set<Long> = copySet(pseudoAddressBits)
 
-    fun origins(): Map<Int, Origin> = origins
+  fun origins(): Map<Int, Origin> = origins
 
-    fun breakpoints(): Map<Location, List<Int>> = breakpoints
+  fun breakpoints(): Map<Location, List<Int>> = breakpoints
 
-    fun pseudoAddresses(): Set<Int> = pseudoAddresses
+  fun pseudoAddresses(): Set<Int> = pseudoAddresses
+
+  override fun equals(other: Any?): Boolean =
+      other is InstructionSourceMap &&
+          originsByAddress == other.originsByAddress &&
+          breakpointsByAddress == other.breakpointsByAddress &&
+          pseudoAddressBits == other.pseudoAddressBits
+
+  override fun hashCode(): Int =
+      31 * (31 * originsByAddress.hashCode() + breakpointsByAddress.hashCode()) +
+          pseudoAddressBits.hashCode()
+
+  override fun toString(): String =
+      "InstructionSourceMap[origins=$originsByAddress, breakpoints=$breakpointsByAddress, pseudoAddresses=$pseudoAddressBits]"
+
+  /** An operand and its written token and macro arguments, from inner to outer invocation. */
+  class SourceOperand(
+      private val written: SourceToken,
+      arguments: List<SourceToken>,
+      private val value: String,
+      private val type: TokenTypes,
+      private val coprocessor0: Boolean,
+  ) {
+    private val arguments: List<SourceToken> = copyList(arguments)
+
+    fun written(): SourceToken = written
+
+    fun arguments(): List<SourceToken> = arguments
+
+    fun value(): String = value
+
+    fun type(): TokenTypes = type
+
+    fun coprocessor0(): Boolean = coprocessor0
 
     override fun equals(other: Any?): Boolean =
-        other is InstructionSourceMap && originsByAddress == other.originsByAddress &&
-            breakpointsByAddress == other.breakpointsByAddress && pseudoAddressBits == other.pseudoAddressBits
+        other is SourceOperand &&
+            written == other.written &&
+            arguments == other.arguments &&
+            value == other.value &&
+            type == other.type &&
+            coprocessor0 == other.coprocessor0
 
-    override fun hashCode(): Int = 31 * (31 * originsByAddress.hashCode() + breakpointsByAddress.hashCode()) + pseudoAddressBits.hashCode()
+    override fun hashCode(): Int {
+      var result = written.hashCode()
+      result = 31 * result + arguments.hashCode()
+      result = 31 * result + value.hashCode()
+      result = 31 * result + type.hashCode()
+      return 31 * result + coprocessor0.hashCode()
+    }
 
     override fun toString(): String =
-        "InstructionSourceMap[origins=$originsByAddress, breakpoints=$breakpointsByAddress, pseudoAddresses=$pseudoAddressBits]"
+        "SourceOperand[written=$written, arguments=$arguments, value=$value, type=$type, coprocessor0=$coprocessor0]"
+  }
 
-    /** An operand and its written token and macro arguments, from inner to outer invocation. */
-    class SourceOperand(
-        private val written: SourceToken,
-        arguments: List<SourceToken>,
-        private val value: String,
-        private val type: TokenTypes,
-        private val coprocessor0: Boolean,
-    ) {
-        private val arguments: List<SourceToken> = copyList(arguments)
+  /** A one-based physical line in a normalized absolute source path. */
+  class Location(file: Path, private val line: Int) {
+    private val file = file.toAbsolutePath().normalize()
 
-        fun written(): SourceToken = written
-
-        fun arguments(): List<SourceToken> = arguments
-
-        fun value(): String = value
-
-        fun type(): TokenTypes = type
-
-        fun coprocessor0(): Boolean = coprocessor0
-
-        override fun equals(other: Any?): Boolean =
-            other is SourceOperand && written == other.written && arguments == other.arguments &&
-                value == other.value && type == other.type && coprocessor0 == other.coprocessor0
-
-        override fun hashCode(): Int {
-            var result = written.hashCode()
-            result = 31 * result + arguments.hashCode()
-            result = 31 * result + value.hashCode()
-            result = 31 * result + type.hashCode()
-            return 31 * result + coprocessor0.hashCode()
-        }
-
-        override fun toString(): String =
-            "SourceOperand[written=$written, arguments=$arguments, value=$value, type=$type, coprocessor0=$coprocessor0]"
+    init {
+      require(line > 0) { "Source lines start at one" }
     }
 
-    /** A one-based physical line in a normalized absolute source path. */
-    class Location(file: Path, private val line: Int) {
-        private val file = file.toAbsolutePath().normalize()
+    fun file(): Path = file
 
-        init {
-            require(line > 0) { "Source lines start at one" }
-        }
+    fun line(): Int = line
 
-        fun file(): Path = file
+    override fun equals(other: Any?): Boolean =
+        other is Location && file == other.file && line == other.line
 
-        fun line(): Int = line
+    override fun hashCode(): Int = 31 * file.hashCode() + line
 
-        override fun equals(other: Any?): Boolean = other is Location && file == other.file && line == other.line
+    override fun toString(): String = "Location[file=$file, line=$line]"
+  }
 
-        override fun hashCode(): Int = 31 * file.hashCode() + line
+  /** The emitted source statement and any enclosing macro invocation. */
+  @JvmRecord data class Origin(val location: Location, val caller: Origin?)
 
-        override fun toString(): String = "Location[file=$file, line=$line]"
-    }
-
-    /** The emitted source statement and any enclosing macro invocation. */
-    @JvmRecord
-    data class Origin(val location: Location, val caller: Origin?)
-
-    companion object {
-        internal fun fromAddressBits(
-            origins: Map<Long, Origin>, breakpoints: Map<Location, List<Long>>, pseudoAddresses: Set<Long>,
-        ): InstructionSourceMap = InstructionSourceMap(
+  companion object {
+    internal fun fromAddressBits(
+        origins: Map<Long, Origin>,
+        breakpoints: Map<Location, List<Long>>,
+        pseudoAddresses: Set<Long>,
+    ): InstructionSourceMap =
+        InstructionSourceMap(
             origins.filterKeys { it == it.toInt().toLong() }.mapKeys { it.key.toInt() },
-            breakpoints.mapValues { (_, addresses) ->
-                addresses.filter { it == it.toInt().toLong() }.map(Long::toInt)
-            }.filterValues { it.isNotEmpty() },
+            breakpoints
+                .mapValues { (_, addresses) ->
+                  addresses.filter { it == it.toInt().toLong() }.map(Long::toInt)
+                }
+                .filterValues { it.isNotEmpty() },
             pseudoAddresses.filter { it == it.toInt().toLong() }.mapTo(HashSet(), Long::toInt),
-            origins, breakpoints, pseudoAddresses,
+            origins,
+            breakpoints,
+            pseudoAddresses,
         )
 
-        @JvmField val EMPTY = InstructionSourceMap(emptyMap(), emptyMap())
-    }
+    @JvmField val EMPTY = InstructionSourceMap(emptyMap(), emptyMap())
+  }
 }

@@ -22,6 +22,8 @@ import com.intellij.testFramework.junit5.TestApplication
 import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.build.MarsBuildService
 import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
+import java.nio.file.Path
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.withContext
@@ -34,73 +36,90 @@ import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
-import java.nio.file.Path
-import kotlin.time.Duration.Companion.seconds
 
 @TestApplication
 class MipsStructureViewPlatformTest {
-    private val project = codeInsightProjectFixture()
-    private val fixture by codeInsightFixture(project)
+  private val project = codeInsightProjectFixture()
+  private val fixture by codeInsightFixture(project)
 
-    @Suppress("UnstableApiUsage")
-    @Test
-    fun `native structure lists declarations in source order and groups macro-local labels`() = timeoutRunBlocking {
+  @Suppress("UnstableApiUsage")
+  @Test
+  fun `native structure lists declarations in source order and groups macro-local labels`() =
+      timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
-            fixture.configureByText("outline.asm", $$"""
-                .eqv SIZE 4
-                .extern buffer 4
-                entry: nop
-                .macro emit (%label)
-                  local: nop
-                  .macro nested
-                  %label: nop
-                  <caret>inner: lw $t0,4(
-                .end_macro
-                entry: nop
-                .macro unfinished
-                  tail: nop
-            """.trimIndent())
-            val current = project.get()
-            val builder = requireNotNull(LanguageStructureViewBuilder.getInstance().getStructureViewBuilder(fixture.file))
-            val editor = FileEditorManager.getInstance(current).getSelectedEditor(fixture.file.virtualFile)
-            val view = builder.createStructureView(editor, current)
-            try {
-                val model = view.treeModel
-                val root = model.root
-                assertEquals("outline.asm", root.presentation.presentableText)
-                assertNotNull(root.presentation.getIcon(false))
-                val items = root.children.map { it as StructureViewTreeElement }
-                assertEquals(listOf("SIZE", "buffer", "entry", "emit", "entry", "unfinished"), items.map(::name))
-                assertNotSame(items[2].value, items[4].value)
-                assertEquals(listOf("tail"), items.last().children.map { it.presentation.presentableText })
-                val macro = items[3]
-                val children = macro.children.map { it as StructureViewTreeElement }
-                assertEquals(listOf("local", "nested", "inner"), children.map(::name))
-                assertTrue(children[1].children.isEmpty())
-                val inner = children.last()
-                assertSame(inner.value, model.currentEditorElement)
-                assertTrue(view.navigateToSelectedElement(false))
-                val target = items[4]
-                val declaration = target.value as MipsDeclaration
-                assertNotNull(target.presentation.getIcon(false))
-                assertTrue(target.canNavigate())
-                assertTrue(target.canNavigateToSource())
-                assertNotNull(withContext(Dispatchers.Default) { readAction { target.navigationRequest() } })
-                target.navigate(true)
-                assertEquals(declaration.textOffset, fixture.editor.caretModel.offset)
-                assertEquals(fixture.file.text.lastIndexOf("entry:"), fixture.editor.caretModel.offset)
-            } finally {
-                Disposer.dispose(view)
-            }
+          fixture.configureByText(
+              "outline.asm",
+              $$"""
+              .eqv SIZE 4
+              .extern buffer 4
+              entry: nop
+              .macro emit (%label)
+                local: nop
+                .macro nested
+                %label: nop
+                <caret>inner: lw $t0,4(
+              .end_macro
+              entry: nop
+              .macro unfinished
+                tail: nop
+              """
+                  .trimIndent(),
+          )
+          val current = project.get()
+          val builder =
+              requireNotNull(
+                  LanguageStructureViewBuilder.getInstance().getStructureViewBuilder(fixture.file),
+              )
+          val editor =
+              FileEditorManager.getInstance(current).getSelectedEditor(fixture.file.virtualFile)
+          val view = builder.createStructureView(editor, current)
+          try {
+            val model = view.treeModel
+            val root = model.root
+            assertEquals("outline.asm", root.presentation.presentableText)
+            assertNotNull(root.presentation.getIcon(false))
+            val items = root.children.map { it as StructureViewTreeElement }
+            assertEquals(
+                listOf("SIZE", "buffer", "entry", "emit", "entry", "unfinished"),
+                items.map(::name),
+            )
+            assertNotSame(items[2].value, items[4].value)
+            assertEquals(
+                listOf("tail"),
+                items.last().children.map { it.presentation.presentableText },
+            )
+            val macro = items[3]
+            val children = macro.children.map { it as StructureViewTreeElement }
+            assertEquals(listOf("local", "nested", "inner"), children.map(::name))
+            assertTrue(children[1].children.isEmpty())
+            val inner = children.last()
+            assertSame(inner.value, model.currentEditorElement)
+            assertTrue(view.navigateToSelectedElement(false))
+            val target = items[4]
+            val declaration = target.value as MipsDeclaration
+            assertNotNull(target.presentation.getIcon(false))
+            assertTrue(target.canNavigate())
+            assertTrue(target.canNavigateToSource())
+            assertNotNull(
+                withContext(Dispatchers.Default) { readAction { target.navigationRequest() } },
+            )
+            target.navigate(true)
+            assertEquals(declaration.textOffset, fixture.editor.caretModel.offset)
+            assertEquals(fixture.file.text.lastIndexOf("entry:"), fixture.editor.caretModel.offset)
+          } finally {
+            Disposer.dispose(view)
+          }
         }
-    }
+      }
 
-    @Test
-    // Kotlin exposes the reported Java setters as read-only properties.
-    @Suppress("UsePropertyAccessSyntax", "UnstableApiUsage")
-    fun `outline shows effective macro names and their local declarations in the including entry`() = timeoutRunBlocking {
+  @Test
+  // Kotlin exposes the reported Java setters as read-only properties.
+  @Suppress("UsePropertyAccessSyntax", "UnstableApiUsage")
+  fun `outline shows effective macro names and their local declarations in the including entry`() =
+      timeoutRunBlocking {
         val current = project.get()
-        val source = """
+        val source =
+            """
             EXTERNAL: nop
             ordinaryExternal: nop
             .end_macro
@@ -114,64 +133,99 @@ class MipsStructureViewPlatformTest {
                 third: nop
             .end_macro
             outside: nop
-        """.trimIndent()
+            """
+                .trimIndent()
         withContext(Dispatchers.EDT) {
-            val macros = fixture.addFileToProject("macro-outline.s", source)
-            fixture.addFileToProject("outline-entry.asm", """
-                .eqv OPEN .macro
-                .eqv CLOSE .end_macro
-                .eqv NAME emit
-                .eqv WHOLE .macro whole
-                .eqv WRITTEN written
-                .eqv EXTERNAL externalLocal
-                .macro external
-                .include "macro-outline.s"
-            """.trimIndent())
-            fixture.configureFromExistingVirtualFile(macros.virtualFile)
+          val macros = fixture.addFileToProject("macro-outline.s", source)
+          fixture.addFileToProject(
+              "outline-entry.asm",
+              """
+              .eqv OPEN .macro
+              .eqv CLOSE .end_macro
+              .eqv NAME emit
+              .eqv WHOLE .macro whole
+              .eqv WRITTEN written
+              .eqv EXTERNAL externalLocal
+              .macro external
+              .include "macro-outline.s"
+              """
+                  .trimIndent(),
+          )
+          fixture.configureFromExistingVirtualFile(macros.virtualFile)
         }
         IndexingTestUtil.suspendUntilIndexesAreReady(current)
         withContext(Dispatchers.EDT) {
-            val builder = LanguageStructureViewBuilder.getInstance().getStructureViewBuilder(fixture.file) as TreeBasedStructureViewBuilder
-            val model = builder.createStructureViewModel(fixture.editor)
-            try {
-                val root = model.root
-                val nodes = root.children.map { it as StructureViewTreeElement }
-                assertEquals(listOf("externalLocal", "ordinaryExternal", "entry", "emit", "whole", "written", "outside"), nodes.map(::name))
-                assertEquals(listOf("local"), nodes[3].children.map { it.presentation.presentableText })
-                assertEquals(listOf("second"), nodes[4].children.map { it.presentation.presentableText })
-                assertEquals(listOf("third"), nodes[5].children.map { it.presentation.presentableText })
-                for ((node, spelling) in listOf(nodes[3] to "NAME", nodes[4] to "WHOLE")) {
-                    assertNotNull(node.presentation.getIcon(false))
-                    assertTrue(node.canNavigateToSource())
-                    assertNotNull(withContext(Dispatchers.Default) { readAction { node.navigationRequest() } })
-                    node.navigate(true)
-                    assertEquals(source.indexOf(spelling), fixture.editor.caretModel.offset)
-                    assertSame(node.value, model.currentEditorElement)
-                }
-                DumbModeTestUtils.runInDumbModeSynchronously(current) {
-                    assertEquals(listOf("EXTERNAL", "ordinaryExternal", "entry", "local", "second", "WRITTEN", "outside"),
-                        root.children.map { it.presentation.presentableText })
-                    assertNull(model.currentEditorElement)
-                }
-                WriteCommandAction.runWriteCommandAction(current) {
-                    fixture.editor.document.setText(".end_macro\nWHOLE\n    second: nop\nCLOSE\n")
-                }
-                PsiDocumentManager.getInstance(current).commitAllDocuments()
-                val onlyMacro = root.children.single()
-                assertEquals("whole", onlyMacro.presentation.presentableText)
-                assertEquals("second", onlyMacro.children.single().presentation.presentableText)
-            } finally {
-                Disposer.dispose(model)
+          val builder =
+              LanguageStructureViewBuilder.getInstance().getStructureViewBuilder(fixture.file)
+                  as TreeBasedStructureViewBuilder
+          val model = builder.createStructureViewModel(fixture.editor)
+          try {
+            val root = model.root
+            val nodes = root.children.map { it as StructureViewTreeElement }
+            assertEquals(
+                listOf(
+                    "externalLocal",
+                    "ordinaryExternal",
+                    "entry",
+                    "emit",
+                    "whole",
+                    "written",
+                    "outside",
+                ),
+                nodes.map(::name),
+            )
+            assertEquals(listOf("local"), nodes[3].children.map { it.presentation.presentableText })
+            assertEquals(
+                listOf("second"),
+                nodes[4].children.map { it.presentation.presentableText },
+            )
+            assertEquals(listOf("third"), nodes[5].children.map { it.presentation.presentableText })
+            for ((node, spelling) in listOf(nodes[3] to "NAME", nodes[4] to "WHOLE")) {
+              assertNotNull(node.presentation.getIcon(false))
+              assertTrue(node.canNavigateToSource())
+              assertNotNull(
+                  withContext(Dispatchers.Default) { readAction { node.navigationRequest() } },
+              )
+              node.navigate(true)
+              assertEquals(source.indexOf(spelling), fixture.editor.caretModel.offset)
+              assertSame(node.value, model.currentEditorElement)
             }
+            DumbModeTestUtils.runInDumbModeSynchronously(current) {
+              assertEquals(
+                  listOf(
+                      "EXTERNAL",
+                      "ordinaryExternal",
+                      "entry",
+                      "local",
+                      "second",
+                      "WRITTEN",
+                      "outside",
+                  ),
+                  root.children.map { it.presentation.presentableText },
+              )
+              assertNull(model.currentEditorElement)
+            }
+            WriteCommandAction.runWriteCommandAction(current) {
+              fixture.editor.document.setText(".end_macro\nWHOLE\n    second: nop\nCLOSE\n")
+            }
+            PsiDocumentManager.getInstance(current).commitAllDocuments()
+            val onlyMacro = root.children.single()
+            assertEquals("whole", onlyMacro.presentation.presentableText)
+            assertEquals("second", onlyMacro.children.single().presentation.presentableText)
+          } finally {
+            Disposer.dispose(model)
+          }
         }
-    }
+      }
 
-    @Test
-    // Kotlin exposes the reported Java setters as read-only properties.
-    @Suppress("UsePropertyAccessSyntax")
-    fun `outline shows expanded labels in source order and omits labels replaced by directives`() = timeoutRunBlocking {
+  @Test
+  // Kotlin exposes the reported Java setters as read-only properties.
+  @Suppress("UsePropertyAccessSyntax")
+  fun `outline shows expanded labels in source order and omits labels replaced by directives`() =
+      timeoutRunBlocking {
         val current = project.get()
-        val source = """
+        val source =
+            """
             .eqv OPEN .data
             .eqv ORIGINAL renamed
             .eqv PREFIX generated:
@@ -186,49 +240,78 @@ class MipsStructureViewPlatformTest {
                 ordinary: nop
             .end_macro
             emit
-        """.trimIndent()
+            """
+                .trimIndent()
         withContext(Dispatchers.EDT) { fixture.configureByText("effective-labels.asm", source) }
         IndexingTestUtil.suspendUntilIndexesAreReady(current)
         withContext(Dispatchers.EDT) {
-            val builder = LanguageStructureViewBuilder.getInstance().getStructureViewBuilder(fixture.file) as TreeBasedStructureViewBuilder
-            val model = builder.createStructureViewModel(fixture.editor)
-            try {
-                val nodes = model.root.children.map { it as StructureViewTreeElement }
-                assertEquals(listOf("OPEN", "ORIGINAL", "PREFIX", "LOCAL", "datum", "renamed", "generated", "emit"), nodes.map(::name))
-                fixture.editor.caretModel.moveToOffset(source.indexOf("OPEN"))
-                assertSame(nodes.first().value, model.currentEditorElement)
-                val local = nodes.last().children.map { it as StructureViewTreeElement }
-                assertEquals(listOf("privateLabel", "ordinary"), local.map(::name))
-                for ((node, spelling) in listOf(nodes[5] to "ORIGINAL:", nodes[6] to "PREFIX nop", local.first() to "LOCAL:")) {
-                    assertNotNull(node.presentation.getIcon(false))
-                    assertTrue(node.canNavigateToSource())
-                    node.navigate(true)
-                    assertEquals(source.indexOf(spelling), fixture.editor.caretModel.offset)
-                    assertSame(node.value, model.currentEditorElement)
-                }
-                fixture.editor.caretModel.moveToOffset(source.indexOf("OPEN:"))
-                assertNull(model.currentEditorElement)
-                DumbModeTestUtils.runInDumbModeSynchronously(current) {
-                    assertFalse(model.root.children.any { it.presentation.presentableText == "generated" })
-                    val open = model.root.children.filterIsInstance<StructureViewTreeElement>().filter { name(it) == "OPEN" }
-                    assertEquals(2, open.size)
-                    assertSame(open.last().value, model.currentEditorElement)
-                }
-                WriteCommandAction.runWriteCommandAction(current) {
-                    fixture.editor.document.setText(source.replace("ORIGINAL renamed", "ORIGINAL changed"))
-                }
-                PsiDocumentManager.getInstance(current).commitAllDocuments()
-                assertEquals("changed", model.root.children[5].presentation.presentableText)
-            } finally {
-                Disposer.dispose(model)
+          val builder =
+              LanguageStructureViewBuilder.getInstance().getStructureViewBuilder(fixture.file)
+                  as TreeBasedStructureViewBuilder
+          val model = builder.createStructureViewModel(fixture.editor)
+          try {
+            val nodes = model.root.children.map { it as StructureViewTreeElement }
+            assertEquals(
+                listOf(
+                    "OPEN",
+                    "ORIGINAL",
+                    "PREFIX",
+                    "LOCAL",
+                    "datum",
+                    "renamed",
+                    "generated",
+                    "emit",
+                ),
+                nodes.map(::name),
+            )
+            fixture.editor.caretModel.moveToOffset(source.indexOf("OPEN"))
+            assertSame(nodes.first().value, model.currentEditorElement)
+            val local = nodes.last().children.map { it as StructureViewTreeElement }
+            assertEquals(listOf("privateLabel", "ordinary"), local.map(::name))
+            for ((node, spelling) in
+                listOf(
+                    nodes[5] to "ORIGINAL:",
+                    nodes[6] to "PREFIX nop",
+                    local.first() to "LOCAL:",
+                )) {
+              assertNotNull(node.presentation.getIcon(false))
+              assertTrue(node.canNavigateToSource())
+              node.navigate(true)
+              assertEquals(source.indexOf(spelling), fixture.editor.caretModel.offset)
+              assertSame(node.value, model.currentEditorElement)
             }
+            fixture.editor.caretModel.moveToOffset(source.indexOf("OPEN:"))
+            assertNull(model.currentEditorElement)
+            DumbModeTestUtils.runInDumbModeSynchronously(current) {
+              assertFalse(
+                  model.root.children.any { it.presentation.presentableText == "generated" },
+              )
+              val open =
+                  model.root.children.filterIsInstance<StructureViewTreeElement>().filter {
+                    name(it) == "OPEN"
+                  }
+              assertEquals(2, open.size)
+              assertSame(open.last().value, model.currentEditorElement)
+            }
+            WriteCommandAction.runWriteCommandAction(current) {
+              fixture.editor.document.setText(
+                  source.replace("ORIGINAL renamed", "ORIGINAL changed"),
+              )
+            }
+            PsiDocumentManager.getInstance(current).commitAllDocuments()
+            assertEquals("changed", model.root.children[5].presentation.presentableText)
+          } finally {
+            Disposer.dispose(model)
+          }
         }
-    }
+      }
 
-    @Test
-    fun `outline shows effective external names and groups macro reservations`() = timeoutRunBlocking {
+  @Test
+  fun `outline shows effective external names and groups macro reservations`() =
+      timeoutRunBlocking {
         val current = project.get()
-        val source = """
+        val source =
+            """
             RESERVE foreign 4
             .end_macro
             .extern STORAGE 4
@@ -239,48 +322,63 @@ class MipsStructureViewPlatformTest {
             .macro emit
                 RESERVE local 4
             .end_macro
-        """.trimIndent()
+            """
+                .trimIndent()
         withContext(Dispatchers.EDT) {
-            val body = fixture.addFileToProject("extern-outline.s", source)
-            fixture.addFileToProject("extern-outline-entry.asm", $$"""
-                .eqv RESERVE .extern
-                .eqv STORAGE renamed
-                .eqv REGISTER $t0
-                .eqv SWITCH .data
-                .macro remote
-                .include "extern-outline.s"
-            """.trimIndent())
-            fixture.configureFromExistingVirtualFile(body.virtualFile)
+          val body = fixture.addFileToProject("extern-outline.s", source)
+          fixture.addFileToProject(
+              "extern-outline-entry.asm",
+              $$"""
+              .eqv RESERVE .extern
+              .eqv STORAGE renamed
+              .eqv REGISTER $t0
+              .eqv SWITCH .data
+              .macro remote
+              .include "extern-outline.s"
+              """
+                  .trimIndent(),
+          )
+          fixture.configureFromExistingVirtualFile(body.virtualFile)
         }
         IndexingTestUtil.suspendUntilIndexesAreReady(current)
         withContext(Dispatchers.EDT) {
-            val builder = LanguageStructureViewBuilder.getInstance().getStructureViewBuilder(fixture.file) as TreeBasedStructureViewBuilder
-            val model = builder.createStructureViewModel(fixture.editor)
-            try {
-                val nodes = model.root.children.map { it as StructureViewTreeElement }
-                assertEquals(listOf("foreign", "renamed", "generated", "literal", $$"$t0", "emit"), nodes.map(::name))
-                assertEquals("local", nodes.last().children.single().presentation.presentableText)
-                for ((node, origin) in nodes.subList(1, 5).zip(listOf("STORAGE", "RESERVE generated", "literal", "REGISTER"))) {
-                    assertNotNull(node.presentation.getIcon(false))
-                    assertTrue(node.canNavigateToSource())
-                    node.navigate(true)
-                    assertEquals(source.indexOf(origin), fixture.editor.caretModel.offset)
-                    assertSame(node.value, model.currentEditorElement)
-                }
-                fixture.editor.caretModel.moveToOffset(source.indexOf("obsolete"))
-                assertNull(model.currentEditorElement)
-            } finally {
-                Disposer.dispose(model)
+          val builder =
+              LanguageStructureViewBuilder.getInstance().getStructureViewBuilder(fixture.file)
+                  as TreeBasedStructureViewBuilder
+          val model = builder.createStructureViewModel(fixture.editor)
+          try {
+            val nodes = model.root.children.map { it as StructureViewTreeElement }
+            assertEquals(
+                listOf("foreign", "renamed", "generated", "literal", $$"$t0", "emit"),
+                nodes.map(::name),
+            )
+            assertEquals("local", nodes.last().children.single().presentation.presentableText)
+            for ((node, origin) in
+                nodes
+                    .subList(1, 5)
+                    .zip(listOf("STORAGE", "RESERVE generated", "literal", "REGISTER"))) {
+              assertNotNull(node.presentation.getIcon(false))
+              assertTrue(node.canNavigateToSource())
+              node.navigate(true)
+              assertEquals(source.indexOf(origin), fixture.editor.caretModel.offset)
+              assertSame(node.value, model.currentEditorElement)
             }
+            fixture.editor.caretModel.moveToOffset(source.indexOf("obsolete"))
+            assertNull(model.currentEditorElement)
+          } finally {
+            Disposer.dispose(model)
+          }
         }
-    }
+      }
 
-    @Test
-    // Kotlin exposes the reported Java setters as read-only properties.
-    @Suppress("UsePropertyAccessSyntax")
-    fun `outline shows generated equivalences and navigates to their written directive`() = timeoutRunBlocking {
+  @Test
+  // Kotlin exposes the reported Java setters as read-only properties.
+  @Suppress("UsePropertyAccessSyntax")
+  fun `outline shows generated equivalences and navigates to their written directive`() =
+      timeoutRunBlocking {
         val current = project.get()
-        val source = """
+        val source =
+            """
             MAKE FIRST 7
             .eqv PACK
             BOTH
@@ -288,139 +386,190 @@ class MipsStructureViewPlatformTest {
                 MAKE INSIDE 9
             .end_macro
             MAKE FIRST 7
-        """.trimIndent()
-        val entry = withContext(Dispatchers.EDT) {
-            val body = fixture.addFileToProject("equivalence-outline.s", source)
-            val entry = fixture.addFileToProject("equivalence-outline-entry.asm", """
-                .eqv MAKE .eqv
-                .eqv PACK SECOND 8
-                .eqv BOTH generated: .eqv THIRD 10
-                .include "equivalence-outline.s"
-            """.trimIndent())
-            fixture.configureFromExistingVirtualFile(body.virtualFile)
-            entry
-        }
+            """
+                .trimIndent()
+        val entry =
+            withContext(Dispatchers.EDT) {
+              val body = fixture.addFileToProject("equivalence-outline.s", source)
+              val entry =
+                  fixture.addFileToProject(
+                      "equivalence-outline-entry.asm",
+                      """
+                      .eqv MAKE .eqv
+                      .eqv PACK SECOND 8
+                      .eqv BOTH generated: .eqv THIRD 10
+                      .include "equivalence-outline.s"
+                      """
+                          .trimIndent(),
+                  )
+              fixture.configureFromExistingVirtualFile(body.virtualFile)
+              entry
+            }
         IndexingTestUtil.suspendUntilIndexesAreReady(current)
         withContext(Dispatchers.EDT) {
-            val builder = LanguageStructureViewBuilder.getInstance().getStructureViewBuilder(fixture.file) as TreeBasedStructureViewBuilder
-            val model = builder.createStructureViewModel(fixture.editor)
-            try {
-                val nodes = model.root.children.map { it as StructureViewTreeElement }
-                assertEquals(listOf("FIRST", "SECOND", "generated", "THIRD", "local"), nodes.map(::name))
-                assertNotSame(nodes[2].value, nodes[3].value)
-                nodes[3].navigate(true)
-                assertEquals(source.indexOf("BOTH"), fixture.editor.caretModel.offset)
-                val inside = nodes.last().children.single() as StructureViewTreeElement
-                assertEquals("INSIDE", name(inside))
-                for ((node, origin) in listOf(nodes[0] to "MAKE FIRST", nodes[1] to ".eqv PACK", inside to "MAKE INSIDE")) {
-                    assertTrue(node.canNavigateToSource())
-                    assertNotNull(withContext(Dispatchers.Default) { readAction { node.navigationRequest() } })
-                    node.navigate(true)
-                    assertEquals(source.indexOf(origin), fixture.editor.caretModel.offset)
-                    assertSame(node.value, model.currentEditorElement)
-                }
-                fixture.editor.caretModel.moveToOffset(source.indexOf(".end_macro"))
-                assertNull(model.currentEditorElement)
-                DumbModeTestUtils.runInDumbModeSynchronously(current) {
-                    assertEquals(listOf("local"), model.root.children.map { it.presentation.presentableText })
-                }
-                val document = FileDocumentManager.getInstance().getDocument(entry.virtualFile)!!
-                WriteCommandAction.runWriteCommandAction(current) {
-                    document.setText(document.text.replace("SECOND 8", "UPDATED 8"))
-                }
-                PsiDocumentManager.getInstance(current).commitAllDocuments()
-                assertEquals(listOf("FIRST", "UPDATED", "generated", "THIRD", "local"),
-                    model.root.children.map { it.presentation.presentableText })
-            } finally {
-                Disposer.dispose(model)
+          val builder =
+              LanguageStructureViewBuilder.getInstance().getStructureViewBuilder(fixture.file)
+                  as TreeBasedStructureViewBuilder
+          val model = builder.createStructureViewModel(fixture.editor)
+          try {
+            val nodes = model.root.children.map { it as StructureViewTreeElement }
+            assertEquals(
+                listOf("FIRST", "SECOND", "generated", "THIRD", "local"),
+                nodes.map(::name),
+            )
+            assertNotSame(nodes[2].value, nodes[3].value)
+            nodes[3].navigate(true)
+            assertEquals(source.indexOf("BOTH"), fixture.editor.caretModel.offset)
+            val inside = nodes.last().children.single() as StructureViewTreeElement
+            assertEquals("INSIDE", name(inside))
+            for ((node, origin) in
+                listOf(
+                    nodes[0] to "MAKE FIRST",
+                    nodes[1] to ".eqv PACK",
+                    inside to "MAKE INSIDE",
+                )) {
+              assertTrue(node.canNavigateToSource())
+              assertNotNull(
+                  withContext(Dispatchers.Default) { readAction { node.navigationRequest() } },
+              )
+              node.navigate(true)
+              assertEquals(source.indexOf(origin), fixture.editor.caretModel.offset)
+              assertSame(node.value, model.currentEditorElement)
             }
+            fixture.editor.caretModel.moveToOffset(source.indexOf(".end_macro"))
+            assertNull(model.currentEditorElement)
+            DumbModeTestUtils.runInDumbModeSynchronously(current) {
+              assertEquals(
+                  listOf("local"),
+                  model.root.children.map { it.presentation.presentableText },
+              )
+            }
+            val document = FileDocumentManager.getInstance().getDocument(entry.virtualFile)!!
+            WriteCommandAction.runWriteCommandAction(current) {
+              document.setText(document.text.replace("SECOND 8", "UPDATED 8"))
+            }
+            PsiDocumentManager.getInstance(current).commitAllDocuments()
+            assertEquals(
+                listOf("FIRST", "UPDATED", "generated", "THIRD", "local"),
+                model.root.children.map { it.presentation.presentableText },
+            )
+          } finally {
+            Disposer.dispose(model)
+          }
         }
-    }
+      }
 
-    @Test
-    fun `open outline receives updates when the selected assembly changes without source edits`() = timeoutRunBlocking {
+  @Test
+  fun `open outline receives updates when the selected assembly changes without source edits`() =
+      timeoutRunBlocking {
         val current = project.get()
         val source = "OPEN emit\nbody: nop\nCLOSE\n"
-        val (macroEntry, plainEntry) = withContext(Dispatchers.EDT) {
-            val shared = fixture.addFileToProject("shared-outline.s", source)
-            val include = ".include \"shared-outline.s\"\n"
-            val macro = fixture.addFileToProject("macro-entry.asm", ".eqv OPEN .macro\n.eqv CLOSE .end_macro\n${include}emit\n")
-            val plain = fixture.addFileToProject("plain-entry.asm", ".eqv OPEN .set\n.eqv CLOSE .set noat\n$include")
-            fixture.configureFromExistingVirtualFile(shared.virtualFile)
-            macro.virtualFile.toNioPath() to plain.virtualFile.toNioPath()
-        }
+        val (macroEntry, plainEntry) =
+            withContext(Dispatchers.EDT) {
+              val shared = fixture.addFileToProject("shared-outline.s", source)
+              val include = ".include \"shared-outline.s\"\n"
+              val macro =
+                  fixture.addFileToProject(
+                      "macro-entry.asm",
+                      ".eqv OPEN .macro\n.eqv CLOSE .end_macro\n${include}emit\n",
+                  )
+              val plain =
+                  fixture.addFileToProject(
+                      "plain-entry.asm",
+                      ".eqv OPEN .set\n.eqv CLOSE .set noat\n$include",
+                  )
+              fixture.configureFromExistingVirtualFile(shared.virtualFile)
+              macro.virtualFile.toNioPath() to plain.virtualFile.toNioPath()
+            }
         IndexingTestUtil.suspendUntilIndexesAreReady(current)
-        val model = withContext(Dispatchers.EDT) {
-            val builder = LanguageStructureViewBuilder.getInstance().getStructureViewBuilder(fixture.file) as TreeBasedStructureViewBuilder
-            builder.createStructureViewModel(fixture.editor)
-        }
+        val model =
+            withContext(Dispatchers.EDT) {
+              val builder =
+                  LanguageStructureViewBuilder.getInstance().getStructureViewBuilder(fixture.file)
+                      as TreeBasedStructureViewBuilder
+              builder.createStructureViewModel(fixture.editor)
+            }
         val updates = Channel<Unit>(Channel.UNLIMITED)
         model.addModelListener { updates.trySend(Unit) }
         suspend fun select(entry: Path) {
-            val component = MarsSessionService.createMarsComponent()
-            component.context().use {
-                assertTrue(current.service<MarsBuildService>().assemble(entry, component, activateBuildView = false))
-            }
-            withTimeout(5.seconds) { updates.receive() }
+          val component = MarsSessionService.createMarsComponent()
+          component.context().use {
+            assertTrue(
+                current
+                    .service<MarsBuildService>()
+                    .assemble(entry, component, activateBuildView = false),
+            )
+          }
+          withTimeout(5.seconds) { updates.receive() }
         }
         try {
-            assertEquals("body", readAction { model.root.children.single().presentation.presentableText })
-            select(macroEntry)
-            readAction {
-                val macro = model.root.children.single()
-                assertEquals("emit", macro.presentation.presentableText)
-                assertEquals("body", macro.children.single().presentation.presentableText)
-            }
-            select(plainEntry)
-            readAction {
-                assertEquals("body", model.root.children.single().presentation.presentableText)
-                assertEquals(source, fixture.file.text)
-            }
+          assertEquals(
+              "body",
+              readAction { model.root.children.single().presentation.presentableText },
+          )
+          select(macroEntry)
+          readAction {
+            val macro = model.root.children.single()
+            assertEquals("emit", macro.presentation.presentableText)
+            assertEquals("body", macro.children.single().presentation.presentableText)
+          }
+          select(plainEntry)
+          readAction {
+            assertEquals("body", model.root.children.single().presentation.presentableText)
+            assertEquals(source, fixture.file.text)
+          }
         } finally {
-            withContext(Dispatchers.EDT) { Disposer.dispose(model) }
+          withContext(Dispatchers.EDT) { Disposer.dispose(model) }
         }
-    }
+      }
 
-    @Test
-    // Kotlin exposes the reported Java setters as read-only properties.
-    @Suppress("UsePropertyAccessSyntax")
-    fun `outline follows unsaved edits while indexing and releases removed declarations`() = timeoutRunBlocking {
+  @Test
+  // Kotlin exposes the reported Java setters as read-only properties.
+  @Suppress("UsePropertyAccessSyntax")
+  fun `outline follows unsaved edits while indexing and releases removed declarations`() =
+      timeoutRunBlocking {
         val current = project.get()
         withContext(Dispatchers.EDT) {
-            val text = PsiFileFactory.getInstance(current).createFileFromText("notes.txt", PlainTextFileType.INSTANCE, "text")
-            assertNull(MipsStructureViewFactory().getStructureViewBuilder(text))
-            fixture.configureByText("unsaved.s", ".eqv\n.macro\n.end_macro\nold: nop\n")
-            val builder = LanguageStructureViewBuilder.getInstance().getStructureViewBuilder(fixture.file) as TreeBasedStructureViewBuilder
-            val model = builder.createStructureViewModel(fixture.editor)
-            try {
-                DumbModeTestUtils.runInDumbModeSynchronously(current) {
-                    val root = model.root
-                    val removed = root.children.single() as StructureViewTreeElement
-                    assertEquals("old", name(removed))
-                    fun edit(text: String) {
-                        WriteCommandAction.runWriteCommandAction(current) { fixture.editor.document.setText(text) }
-                        PsiDocumentManager.getInstance(current).commitAllDocuments()
-                    }
-                    edit("nop\n")
-                    assertTrue(root.children.isEmpty())
-                    assertNull(removed.value)
-                    assertNull(name(removed))
-                    assertTrue(removed.children.isEmpty())
-                    assertNull(removed.presentation.getIcon(false))
-                    assertNull(removed.navigationRequest())
-                    assertFalse(removed.canNavigate())
-                    assertFalse(removed.canNavigateToSource())
-                    removed.navigate(false)
-                    edit(".macro newMacro\nnewLabel: nop\n")
-                    val newMacro = root.children.single()
-                    assertEquals("newMacro", newMacro.presentation.presentableText)
-                    assertEquals("newLabel", newMacro.children.single().presentation.presentableText)
+          val text =
+              PsiFileFactory.getInstance(current)
+                  .createFileFromText("notes.txt", PlainTextFileType.INSTANCE, "text")
+          assertNull(MipsStructureViewFactory().getStructureViewBuilder(text))
+          fixture.configureByText("unsaved.s", ".eqv\n.macro\n.end_macro\nold: nop\n")
+          val builder =
+              LanguageStructureViewBuilder.getInstance().getStructureViewBuilder(fixture.file)
+                  as TreeBasedStructureViewBuilder
+          val model = builder.createStructureViewModel(fixture.editor)
+          try {
+            DumbModeTestUtils.runInDumbModeSynchronously(current) {
+              val root = model.root
+              val removed = root.children.single() as StructureViewTreeElement
+              assertEquals("old", name(removed))
+              fun edit(text: String) {
+                WriteCommandAction.runWriteCommandAction(current) {
+                  fixture.editor.document.setText(text)
                 }
-            } finally {
-                Disposer.dispose(model)
+                PsiDocumentManager.getInstance(current).commitAllDocuments()
+              }
+              edit("nop\n")
+              assertTrue(root.children.isEmpty())
+              assertNull(removed.value)
+              assertNull(name(removed))
+              assertTrue(removed.children.isEmpty())
+              assertNull(removed.presentation.getIcon(false))
+              assertNull(removed.navigationRequest())
+              assertFalse(removed.canNavigate())
+              assertFalse(removed.canNavigateToSource())
+              removed.navigate(false)
+              edit(".macro newMacro\nnewLabel: nop\n")
+              val newMacro = root.children.single()
+              assertEquals("newMacro", newMacro.presentation.presentableText)
+              assertEquals("newLabel", newMacro.children.single().presentation.presentableText)
             }
+          } finally {
+            Disposer.dispose(model)
+          }
         }
-    }
+      }
 
-    private fun name(item: StructureViewTreeElement) = item.presentation.presentableText
+  private fun name(item: StructureViewTreeElement) = item.presentation.presentableText
 }

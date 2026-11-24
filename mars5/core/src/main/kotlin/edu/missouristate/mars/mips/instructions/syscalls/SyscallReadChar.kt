@@ -34,13 +34,19 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 open class SyscallReadChar : AbstractSyscall(12, "ReadChar") {
-    @Throws(ProcessingException::class)
-    override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
-        val value = try {
-            context.environment().readChar()
+  @Throws(ProcessingException::class)
+  override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
+    val value =
+        try {
+          context.environment().readChar()
         } catch (failure: IndexOutOfBoundsException) {
-            throw ProcessingException(context, statement, "invalid char input (syscall $number)", SYSCALL_EXCEPTION)
+          throw ProcessingException(
+              context,
+              statement,
+              "invalid char input (syscall $number)",
+              SYSCALL_EXCEPTION,
+          )
         }
-        context.updateRegister(2, value.code)
-    }
+    context.updateRegister(2, value.code)
+  }
 }

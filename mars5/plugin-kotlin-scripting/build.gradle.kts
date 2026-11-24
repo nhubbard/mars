@@ -1,5 +1,5 @@
-import org.jetbrains.kotlin.gradle.dsl.JvmDefaultMode
 import org.jetbrains.intellij.platform.gradle.tasks.ComposedJarTask
+import org.jetbrains.kotlin.gradle.dsl.JvmDefaultMode
 
 plugins {
   kotlin("jvm")

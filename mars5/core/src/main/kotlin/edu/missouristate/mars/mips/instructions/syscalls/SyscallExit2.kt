@@ -33,9 +33,9 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 open class SyscallExit2 : AbstractSyscall(17, "Exit2") {
-    @Throws(ProcessingException::class)
-    override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
-        context.exit(context.registerFile.getValue(4))
-        throw ProcessingException()
-    }
+  @Throws(ProcessingException::class)
+  override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
+    context.exit(context.registerFile.getValue(4))
+    throw ProcessingException()
+  }
 }

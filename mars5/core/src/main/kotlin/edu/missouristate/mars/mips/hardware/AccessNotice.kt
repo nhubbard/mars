@@ -30,19 +30,19 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /** A read or write emitted by a memory location or register. */
 abstract class AccessNotice protected constructor(type: Int) {
-    init {
-        if (type != READ && type != WRITE) throw IllegalArgumentException()
-    }
+  init {
+    if (type != READ && type != WRITE) throw IllegalArgumentException()
+  }
 
-    open val accessType: Int = type
-    open val thread: Thread = Thread.currentThread()
-    private val origin = AccessOrigin.current()
+  open val accessType: Int = type
+  open val thread: Thread = Thread.currentThread()
+  private val origin = AccessOrigin.current()
 
-    /** Whether the access came from simulated execution or from the host application. */
-    open fun origin(): AccessOrigin = origin
+  /** Whether the access came from simulated execution or from the host application. */
+  open fun origin(): AccessOrigin = origin
 
-    companion object {
-        const val READ = 0
-        const val WRITE = 1
-    }
+  companion object {
+    const val READ = 0
+    const val WRITE = 1
+  }
 }

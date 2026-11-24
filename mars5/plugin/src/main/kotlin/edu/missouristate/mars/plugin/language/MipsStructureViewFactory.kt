@@ -28,40 +28,51 @@ import edu.missouristate.mars.plugin.language.psi.MipsSymbolToken
 import javax.swing.Icon
 
 internal class MipsStructureViewFactory : PsiStructureViewFactory {
-    override fun getStructureViewBuilder(psiFile: PsiFile): StructureViewBuilder? =
-        (psiFile as? MipsFile)?.let(::MipsStructureViewBuilder)
+  override fun getStructureViewBuilder(psiFile: PsiFile): StructureViewBuilder? =
+      (psiFile as? MipsFile)?.let(::MipsStructureViewBuilder)
 }
 
-private class MipsStructureViewBuilder(private val file: MipsFile) : TreeBasedStructureViewBuilder() {
-    override fun createStructureViewModel(editor: Editor?) = MipsStructureModel(file, editor)
+private class MipsStructureViewBuilder(private val file: MipsFile) :
+    TreeBasedStructureViewBuilder() {
+  override fun createStructureViewModel(editor: Editor?) = MipsStructureModel(file, editor)
 }
 
 private val equivalenceDirective = MipsTypes.psi("EQV")
 
 private class MipsStructureModel(private val file: MipsFile, editor: Editor?) :
     StructureViewModelBase(file, editor, MipsStructureNode(file)) {
-    init {
-        file.project.messageBus.connect(this)
-            .subscribe(MipsAssemblyContextListener.TOPIC, MipsAssemblyContextListener(::fireModelUpdate))
-    }
+  init {
+    file.project.messageBus
+        .connect(this)
+        .subscribe(
+            MipsAssemblyContextListener.TOPIC,
+            MipsAssemblyContextListener(::fireModelUpdate),
+        )
+  }
 
-    override fun isSuitable(element: PsiElement?): Boolean {
-        val dumb = DumbService.isDumb(file.project)
-        if (element is MipsDeclaration) {
-            if (dumb) return true
-            val timeline by lazy { file.project.service<MarsAnalysisService>().editorTimeline(file) }
-            return when (element.kind) {
-                SymbolKind.LABEL -> !timeline.replacesLabel(file, element.textOffset) || element in timeline.generatedLabelSites
-                SymbolKind.EXTERNAL -> !timeline.replacesExternal(file, element.textOffset) || element in timeline.expandedExternalsIn(file)
-                else -> true
-            }
-        }
-        if (element !is LeafPsiElement || dumb) return false
-        if (element !is MipsSymbolToken && element.elementType != equivalenceDirective) return false
-        val timeline = file.project.service<MarsAnalysisService>().editorTimeline(file)
-        return timeline.isGeneratedMacroName(file, element.textOffset) || element in timeline.generatedLabelSites ||
-            element in timeline.expandedExternalsIn(file) || element in timeline.generatedEquivalencesIn(file)
+  override fun isSuitable(element: PsiElement?): Boolean {
+    val dumb = DumbService.isDumb(file.project)
+    if (element is MipsDeclaration) {
+      if (dumb) return true
+      val timeline by lazy { file.project.service<MarsAnalysisService>().editorTimeline(file) }
+      return when (element.kind) {
+        SymbolKind.LABEL ->
+            !timeline.replacesLabel(file, element.textOffset) ||
+                element in timeline.generatedLabelSites
+        SymbolKind.EXTERNAL ->
+            !timeline.replacesExternal(file, element.textOffset) ||
+                element in timeline.expandedExternalsIn(file)
+        else -> true
+      }
     }
+    if (element !is LeafPsiElement || dumb) return false
+    if (element !is MipsSymbolToken && element.elementType != equivalenceDirective) return false
+    val timeline = file.project.service<MarsAnalysisService>().editorTimeline(file)
+    return timeline.isGeneratedMacroName(file, element.textOffset) ||
+        element in timeline.generatedLabelSites ||
+        element in timeline.expandedExternalsIn(file) ||
+        element in timeline.generatedEquivalencesIn(file)
+  }
 }
 
 private class MipsStructureNode(
@@ -70,123 +81,164 @@ private class MipsStructureNode(
     private val effectiveChildren: List<StructureViewTreeElement>? = null,
     private val expandedIcon: Icon = AllIcons.Nodes.Function,
 ) : StructureViewTreeElement, ItemPresentation {
-    private val pointer = SmartPointerManager.createPointer(item)
-    private val element get() = pointer.element
-    private val navigatable get() = element as NavigationItem?
+  private val pointer = SmartPointerManager.createPointer(item)
+  private val element
+    get() = pointer.element
 
-    override fun getValue() = element
-    override fun getPresentation() = this
-    override fun getPresentableText() = element?.let { expandedName ?: (it as NavigationItem).name }
+  private val navigatable
+    get() = element as NavigationItem?
 
-    @Suppress("UnstableApiUsage")
-    override fun navigationRequest() = element?.let { item ->
-        if (item is LeafPsiElement) {
-            OpenFileDescriptor(item.project, item.containingFile.viewProvider.virtualFile, item.textOffset).navigationRequest()
-        } else {
-            (item as NavigationItem).navigationRequest()
-        }
+  override fun getValue() = element
+
+  override fun getPresentation() = this
+
+  override fun getPresentableText() = element?.let { expandedName ?: (it as NavigationItem).name }
+
+  @Suppress("UnstableApiUsage")
+  override fun navigationRequest() = element?.let { item ->
+    if (item is LeafPsiElement) {
+      OpenFileDescriptor(
+              item.project,
+              item.containingFile.viewProvider.virtualFile,
+              item.textOffset,
+          )
+          .navigationRequest()
+    } else {
+      (item as NavigationItem).navigationRequest()
     }
+  }
 
-    override fun navigate(requestFocus: Boolean) {
-        navigatable?.navigate(requestFocus)
+  override fun navigate(requestFocus: Boolean) {
+    navigatable?.navigate(requestFocus)
+  }
+
+  override fun canNavigate() = navigatable?.canNavigate() ?: false
+
+  override fun canNavigateToSource() = navigatable?.canNavigateToSource() ?: false
+
+  override fun getIcon(open: Boolean): Icon? {
+    val item = element ?: return null
+    return when {
+      item is MipsDeclaration -> item.presentation.getIcon(open)
+      expandedName != null -> expandedIcon
+      else -> item.getIcon(0)
     }
+  }
 
-    override fun canNavigate() = navigatable?.canNavigate() ?: false
-    override fun canNavigateToSource() = navigatable?.canNavigateToSource() ?: false
+  override fun getChildren(): Array<StructureViewTreeElement> {
+    val item = element ?: return StructureViewTreeElement.EMPTY_ARRAY
+    val children =
+        effectiveChildren
+            ?: if (item is MipsFile && !DumbService.isDumb(item.project)) {
+              effectiveOutline(item)
+            } else {
+              writtenChildren(item).map { MipsStructureNode(it) }
+            }
+    return children.toTypedArray()
+  }
 
-    override fun getIcon(open: Boolean): Icon? {
-        val item = element ?: return null
-        return when {
-            item is MipsDeclaration -> item.presentation.getIcon(open)
-            expandedName != null -> expandedIcon
-            else -> item.getIcon(0)
-        }
-    }
-
-    override fun getChildren(): Array<StructureViewTreeElement> {
-        val item = element ?: return StructureViewTreeElement.EMPTY_ARRAY
-        val children = effectiveChildren ?: if (item is MipsFile && !DumbService.isDumb(item.project)) {
-            effectiveOutline(item)
-        } else {
-            writtenChildren(item).map { MipsStructureNode(it) }
-        }
-        return children.toTypedArray()
-    }
-
-    private fun effectiveOutline(file: MipsFile): List<StructureViewTreeElement> {
-        val timeline = file.project.service<MarsAnalysisService>().editorTimeline(file)
-        val macros = timeline.localMacros(file)
-        val written = writtenChildren(file).flatMap { listOf(it) + writtenChildren(it) }.filterNot { declaration ->
-            when (declaration.kind) {
+  private fun effectiveOutline(file: MipsFile): List<StructureViewTreeElement> {
+    val timeline = file.project.service<MarsAnalysisService>().editorTimeline(file)
+    val macros = timeline.localMacros(file)
+    val written =
+        writtenChildren(file)
+            .flatMap { listOf(it) + writtenChildren(it) }
+            .filterNot { declaration ->
+              when (declaration.kind) {
                 SymbolKind.LABEL -> timeline.replacesLabel(file, declaration.textOffset)
                 SymbolKind.EXTERNAL -> timeline.replacesExternal(file, declaration.textOffset)
                 else -> false
+              }
             }
+    fun localMacroHeader(offset: Int) =
+        timeline.macroAt(file, offset)?.header?.takeIf { it in macros }
+    val groups = written.groupBy { localMacroHeader(it.textOffset) }
+    val labels =
+        timeline.generatedLabelsIn(file).groupBy {
+          it.macro?.header?.takeIf { header -> header in macros }
         }
-        fun localMacroHeader(offset: Int) = timeline.macroAt(file, offset)?.header?.takeIf { it in macros }
-        val groups = written.groupBy { localMacroHeader(it.textOffset) }
-        val labels = timeline.generatedLabelsIn(file).groupBy { it.macro?.header?.takeIf { header -> header in macros } }
-        val externals = timeline.expandedExternalsIn(file).values.groupBy { localMacroHeader(it.offset) }
-        val equivalences = timeline.generatedEquivalencesIn(file).values.groupBy { localMacroHeader(it.offset) }
-        fun declarationNodes(header: PsiElement?) = buildList {
-            labels[header].orEmpty().mapTo(this) { label ->
-                label.site.textOffset to MipsStructureNode(label.site, label.name, emptyList(), AllIcons.Nodes.Bookmark)
-            }
-            externals[header].orEmpty().mapTo(this) { external ->
-                external.offset to MipsStructureNode(external.site, external.name, emptyList(), AllIcons.Nodes.Field)
-            }
-            equivalences[header].orEmpty().mapTo(this) { equivalence ->
-                // The platform identifies outline rows by their PSI value. A single alias can
-                // introduce both a label and a constant, so use its statement node for the constant.
-                val site = equivalence.site
-                val anchor = if (site in timeline.generatedLabelSites) site.parent else site
-                equivalence.offset to MipsStructureNode(anchor, equivalence.name, emptyList(), AllIcons.Nodes.Constant)
-            }
-        }
-        fun children(header: PsiElement): List<StructureViewTreeElement> {
-            val declarations = groups[header].orEmpty().map { it.textOffset to MipsStructureNode(it, effectiveChildren = emptyList()) }
-            return (declarations + declarationNodes(header)).sortedBy { it.first }.map { it.second }
-        }
-        val writtenNodes = groups[null].orEmpty().map { declaration ->
-            declaration.textOffset to MipsStructureNode(declaration, macros[declaration]?.name, children(declaration))
-        }
-        val expandedNodes = macros.values.filter { it.header !is MipsDeclaration }.map { macro ->
-            val name = file.findElementAt(macro.nameOffset)!!
-            macro.nameOffset to MipsStructureNode(name, macro.name, children(macro.header))
-        }
-        return buildList {
-            addAll(writtenNodes)
-            addAll(expandedNodes)
-            addAll(declarationNodes(null))
-        }.sortedBy { it.first }.map { it.second }
+    val externals =
+        timeline.expandedExternalsIn(file).values.groupBy { localMacroHeader(it.offset) }
+    val equivalences =
+        timeline.generatedEquivalencesIn(file).values.groupBy { localMacroHeader(it.offset) }
+    fun declarationNodes(header: PsiElement?) = buildList {
+      labels[header].orEmpty().mapTo(this) { label ->
+        label.site.textOffset to
+            MipsStructureNode(label.site, label.name, emptyList(), AllIcons.Nodes.Bookmark)
+      }
+      externals[header].orEmpty().mapTo(this) { external ->
+        external.offset to
+            MipsStructureNode(external.site, external.name, emptyList(), AllIcons.Nodes.Field)
+      }
+      equivalences[header].orEmpty().mapTo(this) { equivalence ->
+        // The platform identifies outline rows by their PSI value. A single alias can
+        // introduce both a label and a constant, so use its statement node for the constant.
+        val site = equivalence.site
+        val anchor = if (site in timeline.generatedLabelSites) site.parent else site
+        equivalence.offset to
+            MipsStructureNode(anchor, equivalence.name, emptyList(), AllIcons.Nodes.Constant)
+      }
     }
-
-    private fun writtenChildren(item: PsiElement): List<MipsDeclaration> {
-        val scope = when (item) {
-            is MipsFile -> item
-            else -> item.parent.takeIf { it.elementType == macroDefinition } ?: return emptyList()
-        }
-        return buildList {
-            for (statement in scope.children) {
-                ProgressManager.checkCanceled()
-                if (statement.elementType != statementType) continue
-                for (part in statement.children) {
-                    val declaration = when {
-                        part is MipsDeclaration -> part
-                        part.elementType in declarationContainers -> PsiTreeUtil.getChildOfType(part, MipsDeclaration::class.java)
-                        else -> null
-                    }
-                    if (declaration?.name != null) add(declaration)
-                }
-            }
-        }
+    fun children(header: PsiElement): List<StructureViewTreeElement> {
+      val declarations =
+          groups[header].orEmpty().map {
+            it.textOffset to MipsStructureNode(it, effectiveChildren = emptyList())
+          }
+      return (declarations + declarationNodes(header)).sortedBy { it.first }.map { it.second }
     }
+    val writtenNodes =
+        groups[null].orEmpty().map { declaration ->
+          declaration.textOffset to
+              MipsStructureNode(declaration, macros[declaration]?.name, children(declaration))
+        }
+    val expandedNodes =
+        macros.values
+            .filter { it.header !is MipsDeclaration }
+            .map { macro ->
+              val name = file.findElementAt(macro.nameOffset)!!
+              macro.nameOffset to MipsStructureNode(name, macro.name, children(macro.header))
+            }
+    return buildList {
+      addAll(writtenNodes)
+      addAll(expandedNodes)
+      addAll(declarationNodes(null))
+    }
+        .sortedBy { it.first }
+        .map { it.second }
+  }
 
-    private companion object {
-        val statementType = MipsTypes.psi("STATEMENT")
-        val macroDefinition = MipsTypes.psi("MACRO_DEFINITION")
-        val declarationContainers = TokenSet.create(
-            macroDefinition, MipsTypes.psi("MACRO_HEADER"), MipsTypes.psi("DIRECTIVE_STATEMENT"),
+  private fun writtenChildren(item: PsiElement): List<MipsDeclaration> {
+    val scope =
+        when (item) {
+          is MipsFile -> item
+          else -> item.parent.takeIf { it.elementType == macroDefinition } ?: return emptyList()
+        }
+    return buildList {
+      for (statement in scope.children) {
+        ProgressManager.checkCanceled()
+        if (statement.elementType != statementType) continue
+        for (part in statement.children) {
+          val declaration =
+              when {
+                part is MipsDeclaration -> part
+                part.elementType in declarationContainers ->
+                    PsiTreeUtil.getChildOfType(part, MipsDeclaration::class.java)
+                else -> null
+              }
+          if (declaration?.name != null) add(declaration)
+        }
+      }
+    }
+  }
+
+  private companion object {
+    private val statementType = MipsTypes.psi("STATEMENT")
+    private val macroDefinition = MipsTypes.psi("MACRO_DEFINITION")
+    private val declarationContainers =
+        TokenSet.create(
+            macroDefinition,
+            MipsTypes.psi("MACRO_HEADER"),
+            MipsTypes.psi("DIRECTIVE_STATEMENT"),
         )
-    }
+  }
 }

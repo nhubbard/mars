@@ -14,41 +14,44 @@ internal open class MarsAssembleAction(
     private val entry: VirtualFile? = null,
     private val mode: MarsAssemblyMode = MarsAssemblyMode.SINGLE,
 ) : DumbAwareAction() {
-    init {
-        if (entry != null) templatePresentation.setText(entry.presentableUrl, false)
-    }
+  init {
+    if (entry != null) templatePresentation.setText(entry.presentableUrl, false)
+  }
 
-    override fun getActionUpdateThread() = ActionUpdateThread.BGT
+  override fun getActionUpdateThread() = ActionUpdateThread.BGT
 
-    override fun update(e: AnActionEvent) {
-        e.presentation.isEnabledAndVisible = e.project != null && sourceFile(e) != null
-    }
+  override fun update(e: AnActionEvent) {
+    e.presentation.isEnabledAndVisible = e.project != null && sourceFile(e) != null
+  }
 
-    override fun actionPerformed(e: AnActionEvent) {
-        val project = e.project ?: return
-        val file = sourceFile(e) ?: return
-        ProjectTaskManager.getInstance(project).run(MarsBuildTask(MarsSourceSet(file.toNioPath(), mode)))
-    }
+  override fun actionPerformed(e: AnActionEvent) {
+    val project = e.project ?: return
+    val file = sourceFile(e) ?: return
+    ProjectTaskManager.getInstance(project)
+        .run(MarsBuildTask(MarsSourceSet(file.toNioPath(), mode)))
+  }
 
-    private fun sourceFile(e: AnActionEvent) = (entry ?: e.getData(CommonDataKeys.VIRTUAL_FILE))?.takeIf {
+  private fun sourceFile(e: AnActionEvent) =
+      (entry ?: e.getData(CommonDataKeys.VIRTUAL_FILE))?.takeIf {
         it.isLocalSource() && it.fileType == MipsFileType
-    }
+      }
 }
 
 internal class MarsAssembleDirectoryAction : MarsAssembleAction(mode = MarsAssemblyMode.DIRECTORY)
 
 internal class MarsAssembleProjectAction : DumbAwareAction() {
-    override fun getActionUpdateThread() = ActionUpdateThread.BGT
+  override fun getActionUpdateThread() = ActionUpdateThread.BGT
 
-    override fun update(e: AnActionEvent) {
-        e.presentation.isEnabled = e.project?.service<MarsAssemblySettings>()?.projectSourceSet() != null
-    }
+  override fun update(e: AnActionEvent) {
+    e.presentation.isEnabled =
+        e.project?.service<MarsAssemblySettings>()?.projectSourceSet() != null
+  }
 
-    override fun actionPerformed(e: AnActionEvent) {
-        val project = e.project ?: return
-        val sources = project.service<MarsAssemblySettings>().projectSourceSet() ?: return
-        ProjectTaskManager.getInstance(project).run(MarsBuildTask(sources))
-    }
+  override fun actionPerformed(e: AnActionEvent) {
+    val project = e.project ?: return
+    val sources = project.service<MarsAssemblySettings>().projectSourceSet() ?: return
+    ProjectTaskManager.getInstance(project).run(MarsBuildTask(sources))
+  }
 }
 
 internal fun VirtualFile.isLocalSource() =

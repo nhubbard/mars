@@ -3,10 +3,10 @@
 
 package edu.missouristate.mars.plugin.tools.xray
 
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.ImageComposeScene
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.SemanticsActions
@@ -45,204 +45,228 @@ import org.junit.jupiter.api.Test
 
 @TestApplication
 class XRayDetailsPlatformTest {
-    private val project = codeInsightProjectFixture()
+  private val project = codeInsightProjectFixture()
 
-    companion object {
-        @JvmStatic
-        @BeforeAll
-        fun initializeSkia() {
-            // Skia starts a JVM-wide reference cleaner when it first creates a native surface.
-            Surface.makeRasterN32Premul(1, 1).close()
-        }
+  companion object {
+    @JvmStatic
+    @BeforeAll
+    fun initializeSkia() {
+      // Skia starts a JVM-wide reference cleaner when it first creates a native surface.
+      Surface.makeRasterN32Premul(1, 1).close()
     }
+  }
 
-    @Test
-    // Simulate plugin lifecycle callbacks with the loaded plugin descriptors in the headless IDE.
-    fun `only unloading MARS hides its visible X-Ray tool window`() = timeoutRunBlocking {
-        val current = project.get()
-        withContext(Dispatchers.EDT) {
-            var visible = true
-            var hides = 0
-            // The platform's headless fixture has no visibility or focus transitions.
-            val window = object : MockToolWindow(current) {
-                override fun isVisible() = visible
-                override fun hide(runnable: Runnable?) {
-                    visible = false
-                    hides++
-                }
+  @Test
+  // Simulate plugin lifecycle callbacks with the loaded plugin descriptors in the headless IDE.
+  fun `only unloading MARS hides its visible X-Ray tool window`() = timeoutRunBlocking {
+    val current = project.get()
+    withContext(Dispatchers.EDT) {
+      var visible = true
+      var hides = 0
+      // The platform's headless fixture has no visibility or focus transitions.
+      val window =
+          object : MockToolWindow(current) {
+            override fun isVisible() = visible
+
+            override fun hide(runnable: Runnable?) {
+              visible = false
+              hides++
             }
-            val listener = MarsToolWindowUnloadListener(window)
-            val java = requireNotNull(PluginManagerCore.getPlugin(PluginId.getId("com.intellij.java")))
-            val mars = requireNotNull(PluginManagerCore.getPlugin(PluginId.getId("edu.missouristate.mars")))
-            listener.beforePluginUnload(java, false)
-            assertTrue(visible)
-            assertEquals(0, hides)
-            listener.beforePluginUnload(mars, false)
-            assertFalse(visible)
-            assertEquals(1, hides)
-            listener.beforePluginUnload(mars, false)
-            assertEquals(1, hides)
-        }
+          }
+      val listener = MarsToolWindowUnloadListener(window)
+      val java = requireNotNull(PluginManagerCore.getPlugin(PluginId.getId("com.intellij.java")))
+      val mars =
+          requireNotNull(PluginManagerCore.getPlugin(PluginId.getId("edu.missouristate.mars")))
+      listener.beforePluginUnload(java, false)
+      assertTrue(visible)
+      assertEquals(0, hides)
+      listener.beforePluginUnload(mars, false)
+      assertFalse(visible)
+      assertEquals(1, hides)
+      listener.beforePluginUnload(mars, false)
+      assertEquals(1, hides)
     }
+  }
 
-    @Test
-    fun `disposing X-Ray detaches its Compose host from the tool window`() = timeoutRunBlocking {
+  @Test
+  fun `disposing X-Ray detaches its Compose host from the tool window`() = timeoutRunBlocking {
+    val current = project.get()
+    withContext(Dispatchers.EDT) {
+      val view = XRayView(current)
+      val host = view.component.components.single()
+      assertSame(view.component, host.parent)
+      Disposer.dispose(view)
+      assertNull(host.parent)
+      assertEquals(0, view.component.componentCount)
+    }
+  }
+
+  @Suppress("UnstableApiUsage")
+  @OptIn(ExperimentalJewelApi::class)
+  @Test
+  fun `a MARS64 step switches to native playback and exposes full-width instruction details`() =
+      timeoutRunBlocking(20.seconds) {
         val current = project.get()
         withContext(Dispatchers.EDT) {
-            val view = XRayView(current)
-            val host = view.component.components.single()
-            assertSame(view.component, host.parent)
+          val view = XRayView(current)
+          val scene = ImageComposeScene(1000, 940)
+          try {
+            scene.setContent { SwingBridgeTheme(content = view.content) }
+            val legacy = StepEvent(0x00400000, 0x212a0001, 1)
+            view.selectStep(legacy)
+            assertTrue(view.canPlay)
+            val pc = 0x1_0040_0000L
+            view.selectStep(
+                legacy.copy(target = MarsTarget.MARS64, pcBits = pc, nextPcBits = pc + 8),
+            )
+            assertTrue(view.canPlay)
+            assertTrue(view.usesWideDatapath)
+            view.resetPlayback()
+            view.togglePlayback()
+            assertTrue(view.playing)
+            scene.render(0).close()
+            val text =
+                scene.semanticsOwners.flatMap { it.rootSemanticsNode.text() }.joinToString("\n")
+            assertTrue("beqc" in text, text)
+            assertTrue("Next PC: 0x0000000100400008" in text, text)
+            assertTrue(toolsMessages.getMessage("xray.mars64.datapath") in text, text)
+            assertTrue(toolsMessages.getMessage("xray.mars64.registers") in text, text)
+            view.selectStep(legacy)
+            assertFalse(view.usesWideDatapath)
+            assertTrue(view.canPlay)
+          } finally {
+            scene.close()
             Disposer.dispose(view)
-            assertNull(host.parent)
-            assertEquals(0, view.component.componentCount)
+          }
         }
-    }
+      }
 
-    @Suppress("UnstableApiUsage")
-    @OptIn(ExperimentalJewelApi::class)
-    @Test
-    fun `a MARS64 step switches to native playback and exposes full-width instruction details`() = timeoutRunBlocking(20.seconds) {
-        val current = project.get()
+  @Suppress("UnstableApiUsage")
+  @OptIn(ExperimentalJewelApi::class)
+  @Test
+  fun `X-Ray exposes complete instruction and signal text to Compose accessibility`() =
+      timeoutRunBlocking(20.seconds) {
         withContext(Dispatchers.EDT) {
-            val view = XRayView(current)
-            val scene = ImageComposeScene(1000, 940)
-            try {
-                scene.setContent { SwingBridgeTheme(content = view.content) }
-                val legacy = StepEvent(0x00400000, 0x212a0001, 1)
-                view.selectStep(legacy)
-                assertTrue(view.canPlay)
-                val pc = 0x1_0040_0000L
-                view.selectStep(legacy.copy(target = MarsTarget.MARS64, pcBits = pc, nextPcBits = pc + 8))
-                assertTrue(view.canPlay)
-                assertTrue(view.usesWideDatapath)
-                view.resetPlayback()
-                view.togglePlayback()
-                assertTrue(view.playing)
-                scene.render(0).close()
-                val text = scene.semanticsOwners.flatMap { it.rootSemanticsNode.text() }.joinToString("\n")
-                assertTrue("beqc" in text, text)
-                assertTrue("Next PC: 0x0000000100400008" in text, text)
-                assertTrue(toolsMessages.getMessage("xray.mars64.datapath") in text, text)
-                assertTrue(toolsMessages.getMessage("xray.mars64.registers") in text, text)
-                view.selectStep(legacy)
-                assertFalse(view.usesWideDatapath)
-                assertTrue(view.canPlay)
-            } finally {
-                scene.close()
-                Disposer.dispose(view)
+          val empty = toolsMessages.getMessage("xray.noSteps")
+          val description = mutableStateOf(empty)
+          val details = xRayDetailsContent(description)
+          val scene = ImageComposeScene(300, 160)
+          try {
+            scene.setContent { SwingBridgeTheme(content = details) }
+            scene.render(0).close()
+            fun renderedText() = scene.semanticsOwners.flatMap { it.rootSemanticsNode.text() }
+            assertEquals(listOf(empty), renderedText())
+
+            val instruction = "0x00400000 · 0x00000000 · nop\nop 000000\nHighlighted paths: PC"
+            description.value = instruction
+            scene.render(16_000_000).close()
+            assertEquals(listOf(instruction), renderedText())
+          } finally {
+            scene.close()
+          }
+        }
+      }
+
+  private fun SemanticsNode.text(): List<String> =
+      config.getOrNull(SemanticsProperties.Text).orEmpty().map { it.text } +
+          children.flatMap { it.text() }
+
+  @OptIn(ExperimentalJewelApi::class)
+  @Test
+  fun `the schematic can be measured at zero width before the tool window opens`() =
+      timeoutRunBlocking(20.seconds) {
+        withContext(Dispatchers.EDT) {
+          val frame = mutableStateOf(XRaySchematicFrame(XRayUnit.DATAPATH))
+          val schematic =
+              xRaySchematicContent(frame, mutableIntStateOf(0)) {
+                error("The hidden schematic cannot be activated")
+              }
+          val scene = ImageComposeScene(320, 200)
+          try {
+            scene.setContent {
+              @Suppress("UnstableApiUsage")
+              SwingBridgeTheme { Box(Modifier.size(0.dp, 200.dp)) { schematic() } }
             }
+            scene.render(0).close()
+            assertTrue(scene.semanticsOwners.flatMap { it.rootSemanticsNode.text() }.isEmpty())
+          } finally {
+            scene.close()
+          }
         }
-    }
+      }
 
-    @Suppress("UnstableApiUsage")
-    @OptIn(ExperimentalJewelApi::class)
-    @Test
-    fun `X-Ray exposes complete instruction and signal text to Compose accessibility`() = timeoutRunBlocking(20.seconds) {
+  @OptIn(ExperimentalJewelApi::class)
+  @Test
+  fun `schematics draw live signals and expose the drill-down controls`() =
+      timeoutRunBlocking(30.seconds) {
         withContext(Dispatchers.EDT) {
-            val empty = toolsMessages.getMessage("xray.noSteps")
-            val description = mutableStateOf(empty)
-            val details = xRayDetailsContent(description)
-            val scene = ImageComposeScene(300, 160)
-            try {
-                scene.setContent { SwingBridgeTheme(content = details) }
-                scene.render(0).close()
-                fun renderedText() = scene.semanticsOwners.flatMap { it.rootSemanticsNode.text() }
-                assertEquals(listOf(empty), renderedText())
-
-                val instruction = "0x00400000 · 0x00000000 · nop\nop 000000\nHighlighted paths: PC"
-                description.value = instruction
-                scene.render(16_000_000).close()
-                assertEquals(listOf(instruction), renderedText())
-            } finally {
-                scene.close()
+          val main = XRayUnit.DATAPATH
+          val frame = mutableStateOf(XRaySchematicFrame(main))
+          val position = mutableIntStateOf(0)
+          val content =
+              xRaySchematicContent(frame, position) { frame.value = XRaySchematicFrame(it) }
+          val scene = ImageComposeScene(1000, 574)
+          try {
+            scene.setContent {
+              @Suppress("UnstableApiUsage") SwingBridgeTheme(content = content)
             }
-        }
-    }
-
-    private fun SemanticsNode.text(): List<String> =
-        config.getOrNull(SemanticsProperties.Text).orEmpty().map { it.text } + children.flatMap { it.text() }
-
-    @OptIn(ExperimentalJewelApi::class)
-    @Test
-    fun `the schematic can be measured at zero width before the tool window opens`() = timeoutRunBlocking(20.seconds) {
-        withContext(Dispatchers.EDT) {
-            val frame = mutableStateOf(XRaySchematicFrame(XRayUnit.DATAPATH))
-            val schematic = xRaySchematicContent(frame, mutableIntStateOf(0)) { error("The hidden schematic cannot be activated") }
-            val scene = ImageComposeScene(320, 200)
-            try {
-                scene.setContent {
-                    @Suppress("UnstableApiUsage")
-                    SwingBridgeTheme { Box(Modifier.size(0.dp, 200.dp)) { schematic() } }
-                }
-                scene.render(0).close()
-                assertTrue(scene.semanticsOwners.flatMap { it.rootSemanticsNode.text() }.isEmpty())
-            } finally {
-                scene.close()
-            }
-        }
-    }
-
-    @OptIn(ExperimentalJewelApi::class)
-    @Test
-    fun `schematics draw live signals and expose the drill-down controls`() = timeoutRunBlocking(30.seconds) {
-        withContext(Dispatchers.EDT) {
-            val main = XRayUnit.DATAPATH
-            val frame = mutableStateOf(XRaySchematicFrame(main))
-            val position = mutableIntStateOf(0)
-            val content = xRaySchematicContent(frame, position) { frame.value = XRaySchematicFrame(it) }
-            val scene = ImageComposeScene(1000, 574)
-            try {
-                scene.setContent {
-                    @Suppress("UnstableApiUsage")
-                    SwingBridgeTheme(content = content)
-                }
-                var time = 0L
-                fun render() = scene.render(time.also { time += 16_000_000 })
-                fun nodes() = scene.semanticsOwners.flatMap { it.rootSemanticsNode.flatten() }
-                fun text() = nodes().flatMap { it.config.getOrNull(SemanticsProperties.Text).orEmpty() }.map { it.text }
-                fun pixel() = render().use { image ->
-                    requireNotNull(image.encodeToData()).use { png ->
-                        ImageIO.read(ByteArrayInputStream(png.bytes)).getRGB(170, 362)
-                    }
+            var time = 0L
+            fun render() = scene.render(time.also { time += 16_000_000 })
+            fun nodes() = scene.semanticsOwners.flatMap { it.rootSemanticsNode.flatten() }
+            fun text() =
+                nodes()
+                    .flatMap { it.config.getOrNull(SemanticsProperties.Text).orEmpty() }
+                    .map { it.text }
+            fun pixel() =
+                render().use { image ->
+                  requireNotNull(image.encodeToData()).use { png ->
+                    ImageIO.read(ByteArrayInputStream(png.bytes)).getRGB(170, 362)
+                  }
                 }
 
-                render().close()
-                assertTrue("Instruction\nmemory" in text())
-                assertTrue("PC" in text())
-                val diagram = XRayDiagram.load(main)
-                val instruction = XRayInstruction(StepEvent(0x00400000, 0, 1))
-                val signals = diagram.signals(instruction.word, instruction.format)
-                val label = signals.first { it.isLabel }
-                frame.value = XRaySchematicFrame(main, diagram.wireSegments, signals, instruction)
-                val inactiveWire = pixel()
-                position.intValue = 20
-                assertNotEquals(inactiveWire, pixel())
-                position.intValue = label.startsAt + 1
-                render().close()
-                assertTrue(instruction.signalLabel(label.name) in text())
-                position.intValue = signals.maxOf(XRaySignal::endsAt)
-                render().close()
-                assertFalse(instruction.signalLabel(label.name) in text())
+            render().close()
+            assertTrue("Instruction\nmemory" in text())
+            assertTrue("PC" in text())
+            val diagram = XRayDiagram.load(main)
+            val instruction = XRayInstruction(StepEvent(0x00400000, 0, 1))
+            val signals = diagram.signals(instruction.word, instruction.format)
+            val label = signals.first { it.isLabel }
+            frame.value = XRaySchematicFrame(main, diagram.wireSegments, signals, instruction)
+            val inactiveWire = pixel()
+            position.intValue = 20
+            assertNotEquals(inactiveWire, pixel())
+            position.intValue = label.startsAt + 1
+            render().close()
+            assertTrue(instruction.signalLabel(label.name) in text())
+            position.intValue = signals.maxOf(XRaySignal::endsAt)
+            render().close()
+            assertFalse(instruction.signalLabel(label.name) in text())
 
-                for ((target, labelText) in mapOf(
+            for ((target, labelText) in
+                mapOf(
                     XRayUnit.REGISTERS to ("Registers" to "Register 32"),
                     XRayUnit.CONTROL to ("Control" to "MemToReg"),
                     XRayUnit.ALU_CONTROL to ("ALU\ncontrol" to "Op 3"),
                 )) {
-                    val action = nodes().mapNotNull { it.config.getOrNull(SemanticsActions.OnClick) }
-                        .single { it.label == toolsMessages.getMessage("xray.diagram.open", labelText.first) }
-                    assertTrue(action.action!!.invoke())
-                    assertEquals(target, frame.value.unit)
-                    render().close()
-                    assertTrue(labelText.second in text(), text().toString())
-                    frame.value = XRaySchematicFrame(main)
-                    render().close()
-                }
-            } finally {
-                scene.close()
+              val action =
+                  nodes()
+                      .mapNotNull { it.config.getOrNull(SemanticsActions.OnClick) }
+                      .single {
+                        it.label == toolsMessages.getMessage("xray.diagram.open", labelText.first)
+                      }
+              assertTrue(action.action!!.invoke())
+              assertEquals(target, frame.value.unit)
+              render().close()
+              assertTrue(labelText.second in text(), text().toString())
+              frame.value = XRaySchematicFrame(main)
+              render().close()
             }
+          } finally {
+            scene.close()
+          }
         }
-    }
+      }
 
-    private fun SemanticsNode.flatten(): List<SemanticsNode> = listOf(this) + children.flatMap { it.flatten() }
+  private fun SemanticsNode.flatten(): List<SemanticsNode> =
+      listOf(this) + children.flatMap { it.flatten() }
 }

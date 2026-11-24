@@ -5,6 +5,6 @@ import com.intellij.psi.PsiElement
 import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
 
 internal class MipsTargetElementEvaluator : TargetElementEvaluatorEx2() {
-    override fun getNamedElement(element: PsiElement): PsiElement? =
-        MipsDeclaration.enclosingSignedName(element)?.parent
+  override fun getNamedElement(element: PsiElement): PsiElement? =
+      MipsDeclaration.enclosingSignedName(element)?.parent
 }

@@ -10,77 +10,127 @@ import training.learn.lesson.LessonManager
 import training.ui.LearningUiManager
 
 /** Native task text and callbacks; the grader never runs downloaded Kotlin check scripts. */
-internal fun LessonContext.downloadedAssessment(content: MarsDownloadedLessonContent, step: MarsNativeAssessmentStep,
-                                               observed: (MarsDownloadedAssessmentCheckpoint) -> Unit) {
-    val entry = content.installed.directory.resolve(step.source)
-    val identity = content.assessmentIdentity(step)
-    lateinit var requirements: MarsDownloadedRequirements
-    task {
-        val task = this
-        before {
-            requirements = MarsDownloadedRequirements(project, content, step)
-            val execution = project.service<MarsLearningExecution>()
-            task.addStep(execution.openLessonFile(entry))
-            task.addStep(execution.prepareAssessmentRequirements(taskDisposable, requirements))
-        }
+internal fun LessonContext.downloadedAssessment(
+    content: MarsDownloadedLessonContent,
+    step: MarsNativeAssessmentStep,
+    observed: (MarsDownloadedAssessmentCheckpoint) -> Unit,
+) {
+  val entry = content.installed.directory.resolve(step.source)
+  val identity = content.assessmentIdentity(step)
+  lateinit var requirements: MarsDownloadedRequirements
+  task {
+    val task = this
+    before {
+      requirements = MarsDownloadedRequirements(project, content, step)
+      val execution = project.service<MarsLearningExecution>()
+      task.addStep(execution.openLessonFile(entry))
+      task.addStep(execution.prepareAssessmentRequirements(taskDisposable, requirements))
     }
-    task {
-        lateinit var checkpoint: MarsDownloadedAssessmentCheckpoint
-        var job: Job? = null
-        before {
-            checkpoint = project.service<MarsLearningExecution>().observeAssessment(taskDisposable, entry, editor.document, identity, step, requirements)
-            observed(checkpoint)
-        }
-        runtimeText {
-            removeAfterDone = true
-            val show: (String) -> Unit = { LessonManager.instance.addMessage(it, isInformer = true) }
-            val callback = LearningUiManager.addCallback {
-                if (!disposed && job?.isActive != true) {
-                    if (!checkpoint.accepts(FileEditorManager.getInstance(project).selectedTextEditor?.document)) {
-                        show(escapeXmlEntities(downloadedLessonMessages.getMessage("assessment.editor")))
-                    } else {
-                        job = project.service<MarsLearningExecution>().checkAssessment(taskDisposable, checkpoint) { result ->
-                            val reason = if (result == Feedback.POLICY) requirements.description() else ""
-                            show(MarsAssessmentFeedback.text(result) + if (reason.isEmpty()) "" else "&#10;" + escapeXmlEntities(reason))
-                        }
-                    }
+  }
+  task {
+    lateinit var checkpoint: MarsDownloadedAssessmentCheckpoint
+    var job: Job? = null
+    before {
+      checkpoint =
+          project
+              .service<MarsLearningExecution>()
+              .observeAssessment(
+                  taskDisposable,
+                  entry,
+                  editor.document,
+                  identity,
+                  step,
+                  requirements,
+              )
+      observed(checkpoint)
+    }
+    runtimeText {
+      removeAfterDone = true
+      val show: (String) -> Unit = { LessonManager.instance.addMessage(it, isInformer = true) }
+      val callback = LearningUiManager.addCallback {
+        if (!disposed && job?.isActive != true) {
+          if (
+              !checkpoint.accepts(
+                  FileEditorManager.getInstance(project).selectedTextEditor?.document,
+              )
+          ) {
+            show(escapeXmlEntities(downloadedLessonMessages.getMessage("assessment.editor")))
+          } else {
+            job =
+                project.service<MarsLearningExecution>().checkAssessment(
+                    taskDisposable,
+                    checkpoint,
+                ) { result ->
+                  val reason = if (result == Feedback.POLICY) requirements.description() else ""
+                  show(
+                      MarsAssessmentFeedback.text(result) +
+                          if (reason.isEmpty()) "" else "&#10;" + escapeXmlEntities(reason),
+                  )
                 }
-            }
-            escapeXmlEntities(step.explanation) + "&#10;" + escapeXmlEntities(requirements.description()) + "&#10;<callback id=\"$callback\">" +
-                // Keep the line feed inside the link: the host discards a whitespace-only text node.
-                escapeXmlEntities(downloadedLessonMessages.getMessage("assessment.check")) + "&#10;</callback>" +
-                MarsLessonHints.text(project, identity, step.id, step.hints, active = { !disposed && !checkpoint.passed() }, feedback = show)
+          }
         }
-        timerCheck { checkpoint.passed() }
+      }
+      escapeXmlEntities(step.explanation) +
+          "&#10;" +
+          escapeXmlEntities(requirements.description()) +
+          "&#10;<callback id=\"$callback\">" +
+          // Keep the line feed inside the link: the host discards a whitespace-only text node.
+          escapeXmlEntities(downloadedLessonMessages.getMessage("assessment.check")) +
+          "&#10;</callback>" +
+          MarsLessonHints.text(
+              project,
+              identity,
+              step.id,
+              step.hints,
+              active = { !disposed && !checkpoint.passed() },
+              feedback = show,
+          )
     }
-    task { runtimeText { escapeXmlEntities(step.success) } }
+    timerCheck { checkpoint.passed() }
+  }
+  task { runtimeText { escapeXmlEntities(step.success) } }
 }
 
 internal object MarsAssessmentFeedback {
-    fun text(feedback: Feedback): String {
-        val message = when (feedback) {
-            Feedback.ASSEMBLY -> downloadedLessonMessages.getMessage("assessment.assembly")
-            Feedback.STALE -> downloadedLessonMessages.getMessage("assessment.stale")
-            Feedback.POLICY -> downloadedLessonMessages.getMessage("assessment.policy")
-            Feedback.LIMIT -> downloadedLessonMessages.getMessage("assessment.limit")
-            is Feedback.Checked -> {
-                val failed = feedback.results.firstOrNull { !it.passed }
-                val summary = downloadedLessonMessages.getMessage("assessment.summary", feedback.results.count { it.passed }, feedback.results.size)
-                val detail = if (failed == null) "" else "\n" + failed.name + ":\n" + failed.failure!!.take(4096)
-                val count = if (feedback.limit == 0) "" else "\n" + downloadedLessonMessages.getMessage("assessment.attempts", feedback.completed, feedback.limit)
-                summary + detail + count
-            }
+  fun text(feedback: Feedback): String {
+    val message =
+        when (feedback) {
+          Feedback.ASSEMBLY -> downloadedLessonMessages.getMessage("assessment.assembly")
+          Feedback.STALE -> downloadedLessonMessages.getMessage("assessment.stale")
+          Feedback.POLICY -> downloadedLessonMessages.getMessage("assessment.policy")
+          Feedback.LIMIT -> downloadedLessonMessages.getMessage("assessment.limit")
+          is Feedback.Checked -> {
+            val failed = feedback.results.firstOrNull { !it.passed }
+            val summary =
+                downloadedLessonMessages.getMessage(
+                    "assessment.summary",
+                    feedback.results.count { it.passed },
+                    feedback.results.size,
+                )
+            val detail =
+                if (failed == null) "" else "\n" + failed.name + ":\n" + failed.failure!!.take(4096)
+            val count =
+                if (feedback.limit == 0) ""
+                else
+                    "\n" +
+                        downloadedLessonMessages.getMessage(
+                            "assessment.attempts",
+                            feedback.completed,
+                            feedback.limit,
+                        )
+            summary + detail + count
+          }
         }
-        // Expected/actual program output can contain control characters. Preserve
-        // their meaning visibly before the native host parses its XML message.
-        val printable = buildString {
-            message.codePoints().forEach { code ->
-                // UTF-16 codePoints() never produces a value above 0x10ffff.
-                if (code == 10 || code in 32..0xd7ff || code in 0xe000..0xfffd || code >= 0x10000) {
-                    appendCodePoint(code)
-                } else append("\\u" + code.toString(16).padStart(4, '0'))
-            }
-        }
-        return escapeXmlEntities(printable).replace("\n", "&#10;")
+    // Expected/actual program output can contain control characters. Preserve
+    // their meaning visibly before the native host parses its XML message.
+    val printable = buildString {
+      message.codePoints().forEach { code ->
+        // UTF-16 codePoints() never produces a value above 0x10ffff.
+        if (code == 10 || code in 32..0xd7ff || code in 0xe000..0xfffd || code >= 0x10000) {
+          appendCodePoint(code)
+        } else append("\\u" + code.toString(16).padStart(4, '0'))
+      }
     }
+    return escapeXmlEntities(printable).replace("\n", "&#10;")
+  }
 }

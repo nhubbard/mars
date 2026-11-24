@@ -16,24 +16,34 @@ internal data class MipsIncludedDeclaration(
     private val spelling: String,
     private val revision: Long,
 ) : LightElement(file.manager, MipsLanguage) {
-    override fun getContainingFile() = file
-    override fun getTextRange() = range
-    override fun getTextOffset() = range.startOffset
-    override fun getText() = spelling
-    override fun isValid() = file.isValid && file.fileDocument.modificationStamp == revision
-    override fun getPresentation() = PresentationData(spelling, file.name, null, null)
+  override fun getContainingFile() = file
 
-    companion object {
-        fun at(file: PsiFile, offset: Int): MipsIncludedDeclaration {
-            val source = file.viewProvider.contents
-            val end = MipsScanner.next(source, offset)!!.end
-            val range = TextRange(offset, end)
-            return MipsIncludedDeclaration(file, range, range.subSequence(source).toString(), file.fileDocument.modificationStamp)
-        }
+  override fun getTextRange() = range
+
+  override fun getTextOffset() = range.startOffset
+
+  override fun getText() = spelling
+
+  override fun isValid() = file.isValid && file.fileDocument.modificationStamp == revision
+
+  override fun getPresentation() = PresentationData(spelling, file.name, null, null)
+
+  companion object {
+    fun at(file: PsiFile, offset: Int): MipsIncludedDeclaration {
+      val source = file.viewProvider.contents
+      val end = MipsScanner.next(source, offset)!!.end
+      val range = TextRange(offset, end)
+      return MipsIncludedDeclaration(
+          file,
+          range,
+          range.subSequence(source).toString(),
+          file.fileDocument.modificationStamp,
+      )
     }
+  }
 }
 
 internal fun PsiElement.writtenDeclarationAt(offset: Int = textOffset): PsiElement {
-    val original = containingFile.originalFile
-    return if (original !is MipsFile) MipsIncludedDeclaration.at(original, offset) else this
+  val original = containingFile.originalFile
+  return if (original !is MipsFile) MipsIncludedDeclaration.at(original, offset) else this
 }

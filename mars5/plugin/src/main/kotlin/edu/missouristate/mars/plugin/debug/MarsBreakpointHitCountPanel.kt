@@ -8,34 +8,35 @@ import edu.missouristate.mars.plugin.run.runMessages
 import java.text.ParseException
 
 internal interface MarsBreakpointHitCount {
-    var hitInterval: Int
+  var hitInterval: Int
 }
 
-internal class MarsBreakpointHitCountPanel<B : XBreakpoint<*>> : XBreakpointCustomPropertiesPanel<B>() {
-    private lateinit var interval: JBIntSpinner
-    private val content = panel {
-        row(runMessages.getMessage("debug.breakpoint.hit.interval")) {
-            interval = spinner(1..Int.MAX_VALUE).component
-            // This suffix follows the number in the sentence.
-            @Suppress("DialogTitleCapitalization")
-            val suffix = runMessages.getMessage("debug.breakpoint.hit.interval.hits")
-            label(suffix)
-        }
+internal class MarsBreakpointHitCountPanel<B : XBreakpoint<*>> :
+    XBreakpointCustomPropertiesPanel<B>() {
+  private lateinit var interval: JBIntSpinner
+  private val content = panel {
+    row(runMessages.getMessage("debug.breakpoint.hit.interval")) {
+      interval = spinner(1..Int.MAX_VALUE).component
+      // This suffix follows the number in the sentence.
+      @Suppress("DialogTitleCapitalization")
+      val suffix = runMessages.getMessage("debug.breakpoint.hit.interval.hits")
+      label(suffix)
     }
+  }
 
-    override fun getComponent() = content
+  override fun getComponent() = content
 
-    override fun loadFrom(breakpoint: B) {
-        interval.number = (breakpoint.properties as? MarsBreakpointHitCount)?.hitInterval ?: 1
+  override fun loadFrom(breakpoint: B) {
+    interval.number = (breakpoint.properties as? MarsBreakpointHitCount)?.hitInterval ?: 1
+  }
+
+  override fun saveTo(breakpoint: B) {
+    val properties = breakpoint.properties as? MarsBreakpointHitCount ?: return
+    try {
+      interval.commitEdit()
+    } catch (_: ParseException) {
+      return
     }
-
-    override fun saveTo(breakpoint: B) {
-        val properties = breakpoint.properties as? MarsBreakpointHitCount ?: return
-        try {
-            interval.commitEdit()
-        } catch (_: ParseException) {
-            return
-        }
-        properties.hitInterval = interval.number
-    }
+    properties.hitInterval = interval.number
+  }
 }

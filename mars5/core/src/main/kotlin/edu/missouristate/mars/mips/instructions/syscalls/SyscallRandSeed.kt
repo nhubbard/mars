@@ -32,8 +32,8 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 open class SyscallRandSeed : AbstractSyscall(40, "RandSeed") {
-    override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
-        val index = context.registerFile.getValue(4)
-        context.randomStreams().setSeed(index, context.registerFile.getValue(5).toLong())
-    }
+  override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
+    val index = context.registerFile.getValue(4)
+    context.randomStreams().setSeed(index, context.registerFile.getValue(5).toLong())
+  }
 }

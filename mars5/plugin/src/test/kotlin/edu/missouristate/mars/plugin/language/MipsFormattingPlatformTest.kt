@@ -10,7 +10,6 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
-import edu.missouristate.mars.plugin.classicMipsProjectFixture
 import com.intellij.psi.codeStyle.CodeStyleManager
 import com.intellij.psi.codeStyle.LanguageCodeStyleSettingsProvider
 import com.intellij.testFramework.DumbModeTestUtils
@@ -20,6 +19,7 @@ import com.intellij.testFramework.junit5.TestApplication
 import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.build.MarsAssemblySettings
 import edu.missouristate.mars.plugin.build.MarsBuildService
+import edu.missouristate.mars.plugin.classicMipsProjectFixture
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.writeText
@@ -32,927 +32,1109 @@ import org.junit.jupiter.api.io.TempDir
 
 @TestApplication
 class MipsFormattingPlatformTest {
-    private val project = classicMipsProjectFixture()
-    private val fixture by codeInsightFixture(project)
+  private val project = classicMipsProjectFixture()
+  private val fixture by codeInsightFixture(project)
 
-    @Test
-    fun `reformat closes up the spaces in vector lane operands`() = timeoutRunBlocking {
+  @Test
+  fun `reformat closes up the spaces in vector lane operands`() = timeoutRunBlocking {
+    withContext(Dispatchers.EDT) {
+      fixture.configureByText("lane.mars", $$"insert.b $w5 [ 15 ] , $9\n")
+      assertEquals($$"    insert.b $w5[15], $9\n", reformat())
+    }
+  }
+
+  @Test
+  fun `reformat normalizes native syntax and preserves machine words and data`(
+      @TempDir directory: Path,
+  ) = timeoutRunBlocking {
+    val source =
+        $$"""
+          .eqv    OFFSET -4
+         .eqv OP   addiu  $t0,   $t0,  1
+        .eqv DEF .eqv
+        DEF AGAIN 1,   2
+        .eqv AGAIN 1,   2
+           .include   "macros.s"
+
+            .macro   local  ( %reg  , %value )
+        addiu  %reg , %reg , -1
+         addi   %reg, %reg, %value
+           .end_macro
+           .data
+         words  :    .word  4 ,  -2, AGAIN
+        message: .asciiz  "x  y,  (-1)"
+        repeated: .word 7  :  2
+        -17    +8 : 2
+           .text
+         main   :
+         lw  $t0 ,  -4  ( $sp )
+         lw  $t1 , OFFSET  ( $sp )
+             OP
+         local ( $t0 , 2 )
+              emit( $t0  ,  7 )    # invocation may also be a text substitution
+        target :  nop
+         j   target
+        """
+            .trimIndent()
+    val macros = ".macro emit (%reg, %value)\naddiu %reg, %reg, %value\n.end_macro\n"
+    val formatted =
         withContext(Dispatchers.EDT) {
-            fixture.configureByText("lane.mars", $$"insert.b $w5 [ 15 ] , $9\n")
-            assertEquals($$"    insert.b $w5[15], $9\n", reformat())
+          fixture.addFileToProject("macros.s", macros)
+          fixture.configureByText("layout.asm", source)
+          val first = reformat()
+          assertEquals(first, reformat(), "formatting must be idempotent")
+          first
         }
-    }
+    val expected =
+        $$"""
+        .eqv OFFSET -4
+        .eqv OP   addiu  $t0,   $t0,  1
+        .eqv DEF .eqv
+        DEF AGAIN 1,   2
+        .eqv AGAIN 1,   2
+        .include   "macros.s"
 
-    @Test
-    fun `reformat normalizes native syntax and preserves machine words and data`(@TempDir directory: Path) = timeoutRunBlocking {
-        val source = $$"""
-              .eqv    OFFSET -4
-             .eqv OP   addiu  $t0,   $t0,  1
-            .eqv DEF .eqv
-            DEF AGAIN 1,   2
-            .eqv AGAIN 1,   2
-               .include   "macros.s"
+        .macro local (%reg, %value)
+            addiu %reg, %reg, -1
+            addi %reg, %reg, %value
+        .end_macro
+        .data
+        words: .word 4, -2, AGAIN
+        message: .asciiz "x  y,  (-1)"
+        repeated: .word 7:2
+            -17 +8:2
+        .text
+        main:
+            lw $t0, -4($sp)
+            lw $t1, OFFSET($sp)
+            OP
+            local ($t0, 2)
+            emit($t0, 7) # invocation may also be a text substitution
+        target: nop
+            j target
+        """
+            .trimIndent()
+    assertEquals(expected, formatted)
+    directory.resolve("macros.s").writeText(macros)
+    assertEquals(
+        assemble(directory.resolve("before.asm"), source),
+        assemble(directory.resolve("after.asm"), formatted),
+    )
+  }
 
-                .macro   local  ( %reg  , %value )
-            addiu  %reg , %reg , -1
-             addi   %reg, %reg, %value
-               .end_macro
-               .data
-             words  :    .word  4 ,  -2, AGAIN
-            message: .asciiz  "x  y,  (-1)"
-            repeated: .word 7  :  2
-            -17    +8 : 2
-               .text
-             main   :
-             lw  $t0 ,  -4  ( $sp )
-             lw  $t1 , OFFSET  ( $sp )
-                 OP
-             local ( $t0 , 2 )
-                  emit( $t0  ,  7 )    # invocation may also be a text substitution
-            target :  nop
-             j   target
-        """.trimIndent()
-        val macros = ".macro emit (%reg, %value)\naddiu %reg, %reg, %value\n.end_macro\n"
-        val formatted = withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("macros.s", macros)
-            fixture.configureByText("layout.asm", source)
-            val first = reformat()
-            assertEquals(first, reformat(), "formatting must be idempotent")
-            first
+  @Test
+  fun `reformat separates punctuation names from the extern directive and size`(
+      @TempDir directory: Path,
+  ) = timeoutRunBlocking {
+    val source =
+        """
+        .extern)4
+        .extern  :  4
+        .extern (4
+        .extern+  ,4
+        .extern -7,4
+        .extern next 4
+        .data
+        .word next
+        """
+            .trimIndent()
+    val expected =
+        """
+        .extern ) 4
+        .extern : 4
+        .extern ( 4
+        .extern +, 4
+        .extern -7, 4
+        .extern next 4
+        .data
+        .word next
+        """
+            .trimIndent()
+    val formatted =
+        withContext(Dispatchers.EDT) {
+          fixture.configureByText("extern-spacing.mars", source)
+          val first = reformat()
+          assertEquals(first, reformat())
+          first
         }
-        val expected = $$"""
-            .eqv OFFSET -4
-            .eqv OP   addiu  $t0,   $t0,  1
-            .eqv DEF .eqv
-            DEF AGAIN 1,   2
-            .eqv AGAIN 1,   2
-            .include   "macros.s"
+    assertEquals(expected, formatted)
+    assertEquals(
+        assemble(directory.resolve("before.mars"), source),
+        assemble(directory.resolve("after.mars"), formatted),
+    )
+  }
 
-            .macro local (%reg, %value)
-                addiu %reg, %reg, -1
-                addi %reg, %reg, %value
-            .end_macro
+  @Test
+  fun `reformat preserves written whitespace inside a string opened by an equivalence`(
+      @TempDir directory: Path,
+  ) = timeoutRunBlocking {
+    val source =
+        """
+        .eqv HEAD OPEN
+        .eqv OPEN "x
+        .eqv FULL "ok"
+        .data
+        message   :   .asciiz   HEAD ,      "
+        .asciiz    FULL ,   "z"
+        .text
+           nop
+        """
+            .trimIndent()
+    val before = assemble(directory.resolve("quoted-before.asm"), source)
+    assertEquals("x ,      ".map(Char::code) + 0, before.second.take(10))
+    val (indexing, formatted) =
+        withContext(Dispatchers.EDT) {
+          fixture.configureByText("quoted.asm", source)
+          lateinit var indexing: String
+          DumbModeTestUtils.runInDumbModeSynchronously(fixture.project) {
+            indexing = reformat()
+            assertTrue("message   :   .asciiz   HEAD ,      \"" in indexing, indexing)
+            assertTrue("\n    nop" in indexing, indexing)
+          }
+          val result = reformat()
+          assertEquals(result, reformat())
+          indexing to result
+        }
+    assertEquals(before, assemble(directory.resolve("quoted-indexing.asm"), indexing))
+    assertEquals(before, assemble(directory.resolve("quoted-after.asm"), formatted))
+    assertTrue("message: .asciiz HEAD ,      \"" in formatted, formatted)
+    assertTrue(".asciiz FULL, \"z\"" in formatted, formatted)
+  }
+
+  @Test
+  fun `reformat preserves replacement whitespace when a macro operand defines an equivalence`(
+      @TempDir directory: Path,
+  ) = timeoutRunBlocking {
+    val source =
+        $$"""
+        .eqv DEFINE .eqv
+        .eqv OPEN "z
+        .macro unused
+        li   $t0   DEFINE RAW OPEN ,      "
+        .end_macro
+        .data
+        .asciiz RAW
+        .text
+        nop
+        """
+            .trimIndent()
+    val before = assemble(directory.resolve("operand-definition-before.asm"), source)
+    val bytes = "z ,      ".map(Char::code) + 0
+    assertEquals(bytes, before.second.take(bytes.size))
+    val formatted =
+        withContext(Dispatchers.EDT) {
+          fixture.configureByText("operand-definition.mars", source)
+          val result = reformat()
+          assertEquals(result, reformat())
+          result
+        }
+    assertEquals(before, assemble(directory.resolve("operand-definition-after.asm"), formatted))
+    assertTrue($$"    li $t0 DEFINE RAW OPEN ,      \"" in formatted, formatted)
+  }
+
+  @Test
+  fun `reformat preserves data for every entry that uses a shared include`(
+      @TempDir directory: Path,
+  ) = timeoutRunBlocking {
+    val dataEntry =
+        """
+        .eqv STORE .asciiz
+        .eqv DEFINE .eqv
+        .eqv HEAD "x
+        .eqv TAIL "y
+        .include "library/shared.s"
+        .eqv KEEP 1,   2
+        """
+            .trimIndent()
+    val ignoredEntry =
+        """
+        .eqv STORE .set
+        .eqv DEFINE .set
+        .eqv HEAD 1
+        .eqv TAIL "z
+        .include "library/shared.s"
+        """
+            .trimIndent()
+    val body =
+        """
+        .data
+        prefix   :   .byte  7
+        message   :   STORE   HEAD ,      "
+        .asciiz TAIL ,    "
+        DEFINE KEEP 1,   2
+        .text
+        nop
+        """
+            .trimIndent()
+    val include =
+        withContext(Dispatchers.IO) {
+          Files.createDirectory(directory.resolve("library")).resolve("shared.s")
+        }
+    include.writeText(body)
+    val dataBefore = assemble(directory.resolve("data-before.asm"), dataEntry)
+    val ignoredBefore = assemble(directory.resolve("ignored-before.asm"), ignoredEntry)
+    val selected =
+        withContext(Dispatchers.EDT) {
+          fixture.addFileToProject("data.asm", dataEntry)
+          val entry = fixture.addFileToProject("ignored.asm", ignoredEntry)
+          val shared = fixture.addFileToProject("library/shared.s", body)
+          val library = shared.virtualFile.parent.toNioPath()
+          val alias = Files.createSymbolicLink(library.resolveSibling("alias"), library)
+          checkNotNull(VirtualFileManager.getInstance().refreshAndFindFileByNioPath(alias))
+          // The reverse index sees this entry, but its second include is a duplicate.
+          fixture.addFileToProject(
+              "duplicate.asm",
+              ".include \"alias/shared.s\"\n.include \"library/shared.s\"\n",
+          )
+          fixture.configureFromExistingVirtualFile(shared.virtualFile)
+          entry.virtualFile.toNioPath()
+        }
+    val current = project.get()
+    IndexingTestUtil.suspendUntilIndexesAreReady(current)
+    val unselected = withContext(Dispatchers.EDT) { reformat() }
+    include.writeText(unselected)
+    assertEquals(dataBefore, assemble(directory.resolve("data-unselected.asm"), dataEntry))
+    assertEquals(ignoredBefore, assemble(directory.resolve("ignored-unselected.asm"), ignoredEntry))
+    assertTrue(current.service<MarsBuildService>().assemble(selected))
+    val formatted =
+        withContext(Dispatchers.EDT) {
+          val result = reformat()
+          assertEquals(result, reformat())
+          result
+        }
+    include.writeText(formatted)
+    assertEquals(dataBefore, assemble(directory.resolve("data-after.asm"), dataEntry))
+    assertEquals(ignoredBefore, assemble(directory.resolve("ignored-after.asm"), ignoredEntry))
+    assertTrue("prefix: .byte 7" in formatted, formatted)
+    assertTrue("message: STORE HEAD ,      \"" in formatted, formatted)
+    assertTrue("DEFINE KEEP 1,   2" in formatted, formatted)
+  }
+
+  @Test
+  fun `reformat preserves expanded string data from an ignored include`(@TempDir directory: Path) =
+      timeoutRunBlocking {
+        val definitions = ".eqv HEAD \"x\n"
+        val source =
+            """
             .data
-            words: .word 4, -2, AGAIN
-            message: .asciiz "x  y,  (-1)"
-            repeated: .word 7:2
-                -17 +8:2
+            prefix   :   .byte  7
+            .macro emit
+            inside   :   .asciiz   HEAD ,      "
+            .end_macro
+            .include "defs.inc~"
+            outside   :   .asciiz   HEAD ,   "
+            emit
             .text
-            main:
-                lw $t0, -4($sp)
-                lw $t1, OFFSET($sp)
-                OP
-                local ($t0, 2)
-                emit($t0, 7) # invocation may also be a text substitution
-            target: nop
-                j target
-        """.trimIndent()
-        assertEquals(expected, formatted)
-        directory.resolve("macros.s").writeText(macros)
-        assertEquals(assemble(directory.resolve("before.asm"), source), assemble(directory.resolve("after.asm"), formatted))
-    }
-
-    @Test
-    fun `reformat separates punctuation names from the extern directive and size`(@TempDir directory: Path) =
-        timeoutRunBlocking {
-            val source = """
-                .extern)4
-                .extern  :  4
-                .extern (4
-                .extern+  ,4
-                .extern -7,4
-                .extern next 4
-                .data
-                .word next
-            """.trimIndent()
-            val expected = """
-                .extern ) 4
-                .extern : 4
-                .extern ( 4
-                .extern +, 4
-                .extern -7, 4
-                .extern next 4
-                .data
-                .word next
-            """.trimIndent()
-            val formatted = withContext(Dispatchers.EDT) {
-                fixture.configureByText("extern-spacing.mars", source)
-                val first = reformat()
-                assertEquals(first, reformat())
-                first
-            }
-            assertEquals(expected, formatted)
-            assertEquals(assemble(directory.resolve("before.mars"), source), assemble(directory.resolve("after.mars"), formatted))
+            nop
+            """
+                .trimIndent()
+        directory.resolve("defs.inc~").writeText(definitions)
+        val before = assemble(directory.resolve("ignored-before.asm"), source)
+        withContext(Dispatchers.EDT) {
+          fixture.tempDirFixture.createFile("defs.inc~", definitions)
+          val entry = fixture.addFileToProject("ignored.asm", source)
+          fixture.configureFromExistingVirtualFile(entry.virtualFile)
         }
-
-    @Test
-    fun `reformat preserves written whitespace inside a string opened by an equivalence`(@TempDir directory: Path) =
-        timeoutRunBlocking {
-            val source = """
-                .eqv HEAD OPEN
-                .eqv OPEN "x
-                .eqv FULL "ok"
-                .data
-                message   :   .asciiz   HEAD ,      "
-                .asciiz    FULL ,   "z"
-                .text
-                   nop
-            """.trimIndent()
-            val before = assemble(directory.resolve("quoted-before.asm"), source)
-            assertEquals("x ,      ".map(Char::code) + 0, before.second.take(10))
-            val (indexing, formatted) = withContext(Dispatchers.EDT) {
-                fixture.configureByText("quoted.asm", source)
-                lateinit var indexing: String
-                DumbModeTestUtils.runInDumbModeSynchronously(fixture.project) {
-                    indexing = reformat()
-                    assertTrue("message   :   .asciiz   HEAD ,      \"" in indexing, indexing)
-                    assertTrue("\n    nop" in indexing, indexing)
-                }
-                val result = reformat()
-                assertEquals(result, reformat())
-                indexing to result
-            }
-            assertEquals(before, assemble(directory.resolve("quoted-indexing.asm"), indexing))
-            assertEquals(before, assemble(directory.resolve("quoted-after.asm"), formatted))
-            assertTrue("message: .asciiz HEAD ,      \"" in formatted, formatted)
-            assertTrue(".asciiz FULL, \"z\"" in formatted, formatted)
-        }
-
-    @Test
-    fun `reformat preserves replacement whitespace when a macro operand defines an equivalence`(@TempDir directory: Path) =
-        timeoutRunBlocking {
-            val source = $$"""
-                .eqv DEFINE .eqv
-                .eqv OPEN "z
-                .macro unused
-                li   $t0   DEFINE RAW OPEN ,      "
-                .end_macro
-                .data
-                .asciiz RAW
-                .text
-                nop
-            """.trimIndent()
-            val before = assemble(directory.resolve("operand-definition-before.asm"), source)
-            val bytes = "z ,      ".map(Char::code) + 0
-            assertEquals(bytes, before.second.take(bytes.size))
-            val formatted = withContext(Dispatchers.EDT) {
-                fixture.configureByText("operand-definition.mars", source)
-                val result = reformat()
-                assertEquals(result, reformat())
-                result
-            }
-            assertEquals(before, assemble(directory.resolve("operand-definition-after.asm"), formatted))
-            assertTrue($$"    li $t0 DEFINE RAW OPEN ,      \"" in formatted, formatted)
-        }
-
-    @Test
-    fun `reformat preserves data for every entry that uses a shared include`(@TempDir directory: Path) =
-        timeoutRunBlocking {
-            val dataEntry = """
-                .eqv STORE .asciiz
-                .eqv DEFINE .eqv
-                .eqv HEAD "x
-                .eqv TAIL "y
-                .include "library/shared.s"
-                .eqv KEEP 1,   2
-            """.trimIndent()
-            val ignoredEntry = """
-                .eqv STORE .set
-                .eqv DEFINE .set
-                .eqv HEAD 1
-                .eqv TAIL "z
-                .include "library/shared.s"
-            """.trimIndent()
-            val body = """
-                .data
-                prefix   :   .byte  7
-                message   :   STORE   HEAD ,      "
-                .asciiz TAIL ,    "
-                DEFINE KEEP 1,   2
-                .text
-                nop
-            """.trimIndent()
-            val include = withContext(Dispatchers.IO) { Files.createDirectory(directory.resolve("library")).resolve("shared.s") }
-            include.writeText(body)
-            val dataBefore = assemble(directory.resolve("data-before.asm"), dataEntry)
-            val ignoredBefore = assemble(directory.resolve("ignored-before.asm"), ignoredEntry)
-            val selected = withContext(Dispatchers.EDT) {
-                fixture.addFileToProject("data.asm", dataEntry)
-                val entry = fixture.addFileToProject("ignored.asm", ignoredEntry)
-                val shared = fixture.addFileToProject("library/shared.s", body)
-                val library = shared.virtualFile.parent.toNioPath()
-                val alias = Files.createSymbolicLink(library.resolveSibling("alias"), library)
-                checkNotNull(VirtualFileManager.getInstance().refreshAndFindFileByNioPath(alias))
-                // The reverse index sees this entry, but its second include is a duplicate.
-                fixture.addFileToProject("duplicate.asm", ".include \"alias/shared.s\"\n.include \"library/shared.s\"\n")
-                fixture.configureFromExistingVirtualFile(shared.virtualFile)
-                entry.virtualFile.toNioPath()
-            }
-            val current = project.get()
-            IndexingTestUtil.suspendUntilIndexesAreReady(current)
-            val unselected = withContext(Dispatchers.EDT) { reformat() }
-            include.writeText(unselected)
-            assertEquals(dataBefore, assemble(directory.resolve("data-unselected.asm"), dataEntry))
-            assertEquals(ignoredBefore, assemble(directory.resolve("ignored-unselected.asm"), ignoredEntry))
-            assertTrue(current.service<MarsBuildService>().assemble(selected))
-            val formatted = withContext(Dispatchers.EDT) {
-                val result = reformat()
-                assertEquals(result, reformat())
-                result
-            }
-            include.writeText(formatted)
-            assertEquals(dataBefore, assemble(directory.resolve("data-after.asm"), dataEntry))
-            assertEquals(ignoredBefore, assemble(directory.resolve("ignored-after.asm"), ignoredEntry))
-            assertTrue("prefix: .byte 7" in formatted, formatted)
-            assertTrue("message: STORE HEAD ,      \"" in formatted, formatted)
-            assertTrue("DEFINE KEEP 1,   2" in formatted, formatted)
-        }
-
-    @Test
-    fun `reformat preserves expanded string data from an ignored include`(@TempDir directory: Path) =
-        timeoutRunBlocking {
-            val definitions = ".eqv HEAD \"x\n"
-            val source = """
-                .data
-                prefix   :   .byte  7
-                .macro emit
-                inside   :   .asciiz   HEAD ,      "
-                .end_macro
-                .include "defs.inc~"
-                outside   :   .asciiz   HEAD ,   "
-                emit
-                .text
-                nop
-            """.trimIndent()
-            directory.resolve("defs.inc~").writeText(definitions)
-            val before = assemble(directory.resolve("ignored-before.asm"), source)
+        IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
+        val formatted =
             withContext(Dispatchers.EDT) {
-                fixture.tempDirFixture.createFile("defs.inc~", definitions)
-                val entry = fixture.addFileToProject("ignored.asm", source)
-                fixture.configureFromExistingVirtualFile(entry.virtualFile)
+              val result = reformat()
+              assertEquals(result, reformat())
+              result
             }
-            IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
-            val formatted = withContext(Dispatchers.EDT) {
-                val result = reformat()
-                assertEquals(result, reformat())
-                result
-            }
-            assertEquals(before, assemble(directory.resolve("ignored-after.asm"), formatted))
-            assertTrue("prefix: .byte 7" in formatted, formatted)
-            assertTrue("    inside: .asciiz HEAD ,      \"" in formatted, formatted)
-            assertTrue("outside: .asciiz HEAD ,   \"" in formatted, formatted)
-        }
+        assertEquals(before, assemble(directory.resolve("ignored-after.asm"), formatted))
+        assertTrue("prefix: .byte 7" in formatted, formatted)
+        assertTrue("    inside: .asciiz HEAD ,      \"" in formatted, formatted)
+        assertTrue("outside: .asciiz HEAD ,   \"" in formatted, formatted)
+      }
 
-    @Test
-    fun `reformat preserves strings opened by equivalences declared after a macro body`(@TempDir directory: Path) =
-        timeoutRunBlocking {
-            val source = """
-                .eqv WRITE .asciiz
-                .data
-                .macro emit
-                message   :   WRITE   HEAD ,      "
-                .end_macro
-                .macro unused
-                .asciiz   CYCLE ,   "x"
-                .end_macro
-                .eqv CYCLE BACK
-                .eqv BACK CYCLE
-                .eqv HEAD OPEN
-                .eqv OPEN "z
-                emit
-                .text
-                nop
-            """.trimIndent()
-            val before = assemble(directory.resolve("late-quote-before.asm"), source)
-            assertEquals("z ,      ".map(Char::code) + 0, before.second.take(10))
-            val formatted = withContext(Dispatchers.EDT) {
-                fixture.configureByText("late-quote.asm", source)
-                val result = reformat()
-                assertEquals(result, reformat())
-                result
-            }
-            assertEquals(before, assemble(directory.resolve("late-quote-after.asm"), formatted))
-            assertTrue("    message: WRITE HEAD ,      \"" in formatted, formatted)
-            assertTrue("    .asciiz CYCLE, \"x\"" in formatted, formatted)
-        }
-
-    @Test
-    fun `reformat preserves strings opened by equivalences created during macro expansion`(@TempDir directory: Path) =
-        timeoutRunBlocking {
-            val source = """
-                .eqv ALIAS HEAD
-                .data
-                .macro define (%directive, %name, %value)
-                %directive %name %value
-                .end_macro
-                define .eqv HEAD "x
-                .macro emit
-                .asciiz   HEAD ,      "
-                .asciiz   ALIAS ,   "
-                .end_macro
-                emit
-                .text
-                nop
-            """.trimIndent()
-            val before = assemble(directory.resolve("dynamic-quote-before.asm"), source)
-            val bytes = listOf("x ,      ", "x ,   ").flatMap { it.map(Char::code) + 0 }
-            assertEquals(bytes, before.second.take(bytes.size))
-            val formatted = withContext(Dispatchers.EDT) {
-                fixture.configureByText("dynamic-quote.asm", source)
-                val result = reformat()
-                assertEquals(result, reformat())
-                result
-            }
-            assertEquals(before, assemble(directory.resolve("dynamic-quote-after.asm"), formatted))
-            assertTrue("    .asciiz HEAD ,      \"" in formatted, formatted)
-            assertTrue("    .asciiz ALIAS ,   \"" in formatted, formatted)
-        }
-
-    @Test
-    fun `reformat preserves text that a macro formal can place inside a string`(@TempDir directory: Path) =
-        timeoutRunBlocking {
-            val source = $$"""
-                .data
-                .macro append (%open)
-                .asciiz   %open ,      "
-                .end_macro
-                append "x
-                .macro append (%first, %second)
-                .byte 0
-                .end_macro
-                .macro duplicate ($quote)
-                .asciiz   $quote ,   $quote
-                .end_macro
-                duplicate "
-                .macro forward (%open)
-                append    %open ,      tail
-                .end_macro
-                forward "y
-                .text
-                nop
-            """.trimIndent()
-            val before = assemble(directory.resolve("macro-quoted-before.asm"), source)
-            val strings = listOf("x ,      ", " ,   ", "y ,      tail ,      ")
-            val expectedBytes = strings.flatMap { it.map(Char::code) + 0 }
-            assertEquals(expectedBytes, before.second.take(expectedBytes.size))
-            val formatted = withContext(Dispatchers.EDT) {
-                fixture.configureByText("macro-quoted.asm", source)
-                val result = reformat()
-                assertEquals(result, reformat())
-                result
-            }
-            assertEquals(before, assemble(directory.resolve("macro-quoted-after.asm"), formatted))
-            assertTrue("    .asciiz %open ,      \"" in formatted, formatted)
-            assertTrue($$"    .asciiz $quote ,   $quote" in formatted, formatted)
-            assertTrue("    append    %open ,      tail" in formatted, formatted)
-        }
-
-    @Test
-    fun `reformat uses the substituted operation at alias call sites without changing assembly`(@TempDir directory: Path) = timeoutRunBlocking {
-        val source = $$"""
-            .eqv LOAD lw
-            .eqv CALL emit
-            .eqv OFFSET -4
-            .eqv BASE $sp
-            .eqv CLOSE )
-            .eqv DEFINE .eqv
-            .eqv MARKER alias_label:
-            DEFINE KEEP 1,   2
-            .macro emit (%value)
-                li $t1, %value
-            .end_macro
-            .macro discard (%a, %b, %c, %d, %e)
-                nop
-            .end_macro
-            .text
-            MARKER
-            LOAD  $t0 , OFFSET  ( BASE )
-            LOAD  $t2 , ( BASE )
-            CALL( OFFSET )
-            CALL ( OFFSET CLOSE
-            discard ignored .eqv RAW 1,   2
-            .eqv RAW 1,   2
-        """.trimIndent()
-        val formatted = withContext(Dispatchers.EDT) {
-            fixture.configureByText("alias-layout.asm", source)
-            DumbModeTestUtils.runInDumbModeSynchronously(fixture.project) {
-                assertTrue($$"LOAD  $t0 , OFFSET  ( BASE )" in reformat())
-            }
-            val result = reformat()
-            assertEquals(result, reformat())
-            result
-        }
-        assertTrue($$"    LOAD $t0, OFFSET(BASE)" in formatted, formatted)
-        assertTrue($$"    LOAD $t2, (BASE)" in formatted, formatted)
-        assertTrue("    CALL(OFFSET)" in formatted, formatted)
-        assertTrue("    CALL (OFFSET CLOSE" in formatted, formatted)
-        assertTrue("DEFINE KEEP 1,   2" in formatted, formatted)
-        assertTrue("discard ignored .eqv RAW 1,   2" in formatted, formatted)
-        assertEquals(assemble(directory.resolve("alias-before.asm"), source),
-            assemble(directory.resolve("alias-after.asm"), formatted))
-    }
-
-    @Test
-    fun `aliases that complete an operand expose its safe spacing boundaries`(@TempDir directory: Path) = timeoutRunBlocking {
-        val source = $$"""
-            .eqv OPEN (
-            .eqv CLOSE )
-            .eqv BASE $sp
-            .eqv OFFSET -4
-            .eqv DEST $t0
-            .eqv PREFIX 4(
-            .eqv PAIR 7,   9
-            .data
-            values: .word PAIR
-            .text
-            lw  DEST , OFFSET  ( BASE CLOSE
-            lw  $t1  , PREFIX   BASE  )
-            lw  $t2 , OFFSET OPEN  BASE )
-            lw  DEST  ( BASE CLOSE
-        """.trimIndent()
-        val formatted = withContext(Dispatchers.EDT) {
-            fixture.configureByText("compound-addresses.asm", source)
-            val result = reformat()
-            assertEquals(result, reformat())
-            result
-        }
-        assertEquals(
-          $$"""
-            .eqv OPEN (
-            .eqv CLOSE )
-            .eqv BASE $sp
-            .eqv OFFSET -4
-            .eqv DEST $t0
-            .eqv PREFIX 4(
-            .eqv PAIR 7,   9
-            .data
-            values: .word PAIR
-            .text
-                lw DEST, OFFSET(BASE CLOSE
-                lw $t1, PREFIX BASE)
-                lw $t2, OFFSET OPEN BASE)
-                lw DEST (BASE CLOSE
-        """.trimIndent(), formatted)
-        assertEquals(assemble(directory.resolve("compound-before.asm"), source),
-            assemble(directory.resolve("compound-after.asm"), formatted))
-    }
-
-    @Test
-    fun `complete operands use expanded address and group roles when spacing parentheses`(@TempDir directory: Path) = timeoutRunBlocking {
-        val source = $$"""
-            .eqv LOAD lw
-            .eqv DEST $t0
-            .eqv BASE $sp
-            .eqv PAIR $t2, 8
-            .eqv LABEL entry:
-            .text
-            lw  DEST( BASE )
-            LOAD  DEST( BASE )
-            LABEL lw DEST( BASE )
-            lw  PAIR   ( BASE )
-            LOAD PAIR   ( BASE )
-            lw $t1, 4   ( $sp )
-        """.trimIndent()
-        val formatted = withContext(Dispatchers.EDT) {
-            fixture.configureByText("complete-alias-addresses.asm", source)
-            val result = reformat()
-            assertEquals(result, reformat())
-            result
-        }
-        assertEquals(
-          $$"""
-            .eqv LOAD lw
-            .eqv DEST $t0
-            .eqv BASE $sp
-            .eqv PAIR $t2, 8
-            .eqv LABEL entry:
-            .text
-                lw DEST (BASE)
-                LOAD DEST (BASE)
-            LABEL lw DEST (BASE)
-                lw PAIR(BASE)
-                LOAD PAIR(BASE)
-                lw $t1, 4($sp)
-        """.trimIndent(), formatted)
-        assertEquals(assemble(directory.resolve("complete-before.asm"), source),
-            assemble(directory.resolve("complete-after.asm"), formatted))
-    }
-
-    @Test
-    fun `operand aliases that leave invalid or incomplete syntax keep their internal spacing`() = timeoutRunBlocking {
+  @Test
+  fun `reformat preserves strings opened by equivalences declared after a macro body`(
+      @TempDir directory: Path,
+  ) = timeoutRunBlocking {
+    val source =
+        """
+        .eqv WRITE .asciiz
+        .data
+        .macro emit
+        message   :   WRITE   HEAD ,      "
+        .end_macro
+        .macro unused
+        .asciiz   CYCLE ,   "x"
+        .end_macro
+        .eqv CYCLE BACK
+        .eqv BACK CYCLE
+        .eqv HEAD OPEN
+        .eqv OPEN "z
+        emit
+        .text
+        nop
+        """
+            .trimIndent()
+    val before = assemble(directory.resolve("late-quote-before.asm"), source)
+    assertEquals("z ,      ".map(Char::code) + 0, before.second.take(10))
+    val formatted =
         withContext(Dispatchers.EDT) {
-            val source = $$"""
-                .eqv OFFSET 4
-                .eqv LOAD lw
-                .eqv FIRST SECOND
-                .eqv SECOND FIRST
-                .text
-                lw $t0 , OFFSET  ( $sp
-                lw $t1 , FIRST  ( $sp
-                lw $t2 , UNKNOWN  ( $sp
-                LOAD $t3, OFFSET  ( $sp
-                .word OFFSET    )
-                next: nop
-            """.trimIndent()
-            fixture.configureByText("incomplete-addresses.asm", source)
-            val result = reformat()
-            assertTrue($$"$t0 , OFFSET  ( $sp" in result, result)
-            assertTrue($$"$t1 , FIRST  ( $sp" in result, result)
-            assertTrue($$"$t2 , UNKNOWN  ( $sp" in result, result)
-            assertTrue($$"LOAD $t3, OFFSET ($sp" in result, result)
-            assertTrue(".word OFFSET    )" in result, result)
-            assertTrue("next: nop" in result, result)
-            assertEquals(result, reformat())
+          fixture.configureByText("late-quote.asm", source)
+          val result = reformat()
+          assertEquals(result, reformat())
+          result
         }
-    }
+    assertEquals(before, assemble(directory.resolve("late-quote-after.asm"), formatted))
+    assertTrue("    message: WRITE HEAD ,      \"" in formatted, formatted)
+    assertTrue("    .asciiz CYCLE, \"x\"" in formatted, formatted)
+  }
 
-    @Test
-    fun `expanded labels and directives set the margin without rewriting aliases`(@TempDir directory: Path) = timeoutRunBlocking {
-        val source = $$"""
-            .eqv DATA .data
-            .eqv TEXT .text
-            .eqv SEP :
-            .eqv MARKER target:
-            .eqv VALUE 7
-               DATA
-            number   SEP    .word  VALUE
-                TEXT
-               MARKER   li  $t0 ,  VALUE
-               entry    SEP   nop
-                addiu   SEP   nop
-              j   target
-        """.trimIndent()
-        val formatted = withContext(Dispatchers.EDT) {
-            fixture.configureByText("alias-margins.asm", source)
-            val result = reformat()
-            assertEquals(result, reformat())
-            result
+  @Test
+  fun `reformat preserves strings opened by equivalences created during macro expansion`(
+      @TempDir directory: Path,
+  ) = timeoutRunBlocking {
+    val source =
+        """
+        .eqv ALIAS HEAD
+        .data
+        .macro define (%directive, %name, %value)
+        %directive %name %value
+        .end_macro
+        define .eqv HEAD "x
+        .macro emit
+        .asciiz   HEAD ,      "
+        .asciiz   ALIAS ,   "
+        .end_macro
+        emit
+        .text
+        nop
+        """
+            .trimIndent()
+    val before = assemble(directory.resolve("dynamic-quote-before.asm"), source)
+    val bytes = listOf("x ,      ", "x ,   ").flatMap { it.map(Char::code) + 0 }
+    assertEquals(bytes, before.second.take(bytes.size))
+    val formatted =
+        withContext(Dispatchers.EDT) {
+          fixture.configureByText("dynamic-quote.asm", source)
+          val result = reformat()
+          assertEquals(result, reformat())
+          result
         }
-        assertEquals(
-          $$"""
-            .eqv DATA .data
-            .eqv TEXT .text
-            .eqv SEP :
-            .eqv MARKER target:
-            .eqv VALUE 7
-            DATA
-            number SEP .word VALUE
+    assertEquals(before, assemble(directory.resolve("dynamic-quote-after.asm"), formatted))
+    assertTrue("    .asciiz HEAD ,      \"" in formatted, formatted)
+    assertTrue("    .asciiz ALIAS ,   \"" in formatted, formatted)
+  }
+
+  @Test
+  fun `reformat preserves text that a macro formal can place inside a string`(
+      @TempDir directory: Path,
+  ) = timeoutRunBlocking {
+    val source =
+        $$"""
+        .data
+        .macro append (%open)
+        .asciiz   %open ,      "
+        .end_macro
+        append "x
+        .macro append (%first, %second)
+        .byte 0
+        .end_macro
+        .macro duplicate ($quote)
+        .asciiz   $quote ,   $quote
+        .end_macro
+        duplicate "
+        .macro forward (%open)
+        append    %open ,      tail
+        .end_macro
+        forward "y
+        .text
+        nop
+        """
+            .trimIndent()
+    val before = assemble(directory.resolve("macro-quoted-before.asm"), source)
+    val strings = listOf("x ,      ", " ,   ", "y ,      tail ,      ")
+    val expectedBytes = strings.flatMap { it.map(Char::code) + 0 }
+    assertEquals(expectedBytes, before.second.take(expectedBytes.size))
+    val formatted =
+        withContext(Dispatchers.EDT) {
+          fixture.configureByText("macro-quoted.asm", source)
+          val result = reformat()
+          assertEquals(result, reformat())
+          result
+        }
+    assertEquals(before, assemble(directory.resolve("macro-quoted-after.asm"), formatted))
+    assertTrue("    .asciiz %open ,      \"" in formatted, formatted)
+    assertTrue($$"    .asciiz $quote ,   $quote" in formatted, formatted)
+    assertTrue("    append    %open ,      tail" in formatted, formatted)
+  }
+
+  @Test
+  fun `reformat uses the substituted operation at alias call sites without changing assembly`(
+      @TempDir directory: Path,
+  ) = timeoutRunBlocking {
+    val source =
+        $$"""
+        .eqv LOAD lw
+        .eqv CALL emit
+        .eqv OFFSET -4
+        .eqv BASE $sp
+        .eqv CLOSE )
+        .eqv DEFINE .eqv
+        .eqv MARKER alias_label:
+        DEFINE KEEP 1,   2
+        .macro emit (%value)
+            li $t1, %value
+        .end_macro
+        .macro discard (%a, %b, %c, %d, %e)
+            nop
+        .end_macro
+        .text
+        MARKER
+        LOAD  $t0 , OFFSET  ( BASE )
+        LOAD  $t2 , ( BASE )
+        CALL( OFFSET )
+        CALL ( OFFSET CLOSE
+        discard ignored .eqv RAW 1,   2
+        .eqv RAW 1,   2
+        """
+            .trimIndent()
+    val formatted =
+        withContext(Dispatchers.EDT) {
+          fixture.configureByText("alias-layout.asm", source)
+          DumbModeTestUtils.runInDumbModeSynchronously(fixture.project) {
+            assertTrue($$"LOAD  $t0 , OFFSET  ( BASE )" in reformat())
+          }
+          val result = reformat()
+          assertEquals(result, reformat())
+          result
+        }
+    assertTrue($$"    LOAD $t0, OFFSET(BASE)" in formatted, formatted)
+    assertTrue($$"    LOAD $t2, (BASE)" in formatted, formatted)
+    assertTrue("    CALL(OFFSET)" in formatted, formatted)
+    assertTrue("    CALL (OFFSET CLOSE" in formatted, formatted)
+    assertTrue("DEFINE KEEP 1,   2" in formatted, formatted)
+    assertTrue("discard ignored .eqv RAW 1,   2" in formatted, formatted)
+    assertEquals(
+        assemble(directory.resolve("alias-before.asm"), source),
+        assemble(directory.resolve("alias-after.asm"), formatted),
+    )
+  }
+
+  @Test
+  fun `aliases that complete an operand expose its safe spacing boundaries`(
+      @TempDir directory: Path,
+  ) = timeoutRunBlocking {
+    val source =
+        $$"""
+        .eqv OPEN (
+        .eqv CLOSE )
+        .eqv BASE $sp
+        .eqv OFFSET -4
+        .eqv DEST $t0
+        .eqv PREFIX 4(
+        .eqv PAIR 7,   9
+        .data
+        values: .word PAIR
+        .text
+        lw  DEST , OFFSET  ( BASE CLOSE
+        lw  $t1  , PREFIX   BASE  )
+        lw  $t2 , OFFSET OPEN  BASE )
+        lw  DEST  ( BASE CLOSE
+        """
+            .trimIndent()
+    val formatted =
+        withContext(Dispatchers.EDT) {
+          fixture.configureByText("compound-addresses.asm", source)
+          val result = reformat()
+          assertEquals(result, reformat())
+          result
+        }
+    assertEquals(
+        $$"""
+        .eqv OPEN (
+        .eqv CLOSE )
+        .eqv BASE $sp
+        .eqv OFFSET -4
+        .eqv DEST $t0
+        .eqv PREFIX 4(
+        .eqv PAIR 7,   9
+        .data
+        values: .word PAIR
+        .text
+            lw DEST, OFFSET(BASE CLOSE
+            lw $t1, PREFIX BASE)
+            lw $t2, OFFSET OPEN BASE)
+            lw DEST (BASE CLOSE
+        """
+            .trimIndent(),
+        formatted,
+    )
+    assertEquals(
+        assemble(directory.resolve("compound-before.asm"), source),
+        assemble(directory.resolve("compound-after.asm"), formatted),
+    )
+  }
+
+  @Test
+  fun `complete operands use expanded address and group roles when spacing parentheses`(
+      @TempDir directory: Path,
+  ) = timeoutRunBlocking {
+    val source =
+        $$"""
+        .eqv LOAD lw
+        .eqv DEST $t0
+        .eqv BASE $sp
+        .eqv PAIR $t2, 8
+        .eqv LABEL entry:
+        .text
+        lw  DEST( BASE )
+        LOAD  DEST( BASE )
+        LABEL lw DEST( BASE )
+        lw  PAIR   ( BASE )
+        LOAD PAIR   ( BASE )
+        lw $t1, 4   ( $sp )
+        """
+            .trimIndent()
+    val formatted =
+        withContext(Dispatchers.EDT) {
+          fixture.configureByText("complete-alias-addresses.asm", source)
+          val result = reformat()
+          assertEquals(result, reformat())
+          result
+        }
+    assertEquals(
+        $$"""
+        .eqv LOAD lw
+        .eqv DEST $t0
+        .eqv BASE $sp
+        .eqv PAIR $t2, 8
+        .eqv LABEL entry:
+        .text
+            lw DEST (BASE)
+            LOAD DEST (BASE)
+        LABEL lw DEST (BASE)
+            lw PAIR(BASE)
+            LOAD PAIR(BASE)
+            lw $t1, 4($sp)
+        """
+            .trimIndent(),
+        formatted,
+    )
+    assertEquals(
+        assemble(directory.resolve("complete-before.asm"), source),
+        assemble(directory.resolve("complete-after.asm"), formatted),
+    )
+  }
+
+  @Test
+  fun `operand aliases that leave invalid or incomplete syntax keep their internal spacing`() =
+      timeoutRunBlocking {
+        withContext(Dispatchers.EDT) {
+          val source =
+              $$"""
+              .eqv OFFSET 4
+              .eqv LOAD lw
+              .eqv FIRST SECOND
+              .eqv SECOND FIRST
+              .text
+              lw $t0 , OFFSET  ( $sp
+              lw $t1 , FIRST  ( $sp
+              lw $t2 , UNKNOWN  ( $sp
+              LOAD $t3, OFFSET  ( $sp
+              .word OFFSET    )
+              next: nop
+              """
+                  .trimIndent()
+          fixture.configureByText("incomplete-addresses.asm", source)
+          val result = reformat()
+          assertTrue($$"$t0 , OFFSET  ( $sp" in result, result)
+          assertTrue($$"$t1 , FIRST  ( $sp" in result, result)
+          assertTrue($$"$t2 , UNKNOWN  ( $sp" in result, result)
+          assertTrue($$"LOAD $t3, OFFSET ($sp" in result, result)
+          assertTrue(".word OFFSET    )" in result, result)
+          assertTrue("next: nop" in result, result)
+          assertEquals(result, reformat())
+        }
+      }
+
+  @Test
+  fun `expanded labels and directives set the margin without rewriting aliases`(
+      @TempDir directory: Path,
+  ) = timeoutRunBlocking {
+    val source =
+        $$"""
+        .eqv DATA .data
+        .eqv TEXT .text
+        .eqv SEP :
+        .eqv MARKER target:
+        .eqv VALUE 7
+           DATA
+        number   SEP    .word  VALUE
             TEXT
-            MARKER li $t0, VALUE
-            entry SEP nop
-            addiu SEP nop
-                j target
-        """.trimIndent(), formatted)
-        assertEquals(assemble(directory.resolve("margins-before.asm"), source),
-            assemble(directory.resolve("margins-after.asm"), formatted))
-    }
+           MARKER   li  $t0 ,  VALUE
+           entry    SEP   nop
+            addiu   SEP   nop
+          j   target
+        """
+            .trimIndent()
+    val formatted =
+        withContext(Dispatchers.EDT) {
+          fixture.configureByText("alias-margins.asm", source)
+          val result = reformat()
+          assertEquals(result, reformat())
+          result
+        }
+    assertEquals(
+        $$"""
+        .eqv DATA .data
+        .eqv TEXT .text
+        .eqv SEP :
+        .eqv MARKER target:
+        .eqv VALUE 7
+        DATA
+        number SEP .word VALUE
+        TEXT
+        MARKER li $t0, VALUE
+        entry SEP nop
+        addiu SEP nop
+            j target
+        """
+            .trimIndent(),
+        formatted,
+    )
+    assertEquals(
+        assemble(directory.resolve("margins-before.asm"), source),
+        assemble(directory.resolve("margins-after.asm"), formatted),
+    )
+  }
 
-    @Test
-    fun `macro indentation follows effective boundaries inside and outside physical macro blocks`(@TempDir directory: Path) = timeoutRunBlocking {
-        val source = $$"""
-            .eqv OPEN .macro
-            .eqv CLOSE .end_macro
-            .text
-              OPEN first (%arg)
+  @Test
+  fun `macro indentation follows effective boundaries inside and outside physical macro blocks`(
+      @TempDir directory: Path,
+  ) = timeoutRunBlocking {
+    val source =
+        $$"""
+        .eqv OPEN .macro
+        .eqv CLOSE .end_macro
+        .text
+          OPEN first (%arg)
+        local: addiu $t0, $zero, %arg
+        .eqv VALUE 6
+             CLOSE # closes the aliased opener
+            outside: nop
+          .macro second
+        inside: nop
+             CLOSE # closes the written opener
+            next: nop
+          .macro third
+        third_label: nop
+             .end_macro
+        first(7)
+        second
+        third
+        """
+            .trimIndent()
+    val formatted =
+        withContext(Dispatchers.EDT) {
+          fixture.configureByText("macro-boundaries.asm", source)
+          val result = reformat()
+          assertEquals(result, reformat())
+          result
+        }
+    assertEquals(
+        $$"""
+        .eqv OPEN .macro
+        .eqv CLOSE .end_macro
+        .text
+        OPEN first (%arg)
             local: addiu $t0, $zero, %arg
             .eqv VALUE 6
-                 CLOSE # closes the aliased opener
-                outside: nop
-              .macro second
+        CLOSE # closes the aliased opener
+        outside: nop
+        .macro second
             inside: nop
-                 CLOSE # closes the written opener
-                next: nop
-              .macro third
+        CLOSE # closes the written opener
+        next: nop
+        .macro third
             third_label: nop
-                 .end_macro
+        .end_macro
             first(7)
             second
             third
-        """.trimIndent()
-        val formatted = withContext(Dispatchers.EDT) {
-            fixture.configureByText("macro-boundaries.asm", source)
-            val result = reformat()
-            assertEquals(result, reformat())
-            result
-        }
-        assertEquals(
-          $$"""
-            .eqv OPEN .macro
-            .eqv CLOSE .end_macro
-            .text
-            OPEN first (%arg)
-                local: addiu $t0, $zero, %arg
-                .eqv VALUE 6
-            CLOSE # closes the aliased opener
-            outside: nop
-            .macro second
-                inside: nop
-            CLOSE # closes the written opener
-            next: nop
-            .macro third
-                third_label: nop
-            .end_macro
-                first(7)
-                second
-                third
-        """.trimIndent(), formatted)
-        assertEquals(assemble(directory.resolve("boundaries-before.asm"), source),
-            assemble(directory.resolve("boundaries-after.asm"), formatted))
-    }
+        """
+            .trimIndent(),
+        formatted,
+    )
+    assertEquals(
+        assemble(directory.resolve("boundaries-before.asm"), source),
+        assemble(directory.resolve("boundaries-after.asm"), formatted),
+    )
+  }
 
-    @Test
-    fun `an included body takes its indentation from the enclosing entry macro`(@TempDir directory: Path) = timeoutRunBlocking {
-        val entry = ".eqv OPEN .macro\n.eqv STOP .end_macro\n.text\nOPEN emit\n.include \"macro-body.s\"\n    emit\n"
-        val body = "inside :   nop\nsecond :  nop\n    STOP\n    outside :   nop\n  nop\n"
-        val current = project.get()
-        val parent = withContext(Dispatchers.EDT) {
-            val parent = fixture.addFileToProject("entry.asm", entry)
-            val part = fixture.addFileToProject("macro-body.s", body)
-            fixture.configureFromExistingVirtualFile(part.virtualFile)
-            parent.virtualFile
-        }
-        IndexingTestUtil.suspendUntilIndexesAreReady(current)
-        val (formattedBody, formattedEntry) = withContext(Dispatchers.EDT) {
-            val part = reformat()
-            assertEquals(part, reformat())
-            fixture.configureFromExistingVirtualFile(parent)
-            val parent = reformat()
-            assertEquals(parent, reformat())
-            part to parent
-        }
-        assertEquals("    inside: nop\n    second: nop\nSTOP\noutside: nop\n    nop\n", formattedBody)
-        assertEquals(entry.replace("\n.include", "\n    .include"), formattedEntry)
-        val include = directory.resolve("macro-body.s")
-        include.writeText(body)
-        val before = assemble(directory.resolve("include-before.asm"), entry)
-        include.writeText(formattedBody)
-        assertEquals(before, assemble(directory.resolve("include-after.asm"), formattedEntry))
-    }
-
-    @Test
-    fun `an invalid macro name leaves following labels at the margin`() = timeoutRunBlocking {
+  @Test
+  fun `an included body takes its indentation from the enclosing entry macro`(
+      @TempDir directory: Path,
+  ) = timeoutRunBlocking {
+    val entry =
+        ".eqv OPEN .macro\n.eqv STOP .end_macro\n.text\nOPEN emit\n.include \"macro-body.s\"\n    emit\n"
+    val body = "inside :   nop\nsecond :  nop\n    STOP\n    outside :   nop\n  nop\n"
+    val current = project.get()
+    val parent =
         withContext(Dispatchers.EDT) {
-            fixture.configureByText("invalid-macro.asm", ".macro nop\nlabel :    nop\n.end_macro\nnext: nop\n")
-            assertEquals(".macro nop\nlabel: nop\n.end_macro\nnext: nop\n", reformat())
+          val parent = fixture.addFileToProject("entry.asm", entry)
+          val part = fixture.addFileToProject("macro-body.s", body)
+          fixture.configureFromExistingVirtualFile(part.virtualFile)
+          parent.virtualFile
         }
-    }
-
-    @Test
-    fun `a header written with an alias preserves physical indentation when its expansion is rejected`() = timeoutRunBlocking {
+    IndexingTestUtil.suspendUntilIndexesAreReady(current)
+    val (formattedBody, formattedEntry) =
         withContext(Dispatchers.EDT) {
-            val header = ".eqv NAME nop\n.macro NAME\n"
-            fixture.configureByText("aliased-macro-name.asm", header + "label :    nop\n.end_macro\nnext: nop\n")
-            assertEquals("$header    label: nop\n.end_macro\nnext: nop\n", reformat())
+          val part = reformat()
+          assertEquals(part, reformat())
+          fixture.configureFromExistingVirtualFile(parent)
+          val parent = reformat()
+          assertEquals(parent, reformat())
+          part to parent
         }
-    }
+    assertEquals("    inside: nop\n    second: nop\nSTOP\noutside: nop\n    nop\n", formattedBody)
+    assertEquals(entry.replace("\n.include", "\n    .include"), formattedEntry)
+    val include = directory.resolve("macro-body.s")
+    include.writeText(body)
+    val before = assemble(directory.resolve("include-before.asm"), entry)
+    include.writeText(formattedBody)
+    assertEquals(before, assemble(directory.resolve("include-after.asm"), formattedEntry))
+  }
 
-    @Test
-    fun `an incomplete aliased closer keeps the macro body indented`() = timeoutRunBlocking {
+  @Test
+  fun `an invalid macro name leaves following labels at the margin`() = timeoutRunBlocking {
+    withContext(Dispatchers.EDT) {
+      fixture.configureByText(
+          "invalid-macro.asm",
+          ".macro nop\nlabel :    nop\n.end_macro\nnext: nop\n",
+      )
+      assertEquals(".macro nop\nlabel: nop\n.end_macro\nnext: nop\n", reformat())
+    }
+  }
+
+  @Test
+  fun `a header written with an alias preserves physical indentation when its expansion is rejected`() =
+      timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
-            val header = ".eqv OPEN .macro\n.eqv STOP .end_macro\nOPEN emit\n"
-            fixture.configureByText("incomplete-macro.asm", header + "STOP stray\ninside: nop\n.end_macro\n    outside: nop\n")
-            assertEquals("$header    STOP stray\n    inside: nop\n.end_macro\noutside: nop\n", reformat())
+          val header = ".eqv NAME nop\n.macro NAME\n"
+          fixture.configureByText(
+              "aliased-macro-name.asm",
+              header + "label :    nop\n.end_macro\nnext: nop\n",
+          )
+          assertEquals("$header    label: nop\n.end_macro\nnext: nop\n", reformat())
         }
-    }
+      }
 
-    @Test
-    fun `selection formatting respects project indent size and preserves malformed lines`() = timeoutRunBlocking {
+  @Test
+  fun `an incomplete aliased closer keeps the macro body indented`() = timeoutRunBlocking {
+    withContext(Dispatchers.EDT) {
+      val header = ".eqv OPEN .macro\n.eqv STOP .end_macro\nOPEN emit\n"
+      fixture.configureByText(
+          "incomplete-macro.asm",
+          header + "STOP stray\ninside: nop\n.end_macro\n    outside: nop\n",
+      )
+      assertEquals("$header    STOP stray\n    inside: nop\n.end_macro\noutside: nop\n", reformat())
+    }
+  }
+
+  @Test
+  fun `selection formatting respects project indent size and preserves malformed lines`() =
+      timeoutRunBlocking {
         val current = project.get()
         withContext(Dispatchers.EDT) {
-            val source = $$".text\nstart :   nop\n   lw $t0,4($sp\n  addiu $t0 , $zero , 1\nnext :    nop\n"
-            val settings = CodeStyle.createTestSettings(CodeStyle.getSettings(current))
-            settings.getCommonSettings(MipsLanguage).indentOptions!!.INDENT_SIZE = 2
-            settings.AUTODETECT_INDENTS = false
-            CodeStyle.doWithTemporarySettings(current, settings) { ->
-                fixture.configureByText("selection.s", source)
-                assertEquals(2, CodeStyle.getIndentOptions(fixture.file).INDENT_SIZE)
-                val start = source.indexOf("  addiu")
-                val end = source.indexOf("next")
-                WriteCommandAction.runWriteCommandAction(current) {
-                    CodeStyleManager.getInstance(current).reformatText(fixture.file, listOf(TextRange(start, end)))
-                }
-                assertEquals(
-                  $$".text\nstart :   nop\n   lw $t0,4($sp\n  addiu $t0, $zero, 1\nnext :    nop\n",
-                    fixture.editor.document.text,
-                )
+          val source =
+              $$".text\nstart :   nop\n   lw $t0,4($sp\n  addiu $t0 , $zero , 1\nnext :    nop\n"
+          val settings = CodeStyle.createTestSettings(CodeStyle.getSettings(current))
+          settings.getCommonSettings(MipsLanguage).indentOptions!!.INDENT_SIZE = 2
+          settings.AUTODETECT_INDENTS = false
+          CodeStyle.doWithTemporarySettings(current, settings) { ->
+            fixture.configureByText("selection.s", source)
+            assertEquals(2, CodeStyle.getIndentOptions(fixture.file).INDENT_SIZE)
+            val start = source.indexOf("  addiu")
+            val end = source.indexOf("next")
+            WriteCommandAction.runWriteCommandAction(current) {
+              CodeStyleManager.getInstance(current)
+                  .reformatText(fixture.file, listOf(TextRange(start, end)))
             }
+            assertEquals(
+                $$".text\nstart :   nop\n   lw $t0,4($sp\n  addiu $t0, $zero, 1\nnext :    nop\n",
+                fixture.editor.document.text,
+            )
+          }
         }
-    }
+      }
 
-    @Test
-    fun `native code style settings expose a formatting preview and indentation options`() = timeoutRunBlocking<Unit> {
+  @Test
+  fun `native code style settings expose a formatting preview and indentation options`() =
+      timeoutRunBlocking<Unit> {
         val current = project.get()
         withContext(Dispatchers.EDT) {
-            val provider = requireNotNull(LanguageCodeStyleSettingsProvider.forLanguage(MipsLanguage))
-            assertTrue(requireNotNull(provider.getCodeSample(LanguageCodeStyleSettingsProvider.SettingsType.INDENT_SETTINGS)).contains(".macro"))
-            val base = CodeStyle.getSettings(current)
-            assertEquals(4, base.getCommonSettings(MipsLanguage).indentOptions!!.INDENT_SIZE)
-            val configurable = provider.createConfigurable(base, CodeStyle.createTestSettings(base))
-            try {
-                checkNotNull(configurable.createComponent())
-            } finally {
-                configurable.disposeUIResources()
-            }
+          val provider = requireNotNull(LanguageCodeStyleSettingsProvider.forLanguage(MipsLanguage))
+          assertTrue(
+              requireNotNull(
+                      provider.getCodeSample(
+                          LanguageCodeStyleSettingsProvider.SettingsType.INDENT_SETTINGS,
+                      ),
+                  )
+                  .contains(".macro"),
+          )
+          val base = CodeStyle.getSettings(current)
+          assertEquals(4, base.getCommonSettings(MipsLanguage).indentOptions!!.INDENT_SIZE)
+          val configurable = provider.createConfigurable(base, CodeStyle.createTestSettings(base))
+          try {
+            checkNotNull(configurable.createComponent())
+          } finally {
+            configurable.disposeUIResources()
+          }
         }
-    }
+      }
 
-    @Test
-    fun `formatting preserves signed limits and separate macro sign arguments`(@TempDir directory: Path) = timeoutRunBlocking {
-        val source = """
-            .eqv WORDS 1,   -0x080000000
-            .data
-            .word WORDS
-            .macro emit (%value)
-            .word   %value
-            .end_macro
-            .macro emit (%ignored,%value)
-            .word   %value
-            .end_macro
-            emit( -0x00080000000 )
-            emit   -0xffffffff
-            .text
-            nop
-        """.trimIndent()
-        val formatted = withContext(Dispatchers.EDT) {
-            fixture.configureByText("signed-limits.asm", source)
-            val result = reformat()
-            assertEquals(result, reformat())
-            result
-        }
-        assertTrue(".eqv WORDS 1,   -0x080000000" in formatted)
-        assertTrue(Regex("""emit\([ \t]*-0x00080000000[ \t]*\)""").containsMatchIn(formatted), formatted)
-        assertTrue(Regex("""emit[ \t]+-0xffffffff""").containsMatchIn(formatted), formatted)
-        assertEquals(assemble(directory.resolve("signed-before.asm"), source),
-            assemble(directory.resolve("signed-after.asm"), formatted))
-    }
-
-    @Test
-    fun `formatting preserves repetition aliases and adjacent sign substitution`(@TempDir directory: Path) =
-        timeoutRunBlocking {
-            val source = """
-                .eqv REPEAT 7:2
-                .eqv SUFFIX :2
-                .eqv VALUE 5
-                .data
-                 words :   .word  0
-                 +   REPEAT
-                 label   :    --3  SUFFIX
-                 +VALUE
-                .text
-                nop
-            """.trimIndent()
-            val formatted = withContext(Dispatchers.EDT) {
-                fixture.configureByText("repetitions.mars", source)
-                val result = reformat()
-                assertEquals(result, reformat())
-                result
-            }
-            assertTrue("+   REPEAT" in formatted, formatted)
-            assertTrue("label: --3 SUFFIX" in formatted, formatted)
-            assertTrue("+VALUE" in formatted, formatted)
-            assertEquals(assemble(directory.resolve("repetition-before.mars"), source),
-                assemble(directory.resolve("repetition-after.mars"), formatted))
-        }
-
-    @Test
-    fun `formatting follows expanded repetition without changing written aliases or macro calls`(@TempDir directory: Path) =
-        timeoutRunBlocking {
-            val source = """
-                .eqv PAD 99
-                .eqv COLON :
-                .eqv IGNORED .unknown
-                .macro emit (%value, %colon, %count)
-                    .word %value %colon %count
-                .end_macro
-                .data
-                .word 0
-                PAD    6  :  2
-                PAD    8   COLON   2
-                marker     4 : 2
-                row: PAD    5 : 2
-                emit    7  :  2
-                IGNORED    9 : 2
-                .float 0
-                PAD    .5 : 2
-                .text
-                nop
-            """.trimIndent()
-            val formatted = withContext(Dispatchers.EDT) {
-                fixture.configureByText("repeat-layout.mars", source)
-                val result = reformat()
-                assertEquals(result, reformat())
-                result
-            }
-            assertTrue("PAD 6:2" in formatted, formatted)
-            assertTrue("PAD 8 COLON 2" in formatted, formatted)
-            assertTrue("marker 4:2" in formatted, formatted)
-            assertTrue("row: PAD 5:2" in formatted, formatted)
-            assertTrue("emit 7: 2" in formatted, formatted)
-            assertTrue("IGNORED    9 : 2" in formatted, formatted)
-            assertTrue("PAD .5:2" in formatted, formatted)
-            assertEquals(assemble(directory.resolve("before.mars"), source, 56),
-                assemble(directory.resolve("after.mars"), formatted, 56))
-
-            val unresolved = $$".eqv REGISTER $t0\n.data\n.ascii \"\"\nPAD   1 : 2\n.word 0\nREGISTER   1 : 2\n"
-            val unresolvedFormatted = withContext(Dispatchers.EDT) {
-                fixture.configureByText("repeat-while-editing.mars", unresolved)
-                reformat()
-            }
-            assertTrue("PAD   1 : 2" in unresolvedFormatted, unresolvedFormatted)
-            assertTrue("REGISTER   1 : 2" in unresolvedFormatted, unresolvedFormatted)
-        }
-
-    @Test
-    fun `formatting compact macro offsets keeps signed fields and normalizes commas`(@TempDir directory: Path) =
-        timeoutRunBlocking {
-            val source = $$"""
-                .macro compact (%out,%label,%base)
-                la %out,%label+4
-                lw %out,%label,+4( %base )
-                lw %out,-4( %base )
-                addiu %out,%base,+4
-                .end_macro
-                .data
-                values: .word -1,+2
-                .text
-                compact($t0,values,$sp)
-            """.trimIndent()
-            val formatted = withContext(Dispatchers.EDT) {
-                fixture.configureByText("compact-offsets.asm", source)
-                val result = reformat()
-                assertEquals(result, reformat())
-                result
-            }
-            val expected = $$"""
-                .macro compact (%out, %label, %base)
-                    la %out, %label+4
-                    lw %out, %label, +4(%base)
-                    lw %out, -4(%base)
-                    addiu %out, %base, +4
-                .end_macro
-                .data
-                values: .word -1, +2
-                .text
-                    compact($t0, values, $sp)
-            """.trimIndent()
-            assertEquals(assemble(directory.resolve("compact-before.asm"), source),
-                assemble(directory.resolve("compact-after.asm"), formatted))
-            assertEquals(expected, formatted)
-        }
-
-    @Test
-    fun `formatting preserves unjoined signs and can recover around broken syntax`() = timeoutRunBlocking {
+  @Test
+  fun `formatting preserves signed limits and separate macro sign arguments`(
+      @TempDir directory: Path,
+  ) = timeoutRunBlocking {
+    val source =
+        """
+        .eqv WORDS 1,   -0x080000000
+        .data
+        .word WORDS
+        .macro emit (%value)
+        .word   %value
+        .end_macro
+        .macro emit (%ignored,%value)
+        .word   %value
+        .end_macro
+        emit( -0x00080000000 )
+        emit   -0xffffffff
+        .text
+        nop
+        """
+            .trimIndent()
+    val formatted =
         withContext(Dispatchers.EDT) {
-            val source = $$"""
-                .data
-                message: .asciiz"x  y"
-                .word 1e-2, 1-2+3
-                .text
-                entry   :   la $t0 , message+4
-                malformed: )  6  (
-                unknown 'X,   7
-                lw $t0 , 4  ( $sp
-                lw $t1  ,  0($sp)
-                lw $t2   ,  4($sp)
-                addiu $t0, $t0, - 4
-                next :   nop
-            """.trimIndent()
-            fixture.configureByText("recovery.asm", source)
-            val result = reformat()
-            assertTrue("message: .asciiz\"x  y\"" in result, result)
-            assertTrue("1e-2" in result, result)
-            assertTrue("1-2+3" in result, result)
-            assertTrue($$"entry: la $t0, message+4" in result, result)
-            assertTrue("malformed: )  6  (" in result, result)
-            assertTrue("unknown 'X,   7" in result, result)
-            assertTrue($$"$t1  " in result, result)
-            assertTrue($$"$t2   ," in result, result)
-            assertTrue("- 4" in result, result)
-            assertTrue("next: nop" in result, result)
-            assertEquals(result, reformat())
-            val file = fixture.file
-            val builder = requireNotNull(LanguageFormatting.INSTANCE.forContext(file))
-            val root = builder.createModel(FormattingContext.create(file, CodeStyle.getSettings(file))).rootBlock
-            assertEquals(Indent.Type.NORMAL, root.getChildAttributes(root.subBlocks.size).childIndent!!.type)
-            assertEquals(Indent.Type.NONE, root.subBlocks.first().getChildAttributes(1).childIndent!!.type)
+          fixture.configureByText("signed-limits.asm", source)
+          val result = reformat()
+          assertEquals(result, reformat())
+          result
         }
-    }
+    assertTrue(".eqv WORDS 1,   -0x080000000" in formatted)
+    assertTrue(
+        Regex("""emit\([ \t]*-0x00080000000[ \t]*\)""").containsMatchIn(formatted),
+        formatted,
+    )
+    assertTrue(Regex("""emit[ \t]+-0xffffffff""").containsMatchIn(formatted), formatted)
+    assertEquals(
+        assemble(directory.resolve("signed-before.asm"), source),
+        assemble(directory.resolve("signed-after.asm"), formatted),
+    )
+  }
 
-    private fun reformat(): String {
-        val file = fixture.file
-        WriteCommandAction.runWriteCommandAction(file.project) {
-            CodeStyleManager.getInstance(file.project).reformat(file)
+  @Test
+  fun `formatting preserves repetition aliases and adjacent sign substitution`(
+      @TempDir directory: Path,
+  ) = timeoutRunBlocking {
+    val source =
+        """
+        .eqv REPEAT 7:2
+        .eqv SUFFIX :2
+        .eqv VALUE 5
+        .data
+         words :   .word  0
+         +   REPEAT
+         label   :    --3  SUFFIX
+         +VALUE
+        .text
+        nop
+        """
+            .trimIndent()
+    val formatted =
+        withContext(Dispatchers.EDT) {
+          fixture.configureByText("repetitions.mars", source)
+          val result = reformat()
+          assertEquals(result, reformat())
+          result
         }
-        return fixture.editor.document.text
-    }
+    assertTrue("+   REPEAT" in formatted, formatted)
+    assertTrue("label: --3 SUFFIX" in formatted, formatted)
+    assertTrue("+VALUE" in formatted, formatted)
+    assertEquals(
+        assemble(directory.resolve("repetition-before.mars"), source),
+        assemble(directory.resolve("repetition-after.mars"), formatted),
+    )
+  }
 
-    private fun assemble(path: Path, source: String, dataBytes: Int = 48): Pair<List<Int>, List<Int>> {
-        path.writeText(source)
-        return MarsSessionService.createMarsComponent().context().use { context ->
-            context.selectTarget(fixture.project.service<MarsAssemblySettings>().target)
-            val program = context.assemble(listOf(path), null, extended = true, warnings = false)
-            val memory = context.memory
-            program.machineList!!.map { it.binaryStatement } to List(dataBytes) { memory.getByte(memory.dataBaseAddress + it) }
+  @Test
+  fun `formatting follows expanded repetition without changing written aliases or macro calls`(
+      @TempDir directory: Path,
+  ) = timeoutRunBlocking {
+    val source =
+        """
+        .eqv PAD 99
+        .eqv COLON :
+        .eqv IGNORED .unknown
+        .macro emit (%value, %colon, %count)
+            .word %value %colon %count
+        .end_macro
+        .data
+        .word 0
+        PAD    6  :  2
+        PAD    8   COLON   2
+        marker     4 : 2
+        row: PAD    5 : 2
+        emit    7  :  2
+        IGNORED    9 : 2
+        .float 0
+        PAD    .5 : 2
+        .text
+        nop
+        """
+            .trimIndent()
+    val formatted =
+        withContext(Dispatchers.EDT) {
+          fixture.configureByText("repeat-layout.mars", source)
+          val result = reformat()
+          assertEquals(result, reformat())
+          result
         }
+    assertTrue("PAD 6:2" in formatted, formatted)
+    assertTrue("PAD 8 COLON 2" in formatted, formatted)
+    assertTrue("marker 4:2" in formatted, formatted)
+    assertTrue("row: PAD 5:2" in formatted, formatted)
+    assertTrue("emit 7: 2" in formatted, formatted)
+    assertTrue("IGNORED    9 : 2" in formatted, formatted)
+    assertTrue("PAD .5:2" in formatted, formatted)
+    assertEquals(
+        assemble(directory.resolve("before.mars"), source, 56),
+        assemble(directory.resolve("after.mars"), formatted, 56),
+    )
+
+    val unresolved =
+        $$".eqv REGISTER $t0\n.data\n.ascii \"\"\nPAD   1 : 2\n.word 0\nREGISTER   1 : 2\n"
+    val unresolvedFormatted =
+        withContext(Dispatchers.EDT) {
+          fixture.configureByText("repeat-while-editing.mars", unresolved)
+          reformat()
+        }
+    assertTrue("PAD   1 : 2" in unresolvedFormatted, unresolvedFormatted)
+    assertTrue("REGISTER   1 : 2" in unresolvedFormatted, unresolvedFormatted)
+  }
+
+  @Test
+  fun `formatting compact macro offsets keeps signed fields and normalizes commas`(
+      @TempDir directory: Path,
+  ) = timeoutRunBlocking {
+    val source =
+        $$"""
+        .macro compact (%out,%label,%base)
+        la %out,%label+4
+        lw %out,%label,+4( %base )
+        lw %out,-4( %base )
+        addiu %out,%base,+4
+        .end_macro
+        .data
+        values: .word -1,+2
+        .text
+        compact($t0,values,$sp)
+        """
+            .trimIndent()
+    val formatted =
+        withContext(Dispatchers.EDT) {
+          fixture.configureByText("compact-offsets.asm", source)
+          val result = reformat()
+          assertEquals(result, reformat())
+          result
+        }
+    val expected =
+        $$"""
+        .macro compact (%out, %label, %base)
+            la %out, %label+4
+            lw %out, %label, +4(%base)
+            lw %out, -4(%base)
+            addiu %out, %base, +4
+        .end_macro
+        .data
+        values: .word -1, +2
+        .text
+            compact($t0, values, $sp)
+        """
+            .trimIndent()
+    assertEquals(
+        assemble(directory.resolve("compact-before.asm"), source),
+        assemble(directory.resolve("compact-after.asm"), formatted),
+    )
+    assertEquals(expected, formatted)
+  }
+
+  @Test
+  fun `formatting preserves unjoined signs and can recover around broken syntax`() =
+      timeoutRunBlocking {
+        withContext(Dispatchers.EDT) {
+          val source =
+              $$"""
+              .data
+              message: .asciiz"x  y"
+              .word 1e-2, 1-2+3
+              .text
+              entry   :   la $t0 , message+4
+              malformed: )  6  (
+              unknown 'X,   7
+              lw $t0 , 4  ( $sp
+              lw $t1  ,  0($sp)
+              lw $t2   ,  4($sp)
+              addiu $t0, $t0, - 4
+              next :   nop
+              """
+                  .trimIndent()
+          fixture.configureByText("recovery.asm", source)
+          val result = reformat()
+          assertTrue("message: .asciiz\"x  y\"" in result, result)
+          assertTrue("1e-2" in result, result)
+          assertTrue("1-2+3" in result, result)
+          assertTrue($$"entry: la $t0, message+4" in result, result)
+          assertTrue("malformed: )  6  (" in result, result)
+          assertTrue("unknown 'X,   7" in result, result)
+          assertTrue($$"$t1  " in result, result)
+          assertTrue($$"$t2   ," in result, result)
+          assertTrue("- 4" in result, result)
+          assertTrue("next: nop" in result, result)
+          assertEquals(result, reformat())
+          val file = fixture.file
+          val builder = requireNotNull(LanguageFormatting.INSTANCE.forContext(file))
+          val root =
+              builder
+                  .createModel(FormattingContext.create(file, CodeStyle.getSettings(file)))
+                  .rootBlock
+          assertEquals(
+              Indent.Type.NORMAL,
+              root.getChildAttributes(root.subBlocks.size).childIndent!!.type,
+          )
+          assertEquals(
+              Indent.Type.NONE,
+              root.subBlocks.first().getChildAttributes(1).childIndent!!.type,
+          )
+        }
+      }
+
+  private fun reformat(): String {
+    val file = fixture.file
+    WriteCommandAction.runWriteCommandAction(file.project) {
+      CodeStyleManager.getInstance(file.project).reformat(file)
     }
+    return fixture.editor.document.text
+  }
+
+  private fun assemble(
+      path: Path,
+      source: String,
+      dataBytes: Int = 48,
+  ): Pair<List<Int>, List<Int>> {
+    path.writeText(source)
+    return MarsSessionService.createMarsComponent().context().use { context ->
+      context.selectTarget(fixture.project.service<MarsAssemblySettings>().target)
+      val program = context.assemble(listOf(path), null, extended = true, warnings = false)
+      val memory = context.memory
+      program.machineList!!.map { it.binaryStatement } to
+          List(dataBytes) { memory.getByte(memory.dataBaseAddress + it) }
+    }
+  }
 }

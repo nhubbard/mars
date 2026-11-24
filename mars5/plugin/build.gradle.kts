@@ -2,10 +2,9 @@ import java.security.MessageDigest
 import java.time.Duration
 import java.util.zip.ZipFile
 import javax.xml.XMLConstants
-import org.gradle.language.jvm.tasks.ProcessResources
 import javax.xml.parsers.DocumentBuilderFactory
+import org.gradle.language.jvm.tasks.ProcessResources
 import org.gradle.testing.jacoco.plugins.JacocoTaskExtension
-import org.jetbrains.kotlin.gradle.dsl.JvmDefaultMode
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 import org.jetbrains.intellij.platform.gradle.tasks.BuildPluginTask
 import org.jetbrains.intellij.platform.gradle.tasks.ComposedJarTask
@@ -14,6 +13,7 @@ import org.jetbrains.intellij.platform.gradle.tasks.RunIdeTask
 import org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask.FailureLevel.COMPATIBILITY_PROBLEMS
 import org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask.FailureLevel.INTERNAL_API_USAGES
 import org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask.FailureLevel.OVERRIDE_ONLY_API_USAGES
+import org.jetbrains.kotlin.gradle.dsl.JvmDefaultMode
 
 plugins {
   kotlin("jvm")
@@ -24,6 +24,7 @@ plugins {
 }
 
 group = "edu.missouristate"
+
 version = "1.0-SNAPSHOT"
 
 repositories {
@@ -116,11 +117,13 @@ tasks.test {
 }
 
 val thirdPartyNotices = layout.projectDirectory.file("licenses/THIRD-PARTY-NOTICES.txt")
-val distributionNotices = listOf(
-  rootProject.layout.projectDirectory.file("shared/MARSlicense.txt"),
-  layout.projectDirectory.file("licenses/Apache-2.0.txt"),
-  thirdPartyNotices,
-)
+val distributionNotices =
+    listOf(
+        rootProject.layout.projectDirectory.file("shared/MARSlicense.txt"),
+        layout.projectDirectory.file("licenses/Apache-2.0.txt"),
+        thirdPartyNotices,
+    )
+
 tasks.processResources {
   from(rootProject.layout.projectDirectory.dir("shared/help")) {
     include("Acknowledgements.html", "MarsHelpHistory.html")
@@ -128,70 +131,91 @@ tasks.processResources {
   }
   from(distributionNotices) { into("mars-reference") }
 }
-val pluginArchive = tasks.named<BuildPluginTask>("buildPlugin") {
-  from(distributionNotices) { into("licenses") }
-}
 
-val verifyPluginNotices = tasks.register("verifyPluginNotices") {
-  group = "verification"
-  description = "Check the license files and third-party JAR inventory in the installable plugin."
-  val archiveFile = pluginArchive.flatMap { it.archiveFile }
-  val archiveRoot = pluginArchive.flatMap { it.archiveBaseName }
-  val pluginJarName = tasks.named<ComposedJarTask>("composedJar").flatMap { it.archiveFileName }
-  val coreJarName = project(":core").tasks.named<Jar>("jar").flatMap { it.archiveFileName }
-  val datapathJarName = project(":datapath").tasks.named<Jar>("jar").flatMap { it.archiveFileName }
-  val assignmentJarName = project(":cli").tasks.named<Jar>("assignmentDefinitionJar").flatMap { it.archiveFileName }
-  inputs.file(archiveFile)
-  inputs.files(distributionNotices)
-  inputs.property("archiveRoot", archiveRoot)
-  inputs.property("pluginJarName", pluginJarName)
-  inputs.property("coreJarName", coreJarName)
-  inputs.property("datapathJarName", datapathJarName)
-  inputs.property("assignmentJarName", assignmentJarName)
-  doLast {
-    val root = archiveRoot.get()
-    ZipFile(archiveFile.get().asFile).use { zip ->
-      for (notice in distributionNotices) {
-        val path = "$root/licenses/${notice.asFile.name}"
-        val entry = checkNotNull(zip.getEntry(path)) { "Plugin archive is missing $path" }
-        check(zip.getInputStream(entry).use { it.readBytes() }.contentEquals(notice.asFile.readBytes())) {
-          "Plugin archive contains a different copy of $path"
+val pluginArchive =
+    tasks.named<BuildPluginTask>("buildPlugin") {
+      from(distributionNotices) { into("licenses") }
+    }
+
+val verifyPluginNotices =
+    tasks.register("verifyPluginNotices") {
+      group = "verification"
+      description =
+          "Check the license files and third-party JAR inventory in the installable plugin."
+      val archiveFile = pluginArchive.flatMap { it.archiveFile }
+      val archiveRoot = pluginArchive.flatMap { it.archiveBaseName }
+      val pluginJarName = tasks.named<ComposedJarTask>("composedJar").flatMap { it.archiveFileName }
+      val coreJarName = project(":core").tasks.named<Jar>("jar").flatMap { it.archiveFileName }
+      val datapathJarName =
+          project(":datapath").tasks.named<Jar>("jar").flatMap { it.archiveFileName }
+      val assignmentJarName =
+          project(":cli").tasks.named<Jar>("assignmentDefinitionJar").flatMap { it.archiveFileName }
+      inputs.file(archiveFile)
+      inputs.files(distributionNotices)
+      inputs.property("archiveRoot", archiveRoot)
+      inputs.property("pluginJarName", pluginJarName)
+      inputs.property("coreJarName", coreJarName)
+      inputs.property("datapathJarName", datapathJarName)
+      inputs.property("assignmentJarName", assignmentJarName)
+      doLast {
+        val root = archiveRoot.get()
+        ZipFile(archiveFile.get().asFile).use { zip ->
+          for (notice in distributionNotices) {
+            val path = "$root/licenses/${notice.asFile.name}"
+            val entry = checkNotNull(zip.getEntry(path)) { "Plugin archive is missing $path" }
+            check(
+                zip.getInputStream(entry)
+                    .use { it.readBytes() }
+                    .contentEquals(notice.asFile.readBytes()),
+            ) {
+              "Plugin archive contains a different copy of $path"
+            }
+          }
+          val libraryPrefix = "$root/lib/"
+          check(zip.getEntry("${libraryPrefix}modules/mars.jvm.compiler.jar") != null) {
+            "The optional JVM compiler module must have its own JAR"
+          }
+          check(zip.getEntry("${libraryPrefix}modules/mars.kotlin.scripting.jar") != null) {
+            "The optional Kotlin scripting integration must have its own JAR"
+          }
+          check(zip.getEntry(libraryPrefix + assignmentJarName.get()) != null) {
+            "The Kotlin script definition must be available as a separate JAR"
+          }
+          val bundledJars =
+              zip.entries()
+                  .asSequence()
+                  .filter { it.name.startsWith(libraryPrefix) && it.name.endsWith(".jar") }
+                  .map { it.name.substringAfterLast('/') }
+                  .toSet() -
+                  setOf(
+                      pluginJarName.get(),
+                      coreJarName.get(),
+                      datapathJarName.get(),
+                      assignmentJarName.get(),
+                      "mars.jvm.compiler.jar",
+                      "mars.kotlin.scripting.jar",
+                  )
+          val documentedJars =
+              thirdPartyNotices.asFile.useLines { lines ->
+                lines.filter { it.startsWith("JAR ") }.map { it.removePrefix("JAR ") }.toSet()
+              }
+          check(bundledJars == documentedJars) {
+            "Update third-party notices. Undocumented: ${bundledJars - documentedJars}. Absent: ${documentedJars - bundledJars}."
+          }
         }
       }
-      val libraryPrefix = "$root/lib/"
-      check(zip.getEntry("${libraryPrefix}modules/mars.jvm.compiler.jar") != null) {
-        "The optional JVM compiler module must have its own JAR"
-      }
-      check(zip.getEntry("${libraryPrefix}modules/mars.kotlin.scripting.jar") != null) {
-        "The optional Kotlin scripting integration must have its own JAR"
-      }
-      check(zip.getEntry(libraryPrefix + assignmentJarName.get()) != null) {
-        "The Kotlin script definition must be available as a separate JAR"
-      }
-      val bundledJars = zip.entries().asSequence()
-        .filter { it.name.startsWith(libraryPrefix) && it.name.endsWith(".jar") }
-        .map { it.name.substringAfterLast('/') }
-        .toSet() - setOf(
-          pluginJarName.get(), coreJarName.get(), datapathJarName.get(),
-          assignmentJarName.get(), "mars.jvm.compiler.jar", "mars.kotlin.scripting.jar",
-        )
-      val documentedJars = thirdPartyNotices.asFile.useLines { lines ->
-        lines.filter { it.startsWith("JAR ") }.map { it.removePrefix("JAR ") }.toSet()
-      }
-      check(bundledJars == documentedJars) {
-        "Update third-party notices. Undocumented: ${bundledJars - documentedJars}. Absent: ${documentedJars - bundledJars}."
-      }
     }
-  }
-}
+
 tasks.check { dependsOn(verifyPluginNotices) }
+
 tasks.named("verifyPlugin") { dependsOn(verifyPluginNotices) }
 
 jacoco { toolVersion = "0.8.16" }
 
-val contentModuleClasses = listOf(":plugin-jvm-compiler", ":plugin-kotlin-scripting").map {
-  project(it).layout.buildDirectory.dir("classes/kotlin/main")
-}
+val contentModuleClasses =
+    listOf(":plugin-jvm-compiler", ":plugin-kotlin-scripting").map {
+      project(it).layout.buildDirectory.dir("classes/kotlin/main")
+    }
 
 tasks.jacocoTestReport {
   dependsOn(tasks.test)
@@ -234,13 +258,23 @@ tasks.check { dependsOn(tasks.jacocoTestCoverageVerification) }
 
 // A launch always verifies the plugin; callers clean the build and sandbox first.
 tasks.named<RunIdeTask>("runIde") {
-  dependsOn(tasks.check, ":core:check", ":cli:check", ":datapath:check", rootProject.tasks.named("check"))
+  dependsOn(
+      tasks.check,
+      ":core:check",
+      ":cli:check",
+      ":datapath:check",
+      rootProject.tasks.named("check"),
+  )
   val indexingBaseline = providers.gradleProperty("indexingBaseline").isPresent
-  val suppliedArchive = providers.gradleProperty("packagedSmokeArchive").map { rootProject.file(it) }
-  val packagedSmoke = providers.gradleProperty("packagedSmoke").isPresent || suppliedArchive.isPresent
+  val suppliedArchive =
+      providers.gradleProperty("packagedSmokeArchive").map { rootProject.file(it) }
+  val packagedSmoke =
+      providers.gradleProperty("packagedSmoke").isPresent || suppliedArchive.isPresent
   val executionProfile = providers.gradleProperty("executionProfile").map { rootProject.file(it) }
   check(!executionProfile.isPresent || packagedSmoke) { "Use executionProfile with packagedSmoke." }
-  check(!indexingBaseline || !packagedSmoke) { "Choose either indexing playback or packaged smoke playback." }
+  check(!indexingBaseline || !packagedSmoke) {
+    "Choose either indexing playback or packaged smoke playback."
+  }
   if (indexingBaseline) {
     val baseline = rootProject.layout.projectDirectory.dir(".gradle/indexing-baseline")
     val scenario = baseline.file("indexing.ijperf").asFile
@@ -256,7 +290,9 @@ tasks.named<RunIdeTask>("runIde") {
     systemProperty("jb.consents.confirmation.enabled", false)
     systemProperty("jb.privacy.policy.text", "<!--999.999-->")
     doFirst {
-      check(scenario.isFile) { "Generate the indexing project with prepare_indexing_baseline.py first." }
+      check(scenario.isFile) {
+        "Generate the indexing project with prepare_indexing_baseline.py first."
+      }
       project.delete(completion)
       val archive = pluginArchive.get()
       val plugins = sandboxPluginsDirectory.get().asFile
@@ -271,14 +307,20 @@ tasks.named<RunIdeTask>("runIde") {
   if (packagedSmoke) {
     val scenario = layout.projectDirectory.dir("src/qualification")
     val fixture = layout.buildDirectory.dir("packaged-smoke")
-    val candidate = suppliedArchive.orElse(pluginArchive.flatMap { it.archiveFile }.map { it.asFile })
-    val stagedArchive = layout.buildDirectory.dir("packaged-smoke-input")
-      .zip(candidate) { directory, archive -> directory.file(archive.name).asFile }
+    val candidate =
+        suppliedArchive.orElse(pluginArchive.flatMap { it.archiveFile }.map { it.asFile })
+    val stagedArchive =
+        layout.buildDirectory.dir("packaged-smoke-input").zip(candidate) { directory, archive ->
+          directory.file(archive.name).asFile
+        }
     if (!suppliedArchive.isPresent) dependsOn(pluginArchive)
     args(fixture.get().asFile.absolutePath)
     val smokeScript = scenario.file("packaged-smoke.ijperf").asFile
     val playback = layout.buildDirectory.file("packaged-smoke-input/execution.ijperf")
-    systemProperty("testscript.filename", if (executionProfile.isPresent) playback.get().asFile else smokeScript)
+    systemProperty(
+        "testscript.filename",
+        if (executionProfile.isPresent) playback.get().asFile else smokeScript,
+    )
     executionProfile.orNull?.let { recording ->
       jvmArgs("-XX:StartFlightRecording=settings=profile,filename=$recording,dumponexit=true")
     }
@@ -292,12 +334,16 @@ tasks.named<RunIdeTask>("runIde") {
 
     doFirst {
       val log = sandboxLogDirectory.get().asFile
-      project.delete(log.resolve("packaged-smoke-complete.txt"), log.resolve("packaged-smoke-SHA256SUMS"))
+      project.delete(
+          log.resolve("packaged-smoke-complete.txt"),
+          log.resolve("packaged-smoke-SHA256SUMS"),
+      )
       val archive = candidate.get()
       check(archive.isFile) {
         "Packaged smoke ZIP not found at $archive. Keep supplied archives outside build directories cleaned by Gradle."
       }
-      // Install and hash the same local copy, even if an external archive is replaced during the replay.
+      // Install and hash the same local copy, even if an external archive is replaced during the
+      // replay.
       val staged = archive.copyTo(stagedArchive.get(), overwrite = true)
       project.sync {
         from(scenario.dir("project"))
@@ -310,10 +356,17 @@ tasks.named<RunIdeTask>("runIde") {
       }
       if (executionProfile.isPresent) {
         val profiling = scenario.file("packaged-execution.ijperf").asFile.readText()
-        playback.get().asFile.writeText(
-          smokeScript.readText().replace("%storeHighlightingResults packaged-smoke-complete",
-            profiling + "%storeHighlightingResults packaged-smoke-complete")
-        )
+        playback
+            .get()
+            .asFile
+            .writeText(
+                smokeScript
+                    .readText()
+                    .replace(
+                        "%storeHighlightingResults packaged-smoke-complete",
+                        profiling + "%storeHighlightingResults packaged-smoke-complete",
+                    ),
+            )
       }
       // Exercise CRLF on every host, independent of the checkout's line ending settings.
       val legacySource = fixture.get().file("legacy.asm").asFile
@@ -333,7 +386,9 @@ tasks.named<RunIdeTask>("runIde") {
         "IntelliJ did not finish the packaged smoke scenario. See $log."
       }
       val errors = highlighting.readLines().filter { it.startsWith("ERROR(") }
-      check(errors.isEmpty()) { "IntelliJ reported errors in the MARS64 FIR example:\n${errors.joinToString("\n")}" }
+      check(errors.isEmpty()) {
+        "IntelliJ reported errors in the MARS64 FIR example:\n${errors.joinToString("\n")}"
+      }
       val expected = "MARS packaged smoke\n".encodeToByteArray()
       for (name in listOf("run.ok", "debug.ok")) {
         val result = fixture.get().file(name).asFile
@@ -346,46 +401,68 @@ tasks.named<RunIdeTask>("runIde") {
         "The MARS64 FIR program did not write its success result to $fir."
       }
       val archive = stagedArchive.get()
-      val checksum = MessageDigest.getInstance("SHA-256").digest(archive.readBytes())
-        .joinToString("") { "%02x".format(it) }
+      val checksum =
+          MessageDigest.getInstance("SHA-256").digest(archive.readBytes()).joinToString("") {
+            "%02x".format(it)
+          }
       log.resolve("packaged-smoke-SHA256SUMS").writeText("$checksum  ${archive.name}\n")
       logger.lifecycle("Packaged MARS smoke passed. IDE evidence is in $log.")
     }
   }
 }
+
 fun trustSandboxProject(options: File, trustedProject: File) {
   options.mkdirs()
-  val trustedPath = trustedProject.absolutePath
-    .replace("&", "&amp;").replace("<", "&lt;").replace("\"", "&quot;")
-  options.resolve("trusted-paths.xml").writeText("""
+  val trustedPath =
+      trustedProject.absolutePath.replace("&", "&amp;").replace("<", "&lt;").replace("\"", "&quot;")
+  options
+      .resolve("trusted-paths.xml")
+      .writeText(
+          """
     <application><component name="Trusted.Paths">
       <option name="TRUSTED_PROJECT_PATHS"><map><entry key="$trustedPath" value="true" /></map></option>
     </component></application>
-  """.trimIndent())
+  """
+              .trimIndent(),
+      )
 }
 
-tasks.matching { it.name.startsWith("prepare") && it.name.contains("Sandbox") }.configureEach {
-  mustRunAfter(tasks.named("cleanSandbox"))
-}
+tasks
+    .matching { it.name.startsWith("prepare") && it.name.contains("Sandbox") }
+    .configureEach {
+      mustRunAfter(tasks.named("cleanSandbox"))
+    }
 
-val parserGenerator = sourceSets.create("parserGenerator") {
-  compileClasspath += configurations["intellijPlatformGrammarKit"] + configurations["intellijPlatformClasspath"]
-  runtimeClasspath += compileClasspath
-}
+val parserGenerator =
+    sourceSets.create("parserGenerator") {
+      compileClasspath +=
+          configurations["intellijPlatformGrammarKit"] + configurations["intellijPlatformClasspath"]
+      runtimeClasspath += compileClasspath
+    }
+
 // The Compose compiler checks its runtime even when compiling the standalone grammar generator.
-configurations[parserGenerator.compileOnlyConfigurationName].extendsFrom(configurations["intellijPlatformDependencies"])
-val generateMipsParser = tasks.named<GenerateParserTask>("generateParser") {
-  sourceFile.set(layout.projectDirectory.file("src/main/grammar/Mips.bnf"))
-  targetRootOutputDir.set(layout.buildDirectory.dir("generated/sources/mips/kotlin"))
-  // The released CLI hard-codes JavaParserGenerator; this entry point calls KotlinParserGenerator.
-  mainClass.set("org.intellij.grammar.GenerateMipsParserKt")
-  classpath = parserGenerator.runtimeClasspath
-  dependsOn(tasks.named(parserGenerator.classesTaskName))
-  javaLauncher.set(javaToolchains.launcherFor { languageVersion.set(JavaLanguageVersion.of(25)) })
-}
+configurations[parserGenerator.compileOnlyConfigurationName].extendsFrom(
+    configurations["intellijPlatformDependencies"],
+)
+
+val generateMipsParser =
+    tasks.named<GenerateParserTask>("generateParser") {
+      sourceFile.set(layout.projectDirectory.file("src/main/grammar/Mips.bnf"))
+      targetRootOutputDir.set(layout.buildDirectory.dir("generated/sources/mips/kotlin"))
+      // The released CLI hard-codes JavaParserGenerator; this entry point calls
+      // KotlinParserGenerator.
+      mainClass.set("org.intellij.grammar.GenerateMipsParserKt")
+      classpath = parserGenerator.runtimeClasspath
+      dependsOn(tasks.named(parserGenerator.classesTaskName))
+      javaLauncher.set(
+          javaToolchains.launcherFor { languageVersion.set(JavaLanguageVersion.of(25)) },
+      )
+    }
+
 kotlin.sourceSets.named("main") {
   kotlin.srcDir(generateMipsParser.map { it.targetRootOutputDir })
 }
+
 tasks.named("compileKotlin") { dependsOn(generateMipsParser) }
 
 sourceSets.named("test") {
@@ -393,78 +470,121 @@ sourceSets.named("test") {
 }
 
 // Keep generated code in the raw report. Only the exact reviewed defensive outcomes are exempt.
-val verifyGeneratedParserCoverage = tasks.register("verifyGeneratedParserCoverage") {
-  description = "Verify coverage of the generated MIPS parser against its reviewed branch ledger."
-  dependsOn(tasks.jacocoTestReport)
-  val ledger = layout.projectDirectory.file("coverage/generated-parser-branches.tsv")
-  val source = layout.buildDirectory.file("generated/sources/mips/kotlin/edu/missouristate/mars/plugin/language/parser/MipsParser.kt")
-  val report = layout.buildDirectory.file("reports/jacoco/test/jacocoTestReport.xml")
-  inputs.files(ledger, source, report)
-  doLast {
-    val records = ledger.asFile.readLines()
-    // Grammar-Kit writes native line endings. The branch ledger is shared by all hosts.
-    val sourceText = source.get().asFile.readText().replace("\r\n", "\n")
-    val hash = MessageDigest.getInstance("SHA-256").digest(sourceText.toByteArray(Charsets.UTF_8))
-      .joinToString("") { "%02x".format(it) }
-    check(records.first() == "# sha256\t$hash") { "Generated parser changed: review its defensive branch ledger" }
-    val allowances = records.filterNot { it.startsWith("#") }.associate { line ->
-      val fields = line.split('\t')
-      fields[0].toInt() to (fields[1].toInt() to fields[2])
-    }
-    val parser = DocumentBuilderFactory.newDefaultInstance().apply {
-      setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true)
-      // JAXP identifies this parser feature by URI. The parser does not fetch it.
-      setFeature(@Suppress("HttpUrlsUsage") "http://apache.org/xml/features/nonvalidating/load-external-dtd", false)
-      setAttribute(XMLConstants.ACCESS_EXTERNAL_DTD, "")
-      setAttribute(XMLConstants.ACCESS_EXTERNAL_SCHEMA, "")
-      isXIncludeAware = false
-      isExpandEntityReferences = false
-    }.newDocumentBuilder()
-    val xml = parser.parse(report.get().asFile)
-    val sources = xml.getElementsByTagName("sourcefile")
-    val code = sourceText.lines()
-    var verified = false
-    for (i in 0 until sources.length) {
-      val element = sources.item(i)
-      if (element.attributes.getNamedItem("name").nodeValue != "MipsParser.kt") continue
-      verified = true
-      val children = element.childNodes
-      for (j in 0 until children.length) {
-        val child = children.item(j)
-        if (child.nodeName != "line") continue
-        val attributes = child.attributes
-        val number = attributes.getNamedItem("nr").nodeValue.toInt()
-        val missed = attributes.getNamedItem("mb").nodeValue.toInt()
-        check(attributes.getNamedItem("ci").nodeValue.toInt() > 0) { "Uncovered generated parser line $number" }
-        if (missed == 0) continue
-        val allowance = allowances[number]
-        check(allowance != null && missed <= allowance.first && code[number - 1].trim() == allowance.second) {
-          "Uncovered non-exempt generated parser branches at line $number"
+val verifyGeneratedParserCoverage =
+    tasks.register("verifyGeneratedParserCoverage") {
+      description =
+          "Verify coverage of the generated MIPS parser against its reviewed branch ledger."
+      dependsOn(tasks.jacocoTestReport)
+      val ledger = layout.projectDirectory.file("coverage/generated-parser-branches.tsv")
+      val source =
+          layout.buildDirectory.file(
+              "generated/sources/mips/kotlin/edu/missouristate/mars/plugin/language/parser/MipsParser.kt",
+          )
+      val report = layout.buildDirectory.file("reports/jacoco/test/jacocoTestReport.xml")
+      inputs.files(ledger, source, report)
+      doLast {
+        val records = ledger.asFile.readLines()
+        // Grammar-Kit writes native line endings. The branch ledger is shared by all hosts.
+        val sourceText = source.get().asFile.readText().replace("\r\n", "\n")
+        val hash =
+            MessageDigest.getInstance("SHA-256")
+                .digest(sourceText.toByteArray(Charsets.UTF_8))
+                .joinToString("") { "%02x".format(it) }
+        check(records.first() == "# sha256\t$hash") {
+          "Generated parser changed: review its defensive branch ledger"
         }
+        val allowances =
+            records
+                .filterNot { it.startsWith("#") }
+                .associate { line ->
+                  val fields = line.split('\t')
+                  fields[0].toInt() to (fields[1].toInt() to fields[2])
+                }
+        val parser =
+            DocumentBuilderFactory.newDefaultInstance()
+                .apply {
+                  setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true)
+                  // JAXP identifies this parser feature by URI. The parser does not fetch it.
+                  setFeature(
+                      @Suppress("HttpUrlsUsage")
+                      "http://apache.org/xml/features/nonvalidating/load-external-dtd",
+                      false,
+                  )
+                  setAttribute(XMLConstants.ACCESS_EXTERNAL_DTD, "")
+                  setAttribute(XMLConstants.ACCESS_EXTERNAL_SCHEMA, "")
+                  isXIncludeAware = false
+                  isExpandEntityReferences = false
+                }
+                .newDocumentBuilder()
+        val xml = parser.parse(report.get().asFile)
+        val sources = xml.getElementsByTagName("sourcefile")
+        val code = sourceText.lines()
+        var verified = false
+        for (i in 0 until sources.length) {
+          val element = sources.item(i)
+          if (element.attributes.getNamedItem("name").nodeValue != "MipsParser.kt") continue
+          verified = true
+          val children = element.childNodes
+          for (j in 0 until children.length) {
+            val child = children.item(j)
+            if (child.nodeName != "line") continue
+            val attributes = child.attributes
+            val number = attributes.getNamedItem("nr").nodeValue.toInt()
+            val missed = attributes.getNamedItem("mb").nodeValue.toInt()
+            check(attributes.getNamedItem("ci").nodeValue.toInt() > 0) {
+              "Uncovered generated parser line $number"
+            }
+            if (missed == 0) continue
+            val allowance = allowances[number]
+            check(
+                allowance != null &&
+                    missed <= allowance.first &&
+                    code[number - 1].trim() == allowance.second,
+            ) {
+              "Uncovered non-exempt generated parser branches at line $number"
+            }
+          }
+        }
+        check(verified) { "Generated parser coverage was not found" }
       }
     }
-    check(verified) { "Generated parser coverage was not found" }
-  }
-}
+
 tasks.check { dependsOn(verifyGeneratedParserCoverage) }
 
 tasks.named<ProcessResources>("processTestResources") {
   from(rootProject.file("../examples")) {
-    include("**/*.asm", "**/*.s", "**/*.mars", "**/*.inc", "smoke/png-decoder/src/main/mips/torture.png")
+    include(
+        "**/*.asm",
+        "**/*.s",
+        "**/*.mars",
+        "**/*.inc",
+        "smoke/png-decoder/src/main/mips/torture.png",
+    )
     exclude("**/build/**", "**/.gradle/**")
   }
   doLast {
     val programs = project(":core").file("src/test/resources/testPrograms")
-    destinationDir.resolve("mars-programs.list").writeText(
-      fileTree(programs).matching { include("**/*.asm") }.files
-        .map { it.relativeTo(programs).invariantSeparatorsPath }.sorted().joinToString("\n")
-    )
+    destinationDir
+        .resolve("mars-programs.list")
+        .writeText(
+            fileTree(programs)
+                .matching { include("**/*.asm") }
+                .files
+                .map { it.relativeTo(programs).invariantSeparatorsPath }
+                .sorted()
+                .joinToString("\n"),
+        )
   }
 }
+
 generateMipsParser.configure {
   doLast {
     val generated = targetRootOutputDir.get().asFile
-    check(fileTree(generated).matching { include("**/*.java") }.isEmpty) { "Parser generation must produce Kotlin only" }
-    check(fileTree(generated).matching { include("**/MipsParser.kt") }.files.size == 1) { "Kotlin parser was not generated" }
+    check(fileTree(generated).matching { include("**/*.java") }.isEmpty) {
+      "Parser generation must produce Kotlin only"
+    }
+    check(fileTree(generated).matching { include("**/MipsParser.kt") }.files.size == 1) {
+      "Kotlin parser was not generated"
+    }
   }
 }

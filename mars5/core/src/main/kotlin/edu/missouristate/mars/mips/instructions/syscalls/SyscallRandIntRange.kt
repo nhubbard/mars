@@ -34,15 +34,18 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 open class SyscallRandIntRange : AbstractSyscall(42, "RandIntRange") {
-    @Throws(ProcessingException::class)
-    override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
-        val stream = context.randomStreams().get(context.registerFile.getValue(4))
-        try {
-            context.updateRegister(4, stream.nextInt(context.registerFile.getValue(5)))
-        } catch (failure: IllegalArgumentException) {
-            throw ProcessingException(
-                context, statement, "Upper bound of range cannot be negative (syscall $number)", SYSCALL_EXCEPTION,
-            )
-        }
+  @Throws(ProcessingException::class)
+  override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
+    val stream = context.randomStreams().get(context.registerFile.getValue(4))
+    try {
+      context.updateRegister(4, stream.nextInt(context.registerFile.getValue(5)))
+    } catch (failure: IllegalArgumentException) {
+      throw ProcessingException(
+          context,
+          statement,
+          "Upper bound of range cannot be negative (syscall $number)",
+          SYSCALL_EXCEPTION,
+      )
     }
+  }
 }

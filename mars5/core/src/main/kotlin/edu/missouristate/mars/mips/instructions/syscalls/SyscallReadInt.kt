@@ -34,13 +34,19 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 open class SyscallReadInt : AbstractSyscall(5, "ReadInt") {
-    @Throws(ProcessingException::class)
-    override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
-        val value = try {
-            context.environment().readInt()
+  @Throws(ProcessingException::class)
+  override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
+    val value =
+        try {
+          context.environment().readInt()
         } catch (failure: NumberFormatException) {
-            throw ProcessingException(context, statement, "invalid integer input (syscall $number)", SYSCALL_EXCEPTION)
+          throw ProcessingException(
+              context,
+              statement,
+              "invalid integer input (syscall $number)",
+              SYSCALL_EXCEPTION,
+          )
         }
-        context.updateRegister(2, value)
-    }
+    context.updateRegister(2, value)
+  }
 }

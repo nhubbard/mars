@@ -9,43 +9,61 @@ import edu.missouristate.mars.mips.instructions.Instruction.Companion.INSTRUCTIO
 
 /** Expands a pseudo-instruction using the session's memory layout and branch policy. */
 internal class PseudoInstructionExpander(private val context: AssemblyContext) {
-    fun expand(statement: ProgramStatement, program: MIPSprogram, errors: ErrorList): ArrayList<ProgramStatement> {
-        val instruction = statement.instruction as ExtendedInstruction
-        val templates = checkNotNull(if (compact(context, statement)) {
-            instruction.compactBasicIntructionTemplateList
-        } else {
-            instruction.basicIntructionTemplateList
-        })
-        val tokenizer = context.tokenizer(program)
-        val line = statement.sourceLine
-        val operands = tokenizer.tokenizeLine(line, statement.basicAssemblyStatement!!, errors, false)
-        val result = ArrayList<ProgramStatement>(templates.size)
-        val written = statement.strippedTokenList!!
-        val localLabel = written[written.size() - 1] as? LocalNumericReference
-        var address = statement.addressBits
-        for ((index, template) in templates.withIndex()) {
-            val expanded = ExtendedInstruction.makeTemplateSubstitutions(program, template, operands)
-            if (expanded.isEmpty()) continue
-            val tokens = tokenizer.tokenizeLine(line, expanded, errors, false)
-            if (localLabel != null && template.trimEnd().endsWith(" LAB")) tokens[tokens.size() - 1] = localLabel
-            val matches = context.instructions().matchOperator(tokens[0].value)
-            val basic = OperandFormat.bestOperandMatch(tokens, matches, context.bareMachineEnabled())
-            val generated = ProgramStatement(
-                program, if (index == 0) statement.source else "", tokens, tokens, basic, address.toInt(),
-                line, statement.instructionOrigin, statement.sourceOperands, address,
-            )
-            generated.buildBasicStatementFromBasicInstruction(errors)
-            result.add(generated)
-            address += INSTRUCTION_LENGTH
-        }
-        return result
+  fun expand(
+      statement: ProgramStatement,
+      program: MIPSprogram,
+      errors: ErrorList,
+  ): ArrayList<ProgramStatement> {
+    val instruction = statement.instruction as ExtendedInstruction
+    val templates =
+        checkNotNull(
+            if (compact(context, statement)) {
+              instruction.compactBasicIntructionTemplateList
+            } else {
+              instruction.basicIntructionTemplateList
+            },
+        )
+    val tokenizer = context.tokenizer(program)
+    val line = statement.sourceLine
+    val operands = tokenizer.tokenizeLine(line, statement.basicAssemblyStatement!!, errors, false)
+    val result = ArrayList<ProgramStatement>(templates.size)
+    val written = statement.strippedTokenList!!
+    val localLabel = written[written.size() - 1] as? LocalNumericReference
+    var address = statement.addressBits
+    for ((index, template) in templates.withIndex()) {
+      val expanded = ExtendedInstruction.makeTemplateSubstitutions(program, template, operands)
+      if (expanded.isEmpty()) continue
+      val tokens = tokenizer.tokenizeLine(line, expanded, errors, false)
+      if (localLabel != null && template.trimEnd().endsWith(" LAB"))
+          tokens[tokens.size() - 1] = localLabel
+      val matches = context.instructions().matchOperator(tokens[0].value)
+      val basic = OperandFormat.bestOperandMatch(tokens, matches, context.bareMachineEnabled())
+      val generated =
+          ProgramStatement(
+              program,
+              if (index == 0) statement.source else "",
+              tokens,
+              tokens,
+              basic,
+              address.toInt(),
+              line,
+              statement.instructionOrigin,
+              statement.sourceOperands,
+              address,
+          )
+      generated.buildBasicStatementFromBasicInstruction(errors)
+      result.add(generated)
+      address += INSTRUCTION_LENGTH
     }
+    return result
+  }
 
-    companion object {
-        @JvmStatic
-        fun compact(context: AssemblyContext, statement: ProgramStatement): Boolean {
-            val instruction = statement.instruction as? ExtendedInstruction ?: return false
-            return context.memory().usingCompactMemoryConfiguration() && instruction.hasCompactTranslation()
-        }
+  companion object {
+    @JvmStatic
+    fun compact(context: AssemblyContext, statement: ProgramStatement): Boolean {
+      val instruction = statement.instruction as? ExtendedInstruction ?: return false
+      return context.memory().usingCompactMemoryConfiguration() &&
+          instruction.hasCompactTranslation()
     }
+  }
 }

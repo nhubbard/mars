@@ -31,68 +31,71 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 /** A machine register whose reads and writes can be observed. */
-open class Register internal constructor(
+open class Register
+internal constructor(
     open val name: String,
     open val number: Int,
     initial: Int,
     private val group: EventEmitter<RegisterAccessNotice>?,
 ) {
-    constructor(name: String, number: Int, initial: Int) : this(name, number, initial, null)
+  constructor(name: String, number: Int, initial: Int) : this(name, number, initial, null)
 
-    private var initialValue = initial.toLong()
-    @Volatile private var currentValue = initial.toLong()
-    private val events = EventEmitter<RegisterAccessNotice>()
+  private var initialValue = initial.toLong()
+  @Volatile private var currentValue = initial.toLong()
+  private val events = EventEmitter<RegisterAccessNotice>()
 
-    open fun addObserver(listener: (RegisterAccessNotice) -> Unit) {
-        events.subscribe(listener)
+  open fun addObserver(listener: (RegisterAccessNotice) -> Unit) {
+    events.subscribe(listener)
+  }
+
+  open fun deleteObserver(listener: (RegisterAccessNotice) -> Unit) {
+    events.unsubscribe(listener)
+  }
+
+  @get:Synchronized
+  open val value: Int
+    get() = longValue.toInt()
+
+  @get:Synchronized
+  internal val longValue: Long
+    get() {
+      notifyListeners(AccessNotice.READ)
+      return currentValue
     }
 
-    open fun deleteObserver(listener: (RegisterAccessNotice) -> Unit) {
-        events.unsubscribe(listener)
-    }
+  @get:Synchronized
+  open val valueNoNotify: Int
+    get() = longValueNoNotify.toInt()
 
-    @get:Synchronized
-    open val value: Int
-        get() = longValue.toInt()
+  @get:Synchronized
+  internal val longValueNoNotify: Long
+    get() = currentValue
 
-    @get:Synchronized
-    internal val longValue: Long
-        get() {
-            notifyListeners(AccessNotice.READ)
-            return currentValue
-        }
+  open val resetValue: Int
+    get() = initialValue.toInt()
 
-    @get:Synchronized
-    open val valueNoNotify: Int get() = longValueNoNotify.toInt()
+  @Synchronized open fun setValue(value: Int): Int = setLongValue(value.toLong()).toInt()
 
-    @get:Synchronized
-    internal val longValueNoNotify: Long get() = currentValue
+  @Synchronized
+  internal fun setLongValue(value: Long): Long {
+    val previous = currentValue
+    currentValue = value
+    notifyListeners(AccessNotice.WRITE)
+    return previous
+  }
 
-    open val resetValue: Int get() = initialValue.toInt()
+  @Synchronized
+  open fun resetValue() {
+    currentValue = initialValue
+  }
 
-    @Synchronized
-    open fun setValue(value: Int): Int = setLongValue(value.toLong()).toInt()
+  @Synchronized
+  open fun changeResetValue(value: Int) {
+    initialValue = value.toLong()
+  }
 
-    @Synchronized
-    internal fun setLongValue(value: Long): Long {
-        val previous = currentValue
-        currentValue = value
-        notifyListeners(AccessNotice.WRITE)
-        return previous
-    }
-
-    @Synchronized
-    open fun resetValue() {
-        currentValue = initialValue
-    }
-
-    @Synchronized
-    open fun changeResetValue(value: Int) {
-        initialValue = value.toLong()
-    }
-
-    private fun notifyListeners(type: Int) {
-        if (!events.hasListeners() && group?.hasListeners() != true) return
-        events.emit(RegisterAccessNotice(type, name), group)
-    }
+  private fun notifyListeners(type: Int) {
+    if (!events.hasListeners() && group?.hasListeners() != true) return
+    events.emit(RegisterAccessNotice(type, name), group)
+  }
 }

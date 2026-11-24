@@ -36,108 +36,131 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /** One macro definition and its written parameter and label spellings. */
 open class Macro {
-    open var name = ""
-    open var program: MIPSprogram? = null
-    open var fromLine = 0
-    open var toLine = 0
-    open var originalFromLine = 0
-    open var originalToLine = 0
-    @JvmField var nameColumn = 0
-    open var args = ArrayList<String>()
-    private val labels = ArrayList<String>()
+  open var name = ""
+  open var program: MIPSprogram? = null
+  open var fromLine = 0
+  open var toLine = 0
+  open var originalFromLine = 0
+  open var originalToLine = 0
+  @JvmField var nameColumn = 0
+  open var args = ArrayList<String>()
+  private val labels = ArrayList<String>()
 
-    fun definitionSite(): SourceToken {
-        val header = program!!.sourceLineList!![fromLine - 1]
-        return SourceToken(Parser.origin(header, null).location, nameColumn)
-    }
+  fun definitionSite(): SourceToken {
+    val header = program!!.sourceLineList!![fromLine - 1]
+    return SourceToken(Parser.origin(header, null).location, nameColumn)
+  }
 
-    override fun equals(other: Any?): Boolean =
-        other is Macro && other.name == name && other.args.size == args.size
+  override fun equals(other: Any?): Boolean =
+      other is Macro && other.name == name && other.args.size == args.size
 
-    override fun hashCode(): Int = 31 * name.hashCode() + args.size
+  override fun hashCode(): Int = 31 * name.hashCode() + args.size
 
-    open fun addArg(value: String) {
-        args.add(value)
-    }
+  open fun addArg(value: String) {
+    args.add(value)
+  }
 
-    @JvmRecord
-    data class TokenOrigin(val written: Token, val diagnostic: Token)
+  @JvmRecord data class TokenOrigin(val written: Token, val diagnostic: Token)
 
-    @JvmRecord
-    data class ExpandedLine(val text: String, val renamedLabels: Set<String>, val origins: NavigableMap<Int, TokenOrigin>) {
-        fun tokenOriginAt(column: Int): TokenOrigin? = origins.ceilingEntry(text.length - column + 1)?.value
+  @JvmRecord
+  data class ExpandedLine(
+      val text: String,
+      val renamedLabels: Set<String>,
+      val origins: NavigableMap<Int, TokenOrigin>,
+  ) {
+    fun tokenOriginAt(column: Int): TokenOrigin? =
+        origins.ceilingEntry(text.length - column + 1)?.value
 
-        fun tokenOriginStartingAt(column: Int): TokenOrigin? = origins[text.length - column + 1]
+    fun tokenOriginStartingAt(column: Int): TokenOrigin? = origins[text.length - column + 1]
 
-        fun originAt(column: Int): Token? = tokenOriginAt(column)?.diagnostic
-    }
+    fun originAt(column: Int): Token? = tokenOriginAt(column)?.diagnostic
+  }
 
-    fun expandLine(line: Int, args: TokenList, counter: Long, privateArguments: Set<String>, errors: ErrorList): ExpandedLine {
-        val owner = program!!
-        val tokens = owner.tokenList!![line - 1]
-        val source = StringBuilder(tokens.processedLine)
-        var renamedLabels: HashSet<String>? = null
-        val origins = TreeMap<Int, TokenOrigin>()
+  fun expandLine(
+      line: Int,
+      args: TokenList,
+      counter: Long,
+      privateArguments: Set<String>,
+      errors: ErrorList,
+  ): ExpandedLine {
+    val owner = program!!
+    val tokens = owner.tokenList!![line - 1]
+    val source = StringBuilder(tokens.processedLine)
+    var renamedLabels: HashSet<String>? = null
+    val origins = TreeMap<Int, TokenOrigin>()
 
-        // Replace right to left. Origins use distances from the end, which stay valid across later replacements.
-        for (index in tokens.size() - 1 downTo 0) {
-            val token = tokens[index]
-            val start = token.startPos - 1
-            var origin = token
-            val substitute: String
-            val renamed: Boolean
-            if (token.type != TokenTypes.VECTOR_REGISTER_NAME && tokenIsMacroParameter(token.value, true)) {
-                val argument = this.args.indexOf(token.value)
-                if (argument >= 0) {
-                    origin = args[argument + 1]
-                    substitute = origin.toString()
-                } else if (owner.assemblyContext().session.target == MarsTarget.MARS64 && AddressPart.parse(token.value) != null &&
-                    index + 1 < tokens.size() && tokens[index + 1].type == TokenTypes.LEFT_PAREN) {
-                    origins[source.length - start] = TokenOrigin(token, origin)
-                    continue
-                } else {
-                    substitute = token.value
-                    errors.add(ErrorMessage(token, "Unknown macro parameter"))
-                }
-                renamed = argument >= 0 && substitute in privateArguments
-            } else if (labels.binarySearch(token.value) >= 0) {
-                substitute = "${token.value}_M$counter"
-                renamed = true
-            } else {
-                origins[source.length - start] = TokenOrigin(token, origin)
-                continue
-            }
-            if (renamed) {
-                val renamedNames = renamedLabels ?: HashSet<String>().also { renamedLabels = it }
-                renamedNames.add(substitute)
-            }
-            source.replace(start, token.endPos - 1, substitute)
-            origins[source.length - start] = TokenOrigin(token, origin)
+    // Replace right to left. Origins use distances from the end, which stay valid across later
+    // replacements.
+    for (index in tokens.size() - 1 downTo 0) {
+      val token = tokens[index]
+      val start = token.startPos - 1
+      var origin = token
+      val substitute: String
+      val renamed: Boolean
+      if (
+          token.type != TokenTypes.VECTOR_REGISTER_NAME && tokenIsMacroParameter(token.value, true)
+      ) {
+        val argument = this.args.indexOf(token.value)
+        if (argument >= 0) {
+          origin = args[argument + 1]
+          substitute = origin.toString()
+        } else if (
+            owner.assemblyContext().session.target == MarsTarget.MARS64 &&
+                AddressPart.parse(token.value) != null &&
+                index + 1 < tokens.size() &&
+                tokens[index + 1].type == TokenTypes.LEFT_PAREN
+        ) {
+          origins[source.length - start] = TokenOrigin(token, origin)
+          continue
+        } else {
+          substitute = token.value
+          errors.add(ErrorMessage(token, "Unknown macro parameter"))
         }
-        return ExpandedLine(source.toString(), renamedLabels ?: emptySet(), origins)
+        renamed = argument >= 0 && substitute in privateArguments
+      } else if (labels.binarySearch(token.value) >= 0) {
+        substitute = "${token.value}_M$counter"
+        renamed = true
+      } else {
+        origins[source.length - start] = TokenOrigin(token, origin)
+        continue
+      }
+      if (renamed) {
+        val renamedNames = renamedLabels ?: HashSet<String>().also { renamedLabels = it }
+        renamedNames.add(substitute)
+      }
+      source.replace(start, token.endPos - 1, substitute)
+      origins[source.length - start] = TokenOrigin(token, origin)
+    }
+    return ExpandedLine(source.toString(), renamedLabels ?: emptySet(), origins)
+  }
+
+  open fun addLabel(value: String) {
+    labels.add(value)
+  }
+
+  open fun readyForCommit() {
+    labels.sort()
+  }
+
+  companion object {
+    @JvmStatic
+    fun tokenIsMacroParameter(value: String, acceptSpimStyleParameters: Boolean): Boolean {
+      if (
+          acceptSpimStyleParameters &&
+              value.startsWith('$') &&
+              RegisterNames.integer(value) == null &&
+              RegisterNames.coprocessor0(value) == null &&
+              RegisterNames.floating(value) == null
+      )
+          return true
+      return value.length > 1 && value[0] == '%'
     }
 
-    open fun addLabel(value: String) {
-        labels.add(value)
-    }
-
-    open fun readyForCommit() {
-        labels.sort()
-    }
-
-    companion object {
-        @JvmStatic
-        fun tokenIsMacroParameter(value: String, acceptSpimStyleParameters: Boolean): Boolean {
-            if (acceptSpimStyleParameters && value.startsWith('$') && RegisterNames.integer(value) == null &&
-                RegisterNames.coprocessor0(value) == null && RegisterNames.floating(value) == null
-            ) return true
-            return value.length > 1 && value[0] == '%'
-        }
-
-        @JvmStatic
-        @JvmOverloads
-        fun hasCallParentheses(tokens: TokenList, operationIndex: Int = 0): Boolean =
-            tokens.size() - operationIndex > 2 && tokens[operationIndex + 1].type == TokenTypes.LEFT_PAREN &&
-                tokens[tokens.size() - 1].type == TokenTypes.RIGHT_PAREN
-    }
+    @JvmStatic
+    @JvmOverloads
+    fun hasCallParentheses(tokens: TokenList, operationIndex: Int = 0): Boolean =
+        tokens.size() - operationIndex > 2 &&
+            tokens[operationIndex + 1].type == TokenTypes.LEFT_PAREN &&
+            tokens[tokens.size() - 1].type == TokenTypes.RIGHT_PAREN
+  }
 }

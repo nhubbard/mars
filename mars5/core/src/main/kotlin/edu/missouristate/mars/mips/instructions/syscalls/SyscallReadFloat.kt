@@ -34,13 +34,19 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 open class SyscallReadFloat : AbstractSyscall(6, "ReadFloat") {
-    @Throws(ProcessingException::class)
-    override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
-        val value = try {
-            context.environment().readFloat()
+  @Throws(ProcessingException::class)
+  override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
+    val value =
+        try {
+          context.environment().readFloat()
         } catch (failure: NumberFormatException) {
-            throw ProcessingException(context, statement, "invalid float input (syscall $number)", SYSCALL_EXCEPTION)
+          throw ProcessingException(
+              context,
+              statement,
+              "invalid float input (syscall $number)",
+              SYSCALL_EXCEPTION,
+          )
         }
-        context.updateCoprocessor1(0, value.toRawBits())
-    }
+    context.updateCoprocessor1(0, value.toRawBits())
+  }
 }

@@ -5,7 +5,9 @@ import kotlin.jvm.JvmRecord
 
 /** An executed instruction, including its transfer and branch decision if available. */
 @JvmRecord
-data class StepEvent @JvmOverloads constructor(
+data class StepEvent
+@JvmOverloads
+constructor(
     val pc: Int,
     val instruction: Int,
     val stepCount: Long,
@@ -15,30 +17,36 @@ data class StepEvent @JvmOverloads constructor(
     val target: MarsTarget = MarsTarget.MARS32,
     val nextPcBits: Long? = null,
 ) {
-    enum class BranchOutcome {
-        TAKEN,
-        NOT_TAKEN,
-    }
+  enum class BranchOutcome {
+    TAKEN,
+    NOT_TAKEN,
+  }
 
-    sealed interface Transfer
+  sealed interface Transfer
 
-    /** An executed jump or taken branch saved a return address in a nonzero register. */
-    @JvmRecord
-    data class Call @JvmOverloads constructor(
-        val linkRegister: Int, val returnAddress: Int, val returnAddressBits: Long = returnAddress.toLong(),
-    ) : Transfer
+  /** An executed jump or taken branch saved a return address in a nonzero register. */
+  @JvmRecord
+  data class Call
+  @JvmOverloads
+  constructor(
+      val linkRegister: Int,
+      val returnAddress: Int,
+      val returnAddressBits: Long = returnAddress.toLong(),
+  ) : Transfer
 
-    /** A non-linking jump reached its target after any delay slot. */
-    @JvmRecord
-    data class Jump @JvmOverloads constructor(val target: Int, val targetBits: Long = target.toLong()) : Transfer
+  /** A non-linking jump reached its target after any delay slot. */
+  @JvmRecord
+  data class Jump
+  @JvmOverloads
+  constructor(val target: Int, val targetBits: Long = target.toLong()) : Transfer
 
-    /** A recoverable fault or interrupt entered the exception handler. */
-    enum class ExceptionEntry : Transfer {
-        INSTANCE,
-    }
+  /** A recoverable fault or interrupt entered the exception handler. */
+  enum class ExceptionEntry : Transfer {
+    INSTANCE,
+  }
 
-    /** ERET restored execution from the exception program counter. */
-    enum class ExceptionReturn : Transfer {
-        INSTANCE,
-    }
+  /** ERET restored execution from the exception program counter. */
+  enum class ExceptionReturn : Transfer {
+    INSTANCE,
+  }
 }

@@ -1,6 +1,5 @@
 package edu.missouristate.mars.plugin.language
 
-import edu.missouristate.mars.plugin.language.index.declarationIndexId
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.command.WriteCommandAction
@@ -13,10 +12,11 @@ import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.util.indexing.FileBasedIndex
 import edu.missouristate.mars.plugin.analysis.SymbolKind
-import edu.missouristate.mars.plugin.language.index.MipsDeclarationExternalizer
 import edu.missouristate.mars.plugin.language.index.EXPANSION_SEED
+import edu.missouristate.mars.plugin.language.index.MipsDeclarationExternalizer
 import edu.missouristate.mars.plugin.language.index.MipsDeclarationIndex
 import edu.missouristate.mars.plugin.language.index.MipsDeclarationSite
+import edu.missouristate.mars.plugin.language.index.declarationIndexId
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.DataInputStream
@@ -30,12 +30,14 @@ import org.junit.jupiter.api.Test
 
 @TestApplication
 class MipsDeclarationIndexPlatformTest {
-    private val project = codeInsightProjectFixture()
-    private val fixture by codeInsightFixture(project)
+  private val project = codeInsightProjectFixture()
+  private val fixture by codeInsightFixture(project)
 
-    @Test
-    fun `native index records all declaration kinds duplicates and macro ownership`() = timeoutRunBlocking {
-        val source = $$"""
+  @Test
+  fun `native index records all declaration kinds duplicates and macro ownership`() =
+      timeoutRunBlocking {
+        val source =
+            $$"""
             .EqV shared 7
             ,,shared,, :,, nop
             shared: nop
@@ -65,152 +67,238 @@ class MipsDeclarationIndexPlatformTest {
             .eqv REMOVED 7 .include "ignored.s"
             # ignored: .macro ghost
             .asciiz "fake: .eqv ghost 4"
-        """.trimIndent() + "\n"
+            """
+                .trimIndent() + "\n"
         withContext(Dispatchers.EDT) { fixture.addFileToProject("declarations.asm", source) }
         IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
         readAction {
-            val index = FileBasedIndex.getInstance()
-            val scope = GlobalSearchScope.projectScope(project.get())
-            fun sites(name: String) = index.getValues(declarationIndexId, name, scope).flatten()
+          val index = FileBasedIndex.getInstance()
+          val scope = GlobalSearchScope.projectScope(project.get())
+          fun sites(name: String) = index.getValues(declarationIndexId, name, scope).flatten()
+          assertEquals(
+              listOf(
+                  MipsDeclarationSite(SymbolKind.CONSTANT, source.indexOf("shared"), -1),
+                  MipsDeclarationSite(SymbolKind.LABEL, source.indexOf("shared,, :"), -1),
+                  MipsDeclarationSite(SymbolKind.LABEL, source.lastIndexOf("shared:"), -1),
+              ),
+              sites("shared"),
+          )
+          assertEquals(
+              listOf(MipsDeclarationSite(SymbolKind.LABEL, source.indexOf("NOP:"), -1)),
+              sites("NOP"),
+          )
+          assertEquals(
+              listOf(MipsDeclarationSite(SymbolKind.LABEL, source.indexOf("nan:"), -1)),
+              sites("nan"),
+          )
+          assertEquals(
+              listOf(MipsDeclarationSite(SymbolKind.LABEL, source.indexOf("infinity:"), -1)),
+              sites("infinity"),
+          )
+          assertEquals(
+              listOf(MipsDeclarationSite(SymbolKind.MACRO, source.indexOf("emit"), -1)),
+              sites("emit"),
+          )
+          val macro = source.indexOf(".MaCrO emit")
+          assertEquals(
+              listOf(MipsDeclarationSite(SymbolKind.MACRO, source.indexOf("rejected"), macro)),
+              sites("rejected"),
+          )
+          assertEquals(
+              listOf(MipsDeclarationSite(SymbolKind.LABEL, source.indexOf("local:"), macro)),
+              sites("local"),
+          )
+          assertEquals(
+              listOf(MipsDeclarationSite(SymbolKind.CONSTANT, source.indexOf("inside"), macro)),
+              sites("inside"),
+          )
+          assertEquals(
+              listOf(MipsDeclarationSite(SymbolKind.LABEL, source.indexOf(".1_private"), -1)),
+              sites(".1_private"),
+          )
+          assertEquals(1, sites($$"$gcc").size)
+          assertEquals(
+              listOf(MipsDeclarationSite(SymbolKind.EXTERNAL, source.indexOf("reserved"), -1)),
+              sites("reserved"),
+          )
+          for (name in listOf($$"$t0", ".half", ".set")) {
             assertEquals(
-                listOf(
-                    MipsDeclarationSite(SymbolKind.CONSTANT, source.indexOf("shared"), -1),
-                    MipsDeclarationSite(SymbolKind.LABEL, source.indexOf("shared,, :"), -1),
-                    MipsDeclarationSite(SymbolKind.LABEL, source.lastIndexOf("shared:"), -1),
-                ), sites("shared"),
+                listOf(MipsDeclarationSite(SymbolKind.EXTERNAL, source.indexOf(name), -1)),
+                sites(name),
             )
-            assertEquals(listOf(MipsDeclarationSite(SymbolKind.LABEL, source.indexOf("NOP:"), -1)), sites("NOP"))
-            assertEquals(listOf(MipsDeclarationSite(SymbolKind.LABEL, source.indexOf("nan:"), -1)), sites("nan"))
-            assertEquals(listOf(MipsDeclarationSite(SymbolKind.LABEL, source.indexOf("infinity:"), -1)), sites("infinity"))
-            assertEquals(listOf(MipsDeclarationSite(SymbolKind.MACRO, source.indexOf("emit"), -1)), sites("emit"))
-            val macro = source.indexOf(".MaCrO emit")
-            assertEquals(listOf(MipsDeclarationSite(SymbolKind.MACRO, source.indexOf("rejected"), macro)), sites("rejected"))
-            assertEquals(listOf(MipsDeclarationSite(SymbolKind.LABEL, source.indexOf("local:"), macro)), sites("local"))
-            assertEquals(listOf(MipsDeclarationSite(SymbolKind.CONSTANT, source.indexOf("inside"), macro)), sites("inside"))
-            assertEquals(listOf(MipsDeclarationSite(SymbolKind.LABEL, source.indexOf(".1_private"), -1)), sites(".1_private"))
-            assertEquals(1, sites($$"$gcc").size)
-            assertEquals(listOf(MipsDeclarationSite(SymbolKind.EXTERNAL, source.indexOf("reserved"), -1)), sites("reserved"))
-            for (name in listOf($$"$t0", ".half", ".set")) {
-                assertEquals(listOf(MipsDeclarationSite(SymbolKind.EXTERNAL, source.indexOf(name), -1)), sites(name))
-            }
-            for ((name, spelling) in mapOf(")" to ") 4", "-42" to "-42", "65" to "'A'")) {
-                assertEquals(listOf(MipsDeclarationSite(SymbolKind.EXTERNAL, source.indexOf(spelling), -1)), sites(name))
-            }
-            for (absent in listOf("ghost", "fake", "ignored",
-              $$"$v0", "%x", "replaced", "REMOVED", "UNDEFINED", "NaN", "Infinity")) {
-                assertTrue(sites(absent).isEmpty(), absent)
-            }
+          }
+          for ((name, spelling) in mapOf(")" to ") 4", "-42" to "-42", "65" to "'A'")) {
+            assertEquals(
+                listOf(MipsDeclarationSite(SymbolKind.EXTERNAL, source.indexOf(spelling), -1)),
+                sites(name),
+            )
+          }
+          for (absent in
+              listOf(
+                  "ghost",
+                  "fake",
+                  "ignored",
+                  $$"$v0",
+                  "%x",
+                  "replaced",
+                  "REMOVED",
+                  "UNDEFINED",
+                  "NaN",
+                  "Infinity",
+              )) {
+            assertTrue(sites(absent).isEmpty(), absent)
+          }
         }
-    }
+      }
 
-    @Test
-    fun `only includes recognized by the assembler seed expanded symbol searches`() = timeoutRunBlocking {
-        val recognized = withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("recognized.s", "'abcde.include \"part.s\" \"unused suffix").virtualFile.also {
-                fixture.addFileToProject("hidden.s", "'a .include \"part.s\"")
-                fixture.addFileToProject("incomplete.s", ".include \"unfinished")
-                fixture.addFileToProject("recovery.s", ".macro ghost .include \"unfinished")
-                fixture.addFileToProject(
-                    "labeled-recovery.s", "discarded: .macro ghost .include \"unfinished\nvisible: nop",
+  @Test
+  fun `only includes recognized by the assembler seed expanded symbol searches`() =
+      timeoutRunBlocking {
+        val recognized =
+            withContext(Dispatchers.EDT) {
+              fixture
+                  .addFileToProject("recognized.s", "'abcde.include \"part.s\" \"unused suffix")
+                  .virtualFile
+                  .also {
+                    fixture.addFileToProject("hidden.s", "'a .include \"part.s\"")
+                    fixture.addFileToProject("incomplete.s", ".include \"unfinished")
+                    fixture.addFileToProject("recovery.s", ".macro ghost .include \"unfinished")
+                    fixture.addFileToProject(
+                        "labeled-recovery.s",
+                        "discarded: .macro ghost .include \"unfinished\nvisible: nop",
+                    )
+                    fixture.addFileToProject(
+                        "discarded-equivalence.s",
+                        "@ .eqv VALUE .include \"unfinished",
+                    )
+                  }
+            }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
+        readAction {
+          val index = FileBasedIndex.getInstance()
+          val scope = GlobalSearchScope.projectScope(project.get())
+          assertTrue(index.getContainingFiles(declarationIndexId, "discarded", scope).isEmpty())
+          assertTrue(index.getContainingFiles(declarationIndexId, "ghost", scope).isEmpty())
+          val visible = index.getValues(declarationIndexId, "visible", scope).flatten().single()
+          assertEquals(-1, visible.macroOffset)
+          assertEquals(
+              setOf(recognized),
+              index.getContainingFiles(declarationIndexId, EXPANSION_SEED, scope).toSet(),
+          )
+        }
+      }
+
+  @Test
+  // Kotlin exposes the reported Java setters as read-only properties.
+  @Suppress("UsePropertyAccessSyntax")
+  fun `native index follows unsaved documents deletion and file type filtering`() =
+      timeoutRunBlocking {
+        val file =
+            withContext(Dispatchers.EDT) {
+              fixture.addFileToProject("ignored.txt", "ignored: nop\n")
+              fixture.addFileToProject("empty.asm", "# empty\n.eqv\n")
+              fixture.addFileToProject("alternate.s", "alternate: nop\n")
+              fixture.addFileToProject("changing.asm", "before: nop\n")
+            }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
+        readAction {
+          val index = FileBasedIndex.getInstance()
+          val scope = GlobalSearchScope.projectScope(project.get())
+          assertEquals(1, index.getContainingFiles(declarationIndexId, "before", scope).size)
+          assertEquals(1, index.getContainingFiles(declarationIndexId, "alternate", scope).size)
+          assertTrue(index.getContainingFiles(declarationIndexId, "ignored", scope).isEmpty())
+          val extension = MipsDeclarationIndex()
+          assertSame(declarationIndexId, extension.name)
+          assertEquals(37, extension.version)
+          assertTrue(extension.dependsOnFileContent())
+          assertTrue(extension.inputFilter.acceptInput(file.virtualFile))
+          assertTrue(extension.keyDescriptor.isEqual("key", "key"))
+          assertSame(MipsDeclarationExternalizer, extension.valueExternalizer)
+        }
+        withContext(Dispatchers.EDT) {
+          fixture.configureFromExistingVirtualFile(file.virtualFile)
+          WriteCommandAction.runWriteCommandAction(project.get()) {
+            fixture.editor.document.setText("after: nop\n")
+          }
+          PsiDocumentManager.getInstance(project.get()).commitAllDocuments()
+        }
+        readAction {
+          val index = FileBasedIndex.getInstance()
+          val scope = GlobalSearchScope.projectScope(project.get())
+          assertTrue(index.getContainingFiles(declarationIndexId, "before", scope).isEmpty())
+          assertEquals(1, index.getContainingFiles(declarationIndexId, "after", scope).size)
+        }
+        withContext(Dispatchers.EDT) {
+          WriteCommandAction.runWriteCommandAction(project.get()) { file.virtualFile.delete(this) }
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
+        readAction {
+          assertTrue(
+              FileBasedIndex.getInstance()
+                  .getContainingFiles(
+                      declarationIndexId,
+                      "after",
+                      GlobalSearchScope.projectScope(project.get()),
+                  )
+                  .isEmpty(),
+          )
+        }
+      }
+
+  @Test
+  fun `native query scopes separate files with the same declaration name`() = timeoutRunBlocking {
+    val files =
+        withContext(Dispatchers.EDT) {
+          listOf(
+              fixture.addFileToProject("first.asm", "main: nop\n").virtualFile,
+              fixture.addFileToProject("second.asm", "main: syscall\n").virtualFile,
+          )
+        }
+    IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
+    readAction {
+      val index = FileBasedIndex.getInstance()
+      assertEquals(
+          files.toSet(),
+          index
+              .getContainingFiles(
+                  declarationIndexId,
+                  "main",
+                  GlobalSearchScope.projectScope(project.get()),
+              )
+              .toSet(),
+      )
+      for (file in files) {
+        assertEquals(
+            setOf(file),
+            index
+                .getContainingFiles(
+                    declarationIndexId,
+                    "main",
+                    GlobalSearchScope.fileScope(project.get(), file),
                 )
-                fixture.addFileToProject("discarded-equivalence.s", "@ .eqv VALUE .include \"unfinished")
-            }
-        }
-        IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
-        readAction {
-            val index = FileBasedIndex.getInstance()
-            val scope = GlobalSearchScope.projectScope(project.get())
-            assertTrue(index.getContainingFiles(declarationIndexId, "discarded", scope).isEmpty())
-            assertTrue(index.getContainingFiles(declarationIndexId, "ghost", scope).isEmpty())
-            val visible = index.getValues(declarationIndexId, "visible", scope).flatten().single()
-            assertEquals(-1, visible.macroOffset)
-            assertEquals(
-                setOf(recognized),
-                index.getContainingFiles(declarationIndexId, EXPANSION_SEED, scope).toSet(),
-            )
-        }
+                .toSet(),
+        )
+      }
+      assertTrue(
+          index
+              .getContainingFiles(declarationIndexId, "main", GlobalSearchScope.EMPTY_SCOPE)
+              .isEmpty(),
+      )
     }
+  }
 
-    @Test
-    // Kotlin exposes the reported Java setters as read-only properties.
-    @Suppress("UsePropertyAccessSyntax")
-    fun `native index follows unsaved documents deletion and file type filtering`() = timeoutRunBlocking {
-        val file = withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("ignored.txt", "ignored: nop\n")
-            fixture.addFileToProject("empty.asm", "# empty\n.eqv\n")
-            fixture.addFileToProject("alternate.s", "alternate: nop\n")
-            fixture.addFileToProject("changing.asm", "before: nop\n")
-        }
-        IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
-        readAction {
-            val index = FileBasedIndex.getInstance()
-            val scope = GlobalSearchScope.projectScope(project.get())
-            assertEquals(1, index.getContainingFiles(declarationIndexId, "before", scope).size)
-            assertEquals(1, index.getContainingFiles(declarationIndexId, "alternate", scope).size)
-            assertTrue(index.getContainingFiles(declarationIndexId, "ignored", scope).isEmpty())
-            val extension = MipsDeclarationIndex()
-            assertSame(declarationIndexId, extension.name)
-            assertEquals(37, extension.version)
-            assertTrue(extension.dependsOnFileContent())
-            assertTrue(extension.inputFilter.acceptInput(file.virtualFile))
-            assertTrue(extension.keyDescriptor.isEqual("key", "key"))
-            assertSame(MipsDeclarationExternalizer, extension.valueExternalizer)
-        }
-        withContext(Dispatchers.EDT) {
-            fixture.configureFromExistingVirtualFile(file.virtualFile)
-            WriteCommandAction.runWriteCommandAction(project.get()) {
-                fixture.editor.document.setText("after: nop\n")
-            }
-            PsiDocumentManager.getInstance(project.get()).commitAllDocuments()
-        }
-        readAction {
-            val index = FileBasedIndex.getInstance()
-            val scope = GlobalSearchScope.projectScope(project.get())
-            assertTrue(index.getContainingFiles(declarationIndexId, "before", scope).isEmpty())
-            assertEquals(1, index.getContainingFiles(declarationIndexId, "after", scope).size)
-        }
-        withContext(Dispatchers.EDT) {
-            WriteCommandAction.runWriteCommandAction(project.get()) { file.virtualFile.delete(this) }
-        }
-        IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
-        readAction {
-            assertTrue(FileBasedIndex.getInstance().getContainingFiles(
-                declarationIndexId, "after", GlobalSearchScope.projectScope(project.get()),
-            ).isEmpty())
-        }
+  @Test
+  fun `declaration values round trip all symbol kinds and empty contributions`() {
+    for (sites in
+        listOf(
+            emptyList(),
+            SymbolKind.entries.mapIndexed { i, kind -> MipsDeclarationSite(kind, i * 7, i - 1) },
+        )) {
+      val bytes = ByteArrayOutputStream()
+      DataOutputStream(bytes).use { MipsDeclarationExternalizer.save(it, sites) }
+      val input = DataInputStream(ByteArrayInputStream(bytes.toByteArray()))
+      assertEquals(sites, MipsDeclarationExternalizer.read(input))
+      assertEquals(-1, input.read())
     }
-
-    @Test
-    fun `native query scopes separate files with the same declaration name`() = timeoutRunBlocking {
-        val files = withContext(Dispatchers.EDT) {
-            listOf(
-                fixture.addFileToProject("first.asm", "main: nop\n").virtualFile,
-                fixture.addFileToProject("second.asm", "main: syscall\n").virtualFile,
-            )
-        }
-        IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
-        readAction {
-            val index = FileBasedIndex.getInstance()
-            assertEquals(files.toSet(), index.getContainingFiles(
-                declarationIndexId, "main", GlobalSearchScope.projectScope(project.get()),
-            ).toSet())
-            for (file in files) {
-                assertEquals(setOf(file), index.getContainingFiles(
-                    declarationIndexId, "main", GlobalSearchScope.fileScope(project.get(), file),
-                ).toSet())
-            }
-            assertTrue(index.getContainingFiles(declarationIndexId, "main", GlobalSearchScope.EMPTY_SCOPE).isEmpty())
-        }
-    }
-
-    @Test
-    fun `declaration values round trip all symbol kinds and empty contributions`() {
-        for (sites in listOf(emptyList(), SymbolKind.entries.mapIndexed { i, kind -> MipsDeclarationSite(kind, i * 7, i - 1) })) {
-            val bytes = ByteArrayOutputStream()
-            DataOutputStream(bytes).use { MipsDeclarationExternalizer.save(it, sites) }
-            val input = DataInputStream(ByteArrayInputStream(bytes.toByteArray()))
-            assertEquals(sites, MipsDeclarationExternalizer.read(input))
-            assertEquals(-1, input.read())
-        }
-    }
+  }
 }

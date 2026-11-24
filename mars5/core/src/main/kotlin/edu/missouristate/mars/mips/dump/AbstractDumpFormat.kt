@@ -38,15 +38,15 @@ abstract class AbstractDumpFormat(
     override val description: String?,
     override val fileExtension: String?,
 ) : DumpFormat {
-    override val commandDescriptor: String? = commandDescriptor?.replace(" ", "")
+  override val commandDescriptor: String? = commandDescriptor?.replace(" ", "")
 
-    override fun toString(): String = name
+  override fun toString(): String = name
 
-    companion object {
-        @JvmStatic
-        @Throws(IOException::class)
-        protected fun checkOutput(out: PrintStream) {
-            if (out.checkError()) throw IOException("Could not write the memory dump")
-        }
+  companion object {
+    @JvmStatic
+    @Throws(IOException::class)
+    protected fun checkOutput(out: PrintStream) {
+      if (out.checkError()) throw IOException("Could not write the memory dump")
     }
+  }
 }

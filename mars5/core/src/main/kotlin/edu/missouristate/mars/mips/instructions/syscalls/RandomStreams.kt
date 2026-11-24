@@ -32,11 +32,11 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /** Independent pseudorandom streams belonging to one simulation. */
 class RandomStreams {
-    private val streams = HashMap<Int, Random>()
+  private val streams = HashMap<Int, Random>()
 
-    fun get(index: Int): Random = streams.computeIfAbsent(index) { Random() }
+  fun get(index: Int): Random = streams.computeIfAbsent(index) { Random() }
 
-    fun setSeed(index: Int, seed: Long) {
-        get(index).setSeed(seed)
-    }
+  fun setSeed(index: Int, seed: Long) {
+    get(index).setSeed(seed)
+  }
 }

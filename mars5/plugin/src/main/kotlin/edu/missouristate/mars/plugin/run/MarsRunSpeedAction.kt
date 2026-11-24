@@ -12,31 +12,39 @@ import javax.swing.JComponent
 internal val runSpeeds = listOf(0f, 0.05f, 0.1f, 0.2f, 0.3f, 0.4f, 0.5f) + (1..30).map(Int::toFloat)
 
 internal fun runSpeedTitle(rate: Float) =
-    if (rate == 0f) runMessages.getMessage("run.speed.unlimited") else runMessages.getMessage("run.speed.rate", rate)
+    if (rate == 0f) runMessages.getMessage("run.speed.unlimited")
+    else runMessages.getMessage("run.speed.rate", rate)
 
-internal class MarsRunSpeedAction(private val handler: MarsProcessHandler) : ComboBoxAction(), DumbAware {
-    init {
-        setPopupTitle(runMessages.getMessage("run.speed.popup"))
-        templatePresentation.text = runMessages.getMessage("run.speed.popup")
-        templatePresentation.description = runMessages.getMessage("run.speed.title")
-    }
+internal class MarsRunSpeedAction(private val handler: MarsProcessHandler) :
+    ComboBoxAction(), DumbAware {
+  init {
+    setPopupTitle(runMessages.getMessage("run.speed.popup"))
+    templatePresentation.text = runMessages.getMessage("run.speed.popup")
+    templatePresentation.description = runMessages.getMessage("run.speed.title")
+  }
 
-    override fun getActionUpdateThread() = ActionUpdateThread.BGT
+  override fun getActionUpdateThread() = ActionUpdateThread.BGT
 
-    override fun update(e: AnActionEvent) {
-        e.presentation.text = runMessages.getMessage("run.speed.current", runSpeedTitle(handler.runSpeed))
-        e.presentation.isEnabled = !handler.isProcessTerminating && !handler.isProcessTerminated
-    }
+  override fun update(e: AnActionEvent) {
+    e.presentation.text =
+        runMessages.getMessage("run.speed.current", runSpeedTitle(handler.runSpeed))
+    e.presentation.isEnabled = !handler.isProcessTerminating && !handler.isProcessTerminated
+  }
 
-    public override fun createPopupActionGroup(button: JComponent, dataContext: DataContext) = DefaultActionGroup().apply {
+  public override fun createPopupActionGroup(button: JComponent, dataContext: DataContext) =
+      DefaultActionGroup().apply {
         for (rate in runSpeeds) {
-            add(object : DumbAwareToggleAction(runSpeedTitle(rate)) {
+          add(
+              object : DumbAwareToggleAction(runSpeedTitle(rate)) {
                 override fun getActionUpdateThread() = ActionUpdateThread.BGT
+
                 override fun isSelected(e: AnActionEvent) = handler.runSpeed == rate
+
                 override fun setSelected(e: AnActionEvent, state: Boolean) {
-                    handler.runSpeed = rate
+                  handler.runSpeed = rate
                 }
-            })
+              },
+          )
         }
-    }
+      }
 }

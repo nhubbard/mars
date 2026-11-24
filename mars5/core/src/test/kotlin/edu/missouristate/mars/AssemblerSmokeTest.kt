@@ -18,91 +18,89 @@ import org.junit.jupiter.params.provider.MethodSource
  * here.
  */
 internal class AssemblerSmokeTest {
-    private val machine: MarsContext = TestSessions.create()
+  private val machine: MarsContext = TestSessions.create()
 
-    @AfterEach
-    fun closeMachine() {
-        machine.close()
+  @AfterEach
+  fun closeMachine() {
+    machine.close()
+  }
+
+  @BeforeEach
+  fun resetState() {
+    machine.memory.clear()
+    machine.registerFile.resetRegisters()
+    machine.coprocessor0.resetRegisters()
+    machine.coprocessor1.resetRegisters()
+  }
+
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("allPrograms")
+  fun assemblesWithoutErrors(filename: String?) {
+    val program = MIPSprogram(machine)
+    val path: String = resourcePath(filename)
+    program.readSource(path)
+    program.tokenize()
+
+    val filenames = arrayListOf(path)
+    val programs: ArrayList<MIPSprogram> = program.prepareFilesForAssembly(filenames, path, null)
+
+    val errors = program.assemble(programs, extended = true, warnings = false)
+
+    Assertions.assertThat(errors.errorsOccurred())
+        .`as`("Expected no assembly errors for %s but got: %s", filename, errors)
+        .isFalse()
+    Assertions.assertThat(program.machineList)
+        .`as`("Expected assembled instructions for %s", filename)
+        .isNotEmpty()
+  }
+
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("allPrograms")
+  fun assemblesWithStrictMode(filename: String?) {
+    val program = MIPSprogram(machine)
+    val path: String = resourcePath(filename)
+    program.readSource(path)
+    program.tokenize()
+
+    val filenames = arrayListOf(path)
+    val programs: ArrayList<MIPSprogram> = program.prepareFilesForAssembly(filenames, path, null)
+
+    // Extended assembler enabled (pseudo-instructions allowed) — should never throw
+    Assertions.assertThatCode { program.assemble(programs, extended = true, warnings = false) }
+        .doesNotThrowAnyException()
+  }
+
+  companion object {
+    @JvmStatic
+    fun allPrograms(): List<String> {
+      return listOf(
+          "01_helloworld.asm",
+          "02_readint.asm",
+          "03_readstring.asm",
+          "04_addition.asm",
+          "05_evenodd.asm",
+          "06_quadratic.asm",
+          "07_division.asm",
+          "08_toupper.asm",
+          "09_xor.asm",
+          "10_shifts.asm",
+          "11_exit.asm",
+          "12_println.asm",
+          "12_println2.asm",
+          "13_printint.asm",
+          "14_promptint.asm",
+      )
     }
 
-    @BeforeEach
-    fun resetState() {
-        machine.memory.clear()
-        machine.registerFile.resetRegisters()
-        machine.coprocessor0.resetRegisters()
-        machine.coprocessor1.resetRegisters()
+    @Throws(URISyntaxException::class)
+    fun resourcePath(filename: String?): String {
+      val resource = "/testPrograms/$filename"
+      val url: URL? =
+          Objects.requireNonNull<URL?>(
+              AssemblerSmokeTest::class.java.getResource(resource),
+              resource,
+          )
+      return Path.of(url!!.toURI()).toString()
     }
-
-    @ParameterizedTest(name = "{0}")
-    @MethodSource("allPrograms")
-    fun assemblesWithoutErrors(filename: String?) {
-        val program = MIPSprogram(machine)
-        val path: String = resourcePath(filename)
-        program.readSource(path)
-        program.tokenize()
-
-        val filenames = arrayListOf(path)
-        val programs: ArrayList<MIPSprogram> =
-            program.prepareFilesForAssembly(filenames, path, null)
-
-        val errors = program.assemble(programs, extended = true, warnings = false)
-
-        Assertions.assertThat(errors.errorsOccurred())
-            .`as`("Expected no assembly errors for %s but got: %s", filename, errors)
-            .isFalse()
-        Assertions.assertThat(program.machineList)
-            .`as`("Expected assembled instructions for %s", filename)
-            .isNotEmpty()
-    }
-
-    @ParameterizedTest(name = "{0}")
-    @MethodSource("allPrograms")
-    fun assemblesWithStrictMode(filename: String?) {
-        val program = MIPSprogram(machine)
-        val path: String = resourcePath(filename)
-        program.readSource(path)
-        program.tokenize()
-
-        val filenames = arrayListOf(path)
-        val programs: ArrayList<MIPSprogram> =
-            program.prepareFilesForAssembly(filenames, path, null)
-
-        // Extended assembler enabled (pseudo-instructions allowed) — should never throw
-        Assertions.assertThatCode { program.assemble(programs, extended = true, warnings = false) }
-            .doesNotThrowAnyException()
-    }
-
-    companion object {
-        @JvmStatic
-        fun allPrograms(): List<String> {
-            return listOf(
-                "01_helloworld.asm",
-                "02_readint.asm",
-                "03_readstring.asm",
-                "04_addition.asm",
-                "05_evenodd.asm",
-                "06_quadratic.asm",
-                "07_division.asm",
-                "08_toupper.asm",
-                "09_xor.asm",
-                "10_shifts.asm",
-                "11_exit.asm",
-                "12_println.asm",
-                "12_println2.asm",
-                "13_printint.asm",
-                "14_promptint.asm",
-            )
-        }
-
-        @Throws(URISyntaxException::class)
-        fun resourcePath(filename: String?): String {
-            val resource = "/testPrograms/$filename"
-            val url: URL? =
-                Objects.requireNonNull<URL?>(
-                    AssemblerSmokeTest::class.java.getResource(resource),
-                    resource,
-                )
-            return Path.of(url!!.toURI()).toString()
-        }
-    }
+  }
 }

@@ -21,36 +21,45 @@ import edu.missouristate.mars.plugin.language.operationOwners
 import edu.missouristate.mars.plugin.language.release6QuickFix
 
 internal class MipsRelease6MergeInspection : LocalInspectionTool() {
-    override fun runForWholeFile() = true
+  override fun runForWholeFile() = true
 
-    override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): PsiElementVisitor {
-        // The background assembler already reports the same diagnostic in the editor.
-        if (isOnTheFly) return PsiElementVisitor.EMPTY_VISITOR
-        val file = holder.file as? MipsFile ?: return PsiElementVisitor.EMPTY_VISITOR
-        if (file.project.service<MarsAssemblySettings>().target != MarsTarget.MARS64) return PsiElementVisitor.EMPTY_VISITOR
-        val analysis = file.project.service<MarsAnalysisService>()
-        val catalog = InstructionDefaults.forTarget(MarsTarget.MARS64)
-        return object : PsiElementVisitor() {
-            override fun visitElement(element: PsiElement) {
-                if (element.elementType !in operationOwners) return
-                val site = analysis.operationSite(file, element.operationHead, includeUnrecognized = true) ?: return
-                if (site.macroDefinition != null || site.type !in instructionTypes) return
-                val guidance = if (catalog.matchOperator(site.name) != null) {
-                    if (site.name.lowercase() !in divides) return
-                    val tokens = analysis.expandedInstruction(file, element.operationHead) ?: return
-                    release6DivOperandMigration(tokens) ?: return
-                } else {
-                    val migration = release6Migration(site.name) ?: return
-                    messages.getMessage("inspection.release6.merge.removed", site.name, migration)
-                }
-                // Operation sites come from this file's PSI during the same read action.
-                val token = file.findElementAt(site.range.startOffset)!!
-                val fix = release6QuickFix(token)
-                if (fix == null) holder.registerProblem(token, guidance)
-                else holder.registerProblem(token, guidance, ModCommandService.getInstance().wrapToQuickFix(fix))
+  override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): PsiElementVisitor {
+    // The background assembler already reports the same diagnostic in the editor.
+    if (isOnTheFly) return PsiElementVisitor.EMPTY_VISITOR
+    val file = holder.file as? MipsFile ?: return PsiElementVisitor.EMPTY_VISITOR
+    if (file.project.service<MarsAssemblySettings>().target != MarsTarget.MARS64)
+        return PsiElementVisitor.EMPTY_VISITOR
+    val analysis = file.project.service<MarsAnalysisService>()
+    val catalog = InstructionDefaults.forTarget(MarsTarget.MARS64)
+    return object : PsiElementVisitor() {
+      override fun visitElement(element: PsiElement) {
+        if (element.elementType !in operationOwners) return
+        val site =
+            analysis.operationSite(file, element.operationHead, includeUnrecognized = true)
+                ?: return
+        if (site.macroDefinition != null || site.type !in instructionTypes) return
+        val guidance =
+            if (catalog.matchOperator(site.name) != null) {
+              if (site.name.lowercase() !in divides) return
+              val tokens = analysis.expandedInstruction(file, element.operationHead) ?: return
+              release6DivOperandMigration(tokens) ?: return
+            } else {
+              val migration = release6Migration(site.name) ?: return
+              messages.getMessage("inspection.release6.merge.removed", site.name, migration)
             }
-        }
+        // Operation sites come from this file's PSI during the same read action.
+        val token = file.findElementAt(site.range.startOffset)!!
+        val fix = release6QuickFix(token)
+        if (fix == null) holder.registerProblem(token, guidance)
+        else
+            holder.registerProblem(
+                token,
+                guidance,
+                ModCommandService.getInstance().wrapToQuickFix(fix),
+            )
+      }
     }
+  }
 }
 
 private val messages = DynamicBundle(MipsRelease6MergeInspection::class.java, "messages.MarsBundle")

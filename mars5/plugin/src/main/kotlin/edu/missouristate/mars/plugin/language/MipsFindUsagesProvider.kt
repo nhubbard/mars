@@ -15,52 +15,64 @@ import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
 import edu.missouristate.mars.plugin.language.psi.MipsMacroFormal
 
 internal class MipsFindUsagesProvider : FindUsagesProvider {
-    override fun getWordsScanner(): DefaultWordsScanner = object : DefaultWordsScanner(
-        UsageLexer(), identifiers, comments, literals, TokenSet.EMPTY, wholeWords,
-    ) {
+  override fun getWordsScanner(): DefaultWordsScanner =
+      object :
+          DefaultWordsScanner(
+              UsageLexer(),
+              identifiers,
+              comments,
+              literals,
+              TokenSet.EMPTY,
+              wholeWords,
+          ) {
         override fun getVersion() = 9
-    }
+      }
 
-    override fun canFindUsagesFor(psiElement: PsiElement) = when (psiElement) {
+  override fun canFindUsagesFor(psiElement: PsiElement) =
+      when (psiElement) {
         is MipsMacroFormal -> psiElement.effectiveNames().isNotEmpty()
         else -> (psiElement as? MipsDeclaration)?.name != null
-    }
+      }
 
-    // The platform dialog supplies its generic Find Usages topic when no language-specific topic exists.
-    override fun getHelpId(psiElement: PsiElement): String? = null
+  // The platform dialog supplies its generic Find Usages topic when no language-specific topic
+  // exists.
+  override fun getHelpId(psiElement: PsiElement): String? = null
 
-    override fun getType(element: PsiElement): String {
-        val key = when ((element as? MipsDeclaration)?.kind) {
-            SymbolKind.LABEL -> "usage.type.label"
-            SymbolKind.MACRO -> "usage.type.macro"
-            SymbolKind.CONSTANT -> "usage.type.constant"
-            SymbolKind.EXTERNAL -> "usage.type.external"
-            null -> if (element is MipsMacroFormal) "usage.type.macro.parameter" else return ""
+  override fun getType(element: PsiElement): String {
+    val key =
+        when ((element as? MipsDeclaration)?.kind) {
+          SymbolKind.LABEL -> "usage.type.label"
+          SymbolKind.MACRO -> "usage.type.macro"
+          SymbolKind.CONSTANT -> "usage.type.constant"
+          SymbolKind.EXTERNAL -> "usage.type.external"
+          null -> if (element is MipsMacroFormal) "usage.type.macro.parameter" else return ""
         }
-        return bundle.getMessage(key)
-    }
+    return bundle.getMessage(key)
+  }
 
-    override fun getDescriptiveName(element: PsiElement): @NlsSafe String = (element as? PsiNamedElement)?.name ?: element.text
+  override fun getDescriptiveName(element: PsiElement): @NlsSafe String =
+      (element as? PsiNamedElement)?.name ?: element.text
 
-    override fun getNodeText(element: PsiElement, useFullName: Boolean): @NlsSafe String = getDescriptiveName(element)
+  override fun getNodeText(element: PsiElement, useFullName: Boolean): @NlsSafe String =
+      getDescriptiveName(element)
 
-    // IntelliJ's word search falls back to the whole spelling when it contains no identifier parts.
-    private class UsageLexer : DelegateLexer(LexerAdapter(MipsLexer(), MipsTypes.converter)) {
-        override fun getTokenType(): IElementType? {
-            val type = super.getTokenType()
-            if (type == parameter) {
-                for (offset in tokenStart + 1 until tokenEnd) {
-                    if (Character.isJavaIdentifierPart(bufferSequence[offset])) return type
-                }
-                return PunctuationIdentifier
-            }
-            if (type != word || bufferSequence[tokenStart] != '.') return type
-            for (offset in tokenStart + 1 until tokenEnd) {
-                if (bufferSequence[offset] != '.') return type
-            }
-            return PunctuationIdentifier
+  // IntelliJ's word search falls back to the whole spelling when it contains no identifier parts.
+  private class UsageLexer : DelegateLexer(LexerAdapter(MipsLexer(), MipsTypes.converter)) {
+    override fun getTokenType(): IElementType? {
+      val type = super.getTokenType()
+      if (type == parameter) {
+        for (offset in tokenStart + 1 until tokenEnd) {
+          if (Character.isJavaIdentifierPart(bufferSequence[offset])) return type
         }
+        return PunctuationIdentifier
+      }
+      if (type != word || bufferSequence[tokenStart] != '.') return type
+      for (offset in tokenStart + 1 until tokenEnd) {
+        if (bufferSequence[offset] != '.') return type
+      }
+      return PunctuationIdentifier
     }
+  }
 }
 
 private object PunctuationIdentifier : IElementType("MIPS_PUNCTUATION_IDENTIFIER", MipsLanguage)
@@ -68,10 +80,14 @@ private object PunctuationIdentifier : IElementType("MIPS_PUNCTUATION_IDENTIFIER
 private val bundle = DynamicBundle(MipsFindUsagesProvider::class.java, "messages.MarsBundle")
 private val word = MipsTypes.psi("WORD")
 private val parameter = MipsTypes.psi("PARAMETER")
-private val identifiers = TokenSet.create(word, parameter, MipsTypes.psi("DOLLAR_WORD"), MipsTypes.psi("MNEMONIC"))
+private val identifiers =
+    TokenSet.create(word, parameter, MipsTypes.psi("DOLLAR_WORD"), MipsTypes.psi("MNEMONIC"))
 private val wholeWords = TokenSet.create(PunctuationIdentifier)
 private val comments = TokenSet.create(MipsTypes.psi("COMMENT"))
-private val literals = TokenSet.create(
-    MipsTypes.psi("STRING"), MipsTypes.psi("CHARACTER"),
-    MipsTypes.psi("UNCLOSED_STRING"), MipsTypes.psi("UNCLOSED_CHARACTER"),
-)
+private val literals =
+    TokenSet.create(
+        MipsTypes.psi("STRING"),
+        MipsTypes.psi("CHARACTER"),
+        MipsTypes.psi("UNCLOSED_STRING"),
+        MipsTypes.psi("UNCLOSED_CHARACTER"),
+    )

@@ -36,53 +36,65 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 /** A text listing of the assembled instructions or grouped data words. */
-open class SegmentWindowDumpFormat : AbstractDumpFormat(
-    "Text/Data Segment Window", "SegmentWindow", " Text Segment Window or Data Segment Window format to text file", null,
-) {
-    override fun includesSourceListing(): Boolean = true
+open class SegmentWindowDumpFormat :
+    AbstractDumpFormat(
+        "Text/Data Segment Window",
+        "SegmentWindow",
+        " Text Segment Window or Data Segment Window format to text file",
+        null,
+    ) {
+  override fun includesSourceListing(): Boolean = true
 
-    @Throws(IOException::class)
-    override fun write(file: File, snapshot: MemoryDumpSnapshot) {
-        PrintStream(FileOutputStream(file)).use { out ->
-            when (snapshot.segment) {
-                Segment.DATA -> dumpData(snapshot, out)
-                Segment.TEXT -> dumpText(snapshot, out)
-                Segment.OTHER -> Unit
-            }
-            checkOutput(out)
-        }
+  @Throws(IOException::class)
+  override fun write(file: File, snapshot: MemoryDumpSnapshot) {
+    PrintStream(FileOutputStream(file)).use { out ->
+      when (snapshot.segment) {
+        Segment.DATA -> dumpData(snapshot, out)
+        Segment.TEXT -> dumpText(snapshot, out)
+        Segment.OTHER -> Unit
+      }
+      checkOutput(out)
     }
+  }
 
-    private fun dumpData(snapshot: MemoryDumpSnapshot, out: PrintStream) {
-        val row = StringBuilder()
-        for (index in 0 until snapshot.size()) {
-            if (index % 8 == 0) row.append(formatAddress(snapshot, index)).append("    ")
-            val word = snapshot.word(index)
-            row.append(if (snapshot.hexValues) Binary.intToHexString(word) else word.toString().padStart(11)).append(' ')
-            if (index % 8 == 7 || index == snapshot.size() - 1) {
-                out.println(row)
-                row.setLength(0)
-            }
-        }
+  private fun dumpData(snapshot: MemoryDumpSnapshot, out: PrintStream) {
+    val row = StringBuilder()
+    for (index in 0 until snapshot.size()) {
+      if (index % 8 == 0) row.append(formatAddress(snapshot, index)).append("    ")
+      val word = snapshot.word(index)
+      row.append(
+              if (snapshot.hexValues) Binary.intToHexString(word) else word.toString().padStart(11),
+          )
+          .append(' ')
+      if (index % 8 == 7 || index == snapshot.size() - 1) {
+        out.println(row)
+        row.setLength(0)
+      }
     }
+  }
 
-    private fun dumpText(snapshot: MemoryDumpSnapshot, out: PrintStream) {
-        out.println(" Address    Code        Basic                     Source")
-        out.println()
-        for (index in 0 until snapshot.size()) {
-            val line = snapshot.sourceLine(index)
-            val sourceNumber = if (line.source.isEmpty()) "" else line.line.toString()
-            out.println(
-                formatAddress(snapshot, index) + "  " + Binary.intToHexString(snapshot.word(index)) + "  " +
-                    line.instruction.padEnd(22).take(22) + sourceNumber.padEnd(5).take(5) + line.source,
-            )
-        }
+  private fun dumpText(snapshot: MemoryDumpSnapshot, out: PrintStream) {
+    out.println(" Address    Code        Basic                     Source")
+    out.println()
+    for (index in 0 until snapshot.size()) {
+      val line = snapshot.sourceLine(index)
+      val sourceNumber = if (line.source.isEmpty()) "" else line.line.toString()
+      out.println(
+          formatAddress(snapshot, index) +
+              "  " +
+              Binary.intToHexString(snapshot.word(index)) +
+              "  " +
+              line.instruction.padEnd(22).take(22) +
+              sourceNumber.padEnd(5).take(5) +
+              line.source,
+      )
     }
+  }
 
-    private fun formatAddress(snapshot: MemoryDumpSnapshot, index: Int): String {
-        val address = snapshot.address(index)
-        return if (!snapshot.hexAddresses) address.toULong().toString()
-        else if (address <= UInt.MAX_VALUE.toLong()) Binary.intToHexString(address.toInt())
-        else Binary.longToHexString(address)
-    }
+  private fun formatAddress(snapshot: MemoryDumpSnapshot, index: Int): String {
+    val address = snapshot.address(index)
+    return if (!snapshot.hexAddresses) address.toULong().toString()
+    else if (address <= UInt.MAX_VALUE.toLong()) Binary.intToHexString(address.toInt())
+    else Binary.longToHexString(address)
+  }
 }

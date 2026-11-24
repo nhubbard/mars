@@ -4,22 +4,22 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
 class EventEmitterTest {
-    @Test
-    fun `subscription changes during delivery apply to the next emission`() {
-        val emitter = EventEmitter<Int>()
-        val received = mutableListOf<String>()
-        val removed: (Int) -> Unit = { received += "removed $it" }
-        val added: (Int) -> Unit = { received += "added $it" }
-        emitter.subscribe {
-            received += "first $it"
-            emitter.unsubscribe(removed)
-            emitter.subscribe(added)
-        }
-        emitter.subscribe(removed)
-
-        emitter.emit(1)
-        emitter.emit(2)
-
-        assertEquals(listOf("first 1", "removed 1", "first 2", "added 2"), received)
+  @Test
+  fun `subscription changes during delivery apply to the next emission`() {
+    val emitter = EventEmitter<Int>()
+    val received = mutableListOf<String>()
+    val removed: (Int) -> Unit = { received += "removed $it" }
+    val added: (Int) -> Unit = { received += "added $it" }
+    emitter.subscribe {
+      received += "first $it"
+      emitter.unsubscribe(removed)
+      emitter.subscribe(added)
     }
+    emitter.subscribe(removed)
+
+    emitter.emit(1)
+    emitter.emit(2)
+
+    assertEquals(listOf("first 1", "removed 1", "first 2", "added 2"), received)
+  }
 }

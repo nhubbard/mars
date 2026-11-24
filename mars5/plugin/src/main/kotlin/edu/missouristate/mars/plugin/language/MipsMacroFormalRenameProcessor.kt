@@ -14,18 +14,25 @@ import edu.missouristate.mars.plugin.language.psi.formalRenameError
 import edu.missouristate.mars.plugin.language.psi.isMacroFormalName
 
 internal class MipsMacroFormalRenameProcessor : RenamePsiElementProcessor() {
-    override fun canProcessElement(element: PsiElement) = element is MipsMacroFormal
+  override fun canProcessElement(element: PsiElement) = element is MipsMacroFormal
 
-    override fun renameElement(element: PsiElement, newName: String, usages: Array<UsageInfo>, listener: RefactoringElementListener?) {
-        val sites = (element as MipsMacroFormal).checkedRenameSites(newName)
-        val references = usages.mapNotNull { it.reference }.mapTo(HashSet()) { it.element }
-        if (sites != references) throw formalRenameError("macro.rename.incomplete.usages")
-        super.renameElement(element, newName, usages, listener)
-    }
+  override fun renameElement(
+      element: PsiElement,
+      newName: String,
+      usages: Array<UsageInfo>,
+      listener: RefactoringElementListener?,
+  ) {
+    val sites = (element as MipsMacroFormal).checkedRenameSites(newName)
+    val references = usages.mapNotNull { it.reference }.mapTo(HashSet()) { it.element }
+    if (sites != references) throw formalRenameError("macro.rename.incomplete.usages")
+    super.renameElement(element, newName, usages, listener)
+  }
 }
 
 internal class MipsMacroFormalRenameInputValidator : RenameInputValidator {
-    override fun getPattern(): PsiElementPattern.Capture<MipsMacroFormal?> = PlatformPatterns.psiElement(MipsMacroFormal::class.java)
+  override fun getPattern(): PsiElementPattern.Capture<MipsMacroFormal?> =
+      PlatformPatterns.psiElement(MipsMacroFormal::class.java)
 
-    override fun isInputValid(newName: String, element: PsiElement, context: ProcessingContext) = isMacroFormalName(newName)
+  override fun isInputValid(newName: String, element: PsiElement, context: ProcessingContext) =
+      isMacroFormalName(newName)
 }

@@ -22,61 +22,104 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 internal class MarsIndependentCheckAction : AnAction() {
-    override fun getActionUpdateThread() = ActionUpdateThread.BGT
-    private fun target(event: AnActionEvent): Pair<Project, MarsIndependentCheckpoint>? {
-        val project = event.project ?: return null
-        if (event.place == ActionPlaces.LEARN_TOOLWINDOW) {
-            // Native lesson links use the Learn pane's focus context. The public
-            // lock-free selection API supports this background action update.
-            val editor = FileEditorManager.getInstance(project).getSelectedTextEditor(true) ?: return null
-            val checkpoint = project.service<MarsLearningExecution>().independent ?: return null
-            return if (checkpoint.acceptsLessonEditor(editor.document)) project to checkpoint else null
-        }
-        val file = event.getData(CommonDataKeys.VIRTUAL_FILE) ?: return null
-        if (!file.isInLocalFileSystem) return null
-        val editor = event.getData(CommonDataKeys.EDITOR) ?: return null
-        val checkpoint = project.service<MarsLearningExecution>().independent ?: return null
-        return if (checkpoint.accepts(file.toNioPath(), editor.document)) project to checkpoint else null
-    }
-    override fun update(event: AnActionEvent) { event.presentation.isEnabled = target(event) != null }
-    override fun actionPerformed(event: AnActionEvent) {
-        val (project, checkpoint) = target(event) ?: return
-        runCheck(project, checkpoint, event.coroutineScope)
-    }
+  override fun getActionUpdateThread() = ActionUpdateThread.BGT
 
-    internal fun runCheck(project: Project, checkpoint: MarsIndependentCheckpoint, scope: CoroutineScope) =
-        scope.launch(Dispatchers.Default) {
-            val feedback = withBackgroundProgress(project, learningMessages.getMessage("independent.check.progress")) { checkpoint.check() }
-            withContext(Dispatchers.EDT) {
-                if (checkpoint.active) MarsIndependentFeedbackDialog(project, feedback).show()
+  private fun target(event: AnActionEvent): Pair<Project, MarsIndependentCheckpoint>? {
+    val project = event.project ?: return null
+    if (event.place == ActionPlaces.LEARN_TOOLWINDOW) {
+      // Native lesson links use the Learn pane's focus context. The public
+      // lock-free selection API supports this background action update.
+      val editor = FileEditorManager.getInstance(project).getSelectedTextEditor(true) ?: return null
+      val checkpoint = project.service<MarsLearningExecution>().independent ?: return null
+      return if (checkpoint.acceptsLessonEditor(editor.document)) project to checkpoint else null
+    }
+    val file = event.getData(CommonDataKeys.VIRTUAL_FILE) ?: return null
+    if (!file.isInLocalFileSystem) return null
+    val editor = event.getData(CommonDataKeys.EDITOR) ?: return null
+    val checkpoint = project.service<MarsLearningExecution>().independent ?: return null
+    return if (checkpoint.accepts(file.toNioPath(), editor.document)) project to checkpoint
+    else null
+  }
+
+  override fun update(event: AnActionEvent) {
+    event.presentation.isEnabled = target(event) != null
+  }
+
+  override fun actionPerformed(event: AnActionEvent) {
+    val (project, checkpoint) = target(event) ?: return
+    runCheck(project, checkpoint, event.coroutineScope)
+  }
+
+  internal fun runCheck(
+      project: Project,
+      checkpoint: MarsIndependentCheckpoint,
+      scope: CoroutineScope,
+  ) =
+      scope.launch(Dispatchers.Default) {
+        val feedback =
+            withBackgroundProgress(
+                project,
+                learningMessages.getMessage("independent.check.progress"),
+            ) {
+              checkpoint.check()
             }
+        withContext(Dispatchers.EDT) {
+          if (checkpoint.active) MarsIndependentFeedbackDialog(project, feedback).show()
         }
+      }
 }
 
-internal class MarsIndependentFeedbackDialog(project: Project, feedback: MarsIndependentCheckpoint.Feedback) : DialogWrapper(project) {
-    val report: String = when (feedback) {
-        MarsIndependentCheckpoint.Feedback.POLICY -> project.service<MarsLearningPolicy>().independentRestriction()
-        MarsIndependentCheckpoint.Feedback.LIMIT -> learningMessages.getMessage("independent.check.limit",
-            project.service<MarsLearningPolicy>().completedIndependentAssessments(),
-            project.service<MarsLearningPolicy>().maxIndependentAssessments)
-        MarsIndependentCheckpoint.Feedback.ASSEMBLY -> learningMessages.getMessage("independent.check.assembly")
-        MarsIndependentCheckpoint.Feedback.STALE -> learningMessages.getMessage("independent.check.stale")
-        is MarsIndependentCheckpoint.Feedback.Checked -> feedback.results.joinToString("\n\n") {
-            if (it.passed) "PASS ${it.name}" else "FAIL ${it.name}\n${it.failure}"
-        } + "\n\n" + learningMessages.getMessage("independent.check.scope") +
-            if (feedback.assessmentLimit == 0) "" else "\n\n" + learningMessages.getMessage("independent.check.attempts", feedback.completedAssessments, feedback.assessmentLimit)
-    }
-    init {
-        title = learningMessages.getMessage("independent.check.title")
-        setOKButtonText(learningMessages.getMessage("independent.check.close"))
-        init()
-    }
-    override fun createCenterPanel(): JComponent = JBScrollPane(JBTextArea(report).apply {
-        isEditable = false
-        lineWrap = true
-        wrapStyleWord = true
-        accessibleContext.accessibleName = title
-        caretPosition = 0
-    }).apply { preferredSize = Dimension(640, 320) }
-    override fun createActions(): Array<Action> = arrayOf(okAction)
+internal class MarsIndependentFeedbackDialog(
+    project: Project,
+    feedback: MarsIndependentCheckpoint.Feedback,
+) : DialogWrapper(project) {
+  val report: String =
+      when (feedback) {
+        MarsIndependentCheckpoint.Feedback.POLICY ->
+            project.service<MarsLearningPolicy>().independentRestriction()
+        MarsIndependentCheckpoint.Feedback.LIMIT ->
+            learningMessages.getMessage(
+                "independent.check.limit",
+                project.service<MarsLearningPolicy>().completedIndependentAssessments(),
+                project.service<MarsLearningPolicy>().maxIndependentAssessments,
+            )
+        MarsIndependentCheckpoint.Feedback.ASSEMBLY ->
+            learningMessages.getMessage("independent.check.assembly")
+        MarsIndependentCheckpoint.Feedback.STALE ->
+            learningMessages.getMessage("independent.check.stale")
+        is MarsIndependentCheckpoint.Feedback.Checked ->
+            feedback.results.joinToString("\n\n") {
+              if (it.passed) "PASS ${it.name}" else "FAIL ${it.name}\n${it.failure}"
+            } +
+                "\n\n" +
+                learningMessages.getMessage("independent.check.scope") +
+                if (feedback.assessmentLimit == 0) ""
+                else
+                    "\n\n" +
+                        learningMessages.getMessage(
+                            "independent.check.attempts",
+                            feedback.completedAssessments,
+                            feedback.assessmentLimit,
+                        )
+      }
+
+  init {
+    title = learningMessages.getMessage("independent.check.title")
+    setOKButtonText(learningMessages.getMessage("independent.check.close"))
+    init()
+  }
+
+  override fun createCenterPanel(): JComponent =
+      JBScrollPane(
+              JBTextArea(report).apply {
+                isEditable = false
+                lineWrap = true
+                wrapStyleWord = true
+                accessibleContext.accessibleName = title
+                caretPosition = 0
+              },
+          )
+          .apply { preferredSize = Dimension(640, 320) }
+
+  override fun createActions(): Array<Action> = arrayOf(okAction)
 }

@@ -9,76 +9,111 @@ import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat.R_FORMAT
 import edu.missouristate.mars.simulator.Exceptions.RESERVED_INSTRUCTION_EXCEPTION
 
-internal fun release6SystemTransfers(): List<BasicInstruction> = listOf(
-    systemTransfer("dmfc0", "00001", false), systemTransfer("dmfc0", "00001", true),
-    systemTransfer("dmtc0", "00101", false), systemTransfer("dmtc0", "00101", true),
-    systemTransfer("mfc0", "00000", false), systemTransfer("mfc0", "00000", true),
-    systemTransfer("mtc0", "00100", false), systemTransfer("mtc0", "00100", true),
-    exceptionReturn("eret", clearReservation = true), exceptionReturn("eretnc", clearReservation = false),
-    interruptControl(enable = false, hasDestination = false), interruptControl(enable = false, hasDestination = true),
-    interruptControl(enable = true, hasDestination = false), interruptControl(enable = true, hasDestination = true),
-    virtualProcessorControl("dvp", disable = true, hasDestination = false),
-    virtualProcessorControl("dvp", disable = true, hasDestination = true),
-    virtualProcessorControl("evp", disable = false, hasDestination = false),
-    virtualProcessorControl("evp", disable = false, hasDestination = true),
-)
+internal fun release6SystemTransfers(): List<BasicInstruction> =
+    listOf(
+        systemTransfer("dmfc0", "00001", false),
+        systemTransfer("dmfc0", "00001", true),
+        systemTransfer("dmtc0", "00101", false),
+        systemTransfer("dmtc0", "00101", true),
+        systemTransfer("mfc0", "00000", false),
+        systemTransfer("mfc0", "00000", true),
+        systemTransfer("mtc0", "00100", false),
+        systemTransfer("mtc0", "00100", true),
+        exceptionReturn("eret", clearReservation = true),
+        exceptionReturn("eretnc", clearReservation = false),
+        interruptControl(enable = false, hasDestination = false),
+        interruptControl(enable = false, hasDestination = true),
+        interruptControl(enable = true, hasDestination = false),
+        interruptControl(enable = true, hasDestination = true),
+        virtualProcessorControl("dvp", disable = true, hasDestination = false),
+        virtualProcessorControl("dvp", disable = true, hasDestination = true),
+        virtualProcessorControl("evp", disable = false, hasDestination = false),
+        virtualProcessorControl("evp", disable = false, hasDestination = true),
+    )
 
-private fun virtualProcessorControl(mnemonic: String, disable: Boolean, hasDestination: Boolean) = BasicInstruction(
-    if (hasDestination) $$"$$mnemonic $t1" else mnemonic,
-    "Virtual processor control. No operation on the single-core target without virtual processors.",
-    R_FORMAT, "010000 01011 ${if (hasDestination) "fffff" else "00000"} 00000 00000 ${if (disable) 1 else 0}00100",
-) { _, _ -> }
+private fun virtualProcessorControl(mnemonic: String, disable: Boolean, hasDestination: Boolean) =
+    BasicInstruction(
+        if (hasDestination) $$"$$mnemonic $t1" else mnemonic,
+        "Virtual processor control. No operation on the single-core target without virtual processors.",
+        R_FORMAT,
+        "010000 01011 ${if (hasDestination) "fffff" else "00000"} 00000 00000 ${if (disable) 1 else 0}00100",
+    ) { _, _ ->
+    }
 
 private fun interruptControl(enable: Boolean, hasDestination: Boolean): BasicInstruction {
-    val mnemonic = if (enable) "ei" else "di"
-    return BasicInstruction(
-        if (hasDestination) $$"$$mnemonic $t1" else mnemonic,
-        if (enable) "Enable interrupts and optionally return the previous Status" else "Disable interrupts and optionally return the previous Status",
-        R_FORMAT, "010000 01011 ${if (hasDestination) "fffff" else "00000"} 01100 00000 ${if (enable) 1 else 0}00000",
-    ) { statement, context ->
-        val previous = context.coprocessor0.getValue(STATUS)
-        if (hasDestination) context.updateRegister(statement.operands[0], previous)
-        val status = if (enable) previous or INTERRUPT_ENABLE else previous and INTERRUPT_ENABLE.inv()
-        context.updateCoprocessor0(STATUS, status)
-    }
+  val mnemonic = if (enable) "ei" else "di"
+  return BasicInstruction(
+      if (hasDestination) $$"$$mnemonic $t1" else mnemonic,
+      if (enable) "Enable interrupts and optionally return the previous Status"
+      else "Disable interrupts and optionally return the previous Status",
+      R_FORMAT,
+      "010000 01011 ${if (hasDestination) "fffff" else "00000"} 01100 00000 ${if (enable) 1 else 0}00000",
+  ) { statement, context ->
+    val previous = context.coprocessor0.getValue(STATUS)
+    if (hasDestination) context.updateRegister(statement.operands[0], previous)
+    val status = if (enable) previous or INTERRUPT_ENABLE else previous and INTERRUPT_ENABLE.inv()
+    context.updateCoprocessor0(STATUS, status)
+  }
 }
 
-private fun exceptionReturn(mnemonic: String, clearReservation: Boolean): BasicInstruction = BasicInstruction(
-    mnemonic, if (clearReservation) "Return through EPC and clear the reservation" else "Return through EPC and preserve the reservation",
-    R_FORMAT, "010000 1 000000000000000000 ${if (clearReservation) 0 else 1} 011000",
-) { statement, context -> context.release6ExceptionReturn(statement, clearReservation) }
+private fun exceptionReturn(mnemonic: String, clearReservation: Boolean): BasicInstruction =
+    BasicInstruction(
+        mnemonic,
+        if (clearReservation) "Return through EPC and clear the reservation"
+        else "Return through EPC and preserve the reservation",
+        R_FORMAT,
+        "010000 1 000000000000000000 ${if (clearReservation) 0 else 1} 011000",
+    ) { statement, context ->
+      context.release6ExceptionReturn(statement, clearReservation)
+    }
 
-private fun systemTransfer(mnemonic: String, encoding: String, explicitSelector: Boolean): BasicInstruction {
-    val doubleword = mnemonic.startsWith('d')
-    val write = mnemonic.endsWith("tc0")
-    val description = if (write) "Write an educational CP0 register" else "Read an educational CP0 register"
-    return object : BasicInstruction(
-        $$"$$mnemonic $t1,$14$${if (explicitSelector) ",7" else ""}", description,
-        R_FORMAT, "010000 $encoding fffff sssss 00000000 ${if (explicitSelector) "ttt" else "000"}",
-        { statement, context ->
+private fun systemTransfer(
+    mnemonic: String,
+    encoding: String,
+    explicitSelector: Boolean,
+): BasicInstruction {
+  val doubleword = mnemonic.startsWith('d')
+  val write = mnemonic.endsWith("tc0")
+  val description =
+      if (write) "Write an educational CP0 register" else "Read an educational CP0 register"
+  return object :
+      BasicInstruction(
+          $$"$$mnemonic $t1,$14$${if (explicitSelector) ",7" else ""}",
+          description,
+          R_FORMAT,
+          "010000 $encoding fffff sssss 00000000 ${if (explicitSelector) "ttt" else "000"}",
+          { statement, context ->
             val (integer, system) = statement.operands
             val selector = if (explicitSelector) statement.operands[2] else 0
             if (selector != 0 || context.coprocessor0.getRegister(system) == null) {
-                if (doubleword) throw ProcessingException(context, statement, "Unavailable CP0 register $system, selector $selector",
-                    RESERVED_INSTRUCTION_EXCEPTION)
-                if (!write) context.updateRegister(integer, 0)
+              if (doubleword)
+                  throw ProcessingException(
+                      context,
+                      statement,
+                      "Unavailable CP0 register $system, selector $selector",
+                      RESERVED_INSTRUCTION_EXCEPTION,
+                  )
+              if (!write) context.updateRegister(integer, 0)
             } else if (write) {
-                val bits = context.readIntegerOperand(integer)
-                val wide = system == EPC || system == VADDR
-                context.updateCoprocessor0Bits(system, if (wide) bits else bits.toInt().toLong())
+              val bits = context.readIntegerOperand(integer)
+              val wide = system == EPC || system == VADDR
+              context.updateCoprocessor0Bits(system, if (wide) bits else bits.toInt().toLong())
             } else if (!doubleword) {
-                context.updateRegister(integer, context.coprocessor0.getValue(system))
+              context.updateRegister(integer, context.coprocessor0.getValue(system))
             } else {
-                val wide = system == EPC || system == VADDR
-                val bits = if (wide) context.coprocessor0.readRegisterBits(system)
-                else context.coprocessor0.getValue(system).toUInt().toLong()
-                context.updateLongRegister(integer, bits)
+              val wide = system == EPC || system == VADDR
+              val bits =
+                  if (wide) context.coprocessor0.readRegisterBits(system)
+                  else context.coprocessor0.getValue(system).toUInt().toLong()
+              context.updateLongRegister(integer, bits)
             }
-        },
-    ) {
-        override fun encodeOperands(values: IntArray): IntArray {
-            require(!explicitSelector || values[2] in 0..7) { "$mnemonic selector must be in the range 0 through 7" }
-            return values
-        }
+          },
+      ) {
+    override fun encodeOperands(values: IntArray): IntArray {
+      require(!explicitSelector || values[2] in 0..7) {
+        "$mnemonic selector must be in the range 0 through 7"
+      }
+      return values
     }
+  }
 }

@@ -10,10 +10,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /** Selects the classic target for tests that characterize existing classroom programs. */
-internal fun classicMipsProjectFixture() = testFixture("classicMipsProject") {
-    val project = codeInsightProjectFixture().init()
-    withContext(Dispatchers.EDT) {
+internal fun classicMipsProjectFixture() =
+    testFixture("classicMipsProject") {
+      val project = codeInsightProjectFixture().init()
+      withContext(Dispatchers.EDT) {
         project.service<MarsAssemblySettings>().changeTarget(MarsTarget.MARS32)
+      }
+      initialized(project) {}
     }
-    initialized(project) {}
-}

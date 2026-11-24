@@ -32,7 +32,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 open class SyscallSleep : AbstractSyscall(32, "Sleep") {
-    override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
-        context.environment().sleepMillis(context.registerFile.getValue(4))
-    }
+  override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
+    context.environment().sleepMillis(context.registerFile.getValue(4))
+  }
 }

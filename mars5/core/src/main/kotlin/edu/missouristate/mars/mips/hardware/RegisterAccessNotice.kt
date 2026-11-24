@@ -29,9 +29,10 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 /** The register read or written by an observed access. */
-open class RegisterAccessNotice internal constructor(type: Int, open val registerName: String?) : AccessNotice(type) {
-    override fun toString(): String {
-        val action = if (accessType == READ) "R" else "W"
-        return "$action Reg $registerName"
-    }
+open class RegisterAccessNotice internal constructor(type: Int, open val registerName: String?) :
+    AccessNotice(type) {
+  override fun toString(): String {
+    val action = if (accessType == READ) "R" else "W"
+    return "$action Reg $registerName"
+  }
 }

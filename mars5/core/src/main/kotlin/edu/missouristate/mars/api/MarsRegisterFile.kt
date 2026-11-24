@@ -5,14 +5,14 @@ package edu.missouristate.mars.api
  * from user interface threads while simulation is running.
  */
 interface MarsRegisterFile {
-    /** Read register 0–31, PC (32), HI (33), or LO (34). */
-    fun getValue(register: Int): Int
+  /** Read register 0–31, PC (32), HI (33), or LO (34). */
+  fun getValue(register: Int): Int
 
-    /** Write register 1–31, PC (32), HI (33), or LO (34). Register zero ignores writes. */
-    fun setValue(register: Int, value: Int)
+  /** Write register 1–31, PC (32), HI (33), or LO (34). Register zero ignores writes. */
+  fun setValue(register: Int, value: Int)
 
-    fun getPC(): Int
+  fun getPC(): Int
 
-    /** Reset registers to the initial values configured for this machine. */
-    fun reset()
+  /** Reset registers to the initial values configured for this machine. */
+  fun reset()
 }

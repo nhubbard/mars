@@ -32,28 +32,30 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /** Memory bounds and initialized addresses used by CLI memory exports. */
 open class MemoryDump {
-    companion object {
-        private val segmentNames = arrayOf(".text", ".data")
+  companion object {
+    private val segmentNames = arrayOf(".text", ".data")
 
-        /** Return inclusive base and exclusive limit for the given dump segment. */
-        @JvmStatic
-        fun getSegmentBounds(segment: String?, memory: MemoryState): Array<Int>? {
-            val index = segmentNames.indexOf(segment)
-            if (index < 0) return null
-            return arrayOf(getBaseAddresses(segmentNames, memory)[index], getLimitAddresses(segmentNames, memory)[index])
-        }
-
-        @JvmStatic
-        fun getSegmentNames(): Array<String> = segmentNames
-
-        @JvmStatic
-        @Suppress("unused", "RedundantSuppression")
-        fun getBaseAddresses(segments: Array<String>?, memory: MemoryState): IntArray =
-            intArrayOf(memory.textBaseAddress, memory.dataBaseAddress)
-
-        @JvmStatic
-        @Suppress("unused", "RedundantSuppression")
-        fun getLimitAddresses(segments: Array<String>?, memory: MemoryState): IntArray =
-            intArrayOf(memory.textLimitAddress, memory.dataSegmentLimitAddress)
+    /** Return inclusive base and exclusive limit for the given dump segment. */
+    @JvmStatic
+    fun getSegmentBounds(segment: String?, memory: MemoryState): Array<Int>? {
+      val index = segmentNames.indexOf(segment)
+      if (index < 0) return null
+      return arrayOf(
+          getBaseAddresses(segmentNames, memory)[index],
+          getLimitAddresses(segmentNames, memory)[index],
+      )
     }
+
+    @JvmStatic fun getSegmentNames(): Array<String> = segmentNames
+
+    @JvmStatic
+    @Suppress("unused", "RedundantSuppression")
+    fun getBaseAddresses(segments: Array<String>?, memory: MemoryState): IntArray =
+        intArrayOf(memory.textBaseAddress, memory.dataBaseAddress)
+
+    @JvmStatic
+    @Suppress("unused", "RedundantSuppression")
+    fun getLimitAddresses(segments: Array<String>?, memory: MemoryState): IntArray =
+        intArrayOf(memory.textLimitAddress, memory.dataSegmentLimitAddress)
+  }
 }

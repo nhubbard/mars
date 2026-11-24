@@ -9,21 +9,23 @@ import com.intellij.psi.PsiNameIdentifierOwner
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.language.MipsFile
 
-internal class MipsMacroFormal(node: ASTNode) : ASTWrapperPsiElement(node), PsiNameIdentifierOwner, PsiCheckedRenameElement {
-    override fun getNameIdentifier(): PsiElement = firstChild
-    override fun getName(): String = nameIdentifier.text
+internal class MipsMacroFormal(node: ASTNode) :
+    ASTWrapperPsiElement(node), PsiNameIdentifierOwner, PsiCheckedRenameElement {
+  override fun getNameIdentifier(): PsiElement = firstChild
 
-    override fun checkSetName(name: String) {
-        checkedRenameSites(name)
-    }
+  override fun getName(): String = nameIdentifier.text
 
-    override fun setName(name: String): PsiElement {
-        nameIdentifier.replace(macroFormalNameElement(project, name))
-        return this
-    }
+  override fun checkSetName(name: String) {
+    checkedRenameSites(name)
+  }
 
-    fun effectiveNames(): Set<String> {
-        val file = containingFile as MipsFile
-        return file.project.service<MarsAnalysisService>().macroFormalNames(file, this)
-    }
+  override fun setName(name: String): PsiElement {
+    nameIdentifier.replace(macroFormalNameElement(project, name))
+    return this
+  }
+
+  fun effectiveNames(): Set<String> {
+    val file = containingFile as MipsFile
+    return file.project.service<MarsAnalysisService>().macroFormalNames(file, this)
+  }
 }

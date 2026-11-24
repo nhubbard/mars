@@ -14,24 +14,32 @@ import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
 import edu.missouristate.mars.plugin.language.psi.MipsMacroFormal
 
 class MipsParserDefinition : ParserDefinition {
-    override fun createLexer(project: Project?) = LexerAdapter(MipsLexer(), MipsTypes.converter)
-    // The native file element owns parsing, matching the platform's YAML syntax integration.
-    override fun createParser(project: Project?): PsiParser =
-        throw UnsupportedOperationException("Use the native syntax file element")
-    override fun getFileNodeType() = MipsTypes.file
-    override fun getCommentTokens() = TokenSet.create(MipsTypes.psi("COMMENT"))
-    override fun getStringLiteralElements() = TokenSet.create(MipsTypes.psi("STRING"), MipsTypes.psi("CHARACTER"))
-    override fun createElement(node: ASTNode) = when (node.elementType) {
+  override fun createLexer(project: Project?) = LexerAdapter(MipsLexer(), MipsTypes.converter)
+
+  // The native file element owns parsing, matching the platform's YAML syntax integration.
+  override fun createParser(project: Project?): PsiParser =
+      throw UnsupportedOperationException("Use the native syntax file element")
+
+  override fun getFileNodeType() = MipsTypes.file
+
+  override fun getCommentTokens() = TokenSet.create(MipsTypes.psi("COMMENT"))
+
+  override fun getStringLiteralElements() =
+      TokenSet.create(MipsTypes.psi("STRING"), MipsTypes.psi("CHARACTER"))
+
+  override fun createElement(node: ASTNode) =
+      when (node.elementType) {
         MipsTypes.psi("LABEL") -> MipsDeclaration(node, SymbolKind.LABEL)
         MipsTypes.psi("MACRO_SIGNATURE") -> MipsDeclaration(node, SymbolKind.MACRO)
         MipsTypes.psi("MACRO_PARAMETER") -> MipsMacroFormal(node)
         MipsTypes.psi("EQUIVALENCE") -> MipsDeclaration(node, SymbolKind.CONSTANT)
         MipsTypes.psi("EXTERNAL_NAME") -> MipsDeclaration(node, SymbolKind.EXTERNAL)
         else -> ASTWrapperPsiElement(node)
-    }
-    override fun createFile(viewProvider: FileViewProvider) = MipsFile(viewProvider)
+      }
+
+  override fun createFile(viewProvider: FileViewProvider) = MipsFile(viewProvider)
 }
 
 class MipsFile(viewProvider: FileViewProvider) : PsiFileBase(viewProvider, MipsLanguage) {
-    override fun getFileType() = MipsFileType
+  override fun getFileType() = MipsFileType
 }

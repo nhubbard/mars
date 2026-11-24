@@ -34,89 +34,95 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /** Finds assembly files on disk and resources on the classpath. */
 open class FilenameFinder {
-    class MarsFileFilter internal constructor(
-        private val extensions: ArrayList<out String?>,
+  class MarsFileFilter
+  internal constructor(
+      private val extensions: ArrayList<out String?>,
+      description: String?,
+      private val acceptDirectories: Boolean,
+  ) : FileFilter {
+    val description: String = buildString {
+      append(description.orEmpty())
+      if (extensions.isNotEmpty()) {
+        append("  (")
+        extensions.forEachIndexed { index, extension ->
+          if (!extension.isNullOrEmpty()) {
+            if (index != 0) append("; ")
+            append('*')
+            if (!extension.startsWith('.')) append('.')
+            append(extension)
+          }
+        }
+        append(')')
+      }
+    }
+
+    override fun accept(file: File): Boolean {
+      if (file.isDirectory) return acceptDirectories
+      val actual = getExtension(file) ?: return false
+      return extensions.any {
+        val extension = stripLeadingDot(it)!!
+        extension == MATCH_ALL_EXTENSIONS || extension == actual
+      }
+    }
+  }
+
+  companion object {
+    const val MATCH_ALL_EXTENSIONS = "*"
+
+    /** Lists matching immediate children of a filesystem directory by absolute path. */
+    @JvmStatic
+    fun getFilenameList(directory: String, extension: String?): ArrayList<String> {
+      val path = File(directory)
+      if (!path.isDirectory) return ArrayList()
+      val files = path.listFiles() ?: return ArrayList()
+      val filter = getFileFilter(stripLeadingDot(extension), "", false)
+      return files.filterToPaths(filter)
+    }
+
+    @JvmStatic
+    fun getFilenameList(directory: String, extensions: ArrayList<out String?>?): ArrayList<String> =
+        collectByExtension(extensions) { getFilenameList(directory, it) }
+
+    /** Returns the lowercase extension, excluding a leading or trailing dot. */
+    @JvmStatic fun getExtension(file: File): String? = getExtension(file.name)
+
+    @JvmStatic
+    fun getExtension(filename: String): String? {
+      val dot = filename.lastIndexOf('.')
+      return if (dot > 0 && dot < filename.lastIndex) {
+        filename.substring(dot + 1).lowercase(Locale.getDefault())
+      } else null
+    }
+
+    @JvmStatic
+    @JvmOverloads
+    fun getFileFilter(
+        extensions: ArrayList<out String?>,
         description: String?,
-        private val acceptDirectories: Boolean,
-    ) : FileFilter {
-        val description: String = buildString {
-            append(description.orEmpty())
-            if (extensions.isNotEmpty()) {
-                append("  (")
-                extensions.forEachIndexed { index, extension ->
-                    if (!extension.isNullOrEmpty()) {
-                        if (index != 0) append("; ")
-                        append('*')
-                        if (!extension.startsWith('.')) append('.')
-                        append(extension)
-                    }
-                }
-                append(')')
-            }
-        }
+        acceptDirectories: Boolean = true,
+    ): MarsFileFilter = MarsFileFilter(extensions, description, acceptDirectories)
 
-        override fun accept(file: File): Boolean {
-            if (file.isDirectory) return acceptDirectories
-            val actual = getExtension(file) ?: return false
-            return extensions.any {
-                val extension = stripLeadingDot(it)!!
-                extension == MATCH_ALL_EXTENSIONS || extension == actual
-            }
-        }
+    @JvmStatic
+    @JvmOverloads
+    fun getFileFilter(
+        extension: String?,
+        description: String?,
+        acceptDirectories: Boolean = true,
+    ): MarsFileFilter = getFileFilter(arrayListOf(extension), description, acceptDirectories)
+
+    private fun stripLeadingDot(extension: String?): String? = extension?.removePrefix(".")
+
+    private inline fun collectByExtension(
+        extensions: ArrayList<out String?>?,
+        read: (String?) -> ArrayList<String>,
+    ): ArrayList<String> {
+      if (extensions.isNullOrEmpty()) return read("")
+      val names = ArrayList<String>()
+      for (extension in extensions) names.addAll(read(stripLeadingDot(extension)))
+      return names
     }
 
-    companion object {
-        const val MATCH_ALL_EXTENSIONS = "*"
-
-        /** Lists matching immediate children of a filesystem directory by absolute path. */
-        @JvmStatic
-        fun getFilenameList(directory: String, extension: String?): ArrayList<String> {
-            val path = File(directory)
-            if (!path.isDirectory) return ArrayList()
-            val files = path.listFiles() ?: return ArrayList()
-            val filter = getFileFilter(stripLeadingDot(extension), "", false)
-            return files.filterToPaths(filter)
-        }
-
-        @JvmStatic
-        fun getFilenameList(directory: String, extensions: ArrayList<out String?>?): ArrayList<String> =
-            collectByExtension(extensions) { getFilenameList(directory, it) }
-
-        /** Returns the lowercase extension, excluding a leading or trailing dot. */
-        @JvmStatic
-        fun getExtension(file: File): String? = getExtension(file.name)
-
-        @JvmStatic
-        fun getExtension(filename: String): String? {
-            val dot = filename.lastIndexOf('.')
-            return if (dot > 0 && dot < filename.lastIndex) {
-                filename.substring(dot + 1).lowercase(Locale.getDefault())
-            } else null
-        }
-
-        @JvmStatic
-        @JvmOverloads
-        fun getFileFilter(
-            extensions: ArrayList<out String?>, description: String?, acceptDirectories: Boolean = true,
-        ): MarsFileFilter = MarsFileFilter(extensions, description, acceptDirectories)
-
-        @JvmStatic
-        @JvmOverloads
-        fun getFileFilter(extension: String?, description: String?, acceptDirectories: Boolean = true): MarsFileFilter =
-            getFileFilter(arrayListOf(extension), description, acceptDirectories)
-
-        private fun stripLeadingDot(extension: String?): String? = extension?.removePrefix(".")
-
-        private inline fun collectByExtension(
-            extensions: ArrayList<out String?>?, read: (String?) -> ArrayList<String>,
-        ): ArrayList<String> {
-            if (extensions.isNullOrEmpty()) return read("")
-            val names = ArrayList<String>()
-            for (extension in extensions) names.addAll(read(stripLeadingDot(extension)))
-            return names
-        }
-
-        private fun Array<File>.filterToPaths(filter: FileFilter): ArrayList<String> =
-            mapNotNullTo(ArrayList()) { if (filter.accept(it)) it.absolutePath else null }
-    }
+    private fun Array<File>.filterToPaths(filter: FileFilter): ArrayList<String> =
+        mapNotNullTo(ArrayList()) { if (filter.accept(it)) it.absolutePath else null }
+  }
 }

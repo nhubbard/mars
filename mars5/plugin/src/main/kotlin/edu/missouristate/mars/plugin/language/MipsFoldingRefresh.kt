@@ -15,47 +15,59 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.util.asDisposable
 import com.intellij.util.ui.update.DebouncedUpdates
 import edu.missouristate.mars.plugin.analysis.MipsAssemblyContextListener
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import org.jetbrains.annotations.TestOnly
-import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.Duration.Companion.seconds
 
 @Suppress("UnstableApiUsage")
 @Service(Service.Level.PROJECT)
 internal class MipsFoldingRefresh(project: Project, scope: CoroutineScope) {
-    // IntelliJ tracks dependencies attached to descriptors, so an empty folding result
-    // needs an explicit refresh when the assembly context can introduce a fold.
-    private val refresh = DebouncedUpdates.forScope<VirtualFile?>(scope, "Refresh MARS folds", 200.milliseconds)
-        .withContext(Dispatchers.EDT)
-        .restartTimerOnAdd(true)
-        .runBatchedDistinct { changes ->
+  // IntelliJ tracks dependencies attached to descriptors, so an empty folding result
+  // needs an explicit refresh when the assembly context can introduce a fold.
+  private val refresh =
+      DebouncedUpdates.forScope<VirtualFile?>(scope, "Refresh MARS folds", 200.milliseconds)
+          .withContext(Dispatchers.EDT)
+          .restartTimerOnAdd(true)
+          .runBatchedDistinct { changes ->
             val manager = CodeFoldingManager.getInstance(project)
             val onlyChangedFile = changes.singleOrNull()
-            for (editor in FileEditorManager.getInstance(project).allEditors.filterIsInstance<TextEditor>()) {
-                if (editor.file.fileType == MipsFileType && editor.file != onlyChangedFile) {
-                    manager.scheduleAsyncFoldingUpdate(editor.editor)
-                }
+            for (editor in
+                FileEditorManager.getInstance(project).allEditors.filterIsInstance<TextEditor>()) {
+              if (editor.file.fileType == MipsFileType && editor.file != onlyChangedFile) {
+                manager.scheduleAsyncFoldingUpdate(editor.editor)
+              }
             }
-        }
+          }
 
-    init {
-        EditorFactory.getInstance().eventMulticaster.addDocumentListener(object : DocumentListener {
-            override fun documentChanged(event: DocumentEvent) {
+  init {
+    EditorFactory.getInstance()
+        .eventMulticaster
+        .addDocumentListener(
+            object : DocumentListener {
+              override fun documentChanged(event: DocumentEvent) {
                 val file = FileDocumentManager.getInstance().getFile(event.document)
                 if (file?.fileType == MipsFileType) refresh.queue(file)
-            }
-        }, scope.asDisposable())
-        val connection = project.messageBus.connect(scope)
-        connection.subscribe(DumbService.DUMB_MODE, object : DumbService.DumbModeListener {
-            override fun exitDumbMode() {
-                // A null source marks a context change affecting every MARS editor.
-                refresh.queue(null)
-            }
-        })
-        connection.subscribe(MipsAssemblyContextListener.TOPIC, MipsAssemblyContextListener { refresh.queue(null) })
-    }
+              }
+            },
+            scope.asDisposable(),
+        )
+    val connection = project.messageBus.connect(scope)
+    connection.subscribe(
+        DumbService.DUMB_MODE,
+        object : DumbService.DumbModeListener {
+          override fun exitDumbMode() {
+            // A null source marks a context change affecting every MARS editor.
+            refresh.queue(null)
+          }
+        },
+    )
+    connection.subscribe(
+        MipsAssemblyContextListener.TOPIC,
+        MipsAssemblyContextListener { refresh.queue(null) },
+    )
+  }
 
-    @TestOnly
-    fun waitForRefresh() = refresh.waitForAllExecuted(5.seconds)
+  @TestOnly fun waitForRefresh() = refresh.waitForAllExecuted(5.seconds)
 }

@@ -25,73 +25,96 @@ import edu.missouristate.mars.plugin.run.MarsInputMode
 import edu.missouristate.mars.plugin.run.MarsRunConfiguration
 import edu.missouristate.mars.plugin.run.MarsRunOptions
 import edu.missouristate.mars.plugin.run.MarsRunType
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import java.nio.file.Files
 import java.nio.file.InvalidPathException
 import java.nio.file.Path
 import java.util.prefs.BackingStoreException
 import java.util.prefs.Preferences
 import kotlin.io.path.invariantSeparatorsPathString
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
-internal val venusImportMessages = DynamicBundle(MarsImportVenusPreferencesAction::class.java, "messages.MarsBundle")
-private val messages get() = venusImportMessages
+internal val venusImportMessages =
+    DynamicBundle(MarsImportVenusPreferencesAction::class.java, "messages.MarsBundle")
+private val messages
+  get() = venusImportMessages
 private const val importedKey = "mars.venus.project.preferences.imported"
 private const val templateImportedKey = "mars.venus.run.template.imported"
 
 internal class MarsImportVenusPreferencesAction(
     private val preferences: () -> Preferences = Preferences::userRoot,
 ) : DumbAwareAction() {
-    override fun getActionUpdateThread() = ActionUpdateThread.BGT
+  override fun getActionUpdateThread() = ActionUpdateThread.BGT
 
-    override fun update(e: AnActionEvent) {
-        val project = e.project
-        e.presentation.isEnabledAndVisible = project != null && !PropertiesComponent.getInstance(project).isTrueValue(templateImportedKey)
+  override fun update(e: AnActionEvent) {
+    val project = e.project
+    e.presentation.isEnabledAndVisible =
+        project != null &&
+            !PropertiesComponent.getInstance(project).isTrueValue(templateImportedKey)
+  }
+
+  override fun actionPerformed(e: AnActionEvent) {
+    val project = e.project ?: return
+    val properties = PropertiesComponent.getInstance(project)
+    if (properties.isTrueValue(templateImportedKey)) return
+    val title = messages.getMessage("import.venus.title")
+    val legacy =
+        loadVenusPreferences(project, title) { readVenusPreferences(preferences()) } ?: return
+    val assembly = project.service<MarsAssemblySettings>()
+    val factory = runConfigurationType<MarsRunType>()
+    val runManager = RunManager.getInstance(project)
+    fun templateOptions() =
+        (runManager.getConfigurationTemplate(factory).configuration as MarsRunConfiguration).options
+    val previous =
+        VenusImportSettings(
+            assembly.getState(),
+            projectTabSize(project),
+            RunDefaults(templateOptions()),
+        )
+    val preview =
+        legacy.preview(project, previous, includeProject = !properties.isTrueValue(importedKey))
+    if (preview.changes.isEmpty()) {
+      Messages.showInfoMessage(project, messages.getMessage("import.venus.empty"), title)
+      return
+    }
+    if (
+        !confirmVenusImport(
+            project,
+            title,
+            messages.getMessage("import.venus.preview", preview.changes.joinToString("\n")),
+        )
+    )
+        return
+    val template = templateOptions()
+    if (
+        VenusImportSettings(assembly.getState(), projectTabSize(project), RunDefaults(template)) !=
+            previous
+    ) {
+      Messages.showInfoMessage(project, messages.getMessage("import.venus.stale"), title)
+      return
     }
 
-    override fun actionPerformed(e: AnActionEvent) {
-        val project = e.project ?: return
-        val properties = PropertiesComponent.getInstance(project)
-        if (properties.isTrueValue(templateImportedKey)) return
-        val title = messages.getMessage("import.venus.title")
-        val legacy = loadVenusPreferences(project, title) { readVenusPreferences(preferences()) } ?: return
-        val assembly = project.service<MarsAssemblySettings>()
-        val factory = runConfigurationType<MarsRunType>()
-        val runManager = RunManager.getInstance(project)
-        fun templateOptions() = (runManager.getConfigurationTemplate(factory).configuration as MarsRunConfiguration).options
-        val previous = VenusImportSettings(assembly.getState(), projectTabSize(project), RunDefaults(templateOptions()))
-        val preview = legacy.preview(project, previous, includeProject = !properties.isTrueValue(importedKey))
-        if (preview.changes.isEmpty()) {
-            Messages.showInfoMessage(project, messages.getMessage("import.venus.empty"), title)
-            return
-        }
-        if (!confirmVenusImport(project, title, messages.getMessage("import.venus.preview", preview.changes.joinToString("\n")))) return
-        val template = templateOptions()
-        if (VenusImportSettings(assembly.getState(), projectTabSize(project), RunDefaults(template)) != previous) {
-            Messages.showInfoMessage(project, messages.getMessage("import.venus.stale"), title)
-            return
-        }
-
-        val updated = preview.settings
-        if (updated.tabSize != previous.tabSize) {
-            val manager = CodeStyleSettingsManager.getInstance(project)
-            val style = manager.cloneSettings(CodeStyle.getSettings(project))
-            style.getIndentOptions(MipsFileType).TAB_SIZE = updated.tabSize
-            CodeStyle.setMainProjectSettings(project, style)
-            manager.notifyCodeStyleSettingsChanged()
-        }
-        assembly.applyImportedSettings(updated.assembly)
-        template.assembleDirectory = updated.run.assembleDirectory
-        template.inputMode = updated.run.inputMode
-        properties.setValue(importedKey, true)
-        properties.setValue(templateImportedKey, true)
+    val updated = preview.settings
+    if (updated.tabSize != previous.tabSize) {
+      val manager = CodeStyleSettingsManager.getInstance(project)
+      val style = manager.cloneSettings(CodeStyle.getSettings(project))
+      style.getIndentOptions(MipsFileType).TAB_SIZE = updated.tabSize
+      CodeStyle.setMainProjectSettings(project, style)
+      manager.notifyCodeStyleSettingsChanged()
     }
+    assembly.applyImportedSettings(updated.assembly)
+    template.assembleDirectory = updated.run.assembleDirectory
+    template.inputMode = updated.run.inputMode
+    properties.setValue(importedKey, true)
+    properties.setValue(templateImportedKey, true)
+  }
 
-    private fun projectTabSize(project: Project): Int = CodeStyle.getSettings(project).getIndentOptions(MipsFileType).TAB_SIZE
+  private fun projectTabSize(project: Project): Int =
+      CodeStyle.getSettings(project).getIndentOptions(MipsFileType).TAB_SIZE
 }
 
 private data class RunDefaults(val assembleDirectory: Boolean, val inputMode: MarsInputMode) {
-    constructor(options: MarsRunOptions) : this(options.assembleDirectory, options.inputMode)
+  constructor(options: MarsRunOptions) : this(options.assembleDirectory, options.inputMode)
 }
 
 private data class VenusImportSettings(
@@ -105,110 +128,168 @@ private data class VenusImportPreview(
     val changes: List<String>,
 )
 
-private class VenusPreferences(private val values: Map<String, String>, private val handler: Path?) {
-    fun preview(project: Project, previous: VenusImportSettings, includeProject: Boolean): VenusImportPreview {
-        val changes = mutableListOf<String>()
-        fun change(label: String, before: String, after: String) {
-            if (before != after) {
-                changes += messages.getMessage("import.venus.change", messages.getMessage(label), escapeLineBreak(before), escapeLineBreak(after))
-            }
-        }
-        fun flag(key: String, label: String, current: Boolean): Boolean {
-            val value = values[key].venusBoolean() ?: current
-            change(label, venusFlagText(current), venusFlagText(value))
-            return value
-        }
-        val updated = if (includeProject) {
-            val assembly = projectAssembly(project, previous.assembly, ::change, ::flag)
-            val tabSize = values["EditorTabSize"]?.toIntOrNull()?.takeIf { it in 1..32 } ?: previous.tabSize
-            change("import.venus.tab.width", previous.tabSize.toString(), tabSize.toString())
-            previous.copy(assembly = assembly, tabSize = tabSize)
+private class VenusPreferences(
+    private val values: Map<String, String>,
+    private val handler: Path?,
+) {
+  fun preview(
+      project: Project,
+      previous: VenusImportSettings,
+      includeProject: Boolean,
+  ): VenusImportPreview {
+    val changes = mutableListOf<String>()
+    fun change(label: String, before: String, after: String) {
+      if (before != after) {
+        changes +=
+            messages.getMessage(
+                "import.venus.change",
+                messages.getMessage(label),
+                escapeLineBreak(before),
+                escapeLineBreak(after),
+            )
+      }
+    }
+    fun flag(key: String, label: String, current: Boolean): Boolean {
+      val value = values[key].venusBoolean() ?: current
+      change(label, venusFlagText(current), venusFlagText(value))
+      return value
+    }
+    val updated =
+        if (includeProject) {
+          val assembly = projectAssembly(project, previous.assembly, ::change, ::flag)
+          val tabSize =
+              values["EditorTabSize"]?.toIntOrNull()?.takeIf { it in 1..32 } ?: previous.tabSize
+          change("import.venus.tab.width", previous.tabSize.toString(), tabSize.toString())
+          previous.copy(assembly = assembly, tabSize = tabSize)
         } else previous
-        val run = previous.run
-        val assembleDirectory = flag("AssembleAll", "import.venus.run.directory", run.assembleDirectory)
-        val inputMode = values["PopupSyscallInput"].venusBoolean()?.let {
-            if (it) MarsInputMode.DIALOG else MarsInputMode.CONSOLE
+    val run = previous.run
+    val assembleDirectory = flag("AssembleAll", "import.venus.run.directory", run.assembleDirectory)
+    val inputMode =
+        values["PopupSyscallInput"].venusBoolean()?.let {
+          if (it) MarsInputMode.DIALOG else MarsInputMode.CONSOLE
         } ?: run.inputMode
-        change("import.venus.run.input", run.inputMode.title, inputMode.title)
-        return VenusImportPreview(updated.copy(run = RunDefaults(assembleDirectory, inputMode)), changes)
-    }
+    change("import.venus.run.input", run.inputMode.title, inputMode.title)
+    return VenusImportPreview(
+        updated.copy(run = RunDefaults(assembleDirectory, inputMode)),
+        changes,
+    )
+  }
 
-    private fun projectAssembly(
-        project: Project,
-        assembly: MarsAssemblySettings.Settings,
-        change: (String, String, String) -> Unit,
-        flag: (String, String, Boolean) -> Boolean,
-    ): MarsAssemblySettings.Settings {
-        val oldLayout = MarsMemoryLayout.fromIdentifier(assembly.memoryLayout)
-        val layout = MarsMemoryLayout.entries.firstOrNull { it.identifier == values["MemoryConfiguration"] }
+  private fun projectAssembly(
+      project: Project,
+      assembly: MarsAssemblySettings.Settings,
+      change: (String, String, String) -> Unit,
+      flag: (String, String, Boolean) -> Boolean,
+  ): MarsAssemblySettings.Settings {
+    val oldLayout = MarsMemoryLayout.fromIdentifier(assembly.memoryLayout)
+    val layout =
+        MarsMemoryLayout.entries.firstOrNull { it.identifier == values["MemoryConfiguration"] }
             ?: oldLayout
-        change("import.venus.memory", messages.getMessage(oldLayout.messageKey), messages.getMessage(layout.messageKey))
+    change(
+        "import.venus.memory",
+        messages.getMessage(oldLayout.messageKey),
+        messages.getMessage(layout.messageKey),
+    )
 
-        val macros = PathMacroManager.getInstance(project)
-        val handlerSetting = if (values["LoadExceptionHandler"].venusBoolean() == false) {
-            null
+    val macros = PathMacroManager.getInstance(project)
+    val handlerSetting =
+        if (values["LoadExceptionHandler"].venusBoolean() == false) {
+          null
         } else {
-            handler?.let { macros.collapsePath(it.invariantSeparatorsPathString) } ?: assembly.exceptionHandler
+          handler?.let { macros.collapsePath(it.invariantSeparatorsPathString) }
+              ?: assembly.exceptionHandler
         }
-        val disabled = messages.getMessage("import.venus.disabled")
-        change("import.venus.handler", macros.expandPath(assembly.exceptionHandler) ?: disabled, macros.expandPath(handlerSetting) ?: disabled)
+    val disabled = messages.getMessage("import.venus.disabled")
+    change(
+        "import.venus.handler",
+        macros.expandPath(assembly.exceptionHandler) ?: disabled,
+        macros.expandPath(handlerSetting) ?: disabled,
+    )
 
-        return assembly.copy(
-            allowPseudoInstructions = flag("ExtendedAssembler", "build.settings.pseudo", assembly.allowPseudoInstructions),
-            bareMachine = flag("BareMachine", "run.bare.machine", assembly.bareMachine),
-            assembleOnOpen = flag("AssembleOnOpen", "build.settings.open", assembly.assembleOnOpen),
-            delayedBranching = flag("DelayedBranching", "run.delayed.branching", assembly.delayedBranching),
-            warningsAreErrors = flag("WarningsAreErrors", "build.settings.warnings", assembly.warningsAreErrors),
-            startAtMain = flag("StartAtMain", "run.start.at.main", assembly.startAtMain),
-            selfModifyingCode = flag("SelfModifyingCode", "run.self.modifying.code", assembly.selfModifyingCode),
-            memoryLayout = if (layout == oldLayout) assembly.memoryLayout else layout.identifier,
-            exceptionHandler = handlerSetting,
-        )
-    }
+    return assembly.copy(
+        allowPseudoInstructions =
+            flag("ExtendedAssembler", "build.settings.pseudo", assembly.allowPseudoInstructions),
+        bareMachine = flag("BareMachine", "run.bare.machine", assembly.bareMachine),
+        assembleOnOpen = flag("AssembleOnOpen", "build.settings.open", assembly.assembleOnOpen),
+        delayedBranching =
+            flag("DelayedBranching", "run.delayed.branching", assembly.delayedBranching),
+        warningsAreErrors =
+            flag("WarningsAreErrors", "build.settings.warnings", assembly.warningsAreErrors),
+        startAtMain = flag("StartAtMain", "run.start.at.main", assembly.startAtMain),
+        selfModifyingCode =
+            flag("SelfModifyingCode", "run.self.modifying.code", assembly.selfModifyingCode),
+        memoryLayout = if (layout == oldLayout) assembly.memoryLayout else layout.identifier,
+        exceptionHandler = handlerSetting,
+    )
+  }
 }
 
-internal fun venusFlagText(value: Boolean) = messages.getMessage(if (value) "import.venus.enabled" else "import.venus.disabled")
+internal fun venusFlagText(value: Boolean) =
+    messages.getMessage(if (value) "import.venus.enabled" else "import.venus.disabled")
 
 internal fun String?.venusBoolean(): Boolean? = this?.lowercase()?.toBooleanStrictOrNull()
 
-internal fun <T : Any> loadVenusPreferences(project: Project, title: String, read: () -> T): T? = try {
-    runWithModalProgressBlocking(ModalTaskOwner.project(project), title) { withContext(Dispatchers.IO) { read() } }
-} catch (_: BackingStoreException) {
-    Messages.showErrorDialog(project, messages.getMessage("import.venus.read.error"), title)
-    null
-} catch (_: SecurityException) {
-    Messages.showErrorDialog(project, messages.getMessage("import.venus.read.error"), title)
-    null
-}
+internal fun <T : Any> loadVenusPreferences(project: Project, title: String, read: () -> T): T? =
+    try {
+      runWithModalProgressBlocking(ModalTaskOwner.project(project), title) {
+        withContext(Dispatchers.IO) { read() }
+      }
+    } catch (_: BackingStoreException) {
+      Messages.showErrorDialog(project, messages.getMessage("import.venus.read.error"), title)
+      null
+    } catch (_: SecurityException) {
+      Messages.showErrorDialog(project, messages.getMessage("import.venus.read.error"), title)
+      null
+    }
 
 internal fun confirmVenusImport(project: Project, title: String, text: String): Boolean {
-    val html = "<html>${escapeXmlEntities(text).replace("\n", "<br>")}</html>"
-    return MessageDialogBuilder.okCancel(title, html).yesText(messages.getMessage("import.venus.apply")).ask(project)
+  val html = "<html>${escapeXmlEntities(text).replace("\n", "<br>")}</html>"
+  return MessageDialogBuilder.okCancel(title, html)
+      .yesText(messages.getMessage("import.venus.apply"))
+      .ask(project)
 }
 
-private val importKeys = listOf(
-    "ExtendedAssembler", "BareMachine", "AssembleOnOpen", "DelayedBranching", "WarningsAreErrors", "StartAtMain",
-    "SelfModifyingCode", "MemoryConfiguration", "LoadExceptionHandler", "ExceptionHandler", "EditorTabSize",
-    "AssembleAll", "PopupSyscallInput",
-)
+private val importKeys =
+    listOf(
+        "ExtendedAssembler",
+        "BareMachine",
+        "AssembleOnOpen",
+        "DelayedBranching",
+        "WarningsAreErrors",
+        "StartAtMain",
+        "SelfModifyingCode",
+        "MemoryConfiguration",
+        "LoadExceptionHandler",
+        "ExceptionHandler",
+        "EditorTabSize",
+        "AssembleAll",
+        "PopupSyscallInput",
+    )
 
 private fun readVenusPreferences(root: Preferences): VenusPreferences {
-    val values = root.readSavedVenusPreferences(importKeys)
-    val handler = if (values["LoadExceptionHandler"].venusBoolean() == true) {
+  val values = root.readSavedVenusPreferences(importKeys)
+  val handler =
+      if (values["LoadExceptionHandler"].venusBoolean() == true) {
         values["ExceptionHandler"]?.let(::existingHandler)
-    } else null
-    return VenusPreferences(values, handler)
+      } else null
+  return VenusPreferences(values, handler)
 }
 
 internal fun Preferences.readSavedVenusPreferences(keys: List<String>): Map<String, String> =
-    listOf("edu/missouristate/mars", "mars").firstNotNullOfOrNull { path ->
-        if (!nodeExists(path)) return@firstNotNullOfOrNull null
-        val node = node(path)
-        keys.mapNotNull { key -> node.get(key, null)?.let { key to it } }.toMap().takeIf { it.isNotEmpty() }
-    }.orEmpty()
+    listOf("edu/missouristate/mars", "mars")
+        .firstNotNullOfOrNull { path ->
+          if (!nodeExists(path)) return@firstNotNullOfOrNull null
+          val node = node(path)
+          keys
+              .mapNotNull { key -> node.get(key, null)?.let { key to it } }
+              .toMap()
+              .takeIf { it.isNotEmpty() }
+        }
+        .orEmpty()
 
-private fun existingHandler(value: String): Path? = try {
-    Path.of(value).normalize().takeIf { it.isAbsolute && Files.isRegularFile(it) }
-} catch (_: InvalidPathException) {
-    null
-}
+private fun existingHandler(value: String): Path? =
+    try {
+      Path.of(value).normalize().takeIf { it.isAbsolute && Files.isRegularFile(it) }
+    } catch (_: InvalidPathException) {
+      null
+    }

@@ -84,21 +84,52 @@ def exchange(process, command):
 
 def execute(elf, stop_address, triple, inputs):
     command = [
-        f"qemu-system-{triple}", "-machine", "malta", "-cpu", "I6400",
-        "-accel", "tcg", "-display", "none", "-monitor", "none", "-serial", "none",
-        "-nic", "none", "-no-reboot", "-kernel", str(elf), "-S", "-gdb", "stdio",
+        f"qemu-system-{triple}",
+        "-machine",
+        "malta",
+        "-cpu",
+        "I6400",
+        "-accel",
+        "tcg",
+        "-display",
+        "none",
+        "-monitor",
+        "none",
+        "-serial",
+        "none",
+        "-nic",
+        "none",
+        "-no-reboot",
+        "-kernel",
+        str(elf),
+        "-S",
+        "-gdb",
+        "stdio",
     ]
-    with tempfile.TemporaryFile() as errors, subprocess.Popen(
-        command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=errors,
-    ) as process:
+    with (
+        tempfile.TemporaryFile() as errors,
+        subprocess.Popen(
+            command,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=errors,
+        ) as process,
+    ):
         try:
-            for address, data in [(INPUT, inputs), (OUTPUT, bytes([0xA5]) * OUTPUT_SIZE)]:
+            for address, data in [
+                (INPUT, inputs),
+                (OUTPUT, bytes([0xA5]) * OUTPUT_SIZE),
+            ]:
                 reply = exchange(process, f"M{address},{len(data):x}:{data.hex()}")
                 if reply != "OK":
-                    raise RuntimeError(f"QEMU could not initialize 0x{address}: {reply}")
+                    raise RuntimeError(
+                        f"QEMU could not initialize 0x{address}: {reply}"
+                    )
             reply = exchange(process, f"Z0,{stop_address},4")
             if reply != "OK":
-                raise RuntimeError(f"QEMU could not install the stop breakpoint: {reply}")
+                raise RuntimeError(
+                    f"QEMU could not install the stop breakpoint: {reply}"
+                )
             stopped = exchange(process, "c")
             if not stopped.startswith(("T05", "S05")):
                 raise RuntimeError(f"Unexpected QEMU stop: {stopped}")
@@ -106,7 +137,9 @@ def execute(elf, stop_address, triple, inputs):
             pc_bytes = bytes.fromhex(exchange(process, "p25"))
             byte_order = "little" if triple.endswith("el") else "big"
             if int.from_bytes(pc_bytes, byte_order) != int(stop_address, 16):
-                raise RuntimeError(f"QEMU stopped at a different instruction: {pc_bytes.hex()}")
+                raise RuntimeError(
+                    f"QEMU stopped at a different instruction: {pc_bytes.hex()}"
+                )
             output = bytes.fromhex(exchange(process, f"m{OUTPUT},{OUTPUT_SIZE:x}"))
             if len(output) != OUTPUT_SIZE:
                 raise RuntimeError(f"QEMU returned {len(output)} output bytes")
@@ -114,7 +147,9 @@ def execute(elf, stop_address, triple, inputs):
         except (BrokenPipeError, RuntimeError, TimeoutError, ValueError) as failure:
             errors.seek(0)
             detail = errors.read().decode("utf-8", errors="replace").strip()
-            raise RuntimeError(f"{triple} execution failed: {failure}\n{detail}") from failure
+            raise RuntimeError(
+                f"{triple} execution failed: {failure}\n{detail}"
+            ) from failure
         finally:
             if process.poll() is None:
                 process.kill()
@@ -122,24 +157,45 @@ def execute(elf, stop_address, triple, inputs):
 
 def capture():
     inputs = bytes.fromhex((FIXTURES / "input.hex").read_text())
-    qemu = subprocess.check_output(["qemu-system-mips64", "--version"], text=True).splitlines()[0].strip()
-    llvm = next(line.strip() for line in subprocess.check_output(["llvm-mc", "--version"], text=True).splitlines() if "LLVM version" in line)
-    linker = subprocess.check_output(["ld.lld", "--version"], text=True).splitlines()[0].strip()
+    qemu = (
+        subprocess.check_output(["qemu-system-mips64", "--version"], text=True)
+        .splitlines()[0]
+        .strip()
+    )
+    llvm = next(
+        line.strip()
+        for line in subprocess.check_output(
+            ["llvm-mc", "--version"], text=True
+        ).splitlines()
+        if "LLVM version" in line
+    )
+    linker = (
+        subprocess.check_output(["ld.lld", "--version"], text=True)
+        .splitlines()[0]
+        .strip()
+    )
     lines = [f"# {qemu}", f"# {llvm}; {linker}", "# program,byte_order,output_hex"]
     with tempfile.TemporaryDirectory(prefix="mars-qemu-") as directory:
         work = Path(directory)
-        source, obj, elf, layout = (work / name for name in ("probe.s", "probe.o", "probe.elf", "ram.ld"))
+        source, obj, elf, layout = (
+            work / name for name in ("probe.s", "probe.o", "probe.elf", "ram.ld")
+        )
         layout.write_text(LINKER_SCRIPT)
         probes = sorted(FIXTURES.glob("*.asm")) + sorted(FIXTURES.glob("faults/*.asm"))
         for probe in probes:
             # Some Release 6 forms have specified encodings but no LLVM mnemonic.
-            program = re.sub(r"(?m)^.*# llvm-word (0x[\da-f]{8})$", r".word \1", probe.read_text())
-            program = program.replace(".ktext 0x80000180\n", '.section .exception,"ax",@progbits\n')
+            program = re.sub(
+                r"(?m)^.*# llvm-word (0x[\da-f]{8})$", r".word \1", probe.read_text()
+            )
+            program = program.replace(
+                ".ktext 0x80000180\n", '.section .exception,"ax",@progbits\n'
+            )
             name = probe.stem
             if probe.parent.name == "faults":
                 name = "faults/" + name
                 program = (
-                    "dla $6, probe_start\nprobe_start:\n" + program
+                    "dla $6, probe_start\nprobe_start:\n"
+                    + program
                     + "\nmissed_fault:\nb missed_fault\nnop\n"
                     + '.section .exception,"ax",@progbits\n'
                     + (FIXTURES / "exception-handler.s").read_text()
@@ -147,19 +203,45 @@ def capture():
             source.write_text(STARTUP + program + "\n" + STOP)
             for triple, byte_order in [("mips64", "big"), ("mips64el", "little")]:
                 subprocess.run(
-                    ["llvm-mc", f"-triple={triple}", "-mcpu=mips64r6", "-mattr=+msa,+crc",
-                     "-filetype=obj", str(source), "-o", str(obj)], check=True, timeout=10,
+                    [
+                        "llvm-mc",
+                        f"-triple={triple}",
+                        "-mcpu=mips64r6",
+                        "-mattr=+msa,+crc",
+                        "-filetype=obj",
+                        str(source),
+                        "-o",
+                        str(obj),
+                    ],
+                    check=True,
+                    timeout=10,
                 )
-                subprocess.run(["ld.lld", "-T", str(layout), str(obj), "-o", str(elf)], check=True, timeout=10)
-                symbols = subprocess.check_output(["llvm-nm", str(elf)], text=True, timeout=10)
-                stop_address = next(line.split()[0] for line in symbols.splitlines() if line.endswith(" T done"))
-                lines.append(f"{name},{byte_order},{execute(elf, stop_address, triple, inputs)}")
+                subprocess.run(
+                    ["ld.lld", "-T", str(layout), str(obj), "-o", str(elf)],
+                    check=True,
+                    timeout=10,
+                )
+                symbols = subprocess.check_output(
+                    ["llvm-nm", str(elf)], text=True, timeout=10
+                )
+                stop_address = next(
+                    line.split()[0]
+                    for line in symbols.splitlines()
+                    if line.endswith(" T done")
+                )
+                lines.append(
+                    f"{name},{byte_order},{execute(elf, stop_address, triple, inputs)}"
+                )
     return "\n".join(lines) + "\n"
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--write", action="store_true", help="Replace the checked-in results after all probes succeed")
+    parser.add_argument(
+        "--write",
+        action="store_true",
+        help="Replace the checked-in results after all probes succeed",
+    )
     args = parser.parse_args()
     results = capture()
     if args.write:

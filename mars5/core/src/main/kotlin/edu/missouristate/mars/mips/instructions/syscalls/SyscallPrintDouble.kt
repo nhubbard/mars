@@ -32,7 +32,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 open class SyscallPrintDouble : AbstractSyscall(3, "PrintDouble") {
-    override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
-        context.environment().printDouble(context.coprocessor1.getDoubleFromRegisterPair(12))
-    }
+  override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
+    context.environment().printDouble(context.coprocessor1.getDoubleFromRegisterPair(12))
+  }
 }

@@ -32,8 +32,8 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 open class SyscallRandInt : AbstractSyscall(41, "RandInt") {
-    override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
-        val stream = context.randomStreams().get(context.registerFile.getValue(4))
-        context.updateRegister(4, stream.nextInt())
-    }
+  override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
+    val stream = context.randomStreams().get(context.registerFile.getValue(4))
+    context.updateRegister(4, stream.nextInt())
+  }
 }

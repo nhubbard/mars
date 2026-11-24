@@ -20,71 +20,100 @@ import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
 import java.io.DataInput
 import java.io.DataOutput
 
-/** A syntactic candidate. The macro offset describes physical PSI nesting before source expansion. */
+/**
+ * A syntactic candidate. The macro offset describes physical PSI nesting before source expansion.
+ */
 data class MipsDeclarationSite(val kind: SymbolKind, val offset: Int, val macroOffset: Int)
 
-/** Index only this file's syntax. Never resolve names or query another index while producing facts. */
+/**
+ * Index only this file's syntax. Never resolve names or query another index while producing facts.
+ */
 class MipsDeclarationIndex : FileBasedIndexExtension<String, List<MipsDeclarationSite>>() {
-    override fun getName() = declarationIndexId
-    override fun getVersion(): Int = 37
-    override fun dependsOnFileContent(): Boolean = true
-    override fun getInputFilter() = DefaultFileTypeSpecificInputFilter(MipsFileType)
-    override fun getKeyDescriptor(): EnumeratorStringDescriptor = EnumeratorStringDescriptor.INSTANCE
-    override fun getValueExternalizer(): DataExternalizer<List<MipsDeclarationSite>> = MipsDeclarationExternalizer
+  override fun getName() = declarationIndexId
 
-    override fun getIndexer() = DataIndexer<String, List<MipsDeclarationSite>, FileContent> { content ->
+  override fun getVersion(): Int = 37
+
+  override fun dependsOnFileContent(): Boolean = true
+
+  override fun getInputFilter() = DefaultFileTypeSpecificInputFilter(MipsFileType)
+
+  override fun getKeyDescriptor(): EnumeratorStringDescriptor = EnumeratorStringDescriptor.INSTANCE
+
+  override fun getValueExternalizer(): DataExternalizer<List<MipsDeclarationSite>> =
+      MipsDeclarationExternalizer
+
+  override fun getIndexer() =
+      DataIndexer<String, List<MipsDeclarationSite>, FileContent> { content ->
         val declarations = LinkedHashMap<String, MutableList<MipsDeclarationSite>>()
-        content.psiFile.accept(object : PsiRecursiveElementWalkingVisitor() {
-            override fun visitElement(element: PsiElement) {
+        content.psiFile.accept(
+            object : PsiRecursiveElementWalkingVisitor() {
+              override fun visitElement(element: PsiElement) {
                 ProgressManager.checkCanceled()
                 if (element.seedsExpansion()) declarations.getOrPut(EXPANSION_SEED, ::ArrayList)
                 if (element is MipsDeclaration) {
-                    val name = element.name
-                    // A percent token in .extern can be literal storage outside a macro.
-                    if (name == null && element.kind == SymbolKind.EXTERNAL) declarations.getOrPut(EXPANSION_SEED, ::ArrayList)
-                    if (name != null) {
-                        val scopeStart = if (element.kind == SymbolKind.MACRO) element.parent else element
-                        val macro = PsiTreeUtil.findFirstParent(scopeStart, true) {
-                            PsiUtilCore.getElementType(it) == MipsTypes.psi("MACRO_DEFINITION")
+                  val name = element.name
+                  // A percent token in .extern can be literal storage outside a macro.
+                  if (name == null && element.kind == SymbolKind.EXTERNAL)
+                      declarations.getOrPut(EXPANSION_SEED, ::ArrayList)
+                  if (name != null) {
+                    val scopeStart =
+                        if (element.kind == SymbolKind.MACRO) element.parent else element
+                    val macro =
+                        PsiTreeUtil.findFirstParent(scopeStart, true) {
+                          PsiUtilCore.getElementType(it) == MipsTypes.psi("MACRO_DEFINITION")
                         }
-                        declarations.getOrPut(name, ::ArrayList).add(
-                            MipsDeclarationSite(element.kind, element.textOffset, macro?.textOffset ?: -1),
+                    declarations
+                        .getOrPut(name, ::ArrayList)
+                        .add(
+                            MipsDeclarationSite(
+                                element.kind,
+                                element.textOffset,
+                                macro?.textOffset ?: -1,
+                            ),
                         )
-                    }
+                  }
                 }
                 super.visitElement(element)
-            }
-        })
+              }
+            },
+        )
         declarations
-    }
+      }
 }
 
 internal object MipsDeclarationExternalizer : DataExternalizer<List<MipsDeclarationSite>> {
-    override fun save(out: DataOutput, value: List<MipsDeclarationSite>) {
-        out.writeInt(value.size)
-        for ((kind, offset, macroOffset) in value) {
-            out.writeByte(kind.ordinal)
-            out.writeInt(offset)
-            out.writeInt(macroOffset)
-        }
+  override fun save(out: DataOutput, value: List<MipsDeclarationSite>) {
+    out.writeInt(value.size)
+    for ((kind, offset, macroOffset) in value) {
+      out.writeByte(kind.ordinal)
+      out.writeInt(offset)
+      out.writeInt(macroOffset)
     }
+  }
 
-    override fun read(input: DataInput): List<MipsDeclarationSite> = List(input.readInt()) {
-        MipsDeclarationSite(SymbolKind.entries[input.readUnsignedByte()], input.readInt(), input.readInt())
-    }
+  override fun read(input: DataInput): List<MipsDeclarationSite> =
+      List(input.readInt()) {
+        MipsDeclarationSite(
+            SymbolKind.entries[input.readUnsignedByte()],
+            input.readInt(),
+            input.readInt(),
+        )
+      }
 }
 
-internal val declarationIndexId: ID<String, List<MipsDeclarationSite>> = ID.create("mars.declarations")
+internal val declarationIndexId: ID<String, List<MipsDeclarationSite>> =
+    ID.create("mars.declarations")
 internal const val EXPANSION_SEED = "#mars.expansion"
 private val equivalence = MipsTypes.psi("EQV")
 private val includeLine = MipsTypes.psi("INCLUDE_LINE")
 private val unclosedString = MipsTypes.psi("UNCLOSED_STRING")
 
-private fun PsiElement.seedsExpansion(): Boolean = when (node.elementType) {
-    equivalence -> node.treeParent.elementType != includeLine
-    includeLine -> {
+private fun PsiElement.seedsExpansion(): Boolean =
+    when (node.elementType) {
+      equivalence -> node.treeParent.elementType != includeLine
+      includeLine -> {
         // Recovery also uses INCLUDE_LINE, but an unfinished path supplies no source.
         node.findChildByType(unclosedString) == null || Tokenizer().findInclude(node.text) != null
+      }
+      else -> false
     }
-    else -> false
-}

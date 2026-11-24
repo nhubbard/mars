@@ -30,84 +30,92 @@ import javax.inject.Singleton
 
 /** Supplies the hardware, settings, and services for one session. */
 @Module
-class CoreModule @JvmOverloads constructor(
+class CoreModule
+@JvmOverloads
+constructor(
     private val settings: Settings = Settings(),
     private val maximumBacksteps: Int = ApplicationInfo.maximumBacksteps,
     private val target: MarsTarget = MarsTarget.DEFAULT,
 ) {
-    init {
-        require(maximumBacksteps >= 1) { "Backstep capacity must be positive" }
-    }
+  init {
+    require(maximumBacksteps >= 1) { "Backstep capacity must be positive" }
+  }
+
+  @Provides @Singleton fun provideSettings(): Settings = settings
+
+  @Provides
+  @Singleton
+  fun provideBackStepper(
+      memory: MemoryState,
+      registers: IntegerRegisterFile,
+      coprocessor0: Coprocessor0State,
+      coprocessor1: Coprocessor1State,
+      branch: DelayedBranchState,
+  ): BackStepper =
+      BackStepper(memory, registers, coprocessor0, coprocessor1, branch, maximumBacksteps)
+
+  @Provides
+  @Singleton
+  fun provideInstructionSet(): InstructionSet = InstructionDefaults.forTarget(target)
+
+  companion object {
+    @Provides
+    @Singleton
+    fun provideSimulationSettings(settings: Settings): SimulationSettings =
+        settings.simulationSettings
 
     @Provides
     @Singleton
-    fun provideSettings(): Settings = settings
+    fun provideMarsSettings(settings: SimulationSettings): MarsSettings = settings
 
     @Provides
     @Singleton
-    fun provideBackStepper(
-        memory: MemoryState, registers: IntegerRegisterFile, coprocessor0: Coprocessor0State,
-        coprocessor1: Coprocessor1State, branch: DelayedBranchState,
-    ): BackStepper = BackStepper(memory, registers, coprocessor0, coprocessor1, branch, maximumBacksteps)
+    fun provideRegisterFile(configuration: MemoryConfiguration): IntegerRegisterFile =
+        IntegerRegisterFile(
+            configuration.globalPointer,
+            configuration.stackPointer,
+            configuration.textBaseAddress,
+        )
 
     @Provides
     @Singleton
-    fun provideInstructionSet(): InstructionSet = InstructionDefaults.forTarget(target)
+    fun provideMarsRegisterFile(registers: IntegerRegisterFile): MarsRegisterFile = registers
 
-    companion object {
-        @Provides
-        @Singleton
-        fun provideSimulationSettings(settings: Settings): SimulationSettings = settings.simulationSettings
+    @Provides @Singleton fun provideCoprocessor0(): Coprocessor0State = Coprocessor0State()
 
-        @Provides
-        @Singleton
-        fun provideMarsSettings(settings: SimulationSettings): MarsSettings = settings
+    @Provides @Singleton fun provideCoprocessor1(): Coprocessor1State = Coprocessor1State()
 
-        @Provides
-        @Singleton
-        fun provideRegisterFile(configuration: MemoryConfiguration): IntegerRegisterFile =
-            IntegerRegisterFile(configuration.globalPointer, configuration.stackPointer, configuration.textBaseAddress)
+    @Provides @Singleton fun provideDelayedBranch(): DelayedBranchState = DelayedBranchState()
 
-        @Provides
-        @Singleton
-        fun provideMarsRegisterFile(registers: IntegerRegisterFile): MarsRegisterFile = registers
+    @Provides
+    @Singleton
+    fun provideMemoryConfiguration(settings: SimulationSettings): MemoryConfiguration =
+        MemoryConfigurations.createConfiguration(settings.memoryConfiguration)
 
-        @Provides
-        @Singleton
-        fun provideCoprocessor0(): Coprocessor0State = Coprocessor0State()
+    @Provides
+    @Singleton
+    fun provideMemory(
+        configuration: MemoryConfiguration,
+        settings: SimulationSettings,
+        instructions: InstructionSet,
+    ): MemoryState =
+        MemoryState(configuration, settings) { binary, address ->
+          ProgramStatement(binary, address, instructions, settings)
+        }
 
-        @Provides
-        @Singleton
-        fun provideCoprocessor1(): Coprocessor1State = Coprocessor1State()
+    @Provides
+    @Singleton
+    fun provideMarsMemory(memory: MemoryState, backStepper: BackStepper): MarsMemory =
+        MarsMemoryAdapter(memory, backStepper)
 
-        @Provides
-        @Singleton
-        fun provideDelayedBranch(): DelayedBranchState = DelayedBranchState()
+    @Provides
+    @Singleton
+    fun provideAssembler(session: MarsContext): MarsAssembler = SessionAssembler(session)
 
-        @Provides
-        @Singleton
-        fun provideMemoryConfiguration(settings: SimulationSettings): MemoryConfiguration =
-            MemoryConfigurations.createConfiguration(settings.memoryConfiguration)
+    @Provides
+    @Singleton
+    fun provideSimulator(session: MarsContext): MarsSimulator = session.simulator()
 
-        @Provides
-        @Singleton
-        fun provideMemory(configuration: MemoryConfiguration, settings: SimulationSettings, instructions: InstructionSet): MemoryState =
-            MemoryState(configuration, settings) { binary, address -> ProgramStatement(binary, address, instructions, settings) }
-
-        @Provides
-        @Singleton
-        fun provideMarsMemory(memory: MemoryState, backStepper: BackStepper): MarsMemory = MarsMemoryAdapter(memory, backStepper)
-
-        @Provides
-        @Singleton
-        fun provideAssembler(session: MarsContext): MarsAssembler = SessionAssembler(session)
-
-        @Provides
-        @Singleton
-        fun provideSimulator(session: MarsContext): MarsSimulator = session.simulator()
-
-        @Provides
-        @Singleton
-        fun provideSymbolTable(): SymbolTable = SymbolTable(null)
-    }
+    @Provides @Singleton fun provideSymbolTable(): SymbolTable = SymbolTable(null)
+  }
 }

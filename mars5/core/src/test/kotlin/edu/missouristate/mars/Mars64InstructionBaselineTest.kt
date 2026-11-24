@@ -14,84 +14,104 @@ import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.MethodSource
 
 class Mars64InstructionBaselineTest {
-    @ParameterizedTest(name = "{0}")
-    @MethodSource("encodingCases")
-    fun `wide native forms agree with LLVM and round trip their operands`(
-        source: String, word: Int, @TempDir directory: Path,
-    ) {
-        val file = Files.writeString(directory.resolve("instruction.s"), ".text\n$source\n")
-        TestSessions.create().use { session ->
-            assertNull(session.instructionSet.findByBinaryCode(word))
-            assertThrows(ProcessingException::class.java) {
-                session.assemble(listOf(file), null, extended = false, warnings = false)
-            }
-            session.selectTarget(MarsTarget.MARS64)
-            val statement = session.assemble(listOf(file), null, extended = false, warnings = false).machineList!!.single()
-            assertEquals(word, statement.binaryStatement)
-            val decoded = ProgramStatement(word, statement.address, session.instructionSet)
-            val instruction = checkNotNull(decoded.instruction)
-            assertEquals(statement.instruction!!.exampleFormat, instruction.exampleFormat)
-            val expectedOperands = statement.operands.copyOf()
-            // The current decoder exposes the raw 16-bit field for these signed immediates.
-            val immediate = when (instruction.name) {
-                "daddiu" -> 2
-                "lwu", "ld", "sd" -> 1
-                else -> null
-            }
-            if (immediate != null) expectedOperands[immediate] = expectedOperands[immediate] and 0xffff
-            assertArrayEquals(expectedOperands, decoded.operands)
-        }
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("encodingCases")
+  fun `wide native forms agree with LLVM and round trip their operands`(
+      source: String,
+      word: Int,
+      @TempDir directory: Path,
+  ) {
+    val file = Files.writeString(directory.resolve("instruction.s"), ".text\n$source\n")
+    TestSessions.create().use { session ->
+      assertNull(session.instructionSet.findByBinaryCode(word))
+      assertThrows(ProcessingException::class.java) {
+        session.assemble(listOf(file), null, extended = false, warnings = false)
+      }
+      session.selectTarget(MarsTarget.MARS64)
+      val statement =
+          session
+              .assemble(listOf(file), null, extended = false, warnings = false)
+              .machineList!!
+              .single()
+      assertEquals(word, statement.binaryStatement)
+      val decoded = ProgramStatement(word, statement.address, session.instructionSet)
+      val instruction = checkNotNull(decoded.instruction)
+      assertEquals(statement.instruction!!.exampleFormat, instruction.exampleFormat)
+      val expectedOperands = statement.operands.copyOf()
+      // The current decoder exposes the raw 16-bit field for these signed immediates.
+      val immediate =
+          when (instruction.name) {
+            "daddiu" -> 2
+            "lwu",
+            "ld",
+            "sd" -> 1
+            else -> null
+          }
+      if (immediate != null) expectedOperands[immediate] = expectedOperands[immediate] and 0xffff
+      assertArrayEquals(expectedOperands, decoded.operands)
     }
+  }
 
-    @Test
-    fun `encoding fixture still covers 30 distinct original MARS64 native forms`() {
-        TestSessions.create().use { session ->
-            session.selectTarget(MarsTarget.MARS64)
-            val coveredForms = encodingVectors.map { (_, word) ->
-                checkNotNull(session.instructionSet.findByBinaryCode(word)).exampleFormat
-            }
-            assertEquals(30, coveredForms.size)
-            assertEquals(30, coveredForms.toSet().size)
-        }
+  @Test
+  fun `encoding fixture still covers 30 distinct original MARS64 native forms`() {
+    TestSessions.create().use { session ->
+      session.selectTarget(MarsTarget.MARS64)
+      val coveredForms = encodingVectors.map { (_, word) ->
+        checkNotNull(session.instructionSet.findByBinaryCode(word)).exampleFormat
+      }
+      assertEquals(30, coveredForms.size)
+      assertEquals(30, coveredForms.toSet().size)
     }
+  }
 
-    @ParameterizedTest(name = "{0}")
-    @MethodSource("arithmeticCases")
-    fun `wide operations write full width results and backstep restores all bits`(
-        source: String, expected: Long, @TempDir directory: Path,
-    ) {
-        val file = Files.writeString(directory.resolve("instruction.s"), ".text\n$source\n")
-        TestSessions.create().use { session ->
-            session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(file), null, extended = false, warnings = false)
-            val previous = 0x1234_5678_9abc_def0L
-            session.editIntegerRegister(9, previous)
-            session.editIntegerRegister(10, -0x0001_0000_0000_0001L)
-            // A variable shift uses the low six bits of 65.
-            session.editIntegerRegister(11, 65)
-            program.simulate(1)
-            assertEquals(expected, session.registerFile.getLongValueNoNotify(9))
-            session.backStepper.backStep()
-            assertEquals(previous, session.registerFile.getLongValueNoNotify(9))
-        }
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("arithmeticCases")
+  fun `wide operations write full width results and backstep restores all bits`(
+      source: String,
+      expected: Long,
+      @TempDir directory: Path,
+  ) {
+    val file = Files.writeString(directory.resolve("instruction.s"), ".text\n$source\n")
+    TestSessions.create().use { session ->
+      session.selectTarget(MarsTarget.MARS64)
+      val program = session.assemble(listOf(file), null, extended = false, warnings = false)
+      val previous = 0x1234_5678_9abc_def0L
+      session.editIntegerRegister(9, previous)
+      session.editIntegerRegister(10, -0x0001_0000_0000_0001L)
+      // A variable shift uses the low six bits of 65.
+      session.editIntegerRegister(11, 65)
+      program.simulate(1)
+      assertEquals(expected, session.registerFile.getLongValueNoNotify(9))
+      session.backStepper.backStep()
+      assertEquals(previous, session.registerFile.getLongValueNoNotify(9))
     }
+  }
 
-    companion object {
-        private val encodingVectors by lazy {
-            checkNotNull(Mars64InstructionBaselineTest::class.java.getResourceAsStream("/mars64-basic-encoding-vectors.tsv"))
-                .bufferedReader().useLines { lines ->
-                    lines.filterNot { it.isBlank() || it.startsWith('#') }.map {
-                        val (source, hex) = it.split('\t')
-                        source to hex.toUInt(16).toInt()
-                    }.toList()
+  companion object {
+    private val encodingVectors by lazy {
+      checkNotNull(
+              Mars64InstructionBaselineTest::class
+                  .java
+                  .getResourceAsStream("/mars64-basic-encoding-vectors.tsv"),
+          )
+          .bufferedReader()
+          .useLines { lines ->
+            lines
+                .filterNot { it.isBlank() || it.startsWith('#') }
+                .map {
+                  val (source, hex) = it.split('\t')
+                  source to hex.toUInt(16).toInt()
                 }
-        }
+                .toList()
+          }
+    }
 
-        @JvmStatic
-        fun encodingCases() = encodingVectors.map { (source, word) -> Arguments.of(source, word) }
+    @JvmStatic
+    fun encodingCases() = encodingVectors.map { (source, word) -> Arguments.of(source, word) }
 
-        @JvmStatic
-        fun arithmeticCases() = listOf(
+    @JvmStatic
+    fun arithmeticCases() =
+        listOf(
             Arguments.of("dadd $9,$10,$11", -281_474_976_710_592L),
             Arguments.of("daddu $9,$10,$11", -281_474_976_710_592L),
             Arguments.of("dsub $9,$10,$11", -281_474_976_710_722L),
@@ -120,5 +140,5 @@ class Mars64InstructionBaselineTest {
             Arguments.of("dclz $9,$10", 0L),
             Arguments.of("dclo $9,$10", 15L),
         )
-    }
+  }
 }

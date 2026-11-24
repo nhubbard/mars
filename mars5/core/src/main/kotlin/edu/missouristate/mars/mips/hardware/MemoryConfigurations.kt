@@ -32,8 +32,9 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /** The built-in memory layouts and their reset addresses. */
 open class MemoryConfigurations {
-    companion object {
-        private val configurationItemNames = arrayOf(
+  companion object {
+    private val configurationItemNames =
+        arrayOf(
             ".text base address",
             "data segment base address",
             ".extern base address",
@@ -57,7 +58,8 @@ open class MemoryConfigurations {
             "memory map limit address",
         )
 
-        private val defaultConfigurationItemValues = intArrayOf(
+    private val defaultConfigurationItemValues =
+        intArrayOf(
             0x00400000, // .text Base Address
             0x10000000, // Data Segment base address
             0x10000000, // .extern Base Address
@@ -81,7 +83,8 @@ open class MemoryConfigurations {
             0xffffffff.toInt(), // memory map limit address
         )
 
-        private val dataBasedCompactConfigurationItemValues = intArrayOf(
+    private val dataBasedCompactConfigurationItemValues =
+        intArrayOf(
             0x00003000, // .text Base Address
             0x00000000, // Data Segment base address
             0x00001000, // .extern Base Address
@@ -105,7 +108,8 @@ open class MemoryConfigurations {
             0x00007fff, // memory map limit address
         )
 
-        private val textBasedCompactConfigurationItemValues = intArrayOf(
+    private val textBasedCompactConfigurationItemValues =
+        intArrayOf(
             0x00000000, // .text Base Address
             0x00001000, // Data Segment base address
             0x00001000, // .extern Base Address
@@ -129,36 +133,50 @@ open class MemoryConfigurations {
             0x00007fff, // memory map limit address
         )
 
-        private class Layout(val id: String, private val name: String, private val addresses: IntArray) {
-            fun snapshot() = MemoryConfiguration(id, name, configurationItemNames, addresses)
-        }
-
-        private val layouts = listOf(
-            Layout("Default", "Default", defaultConfigurationItemValues),
-            Layout("CompactDataAtZero", "Compact, Data at Address 0", dataBasedCompactConfigurationItemValues),
-            Layout("CompactTextAtZero", "Compact, Text at Address 0", textBasedCompactConfigurationItemValues),
-        )
-        private val configurations by lazy { Collections.unmodifiableList(layouts.map(Layout::snapshot)) }
-
-        /** Unknown identifiers select the standard layout. Each call returns an independent snapshot. */
-        @JvmStatic
-        fun createConfiguration(identifier: String?): MemoryConfiguration =
-            (layouts.firstOrNull { it.id == identifier } ?: layouts.first()).snapshot()
-
-        @JvmStatic
-        fun getConfigurationByName(name: String): MemoryConfiguration? =
-            configurations.firstOrNull { it.configurationIdentifier() == name }
-
-        @JvmStatic
-        fun getDefaultConfiguration(): MemoryConfiguration = configurations.first()
-
-        @JvmStatic
-        fun getDefaultTextBaseAddress(): Int = getDefaultConfiguration().textBaseAddress
-
-        @JvmStatic
-        fun getDefaultGlobalPointer(): Int = getDefaultConfiguration().globalPointer
-
-        @JvmStatic
-        fun getDefaultStackPointer(): Int = getDefaultConfiguration().stackPointer
+    private class Layout(
+        val id: String,
+        private val name: String,
+        private val addresses: IntArray,
+    ) {
+      fun snapshot() = MemoryConfiguration(id, name, configurationItemNames, addresses)
     }
+
+    private val layouts =
+        listOf(
+            Layout("Default", "Default", defaultConfigurationItemValues),
+            Layout(
+                "CompactDataAtZero",
+                "Compact, Data at Address 0",
+                dataBasedCompactConfigurationItemValues,
+            ),
+            Layout(
+                "CompactTextAtZero",
+                "Compact, Text at Address 0",
+                textBasedCompactConfigurationItemValues,
+            ),
+        )
+    private val configurations by lazy {
+      Collections.unmodifiableList(layouts.map(Layout::snapshot))
+    }
+
+    /**
+     * Unknown identifiers select the standard layout. Each call returns an independent snapshot.
+     */
+    @JvmStatic
+    fun createConfiguration(identifier: String?): MemoryConfiguration =
+        (layouts.firstOrNull { it.id == identifier } ?: layouts.first()).snapshot()
+
+    @JvmStatic
+    fun getConfigurationByName(name: String): MemoryConfiguration? = configurations.firstOrNull {
+      it.configurationIdentifier() == name
+    }
+
+    @JvmStatic fun getDefaultConfiguration(): MemoryConfiguration = configurations.first()
+
+    @JvmStatic fun getDefaultTextBaseAddress(): Int = getDefaultConfiguration().textBaseAddress
+
+    @JvmStatic fun getDefaultGlobalPointer(): Int = getDefaultConfiguration().globalPointer
+
+    @JvmStatic fun getDefaultStackPointer(): Int = getDefaultConfiguration().stackPointer
+  }
 }

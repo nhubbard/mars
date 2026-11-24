@@ -33,62 +33,72 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /** Assembler and simulator diagnostics with independent error and warning counts. */
 open class ErrorList @JvmOverloads constructor(private val sessionSettings: MarsSettings? = null) {
-    private val messages = ArrayList<ErrorMessage>()
-    private var errorCount = 0
-    private var warningCount = 0
+  private val messages = ArrayList<ErrorMessage>()
+  private var errorCount = 0
+  private var warningCount = 0
 
-    open val errorMessages: ArrayList<ErrorMessage> get() = messages
+  open val errorMessages: ArrayList<ErrorMessage>
+    get() = messages
 
-    open fun errorsOccurred(): Boolean = errorCount != 0
+  open fun errorsOccurred(): Boolean = errorCount != 0
 
-    open fun warningsOccurred(): Boolean = warningCount != 0
+  open fun warningsOccurred(): Boolean = warningCount != 0
 
-    open fun add(message: ErrorMessage) {
-        add(message, messages.size)
+  open fun add(message: ErrorMessage) {
+    add(message, messages.size)
+  }
+
+  open fun add(message: ErrorMessage, index: Int) {
+    if (errorCount > errorLimit) return
+    if (errorCount == errorLimit) {
+      messages.add(
+          ErrorMessage(
+              null,
+              message.line,
+              message.position,
+              "Error Limit of $errorLimit exceeded.",
+          ),
+      )
+      errorCount++
+      return
     }
+    messages.add(index, message)
+    if (message.isWarning) warningCount++ else errorCount++
+  }
 
-    open fun add(message: ErrorMessage, index: Int) {
-        if (errorCount > errorLimit) return
-        if (errorCount == errorLimit) {
-            messages.add(ErrorMessage(null, message.line, message.position, "Error Limit of $errorLimit exceeded."))
-            errorCount++
-            return
-        }
-        messages.add(index, message)
-        if (message.isWarning) warningCount++ else errorCount++
+  open fun errorCount(): Int = errorCount
+
+  open fun errorLimitExceeded(): Boolean = errorCount > errorLimit
+
+  open val errorLimit: Int
+    get() = sessionSettings?.assemblerErrorLimit ?: ApplicationInfo.maximumErrorMessages
+
+  open fun generateErrorReport(): String = generateReport(isWarning = false)
+
+  open fun generateWarningReport(): String = generateReport(isWarning = true)
+
+  open fun generateErrorAndWarningReport(): String = generateWarningReport() + generateErrorReport()
+
+  private fun generateReport(isWarning: Boolean): String = buildString {
+    for (message in messages) {
+      if (message.isWarning != isWarning) continue
+      append(if (isWarning) WARNING_MESSAGE_PREFIX else ERROR_MESSAGE_PREFIX)
+      append(FILENAME_PREFIX)
+      val filename = message.filename!!
+      if (filename.isNotEmpty()) append(File(filename).path)
+      if (message.line > 0)
+          append(LINE_PREFIX).append(message.macroExpansionHistory).append(message.line)
+      if (message.position > 0) append(POSITION_PREFIX).append(message.position)
+      append(MESSAGE_SEPARATOR).append(message.message).append('\n')
     }
+  }
 
-    open fun errorCount(): Int = errorCount
-
-    open fun errorLimitExceeded(): Boolean = errorCount > errorLimit
-
-    open val errorLimit: Int get() = sessionSettings?.assemblerErrorLimit ?: ApplicationInfo.maximumErrorMessages
-
-    open fun generateErrorReport(): String = generateReport(isWarning = false)
-
-    open fun generateWarningReport(): String = generateReport(isWarning = true)
-
-    open fun generateErrorAndWarningReport(): String = generateWarningReport() + generateErrorReport()
-
-    private fun generateReport(isWarning: Boolean): String = buildString {
-        for (message in messages) {
-            if (message.isWarning != isWarning) continue
-            append(if (isWarning) WARNING_MESSAGE_PREFIX else ERROR_MESSAGE_PREFIX)
-            append(FILENAME_PREFIX)
-            val filename = message.filename!!
-            if (filename.isNotEmpty()) append(File(filename).path)
-            if (message.line > 0) append(LINE_PREFIX).append(message.macroExpansionHistory).append(message.line)
-            if (message.position > 0) append(POSITION_PREFIX).append(message.position)
-            append(MESSAGE_SEPARATOR).append(message.message).append('\n')
-        }
-    }
-
-    companion object {
-        const val ERROR_MESSAGE_PREFIX = "Error"
-        const val WARNING_MESSAGE_PREFIX = "Warning"
-        const val FILENAME_PREFIX = " in "
-        const val LINE_PREFIX = " line "
-        const val POSITION_PREFIX = " column "
-        const val MESSAGE_SEPARATOR = ": "
-    }
+  companion object {
+    const val ERROR_MESSAGE_PREFIX = "Error"
+    const val WARNING_MESSAGE_PREFIX = "Warning"
+    const val FILENAME_PREFIX = " in "
+    const val LINE_PREFIX = " line "
+    const val POSITION_PREFIX = " column "
+    const val MESSAGE_SEPARATOR = ": "
+  }
 }

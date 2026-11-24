@@ -12,76 +12,94 @@ import edu.missouristate.mars.plugin.build.MemoryExportOptions
 import edu.missouristate.mars.plugin.build.MemoryExportRegion
 import edu.missouristate.mars.plugin.build.MemoryExportSelection
 import edu.missouristate.mars.plugin.build.chooseMemoryExport
+import edu.missouristate.mars.plugin.build.formatExportAddress
 import edu.missouristate.mars.plugin.build.memoryExportMessages
 import edu.missouristate.mars.plugin.projectFilePath
-import edu.missouristate.mars.plugin.build.formatExportAddress
 import java.nio.file.Path
 import javax.swing.ListSelectionModel
 
 internal class RunMemoryDumpState : BaseState() {
-    var outputPath by string()
-    var formatName by string()
-    var region by enum(MemoryExportRegion.TEXT)
-    var firstAddress by property(0L)
-    var lastAddress by property(0L)
+  var outputPath by string()
+  var formatName by string()
+  var region by enum(MemoryExportRegion.TEXT)
+  var firstAddress by property(0L)
+  var lastAddress by property(0L)
 
-    fun resolve(project: Project): MemoryExportSelection? {
-        val output = projectFilePath(project, outputPath) ?: return null
-        val format = DumpFormatLoader.findByCommandDescriptor(formatName) ?: return null
-        val range = if (region == MemoryExportRegion.RANGE) {
-            if (firstAddress !in 0..lastAddress ||
-                !MemoryState.wordAligned(firstAddress.toInt()) || !MemoryState.wordAligned(lastAddress.toInt())) return null
-            firstAddress..lastAddress
+  fun resolve(project: Project): MemoryExportSelection? {
+    val output = projectFilePath(project, outputPath) ?: return null
+    val format = DumpFormatLoader.findByCommandDescriptor(formatName) ?: return null
+    val range =
+        if (region == MemoryExportRegion.RANGE) {
+          if (
+              firstAddress !in 0..lastAddress ||
+                  !MemoryState.wordAligned(firstAddress.toInt()) ||
+                  !MemoryState.wordAligned(lastAddress.toInt())
+          )
+              return null
+          firstAddress..lastAddress
         } else LongRange.EMPTY
-        return MemoryExportSelection(MemoryExportOptions(format, region, range), output)
-    }
+    return MemoryExportSelection(MemoryExportOptions(format, region, range), output)
+  }
 }
 
 internal class RunMemoryDumpEditor(private val project: Project, private val entry: () -> Path?) {
-    private val rows = CollectionListModel<RunMemoryDumpState>()
-    private val list = JBList(rows).apply {
+  private val rows = CollectionListModel<RunMemoryDumpState>()
+  private val list =
+      JBList(rows).apply {
         selectionMode = ListSelectionModel.SINGLE_SELECTION
         visibleRowCount = 3
         emptyText.text = runMessages.getMessage("run.export.empty")
-        cellRenderer = textListCellRenderer("") { row ->
-            val region = if (row.region == MemoryExportRegion.RANGE) {
-                runMessages.getMessage(
-                    "run.export.item.range", formatExportAddress(row.firstAddress),
-                    formatExportAddress(row.lastAddress),
-                )
-            } else {
-                memoryExportMessages.getMessage(row.region.label)
+        cellRenderer =
+            textListCellRenderer("") { row ->
+              val region =
+                  if (row.region == MemoryExportRegion.RANGE) {
+                    runMessages.getMessage(
+                        "run.export.item.range",
+                        formatExportAddress(row.firstAddress),
+                        formatExportAddress(row.lastAddress),
+                    )
+                  } else {
+                    memoryExportMessages.getMessage(row.region.label)
+                  }
+              runMessages.getMessage(
+                  "run.export.item",
+                  row.formatName.orEmpty(),
+                  region,
+                  row.outputPath.orEmpty(),
+              )
             }
-            runMessages.getMessage("run.export.item", row.formatName.orEmpty(), region, row.outputPath.orEmpty())
-        }
-    }
+      }
 
-    val component = ToolbarDecorator.createDecorator(list, rows)
-        .setAddAction {
+  val component =
+      ToolbarDecorator.createDecorator(list, rows)
+          .setAddAction {
             val selected = chooseMemoryExport(project, entry()) ?: return@setAddAction
             rows.add(stateOf(selected))
             list.selectedIndex = rows.size - 1
-        }
-        .setEditAction {
+          }
+          .setEditAction {
             val index = list.selectedIndex
             if (index < 0) return@setEditAction
-            val selected = chooseMemoryExport(project, entry(), rows.getElementAt(index).resolve(project)) ?: return@setEditAction
+            val selected =
+                chooseMemoryExport(project, entry(), rows.getElementAt(index).resolve(project))
+                    ?: return@setEditAction
             rows.setElementAt(stateOf(selected), index)
-        }
-        .disableUpDownActions()
-        .createPanel()
+          }
+          .disableUpDownActions()
+          .createPanel()
 
-    fun reset(settings: List<RunMemoryDumpState>) = rows.replaceAll(settings)
+  fun reset(settings: List<RunMemoryDumpState>) = rows.replaceAll(settings)
 
-    fun copyRows() = ArrayList(rows.items)
+  fun copyRows() = ArrayList(rows.items)
 
-    private fun stateOf(selection: MemoryExportSelection) = RunMemoryDumpState().apply {
+  private fun stateOf(selection: MemoryExportSelection) =
+      RunMemoryDumpState().apply {
         outputPath = selection.output.toString()
         formatName = selection.options.format.commandDescriptor
         region = selection.options.region
         if (region == MemoryExportRegion.RANGE) {
-            firstAddress = selection.options.range.first
-            lastAddress = selection.options.range.last
+          firstAddress = selection.options.range.first
+          lastAddress = selection.options.range.last
         }
-    }
+      }
 }

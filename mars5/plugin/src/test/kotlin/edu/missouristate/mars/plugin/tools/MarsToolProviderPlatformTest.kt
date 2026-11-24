@@ -1,4 +1,5 @@
-// A headless component does not receive Swing visibility events; these tests drive the native visibility lifecycle explicitly.
+// A headless component does not receive Swing visibility events; these tests drive the native
+// visibility lifecycle explicitly.
 @file:Suppress("JetBrainsInternalApiUsage")
 
 package edu.missouristate.mars.plugin.tools
@@ -48,243 +49,314 @@ import org.junit.jupiter.params.provider.ValueSource
 
 @TestApplication
 class MarsToolProviderPlatformTest {
-    private val projectFixture = codeInsightProjectFixture()
-    private val fixture by codeInsightFixture(projectFixture)
-    private val project get() = projectFixture.get()
+  private val projectFixture = codeInsightProjectFixture()
+  private val fixture by codeInsightFixture(projectFixture)
+  private val project
+    get() = projectFixture.get()
 
-    @Test
-    // Kotlin exposes the reported Java setters as read-only properties.
-    @Suppress("UsePropertyAccessSyntax")
-    fun `native content loads on selection and dynamic provider removal disposes it`() = timeoutRunBlocking {
+  @Test
+  // Kotlin exposes the reported Java setters as read-only properties.
+  @Suppress("UsePropertyAccessSyntax")
+  fun `native content loads on selection and dynamic provider removal disposes it`() =
+      timeoutRunBlocking {
         val loaded = mutableListOf<String>()
         val disposed = mutableListOf<String>()
         var cancel = true
-        fun provider(id: String, title: String, create: () -> Unit = {}) = object : MarsToolProvider {
-            override val id = id
-            override val title = title
-            override fun createContent(context: MarsToolContext): JComponent {
+        fun provider(id: String, title: String, create: () -> Unit = {}) =
+            object : MarsToolProvider {
+              override val id = id
+              override val title = title
+
+              override fun createContent(context: MarsToolContext): JComponent {
                 assertSame(project, context.project)
                 loaded += title
                 Disposer.register(context.disposable) { disposed += title }
                 create()
                 return JBLabel(title)
+              }
             }
-        }
         val temporary = Disposer.newDisposable()
         val parent = Disposer.newDisposable()
         val alpha = provider("example.alpha", "Alpha")
         val beta = provider("example.beta", "Beta") { error("Fixture failure") }
-        val retry = provider("example.retry", "Retry") {
-            if (cancel) throw CancellationException("Fixture cancellation")
-        }
+        val retry =
+            provider("example.retry", "Retry") {
+              if (cancel) throw CancellationException("Fixture cancellation")
+            }
         val duplicates = listOf(provider("example.alpha", "Duplicate"), provider("", "Blank"))
-        val manager = withContext(Dispatchers.EDT) {
-            ToolWindowManager.getInstance(project).registerToolWindow("Test MARS tools") { hideOnEmptyContent = false }.contentManager
-        }
+        val manager =
+            withContext(Dispatchers.EDT) {
+              ToolWindowManager.getInstance(project)
+                  .registerToolWindow("Test MARS tools") { hideOnEmptyContent = false }
+                  .contentManager
+            }
         try {
+          withContext(Dispatchers.EDT) {
+            val base = ContentFactory.getInstance().createContent(JPanel(), "Base", false)
+            manager.addContent(base)
+            MarsToolExtensions(project, manager, parent)
+            assertEquals(
+                listOf("Base", "Introduction to Tools"),
+                manager.contents.map { it.displayName },
+            )
+          }
+          // Simulate a plug-in change originating off the EDT.
+          ExtensionTestUtil.addExtensions(
+              MarsToolProvider.EP,
+              listOf(alpha, beta, retry) + duplicates,
+              temporary,
+          )
+          pollAssertionsAsync(5.seconds, 30.milliseconds) {
             withContext(Dispatchers.EDT) {
-                val base = ContentFactory.getInstance().createContent(JPanel(), "Base", false)
-                manager.addContent(base)
-                MarsToolExtensions(project, manager, parent)
-                assertEquals(listOf("Base", "Introduction to Tools"), manager.contents.map { it.displayName })
+              assertEquals(
+                  listOf("Base", "Introduction to Tools", "Alpha", "Beta", "Retry"),
+                  manager.contents.map { it.displayName },
+              )
             }
-            // Simulate a plug-in change originating off the EDT.
-            ExtensionTestUtil.addExtensions(MarsToolProvider.EP, listOf(alpha, beta, retry) + duplicates, temporary)
-            pollAssertionsAsync(5.seconds, 30.milliseconds) {
-                withContext(Dispatchers.EDT) {
-                    assertEquals(listOf("Base", "Introduction to Tools", "Alpha", "Beta", "Retry"),
-                        manager.contents.map { it.displayName })
-                }
+          }
+          withContext(Dispatchers.EDT) {
+            assertTrue(loaded.isEmpty())
+            fun select(title: String) {
+              manager.setSelectedContent(manager.contents.single { it.displayName == title })
             }
-            withContext(Dispatchers.EDT) {
-                assertTrue(loaded.isEmpty())
-                fun select(title: String) {
-                    manager.setSelectedContent(manager.contents.single { it.displayName == title })
-                }
-                select("Alpha")
-                select("Base")
-                select("Alpha")
-                assertEquals(listOf("Alpha"), loaded)
-                select("Beta")
-                assertEquals("Could not open Beta.", (manager.selectedContent!!.component as JBLabel).text)
-                assertEquals(listOf("Beta"), disposed)
-                select("Retry")
-                assertEquals(listOf("Beta", "Retry"), disposed)
-                cancel = false
-                select("Base")
-                select("Retry")
-                assertEquals("Retry", (manager.selectedContent!!.component as JBLabel).text)
-                Disposer.dispose(temporary)
-                assertEquals(listOf("Base", "Introduction to Tools"), manager.contents.map { it.displayName })
-                assertEquals(listOf("Alpha", "Beta", "Retry", "Retry"), loaded)
-                assertEquals(listOf("Alpha", "Beta", "Retry", "Retry"), disposed.sorted())
-                assertTrue(manager.removeContent(manager.contents.first(), true))
-                ExtensionTestUtil.maskExtensions(MarsToolProvider.EP, emptyList(), Disposer.newDisposable(parent))
-                assertEquals(0, manager.contentCount)
-                assertNull(manager.selectedContent)
-            }
+            select("Alpha")
+            select("Base")
+            select("Alpha")
+            assertEquals(listOf("Alpha"), loaded)
+            select("Beta")
+            assertEquals(
+                "Could not open Beta.",
+                (manager.selectedContent!!.component as JBLabel).text,
+            )
+            assertEquals(listOf("Beta"), disposed)
+            select("Retry")
+            assertEquals(listOf("Beta", "Retry"), disposed)
+            cancel = false
+            select("Base")
+            select("Retry")
+            assertEquals("Retry", (manager.selectedContent!!.component as JBLabel).text)
+            Disposer.dispose(temporary)
+            assertEquals(
+                listOf("Base", "Introduction to Tools"),
+                manager.contents.map { it.displayName },
+            )
+            assertEquals(listOf("Alpha", "Beta", "Retry", "Retry"), loaded)
+            assertEquals(listOf("Alpha", "Beta", "Retry", "Retry"), disposed.sorted())
+            assertTrue(manager.removeContent(manager.contents.first(), true))
+            ExtensionTestUtil.maskExtensions(
+                MarsToolProvider.EP,
+                emptyList(),
+                Disposer.newDisposable(parent),
+            )
+            assertEquals(0, manager.contentCount)
+            assertNull(manager.selectedContent)
+          }
         } finally {
-            withContext(NonCancellable + Dispatchers.EDT) {
-                Disposer.dispose(temporary)
-                Disposer.dispose(parent)
-                manager.removeAllContents(true)
-            }
+          withContext(NonCancellable + Dispatchers.EDT) {
+            Disposer.dispose(temporary)
+            Disposer.dispose(parent)
+            manager.removeAllContents(true)
+          }
         }
-    }
+      }
 
-    @ParameterizedTest
-    @ValueSource(booleans = [true, false])
-    fun `named tool receives merged settings before the first instruction`(valid: Boolean) = timeoutRunBlocking {
+  @ParameterizedTest
+  @ValueSource(booleans = [true, false])
+  fun `named tool receives merged settings before the first instruction`(valid: Boolean) =
+      timeoutRunBlocking {
         val extensionLifetime = Disposer.newDisposable()
         val settingsSeen = CompletableDeferred<Map<String, String>>()
         val firstStep = CompletableDeferred<StepEvent>()
         val disposed = CompletableDeferred<Unit>()
-        val tool = object : MarsSourceConfiguredToolProvider {
-            override val id = "example.configured"
-            override val title = "Configured tool"
-            override fun createContent(context: MarsToolContext) = JBLabel(title)
+        val tool =
+            object : MarsSourceConfiguredToolProvider {
+              override val id = "example.configured"
+              override val title = "Configured tool"
 
-            override fun configureExecution(
-                execution: MarsToolExecution, properties: Map<String, String>, lifetime: Disposable,
-            ) {
+              override fun createContent(context: MarsToolContext) = JBLabel(title)
+
+              override fun configureExecution(
+                  execution: MarsToolExecution,
+                  properties: Map<String, String>,
+                  lifetime: Disposable,
+              ) {
                 settingsSeen.complete(properties)
                 if (!valid) throw IllegalArgumentException()
                 execution.addInstructionListener({ firstStep.complete(it) }, lifetime)
                 Disposer.register(lifetime) { disposed.complete(Unit) }
+              }
             }
-        }
         try {
-            ExtensionTestUtil.addExtensions(MarsToolProvider.EP, listOf(tool), extensionLifetime)
-            val process = withContext(Dispatchers.EDT) {
-                val file = fixture.addFileToProject("configured.asm", """
-                    # mars:tool example.configured label=start
-                    # mars:tool example.configured repeat=3
-                    .text
-                    nop
-                """.trimIndent()).virtualFile
-                project.service<MarsRunService>().createProcess(file.toNioPath(), memoryDumps = emptyList())
+          ExtensionTestUtil.addExtensions(MarsToolProvider.EP, listOf(tool), extensionLifetime)
+          val process =
+              withContext(Dispatchers.EDT) {
+                val file =
+                    fixture
+                        .addFileToProject(
+                            "configured.asm",
+                            """
+                            # mars:tool example.configured label=start
+                            # mars:tool example.configured repeat=3
+                            .text
+                            nop
+                            """
+                                .trimIndent(),
+                        )
+                        .virtualFile
+                project
+                    .service<MarsRunService>()
+                    .createProcess(file.toNioPath(), memoryDumps = emptyList())
                     .also { it.startNotify() }
+              }
+          try {
+            assertEquals(mapOf("label" to "start", "repeat" to "3"), settingsSeen.await())
+            if (valid) {
+              assertEquals(1L, firstStep.await().stepCount)
+              disposed.await()
             }
-            try {
-                assertEquals(mapOf("label" to "start", "repeat" to "3"), settingsSeen.await())
-                if (valid) {
-                    assertEquals(1L, firstStep.await().stepCount)
-                    disposed.await()
-                }
-            } finally {
-                process.destroyProcess()
-            }
+          } finally {
+            process.destroyProcess()
+          }
         } finally {
-            Disposer.dispose(extensionLifetime)
+          Disposer.dispose(extensionLifetime)
         }
-    }
+      }
 
-    @Test
-    // Kotlin exposes the reported Java setters as read-only properties.
-    // Exercise launchOnShow headlessly and keep Java setters whose Kotlin properties are read-only.
-    @Suppress("UsePropertyAccessSyntax")
-    fun `registered intro example receives instructions from only the selected execution`() = timeoutRunBlocking(45.seconds) {
+  @Test
+  // Kotlin exposes the reported Java setters as read-only properties.
+  // Exercise launchOnShow headlessly and keep Java setters whose Kotlin properties are read-only.
+  @Suppress("UsePropertyAccessSyntax")
+  fun `registered intro example receives instructions from only the selected execution`() =
+      timeoutRunBlocking(45.seconds) {
         val container = JPanel()
-        val tool = withContext(Dispatchers.EDT) {
-            val window = ToolWindowManager.getInstance(project).registerToolWindow("Example MARS tools") { hideOnEmptyContent = false }
-            val manager = window.contentManager
-            MarsToolExtensions(project, manager, window.disposable)
-            manager.contents.single().also { tab ->
+        val tool =
+            withContext(Dispatchers.EDT) {
+              val window =
+                  ToolWindowManager.getInstance(project).registerToolWindow("Example MARS tools") {
+                    hideOnEmptyContent = false
+                  }
+              val manager = window.contentManager
+              MarsToolExtensions(project, manager, window.disposable)
+              manager.contents.single().also { tab ->
                 manager.setSelectedContent(tab)
                 ComponentUtil.forceMarkAsShowing(container, true)
                 withForcedRespectIsShowingClientProperty {
-                    withShowingChanged { container.add(tab.component) }
-                    UIUtil.dispatchAllInvocationEvents()
+                  withShowingChanged { container.add(tab.component) }
+                  UIUtil.dispatchAllInvocationEvents()
                 }
+              }
             }
-        }
         val firstReady = CompletableDeferred<Unit>()
         val secondReady = CompletableDeferred<Unit>()
         val first = withContext(Dispatchers.EDT) { execution(1, firstReady) }
         val second = withContext(Dispatchers.EDT) { execution(2, secondReady) }
         fun selector() = UIUtil.findComponentsOfType(tool.component, JComboBox::class.java).single()
-        fun steps() = UIUtil.findComponentsOfType(tool.component, JBLabel::class.java)
-            .single { it.text.startsWith("Observed instructions") }.text
-        suspend fun checkUi(assert: () -> Unit) = pollAssertionsAsync(5.seconds, 30.milliseconds) {
-            withContext(Dispatchers.EDT) { assert() }
-        }
+        fun steps() =
+            UIUtil.findComponentsOfType(tool.component, JBLabel::class.java)
+                .single { it.text.startsWith("Observed instructions") }
+                .text
+        suspend fun checkUi(assert: () -> Unit) =
+            pollAssertionsAsync(5.seconds, 30.milliseconds) {
+              withContext(Dispatchers.EDT) { assert() }
+            }
         try {
-            firstReady.await()
-            secondReady.await()
-            withContext(Dispatchers.EDT) {
-                // Offer the runs to the tool after their setup instructions have executed.
-                val manager = ToolWindowManager.getInstance(project)
-                val toolId = DefaultRunExecutor.getRunExecutorInstance().toolWindowId
-                val window = manager.getToolWindow(toolId) ?: manager.registerToolWindow(toolId) { hideOnEmptyContent = false }
-                window.contentManager.addContent(first.second)
-                window.contentManager.addContent(second.second)
-            }
-            checkUi {
-                assertEquals(2, selector().itemCount)
-                assertEquals("Observed instructions: 0", steps())
-                val guide = UIUtil.findComponentsOfType(tool.component, JBTextArea::class.java).single()
-                assertFalse(guide.isEditable)
-                assertTrue(guide.text.contains("MarsToolProvider"))
-                selector().selectedIndex = 1
-            }
-            first.first.processInput.write("x\n".toByteArray())
-            checkUi { assertEquals("Observed instructions: 4", steps()) }
-            withContext(Dispatchers.EDT) { selector().selectedIndex = 0 }
-            checkUi { assertEquals("Observed instructions: 0", steps()) }
-            first.first.processInput.write("x\n".toByteArray())
-            second.first.processInput.write("x\n".toByteArray())
-            checkUi { assertEquals("Observed instructions: 4", steps()) }
-            withContext(Dispatchers.EDT) {
-                first.second.manager!!.removeContent(first.second, true)
-                second.second.manager!!.removeContent(second.second, true)
-            }
-            checkUi {
-                assertEquals(0, selector().itemCount)
-                assertEquals("Observed instructions: 0", steps())
-            }
+          firstReady.await()
+          secondReady.await()
+          withContext(Dispatchers.EDT) {
+            // Offer the runs to the tool after their setup instructions have executed.
+            val manager = ToolWindowManager.getInstance(project)
+            val toolId = DefaultRunExecutor.getRunExecutorInstance().toolWindowId
+            val window =
+                manager.getToolWindow(toolId)
+                    ?: manager.registerToolWindow(toolId) { hideOnEmptyContent = false }
+            window.contentManager.addContent(first.second)
+            window.contentManager.addContent(second.second)
+          }
+          checkUi {
+            assertEquals(2, selector().itemCount)
+            assertEquals("Observed instructions: 0", steps())
+            val guide = UIUtil.findComponentsOfType(tool.component, JBTextArea::class.java).single()
+            assertFalse(guide.isEditable)
+            assertTrue(guide.text.contains("MarsToolProvider"))
+            selector().selectedIndex = 1
+          }
+          first.first.processInput.write("x\n".toByteArray())
+          checkUi { assertEquals("Observed instructions: 4", steps()) }
+          withContext(Dispatchers.EDT) { selector().selectedIndex = 0 }
+          checkUi { assertEquals("Observed instructions: 0", steps()) }
+          first.first.processInput.write("x\n".toByteArray())
+          second.first.processInput.write("x\n".toByteArray())
+          checkUi { assertEquals("Observed instructions: 4", steps()) }
+          withContext(Dispatchers.EDT) {
+            first.second.manager!!.removeContent(first.second, true)
+            second.second.manager!!.removeContent(second.second, true)
+          }
+          checkUi {
+            assertEquals(0, selector().itemCount)
+            assertEquals("Observed instructions: 0", steps())
+          }
         } finally {
-            withContext(NonCancellable + Dispatchers.EDT) {
-                for ((process, content) in listOf(first, second)) {
-                    process.destroyProcess()
-                    val manager = content.manager
-                    if (manager != null) manager.removeContent(content, true)
-                    else if (content.disposer != null) content.release()
-                }
-                tool.manager!!.removeContent(tool, true)
-                withForcedRespectIsShowingClientProperty { withShowingChanged { container.removeAll() } }
+          withContext(NonCancellable + Dispatchers.EDT) {
+            for ((process, content) in listOf(first, second)) {
+              process.destroyProcess()
+              val manager = content.manager
+              if (manager != null) manager.removeContent(content, true)
+              else if (content.disposer != null) content.release()
             }
+            tool.manager!!.removeContent(tool, true)
+            withForcedRespectIsShowingClientProperty {
+              withShowingChanged { container.removeAll() }
+            }
+          }
         }
-    }
+      }
 
-    // Kotlin exposes the reported Java setters as read-only properties.
-    @Suppress("UsePropertyAccessSyntax")
-    private fun execution(id: Long, ready: CompletableDeferred<Unit>): Pair<MarsProcessHandler, Content> {
-        val file = fixture.addFileToProject("intro-$id.asm", $$"""
-            li $v0, 12
-            syscall
-            nop
-            nop
-            li $v0, 12
-            syscall
-            nop
-            nop
-            nop
-            nop
-        """.trimIndent()).virtualFile
-        val process = project.service<MarsRunService>().createProcess(file.toNioPath(), memoryDumps = emptyList()) { session, _ ->
-            val simulator = session.simulator()
-            runSlice(simulator, 1)
-            ready.complete(Unit)
-            runSlice(simulator)
+  // Kotlin exposes the reported Java setters as read-only properties.
+  @Suppress("UsePropertyAccessSyntax")
+  private fun execution(
+      id: Long,
+      ready: CompletableDeferred<Unit>,
+  ): Pair<MarsProcessHandler, Content> {
+    val file =
+        fixture
+            .addFileToProject(
+                "intro-$id.asm",
+                $$"""
+                li $v0, 12
+                syscall
+                nop
+                nop
+                li $v0, 12
+                syscall
+                nop
+                nop
+                nop
+                nop
+                """
+                    .trimIndent(),
+            )
+            .virtualFile
+    val process =
+        project.service<MarsRunService>().createProcess(
+            file.toNioPath(),
+            memoryDumps = emptyList(),
+        ) { session, _ ->
+          val simulator = session.simulator()
+          runSlice(simulator, 1)
+          ready.complete(Unit)
+          runSlice(simulator)
         }
-        val descriptor = RunContentDescriptor(null, process, JPanel(), "Example $id").apply {
-            executionId = id
-            isActivateToolWindowWhenAdded = false
+    val descriptor =
+        RunContentDescriptor(null, process, JPanel(), "Example $id").apply {
+          executionId = id
+          isActivateToolWindowWhenAdded = false
         }
-        val content = ContentFactory.getInstance().createContent(descriptor.component, descriptor.displayName, false)
-        content.putUserData(RunContentDescriptor.DESCRIPTOR_KEY, descriptor)
-        content.setDisposer(descriptor)
-        process.startNotify()
-        return process to content
-    }
+    val content =
+        ContentFactory.getInstance()
+            .createContent(descriptor.component, descriptor.displayName, false)
+    content.putUserData(RunContentDescriptor.DESCRIPTOR_KEY, descriptor)
+    content.setDisposer(descriptor)
+    process.startNotify()
+    return process to content
+  }
 }
