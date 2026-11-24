@@ -25,158 +25,202 @@ import edu.missouristate.mars.plugin.language.psi.mipsIncludeSites
 import edu.missouristate.mars.util.Binary
 
 internal sealed interface MipsSourceEvent {
-    val offset: Int
+  val offset: Int
 
-    sealed interface Effective : MipsSourceEvent
+  sealed interface Effective : MipsSourceEvent
 
-    class Header(val declaration: MipsDeclaration) : MipsSourceEvent {
-        override val offset = declaration.textOffset
-        private val start = sourceLineStart(declaration)
-        private val tokens = macroLineTokens(declaration, fromLineStart = true)
-        private val operation = tokens.operationIndex(inMacro = false)
-        private val direct = macroSignature(declaration, tokens, operation, start, null) as? Begin
+  class Header(val declaration: MipsDeclaration) : MipsSourceEvent {
+    override val offset = declaration.textOffset
+    private val start = sourceLineStart(declaration)
+    private val tokens = macroLineTokens(declaration, fromLineStart = true)
+    private val operation = tokens.operationIndex(inMacro = false)
+    private val direct = macroSignature(declaration, tokens, operation, start, null) as? Begin
 
-        fun bind(inMacro: Boolean, replacement: (String) -> String?): Effective? {
-            val needsExpansion = (0 until tokens.size()).any {
-                val token = tokens[it]
-                token.type == TokenTypes.IDENTIFIER && replacement(token.value) != null
-            }
-            if (!needsExpansion) return if (inMacro && operation != 0) null else direct
-            val expanded = Tokenizer.tokenizeMappedLine(
-                sourceLine(declaration, fromLineStart = true), ErrorList(), replacement, ProgressManager::checkCanceled,
-            )
-            val tokens = expanded.tokens()
-            if (!tokens.hasCompleteEquivalenceExpansion()) return null
-            tokens.discardTrailingComment()
-            return macroSignature(declaration, tokens, tokens.operationIndex(inMacro), start, expanded)
-        }
+    fun bind(inMacro: Boolean, replacement: (String) -> String?): Effective? {
+      val needsExpansion =
+          (0 until tokens.size()).any {
+            val token = tokens[it]
+            token.type == TokenTypes.IDENTIFIER && replacement(token.value) != null
+          }
+      if (!needsExpansion) return if (inMacro && operation != 0) null else direct
+      val expanded =
+          Tokenizer.tokenizeMappedLine(
+              sourceLine(declaration, fromLineStart = true),
+              ErrorList(),
+              replacement,
+              ProgressManager::checkCanceled,
+          )
+      val tokens = expanded.tokens()
+      if (!tokens.hasCompleteEquivalenceExpansion()) return null
+      tokens.discardTrailingComment()
+      return macroSignature(declaration, tokens, tokens.operationIndex(inMacro), start, expanded)
     }
+  }
 
-    class OperationCandidate(owner: PsiElement) : MipsSourceEvent {
-        private val head = owner.firstLeaf()
-        override val offset = head.textOffset
-        private val followsLabel = owner.parent.node.findChildByType(labelType) != null
-        private val positionalPrefix = if (owner.elementType != directiveStatement && !followsLabel) {
-            lazy(LazyThreadSafetyMode.PUBLICATION) {
-                // Skip ordinary instructions and data without a written directive or alias candidate.
-                if (SyntaxTraverser.astTraverser(owner.parent.node).any { it.elementType in equivalenceProbeTypes }) {
-                    val tokens = macroLineTokens(head)
-                    (0 until minOf(tokens.size(), 3)).map(tokens::get)
-                } else emptyList()
-            }
+  class OperationCandidate(owner: PsiElement) : MipsSourceEvent {
+    private val head = owner.firstLeaf()
+    override val offset = head.textOffset
+    private val followsLabel = owner.parent.node.findChildByType(labelType) != null
+    private val positionalPrefix =
+        if (owner.elementType != directiveStatement && !followsLabel) {
+          lazy(LazyThreadSafetyMode.PUBLICATION) {
+            // Skip ordinary instructions and data without a written directive or alias candidate.
+            if (
+                SyntaxTraverser.astTraverser(owner.parent.node).any {
+                  it.elementType in equivalenceProbeTypes
+                }
+            ) {
+              val tokens = macroLineTokens(head)
+              (0 until minOf(tokens.size(), 3)).map(tokens::get)
+            } else emptyList()
+          }
         } else null
 
-        fun bind(inMacro: Boolean, replacement: (String) -> String?, addLabel: (String, PsiElement) -> Unit): Effective? {
-            if (!hasLeadingEquivalence(head, replacement) && !canDefineFromPrefix(replacement)) return null
-            val errors = ErrorList()
-            val expanded = Tokenizer.tokenizeMappedLine(
-                sourceLine(head, fromLineStart = true), errors, replacement, ProgressManager::checkCanceled,
-            )
-            val tokens = expanded.tokens()
-            if (!tokens.hasCompleteEquivalenceExpansion()) return null
-            val startsWithLabel = tokens.beginsWithLabel()
-            if (startsWithLabel && !followsLabel) addLabel(tokens[0].value, head)
-            return expandedDirective(head, expanded, inMacro, errors.errorsOccurred())
+    fun bind(
+        inMacro: Boolean,
+        replacement: (String) -> String?,
+        addLabel: (String, PsiElement) -> Unit,
+    ): Effective? {
+      if (!hasLeadingEquivalence(head, replacement) && !canDefineFromPrefix(replacement))
+          return null
+      val errors = ErrorList()
+      val expanded =
+          Tokenizer.tokenizeMappedLine(
+              sourceLine(head, fromLineStart = true),
+              errors,
+              replacement,
+              ProgressManager::checkCanceled,
+          )
+      val tokens = expanded.tokens()
+      if (!tokens.hasCompleteEquivalenceExpansion()) return null
+      val startsWithLabel = tokens.beginsWithLabel()
+      if (startsWithLabel && !followsLabel) addLabel(tokens[0].value, head)
+      return expandedDirective(head, expanded, inMacro, errors.errorsOccurred())
+    }
+
+    private fun canDefineFromPrefix(replacement: (String) -> String?): Boolean =
+        positionalPrefix?.value.orEmpty().withIndex().any { (index, token) ->
+          when (token.type) {
+            TokenTypes.DIRECTIVE ->
+                index == 2 && Directives.matchDirective(token.value) == Directives.EQV
+            TokenTypes.IDENTIFIER -> replacement(token.value) != null
+            else -> false
+          }
         }
+  }
 
-        private fun canDefineFromPrefix(replacement: (String) -> String?): Boolean =
-            positionalPrefix?.value.orEmpty().withIndex().any { (index, token) ->
-                when (token.type) {
-                    TokenTypes.DIRECTIVE -> index == 2 && Directives.matchDirective(token.value) == Directives.EQV
-                    TokenTypes.IDENTIFIER -> replacement(token.value) != null
-                    else -> false
-                }
-            }
+  class LabelDeclaration(val declaration: MipsDeclaration) : MipsSourceEvent {
+    override val offset = declaration.textOffset
+
+    fun bind(inMacro: Boolean, replacement: (String) -> String?): ExpandedLabel? {
+      val head = declaration.nameIdentifier ?: return null
+      if (replacement(head.text) == null) return null
+      val start = sourceLineStart(head)
+      val source = sourceLine(head, fromLineStart = true)
+      val errors = ErrorList()
+      val expanded =
+          Tokenizer.tokenizeMappedLine(source, errors, replacement, ProgressManager::checkCanceled)
+      val tokens = expanded.tokens()
+      if (
+          !tokens.hasCompleteEquivalenceExpansion() ||
+              offset - start !in expanded.substitutionOffsets()
+      )
+          return null
+      val hasErrors = errors.errorsOccurred()
+      val name = tokens[0].value.takeIf { tokens.beginsWithLabel() }
+      val operation = tokens.operationIndex(inMacro)
+      // Handle operations supplied by the label and macro diagnostics deferred by the parser.
+      val operationInLabel =
+          operation < tokens.size() &&
+              start + expanded.originalOffset(tokens[operation].startPos - 1) <
+                  declaration.textRange.endOffset
+      val directive =
+          expandedDirective(head, expanded, inMacro, hasErrors).takeIf {
+            operationInLabel || it is End || it is RejectedMacro
+          }
+      if (hasErrors && directive == null) return null
+      val consumesLine = operationInLabel || directive != null
+      return ExpandedLabel(name, if (consumesLine) start + source.length else -1, directive)
     }
+  }
 
-    class LabelDeclaration(val declaration: MipsDeclaration) : MipsSourceEvent {
-        override val offset = declaration.textOffset
+  data class ExpandedLabel(val name: String?, val ignoreBefore: Int, val directive: Effective?)
 
-        fun bind(inMacro: Boolean, replacement: (String) -> String?): ExpandedLabel? {
-            val head = declaration.nameIdentifier ?: return null
-            if (replacement(head.text) == null) return null
-            val start = sourceLineStart(head)
-            val source = sourceLine(head, fromLineStart = true)
-            val errors = ErrorList()
-            val expanded = Tokenizer.tokenizeMappedLine(source, errors, replacement, ProgressManager::checkCanceled)
-            val tokens = expanded.tokens()
-            if (!tokens.hasCompleteEquivalenceExpansion() || offset - start !in expanded.substitutionOffsets()) return null
-            val hasErrors = errors.errorsOccurred()
-            val name = tokens[0].value.takeIf { tokens.beginsWithLabel() }
-            val operation = tokens.operationIndex(inMacro)
-            // Handle operations supplied by the label and macro diagnostics deferred by the parser.
-            val operationInLabel = operation < tokens.size() &&
-                start + expanded.originalOffset(tokens[operation].startPos - 1) < declaration.textRange.endOffset
-            val directive = expandedDirective(head, expanded, inMacro, hasErrors)
-                .takeIf { operationInLabel || it is End || it is RejectedMacro }
-            if (hasErrors && directive == null) return null
-            val consumesLine = operationInLabel || directive != null
-            return ExpandedLabel(name, if (consumesLine) start + source.length else -1, directive)
-        }
+  data class Begin(
+      val header: PsiElement,
+      val name: String,
+      val nameOffset: Int,
+      val directiveOffset: Int,
+      val parameters: List<MacroFormal>,
+      val invalidFormal: MacroFormal?,
+  ) : Effective {
+    override val offset = header.textOffset
+    // A malformed signature still opens a scope for its accepted parameters.
+    val arity: Int?
+      get() = parameters.size.takeIf { invalidFormal == null }
+
+    val parametersByName: Map<String, MacroFormal> by lazy {
+      buildMap { for (parameter in parameters) putIfAbsent(parameter.value, parameter) }
     }
+  }
 
-    data class ExpandedLabel(val name: String?, val ignoreBefore: Int, val directive: Effective?)
+  data class MacroFormal(val value: String, val offset: Int, val lastOffset: Int = offset)
 
-    data class Begin(
-        val header: PsiElement, val name: String, val nameOffset: Int, val directiveOffset: Int,
-        val parameters: List<MacroFormal>,
-        val invalidFormal: MacroFormal?,
-    ) : Effective {
-        override val offset = header.textOffset
-        // A malformed signature still opens a scope for its accepted parameters.
-        val arity: Int? get() = parameters.size.takeIf { invalidFormal == null }
-        val parametersByName: Map<String, MacroFormal> by lazy {
-            buildMap { for (parameter in parameters) putIfAbsent(parameter.value, parameter) }
-        }
+  data class End(override val offset: Int) : Effective
+
+  data class RejectedMacro(override val offset: Int, val kind: Kind, val lastOffset: Int = offset) :
+      Effective
+
+  data class LabeledMacro(val event: Effective, val label: String) : MipsSourceEvent {
+    override val offset
+      get() = event.offset
+
+    fun bind(inMacro: Boolean, replacement: (String) -> String?): Effective? =
+        if (inMacro || replacement(label) != null) null else event
+  }
+
+  data class Include(val literal: MipsStringLiteral, val path: String) : Effective {
+    override val offset = literal.textOffset
+  }
+
+  data class UnterminatedInclude(override val offset: Int) : Effective
+
+  data class DataDirective(override val offset: Int, val directive: Directives) : Effective
+
+  data class Equivalence(val site: PsiElement, val name: String, val replacement: String) :
+      Effective {
+    override val offset = site.textOffset
+  }
+
+  class ExternalDeclaration(private val declaration: MipsDeclaration) : MipsSourceEvent {
+    override val offset = declaration.textOffset
+
+    fun bind(inMacro: Boolean, replacement: (String) -> String?): BoundExternal {
+      val directive = declaration.parent.firstChild
+      val parameter =
+          inMacro && Macro.tokenIsMacroParameter(declaration.nameIdentifier!!.text, true)
+      val errors = ErrorList()
+      val expanded =
+          Tokenizer.tokenizeMappedLine(
+              sourceLine(directive),
+              errors,
+              replacement,
+              ProgressManager::checkCanceled,
+          )
+      if (errors.errorsOccurred()) return BoundExternal(parameter, null)
+      val tokens = expanded.tokens()
+      tokens.discardTrailingComment()
+      val replaced = parameter || offset - directive.textOffset in expanded.substitutionOffsets()
+      return BoundExternal(replaced, externalReservation(declaration, tokens, 0, inMacro))
     }
+  }
 
-    data class MacroFormal(val value: String, val offset: Int, val lastOffset: Int = offset)
+  data class BoundExternal(val replaced: Boolean, val reservation: External?)
 
-    data class End(override val offset: Int) : Effective
-    data class RejectedMacro(override val offset: Int, val kind: Kind, val lastOffset: Int = offset) : Effective
-
-    data class LabeledMacro(val event: Effective, val label: String) : MipsSourceEvent {
-        override val offset get() = event.offset
-
-        fun bind(inMacro: Boolean, replacement: (String) -> String?): Effective? =
-            if (inMacro || replacement(label) != null) null else event
-    }
-
-    data class Include(val literal: MipsStringLiteral, val path: String) : Effective {
-        override val offset = literal.textOffset
-    }
-
-    data class UnterminatedInclude(override val offset: Int) : Effective
-
-    data class DataDirective(override val offset: Int, val directive: Directives) : Effective
-
-    data class Equivalence(val site: PsiElement, val name: String, val replacement: String) : Effective {
-        override val offset = site.textOffset
-    }
-
-    class ExternalDeclaration(private val declaration: MipsDeclaration) : MipsSourceEvent {
-        override val offset = declaration.textOffset
-
-        fun bind(inMacro: Boolean, replacement: (String) -> String?): BoundExternal {
-            val directive = declaration.parent.firstChild
-            val parameter = inMacro && Macro.tokenIsMacroParameter(declaration.nameIdentifier!!.text, true)
-            val errors = ErrorList()
-            val expanded = Tokenizer.tokenizeMappedLine(
-                sourceLine(directive), errors, replacement, ProgressManager::checkCanceled,
-            )
-            if (errors.errorsOccurred()) return BoundExternal(parameter, null)
-            val tokens = expanded.tokens()
-            tokens.discardTrailingComment()
-            val replaced = parameter || offset - directive.textOffset in expanded.substitutionOffsets()
-            return BoundExternal(replaced, externalReservation(declaration, tokens, 0, inMacro))
-        }
-    }
-
-    data class BoundExternal(val replaced: Boolean, val reservation: External?)
-
-    data class External(val site: PsiElement, val name: String, val canUseAsLabel: Boolean) : Effective {
-        override val offset = site.textOffset
-    }
+  data class External(val site: PsiElement, val name: String, val canUseAsLabel: Boolean) :
+      Effective {
+    override val offset = site.textOffset
+  }
 }
 
 private val directiveStatement = MipsTypes.psi("DIRECTIVE_STATEMENT")
@@ -185,15 +229,35 @@ private val labelType = MipsTypes.psi("LABEL")
 private val macroHeader = MipsTypes.psi("MACRO_HEADER")
 private val wordTypes = setOf(MipsTypes.psi("WORD"), MipsTypes.psi("DOLLAR_WORD"))
 private val equivalenceProbeTypes = wordTypes + MipsTypes.psi("EQV")
-private val sourceEventTypes = setOf(
-    MipsTypes.psi("MACRO_SIGNATURE"), MipsTypes.psi("END_MACRO"), MipsTypes.psi("STRING"), directiveStatement,
-    MipsTypes.psi("EQUIVALENCE"), MipsTypes.psi("EXTERNAL_NAME"), labelType, dataContinuation, macroHeader,
-)
-private val dataStateDirectives = setOf(
-    Directives.DATA, Directives.KDATA, Directives.TEXT, Directives.KTEXT,
-    Directives.WORD, Directives.HALF, Directives.BYTE, Directives.FLOAT, Directives.DOUBLE, Directives.ASCII, Directives.ASCIIZ,
-    Directives.UTF8, Directives.UTF8Z, Directives.DWORD,
-)
+private val sourceEventTypes =
+    setOf(
+        MipsTypes.psi("MACRO_SIGNATURE"),
+        MipsTypes.psi("END_MACRO"),
+        MipsTypes.psi("STRING"),
+        directiveStatement,
+        MipsTypes.psi("EQUIVALENCE"),
+        MipsTypes.psi("EXTERNAL_NAME"),
+        labelType,
+        dataContinuation,
+        macroHeader,
+    )
+private val dataStateDirectives =
+    setOf(
+        Directives.DATA,
+        Directives.KDATA,
+        Directives.TEXT,
+        Directives.KTEXT,
+        Directives.WORD,
+        Directives.HALF,
+        Directives.BYTE,
+        Directives.FLOAT,
+        Directives.DOUBLE,
+        Directives.ASCII,
+        Directives.ASCIIZ,
+        Directives.UTF8,
+        Directives.UTF8Z,
+        Directives.DWORD,
+    )
 
 // In an open macro a label is part of the body, even before a closing directive.
 private fun TokenList.operationIndex(inMacro: Boolean) = if (!inMacro && beginsWithLabel()) 2 else 0
@@ -201,90 +265,116 @@ private fun TokenList.operationIndex(inMacro: Boolean) = if (!inMacro && beginsW
 private fun TokenList.directiveAt(operation: Int): Directives? =
     if (operation < size()) Directives.matchDirective(this[operation].value) else null
 
-private fun sectionEvent(head: PsiElement, tokens: TokenList, operation: Int): MipsSourceEvent.DataDirective? {
-    if (operation + 1 >= tokens.size()) return null
-    val segment = Directives.sectionSegment(tokens[operation + 1].value) ?: return null
-    return MipsSourceEvent.DataDirective(head.textOffset, segment)
+private fun sectionEvent(
+    head: PsiElement,
+    tokens: TokenList,
+    operation: Int,
+): MipsSourceEvent.DataDirective? {
+  if (operation + 1 >= tokens.size()) return null
+  val segment = Directives.sectionSegment(tokens[operation + 1].value) ?: return null
+  return MipsSourceEvent.DataDirective(head.textOffset, segment)
 }
 
 private fun expandedDirective(
-    head: PsiElement, expanded: Tokenizer.MappedLine, inMacro: Boolean, hasErrors: Boolean,
+    head: PsiElement,
+    expanded: Tokenizer.MappedLine,
+    inMacro: Boolean,
+    hasErrors: Boolean,
 ): MipsSourceEvent.Effective? {
-    val tokens = expanded.tokens()
-    tokens.discardTrailingComment()
-    val start = sourceLineStart(head)
-    expanded.expanded().definition?.let {
-        val site = head.containingFile.findElementAt(start + expanded.equivalenceDirectiveOffset())!!
-        return MipsSourceEvent.Equivalence(site, it.name, it.replacement)
+  val tokens = expanded.tokens()
+  tokens.discardTrailingComment()
+  val start = sourceLineStart(head)
+  expanded.expanded().definition?.let {
+    val site = head.containingFile.findElementAt(start + expanded.equivalenceDirectiveOffset())!!
+    return MipsSourceEvent.Equivalence(site, it.name, it.replacement)
+  }
+  val operation = tokens.operationIndex(inMacro)
+  val directive = tokens.directiveAt(operation) ?: return null
+  // A macro with a valid name can open a scope before its first rejected formal.
+  if (hasErrors && directive != Directives.MACRO) return null
+  return when (directive) {
+    Directives.MACRO -> macroSignature(head, tokens, operation, start, expanded)
+    Directives.END_MACRO -> {
+      val offset = start + expanded.originalOffset(tokens[operation].startPos - 1)
+      if (tokens.size() == operation + 1) MipsSourceEvent.End(offset)
+      else MipsSourceEvent.RejectedMacro(offset, Kind.TRAILING_TEXT)
     }
-    val operation = tokens.operationIndex(inMacro)
-    val directive = tokens.directiveAt(operation) ?: return null
-    // A macro with a valid name can open a scope before its first rejected formal.
-    if (hasErrors && directive != Directives.MACRO) return null
-    return when (directive) {
-        Directives.MACRO -> macroSignature(head, tokens, operation, start, expanded)
-        Directives.END_MACRO -> {
-            val offset = start + expanded.originalOffset(tokens[operation].startPos - 1)
-            if (tokens.size() == operation + 1) MipsSourceEvent.End(offset)
-            else MipsSourceEvent.RejectedMacro(offset, Kind.TRAILING_TEXT)
-        }
-        Directives.EXTERN -> externalReservation(head, tokens, operation, inMacro)
-        Directives.SECTION -> sectionEvent(head, tokens, operation)
-        in dataStateDirectives -> MipsSourceEvent.DataDirective(head.textOffset, directive)
-        else -> null
-    }
+    Directives.EXTERN -> externalReservation(head, tokens, operation, inMacro)
+    Directives.SECTION -> sectionEvent(head, tokens, operation)
+    in dataStateDirectives -> MipsSourceEvent.DataDirective(head.textOffset, directive)
+    else -> null
+  }
 }
 
 /** Physical source events that affect macro boundaries or the current data list. */
-internal fun mipsSourceEvents(file: MipsFile): List<MipsSourceEvent> = CachedValuesManager.getCachedValue(file) {
-    val includes = mipsIncludeSites(file)
-    val events = buildList {
+internal fun mipsSourceEvents(file: MipsFile): List<MipsSourceEvent> =
+    CachedValuesManager.getCachedValue(file) {
+      val includes = mipsIncludeSites(file)
+      val events = buildList {
         // The prepass sees these before any syntax on the same physical line.
         includes.unterminated.values.forEach { add(MipsSourceEvent.UnterminatedInclude(it)) }
-        for (element in SyntaxTraverser.psiTraverser(file).filterTypes { it in sourceEventTypes || it in operationOwners }) {
-            ProgressManager.checkCanceled()
-            when (element) {
-                is MipsDeclaration -> when (element.kind) {
-                    SymbolKind.MACRO -> add(MipsSourceEvent.Header(element))
-                    SymbolKind.LABEL -> add(MipsSourceEvent.LabelDeclaration(element))
-                    SymbolKind.CONSTANT -> {
-                        val name = element.name ?: continue
-                        val replacement = Tokenizer.readEquivalenceReplacement(sourceLine(element, fromLineStart = true), name)
-                            ?: continue
-                        add(MipsSourceEvent.Equivalence(element, name, replacement))
-                    }
-                    SymbolKind.EXTERNAL -> add(MipsSourceEvent.ExternalDeclaration(element))
+        for (element in
+            SyntaxTraverser.psiTraverser(file).filterTypes {
+              it in sourceEventTypes || it in operationOwners
+            }) {
+          ProgressManager.checkCanceled()
+          when (element) {
+            is MipsDeclaration ->
+                when (element.kind) {
+                  SymbolKind.MACRO -> add(MipsSourceEvent.Header(element))
+                  SymbolKind.LABEL -> add(MipsSourceEvent.LabelDeclaration(element))
+                  SymbolKind.CONSTANT -> {
+                    val name = element.name ?: continue
+                    val replacement =
+                        Tokenizer.readEquivalenceReplacement(
+                            sourceLine(element, fromLineStart = true),
+                            name,
+                        ) ?: continue
+                    add(MipsSourceEvent.Equivalence(element, name, replacement))
+                  }
+                  SymbolKind.EXTERNAL -> add(MipsSourceEvent.ExternalDeclaration(element))
                 }
-                is MipsStringLiteral -> includes.paths[element.textOffset]?.let { add(MipsSourceEvent.Include(element, it)) }
-                else -> when (element.node.elementType) {
-                    in operationOwners, dataContinuation -> add(MipsSourceEvent.OperationCandidate(element))
-                    directiveStatement -> {
-                        val directive = Directives.matchDirective(element.firstChild.text)
-                        if (directive in dataStateDirectives) add(MipsSourceEvent.DataDirective(element.textOffset, directive!!))
-                        if (directive == Directives.SECTION) sectionEvent(element, macroLineTokens(element), 0)?.let(::add)
-                        if (directive == Directives.EQV || directive == Directives.SECTION) add(MipsSourceEvent.OperationCandidate(element))
-                    }
-                    macroHeader -> writtenRejectedMacroHeader(element)?.let { add(it) }
-                    else -> writtenMacroEnd(element)?.let { add(it) }
+            is MipsStringLiteral ->
+                includes.paths[element.textOffset]?.let {
+                  add(MipsSourceEvent.Include(element, it))
                 }
-            }
+            else ->
+                when (element.node.elementType) {
+                  in operationOwners,
+                  dataContinuation -> add(MipsSourceEvent.OperationCandidate(element))
+                  directiveStatement -> {
+                    val directive = Directives.matchDirective(element.firstChild.text)
+                    if (directive in dataStateDirectives)
+                        add(MipsSourceEvent.DataDirective(element.textOffset, directive!!))
+                    if (directive == Directives.SECTION)
+                        sectionEvent(element, macroLineTokens(element), 0)?.let(::add)
+                    if (directive == Directives.EQV || directive == Directives.SECTION)
+                        add(MipsSourceEvent.OperationCandidate(element))
+                  }
+                  macroHeader -> writtenRejectedMacroHeader(element)?.let { add(it) }
+                  else -> writtenMacroEnd(element)?.let { add(it) }
+                }
+          }
         }
+      }
+      val ordered =
+          if (includes.unterminated.isEmpty()) events else events.sortedBy(MipsSourceEvent::offset)
+      CachedValueProvider.Result.create(ordered, file)
     }
-    val ordered = if (includes.unterminated.isEmpty()) events else events.sortedBy(MipsSourceEvent::offset)
-    CachedValueProvider.Result.create(ordered, file)
-}
 
 internal fun macroLineTokens(element: PsiElement, fromLineStart: Boolean = false): TokenList {
-    val line = sourceLine(element, fromLineStart)
-    return Tokenizer().tokenizeLine(1, line, ErrorList(), false).also(TokenList::discardTrailingComment)
+  val line = sourceLine(element, fromLineStart)
+  return Tokenizer()
+      .tokenizeLine(1, line, ErrorList(), false)
+      .also(TokenList::discardTrailingComment)
 }
 
 internal fun sourceLine(element: PsiElement, fromLineStart: Boolean = false): String {
-    val offset = element.textOffset
-    val text = element.containingFile.viewProvider.contents
-    val start = if (fromLineStart) sourceLineStart(element) else offset
-    val end = CharArrayUtil.shiftForwardUntil(text, offset, "\r\n")
-    return text.subSequence(start, end).toString()
+  val offset = element.textOffset
+  val text = element.containingFile.viewProvider.contents
+  val start = if (fromLineStart) sourceLineStart(element) else offset
+  val end = CharArrayUtil.shiftForwardUntil(text, offset, "\r\n")
+  return text.subSequence(start, end).toString()
 }
 
 internal fun sourceLineStart(element: PsiElement): Int =
@@ -295,75 +385,103 @@ internal fun sourceLineStart(source: CharSequence, offset: Int): Int =
 
 /** A candidate can acquire an operation or label from either of its first two written tokens. */
 internal fun hasLeadingEquivalence(head: PsiElement, replacement: (String) -> String?): Boolean {
-    if (replacement(head.text) != null) return true
-    return followingEquivalenceName(head)?.let(replacement) != null
+  if (replacement(head.text) != null) return true
+  return followingEquivalenceName(head)?.let(replacement) != null
 }
 
 internal fun followingEquivalenceName(head: PsiElement): String? {
-    val file = head.containingFile
-    val offset = CharArrayUtil.shiftForward(file.viewProvider.contents, head.textRange.endOffset, " \t,")
-    val following = file.findElementAt(offset) ?: return null
-    return following.text.takeIf { following.elementType in wordTypes }
+  val file = head.containingFile
+  val offset =
+      CharArrayUtil.shiftForward(file.viewProvider.contents, head.textRange.endOffset, " \t,")
+  val following = file.findElementAt(offset) ?: return null
+  return following.text.takeIf { following.elementType in wordTypes }
 }
 
 internal fun TokenList.discardTrailingComment() {
-    if (!isEmpty && this[size() - 1].type == TokenTypes.COMMENT) remove(size() - 1)
+  if (!isEmpty && this[size() - 1].type == TokenTypes.COMMENT) remove(size() - 1)
 }
 
 private fun macroSignature(
-    header: PsiElement, tokens: TokenList, operation: Int, start: Int, mapped: Tokenizer.MappedLine?,
+    header: PsiElement,
+    tokens: TokenList,
+    operation: Int,
+    start: Int,
+    mapped: Tokenizer.MappedLine?,
 ): MipsSourceEvent.Effective? {
-    if (tokens.directiveAt(operation) != Directives.MACRO) return null
-    fun originalColumn(column: Int): Int = start + (mapped?.originalOffset(column) ?: column)
-    fun originalOffset(token: Token): Int = originalColumn(token.startPos - 1)
-    // Signs are separate editor leaves. Map the end back too, so a substituted
-    // magnitude highlights its full written alias and a generated sign stays on its alias.
-    fun lastOffset(token: Token): Int =
-        if (token.value.first() in "+-") originalColumn(token.startPos + token.value.length - 2) else originalOffset(token)
-    val directive = originalOffset(tokens[operation])
-    val nameIndex = operation + 1
-    if (nameIndex == tokens.size()) return MipsSourceEvent.RejectedMacro(directive, Kind.MISSING_NAME)
-    val name = tokens[nameIndex]
-    if (name.type != TokenTypes.IDENTIFIER) {
-        return MipsSourceEvent.RejectedMacro(originalOffset(name), Kind.INVALID_NAME, lastOffset(name))
-    }
-    val arguments = (nameIndex + 1 until tokens.size()).map(tokens::get)
-        .filter { it.type != TokenTypes.LEFT_PAREN && it.type != TokenTypes.RIGHT_PAREN }
-    val parameters = arguments.takeWhile { it.type != TokenTypes.ERROR && Macro.tokenIsMacroParameter(it.value, true) }
-    val invalid = arguments.getOrNull(parameters.size)
-    return MipsSourceEvent.Begin(header, name.value, originalOffset(name), directive,
-        parameters.map { MipsSourceEvent.MacroFormal(it.value, originalOffset(it)) },
-        invalid?.let { MipsSourceEvent.MacroFormal(it.value, originalOffset(it), lastOffset(it)) })
+  if (tokens.directiveAt(operation) != Directives.MACRO) return null
+  fun originalColumn(column: Int): Int = start + (mapped?.originalOffset(column) ?: column)
+  fun originalOffset(token: Token): Int = originalColumn(token.startPos - 1)
+  // Signs are separate editor leaves. Map the end back too, so a substituted
+  // magnitude highlights its full written alias and a generated sign stays on its alias.
+  fun lastOffset(token: Token): Int =
+      if (token.value.first() in "+-") originalColumn(token.startPos + token.value.length - 2)
+      else originalOffset(token)
+  val directive = originalOffset(tokens[operation])
+  val nameIndex = operation + 1
+  if (nameIndex == tokens.size()) return MipsSourceEvent.RejectedMacro(directive, Kind.MISSING_NAME)
+  val name = tokens[nameIndex]
+  if (name.type != TokenTypes.IDENTIFIER) {
+    return MipsSourceEvent.RejectedMacro(originalOffset(name), Kind.INVALID_NAME, lastOffset(name))
+  }
+  val arguments =
+      (nameIndex + 1 until tokens.size()).map(tokens::get).filter {
+        it.type != TokenTypes.LEFT_PAREN && it.type != TokenTypes.RIGHT_PAREN
+      }
+  val parameters = arguments.takeWhile {
+    it.type != TokenTypes.ERROR && Macro.tokenIsMacroParameter(it.value, true)
+  }
+  val invalid = arguments.getOrNull(parameters.size)
+  return MipsSourceEvent.Begin(
+      header,
+      name.value,
+      originalOffset(name),
+      directive,
+      parameters.map { MipsSourceEvent.MacroFormal(it.value, originalOffset(it)) },
+      invalid?.let { MipsSourceEvent.MacroFormal(it.value, originalOffset(it), lastOffset(it)) },
+  )
 }
 
 private fun writtenMacroEnd(element: PsiElement): MipsSourceEvent? {
-    val tokens = macroLineTokens(element, fromLineStart = true)
-    val operation = tokens.operationIndex(inMacro = false)
-    if (tokens.directiveAt(operation) != Directives.END_MACRO) return null
-    if (sourceLineStart(element) + tokens[operation].startPos - 1 != element.textOffset) return null
-    val offset = element.textOffset
-    if (tokens.size() == operation + 1) {
-        val end = MipsSourceEvent.End(offset)
-        return if (operation == 0) end else MipsSourceEvent.LabeledMacro(end, tokens[0].value)
-    }
-    if (operation == 0) return null // The parser reports the unlabeled case.
-    return MipsSourceEvent.LabeledMacro(MipsSourceEvent.RejectedMacro(offset, Kind.TRAILING_TEXT), tokens[0].value)
+  val tokens = macroLineTokens(element, fromLineStart = true)
+  val operation = tokens.operationIndex(inMacro = false)
+  if (tokens.directiveAt(operation) != Directives.END_MACRO) return null
+  if (sourceLineStart(element) + tokens[operation].startPos - 1 != element.textOffset) return null
+  val offset = element.textOffset
+  if (tokens.size() == operation + 1) {
+    val end = MipsSourceEvent.End(offset)
+    return if (operation == 0) end else MipsSourceEvent.LabeledMacro(end, tokens[0].value)
+  }
+  if (operation == 0) return null // The parser reports the unlabeled case.
+  return MipsSourceEvent.LabeledMacro(
+      MipsSourceEvent.RejectedMacro(offset, Kind.TRAILING_TEXT),
+      tokens[0].value,
+  )
 }
 
 private fun writtenRejectedMacroHeader(element: PsiElement): MipsSourceEvent? {
-    val tokens = macroLineTokens(element, fromLineStart = true)
-    val operation = tokens.operationIndex(inMacro = false)
-    if (operation == 0) return null
-    val issue = macroSignature(element, tokens, operation, sourceLineStart(element), null) as? MipsSourceEvent.RejectedMacro
-        ?: return null
-    return MipsSourceEvent.LabeledMacro(issue, tokens[0].value)
+  val tokens = macroLineTokens(element, fromLineStart = true)
+  val operation = tokens.operationIndex(inMacro = false)
+  if (operation == 0) return null
+  val issue =
+      macroSignature(element, tokens, operation, sourceLineStart(element), null)
+          as? MipsSourceEvent.RejectedMacro ?: return null
+  return MipsSourceEvent.LabeledMacro(issue, tokens[0].value)
 }
 
-private fun externalReservation(site: PsiElement, tokens: TokenList, operation: Int, inMacro: Boolean): MipsSourceEvent.External? {
-    if (tokens.size() != operation + 3) return null
-    val size = tokens[operation + 2]
-    if (!TokenTypes.isIntegerTokenType(size.type) || Binary.stringToInt(size.value) < 0) return null
-    val name = tokens[operation + 1]
-    if (inMacro && Macro.tokenIsMacroParameter(name.value, true)) return null
-    return MipsSourceEvent.External(site, name.value, name.type == TokenTypes.IDENTIFIER || name.type == TokenTypes.OPERATOR)
+private fun externalReservation(
+    site: PsiElement,
+    tokens: TokenList,
+    operation: Int,
+    inMacro: Boolean,
+): MipsSourceEvent.External? {
+  if (tokens.size() != operation + 3) return null
+  val size = tokens[operation + 2]
+  if (!TokenTypes.isIntegerTokenType(size.type) || Binary.stringToInt(size.value) < 0) return null
+  val name = tokens[operation + 1]
+  if (inMacro && Macro.tokenIsMacroParameter(name.value, true)) return null
+  return MipsSourceEvent.External(
+      site,
+      name.value,
+      name.type == TokenTypes.IDENTIFIER || name.type == TokenTypes.OPERATOR,
+  )
 }

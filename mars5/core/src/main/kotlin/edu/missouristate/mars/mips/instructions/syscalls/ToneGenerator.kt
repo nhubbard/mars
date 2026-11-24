@@ -57,116 +57,134 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //////////////////////////////////////////////////////////////////////////
 
 /** Plays MIDI tones for one syscall environment. */
-class ToneGenerator internal constructor(
+class ToneGenerator
+internal constructor(
     private val sequencers: SequencerSource,
     private val reportFailure: (Exception) -> Unit,
 ) : AutoCloseable {
-    internal fun interface SequencerSource {
-        @Throws(MidiUnavailableException::class)
-        fun create(): Sequencer
-    }
+  internal fun interface SequencerSource {
+    @Throws(MidiUnavailableException::class) fun create(): Sequencer
+  }
 
-    constructor(reportFailure: (Exception) -> Unit) : this(SequencerSource(MidiSystem::getSequencer), reportFailure)
+  constructor(
+      reportFailure: (Exception) -> Unit,
+  ) : this(SequencerSource(MidiSystem::getSequencer), reportFailure)
 
-    private var threadPool: ExecutorService? = null
+  private var threadPool: ExecutorService? = null
 
-    @Synchronized
-    fun generateTone(pitch: Byte, duration: Int, instrument: Byte, volume: Byte) {
-        val pool = threadPool ?: Executors.newCachedThreadPool { task ->
-            Thread(task, "mars-midi").apply { isDaemon = true }
-        }.also { threadPool = it }
-        pool.execute { generateToneSynchronously(pitch, duration, instrument, volume) }
-    }
-
-    @Synchronized
-    override fun close() {
-        threadPool?.shutdownNow()
-        threadPool = null
-    }
-
-    fun generateToneSynchronously(pitch: Byte, duration: Int, instrument: Byte, volume: Byte) {
-        try {
-            openSequencer().use { player ->
-                if (Thread.currentThread().isInterrupted) return
-                val sequence = Sequence(Sequence.PPQ, 1)
-                player.tempoInMPQ = TEMPO.toFloat()
-                val track = sequence.createTrack()
-                track.add(MidiEvent(ShortMessage(ShortMessage.PROGRAM_CHANGE, DEFAULT_CHANNEL, instrument.toInt(), 0), 0))
-                track.add(MidiEvent(ShortMessage(ShortMessage.NOTE_ON, DEFAULT_CHANNEL, pitch.toInt(), volume.toInt()), 0))
-                track.add(
-                    MidiEvent(ShortMessage(ShortMessage.NOTE_OFF, DEFAULT_CHANNEL, pitch.toInt(), volume.toInt()), duration.toLong()),
-                )
-                player.sequence = sequence
-                val endOfTrack = EndOfTrackListener()
-                player.addMetaEventListener(endOfTrack)
-                player.start()
-                endOfTrack.await()
-            }
-        } catch (_: InterruptedException) {
-            // The launch stopped while opening the device or playing the tone.
-        } catch (failure: MidiUnavailableException) {
-            reportUnlessInterrupted(failure)
-        } catch (failure: InvalidMidiDataException) {
-            reportUnlessInterrupted(failure)
-        } catch (failure: RuntimeException) {
-            reportUnlessInterrupted(failure)
-        }
-    }
-
-    private fun openSequencer(): Sequencer {
-        // Serialize opening the MIDI device to avoid a race in native sequencer initialization.
-        openLock.lockInterruptibly()
-        try {
-            val player = sequencers.create()
-            try {
-                player.open()
-                return player
-            } catch (failure: MidiUnavailableException) {
-                player.close()
-                throw failure
-            } catch (failure: RuntimeException) {
-                player.close()
-                throw failure
-            }
-        } finally {
-            openLock.unlock()
-        }
-    }
-
-    private fun reportUnlessInterrupted(failure: Exception) {
-        if (!Thread.currentThread().isInterrupted) reportFailure(failure)
-    }
-
-    private class EndOfTrackListener : MetaEventListener {
-        private val lock = ReentrantLock()
-        private val completed = lock.newCondition()
-        private var ended = false
-
-        override fun meta(message: MetaMessage) {
-            if (message.type == END_OF_TRACK) {
-                lock.withLock {
-                    ended = true
-                    completed.signalAll()
+  @Synchronized
+  fun generateTone(pitch: Byte, duration: Int, instrument: Byte, volume: Byte) {
+    val pool =
+        threadPool
+            ?: Executors.newCachedThreadPool { task ->
+                  Thread(task, "mars-midi").apply { isDaemon = true }
                 }
-            }
-        }
+                .also { threadPool = it }
+    pool.execute { generateToneSynchronously(pitch, duration, instrument, volume) }
+  }
 
-        fun await() {
-            lock.withLock {
-                while (!ended) completed.await()
-            }
+  @Synchronized
+  override fun close() {
+    threadPool?.shutdownNow()
+    threadPool = null
+  }
+
+  fun generateToneSynchronously(pitch: Byte, duration: Int, instrument: Byte, volume: Byte) {
+    try {
+      openSequencer().use { player ->
+        if (Thread.currentThread().isInterrupted) return
+        val sequence = Sequence(Sequence.PPQ, 1)
+        player.tempoInMPQ = TEMPO.toFloat()
+        val track = sequence.createTrack()
+        track.add(
+            MidiEvent(
+                ShortMessage(ShortMessage.PROGRAM_CHANGE, DEFAULT_CHANNEL, instrument.toInt(), 0),
+                0,
+            ),
+        )
+        track.add(
+            MidiEvent(
+                ShortMessage(ShortMessage.NOTE_ON, DEFAULT_CHANNEL, pitch.toInt(), volume.toInt()),
+                0,
+            ),
+        )
+        track.add(
+            MidiEvent(
+                ShortMessage(ShortMessage.NOTE_OFF, DEFAULT_CHANNEL, pitch.toInt(), volume.toInt()),
+                duration.toLong(),
+            ),
+        )
+        player.sequence = sequence
+        val endOfTrack = EndOfTrackListener()
+        player.addMetaEventListener(endOfTrack)
+        player.start()
+        endOfTrack.await()
+      }
+    } catch (_: InterruptedException) {
+      // The launch stopped while opening the device or playing the tone.
+    } catch (failure: MidiUnavailableException) {
+      reportUnlessInterrupted(failure)
+    } catch (failure: InvalidMidiDataException) {
+      reportUnlessInterrupted(failure)
+    } catch (failure: RuntimeException) {
+      reportUnlessInterrupted(failure)
+    }
+  }
+
+  private fun openSequencer(): Sequencer {
+    // Serialize opening the MIDI device to avoid a race in native sequencer initialization.
+    openLock.lockInterruptibly()
+    try {
+      val player = sequencers.create()
+      try {
+        player.open()
+        return player
+      } catch (failure: MidiUnavailableException) {
+        player.close()
+        throw failure
+      } catch (failure: RuntimeException) {
+        player.close()
+        throw failure
+      }
+    } finally {
+      openLock.unlock()
+    }
+  }
+
+  private fun reportUnlessInterrupted(failure: Exception) {
+    if (!Thread.currentThread().isInterrupted) reportFailure(failure)
+  }
+
+  private class EndOfTrackListener : MetaEventListener {
+    private val lock = ReentrantLock()
+    private val completed = lock.newCondition()
+    private var ended = false
+
+    override fun meta(message: MetaMessage) {
+      if (message.type == END_OF_TRACK) {
+        lock.withLock {
+          ended = true
+          completed.signalAll()
         }
+      }
     }
 
-    companion object {
-        const val DEFAULT_PITCH: Byte = 60
-        const val DEFAULT_DURATION = 1000
-        const val DEFAULT_INSTRUMENT: Byte = 0
-        const val DEFAULT_VOLUME: Byte = 100
-
-        private const val TEMPO = 1000
-        private const val DEFAULT_CHANNEL = 0
-        private const val END_OF_TRACK = 47
-        private val openLock = ReentrantLock()
+    fun await() {
+      lock.withLock {
+        while (!ended) completed.await()
+      }
     }
+  }
+
+  companion object {
+    const val DEFAULT_PITCH: Byte = 60
+    const val DEFAULT_DURATION = 1000
+    const val DEFAULT_INSTRUMENT: Byte = 0
+    const val DEFAULT_VOLUME: Byte = 100
+
+    private const val TEMPO = 1000
+    private const val DEFAULT_CHANNEL = 0
+    private const val END_OF_TRACK = 47
+    private val openLock = ReentrantLock()
+  }
 }

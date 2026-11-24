@@ -34,13 +34,19 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 open class SyscallReadDouble : AbstractSyscall(7, "ReadDouble") {
-    @Throws(ProcessingException::class)
-    override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
-        val value = try {
-            context.environment().readDouble()
+  @Throws(ProcessingException::class)
+  override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
+    val value =
+        try {
+          context.environment().readDouble()
         } catch (failure: NumberFormatException) {
-            throw ProcessingException(context, statement, "invalid double input (syscall $number)", SYSCALL_EXCEPTION)
+          throw ProcessingException(
+              context,
+              statement,
+              "invalid double input (syscall $number)",
+              SYSCALL_EXCEPTION,
+          )
         }
-        context.setRegisterPairToDouble(0, value)
-    }
+    context.setRegisterPairToDouble(0, value)
+  }
 }

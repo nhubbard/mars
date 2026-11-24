@@ -13,40 +13,40 @@ import kotlin.jvm.JvmRecord
 /** Assembly dependencies shared by source files, includes, and pseudo-instructions. */
 @JvmRecord
 data class AssemblyContext(val session: MarsContext) {
-    fun sharesSession(other: AssemblyContext): Boolean = session === other.session
+  fun sharesSession(other: AssemblyContext): Boolean = session === other.session
 
-    fun memory(): MemoryState = session.memory
+  fun memory(): MemoryState = session.memory
 
-    fun symbols(): SymbolTable = session.symbolTable
+  fun symbols(): SymbolTable = session.symbolTable
 
-    fun instructions(): InstructionSet = session.instructionSet
+  fun instructions(): InstructionSet = session.instructionSet
 
-    fun settings(): MarsSettings = session.settings
+  fun settings(): MarsSettings = session.settings
 
-    fun newErrorList(): ErrorList = ErrorList(session.settings)
+  fun newErrorList(): ErrorList = ErrorList(session.settings)
 
-    fun bareMachineEnabled(): Boolean = session.settings.isBareMachineEnabled
+  fun bareMachineEnabled(): Boolean = session.settings.isBareMachineEnabled
 
-    fun displayAddressesInHex(): Boolean = session.settings.displayAddressesInHex()
+  fun displayAddressesInHex(): Boolean = session.settings.displayAddressesInHex()
 
-    fun tokenizer(program: MIPSprogram): Tokenizer = Tokenizer(program, instructions())
+  fun tokenizer(program: MIPSprogram): Tokenizer = Tokenizer(program, instructions())
 
-    fun integerRegister(name: String): Register? = session.registerFile.getUserRegister(name)
+  fun integerRegister(name: String): Register? = session.registerFile.getUserRegister(name)
 
-    fun integerRegisterNumber(name: String?): Int = session.registerFile.getNumber(name)
+  fun integerRegisterNumber(name: String?): Int = session.registerFile.getNumber(name)
 
-    fun floatingRegisterNumber(name: String?): Int = session.coprocessor1.getRegisterNumber(name)
+  fun floatingRegisterNumber(name: String?): Int = session.coprocessor1.getRegisterNumber(name)
 
-    fun clearMemory() {
-        session.backStepper.clear()
-        session.memory.clear()
-    }
+  fun clearMemory() {
+    session.backStepper.clear()
+    session.memory.clear()
+  }
 
-    fun beginAssembly(program: MIPSprogram) {
-        session.beginAssembly(program)
-    }
+  fun beginAssembly(program: MIPSprogram) {
+    session.beginAssembly(program)
+  }
 
-    fun finishAssembly(program: MIPSprogram) {
-        session.finishAssembly(program)
-    }
+  fun finishAssembly(program: MIPSprogram) {
+    session.finishAssembly(program)
+  }
 }

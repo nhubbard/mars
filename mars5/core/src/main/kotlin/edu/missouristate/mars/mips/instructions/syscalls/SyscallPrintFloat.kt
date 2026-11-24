@@ -32,7 +32,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 open class SyscallPrintFloat : AbstractSyscall(2, "PrintFloat") {
-    override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
-        context.environment().printFloat(Float.fromBits(context.coprocessor1.getValue(12)))
-    }
+  override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
+    context.environment().printFloat(Float.fromBits(context.coprocessor1.getValue(12)))
+  }
 }

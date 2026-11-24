@@ -30,52 +30,65 @@ import org.junit.jupiter.api.Test
 
 @TestApplication
 class MipsIncludeProviderPlatformTest {
-    private val project = codeInsightProjectFixture()
-    private val fixture by codeInsightFixture(project)
+  private val project = codeInsightProjectFixture()
+  private val fixture by codeInsightFixture(project)
 
-    @Test
-    fun `include producer preserves the assembler prepass rules without resolving paths`() {
-        val source = """
-            # .include "comment.asm"
-            .asciiz ".include \"string.asm\""
-            %arg!.include "parameter.asm"
-            fake/.include "not-an-include.asm"
-            before: .INCLUDE, "parts/first.asm" .include "second-on-line.asm"
-            .macro m
-              .include "macro-body.asm"
-            .end_macro
-            .eqv replacement .include "replacement.asm"
-            .include # no path
-            "next-line.asm"
-            .include 1 "not-a-path.asm"
-            .include "unterminated
-            .word 1
-            .include
-            .include "raw\n.asm"
-            .include ""
-        """.trimIndent() + "\n.include \"at-eof.asm\""
-        val provider = MipsIncludeProvider()
-        val file = LightVirtualFile("includes.asm", MipsFileType, source)
-        val content = FileContentImpl.createByText(file, source, null)
-        val infos = provider.getIncludeInfos(content)
-        assertEquals(listOf("parts/first.asm", "macro-body.asm", "replacement.asm", "raw\\n.asm", "", "at-eof.asm"), infos.map { it.path })
-        assertEquals(infos.map { source.lastIndexOf("\"${it.path}\"") }, infos.map { it.offset })
-        assertTrue(infos.none { it.runtimeOnly })
-        assertEquals("first.asm", infos.first().fileName)
-        assertTrue(provider.acceptFile(content))
-        val other = LightVirtualFile("other.txt", PlainTextFileType.INSTANCE, source)
-        assertFalse(provider.acceptFile(FileContentImpl.createByText(other, source, null)))
-        val types = ArrayList<FileType>()
-        provider.registerFileTypesUsedForIndexing { types.add(it) }
-        assertEquals(listOf(MipsFileType), types)
-        assertEquals("mars", provider.id)
-        assertEquals(10, provider.version)
-        val empty = LightVirtualFile("empty.asm", MipsFileType, "")
-        assertTrue(provider.getIncludeInfos(FileContentImpl.createByText(empty, "", null)).isEmpty())
-    }
+  @Test
+  fun `include producer preserves the assembler prepass rules without resolving paths`() {
+    val source =
+        """
+        # .include "comment.asm"
+        .asciiz ".include \"string.asm\""
+        %arg!.include "parameter.asm"
+        fake/.include "not-an-include.asm"
+        before: .INCLUDE, "parts/first.asm" .include "second-on-line.asm"
+        .macro m
+          .include "macro-body.asm"
+        .end_macro
+        .eqv replacement .include "replacement.asm"
+        .include # no path
+        "next-line.asm"
+        .include 1 "not-a-path.asm"
+        .include "unterminated
+        .word 1
+        .include
+        .include "raw\n.asm"
+        .include ""
+        """
+            .trimIndent() + "\n.include \"at-eof.asm\""
+    val provider = MipsIncludeProvider()
+    val file = LightVirtualFile("includes.asm", MipsFileType, source)
+    val content = FileContentImpl.createByText(file, source, null)
+    val infos = provider.getIncludeInfos(content)
+    assertEquals(
+        listOf(
+            "parts/first.asm",
+            "macro-body.asm",
+            "replacement.asm",
+            "raw\\n.asm",
+            "",
+            "at-eof.asm",
+        ),
+        infos.map { it.path },
+    )
+    assertEquals(infos.map { source.lastIndexOf("\"${it.path}\"") }, infos.map { it.offset })
+    assertTrue(infos.none { it.runtimeOnly })
+    assertEquals("first.asm", infos.first().fileName)
+    assertTrue(provider.acceptFile(content))
+    val other = LightVirtualFile("other.txt", PlainTextFileType.INSTANCE, source)
+    assertFalse(provider.acceptFile(FileContentImpl.createByText(other, source, null)))
+    val types = ArrayList<FileType>()
+    provider.registerFileTypesUsedForIndexing { types.add(it) }
+    assertEquals(listOf(MipsFileType), types)
+    assertEquals("mars", provider.id)
+    assertEquals(10, provider.version)
+    val empty = LightVirtualFile("empty.asm", MipsFileType, "")
+    assertTrue(provider.getIncludeInfos(FileContentImpl.createByText(empty, "", null)).isEmpty())
+  }
 
-    @Test
-    fun `Windows include keys match directory separators and case without rewriting source paths`() = timeoutRunBlocking {
+  @Test
+  fun `Windows include keys match directory separators and case without rewriting source paths`() =
+      timeoutRunBlocking {
         val path = """Parts\CHILD.s"""
         val source = ".include \"$path\""
         val file = LightVirtualFile("entry.s", MipsFileType, source)
@@ -87,126 +100,159 @@ class MipsIncludeProviderPlatformTest {
         assertEquals(path, info.path)
         assertEquals(source.indexOf('"'), info.offset)
         assertEquals("child.s", info.fileName)
-        val target = withContext(Dispatchers.EDT) { fixture.addFileToProject("Parts/Child.s", "nop\n") }
+        val target =
+            withContext(Dispatchers.EDT) { fixture.addFileToProject("Parts/Child.s", "nop\n") }
         readAction {
-            assertEquals("child.s", windows.getIncludeName(target, target.name))
-            assertEquals("child.s", unix.getIncludeName(target, target.name))
+          assertEquals("child.s", windows.getIncludeName(target, target.name))
+          assertEquals("child.s", unix.getIncludeName(target, target.name))
         }
-    }
+      }
 
-    @Test
-    fun `malformed tokens preserve the assembler include decision and physical quote offsets`() {
-        val source = "'a .include \"hidden.s\"\r\n" +
+  @Test
+  fun `malformed tokens preserve the assembler include decision and physical quote offsets`() {
+    val source =
+        "'a .include \"hidden.s\"\r\n" +
             "'abcde.include \"part.s\"\n" +
             "before: @ .InClUdE,, \"second.s\" 0xG\r" +
             ".include \"unfinished\n" +
             ".include \"last.s\""
-        val file = LightVirtualFile("entry.s", MipsFileType, source)
-        val infos = MipsIncludeProvider().getIncludeInfos(FileContentImpl.createByText(file, source, null))
-        assertEquals(listOf("part.s", "second.s", "last.s"), infos.map { it.path })
-        assertEquals(infos.map { source.indexOf("\"${it.path}\"") }, infos.map { it.offset })
-    }
+    val file = LightVirtualFile("entry.s", MipsFileType, source)
+    val infos =
+        MipsIncludeProvider().getIncludeInfos(FileContentImpl.createByText(file, source, null))
+    assertEquals(listOf("part.s", "second.s", "last.s"), infos.map { it.path })
+    assertEquals(infos.map { source.indexOf("\"${it.path}\"") }, infos.map { it.offset })
+  }
 
-    @Test
-    fun `include paths follow assembler quote boundaries without decoding escapes`() {
-        val path = "lib" + "\\\\" + "\"#part.s"
-        val source = ".include \"$path\""
-        assertEquals(path, Tokenizer().findIncludePath(source))
-        val file = LightVirtualFile("entry.s", MipsFileType, source)
-        val infos = MipsIncludeProvider().getIncludeInfos(FileContentImpl.createByText(file, source, null))
-        assertEquals(listOf(path), infos.map { it.path })
-        assertEquals(source.indexOf('"'), infos.single().offset)
-    }
+  @Test
+  fun `include paths follow assembler quote boundaries without decoding escapes`() {
+    val path = "lib" + "\\\\" + "\"#part.s"
+    val source = ".include \"$path\""
+    assertEquals(path, Tokenizer().findIncludePath(source))
+    val file = LightVirtualFile("entry.s", MipsFileType, source)
+    val infos =
+        MipsIncludeProvider().getIncludeInfos(FileContentImpl.createByText(file, source, null))
+    assertEquals(listOf(path), infos.map { it.path })
+    assertEquals(source.indexOf('"'), infos.single().offset)
+  }
 
-    @Test
-    fun `shared include index resolves both graph directions and terminates recursive traversal`() = timeoutRunBlocking {
-        val files = withContext(Dispatchers.EDT) {
-            val child = if (SystemInfoRt.isWindows) """parts\CHILD.asm""" else "parts/child.asm"
-            listOf(
-                fixture.addFileToProject("main.asm", ".include \"$child\"\n").virtualFile,
-                fixture.addFileToProject("parts/child.asm", ".include \"../leaf.s\"\n").virtualFile,
-                fixture.addFileToProject("leaf.s", ".include \"main.asm\"\n").virtualFile,
-            )
-        }
+  @Test
+  fun `shared include index resolves both graph directions and terminates recursive traversal`() =
+      timeoutRunBlocking {
+        val files =
+            withContext(Dispatchers.EDT) {
+              val child = if (SystemInfoRt.isWindows) """parts\CHILD.asm""" else "parts/child.asm"
+              listOf(
+                  fixture.addFileToProject("main.asm", ".include \"$child\"\n").virtualFile,
+                  fixture
+                      .addFileToProject("parts/child.asm", ".include \"../leaf.s\"\n")
+                      .virtualFile,
+                  fixture.addFileToProject("leaf.s", ".include \"main.asm\"\n").virtualFile,
+              )
+            }
         IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
         readAction {
-            val manager = FileIncludeManager.getManager(project.get())
-            assertEquals(setOf(files[1]), manager.getIncludedFiles(files[0], true).toSet())
-            assertEquals(setOf(files[0]), manager.getIncludingFiles(files[1], true).toSet())
-            assertEquals(setOf(files[1]), manager.getIncludingFiles(files[2], true).toSet())
-            assertEquals(files.toSet(), manager.getIncludedFiles(files[0], true, true).toSet())
+          val manager = FileIncludeManager.getManager(project.get())
+          assertEquals(setOf(files[1]), manager.getIncludedFiles(files[0], true).toSet())
+          assertEquals(setOf(files[0]), manager.getIncludingFiles(files[1], true).toSet())
+          assertEquals(setOf(files[1]), manager.getIncludingFiles(files[2], true).toSet())
+          assertEquals(files.toSet(), manager.getIncludedFiles(files[0], true, true).toSet())
         }
-    }
+      }
 
-    @Test
-    fun `shared include index resolves an absolute path with spaces and unicode without a relative alias`() = timeoutRunBlocking {
-        val files = withContext(Dispatchers.EDT) {
-            val target = fixture.addFileToProject("names/with spaces#é.s", "target: nop\n").virtualFile
-            val source = fixture.addFileToProject(
-                "main.asm", ".include \"${target.path}\"\n",
-            ).virtualFile
-            source to target
-        }
+  @Test
+  fun `shared include index resolves an absolute path with spaces and unicode without a relative alias`() =
+      timeoutRunBlocking {
+        val files =
+            withContext(Dispatchers.EDT) {
+              val target =
+                  fixture.addFileToProject("names/with spaces#é.s", "target: nop\n").virtualFile
+              val source =
+                  fixture
+                      .addFileToProject(
+                          "main.asm",
+                          ".include \"${target.path}\"\n",
+                      )
+                      .virtualFile
+              source to target
+            }
         IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
         readAction {
-            val manager = FileIncludeManager.getManager(project.get())
-            assertEquals(setOf(files.second), manager.getIncludedFiles(files.first, true).toSet())
-            assertEquals(setOf(files.first), manager.getIncludingFiles(files.second, true).toSet())
+          val manager = FileIncludeManager.getManager(project.get())
+          assertEquals(setOf(files.second), manager.getIncludedFiles(files.first, true).toSet())
+          assertEquals(setOf(files.first), manager.getIncludingFiles(files.second, true).toSet())
         }
-    }
+      }
 
-    @Suppress("UnstableApiUsage")
-    @Test
-    fun `shared include index agrees with the target directory case sensitivity in both directions`() = timeoutRunBlocking {
-        val (target, exact, alternate) = withContext(Dispatchers.EDT) {
-            val target = fixture.addFileToProject("MixedCase.s", "target: nop\n").virtualFile
-            val exact = fixture.addFileToProject("exact.asm", ".include \"MixedCase.s\"\n").virtualFile
-            val alternate = fixture.addFileToProject("alternate.asm", ".include \"mixedcase.s\"\n").virtualFile
-            Triple(target, exact, alternate)
-        }
+  @Suppress("UnstableApiUsage")
+  @Test
+  fun `shared include index agrees with the target directory case sensitivity in both directions`() =
+      timeoutRunBlocking {
+        val (target, exact, alternate) =
+            withContext(Dispatchers.EDT) {
+              val target = fixture.addFileToProject("MixedCase.s", "target: nop\n").virtualFile
+              val exact =
+                  fixture.addFileToProject("exact.asm", ".include \"MixedCase.s\"\n").virtualFile
+              val alternate =
+                  fixture
+                      .addFileToProject("alternate.asm", ".include \"mixedcase.s\"\n")
+                      .virtualFile
+              Triple(target, exact, alternate)
+            }
         IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
         readAction {
-            val manager = FileIncludeManager.getManager(project.get())
-            val caseSensitive = target.parent.isCaseSensitive
-            assertEquals(setOf(target), manager.getIncludedFiles(exact, true).toSet())
-            val alternateSource = PsiManager.getInstance(project.get()).findFile(alternate)!!
-            val include = FileIncludeInfo("mixedcase.s", alternateSource.text.indexOf('"'))
-            val resolved = resolveIndexedMipsInclude(include, alternateSource)?.virtualFile
-            assertEquals(if (caseSensitive) null else target, resolved)
-            val roots = mipsAssemblyRoots(project.get(), target).toSet()
-            assertEquals(if (caseSensitive) setOf(exact) else setOf(exact, alternate), roots)
+          val manager = FileIncludeManager.getManager(project.get())
+          val caseSensitive = target.parent.isCaseSensitive
+          assertEquals(setOf(target), manager.getIncludedFiles(exact, true).toSet())
+          val alternateSource = PsiManager.getInstance(project.get()).findFile(alternate)!!
+          val include = FileIncludeInfo("mixedcase.s", alternateSource.text.indexOf('"'))
+          val resolved = resolveIndexedMipsInclude(include, alternateSource)?.virtualFile
+          assertEquals(if (caseSensitive) null else target, resolved)
+          val roots = mipsAssemblyRoots(project.get(), target).toSet()
+          assertEquals(if (caseSensitive) setOf(exact) else setOf(exact, alternate), roots)
         }
-    }
+      }
 
-    @Test
-    // Kotlin exposes the reported Java setters as read-only properties.
-    @Suppress("UsePropertyAccessSyntax")
-    fun `native resolution and reverse index find newly created targets and follow unsaved edits`() = timeoutRunBlocking {
-        val source = withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("main.asm", ".include \"missing.asm\"\n")
-        }
+  @Test
+  // Kotlin exposes the reported Java setters as read-only properties.
+  @Suppress("UsePropertyAccessSyntax")
+  fun `native resolution and reverse index find newly created targets and follow unsaved edits`() =
+      timeoutRunBlocking {
+        val source =
+            withContext(Dispatchers.EDT) {
+              fixture.addFileToProject("main.asm", ".include \"missing.asm\"\n")
+            }
         IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
         readAction {
-            assertTrue(FileIncludeManager.getManager(project.get()).getIncludedFiles(source.virtualFile, true).isEmpty())
+          assertTrue(
+              FileIncludeManager.getManager(project.get())
+                  .getIncludedFiles(source.virtualFile, true)
+                  .isEmpty(),
+          )
         }
-        val target = withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("missing.asm", "target: nop\n").virtualFile
-        }
+        val target =
+            withContext(Dispatchers.EDT) {
+              fixture.addFileToProject("missing.asm", "target: nop\n").virtualFile
+            }
         IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
         readAction {
-            val manager = FileIncludeManager.getManager(project.get())
-            assertEquals(target, manager.resolveFileInclude(FileIncludeInfo("missing.asm"), source)?.virtualFile)
-            assertEquals(setOf(source.virtualFile), manager.getIncludingFiles(target, true).toSet())
+          val manager = FileIncludeManager.getManager(project.get())
+          assertEquals(
+              target,
+              manager.resolveFileInclude(FileIncludeInfo("missing.asm"), source)?.virtualFile,
+          )
+          assertEquals(setOf(source.virtualFile), manager.getIncludingFiles(target, true).toSet())
         }
         withContext(Dispatchers.EDT) {
-            fixture.configureFromExistingVirtualFile(source.virtualFile)
-            WriteCommandAction.runWriteCommandAction(project.get()) { fixture.editor.document.setText("# removed include\n") }
-            PsiDocumentManager.getInstance(project.get()).commitAllDocuments()
+          fixture.configureFromExistingVirtualFile(source.virtualFile)
+          WriteCommandAction.runWriteCommandAction(project.get()) {
+            fixture.editor.document.setText("# removed include\n")
+          }
+          PsiDocumentManager.getInstance(project.get()).commitAllDocuments()
         }
         readAction {
-            val manager = FileIncludeManager.getManager(project.get())
-            assertTrue(manager.getIncludedFiles(source.virtualFile, true).isEmpty())
-            assertTrue(manager.getIncludingFiles(target, true).isEmpty())
+          val manager = FileIncludeManager.getManager(project.get())
+          assertTrue(manager.getIncludedFiles(source.virtualFile, true).isEmpty())
+          assertTrue(manager.getIncludingFiles(target, true).isEmpty())
         }
-    }
+      }
 }

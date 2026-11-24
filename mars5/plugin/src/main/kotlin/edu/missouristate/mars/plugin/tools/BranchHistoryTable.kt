@@ -6,93 +6,126 @@ import edu.missouristate.mars.api.StepEvent.BranchOutcome.TAKEN
 import edu.missouristate.mars.mips.instructions.Instruction.Companion.INSTRUCTION_LENGTH
 
 internal class BranchHistoryTable {
-    data class Options(val size: Int = 16, val historyBits: Int = 1, val initialTaken: Boolean = false) {
-        init {
-            require(size in sizes)
-            require(historyBits in histories)
-        }
+  data class Options(
+      val size: Int = 16,
+      val historyBits: Int = 1,
+      val initialTaken: Boolean = false,
+  ) {
+    init {
+      require(size in sizes)
+      require(historyBits in histories)
     }
+  }
 
-    data class Row(val history: List<Boolean>, val predictedTaken: Boolean, val correct: Long, val incorrect: Long) {
-        val precision: Double get() = if (correct + incorrect == 0L) 0.0 else correct * 100.0 / (correct + incorrect)
+  data class Row(
+      val history: List<Boolean>,
+      val predictedTaken: Boolean,
+      val correct: Long,
+      val incorrect: Long,
+  ) {
+    val precision: Double
+      get() = if (correct + incorrect == 0L) 0.0 else correct * 100.0 / (correct + incorrect)
+  }
+
+  data class Observation(
+      val pc: Long,
+      val instruction: Int,
+      val target: Long?,
+      val index: Int,
+      val predictedTaken: Boolean,
+      val taken: Boolean,
+      val architecture: MarsTarget,
+  ) {
+    val correct: Boolean
+      get() = predictedTaken == taken
+  }
+
+  data class Snapshot(
+      val connected: Boolean,
+      val options: Options,
+      val rows: List<Row>,
+      val recent: List<Observation>,
+  )
+
+  private class Entry(
+      var history: Int,
+      var predictedTaken: Boolean,
+      var correct: Long = 0,
+      var incorrect: Long = 0,
+  )
+
+  private var connected = true
+  private var options = Options()
+  private var rows = newRows()
+  private val recent = ArrayDeque<Observation>()
+
+  @Synchronized
+  fun record(event: StepEvent, branchTargetOffset: Long?) {
+    val outcome = event.branchOutcome ?: return
+    if (!connected) return
+    val index = ((event.pcBits ushr 2) and (options.size - 1).toLong()).toInt()
+    val entry = rows[index]
+    val taken = outcome == TAKEN
+    val predicted = entry.predictedTaken
+    val mask = (1 shl options.historyBits) - 1
+    entry.history = ((entry.history shl 1) or if (taken) 1 else 0) and mask
+    if (taken == predicted) {
+      entry.correct++
+    } else {
+      entry.incorrect++
+      if (entry.history == if (taken) mask else 0) entry.predictedTaken = taken
     }
-
-    data class Observation(
-        val pc: Long,
-        val instruction: Int,
-        val target: Long?,
-        val index: Int,
-        val predictedTaken: Boolean,
-        val taken: Boolean,
-        val architecture: MarsTarget,
-    ) {
-        val correct: Boolean get() = predictedTaken == taken
-    }
-    data class Snapshot(val connected: Boolean, val options: Options, val rows: List<Row>, val recent: List<Observation>)
-
-    private class Entry(var history: Int, var predictedTaken: Boolean, var correct: Long = 0, var incorrect: Long = 0)
-
-    private var connected = true
-    private var options = Options()
-    private var rows = newRows()
-    private val recent = ArrayDeque<Observation>()
-
-    @Synchronized
-    fun record(event: StepEvent, branchTargetOffset: Long?) {
-        val outcome = event.branchOutcome ?: return
-        if (!connected) return
-        val index = ((event.pcBits ushr 2) and (options.size - 1).toLong()).toInt()
-        val entry = rows[index]
-        val taken = outcome == TAKEN
-        val predicted = entry.predictedTaken
-        val mask = (1 shl options.historyBits) - 1
-        entry.history = ((entry.history shl 1) or if (taken) 1 else 0) and mask
-        if (taken == predicted) {
-            entry.correct++
+    if (recent.size == LOG_LIMIT) recent.removeFirst()
+    val target =
+        if (event.target == MarsTarget.MARS32) {
+          (event.pc + INSTRUCTION_LENGTH + (event.instruction.toShort().toInt() shl 2)).toLong()
         } else {
-            entry.incorrect++
-            if (entry.history == if (taken) mask else 0) entry.predictedTaken = taken
+          branchTargetOffset?.let { event.pcBits + it }
         }
-        if (recent.size == LOG_LIMIT) recent.removeFirst()
-        val target = if (event.target == MarsTarget.MARS32) {
-            (event.pc + INSTRUCTION_LENGTH + (event.instruction.toShort().toInt() shl 2)).toLong()
-        } else {
-            branchTargetOffset?.let { event.pcBits + it }
-        }
-        recent.addLast(Observation(event.pcBits, event.instruction, target, index, predicted, taken, event.target))
-    }
+    recent.addLast(
+        Observation(event.pcBits, event.instruction, target, index, predicted, taken, event.target),
+    )
+  }
 
-    @Synchronized
-    fun snapshot() = Snapshot(connected, options, rows.map { entry ->
-        val history = (options.historyBits - 1 downTo 0).map { bit -> entry.history and (1 shl bit) != 0 }
-        Row(history, entry.predictedTaken, entry.correct, entry.incorrect)
-    }, recent.toList())
+  @Synchronized
+  fun snapshot() =
+      Snapshot(
+          connected,
+          options,
+          rows.map { entry ->
+            val history =
+                (options.historyBits - 1 downTo 0).map { bit -> entry.history and (1 shl bit) != 0 }
+            Row(history, entry.predictedTaken, entry.correct, entry.incorrect)
+          },
+          recent.toList(),
+      )
 
-    @Synchronized
-    fun setConnected(value: Boolean) {
-        connected = value
-    }
+  @Synchronized
+  fun setConnected(value: Boolean) {
+    connected = value
+  }
 
-    @Synchronized
-    fun configure(value: Options) {
-        options = value
-        reset()
-    }
+  @Synchronized
+  fun configure(value: Options) {
+    options = value
+    reset()
+  }
 
-    @Synchronized
-    fun reset() {
-        rows = newRows()
-        recent.clear()
-    }
+  @Synchronized
+  fun reset() {
+    rows = newRows()
+    recent.clear()
+  }
 
-    private fun newRows() = Array(options.size) {
+  private fun newRows() =
+      Array(options.size) {
         val history = if (options.initialTaken) (1 shl options.historyBits) - 1 else 0
         Entry(history, options.initialTaken)
-    }
+      }
 
-    companion object {
-        val sizes = listOf(8, 16, 32)
-        val histories = listOf(1, 2)
-        private const val LOG_LIMIT = 128
-    }
+  companion object {
+    val sizes = listOf(8, 16, 32)
+    val histories = listOf(1, 2)
+    private const val LOG_LIMIT = 128
+  }
 }

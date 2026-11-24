@@ -23,50 +23,68 @@ internal class MarsExecutionStack(
     private val sourcePosition: (Origin?) -> XSourcePosition?,
     private val suspensionScope: CoroutineScope,
 ) : XExecutionStack(runMessages.getMessage("debug.cpu")) {
-    override fun getTopFrame() = frame
+  override fun getTopFrame() = frame
 
-    override fun computeStackFrames(firstFrameIndex: Int, container: XStackFrameContainer) {
-        suspensionScope.launch(Dispatchers.Default) {
-            val older = callers.drop((firstFrameIndex - 1).coerceAtLeast(0))
-                .map { MarsCallerFrame(it, sourcePosition(it.origin)) }
-            val frames = if (firstFrameIndex == 0) sequenceOf(frame) + older else older
-            val batches = frames.chunked(64).iterator()
-            while (!container.isObsolete) {
-                ensureActive()
-                val batch = if (batches.hasNext()) batches.next() else emptyList()
-                val last = !batches.hasNext()
-                container.addStackFrames(batch, last)
-                if (last) return@launch
-            }
-        }
+  override fun computeStackFrames(firstFrameIndex: Int, container: XStackFrameContainer) {
+    suspensionScope.launch(Dispatchers.Default) {
+      val older =
+          callers.drop((firstFrameIndex - 1).coerceAtLeast(0)).map {
+            MarsCallerFrame(it, sourcePosition(it.origin))
+          }
+      val frames = if (firstFrameIndex == 0) sequenceOf(frame) + older else older
+      val batches = frames.chunked(64).iterator()
+      while (!container.isObsolete) {
+        ensureActive()
+        val batch = if (batches.hasNext()) batches.next() else emptyList()
+        val last = !batches.hasNext()
+        container.addStackFrames(batch, last)
+        if (last) return@launch
+      }
     }
+  }
 }
 
 /** Navigation and call metadata are historical. Only the live CPU frame offers register values. */
-internal class MarsCallerFrame(private val site: CallerSite, private val position: XSourcePosition?) : XStackFrame() {
-    override fun getSourcePosition() = position
-    override fun getEqualityObject(): String = "mars-caller-${site.id}"
+internal class MarsCallerFrame(
+    private val site: CallerSite,
+    private val position: XSourcePosition?,
+) : XStackFrame() {
+  override fun getSourcePosition() = position
 
-    override fun customizePresentation(component: ColoredTextContainer) {
-        val location = position?.let { runMessages.getMessage("debug.frame.source", it.file.name, (it.line + 1).toString()) }
-            ?: formatCodeAddress(site.pc)
-        val key = if (site.call == null) "debug.frame.interrupted" else "debug.frame.caller"
-        component.append(runMessages.getMessage(key, location), REGULAR_ATTRIBUTES)
-        component.setIcon(AllIcons.Debugger.Frame)
-    }
+  override fun getEqualityObject(): String = "mars-caller-${site.id}"
 
-    override fun computeChildren(node: XCompositeNode) {
-        val call = site.call
-        val values = XValueChildrenList()
-        val addressKey = if (call == null) "debug.frame.interrupted.address" else "debug.frame.call.address"
-        values.add(RegisterValue(runMessages.getMessage(addressKey)) { formatCodeAddress(site.pc) })
-        if (call != null) {
-            values.add(RegisterValue(runMessages.getMessage("debug.frame.return.address")) { formatCodeAddress(call.returnAddressBits) })
-            values.add(RegisterValue(runMessages.getMessage("debug.frame.link.register")) { $$"$$${call.linkRegister}" })
-        }
-        node.addChildren(values, true)
+  override fun customizePresentation(component: ColoredTextContainer) {
+    val location =
+        position?.let {
+          runMessages.getMessage("debug.frame.source", it.file.name, (it.line + 1).toString())
+        } ?: formatCodeAddress(site.pc)
+    val key = if (site.call == null) "debug.frame.interrupted" else "debug.frame.caller"
+    component.append(runMessages.getMessage(key, location), REGULAR_ATTRIBUTES)
+    component.setIcon(AllIcons.Debugger.Frame)
+  }
+
+  override fun computeChildren(node: XCompositeNode) {
+    val call = site.call
+    val values = XValueChildrenList()
+    val addressKey =
+        if (call == null) "debug.frame.interrupted.address" else "debug.frame.call.address"
+    values.add(RegisterValue(runMessages.getMessage(addressKey)) { formatCodeAddress(site.pc) })
+    if (call != null) {
+      values.add(
+          RegisterValue(runMessages.getMessage("debug.frame.return.address")) {
+            formatCodeAddress(call.returnAddressBits)
+          },
+      )
+      values.add(
+          RegisterValue(runMessages.getMessage("debug.frame.link.register")) {
+            $$"$$${call.linkRegister}"
+          },
+      )
     }
+    node.addChildren(values, true)
+  }
 }
 
 private fun formatCodeAddress(address: Long): String =
-    if (address == address.toInt().toLong()) Binary.intToHexString(address.toInt()) else Binary.longToHexString(address)
+    if (address == address.toInt().toLong()) Binary.intToHexString(address.toInt())
+    else Binary.longToHexString(address)

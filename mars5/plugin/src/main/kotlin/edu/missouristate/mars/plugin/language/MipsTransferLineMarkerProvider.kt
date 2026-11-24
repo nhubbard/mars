@@ -24,47 +24,58 @@ import edu.missouristate.mars.plugin.analysis.sourceLine
 import edu.missouristate.mars.plugin.language.psi.MipsSymbolToken
 
 internal class MipsTransferLineMarkerProvider : RelatedItemLineMarkerProvider() {
-    override fun getName(): String = bundle.getMessage("gutter.transfer.name")
-    override fun getIcon() = AllIcons.Actions.Forward
+  override fun getName(): String = bundle.getMessage("gutter.transfer.name")
 
-    override fun collectNavigationMarkers(element: PsiElement, result: MutableCollection<in RelatedItemLineMarkerInfo<*>>) {
-        val head = element as? MipsSymbolToken ?: return
-        val transfer = transferAt(head) ?: return
-        if (transfer.targets.isEmpty()) return
-        val pointer = SmartPointerManager.createPointer(head)
-        result.add(NavigationGutterIconBuilder.create(icon, bundle.getMessage("gutter.transfer.popup"))
+  override fun getIcon() = AllIcons.Actions.Forward
+
+  override fun collectNavigationMarkers(
+      element: PsiElement,
+      result: MutableCollection<in RelatedItemLineMarkerInfo<*>>,
+  ) {
+    val head = element as? MipsSymbolToken ?: return
+    val transfer = transferAt(head) ?: return
+    if (transfer.targets.isEmpty()) return
+    val pointer = SmartPointerManager.createPointer(head)
+    result.add(
+        NavigationGutterIconBuilder.create(icon, bundle.getMessage("gutter.transfer.popup"))
             .setTooltipText(bundle.getMessage("gutter.transfer.tooltip", transfer.label))
             .setPopupTitle(bundle.getMessage("gutter.transfer.popup"))
             .setEmptyPopupText(bundle.getMessage("gutter.transfer.unavailable"))
-            .setTargets(NotNullLazyValue.lazy { pointer.element?.let(::transferAt)?.targets.orEmpty() })
-            .createLineMarkerInfo(head))
-    }
+            .setTargets(
+                NotNullLazyValue.lazy { pointer.element?.let(::transferAt)?.targets.orEmpty() },
+            )
+            .createLineMarkerInfo(head),
+    )
+  }
 
-    private fun transferAt(head: MipsSymbolToken): Transfer? {
-        val owner = operationOwner(head) ?: return null
-        if (owner.operationHead !== head) return null
-        val file = head.containingFile as MipsFile
-        if (DumbService.isDumb(file.project)) return null
-        val analysis = file.project.service<MarsAnalysisService>()
-        val operation = analysis.operationSite(file, head) ?: return null
-        if (operation.type != TokenTypes.OPERATOR) return null
-        val candidates = transferForms[operation.name.lowercase()] ?: return null
-        val tokens = analysis.editorInstructionTokens(file, head, sourceLine(head)) ?: return null
-        tokens.discardTrailingComment()
-        if (candidates.none { OperandFormat.matches(tokens, it) }) return null
-        val label = tokens[tokens.size() - 1].value
-        return Transfer(label, analysis.labelTargets(file, head, allowExternal = false, name = label))
-    }
+  private fun transferAt(head: MipsSymbolToken): Transfer? {
+    val owner = operationOwner(head) ?: return null
+    if (owner.operationHead !== head) return null
+    val file = head.containingFile as MipsFile
+    if (DumbService.isDumb(file.project)) return null
+    val analysis = file.project.service<MarsAnalysisService>()
+    val operation = analysis.operationSite(file, head) ?: return null
+    if (operation.type != TokenTypes.OPERATOR) return null
+    val candidates = transferForms[operation.name.lowercase()] ?: return null
+    val tokens = analysis.editorInstructionTokens(file, head, sourceLine(head)) ?: return null
+    tokens.discardTrailingComment()
+    if (candidates.none { OperandFormat.matches(tokens, it) }) return null
+    val label = tokens[tokens.size() - 1].value
+    return Transfer(label, analysis.labelTargets(file, head, allowExternal = false, name = label))
+  }
 
-    private data class Transfer(val label: String, val targets: List<PsiElement>)
+  private data class Transfer(val label: String, val targets: List<PsiElement>)
 }
 
-private val bundle = DynamicBundle(MipsTransferLineMarkerProvider::class.java, "messages.MarsBundle")
+private val bundle =
+    DynamicBundle(MipsTransferLineMarkerProvider::class.java, "messages.MarsBundle")
 private val transferForms by lazy {
-    val forms = InstructionDefaults.editorCatalog().instructionList
-    val basic = forms.filterIsInstance<BasicInstruction>().filter {
+  val forms = InstructionDefaults.editorCatalog().instructionList
+  val basic =
+      forms.filterIsInstance<BasicInstruction>().filter {
         it.instructionFormat == I_BRANCH_FORMAT || it.instructionFormat == J_FORMAT
-    }
-    val pseudo = forms.filterIsInstance<ExtendedInstruction>().filter(ExtendedInstruction::branchesToLabel)
-    (basic + pseudo).groupBy(Instruction::name)
+      }
+  val pseudo =
+      forms.filterIsInstance<ExtendedInstruction>().filter(ExtendedInstruction::branchesToLabel)
+  (basic + pseudo).groupBy(Instruction::name)
 }

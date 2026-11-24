@@ -39,31 +39,37 @@ abstract class Instruction(
     open val exampleFormat: String,
     open val description: String,
 ) {
-    open val name: String = extractOperator(exampleFormat)
-    open val instructionLength: Int get() = INSTRUCTION_LENGTH
+  open val name: String = extractOperator(exampleFormat)
+  open val instructionLength: Int
+    get() = INSTRUCTION_LENGTH
 
-    private lateinit var exampleTokens: TokenList
-    open val tokenList: TokenList get() = exampleTokens
+  private lateinit var exampleTokens: TokenList
+  open val tokenList: TokenList
+    get() = exampleTokens
 
-    protected fun extractOperator(example: String): String = StringTokenizer(example, " ,\t").nextToken()
+  protected fun extractOperator(example: String): String =
+      StringTokenizer(example, " ,\t").nextToken()
 
-    internal fun createExampleTokenList(instructions: InstructionSet?) {
-        check(!::exampleTokens.isInitialized || !exampleTokens.isFrozen)
-        try {
-            exampleTokens = Tokenizer(null, instructions).tokenizeExampleInstruction(exampleFormat)
-        } catch (_: ProcessingException) {
-            println("CONFIGURATION ERROR: Instruction example \"$exampleFormat\" contains invalid token(s).")
-        }
+  internal fun createExampleTokenList(instructions: InstructionSet?) {
+    check(!::exampleTokens.isInitialized || !exampleTokens.isFrozen)
+    try {
+      exampleTokens = Tokenizer(null, instructions).tokenizeExampleInstruction(exampleFormat)
+    } catch (_: ProcessingException) {
+      println(
+          "CONFIGURATION ERROR: Instruction example \"$exampleFormat\" contains invalid token(s).",
+      )
     }
+  }
 
-    companion object {
-        /** Transfers whose second operand names a CP0 register even though it uses GPR spelling. */
-        val coprocessor0Transfers: Set<String> = Collections.unmodifiableSet(setOf("mfc0", "mtc0", "dmfc0", "dmtc0"))
+  companion object {
+    /** Transfers whose second operand names a CP0 register even though it uses GPR spelling. */
+    val coprocessor0Transfers: Set<String> =
+        Collections.unmodifiableSet(setOf("mfc0", "mtc0", "dmfc0", "dmtc0"))
 
-        const val INSTRUCTION_LENGTH = 4
-        const val INSTRUCTION_LENGTH_BITS = 32
+    const val INSTRUCTION_LENGTH = 4
+    const val INSTRUCTION_LENGTH_BITS = 32
 
-        /** Operand markers in order in an operation mask. */
-        const val operandMask = "fstu"
-    }
+    /** Operand markers in order in an operation mask. */
+    const val operandMask = "fstu"
+  }
 }

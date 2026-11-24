@@ -8,6 +8,7 @@ plugins {
 }
 
 group = "edu.missouristate"
+
 version = "1.0-SNAPSHOT"
 
 repositories {
@@ -37,17 +38,38 @@ spotless {
     googleJavaFormat()
   }
   kotlin {
-    ktfmt()
+    target("**/*.kt", "**/*.kts")
+    // Output directories are at the root or immediately inside a module. A recursive
+    // build exclusion would also skip the plugin's source package named build.
+    targetExclude(
+        "build/**",
+        "*/build/**",
+        ".gradle/**",
+        "*/.gradle/**",
+        ".intellijPlatform/**",
+        "*/.intellijPlatform/**",
+        "out/**",
+        "*/out/**",
+    )
+    ktfmt("0.65")
   }
 }
 
 subprojects {
   // The IntelliJ Platform Gradle plugin applies the IDEA model for IDE import.
   // Keep Gradle from writing or deleting the old file-based project metadata.
-  val legacyIdeaTasks = setOf(
-    "idea", "ideaModule", "ideaProject", "ideaWorkspace", "openIdea",
-    "cleanIdea", "cleanIdeaModule", "cleanIdeaProject", "cleanIdeaWorkspace",
-  )
+  val legacyIdeaTasks =
+      setOf(
+          "idea",
+          "ideaModule",
+          "ideaProject",
+          "ideaWorkspace",
+          "openIdea",
+          "cleanIdea",
+          "cleanIdeaModule",
+          "cleanIdeaProject",
+          "cleanIdeaWorkspace",
+      )
   tasks.configureEach {
     if (name in legacyIdeaTasks) enabled = false
   }
@@ -62,23 +84,31 @@ subprojects {
 }
 
 // Retired global facades must not return to production sources.
-val verifyNoLegacyRuntime = tasks.register("verifyNoLegacyRuntime") {
-  description = "Check that retired global facades and runtime sources stay out of the build."
-  val sources = files(
-    fileTree("core/src") { include("**/*.java", "**/*.kt") },
-    fileTree("cli/src") { include("**/*.java", "**/*.kt") },
-    fileTree("plugin/src") { include("**/*.java", "**/*.kt") },
-    fileTree("plugin-jvm-compiler/src") { include("**/*.kt") }
-  )
-  inputs.files(sources)
-  doLast {
-    check(!file("legacy/src").exists()) { "The retired legacy runtime source tree has returned" }
-    val access = Regex("""\b(Globals|RegisterFile|Coprocessor0|Coprocessor1|LegacyProgram|SystemIO)\s*\.""")
-    val violations = sources.files.filter { access.containsMatchIn(it.readText()) }
-    check(violations.isEmpty()) {
-      "Retired runtime API references: " + violations.joinToString { it.relativeTo(projectDir).path }
+val verifyNoLegacyRuntime =
+    tasks.register("verifyNoLegacyRuntime") {
+      description = "Check that retired global facades and runtime sources stay out of the build."
+      val sources =
+          files(
+              fileTree("core/src") { include("**/*.java", "**/*.kt") },
+              fileTree("cli/src") { include("**/*.java", "**/*.kt") },
+              fileTree("plugin/src") { include("**/*.java", "**/*.kt") },
+              fileTree("plugin-jvm-compiler/src") { include("**/*.kt") },
+          )
+      inputs.files(sources)
+      doLast {
+        check(!file("legacy/src").exists()) {
+          "The retired legacy runtime source tree has returned"
+        }
+        val access =
+            Regex(
+                """\b(Globals|RegisterFile|Coprocessor0|Coprocessor1|LegacyProgram|SystemIO)\s*\.""",
+            )
+        val violations = sources.files.filter { access.containsMatchIn(it.readText()) }
+        check(violations.isEmpty()) {
+          "Retired runtime API references: " +
+              violations.joinToString { it.relativeTo(projectDir).path }
+        }
+      }
     }
-  }
-}
 
-tasks.check { dependsOn(verifyNoLegacyRuntime) }
+tasks.check { dependsOn(verifyNoLegacyRuntime, tasks.spotlessCheck) }

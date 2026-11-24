@@ -32,8 +32,8 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 open class SyscallRandFloat : AbstractSyscall(43, "RandFloat") {
-    override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
-        val stream = context.randomStreams().get(context.registerFile.getValue(4))
-        context.setRegisterToFloat(0, stream.nextFloat())
-    }
+  override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
+    val stream = context.randomStreams().get(context.registerFile.getValue(4))
+    context.setRegisterToFloat(0, stream.nextFloat())
+  }
 }

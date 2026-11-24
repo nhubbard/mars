@@ -35,15 +35,18 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 open class SyscallRandDouble : AbstractSyscall(44, "RandDouble") {
-    @Throws(ProcessingException::class)
-    override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
-        val stream = context.randomStreams().get(context.registerFile.getValue(4))
-        try {
-            context.setRegisterPairToDouble(0, stream.nextDouble())
-        } catch (failure: InvalidRegisterAccessException) {
-            throw ProcessingException(
-                context, statement, "Internal error storing double to register (syscall $number)", SYSCALL_EXCEPTION,
-            )
-        }
+  @Throws(ProcessingException::class)
+  override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
+    val stream = context.randomStreams().get(context.registerFile.getValue(4))
+    try {
+      context.setRegisterPairToDouble(0, stream.nextDouble())
+    } catch (failure: InvalidRegisterAccessException) {
+      throw ProcessingException(
+          context,
+          statement,
+          "Internal error storing double to register (syscall $number)",
+          SYSCALL_EXCEPTION,
+      )
     }
+  }
 }

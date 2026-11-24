@@ -22,75 +22,96 @@ import edu.missouristate.mars.plugin.language.MipsTypes
 
 /** Checks definitions even when no invocation has reached the assembler. */
 internal class MipsMacroParameterInspection : LocalInspectionTool() {
-    // Header or equivalence edits can change a parameter's meaning on a later physical line.
-    override fun runForWholeFile() = true
+  // Header or equivalence edits can change a parameter's meaning on a later physical line.
+  override fun runForWholeFile() = true
 
-    override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): PsiElementVisitor {
-        val file = holder.file as MipsFile
-        val timeline = file.project.service<MarsAnalysisService>().editorTimeline(file)
-        if (timeline.macroNames.isEmpty()) return PsiElementVisitor.EMPTY_VISITOR
-        return object : PsiElementVisitor() {
-            override fun visitElement(element: PsiElement) {
-                if (element.elementType != statement) return
-                val source = file.viewProvider.contents
-                val start = sourceLineStart(element)
-                val end = CharArrayUtil.shiftForwardUntil(source, element.textOffset, "\r\n")
-                val before = timeline.macroAt(file, start)
-                val after = timeline.macroAt(file, end) ?: return
-                if (after === before) {
-                    if (element.node.findChildByType(includeLine) == null) {
-                        inspectBody(holder, file, timeline.prefix(file, start), after, start, end)
-                    }
-                } else if (after.header.containingFile === file) {
-                    inspectHeader(holder, file, after)
-                }
-            }
+  override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): PsiElementVisitor {
+    val file = holder.file as MipsFile
+    val timeline = file.project.service<MarsAnalysisService>().editorTimeline(file)
+    if (timeline.macroNames.isEmpty()) return PsiElementVisitor.EMPTY_VISITOR
+    return object : PsiElementVisitor() {
+      override fun visitElement(element: PsiElement) {
+        if (element.elementType != statement) return
+        val source = file.viewProvider.contents
+        val start = sourceLineStart(element)
+        val end = CharArrayUtil.shiftForwardUntil(source, element.textOffset, "\r\n")
+        val before = timeline.macroAt(file, start)
+        val after = timeline.macroAt(file, end) ?: return
+        if (after === before) {
+          if (element.node.findChildByType(includeLine) == null) {
+            inspectBody(holder, file, timeline.prefix(file, start), after, start, end)
+          }
+        } else if (after.header.containingFile === file) {
+          inspectHeader(holder, file, after)
         }
+      }
     }
+  }
 
-    private fun inspectHeader(holder: ProblemsHolder, file: MipsFile, macro: Begin) {
-        val seen = HashSet<String>()
-        val duplicates = macro.parameters.filter { !seen.add(it.value) }
-        if (duplicates.isEmpty()) return
+  private fun inspectHeader(holder: ProblemsHolder, file: MipsFile, macro: Begin) {
+    val seen = HashSet<String>()
+    val duplicates = macro.parameters.filter { !seen.add(it.value) }
+    if (duplicates.isEmpty()) return
 
-        val reported = HashSet<Pair<Int, String>>()
-        for ((name, offset) in duplicates) {
-            if (reported.add(offset to name)) {
-                holder.registerProblem(file.findElementAt(offset)!!, messages.getMessage("inspection.macro.duplicate", name))
-            }
-        }
+    val reported = HashSet<Pair<Int, String>>()
+    for ((name, offset) in duplicates) {
+      if (reported.add(offset to name)) {
+        holder.registerProblem(
+            file.findElementAt(offset)!!,
+            messages.getMessage("inspection.macro.duplicate", name),
+        )
+      }
     }
+  }
 
-    private fun inspectBody(
-        holder: ProblemsHolder, file: MipsFile, prefix: MipsSourceTimeline.Prefix, macro: Begin, start: Int, end: Int,
-    ) {
-        val errors = ErrorList()
-        val mapped = expand(file, prefix, start, end, errors)
-        if (errors.errorsOccurred()) return
-        val tokens = mapped.tokens()
+  private fun inspectBody(
+      holder: ProblemsHolder,
+      file: MipsFile,
+      prefix: MipsSourceTimeline.Prefix,
+      macro: Begin,
+      start: Int,
+      end: Int,
+  ) {
+    val errors = ErrorList()
+    val mapped = expand(file, prefix, start, end, errors)
+    if (errors.errorsOccurred()) return
+    val tokens = mapped.tokens()
 
-        val reported = HashSet<Pair<Int, String>>()
-        for (index in 0 until tokens.size()) {
-            val token = tokens[index]
-            val name = token.value
-            if (index == 0 && Directives.matchDirective(name) in boundaries) return
-            if (!Macro.tokenIsMacroParameter(name, true) || name in macro.parametersByName) continue
-            val offset = start + mapped.originalOffset(token.startPos - 1)
-            if (reported.add(offset to name)) {
-                holder.registerProblem(file.findElementAt(offset)!!, messages.getMessage("inspection.macro.unknown", name, macro.name))
-            }
-        }
+    val reported = HashSet<Pair<Int, String>>()
+    for (index in 0 until tokens.size()) {
+      val token = tokens[index]
+      val name = token.value
+      if (index == 0 && Directives.matchDirective(name) in boundaries) return
+      if (!Macro.tokenIsMacroParameter(name, true) || name in macro.parametersByName) continue
+      val offset = start + mapped.originalOffset(token.startPos - 1)
+      if (reported.add(offset to name)) {
+        holder.registerProblem(
+            file.findElementAt(offset)!!,
+            messages.getMessage("inspection.macro.unknown", name, macro.name),
+        )
+      }
     }
+  }
 
-    private fun expand(
-        file: MipsFile, prefix: MipsSourceTimeline.Prefix, start: Int, end: Int, errors: ErrorList,
-    ): Tokenizer.MappedLine {
-        val line = file.viewProvider.contents.subSequence(start, end).toString()
-        return Tokenizer.tokenizeMappedLine(line, errors, { prefix.equivalence(it)?.replacement }, ProgressManager::checkCanceled)
-    }
+  private fun expand(
+      file: MipsFile,
+      prefix: MipsSourceTimeline.Prefix,
+      start: Int,
+      end: Int,
+      errors: ErrorList,
+  ): Tokenizer.MappedLine {
+    val line = file.viewProvider.contents.subSequence(start, end).toString()
+    return Tokenizer.tokenizeMappedLine(
+        line,
+        errors,
+        { prefix.equivalence(it)?.replacement },
+        ProgressManager::checkCanceled,
+    )
+  }
 }
 
-private val messages = DynamicBundle(MipsMacroParameterInspection::class.java, "messages.MarsBundle")
+private val messages =
+    DynamicBundle(MipsMacroParameterInspection::class.java, "messages.MarsBundle")
 private val statement = MipsTypes.psi("STATEMENT")
 private val includeLine = MipsTypes.psi("INCLUDE_LINE")
 private val boundaries = setOf(Directives.MACRO, Directives.END_MACRO, Directives.INCLUDE)

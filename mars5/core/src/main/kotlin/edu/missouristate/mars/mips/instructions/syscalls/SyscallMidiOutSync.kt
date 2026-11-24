@@ -41,7 +41,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 open class SyscallMidiOutSync : AbstractSyscall(33, "MidiOutSync") {
-    override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
-        context.playMidiSyscall(synchronous = true)
-    }
+  override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
+    context.playMidiSyscall(synchronous = true)
+  }
 }

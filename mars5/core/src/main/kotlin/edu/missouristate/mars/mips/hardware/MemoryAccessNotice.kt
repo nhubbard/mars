@@ -29,7 +29,8 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 /** The address, value, and width of a memory access. */
-open class MemoryAccessNotice internal constructor(
+open class MemoryAccessNotice
+internal constructor(
     type: Int,
     open val address: Int,
     open val length: Int,
@@ -37,12 +38,17 @@ open class MemoryAccessNotice internal constructor(
     open val isInstructionFetch: Boolean,
     val addressBits: Long = address.toUInt().toLong(),
 ) : AccessNotice(type) {
-    constructor(type: Int, address: Int, value: Int) :
-        this(type, address, MemoryState.WORD_LENGTH_BYTES, value, false)
+  constructor(
+      type: Int,
+      address: Int,
+      value: Int,
+  ) : this(type, address, MemoryState.WORD_LENGTH_BYTES, value, false)
 
-    override fun toString(): String {
-        val action = if (accessType == READ) "R" else "W"
-        val location = if (addressBits == address.toUInt().toLong()) address.toString() else addressBits.toULong().toString()
-        return "$action Mem $location ${length}B = $value"
-    }
+  override fun toString(): String {
+    val action = if (accessType == READ) "R" else "W"
+    val location =
+        if (addressBits == address.toUInt().toLong()) address.toString()
+        else addressBits.toULong().toString()
+    return "$action Mem $location ${length}B = $value"
+  }
 }

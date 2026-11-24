@@ -35,17 +35,20 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 open class SyscallMessageDialogDouble : AbstractSyscall(58, "MessageDialogDouble") {
-    @Throws(ProcessingException::class)
-    override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
-        val message = context.readSyscallString(statement, context.effectiveAddress(4, 0))
-        try {
-            val value = context.coprocessor1.getDoubleFromRegisterPair($$"$f12")
-            context.environment().showMessageDialog(message + value, null, 1)
-        } catch (failure: InvalidRegisterAccessException) {
-            context.updateRegister(5, -1)
-            throw ProcessingException(
-                context, statement, "invalid int reg. access during double input (syscall $number)", SYSCALL_EXCEPTION,
-            )
-        }
+  @Throws(ProcessingException::class)
+  override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
+    val message = context.readSyscallString(statement, context.effectiveAddress(4, 0))
+    try {
+      val value = context.coprocessor1.getDoubleFromRegisterPair($$"$f12")
+      context.environment().showMessageDialog(message + value, null, 1)
+    } catch (failure: InvalidRegisterAccessException) {
+      context.updateRegister(5, -1)
+      throw ProcessingException(
+          context,
+          statement,
+          "invalid int reg. access during double input (syscall $number)",
+          SYSCALL_EXCEPTION,
+      )
     }
+  }
 }

@@ -34,26 +34,28 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /** Writes the float to $f0 and the dialog status to $a1. */
 open class SyscallInputDialogFloat : AbstractSyscall(52, "InputDialogFloat") {
-    @Throws(ProcessingException::class)
-    override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
-        val message = context.readSyscallString(statement, context.effectiveAddress(4, 0))
-        val input = context.environment().showInputDialog(message)
-        context.setRegisterToFloat(0, 0f)
-        val status = when {
-            input == null -> -2
-            input.isEmpty() -> -3
-            else -> {
-                // Use Java's parser to preserve the accepted floating-point spellings.
-                val value = try {
-                    input.toFloat()
+  @Throws(ProcessingException::class)
+  override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
+    val message = context.readSyscallString(statement, context.effectiveAddress(4, 0))
+    val input = context.environment().showInputDialog(message)
+    context.setRegisterToFloat(0, 0f)
+    val status =
+        when {
+          input == null -> -2
+          input.isEmpty() -> -3
+          else -> {
+            // Use Java's parser to preserve the accepted floating-point spellings.
+            val value =
+                try {
+                  input.toFloat()
                 } catch (failure: NumberFormatException) {
-                    context.updateRegister(5, -1)
-                    return
+                  context.updateRegister(5, -1)
+                  return
                 }
-                context.setRegisterToFloat(0, value)
-                0
-            }
+            context.setRegisterToFloat(0, value)
+            0
+          }
         }
-        context.updateRegister(5, status)
-    }
+    context.updateRegister(5, status)
+  }
 }

@@ -30,17 +30,17 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /** MIPS exception numbers used to populate the coprocessor 0 Cause register. */
 object Exceptions {
-    // Keyboard and display share the external-interrupt exception number (zero).
-    // These values become the pending bits in positions 8 and 9 when shifted left by two.
-    const val EXTERNAL_INTERRUPT_KEYBOARD = 0x00000040
-    const val EXTERNAL_INTERRUPT_DISPLAY = 0x00000080
-    const val ADDRESS_EXCEPTION_LOAD = 4
-    const val ADDRESS_EXCEPTION_STORE = 5
-    const val SYSCALL_EXCEPTION = 8
-    const val BREAKPOINT_EXCEPTION = 9
-    const val RESERVED_INSTRUCTION_EXCEPTION = 10
-    const val ARITHMETIC_OVERFLOW_EXCEPTION = 12
-    const val TRAP_EXCEPTION = 13
-    const val MSA_FLOATING_POINT_EXCEPTION = 14
-    const val FLOATING_POINT_EXCEPTION = 15
+  // Keyboard and display share the external-interrupt exception number (zero).
+  // These values become the pending bits in positions 8 and 9 when shifted left by two.
+  const val EXTERNAL_INTERRUPT_KEYBOARD = 0x00000040
+  const val EXTERNAL_INTERRUPT_DISPLAY = 0x00000080
+  const val ADDRESS_EXCEPTION_LOAD = 4
+  const val ADDRESS_EXCEPTION_STORE = 5
+  const val SYSCALL_EXCEPTION = 8
+  const val BREAKPOINT_EXCEPTION = 9
+  const val RESERVED_INSTRUCTION_EXCEPTION = 10
+  const val ARITHMETIC_OVERFLOW_EXCEPTION = 12
+  const val TRAP_EXCEPTION = 13
+  const val MSA_FLOATING_POINT_EXCEPTION = 14
+  const val FLOATING_POINT_EXCEPTION = 15
 }

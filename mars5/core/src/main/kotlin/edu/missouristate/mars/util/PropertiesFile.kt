@@ -33,16 +33,16 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /** Reads Java properties bundled on the application classpath. */
 open class PropertiesFile {
-    companion object {
-        @JvmStatic
-        fun loadPropertiesFromFile(file: String?): Properties {
-            val properties = Properties()
-            try {
-                PropertiesFile::class.java.getResourceAsStream("/$file.properties")?.use(properties::load)
-            } catch (_: IOException) {
-                // Retain properties read before the stream failed.
-            }
-            return properties
-        }
+  companion object {
+    @JvmStatic
+    fun loadPropertiesFromFile(file: String?): Properties {
+      val properties = Properties()
+      try {
+        PropertiesFile::class.java.getResourceAsStream("/$file.properties")?.use(properties::load)
+      } catch (_: IOException) {
+        // Retain properties read before the stream failed.
+      }
+      return properties
     }
+  }
 }

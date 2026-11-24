@@ -34,6 +34,6 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /** Executes an instruction using the supplied session's state and I/O. */
 fun interface SimulationCode {
-    @Throws(ProcessingException::class)
-    fun simulate(statement: ProgramStatement, context: InstructionContext)
+  @Throws(ProcessingException::class)
+  fun simulate(statement: ProgramStatement, context: InstructionContext)
 }

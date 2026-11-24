@@ -1,5 +1,6 @@
 package edu.missouristate.mars.plugin.build
 
+import com.intellij.execution.configurations.ConfigurationTypeUtil
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.compiler.CompileScope
@@ -12,9 +13,9 @@ import com.intellij.openapi.progress.EmptyProgressIndicator
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.Computable
 import com.intellij.openapi.util.Key
 import com.intellij.openapi.util.UserDataHolderBase
-import com.intellij.openapi.util.Computable
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
@@ -23,7 +24,6 @@ import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.util.ui.UIUtil
 import com.intellij.util.xmlb.XmlSerializer
-import com.intellij.execution.configurations.ConfigurationTypeUtil
 import edu.missouristate.mars.plugin.compiler.MarsCompilerTask
 import edu.missouristate.mars.plugin.run.MarsRunType
 import javax.swing.JCheckBox
@@ -39,55 +39,69 @@ import org.junit.jupiter.api.assertThrows
 
 @TestApplication
 class MarsCompilerPlatformTest {
-    private val projectFixture = codeInsightProjectFixture()
-    private val fixture by codeInsightFixture(projectFixture)
-    private val project get() = projectFixture.get()
+  private val projectFixture = codeInsightProjectFixture()
+  private val fixture by codeInsightFixture(projectFixture)
+  private val project
+    get() = projectFixture.get()
 
-    @Test
-    fun `optional compiler task assembles an in-scope ordered unit once and reports native diagnostics`() = timeoutRunBlocking {
+  @Test
+  fun `optional compiler task assembles an in-scope ordered unit once and reports native diagnostics`() =
+      timeoutRunBlocking {
         val compiler = CompilerManager.getInstance(project)
         val task = compiler.beforeTasks.filterIsInstance<MarsCompilerTask>().single()
         val settings = project.service<MarsAssemblySettings>()
-        val (entry, library, unrelated) = withContext(Dispatchers.EDT) {
-            val entry = fixture.addFileToProject("app/main.asm", $$"la $t0, fromLibrary\n").virtualFile
-            val library = fixture.addFileToProject("lib/words.s", "nop\n").virtualFile
-            val unrelated = fixture.addFileToProject("other/Unrelated.java", "class Unrelated {}").virtualFile
-            Triple(entry, library, unrelated)
-        }
-        fun context(file: VirtualFile) = RecordingContext(project, compiler.createFilesCompileScope(arrayOf(file)))
+        val (entry, library, unrelated) =
+            withContext(Dispatchers.EDT) {
+              val entry =
+                  fixture.addFileToProject("app/main.asm", $$"la $t0, fromLibrary\n").virtualFile
+              val library = fixture.addFileToProject("lib/words.s", "nop\n").virtualFile
+              val unrelated =
+                  fixture.addFileToProject("other/Unrelated.java", "class Unrelated {}").virtualFile
+              Triple(entry, library, unrelated)
+            }
+        fun context(file: VirtualFile) =
+            RecordingContext(project, compiler.createFilesCompileScope(arrayOf(file)))
         fun execute(context: RecordingContext): Boolean =
-            ProgressManager.getInstance().runProcess(Computable { task.execute(context) }, context.progressIndicator)
+            ProgressManager.getInstance()
+                .runProcess(Computable { task.execute(context) }, context.progressIndicator)
         val disabled = context(entry)
         assertTrue(execute(disabled))
         assertTrue(disabled.messages.isEmpty())
         withContext(Dispatchers.EDT) {
-            val page = MarsAssemblyConfigurable(project)
-            try {
-                val form = page.createComponent()
-                page.reset()
-                val checkbox = UIUtil.findComponentsOfType(form, JCheckBox::class.java)
-                    .single { it.text == "Assemble project sources before IntelliJ JVM compilation" }
-                assertFalse(checkbox.isSelected)
-                checkbox.isSelected = true
-                page.apply()
-                val persisted = XmlSerializer.serialize(settings.getState())
-                settings.loadState(XmlSerializer.deserialize(persisted, MarsAssemblySettings.Settings::class.java))
-                assertTrue(settings.assembleBeforeJvmCompile)
-            } finally {
-                page.disposeUIResources()
-            }
+          val page = MarsAssemblyConfigurable(project)
+          try {
+            val form = page.createComponent()
+            page.reset()
+            val checkbox =
+                UIUtil.findComponentsOfType(form, JCheckBox::class.java).single {
+                  it.text == "Assemble project sources before IntelliJ JVM compilation"
+                }
+            assertFalse(checkbox.isSelected)
+            checkbox.isSelected = true
+            page.apply()
+            val persisted = XmlSerializer.serialize(settings.getState())
+            settings.loadState(
+                XmlSerializer.deserialize(persisted, MarsAssemblySettings.Settings::class.java),
+            )
+            assertTrue(settings.assembleBeforeJvmCompile)
+          } finally {
+            page.disposeUIResources()
+          }
         }
         assertTrue(execute(context(entry)))
         withContext(Dispatchers.EDT) {
-            settings.changeSources(listOf(entry.path, library.path))
-            edit(library, ".foreign_directive\n.globl fromLibrary\nfromLibrary: nop\n")
+          settings.changeSources(listOf(entry.path, library.path))
+          edit(library, ".foreign_directive\n.globl fromLibrary\nfromLibrary: nop\n")
         }
         val outside = context(unrelated)
         assertTrue(execute(outside))
         assertTrue(outside.messages.isEmpty())
         val mipsLaunch = context(library)
-        mipsLaunch.compileScope.putUserData(CompilerManager.RUN_CONFIGURATION_KEY,
-            ConfigurationTypeUtil.findConfigurationType(MarsRunType::class.java).createTemplateConfiguration(project))
+        mipsLaunch.compileScope.putUserData(
+            CompilerManager.RUN_CONFIGURATION_KEY,
+            ConfigurationTypeUtil.findConfigurationType(MarsRunType::class.java)
+                .createTemplateConfiguration(project),
+        )
         assertTrue(execute(mipsLaunch))
         assertTrue(mipsLaunch.messages.isEmpty())
 
@@ -101,13 +115,19 @@ class MarsCompilerPlatformTest {
         assertEquals(1, warning.column)
         assertNotNull(warning.navigatable)
 
-        withContext(Dispatchers.EDT) { settings.changeAssemblerOptions(allowPseudoInstructions = true, warningsAreErrors = true) }
+        withContext(Dispatchers.EDT) {
+          settings.changeAssemblerOptions(allowPseudoInstructions = true, warningsAreErrors = true)
+        }
         val strict = context(library)
         assertFalse(execute(strict))
-        assertEquals(warning.copy(category = CompilerMessageCategory.ERROR, navigatable = null),
-            strict.messages.single().copy(navigatable = null))
+        assertEquals(
+            warning.copy(category = CompilerMessageCategory.ERROR, navigatable = null),
+            strict.messages.single().copy(navigatable = null),
+        )
 
-        withContext(Dispatchers.EDT) { settings.changeAssemblerOptions(allowPseudoInstructions = true, warningsAreErrors = false) }
+        withContext(Dispatchers.EDT) {
+          settings.changeAssemblerOptions(allowPseudoInstructions = true, warningsAreErrors = false)
+        }
         withContext(Dispatchers.EDT) { edit(entry, $$"nop\nla $t0, missing_label\n") }
         val failed = context(entry)
         assertFalse(execute(failed))
@@ -137,36 +157,52 @@ class MarsCompilerPlatformTest {
         assertNull(diagnostic.url)
         assertEquals(-1, diagnostic.line)
         assertNull(diagnostic.navigatable)
-    }
+      }
 
-    // Kotlin exposes the reported Java setters as read-only properties.
-    @Suppress("UsePropertyAccessSyntax")
-    private fun edit(file: VirtualFile, text: String) {
-        val document = requireNotNull(FileDocumentManager.getInstance().getDocument(file))
-        WriteCommandAction.runWriteCommandAction(project) { document.setText(text) }
-    }
+  // Kotlin exposes the reported Java setters as read-only properties.
+  @Suppress("UsePropertyAccessSyntax")
+  private fun edit(file: VirtualFile, text: String) {
+    val document = requireNotNull(FileDocumentManager.getInstance().getDocument(file))
+    WriteCommandAction.runWriteCommandAction(project) { document.setText(text) }
+  }
 
-    private data class Diagnostic(
-        val category: CompilerMessageCategory, val text: String, val url: String?,
-        val line: Int, val column: Int, val navigatable: Navigatable?,
-    )
+  private data class Diagnostic(
+      val category: CompilerMessageCategory,
+      val text: String,
+      val url: String?,
+      val line: Int,
+      val column: Int,
+      val navigatable: Navigatable?,
+  )
 
-    private class RecordingContext(project: Project, private val scope: CompileScope) : DummyCompileContext(project) {
-        val messages = mutableListOf<Diagnostic>()
-        var onMessage: () -> Unit = {}
-        private val indicator = EmptyProgressIndicator()
-        private val userData = UserDataHolderBase()
-        override fun getCompileScope() = scope
-        override fun getProjectCompileScope() = scope
-        override fun getProgressIndicator() = indicator
-        override fun <T> getUserData(key: Key<T>): T? = userData.getUserData(key)
-        override fun <T> putUserData(key: Key<T>, value: T?) = userData.putUserData(key, value)
-        override fun addMessage(
-            category: CompilerMessageCategory, message: String, url: String?, lineNum: Int, columnNum: Int,
-            navigatable: Navigatable?, moduleNames: Collection<String>,
-        ) {
-            onMessage()
-            messages.add(Diagnostic(category, message, url, lineNum, columnNum, navigatable))
-        }
+  private class RecordingContext(project: Project, private val scope: CompileScope) :
+      DummyCompileContext(project) {
+    val messages = mutableListOf<Diagnostic>()
+    var onMessage: () -> Unit = {}
+    private val indicator = EmptyProgressIndicator()
+    private val userData = UserDataHolderBase()
+
+    override fun getCompileScope() = scope
+
+    override fun getProjectCompileScope() = scope
+
+    override fun getProgressIndicator() = indicator
+
+    override fun <T> getUserData(key: Key<T>): T? = userData.getUserData(key)
+
+    override fun <T> putUserData(key: Key<T>, value: T?) = userData.putUserData(key, value)
+
+    override fun addMessage(
+        category: CompilerMessageCategory,
+        message: String,
+        url: String?,
+        lineNum: Int,
+        columnNum: Int,
+        navigatable: Navigatable?,
+        moduleNames: Collection<String>,
+    ) {
+      onMessage()
+      messages.add(Diagnostic(category, message, url, lineNum, columnNum, navigatable))
     }
+  }
 }

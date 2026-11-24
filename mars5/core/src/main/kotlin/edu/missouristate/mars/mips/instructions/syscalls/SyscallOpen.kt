@@ -34,10 +34,10 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /** Opens the file named by $a0 using the flags in $a1 and returns its descriptor in $v0. */
 open class SyscallOpen : AbstractSyscall(13, "Open") {
-    @Throws(ProcessingException::class)
-    override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
-        val filename = context.readSyscallString(statement, context.effectiveAddress(4, 0))
-        val descriptor = context.environment().openFile(filename, context.registerFile.getValue(5))
-        context.updateRegister(2, descriptor)
-    }
+  @Throws(ProcessingException::class)
+  override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
+    val filename = context.readSyscallString(statement, context.effectiveAddress(4, 0))
+    val descriptor = context.environment().openFile(filename, context.registerFile.getValue(5))
+    context.updateRegister(2, descriptor)
+  }
 }

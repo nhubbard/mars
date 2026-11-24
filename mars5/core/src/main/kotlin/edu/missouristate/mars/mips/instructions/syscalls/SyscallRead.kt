@@ -34,19 +34,26 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 open class SyscallRead : AbstractSyscall(14, "Read") {
-    @Throws(ProcessingException::class)
-    override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
-        val address = context.effectiveAddress(5, 0)
-        val length = context.registerFile.getValue(6)
-        val buffer = ByteArray(length)
-        val count = context.environment().readFromFile(context.registerFile.getValue(4), buffer, context.registerFile.getValue(6))
-        context.updateRegister(2, count)
-        try {
-            for (index in 0 until count) {
-                context.storeData(address + index, 1, buffer[index].toInt())
-            }
-        } catch (failure: AddressErrorException) {
-            throw ProcessingException(context, statement, failure)
-        }
+  @Throws(ProcessingException::class)
+  override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
+    val address = context.effectiveAddress(5, 0)
+    val length = context.registerFile.getValue(6)
+    val buffer = ByteArray(length)
+    val count =
+        context
+            .environment()
+            .readFromFile(
+                context.registerFile.getValue(4),
+                buffer,
+                context.registerFile.getValue(6),
+            )
+    context.updateRegister(2, count)
+    try {
+      for (index in 0 until count) {
+        context.storeData(address + index, 1, buffer[index].toInt())
+      }
+    } catch (failure: AddressErrorException) {
+      throw ProcessingException(context, statement, failure)
     }
+  }
 }

@@ -33,10 +33,10 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 open class SyscallMessageDialogFloat : AbstractSyscall(57, "MessageDialogFloat") {
-    @Throws(ProcessingException::class)
-    override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
-        val message = context.readSyscallString(statement, context.effectiveAddress(4, 0))
-        val value = context.coprocessor1.getFloatFromRegister($$"$f12")
-        context.environment().showMessageDialog(message + value, null, 1)
-    }
+  @Throws(ProcessingException::class)
+  override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
+    val message = context.readSyscallString(statement, context.effectiveAddress(4, 0))
+    val value = context.coprocessor1.getFloatFromRegister($$"$f12")
+    context.environment().showMessageDialog(message + value, null, 1)
+  }
 }

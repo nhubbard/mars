@@ -23,112 +23,140 @@ import edu.missouristate.mars.util.NumberDisplayBase.getBase
 internal class MarsDebuggerDisplaySettings :
     SerializablePersistentStateComponent<MarsDebuggerDisplaySettings.Settings>(Settings()) {
 
-    data class Settings(
-        @JvmField var hexAddresses: Boolean = true,
-        @JvmField var hexValues: Boolean = true,
-        @JvmField var highlightMemoryWrites: Boolean = true,
-        @JvmField var highlightRegisterWrites: Boolean = true,
-    )
+  data class Settings(
+      @JvmField var hexAddresses: Boolean = true,
+      @JvmField var hexValues: Boolean = true,
+      @JvmField var highlightMemoryWrites: Boolean = true,
+      @JvmField var highlightRegisterWrites: Boolean = true,
+  )
 
-    private val bus get() = ApplicationManager.getApplication().messageBus
-    val hexAddresses get() = getState().hexAddresses
-    val hexValues get() = getState().hexValues
-    val highlightMemoryWrites get() = getState().highlightMemoryWrites
-    val highlightRegisterWrites get() = getState().highlightRegisterWrites
+  private val bus
+    get() = ApplicationManager.getApplication().messageBus
 
-    fun formatAddress(address: Int) = formatUnsignedInteger(address, getBase(hexAddresses))
-    fun formatAddress(address: Long): String =
-        if (address in Int.MIN_VALUE.toLong()..UInt.MAX_VALUE.toLong()) formatAddress(address.toInt())
-        else if (hexAddresses) Binary.longToHexString(address) else address.toULong().toString()
+  val hexAddresses
+    get() = getState().hexAddresses
 
-    fun formatValue(bits: Int) = formatNumber(bits, getBase(hexValues))
-    fun formatWideValue(bits: Long) = if (hexValues) Binary.longToHexString(bits) else bits.toString()
-    fun formatUnsignedValue(bits: Int) = formatUnsignedInteger(bits, getBase(hexValues))
+  val hexValues
+    get() = getState().hexValues
 
-    fun setHexAddresses(selected: Boolean) {
-        updateState { it.copy(hexAddresses = selected) }
-        notifyViews()
+  val highlightMemoryWrites
+    get() = getState().highlightMemoryWrites
+
+  val highlightRegisterWrites
+    get() = getState().highlightRegisterWrites
+
+  fun formatAddress(address: Int) = formatUnsignedInteger(address, getBase(hexAddresses))
+
+  fun formatAddress(address: Long): String =
+      if (address in Int.MIN_VALUE.toLong()..UInt.MAX_VALUE.toLong()) formatAddress(address.toInt())
+      else if (hexAddresses) Binary.longToHexString(address) else address.toULong().toString()
+
+  fun formatValue(bits: Int) = formatNumber(bits, getBase(hexValues))
+
+  fun formatWideValue(bits: Long) = if (hexValues) Binary.longToHexString(bits) else bits.toString()
+
+  fun formatUnsignedValue(bits: Int) = formatUnsignedInteger(bits, getBase(hexValues))
+
+  fun setHexAddresses(selected: Boolean) {
+    updateState { it.copy(hexAddresses = selected) }
+    notifyViews()
+  }
+
+  fun setHexValues(selected: Boolean) {
+    updateState { it.copy(hexValues = selected) }
+    notifyViews()
+  }
+
+  fun setHighlightMemoryWrites(selected: Boolean) {
+    updateState { it.copy(highlightMemoryWrites = selected) }
+    notifyViews()
+  }
+
+  fun setHighlightRegisterWrites(selected: Boolean) {
+    updateState { it.copy(highlightRegisterWrites = selected) }
+    notifyViews()
+  }
+
+  fun applyImportedSettings(settings: Settings) {
+    updateState { settings }
+    notifyViews()
+  }
+
+  override fun loadState(state: Settings) {
+    super.loadState(state)
+    notifyViews()
+  }
+
+  fun addListener(lifetime: Disposable, update: () -> Unit) {
+    bus.connect(lifetime)
+        .subscribe(
+            DisplayListener.TOPIC,
+            DisplayListener {
+              UIUtil.invokeLaterIfNeeded(update)
+            },
+        )
+  }
+
+  fun addVariablesListener(lifetime: Disposable, update: () -> Unit) {
+    var previous = getState()
+    addListener(lifetime) {
+      val current = getState()
+      val changed =
+          previous.hexValues != current.hexValues ||
+              previous.highlightRegisterWrites != current.highlightRegisterWrites
+      previous = current
+      if (changed) update()
     }
+  }
 
-    fun setHexValues(selected: Boolean) {
-        updateState { it.copy(hexValues = selected) }
-        notifyViews()
+  private fun notifyViews() = bus.syncPublisher(DisplayListener.TOPIC).displayChanged()
+
+  internal fun interface DisplayListener {
+    fun displayChanged()
+
+    companion object {
+      @Topic.AppLevel
+      @JvmField
+      val TOPIC =
+          topicOf<DisplayListener>("MARS debugger display settings", Topic.BroadcastDirection.NONE)
     }
-
-    fun setHighlightMemoryWrites(selected: Boolean) {
-        updateState { it.copy(highlightMemoryWrites = selected) }
-        notifyViews()
-    }
-
-    fun setHighlightRegisterWrites(selected: Boolean) {
-        updateState { it.copy(highlightRegisterWrites = selected) }
-        notifyViews()
-    }
-
-    fun applyImportedSettings(settings: Settings) {
-        updateState { settings }
-        notifyViews()
-    }
-
-    override fun loadState(state: Settings) {
-        super.loadState(state)
-        notifyViews()
-    }
-
-    fun addListener(lifetime: Disposable, update: () -> Unit) {
-        bus.connect(lifetime).subscribe(DisplayListener.TOPIC, DisplayListener {
-            UIUtil.invokeLaterIfNeeded(update)
-        })
-    }
-
-    fun addVariablesListener(lifetime: Disposable, update: () -> Unit) {
-        var previous = getState()
-        addListener(lifetime) {
-            val current = getState()
-            val changed = previous.hexValues != current.hexValues ||
-                previous.highlightRegisterWrites != current.highlightRegisterWrites
-            previous = current
-            if (changed) update()
-        }
-    }
-
-    private fun notifyViews() = bus.syncPublisher(DisplayListener.TOPIC).displayChanged()
-
-    internal fun interface DisplayListener {
-        fun displayChanged()
-
-        companion object {
-            @Topic.AppLevel
-            @JvmField
-            val TOPIC = topicOf<DisplayListener>("MARS debugger display settings", Topic.BroadcastDirection.NONE)
-        }
-    }
+  }
 }
 
 internal class MarsHexAddressesAction(private val display: MarsDebuggerDisplaySettings) :
     DumbAwareToggleAction(runMessages.getMessage("debug.settings.hex.addresses")) {
-    override fun getActionUpdateThread() = ActionUpdateThread.BGT
-    override fun isSelected(e: AnActionEvent) = display.hexAddresses
-    override fun setSelected(e: AnActionEvent, state: Boolean) = display.setHexAddresses(state)
+  override fun getActionUpdateThread() = ActionUpdateThread.BGT
+
+  override fun isSelected(e: AnActionEvent) = display.hexAddresses
+
+  override fun setSelected(e: AnActionEvent, state: Boolean) = display.setHexAddresses(state)
 }
 
 internal class MarsHexValuesAction(private val display: MarsDebuggerDisplaySettings) :
     DumbAwareToggleAction(runMessages.getMessage("debug.settings.hex.values")) {
-    override fun getActionUpdateThread() = ActionUpdateThread.BGT
-    override fun isSelected(e: AnActionEvent) = display.hexValues
-    override fun setSelected(e: AnActionEvent, state: Boolean) = display.setHexValues(state)
+  override fun getActionUpdateThread() = ActionUpdateThread.BGT
+
+  override fun isSelected(e: AnActionEvent) = display.hexValues
+
+  override fun setSelected(e: AnActionEvent, state: Boolean) = display.setHexValues(state)
 }
 
 internal class MarsHighlightMemoryWritesAction(private val display: MarsDebuggerDisplaySettings) :
     DumbAwareToggleAction(runMessages.getMessage("debug.settings.highlight.memory")) {
-    override fun getActionUpdateThread() = ActionUpdateThread.BGT
-    override fun isSelected(e: AnActionEvent) = display.highlightMemoryWrites
-    override fun setSelected(e: AnActionEvent, state: Boolean) = display.setHighlightMemoryWrites(state)
+  override fun getActionUpdateThread() = ActionUpdateThread.BGT
+
+  override fun isSelected(e: AnActionEvent) = display.highlightMemoryWrites
+
+  override fun setSelected(e: AnActionEvent, state: Boolean) =
+      display.setHighlightMemoryWrites(state)
 }
 
 internal class MarsHighlightRegisterWritesAction(private val display: MarsDebuggerDisplaySettings) :
     DumbAwareToggleAction(runMessages.getMessage("debug.settings.highlight.registers")) {
-    override fun getActionUpdateThread() = ActionUpdateThread.BGT
-    override fun isSelected(e: AnActionEvent) = display.highlightRegisterWrites
-    override fun setSelected(e: AnActionEvent, state: Boolean) = display.setHighlightRegisterWrites(state)
+  override fun getActionUpdateThread() = ActionUpdateThread.BGT
+
+  override fun isSelected(e: AnActionEvent) = display.highlightRegisterWrites
+
+  override fun setSelected(e: AnActionEvent, state: Boolean) =
+      display.setHighlightRegisterWrites(state)
 }

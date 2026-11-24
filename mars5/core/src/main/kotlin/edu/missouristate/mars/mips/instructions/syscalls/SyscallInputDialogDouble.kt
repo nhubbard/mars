@@ -36,28 +36,32 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /** Writes the double to $f0 (and $f1 in MARS32) and the dialog status to $a1. */
 open class SyscallInputDialogDouble : AbstractSyscall(53, "InputDialogDouble") {
-    @Throws(ProcessingException::class)
-    override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
-        val message = context.readSyscallString(statement, context.effectiveAddress(4, 0))
-        val input = context.environment().showInputDialog(message)
-        try {
-            context.setRegisterPairToDouble(0, 0.0)
-            val status = when {
-                input == null -> -2
-                input.isEmpty() -> -3
-                else -> {
-                    context.setRegisterPairToDouble(0, input.toDouble())
-                    0
-                }
+  @Throws(ProcessingException::class)
+  override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
+    val message = context.readSyscallString(statement, context.effectiveAddress(4, 0))
+    val input = context.environment().showInputDialog(message)
+    try {
+      context.setRegisterPairToDouble(0, 0.0)
+      val status =
+          when {
+            input == null -> -2
+            input.isEmpty() -> -3
+            else -> {
+              context.setRegisterPairToDouble(0, input.toDouble())
+              0
             }
-            context.updateRegister(5, status)
-        } catch (failure: InvalidRegisterAccessException) {
-            context.updateRegister(5, -1)
-            throw ProcessingException(
-                context, statement, "invalid int reg. access during double input (syscall $number)", SYSCALL_EXCEPTION,
-            )
-        } catch (failure: NumberFormatException) {
-            context.updateRegister(5, -1)
-        }
+          }
+      context.updateRegister(5, status)
+    } catch (failure: InvalidRegisterAccessException) {
+      context.updateRegister(5, -1)
+      throw ProcessingException(
+          context,
+          statement,
+          "invalid int reg. access during double input (syscall $number)",
+          SYSCALL_EXCEPTION,
+      )
+    } catch (failure: NumberFormatException) {
+      context.updateRegister(5, -1)
     }
+  }
 }

@@ -34,13 +34,19 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 open class SyscallSbrk : AbstractSyscall(9, "Sbrk") {
-    @Throws(ProcessingException::class)
-    override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
-        val address = try {
-            context.allocateBytesFromHeap(context.registerFile.getValue(4))
+  @Throws(ProcessingException::class)
+  override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
+    val address =
+        try {
+          context.allocateBytesFromHeap(context.registerFile.getValue(4))
         } catch (failure: IllegalArgumentException) {
-            throw ProcessingException(context, statement, "${failure.message} (syscall $number)", SYSCALL_EXCEPTION)
+          throw ProcessingException(
+              context,
+              statement,
+              "${failure.message} (syscall $number)",
+              SYSCALL_EXCEPTION,
+          )
         }
-        context.updateRegister(2, address)
-    }
+    context.updateRegister(2, address)
+  }
 }

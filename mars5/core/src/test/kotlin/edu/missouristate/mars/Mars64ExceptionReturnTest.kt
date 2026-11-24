@@ -17,92 +17,120 @@ import org.junit.jupiter.params.provider.CsvSource
 import org.junit.jupiter.params.provider.ValueSource
 
 class Mars64ExceptionReturnTest {
-    @Test
-    fun `word CP0 transfers preserve wide EPC and apply Release 6 selector defaults`(@TempDir directory: Path) {
-        val source = Files.writeString(directory.resolve("cp0.s"), $$"""
+  @Test
+  fun `word CP0 transfers preserve wide EPC and apply Release 6 selector defaults`(
+      @TempDir directory: Path,
+  ) {
+    val source =
+        Files.writeString(
+            directory.resolve("cp0.s"),
+            $$"""
             mtc0 $9,$14,0
             dmfc0 $10,$14
             mfc0 $11,$14,0
             mtc0 $zero,$14,1
             mfc0 $12,$14,1
             dmfc0 $13,$14
-        """.trimIndent())
-        TestSessions.create().use { session ->
-            session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(source), null, extended = false, warnings = false)
-            assertEquals(listOf(0x40897000, 0x402a7000, 0x400b7000, 0x40807001, 0x400c7001, 0x402d7000),
-                program.machineList!!.map(ProgramStatement::binaryStatement))
-            val address = 0x1234_5678_8765_4321L
-            session.editIntegerRegister(9, address)
-            session.editIntegerRegister(12, -1)
-            assertTrue(program.simulate(20))
-            assertEquals(address, session.registerFile.getLongValueNoNotify(10))
-            assertEquals(address.toInt().toLong(), session.registerFile.getLongValueNoNotify(11))
-            assertEquals(0L, session.registerFile.getLongValueNoNotify(12))
-            assertEquals(address, session.registerFile.getLongValueNoNotify(13))
-        }
+            """
+                .trimIndent(),
+        )
+    TestSessions.create().use { session ->
+      session.selectTarget(MarsTarget.MARS64)
+      val program = session.assemble(listOf(source), null, extended = false, warnings = false)
+      assertEquals(
+          listOf(0x40897000, 0x402a7000, 0x400b7000, 0x40807001, 0x400c7001, 0x402d7000),
+          program.machineList!!.map(ProgramStatement::binaryStatement),
+      )
+      val address = 0x1234_5678_8765_4321L
+      session.editIntegerRegister(9, address)
+      session.editIntegerRegister(12, -1)
+      assertTrue(program.simulate(20))
+      assertEquals(address, session.registerFile.getLongValueNoNotify(10))
+      assertEquals(address.toInt().toLong(), session.registerFile.getLongValueNoNotify(11))
+      assertEquals(0L, session.registerFile.getLongValueNoNotify(12))
+      assertEquals(address, session.registerFile.getLongValueNoNotify(13))
     }
+  }
 
-    @ParameterizedTest
-    @CsvSource("eret,42000018,0", "eretnc,42000058,1")
-    fun `exception return applies the chosen reservation policy`(mnemonic: String, word: String, success: Long, @TempDir directory: Path) {
-        val source = Files.writeString(directory.resolve("return.s"), $$"""
+  @ParameterizedTest
+  @CsvSource("eret,42000018,0", "eretnc,42000058,1")
+  fun `exception return applies the chosen reservation policy`(
+      mnemonic: String,
+      word: String,
+      success: Long,
+      @TempDir directory: Path,
+  ) {
+    val source =
+        Files.writeString(
+            directory.resolve("return.s"),
+            $$"""
             ll $9,0($10)
             dmtc0 $11,$14
             $$mnemonic
             break
             resumed: sc $9,0($10)
-        """.trimIndent())
-        TestSessions.create().use { session ->
-            session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(source), null, extended = false, warnings = false)
-            val statements = program.machineList!!
-            assertEquals(word.toInt(16), statements[2].binaryStatement)
-            session.editCoprocessor0Register(STATUS, 2)
-            session.editIntegerRegister(10, session.memory.dataBaseAddress)
-            session.editIntegerRegister(11, statements[4].address)
-            program.simulate(3)
-            assertEquals(0, session.coprocessor0.getValue(STATUS))
-            assertEquals(statements[4].address, session.registerFile.programCounter)
-            session.backStepper.backStep()
-            assertEquals(2, session.coprocessor0.getValue(STATUS))
-            assertEquals(statements[2].address, session.registerFile.programCounter)
-            program.simulate(2)
-            assertEquals(success, session.registerFile.getLongValueNoNotify(9))
-        }
+        """
+                .trimIndent(),
+        )
+    TestSessions.create().use { session ->
+      session.selectTarget(MarsTarget.MARS64)
+      val program = session.assemble(listOf(source), null, extended = false, warnings = false)
+      val statements = program.machineList!!
+      assertEquals(word.toInt(16), statements[2].binaryStatement)
+      session.editCoprocessor0Register(STATUS, 2)
+      session.editIntegerRegister(10, session.memory.dataBaseAddress)
+      session.editIntegerRegister(11, statements[4].address)
+      program.simulate(3)
+      assertEquals(0, session.coprocessor0.getValue(STATUS))
+      assertEquals(statements[4].address, session.registerFile.programCounter)
+      session.backStepper.backStep()
+      assertEquals(2, session.coprocessor0.getValue(STATUS))
+      assertEquals(statements[2].address, session.registerFile.programCounter)
+      program.simulate(2)
+      assertEquals(success, session.registerFile.getLongValueNoNotify(9))
     }
+  }
 
-    @ParameterizedTest
-    @ValueSource(booleans = [false, true])
-    fun `a branch slot fault saves the branch address and backstep restores exception state`(
-        compact: Boolean, @TempDir directory: Path,
-    ) {
-        val branch = if (compact) "beqzc $9,target" else "beq $0,$0,target"
-        val source = Files.writeString(directory.resolve("slot.s"), """
+  @ParameterizedTest
+  @ValueSource(booleans = [false, true])
+  fun `a branch slot fault saves the branch address and backstep restores exception state`(
+      compact: Boolean,
+      @TempDir directory: Path,
+  ) {
+    val branch = if (compact) "beqzc $9,target" else "beq $0,$0,target"
+    val source =
+        Files.writeString(
+            directory.resolve("slot.s"),
+            """
             $branch
             break
             target: nop
-        """.trimIndent())
-        TestSessions.create().use { session ->
-            session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(source), null, extended = false, warnings = false)
-            session.editIntegerRegister(9, 1)
-            val address = program.machineList!!.first().address
-            assertThrows(ProcessingException::class.java) { program.simulate(2) }
-            assertEquals(address, session.coprocessor0.getValue(EPC))
-            assertEquals(1, session.coprocessor0.getValue(CAUSE) ushr 31)
-            session.backStepper.backStep()
-            assertEquals(0, session.coprocessor0.getValue(EPC))
-            assertEquals(0, session.coprocessor0.getValue(CAUSE) ushr 31)
-            assertThrows(ProcessingException::class.java) { program.simulate(1) }
-            assertEquals(address, session.coprocessor0.getValue(EPC))
-            assertEquals(1, session.coprocessor0.getValue(CAUSE) ushr 31)
-        }
+        """
+                .trimIndent(),
+        )
+    TestSessions.create().use { session ->
+      session.selectTarget(MarsTarget.MARS64)
+      val program = session.assemble(listOf(source), null, extended = false, warnings = false)
+      session.editIntegerRegister(9, 1)
+      val address = program.machineList!!.first().address
+      assertThrows(ProcessingException::class.java) { program.simulate(2) }
+      assertEquals(address, session.coprocessor0.getValue(EPC))
+      assertEquals(1, session.coprocessor0.getValue(CAUSE) ushr 31)
+      session.backStepper.backStep()
+      assertEquals(0, session.coprocessor0.getValue(EPC))
+      assertEquals(0, session.coprocessor0.getValue(CAUSE) ushr 31)
+      assertThrows(ProcessingException::class.java) { program.simulate(1) }
+      assertEquals(address, session.coprocessor0.getValue(EPC))
+      assertEquals(1, session.coprocessor0.getValue(CAUSE) ushr 31)
     }
+  }
 
-    @Test
-    fun `an assembled handler can resume after a fault in a delay slot`(@TempDir directory: Path) {
-        val source = Files.writeString(directory.resolve("handler.s"), $$"""
+  @Test
+  fun `an assembled handler can resume after a fault in a delay slot`(@TempDir directory: Path) {
+    val source =
+        Files.writeString(
+            directory.resolve("handler.s"),
+            $$"""
             beq $zero,$zero,target
             break
             addiu $9,$zero,7
@@ -113,30 +141,37 @@ class Mars64ExceptionReturnTest {
             daddiu $12,$10,8
             dmtc0 $12,$14
             eret
-        """.trimIndent())
-        TestSessions.create().use { session ->
-            session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(source), null, extended = false, warnings = false)
-            assertTrue(program.simulate(20))
-            assertEquals(session.memory.textBaseAddress.toLong(), session.registerFile.getLongValueNoNotify(10))
-            assertEquals(1, session.registerFile.getValueNoNotify(11) ushr 31)
-            assertEquals(7, session.registerFile.getValueNoNotify(9))
-            assertEquals(0, session.coprocessor0.getValue(STATUS) and 2)
-        }
+            """
+                .trimIndent(),
+        )
+    TestSessions.create().use { session ->
+      session.selectTarget(MarsTarget.MARS64)
+      val program = session.assemble(listOf(source), null, extended = false, warnings = false)
+      assertTrue(program.simulate(20))
+      assertEquals(
+          session.memory.textBaseAddress.toLong(),
+          session.registerFile.getLongValueNoNotify(10),
+      )
+      assertEquals(1, session.registerFile.getValueNoNotify(11) ushr 31)
+      assertEquals(7, session.registerFile.getValueNoNotify(9))
+      assertEquals(0, session.coprocessor0.getValue(STATUS) and 2)
     }
+  }
 
-    @Test
-    fun `exception return faults on a wide unmapped EPC without replacing the saved EPC`(@TempDir directory: Path) {
-        val source = Files.writeString(directory.resolve("wide.s"), $$"dmtc0 $9,$14\neret")
-        TestSessions.create().use { session ->
-            session.selectTarget(MarsTarget.MARS64)
-            val program = session.assemble(listOf(source), null, extended = false, warnings = false)
-            val address = 0x2_0000_0000L + session.memory.textBaseAddress
-            session.editCoprocessor0Register(STATUS, 2)
-            session.editIntegerRegister(9, address)
-            assertThrows(ProcessingException::class.java) { program.simulate(2) }
-            assertEquals(address, session.coprocessor0.getRegister(EPC)!!.longValueNoNotify)
-            assertEquals(address, session.coprocessor0.getRegister(VADDR)!!.longValueNoNotify)
-        }
+  @Test
+  fun `exception return faults on a wide unmapped EPC without replacing the saved EPC`(
+      @TempDir directory: Path,
+  ) {
+    val source = Files.writeString(directory.resolve("wide.s"), $$"dmtc0 $9,$14\neret")
+    TestSessions.create().use { session ->
+      session.selectTarget(MarsTarget.MARS64)
+      val program = session.assemble(listOf(source), null, extended = false, warnings = false)
+      val address = 0x2_0000_0000L + session.memory.textBaseAddress
+      session.editCoprocessor0Register(STATUS, 2)
+      session.editIntegerRegister(9, address)
+      assertThrows(ProcessingException::class.java) { program.simulate(2) }
+      assertEquals(address, session.coprocessor0.getRegister(EPC)!!.longValueNoNotify)
+      assertEquals(address, session.coprocessor0.getRegister(VADDR)!!.longValueNoNotify)
     }
+  }
 }

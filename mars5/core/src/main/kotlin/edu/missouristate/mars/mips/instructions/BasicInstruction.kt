@@ -1,6 +1,5 @@
 package edu.missouristate.mars.mips.instructions
 
-
 /*
 Copyright (c) 2003-2013,  Pete Sanderson and Kenneth Vollmar
 
@@ -37,46 +36,51 @@ open class BasicInstruction(
     operMask: String,
     open val simulationCode: SimulationCode,
 ) : Instruction(example, description) {
-    /** Fixed bits are 0 or 1, operand bits are f/s/t/u, and ignored bits are c. */
-    private val mask = operMask.replace(" ", "")
-    open val operationMask: String get() = mask
+  /** Fixed bits are 0 or 1, operand bits are f/s/t/u, and ignored bits are c. */
+  private val mask = operMask.replace(" ", "")
+  open val operationMask: String
+    get() = mask
 
-    init {
-        if (mask.length != INSTRUCTION_LENGTH_BITS) {
-            println("$example mask not $INSTRUCTION_LENGTH_BITS bits!")
-        }
+  init {
+    if (mask.length != INSTRUCTION_LENGTH_BITS) {
+      println("$example mask not $INSTRUCTION_LENGTH_BITS bits!")
     }
+  }
 
-    /** Bits that must match a constant to decode this instruction. */
-    open val opcodeMask: Int = mask.replace(fixedBit, "1").replace(nonBit, "0").toLong(2).toInt()
+  /** Bits that must match a constant to decode this instruction. */
+  open val opcodeMask: Int = mask.replace(fixedBit, "1").replace(nonBit, "0").toLong(2).toInt()
 
-    /** The required bit values at the fixed positions. */
-    open val opcodeMatch: Int = mask.replace(nonOne, "0").toLong(2).toInt()
+  /** The required bit values at the fixed positions. */
+  open val opcodeMatch: Int = mask.replace(nonOne, "0").toLong(2).toInt()
 
-    /** Allows an instruction to encode fields that differ from its written operands. */
-    internal open fun encodeOperands(values: IntArray): IntArray = values
+  /** Allows an instruction to encode fields that differ from its written operands. */
+  internal open fun encodeOperands(values: IntArray): IntArray = values
 
-    /** Some source mnemonics select a machine form from their operands. */
-    internal open fun encodingMask(values: IntArray): String = operationMask
+  /** Some source mnemonics select a machine form from their operands. */
+  internal open fun encodingMask(values: IntArray): String = operationMask
 
-    internal open fun encodedOperandCount(sourceCount: Int): Int = sourceCount
+  internal open fun encodedOperandCount(sourceCount: Int): Int = sourceCount
 
-    internal open fun decodeOperands(values: IntArray) = Unit
+  internal open fun decodeOperands(values: IntArray) = Unit
 
-    /** Some assembly forms repeat an operand that occupies only one machine field. */
-    internal open fun decodedOperandCount(encodedCount: Int): Int = encodedCount
+  /** Some assembly forms repeat an operand that occupies only one machine field. */
+  internal open fun decodedOperandCount(encodedCount: Int): Int = encodedCount
 
-    internal open fun acceptsEncoding(word: Int): Boolean = true
+  internal open fun acceptsEncoding(word: Int): Boolean = true
 
-    internal open val isCompactConditionalBranch: Boolean get() = false
+  internal open val isCompactConditionalBranch: Boolean
+    get() = false
 
-    private companion object {
-        val fixedBit = Regex("[01]")
-        val nonBit = Regex("[^01]")
-        val nonOne = Regex("[^1]")
-    }
+  private companion object {
+    val fixedBit = Regex("[01]")
+    val nonBit = Regex("[^01]")
+    val nonOne = Regex("[^1]")
+  }
 
-    constructor(
-        example: String, instrFormat: BasicInstructionFormat, operMask: String, simCode: SimulationCode,
-    ) : this(example, "", instrFormat, operMask, simCode)
+  constructor(
+      example: String,
+      instrFormat: BasicInstructionFormat,
+      operMask: String,
+      simCode: SimulationCode,
+  ) : this(example, "", instrFormat, operMask, simCode)
 }

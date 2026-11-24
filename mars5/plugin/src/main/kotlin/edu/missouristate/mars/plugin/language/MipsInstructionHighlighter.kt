@@ -20,102 +20,129 @@ import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
 import edu.missouristate.mars.plugin.language.psi.MipsSymbolToken
 
 internal val instructionMnemonicColor =
-    TextAttributesKey.createTextAttributesKey("MARS_MIPS_INSTRUCTION", DefaultLanguageHighlighterColors.KEYWORD)
+    TextAttributesKey.createTextAttributesKey(
+        "MARS_MIPS_INSTRUCTION",
+        DefaultLanguageHighlighterColors.KEYWORD,
+    )
 
 // Follow the theme's Kotlin colors with the same platform fallback if Kotlin is unavailable.
-internal val labelColor = TextAttributesKey.createTextAttributesKey(
-    "MARS_MIPS_LABEL", TextAttributesKey.createTextAttributesKey("KOTLIN_LABEL", DefaultLanguageHighlighterColors.LABEL),
-)
-internal val macroColor = TextAttributesKey.createTextAttributesKey(
-    "MARS_MIPS_MACRO", TextAttributesKey.createTextAttributesKey(
-        "KOTLIN_FUNCTION_DECLARATION", DefaultLanguageHighlighterColors.FUNCTION_DECLARATION,
-    ),
-)
+internal val labelColor =
+    TextAttributesKey.createTextAttributesKey(
+        "MARS_MIPS_LABEL",
+        TextAttributesKey.createTextAttributesKey(
+            "KOTLIN_LABEL",
+            DefaultLanguageHighlighterColors.LABEL,
+        ),
+    )
+internal val macroColor =
+    TextAttributesKey.createTextAttributesKey(
+        "MARS_MIPS_MACRO",
+        TextAttributesKey.createTextAttributesKey(
+            "KOTLIN_FUNCTION_DECLARATION",
+            DefaultLanguageHighlighterColors.FUNCTION_DECLARATION,
+        ),
+    )
 internal val equivalenceColor =
-    TextAttributesKey.createTextAttributesKey("MARS_MIPS_EQUIVALENCE", DefaultLanguageHighlighterColors.CONSTANT)
+    TextAttributesKey.createTextAttributesKey(
+        "MARS_MIPS_EQUIVALENCE",
+        DefaultLanguageHighlighterColors.CONSTANT,
+    )
 internal val equivalenceReplacementColor =
     TextAttributesKey.createTextAttributesKey("MARS_MIPS_EQUIVALENCE_REPLACEMENT", equivalenceColor)
 
 internal class MipsInstructionHighlighter : Annotator, DumbAware {
-    override fun annotate(element: PsiElement, holder: AnnotationHolder) {
-        when {
-            element is MipsDeclaration -> {
-                val identifier = element.nameIdentifier ?: return
-                val contextual = element.kind in contextualDeclarations ||
-                    element.kind == SymbolKind.CONSTANT && identifier.elementType == dollarWord
-                if (contextual && (identifier as? MipsSymbolToken)?.highlightingColor() != null) return
-                if (element.name != null) holder.color(identifier.textRange, element.kind.color)
-            }
-            element.elementType in operationOwners -> highlightOperation(element, holder)
-            element.elementType == macroParameter -> holder.color(element.textRange, macroParameterColor)
-            element.elementType in signs -> highlightSign(element, holder)
-            element.elementType == replacement -> {
-                val token = element.firstChild
-                // A replacement identifier can expand into different roles at different use sites.
-                val color = (token as? MipsSymbolToken)?.highlightingColor()
-                    ?: equivalenceReplacementColor.takeIf { token.elementType in replacementIdentifiers }
-                if (color != null) holder.color(token.textRange, color)
-            }
-            element is MipsSymbolToken && element.parent.elementType !in operationOwners && element.parent.elementType != replacement -> {
-                val color = element.highlightingColor() ?: return
-                holder.color(element.textRange, color)
-            }
-        }
+  override fun annotate(element: PsiElement, holder: AnnotationHolder) {
+    when {
+      element is MipsDeclaration -> {
+        val identifier = element.nameIdentifier ?: return
+        val contextual =
+            element.kind in contextualDeclarations ||
+                element.kind == SymbolKind.CONSTANT && identifier.elementType == dollarWord
+        if (contextual && (identifier as? MipsSymbolToken)?.highlightingColor() != null) return
+        if (element.name != null) holder.color(identifier.textRange, element.kind.color)
+      }
+      element.elementType in operationOwners -> highlightOperation(element, holder)
+      element.elementType == macroParameter -> holder.color(element.textRange, macroParameterColor)
+      element.elementType in signs -> highlightSign(element, holder)
+      element.elementType == replacement -> {
+        val token = element.firstChild
+        // A replacement identifier can expand into different roles at different use sites.
+        val color =
+            (token as? MipsSymbolToken)?.highlightingColor()
+                ?: equivalenceReplacementColor.takeIf {
+                  token.elementType in replacementIdentifiers
+                }
+        if (color != null) holder.color(token.textRange, color)
+      }
+      element is MipsSymbolToken &&
+          element.parent.elementType !in operationOwners &&
+          element.parent.elementType != replacement -> {
+        val color = element.highlightingColor() ?: return
+        holder.color(element.textRange, color)
+      }
     }
+  }
 
-    private fun highlightSign(sign: PsiElement, holder: AnnotationHolder) {
-        val parent = sign.parent
-        if (parent.elementType in uncoloredSigns) return
-        if (parent.elementType == dataRepeatPrefix && sign.nextSibling == null) return
-        if (PsiUtilCore.getElementType(PsiTreeUtil.nextLeaf(sign, true)) == number) {
-            holder.color(sign.textRange, DefaultLanguageHighlighterColors.NUMBER)
-        }
+  private fun highlightSign(sign: PsiElement, holder: AnnotationHolder) {
+    val parent = sign.parent
+    if (parent.elementType in uncoloredSigns) return
+    if (parent.elementType == dataRepeatPrefix && sign.nextSibling == null) return
+    if (PsiUtilCore.getElementType(PsiTreeUtil.nextLeaf(sign, true)) == number) {
+      holder.color(sign.textRange, DefaultLanguageHighlighterColors.NUMBER)
     }
+  }
 
-    private fun highlightOperation(element: PsiElement, holder: AnnotationHolder) {
-        val file = element.containingFile as MipsFile
-        val analysis = file.project.service<MarsAnalysisService>()
-        val head = element.operationHead
-        val site = analysis.operationSite(file, head)
-        if (site != null) {
-            val color = when {
-                site.compositeEquivalence -> equivalenceColor
-                site.type == TokenTypes.OPERATOR -> instructionMnemonicColor
-                site.type == TokenTypes.IDENTIFIER -> macroColor
-                site.type == TokenTypes.MACRO_PARAMETER -> macroParameterColor
-                else -> directiveColor
-            }
-            holder.color(site.range, color)
-        }
-        if (site?.range != head.textRange) {
-            val use = analysis.equivalenceUse(file, head)
-            val color = when {
-                use != null && use.type == null -> equivalenceColor
-                analysis.isGeneratedLabel(file, head) -> labelColor
-                use != null -> equivalenceColor
-                else -> (head as MipsSymbolToken).highlightingColor() ?: return
-            }
-            holder.color(head.textRange, color)
-        }
+  private fun highlightOperation(element: PsiElement, holder: AnnotationHolder) {
+    val file = element.containingFile as MipsFile
+    val analysis = file.project.service<MarsAnalysisService>()
+    val head = element.operationHead
+    val site = analysis.operationSite(file, head)
+    if (site != null) {
+      val color =
+          when {
+            site.compositeEquivalence -> equivalenceColor
+            site.type == TokenTypes.OPERATOR -> instructionMnemonicColor
+            site.type == TokenTypes.IDENTIFIER -> macroColor
+            site.type == TokenTypes.MACRO_PARAMETER -> macroParameterColor
+            else -> directiveColor
+          }
+      holder.color(site.range, color)
     }
+    if (site?.range != head.textRange) {
+      val use = analysis.equivalenceUse(file, head)
+      val color =
+          when {
+            use != null && use.type == null -> equivalenceColor
+            analysis.isGeneratedLabel(file, head) -> labelColor
+            use != null -> equivalenceColor
+            else -> (head as MipsSymbolToken).highlightingColor() ?: return
+          }
+      holder.color(head.textRange, color)
+    }
+  }
 }
 
 private val contextualDeclarations = setOf(SymbolKind.LABEL, SymbolKind.EXTERNAL)
 private val macroParameter = MipsTypes.psi("MACRO_PARAMETER")
 private val signs = TokenSet.create(MipsTypes.psi("PLUS"), MipsTypes.psi("MINUS"))
-private val uncoloredSigns = TokenSet.create(MipsTypes.psi("ADD_EXPR"), MipsTypes.psi("EXTERNAL_SIGNED_NAME"))
+private val uncoloredSigns =
+    TokenSet.create(MipsTypes.psi("ADD_EXPR"), MipsTypes.psi("EXTERNAL_SIGNED_NAME"))
 private val dataRepeatPrefix = MipsTypes.psi("DATA_REPEAT_PREFIX")
 private val number = MipsTypes.psi("NUMBER")
 private val replacement = MipsTypes.psi("REPLACEMENT")
 private val dollarWord = MipsTypes.psi("DOLLAR_WORD")
-private val replacementIdentifiers = TokenSet.create(MipsTypes.psi("WORD"), MipsTypes.psi("DOLLAR_WORD"), MipsTypes.psi("MNEMONIC"))
+private val replacementIdentifiers =
+    TokenSet.create(MipsTypes.psi("WORD"), MipsTypes.psi("DOLLAR_WORD"), MipsTypes.psi("MNEMONIC"))
 
-private val SymbolKind.color: TextAttributesKey get() = when (this) {
-    SymbolKind.LABEL, SymbolKind.EXTERNAL -> labelColor
-    SymbolKind.MACRO -> macroColor
-    SymbolKind.CONSTANT -> equivalenceColor
-}
+private val SymbolKind.color: TextAttributesKey
+  get() =
+      when (this) {
+        SymbolKind.LABEL,
+        SymbolKind.EXTERNAL -> labelColor
+        SymbolKind.MACRO -> macroColor
+        SymbolKind.CONSTANT -> equivalenceColor
+      }
 
 private fun AnnotationHolder.color(range: TextRange, key: TextAttributesKey) {
-    newSilentAnnotation(HighlightSeverity.INFORMATION).range(range).textAttributes(key).create()
+  newSilentAnnotation(HighlightSeverity.INFORMATION).range(range).textAttributes(key).create()
 }

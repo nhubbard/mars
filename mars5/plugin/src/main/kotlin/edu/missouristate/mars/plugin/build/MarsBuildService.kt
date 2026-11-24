@@ -10,10 +10,10 @@ import com.intellij.build.events.MessageEvent
 import com.intellij.build.progress.BuildProgress
 import com.intellij.build.progress.BuildProgressDescriptor
 import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer
-import com.intellij.openapi.application.readAction
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.asContextElement
+import com.intellij.openapi.application.readAction
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.fileEditor.FileDocumentManager
@@ -39,6 +39,8 @@ import edu.missouristate.mars.plugin.analysis.assembleIn
 import edu.missouristate.mars.plugin.analysis.captureBuildSources
 import edu.missouristate.mars.plugin.dynamicBundleOf
 import edu.missouristate.mars.plugin.run.MarsExecutionSources
+import java.nio.ByteOrder
+import java.nio.file.Path
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -49,12 +51,12 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.future.asCompletableFuture
 import kotlinx.coroutines.withContext
 import org.jetbrains.concurrency.asPromise
-import java.nio.file.Path
-import java.nio.ByteOrder
 
-private class MarsBuildProgressDescriptor(private val descriptor: BuildDescriptor) : BuildProgressDescriptor {
-    override fun getTitle() = descriptor.title
-    override fun getBuildDescriptor() = descriptor
+private class MarsBuildProgressDescriptor(private val descriptor: BuildDescriptor) :
+    BuildProgressDescriptor {
+  override fun getTitle() = descriptor.title
+
+  override fun getBuildDescriptor() = descriptor
 }
 
 internal val buildMessages = dynamicBundleOf<MarsBuildService>("messages.MarsBundle")
@@ -63,219 +65,291 @@ internal class MarsAssembledProgram(val image: AssemblyImage, val sources: Captu
 
 @Service(Service.Level.PROJECT)
 internal class MarsBuildService(private val project: Project, private val scope: CoroutineScope) {
-    private data class Revision(
-        val snapshot: AssemblySourceSnapshot,
-        val exceptionHandler: Path?,
-        val options: MarsExecutionOptions,
-        val byteOrder: ByteOrder,
-    )
+  private data class Revision(
+      val snapshot: AssemblySourceSnapshot,
+      val exceptionHandler: Path?,
+      val options: MarsExecutionOptions,
+      val byteOrder: ByteOrder,
+  )
 
-    private data class BuildOutput(
-        val diagnostics: List<AssemblyError>,
-        val symbols: AssemblySymbolMap?,
-        val image: AssemblyImage? = null,
-        val reused: Boolean = false,
-    ) {
-        val succeeded get() = symbols != null
-    }
+  private data class BuildOutput(
+      val diagnostics: List<AssemblyError>,
+      val symbols: AssemblySymbolMap?,
+      val image: AssemblyImage? = null,
+      val reused: Boolean = false,
+  ) {
+    val succeeded
+      get() = symbols != null
+  }
 
-    // Use content and resolved include identities. Fresh document stamps belong to each caller.
-    private val images = SLRUMap<Revision, BuildOutput>(2, 2)
+  // Use content and resolved include identities. Fresh document stamps belong to each caller.
+  private val images = SLRUMap<Revision, BuildOutput>(2, 2)
 
-    fun assembleTasks(tasks: List<MarsBuildTask>) = scope.async<ProjectTaskRunner.Result>(Dispatchers.Default) {
-        var result = TaskRunnerResults.SUCCESS
-        withBackgroundProgress(project, buildMessages.getMessage("build.progress")) {
-            for (task in tasks.distinctBy(MarsBuildTask::sources)) {
+  fun assembleTasks(tasks: List<MarsBuildTask>) =
+      scope
+          .async<ProjectTaskRunner.Result>(Dispatchers.Default) {
+            var result = TaskRunnerResults.SUCCESS
+            withBackgroundProgress(project, buildMessages.getMessage("build.progress")) {
+              for (task in tasks.distinctBy(MarsBuildTask::sources)) {
                 if (!assemble(task.sources)) result = TaskRunnerResults.FAILURE
+              }
             }
+            result
+          }
+          .asCompletableFuture()
+          .asPromise()
+
+  internal suspend fun assemble(entry: Path) = assemble(MarsSourceSet(entry))
+
+  internal suspend fun assemble(sourceSet: MarsSourceSet): Boolean =
+      buildImage(sourceSet, projectOptions, activateBuildView = true, reuse = false) != null
+
+  internal suspend fun prepare(
+      sources: MarsSourceSet,
+      options: MarsExecutionOptions,
+      activateBuildView: Boolean,
+      byteOrder: ByteOrder = ByteOrder.LITTLE_ENDIAN,
+  ): MarsAssembledProgram? =
+      buildImage(sources, options, activateBuildView, reuse = true, byteOrder = byteOrder)
+
+  internal suspend fun assembleOpened(sources: MarsSourceSet) {
+    buildImage(
+        sources,
+        projectOptions,
+        activateBuildView = false,
+        reuse = true,
+        activateOnFailure = false,
+    )
+  }
+
+  private suspend fun buildImage(
+      sourceSet: MarsSourceSet,
+      options: MarsExecutionOptions,
+      activateBuildView: Boolean,
+      reuse: Boolean,
+      activateOnFailure: Boolean = true,
+      byteOrder: ByteOrder = ByteOrder.LITTLE_ENDIAN,
+  ): MarsAssembledProgram? {
+    val (capture, output) =
+        buildWithProgress(sourceSet, options, activateBuildView, activateOnFailure) { sources ->
+          val revision = Revision(sources.snapshot, sources.exceptionHandler, options, byteOrder)
+          val cached = if (reuse) synchronized(images) { images[revision] } else null
+          cached?.copy(reused = true) ?: assembleImage(sources, options, byteOrder)
         }
-        result
-    }.asCompletableFuture().asPromise()
-
-    internal suspend fun assemble(entry: Path) = assemble(MarsSourceSet(entry))
-
-    internal suspend fun assemble(sourceSet: MarsSourceSet): Boolean =
-        buildImage(sourceSet, projectOptions, activateBuildView = true, reuse = false) != null
-
-    internal suspend fun prepare(
-        sources: MarsSourceSet, options: MarsExecutionOptions, activateBuildView: Boolean,
-        byteOrder: ByteOrder = ByteOrder.LITTLE_ENDIAN,
-    ): MarsAssembledProgram? = buildImage(sources, options, activateBuildView, reuse = true, byteOrder = byteOrder)
-
-    internal suspend fun assembleOpened(sources: MarsSourceSet) {
-        buildImage(sources, projectOptions, activateBuildView = false, reuse = true, activateOnFailure = false)
+    val image = output.image ?: return null
+    checkCanceled()
+    if (!output.reused) {
+      synchronized(images) {
+        images.put(Revision(capture.snapshot, capture.exceptionHandler, options, byteOrder), output)
+      }
     }
+    return MarsAssembledProgram(image, capture)
+  }
 
-    private suspend fun buildImage(
-        sourceSet: MarsSourceSet, options: MarsExecutionOptions, activateBuildView: Boolean, reuse: Boolean,
-        activateOnFailure: Boolean = true,
-        byteOrder: ByteOrder = ByteOrder.LITTLE_ENDIAN,
-    ): MarsAssembledProgram? {
-        val (capture, output) = buildWithProgress(sourceSet, options, activateBuildView, activateOnFailure) { sources ->
-            val revision = Revision(sources.snapshot, sources.exceptionHandler, options, byteOrder)
-            val cached = if (reuse) synchronized(images) { images[revision] } else null
-            cached?.copy(reused = true) ?: assembleImage(sources, options, byteOrder)
-        }
-        val image = output.image ?: return null
-        checkCanceled()
-        if (!output.reused) {
-            synchronized(images) { images.put(Revision(capture.snapshot, capture.exceptionHandler, options, byteOrder), output) }
-        }
-        return MarsAssembledProgram(image, capture)
+  private suspend fun assembleImage(
+      sources: CapturedAssemblySources,
+      options: MarsExecutionOptions,
+      byteOrder: ByteOrder,
+  ): BuildOutput {
+    val component = MarsSessionService.createMarsComponent(target = options.target)
+    val context = currentCoroutineContext()
+    return component.context().use { session ->
+      val result = assembleInto(sources, options, component, byteOrder)
+      if (result.succeeded) result.copy(image = session.captureAssemblyImage(context::ensureActive))
+      else result
     }
+  }
 
-    private suspend fun assembleImage(sources: CapturedAssemblySources, options: MarsExecutionOptions, byteOrder: ByteOrder): BuildOutput {
-        val component = MarsSessionService.createMarsComponent(target = options.target)
-        val context = currentCoroutineContext()
-        return component.context().use { session ->
-            val result = assembleInto(sources, options, component, byteOrder)
-            if (result.succeeded) result.copy(image = session.captureAssemblyImage(context::ensureActive)) else result
+  private val projectOptions
+    get() = project.service<MarsAssemblySettings>().executionOptions
+
+  internal suspend fun assemble(
+      entry: Path,
+      component: MarsComponent,
+      activateBuildView: Boolean,
+      options: MarsExecutionOptions = projectOptions,
+  ): Boolean =
+      buildWithProgress(MarsSourceSet(entry), options, activateBuildView) { sources ->
+            assembleInto(sources, options, component)
+          }
+          .second
+          .succeeded
+
+  private suspend fun buildWithProgress(
+      sourceSet: MarsSourceSet,
+      options: MarsExecutionOptions,
+      activateBuildView: Boolean,
+      activateOnFailure: Boolean = true,
+      assemble: suspend (CapturedAssemblySources) -> BuildOutput,
+  ): Pair<CapturedAssemblySources, BuildOutput> {
+    val entry = sourceSet.entry
+    val symbolBuild = project.service<MarsAnalysisService>().beginSymbolBuild(sourceSet, options)
+    val descriptor =
+        DefaultBuildDescriptor(
+                Any(),
+                buildMessages.getMessage("build.title", entry.fileName.toString()),
+                entry.toAbsolutePath().parent.toString(),
+                System.currentTimeMillis(),
+            )
+            .apply {
+              isActivateToolWindowWhenAdded = activateBuildView
+              isActivateToolWindowWhenFailed = activateOnFailure
+            }
+    val progressDescriptor = MarsBuildProgressDescriptor(descriptor)
+    // StartBuildEvent can synchronously clear the platform's Swing build list.
+    // These handoffs only update Build UI, like FrontendBuildViewManager: allow
+    // any modality so a background run can finish while a dialog is open.
+    // PSI/source capture and diagnostic construction remain outside them.
+    // Keep the caller dispatcher in the outer block: prompt cancellation on an EDT return
+    // must not discard an acquired progress handle before its finally block can finish it.
+    val progress =
+        withContext(NonCancellable) {
+          withContext(Dispatchers.EDT + ModalityState.any().asContextElement()) {
+            BuildViewManager.createBuildProgress(project)
+                .start(progressDescriptor.title, progressDescriptor)
+          }
         }
-    }
-
-    private val projectOptions get() = project.service<MarsAssemblySettings>().executionOptions
-
-    internal suspend fun assemble(
-        entry: Path, component: MarsComponent, activateBuildView: Boolean, options: MarsExecutionOptions = projectOptions,
-    ): Boolean = buildWithProgress(MarsSourceSet(entry), options, activateBuildView) { sources ->
-        assembleInto(sources, options, component)
-    }.second.succeeded
-
-    private suspend fun buildWithProgress(
-        sourceSet: MarsSourceSet, options: MarsExecutionOptions, activateBuildView: Boolean,
-        activateOnFailure: Boolean = true,
-        assemble: suspend (CapturedAssemblySources) -> BuildOutput,
-    ): Pair<CapturedAssemblySources, BuildOutput> {
-        val entry = sourceSet.entry
-        val symbolBuild = project.service<MarsAnalysisService>().beginSymbolBuild(sourceSet, options)
-        val descriptor = DefaultBuildDescriptor(
-            Any(), buildMessages.getMessage("build.title", entry.fileName.toString()),
-            entry.toAbsolutePath().parent.toString(), System.currentTimeMillis(),
-        ).apply {
-            isActivateToolWindowWhenAdded = activateBuildView
-            isActivateToolWindowWhenFailed = activateOnFailure
-        }
-        val progressDescriptor = MarsBuildProgressDescriptor(descriptor)
-        // StartBuildEvent can synchronously clear the platform's Swing build list.
-        // These handoffs only update Build UI, like FrontendBuildViewManager: allow
-        // any modality so a background run can finish while a dialog is open.
-        // PSI/source capture and diagnostic construction remain outside them.
-        // Keep the caller dispatcher in the outer block: prompt cancellation on an EDT return
-        // must not discard an acquired progress handle before its finally block can finish it.
-        val progress = withContext(NonCancellable) {
+    var cancelled = false
+    var succeeded = false
+    var reused = false
+    try {
+      currentCoroutineContext().ensureActive()
+      val completed =
+          assembleAndReport(symbolBuild, assemble) { diagnostics, capture ->
+            val events = readAction { diagnosticEvents(project, progress.id, diagnostics, capture) }
+            checkCanceled()
             withContext(Dispatchers.EDT + ModalityState.any().asContextElement()) {
-                BuildViewManager.createBuildProgress(project).start(progressDescriptor.title, progressDescriptor)
-            }
-        }
-        var cancelled = false
-        var succeeded = false
-        var reused = false
-        try {
-            currentCoroutineContext().ensureActive()
-            val completed = assembleAndReport(symbolBuild, assemble) { diagnostics, capture ->
-                val events = readAction { diagnosticEvents(project, progress.id, diagnostics, capture) }
+              val view = project.service<BuildViewManager>()
+              for (event in events) {
                 checkCanceled()
-                withContext(Dispatchers.EDT + ModalityState.any().asContextElement()) {
-                    val view = project.service<BuildViewManager>()
-                    for (event in events) {
-                        checkCanceled()
-                        view.onEvent(progress.id, event)
-                    }
-                }
+                view.onEvent(progress.id, event)
+              }
             }
-            succeeded = completed.second.succeeded
-            reused = completed.second.reused
-            return completed
-        } catch (cancel: CancellationException) {
-            cancelled = true
-            throw cancel
-        } finally {
-            withContext(NonCancellable + Dispatchers.EDT + ModalityState.any().asContextElement()) {
-                finish(progress, cancelled, succeeded, reused)
-            }
-        }
+          }
+      succeeded = completed.second.succeeded
+      reused = completed.second.reused
+      return completed
+    } catch (cancel: CancellationException) {
+      cancelled = true
+      throw cancel
+    } finally {
+      withContext(NonCancellable + Dispatchers.EDT + ModalityState.any().asContextElement()) {
+        finish(progress, cancelled, succeeded, reused)
+      }
     }
+  }
 
-    internal suspend fun assembleForCompiler(
-        sources: MarsSourceSet, report: suspend (List<AssemblyError>, CapturedAssemblySources) -> Unit,
-    ): Boolean {
-        val options = projectOptions
-        val component = MarsSessionService.createMarsComponent(target = options.target)
-        val symbolBuild = project.service<MarsAnalysisService>().beginSymbolBuild(sources, options)
-        return component.context().use {
-            assembleAndReport(symbolBuild, { capture -> assembleInto(capture, options, component) }, report).second.succeeded
-        }
+  internal suspend fun assembleForCompiler(
+      sources: MarsSourceSet,
+      report: suspend (List<AssemblyError>, CapturedAssemblySources) -> Unit,
+  ): Boolean {
+    val options = projectOptions
+    val component = MarsSessionService.createMarsComponent(target = options.target)
+    val symbolBuild = project.service<MarsAnalysisService>().beginSymbolBuild(sources, options)
+    return component.context().use {
+      assembleAndReport(
+              symbolBuild,
+              { capture -> assembleInto(capture, options, component) },
+              report,
+          )
+          .second
+          .succeeded
     }
+  }
 
-    private suspend fun assembleInto(
-        sources: CapturedAssemblySources, options: MarsExecutionOptions, component: MarsComponent,
-        byteOrder: ByteOrder? = null,
-    ): BuildOutput {
-        options.applyForAssembly(component.context())
-        if (byteOrder != null) component.context().memory.byteOrder = byteOrder == ByteOrder.LITTLE_ENDIAN
-        val result = sources.assembleIn(component)
-        return BuildOutput(result.errors(), if (result.succeeded()) result.program()!!.symbolMap() else null)
-    }
+  private suspend fun assembleInto(
+      sources: CapturedAssemblySources,
+      options: MarsExecutionOptions,
+      component: MarsComponent,
+      byteOrder: ByteOrder? = null,
+  ): BuildOutput {
+    options.applyForAssembly(component.context())
+    if (byteOrder != null)
+        component.context().memory.byteOrder = byteOrder == ByteOrder.LITTLE_ENDIAN
+    val result = sources.assembleIn(component)
+    return BuildOutput(
+        result.errors(),
+        if (result.succeeded()) result.program()!!.symbolMap() else null,
+    )
+  }
 
-    private suspend fun assembleAndReport(
-        symbolBuild: MarsAnalysisService.SymbolBuild, assemble: suspend (CapturedAssemblySources) -> BuildOutput,
-        report: suspend (List<AssemblyError>, CapturedAssemblySources) -> Unit,
-    ): Pair<CapturedAssemblySources, BuildOutput> {
-        val analysis = project.service<MarsAnalysisService>()
-        val capture = captureBuildSources(symbolBuild.selection.sourceSet, project.service<MarsAssemblySettings>().exceptionHandler)
-        checkCanceled()
-        analysis.publishBuiltSymbols(symbolBuild, capture, AssemblySymbolMap.EMPTY)
-        DaemonCodeAnalyzer.getInstance(project).restart("MARS assembly entry selected")
-        project.messageBus.syncPublisher(MipsAssemblyContextListener.TOPIC).assemblyEntryChanged()
-        val result = assemble(capture)
-        checkCanceled()
-        report(result.diagnostics, capture)
-        checkCanceled()
-        result.symbols?.let { analysis.publishBuiltSymbols(symbolBuild, capture, it) }
-        return capture to result
-    }
+  private suspend fun assembleAndReport(
+      symbolBuild: MarsAnalysisService.SymbolBuild,
+      assemble: suspend (CapturedAssemblySources) -> BuildOutput,
+      report: suspend (List<AssemblyError>, CapturedAssemblySources) -> Unit,
+  ): Pair<CapturedAssemblySources, BuildOutput> {
+    val analysis = project.service<MarsAnalysisService>()
+    val capture =
+        captureBuildSources(
+            symbolBuild.selection.sourceSet,
+            project.service<MarsAssemblySettings>().exceptionHandler,
+        )
+    checkCanceled()
+    analysis.publishBuiltSymbols(symbolBuild, capture, AssemblySymbolMap.EMPTY)
+    DaemonCodeAnalyzer.getInstance(project).restart("MARS assembly entry selected")
+    project.messageBus.syncPublisher(MipsAssemblyContextListener.TOPIC).assemblyEntryChanged()
+    val result = assemble(capture)
+    checkCanceled()
+    report(result.diagnostics, capture)
+    checkCanceled()
+    result.symbols?.let { analysis.publishBuiltSymbols(symbolBuild, capture, it) }
+    return capture to result
+  }
 
-    private fun finish(
-        progress: BuildProgress<BuildProgressDescriptor>, cancelled: Boolean, succeeded: Boolean, reused: Boolean,
-    ) {
-        when {
-            cancelled -> progress.cancel()
-            succeeded -> progress.finish(reused)
-            else -> progress.fail()
-        }
+  private fun finish(
+      progress: BuildProgress<BuildProgressDescriptor>,
+      cancelled: Boolean,
+      succeeded: Boolean,
+      reused: Boolean,
+  ) {
+    when {
+      cancelled -> progress.cancel()
+      succeeded -> progress.finish(reused)
+      else -> progress.fail()
     }
+  }
 }
 
 /** Called under a read action so revisions and positions refer to the same document state. */
 internal fun diagnosticEvents(
-    project: Project, buildId: Any, diagnostics: List<AssemblyError>, capture: CapturedAssemblySources,
+    project: Project,
+    buildId: Any,
+    diagnostics: List<AssemblyError>,
+    capture: CapturedAssemblySources,
 ): List<MessageEvent> {
-    val sources = MarsExecutionSources(capture)
-    return diagnostics.map { diagnosticEvent(project, buildId, it, capture, sources) }
+  val sources = MarsExecutionSources(capture)
+  return diagnostics.map { diagnosticEvent(project, buildId, it, capture, sources) }
 }
 
 internal fun diagnosticEvent(
-    project: Project, buildId: Any, diagnostic: AssemblyError, capture: CapturedAssemblySources,
+    project: Project,
+    buildId: Any,
+    diagnostic: AssemblyError,
+    capture: CapturedAssemblySources,
     sources: MarsExecutionSources = MarsExecutionSources(capture),
 ): MessageEvent {
-    val kind = if (diagnostic.isWarning) MessageEvent.Kind.WARNING else MessageEvent.Kind.ERROR
-    val builder = MessageEvent.builder(diagnostic.message!!, kind).withParentId(buildId)
-    val path = diagnostic.file ?: return builder.build()
-    if (diagnostic.line < 1) return builder.withHint(path.toString()).build()
-    val location = Location(path, diagnostic.line)
-    val target = sources.currentLineDescriptor(project, location) ?: return builder.withHint(path.toString()).build()
-    val editorFile = target.file
-    val document = FileDocumentManager.getInstance().getDocument(editorFile)!!
-    val line = diagnostic.line - 1
-    // Live text positions carry an offset. Captured views carry an editor line, which may be relative to an excerpt.
-    if (target.line < 0 && document.modificationStamp != capture.revisions[path]) {
-        return builder.withHint(path.toString()).build()
-    }
-    val editorLine = target.line.takeIf { it >= 0 } ?: line
-    val start = document.getLineStartOffset(editorLine)
-    val column = (diagnostic.column - 1).coerceIn(0, document.getLineEndOffset(editorLine) - start)
-    sources.rememberEntryFor(editorFile, location)
-    return builder.withFilePosition(FilePosition(path, line, column))
-        .withNavigatable(OpenFileDescriptor(project, editorFile, start + column))
-        .build()
+  val kind = if (diagnostic.isWarning) MessageEvent.Kind.WARNING else MessageEvent.Kind.ERROR
+  val builder = MessageEvent.builder(diagnostic.message!!, kind).withParentId(buildId)
+  val path = diagnostic.file ?: return builder.build()
+  if (diagnostic.line < 1) return builder.withHint(path.toString()).build()
+  val location = Location(path, diagnostic.line)
+  val target =
+      sources.currentLineDescriptor(project, location)
+          ?: return builder.withHint(path.toString()).build()
+  val editorFile = target.file
+  val document = FileDocumentManager.getInstance().getDocument(editorFile)!!
+  val line = diagnostic.line - 1
+  // Live text positions carry an offset. Captured views carry an editor line, which may be relative
+  // to an excerpt.
+  if (target.line < 0 && document.modificationStamp != capture.revisions[path]) {
+    return builder.withHint(path.toString()).build()
+  }
+  val editorLine = target.line.takeIf { it >= 0 } ?: line
+  val start = document.getLineStartOffset(editorLine)
+  val column = (diagnostic.column - 1).coerceIn(0, document.getLineEndOffset(editorLine) - start)
+  sources.rememberEntryFor(editorFile, location)
+  return builder
+      .withFilePosition(FilePosition(path, line, column))
+      .withNavigatable(OpenFileDescriptor(project, editorFile, start + column))
+      .build()
 }

@@ -32,7 +32,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 open class SyscallClose : AbstractSyscall(16, "Close") {
-    override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
-        context.environment().closeFile(context.registerFile.getValue(4))
-    }
+  override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
+    context.environment().closeFile(context.registerFile.getValue(4))
+  }
 }

@@ -34,151 +34,189 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 /** One simulation's general-purpose registers, program counter, and multiplication registers. */
-class IntegerRegisterFile(globalPointer: Int, stackPointer: Int, textBaseAddress: Int) : MarsRegisterFile {
-    constructor() : this(
-        MemoryConfigurations.getDefaultGlobalPointer(),
-        MemoryConfigurations.getDefaultStackPointer(),
-        MemoryConfigurations.getDefaultTextBaseAddress(),
-    )
+class IntegerRegisterFile(globalPointer: Int, stackPointer: Int, textBaseAddress: Int) :
+    MarsRegisterFile {
+  constructor() :
+      this(
+          MemoryConfigurations.getDefaultGlobalPointer(),
+          MemoryConfigurations.getDefaultStackPointer(),
+          MemoryConfigurations.getDefaultTextBaseAddress(),
+      )
 
-    private val registerEvents = EventEmitter<RegisterAccessNotice>()
-    val registers = Array(registerNames.size) { number ->
-        val reset = when (number) {
-            GLOBAL_POINTER_REGISTER -> globalPointer
-            STACK_POINTER_REGISTER -> stackPointer
-            else -> 0
-        }
-        Register("$${registerNames[number]}", number, reset, registerEvents)
-    }
-    val programCounterRegister = Register("pc", PC_REGISTER, textBaseAddress)
-    private val hi = Register("hi", HI_REGISTER, 0, registerEvents)
-    private val lo = Register("lo", LO_REGISTER, 0, registerEvents)
-
-    fun addRegistersObserver(listener: (RegisterAccessNotice) -> Unit) {
-        registerEvents.subscribe(listener)
-    }
-
-    fun deleteRegistersObserver(listener: (RegisterAccessNotice) -> Unit) {
-        registerEvents.unsubscribe(listener)
-    }
-
-    fun updateRegister(number: Int, value: Int): Int {
-        checkRegisterNumber(number)
-        if (number == 0) return 0
-        return registerAt(number).setValue(value)
-    }
-
-    internal fun updateLongRegister(number: Int, value: Long): Long {
-        checkRegisterNumber(number)
-        if (number == 0) return 0
-        return registerAt(number).setLongValue(value)
-    }
-
-    fun updateRegister(name: String, value: Int) {
-        if (name == "zero") {
-            println("You can not change the value of the zero register.")
-        } else {
-            val index = registers.indexOfFirst { it.name == name }
-            if (index >= 0) updateRegister(index, value)
-        }
-    }
-
-    override fun getValue(register: Int): Int {
-        checkRegisterNumber(register)
-        return registerAt(register).value
-    }
-
-    internal fun getLongValue(register: Int): Long {
-        checkRegisterNumber(register)
-        return registerAt(register).longValue
-    }
-
-    /** Inspect the full integer register value without emitting an access event. */
-    fun getLongValueNoNotify(register: Int): Long {
-        checkRegisterNumber(register)
-        return registerAt(register).longValueNoNotify
-    }
-
-    /** Read a register for inspection without emitting an access event. */
-    fun getValueNoNotify(number: Int): Int {
-        checkRegisterNumber(number)
-        return registerAt(number).valueNoNotify
-    }
-
-    fun getNumber(name: String?): Int = registers.firstOrNull { it.name == name }?.number ?: -1
-
-    fun getUserRegister(name: String): Register? {
-        if (name[0] != '$') return null
-        val first = name.getOrNull(1)
-        val number = if (first == null || first.isDigit() || first in "+-#") {
-            try {
-                Binary.stringToInt(name.substring(1))
-            } catch (_: NumberFormatException) {
-                -1
+  private val registerEvents = EventEmitter<RegisterAccessNotice>()
+  val registers =
+      Array(registerNames.size) { number ->
+        val reset =
+            when (number) {
+              GLOBAL_POINTER_REGISTER -> globalPointer
+              STACK_POINTER_REGISTER -> stackPointer
+              else -> 0
             }
+        Register("$${registerNames[number]}", number, reset, registerEvents)
+      }
+  val programCounterRegister = Register("pc", PC_REGISTER, textBaseAddress)
+  private val hi = Register("hi", HI_REGISTER, 0, registerEvents)
+  private val lo = Register("lo", LO_REGISTER, 0, registerEvents)
+
+  fun addRegistersObserver(listener: (RegisterAccessNotice) -> Unit) {
+    registerEvents.subscribe(listener)
+  }
+
+  fun deleteRegistersObserver(listener: (RegisterAccessNotice) -> Unit) {
+    registerEvents.unsubscribe(listener)
+  }
+
+  fun updateRegister(number: Int, value: Int): Int {
+    checkRegisterNumber(number)
+    if (number == 0) return 0
+    return registerAt(number).setValue(value)
+  }
+
+  internal fun updateLongRegister(number: Int, value: Long): Long {
+    checkRegisterNumber(number)
+    if (number == 0) return 0
+    return registerAt(number).setLongValue(value)
+  }
+
+  fun updateRegister(name: String, value: Int) {
+    if (name == "zero") {
+      println("You can not change the value of the zero register.")
+    } else {
+      val index = registers.indexOfFirst { it.name == name }
+      if (index >= 0) updateRegister(index, value)
+    }
+  }
+
+  override fun getValue(register: Int): Int {
+    checkRegisterNumber(register)
+    return registerAt(register).value
+  }
+
+  internal fun getLongValue(register: Int): Long {
+    checkRegisterNumber(register)
+    return registerAt(register).longValue
+  }
+
+  /** Inspect the full integer register value without emitting an access event. */
+  fun getLongValueNoNotify(register: Int): Long {
+    checkRegisterNumber(register)
+    return registerAt(register).longValueNoNotify
+  }
+
+  /** Read a register for inspection without emitting an access event. */
+  fun getValueNoNotify(number: Int): Int {
+    checkRegisterNumber(number)
+    return registerAt(number).valueNoNotify
+  }
+
+  fun getNumber(name: String?): Int = registers.firstOrNull { it.name == name }?.number ?: -1
+
+  fun getUserRegister(name: String): Register? {
+    if (name[0] != '$') return null
+    val first = name.getOrNull(1)
+    val number =
+        if (first == null || first.isDigit() || first in "+-#") {
+          try {
+            Binary.stringToInt(name.substring(1))
+          } catch (_: NumberFormatException) {
+            -1
+          }
         } else -1
-        return registers.getOrNull(number) ?: registers.firstOrNull { it.name == name }
-    }
+    return registers.getOrNull(number) ?: registers.firstOrNull { it.name == name }
+  }
 
-    fun initializeProgramCounter(value: Int) {
-        programCounterRegister.setValue(value)
-    }
+  fun initializeProgramCounter(value: Int) {
+    programCounterRegister.setValue(value)
+  }
 
-    fun setProgramCounter(value: Int): Int = programCounterRegister.setValue(value)
+  fun setProgramCounter(value: Int): Int = programCounterRegister.setValue(value)
 
-    internal var wideProgramCounter = false
+  internal var wideProgramCounter = false
 
-    fun setProgramCounterBits(value: Long): Long =
-        programCounterRegister.setLongValue(if (wideProgramCounter) value else value.toInt().toLong())
+  fun setProgramCounterBits(value: Long): Long =
+      programCounterRegister.setLongValue(if (wideProgramCounter) value else value.toInt().toLong())
 
-    val programCounterBits: Long get() = programCounterRegister.longValueNoNotify
+  val programCounterBits: Long
+    get() = programCounterRegister.longValueNoNotify
 
-    val programCounter: Int get() = programCounterRegister.value
+  val programCounter: Int
+    get() = programCounterRegister.value
 
-    val initialProgramCounter: Int get() = programCounterRegister.resetValue
+  val initialProgramCounter: Int
+    get() = programCounterRegister.resetValue
 
-    fun resetRegisters() {
-        registers.forEach(Register::resetValue)
-        programCounterRegister.resetValue()
-        hi.resetValue()
-        lo.resetValue()
-    }
+  fun resetRegisters() {
+    registers.forEach(Register::resetValue)
+    programCounterRegister.resetValue()
+    hi.resetValue()
+    lo.resetValue()
+  }
 
-    fun incrementPC() {
-        setProgramCounterBits(programCounterBits + Instruction.INSTRUCTION_LENGTH)
-    }
+  fun incrementPC() {
+    setProgramCounterBits(programCounterBits + Instruction.INSTRUCTION_LENGTH)
+  }
 
-    override fun setValue(register: Int, value: Int) {
-        updateRegister(register, value)
-    }
+  override fun setValue(register: Int, value: Int) {
+    updateRegister(register, value)
+  }
 
-    override fun getPC(): Int = programCounter
+  override fun getPC(): Int = programCounter
 
-    override fun reset() = resetRegisters()
+  override fun reset() = resetRegisters()
 
-    private fun checkRegisterNumber(number: Int) {
-        require(number in 0..LO_REGISTER) { "Invalid register number: $number" }
-    }
+  private fun checkRegisterNumber(number: Int) {
+    require(number in 0..LO_REGISTER) { "Invalid register number: $number" }
+  }
 
-    private fun registerAt(number: Int): Register = when (number) {
+  private fun registerAt(number: Int): Register =
+      when (number) {
         PC_REGISTER -> programCounterRegister
         HI_REGISTER -> hi
         LO_REGISTER -> lo
         else -> registers[number]
-    }
+      }
 
-    companion object {
-        const val GLOBAL_POINTER_REGISTER = 28
-        const val STACK_POINTER_REGISTER = 29
-        private const val PC_REGISTER = 32
-        const val HI_REGISTER = 33
-        const val LO_REGISTER = 34
+  companion object {
+    const val GLOBAL_POINTER_REGISTER = 28
+    const val STACK_POINTER_REGISTER = 29
+    private const val PC_REGISTER = 32
+    const val HI_REGISTER = 33
+    const val LO_REGISTER = 34
 
-        private val registerNames = listOf(
-            "zero", "at", "v0", "v1", "a0", "a1", "a2", "a3",
-            "t0", "t1", "t2", "t3", "t4", "t5", "t6", "t7",
-            "s0", "s1", "s2", "s3", "s4", "s5", "s6", "s7",
-            "t8", "t9", "k0", "k1", "gp", "sp", "fp", "ra",
+    private val registerNames =
+        listOf(
+            "zero",
+            "at",
+            "v0",
+            "v1",
+            "a0",
+            "a1",
+            "a2",
+            "a3",
+            "t0",
+            "t1",
+            "t2",
+            "t3",
+            "t4",
+            "t5",
+            "t6",
+            "t7",
+            "s0",
+            "s1",
+            "s2",
+            "s3",
+            "s4",
+            "s5",
+            "s6",
+            "s7",
+            "t8",
+            "t9",
+            "k0",
+            "k1",
+            "gp",
+            "sp",
+            "fp",
+            "ra",
         )
-    }
+  }
 }

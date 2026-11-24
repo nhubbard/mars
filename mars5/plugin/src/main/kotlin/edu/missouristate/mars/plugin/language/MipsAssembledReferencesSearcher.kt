@@ -30,64 +30,98 @@ import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
 import edu.missouristate.mars.plugin.language.syntax.MipsScanner
 
 /** Supplements IntelliJ's word search with bindings established during assembly. */
-internal class MipsAssembledReferencesSearcher : QueryExecutorBase<PsiReference, SearchParameters>(true) {
-    override fun processQuery(queryParameters: SearchParameters, consumer: Processor<in PsiReference>) {
-        val target = queryParameters.elementToSearch as? MipsDeclaration ?: return
-        if (target.kind == SymbolKind.CONSTANT) return
-        val analysis = target.project.service<MarsAnalysisService>()
-        val scope = queryParameters.effectiveSearchScope
-        for (site in analysis.assembledUsages(target)) {
-            ProgressManager.checkCanceled()
-            val reference = analysis.assembledReference(target, site, scope) ?: continue
-            if (target.kind != SymbolKind.MACRO && reference.element.references.any { it.isReferenceTo(target) }) continue
-            if (!consumer.process(reference)) return
-        }
+internal class MipsAssembledReferencesSearcher :
+    QueryExecutorBase<PsiReference, SearchParameters>(true) {
+  override fun processQuery(
+      queryParameters: SearchParameters,
+      consumer: Processor<in PsiReference>,
+  ) {
+    val target = queryParameters.elementToSearch as? MipsDeclaration ?: return
+    if (target.kind == SymbolKind.CONSTANT) return
+    val analysis = target.project.service<MarsAnalysisService>()
+    val scope = queryParameters.effectiveSearchScope
+    for (site in analysis.assembledUsages(target)) {
+      ProgressManager.checkCanceled()
+      val reference = analysis.assembledReference(target, site, scope) ?: continue
+      if (
+          target.kind != SymbolKind.MACRO &&
+              reference.element.references.any { it.isReferenceTo(target) }
+      )
+          continue
+      if (!consumer.process(reference)) return
     }
+  }
 }
 
 /** Adds navigable, read-only occurrences to Find Usages without exposing them to refactoring. */
 internal class MipsExcerptUsageSearcher : CustomUsageSearcher() {
-    override fun processElementUsages(element: PsiElement, processor: Processor<in Usage>, options: FindUsagesOptions) {
-        val target = element as? MipsDeclaration ?: return
-        if (!options.isUsages || target.kind == SymbolKind.CONSTANT) return
-        ReadAction.computeBlocking<Unit, RuntimeException> {
-            val analysis = target.project.service<MarsAnalysisService>()
-            for ((file, offset) in analysis.assembledExcerptUsages(target, options.searchScope)) {
-                val reference = assembledReferenceAt(target, file.findElementAt(offset)!!, offset)
-                if (!processor.process(UsageInfo2UsageAdapter(UsageInfo(reference)))) break
-            }
-        }
+  override fun processElementUsages(
+      element: PsiElement,
+      processor: Processor<in Usage>,
+      options: FindUsagesOptions,
+  ) {
+    val target = element as? MipsDeclaration ?: return
+    if (!options.isUsages || target.kind == SymbolKind.CONSTANT) return
+    ReadAction.computeBlocking<Unit, RuntimeException> {
+      val analysis = target.project.service<MarsAnalysisService>()
+      for ((file, offset) in analysis.assembledExcerptUsages(target, options.searchScope)) {
+        val reference = assembledReferenceAt(target, file.findElementAt(offset)!!, offset)
+        if (!processor.process(UsageInfo2UsageAdapter(UsageInfo(reference)))) break
+      }
     }
+  }
 }
 
-internal fun MarsAnalysisService.assembledReference(target: MipsDeclaration, site: SourceToken, scope: SearchScope): PsiReference? {
-    val (file, offset) = sourceTokenPosition(site) ?: return null
-    val leaf = file.findElementAt(offset)!!
-    if (!PsiSearchScopeUtil.isInScope(scope, leaf)) return null
-    return assembledReferenceAt(target, leaf, offset)
+internal fun MarsAnalysisService.assembledReference(
+    target: MipsDeclaration,
+    site: SourceToken,
+    scope: SearchScope,
+): PsiReference? {
+  val (file, offset) = sourceTokenPosition(site) ?: return null
+  val leaf = file.findElementAt(offset)!!
+  if (!PsiSearchScopeUtil.isInScope(scope, leaf)) return null
+  return assembledReferenceAt(target, leaf, offset)
 }
 
-private fun assembledReferenceAt(target: MipsDeclaration, leaf: PsiElement, offset: Int): PsiReference {
-    val file = leaf.containingFile
-    val text = file.viewProvider.contents
-    val editorEnd = if (file is MipsFile) leaf.textRange.endOffset else MipsScanner.next(text, offset)!!.end
-    if (target.usesAssemblerSpelling()) {
-        val end = assemblerTokensStartingAt(text, offset).fold(editorEnd) { _, token ->
-            offset + token.endPos - token.startPos
+private fun assembledReferenceAt(
+    target: MipsDeclaration,
+    leaf: PsiElement,
+    offset: Int,
+): PsiReference {
+  val file = leaf.containingFile
+  val text = file.viewProvider.contents
+  val editorEnd =
+      if (file is MipsFile) leaf.textRange.endOffset else MipsScanner.next(text, offset)!!.end
+  if (target.usesAssemblerSpelling()) {
+    val end =
+        assemblerTokensStartingAt(text, offset).fold(editorEnd) { _, token ->
+          offset + token.endPos - token.startPos
         }
-        val anchor = PsiTreeUtil.findCommonParent(leaf, file.findElementAt(end - 1)!!)!!
-        return PsiReferenceBase.Immediate(anchor, TextRange(offset, end).shiftLeft(anchor.textRange.startOffset), target)
-    }
-    return PsiReferenceBase.Immediate(leaf, TextRange(offset, editorEnd).shiftLeft(leaf.textRange.startOffset), target)
+    val anchor = PsiTreeUtil.findCommonParent(leaf, file.findElementAt(end - 1)!!)!!
+    return PsiReferenceBase.Immediate(
+        anchor,
+        TextRange(offset, end).shiftLeft(anchor.textRange.startOffset),
+        target,
+    )
+  }
+  return PsiReferenceBase.Immediate(
+      leaf,
+      TextRange(offset, editorEnd).shiftLeft(leaf.textRange.startOffset),
+      target,
+  )
 }
 
 internal fun MipsDeclaration.usesAssemblerSpelling(): Boolean =
     kind == SymbolKind.EXTERNAL && !TokenTypes.isValidIdentifier(nameIdentifier!!.text)
 
-/** Signed names can span PSI leaves, and a character literal's value differs from its source text. */
+/**
+ * Signed names can span PSI leaves, and a character literal's value differs from its source text.
+ */
 internal fun assemblerTokensStartingAt(text: CharSequence, offset: Int): Sequence<Token> {
-    val start = sourceLineStart(text, offset)
-    val end = CharArrayUtil.shiftForwardUntil(text, offset, "\r\n")
-    val tokens = Tokenizer().tokenizeLine(null, 1, text.subSequence(start, end).toString(), false)
-    return (0 until tokens.size()).asSequence().map(tokens::get).filter { start + it.startPos - 1 == offset }
+  val start = sourceLineStart(text, offset)
+  val end = CharArrayUtil.shiftForwardUntil(text, offset, "\r\n")
+  val tokens = Tokenizer().tokenizeLine(null, 1, text.subSequence(start, end).toString(), false)
+  return (0 until tokens.size()).asSequence().map(tokens::get).filter {
+    start + it.startPos - 1 == offset
+  }
 }

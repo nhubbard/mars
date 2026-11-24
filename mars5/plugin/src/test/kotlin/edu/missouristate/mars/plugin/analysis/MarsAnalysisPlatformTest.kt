@@ -19,44 +19,45 @@ import org.junit.jupiter.api.assertThrows
 
 @TestApplication
 class MarsAnalysisPlatformTest {
-    private val firstProject = projectFixture()
-    private val secondProject = projectFixture()
+  private val firstProject = projectFixture()
+  private val secondProject = projectFixture()
 
-    @Test
-    fun `platform creates one analysis service per project`() {
-        val first = firstProject.get().service<MarsAnalysisService>()
-        val second = secondProject.get().service<MarsAnalysisService>()
-        assertSame(first, firstProject.get().service<MarsAnalysisService>())
-        assertNotSame(first, second)
-        assertNotSame(first.snapshot.index, second.snapshot.index)
-    }
+  @Test
+  fun `platform creates one analysis service per project`() {
+    val first = firstProject.get().service<MarsAnalysisService>()
+    val second = secondProject.get().service<MarsAnalysisService>()
+    assertSame(first, firstProject.get().service<MarsAnalysisService>())
+    assertNotSame(first, second)
+    assertNotSame(first.snapshot.index, second.snapshot.index)
+  }
 
-    @Test
-    fun `service disposal closes publication and preserves the supplied parent scope`() = timeoutRunBlocking<Unit> {
+  @Test
+  fun `service disposal closes publication and preserves the supplied parent scope`() =
+      timeoutRunBlocking<Unit> {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
         val service = MarsAnalysisService(firstProject.get(), scope)
         try {
-            assertTrue(service.submit(emptyList()).await())
-            assertEquals(1, service.snapshot.generation)
-            service.dispose()
-            service.dispose()
-            assertTrue(scope.isActive)
-            assertThrows<IllegalStateException> {
-                @Suppress("DeferredResultUnused")
-                service.submit(emptyList())
-            }
+          assertTrue(service.submit(emptyList()).await())
+          assertEquals(1, service.snapshot.generation)
+          service.dispose()
+          service.dispose()
+          assertTrue(scope.isActive)
+          assertThrows<IllegalStateException> {
+            @Suppress("DeferredResultUnused") service.submit(emptyList())
+          }
         } finally {
-            service.dispose()
-            scope.cancel()
+          service.dispose()
+          scope.cancel()
         }
-    }
+      }
 
-    @Test
-    fun `native query rejects a scope from a different project`() = timeoutRunBlocking<Unit> {
+  @Test
+  fun `native query rejects a scope from a different project`() =
+      timeoutRunBlocking<Unit> {
         val service = firstProject.get().service<MarsAnalysisService>()
         val scope = GlobalSearchScope.projectScope(secondProject.get())
         assertThrows<IllegalArgumentException> {
-            service.lookupCandidates(SymbolKey("main", SymbolKind.LABEL), scope)
+          service.lookupCandidates(SymbolKey("main", SymbolKind.LABEL), scope)
         }
-    }
+      }
 }

@@ -32,61 +32,65 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /** Owns one simulation's interrupt and exception registers. */
 class Coprocessor0State {
-    private val registerEvents = EventEmitter<RegisterAccessNotice>()
-    val registers = arrayOf(
-        Register("$8 (vaddr)", VADDR, 0, registerEvents),
-        Register("$12 (status)", STATUS, DEFAULT_STATUS_VALUE, registerEvents),
-        Register("$13 (cause)", CAUSE, 0, registerEvents),
-        Register("$14 (epc)", EPC, 0, registerEvents),
-    )
+  private val registerEvents = EventEmitter<RegisterAccessNotice>()
+  val registers =
+      arrayOf(
+          Register("$8 (vaddr)", VADDR, 0, registerEvents),
+          Register("$12 (status)", STATUS, DEFAULT_STATUS_VALUE, registerEvents),
+          Register("$13 (cause)", CAUSE, 0, registerEvents),
+          Register("$14 (epc)", EPC, 0, registerEvents),
+      )
 
-    fun addRegistersObserver(listener: (RegisterAccessNotice) -> Unit) {
-        registerEvents.subscribe(listener)
-    }
+  fun addRegistersObserver(listener: (RegisterAccessNotice) -> Unit) {
+    registerEvents.subscribe(listener)
+  }
 
-    fun deleteRegistersObserver(listener: (RegisterAccessNotice) -> Unit) {
-        registerEvents.unsubscribe(listener)
-    }
+  fun deleteRegistersObserver(listener: (RegisterAccessNotice) -> Unit) {
+    registerEvents.unsubscribe(listener)
+  }
 
-    fun updateRegister(name: String?, value: Int): Int {
-        val register = getRegister(name) ?: return 0
-        // Named updates emit the same read followed by write that existing observers see.
-        val previous = register.value
-        register.setValue(value)
-        return previous
-    }
+  fun updateRegister(name: String?, value: Int): Int {
+    val register = getRegister(name) ?: return 0
+    // Named updates emit the same read followed by write that existing observers see.
+    val previous = register.value
+    register.setValue(value)
+    return previous
+  }
 
-    fun updateRegister(number: Int, value: Int): Int = getRegister(number)?.setValue(value) ?: 0
+  fun updateRegister(number: Int, value: Int): Int = getRegister(number)?.setValue(value) ?: 0
 
-    fun getValue(number: Int): Int = getRegister(number)?.value ?: 0
+  fun getValue(number: Int): Int = getRegister(number)?.value ?: 0
 
-    internal fun updateRegisterBits(number: Int, value: Long): Long = getRegister(number)!!.setLongValue(value)
+  internal fun updateRegisterBits(number: Int, value: Long): Long =
+      getRegister(number)!!.setLongValue(value)
 
-    internal fun readRegisterBits(number: Int): Long = getRegister(number)!!.longValue
+  internal fun readRegisterBits(number: Int): Long = getRegister(number)!!.longValue
 
-    fun getRegister(number: Int): Register? = registers.firstOrNull { it.number == number }
+  fun getRegister(number: Int): Register? = registers.firstOrNull { it.number == number }
 
-    fun getNumber(name: String?): Int = getRegister(name)?.number ?: -1
+  fun getNumber(name: String?): Int = getRegister(name)?.number ?: -1
 
-    /** An architectural register number does not correspond to its index in this array. */
-    fun getRegisterPosition(register: Register?): Int = registers.indexOfFirst { it === register }
+  /** An architectural register number does not correspond to its index in this array. */
+  fun getRegisterPosition(register: Register?): Int = registers.indexOfFirst { it === register }
 
-    fun getRegister(name: String?): Register? = registers.firstOrNull { it.name == name || "$${it.number}" == name }
+  fun getRegister(name: String?): Register? = registers.firstOrNull {
+    it.name == name || "$${it.number}" == name
+  }
 
-    fun resetRegisters() {
-        registers.forEach(Register::resetValue)
-    }
+  fun resetRegisters() {
+    registers.forEach(Register::resetValue)
+  }
 
-    companion object {
-        const val VADDR = 8
-        const val STATUS = 12
-        const val CAUSE = 13
-        const val EPC = 14
-        const val EXCEPTION_LEVEL = 1
-        internal const val INTERRUPT_ENABLE = 1
-        internal const val INTERRUPT_MASK = 0xff00
+  companion object {
+    const val VADDR = 8
+    const val STATUS = 12
+    const val CAUSE = 13
+    const val EPC = 14
+    const val EXCEPTION_LEVEL = 1
+    internal const val INTERRUPT_ENABLE = 1
+    internal const val INTERRUPT_MASK = 0xff00
 
-        // Enable interrupts and user mode, enable all interrupt levels, and clear exception level.
-        const val DEFAULT_STATUS_VALUE = 0x0000ff11
-    }
+    // Enable interrupts and user mode, enable all interrupt levels, and clear exception level.
+    const val DEFAULT_STATUS_VALUE = 0x0000ff11
+  }
 }

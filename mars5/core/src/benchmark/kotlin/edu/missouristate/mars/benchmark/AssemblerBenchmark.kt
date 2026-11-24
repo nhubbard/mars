@@ -21,44 +21,43 @@ import org.openjdk.jmh.annotations.TearDown
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
 open class AssemblerBenchmark {
-    private lateinit var session: MarsContext
-    private lateinit var source: Path
+  private lateinit var session: MarsContext
+  private lateinit var source: Path
 
-    @Setup(Level.Trial)
-    fun prepare() {
-        session = DaggerMarsComponent.builder().guiProxy(QuietConsole).build().context()
-        session.settings
-            .setWarningsAreErrors(false)
-            .setBareMachineEnabled(false)
-            .setExtendedAssemblerEnabled(true)
-        source = Files.createTempFile("mars-assembly-benchmark", ".s")
-        Files.writeString(source, ".text\n" + $$"addiu $t0,$t0,1\n".repeat(10_000))
+  @Setup(Level.Trial)
+  fun prepare() {
+    session = DaggerMarsComponent.builder().guiProxy(QuietConsole).build().context()
+    session.settings
+        .setWarningsAreErrors(false)
+        .setBareMachineEnabled(false)
+        .setExtendedAssemblerEnabled(true)
+    source = Files.createTempFile("mars-assembly-benchmark", ".s")
+    Files.writeString(source, ".text\n" + $$"addiu $t0,$t0,1\n".repeat(10_000))
+  }
+
+  @Benchmark
+  fun assembleTenThousandInstructions(): Int = session.assemble(listOf(source)).instructionCount()
+
+  @TearDown(Level.Trial)
+  fun release() {
+    try {
+      session.close()
+    } finally {
+      Files.deleteIfExists(source)
     }
+  }
 
-    @Benchmark
-    fun assembleTenThousandInstructions(): Int =
-        session.assemble(listOf(source)).instructionCount()
+  private object QuietConsole : MarsGuiProxy {
+    override val isGuiMode = false
 
-    @TearDown(Level.Trial)
-    fun release() {
-        try {
-            session.close()
-        } finally {
-            Files.deleteIfExists(source)
-        }
-    }
+    override fun postMessage(message: String) = Unit
 
-    private object QuietConsole : MarsGuiProxy {
-        override val isGuiMode = false
+    override fun postRunMessage(message: String) = Unit
 
-        override fun postMessage(message: String) = Unit
+    override fun readInput(maxLength: Int) = ""
 
-        override fun postRunMessage(message: String) = Unit
+    override fun readInputWithPrompt(prompt: String) = ""
 
-        override fun readInput(maxLength: Int) = ""
-
-        override fun readInputWithPrompt(prompt: String) = ""
-
-        override fun clearRunConsole() = Unit
-    }
+    override fun clearRunConsole() = Unit
+  }
 }

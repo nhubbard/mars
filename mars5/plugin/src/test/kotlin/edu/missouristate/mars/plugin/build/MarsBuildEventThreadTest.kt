@@ -31,68 +31,97 @@ import org.junit.jupiter.api.Test
 
 @TestApplication
 class MarsBuildEventThreadTest {
-    private val projects = codeInsightProjectFixture()
-    private val fixture by codeInsightFixture(projects)
+  private val projects = codeInsightProjectFixture()
+  private val fixture by codeInsightFixture(projects)
 
-    @Test
-    fun `repeated native order builds cache hits and diagnostics deliver every event on EDT`() = timeoutRunBlocking {
+  @Test
+  fun `repeated native order builds cache hits and diagnostics deliver every event on EDT`() =
+      timeoutRunBlocking {
         val project = projects.get()
         val lifetime = Disposer.newDisposable()
         val events = CopyOnWriteArrayList<Pair<BuildEvent, Boolean>>()
         try {
-            // Headless BuildViewManager omits its UI/listeners; observe its public event boundary.
-            project.replaceService(BuildViewManager::class.java, object : BuildViewManager(project) {
+          // Headless BuildViewManager omits its UI/listeners; observe its public event boundary.
+          project.replaceService(
+              BuildViewManager::class.java,
+              object : BuildViewManager(project) {
                 override fun onEvent(buildId: Any, event: BuildEvent) {
-                    events += event to ApplicationManager.getApplication().isDispatchThread
+                  events += event to ApplicationManager.getApplication().isDispatchThread
                 }
-            }, lifetime)
-            val (good, bad) = withContext(Dispatchers.EDT) {
-                fixture.addFileToProject("good.asm", ".data\nword: .word 0x12345678\n.text\nnop\n").virtualFile.toNioPath() to
-                    fixture.addFileToProject("bad.asm", "not_an_instruction\n").virtualFile.toNioPath()
+              },
+              lifetime,
+          )
+          val (good, bad) =
+              withContext(Dispatchers.EDT) {
+                fixture
+                    .addFileToProject("good.asm", ".data\nword: .word 0x12345678\n.text\nnop\n")
+                    .virtualFile
+                    .toNioPath() to
+                    fixture
+                        .addFileToProject("bad.asm", "not_an_instruction\n")
+                        .virtualFile
+                        .toNioPath()
+              }
+          withContext(Dispatchers.Default) {
+            val builds = project.service<MarsBuildService>()
+            repeat(3) {
+              for (order in listOf(ByteOrder.LITTLE_ENDIAN, ByteOrder.BIG_ENDIAN)) {
+                assertNotNull(
+                    builds.prepare(MarsSourceSet(good), MarsExecutionOptions(), true, order),
+                )
+              }
             }
-            withContext(Dispatchers.Default) {
-                val builds = project.service<MarsBuildService>()
-                repeat(3) {
-                    for (order in listOf(ByteOrder.LITTLE_ENDIAN, ByteOrder.BIG_ENDIAN)) {
-                        assertNotNull(builds.prepare(MarsSourceSet(good), MarsExecutionOptions(), true, order))
-                    }
-                }
-                assertNull(builds.prepare(MarsSourceSet(bad), MarsExecutionOptions(), true))
-            }
-            assertEquals(7, events.count { it.first is StartBuildEvent })
-            assertEquals(7, events.count { it.first is FinishBuildEvent })
-            assertTrue(events.any { it.first is FileMessageEvent })
-            assertTrue(events.all { it.second }, "Native Build UI events must not mutate Swing models from a worker")
-        } finally { withContext(Dispatchers.EDT) { Disposer.dispose(lifetime) } }
-    }
+            assertNull(builds.prepare(MarsSourceSet(bad), MarsExecutionOptions(), true))
+          }
+          assertEquals(7, events.count { it.first is StartBuildEvent })
+          assertEquals(7, events.count { it.first is FinishBuildEvent })
+          assertTrue(events.any { it.first is FileMessageEvent })
+          assertTrue(
+              events.all { it.second },
+              "Native Build UI events must not mutate Swing models from a worker",
+          )
+        } finally {
+          withContext(Dispatchers.EDT) { Disposer.dispose(lifetime) }
+        }
+      }
 
-    @Test
-    fun `cancellation during UI start still emits one skipped finish on EDT`() = timeoutRunBlocking {
-        val project = projects.get()
-        val lifetime = Disposer.newDisposable()
-        val events = CopyOnWriteArrayList<Pair<BuildEvent, Boolean>>()
-        try {
-            val entry = withContext(Dispatchers.EDT) {
-                fixture.addFileToProject("cancel.asm", "nop\n").virtualFile.toNioPath()
+  @Test
+  fun `cancellation during UI start still emits one skipped finish on EDT`() = timeoutRunBlocking {
+    val project = projects.get()
+    val lifetime = Disposer.newDisposable()
+    val events = CopyOnWriteArrayList<Pair<BuildEvent, Boolean>>()
+    try {
+      val entry =
+          withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("cancel.asm", "nop\n").virtualFile.toNioPath()
+          }
+      val operation =
+          async(Dispatchers.Default, start = CoroutineStart.LAZY) {
+            project
+                .service<MarsBuildService>()
+                .prepare(MarsSourceSet(entry), MarsExecutionOptions(), true)
+          }
+      project.replaceService(
+          BuildViewManager::class.java,
+          object : BuildViewManager(project) {
+            override fun onEvent(buildId: Any, event: BuildEvent) {
+              events += event to ApplicationManager.getApplication().isDispatchThread
+              if (event is StartBuildEvent) operation.cancel()
             }
-            val operation = async(Dispatchers.Default, start = CoroutineStart.LAZY) {
-                project.service<MarsBuildService>().prepare(MarsSourceSet(entry), MarsExecutionOptions(), true)
-            }
-            project.replaceService(BuildViewManager::class.java, object : BuildViewManager(project) {
-                override fun onEvent(buildId: Any, event: BuildEvent) {
-                    events += event to ApplicationManager.getApplication().isDispatchThread
-                    if (event is StartBuildEvent) operation.cancel()
-                }
-            }, lifetime)
-            operation.start()
-            operation.join()
-            assertTrue(operation.isCancelled)
-            val start = assertInstanceOf(StartBuildEvent::class.java, events[0].first)
-            val finish = assertInstanceOf(FinishBuildEvent::class.java, events[1].first)
-            assertEquals(2, events.size)
-            assertEquals(start.id, finish.id)
-            assertInstanceOf(SkippedResult::class.java, finish.result)
-            assertTrue(events.all { it.second })
-        } finally { withContext(Dispatchers.EDT) { Disposer.dispose(lifetime) } }
+          },
+          lifetime,
+      )
+      operation.start()
+      operation.join()
+      assertTrue(operation.isCancelled)
+      val start = assertInstanceOf(StartBuildEvent::class.java, events[0].first)
+      val finish = assertInstanceOf(FinishBuildEvent::class.java, events[1].first)
+      assertEquals(2, events.size)
+      assertEquals(start.id, finish.id)
+      assertInstanceOf(SkippedResult::class.java, finish.result)
+      assertTrue(events.all { it.second })
+    } finally {
+      withContext(Dispatchers.EDT) { Disposer.dispose(lifetime) }
     }
+  }
 }

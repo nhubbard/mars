@@ -37,88 +37,127 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /** One assembly's label definitions with an optional enclosing global scope. */
 open class SymbolTable @JvmOverloads constructor(private val globalSymbols: SymbolTable? = null) {
-    private var table = ArrayList<Symbol>()
+  private var table = ArrayList<Symbol>()
 
-    open fun loadDefinitions(definitions: Map<String, Definition>) {
-        clear()
-        definitions.forEach { (name, definition) ->
-            table.add(Symbol(name, definition.addressBits, definition.kind, definition.origin, definition.macroPrivate, definition.column))
-        }
+  open fun loadDefinitions(definitions: Map<String, Definition>) {
+    clear()
+    definitions.forEach { (name, definition) ->
+      table.add(
+          Symbol(
+              name,
+              definition.addressBits,
+              definition.kind,
+              definition.origin,
+              definition.macroPrivate,
+              definition.column,
+          ),
+      )
     }
+  }
 
-    open fun addSymbol(token: Token, address: Int, data: Boolean, errors: ErrorList) {
-        addSymbol(token, address, if (data) Kind.DATA else Kind.TEXT, null, false, errors)
+  open fun addSymbol(token: Token, address: Int, data: Boolean, errors: ErrorList) {
+    addSymbol(token, address, if (data) Kind.DATA else Kind.TEXT, null, false, errors)
+  }
+
+  fun addSymbol(
+      token: Token,
+      address: Int,
+      kind: Kind,
+      origin: Origin?,
+      macroPrivate: Boolean,
+      errors: ErrorList,
+  ) {
+    addSymbol(token, address.toLong(), kind, origin, macroPrivate, errors)
+  }
+
+  internal fun addSymbol(
+      token: Token,
+      address: Long,
+      kind: Kind,
+      origin: Origin?,
+      macroPrivate: Boolean,
+      errors: ErrorList,
+  ) {
+    addSymbol(
+        token,
+        Symbol(
+            token.value,
+            address,
+            kind,
+            origin,
+            macroPrivate,
+            token.writtenOrigin().originalStartPos,
+        ),
+        errors,
+    )
+  }
+
+  fun addSymbol(token: Token, symbol: Symbol, errors: ErrorList) {
+    val name = token.value
+    if (getSymbol(name) != null) {
+      errors.add(ErrorMessage(token, "label \"$name\" already defined"))
+    } else {
+      table.add(symbol)
     }
+  }
 
-    fun addSymbol(token: Token, address: Int, kind: Kind, origin: Origin?, macroPrivate: Boolean, errors: ErrorList) {
-        addSymbol(token, address.toLong(), kind, origin, macroPrivate, errors)
-    }
+  open fun removeSymbol(token: Token) {
+    val index = table.indexOfFirst { it.name == token.value }
+    if (index >= 0) table.removeAt(index)
+  }
 
-    internal fun addSymbol(token: Token, address: Long, kind: Kind, origin: Origin?, macroPrivate: Boolean, errors: ErrorList) {
-        addSymbol(token, Symbol(token.value, address, kind, origin, macroPrivate, token.writtenOrigin().originalStartPos), errors)
-    }
+  open fun getAddress(name: String?): Int =
+      table.firstOrNull { it.name == name }?.address ?: NOT_FOUND
 
-    fun addSymbol(token: Token, symbol: Symbol, errors: ErrorList) {
-        val name = token.value
-        if (getSymbol(name) != null) {
-            errors.add(ErrorMessage(token, "label \"$name\" already defined"))
-        } else {
-            table.add(symbol)
-        }
-    }
+  open fun getAddressLocalOrGlobal(name: String?): Int =
+      getSymbolLocalOrGlobal(name)?.address ?: NOT_FOUND
 
-    open fun removeSymbol(token: Token) {
-        val index = table.indexOfFirst { it.name == token.value }
-        if (index >= 0) table.removeAt(index)
-    }
+  open fun getSymbolLocalOrGlobal(name: String?): Symbol? {
+    val local = getSymbol(name)
+    return if (globalSymbols != null && (local == null || local.addressBits == NOT_FOUND.toLong()))
+        globalSymbols.getSymbol(name)
+    else local
+  }
 
-    open fun getAddress(name: String?): Int = table.firstOrNull { it.name == name }?.address ?: NOT_FOUND
+  open fun getSymbol(name: String?): Symbol? = table.firstOrNull { it.name == name }
 
-    open fun getAddressLocalOrGlobal(name: String?): Int = getSymbolLocalOrGlobal(name)?.address ?: NOT_FOUND
-
-    open fun getSymbolLocalOrGlobal(name: String?): Symbol? {
-        val local = getSymbol(name)
-        return if (globalSymbols != null && (local == null || local.addressBits == NOT_FOUND.toLong())) globalSymbols.getSymbol(name) else local
-    }
-
-    open fun getSymbol(name: String?): Symbol? = table.firstOrNull { it.name == name }
-
-    open fun getSymbolGivenAddress(spelling: String): Symbol? {
-        val address = try {
-            Binary.stringToLong(spelling)
+  open fun getSymbolGivenAddress(spelling: String): Symbol? {
+    val address =
+        try {
+          Binary.stringToLong(spelling)
         } catch (_: NumberFormatException) {
-            return null
+          return null
         }
-        return table.firstOrNull { it.addressBits == address }
+    return table.firstOrNull { it.addressBits == address }
+  }
+
+  open fun getSymbolGivenAddressLocalOrGlobal(spelling: String): Symbol? =
+      getSymbolGivenAddress(spelling) ?: globalSymbols?.getSymbolGivenAddress(spelling)
+
+  open val allSymbols: ArrayList<Symbol>
+    get() = ArrayList(table)
+
+  open val size: Int
+    get() = table.size
+
+  open fun clear() {
+    table = ArrayList()
+  }
+
+  open fun fixSymbolTableAddress(originalAddress: Int, replacementAddress: Int) {
+    fixSymbolTableAddress(originalAddress.toLong(), replacementAddress.toLong())
+  }
+
+  internal fun fixSymbolTableAddress(originalAddress: Long, replacementAddress: Long) {
+    for (symbol in table) {
+      if (symbol.addressBits == originalAddress) symbol.addressBits = replacementAddress
     }
+  }
 
-    open fun getSymbolGivenAddressLocalOrGlobal(spelling: String): Symbol? =
-        getSymbolGivenAddress(spelling) ?: globalSymbols?.getSymbolGivenAddress(spelling)
+  companion object {
+    const val NOT_FOUND = -1
 
-    open val allSymbols: ArrayList<Symbol> get() = ArrayList(table)
-
-    open val size: Int get() = table.size
-
-    open fun clear() {
-        table = ArrayList()
-    }
-
-    open fun fixSymbolTableAddress(originalAddress: Int, replacementAddress: Int) {
-        fixSymbolTableAddress(originalAddress.toLong(), replacementAddress.toLong())
-    }
-
-    internal fun fixSymbolTableAddress(originalAddress: Long, replacementAddress: Long) {
-        for (symbol in table) {
-            if (symbol.addressBits == originalAddress) symbol.addressBits = replacementAddress
-        }
-    }
-
-    companion object {
-        const val NOT_FOUND = -1
-
-        // Java and Kotlin callers share the same reserved entry label.
-        @Suppress("SameReturnValue")
-        @JvmStatic
-        fun getStartLabel(): String = "main"
-    }
+    // Java and Kotlin callers share the same reserved entry label.
+    @Suppress("SameReturnValue") @JvmStatic fun getStartLabel(): String = "main"
+  }
 }

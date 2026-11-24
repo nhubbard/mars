@@ -33,77 +33,87 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * completes. A new branch in the delay slot gives that target one more instruction cycle.
  */
 class DelayedBranchState {
-    private var state = CLEARED
-    private var targetAddress = 0L
-    private var jump = false
-    internal var forbiddenSlot = false
+  private var state = CLEARED
+  private var targetAddress = 0L
+  private var jump = false
+  internal var forbiddenSlot = false
 
-    /** The pending transfer retained by an instruction's undo group. */
-    @JvmRecord
-    data class Snapshot @JvmOverloads constructor(
-        val state: Int, val targetAddress: Int, val jump: Boolean, val forbiddenSlot: Boolean = false,
-        val targetAddressBits: Long = targetAddress.toLong(),
-    )
+  /** The pending transfer retained by an instruction's undo group. */
+  @JvmRecord
+  data class Snapshot
+  @JvmOverloads
+  constructor(
+      val state: Int,
+      val targetAddress: Int,
+      val jump: Boolean,
+      val forbiddenSlot: Boolean = false,
+      val targetAddressBits: Long = targetAddress.toLong(),
+  )
 
-    fun snapshot(): Snapshot =
-        if (state == CLEARED) {
-            if (forbiddenSlot) FORBIDDEN_SLOT_SNAPSHOT else CLEARED_SNAPSHOT
-        } else Snapshot(state, targetAddress.toInt(), jump, forbiddenSlot, targetAddress)
+  fun snapshot(): Snapshot =
+      if (state == CLEARED) {
+        if (forbiddenSlot) FORBIDDEN_SLOT_SNAPSHOT else CLEARED_SNAPSHOT
+      } else Snapshot(state, targetAddress.toInt(), jump, forbiddenSlot, targetAddress)
 
-    fun restore(snapshot: Snapshot) {
-        require(snapshot.state in CLEARED..TRIGGERED) { "Invalid delayed branch state" }
-        if (snapshot.state == CLEARED) {
-            clear()
-        } else {
-            state = snapshot.state
-            targetAddress = snapshot.targetAddressBits
-            jump = snapshot.jump
-        }
-        forbiddenSlot = snapshot.forbiddenSlot
+  fun restore(snapshot: Snapshot) {
+    require(snapshot.state in CLEARED..TRIGGERED) { "Invalid delayed branch state" }
+    if (snapshot.state == CLEARED) {
+      clear()
+    } else {
+      state = snapshot.state
+      targetAddress = snapshot.targetAddressBits
+      jump = snapshot.jump
     }
+    forbiddenSlot = snapshot.forbiddenSlot
+  }
 
-    fun register(targetAddress: Int) = register(targetAddress, false)
+  fun register(targetAddress: Int) = register(targetAddress, false)
 
-    fun register(targetAddress: Int, jump: Boolean) = register(targetAddress.toLong(), jump)
+  fun register(targetAddress: Int, jump: Boolean) = register(targetAddress.toLong(), jump)
 
-    internal fun register(targetAddress: Long, jump: Boolean = false) {
-        if (state == CLEARED) {
-            this.targetAddress = targetAddress
-            this.jump = jump
-        }
-        state = REGISTERED
+  internal fun register(targetAddress: Long, jump: Boolean = false) {
+    if (state == CLEARED) {
+      this.targetAddress = targetAddress
+      this.jump = jump
     }
+    state = REGISTERED
+  }
 
-    /** Mark the end of the branch instruction. The next instruction is its delay slot. */
-    fun trigger() {
-        if (state != CLEARED) {
-            state = TRIGGERED
-        }
+  /** Mark the end of the branch instruction. The next instruction is its delay slot. */
+  fun trigger() {
+    if (state != CLEARED) {
+      state = TRIGGERED
     }
+  }
 
-    fun clear() {
-        state = CLEARED
-        targetAddress = 0L
-        jump = false
-        forbiddenSlot = false
-    }
+  fun clear() {
+    state = CLEARED
+    targetAddress = 0L
+    jump = false
+    forbiddenSlot = false
+  }
 
-    /** Whether completing the pending transfer should report a non-linking jump. */
-    val isJump: Boolean get() = jump
+  /** Whether completing the pending transfer should report a non-linking jump. */
+  val isJump: Boolean
+    get() = jump
 
-    val isRegistered: Boolean get() = state == REGISTERED
+  val isRegistered: Boolean
+    get() = state == REGISTERED
 
-    val isTriggered: Boolean get() = state == TRIGGERED
+  val isTriggered: Boolean
+    get() = state == TRIGGERED
 
-    val branchTargetAddress: Int get() = targetAddress.toInt()
+  val branchTargetAddress: Int
+    get() = targetAddress.toInt()
 
-    internal val branchTargetAddressBits: Long get() = targetAddress
+  internal val branchTargetAddressBits: Long
+    get() = targetAddress
 
-    private companion object {
-        const val CLEARED = 0
-        const val REGISTERED = 1
-        const val TRIGGERED = 2
-        val CLEARED_SNAPSHOT = Snapshot(CLEARED, 0, false)
-        val FORBIDDEN_SLOT_SNAPSHOT = Snapshot(CLEARED, 0, false, forbiddenSlot = true)
-    }
+  private companion object {
+    const val CLEARED = 0
+    const val REGISTERED = 1
+    const val TRIGGERED = 2
+    val CLEARED_SNAPSHOT = Snapshot(CLEARED, 0, false)
+    val FORBIDDEN_SLOT_SNAPSHOT = Snapshot(CLEARED, 0, false, forbiddenSlot = true)
+  }
 }

@@ -18,42 +18,69 @@ internal data class BackgroundAssemblyOutcome(
 
 /** Holds completed, detached outcomes. IntelliJ owns the external pass and its cancellation. */
 internal class BackgroundAssemblyMemo {
-    private data class Revision(
-        val sourceSet: MarsSourceSet, val exceptionHandler: Path?,
-        val revisions: Map<Path, Long>, val diskSources: Set<Path>, val structure: Long, val options: MarsExecutionOptions,
-    )
+  private data class Revision(
+      val sourceSet: MarsSourceSet,
+      val exceptionHandler: Path?,
+      val revisions: Map<Path, Long>,
+      val diskSources: Set<Path>,
+      val structure: Long,
+      val options: MarsExecutionOptions,
+  )
 
-    private val outcomes = SLRUMap<Revision, BackgroundAssemblyOutcome>(4, 4)
+  private val outcomes = SLRUMap<Revision, BackgroundAssemblyOutcome>(4, 4)
 
-    fun assemble(sources: CapturedAssemblySources, structureStamp: Long, options: MarsExecutionOptions): BackgroundAssemblyOutcome {
-        ProgressManager.checkCanceled()
-        val key = Revision(sources.sourceSet, sources.exceptionHandler, sources.revisions, sources.diskSources, structureStamp, options)
-        synchronized(outcomes) { outcomes[key] }?.let { return it }
-        val component = MarsSessionService.createMarsComponent()
-        val outcome = component.context().use { session ->
-            options.applyForAssembly(session)
-            val result = sources.assembleIn(component, ProgressManager::checkCanceled)
-            val program = result.program()
-            val symbols = program?.let {
-                AssemblySymbols(sources, it.symbolMap(), options)
-            }
-            BackgroundAssemblyOutcome(result.errors().groupBy(AssemblyError::file), symbols, program?.pseudoExpansions().orEmpty())
+  fun assemble(
+      sources: CapturedAssemblySources,
+      structureStamp: Long,
+      options: MarsExecutionOptions,
+  ): BackgroundAssemblyOutcome {
+    ProgressManager.checkCanceled()
+    val key =
+        Revision(
+            sources.sourceSet,
+            sources.exceptionHandler,
+            sources.revisions,
+            sources.diskSources,
+            structureStamp,
+            options,
+        )
+    synchronized(outcomes) { outcomes[key] }
+        ?.let {
+          return it
         }
-        ProgressManager.checkCanceled()
-        synchronized(outcomes) { outcomes.put(key, outcome) }
-        return outcome
-    }
+    val component = MarsSessionService.createMarsComponent()
+    val outcome =
+        component.context().use { session ->
+          options.applyForAssembly(session)
+          val result = sources.assembleIn(component, ProgressManager::checkCanceled)
+          val program = result.program()
+          val symbols = program?.let {
+            AssemblySymbols(sources, it.symbolMap(), options)
+          }
+          BackgroundAssemblyOutcome(
+              result.errors().groupBy(AssemblyError::file),
+              symbols,
+              program?.pseudoExpansions().orEmpty(),
+          )
+        }
+    ProgressManager.checkCanceled()
+    synchronized(outcomes) { outcomes.put(key, outcome) }
+    return outcome
+  }
 
-    fun clear() = synchronized(outcomes) { outcomes.clear() }
+  fun clear() = synchronized(outcomes) { outcomes.clear() }
 }
 
-private fun Program.pseudoExpansions(): Map<Path, Map<Int, List<String>>> = buildMap<Path, MutableMap<Int, MutableList<String>>> {
-    // The instruction fields used here are at the end of the record.
-    @Suppress("DestructuringDeclaration")
-    for (instruction in pseudoInstructions(ProgressManager::checkCanceled)) {
+private fun Program.pseudoExpansions(): Map<Path, Map<Int, List<String>>> =
+    buildMap<Path, MutableMap<Int, MutableList<String>>> {
+      // The instruction fields used here are at the end of the record.
+      @Suppress("DestructuringDeclaration")
+      for (instruction in pseudoInstructions(ProgressManager::checkCanceled)) {
         ProgressManager.checkCanceled()
         // Macro arguments are concrete at the outermost invocation, not in the macro definition.
         val location = generateSequence(instruction.origin!!, Origin::caller).last().location
-        getOrPut(location.file(), ::LinkedHashMap).getOrPut(location.line(), ::ArrayList).add(instruction.assembly)
+        getOrPut(location.file(), ::LinkedHashMap)
+            .getOrPut(location.line(), ::ArrayList)
+            .add(instruction.assembly)
+      }
     }
-}

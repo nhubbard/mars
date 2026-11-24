@@ -33,12 +33,12 @@ import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.util.IncorrectOperationException
 import com.intellij.util.indexing.FileContentImpl
 import edu.missouristate.mars.ProcessingException
-import edu.missouristate.mars.plugin.language.index.MipsIncludeProvider
 import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.analysis.assembleIn
 import edu.missouristate.mars.plugin.analysis.captureAssemblySources
 import edu.missouristate.mars.plugin.analysis.inferredMipsAssemblyEntry
 import edu.missouristate.mars.plugin.analysis.mipsSourceTimeline
+import edu.missouristate.mars.plugin.language.index.MipsIncludeProvider
 import edu.missouristate.mars.plugin.language.psi.MipsStringLiteral
 import edu.missouristate.mars.plugin.language.references.MipsFileReferenceSet
 import edu.missouristate.mars.plugin.language.references.MipsIncludeNavigation
@@ -61,43 +61,55 @@ import org.junit.jupiter.api.io.TempDir
 
 @TestApplication
 class MipsFileReferencesPlatformTest {
-    private val project = codeInsightProjectFixture()
-    private val fixture by codeInsightFixture(project)
+  private val project = codeInsightProjectFixture()
+  private val fixture by codeInsightFixture(project)
 
-    @Test
-    fun `native caret references navigate include path segments and ignore other strings`() = timeoutRunBlocking {
-        val files = withContext(Dispatchers.EDT) {
-            val target = fixture.addFileToProject("parts/target.asm", "target: nop\n")
-            val source = fixture.addFileToProject("main.asm", ".include \"parts/target.asm\"\n.asciiz \"parts/target.asm\"\n.include \"\"\n")
-            fixture.configureFromExistingVirtualFile(source.virtualFile)
-            target to source
-        }
+  @Test
+  fun `native caret references navigate include path segments and ignore other strings`() =
+      timeoutRunBlocking {
+        val files =
+            withContext(Dispatchers.EDT) {
+              val target = fixture.addFileToProject("parts/target.asm", "target: nop\n")
+              val source =
+                  fixture.addFileToProject(
+                      "main.asm",
+                      ".include \"parts/target.asm\"\n.asciiz \"parts/target.asm\"\n.include \"\"\n",
+                  )
+              fixture.configureFromExistingVirtualFile(source.virtualFile)
+              target to source
+            }
         IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
         withContext(Dispatchers.EDT) {
-            fixture.editor.caretModel.moveToOffset(files.second.text.indexOf("target.asm") + 2)
-            val reference = fixture.getReferenceAtCaretPosition()
-            assertNotNull(reference)
-            assertEquals(files.first, reference!!.resolve())
-            assertInstanceOf(MipsStringLiteral::class.java, reference.element)
-            assertEquals("target.asm", reference.rangeInElement.substring(reference.element.text))
+          fixture.editor.caretModel.moveToOffset(files.second.text.indexOf("target.asm") + 2)
+          val reference = fixture.getReferenceAtCaretPosition()
+          assertNotNull(reference)
+          assertEquals(files.first, reference!!.resolve())
+          assertInstanceOf(MipsStringLiteral::class.java, reference.element)
+          assertEquals("target.asm", reference.rangeInElement.substring(reference.element.text))
         }
         readAction {
-            val strings = PsiTreeUtil.findChildrenOfType(files.second, MipsStringLiteral::class.java).toList()
-            assertEquals(3, strings.size)
-            assertEquals(files.first.containingDirectory, strings[0].reference!!.resolve())
-            assertEquals(2, strings[0].references.size)
-            assertTrue(strings[1].references.isEmpty())
-            assertNull(strings[1].reference)
-            assertTrue(strings[2].references.isEmpty())
-            assertNull(strings[2].reference)
-            assertEquals(listOf("parts", "target.asm"), strings[0].references.map { it.canonicalText })
+          val strings =
+              PsiTreeUtil.findChildrenOfType(files.second, MipsStringLiteral::class.java).toList()
+          assertEquals(3, strings.size)
+          assertEquals(files.first.containingDirectory, strings[0].reference!!.resolve())
+          assertEquals(2, strings[0].references.size)
+          assertTrue(strings[1].references.isEmpty())
+          assertNull(strings[1].reference)
+          assertTrue(strings[2].references.isEmpty())
+          assertNull(strings[2].reference)
+          assertEquals(
+              listOf("parts", "target.asm"),
+              strings[0].references.map { it.canonicalText },
+          )
         }
-    }
+      }
 
-    @Suppress("UnstableApiUsage")
-    @Test
-    fun `Go to Declaration opens ignored includes without supplying a file rename target`() = timeoutRunBlocking {
-        val source = $$"""
+  @Suppress("UnstableApiUsage")
+  @Test
+  fun `Go to Declaration opens ignored includes without supplying a file rename target`() =
+      timeoutRunBlocking {
+        val source =
+            $$"""
             .include "parts/bridge.inc~"
             .include "normal.inc"
             .include "later.inc~"
@@ -105,561 +117,740 @@ class MipsFileReferencesPlatformTest {
             .include ""
             .asciiz "parts/bridge.inc~"
             li $t0, VALUE
-        """.trimIndent()
+            """
+                .trimIndent()
         val original = ".include \"nested.inc~\"\n.eqv VALUE 4\n"
-        val (entry, ignored, normal, nested) = withContext(Dispatchers.EDT) {
-            val ignored = fixture.tempDirFixture.createFile("parts/bridge.inc~", original)
-            val nested = fixture.tempDirFixture.createFile("parts/nested.inc~", "nop\n")
-            val oversized = fixture.tempDirFixture.createFile("oversized.inc~")
-            val comment = "#" + " ".repeat(16_382) + "\n"
-            Files.newBufferedWriter(oversized.toNioPath()).use { writer ->
-                repeat(FileSizeLimit.getContentLoadLimit(oversized.extension) / comment.length + 1) { writer.write(comment) }
+        val (entry, ignored, normal, nested) =
+            withContext(Dispatchers.EDT) {
+              val ignored = fixture.tempDirFixture.createFile("parts/bridge.inc~", original)
+              val nested = fixture.tempDirFixture.createFile("parts/nested.inc~", "nop\n")
+              val oversized = fixture.tempDirFixture.createFile("oversized.inc~")
+              val comment = "#" + " ".repeat(16_382) + "\n"
+              Files.newBufferedWriter(oversized.toNioPath()).use { writer ->
+                repeat(
+                    FileSizeLimit.getContentLoadLimit(oversized.extension) / comment.length + 1,
+                ) {
+                  writer.write(comment)
+                }
+              }
+              oversized.refresh(false, false)
+              val normal = fixture.addFileToProject("normal.inc", "nop\n").virtualFile
+              val entry = fixture.addFileToProject("entry.mars", source)
+              fixture.configureFromExistingVirtualFile(entry.virtualFile)
+              listOf(entry.virtualFile, ignored, normal, nested)
             }
-            oversized.refresh(false, false)
-            val normal = fixture.addFileToProject("normal.inc", "nop\n").virtualFile
-            val entry = fixture.addFileToProject("entry.mars", source)
-            fixture.configureFromExistingVirtualFile(entry.virtualFile)
-            listOf(entry.virtualFile, ignored, normal, nested)
-        }
         val ide = project.get()
         IndexingTestUtil.suspendUntilIndexesAreReady(ide)
-        val (view, ordinary) = withContext(Dispatchers.EDT) {
-            val handler = MipsIncludeNavigation()
-            fun target(offset: Int) = GotoDeclarationAction.findTargetElement(ide, fixture.editor, offset)
-            fun includeAt(offset: Int) = fixture.file.findElementAt(offset) as MipsStringLiteral
-            val offset = source.indexOf("bridge.inc~") + 1
-            val literal = includeAt(offset)
-            val backup = assertInstanceOf(MipsFile::class.java, target(offset))
-            assertSame(backup, target(offset))
-            assertSame(backup, target(source.lastIndexOf("VALUE") + 1)?.containingFile)
-            assertEquals(original, backup.text)
-            assertFalse(backup.virtualFile.isWritable)
-            assertEquals("MARS read-only assembly source", PsiInvalidElementAccessException.getCreationTrace(backup.virtualFile))
-            assertEquals(ignored, backup.virtualFile.mipsAssemblySourceOrigin)
-            assertNull(PsiManager.getInstance(ide).findFile(ignored))
-            assertNull(fixture.file.findReferenceAt(offset)?.resolve())
-            assertInstanceOf(PsiDirectory::class.java, target(source.indexOf("parts/") + 1))
-            val normalTarget = assertInstanceOf(MipsFile::class.java, target(source.indexOf("normal.inc") + 1))
-            assertEquals(normal, normalTarget.virtualFile)
+        val (view, ordinary) =
+            withContext(Dispatchers.EDT) {
+              val handler = MipsIncludeNavigation()
+              fun target(offset: Int) =
+                  GotoDeclarationAction.findTargetElement(ide, fixture.editor, offset)
+              fun includeAt(offset: Int) = fixture.file.findElementAt(offset) as MipsStringLiteral
+              val offset = source.indexOf("bridge.inc~") + 1
+              val literal = includeAt(offset)
+              val backup = assertInstanceOf(MipsFile::class.java, target(offset))
+              assertSame(backup, target(offset))
+              assertSame(backup, target(source.lastIndexOf("VALUE") + 1)?.containingFile)
+              assertEquals(original, backup.text)
+              assertFalse(backup.virtualFile.isWritable)
+              assertEquals(
+                  "MARS read-only assembly source",
+                  PsiInvalidElementAccessException.getCreationTrace(backup.virtualFile),
+              )
+              assertEquals(ignored, backup.virtualFile.mipsAssemblySourceOrigin)
+              assertNull(PsiManager.getInstance(ide).findFile(ignored))
+              assertNull(fixture.file.findReferenceAt(offset)?.resolve())
+              assertInstanceOf(PsiDirectory::class.java, target(source.indexOf("parts/") + 1))
+              val normalTarget =
+                  assertInstanceOf(MipsFile::class.java, target(source.indexOf("normal.inc") + 1))
+              assertEquals(normal, normalTarget.virtualFile)
 
-            assertNull(handler.getGotoDeclarationTargets(null, 0, fixture.editor))
-            val detached = PsiFileFactory.getInstance(ide).createFileFromText("detached.mars", MipsFileType, source)
-            assertNull(handler.getGotoDeclarationTargets(detached.findElementAt(offset), offset, fixture.editor))
-            assertNull(target(source.indexOf("oversized.inc~") + 1))
-            assertNull(handler.getGotoDeclarationTargets(literal, literal.textOffset + literal.textLength - 1, fixture.editor))
-            for (index in listOf(source.indexOf("\"\""), source.lastIndexOf("bridge.inc~"))) {
-                assertNull(handler.getGotoDeclarationTargets(includeAt(index), index, fixture.editor))
+              assertNull(handler.getGotoDeclarationTargets(null, 0, fixture.editor))
+              val detached =
+                  PsiFileFactory.getInstance(ide)
+                      .createFileFromText("detached.mars", MipsFileType, source)
+              assertNull(
+                  handler.getGotoDeclarationTargets(
+                      detached.findElementAt(offset),
+                      offset,
+                      fixture.editor,
+                  ),
+              )
+              assertNull(target(source.indexOf("oversized.inc~") + 1))
+              assertNull(
+                  handler.getGotoDeclarationTargets(
+                      literal,
+                      literal.textOffset + literal.textLength - 1,
+                      fixture.editor,
+                  ),
+              )
+              for (index in listOf(source.indexOf("\"\""), source.lastIndexOf("bridge.inc~"))) {
+                assertNull(
+                    handler.getGotoDeclarationTargets(includeAt(index), index, fixture.editor),
+                )
+              }
+              val later = source.indexOf("later.inc~") + 1
+              assertNull(target(later))
+              fixture.tempDirFixture.createFile("later.inc~", "nop\n")
+              assertEquals("nop\n", target(later)?.text)
+
+              fixture.openFileInEditor(backup.virtualFile)
+              val next =
+                  assertInstanceOf(
+                      MipsFile::class.java,
+                      target(original.indexOf("nested.inc~") + 1),
+                  )
+              assertEquals(nested, next.virtualFile.mipsAssemblySourceOrigin)
+
+              fixture.configureFromExistingVirtualFile(entry)
+              val revised = original.replace("VALUE 4", "VALUE 9")
+              Files.writeString(ignored.toNioPath(), revised)
+              ignored.refresh(false, false)
+              val updated = assertInstanceOf(MipsFile::class.java, target(offset))
+              assertEquals(revised, updated.text)
+              updated to normalTarget
             }
-            val later = source.indexOf("later.inc~") + 1
-            assertNull(target(later))
-            fixture.tempDirFixture.createFile("later.inc~", "nop\n")
-            assertEquals("nop\n", target(later)?.text)
-
-            fixture.openFileInEditor(backup.virtualFile)
-            val next = assertInstanceOf(MipsFile::class.java, target(original.indexOf("nested.inc~") + 1))
-            assertEquals(nested, next.virtualFile.mipsAssemblySourceOrigin)
-
-            fixture.configureFromExistingVirtualFile(entry)
-            val revised = original.replace("VALUE 4", "VALUE 9")
-            Files.writeString(ignored.toNioPath(), revised)
-            ignored.refresh(false, false)
-            val updated = assertInstanceOf(MipsFile::class.java, target(offset))
-            assertEquals(revised, updated.text)
-            updated to normalTarget
-        }
         readAction {
-            assertNotNull(view.navigationRequest())
-            assertNotNull(ordinary.navigationRequest())
+          assertNotNull(view.navigationRequest())
+          assertNotNull(ordinary.navigationRequest())
         }
-    }
+      }
 
-    @Test
-    fun `Go to Declaration opens binary classified include text as MIPS and keeps the physical file reference`() =
-        timeoutRunBlocking {
-            val source = $$".include \"parts/opaque.png\"\n.include \"parts/plain.txt\"\nli $t0, VALUE\n"
-            val definitions = ".include \"nested.inc\"\n.eqv VALUE 7\n"
-            val (binary, ordinary, nested) = withContext(Dispatchers.EDT) {
-                val binary = fixture.tempDirFixture.createFile("parts/opaque.png", definitions)
-                val ordinary = fixture.tempDirFixture.createFile("parts/plain.txt", "# ordinary text include\n")
-                val nested = fixture.addFileToProject("parts/nested.inc", "nop\n").virtualFile
-                val entry = fixture.addFileToProject("entry.mars", source)
-                fixture.configureFromExistingVirtualFile(entry.virtualFile)
-                listOf(binary, ordinary, nested)
-            }
-            val ide = project.get()
-            IndexingTestUtil.suspendUntilIndexesAreReady(ide)
+  @Test
+  fun `Go to Declaration opens binary classified include text as MIPS and keeps the physical file reference`() =
+      timeoutRunBlocking {
+        val source =
+            $$".include \"parts/opaque.png\"\n.include \"parts/plain.txt\"\nli $t0, VALUE\n"
+        val definitions = ".include \"nested.inc\"\n.eqv VALUE 7\n"
+        val (binary, ordinary, nested) =
             withContext(Dispatchers.EDT) {
-                fun target(offset: Int) = GotoDeclarationAction.findTargetElement(ide, fixture.editor, offset)
-                val offset = source.indexOf("opaque.png") + 1
-                assertTrue(binary.fileType.isBinary)
-                val physical = PsiManager.getInstance(ide).findFile(binary)
-                assertNotNull(physical)
-                assertSame(physical, fixture.file.findReferenceAt(offset)?.resolve())
-                val generated = assertInstanceOf(MipsFile::class.java, target(offset))
-                assertSame(binary, generated.virtualFile.mipsAssemblySourceOrigin)
-                assertEquals(definitions, generated.text)
-                assertFalse(generated.virtualFile.isWritable)
-                assertSame(generated, target(offset))
-                assertSame(generated, target(source.indexOf("VALUE") + 1)?.containingFile)
-                assertEquals(ordinary, target(source.indexOf("plain.txt") + 1)?.containingFile?.virtualFile)
-
-                fixture.openFileInEditor(generated.virtualFile)
-                assertEquals(nested, target(definitions.indexOf("nested.inc") + 1)?.containingFile?.virtualFile)
+              val binary = fixture.tempDirFixture.createFile("parts/opaque.png", definitions)
+              val ordinary =
+                  fixture.tempDirFixture.createFile("parts/plain.txt", "# ordinary text include\n")
+              val nested = fixture.addFileToProject("parts/nested.inc", "nop\n").virtualFile
+              val entry = fixture.addFileToProject("entry.mars", source)
+              fixture.configureFromExistingVirtualFile(entry.virtualFile)
+              listOf(binary, ordinary, nested)
             }
+        val ide = project.get()
+        IndexingTestUtil.suspendUntilIndexesAreReady(ide)
+        withContext(Dispatchers.EDT) {
+          fun target(offset: Int) =
+              GotoDeclarationAction.findTargetElement(ide, fixture.editor, offset)
+          val offset = source.indexOf("opaque.png") + 1
+          assertTrue(binary.fileType.isBinary)
+          val physical = PsiManager.getInstance(ide).findFile(binary)
+          assertNotNull(physical)
+          assertSame(physical, fixture.file.findReferenceAt(offset)?.resolve())
+          val generated = assertInstanceOf(MipsFile::class.java, target(offset))
+          assertSame(binary, generated.virtualFile.mipsAssemblySourceOrigin)
+          assertEquals(definitions, generated.text)
+          assertFalse(generated.virtualFile.isWritable)
+          assertSame(generated, target(offset))
+          assertSame(generated, target(source.indexOf("VALUE") + 1)?.containingFile)
+          assertEquals(
+              ordinary,
+              target(source.indexOf("plain.txt") + 1)?.containingFile?.virtualFile,
+          )
+
+          fixture.openFileInEditor(generated.virtualFile)
+          assertEquals(
+              nested,
+              target(definitions.indexOf("nested.inc") + 1)?.containingFile?.virtualFile,
+          )
         }
+      }
 
-    @Test
-    fun `include paths hidden by a malformed character recover references and update highlighting after edits`() =
-        timeoutRunBlocking {
-            val source = $$"'a#xx .include,, \"part.s\"\nli $t0, COUNT\n"
-            val target = withContext(Dispatchers.EDT) {
-                val included = fixture.addFileToProject("part.s", ".eqv COUNT 42\n")
-                val entry = fixture.addFileToProject("main.asm", source)
-                fixture.configureFromExistingVirtualFile(entry.virtualFile)
-                included
-            }
-            IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
+  @Test
+  fun `include paths hidden by a malformed character recover references and update highlighting after edits`() =
+      timeoutRunBlocking {
+        val source = $$"'a#xx .include,, \"part.s\"\nli $t0, COUNT\n"
+        val target =
             withContext(Dispatchers.EDT) {
-                val editor = fixture.editor as EditorEx
-                val directive = source.indexOf(".include")
-                val path = source.indexOf("part.s")
-                val closingQuote = source.lastIndexOf('"')
-                fun tokenType(offset: Int) = editor.highlighter.createIterator(offset).tokenType
-                fun assertReferences() {
-                    assertEquals(MipsTypes.psi("INCLUDE"), tokenType(directive))
-                    assertEquals(MipsTypes.psi("STRING"), tokenType(path))
-                    editor.caretModel.moveToOffset(path + 1)
-                    assertEquals(target, fixture.getReferenceAtCaretPosition()?.resolve())
-                    editor.caretModel.moveToOffset(editor.document.text.lastIndexOf("COUNT") + 1)
-                    assertEquals(target, fixture.getReferenceAtCaretPosition()?.resolve()?.containingFile)
-                }
-                assertReferences()
-                WriteCommandAction.runWriteCommandAction(project.get()) {
-                    editor.document.deleteString(closingQuote, closingQuote + 1)
-                }
-                PsiDocumentManager.getInstance(project.get()).commitAllDocuments()
-                assertEquals(MipsTypes.psi("INCLUDE"), tokenType(directive))
-                assertEquals(MipsTypes.psi("UNCLOSED_STRING"), tokenType(path))
-                editor.caretModel.moveToOffset(path + 1)
-                assertNull(fixture.getReferenceAtCaretPosition())
-                WriteCommandAction.runWriteCommandAction(project.get()) {
-                    editor.document.insertString(closingQuote, "\"")
-                }
-                PsiDocumentManager.getInstance(project.get()).commitAllDocuments()
-                assertReferences()
+              val included = fixture.addFileToProject("part.s", ".eqv COUNT 42\n")
+              val entry = fixture.addFileToProject("main.asm", source)
+              fixture.configureFromExistingVirtualFile(entry.virtualFile)
+              included
             }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
+        withContext(Dispatchers.EDT) {
+          val editor = fixture.editor as EditorEx
+          val directive = source.indexOf(".include")
+          val path = source.indexOf("part.s")
+          val closingQuote = source.lastIndexOf('"')
+          fun tokenType(offset: Int) = editor.highlighter.createIterator(offset).tokenType
+          fun assertReferences() {
+            assertEquals(MipsTypes.psi("INCLUDE"), tokenType(directive))
+            assertEquals(MipsTypes.psi("STRING"), tokenType(path))
+            editor.caretModel.moveToOffset(path + 1)
+            assertEquals(target, fixture.getReferenceAtCaretPosition()?.resolve())
+            editor.caretModel.moveToOffset(editor.document.text.lastIndexOf("COUNT") + 1)
+            assertEquals(target, fixture.getReferenceAtCaretPosition()?.resolve()?.containingFile)
+          }
+          assertReferences()
+          WriteCommandAction.runWriteCommandAction(project.get()) {
+            editor.document.deleteString(closingQuote, closingQuote + 1)
+          }
+          PsiDocumentManager.getInstance(project.get()).commitAllDocuments()
+          assertEquals(MipsTypes.psi("INCLUDE"), tokenType(directive))
+          assertEquals(MipsTypes.psi("UNCLOSED_STRING"), tokenType(path))
+          editor.caretModel.moveToOffset(path + 1)
+          assertNull(fixture.getReferenceAtCaretPosition())
+          WriteCommandAction.runWriteCommandAction(project.get()) {
+            editor.document.insertString(closingQuote, "\"")
+          }
+          PsiDocumentManager.getInstance(project.get()).commitAllDocuments()
+          assertReferences()
         }
+      }
 
-    @Test
-    fun `native file references preserve raw spaces question marks unicode and repeated separators`() = timeoutRunBlocking {
-        val files = withContext(Dispatchers.EDT) {
-            val filename = if (SystemInfoRt.isWindows) " target #é.asm" else " target?é.asm "
-            val raw = fixture.addFileToProject(filename, "target: nop\n")
-            val child = fixture.addFileToProject("parts/child.s", "child: nop\n")
-            val source = fixture.addFileToProject(
-                "main.asm", ".include \"$filename\"\n.include \"./parts//child.s\"\n.include \"${child.virtualFile.path}\"\n",
-            )
-            Triple(raw, child, source)
-        }
+  @Test
+  fun `native file references preserve raw spaces question marks unicode and repeated separators`() =
+      timeoutRunBlocking {
+        val files =
+            withContext(Dispatchers.EDT) {
+              val filename = if (SystemInfoRt.isWindows) " target #é.asm" else " target?é.asm "
+              val raw = fixture.addFileToProject(filename, "target: nop\n")
+              val child = fixture.addFileToProject("parts/child.s", "child: nop\n")
+              val source =
+                  fixture.addFileToProject(
+                      "main.asm",
+                      ".include \"$filename\"\n.include \"./parts//child.s\"\n.include \"${child.virtualFile.path}\"\n",
+                  )
+              Triple(raw, child, source)
+            }
         IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
         readAction {
-            val strings = PsiTreeUtil.findChildrenOfType(files.third, MipsStringLiteral::class.java).toList()
-            assertEquals(files.first, strings[0].references.last().resolve())
-            assertEquals(files.second, strings[1].references.last().resolve())
-            assertEquals(files.second, strings[2].references.last().resolve()) {
-                val set = MipsFileReferenceSet(strings[2].text.drop(1).dropLast(1), strings[2])
-                "path=${set.pathString}, absolute=${set.isAbsolutePathReference}, contexts=${set.defaultContexts.map { it.virtualFile.path }}, " +
-                    set.allReferences.joinToString { "${it.canonicalText} -> ${it.resolve()?.virtualFile?.path}" }
-            }
-            assertEquals(setOf(files.third.virtualFile), FileIncludeManager.getManager(project.get()).getIncludingFiles(files.first.virtualFile, true).toSet())
-            for ((index, literal) in strings.withIndex()) {
-                val path = literal.text.substring(1, literal.textLength - 1)
-                val references = MipsFileReferenceSet(path, literal)
-                assertEquals(path, references.pathString)
-                assertEquals(index == 2, references.isAbsolutePathReference)
-            }
+          val strings =
+              PsiTreeUtil.findChildrenOfType(files.third, MipsStringLiteral::class.java).toList()
+          assertEquals(files.first, strings[0].references.last().resolve())
+          assertEquals(files.second, strings[1].references.last().resolve())
+          assertEquals(files.second, strings[2].references.last().resolve()) {
+            val set = MipsFileReferenceSet(strings[2].text.drop(1).dropLast(1), strings[2])
+            "path=${set.pathString}, absolute=${set.isAbsolutePathReference}, contexts=${set.defaultContexts.map { it.virtualFile.path }}, " +
+                set.allReferences.joinToString {
+                  "${it.canonicalText} -> ${it.resolve()?.virtualFile?.path}"
+                }
+          }
+          assertEquals(
+              setOf(files.third.virtualFile),
+              FileIncludeManager.getManager(project.get())
+                  .getIncludingFiles(files.first.virtualFile, true)
+                  .toSet(),
+          )
+          for ((index, literal) in strings.withIndex()) {
+            val path = literal.text.substring(1, literal.textLength - 1)
+            val references = MipsFileReferenceSet(path, literal)
+            assertEquals(path, references.pathString)
+            assertEquals(index == 2, references.isAbsolutePathReference)
+          }
         }
-    }
+      }
 
-    @Test
-    fun `Windows include paths preserve written ranges for relative drive and UNC paths`() = timeoutRunBlocking {
+  @Test
+  fun `Windows include paths preserve written ranges for relative drive and UNC paths`() =
+      timeoutRunBlocking {
         data class Include(val path: String, val absolute: Boolean, val segments: List<String>)
 
-        val includes = listOf(
-            Include(""".\parts\child.s""", false, listOf(".", "parts", "child.s")),
-            Include("""\parts\child.s""", false, listOf("parts", "child.s")),
-            Include("C:relative.s", false, listOf("C:relative.s")),
-            Include("""C:\parts\child.s""", true, listOf("parts", "child.s")),
-            Include("C:/parts//child.s", true, listOf("parts", "child.s")),
-            Include("C:/", true, listOf("C:/")),
-            Include("//", true, listOf("//")),
-            Include("""\\server""", true, listOf("""\\server""")),
-            Include("""\\server\share""", true, listOf("""\\server\share""")),
-            Include("""\\server\share\parts\child.s""", true, listOf("parts", "child.s")),
-            Include("""\\server\\share\\parts\child.s""", true, listOf("parts", "child.s")),
-        )
-        val (child, source) = withContext(Dispatchers.EDT) {
-            val child = fixture.addFileToProject("parts/child.s", "child: nop\n")
-            val text = includes.joinToString("\n") { ".include \"${it.path}\"" }
-            child to fixture.addFileToProject("main.asm", text)
-        }
-        IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
-        readAction {
-            val literals = PsiTreeUtil.findChildrenOfType(source, MipsStringLiteral::class.java).toList()
-            assertEquals(includes.size, literals.size)
-            val sets = includes.zip(literals) { include, literal ->
-                MipsFileReferenceSet(include.path, literal, windowsPaths = true).also { set ->
-                    assertEquals(include.path, set.pathString)
-                    assertEquals(include.absolute, set.isAbsolutePathReference, include.path)
-                    assertEquals(include.segments, set.allReferences.map { it.rangeInElement.substring(literal.text) }, include.path)
-                }
-            }
-            assertEquals(child, sets.first().allReferences.last().resolve())
-            val missingRoot = if (SystemInfoRt.isWindows) "//" else "C:/"
-            assertTrue(sets.single { it.pathString == missingRoot }.defaultContexts.isEmpty())
-        }
-    }
-
-    @Test
-    fun `POSIX include paths preserve literal backslashes and slash roots`() = timeoutRunBlocking {
-        readAction {
-            val paths = listOf("""parts\child.s""", "/parts//child.s")
-            val file = PsiFileFactory.getInstance(project.get()).createFileFromText(
-                "posix.asm", MipsFileType, paths.joinToString("\n") { ".include \"$it\"" },
+        val includes =
+            listOf(
+                Include(""".\parts\child.s""", false, listOf(".", "parts", "child.s")),
+                Include("""\parts\child.s""", false, listOf("parts", "child.s")),
+                Include("C:relative.s", false, listOf("C:relative.s")),
+                Include("""C:\parts\child.s""", true, listOf("parts", "child.s")),
+                Include("C:/parts//child.s", true, listOf("parts", "child.s")),
+                Include("C:/", true, listOf("C:/")),
+                Include("//", true, listOf("//")),
+                Include("""\\server""", true, listOf("""\\server""")),
+                Include("""\\server\share""", true, listOf("""\\server\share""")),
+                Include("""\\server\share\parts\child.s""", true, listOf("parts", "child.s")),
+                Include("""\\server\\share\\parts\child.s""", true, listOf("parts", "child.s")),
             )
-            val literals = PsiTreeUtil.findChildrenOfType(file, MipsStringLiteral::class.java).toList()
-            assertEquals(paths, literals.map { it.text.substring(1, it.textLength - 1) })
-            val relative = MipsFileReferenceSet(paths[0], literals[0], windowsPaths = false)
-            assertFalse(relative.isAbsolutePathReference)
-            assertEquals(listOf(paths[0]), relative.allReferences.map { it.canonicalText })
-            val absolute = MipsFileReferenceSet(paths[1], literals[1], windowsPaths = false)
-            assertTrue(absolute.isAbsolutePathReference)
-            assertEquals(listOf("parts", "child.s"), absolute.allReferences.map { it.canonicalText })
-        }
-    }
-
-    @Test
-    fun `include navigation and assembly stay at the root when following a symlink and parent segment`(
-        @TempDir outsideProject: Path,
-    ) = timeoutRunBlocking {
-        val (psi, target) = withContext(Dispatchers.EDT) {
-            val directory = Files.createDirectory(outsideProject.resolve("actual"))
-            val included = Files.writeString(directory.resolve("value.s"), ".eqv COUNT 7\n")
-            val fromRoot = outsideProject.root.relativize(included)
-            val path = Files.writeString(
-                outsideProject.resolve("main.asm"),
-              $$".include \"shortcut/../../$$fromRoot\"\naddiu $t0, $zero, COUNT\n",
-            )
-            val link = Files.createSymbolicLink(outsideProject.resolve("shortcut"), outsideProject.root)
-            val manager = VirtualFileManager.getInstance()
-            checkNotNull(manager.refreshAndFindFileByNioPath(link))
-            val source = checkNotNull(manager.refreshAndFindFileByNioPath(path))
-            fixture.configureFromExistingVirtualFile(source)
-            fixture.file to checkNotNull(manager.refreshAndFindFileByNioPath(included))
-        }
-        readAction {
-            val literal = PsiTreeUtil.findChildOfType(psi, MipsStringLiteral::class.java)!!
-            val references = literal.references
-            assertNotNull(references.first().resolve())
-            for (index in 1..2) {
-                val parent = assertInstanceOf(PsiDirectory::class.java, references[index].resolve())
-                assertEquals(outsideProject.root, parent.virtualFile.toNioPath())
-            }
-            assertEquals(target, references.last().resolve()?.containingFile?.virtualFile)
-        }
-        val path = psi.virtualFile.toNioPath()
-        val component = MarsSessionService.createMarsComponent()
-        val disk = MarsSessionService.createMarsComponent().context().use { session ->
-            session.assemble(listOf(path)).machineList!!.single().binaryStatement
-        }
-        component.context().use { session ->
-            val capture = captureAssemblySources(listOf(path), null)
-            assertEquals(setOf(path, target.toNioPath()), capture.revisions.keys)
-            val result = capture.assembleIn(component)
-            assertTrue(result.succeeded(), result.errors().toString())
-            assertEquals(0x24080007, disk)
-            assertEquals(disk, session.program!!.machineList!!.single().binaryStatement)
-        }
-    }
-
-    @Test
-    fun `include identity collapses directory aliases and keeps different file names`(@TempDir temp: Path) =
-        timeoutRunBlocking {
-            // IntelliJ reports the long spelling of Windows temporary directories.
-            data class IncludeFiles(
-                val original: Path, val originalNeighbor: Path, val aliasNeighbor: Path,
-                val folderAlias: Path, val fileAlias: Path, val duplicate: Path, val distinct: Path,
-            )
-            val (original, originalNeighbor, aliasNeighbor, folderAlias, fileAlias, duplicate, distinct) = withContext(Dispatchers.IO) {
-                val directory = temp.toRealPath()
-                val actual = Files.createDirectory(directory.resolve("actual"))
-                val original = Files.writeString(actual.resolve("value.s"), ".include \"neighbor.s\"\n")
-                val originalNeighbor = Files.writeString(actual.resolve("neighbor.s"), $$"addiu $t0, $zero, 7\n")
-                val aliasNeighbor = Files.writeString(directory.resolve("neighbor.s"), $$"addiu $t0, $zero, 9\n")
-                val folderAlias = Files.createSymbolicLink(directory.resolve("alias"), actual)
-                val fileAlias = Files.createSymbolicLink(directory.resolve("alternate.s"), original)
-                val duplicate = Files.writeString(directory.resolve("duplicate.asm"), """
-                    .include "actual/value.s"
-                    .include "alias/value.s"
-                """.trimIndent())
-                val distinct = Files.writeString(directory.resolve("distinct.asm"), """
-                    .include "actual/value.s"
-                    .include "alternate.s"
-                """.trimIndent())
-                IncludeFiles(original, originalNeighbor, aliasNeighbor, folderAlias, fileAlias, duplicate, distinct)
-            }
-            val manager = VirtualFileManager.getInstance()
-            val (duplicatePsi, distinctPsi) = withContext(Dispatchers.EDT) {
-                listOf(original, originalNeighbor, aliasNeighbor, folderAlias.resolve("value.s"), fileAlias)
-                    .forEach { manager.refreshAndFindFileByNioPath(it) }
-                fun source(path: Path): MipsFile {
-                    fixture.configureFromExistingVirtualFile(checkNotNull(manager.refreshAndFindFileByNioPath(path)))
-                    return fixture.file as MipsFile
-                }
-                source(duplicate) to source(distinct)
-            }
-            val component = MarsSessionService.createMarsComponent()
-            component.context().use { session ->
-                val failure = assertThrows<ProcessingException> { session.assemble(listOf(duplicate)) }
-                assertTrue(failure.errors()!!.errorMessages.single().message!!.contains("Recursive include"))
-                assertEquals(listOf(0x24080007, 0x24080009),
-                    session.assemble(listOf(distinct)).machineList!!.map { it.binaryStatement })
-            }
-            val capture = captureAssemblySources(listOf(duplicate), null)
-            assertEquals(capture.snapshot.includeIdentity(original), capture.snapshot.includeIdentity(folderAlias.resolve("value.s")),
-                capture.snapshot.includeIdentities().toString())
-            val capturedComponent = MarsSessionService.createMarsComponent()
-            capturedComponent.context().use {
-                val result = capture.assembleIn(capturedComponent)
-                assertTrue(result.errors().single().message!!.contains("Recursive include"))
-            }
-            readAction {
-                fun paths(file: MipsFile) = mipsSourceTimeline(file).sourceFiles().map { it.virtualFile.toNioPath() }.toList()
-                assertTrue(mipsSourceTimeline(duplicatePsi).hasIncompleteIncludes)
-                assertEquals(listOf(duplicate, original, originalNeighbor), paths(duplicatePsi))
-                assertTrue(!mipsSourceTimeline(distinctPsi).hasIncompleteIncludes)
-                assertEquals(listOf(distinct, original, originalNeighbor, fileAlias, aliasNeighbor), paths(distinctPsi))
-            }
+        val (child, source) =
             withContext(Dispatchers.EDT) {
-                fixture.configureFromExistingVirtualFile(duplicatePsi.virtualFile)
-                val errors = fixture.doHighlighting().filter { it.severity == HighlightSeverity.ERROR }
-                assertTrue(errors.any { it.description?.contains("Recursive include") == true }, errors.toString())
+              val child = fixture.addFileToProject("parts/child.s", "child: nop\n")
+              val text = includes.joinToString("\n") { ".include \"${it.path}\"" }
+              child to fixture.addFileToProject("main.asm", text)
             }
-        }
-
-    @Test
-    fun `include dot segments cannot traverse a regular file`() = timeoutRunBlocking {
-        val decoy = withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("value.s", "nop\n")
-            fixture.addFileToProject("decoy.s", "nop\n") as MipsFile
-        }
-        for ((index, request) in listOf("value.s/../decoy.s", "value.s/.").withIndex()) {
-            val file = withContext(Dispatchers.EDT) {
-                fixture.addFileToProject("bad-$index.asm", ".include \"$request\"\n")
-            }
-            readAction {
-                val literal = PsiTreeUtil.findChildOfType(file, MipsStringLiteral::class.java)!!
-                assertNull(literal.references.last().resolve(), request)
-            }
-            val entry = file.virtualFile.toNioPath()
-            val capture = captureAssemblySources(listOf(entry), null)
-            assertEquals(setOf(entry), capture.revisions.keys)
-            val component = MarsSessionService.createMarsComponent()
-            val disk = MarsSessionService.createMarsComponent().let { disk ->
-                disk.context().use { disk.assembler().assemble(listOf(entry)).errors().single() }
-            }
-            component.context().use {
-                val error = capture.assembleIn(component).errors().single()
-                assertEquals(entry, error.file)
-                assertEquals(1, error.line)
-                assertTrue(error.message!!.contains(entry.parent.resolve(request).toString()))
-                assertEquals(disk, error)
-            }
-        }
         IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
-        readAction { assertEquals(decoy.virtualFile.toNioPath(), inferredMipsAssemblyEntry(decoy)) }
-        val valid = withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("valid.asm", ".include \"./decoy.s\"\n")
+        readAction {
+          val literals =
+              PsiTreeUtil.findChildrenOfType(source, MipsStringLiteral::class.java).toList()
+          assertEquals(includes.size, literals.size)
+          val sets =
+              includes.zip(literals) { include, literal ->
+                MipsFileReferenceSet(include.path, literal, windowsPaths = true).also { set ->
+                  assertEquals(include.path, set.pathString)
+                  assertEquals(include.absolute, set.isAbsolutePathReference, include.path)
+                  assertEquals(
+                      include.segments,
+                      set.allReferences.map { it.rangeInElement.substring(literal.text) },
+                      include.path,
+                  )
+                }
+              }
+          assertEquals(child, sets.first().allReferences.last().resolve())
+          val missingRoot = if (SystemInfoRt.isWindows) "//" else "C:/"
+          assertTrue(sets.single { it.pathString == missingRoot }.defaultContexts.isEmpty())
         }
-        IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
-        readAction { assertEquals(valid.virtualFile.toNioPath(), inferredMipsAssemblyEntry(decoy)) }
+      }
+
+  @Test
+  fun `POSIX include paths preserve literal backslashes and slash roots`() = timeoutRunBlocking {
+    readAction {
+      val paths = listOf("""parts\child.s""", "/parts//child.s")
+      val file =
+          PsiFileFactory.getInstance(project.get())
+              .createFileFromText(
+                  "posix.asm",
+                  MipsFileType,
+                  paths.joinToString("\n") { ".include \"$it\"" },
+              )
+      val literals = PsiTreeUtil.findChildrenOfType(file, MipsStringLiteral::class.java).toList()
+      assertEquals(paths, literals.map { it.text.substring(1, it.textLength - 1) })
+      val relative = MipsFileReferenceSet(paths[0], literals[0], windowsPaths = false)
+      assertFalse(relative.isAbsolutePathReference)
+      assertEquals(listOf(paths[0]), relative.allReferences.map { it.canonicalText })
+      val absolute = MipsFileReferenceSet(paths[1], literals[1], windowsPaths = false)
+      assertTrue(absolute.isAbsolutePathReference)
+      assertEquals(listOf("parts", "child.s"), absolute.allReferences.map { it.canonicalText })
     }
+  }
 
-    @Test
-    fun `relative includes use the parent path when the VFS has no canonical path`() {
-        val directory = object : MockVirtualFile(true, "source") {
-            override fun getCanonicalPath(): String? = null
+  @Test
+  fun `include navigation and assembly stay at the root when following a symlink and parent segment`(
+      @TempDir outsideProject: Path,
+  ) = timeoutRunBlocking {
+    val (psi, target) =
+        withContext(Dispatchers.EDT) {
+          val directory = Files.createDirectory(outsideProject.resolve("actual"))
+          val included = Files.writeString(directory.resolve("value.s"), ".eqv COUNT 7\n")
+          val fromRoot = outsideProject.root.relativize(included)
+          val path =
+              Files.writeString(
+                  outsideProject.resolve("main.asm"),
+                  $$".include \"shortcut/../../$$fromRoot\"\naddiu $t0, $zero, COUNT\n",
+              )
+          val link =
+              Files.createSymbolicLink(outsideProject.resolve("shortcut"), outsideProject.root)
+          val manager = VirtualFileManager.getInstance()
+          checkNotNull(manager.refreshAndFindFileByNioPath(link))
+          val source = checkNotNull(manager.refreshAndFindFileByNioPath(path))
+          fixture.configureFromExistingVirtualFile(source)
+          fixture.file to checkNotNull(manager.refreshAndFindFileByNioPath(included))
         }
-        val source = object : MockVirtualFile("main.mars") {
-            override fun getParent(): VirtualFile = directory
-        }
-
-        assertEquals(directory.path, source.mipsIncludeDirectoryPath())
+    readAction {
+      val literal = PsiTreeUtil.findChildOfType(psi, MipsStringLiteral::class.java)!!
+      val references = literal.references
+      assertNotNull(references.first().resolve())
+      for (index in 1..2) {
+        val parent = assertInstanceOf(PsiDirectory::class.java, references[index].resolve())
+        assertEquals(outsideProject.root, parent.virtualFile.toNioPath())
+      }
+      assertEquals(target, references.last().resolve()?.containingFile?.virtualFile)
     }
-
-    @Test
-    fun `an unresolved directory symlink has no usable parent segment`() {
-        val unresolved = object : MockVirtualFile(true, "shortcut") {
-            override fun `is`(property: VFileProperty) = property == VFileProperty.SYMLINK
-            override fun getCanonicalFile(): VirtualFile? = null
+    val path = psi.virtualFile.toNioPath()
+    val component = MarsSessionService.createMarsComponent()
+    val disk =
+        MarsSessionService.createMarsComponent().context().use { session ->
+          session.assemble(listOf(path)).machineList!!.single().binaryStatement
         }
-        assertNull(unresolved.resolveMipsDotSegment(".."))
+    component.context().use { session ->
+      val capture = captureAssemblySources(listOf(path), null)
+      assertEquals(setOf(path, target.toNioPath()), capture.revisions.keys)
+      val result = capture.assembleIn(component)
+      assertTrue(result.succeeded(), result.errors().toString())
+      assertEquals(0x24080007, disk)
+      assertEquals(disk, session.program!!.machineList!!.single().binaryStatement)
     }
+  }
 
-    @Test
-    fun `unresolved native reference resolves after target creation without source edits`() = timeoutRunBlocking {
-        val source = withContext(Dispatchers.EDT) { fixture.addFileToProject("main.asm", ".include \"later.asm\"\n") }
+  @Test
+  fun `include identity collapses directory aliases and keeps different file names`(
+      @TempDir temp: Path,
+  ) = timeoutRunBlocking {
+    // IntelliJ reports the long spelling of Windows temporary directories.
+    data class IncludeFiles(
+        val original: Path,
+        val originalNeighbor: Path,
+        val aliasNeighbor: Path,
+        val folderAlias: Path,
+        val fileAlias: Path,
+        val duplicate: Path,
+        val distinct: Path,
+    )
+    val (original, originalNeighbor, aliasNeighbor, folderAlias, fileAlias, duplicate, distinct) =
+        withContext(Dispatchers.IO) {
+          val directory = temp.toRealPath()
+          val actual = Files.createDirectory(directory.resolve("actual"))
+          val original = Files.writeString(actual.resolve("value.s"), ".include \"neighbor.s\"\n")
+          val originalNeighbor =
+              Files.writeString(actual.resolve("neighbor.s"), $$"addiu $t0, $zero, 7\n")
+          val aliasNeighbor =
+              Files.writeString(directory.resolve("neighbor.s"), $$"addiu $t0, $zero, 9\n")
+          val folderAlias = Files.createSymbolicLink(directory.resolve("alias"), actual)
+          val fileAlias = Files.createSymbolicLink(directory.resolve("alternate.s"), original)
+          val duplicate =
+              Files.writeString(
+                  directory.resolve("duplicate.asm"),
+                  """
+                  .include "actual/value.s"
+                  .include "alias/value.s"
+                  """
+                      .trimIndent(),
+              )
+          val distinct =
+              Files.writeString(
+                  directory.resolve("distinct.asm"),
+                  """
+                  .include "actual/value.s"
+                  .include "alternate.s"
+                  """
+                      .trimIndent(),
+              )
+          IncludeFiles(
+              original,
+              originalNeighbor,
+              aliasNeighbor,
+              folderAlias,
+              fileAlias,
+              duplicate,
+              distinct,
+          )
+        }
+    val manager = VirtualFileManager.getInstance()
+    val (duplicatePsi, distinctPsi) =
+        withContext(Dispatchers.EDT) {
+          listOf(
+                  original,
+                  originalNeighbor,
+                  aliasNeighbor,
+                  folderAlias.resolve("value.s"),
+                  fileAlias,
+              )
+              .forEach { manager.refreshAndFindFileByNioPath(it) }
+          fun source(path: Path): MipsFile {
+            fixture.configureFromExistingVirtualFile(
+                checkNotNull(manager.refreshAndFindFileByNioPath(path)),
+            )
+            return fixture.file as MipsFile
+          }
+          source(duplicate) to source(distinct)
+        }
+    val component = MarsSessionService.createMarsComponent()
+    component.context().use { session ->
+      val failure = assertThrows<ProcessingException> { session.assemble(listOf(duplicate)) }
+      assertTrue(failure.errors()!!.errorMessages.single().message!!.contains("Recursive include"))
+      assertEquals(
+          listOf(0x24080007, 0x24080009),
+          session.assemble(listOf(distinct)).machineList!!.map { it.binaryStatement },
+      )
+    }
+    val capture = captureAssemblySources(listOf(duplicate), null)
+    assertEquals(
+        capture.snapshot.includeIdentity(original),
+        capture.snapshot.includeIdentity(folderAlias.resolve("value.s")),
+        capture.snapshot.includeIdentities().toString(),
+    )
+    val capturedComponent = MarsSessionService.createMarsComponent()
+    capturedComponent.context().use {
+      val result = capture.assembleIn(capturedComponent)
+      assertTrue(result.errors().single().message!!.contains("Recursive include"))
+    }
+    readAction {
+      fun paths(file: MipsFile) =
+          mipsSourceTimeline(file).sourceFiles().map { it.virtualFile.toNioPath() }.toList()
+      assertTrue(mipsSourceTimeline(duplicatePsi).hasIncompleteIncludes)
+      assertEquals(listOf(duplicate, original, originalNeighbor), paths(duplicatePsi))
+      assertTrue(!mipsSourceTimeline(distinctPsi).hasIncompleteIncludes)
+      assertEquals(
+          listOf(distinct, original, originalNeighbor, fileAlias, aliasNeighbor),
+          paths(distinctPsi),
+      )
+    }
+    withContext(Dispatchers.EDT) {
+      fixture.configureFromExistingVirtualFile(duplicatePsi.virtualFile)
+      val errors = fixture.doHighlighting().filter { it.severity == HighlightSeverity.ERROR }
+      assertTrue(
+          errors.any { it.description?.contains("Recursive include") == true },
+          errors.toString(),
+      )
+    }
+  }
+
+  @Test
+  fun `include dot segments cannot traverse a regular file`() = timeoutRunBlocking {
+    val decoy =
+        withContext(Dispatchers.EDT) {
+          fixture.addFileToProject("value.s", "nop\n")
+          fixture.addFileToProject("decoy.s", "nop\n") as MipsFile
+        }
+    for ((index, request) in listOf("value.s/../decoy.s", "value.s/.").withIndex()) {
+      val file =
+          withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("bad-$index.asm", ".include \"$request\"\n")
+          }
+      readAction {
+        val literal = PsiTreeUtil.findChildOfType(file, MipsStringLiteral::class.java)!!
+        assertNull(literal.references.last().resolve(), request)
+      }
+      val entry = file.virtualFile.toNioPath()
+      val capture = captureAssemblySources(listOf(entry), null)
+      assertEquals(setOf(entry), capture.revisions.keys)
+      val component = MarsSessionService.createMarsComponent()
+      val disk =
+          MarsSessionService.createMarsComponent().let { disk ->
+            disk.context().use { disk.assembler().assemble(listOf(entry)).errors().single() }
+          }
+      component.context().use {
+        val error = capture.assembleIn(component).errors().single()
+        assertEquals(entry, error.file)
+        assertEquals(1, error.line)
+        assertTrue(error.message!!.contains(entry.parent.resolve(request).toString()))
+        assertEquals(disk, error)
+      }
+    }
+    IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
+    readAction { assertEquals(decoy.virtualFile.toNioPath(), inferredMipsAssemblyEntry(decoy)) }
+    val valid =
+        withContext(Dispatchers.EDT) {
+          fixture.addFileToProject("valid.asm", ".include \"./decoy.s\"\n")
+        }
+    IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
+    readAction { assertEquals(valid.virtualFile.toNioPath(), inferredMipsAssemblyEntry(decoy)) }
+  }
+
+  @Test
+  fun `relative includes use the parent path when the VFS has no canonical path`() {
+    val directory =
+        object : MockVirtualFile(true, "source") {
+          override fun getCanonicalPath(): String? = null
+        }
+    val source =
+        object : MockVirtualFile("main.mars") {
+          override fun getParent(): VirtualFile = directory
+        }
+
+    assertEquals(directory.path, source.mipsIncludeDirectoryPath())
+  }
+
+  @Test
+  fun `an unresolved directory symlink has no usable parent segment`() {
+    val unresolved =
+        object : MockVirtualFile(true, "shortcut") {
+          override fun `is`(property: VFileProperty) = property == VFileProperty.SYMLINK
+
+          override fun getCanonicalFile(): VirtualFile? = null
+        }
+    assertNull(unresolved.resolveMipsDotSegment(".."))
+  }
+
+  @Test
+  fun `unresolved native reference resolves after target creation without source edits`() =
+      timeoutRunBlocking {
+        val source =
+            withContext(Dispatchers.EDT) {
+              fixture.addFileToProject("main.asm", ".include \"later.asm\"\n")
+            }
         IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
         val reference = readAction {
-            val literal = PsiTreeUtil.findChildOfType(source, MipsStringLiteral::class.java)!!
-            literal.references.single().also { assertNull(it.resolve()) }
+          val literal = PsiTreeUtil.findChildOfType(source, MipsStringLiteral::class.java)!!
+          literal.references.single().also { assertNull(it.resolve()) }
         }
-        val target = withContext(Dispatchers.EDT) { fixture.addFileToProject("later.asm", "target: nop\n") }
+        val target =
+            withContext(Dispatchers.EDT) { fixture.addFileToProject("later.asm", "target: nop\n") }
         IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
         readAction { assertEquals(target, reference.resolve()) }
-    }
+      }
 
-    @Test
-    fun `platform filename completion supplies and inserts include path candidates`() = timeoutRunBlocking {
+  @Test
+  fun `platform filename completion supplies and inserts include path candidates`() =
+      timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("parts/target.asm", "target: nop\n")
-            fixture.addFileToProject("parts/tangent.s", "tangent: nop\n")
-            fixture.configureByText("main.asm", ".include \"parts/ta<caret>\"\n")
+          fixture.addFileToProject("parts/target.asm", "target: nop\n")
+          fixture.addFileToProject("parts/tangent.s", "tangent: nop\n")
+          fixture.configureByText("main.asm", ".include \"parts/ta<caret>\"\n")
         }
         IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
         withContext(Dispatchers.EDT) {
-            fixture.completeBasic()
-            assertTrue(fixture.lookupElementStrings!!.containsAll(listOf("target.asm", "tangent.s")))
-            val selected = fixture.lookup.currentItem!!.lookupString
-            fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR)
-            assertEquals(".include \"parts/$selected\"\n", fixture.file.text)
+          fixture.completeBasic()
+          assertTrue(fixture.lookupElementStrings!!.containsAll(listOf("target.asm", "tangent.s")))
+          val selected = fixture.lookup.currentItem!!.lookupString
+          fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR)
+          assertEquals(".include \"parts/$selected\"\n", fixture.file.text)
         }
-    }
+      }
 
-    @Test
-    fun `unterminated include paths keep native filename completion without adding an include edge`() = timeoutRunBlocking {
+  @Test
+  fun `unterminated include paths keep native filename completion without adding an include edge`() =
+      timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("parts/target.asm", "target: nop\n")
-            fixture.addFileToProject("parts/tangent.s", "tangent: nop\n")
-            fixture.configureByText("main.asm", ".include \"parts/ta<caret>\n")
+          fixture.addFileToProject("parts/target.asm", "target: nop\n")
+          fixture.addFileToProject("parts/tangent.s", "tangent: nop\n")
+          fixture.configureByText("main.asm", ".include \"parts/ta<caret>\n")
         }
         IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
         withContext(Dispatchers.EDT) {
-            fixture.completeBasic()
-            assertTrue(fixture.lookupElementStrings.orEmpty().containsAll(listOf("target.asm", "tangent.s")))
-            val selected = fixture.lookup.currentItem!!.lookupString
-            fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR)
-            assertEquals(".include \"parts/$selected\n", fixture.file.text)
-            val content = FileContentImpl.createByText(fixture.file.virtualFile, fixture.file.text, null)
-            assertTrue(MipsIncludeProvider().getIncludeInfos(content).isEmpty())
-            val offset = fixture.file.text.indexOf(selected)
-            val literal = fixture.file.findElementAt(offset)!!
-            assertTrue(literal.isUnterminatedInclude())
-            assertNull(fixture.file.findReferenceAt(offset))
-            fixture.configureByText("data.asm", ".asciiz \"parts/target.asm\n")
-            val data = fixture.file.findElementAt(fixture.file.text.indexOf("target.asm"))!!
-            assertFalse(data.isUnterminatedInclude())
-            fixture.configureByText("empty.asm", "<caret>")
-            assertTrue(fixture.completeBasic().orEmpty().any { it.lookupString == "nop" })
+          fixture.completeBasic()
+          assertTrue(
+              fixture.lookupElementStrings.orEmpty().containsAll(listOf("target.asm", "tangent.s")),
+          )
+          val selected = fixture.lookup.currentItem!!.lookupString
+          fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR)
+          assertEquals(".include \"parts/$selected\n", fixture.file.text)
+          val content =
+              FileContentImpl.createByText(fixture.file.virtualFile, fixture.file.text, null)
+          assertTrue(MipsIncludeProvider().getIncludeInfos(content).isEmpty())
+          val offset = fixture.file.text.indexOf(selected)
+          val literal = fixture.file.findElementAt(offset)!!
+          assertTrue(literal.isUnterminatedInclude())
+          assertNull(fixture.file.findReferenceAt(offset))
+          fixture.configureByText("data.asm", ".asciiz \"parts/target.asm\n")
+          val data = fixture.file.findElementAt(fixture.file.text.indexOf("target.asm"))!!
+          assertFalse(data.isUnterminatedInclude())
+          fixture.configureByText("empty.asm", "<caret>")
+          assertTrue(fixture.completeBasic().orEmpty().any { it.lookupString == "nop" })
         }
-    }
+      }
 
-    @Test
-    fun `native rename updates include paths in statements macros and replacement text only`() = timeoutRunBlocking {
-        val files = withContext(Dispatchers.EDT) {
-            val target = fixture.addFileToProject("parts/target.asm", "target: nop\n")
-            val source = fixture.addFileToProject("main.asm", """
-                .include "parts/target.asm"
-                .macro m
-                  .include "parts/target.asm"
-                .end_macro
-                .eqv replacement .include "parts/target.asm"
-                .asciiz "parts/target.asm"
-                # .include "parts/target.asm"
-            """.trimIndent() + "\n")
-            target to source
-        }
+  @Test
+  fun `native rename updates include paths in statements macros and replacement text only`() =
+      timeoutRunBlocking {
+        val files =
+            withContext(Dispatchers.EDT) {
+              val target = fixture.addFileToProject("parts/target.asm", "target: nop\n")
+              val source =
+                  fixture.addFileToProject(
+                      "main.asm",
+                      """
+                      .include "parts/target.asm"
+                      .macro m
+                        .include "parts/target.asm"
+                      .end_macro
+                      .eqv replacement .include "parts/target.asm"
+                      .asciiz "parts/target.asm"
+                      # .include "parts/target.asm"
+                      """
+                          .trimIndent() + "\n",
+                  )
+              target to source
+            }
         IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
         withContext(Dispatchers.EDT) {
-            RenameProcessor(project.get(), files.first, "renamed.asm", false, false).run()
+          RenameProcessor(project.get(), files.first, "renamed.asm", false, false).run()
         }
         readAction {
-            assertEquals(3, Regex("parts/renamed.asm").findAll(files.second.text).count())
-            assertTrue(files.second.text.contains(".asciiz \"parts/target.asm\""))
-            assertTrue(files.second.text.contains("# .include \"parts/target.asm\""))
-            for (literal in PsiTreeUtil.findChildrenOfType(files.second, MipsStringLiteral::class.java)) {
-                for (reference in literal.references) assertNotNull(reference.resolve())
-            }
+          assertEquals(3, Regex("parts/renamed.asm").findAll(files.second.text).count())
+          assertTrue(files.second.text.contains(".asciiz \"parts/target.asm\""))
+          assertTrue(files.second.text.contains("# .include \"parts/target.asm\""))
+          for (literal in
+              PsiTreeUtil.findChildrenOfType(files.second, MipsStringLiteral::class.java)) {
+            for (reference in literal.references) assertNotNull(reference.resolve())
+          }
         }
         IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
         withContext(Dispatchers.EDT) {
-            RenameProcessor(project.get(), files.first.containingDirectory, "library", false, false).run()
+          RenameProcessor(project.get(), files.first.containingDirectory, "library", false, false)
+              .run()
         }
         readAction {
-            assertEquals(3, Regex("library/renamed.asm").findAll(files.second.text).count())
-            assertTrue(files.second.text.contains(".asciiz \"parts/target.asm\""))
-            assertTrue(files.second.text.contains("# .include \"parts/target.asm\""))
+          assertEquals(3, Regex("library/renamed.asm").findAll(files.second.text).count())
+          assertTrue(files.second.text.contains(".asciiz \"parts/target.asm\""))
+          assertTrue(files.second.text.contains("# .include \"parts/target.asm\""))
         }
-    }
+      }
 
-    @Test
-    fun `native move rewrites relative includes through the registered element manipulator`() = timeoutRunBlocking {
-        val files = withContext(Dispatchers.EDT) {
-            val target = fixture.addFileToProject("parts/target.asm", "target: nop\n")
-            val source = fixture.addFileToProject("src/main.asm", ".include \"../parts/target.asm\"\n.include \"${target.virtualFile.path}\"\n")
-            val destination = fixture.addFileToProject("destination/keep.asm", "").containingDirectory
-            Triple(target, source, destination)
-        }
+  @Test
+  fun `native move rewrites relative includes through the registered element manipulator`() =
+      timeoutRunBlocking {
+        val files =
+            withContext(Dispatchers.EDT) {
+              val target = fixture.addFileToProject("parts/target.asm", "target: nop\n")
+              val source =
+                  fixture.addFileToProject(
+                      "src/main.asm",
+                      ".include \"../parts/target.asm\"\n.include \"${target.virtualFile.path}\"\n",
+                  )
+              val destination =
+                  fixture.addFileToProject("destination/keep.asm", "").containingDirectory
+              Triple(target, source, destination)
+            }
         IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
         withContext(Dispatchers.EDT) {
-            MoveFilesOrDirectoriesProcessor(project.get(), arrayOf(files.first), files.third, false, false, null, null).run()
+          MoveFilesOrDirectoriesProcessor(
+                  project.get(),
+                  arrayOf(files.first),
+                  files.third,
+                  false,
+                  false,
+                  null,
+                  null,
+              )
+              .run()
         }
         readAction {
-            assertEquals(".include \"../destination/target.asm\"\n.include \"${files.first.virtualFile.path}\"\n", files.second.text)
-            for (literal in PsiTreeUtil.findChildrenOfType(files.second, MipsStringLiteral::class.java)) {
-                assertEquals(files.first, literal.references.last().resolve())
-            }
+          assertEquals(
+              ".include \"../destination/target.asm\"\n.include \"${files.first.virtualFile.path}\"\n",
+              files.second.text,
+          )
+          for (literal in
+              PsiTreeUtil.findChildrenOfType(files.second, MipsStringLiteral::class.java)) {
+            assertEquals(files.first, literal.references.last().resolve())
+          }
         }
-    }
+      }
 
-    @Test
-    fun `registered string manipulator preserves literal content and rejects malformed replacements`() = timeoutRunBlocking {
+  @Test
+  fun `registered string manipulator preserves literal content and rejects malformed replacements`() =
+      timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
-            for (bad in listOf("early\"quote.asm", "line\nbreak.asm")) {
-                val file = fixture.configureByText(MipsFileType, ".include \"old.asm\"\n")
-                val literal = PsiTreeUtil.findChildOfType(file, MipsStringLiteral::class.java)!!
-                val manipulator = ElementManipulators.getManipulator(literal)!!
-                assertEquals(TextRange(1, literal.textLength - 1), manipulator.getRangeInElement(literal))
-                WriteCommandAction.runWriteCommandAction(project.get()) {
-                    val failure = assertThrows<IncorrectOperationException> { manipulator.handleContentChange(literal, bad) }
-                    assertEquals("The path cannot be represented as a complete MARS string literal.", failure.message)
-                }
-                assertEquals(".include \"old.asm\"\n", file.text)
-            }
+          for (bad in listOf("early\"quote.asm", "line\nbreak.asm")) {
             val file = fixture.configureByText(MipsFileType, ".include \"old.asm\"\n")
             val literal = PsiTreeUtil.findChildOfType(file, MipsStringLiteral::class.java)!!
+            val manipulator = ElementManipulators.getManipulator(literal)!!
+            assertEquals(
+                TextRange(1, literal.textLength - 1),
+                manipulator.getRangeInElement(literal),
+            )
             WriteCommandAction.runWriteCommandAction(project.get()) {
-                val updated = ElementManipulators.handleContentChange(literal, " raw?name.asm ")
-                assertInstanceOf(MipsStringLiteral::class.java, updated)
+              val failure =
+                  assertThrows<IncorrectOperationException> {
+                    manipulator.handleContentChange(literal, bad)
+                  }
+              assertEquals(
+                  "The path cannot be represented as a complete MARS string literal.",
+                  failure.message,
+              )
             }
-            assertEquals(".include \" raw?name.asm \"\n", file.text)
+            assertEquals(".include \"old.asm\"\n", file.text)
+          }
+          val file = fixture.configureByText(MipsFileType, ".include \"old.asm\"\n")
+          val literal = PsiTreeUtil.findChildOfType(file, MipsStringLiteral::class.java)!!
+          WriteCommandAction.runWriteCommandAction(project.get()) {
+            val updated = ElementManipulators.handleContentChange(literal, " raw?name.asm ")
+            assertInstanceOf(MipsStringLiteral::class.java, updated)
+          }
+          assertEquals(".include \" raw?name.asm \"\n", file.text)
         }
-    }
+      }
 
-    @Test
-    fun `native reference sets support empty and root path boundaries`() = timeoutRunBlocking {
-        readAction {
-            val rootPaths = if (SystemInfoRt.isWindows) listOf("C:/", "//") else listOf("/", "//")
-            for (path in listOf("") + rootPaths) {
-                val file = PsiFileFactory.getInstance(project.get()).createFileFromText("root.asm", MipsFileType, ".include \"$path\"\n")
-                val literal = PsiTreeUtil.findChildOfType(file, MipsStringLiteral::class.java)!!
-                val references = MipsFileReferenceSet(path, literal)
-                assertEquals(path, references.pathString)
-                assertEquals(if (path.isEmpty()) 0 else 1, references.allReferences.size)
-                for (reference in references.allReferences) assertEquals("/", reference.canonicalText)
-                assertNull(MipsIncludeProvider().resolveIncludedFile(FileIncludeInfo(path), file))
-                assertNull(MipsIncludeProvider().resolveIncludedFile(FileIncludeInfo(path, 0), file))
-            }
-        }
+  @Test
+  fun `native reference sets support empty and root path boundaries`() = timeoutRunBlocking {
+    readAction {
+      val rootPaths = if (SystemInfoRt.isWindows) listOf("C:/", "//") else listOf("/", "//")
+      for (path in listOf("") + rootPaths) {
+        val file =
+            PsiFileFactory.getInstance(project.get())
+                .createFileFromText("root.asm", MipsFileType, ".include \"$path\"\n")
+        val literal = PsiTreeUtil.findChildOfType(file, MipsStringLiteral::class.java)!!
+        val references = MipsFileReferenceSet(path, literal)
+        assertEquals(path, references.pathString)
+        assertEquals(if (path.isEmpty()) 0 else 1, references.allReferences.size)
+        for (reference in references.allReferences) assertEquals("/", reference.canonicalText)
+        assertNull(MipsIncludeProvider().resolveIncludedFile(FileIncludeInfo(path), file))
+        assertNull(MipsIncludeProvider().resolveIncludedFile(FileIncludeInfo(path, 0), file))
+      }
     }
+  }
 }

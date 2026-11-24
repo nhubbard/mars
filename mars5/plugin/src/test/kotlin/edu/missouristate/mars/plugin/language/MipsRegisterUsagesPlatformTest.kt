@@ -22,20 +22,26 @@ import org.junit.jupiter.api.Test
 
 @TestApplication
 class MipsRegisterUsagesPlatformTest {
-    private val project = codeInsightProjectFixture()
-    private val fixture by codeInsightFixture(project)
+  private val project = codeInsightProjectFixture()
+  private val fixture by codeInsightFixture(project)
 
-    @Test
-    fun `vector register occurrences include lane operands and stay separate from scalar registers`() = timeoutRunBlocking {
+  @Test
+  fun `vector register occurrences include lane operands and stay separate from scalar registers`() =
+      timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
-            fixture.configureByText("vector.mars", $$"insert.b $w<caret>5[15],$9\ncopy_s.h $5,$w5[7]\nmov.s $f5,$f5\n")
-            assertEquals(listOf($$"$w5", $$"$w5"), currentUses())
+          fixture.configureByText(
+              "vector.mars",
+              $$"insert.b $w<caret>5[15],$9\ncopy_s.h $5,$w5[7]\nmov.s $f5,$f5\n",
+          )
+          assertEquals(listOf($$"$w5", $$"$w5"), currentUses())
         }
-    }
+      }
 
-    @Test
-    fun `native usage highlighting groups GPR aliases and excludes other banks and non operands`() = timeoutRunBlocking {
-        val source = $$"""
+  @Test
+  fun `native usage highlighting groups GPR aliases and excludes other banks and non operands`() =
+      timeoutRunBlocking {
+        val source =
+            $$"""
             .eqv TEMP $8
             .asciiz "$8"
             # $8
@@ -50,64 +56,82 @@ class MipsRegisterUsagesPlatformTest {
                 addu $0x8, $zero, %value
             .end_macro
             emit ($8)
-        """.trimIndent()
+            """
+                .trimIndent()
         withContext(Dispatchers.EDT) {
-            fixture.configureByText("main.asm", source)
-            val action = ActionManager.getInstance().getAction(ACTION_HIGHLIGHT_USAGES_IN_FILE)
-            fixture.testAction(action)
-            val editor = fixture.editor
-            val highlights = editor.markupModel.allHighlighters.filter { it.textAttributesKey == EditorColors.SEARCH_RESULT_ATTRIBUTES }
-            val lines = highlights.map { editor.document.getLineNumber(it.startOffset) }.sorted()
-            assertEquals(listOf(4, 5, 6, 7, 11), lines)
-            assertEquals(listOf($$"$0x8", $$"$8", $$"$8", $$"$8", $$"$t0"), highlights.map {
-                editor.document.charsSequence.subSequence(it.startOffset, it.endOffset).toString()
-            }.sorted())
+          fixture.configureByText("main.asm", source)
+          val action = ActionManager.getInstance().getAction(ACTION_HIGHLIGHT_USAGES_IN_FILE)
+          fixture.testAction(action)
+          val editor = fixture.editor
+          val highlights =
+              editor.markupModel.allHighlighters.filter {
+                it.textAttributesKey == EditorColors.SEARCH_RESULT_ATTRIBUTES
+              }
+          val lines = highlights.map { editor.document.getLineNumber(it.startOffset) }.sorted()
+          assertEquals(listOf(4, 5, 6, 7, 11), lines)
+          assertEquals(
+              listOf($$"$0x8", $$"$8", $$"$8", $$"$8", $$"$t0"),
+              highlights
+                  .map {
+                    editor.document.charsSequence
+                        .subSequence(it.startOffset, it.endOffset)
+                        .toString()
+                  }
+                  .sorted(),
+          )
         }
-    }
+      }
 
-    @Test
-    // Kotlin exposes the reported Java setters as read-only properties.
-    @Suppress("UsePropertyAccessSyntax")
-    fun `floating and CP0 occurrences stay in their own banks across unsaved edits`() = timeoutRunBlocking {
+  @Test
+  // Kotlin exposes the reported Java setters as read-only properties.
+  @Suppress("UsePropertyAccessSyntax")
+  fun `floating and CP0 occurrences stay in their own banks across unsaved edits`() =
+      timeoutRunBlocking {
         val current = project.get()
-        val source = $$"""
+        val source =
+            $$"""
             mfc0 $8, $8
             MTC0 $a0, $0x8
             mtc0 $a1, $f8
             mov.s $f8, $f8
             mov.s $f1, $f0x8
             addu $t0, $8, $zero
-        """.trimIndent()
+            """
+                .trimIndent()
         withContext(Dispatchers.EDT) {
-            fixture.configureByText("main.s", source)
-            moveTo($$"$8\n")
-            assertEquals(listOf($$"$8", $$"$0x8"), currentUses())
-            moveTo($$"$f8\n")
-            assertNull(handler())
-            moveTo($$"$f8,")
-            assertEquals(listOf($$"$f8", $$"$f8"), currentUses())
-            moveTo($$"$f0x8")
-            assertNull(handler())
+          fixture.configureByText("main.s", source)
+          moveTo($$"$8\n")
+          assertEquals(listOf($$"$8", $$"$0x8"), currentUses())
+          moveTo($$"$f8\n")
+          assertNull(handler())
+          moveTo($$"$f8,")
+          assertEquals(listOf($$"$f8", $$"$f8"), currentUses())
+          moveTo($$"$f0x8")
+          assertNull(handler())
 
-            val document = fixture.editor.document
-            WriteCommandAction.runWriteCommandAction(current) { document.setText(source.replace($$"$0x8", $$"$12")) }
-            PsiDocumentManager.getInstance(current).commitDocument(document)
-            moveTo($$"$8\n")
-            assertEquals(listOf($$"$8"), currentUses())
+          val document = fixture.editor.document
+          WriteCommandAction.runWriteCommandAction(current) {
+            document.setText(source.replace($$"$0x8", $$"$12"))
+          }
+          PsiDocumentManager.getInstance(current).commitDocument(document)
+          moveTo($$"$8\n")
+          assertEquals(listOf($$"$8"), currentUses())
 
-            moveTo("addu")
-            assertNull(handler())
-            fixture.configureByText("other.txt", $$"$t0<caret>")
-            assertNull(handler())
+          moveTo("addu")
+          assertNull(handler())
+          fixture.configureByText("other.txt", $$"$t0<caret>")
+          assertNull(handler())
         }
-    }
+      }
 
-    @Test
-    // Kotlin exposes the reported Java setters as read-only properties.
-    @Suppress("UsePropertyAccessSyntax")
-    fun `equivalences project register identities to unambiguous written operands`() = timeoutRunBlocking {
+  @Test
+  // Kotlin exposes the reported Java setters as read-only properties.
+  @Suppress("UsePropertyAccessSyntax")
+  fun `equivalences project register identities to unambiguous written operands`() =
+      timeoutRunBlocking {
         val current = project.get()
-        val source = $$"""
+        val source =
+            $$"""
             .include "values.txt"
             .eqv CP mfc0
             .eqv PAIR $8, $9
@@ -135,49 +159,53 @@ class MipsRegisterUsagesPlatformTest {
             addu $s0, VAL
             addu $s0, CYCLE, $zero
             mov.s $f1, FLOAT_ALIAS
-        """.trimIndent()
-        val include = withContext(Dispatchers.EDT) {
-            val include = fixture.addFileToProject("values.txt", $$".eqv VAL $8\n")
-            fixture.configureByText("entry.asm", source)
-            include
-        }
+            """
+                .trimIndent()
+        val include =
+            withContext(Dispatchers.EDT) {
+              val include = fixture.addFileToProject("values.txt", $$".eqv VAL $8\n")
+              fixture.configureByText("entry.asm", source)
+              include
+            }
         IndexingTestUtil.suspendUntilIndexesAreReady(current)
         withContext(Dispatchers.EDT) {
-            val direct = source.indexOf($$"\naddu $t0") + 7
-            fixture.editor.caretModel.moveToOffset(direct)
-            assertEquals(listOf($$"$t0", "VAL", "SAME", "HOME"), currentUses())
-            DumbModeTestUtils.runInDumbModeSynchronously(current) {
-                assertEquals(listOf($$"$t0"), currentUses())
-            }
-            moveTo("VAL\naddu")
-            assertEquals(listOf("VAL"), currentUses())
-            for (unresolved in listOf("PAIR\naddu", "WHOLE\nCALL", "VAL)\n", "CYCLE,")) {
-                moveTo(unresolved)
-                assertNull(handler(), unresolved)
-            }
-            fixture.editor.caretModel.moveToOffset(source.lastIndexOf("FLOAT_ALIAS") + 1)
-            assertNull(handler())
+          val direct = source.indexOf($$"\naddu $t0") + 7
+          fixture.editor.caretModel.moveToOffset(direct)
+          assertEquals(listOf($$"$t0", "VAL", "SAME", "HOME"), currentUses())
+          DumbModeTestUtils.runInDumbModeSynchronously(current) {
+            assertEquals(listOf($$"$t0"), currentUses())
+          }
+          moveTo("VAL\naddu")
+          assertEquals(listOf("VAL"), currentUses())
+          for (unresolved in listOf("PAIR\naddu", "WHOLE\nCALL", "VAL)\n", "CYCLE,")) {
+            moveTo(unresolved)
+            assertNull(handler(), unresolved)
+          }
+          fixture.editor.caretModel.moveToOffset(source.lastIndexOf("FLOAT_ALIAS") + 1)
+          assertNull(handler())
 
-            val documents = PsiDocumentManager.getInstance(current)
-            val document = documents.getDocument(include)!!
-            WriteCommandAction.runWriteCommandAction(current) { document.setText($$".eqv VAL $9\n") }
-            documents.commitDocument(document)
-            fixture.editor.caretModel.moveToOffset(direct)
-            assertEquals(listOf($$"$t0", "SAME", "HOME"), currentUses())
-            moveTo($$"VAL, $zero\nCP")
-            assertEquals(listOf("VAL"), currentUses())
+          val documents = PsiDocumentManager.getInstance(current)
+          val document = documents.getDocument(include)!!
+          WriteCommandAction.runWriteCommandAction(current) { document.setText($$".eqv VAL $9\n") }
+          documents.commitDocument(document)
+          fixture.editor.caretModel.moveToOffset(direct)
+          assertEquals(listOf($$"$t0", "SAME", "HOME"), currentUses())
+          moveTo($$"VAL, $zero\nCP")
+          assertEquals(listOf("VAL"), currentUses())
         }
-    }
+      }
 
-    private fun moveTo(spelling: String) {
-        val editor = fixture.editor
-        editor.caretModel.moveToOffset(editor.document.text.indexOf(spelling) + 1)
-    }
+  private fun moveTo(spelling: String) {
+    val editor = fixture.editor
+    editor.caretModel.moveToOffset(editor.document.text.indexOf(spelling) + 1)
+  }
 
-    private fun handler() = HighlightUsagesHandler.createCustomHandler<PsiElement>(fixture.editor, fixture.file)
+  private fun handler() =
+      HighlightUsagesHandler.createCustomHandler<PsiElement>(fixture.editor, fixture.file)
 
-    private fun currentUses(): List<String> = requireNotNull(handler()).let { handler ->
+  private fun currentUses(): List<String> =
+      requireNotNull(handler()).let { handler ->
         handler.computeUsages(handler.targets)
         handler.readUsages.map { it.substring(fixture.editor.document.text) }
-    }
+      }
 }

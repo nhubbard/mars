@@ -34,81 +34,86 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /** Initializes the simulated program's argc and argv from a copy of its launch arguments. */
 open class ProgramArgumentList {
-    private val arguments: List<String>
+  private val arguments: List<String>
 
-    /** Splits on space, tab, newline, carriage return, and form feed. */
-    constructor(args: String) : this(args.split(' ', '\t', '\n', '\r', '\u000C').filter(String::isNotEmpty))
+  /** Splits on space, tab, newline, carriage return, and form feed. */
+  constructor(
+      args: String,
+  ) : this(args.split(' ', '\t', '\n', '\r', '\u000C').filter(String::isNotEmpty))
 
-    constructor(list: Array<out String>) : this(list, 0)
+  constructor(list: Array<out String>) : this(list, 0)
 
-    constructor(list: Array<out String>, startPosition: Int) {
-        require(startPosition <= list.size) { "Invalid argument offset: $startPosition" }
-        arguments = list.asList().subList(startPosition, list.size).toList()
-    }
+  constructor(list: Array<out String>, startPosition: Int) {
+    require(startPosition <= list.size) { "Invalid argument offset: $startPosition" }
+    arguments = list.asList().subList(startPosition, list.size).toList()
+  }
 
-    constructor(list: List<String>?) : this(list, 0)
+  constructor(list: List<String>?) : this(list, 0)
 
-    constructor(list: List<String>?, startPosition: Int) {
-        arguments = if (list == null || list.size < startPosition) {
-            emptyList()
+  constructor(list: List<String>?, startPosition: Int) {
+    arguments =
+        if (list == null || list.size < startPosition) {
+          emptyList()
         } else {
-            list.subList(startPosition, list.size).toList()
+          list.subList(startPosition, list.size).toList()
         }
+  }
+
+  open fun storeProgramArguments(session: MarsContext) = storeProgramArguments(session) {}
+
+  /** Initializes the argument frame before execution and checks cancellation during setup. */
+  open fun storeProgramArguments(session: MarsContext, checkCancellation: () -> Unit) {
+    if (arguments.isEmpty()) return
+
+    val memory = session.memory
+    // Store the strings from the top of the stack downward and reserve space below them
+    // for the null sentinel, each argv pointer, and argc before writing anything.
+    var freeBelowStrings = memory.stackBaseAddress.toLong()
+    for (argument in arguments) {
+      checkCancellation()
+      freeBelowStrings -= argument.length.toLong() + 1
+    }
+    val word = MemoryState.WORD_LENGTH_BYTES
+    var sentinelAddress = memory.stackPointer.toLong()
+    if (freeBelowStrings < sentinelAddress + word - 1) {
+      sentinelAddress = freeBelowStrings.floorDiv(word) * word - word
+    }
+    val argcAddress = sentinelAddress - (arguments.size.toLong() + 1) * word
+    require(argcAddress > memory.stackLimitAddress) {
+      "Program arguments exceed session stack memory"
     }
 
-    open fun storeProgramArguments(session: MarsContext) = storeProgramArguments(session) {}
-
-    /** Initializes the argument frame before execution and checks cancellation during setup. */
-    open fun storeProgramArguments(session: MarsContext, checkCancellation: () -> Unit) {
-        if (arguments.isEmpty()) return
-
-        val memory = session.memory
-        // Store the strings from the top of the stack downward and reserve space below them
-        // for the null sentinel, each argv pointer, and argc before writing anything.
-        var freeBelowStrings = memory.stackBaseAddress.toLong()
-        for (argument in arguments) {
+    var highAddress = memory.stackBaseAddress
+    val argumentAddresses = IntArray(arguments.size)
+    try {
+      for ((index, argument) in arguments.withIndex()) {
+        checkCancellation()
+        memory.set(highAddress--, 0, 1)
+        for (characterIndex in argument.indices.reversed()) {
+          if ((characterIndex and 0xff) == 0) {
             checkCancellation()
-            freeBelowStrings -= argument.length.toLong() + 1
+          }
+          memory.set(highAddress--, argument[characterIndex].code, 1)
         }
-        val word = MemoryState.WORD_LENGTH_BYTES
-        var sentinelAddress = memory.stackPointer.toLong()
-        if (freeBelowStrings < sentinelAddress + word - 1) {
-            sentinelAddress = freeBelowStrings.floorDiv(word) * word - word
-        }
-        val argcAddress = sentinelAddress - (arguments.size.toLong() + 1) * word
-        require(argcAddress > memory.stackLimitAddress) { "Program arguments exceed session stack memory" }
+        argumentAddresses[index] = highAddress + 1
+      }
 
-        var highAddress = memory.stackBaseAddress
-        val argumentAddresses = IntArray(arguments.size)
-        try {
-            for ((index, argument) in arguments.withIndex()) {
-                checkCancellation()
-                memory.set(highAddress--, 0, 1)
-                for (characterIndex in argument.indices.reversed()) {
-                    if ((characterIndex and 0xff) == 0) {
-                        checkCancellation()
-                    }
-                    memory.set(highAddress--, argument[characterIndex].code, 1)
-                }
-                argumentAddresses[index] = highAddress + 1
-            }
+      var stackAddress = sentinelAddress.toInt()
+      memory.set(stackAddress, 0, word)
+      stackAddress -= word
+      for (index in argumentAddresses.indices.reversed()) {
+        checkCancellation()
+        memory.set(stackAddress, argumentAddresses[index], word)
+        stackAddress -= word
+      }
+      memory.set(stackAddress, argumentAddresses.size, word)
 
-            var stackAddress = sentinelAddress.toInt()
-            memory.set(stackAddress, 0, word)
-            stackAddress -= word
-            for (index in argumentAddresses.indices.reversed()) {
-                checkCancellation()
-                memory.set(stackAddress, argumentAddresses[index], word)
-                stackAddress -= word
-            }
-            memory.set(stackAddress, argumentAddresses.size, word)
-
-            // Initialize the registers directly to keep launch setup out of the undo history.
-            session.registerFile.getUserRegister($$"$sp")!!.setValue(stackAddress)
-            session.registerFile.getUserRegister($$"$a0")!!.setValue(argumentAddresses.size)
-            session.registerFile.getUserRegister($$"$a1")!!.setValue(stackAddress + word)
-        } catch (failure: AddressErrorException) {
-            throw IllegalArgumentException("Program arguments exceed session stack memory", failure)
-        }
+      // Initialize the registers directly to keep launch setup out of the undo history.
+      session.registerFile.getUserRegister($$"$sp")!!.setValue(stackAddress)
+      session.registerFile.getUserRegister($$"$a0")!!.setValue(argumentAddresses.size)
+      session.registerFile.getUserRegister($$"$a1")!!.setValue(stackAddress + word)
+    } catch (failure: AddressErrorException) {
+      throw IllegalArgumentException("Program arguments exceed session stack memory", failure)
     }
+  }
 }

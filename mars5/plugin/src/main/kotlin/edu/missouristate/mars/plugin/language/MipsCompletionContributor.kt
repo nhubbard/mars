@@ -26,169 +26,289 @@ import edu.missouristate.mars.plugin.language.psi.DataLabelOperand
 import edu.missouristate.mars.plugin.language.psi.macroParameterUseContexts
 
 class MipsCompletionContributor : CompletionContributor(), DumbAware {
-    init {
-        extend(CompletionType.BASIC, statementHead, object : CompletionProvider<CompletionParameters>() {
-            override fun addCompletions(parameters: CompletionParameters, context: ProcessingContext, result: CompletionResultSet) {
-                val position = parameters.position
-                val file = parameters.originalFile as MipsFile
-                val prefix = prefix(parameters)
-                val lookup = result.withPrefixMatcher(prefix)
-                val options = file.project.service<MarsAssemblySettings>().executionOptions
-                val items = MipsDocumentationCatalog.entries(options.target).mapNotNull { entry ->
-                    val tail = entry.completionTail(options.allowPseudoInstructions, options.bareMachine)
-                    tail?.let { LookupElementBuilder.create(entry, entry.name).withTailText(it, true) }
+  init {
+    extend(
+        CompletionType.BASIC,
+        statementHead,
+        object : CompletionProvider<CompletionParameters>() {
+          override fun addCompletions(
+              parameters: CompletionParameters,
+              context: ProcessingContext,
+              result: CompletionResultSet,
+          ) {
+            val position = parameters.position
+            val file = parameters.originalFile as MipsFile
+            val prefix = prefix(parameters)
+            val lookup = result.withPrefixMatcher(prefix)
+            val options = file.project.service<MarsAssemblySettings>().executionOptions
+            val items =
+                MipsDocumentationCatalog.entries(options.target).mapNotNull { entry ->
+                  val tail =
+                      entry.completionTail(options.allowPseudoInstructions, options.bareMachine)
+                  tail?.let {
+                    LookupElementBuilder.create(entry, entry.name).withTailText(it, true)
+                  }
                 }
-                lookup.caseInsensitive().addAllElements(items)
-                val range = TextRange(position.textOffset, replacementEnd(parameters))
-                val aliases = statementEquivalenceCompletions(file, range, prefix, options)
-                if (aliases.isNotEmpty()) {
-                    val site = SmartPointerManager.getInstance(file.project).createSmartPsiFileRangePointer(file, range)
-                    for ((name, replacement) in aliases) {
-                        val item = equivalenceLookup(name, replacement)
-                        item.putUserData(mipsStatementAliasSite, site)
-                        lookup.addElement(item)
-                    }
-                }
-                val analysis = file.project.service<MarsAnalysisService>()
-                val macros = analysis.macroCompletionSignatures(file, position.textOffset, prefix)
-                val addresses = if (analysis.hasIntegerDataList(file, position) &&
-                    analysis.isIntegerDataCandidate(file, position, macroHead = true)
+            lookup.caseInsensitive().addAllElements(items)
+            val range = TextRange(position.textOffset, replacementEnd(parameters))
+            val aliases = statementEquivalenceCompletions(file, range, prefix, options)
+            if (aliases.isNotEmpty()) {
+              val site =
+                  SmartPointerManager.getInstance(file.project)
+                      .createSmartPsiFileRangePointer(file, range)
+              for ((name, replacement) in aliases) {
+                val item = equivalenceLookup(name, replacement)
+                item.putUserData(mipsStatementAliasSite, site)
+                lookup.addElement(item)
+              }
+            }
+            val analysis = file.project.service<MarsAnalysisService>()
+            val macros = analysis.macroCompletionSignatures(file, position.textOffset, prefix)
+            val addresses =
+                if (
+                    analysis.hasIntegerDataList(file, position) &&
+                        analysis.isIntegerDataCandidate(file, position, macroHead = true)
                 ) {
-                    analysis.labelCompletionNames(file, position, prefix, LabelCompletionContext.DATA).filterTo(HashSet()) {
-                        TokenTypes.matchTokenType(it) == TokenTypes.IDENTIFIER && !it.startsWith('.') &&
+                  analysis
+                      .labelCompletionNames(file, position, prefix, LabelCompletionContext.DATA)
+                      .filterTo(HashSet()) {
+                        TokenTypes.matchTokenType(it) == TokenTypes.IDENTIFIER &&
+                            !it.startsWith('.') &&
                             (it !in macros || !analysis.completesDataHeadAsMacro(file, range, it))
-                    }
+                      }
                 } else emptySet()
-                lookup.addAllElements(addresses.map(LookupElementBuilder::create))
-                for ((name, signatures) in macros) {
-                    if (name in addresses) continue
-                    lookup.addElement(LookupElementBuilder.create(MipsMacroLookup(name), name)
-                        .withTailText(signatures.joinToString(" / ", prefix = " "), true))
-                }
+            lookup.addAllElements(addresses.map(LookupElementBuilder::create))
+            for ((name, signatures) in macros) {
+              if (name in addresses) continue
+              lookup.addElement(
+                  LookupElementBuilder.create(MipsMacroLookup(name), name)
+                      .withTailText(signatures.joinToString(" / ", prefix = " "), true),
+              )
             }
-        })
-        extend(CompletionType.BASIC, operandOrContinuationPosition, object : CompletionProvider<CompletionParameters>() {
-            override fun addCompletions(parameters: CompletionParameters, context: ProcessingContext, result: CompletionResultSet) {
-                val position = parameters.position
-                val root = parameters.originalFile as MipsFile
-                val options = root.project.service<MarsAssemblySettings>().executionOptions
-                val atHead = statementHead.accepts(position)
-                val operand = if (!atHead) {
-                    MipsInstructionOperand.at(position, root, options.allowPseudoInstructions, options.target)
+          }
+        },
+    )
+    extend(
+        CompletionType.BASIC,
+        operandOrContinuationPosition,
+        object : CompletionProvider<CompletionParameters>() {
+          override fun addCompletions(
+              parameters: CompletionParameters,
+              context: ProcessingContext,
+              result: CompletionResultSet,
+          ) {
+            val position = parameters.position
+            val root = parameters.originalFile as MipsFile
+            val options = root.project.service<MarsAssemblySettings>().executionOptions
+            val atHead = statementHead.accepts(position)
+            val operand =
+                if (!atHead) {
+                  MipsInstructionOperand.at(
+                      position,
+                      root,
+                      options.allowPseudoInstructions,
+                      options.target,
+                  )
                 } else null
-                val analysis = root.project.service<MarsAnalysisService>()
-                val prefix = prefix(parameters)
-                val lookup = result.withPrefixMatcher(prefix)
-                val end = replacementEnd(parameters)
-                val data = if (operand == null) DataLabelOperand.at(position) else null
-                val export = data?.exportHead(position)?.let { analysis.exportOperandsBefore(root, it, position) }
-                val range = TextRange(position.textOffset, end)
-                val equivalences = when {
-                    operand != null -> {
-                        lookup.addAllElements(registerCandidates(operand.formats, operand.index, options.bareMachine).map(LookupElementBuilder::create))
-                        operand.equivalenceCompletions(root, prefix, options.bareMachine, end)
-                    }
-                    export != null -> analysis.exportEquivalenceCompletions(root, position, range, prefix, export.size())
-                    else -> analysis.directiveOperandEquivalenceCompletions(root, range, prefix)
+            val analysis = root.project.service<MarsAnalysisService>()
+            val prefix = prefix(parameters)
+            val lookup = result.withPrefixMatcher(prefix)
+            val end = replacementEnd(parameters)
+            val data = if (operand == null) DataLabelOperand.at(position) else null
+            val export =
+                data?.exportHead(position)?.let {
+                  analysis.exportOperandsBefore(root, it, position)
                 }
-                for ((name, replacement) in equivalences) {
-                    lookup.addElement(equivalenceLookup(name, replacement))
+            val range = TextRange(position.textOffset, end)
+            val equivalences =
+                when {
+                  operand != null -> {
+                    lookup.addAllElements(
+                        registerCandidates(operand.formats, operand.index, options.bareMachine)
+                            .map(LookupElementBuilder::create),
+                    )
+                    operand.equivalenceCompletions(root, prefix, options.bareMachine, end)
+                  }
+                  export != null ->
+                      analysis.exportEquivalenceCompletions(
+                          root,
+                          position,
+                          range,
+                          prefix,
+                          export.size(),
+                      )
+                  else -> analysis.directiveOperandEquivalenceCompletions(root, range, prefix)
                 }
-                if (export != null) {
-                    val written = analysis.writtenExportNames(root, range, export)
-                    val names = analysis.labelCompletionNames(root, position, prefix, LabelCompletionContext.EXPORT)
-                        .filter { it !in written && TokenTypes.matchTokenType(it) == TokenTypes.IDENTIFIER }
-                    lookup.addAllElements(names.map(LookupElementBuilder::create))
-                } else if (operand?.acceptsLabel == true || !atHead && data?.isDataLabel(root, analysis, position) == true) {
-                    val labelContext = if (operand == null) LabelCompletionContext.DATA else LabelCompletionContext.INSTRUCTION
-                    val names = analysis.labelCompletionNames(root, position, prefix, labelContext)
-                    val addresses = if (labelContext == LabelCompletionContext.DATA) {
-                        names.filter { TokenTypes.matchTokenType(it) == TokenTypes.IDENTIFIER }
-                    } else names
-                    lookup.addAllElements(addresses.map(LookupElementBuilder::create))
-                }
+            for ((name, replacement) in equivalences) {
+              lookup.addElement(equivalenceLookup(name, replacement))
             }
-        })
-        extend(CompletionType.BASIC, macroParameterPosition, object : CompletionProvider<CompletionParameters>() {
-            override fun addCompletions(parameters: CompletionParameters, context: ProcessingContext, result: CompletionResultSet) {
-                val prefix = prefix(parameters)
-                if (prefix.isNotEmpty() && prefix.first() !in "%$") return
-                val file = parameters.originalFile as MipsFile
-                val names = file.project.service<MarsAnalysisService>().macroParameterNames(file, parameters.position)
-                result.withPrefixMatcher(prefix).addAllElements(
-                    names.filter { it.startsWith(prefix) }.map {
-                        LookupElementBuilder.create(it).withTypeText(messages.getMessage("completion.macro.parameter"))
-                    },
+            if (export != null) {
+              val written = analysis.writtenExportNames(root, range, export)
+              val names =
+                  analysis
+                      .labelCompletionNames(root, position, prefix, LabelCompletionContext.EXPORT)
+                      .filter {
+                        it !in written && TokenTypes.matchTokenType(it) == TokenTypes.IDENTIFIER
+                      }
+              lookup.addAllElements(names.map(LookupElementBuilder::create))
+            } else if (
+                operand?.acceptsLabel == true ||
+                    !atHead && data?.isDataLabel(root, analysis, position) == true
+            ) {
+              val labelContext =
+                  if (operand == null) LabelCompletionContext.DATA
+                  else LabelCompletionContext.INSTRUCTION
+              val names = analysis.labelCompletionNames(root, position, prefix, labelContext)
+              val addresses =
+                  if (labelContext == LabelCompletionContext.DATA) {
+                    names.filter { TokenTypes.matchTokenType(it) == TokenTypes.IDENTIFIER }
+                  } else names
+              lookup.addAllElements(addresses.map(LookupElementBuilder::create))
+            }
+          }
+        },
+    )
+    extend(
+        CompletionType.BASIC,
+        macroParameterPosition,
+        object : CompletionProvider<CompletionParameters>() {
+          override fun addCompletions(
+              parameters: CompletionParameters,
+              context: ProcessingContext,
+              result: CompletionResultSet,
+          ) {
+            val prefix = prefix(parameters)
+            if (prefix.isNotEmpty() && prefix.first() !in "%$") return
+            val file = parameters.originalFile as MipsFile
+            val names =
+                file.project
+                    .service<MarsAnalysisService>()
+                    .macroParameterNames(file, parameters.position)
+            result
+                .withPrefixMatcher(prefix)
+                .addAllElements(
+                    names
+                        .filter { it.startsWith(prefix) }
+                        .map {
+                          LookupElementBuilder.create(it)
+                              .withTypeText(messages.getMessage("completion.macro.parameter"))
+                        },
                 )
-            }
-        })
-    }
+          }
+        },
+    )
+  }
 
-    override fun beforeCompletion(context: CompletionInitializationContext) {
-        val previous = context.file.findElementAt(context.startOffset - 1) ?: return
-        if (previous.isUnterminatedInclude()) {
-            // Close the quoted path in IntelliJ's completion copy so file references can supply suggestions.
-            context.dummyIdentifier = DUMMY_IDENTIFIER_TRIMMED + "\""
-        }
+  override fun beforeCompletion(context: CompletionInitializationContext) {
+    val previous = context.file.findElementAt(context.startOffset - 1) ?: return
+    if (previous.isUnterminatedInclude()) {
+      // Close the quoted path in IntelliJ's completion copy so file references can supply
+      // suggestions.
+      context.dummyIdentifier = DUMMY_IDENTIFIER_TRIMMED + "\""
     }
+  }
 
-    override fun duringCompletion(context: CompletionInitializationContext) {
-        val token = context.file.findElementAt(context.startOffset) ?: return
-        if (statementHead.accepts(token) || operandOrContinuationPosition.accepts(token) || macroParameterPosition.accepts(token)) {
-            context.replacementOffset = token.textRange.endOffset
-        }
+  override fun duringCompletion(context: CompletionInitializationContext) {
+    val token = context.file.findElementAt(context.startOffset) ?: return
+    if (
+        statementHead.accepts(token) ||
+            operandOrContinuationPosition.accepts(token) ||
+            macroParameterPosition.accepts(token)
+    ) {
+      context.replacementOffset = token.textRange.endOffset
     }
+  }
 }
 
 private val messages = DynamicBundle(MipsCompletionContributor::class.java, "messages.MarsBundle")
-private val statementHead = psiElement()
-    .withElementType(TokenSet.create(MipsTypes.psi("WORD"), MipsTypes.psi("MNEMONIC"), MipsTypes.psi("DOLLAR_WORD")))
-    .withParent(psiElement().withElementType(TokenSet.create(MipsTypes.psi("OPERATION"), MipsTypes.psi("OPERATION_CANDIDATE"))))
-private val operandOrContinuationPosition = psiElement()
-    .withElementType(TokenSet.create(MipsTypes.psi("WORD"), MipsTypes.psi("DOLLAR_WORD"), MipsTypes.psi("REGISTER")))
-private val macroParameterPosition = psiElement()
-    .withElementType(TokenSet.create(MipsTypes.psi("PARAMETER"), MipsTypes.psi("DOLLAR_WORD"), MipsTypes.psi("WORD")))
-    .withParent(psiElement().withElementType(macroParameterUseContexts))
+private val statementHead =
+    psiElement()
+        .withElementType(
+            TokenSet.create(
+                MipsTypes.psi("WORD"),
+                MipsTypes.psi("MNEMONIC"),
+                MipsTypes.psi("DOLLAR_WORD"),
+            ),
+        )
+        .withParent(
+            psiElement()
+                .withElementType(
+                    TokenSet.create(
+                        MipsTypes.psi("OPERATION"),
+                        MipsTypes.psi("OPERATION_CANDIDATE"),
+                    ),
+                ),
+        )
+private val operandOrContinuationPosition =
+    psiElement()
+        .withElementType(
+            TokenSet.create(
+                MipsTypes.psi("WORD"),
+                MipsTypes.psi("DOLLAR_WORD"),
+                MipsTypes.psi("REGISTER"),
+            ),
+        )
+private val macroParameterPosition =
+    psiElement()
+        .withElementType(
+            TokenSet.create(
+                MipsTypes.psi("PARAMETER"),
+                MipsTypes.psi("DOLLAR_WORD"),
+                MipsTypes.psi("WORD"),
+            ),
+        )
+        .withParent(psiElement().withElementType(macroParameterUseContexts))
 
 private val integerRegisters by lazy { RegisterNames.integerSpellings() }
 private val registerSpellings by lazy {
-    mapOf(
-        TokenTypes.REGISTER_NAME to integerRegisters,
-        TokenTypes.REGISTER_NUMBER to integerRegisters,
-        TokenTypes.FP_REGISTER_NAME to RegisterNames.floatingSpellings(),
-        TokenTypes.VECTOR_REGISTER_NAME to List(32) { $$"$w$$it" },
-    )
+  mapOf(
+      TokenTypes.REGISTER_NAME to integerRegisters,
+      TokenTypes.REGISTER_NUMBER to integerRegisters,
+      TokenTypes.FP_REGISTER_NAME to RegisterNames.floatingSpellings(),
+      TokenTypes.VECTOR_REGISTER_NAME to List(32) { $$"$w$$it" },
+  )
 }
 private val systemRegisters by lazy { RegisterNames.coprocessor0Spellings() }
 private val integerRegisterTypes = setOf(TokenTypes.REGISTER_NAME, TokenTypes.REGISTER_NUMBER)
 private val numberedIntegerRegisters by lazy {
-    integerRegisters.filter { TokenTypes.matchTokenType(it) == TokenTypes.REGISTER_NUMBER }
+  integerRegisters.filter { TokenTypes.matchTokenType(it) == TokenTypes.REGISTER_NUMBER }
 }
 
 private fun prefix(parameters: CompletionParameters): String {
-    val position = parameters.position
-    return position.text.substring(0, parameters.offset - position.textOffset)
+  val position = parameters.position
+  return position.text.substring(0, parameters.offset - position.textOffset)
 }
 
 private fun replacementEnd(parameters: CompletionParameters): Int {
-    val original = parameters.originalPosition
-    if (original != null && (statementHead.accepts(original) || operandOrContinuationPosition.accepts(original))) {
-        return original.textRange.endOffset
-    }
-    return parameters.position.textOffset
+  val original = parameters.originalPosition
+  if (
+      original != null &&
+          (statementHead.accepts(original) || operandOrContinuationPosition.accepts(original))
+  ) {
+    return original.textRange.endOffset
+  }
+  return parameters.position.textOffset
 }
 
 private fun equivalenceLookup(name: String, replacement: String): LookupElementBuilder =
-    LookupElementBuilder.create(name).withTailText(" = $replacement", true)
+    LookupElementBuilder.create(name)
+        .withTailText(" = $replacement", true)
         .withTypeText(messages.getMessage("colors.equivalence"))
 
-private fun registerCandidates(formats: List<Instruction>, index: Int, bareMachine: Boolean): Set<String> = buildSet {
-    for (instruction in formats) {
-        if (index == COPROCESSOR0_REGISTER_INDEX && instruction.hasCoprocessor0Register) {
-            addAll(systemRegisters)
-        } else {
-            val type = instruction.tokenList[index].type
-            addAll(if (bareMachine && type in integerRegisterTypes) numberedIntegerRegisters else registerSpellings[type].orEmpty())
-        }
+private fun registerCandidates(
+    formats: List<Instruction>,
+    index: Int,
+    bareMachine: Boolean,
+): Set<String> = buildSet {
+  for (instruction in formats) {
+    if (index == COPROCESSOR0_REGISTER_INDEX && instruction.hasCoprocessor0Register) {
+      addAll(systemRegisters)
+    } else {
+      val type = instruction.tokenList[index].type
+      addAll(
+          if (bareMachine && type in integerRegisterTypes) numberedIntegerRegisters
+          else registerSpellings[type].orEmpty(),
+      )
     }
+  }
 }

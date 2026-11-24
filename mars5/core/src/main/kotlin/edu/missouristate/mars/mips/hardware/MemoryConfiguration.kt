@@ -35,33 +35,77 @@ class MemoryConfiguration(
     configurationItemNames: Array<String>,
     configurationItemValues: IntArray,
 ) {
-    private val itemNames = configurationItemNames.copyOf()
-    private val itemValues = configurationItemValues.copyOf()
+  private val itemNames = configurationItemNames.copyOf()
+  private val itemValues = configurationItemValues.copyOf()
 
-    fun configurationIdentifier(): String? = configurationIdentifier
-    fun configurationName(): String? = configurationName
-    fun configurationItemNames(): Array<String> = itemNames.copyOf()
-    fun configurationItemValues(): IntArray = itemValues.copyOf()
+  fun configurationIdentifier(): String? = configurationIdentifier
 
-    val textBaseAddress: Int get() = itemValues[0]
-    val dataSegmentBaseAddress: Int get() = itemValues[1]
-    val externBaseAddress: Int get() = itemValues[2]
-    val globalPointer: Int get() = itemValues[3]
-    val dataBaseAddress: Int get() = itemValues[4]
-    val heapBaseAddress: Int get() = itemValues[5]
-    val stackPointer: Int get() = itemValues[6]
-    val stackBaseAddress: Int get() = itemValues[7]
-    val userHighAddress: Int get() = itemValues[8]
-    val kernelBaseAddress: Int get() = itemValues[9]
-    val kernelTextBaseAddress: Int get() = itemValues[10]
-    val exceptionHandlerAddress: Int get() = itemValues[11]
-    val kernelDataBaseAddress: Int get() = itemValues[12]
-    val memoryMapBaseAddress: Int get() = itemValues[13]
-    val kernelHighAddress: Int get() = itemValues[14]
-    val dataSegmentLimitAddress: Int get() = itemValues[15]
-    val textLimitAddress: Int get() = itemValues[16]
-    val kernelDataSegmentLimitAddress: Int get() = itemValues[17]
-    val kernelTextLimitAddress: Int get() = itemValues[18]
-    val stackLimitAddress: Int get() = itemValues[19]
-    val memoryMapLimitAddress: Int get() = itemValues[20]
+  fun configurationName(): String? = configurationName
+
+  fun configurationItemNames(): Array<String> = itemNames.copyOf()
+
+  fun configurationItemValues(): IntArray = itemValues.copyOf()
+
+  val textBaseAddress: Int
+    get() = itemValues[0]
+
+  val dataSegmentBaseAddress: Int
+    get() = itemValues[1]
+
+  val externBaseAddress: Int
+    get() = itemValues[2]
+
+  val globalPointer: Int
+    get() = itemValues[3]
+
+  val dataBaseAddress: Int
+    get() = itemValues[4]
+
+  val heapBaseAddress: Int
+    get() = itemValues[5]
+
+  val stackPointer: Int
+    get() = itemValues[6]
+
+  val stackBaseAddress: Int
+    get() = itemValues[7]
+
+  val userHighAddress: Int
+    get() = itemValues[8]
+
+  val kernelBaseAddress: Int
+    get() = itemValues[9]
+
+  val kernelTextBaseAddress: Int
+    get() = itemValues[10]
+
+  val exceptionHandlerAddress: Int
+    get() = itemValues[11]
+
+  val kernelDataBaseAddress: Int
+    get() = itemValues[12]
+
+  val memoryMapBaseAddress: Int
+    get() = itemValues[13]
+
+  val kernelHighAddress: Int
+    get() = itemValues[14]
+
+  val dataSegmentLimitAddress: Int
+    get() = itemValues[15]
+
+  val textLimitAddress: Int
+    get() = itemValues[16]
+
+  val kernelDataSegmentLimitAddress: Int
+    get() = itemValues[17]
+
+  val kernelTextLimitAddress: Int
+    get() = itemValues[18]
+
+  val stackLimitAddress: Int
+    get() = itemValues[19]
+
+  val memoryMapLimitAddress: Int
+    get() = itemValues[20]
 }

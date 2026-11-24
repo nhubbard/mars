@@ -34,10 +34,10 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /** A MIPS system service dispatched by the session's syscall registry. */
 interface Syscall {
-    val name: String
+  val name: String
 
-    var number: Int
+  var number: Int
 
-    @Throws(ProcessingException::class)
-    fun simulate(statement: ProgramStatement?, context: InstructionContext)
+  @Throws(ProcessingException::class)
+  fun simulate(statement: ProgramStatement?, context: InstructionContext)
 }

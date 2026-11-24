@@ -1,10 +1,10 @@
 package edu.missouristate.mars.plugin.tools
 
 import com.intellij.ide.setToolTipText
-import com.intellij.openapi.util.text.HtmlChunk
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.text.HtmlChunk
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.ui.JBColor
 import com.intellij.ui.components.JBLabel
@@ -32,21 +32,22 @@ import javax.swing.JTable
 import javax.swing.table.AbstractTableModel
 import javax.swing.table.TableRowSorter
 import kotlin.math.roundToInt
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
-import kotlin.time.Duration.Companion.milliseconds
 
 internal class ScavengerHuntView(project: Project) : Disposable {
-    private var selected: MarsProcessHandler? = null
-    private val selector = MarsToolExecutionSelector(project, ::render)
-    private val toggle = JButton()
-    private val reset = JButton(toolsMessages.getMessage("counter.reset"))
-    private val status = JBLabel()
-    private lateinit var diagnostic: JEditorPane
-    private val board = ScavengerHuntBoard()
-    private val scoreboard = ScavengerScoreboard()
-    private val table = JBTable(scoreboard).apply {
+  private var selected: MarsProcessHandler? = null
+  private val selector = MarsToolExecutionSelector(project, ::render)
+  private val toggle = JButton()
+  private val reset = JButton(toolsMessages.getMessage("counter.reset"))
+  private val status = JBLabel()
+  private lateinit var diagnostic: JEditorPane
+  private val board = ScavengerHuntBoard()
+  private val scoreboard = ScavengerScoreboard()
+  private val table =
+      JBTable(scoreboard).apply {
         preferredScrollableViewportSize = JBDimension(240, 135)
         autoResizeMode = JTable.AUTO_RESIZE_OFF
         sizeScoreboardColumns()
@@ -54,218 +55,264 @@ internal class ScavengerHuntView(project: Project) : Disposable {
         rowSorter = TableRowSorter(scoreboard).apply { sortsOnUpdates = true }
         accessibleContext.accessibleName = toolsMessages.getMessage("scavenger.scoreboard")
         emptyText.text = toolsMessages.getMessage("scavenger.waiting")
-    }
-    private val tableScroll = JBScrollPane(table).apply { minimumSize = JBDimension(0, 84) }
+      }
+  private val tableScroll = JBScrollPane(table).apply { minimumSize = JBDimension(0, 84) }
 
-    val component = scrollableToolPanel(this, marsToolPanel {
-        marsExecutionRow(selector.component)
-        row {
-            cell(toggle)
-            cell(reset)
-        }
-        row { cell(status) }
-        row { diagnostic = text("").resizableColumn().component }.layout(RowLayout.INDEPENDENT)
-        row { cell(board).align(Align.FILL).resizableColumn() }.resizableRow()
-        row {
-            cell(tableScroll).align(Align.FILL).resizableColumn()
-        }.resizableRow()
-        row { comment(toolsMessages.getMessage("scavenger.ports")).resizableColumn() }.layout(RowLayout.INDEPENDENT)
-    }, mapOf(table to tableScroll))
-
-    init {
-        toggle.addActionListener {
-            val process = selected!!
-            process.setScavengerHuntConnected(!process.scavengerHuntSnapshot()!!.connected)
-            render()
-        }
-        reset.addActionListener {
-            selected!!.resetScavengerHunt()
-            render()
-        }
-        refresh()
-    }
-
-    @Suppress("UnstableApiUsage")
-    private val refreshJob = component.launchOnShow("Refresh MARS Scavenger Hunt") {
-        while (true) {
-            withContext(Dispatchers.EDT) { refresh() }
-            delay(100.milliseconds)
-        }
-    }
-
-    private fun refresh() {
-        selector.refresh()
-        render()
-    }
-
-    private fun select(process: MarsProcessHandler?) {
-        if (process !== selected) {
-            selected?.releaseScavengerHuntView()
-            selected = process
-            scoreboard.show(null)
-        }
-    }
-
-    private fun render() {
-        select(selector.process)
-        val snapshot = selected?.scavengerHuntSnapshot()
-        val blocked = selected?.marsBot?.snapshot()?.connected == true
-        val connected = snapshot?.connected == true
-        toggle.isEnabled = snapshot?.available == true && !blocked
-        toggle.setToolTipText(if (blocked) HtmlChunk.text(toolsMessages.getMessage("run.connect.deviceConflict")) else null)
-        toggle.text = toolsMessages.getMessage(if (connected) "counter.disconnect" else "counter.connect")
-        reset.isEnabled = connected && !snapshot.resetPending
-        val game = snapshot?.game
-        val round = game?.round
-        status.text = when {
-            snapshot?.resetPending == true -> toolsMessages.getMessage("scavenger.reset.pending")
-            round == null -> toolsMessages.getMessage("scavenger.waiting")
-            else -> {
-                val player = if (game.playerId == ADMINISTRATOR_ID) toolsMessages.getMessage("scavenger.admin")
-                else toolsMessages.getMessage("scavenger.activePlayer", game.playerId)
-                toolsMessages.getMessage("scavenger.status", player, game.turnsRemaining)
+  val component =
+      scrollableToolPanel(
+          this,
+          marsToolPanel {
+            marsExecutionRow(selector.component)
+            row {
+              cell(toggle)
+              cell(reset)
             }
-        }
-        val diagnosticText = snapshot?.diagnostic?.let {
-            val reason = toolsMessages.getMessage("scavenger.rejection.${it.rejection?.name ?: "FOREIGN_WRITE"}")
-            toolsMessages.getMessage("scavenger.diagnostic", it.address.toUInt().toString(16), reason)
-        }
-        val tooltip = diagnosticText?.let(HtmlChunk::text)
-        if (tooltip?.toString() != diagnostic.toolTipText) {
-            diagnostic.text = StringUtil.escapeXmlEntities(diagnosticText.orEmpty())
-            diagnostic.setToolTipText(tooltip)
-        }
-        val previousSelection = table.selectedRow
-        scoreboard.show(round)
-        val selection = table.selectedRow
-        if (selection >= 0 && selection != previousSelection) {
-            table.scrollRectToVisible(table.getCellRect(selection, table.selectedColumn, false))
-        }
-        board.show(round, status.text)
-    }
+            row { cell(status) }
+            row { diagnostic = text("").resizableColumn().component }.layout(RowLayout.INDEPENDENT)
+            row { cell(board).align(Align.FILL).resizableColumn() }.resizableRow()
+            row {
+              cell(tableScroll).align(Align.FILL).resizableColumn()
+            }
+                .resizableRow()
+            row { comment(toolsMessages.getMessage("scavenger.ports")).resizableColumn() }
+                .layout(RowLayout.INDEPENDENT)
+          },
+          mapOf(table to tableScroll),
+      )
 
-    override fun dispose() {
-        refreshJob.cancel()
-        select(null)
+  init {
+    toggle.addActionListener {
+      val process = selected!!
+      process.setScavengerHuntConnected(!process.scavengerHuntSnapshot()!!.connected)
+      render()
     }
+    reset.addActionListener {
+      selected!!.resetScavengerHunt()
+      render()
+    }
+    refresh()
+  }
+
+  @Suppress("UnstableApiUsage")
+  private val refreshJob =
+      component.launchOnShow("Refresh MARS Scavenger Hunt") {
+        while (true) {
+          withContext(Dispatchers.EDT) { refresh() }
+          delay(100.milliseconds)
+        }
+      }
+
+  private fun refresh() {
+    selector.refresh()
+    render()
+  }
+
+  private fun select(process: MarsProcessHandler?) {
+    if (process !== selected) {
+      selected?.releaseScavengerHuntView()
+      selected = process
+      scoreboard.show(null)
+    }
+  }
+
+  private fun render() {
+    select(selector.process)
+    val snapshot = selected?.scavengerHuntSnapshot()
+    val blocked = selected?.marsBot?.snapshot()?.connected == true
+    val connected = snapshot?.connected == true
+    toggle.isEnabled = snapshot?.available == true && !blocked
+    toggle.setToolTipText(
+        if (blocked) HtmlChunk.text(toolsMessages.getMessage("run.connect.deviceConflict"))
+        else null,
+    )
+    toggle.text =
+        toolsMessages.getMessage(if (connected) "counter.disconnect" else "counter.connect")
+    reset.isEnabled = connected && !snapshot.resetPending
+    val game = snapshot?.game
+    val round = game?.round
+    status.text =
+        when {
+          snapshot?.resetPending == true -> toolsMessages.getMessage("scavenger.reset.pending")
+          round == null -> toolsMessages.getMessage("scavenger.waiting")
+          else -> {
+            val player =
+                if (game.playerId == ADMINISTRATOR_ID) toolsMessages.getMessage("scavenger.admin")
+                else toolsMessages.getMessage("scavenger.activePlayer", game.playerId)
+            toolsMessages.getMessage("scavenger.status", player, game.turnsRemaining)
+          }
+        }
+    val diagnosticText =
+        snapshot?.diagnostic?.let {
+          val reason =
+              toolsMessages.getMessage(
+                  "scavenger.rejection.${it.rejection?.name ?: "FOREIGN_WRITE"}",
+              )
+          toolsMessages.getMessage("scavenger.diagnostic", it.address.toUInt().toString(16), reason)
+        }
+    val tooltip = diagnosticText?.let(HtmlChunk::text)
+    if (tooltip?.toString() != diagnostic.toolTipText) {
+      diagnostic.text = StringUtil.escapeXmlEntities(diagnosticText.orEmpty())
+      diagnostic.setToolTipText(tooltip)
+    }
+    val previousSelection = table.selectedRow
+    scoreboard.show(round)
+    val selection = table.selectedRow
+    if (selection >= 0 && selection != previousSelection) {
+      table.scrollRectToVisible(table.getCellRect(selection, table.selectedColumn, false))
+    }
+    board.show(round, status.text)
+  }
+
+  override fun dispose() {
+    refreshJob.cancel()
+    select(null)
+  }
 }
 
 private fun JBTable.sizeScoreboardColumns() {
-    val samples = listOf(
-        "",
-        toolsMessages.getMessage("scavenger.point", BOARD_WIDTH, BOARD_HEIGHT),
-        "",
-        toolsMessages.getMessage("scavenger.visits", LOCATION_COUNT, LOCATION_COUNT),
-        Long.MAX_VALUE.toString(),
-    )
-    val metrics = getFontMetrics(font)
-    for ((index, sample) in samples.withIndex()) {
-        val column = columnModel.getColumn(index)
-        val width = maxOf(metrics.stringWidth(sample), metrics.stringWidth(column.headerValue.toString())) + JBUI.scale(16)
-        column.preferredWidth = width
-        column.width = width
-    }
+  val samples =
+      listOf(
+          "",
+          toolsMessages.getMessage("scavenger.point", BOARD_WIDTH, BOARD_HEIGHT),
+          "",
+          toolsMessages.getMessage("scavenger.visits", LOCATION_COUNT, LOCATION_COUNT),
+          Long.MAX_VALUE.toString(),
+      )
+  val metrics = getFontMetrics(font)
+  for ((index, sample) in samples.withIndex()) {
+    val column = columnModel.getColumn(index)
+    val width =
+        maxOf(metrics.stringWidth(sample), metrics.stringWidth(column.headerValue.toString())) +
+            JBUI.scale(16)
+    column.preferredWidth = width
+    column.width = width
+  }
 }
 
 internal class ScavengerScoreboard : AbstractTableModel() {
-    private var round: Round? = null
+  private var round: Round? = null
 
-    fun show(value: Round?) {
-        val previous = round
-        if (previous === value) return
-        round = value
-        if (previous != null && value != null && previous.firstInstruction == value.firstInstruction) {
-            publishRowRefresh(previous.players.size)
-        } else {
-            fireTableDataChanged()
-        }
+  fun show(value: Round?) {
+    val previous = round
+    if (previous === value) return
+    round = value
+    if (previous != null && value != null && previous.firstInstruction == value.firstInstruction) {
+      publishRowRefresh(previous.players.size)
+    } else {
+      fireTableDataChanged()
     }
+  }
 
-    override fun getColumnCount() = columns.size
-    override fun getColumnName(column: Int) = toolsMessages.getMessage(columns[column])
-    override fun getRowCount() = round?.players?.size ?: 0
+  override fun getColumnCount() = columns.size
 
-    override fun getColumnClass(column: Int): Class<*> = when (column) {
-        0, 2 -> Int::class.javaObjectType
+  override fun getColumnName(column: Int) = toolsMessages.getMessage(columns[column])
+
+  override fun getRowCount() = round?.players?.size ?: 0
+
+  override fun getColumnClass(column: Int): Class<*> =
+      when (column) {
+        0,
+        2 -> Int::class.javaObjectType
         4 -> Long::class.javaObjectType
         else -> String::class.java
-    }
+      }
 
-    override fun getValueAt(row: Int, column: Int): Any? {
-        val player = round!!.players[row]
-        return when (column) {
-            0 -> row
-            1 -> toolsMessages.getMessage("scavenger.point", player.position.x, player.position.y)
-            2 -> player.energy
-            3 -> toolsMessages.getMessage("scavenger.visits", player.visitedMask.countOneBits(), round!!.locations.size)
-            else -> player.finishAfterInstructions
-        }
+  override fun getValueAt(row: Int, column: Int): Any? {
+    val player = round!!.players[row]
+    return when (column) {
+      0 -> row
+      1 -> toolsMessages.getMessage("scavenger.point", player.position.x, player.position.y)
+      2 -> player.energy
+      3 ->
+          toolsMessages.getMessage(
+              "scavenger.visits",
+              player.visitedMask.countOneBits(),
+              round!!.locations.size,
+          )
+      else -> player.finishAfterInstructions
     }
+  }
 
-    private companion object {
-        val columns = listOf("scavenger.player", "scavenger.position", "scavenger.energy", "scavenger.locations", "scavenger.finish")
-    }
+  private companion object {
+    private val columns =
+        listOf(
+            "scavenger.player",
+            "scavenger.position",
+            "scavenger.energy",
+            "scavenger.locations",
+            "scavenger.finish",
+        )
+  }
 }
 
 internal class ScavengerHuntBoard : JBPanel<ScavengerHuntBoard>() {
-    private var round: Round? = null
+  private var round: Round? = null
 
-    init {
-        withPreferredSize(250, 220)
-        withMinimumHeight(80)
-        getAccessibleContext().accessibleName = toolsMessages.getMessage("scavenger.board")
-    }
+  init {
+    withPreferredSize(250, 220)
+    withMinimumHeight(80)
+    getAccessibleContext().accessibleName = toolsMessages.getMessage("scavenger.board")
+  }
 
-    fun show(value: Round?, description: String) {
-        getAccessibleContext().accessibleDescription = description
-        if (round === value) return
-        round = value
-        repaint()
-    }
+  fun show(value: Round?, description: String) {
+    getAccessibleContext().accessibleDescription = description
+    if (round === value) return
+    round = value
+    repaint()
+  }
 
-    override fun paintComponent(graphics: Graphics) {
-        super.paintComponent(graphics)
-        val pad = JBUI.scale(10)
-        val scale = minOf((width - 2 * pad).toDouble() / BOARD_WIDTH, (height - 2 * pad).toDouble() / BOARD_HEIGHT)
-        if (scale <= 0) return
-        val wide = (BOARD_WIDTH * scale).roundToInt()
-        val high = (BOARD_HEIGHT * scale).roundToInt()
-        val g = graphics.create() as Graphics2D
-        try {
-            g.translate((width - wide) / 2, (height - high) / 2)
-            g.color = JBColor.background()
-            g.fillRect(0, 0, wide, high)
-            g.color = JBColor.border()
-            g.drawRect(0, 0, wide, high)
-            val game = round ?: return
-            g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
-            val radius = JBUI.scale(5)
-            game.locations.forEachIndexed { index, point ->
-                val x = (point.x * scale).roundToInt()
-                val y = (point.y * scale).roundToInt()
-                g.color = JBColor.BLUE
-                g.fillRect(x - radius, y - radius, radius * 2, radius * 2)
-                g.color = JBColor.foreground()
-                g.drawString((index + 1).toString(), x + radius, y - radius)
-            }
-            for ((position, players) in game.players.withIndex().groupBy { it.value.position }) {
-                val x = (position.x * scale).roundToInt()
-                val y = (position.y * scale).roundToInt()
-                val player = players.first()
-                // Player colors are RGB values supplied by the simulated program.
-                @Suppress("UseJBColor")
-                val playerColor = if (player.value.color == 0) JBColor.foreground() else Color(player.value.color)
-                g.color = playerColor
-                g.drawOval(x - radius, y - radius, radius * 2, radius * 2)
-                if (players.size == 1) {
-                    g.drawString(player.index.toString(), x + radius, y - radius)
-                } else {
-                    val label = toolsMessages.getMessage("scavenger.group", players.size)
-                    g.drawString(label, x - g.fontMetrics.stringWidth(label) / 2, y + radius + g.fontMetrics.ascent)
-                }
-            }
-        } finally {
-            g.dispose()
+  override fun paintComponent(graphics: Graphics) {
+    super.paintComponent(graphics)
+    val pad = JBUI.scale(10)
+    val scale =
+        minOf(
+            (width - 2 * pad).toDouble() / BOARD_WIDTH,
+            (height - 2 * pad).toDouble() / BOARD_HEIGHT,
+        )
+    if (scale <= 0) return
+    val wide = (BOARD_WIDTH * scale).roundToInt()
+    val high = (BOARD_HEIGHT * scale).roundToInt()
+    val g = graphics.create() as Graphics2D
+    try {
+      g.translate((width - wide) / 2, (height - high) / 2)
+      g.color = JBColor.background()
+      g.fillRect(0, 0, wide, high)
+      g.color = JBColor.border()
+      g.drawRect(0, 0, wide, high)
+      val game = round ?: return
+      g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
+      val radius = JBUI.scale(5)
+      game.locations.forEachIndexed { index, point ->
+        val x = (point.x * scale).roundToInt()
+        val y = (point.y * scale).roundToInt()
+        g.color = JBColor.BLUE
+        g.fillRect(x - radius, y - radius, radius * 2, radius * 2)
+        g.color = JBColor.foreground()
+        g.drawString((index + 1).toString(), x + radius, y - radius)
+      }
+      for ((position, players) in game.players.withIndex().groupBy { it.value.position }) {
+        val x = (position.x * scale).roundToInt()
+        val y = (position.y * scale).roundToInt()
+        val player = players.first()
+        // Player colors are RGB values supplied by the simulated program.
+        @Suppress("UseJBColor")
+        val playerColor =
+            if (player.value.color == 0) JBColor.foreground() else Color(player.value.color)
+        g.color = playerColor
+        g.drawOval(x - radius, y - radius, radius * 2, radius * 2)
+        if (players.size == 1) {
+          g.drawString(player.index.toString(), x + radius, y - radius)
+        } else {
+          val label = toolsMessages.getMessage("scavenger.group", players.size)
+          g.drawString(
+              label,
+              x - g.fontMetrics.stringWidth(label) / 2,
+              y + radius + g.fontMetrics.ascent,
+          )
         }
+      }
+    } finally {
+      g.dispose()
     }
+  }
 }

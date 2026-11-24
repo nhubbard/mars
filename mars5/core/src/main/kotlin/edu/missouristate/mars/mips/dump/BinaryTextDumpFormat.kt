@@ -33,15 +33,21 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 (MIT license, http://www.opensource.org/licenses/mit-license.html)
  */
 
-open class BinaryTextDumpFormat : AbstractDumpFormat("Binary Text", "BinaryText", "Written as '0' and '1' characters to text file", null) {
-    @Throws(IOException::class)
-    override fun write(file: File, snapshot: MemoryDumpSnapshot) {
-        PrintStream(FileOutputStream(file)).use { out ->
-            for (index in 0 until snapshot.size()) {
-                val word = snapshot.word(index)
-                out.println(Integer.toBinaryString(word).padStart(32, '0'))
-            }
-            checkOutput(out)
-        }
+open class BinaryTextDumpFormat :
+    AbstractDumpFormat(
+        "Binary Text",
+        "BinaryText",
+        "Written as '0' and '1' characters to text file",
+        null,
+    ) {
+  @Throws(IOException::class)
+  override fun write(file: File, snapshot: MemoryDumpSnapshot) {
+    PrintStream(FileOutputStream(file)).use { out ->
+      for (index in 0 until snapshot.size()) {
+        val word = snapshot.word(index)
+        out.println(Integer.toBinaryString(word).padStart(32, '0'))
+      }
+      checkOutput(out)
     }
+  }
 }

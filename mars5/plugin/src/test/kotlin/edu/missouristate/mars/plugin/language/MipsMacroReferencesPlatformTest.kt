@@ -17,8 +17,8 @@ import com.intellij.testFramework.junit5.TestApplication
 import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.analysis.SymbolKind
-import edu.missouristate.mars.plugin.language.psi.MipsIncludedDeclaration
 import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
+import edu.missouristate.mars.plugin.language.psi.MipsIncludedDeclaration
 import java.nio.file.Path
 import kotlin.io.path.writeText
 import kotlinx.coroutines.Dispatchers
@@ -32,74 +32,100 @@ import org.junit.jupiter.api.io.TempDir
 
 @TestApplication
 class MipsMacroReferencesPlatformTest {
-    private val project = codeInsightProjectFixture()
-    private val fixture by codeInsightFixture(project)
+  private val project = codeInsightProjectFixture()
+  private val fixture by codeInsightFixture(project)
 
-    @Test
-    fun `navigation selects the latest closed definition with the same case and argument count`() = timeoutRunBlocking {
+  @Test
+  fun `navigation selects the latest closed definition with the same case and argument count`() =
+      timeoutRunBlocking {
         val first = ".macro emit\nnop\n.end_macro\n"
         val second = $$".macro emit ($arg)\nnop\n.end_macro\n"
         val newer = ".macro emit ((%replacement))\nnop\n.end_macro\n"
         val definitions = first + second + newer
-        assertEquals(definitions.lastIndexOf("emit"), target("${definitions}entry: em<caret>it(,,+,,) # one token\n")?.offset)
-        assertEquals(definitions.lastIndexOf("emit"), target("${definitions}entry: em<caret>it: # colon is an argument\n")?.offset)
+        assertEquals(
+            definitions.lastIndexOf("emit"),
+            target("${definitions}entry: em<caret>it(,,+,,) # one token\n")?.offset,
+        )
+        assertEquals(
+            definitions.lastIndexOf("emit"),
+            target("${definitions}entry: em<caret>it: # colon is an argument\n")?.offset,
+        )
         assertEquals(first.indexOf("emit"), target("${definitions}em<caret>it()\n")?.offset)
-        assertEquals(first.length + second.indexOf("emit"), target($$"$$first$${second}em<caret>it $t0\n$$newer")?.offset)
+        assertEquals(
+            first.length + second.indexOf("emit"),
+            target($$"$$first$${second}em<caret>it $t0\n$$newer")?.offset,
+        )
         assertNull(target("${definitions}Em<caret>it(1)\n"))
         assertNull(target("${definitions}em<caret>it(1,2,3)\n"))
         assertNull(target("em<caret>it\n$first"))
         assertNull(target(".macro emit\nem<caret>it\n"))
-        assertEquals(first.length + second.indexOf("emit"), target("$first${second}em<caret>it(symbol)\n")?.offset)
+        assertEquals(
+            first.length + second.indexOf("emit"),
+            target("$first${second}em<caret>it(symbol)\n")?.offset,
+        )
         assertNull(target("$first$second.eqv ARGS 1,2\nem<caret>it(ARGS)\n"))
+      }
+
+  @Test
+  fun `navigation follows the expanded operation token after a generated label`(
+      @TempDir directory: Path,
+  ) = timeoutRunBlocking {
+    val definitions =
+        $$".macro emit (%value)\naddiu $t0, $zero, 7\n.end_macro\n.eqv SEP :\n.eqv CALL emit\n"
+    for (label in listOf("split", "addiu")) {
+      val resolved = target("${definitions}$label SEP em<caret>it(7)\n")
+      assertEquals(definitions.indexOf("emit"), resolved?.offset)
+      assertEquals(SymbolKind.MACRO, resolved?.kind)
     }
+    assertEquals(SymbolKind.CONSTANT, target("${definitions}split SEP CA<caret>LL(7)\n")?.kind)
+    assertNull(target("${definitions}sp<caret>lit SEP emit(7)\n"))
+    assertNull(target("${definitions}emit (em<caret>it)\n"))
+    assertNull(target("${definitions}em<caret>it @\n"))
 
-    @Test
-    fun `navigation follows the expanded operation token after a generated label`(@TempDir directory: Path) = timeoutRunBlocking {
-        val definitions = $$".macro emit (%value)\naddiu $t0, $zero, 7\n.end_macro\n.eqv SEP :\n.eqv CALL emit\n"
-        for (label in listOf("split", "addiu")) {
-            val resolved = target("${definitions}$label SEP em<caret>it(7)\n")
-            assertEquals(definitions.indexOf("emit"), resolved?.offset)
-            assertEquals(SymbolKind.MACRO, resolved?.kind)
+    val source =
+        directory.resolve("shifted.asm").also {
+          it.writeText("${definitions}split SEP emit(7)\naddiu SEP CALL(7)\n")
         }
-        assertEquals(SymbolKind.CONSTANT, target("${definitions}split SEP CA<caret>LL(7)\n")?.kind)
-        assertNull(target("${definitions}sp<caret>lit SEP emit(7)\n"))
-        assertNull(target("${definitions}emit (em<caret>it)\n"))
-        assertNull(target("${definitions}em<caret>it @\n"))
+    val program =
+        project
+            .get()
+            .service<MarsSessionService>()
+            .context
+            .assemble(listOf(source), null, extended = true, warnings = false)
+    assertEquals(listOf(0x24080007, 0x24080007), program.machineList!!.map { it.binaryStatement })
+  }
 
-        val source = directory.resolve("shifted.asm").also {
-            it.writeText("${definitions}split SEP emit(7)\naddiu SEP CALL(7)\n")
-        }
-        val program = project.get().service<MarsSessionService>().context.assemble(listOf(source), null, extended = true, warnings = false)
-        assertEquals(listOf(0x24080007, 0x24080007), program.machineList!!.map { it.binaryStatement })
+  @Test
+  fun `macro arity follows chained equivalences and substituted parentheses`(
+      @TempDir directory: Path,
+  ) = timeoutRunBlocking {
+    val one = $$".macro emit (%x)\naddiu $t0, $zero, %x\n.end_macro\n"
+    val two = $$".macro emit (%x,%y)\naddiu $t1, $zero, %y\n.end_macro\n"
+    val definitions = one + two
+    val aliases = ".eqv ARGS PAIR\n.eqv PAIR 1,2 # comment\n.eqv OPEN (\n.eqv CLOSE )\n"
+    val call = "em<caret>it(ARGS)\n"
+    val twoArguments = "$definitions$aliases$call"
+    val oneArgument = "$definitions${aliases}em<caret>it OPEN 1 CLOSE\n"
+    assertEquals(definitions.lastIndexOf("emit"), target(twoArguments)?.offset)
+    assertEquals(one.indexOf("emit"), target(oneArgument)?.offset)
+    assertEquals(one.indexOf("emit"), target("$definitions$call$aliases")?.offset)
+    assertNull(target("$definitions.eqv FIRST SECOND\n.eqv SECOND FIRST\nem<caret>it(FIRST)\n"))
+
+    val context = project.get().service<MarsSessionService>().context
+    for ((source, encoding) in listOf(twoArguments to 0x24090002, oneArgument to 0x24080001)) {
+      val entry =
+          directory.resolve("macro.asm").also { it.writeText(source.replace("<caret>", "")) }
+      val program = context.assemble(listOf(entry), null, extended = true, warnings = false)
+      assertEquals(listOf(encoding), program.machineList!!.map { it.binaryStatement })
     }
+  }
 
-    @Test
-    fun `macro arity follows chained equivalences and substituted parentheses`(@TempDir directory: Path) = timeoutRunBlocking {
-        val one = $$".macro emit (%x)\naddiu $t0, $zero, %x\n.end_macro\n"
-        val two = $$".macro emit (%x,%y)\naddiu $t1, $zero, %y\n.end_macro\n"
-        val definitions = one + two
-        val aliases = ".eqv ARGS PAIR\n.eqv PAIR 1,2 # comment\n.eqv OPEN (\n.eqv CLOSE )\n"
-        val call = "em<caret>it(ARGS)\n"
-        val twoArguments = "$definitions$aliases$call"
-        val oneArgument = "$definitions${aliases}em<caret>it OPEN 1 CLOSE\n"
-        assertEquals(definitions.lastIndexOf("emit"), target(twoArguments)?.offset)
-        assertEquals(one.indexOf("emit"), target(oneArgument)?.offset)
-        assertEquals(one.indexOf("emit"), target("$definitions$call$aliases")?.offset)
-        assertNull(target("$definitions.eqv FIRST SECOND\n.eqv SECOND FIRST\nem<caret>it(FIRST)\n"))
-
-        val context = project.get().service<MarsSessionService>().context
-        for ((source, encoding) in listOf(twoArguments to 0x24090002, oneArgument to 0x24080001)) {
-            val entry = directory.resolve("macro.asm").also { it.writeText(source.replace("<caret>", "")) }
-            val program = context.assemble(listOf(entry), null, extended = true, warnings = false)
-            assertEquals(listOf(encoding), program.machineList!!.map { it.binaryStatement })
-        }
-    }
-
-    @Test
-    fun `macro arguments expand using definitions from earlier nested includes`() = timeoutRunBlocking {
+  @Test
+  fun `macro arguments expand using definitions from earlier nested includes`() =
+      timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("parts/arguments.s", ".eqv ARGS 1,,2\n")
-            fixture.addFileToProject("parts/outer.s", ".include \"arguments.s\"\n")
+          fixture.addFileToProject("parts/arguments.s", ".eqv ARGS 1,,2\n")
+          fixture.addFileToProject("parts/outer.s", ".include \"arguments.s\"\n")
         }
         val one = ".macro emit (%x)\n.end_macro\n"
         val two = ".macro emit (%x,%y)\n.end_macro\n"
@@ -107,171 +133,222 @@ class MipsMacroReferencesPlatformTest {
         val source = "$include$one$two"
         assertEquals(source.lastIndexOf("emit"), target("${source}em<caret>it(ARGS)\n")?.offset)
         assertEquals(one.indexOf("emit"), target("$one${two}em<caret>it(ARGS)\n$include")?.offset)
+      }
+
+  @Test
+  fun `macro calls use expanded headers and keep their physical targets`() = timeoutRunBlocking {
+    val aliases = ".eqv NAME emit\n.eqv FORMALS (%ignored,%value)\n"
+    withContext(Dispatchers.EDT) {
+      fixture.addFileToProject("aliases.s", aliases)
     }
+    val header = ".macro NAME FORMALS\n.end_macro\n"
+    val include = ".include \"aliases.s\"\n"
+    val call = "em<caret>it(0,7)\n"
+    val hit = target("$include$header$call")
+    assertEquals(SymbolKind.MACRO, hit?.kind)
+    assertEquals(include.length + header.indexOf("NAME"), hit?.offset)
+    assertNull(target("$include${header}em<caret>it(7)\n"))
+    assertNull(target("$header$include$call"))
+    assertNull(target(".eqv\n$header$call"))
+    assertNull(target(".eqv NAME emit\n.eqv FORMALS LOOP\n.eqv LOOP FORMALS\n$header$call"))
+    assertNull(target(".eqv NAME nop\n.eqv FORMALS (%a,%b)\n$header$call"))
+  }
 
-    @Test
-    fun `macro calls use expanded headers and keep their physical targets`() = timeoutRunBlocking {
-        val aliases = ".eqv NAME emit\n.eqv FORMALS (%ignored,%value)\n"
-        withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("aliases.s", aliases)
-        }
-        val header = ".macro NAME FORMALS\n.end_macro\n"
-        val include = ".include \"aliases.s\"\n"
-        val call = "em<caret>it(0,7)\n"
-        val hit = target("$include$header$call")
-        assertEquals(SymbolKind.MACRO, hit?.kind)
-        assertEquals(include.length + header.indexOf("NAME"), hit?.offset)
-        assertNull(target("$include${header}em<caret>it(7)\n"))
-        assertNull(target("$header$include$call"))
-        assertNull(target(".eqv\n$header$call"))
-        assertNull(target(".eqv NAME emit\n.eqv FORMALS LOOP\n.eqv LOOP FORMALS\n$header$call"))
-        assertNull(target(".eqv NAME nop\n.eqv FORMALS (%a,%b)\n$header$call"))
+  @Test
+  fun `macro boundaries follow nested include order across physical files`() = timeoutRunBlocking {
+    withContext(Dispatchers.EDT) {
+      fixture.addFileToProject("parts/open.s", ".macro emit (%value)\nnop\n")
+      fixture.addFileToProject("parts/close.s", ".end_macro\n")
+      fixture.addFileToProject("parts/wrapper.s", ".include \"open.s\"\n.include \"close.s\"\n")
+      fixture.addFileToProject("parts/cycle.s", ".include \"cycle.s\"\n")
     }
+    val call = ".include \"parts/wrapper.s\"\nem<caret>it(1)\n"
+    val expected = Target("open.s", 7, SymbolKind.MACRO)
+    assertEquals(expected, target(call))
+    assertEquals(expected, target(".include \"missing.s\"\n.include \"parts/cycle.s\"\n$call"))
+    assertNull(target(".include \"parts/open.s\"\nem<caret>it(1)\n.include \"parts/close.s\"\n"))
+    assertEquals(SymbolKind.CONSTANT, target(".eqv emit nop\nem<caret>it\n")?.kind)
+  }
 
-    @Test
-    fun `macro boundaries follow nested include order across physical files`() = timeoutRunBlocking {
-        withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("parts/open.s", ".macro emit (%value)\nnop\n")
-            fixture.addFileToProject("parts/close.s", ".end_macro\n")
-            fixture.addFileToProject("parts/wrapper.s", ".include \"open.s\"\n.include \"close.s\"\n")
-            fixture.addFileToProject("parts/cycle.s", ".include \"cycle.s\"\n")
-        }
-        val call = ".include \"parts/wrapper.s\"\nem<caret>it(1)\n"
-        val expected = Target("open.s", 7, SymbolKind.MACRO)
-        assertEquals(expected, target(call))
-        assertEquals(expected, target(".include \"missing.s\"\n.include \"parts/cycle.s\"\n$call"))
-        assertNull(target(".include \"parts/open.s\"\nem<caret>it(1)\n.include \"parts/close.s\"\n"))
-        assertEquals(SymbolKind.CONSTANT, target(".eqv emit nop\nem<caret>it\n")?.kind)
+  @Test
+  fun `aliased macro boundaries follow include order and navigate to their written name`(
+      @TempDir directory: Path,
+  ) = timeoutRunBlocking {
+    val definitions = ".eqv START OPEN\n.eqv OPEN .MaCrO\n.eqv STOP .EnD_MaCrO\n"
+    val header = "entry: START emit (%value)\n"
+    val body = $$"addiu $t0, $zero, %value\n"
+    val footer = "STOP # done\n"
+    val include = ".include \"aliases.s\"\n.include \"open.s\"\n"
+    val close = ".include \"close.s\"\n"
+    val call = "em<caret>it(7)\n"
+    withContext(Dispatchers.EDT) {
+      fixture.addFileToProject("aliases.s", definitions)
+      fixture.addFileToProject("open.s", header + body)
+      fixture.addFileToProject("close.s", footer)
     }
+    assertEquals(Target("open.s", header.indexOf("emit"), null), target("$include$close$call"))
+    assertNull(target("$include$call$close"))
+    assertEquals(
+        SymbolKind.CONSTANT,
+        target("${definitions}entry: ST<caret>ART emit (%value)\n")?.kind,
+    )
+    assertEquals(SymbolKind.CONSTANT, target("$include ST<caret>OP\n")?.kind)
 
-    @Test
-    fun `aliased macro boundaries follow include order and navigate to their written name`(@TempDir directory: Path) = timeoutRunBlocking {
-        val definitions = ".eqv START OPEN\n.eqv OPEN .MaCrO\n.eqv STOP .EnD_MaCrO\n"
-        val header = "entry: START emit (%value)\n"
-        val body = $$"addiu $t0, $zero, %value\n"
-        val footer = "STOP # done\n"
-        val include = ".include \"aliases.s\"\n.include \"open.s\"\n"
-        val close = ".include \"close.s\"\n"
-        val call = "em<caret>it(7)\n"
-        withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("aliases.s", definitions)
-            fixture.addFileToProject("open.s", header + body)
-            fixture.addFileToProject("close.s", footer)
-        }
-        assertEquals(Target("open.s", header.indexOf("emit"), null), target("$include$close$call"))
-        assertNull(target("$include$call$close"))
-        assertEquals(SymbolKind.CONSTANT, target("${definitions}entry: ST<caret>ART emit (%value)\n")?.kind)
-        assertEquals(SymbolKind.CONSTANT, target("$include ST<caret>OP\n")?.kind)
-
-        for ((name, text) in mapOf("aliases.s" to definitions, "open.s" to header + body, "close.s" to footer)) {
-            directory.resolve(name).writeText(text)
-        }
-        val entry = directory.resolve("entry.asm").also { it.writeText("$include$close${call.replace("<caret>", "")}") }
-        val program = project.get().service<MarsSessionService>().context.assemble(listOf(entry), null, extended = true, warnings = false)
-        assertEquals(listOf(0x24080007), program.machineList!!.map { it.binaryStatement })
+    for ((name, text) in
+        mapOf("aliases.s" to definitions, "open.s" to header + body, "close.s" to footer)) {
+      directory.resolve(name).writeText(text)
     }
+    val entry =
+        directory.resolve("entry.asm").also {
+          it.writeText("$include$close${call.replace("<caret>", "")}")
+        }
+    val program =
+        project
+            .get()
+            .service<MarsSessionService>()
+            .context
+            .assemble(listOf(entry), null, extended = true, warnings = false)
+    assertEquals(listOf(0x24080007), program.machineList!!.map { it.binaryStatement })
+  }
 
-    @Test
-    fun `expanded macro boundaries honor labels and reject malformed substitutions`() = timeoutRunBlocking {
+  @Test
+  fun `expanded macro boundaries honor labels and reject malformed substitutions`() =
+      timeoutRunBlocking {
         val call = "em<caret>it(1)\n"
         val aliases = ".eqv START entry: .macro emit (%value)\n.eqv STOP .end_macro\n"
         val opening = aliases + "START\n"
-        assertEquals(Target("macro-call.asm", aliases.length, null), target("${opening}STOP\n$call"))
+        assertEquals(
+            Target("macro-call.asm", aliases.length, null),
+            target("${opening}STOP\n$call"),
+        )
         for (badClose in listOf("local: STOP", "STOP extra")) {
-            assertNull(target("$opening$badClose\n$call"), badClose)
+          assertNull(target("$opening$badClose\n$call"), badClose)
         }
-        for (replacement in listOf("nop", "local:", ".macro", ".macro nop (%value)", ".macro emit (bare)", "LOOP")) {
-            val badOpening = ".eqv LOOP START\n.eqv START $replacement\n"
-            assertNull(target("$badOpening${aliases.substringAfter('\n')}START\nSTOP\n$call"), replacement)
+        for (replacement in
+            listOf(
+                "nop",
+                "local:",
+                ".macro",
+                ".macro nop (%value)",
+                ".macro emit (bare)",
+                "LOOP",
+            )) {
+          val badOpening = ".eqv LOOP START\n.eqv START $replacement\n"
+          assertNull(
+              target("$badOpening${aliases.substringAfter('\n')}START\nSTOP\n$call"),
+              replacement,
+          )
         }
-    }
+      }
 
-    @Test
-    fun `generated equivalences bind both macro headers and call arity`() = timeoutRunBlocking {
-        val declarations = ".eqv DEFINE .eqv\nDEFINE OPEN .macro\nDEFINE ARGS 1,2\n"
-        val first = ".macro emit (%x)\n.end_macro\n"
-        val second = "OPEN emit (%x,%y)\n.end_macro\n"
-        val source = "$declarations$first$second"
-        assertEquals(Target("macro-call.asm", declarations.length + first.length + second.indexOf("emit"), null),
-            target("${source}em<caret>it(ARGS)\n"))
-        assertEquals(SymbolKind.MACRO, target("${source}em<caret>it(1)\n")?.kind)
-    }
+  @Test
+  fun `generated equivalences bind both macro headers and call arity`() = timeoutRunBlocking {
+    val declarations = ".eqv DEFINE .eqv\nDEFINE OPEN .macro\nDEFINE ARGS 1,2\n"
+    val first = ".macro emit (%x)\n.end_macro\n"
+    val second = "OPEN emit (%x,%y)\n.end_macro\n"
+    val source = "$declarations$first$second"
+    assertEquals(
+        Target("macro-call.asm", declarations.length + first.length + second.indexOf("emit"), null),
+        target("${source}em<caret>it(ARGS)\n"),
+    )
+    assertEquals(SymbolKind.MACRO, target("${source}em<caret>it(1)\n")?.kind)
+  }
 
-    @Test
-    fun `macro boundary facts stay tolerant around malformed headers and closing lines`() = timeoutRunBlocking {
-        val malformed = ".end_macro\n.asciiz \"data\"\n.macro nop\n.end_macro\n.macro invalid (ordinary)\n.end_macro\n"
+  @Test
+  fun `macro boundary facts stay tolerant around malformed headers and closing lines`() =
+      timeoutRunBlocking {
+        val malformed =
+            ".end_macro\n.asciiz \"data\"\n.macro nop\n.end_macro\n.macro invalid (ordinary)\n.end_macro\n"
         assertNull(target("$malformed.macro emit\n.end_macro extra\nem<caret>it\n"))
         assertNull(target(".macro emit (%value, 7)\n.end_macro\nem<caret>it(1)\n"))
         val nested = ".macro emit\n.macro other\n.end_macro\n"
         assertEquals(nested.indexOf("emit"), target("${nested}em<caret>it\n")?.offset)
-    }
+      }
 
-    @Test
-    fun `a written macro opener can follow a terminator supplied by an include`(@TempDir directory: Path) = timeoutRunBlocking {
-        val close = ".end_macro\n"
-        val prefix = ".macro first\nnop\n.include \"close.s\"\n"
-        val second = $$"label: .macro NAME (%value)\naddiu $t0, $zero, %value\n.end_macro\n"
-        val source = ".eqv NAME emit\n$prefix$second"
-        val call = "em<caret>it(7)\n"
-        withContext(Dispatchers.EDT) { fixture.addFileToProject("close.s", close) }
-        assertEquals(Target("macro-call.asm", source.lastIndexOf("NAME"), SymbolKind.MACRO), target(source + call))
-        directory.resolve("close.s").writeText(close)
-        val entry = directory.resolve("entry.asm").also { it.writeText(source + call.replace("<caret>", "")) }
-        val program = project.get().service<MarsSessionService>().context.assemble(listOf(entry), null, extended = true, warnings = false)
-        assertEquals(listOf(0x24080007), program.machineList!!.map { it.binaryStatement })
-    }
+  @Test
+  fun `a written macro opener can follow a terminator supplied by an include`(
+      @TempDir directory: Path,
+  ) = timeoutRunBlocking {
+    val close = ".end_macro\n"
+    val prefix = ".macro first\nnop\n.include \"close.s\"\n"
+    val second = $$"label: .macro NAME (%value)\naddiu $t0, $zero, %value\n.end_macro\n"
+    val source = ".eqv NAME emit\n$prefix$second"
+    val call = "em<caret>it(7)\n"
+    withContext(Dispatchers.EDT) { fixture.addFileToProject("close.s", close) }
+    assertEquals(
+        Target("macro-call.asm", source.lastIndexOf("NAME"), SymbolKind.MACRO),
+        target(source + call),
+    )
+    directory.resolve("close.s").writeText(close)
+    val entry =
+        directory.resolve("entry.asm").also { it.writeText(source + call.replace("<caret>", "")) }
+    val program =
+        project
+            .get()
+            .service<MarsSessionService>()
+            .context
+            .assemble(listOf(entry), null, extended = true, warnings = false)
+    assertEquals(listOf(0x24080007), program.machineList!!.map { it.binaryStatement })
+  }
 
-    @Test
-    // Kotlin exposes the reported Java setters as read-only properties.
-    @Suppress("UsePropertyAccessSyntax")
-    fun `macro binding follows unsaved edits to the included header`() = timeoutRunBlocking {
-        val current = project.get()
-        val included = withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("macros.s", ".macro emit (%x)\n.end_macro\n").virtualFile
-        }
-        assertEquals("macros.s", target(".include \"macros.s\"\nem<caret>it(1)\n")?.file)
+  @Test
+  // Kotlin exposes the reported Java setters as read-only properties.
+  @Suppress("UsePropertyAccessSyntax")
+  fun `macro binding follows unsaved edits to the included header`() = timeoutRunBlocking {
+    val current = project.get()
+    val included =
         withContext(Dispatchers.EDT) {
-            val document = FileDocumentManager.getInstance().getDocument(included)!!
-            WriteCommandAction.runWriteCommandAction(current) {
-                document.setText(".macro emit (%x,%y)\n.end_macro\n")
-                PsiDocumentManager.getInstance(current).commitAllDocuments()
-            }
+          fixture.addFileToProject("macros.s", ".macro emit (%x)\n.end_macro\n").virtualFile
         }
-        readAction { assertNull(fixture.file.findReferenceAt(fixture.editor.caretModel.offset)?.resolve()) }
+    assertEquals("macros.s", target(".include \"macros.s\"\nem<caret>it(1)\n")?.file)
+    withContext(Dispatchers.EDT) {
+      val document = FileDocumentManager.getInstance().getDocument(included)!!
+      WriteCommandAction.runWriteCommandAction(current) {
+        document.setText(".macro emit (%x,%y)\n.end_macro\n")
+        PsiDocumentManager.getInstance(current).commitAllDocuments()
+      }
     }
-
-    @Test
-    fun `macro lookup yields during indexing`() = timeoutRunBlocking {
-        val current = project.get()
-        withContext(Dispatchers.EDT) {
-            fixture.configureByText("macro-call.asm", ".macro emit\n.end_macro\nem<caret>it\n")
-        }
-        IndexingTestUtil.suspendUntilIndexesAreReady(current)
-        withContext(Dispatchers.EDT) {
-            val file = fixture.file as MipsFile
-            val use = file.findElementAt(fixture.editor.caretModel.offset)!!
-            val analysis = current.service<MarsAnalysisService>()
-            DumbModeTestUtils.runInDumbModeSynchronously(current) {
-                assertTrue(analysis.macroTargets(file, use).isEmpty())
-                assertTrue(analysis.assembledMacroDefinitionsAt(file, use, hasLiveDefinition = false).isEmpty())
-            }
-            assertEquals(7, analysis.macroTargets(file, use).single().textOffset)
-        }
+    readAction {
+      assertNull(fixture.file.findReferenceAt(fixture.editor.caretModel.offset)?.resolve())
     }
+  }
 
-    @Test
-    fun `a candidate that expands to a label alone has no macro operation`() = timeoutRunBlocking {
-        assertEquals(SymbolKind.CONSTANT, target(".eqv PREFIX row:\nPRE<caret>FIX\n")?.kind)
-        readAction {
-            val file = fixture.file as MipsFile
-            val use = file.findElementAt(fixture.editor.caretModel.offset)!!
-            assertTrue(project.get().service<MarsAnalysisService>().macroTargets(file, use).isEmpty())
-        }
+  @Test
+  fun `macro lookup yields during indexing`() = timeoutRunBlocking {
+    val current = project.get()
+    withContext(Dispatchers.EDT) {
+      fixture.configureByText("macro-call.asm", ".macro emit\n.end_macro\nem<caret>it\n")
     }
+    IndexingTestUtil.suspendUntilIndexesAreReady(current)
+    withContext(Dispatchers.EDT) {
+      val file = fixture.file as MipsFile
+      val use = file.findElementAt(fixture.editor.caretModel.offset)!!
+      val analysis = current.service<MarsAnalysisService>()
+      DumbModeTestUtils.runInDumbModeSynchronously(current) {
+        assertTrue(analysis.macroTargets(file, use).isEmpty())
+        assertTrue(
+            analysis.assembledMacroDefinitionsAt(file, use, hasLiveDefinition = false).isEmpty(),
+        )
+      }
+      assertEquals(7, analysis.macroTargets(file, use).single().textOffset)
+    }
+  }
 
-    @Test
-    fun `navigation reports each realized nested macro definition including empty expansions`() = timeoutRunBlocking {
-        val source = """
+  @Test
+  fun `a candidate that expands to a label alone has no macro operation`() = timeoutRunBlocking {
+    assertEquals(SymbolKind.CONSTANT, target(".eqv PREFIX row:\nPRE<caret>FIX\n")?.kind)
+    readAction {
+      val file = fixture.file as MipsFile
+      val use = file.findElementAt(fixture.editor.caretModel.offset)!!
+      assertTrue(project.get().service<MarsAnalysisService>().macroTargets(file, use).isEmpty())
+    }
+  }
+
+  @Test
+  fun `navigation reports each realized nested macro definition including empty expansions`() =
+      timeoutRunBlocking {
+        val source =
+            """
             .eqv NEW .macro inner
             .macro external
             .end_macro
@@ -291,66 +368,100 @@ class MipsMacroReferencesPlatformTest {
             external
             .include "hidden.inc~"
             unavailable
-        """.trimIndent()
+            """
+                .trimIndent()
         val current = project.get()
         val plainText = "# ordinary text file\n\t.macro external\n.end_macro\n"
-        val plain = withContext(Dispatchers.EDT) {
-            val include = fixture.addFileToProject("extra.txt", plainText)
-            fixture.tempDirFixture.createFile("hidden.inc~", ".macro unavailable\n.end_macro\n")
-            val file = fixture.addFileToProject("expanded-calls.asm", source)
-            fixture.configureFromExistingVirtualFile(file.virtualFile)
-            include.virtualFile
-        }
+        val plain =
+            withContext(Dispatchers.EDT) {
+              val include = fixture.addFileToProject("extra.txt", plainText)
+              fixture.tempDirFixture.createFile("hidden.inc~", ".macro unavailable\n.end_macro\n")
+              val file = fixture.addFileToProject("expanded-calls.asm", source)
+              fixture.configureFromExistingVirtualFile(file.virtualFile)
+              include.virtualFile
+            }
         IndexingTestUtil.suspendUntilIndexesAreReady(current)
         val useOffset = source.indexOf("body: inner") + "body: ".length
-        val targets = setOf(source.lastIndexOf(".macro inner") + ".macro ".length, source.indexOf("\nNEW\n") + 1)
+        val targets =
+            setOf(
+                source.lastIndexOf(".macro inner") + ".macro ".length,
+                source.indexOf("\nNEW\n") + 1,
+            )
         withContext(Dispatchers.EDT) {
-            val file = fixture.file
-            val reference = file.findReferenceAt(useOffset + 1) as PsiPolyVariantReference
-            assertTrue(reference.multiResolve(false).isEmpty())
-            fixture.doHighlighting()
-            assertEquals(targets, reference.multiResolve(false).map { it.element!!.textOffset }.toSet())
-            val external = file.findReferenceAt(source.indexOf("    external") + "    ".length) as PsiPolyVariantReference
-            val declaration = external.resolve() as MipsIncludedDeclaration
-            assertEquals(plain, declaration.containingFile.virtualFile)
-            assertEquals("external", declaration.presentation.presentableText)
-            assertEquals(plain.name, declaration.presentation.locationString)
-            assertEquals(plainText.indexOf("external"), declaration.textRange.startOffset)
-            assertEquals("external", declaration.textRange.substring(plainText))
-            val topLevelOffset = source.lastIndexOf("external")
-            assertEquals(declaration, file.findReferenceAt(topLevelOffset)?.resolve())
-            assertEquals(declaration, GotoDeclarationAction.findTargetElement(current, fixture.editor, topLevelOffset))
-            val hidden = file.findReferenceAt(source.indexOf("unavailable"))!!.resolve() as MipsDeclaration
-            assertEquals("unavailable", hidden.name)
-            assertEquals("hidden.inc~", hidden.containingFile.name)
-            assertFalse(hidden.containingFile.virtualFile.isWritable)
-            val instruction = file.findElementAt(source.indexOf("nop"))!!
-            assertTrue(current.service<MarsAnalysisService>().macroTargets(file as MipsFile, instruction).isEmpty())
-            WriteCommandAction.runWriteCommandAction(current) {
-                fixture.editor.document.deleteString(source.lastIndexOf("\nouter\n") + 1, source.lastIndexOf("\nouter\n") + 7)
-            }
-            assertTrue(reference.multiResolve(false).isEmpty())
-            PsiDocumentManager.getInstance(current).commitDocument(fixture.editor.document)
-            assertTrue(reference.multiResolve(false).isEmpty())
-            fixture.doHighlighting()
-            fixture.editor.caretModel.moveToOffset(useOffset + 1)
+          val file = fixture.file
+          val reference = file.findReferenceAt(useOffset + 1) as PsiPolyVariantReference
+          assertTrue(reference.multiResolve(false).isEmpty())
+          fixture.doHighlighting()
+          assertEquals(
+              targets,
+              reference.multiResolve(false).map { it.element!!.textOffset }.toSet(),
+          )
+          val external =
+              file.findReferenceAt(source.indexOf("    external") + "    ".length)
+                  as PsiPolyVariantReference
+          val declaration = external.resolve() as MipsIncludedDeclaration
+          assertEquals(plain, declaration.containingFile.virtualFile)
+          assertEquals("external", declaration.presentation.presentableText)
+          assertEquals(plain.name, declaration.presentation.locationString)
+          assertEquals(plainText.indexOf("external"), declaration.textRange.startOffset)
+          assertEquals("external", declaration.textRange.substring(plainText))
+          val topLevelOffset = source.lastIndexOf("external")
+          assertEquals(declaration, file.findReferenceAt(topLevelOffset)?.resolve())
+          assertEquals(
+              declaration,
+              GotoDeclarationAction.findTargetElement(current, fixture.editor, topLevelOffset),
+          )
+          val hidden =
+              file.findReferenceAt(source.indexOf("unavailable"))!!.resolve() as MipsDeclaration
+          assertEquals("unavailable", hidden.name)
+          assertEquals("hidden.inc~", hidden.containingFile.name)
+          assertFalse(hidden.containingFile.virtualFile.isWritable)
+          val instruction = file.findElementAt(source.indexOf("nop"))!!
+          assertTrue(
+              current
+                  .service<MarsAnalysisService>()
+                  .macroTargets(file as MipsFile, instruction)
+                  .isEmpty(),
+          )
+          WriteCommandAction.runWriteCommandAction(current) {
+            fixture.editor.document.deleteString(
+                source.lastIndexOf("\nouter\n") + 1,
+                source.lastIndexOf("\nouter\n") + 7,
+            )
+          }
+          assertTrue(reference.multiResolve(false).isEmpty())
+          PsiDocumentManager.getInstance(current).commitDocument(fixture.editor.document)
+          assertTrue(reference.multiResolve(false).isEmpty())
+          fixture.doHighlighting()
+          fixture.editor.caretModel.moveToOffset(useOffset + 1)
         }
         readAction {
-            assertEquals(targets.min(),
-                GotoDeclarationAction.findTargetElement(current, fixture.editor, useOffset + 1)?.textOffset)
+          assertEquals(
+              targets.min(),
+              GotoDeclarationAction.findTargetElement(current, fixture.editor, useOffset + 1)
+                  ?.textOffset,
+          )
         }
-    }
+      }
 
-    private data class Target(val file: String, val offset: Int, val kind: SymbolKind?)
+  private data class Target(val file: String, val offset: Int, val kind: SymbolKind?)
 
-    private suspend fun target(source: String): Target? {
-        withContext(Dispatchers.EDT) { fixture.configureByText("macro-call.asm", source) }
-        val current = project.get()
-        IndexingTestUtil.suspendUntilIndexesAreReady(current)
-        return readAction {
-            val declaration = GotoDeclarationAction.findTargetElement(current, fixture.editor, fixture.editor.caretModel.offset)
-                ?: return@readAction null
-            Target(declaration.containingFile.name, declaration.textOffset, (declaration as? MipsDeclaration)?.kind)
-        }
+  private suspend fun target(source: String): Target? {
+    withContext(Dispatchers.EDT) { fixture.configureByText("macro-call.asm", source) }
+    val current = project.get()
+    IndexingTestUtil.suspendUntilIndexesAreReady(current)
+    return readAction {
+      val declaration =
+          GotoDeclarationAction.findTargetElement(
+              current,
+              fixture.editor,
+              fixture.editor.caretModel.offset,
+          ) ?: return@readAction null
+      Target(
+          declaration.containingFile.name,
+          declaration.textOffset,
+          (declaration as? MipsDeclaration)?.kind,
+      )
     }
+  }
 }

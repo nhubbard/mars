@@ -34,7 +34,8 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 /** A token and its position before and after include, macro, and equivalence expansion. */
-open class Token internal constructor(
+open class Token
+internal constructor(
     type: TokenTypes,
     open val value: String,
     open val sourceMIPSprogram: MIPSprogram?,
@@ -42,96 +43,110 @@ open class Token internal constructor(
     open val startPos: Int,
     sourceLength: Int,
 ) {
-    constructor(type: TokenTypes, value: String, program: MIPSprogram?, line: Int, start: Int) :
-        this(type, value, program, line, start, value.length)
+  constructor(
+      type: TokenTypes,
+      value: String,
+      program: MIPSprogram?,
+      line: Int,
+      start: Int,
+  ) : this(type, value, program, line, start, value.length)
 
-    private var frozen = false
-    open var type: TokenTypes = type
-        set(value) {
-            check(!frozen)
-            field = value
-        }
-
-    internal fun freeze() {
-        frozen = true
+  private var frozen = false
+  open var type: TokenTypes = type
+    set(value) {
+      check(!frozen)
+      field = value
     }
 
-    private var originalColumn = startPos
-    private var originalMipsProgram = sourceMIPSprogram
-    private var originalLine = sourceLine
-    private var diagnosticToken: Token? = null
-    private var equivalenceSource: SourceToken? = null
-    private var expansionSource: Token? = null
-    private var argumentOrigin: Token? = null
+  internal fun freeze() {
+    frozen = true
+  }
 
-    open val endPos = startPos + sourceLength
-    open val originalStartPos: Int get() = originalColumn
-    open val originalProgram: MIPSprogram? get() = originalMipsProgram
-    open val originalSourceLine: Int get() = originalLine
+  private var originalColumn = startPos
+  private var originalMipsProgram = sourceMIPSprogram
+  private var originalLine = sourceLine
+  private var diagnosticToken: Token? = null
+  private var equivalenceSource: SourceToken? = null
+  private var expansionSource: Token? = null
+  private var argumentOrigin: Token? = null
 
-    open fun setOriginal(program: MIPSprogram?, line: Int) {
-        check(!frozen)
-        originalMipsProgram = program
-        originalLine = line
+  open val endPos = startPos + sourceLength
+  open val originalStartPos: Int
+    get() = originalColumn
+
+  open val originalProgram: MIPSprogram?
+    get() = originalMipsProgram
+
+  open val originalSourceLine: Int
+    get() = originalLine
+
+  open fun setOriginal(program: MIPSprogram?, line: Int) {
+    check(!frozen)
+    originalMipsProgram = program
+    originalLine = line
+  }
+
+  fun withType(type: TokenTypes): Token =
+      Token(type, value, sourceMIPSprogram, sourceLine, startPos, endPos - startPos).also { copy ->
+        copy.setOriginal(originalMipsProgram, originalLine)
+        copy.originalColumn = originalColumn
+        copy.diagnosticToken = diagnosticToken
+        copy.expansionSource = expansionSource
+        copy.argumentOrigin = argumentOrigin
+        copy.equivalenceSource = equivalenceSource
+      }
+
+  open fun hasClosingDoubleQuote(): Boolean = value.length > 1 && value.last() == '"'
+
+  override fun toString(): String = value
+
+  fun setOriginalStartPos(column: Int) {
+    check(!frozen)
+    originalColumn = column
+  }
+
+  /** The written token used to report errors in this expansion. */
+  open val diagnosticOrigin: Token
+    get() = diagnosticToken ?: this
+
+  fun diagnosticSite(): SourceToken = diagnosticOrigin.physicalSite()
+
+  private fun physicalSite(): SourceToken =
+      SourceToken(
+          Location(Path.of(originalProgram!!.filename), originalSourceLine),
+          originalStartPos,
+      )
+
+  fun setDiagnosticOrigin(origin: Token?) {
+    check(!frozen)
+    if (origin != null) diagnosticToken = origin.diagnosticOrigin
+  }
+
+  fun writtenOrigin(): Token = expansionSource ?: this
+
+  fun setExpansionSource(source: Token?) {
+    check(!frozen)
+    expansionSource = source
+  }
+
+  fun setArgumentOrigin(argument: Token?) {
+    check(!frozen)
+    argumentOrigin = argument
+  }
+
+  fun argumentSites(): List<SourceToken> {
+    var argument = argumentOrigin ?: return emptyList()
+    val sites = ArrayList<SourceToken>()
+    while (true) {
+      sites.add(argument.writtenOrigin().physicalSite())
+      argument = argument.argumentOrigin ?: return sites
     }
+  }
 
-    fun withType(type: TokenTypes): Token =
-        Token(type, value, sourceMIPSprogram, sourceLine, startPos, endPos - startPos).also { copy ->
-            copy.setOriginal(originalMipsProgram, originalLine)
-            copy.originalColumn = originalColumn
-            copy.diagnosticToken = diagnosticToken
-            copy.expansionSource = expansionSource
-            copy.argumentOrigin = argumentOrigin
-            copy.equivalenceSource = equivalenceSource
-        }
+  fun equivalenceSource(): SourceToken? = equivalenceSource
 
-    open fun hasClosingDoubleQuote(): Boolean = value.length > 1 && value.last() == '"'
-
-    override fun toString(): String = value
-
-    fun setOriginalStartPos(column: Int) {
-        check(!frozen)
-        originalColumn = column
-    }
-
-    /** The written token used to report errors in this expansion. */
-    open val diagnosticOrigin: Token get() = diagnosticToken ?: this
-
-    fun diagnosticSite(): SourceToken = diagnosticOrigin.physicalSite()
-
-    private fun physicalSite(): SourceToken =
-        SourceToken(Location(Path.of(originalProgram!!.filename), originalSourceLine), originalStartPos)
-
-    fun setDiagnosticOrigin(origin: Token?) {
-        check(!frozen)
-        if (origin != null) diagnosticToken = origin.diagnosticOrigin
-    }
-
-    fun writtenOrigin(): Token = expansionSource ?: this
-
-    fun setExpansionSource(source: Token?) {
-        check(!frozen)
-        expansionSource = source
-    }
-
-    fun setArgumentOrigin(argument: Token?) {
-        check(!frozen)
-        argumentOrigin = argument
-    }
-
-    fun argumentSites(): List<SourceToken> {
-        var argument = argumentOrigin ?: return emptyList()
-        val sites = ArrayList<SourceToken>()
-        while (true) {
-            sites.add(argument.writtenOrigin().physicalSite())
-            argument = argument.argumentOrigin ?: return sites
-        }
-    }
-
-    fun equivalenceSource(): SourceToken? = equivalenceSource
-
-    fun setEquivalenceSource(source: SourceToken?) {
-        check(!frozen)
-        equivalenceSource = source
-    }
+  fun setEquivalenceSource(source: SourceToken?) {
+    check(!frozen)
+    equivalenceSource = source
+  }
 }

@@ -4,19 +4,23 @@ import edu.missouristate.mars.ProcessingException
 import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
 
-open class InstrMovtD1 : BasicInstruction(
-    $$"movt.d $f2,$f4",
-    $$"Move floating point double precision : If condition flag 0 true, set double precision $f2"
-        + $$" to double precision value in $f4",
-    BasicInstructionFormat.R_FORMAT,
-    "010001 10001 000 01 sssss fffff 010001",
-    { statement, context ->
-        val operands = statement.operands
-        if (!context.coprocessor1.hasWideRegisters && (operands[0] % 2 == 1 || operands[1] % 2 == 1)) {
+open class InstrMovtD1 :
+    BasicInstruction(
+        $$"movt.d $f2,$f4",
+        $$"Move floating point double precision : If condition flag 0 true, set double precision $f2" +
+            $$" to double precision value in $f4",
+        BasicInstructionFormat.R_FORMAT,
+        "010001 10001 000 01 sssss fffff 010001",
+        { statement, context ->
+          val operands = statement.operands
+          if (
+              !context.coprocessor1.hasWideRegisters &&
+                  (operands[0] % 2 == 1 || operands[1] % 2 == 1)
+          ) {
             throw ProcessingException(context, statement, "both registers must be even-numbered")
-        }
-        if (context.coprocessor1.getConditionFlag(0) == 1) {
+          }
+          if (context.coprocessor1.getConditionFlag(0) == 1) {
             context.copyDoubleword(operands[0], operands[1])
-        }
-    },
-)
+          }
+        },
+    )

@@ -28,99 +28,143 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @Service(Service.Level.PROJECT)
-internal class MarsMemoryExportService(private val project: Project, private val scope: CoroutineScope) {
-    private val messages = memoryExportMessages
+internal class MarsMemoryExportService(
+    private val project: Project,
+    private val scope: CoroutineScope,
+) {
+  private val messages = memoryExportMessages
 
-    fun exportInBackground(entry: Path, options: MemoryExportOptions, output: Path) =
-        exportInBackground(output) { export(entry, options, output) }
+  fun exportInBackground(entry: Path, options: MemoryExportOptions, output: Path) =
+      exportInBackground(output) { export(entry, options, output) }
 
-    fun exportCapturedInBackground(
-        options: MemoryExportOptions, output: Path, capture: suspend () -> MemoryExportCapture,
-    ) = exportInBackground(output) { writeCapture(options, output, capture()) }
+  fun exportCapturedInBackground(
+      options: MemoryExportOptions,
+      output: Path,
+      capture: suspend () -> MemoryExportCapture,
+  ) = exportInBackground(output) { writeCapture(options, output, capture()) }
 
-    private fun exportInBackground(output: Path, export: suspend () -> String?) = scope.launch(Dispatchers.Default) {
-        val error = withBackgroundProgress(project, messages.getMessage("export.progress")) { export() }
-        val group = NotificationGroupManager.getInstance().getNotificationGroup("MARS Memory Export")
+  private fun exportInBackground(output: Path, export: suspend () -> String?) =
+      scope.launch(Dispatchers.Default) {
+        val error =
+            withBackgroundProgress(project, messages.getMessage("export.progress")) { export() }
+        val group =
+            NotificationGroupManager.getInstance().getNotificationGroup("MARS Memory Export")
         if (error == null) {
-            group.createNotification(escapeXmlEntities(messages.getMessage("export.done", output)), NotificationType.INFORMATION)
-                .notify(project)
+          group
+              .createNotification(
+                  escapeXmlEntities(messages.getMessage("export.done", output)),
+                  NotificationType.INFORMATION,
+              )
+              .notify(project)
         } else {
-            group.createNotification(escapeXmlEntities(error), NotificationType.ERROR).notify(project)
+          group.createNotification(escapeXmlEntities(error), NotificationType.ERROR).notify(project)
         }
-    }
+      }
 
-    suspend fun export(entry: Path, options: MemoryExportOptions, output: Path): String? {
-        val component = MarsSessionService.createMarsComponent()
-        return component.context().use { session ->
-            if (!project.service<MarsBuildService>().assemble(entry, component, activateBuildView = true)) {
-                return messages.getMessage("run.assembly.failed")
-            }
-            exportSession(session, MemoryExportSelection(options, output))
+  suspend fun export(entry: Path, options: MemoryExportOptions, output: Path): String? {
+    val component = MarsSessionService.createMarsComponent()
+    return component.context().use { session ->
+      if (
+          !project.service<MarsBuildService>().assemble(entry, component, activateBuildView = true)
+      ) {
+        return messages.getMessage("run.assembly.failed")
+      }
+      exportSession(session, MemoryExportSelection(options, output))
+    }
+  }
+
+  suspend fun exportSession(session: MarsContext, selection: MemoryExportSelection): String? {
+    val caller = currentCoroutineContext()
+    val capture =
+        session.claimStoppedSession().use {
+          captureMemory(selection.options, session, caller::ensureActive)
         }
-    }
+    return writeCapture(selection.options, selection.output, capture)
+  }
 
-    suspend fun exportSession(session: MarsContext, selection: MemoryExportSelection): String? {
-        val caller = currentCoroutineContext()
-        val capture = session.claimStoppedSession().use { captureMemory(selection.options, session, caller::ensureActive) }
-        return writeCapture(selection.options, selection.output, capture)
-    }
-
-    private suspend fun writeCapture(
-        options: MemoryExportOptions, output: Path, capture: MemoryExportCapture,
-    ): String? = when (capture) {
+  private suspend fun writeCapture(
+      options: MemoryExportOptions,
+      output: Path,
+      capture: MemoryExportCapture,
+  ): String? =
+      when (capture) {
         is MemoryExportCapture.Failed -> capture.message
         is MemoryExportCapture.Ready -> writeMemory(options, output, capture.snapshot)
-    }
+      }
 
-    private suspend fun writeMemory(
-        options: MemoryExportOptions, output: Path, snapshot: MemoryDumpSnapshot,
-    ): String? = withContext(Dispatchers.IO) {
+  private suspend fun writeMemory(
+      options: MemoryExportOptions,
+      output: Path,
+      snapshot: MemoryDumpSnapshot,
+  ): String? =
+      withContext(Dispatchers.IO) {
         try {
-            val temporary = Files.createTempFile(output.toAbsolutePath().parent, ".mars-memory-", ".tmp")
-            try {
-                options.format.write(temporary.toFile(), snapshot)
-                checkCanceled()
-                Files.move(temporary, output, ATOMIC_MOVE, REPLACE_EXISTING)
-            } finally {
-                Files.deleteIfExists(temporary)
-            }
+          val temporary =
+              Files.createTempFile(output.toAbsolutePath().parent, ".mars-memory-", ".tmp")
+          try {
+            options.format.write(temporary.toFile(), snapshot)
+            checkCanceled()
+            Files.move(temporary, output, ATOMIC_MOVE, REPLACE_EXISTING)
+          } finally {
+            Files.deleteIfExists(temporary)
+          }
         } catch (e: IOException) {
-            return@withContext messages.getMessage("export.io.error", output, e.localizedMessage)
+          return@withContext messages.getMessage("export.io.error", output, e.localizedMessage)
         }
         LocalFileSystem.getInstance().refreshNioFiles(listOf(output), true, false, null)
         null
-    }
+      }
 }
 
 internal sealed interface MemoryExportCapture {
-    data class Ready(val snapshot: MemoryDumpSnapshot) : MemoryExportCapture
-    data class Failed(val message: String) : MemoryExportCapture
+  data class Ready(val snapshot: MemoryDumpSnapshot) : MemoryExportCapture
+
+  data class Failed(val message: String) : MemoryExportCapture
 }
 
 internal fun captureMemory(
-    options: MemoryExportOptions, session: MarsContext, checkCancellation: () -> Unit,
+    options: MemoryExportOptions,
+    session: MarsContext,
+    checkCancellation: () -> Unit,
 ): MemoryExportCapture {
-    val messages = memoryExportMessages
-    val memory = session.memory
-    val (first, last) = when (options.region) {
-        MemoryExportRegion.TEXT -> memory.textBaseAddress.toUInt().toLong() to (memory.textLimitAddress - WORD_LENGTH_BYTES).toUInt().toLong()
-        MemoryExportRegion.DATA -> memory.dataBaseAddress.toUInt().toLong() to (memory.dataSegmentLimitAddress - WORD_LENGTH_BYTES).toUInt().toLong()
+  val messages = memoryExportMessages
+  val memory = session.memory
+  val (first, last) =
+      when (options.region) {
+        MemoryExportRegion.TEXT ->
+            memory.textBaseAddress.toUInt().toLong() to
+                (memory.textLimitAddress - WORD_LENGTH_BYTES).toUInt().toLong()
+        MemoryExportRegion.DATA ->
+            memory.dataBaseAddress.toUInt().toLong() to
+                (memory.dataSegmentLimitAddress - WORD_LENGTH_BYTES).toUInt().toLong()
         MemoryExportRegion.RANGE -> options.range.first to options.range.last
-    }
-    if (options.format is SegmentWindowDumpFormat) {
-        val userText = memory.inUserText(first) && memory.inUserText(last)
-        val userData = memory.inUserData(first) && memory.inUserData(last)
-        if (!userText && !userData) return MemoryExportCapture.Failed(messages.getMessage("export.window.range"))
-    }
-    val snapshot = try {
+      }
+  if (options.format is SegmentWindowDumpFormat) {
+    val userText = memory.inUserText(first) && memory.inUserText(last)
+    val userData = memory.inUserData(first) && memory.inUserData(last)
+    if (!userText && !userData)
+        return MemoryExportCapture.Failed(messages.getMessage("export.window.range"))
+  }
+  val snapshot =
+      try {
         options.format.capture(session, first, last, checkCancellation)
-    } catch (e: AddressErrorException) {
-        return MemoryExportCapture.Failed(messages.getMessage("export.invalid.memory", formatExportAddress(e.addressBits.toUInt().toLong().takeIf { e.addressBits == e.address.toLong() } ?: e.addressBits)))
-    }
-    val nextAddress = first + snapshot.size().toLong() * WORD_LENGTH_BYTES
-    if (options.region == MemoryExportRegion.RANGE && nextAddress <= last) {
-        return MemoryExportCapture.Failed(messages.getMessage("export.unpopulated", formatExportAddress(nextAddress)))
-    }
-    if (snapshot.size() == 0) return MemoryExportCapture.Failed(messages.getMessage("export.empty"))
-    return MemoryExportCapture.Ready(snapshot)
+      } catch (e: AddressErrorException) {
+        return MemoryExportCapture.Failed(
+            messages.getMessage(
+                "export.invalid.memory",
+                formatExportAddress(
+                    e.addressBits.toUInt().toLong().takeIf { e.addressBits == e.address.toLong() }
+                        ?: e.addressBits,
+                ),
+            ),
+        )
+      }
+  val nextAddress = first + snapshot.size().toLong() * WORD_LENGTH_BYTES
+  if (options.region == MemoryExportRegion.RANGE && nextAddress <= last) {
+    return MemoryExportCapture.Failed(
+        messages.getMessage("export.unpopulated", formatExportAddress(nextAddress)),
+    )
+  }
+  if (snapshot.size() == 0) return MemoryExportCapture.Failed(messages.getMessage("export.empty"))
+  return MemoryExportCapture.Ready(snapshot)
 }

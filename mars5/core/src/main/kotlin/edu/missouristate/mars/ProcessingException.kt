@@ -36,45 +36,75 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 /** An assembly or execution failure. An absent error list can signal normal program termination. */
-open class ProcessingException private constructor(
+open class ProcessingException
+private constructor(
     private val diagnostics: ErrorList?,
     private val origin: Origin?,
     message: String?,
 ) : Exception(message) {
-    constructor(errors: ErrorList?) : this(errors, null, null)
+  constructor(errors: ErrorList?) : this(errors, null, null)
 
-    @Suppress("unused", "RedundantSuppression")
-    constructor(errors: ErrorList?, addressError: AddressErrorException?) : this(errors)
+  @Suppress("unused", "RedundantSuppression")
+  constructor(errors: ErrorList?, addressError: AddressErrorException?) : this(errors)
 
-    constructor() : this(null)
+  constructor() : this(null)
 
-    constructor(statement: ProgramStatement, message: String?) : this(ErrorList(), statement, statement.addressBits, message)
+  constructor(
+      statement: ProgramStatement,
+      message: String?,
+  ) : this(ErrorList(), statement, statement.addressBits, message)
 
-    @Suppress("unused", "RedundantSuppression")
-    constructor(statement: ProgramStatement, message: String?, cause: Int) : this(statement, message)
+  @Suppress("unused", "RedundantSuppression")
+  constructor(statement: ProgramStatement, message: String?, cause: Int) : this(statement, message)
 
-    constructor(statement: ProgramStatement, error: AddressErrorException) : this(statement, error.message)
+  constructor(
+      statement: ProgramStatement,
+      error: AddressErrorException,
+  ) : this(statement, error.message)
 
-    constructor(context: InstructionContext, statement: ProgramStatement?, message: String?) :
-        this(context.newErrorList(), statement, context.registerFile.programCounterBits - INSTRUCTION_LENGTH, message)
+  constructor(
+      context: InstructionContext,
+      statement: ProgramStatement?,
+      message: String?,
+  ) : this(
+      context.newErrorList(),
+      statement,
+      context.registerFile.programCounterBits - INSTRUCTION_LENGTH,
+      message,
+  )
 
-    private constructor(errors: ErrorList, statement: ProgramStatement?, address: Long, message: String?) :
-        this(errors, statement!!.instructionOrigin, "Runtime exception at ${if (address == address.toInt().toLong()) Binary.intToHexString(address.toInt()) else Binary.longToHexString(address)}: $message") {
-        errors.add(ErrorMessage(statement, this.message))
-    }
+  private constructor(
+      errors: ErrorList,
+      statement: ProgramStatement?,
+      address: Long,
+      message: String?,
+  ) : this(
+      errors,
+      statement!!.instructionOrigin,
+      "Runtime exception at ${if (address == address.toInt().toLong()) Binary.intToHexString(address.toInt()) else Binary.longToHexString(address)}: $message",
+  ) {
+    errors.add(ErrorMessage(statement, this.message))
+  }
 
-    constructor(context: InstructionContext, statement: ProgramStatement?, message: String?, cause: Int) :
-        this(context, statement, message) {
-        context.setExceptionRegisters(cause)
-    }
+  constructor(
+      context: InstructionContext,
+      statement: ProgramStatement?,
+      message: String?,
+      cause: Int,
+  ) : this(context, statement, message) {
+    context.setExceptionRegisters(cause)
+  }
 
-    constructor(context: InstructionContext, statement: ProgramStatement?, error: AddressErrorException) :
-        this(context, statement, error.message) {
-        context.updateCoprocessor0Bits(VADDR, error.addressBits)
-        context.setExceptionRegisters(error.type)
-    }
+  constructor(
+      context: InstructionContext,
+      statement: ProgramStatement?,
+      error: AddressErrorException,
+  ) : this(context, statement, error.message) {
+    context.updateCoprocessor0Bits(VADDR, error.addressBits)
+    context.setExceptionRegisters(error.type)
+  }
 
-    open fun instructionOrigin(): Origin? = origin
+  open fun instructionOrigin(): Origin? = origin
 
-    open fun errors(): ErrorList? = diagnostics
+  open fun errors(): ErrorList? = diagnostics
 }

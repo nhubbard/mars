@@ -34,15 +34,21 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 (MIT license, http://www.opensource.org/licenses/mit-license.html)
  */
 
-open class AsciiTextDumpFormat : AbstractDumpFormat("ASCII Text", "AsciiText", "Memory contents interpreted as ASCII characters", null) {
-    @Throws(IOException::class)
-    override fun write(file: File, snapshot: MemoryDumpSnapshot) {
-        PrintStream(FileOutputStream(file)).use { out ->
-            for (index in 0 until snapshot.size()) {
-                val word = snapshot.word(index)
-                out.println(Binary.intToAscii(word))
-            }
-            checkOutput(out)
-        }
+open class AsciiTextDumpFormat :
+    AbstractDumpFormat(
+        "ASCII Text",
+        "AsciiText",
+        "Memory contents interpreted as ASCII characters",
+        null,
+    ) {
+  @Throws(IOException::class)
+  override fun write(file: File, snapshot: MemoryDumpSnapshot) {
+    PrintStream(FileOutputStream(file)).use { out ->
+      for (index in 0 until snapshot.size()) {
+        val word = snapshot.word(index)
+        out.println(Binary.intToAscii(word))
+      }
+      checkOutput(out)
     }
+  }
 }

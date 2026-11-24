@@ -20,44 +20,52 @@ import edu.missouristate.mars.plugin.run.runMessages
 
 internal typealias LineBreakpoint = XLineBreakpoint<MarsLineBreakpointProperties>
 
-internal class MarsLineBreakpointType : XLineBreakpointType<MarsLineBreakpointProperties>(
-    "MarsMipsLine", runMessages.getMessage("debug.breakpoint.type"),
-) {
-    override fun createProperties() = MarsLineBreakpointProperties()
+internal class MarsLineBreakpointType :
+    XLineBreakpointType<MarsLineBreakpointProperties>(
+        "MarsMipsLine",
+        runMessages.getMessage("debug.breakpoint.type"),
+    ) {
+  override fun createProperties() = MarsLineBreakpointProperties()
 
-    override fun createBreakpointProperties(file: VirtualFile, line: Int) = createProperties()
+  override fun createBreakpointProperties(file: VirtualFile, line: Int) = createProperties()
 
-    override fun getEditorsProvider(breakpoint: LineBreakpoint, project: Project) = MarsDebugEditors
+  override fun getEditorsProvider(breakpoint: LineBreakpoint, project: Project) = MarsDebugEditors
 
-    override fun createCustomConditionsPanel() = MarsBreakpointHitCountPanel<LineBreakpoint>()
+  override fun createCustomConditionsPanel() = MarsBreakpointHitCountPanel<LineBreakpoint>()
 
-    override fun canBeHitInOtherPlaces() = true
+  override fun canBeHitInOtherPlaces() = true
 
-    override fun canPutAt(file: VirtualFile, line: Int, project: Project): Boolean {
-        if (file.fileSystem !== LocalFileSystem.getInstance() || file.fileType !== MipsFileType) return false
-        return canPutAtOperation(file, line, project)
+  override fun canPutAt(file: VirtualFile, line: Int, project: Project): Boolean {
+    if (file.fileSystem !== LocalFileSystem.getInstance() || file.fileType !== MipsFileType)
+        return false
+    return canPutAtOperation(file, line, project)
+  }
+
+  internal fun canPutAtOperation(file: VirtualFile, line: Int, project: Project): Boolean {
+    val document = FileDocumentManager.getInstance().getDocument(file) ?: return false
+    var candidate = false
+    XDebuggerUtil.getInstance().iterateLine(project, document, line) { leaf ->
+      candidate =
+          generateSequence(leaf) { it.parent }
+              .any {
+                it.elementType in operationOwners &&
+                    it.operationHead === leaf &&
+                    project
+                        .service<MarsAnalysisService>()
+                        .canSetOperationBreakpoint(leaf.containingFile as MipsFile, leaf)
+              }
+      !candidate
     }
-
-    internal fun canPutAtOperation(file: VirtualFile, line: Int, project: Project): Boolean {
-        val document = FileDocumentManager.getInstance().getDocument(file) ?: return false
-        var candidate = false
-        XDebuggerUtil.getInstance().iterateLine(project, document, line) { leaf ->
-            candidate = generateSequence(leaf) { it.parent }.any {
-                it.elementType in operationOwners && it.operationHead === leaf &&
-                    project.service<MarsAnalysisService>().canSetOperationBreakpoint(leaf.containingFile as MipsFile, leaf)
-            }
-            !candidate
-        }
-        return candidate
-    }
+    return candidate
+  }
 }
 
 internal class MarsLineBreakpointProperties(
     @get:Attribute @Volatile override var hitInterval: Int = 1,
 ) : XBreakpointProperties<MarsLineBreakpointProperties>(), MarsBreakpointHitCount {
-    override fun getState() = this
+  override fun getState() = this
 
-    override fun loadState(state: MarsLineBreakpointProperties) {
-        hitInterval = state.hitInterval
-    }
+  override fun loadState(state: MarsLineBreakpointProperties) {
+    hitInterval = state.hitInterval
+  }
 }

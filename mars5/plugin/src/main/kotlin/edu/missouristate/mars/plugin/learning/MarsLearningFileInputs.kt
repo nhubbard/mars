@@ -14,33 +14,43 @@ import java.nio.file.Path
 /** Only immutable input definitions live with a Learn task; execution state belongs to launches. */
 @Service(Service.Level.PROJECT)
 internal class MarsLearningFileInputs : Disposable {
-    private class Binding(val definition: FunctionFileReadCheck)
-    private val bindings = mutableMapOf<Path, Binding>()
+  private class Binding(val definition: FunctionFileReadCheck)
 
-    fun bind(entry: Path, definition: FunctionFileReadCheck, lifetime: Disposable) {
-        val path = entry.toAbsolutePath().normalize()
-        val binding = Binding(definition)
-        synchronized(this) { bindings[path] = binding }
-        Disposer.register(lifetime) {
-            synchronized(this) {
-                if (bindings[path] === binding) bindings.remove(path)
-            }
-        }
+  private val bindings = mutableMapOf<Path, Binding>()
+
+  fun bind(entry: Path, definition: FunctionFileReadCheck, lifetime: Disposable) {
+    val path = entry.toAbsolutePath().normalize()
+    val binding = Binding(definition)
+    synchronized(this) { bindings[path] = binding }
+    Disposer.register(lifetime) {
+      synchronized(this) {
+        if (bindings[path] === binding) bindings.remove(path)
+      }
     }
+  }
 
-    @Synchronized
-    fun definition(entry: Path): FunctionFileReadCheck? = bindings[entry.toAbsolutePath().normalize()]?.definition
+  @Synchronized
+  fun definition(entry: Path): FunctionFileReadCheck? =
+      bindings[entry.toAbsolutePath().normalize()]?.definition
 
-    @Synchronized
-    override fun dispose() { bindings.clear() }
+  @Synchronized
+  override fun dispose() {
+    bindings.clear()
+  }
 }
 
 /** MIPS file fixtures use MARS's public launch hook and the grader's virtual files. */
 internal class MarsLearningFileEnvironmentCustomizer : MarsSyscallEnvironmentCustomizer {
-    override fun customize(project: Project, entry: Path, environment: SyscallEnvironment, lifetime: Disposable): SyscallEnvironment {
-        val definition = project.service<MarsLearningFileInputs>().definition(entry) ?: return environment
-        val files = ReadOnlyFileEnvironment(environment, definition)
-        Disposer.register(lifetime) { files.close() }
-        return files
-    }
+  override fun customize(
+      project: Project,
+      entry: Path,
+      environment: SyscallEnvironment,
+      lifetime: Disposable,
+  ): SyscallEnvironment {
+    val definition =
+        project.service<MarsLearningFileInputs>().definition(entry) ?: return environment
+    val files = ReadOnlyFileEnvironment(environment, definition)
+    Disposer.register(lifetime) { files.close() }
+    return files
+  }
 }

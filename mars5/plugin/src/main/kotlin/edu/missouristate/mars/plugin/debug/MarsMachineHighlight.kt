@@ -17,21 +17,32 @@ internal enum class MarsMachineHighlight(
     private val defaultFont: Int,
     fallback: TextAttributesKey? = null,
 ) {
-    CURRENT("MARS_CURRENT_INSTRUCTION", "current.instruction", Font.PLAIN),
-    DELAY("MARS_NEXT_DELAY_SLOT", "delay.slot", Font.PLAIN),
-    WRITE("MARS_MEMORY_WRITE", "memory.write", Font.BOLD),
-    REGISTER("MARS_REGISTER_WRITE", "register.write", Font.PLAIN, DefaultLanguageHighlighterColors.NUMBER);
+  CURRENT("MARS_CURRENT_INSTRUCTION", "current.instruction", Font.PLAIN),
+  DELAY("MARS_NEXT_DELAY_SLOT", "delay.slot", Font.PLAIN),
+  WRITE("MARS_MEMORY_WRITE", "memory.write", Font.BOLD),
+  REGISTER(
+      "MARS_REGISTER_WRITE",
+      "register.write",
+      Font.PLAIN,
+      DefaultLanguageHighlighterColors.NUMBER,
+  );
 
-    val colorKey = if (fallback == null) TextAttributesKey.createTextAttributesKey(key) else TextAttributesKey.createTextAttributesKey(key, fallback)
+  val colorKey =
+      if (fallback == null) TextAttributesKey.createTextAttributesKey(key)
+      else TextAttributesKey.createTextAttributesKey(key, fallback)
 
-    fun attributes(scheme: EditorColorsScheme): TextAttributes =
-        scheme.getAttributes(colorKey, false) ?: TextAttributes().apply { fontType = defaultFont }
+  fun attributes(scheme: EditorColorsScheme): TextAttributes =
+      scheme.getAttributes(colorKey, false) ?: TextAttributes().apply { fontType = defaultFont }
 
-    fun tableStyle(): SimpleTextAttributes =
-        SimpleTextAttributes.fromTextAttributes(attributes(EditorColorsManager.getInstance().globalScheme))
+  fun tableStyle(): SimpleTextAttributes =
+      SimpleTextAttributes.fromTextAttributes(
+          attributes(EditorColorsManager.getInstance().globalScheme),
+      )
 }
 
 internal fun onMachineHighlightSchemeChange(lifetime: Disposable, update: () -> Unit) {
-    ApplicationManager.getApplication().messageBus.connect(lifetime)
-        .subscribe(EditorColorsManager.TOPIC, EditorColorsListener { update() })
+  ApplicationManager.getApplication()
+      .messageBus
+      .connect(lifetime)
+      .subscribe(EditorColorsManager.TOPIC, EditorColorsListener { update() })
 }

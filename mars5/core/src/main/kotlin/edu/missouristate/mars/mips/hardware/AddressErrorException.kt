@@ -31,13 +31,21 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 /** A fault at a MIPS memory address, including the exception code for the failed access. */
-open class AddressErrorException private constructor(message: String, val addressBits: Long, open val type: Int) :
+open class AddressErrorException
+private constructor(message: String, val addressBits: Long, open val type: Int) :
     Exception(message) {
-    constructor(message: String?, exceptType: Int, addr: Int) :
-        this(message + Binary.intToHexString(addr), addr.toLong(), exceptType)
+  constructor(
+      message: String?,
+      exceptType: Int,
+      addr: Int,
+  ) : this(message + Binary.intToHexString(addr), addr.toLong(), exceptType)
 
-    constructor(message: String?, exceptType: Int, addr: Long) :
-        this(message + Binary.longToHexString(addr), addr, exceptType)
+  constructor(
+      message: String?,
+      exceptType: Int,
+      addr: Long,
+  ) : this(message + Binary.longToHexString(addr), addr, exceptType)
 
-    open val address: Int get() = addressBits.toInt()
+  open val address: Int
+    get() = addressBits.toInt()
 }

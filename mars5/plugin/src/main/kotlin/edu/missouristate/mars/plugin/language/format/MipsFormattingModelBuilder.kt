@@ -33,21 +33,32 @@ import edu.missouristate.mars.plugin.language.operationHead
 import edu.missouristate.mars.plugin.language.operationOwners
 
 internal class MipsFormattingModelBuilder : FormattingModelBuilder {
-    override fun createModel(formattingContext: FormattingContext): FormattingModel {
-        val file = formattingContext.containingFile as MipsFile
-        val analysis = file.project.service<MarsAnalysisService>()
-        val timelines = lazy(LazyThreadSafetyMode.NONE) {
-            if (DumbService.isDumb(file.project)) return@lazy null
-            val primary = analysis.editorTimeline(file)
-            val alternatives = includingMipsTimelines(file).filter { it !== primary }.toList()
-            FormattingTimelines(primary, alternatives)
+  override fun createModel(formattingContext: FormattingContext): FormattingModel {
+    val file = formattingContext.containingFile as MipsFile
+    val analysis = file.project.service<MarsAnalysisService>()
+    val timelines =
+        lazy(LazyThreadSafetyMode.NONE) {
+          if (DumbService.isDumb(file.project)) return@lazy null
+          val primary = analysis.editorTimeline(file)
+          val alternatives = includingMipsTimelines(file).filter { it !== primary }.toList()
+          FormattingTimelines(primary, alternatives)
         }
-        val root = MipsBlock(file.node, Indent.getNoneIndent(), file.viewProvider.contents, analysis, timelines)
-        return DocumentBasedFormattingModel(root, formattingContext.codeStyleSettings, file)
-    }
+    val root =
+        MipsBlock(
+            file.node,
+            Indent.getNoneIndent(),
+            file.viewProvider.contents,
+            analysis,
+            timelines,
+        )
+    return DocumentBasedFormattingModel(root, formattingContext.codeStyleSettings, file)
+  }
 }
 
-private class FormattingTimelines(val primary: MipsSourceTimeline, val alternatives: List<MipsSourceTimeline>)
+private class FormattingTimelines(
+    val primary: MipsSourceTimeline,
+    val alternatives: List<MipsSourceTimeline>,
+)
 
 private class MipsBlock(
     node: ASTNode,
@@ -58,174 +69,211 @@ private class MipsBlock(
     private val line: FormattingLine? = null,
     alignment: Alignment? = null,
 ) : AbstractBlock(node, null, alignment) {
-    private val hasSemanticMacroHeader by lazy(LazyThreadSafetyMode.NONE) {
+  private val hasSemanticMacroHeader by
+      lazy(LazyThreadSafetyMode.NONE) {
         val context = timelines.value?.primary ?: return@lazy false
         val headerEnd = CharArrayUtil.shiftForwardUntil(source, myNode.startOffset, "\r\n")
         context.macroAt(myNode.psi.containingFile as MipsFile, headerEnd) != null
-    }
+      }
 
-    private fun isOpaque() = myNode.elementType in opaque ||
-        myNode.elementType == candidate && line?.canFormatCandidate != true ||
-        myNode.elementType == operandFragment && line?.operandParentheses == null
+  private fun isOpaque() =
+      myNode.elementType in opaque ||
+          myNode.elementType == candidate && line?.canFormatCandidate != true ||
+          myNode.elementType == operandFragment && line?.operandParentheses == null
 
-    override fun getIndent() = indent
+  override fun getIndent() = indent
 
-    override fun isLeaf() = myNode.firstChildNode == null || isOpaque()
+  override fun isLeaf() = myNode.firstChildNode == null || isOpaque()
 
-    override fun buildChildren(): List<Block> {
-        if (isOpaque()) return emptyList()
-        var fileIndentAlignment: Alignment? = null
-        return myNode.getChildren(null).asSequence()
-            .filter { it.textLength > 0 && it.elementType !in trivia }
-            .mapIndexed { index, child ->
-                val childLine = if (child.elementType == statement) layoutOf(child) else line
-                val childIndent = indentOf(child, childLine)
-                val indented = childIndent.type == Indent.Type.NORMAL
-                // An indented first line also indents the file block's anchor.
-                if (myNode.elementType == MipsTypes.file && index == 0 && indented) {
-                    fileIndentAlignment = Alignment.createAlignment()
-                }
-                val alignment = fileIndentAlignment.takeIf { indented }
-                MipsBlock(child, childIndent, source, analysis, timelines, childLine, alignment)
-            }
-            .toList()
-    }
+  override fun buildChildren(): List<Block> {
+    if (isOpaque()) return emptyList()
+    var fileIndentAlignment: Alignment? = null
+    return myNode
+        .getChildren(null)
+        .asSequence()
+        .filter { it.textLength > 0 && it.elementType !in trivia }
+        .mapIndexed { index, child ->
+          val childLine = if (child.elementType == statement) layoutOf(child) else line
+          val childIndent = indentOf(child, childLine)
+          val indented = childIndent.type == Indent.Type.NORMAL
+          // An indented first line also indents the file block's anchor.
+          if (myNode.elementType == MipsTypes.file && index == 0 && indented) {
+            fileIndentAlignment = Alignment.createAlignment()
+          }
+          val alignment = fileIndentAlignment.takeIf { indented }
+          MipsBlock(child, childIndent, source, analysis, timelines, childLine, alignment)
+        }
+        .toList()
+  }
 
-    override fun getChildIndent(): Indent = if (myNode.elementType in indentedScopes) {
+  override fun getChildIndent(): Indent =
+      if (myNode.elementType in indentedScopes) {
         Indent.getNormalIndent()
-    } else Indent.getNoneIndent()
+      } else Indent.getNoneIndent()
 
-    private fun layoutOf(child: ASTNode): FormattingLine? {
-        val contexts = timelines.value ?: return null
-        val primary = layoutIn(child, contexts.primary)
-        val rawOperation = child.findChildByType(candidate) != null
-        val protected = contexts.alternatives.flatMap { context ->
-            val layout = layoutIn(child, context) ?: return@flatMap emptyList()
-            if (rawOperation && !layout.canFormatCandidate) {
-                // Another entry can treat this operation as raw replacement text.
-                listOf(physicalLineRange(sourceLineStart(child.psi)))
-            } else layout.verbatimOperandRanges
+  private fun layoutOf(child: ASTNode): FormattingLine? {
+    val contexts = timelines.value ?: return null
+    val primary = layoutIn(child, contexts.primary)
+    val rawOperation = child.findChildByType(candidate) != null
+    val protected =
+        contexts.alternatives.flatMap { context ->
+          val layout = layoutIn(child, context) ?: return@flatMap emptyList()
+          if (rawOperation && !layout.canFormatCandidate) {
+            // Another entry can treat this operation as raw replacement text.
+            listOf(physicalLineRange(sourceLineStart(child.psi)))
+          } else layout.verbatimOperandRanges
         }
-        if (protected.isEmpty()) return primary
-        return primary?.copy(verbatimOperandRanges = primary.verbatimOperandRanges + protected)
-            ?: FormattingLine(null, false, null, protected)
+    if (protected.isEmpty()) return primary
+    return primary?.copy(verbatimOperandRanges = primary.verbatimOperandRanges + protected)
+        ?: FormattingLine(null, false, null, protected)
+  }
+
+  private val FormattingLine.canFormatCandidate: Boolean
+    get() = numericContinuationRepeat || operationType in formatOperations
+
+  private fun layoutIn(child: ASTNode, context: MipsSourceTimeline): FormattingLine? {
+    val operation = child.findChildByType(operationOwners)
+    val hasFragment = child.findChildByType(operandOwners)?.findChildByType(operandFragment) != null
+    val anchor = operation?.psi?.operationHead ?: child.psi
+    val file = anchor.containingFile as MipsFile
+    val hasParenthesis = operation != null && child.textContains('(')
+    val start = sourceLineStart(anchor)
+    val prefix = context.prefix(file, start)
+    if (prefix.hasIncompleteIncludes) {
+      return FormattingLine(null, false, null, listOf(physicalLineRange(start)))
     }
+    val hasAlias =
+        (hasParenthesis || context.hasQuotedEquivalence) && hasVisibleAlias(child, prefix)
+    val projectOperands = hasFragment || hasParenthesis && hasAlias
+    if (
+        operation?.elementType != candidate &&
+            !projectOperands &&
+            !hasAlias &&
+            prefix.openMacro == null &&
+            anchor !in context.generatedLabelSites
+    )
+        return null
+    return analysis.formattingLine(file, anchor, context, projectOperands)
+  }
 
-    private val FormattingLine.canFormatCandidate: Boolean
-        get() = numericContinuationRepeat || operationType in formatOperations
+  private fun physicalLineRange(start: Int): TextRange =
+      TextRange(start, CharArrayUtil.shiftForwardUntil(source, start, "\r\n"))
 
-    private fun layoutIn(child: ASTNode, context: MipsSourceTimeline): FormattingLine? {
-        val operation = child.findChildByType(operationOwners)
-        val hasFragment = child.findChildByType(operandOwners)?.findChildByType(operandFragment) != null
-        val anchor = operation?.psi?.operationHead ?: child.psi
-        val file = anchor.containingFile as MipsFile
-        val hasParenthesis = operation != null && child.textContains('(')
-        val start = sourceLineStart(anchor)
-        val prefix = context.prefix(file, start)
-        if (prefix.hasIncompleteIncludes) {
-            return FormattingLine(null, false, null, listOf(physicalLineRange(start)))
-        }
-        val hasAlias = (hasParenthesis || context.hasQuotedEquivalence) && hasVisibleAlias(child, prefix)
-        val projectOperands = hasFragment || hasParenthesis && hasAlias
-        if (operation?.elementType != candidate && !projectOperands && !hasAlias &&
-            prefix.openMacro == null && anchor !in context.generatedLabelSites) return null
-        return analysis.formattingLine(file, anchor, context, projectOperands)
-    }
-
-    private fun physicalLineRange(start: Int): TextRange =
-        TextRange(start, CharArrayUtil.shiftForwardUntil(source, start, "\r\n"))
-
-    private fun hasVisibleAlias(child: ASTNode, prefix: MipsSourceTimeline.Prefix): Boolean =
-        SyntaxTraverser.astTraverser(child).filterTypes { it in aliasTokens }.any {
+  private fun hasVisibleAlias(child: ASTNode, prefix: MipsSourceTimeline.Prefix): Boolean =
+      SyntaxTraverser.astTraverser(child)
+          .filterTypes { it in aliasTokens }
+          .any {
             prefix.equivalence(it.text) != null
-        }
+          }
 
-    private fun indentOf(child: ASTNode, childLine: FormattingLine?): Indent {
-        if (child.elementType != statement) return Indent.getNoneIndent()
-        val context = timelines.value?.primary
-        if (context != null) {
-            val file = child.psi.containingFile as MipsFile
-            val lineStart = sourceLineStart(source, child.startOffset)
-            if (context.closesMacroOnLine(file, lineStart)) return Indent.getAbsoluteNoneIndent()
-            if (context.macroAt(file, lineStart) != null) return Indent.getNormalIndent()
-        }
-        // An incomplete header can still give its body a physical PSI scope.
-        if (myNode.elementType == macro && !hasSemanticMacroHeader ||
-            PsiUtilCore.getElementType(child.firstChildNode) in executableHeads && childLine?.atMargin != true
-        ) {
-            return Indent.getNormalIndent()
-        }
-        return Indent.getAbsoluteNoneIndent()
+  private fun indentOf(child: ASTNode, childLine: FormattingLine?): Indent {
+    if (child.elementType != statement) return Indent.getNoneIndent()
+    val context = timelines.value?.primary
+    if (context != null) {
+      val file = child.psi.containingFile as MipsFile
+      val lineStart = sourceLineStart(source, child.startOffset)
+      if (context.closesMacroOnLine(file, lineStart)) return Indent.getAbsoluteNoneIndent()
+      if (context.macroAt(file, lineStart) != null) return Indent.getNormalIndent()
     }
-
-    override fun getSpacing(child1: Block?, child2: Block): Spacing? {
-        if (child1 == null) return null
-        val left = (child1 as MipsBlock).node
-        val right = (child2 as MipsBlock).node
-        val before = PsiUtilCore.getElementType(TreeUtil.findLastLeaf(left))
-        val after = PsiUtilCore.getElementType(TreeUtil.findFirstLeaf(right))
-        val gap = source.subSequence(left.textRange.endOffset, right.startOffset)
-        val expandedParenthesis = line?.operandParentheses?.get(right.startOffset)
-        return when {
-            StringUtil.containsLineBreak(gap) -> keepLines
-            // Without assembly context, a written gap can be part of an expanded string.
-            timelines.value == null -> readOnly
-            left.elementType in protectedSpacing || right.elementType in protectedSpacing -> readOnly
-            // A recovered operand may wrap an invalid token containing non-assembler whitespace.
-            before == badCharacter || after == badCharacter -> readOnly
-            line?.verbatimOperandRanges.orEmpty().any { it.startOffset < left.textRange.endOffset && right.startOffset < it.endOffset } -> readOnly
-            right.elementType == externalName -> oneSpace
-            left.elementType == externalName -> if (after == comma) noSpaces else oneSpace
-            // A space can turn a sign into a separate token, or prevent an exponent from joining.
-            before in signs -> readOnly
-            after in signs -> if (gap.isEmpty() && before != comma) readOnly else oneSpace
-            after in tightBefore || before in tightAfter -> noSpaces
-            after == leftParen && expandedParenthesis == OperandParenthesis.ADDRESS -> noSpaces
-            after == leftParen && expandedParenthesis == OperandParenthesis.GROUP -> oneSpace
-            after == leftParen && myNode.elementType == address -> noSpaces
-            before == colon && (myNode.elementType == repetition ||
-                line?.numericContinuationRepeat == true && myNode.elementType == candidate) -> noSpaces
-            before in separators || after == comment -> oneSpace
-            gap.isNotEmpty() -> oneSpace
-            else -> readOnly
-        }
+    // An incomplete header can still give its body a physical PSI scope.
+    if (
+        myNode.elementType == macro && !hasSemanticMacroHeader ||
+            PsiUtilCore.getElementType(child.firstChildNode) in executableHeads &&
+                childLine?.atMargin != true
+    ) {
+      return Indent.getNormalIndent()
     }
+    return Indent.getAbsoluteNoneIndent()
+  }
 
-    private companion object {
-        val newline = MipsTypes.psi("NEWLINE")
-        val statement = MipsTypes.psi("STATEMENT")
-        val macro = MipsTypes.psi("MACRO_DEFINITION")
-        val replacement = MipsTypes.psi("REPLACEMENT")
-        val externalName = MipsTypes.psi("EXTERNAL_NAME")
-        val address = MipsTypes.psi("ADDRESS_EXPR")
-        val repetition = MipsTypes.psi("REPETITION")
-        val comment = MipsTypes.psi("COMMENT")
-        val leftBracket = MipsTypes.psi("LEFT_BRACKET")
-        val leftParen = MipsTypes.psi("LEFT_PAREN")
-        val colon = MipsTypes.psi("COLON")
-        val comma = MipsTypes.psi("COMMA")
-        val badCharacter = MipsTypes.psi("BAD_CHARACTER")
-        val trivia = TokenSet.create(TokenType.WHITE_SPACE, newline)
-        val signs = TokenSet.create(MipsTypes.psi("PLUS"), MipsTypes.psi("MINUS"))
-        val tightBefore = TokenSet.create(comma, colon, MipsTypes.psi("RIGHT_PAREN"), leftBracket, MipsTypes.psi("RIGHT_BRACKET"))
-        val tightAfter = TokenSet.create(leftParen, leftBracket)
-        val separators = TokenSet.create(comma, colon)
-        val indentedScopes = TokenSet.create(MipsTypes.file, macro)
-        val candidate = MipsTypes.psi("OPERATION_CANDIDATE")
-        val operandFragment = MipsTypes.psi("OPERAND_FRAGMENT")
-        val aliasTokens = TokenSet.create(MipsTypes.psi("WORD"), MipsTypes.psi("DOLLAR_WORD"))
-        val operandOwners = TokenSet.orSet(operationOwners,
-            TokenSet.create(MipsTypes.psi("DIRECTIVE_STATEMENT"), MipsTypes.psi("DATA_CONTINUATION")))
-        val executableHeads = TokenSet.create(MipsTypes.psi("INSTRUCTION"), candidate, MipsTypes.psi("DATA_CONTINUATION"))
-        val protectedSpacing = TokenSet.create(replacement, TokenType.ERROR_ELEMENT)
-        val formatOperations = setOf(TokenTypes.OPERATOR, TokenTypes.IDENTIFIER, TokenTypes.DIRECTIVE)
-        // A physical alias can represent several tokens. Apply spacing only at written boundaries.
-        val opaque = TokenSet.create(replacement, MipsTypes.psi("INCLUDE_LINE"), TokenType.ERROR_ELEMENT)
-
-        val readOnly: Spacing = Spacing.getReadOnlySpacing()
-        val noSpaces: Spacing = Spacing.createSpacing(0, 0, 0, false, 0)
-        val oneSpace: Spacing = Spacing.createSpacing(1, 1, 0, false, 0)
-        // The formatter adds one line feed to its blank-line limit.
-        val keepLines: Spacing = Spacing.createSpacing(0, 0, 0, true, Int.MAX_VALUE - 1)
+  override fun getSpacing(child1: Block?, child2: Block): Spacing? {
+    if (child1 == null) return null
+    val left = (child1 as MipsBlock).node
+    val right = (child2 as MipsBlock).node
+    val before = PsiUtilCore.getElementType(TreeUtil.findLastLeaf(left))
+    val after = PsiUtilCore.getElementType(TreeUtil.findFirstLeaf(right))
+    val gap = source.subSequence(left.textRange.endOffset, right.startOffset)
+    val expandedParenthesis = line?.operandParentheses?.get(right.startOffset)
+    return when {
+      StringUtil.containsLineBreak(gap) -> keepLines
+      // Without assembly context, a written gap can be part of an expanded string.
+      timelines.value == null -> readOnly
+      left.elementType in protectedSpacing || right.elementType in protectedSpacing -> readOnly
+      // A recovered operand may wrap an invalid token containing non-assembler whitespace.
+      before == badCharacter || after == badCharacter -> readOnly
+      line?.verbatimOperandRanges.orEmpty().any {
+        it.startOffset < left.textRange.endOffset && right.startOffset < it.endOffset
+      } -> readOnly
+      right.elementType == externalName -> oneSpace
+      left.elementType == externalName -> if (after == comma) noSpaces else oneSpace
+      // A space can turn a sign into a separate token, or prevent an exponent from joining.
+      before in signs -> readOnly
+      after in signs -> if (gap.isEmpty() && before != comma) readOnly else oneSpace
+      after in tightBefore || before in tightAfter -> noSpaces
+      after == leftParen && expandedParenthesis == OperandParenthesis.ADDRESS -> noSpaces
+      after == leftParen && expandedParenthesis == OperandParenthesis.GROUP -> oneSpace
+      after == leftParen && myNode.elementType == address -> noSpaces
+      before == colon &&
+          (myNode.elementType == repetition ||
+              line?.numericContinuationRepeat == true && myNode.elementType == candidate) ->
+          noSpaces
+      before in separators || after == comment -> oneSpace
+      gap.isNotEmpty() -> oneSpace
+      else -> readOnly
     }
+  }
+
+  private companion object {
+    private val newline = MipsTypes.psi("NEWLINE")
+    private val statement = MipsTypes.psi("STATEMENT")
+    private val macro = MipsTypes.psi("MACRO_DEFINITION")
+    private val replacement = MipsTypes.psi("REPLACEMENT")
+    private val externalName = MipsTypes.psi("EXTERNAL_NAME")
+    private val address = MipsTypes.psi("ADDRESS_EXPR")
+    private val repetition = MipsTypes.psi("REPETITION")
+    private val comment = MipsTypes.psi("COMMENT")
+    private val leftBracket = MipsTypes.psi("LEFT_BRACKET")
+    private val leftParen = MipsTypes.psi("LEFT_PAREN")
+    private val colon = MipsTypes.psi("COLON")
+    private val comma = MipsTypes.psi("COMMA")
+    private val badCharacter = MipsTypes.psi("BAD_CHARACTER")
+    private val trivia = TokenSet.create(TokenType.WHITE_SPACE, newline)
+    private val signs = TokenSet.create(MipsTypes.psi("PLUS"), MipsTypes.psi("MINUS"))
+    private val tightBefore =
+        TokenSet.create(
+            comma,
+            colon,
+            MipsTypes.psi("RIGHT_PAREN"),
+            leftBracket,
+            MipsTypes.psi("RIGHT_BRACKET"),
+        )
+    private val tightAfter = TokenSet.create(leftParen, leftBracket)
+    private val separators = TokenSet.create(comma, colon)
+    private val indentedScopes = TokenSet.create(MipsTypes.file, macro)
+    private val candidate = MipsTypes.psi("OPERATION_CANDIDATE")
+    private val operandFragment = MipsTypes.psi("OPERAND_FRAGMENT")
+    private val aliasTokens = TokenSet.create(MipsTypes.psi("WORD"), MipsTypes.psi("DOLLAR_WORD"))
+    private val operandOwners =
+        TokenSet.orSet(
+            operationOwners,
+            TokenSet.create(
+                MipsTypes.psi("DIRECTIVE_STATEMENT"),
+                MipsTypes.psi("DATA_CONTINUATION"),
+            ),
+        )
+    private val executableHeads =
+        TokenSet.create(MipsTypes.psi("INSTRUCTION"), candidate, MipsTypes.psi("DATA_CONTINUATION"))
+    private val protectedSpacing = TokenSet.create(replacement, TokenType.ERROR_ELEMENT)
+    private val formatOperations =
+        setOf(TokenTypes.OPERATOR, TokenTypes.IDENTIFIER, TokenTypes.DIRECTIVE)
+    // A physical alias can represent several tokens. Apply spacing only at written boundaries.
+    private val opaque =
+        TokenSet.create(replacement, MipsTypes.psi("INCLUDE_LINE"), TokenType.ERROR_ELEMENT)
+
+    private val readOnly: Spacing = Spacing.getReadOnlySpacing()
+    private val noSpaces: Spacing = Spacing.createSpacing(0, 0, 0, false, 0)
+    private val oneSpace: Spacing = Spacing.createSpacing(1, 1, 0, false, 0)
+    // The formatter adds one line feed to its blank-line limit.
+    private val keepLines: Spacing = Spacing.createSpacing(0, 0, 0, true, Int.MAX_VALUE - 1)
+  }
 }

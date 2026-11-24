@@ -12,56 +12,61 @@ import edu.missouristate.mars.di.CoreModule
 import edu.missouristate.mars.di.DaggerMarsComponent
 import edu.missouristate.mars.di.MarsComponent
 
-/** Owns the project's core session, shared by future language, console, and debugger integrations. */
+/**
+ * Owns the project's core session, shared by future language, console, and debugger integrations.
+ */
 @Service(Service.Level.PROJECT)
 class MarsSessionService : Disposable {
-    private val lock = Any()
-    private var ownedContext: MarsContext? = null
-    private var disposed = false
+  private val lock = Any()
+  private var ownedContext: MarsContext? = null
+  private var disposed = false
 
-    /** Builds the core graph on first use, without simulation work during service construction. */
-    val context: MarsContext
-        get() = synchronized(lock) {
-            check(!disposed) { "MARS project session is disposed" }
-            ownedContext ?: createMarsComponent().context().also { ownedContext = it }
+  /** Builds the core graph on first use, without simulation work during service construction. */
+  val context: MarsContext
+    get() =
+        synchronized(lock) {
+          check(!disposed) { "MARS project session is disposed" }
+          ownedContext ?: createMarsComponent().context().also { ownedContext = it }
         }
 
-    override fun dispose() {
-        val owned = synchronized(lock) {
-            if (disposed) return
-            disposed = true
-            ownedContext.also { ownedContext = null }
+  override fun dispose() {
+    val owned =
+        synchronized(lock) {
+          if (disposed) return
+          disposed = true
+          ownedContext.also { ownedContext = null }
         }
-        owned?.close()
-    }
+    owned?.close()
+  }
 
-    companion object {
-        /** Each launch owns its component and shares the core catalog for its target. */
-        internal fun createMarsComponent(
-            backstepLimit: Int = ApplicationInfo.maximumBacksteps,
-            target: MarsTarget = MarsTarget.DEFAULT,
-        ): MarsComponent = DaggerMarsComponent.builder()
+  companion object {
+    /** Each launch owns its component and shares the core catalog for its target. */
+    internal fun createMarsComponent(
+        backstepLimit: Int = ApplicationInfo.maximumBacksteps,
+        target: MarsTarget = MarsTarget.DEFAULT,
+    ): MarsComponent =
+        DaggerMarsComponent.builder()
             .coreModule(CoreModule(Settings(), backstepLimit, target))
             .guiProxy(ProjectFrontend())
             .build()
+  }
+
+  /** Routes core messages before a project console is attached. */
+  private class ProjectFrontend : MarsGuiProxy {
+    override val isGuiMode = false
+
+    override fun postMessage(message: String) {
+      logger<MarsSessionService>().info(message)
     }
 
-    /** Routes core messages before a project console is attached. */
-    private class ProjectFrontend : MarsGuiProxy {
-        override val isGuiMode = false
+    override fun postRunMessage(message: String) = postMessage(message)
 
-        override fun postMessage(message: String) {
-            logger<MarsSessionService>().info(message)
-        }
+    override fun readInput(maxLength: Int): String =
+        throw UnsupportedOperationException("Interactive input requires a project console")
 
-        override fun postRunMessage(message: String) = postMessage(message)
+    override fun readInputWithPrompt(prompt: String): String =
+        throw UnsupportedOperationException("Interactive input requires a project console")
 
-        override fun readInput(maxLength: Int): String =
-            throw UnsupportedOperationException("Interactive input requires a project console")
-
-        override fun readInputWithPrompt(prompt: String): String =
-            throw UnsupportedOperationException("Interactive input requires a project console")
-
-        override fun clearRunConsole() = Unit
-    }
+    override fun clearRunConsole() = Unit
+  }
 }

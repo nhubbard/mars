@@ -16,27 +16,26 @@ import javax.inject.Singleton
 @Singleton
 @Component(modules = [CoreModule::class])
 interface MarsComponent {
-    fun context(): MarsContext
+  fun context(): MarsContext
 
-    fun assembler(): MarsAssembler
+  fun assembler(): MarsAssembler
 
-    fun simulator(): MarsSimulator
+  fun simulator(): MarsSimulator
 
-    fun settings(): Settings
+  fun settings(): Settings
 
-    fun simulationSettings(): MarsSettings
+  fun simulationSettings(): MarsSettings
 
-    fun registerFile(): MarsRegisterFile
+  fun registerFile(): MarsRegisterFile
 
-    fun memory(): MarsMemory
+  fun memory(): MarsMemory
 
-    @Component.Builder
-    interface Builder {
-        fun coreModule(module: CoreModule): Builder
+  @Component.Builder
+  interface Builder {
+    fun coreModule(module: CoreModule): Builder
 
-        @BindsInstance
-        fun guiProxy(proxy: MarsGuiProxy): Builder
+    @BindsInstance fun guiProxy(proxy: MarsGuiProxy): Builder
 
-        fun build(): MarsComponent
-    }
+    fun build(): MarsComponent
+  }
 }

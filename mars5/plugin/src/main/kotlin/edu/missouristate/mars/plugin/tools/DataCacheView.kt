@@ -1,6 +1,5 @@
 package edu.missouristate.mars.plugin.tools
 
-import edu.missouristate.mars.devices.DataCacheSimulator
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.project.Project
@@ -21,6 +20,7 @@ import com.intellij.ui.table.JBTable
 import com.intellij.util.ui.JBDimension
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.launchOnShow
+import edu.missouristate.mars.devices.DataCacheSimulator
 import edu.missouristate.mars.devices.DataCacheSimulator.Access
 import edu.missouristate.mars.devices.DataCacheSimulator.Options
 import edu.missouristate.mars.devices.DataCacheSimulator.Placement
@@ -30,223 +30,306 @@ import javax.swing.JButton
 import javax.swing.JEditorPane
 import javax.swing.JProgressBar
 import javax.swing.table.AbstractTableModel
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
-import kotlin.time.Duration.Companion.milliseconds
 
 internal class DataCacheView(project: Project) : Disposable {
-    private val selector = MarsToolExecutionSelector(project, ::selectionChanged)
-    private val placement = ComboBox(CollectionComboBoxModel(Placement.entries.toMutableList())).apply {
+  private val selector = MarsToolExecutionSelector(project, ::selectionChanged)
+  private val placement =
+      ComboBox(CollectionComboBoxModel(Placement.entries.toMutableList())).apply {
         renderer = textListCellRenderer { toolsMessages.getMessage(it.messageKey) }
-    }
-    private val blocks = ComboBox(CollectionComboBoxModel(DataCacheSimulator.sizes.toMutableList()))
-    private val words = ComboBox(CollectionComboBoxModel(DataCacheSimulator.sizes.toMutableList()))
-    private val ways = ComboBox<Int>()
-    private val replacement = ComboBox(CollectionComboBoxModel(Replacement.entries.toMutableList())).apply {
+      }
+  private val blocks = ComboBox(CollectionComboBoxModel(DataCacheSimulator.sizes.toMutableList()))
+  private val words = ComboBox(CollectionComboBoxModel(DataCacheSimulator.sizes.toMutableList()))
+  private val ways = ComboBox<Int>()
+  private val replacement =
+      ComboBox(CollectionComboBoxModel(Replacement.entries.toMutableList())).apply {
         renderer = textListCellRenderer { toolsMessages.getMessage(it.messageKey) }
-    }
-    private val apply = JButton(toolsMessages.getMessage("cache.apply"))
-    private val toggle = JButton()
-    private val reset = JButton(toolsMessages.getMessage("counter.reset"))
-    private val logging = JBCheckBox(toolsMessages.getMessage("cache.logging"))
-    private lateinit var summary: JEditorPane
-    private lateinit var traffic: JEditorPane
-    private val percentage = JBLabel()
-    private val rate = JProgressBar(0, 100).apply {
+      }
+  private val apply = JButton(toolsMessages.getMessage("cache.apply"))
+  private val toggle = JButton()
+  private val reset = JButton(toolsMessages.getMessage("counter.reset"))
+  private val logging = JBCheckBox(toolsMessages.getMessage("cache.logging"))
+  private lateinit var summary: JEditorPane
+  private lateinit var traffic: JEditorPane
+  private val percentage = JBLabel()
+  private val rate =
+      JProgressBar(0, 100).apply {
         preferredSize = preferredSize.apply { width = JBUI.scale(112) }
         minimumSize = minimumSize.apply { width = 0 }
         accessibleContext.accessibleName = toolsMessages.getMessage("cache.rate")
-    }
-    private val blockModel = CacheBlockTableModel()
-    private val table = JBTable(blockModel).apply {
+      }
+  private val blockModel = CacheBlockTableModel()
+  private val table =
+      JBTable(blockModel).apply {
         preferredScrollableViewportSize = JBDimension(300, 160)
-        fitToolColumns("", "", Binary.intToHexString(0), "", toolsMessages.getMessage("cache.empty"))
-    }
-    private val log = JBTextArea(5, 35).apply { isEditable = false }
-    private val tableScroll = JBScrollPane(table).apply { minimumSize = JBDimension(0, 84) }
-    private val logScroll = JBScrollPane(log)
-    private var previous: DataCacheSimulator.Snapshot? = null
+        fitToolColumns(
+            "",
+            "",
+            Binary.intToHexString(0),
+            "",
+            toolsMessages.getMessage("cache.empty"),
+        )
+      }
+  private val log = JBTextArea(5, 35).apply { isEditable = false }
+  private val tableScroll = JBScrollPane(table).apply { minimumSize = JBDimension(0, 84) }
+  private val logScroll = JBScrollPane(log)
+  private var previous: DataCacheSimulator.Snapshot? = null
 
-    val component = scrollableToolPanel(this, marsToolPanel {
-        marsExecutionRow(selector.component)
-        row {
-            cell(toggle)
-            cell(reset)
-        }
-        collapsibleGroup(toolsMessages.getMessage("cache.configuration"), indent = false) {
-            row { cell(placement).label(toolsMessages.getMessage("cache.placement"), LabelPosition.TOP) }
+  val component =
+      scrollableToolPanel(
+          this,
+          marsToolPanel {
+            marsExecutionRow(selector.component)
             row {
-                panel { row { cell(blocks).label(toolsMessages.getMessage("cache.blocks"), LabelPosition.TOP) } }
-                panel { row { cell(words).label(toolsMessages.getMessage("cache.words"), LabelPosition.TOP) } }
-            }.layout(RowLayout.INDEPENDENT)
-            row { cell(ways).label(toolsMessages.getMessage("cache.ways"), LabelPosition.TOP) }
-            row { cell(replacement).label(toolsMessages.getMessage("cache.replacement"), LabelPosition.TOP) }
-            row { cell(apply) }
-        }.expanded = false
-        row { summary = text("").resizableColumn().component }.layout(RowLayout.INDEPENDENT).topGap(TopGap.SMALL)
-        row { traffic = text("").resizableColumn().component }.layout(RowLayout.INDEPENDENT)
-        row {
-            label(toolsMessages.getMessage("cache.rate")).gap(RightGap.SMALL).component.labelFor = rate
-            cell(percentage).gap(RightGap.SMALL)
-            cell(rate).align(AlignX.LEFT).resizableColumn()
-        }.layout(RowLayout.INDEPENDENT)
-        row {
-            cell(tableScroll).align(Align.FILL).resizableColumn()
-        }.resizableRow()
-        collapsibleGroup(toolsMessages.getMessage("cache.log"), indent = false) {
-            row { cell(logging) }
-            row { cell(logScroll).align(AlignX.FILL).resizableColumn() }
-        }.expanded = false
-        row { comment(toolsMessages.getMessage("cache.scope")).resizableColumn() }.layout(RowLayout.INDEPENDENT)
-    }, mapOf(table to tableScroll, log to logScroll))
-
-    init {
-        placement.addActionListener { updateWays() }
-        blocks.addActionListener { updateWays() }
-        replacement.addActionListener {
-            selector.process?.dataCache?.setReplacement(replacement.selectedItem as Replacement)
-            render()
-        }
-        apply.addActionListener {
-            table.clearSelection()
-            selector.process!!.dataCache.configure(
-                Options(blocks.selectedItem as Int, words.selectedItem as Int, placement.selectedItem as Placement,
-                    ways.selectedItem as Int, replacement.selectedItem as Replacement),
-            )
-            render()
-        }
-        toggle.addActionListener {
-            val model = selector.process!!.dataCache
-            model.setConnected(!model.snapshot().connected)
-            render()
-        }
-        reset.addActionListener {
-            table.clearSelection()
-            selector.process!!.dataCache.reset()
-            render()
-        }
-        logging.addActionListener {
-            selector.process!!.dataCache.setLogging(logging.isSelected)
-            render()
-        }
-        refresh()
-        selectionChanged()
-    }
-
-    @Suppress("UnstableApiUsage")
-    private val refreshJob = component.launchOnShow("Refresh MARS data cache") {
-        while (true) {
-            withContext(Dispatchers.EDT) { refresh() }
-            delay(200.milliseconds)
-        }
-    }
-
-    private fun refresh() {
-        selector.refresh()
-        render()
-    }
-
-    private fun updateWays() {
-        val choices = (placement.selectedItem as Placement).wayChoices(blocks.selectedItem as Int)
-        val selected = ways.selectedItem
-        ways.model = CollectionComboBoxModel(choices.toMutableList()).apply {
-            selectedItem = choices.firstOrNull { it == selected } ?: choices.first()
-        }
-    }
-
-    private fun selectionChanged() {
-        table.clearSelection()
-        val snapshot = selector.process?.dataCache?.snapshot()
-        val options = snapshot?.options ?: Options()
-        placement.selectedItem = options.placement
-        blocks.selectedItem = options.blocks
-        words.selectedItem = options.wordsPerBlock
-        replacement.selectedItem = options.replacement
-        updateWays()
-        ways.selectedItem = options.ways
-        logging.isSelected = snapshot?.logging == true
-        render()
-    }
-
-    private fun render() {
-        val snapshot = selector.process?.dataCache?.snapshot()
-        for (control in listOf(placement, blocks, words, ways, replacement, apply, toggle, reset, logging)) {
-            control.isEnabled = snapshot != null
-        }
-        toggle.text = toolsMessages.getMessage(if (snapshot?.connected == true) "counter.disconnect" else "counter.connect")
-        if (snapshot === previous) return
-        previous = snapshot
-        summary.text = snapshot?.let {
-            toolsMessages.getMessage("cache.summary", it.options.bytes.toString(), it.accesses.toString())
-        }.orEmpty()
-        traffic.text = snapshot?.let {
-            toolsMessages.getMessage("cache.traffic", it.hits.toString(), it.misses.toString())
-        }.orEmpty()
-        rate.value = snapshot?.hitRate ?: 0
-        percentage.text = toolsMessages.getMessage("cache.percent", rate.value.toString())
-        blockModel.update(snapshot)
-        log.text = snapshot?.recent.orEmpty().joinToString("\n", transform = ::logLine)
-        log.caretPosition = log.document.length
-    }
-
-    override fun dispose() {
-        refreshJob.cancel()
-    }
-
-    private class CacheBlockTableModel : AbstractTableModel() {
-        private val columns = listOf("block", "set", "tag", "access", "result")
-        private var snapshot: DataCacheSimulator.Snapshot? = null
-
-        fun update(snapshot: DataCacheSimulator.Snapshot?) {
-            val previousRowCount = rowCount
-            this.snapshot = snapshot
-            publishRowRefresh(previousRowCount)
-        }
-
-        override fun getColumnName(column: Int) = toolsMessages.getMessage("cache.column.${columns[column]}")
-        override fun getColumnCount() = columns.size
-        override fun getRowCount() = snapshot?.blocks?.size ?: 0
-        override fun getValueAt(rowIndex: Int, columnIndex: Int): String {
-            val state = snapshot!!
-            val block = state.blocks[rowIndex]
-            return when (columnIndex) {
-                0 -> rowIndex.toString()
-                1 -> (rowIndex / state.options.ways).toString()
-                2 -> block.tag?.let(::formatToolHex).orEmpty()
-                3 -> block.lastAccess.takeIf { it != 0L }?.toString().orEmpty()
-                else -> toolsMessages.getMessage(when {
-                    block.tag == null -> "cache.empty"
-                    block.lastHit -> "cache.hit"
-                    else -> "cache.miss"
-                })
+              cell(toggle)
+              cell(reset)
             }
-        }
+            collapsibleGroup(toolsMessages.getMessage("cache.configuration"), indent = false) {
+                  row {
+                    cell(placement)
+                        .label(toolsMessages.getMessage("cache.placement"), LabelPosition.TOP)
+                  }
+                  row {
+                        panel {
+                          row {
+                            cell(blocks)
+                                .label(toolsMessages.getMessage("cache.blocks"), LabelPosition.TOP)
+                          }
+                        }
+                        panel {
+                          row {
+                            cell(words)
+                                .label(toolsMessages.getMessage("cache.words"), LabelPosition.TOP)
+                          }
+                        }
+                      }
+                      .layout(RowLayout.INDEPENDENT)
+                  row {
+                    cell(ways).label(toolsMessages.getMessage("cache.ways"), LabelPosition.TOP)
+                  }
+                  row {
+                    cell(replacement)
+                        .label(toolsMessages.getMessage("cache.replacement"), LabelPosition.TOP)
+                  }
+                  row { cell(apply) }
+                }
+                .expanded = false
+            row { summary = text("").resizableColumn().component }
+                .layout(RowLayout.INDEPENDENT)
+                .topGap(TopGap.SMALL)
+            row { traffic = text("").resizableColumn().component }.layout(RowLayout.INDEPENDENT)
+            row {
+                  label(toolsMessages.getMessage("cache.rate"))
+                      .gap(RightGap.SMALL)
+                      .component
+                      .labelFor = rate
+                  cell(percentage).gap(RightGap.SMALL)
+                  cell(rate).align(AlignX.LEFT).resizableColumn()
+                }
+                .layout(RowLayout.INDEPENDENT)
+            row {
+              cell(tableScroll).align(Align.FILL).resizableColumn()
+            }
+                .resizableRow()
+            collapsibleGroup(toolsMessages.getMessage("cache.log"), indent = false) {
+                  row { cell(logging) }
+                  row { cell(logScroll).align(AlignX.FILL).resizableColumn() }
+                }
+                .expanded = false
+            row { comment(toolsMessages.getMessage("cache.scope")).resizableColumn() }
+                .layout(RowLayout.INDEPENDENT)
+          },
+          mapOf(table to tableScroll, log to logScroll),
+      )
+
+  init {
+    placement.addActionListener { updateWays() }
+    blocks.addActionListener { updateWays() }
+    replacement.addActionListener {
+      selector.process?.dataCache?.setReplacement(replacement.selectedItem as Replacement)
+      render()
     }
+    apply.addActionListener {
+      table.clearSelection()
+      selector.process!!
+          .dataCache
+          .configure(
+              Options(
+                  blocks.selectedItem as Int,
+                  words.selectedItem as Int,
+                  placement.selectedItem as Placement,
+                  ways.selectedItem as Int,
+                  replacement.selectedItem as Replacement,
+              ),
+          )
+      render()
+    }
+    toggle.addActionListener {
+      val model = selector.process!!.dataCache
+      model.setConnected(!model.snapshot().connected)
+      render()
+    }
+    reset.addActionListener {
+      table.clearSelection()
+      selector.process!!.dataCache.reset()
+      render()
+    }
+    logging.addActionListener {
+      selector.process!!.dataCache.setLogging(logging.isSelected)
+      render()
+    }
+    refresh()
+    selectionChanged()
+  }
+
+  @Suppress("UnstableApiUsage")
+  private val refreshJob =
+      component.launchOnShow("Refresh MARS data cache") {
+        while (true) {
+          withContext(Dispatchers.EDT) { refresh() }
+          delay(200.milliseconds)
+        }
+      }
+
+  private fun refresh() {
+    selector.refresh()
+    render()
+  }
+
+  private fun updateWays() {
+    val choices = (placement.selectedItem as Placement).wayChoices(blocks.selectedItem as Int)
+    val selected = ways.selectedItem
+    ways.model =
+        CollectionComboBoxModel(choices.toMutableList()).apply {
+          selectedItem = choices.firstOrNull { it == selected } ?: choices.first()
+        }
+  }
+
+  private fun selectionChanged() {
+    table.clearSelection()
+    val snapshot = selector.process?.dataCache?.snapshot()
+    val options = snapshot?.options ?: Options()
+    placement.selectedItem = options.placement
+    blocks.selectedItem = options.blocks
+    words.selectedItem = options.wordsPerBlock
+    replacement.selectedItem = options.replacement
+    updateWays()
+    ways.selectedItem = options.ways
+    logging.isSelected = snapshot?.logging == true
+    render()
+  }
+
+  private fun render() {
+    val snapshot = selector.process?.dataCache?.snapshot()
+    for (control in
+        listOf(placement, blocks, words, ways, replacement, apply, toggle, reset, logging)) {
+      control.isEnabled = snapshot != null
+    }
+    toggle.text =
+        toolsMessages.getMessage(
+            if (snapshot?.connected == true) "counter.disconnect" else "counter.connect",
+        )
+    if (snapshot === previous) return
+    previous = snapshot
+    summary.text =
+        snapshot
+            ?.let {
+              toolsMessages.getMessage(
+                  "cache.summary",
+                  it.options.bytes.toString(),
+                  it.accesses.toString(),
+              )
+            }
+            .orEmpty()
+    traffic.text =
+        snapshot
+            ?.let {
+              toolsMessages.getMessage("cache.traffic", it.hits.toString(), it.misses.toString())
+            }
+            .orEmpty()
+    rate.value = snapshot?.hitRate ?: 0
+    percentage.text = toolsMessages.getMessage("cache.percent", rate.value.toString())
+    blockModel.update(snapshot)
+    log.text = snapshot?.recent.orEmpty().joinToString("\n", transform = ::logLine)
+    log.caretPosition = log.document.length
+  }
+
+  override fun dispose() {
+    refreshJob.cancel()
+  }
+
+  private class CacheBlockTableModel : AbstractTableModel() {
+    private val columns = listOf("block", "set", "tag", "access", "result")
+    private var snapshot: DataCacheSimulator.Snapshot? = null
+
+    fun update(snapshot: DataCacheSimulator.Snapshot?) {
+      val previousRowCount = rowCount
+      this.snapshot = snapshot
+      publishRowRefresh(previousRowCount)
+    }
+
+    override fun getColumnName(column: Int) =
+        toolsMessages.getMessage("cache.column.${columns[column]}")
+
+    override fun getColumnCount() = columns.size
+
+    override fun getRowCount() = snapshot?.blocks?.size ?: 0
+
+    override fun getValueAt(rowIndex: Int, columnIndex: Int): String {
+      val state = snapshot!!
+      val block = state.blocks[rowIndex]
+      return when (columnIndex) {
+        0 -> rowIndex.toString()
+        1 -> (rowIndex / state.options.ways).toString()
+        2 -> block.tag?.let(::formatToolHex).orEmpty()
+        3 -> block.lastAccess.takeIf { it != 0L }?.toString().orEmpty()
+        else ->
+            toolsMessages.getMessage(
+                when {
+                  block.tag == null -> "cache.empty"
+                  block.lastHit -> "cache.hit"
+                  else -> "cache.miss"
+                },
+            )
+      }
+    }
+  }
 }
 
 private fun logLine(access: Access): String {
-    val previousTag = access.previousTag
-    val result = when {
+  val previousTag = access.previousTag
+  val result =
+      when {
         access.hit -> toolsMessages.getMessage("cache.hit")
         previousTag == null -> toolsMessages.getMessage("cache.fill")
         else -> toolsMessages.getMessage("cache.evict", formatToolHex(previousTag))
-    }
-    return toolsMessages.getMessage(
-        "cache.observation", access.number.toString(), toolsMessages.getMessage(if (access.write) "cache.write" else "cache.read"),
-        formatToolHex(access.address), formatToolHex(access.tag), access.set.toString(), access.block.toString(), result,
-    )
+      }
+  return toolsMessages.getMessage(
+      "cache.observation",
+      access.number.toString(),
+      toolsMessages.getMessage(if (access.write) "cache.write" else "cache.read"),
+      formatToolHex(access.address),
+      formatToolHex(access.tag),
+      access.set.toString(),
+      access.block.toString(),
+      result,
+  )
 }
 
 private val Placement.messageKey: String
-    get() = when (this) {
+  get() =
+      when (this) {
         Placement.DIRECT -> "cache.direct"
         Placement.FULL -> "cache.full"
         Placement.SET_ASSOCIATIVE -> "cache.setAssociative"
-    }
+      }
 
 private val Replacement.messageKey: String
-    get() = when (this) {
+  get() =
+      when (this) {
         Replacement.LRU -> "cache.lru"
         Replacement.RANDOM -> "cache.random"
-    }
+      }

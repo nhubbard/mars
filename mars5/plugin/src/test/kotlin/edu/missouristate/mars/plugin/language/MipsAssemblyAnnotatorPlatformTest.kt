@@ -64,18 +64,24 @@ import org.junit.jupiter.params.provider.ValueSource
 
 @TestApplication
 class MipsAssemblyAnnotatorPlatformTest {
-    private val projectFixture = codeInsightProjectFixture()
-    private val fixture by codeInsightFixture(projectFixture)
-    private val project get() = projectFixture.get()
-    private val annotator = MipsAssemblyAnnotator()
+  private val projectFixture = codeInsightProjectFixture()
+  private val fixture by codeInsightFixture(projectFixture)
+  private val project
+    get() = projectFixture.get()
 
-    @Test
-    fun `entry and include editors reuse one captured assembly until a source changes`() = timeoutRunBlocking {
-        val (main, include) = withContext(Dispatchers.EDT) {
-            val part = fixture.addFileToProject("part.s", "j missing\n") as MipsFile
-            val entry = fixture.addFileToProject("entry.s", ".set noat\n.include \"part.s\"\n") as MipsFile
-            entry to part
-        }
+  private val annotator = MipsAssemblyAnnotator()
+
+  @Test
+  fun `entry and include editors reuse one captured assembly until a source changes`() =
+      timeoutRunBlocking {
+        val (main, include) =
+            withContext(Dispatchers.EDT) {
+              val part = fixture.addFileToProject("part.s", "j missing\n") as MipsFile
+              val entry =
+                  fixture.addFileToProject("entry.s", ".set noat\n.include \"part.s\"\n")
+                      as MipsFile
+              entry to part
+            }
         IndexingTestUtil.suspendUntilIndexesAreReady(project)
         suspend fun collect(file: MipsFile) = readAction { annotator.collectInformation(file)!! }
         suspend fun analyze(input: MipsAssemblyAnnotator.Input) =
@@ -104,29 +110,35 @@ class MipsAssemblyAnnotatorPlatformTest {
         val afterCreation = collect(main)
         assertEquals(changed.capture.sources.revisions, afterCreation.capture.sources.revisions)
         assertNotSame(corrected.outcome, analyze(afterCreation).outcome)
-    }
+      }
 
-    @Test
-    fun `background assembly follows option changes for the same selected entry`() = timeoutRunBlocking {
-        val file = withContext(Dispatchers.EDT) {
-            project.service<MarsAssemblySettings>().changeTarget(MarsTarget.MARS32)
-            fixture.addFileToProject("delay-layout.asm", $$"""
-                .macro gen (%label)
-                %label: nop
-                .end_macro
-                .set noat
-                div $t0, $t1, $t2
-                marker: nop
-                gen(generated)
-                j generated
-            """.trimIndent()) as MipsFile
-        }
+  @Test
+  fun `background assembly follows option changes for the same selected entry`() =
+      timeoutRunBlocking {
+        val file =
+            withContext(Dispatchers.EDT) {
+              project.service<MarsAssemblySettings>().changeTarget(MarsTarget.MARS32)
+              fixture.addFileToProject(
+                  "delay-layout.asm",
+                  $$"""
+                  .macro gen (%label)
+                  %label: nop
+                  .end_macro
+                  .set noat
+                  div $t0, $t1, $t2
+                  marker: nop
+                  gen(generated)
+                  j generated
+                  """
+                      .trimIndent(),
+              ) as MipsFile
+            }
         IndexingTestUtil.suspendUntilIndexesAreReady(project)
         val path = file.virtualFile.toNioPath()
         val build = project.service<MarsBuildService>()
         suspend fun analyze(): MipsAssemblyAnnotator.Result {
-            val input = readAction { annotator.collectInformation(file)!! }
-            return withContext(Dispatchers.Default) { annotator.doAnnotate(input) }
+          val input = readAction { annotator.collectInformation(file)!! }
+          return withContext(Dispatchers.Default) { annotator.doAnnotate(input) }
         }
         build.assemble(path)
         val withoutDelay = analyze()
@@ -136,53 +148,74 @@ class MipsAssemblyAnnotatorPlatformTest {
         val options = MarsExecutionOptions(delayedBranching = true, target = MarsTarget.MARS32)
         val analysis = project.service<MarsAnalysisService>()
         suspend fun names() = readAction {
-            analysis.labelCompletionNames(file, file.findElementAt(file.text.lastIndexOf("generated"))!!, "generated")
+          analysis.labelCompletionNames(
+              file,
+              file.findElementAt(file.text.lastIndexOf("generated"))!!,
+              "generated",
+          )
         }
         assertEquals(setOf("generated"), names())
         val pending = analysis.beginSymbolBuild(path, options)
-        analysis.publishBuiltSymbols(pending, withoutDelay.input.capture.sources, AssemblySymbolMap.EMPTY)
+        analysis.publishBuiltSymbols(
+            pending,
+            withoutDelay.input.capture.sources,
+            AssemblySymbolMap.EMPTY,
+        )
         assertEquals(setOf("generated"), names())
         assertSame(withoutDelay.outcome, analyze().outcome)
 
         withContext(Dispatchers.EDT) {
-            project.service<MarsAssemblySettings>().changeDelayedBranching(true)
+          project.service<MarsAssemblySettings>().changeDelayedBranching(true)
         }
         assertTrue(names().isEmpty())
 
         val component = MarsSessionService.createMarsComponent()
-        val assembledAddress = component.context().use { session ->
-            assertTrue(build.assemble(path, component, activateBuildView = false, options = options))
-            session.program!!.symbolMap().locals().getValue(path).getValue("marker").address
-        }
+        val assembledAddress =
+            component.context().use { session ->
+              assertTrue(
+                  build.assemble(path, component, activateBuildView = false, options = options),
+              )
+              session.program!!.symbolMap().locals().getValue(path).getValue("marker").address
+            }
         val delayed = analyze()
         assertEquals(options, delayed.input.capture.options)
-        assertEquals(withoutDelay.input.capture.sources.revisions, delayed.input.capture.sources.revisions)
+        assertEquals(
+            withoutDelay.input.capture.sources.revisions,
+            delayed.input.capture.sources.revisions,
+        )
         assertNotSame(withoutDelay.outcome, delayed.outcome)
         assertEquals(original + 4, assembledAddress)
-        assertEquals(assembledAddress, requireNotNull(delayed.symbols).localSymbols.getValue("marker").address)
+        assertEquals(
+            assembledAddress,
+            requireNotNull(delayed.symbols).localSymbols.getValue("marker").address,
+        )
         assertTrue(readAction { annotator.acceptResult(file, withoutDelay).isEmpty() })
         assertEquals(1, readAction { annotator.acceptResult(file, delayed).size })
         assertEquals(setOf("generated"), names())
-    }
+      }
 
-    @Test
-    fun `background highlighting makes generated labels available without a build`() = timeoutRunBlocking {
+  @Test
+  fun `background highlighting makes generated labels available without a build`() =
+      timeoutRunBlocking {
         val source = ".include \"defs.s\"\nemit (generated)\nemit (generatedOther)\nj generated\n"
-        val (entry, unrelated) = withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("defs.s", ".macro emit (%entry)\n%entry: nop\n.end_macro\n")
-            val entry = fixture.addFileToProject("entry.asm", source).virtualFile
-            val unrelated = fixture.addFileToProject("unrelated.s", "j gen\n") as MipsFile
-            fixture.configureFromExistingVirtualFile(entry)
-            entry to unrelated
-        }
+        val (entry, unrelated) =
+            withContext(Dispatchers.EDT) {
+              fixture.addFileToProject("defs.s", ".macro emit (%entry)\n%entry: nop\n.end_macro\n")
+              val entry = fixture.addFileToProject("entry.asm", source).virtualFile
+              val unrelated = fixture.addFileToProject("unrelated.s", "j gen\n") as MipsFile
+              fixture.configureFromExistingVirtualFile(entry)
+              entry to unrelated
+            }
         IndexingTestUtil.suspendUntilIndexesAreReady(project)
         val file = fixture.file as MipsFile
         val analysis = project.service<MarsAnalysisService>()
         val operand = source.lastIndexOf("generated")
         suspend fun target() = readAction {
-            file.findReferenceAt(operand)?.resolve()?.let { it.text to it.containingFile.name }
+          file.findReferenceAt(operand)?.resolve()?.let { it.text to it.containingFile.name }
         }
-        suspend fun names() = readAction { analysis.labelCompletionNames(file, file.findElementAt(operand)!!, "gen") }
+        suspend fun names() = readAction {
+          analysis.labelCompletionNames(file, file.findElementAt(operand)!!, "gen")
+        }
         assertNull(target())
         val captured = readAction { annotator.collectInformation(file)!! }
         val older = withContext(Dispatchers.Default) { annotator.doAnnotate(captured) }
@@ -190,22 +223,31 @@ class MipsAssemblyAnnotatorPlatformTest {
         assertEquals("%entry" to "defs.s", target())
         assertEquals(setOf("generated", "generatedOther"), names())
         withContext(Dispatchers.EDT) {
-            DumbModeTestUtils.runInDumbModeSynchronously(project) {
-                assertTrue(analysis.labelCompletionNames(file, file.findElementAt(operand)!!, "gen").isEmpty())
-            }
+          DumbModeTestUtils.runInDumbModeSynchronously(project) {
+            assertTrue(
+                analysis.labelCompletionNames(file, file.findElementAt(operand)!!, "gen").isEmpty(),
+            )
+          }
         }
         readAction {
-            assertTrue(analysis.labelCompletionNames(unrelated, unrelated.findElementAt(2)!!, "gen").isEmpty())
+          assertTrue(
+              analysis
+                  .labelCompletionNames(unrelated, unrelated.findElementAt(2)!!, "gen")
+                  .isEmpty(),
+          )
         }
 
         withContext(Dispatchers.EDT) { edit(entry, source.substring(0, operand) + "gen\n") }
         fixture.highlightAfterMipsRefresh()
         assertNull(target())
         withContext(Dispatchers.EDT) {
-            fixture.editor.caretModel.moveToOffset(operand + 3)
-            fixture.completeBasic()
-            assertEquals(setOf("generated", "generatedOther"), fixture.lookupElementStrings.orEmpty().toSet())
-            fixture.lookup.hideLookup(true)
+          fixture.editor.caretModel.moveToOffset(operand + 3)
+          fixture.completeBasic()
+          assertEquals(
+              setOf("generated", "generatedOther"),
+              fixture.lookupElementStrings.orEmpty().toSet(),
+          )
+          fixture.lookup.hideLookup(true)
         }
 
         val replacement = source.replace("generated", "genFreshX")
@@ -216,183 +258,240 @@ class MipsAssemblyAnnotatorPlatformTest {
         readAction { assertTrue(annotator.acceptResult(file, older).isEmpty()) }
         assertEquals(setOf("genFreshX", "genFreshXOther"), names())
         assertEquals("%entry" to "defs.s", target())
-    }
+      }
 
-    @Test
-    fun `background symbols respect ambiguity and refresh the selected entry`() = timeoutRunBlocking {
-        val selectedSource = "target: nop\n.include \"part.s\"\n"
-        val (first, second) = withContext(Dispatchers.EDT) {
-            val part = fixture.addFileToProject("part.s", "j target\n").virtualFile
-            val first = fixture.addFileToProject("first.s", selectedSource).virtualFile
-            val second = fixture.addFileToProject("second.s", "nop\n").virtualFile
-            fixture.configureFromExistingVirtualFile(part)
-            fixture.editor.caretModel.moveToOffset(3)
-            first to second
+  @Test
+  fun `background symbols respect ambiguity and refresh the selected entry`() = timeoutRunBlocking {
+    val selectedSource = "target: nop\n.include \"part.s\"\n"
+    val (first, second) =
+        withContext(Dispatchers.EDT) {
+          val part = fixture.addFileToProject("part.s", "j target\n").virtualFile
+          val first = fixture.addFileToProject("first.s", selectedSource).virtualFile
+          val second = fixture.addFileToProject("second.s", "nop\n").virtualFile
+          fixture.configureFromExistingVirtualFile(part)
+          fixture.editor.caretModel.moveToOffset(3)
+          first to second
         }
-        IndexingTestUtil.suspendUntilIndexesAreReady(project)
-        suspend fun target() = readAction {
-            GotoDeclarationAction.findTargetElement(project, fixture.editor, 3)
-                ?.let { it.containingFile.virtualFile to it.textOffset }
-        }
-        withContext(Dispatchers.EDT) { fixture.highlightAfterMipsRefresh() }
-        assertEquals(first, target()?.first)
-        withContext(Dispatchers.EDT) { edit(second, selectedSource) }
-        assertNull(target())
-
-        project.service<MarsBuildService>().assemble(second.toNioPath())
-        assertEquals(second, target()?.first)
-        val leading = "# moved\n"
-        withContext(Dispatchers.EDT) { edit(second, leading + selectedSource) }
-        assertEquals(second to leading.length, target())
-        withContext(Dispatchers.EDT) { fixture.highlightAfterMipsRefresh() }
-        assertEquals(second to leading.length, target())
-        withContext(Dispatchers.EDT) { edit(second, selectedSource.replace("target:", "other:")) }
-        assertNull(target())
+    IndexingTestUtil.suspendUntilIndexesAreReady(project)
+    suspend fun target() = readAction {
+      GotoDeclarationAction.findTargetElement(project, fixture.editor, 3)?.let {
+        it.containingFile.virtualFile to it.textOffset
+      }
     }
+    withContext(Dispatchers.EDT) { fixture.highlightAfterMipsRefresh() }
+    assertEquals(first, target()?.first)
+    withContext(Dispatchers.EDT) { edit(second, selectedSource) }
+    assertNull(target())
 
-    @Test
-    fun `native editor highlighting shows assembler errors and warnings and clears them on edits`() = timeoutRunBlocking {
+    project.service<MarsBuildService>().assemble(second.toNioPath())
+    assertEquals(second, target()?.first)
+    val leading = "# moved\n"
+    withContext(Dispatchers.EDT) { edit(second, leading + selectedSource) }
+    assertEquals(second to leading.length, target())
+    withContext(Dispatchers.EDT) { fixture.highlightAfterMipsRefresh() }
+    assertEquals(second to leading.length, target())
+    withContext(Dispatchers.EDT) { edit(second, selectedSource.replace("target:", "other:")) }
+    assertNull(target())
+  }
+
+  @Test
+  fun `native editor highlighting shows assembler errors and warnings and clears them on edits`() =
+      timeoutRunBlocking {
         val source = ".set noat\n.include \"included.s\"\nj missing\n"
-        val (main, include) = withContext(Dispatchers.EDT) {
-            val entry = fixture.addFileToProject("entry.asm", source).virtualFile
-            val included = fixture.addFileToProject("included.s", ".set noat\nknown: nop\n").virtualFile
-            fixture.configureFromExistingVirtualFile(entry)
-            entry to included
-        }
+        val (main, include) =
+            withContext(Dispatchers.EDT) {
+              val entry = fixture.addFileToProject("entry.asm", source).virtualFile
+              val included =
+                  fixture.addFileToProject("included.s", ".set noat\nknown: nop\n").virtualFile
+              fixture.configureFromExistingVirtualFile(entry)
+              entry to included
+            }
         IndexingTestUtil.suspendUntilIndexesAreReady(project)
         val session = project.service<MarsSessionService>().context
         val program = session.assemble(listOf(include.toNioPath()))
         withContext(Dispatchers.EDT) {
-            val highlights = fixture.highlightAfterMipsRefresh()
-            val undefined = highlights.single { it.description?.contains("missing") == true }
-            assertEquals(HighlightSeverity.ERROR, undefined.severity)
-            assertEquals("missing", source.substring(undefined.startOffset, undefined.endOffset))
-            val warning = highlights.single { it.description?.contains("ignores the .set directive") == true }
-            assertEquals(HighlightSeverity.WARNING, warning.severity)
-            assertEquals(".set", source.substring(warning.startOffset, warning.endOffset))
-            edit(main, ".include \"included.s\"\nj known\n")
-            assertTrue(fixture.highlightAfterMipsRefresh().none {
-                it.description?.contains("missing") == true || it.description?.contains("ignores the .set directive") == true
-            })
-            edit(include, "known: nop\nj missing\n")
-            assertTrue(fixture.highlightAfterMipsRefresh().none { it.description?.contains("missing") == true })
+          val highlights = fixture.highlightAfterMipsRefresh()
+          val undefined = highlights.single { it.description?.contains("missing") == true }
+          assertEquals(HighlightSeverity.ERROR, undefined.severity)
+          assertEquals("missing", source.substring(undefined.startOffset, undefined.endOffset))
+          val warning = highlights.single {
+            it.description?.contains("ignores the .set directive") == true
+          }
+          assertEquals(HighlightSeverity.WARNING, warning.severity)
+          assertEquals(".set", source.substring(warning.startOffset, warning.endOffset))
+          edit(main, ".include \"included.s\"\nj known\n")
+          assertTrue(
+              fixture.highlightAfterMipsRefresh().none {
+                it.description?.contains("missing") == true ||
+                    it.description?.contains("ignores the .set directive") == true
+              },
+          )
+          edit(include, "known: nop\nj missing\n")
+          assertTrue(
+              fixture.highlightAfterMipsRefresh().none {
+                it.description?.contains("missing") == true
+              },
+          )
         }
         assertSame(program, session.program)
-    }
+      }
 
-    @Test
-    fun `syntax highlights follow the effective segment through includes and edits`() = timeoutRunBlocking {
+  @Test
+  fun `syntax highlights follow the effective segment through includes and edits`() =
+      timeoutRunBlocking {
         val source = $$"(\n)\n:\n$sp)\nlabel::suffix\n"
-        val (entry, segment, body) = withContext(Dispatchers.EDT) {
-            val mode = fixture.addFileToProject("segment.txt", ".eqv SWITCH .data\nSWITCH\n")
-            val part = fixture.addFileToProject("body.s", source)
-            val main = fixture.addFileToProject("main.asm", ".include \"segment.txt\"\n.include \"body.s\"\n.text\nnop\n")
-            fixture.configureFromExistingVirtualFile(part.virtualFile)
-            Triple(main.virtualFile, mode.virtualFile, part.virtualFile)
-        }
-        IndexingTestUtil.suspendUntilIndexesAreReady(project)
-        val program = project.service<MarsSessionService>().context.assemble(listOf(entry.toNioPath()))
-        assertEquals(listOf(0), program.machineList!!.map { it.binaryStatement })
-        withContext(Dispatchers.EDT) {
-            suspend fun errors() = fixture.highlightAfterMipsRefresh().filter { it.severity == HighlightSeverity.ERROR }
-            assertTrue(errors().isEmpty())
-            edit(segment, ".ktext\n")
-            assertTrue(errors().isNotEmpty())
-            edit(segment, ".kdata\n")
-            assertTrue(errors().isEmpty())
-            edit(body, $$"$sp) @\n.word )\n+ )\n")
-            val invalid = errors()
-            assertTrue(invalid.any { it.startOffset < $$"$sp) @\n".length })
-            assertTrue(invalid.any { it.startOffset in $$"$sp) @\n".length until $$"$sp) @\n.word )\n".length })
-            assertTrue(invalid.any { it.startOffset >= $$"$sp) @\n.word )\n".length })
-        }
-    }
-
-    @Test
-    fun `deferred macro operands follow an included opening through unsaved edits`() = timeoutRunBlocking {
-        val source = "4 : )\n.word )\nlabel: 6 : )\n"
-        val (entry, opening, body) = withContext(Dispatchers.EDT) {
-            val header = fixture.addFileToProject("opening.txt", ".macro dormant\n")
-            val part = fixture.addFileToProject("macro-body.s", source)
-            val main = fixture.addFileToProject("entry.asm", """
-                .include "opening.txt"
-                .include "macro-body.s"
-                .end_macro
-                nop
-            """.trimIndent())
-            fixture.configureFromExistingVirtualFile(part.virtualFile)
-            Triple(main.virtualFile, header.virtualFile, part.virtualFile)
-        }
-        IndexingTestUtil.suspendUntilIndexesAreReady(project)
-        val program = project.service<MarsSessionService>().context.assemble(listOf(entry.toNioPath()))
-        assertEquals(listOf(0), program.machineList!!.map { it.binaryStatement })
-        withContext(Dispatchers.EDT) {
-            suspend fun errors() = fixture.highlightAfterMipsRefresh().filter { it.severity == HighlightSeverity.ERROR }
-            assertTrue(PsiTreeUtil.hasErrorElements(fixture.file))
-            assertTrue(errors().isEmpty())
-            edit(opening, "# no macro opening\n")
-            assertTrue(errors().isNotEmpty())
-            edit(opening, ".macro dormant\n")
-            assertTrue(errors().isEmpty())
-            edit(body, "$source.word @\n")
-            assertTrue(errors().any { it.startOffset >= source.length })
-        }
-    }
-
-    @Test
-    fun `incomplete includes only invalidate macro syntax context after the include`() = timeoutRunBlocking {
-        val (entry, body) = withContext(Dispatchers.EDT) {
-            val header = fixture.addFileToProject("entry.asm", """
-                .eqv OPEN .macro dormant
-                OPEN
-                .include "body.s"
-                .end_macro
-                nop
-            """.trimIndent())
-            val source = fixture.addFileToProject("body.s", ".word )\n.word )\n")
-            fixture.configureFromExistingVirtualFile(source.virtualFile)
-            header.virtualFile to source.virtualFile
-        }
-        IndexingTestUtil.suspendUntilIndexesAreReady(project)
-        val program = project.service<MarsSessionService>().context.assemble(listOf(entry.toNioPath()))
-        assertEquals(listOf(0), program.machineList!!.map { it.binaryStatement })
-        withContext(Dispatchers.EDT) {
-            suspend fun errors() = fixture.highlightAfterMipsRefresh().filter { it.severity == HighlightSeverity.ERROR }
-            assertTrue(errors().isEmpty())
-            for (include in listOf(".include \"missing.s\"", ".include \"unfinished")) {
-                val first = ".word )\n.word @\n"
-                val afterInclude = first.length + include.length + 1
-                edit(body, "$first$include\n.word )\n")
-                val highlights = errors()
-                assertTrue(highlights.none { it.startOffset < ".word )\n".length }, highlights.toString())
-                assertTrue(highlights.any { it.startOffset in ".word )\n".length until first.length }, highlights.toString())
-                if (!include.endsWith('"')) {
-                    assertTrue(highlights.any { it.startOffset in first.length until afterInclude }, highlights.toString())
-                }
-                assertTrue(highlights.any { it.startOffset >= afterInclude }, highlights.toString())
+        val (entry, segment, body) =
+            withContext(Dispatchers.EDT) {
+              val mode = fixture.addFileToProject("segment.txt", ".eqv SWITCH .data\nSWITCH\n")
+              val part = fixture.addFileToProject("body.s", source)
+              val main =
+                  fixture.addFileToProject(
+                      "main.asm",
+                      ".include \"segment.txt\"\n.include \"body.s\"\n.text\nnop\n",
+                  )
+              fixture.configureFromExistingVirtualFile(part.virtualFile)
+              Triple(main.virtualFile, mode.virtualFile, part.virtualFile)
             }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        val program =
+            project.service<MarsSessionService>().context.assemble(listOf(entry.toNioPath()))
+        assertEquals(listOf(0), program.machineList!!.map { it.binaryStatement })
+        withContext(Dispatchers.EDT) {
+          suspend fun errors() =
+              fixture.highlightAfterMipsRefresh().filter { it.severity == HighlightSeverity.ERROR }
+          assertTrue(errors().isEmpty())
+          edit(segment, ".ktext\n")
+          assertTrue(errors().isNotEmpty())
+          edit(segment, ".kdata\n")
+          assertTrue(errors().isEmpty())
+          edit(body, $$"$sp) @\n.word )\n+ )\n")
+          val invalid = errors()
+          assertTrue(invalid.any { it.startOffset < $$"$sp) @\n".length })
+          assertTrue(
+              invalid.any {
+                it.startOffset in $$"$sp) @\n".length until $$"$sp) @\n.word )\n".length
+              },
+          )
+          assertTrue(invalid.any { it.startOffset >= $$"$sp) @\n.word )\n".length })
         }
-    }
+      }
 
-    @Test
-    fun `shared macro body diagnostics follow the selected entry and its current includes`() = timeoutRunBlocking {
+  @Test
+  fun `deferred macro operands follow an included opening through unsaved edits`() =
+      timeoutRunBlocking {
+        val source = "4 : )\n.word )\nlabel: 6 : )\n"
+        val (entry, opening, body) =
+            withContext(Dispatchers.EDT) {
+              val header = fixture.addFileToProject("opening.txt", ".macro dormant\n")
+              val part = fixture.addFileToProject("macro-body.s", source)
+              val main =
+                  fixture.addFileToProject(
+                      "entry.asm",
+                      """
+                      .include "opening.txt"
+                      .include "macro-body.s"
+                      .end_macro
+                      nop
+                      """
+                          .trimIndent(),
+                  )
+              fixture.configureFromExistingVirtualFile(part.virtualFile)
+              Triple(main.virtualFile, header.virtualFile, part.virtualFile)
+            }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        val program =
+            project.service<MarsSessionService>().context.assemble(listOf(entry.toNioPath()))
+        assertEquals(listOf(0), program.machineList!!.map { it.binaryStatement })
+        withContext(Dispatchers.EDT) {
+          suspend fun errors() =
+              fixture.highlightAfterMipsRefresh().filter { it.severity == HighlightSeverity.ERROR }
+          assertTrue(PsiTreeUtil.hasErrorElements(fixture.file))
+          assertTrue(errors().isEmpty())
+          edit(opening, "# no macro opening\n")
+          assertTrue(errors().isNotEmpty())
+          edit(opening, ".macro dormant\n")
+          assertTrue(errors().isEmpty())
+          edit(body, "$source.word @\n")
+          assertTrue(errors().any { it.startOffset >= source.length })
+        }
+      }
+
+  @Test
+  fun `incomplete includes only invalidate macro syntax context after the include`() =
+      timeoutRunBlocking {
+        val (entry, body) =
+            withContext(Dispatchers.EDT) {
+              val header =
+                  fixture.addFileToProject(
+                      "entry.asm",
+                      """
+                      .eqv OPEN .macro dormant
+                      OPEN
+                      .include "body.s"
+                      .end_macro
+                      nop
+                      """
+                          .trimIndent(),
+                  )
+              val source = fixture.addFileToProject("body.s", ".word )\n.word )\n")
+              fixture.configureFromExistingVirtualFile(source.virtualFile)
+              header.virtualFile to source.virtualFile
+            }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        val program =
+            project.service<MarsSessionService>().context.assemble(listOf(entry.toNioPath()))
+        assertEquals(listOf(0), program.machineList!!.map { it.binaryStatement })
+        withContext(Dispatchers.EDT) {
+          suspend fun errors() =
+              fixture.highlightAfterMipsRefresh().filter { it.severity == HighlightSeverity.ERROR }
+          assertTrue(errors().isEmpty())
+          for (include in listOf(".include \"missing.s\"", ".include \"unfinished")) {
+            val first = ".word )\n.word @\n"
+            val afterInclude = first.length + include.length + 1
+            edit(body, "$first$include\n.word )\n")
+            val highlights = errors()
+            assertTrue(
+                highlights.none { it.startOffset < ".word )\n".length },
+                highlights.toString(),
+            )
+            assertTrue(
+                highlights.any { it.startOffset in ".word )\n".length until first.length },
+                highlights.toString(),
+            )
+            if (!include.endsWith('"')) {
+              assertTrue(
+                  highlights.any { it.startOffset in first.length until afterInclude },
+                  highlights.toString(),
+              )
+            }
+            assertTrue(highlights.any { it.startOffset >= afterInclude }, highlights.toString())
+          }
+        }
+      }
+
+  @Test
+  fun `shared macro body diagnostics follow the selected entry and its current includes`() =
+      timeoutRunBlocking {
         val withoutBody = ".macro dormant\n.end_macro\nnop\n"
         val withBody = withoutBody.replace(".end_macro", ".include \"shared.s\"\n.end_macro")
-        val (macro, topLevel) = withContext(Dispatchers.EDT) {
-            val first = fixture.addFileToProject("macro.asm", withoutBody).virtualFile
-            val second = fixture.addFileToProject("top.asm", ".include \"shared.s\"\n").virtualFile
-            val shared = fixture.addFileToProject("shared.s", "4 : )\n.word )\n").virtualFile
-            fixture.configureFromExistingVirtualFile(shared)
-            first to second
-        }
+        val (macro, topLevel) =
+            withContext(Dispatchers.EDT) {
+              val first = fixture.addFileToProject("macro.asm", withoutBody).virtualFile
+              val second =
+                  fixture.addFileToProject("top.asm", ".include \"shared.s\"\n").virtualFile
+              val shared = fixture.addFileToProject("shared.s", "4 : )\n.word )\n").virtualFile
+              fixture.configureFromExistingVirtualFile(shared)
+              first to second
+            }
         IndexingTestUtil.suspendUntilIndexesAreReady(project)
         val build = project.service<MarsBuildService>()
         val analysis = project.service<MarsAnalysisService>()
         val shared = fixture.file as MipsFile
         suspend fun selected() = readAction { analysis.selectedAssembly(shared)?.entry }
-        suspend fun hasErrors() = withContext(Dispatchers.EDT) {
-            fixture.highlightAfterMipsRefresh().any { it.severity == HighlightSeverity.ERROR }
-        }
+        suspend fun hasErrors() =
+            withContext(Dispatchers.EDT) {
+              fixture.highlightAfterMipsRefresh().any { it.severity == HighlightSeverity.ERROR }
+            }
 
         assertTrue(build.assemble(macro.toNioPath()))
         assertNull(selected())
@@ -411,214 +510,268 @@ class MipsAssemblyAnnotatorPlatformTest {
         withContext(Dispatchers.EDT) { edit(macro, withoutBody) }
         assertNull(selected())
         assertTrue(hasErrors())
-    }
+      }
 
-    @Test
-    fun `text includes with another file type supply live macro scope and navigation`() = timeoutRunBlocking {
+  @Test
+  fun `text includes with another file type supply live macro scope and navigation`() =
+      timeoutRunBlocking {
         val bridgeText = "destination: nop\n.macro outer\n.include \"leaf.s\"\n"
-        val (entry, bridge, leaf) = withContext(Dispatchers.EDT) {
-            val main = fixture.addFileToProject("entry.s", ".include \"bridge.java\"\n.end_macro\nj destination\n") as MipsFile
-            val bridge = fixture.addFileToProject("bridge.java", bridgeText)
-            val leaf = fixture.addFileToProject("leaf.s", "4 : )\n.word )\n") as MipsFile
-            fixture.configureFromExistingVirtualFile(leaf.virtualFile)
-            Triple(main, bridge, leaf)
-        }
+        val (entry, bridge, leaf) =
+            withContext(Dispatchers.EDT) {
+              val main =
+                  fixture.addFileToProject(
+                      "entry.s",
+                      ".include \"bridge.java\"\n.end_macro\nj destination\n",
+                  ) as MipsFile
+              val bridge = fixture.addFileToProject("bridge.java", bridgeText)
+              val leaf = fixture.addFileToProject("leaf.s", "4 : )\n.word )\n") as MipsFile
+              fixture.configureFromExistingVirtualFile(leaf.virtualFile)
+              Triple(main, bridge, leaf)
+            }
         IndexingTestUtil.suspendUntilIndexesAreReady(project)
         val analysis = project.service<MarsAnalysisService>()
         suspend fun target() = readAction {
-            val reference = requireNotNull(entry.findElementAt(entry.text.indexOf("destination")))
-            val target = analysis.labelTargets(entry, reference, false).single()
-            target.containingFile.virtualFile to target.textOffset
+          val reference = requireNotNull(entry.findElementAt(entry.text.indexOf("destination")))
+          val target = analysis.labelTargets(entry, reference, false).single()
+          target.containingFile.virtualFile to target.textOffset
         }
         readAction {
-            assertSame(JavaFileType.INSTANCE, bridge.fileType)
-            assertTrue(analysis.editorTimeline(entry).includes(leaf))
+          assertSame(JavaFileType.INSTANCE, bridge.fileType)
+          assertTrue(analysis.editorTimeline(entry).includes(leaf))
         }
         assertEquals(bridge.virtualFile to 0, target())
         val entryPath = entry.virtualFile.toNioPath()
         assertTrue(project.service<MarsBuildService>().assemble(entryPath))
         readAction {
-            assertEquals(entryPath, analysis.selectedAssembly(leaf)?.entry)
-            assertEquals("outer", analysis.editorTimeline(leaf).macroAt(leaf, 0)?.name)
+          assertEquals(entryPath, analysis.selectedAssembly(leaf)?.entry)
+          assertEquals("outer", analysis.editorTimeline(leaf).macroAt(leaf, 0)?.name)
         }
         withContext(Dispatchers.EDT) {
-            suspend fun hasErrors() = fixture.highlightAfterMipsRefresh().any { it.severity == HighlightSeverity.ERROR }
-            assertTrue(!hasErrors())
-            edit(bridge.virtualFile, "# moved\n" + bridgeText.replace(".macro outer\n", ""))
-            assertTrue(hasErrors())
+          suspend fun hasErrors() =
+              fixture.highlightAfterMipsRefresh().any { it.severity == HighlightSeverity.ERROR }
+          assertTrue(!hasErrors())
+          edit(bridge.virtualFile, "# moved\n" + bridgeText.replace(".macro outer\n", ""))
+          assertTrue(hasErrors())
         }
         assertEquals(bridge.virtualFile to "# moved\n".length, target())
-    }
+      }
 
-    @Test
-    // Kotlin exposes the reported Java setters as read-only properties.
-    @Suppress("UsePropertyAccessSyntax")
-    fun `ignored includes contribute editor context to nested assembly sources`() = timeoutRunBlocking {
-        val (entry, ignored, leaf) = withContext(Dispatchers.EDT) {
-            val main = fixture.addFileToProject("entry.s", ".macro outer\n.end_macro\n.include \"bridge.inc~\"\n") as MipsFile
-            val ignored = fixture.tempDirFixture.createFile("bridge.inc~", ".eqv SHIFT 4\n.include \"leaf.s\"\n")
-            val leaf = fixture.addFileToProject("leaf.s", $$".macro inner\n.end_macro\nsll $t0, $t1, SHIFT\n") as MipsFile
-            Triple(main, ignored, leaf)
-        }
+  @Test
+  // Kotlin exposes the reported Java setters as read-only properties.
+  @Suppress("UsePropertyAccessSyntax")
+  fun `ignored includes contribute editor context to nested assembly sources`() =
+      timeoutRunBlocking {
+        val (entry, ignored, leaf) =
+            withContext(Dispatchers.EDT) {
+              val main =
+                  fixture.addFileToProject(
+                      "entry.s",
+                      ".macro outer\n.end_macro\n.include \"bridge.inc~\"\n",
+                  ) as MipsFile
+              val ignored =
+                  fixture.tempDirFixture.createFile(
+                      "bridge.inc~",
+                      ".eqv SHIFT 4\n.include \"leaf.s\"\n",
+                  )
+              val leaf =
+                  fixture.addFileToProject(
+                      "leaf.s",
+                      $$".macro inner\n.end_macro\nsll $t0, $t1, SHIFT\n",
+                  ) as MipsFile
+              Triple(main, ignored, leaf)
+            }
         IndexingTestUtil.suspendUntilIndexesAreReady(project)
         val entryPath = entry.virtualFile.toNioPath()
         assertTrue(project.service<MarsBuildService>().assemble(entryPath))
         val analysis = project.service<MarsAnalysisService>()
         readAction {
-            assertNull(PsiManager.getInstance(project).findFile(ignored))
-            assertEquals(entryPath, analysis.selectedAssembly(leaf)?.entry)
-            val timeline = analysis.editorTimeline(leaf)
-            assertEquals(setOf("outer", "inner"), timeline.macroNames)
-            assertFalse(timeline.hasIncompleteIncludes)
-            assertTrue(timeline.hasUnindexedSources)
-            val offset = leaf.text.indexOf("SHIFT")
-            val definition = checkNotNull(leaf.findReferenceAt(offset)?.resolve())
-            assertEquals("SHIFT", (definition as PsiNamedElement).name)
-            assertEquals(ignored, definition.containingFile.virtualFile.mipsAssemblySourceOrigin)
-            assertFalse(definition.containingFile.virtualFile.isWritable)
+          assertNull(PsiManager.getInstance(project).findFile(ignored))
+          assertEquals(entryPath, analysis.selectedAssembly(leaf)?.entry)
+          val timeline = analysis.editorTimeline(leaf)
+          assertEquals(setOf("outer", "inner"), timeline.macroNames)
+          assertFalse(timeline.hasIncompleteIncludes)
+          assertTrue(timeline.hasUnindexedSources)
+          val offset = leaf.text.indexOf("SHIFT")
+          val definition = checkNotNull(leaf.findReferenceAt(offset)?.resolve())
+          assertEquals("SHIFT", (definition as PsiNamedElement).name)
+          assertEquals(ignored, definition.containingFile.virtualFile.mipsAssemblySourceOrigin)
+          assertFalse(definition.containingFile.virtualFile.isWritable)
         }
         withContext(Dispatchers.EDT) {
-            val document = checkNotNull(FileDocumentManager.getInstance().getDocument(ignored))
-            WriteCommandAction.runWriteCommandAction(project) { document.setText(".eqv SHIFT 9\n.include \"leaf.s\"\n") }
-            val shift = leaf.text.indexOf("SHIFT")
-            assertEquals("9", analysis.editorTimeline(leaf).prefix(leaf, shift).equivalence("SHIFT")?.replacement)
-            assertTrue(Files.readString(ignored.toNioPath()).startsWith(".eqv SHIFT 4"))
-            FileDocumentManager.getInstance().saveDocument(document)
-            val diskRevision = ".eqv COUNT 42\n.include \"leaf.s\"\n"
-            Files.writeString(ignored.toNioPath(), diskRevision)
-            ignored.refresh(false, false)
-            assertEquals(diskRevision, document.text)
-            assertNull(leaf.findReferenceAt(leaf.text.indexOf("SHIFT"))?.resolve())
+          val document = checkNotNull(FileDocumentManager.getInstance().getDocument(ignored))
+          WriteCommandAction.runWriteCommandAction(project) {
+            document.setText(".eqv SHIFT 9\n.include \"leaf.s\"\n")
+          }
+          val shift = leaf.text.indexOf("SHIFT")
+          assertEquals(
+              "9",
+              analysis.editorTimeline(leaf).prefix(leaf, shift).equivalence("SHIFT")?.replacement,
+          )
+          assertTrue(Files.readString(ignored.toNioPath()).startsWith(".eqv SHIFT 4"))
+          FileDocumentManager.getInstance().saveDocument(document)
+          val diskRevision = ".eqv COUNT 42\n.include \"leaf.s\"\n"
+          Files.writeString(ignored.toNioPath(), diskRevision)
+          ignored.refresh(false, false)
+          assertEquals(diskRevision, document.text)
+          assertNull(leaf.findReferenceAt(leaf.text.indexOf("SHIFT"))?.resolve())
         }
-    }
+      }
 
-    @Test
-    // Kotlin exposes the reported Java setters as read-only properties.
-    @Suppress("UsePropertyAccessSyntax")
-    fun `read-only include views follow the name and file type of their original`() = timeoutRunBlocking {
+  @Test
+  // Kotlin exposes the reported Java setters as read-only properties.
+  @Suppress("UsePropertyAccessSyntax")
+  fun `read-only include views follow the name and file type of their original`() =
+      timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
-            val types = FileTypeManager.getInstance()
-            val ignored = types.ignoredFilesList
-            val matcher = ExactFileNameMatcher("renamed.png")
-            try {
-                WriteCommandAction.runWriteCommandAction(project) {
-                    types.ignoredFilesList = "$ignored;initial.png;renamed.png"
-                }
-                val source = fixture.tempDirFixture.createFile("initial.png", "nop\n")
-                val original = checkNotNull(unresolvedAssemblySourceSyntax(project, source))
-                assertSame(original, unresolvedAssemblySourceSyntax(project, source))
-                WriteCommandAction.runWriteCommandAction(project) { source.rename(this, "renamed.png") }
-                val renamed = checkNotNull(unresolvedAssemblySourceSyntax(project, source))
-                assertNotSame(original, renamed)
-                assertEquals("renamed.png", renamed.name)
-
-                WriteCommandAction.runWriteCommandAction(project) { types.associate(PlainTextFileType.INSTANCE, matcher) }
-                assertFalse(source.fileType.isBinary)
-                val text = checkNotNull(unresolvedAssemblySourceSyntax(project, source))
-                assertNotSame(renamed, text)
-                val document = checkNotNull(FileDocumentManager.getInstance().getDocument(source))
-                WriteCommandAction.runWriteCommandAction(project) { document.setText("syscall\n") }
-                assertEquals("syscall\n", unresolvedAssemblySourceSyntax(project, source)?.text)
-            } finally {
-                WriteCommandAction.runWriteCommandAction(project) {
-                    types.removeAssociation(PlainTextFileType.INSTANCE, matcher)
-                    types.ignoredFilesList = ignored
-                }
+          val types = FileTypeManager.getInstance()
+          val ignored = types.ignoredFilesList
+          val matcher = ExactFileNameMatcher("renamed.png")
+          try {
+            WriteCommandAction.runWriteCommandAction(project) {
+              types.ignoredFilesList = "$ignored;initial.png;renamed.png"
             }
-        }
-    }
+            val source = fixture.tempDirFixture.createFile("initial.png", "nop\n")
+            val original = checkNotNull(unresolvedAssemblySourceSyntax(project, source))
+            assertSame(original, unresolvedAssemblySourceSyntax(project, source))
+            WriteCommandAction.runWriteCommandAction(project) { source.rename(this, "renamed.png") }
+            val renamed = checkNotNull(unresolvedAssemblySourceSyntax(project, source))
+            assertNotSame(original, renamed)
+            assertEquals("renamed.png", renamed.name)
 
-    @Test
-    fun `ignored binary sources use the assembler decoder and oversized sources leave incomplete context`() = timeoutRunBlocking {
+            WriteCommandAction.runWriteCommandAction(project) {
+              types.associate(PlainTextFileType.INSTANCE, matcher)
+            }
+            assertFalse(source.fileType.isBinary)
+            val text = checkNotNull(unresolvedAssemblySourceSyntax(project, source))
+            assertNotSame(renamed, text)
+            val document = checkNotNull(FileDocumentManager.getInstance().getDocument(source))
+            WriteCommandAction.runWriteCommandAction(project) { document.setText("syscall\n") }
+            assertEquals("syscall\n", unresolvedAssemblySourceSyntax(project, source)?.text)
+          } finally {
+            WriteCommandAction.runWriteCommandAction(project) {
+              types.removeAssociation(PlainTextFileType.INSTANCE, matcher)
+              types.ignoredFilesList = ignored
+            }
+          }
+        }
+      }
+
+  @Test
+  fun `ignored binary sources use the assembler decoder and oversized sources leave incomplete context`() =
+      timeoutRunBlocking {
         val types = FileTypeManager.getInstance()
         val ignored = types.ignoredFilesList
         try {
-            val (file, leaf) = withContext(Dispatchers.EDT) {
-                WriteCommandAction.runWriteCommandAction(project) { types.ignoredFilesList = "$ignored;opaque.png" }
+          val (file, leaf) =
+              withContext(Dispatchers.EDT) {
+                WriteCommandAction.runWriteCommandAction(project) {
+                  types.ignoredFilesList = "$ignored;opaque.png"
+                }
                 val opaque = fixture.tempDirFixture.createFile("opaque.png")
                 val text = ".eqv SHIFT 4\r\n"
-                Files.write(opaque.toNioPath(), byteArrayOf(0xff.toByte(), 0xfe.toByte()) + text.toByteArray(Charsets.UTF_16LE))
+                Files.write(
+                    opaque.toNioPath(),
+                    byteArrayOf(0xff.toByte(), 0xfe.toByte()) + text.toByteArray(Charsets.UTF_16LE),
+                )
                 opaque.refresh(false, false)
                 assertTrue(opaque.fileType.isBinary)
                 assertNull(PsiManager.getInstance(project).findFile(opaque))
                 val large = fixture.tempDirFixture.createFile("oversized.inc~")
                 val comment = "#" + " ".repeat(16_382) + "\n"
                 Files.newBufferedWriter(large.toNioPath()).use { writer ->
-                    writer.write(".include \"leaf.s\"\n")
-                    repeat(FileSizeLimit.getContentLoadLimit(large.extension) / comment.length + 1) { writer.write(comment) }
+                  writer.write(".include \"leaf.s\"\n")
+                  repeat(FileSizeLimit.getContentLoadLimit(large.extension) / comment.length + 1) {
+                    writer.write(comment)
+                  }
                 }
                 large.refresh(false, false)
-                val entry = fixture.addFileToProject("entry.s",
-                  $$".include \"opaque.png\"\nsll $t0, $t1, SHIFT\n.include \"oversized.inc~\"\nnop\n"
-                ) as MipsFile
-                entry to fixture.addFileToProject("leaf.s", ".macro inner\n.end_macro\nnop\n") as MipsFile
-            }
-            IndexingTestUtil.suspendUntilIndexesAreReady(project)
-            val entryPath = file.virtualFile.toNioPath()
-            assertTrue(project.service<MarsBuildService>().assemble(entryPath))
-            readAction {
-                val analysis = project.service<MarsAnalysisService>()
-                val timeline = analysis.editorTimeline(file)
-                val shift = file.text.indexOf("SHIFT")
-                assertTrue(timeline.hasIncompleteIncludes)
-                assertFalse(timeline.prefix(file, shift).hasIncompleteIncludes)
-                assertEquals("4", timeline.prefix(file, shift).equivalence("SHIFT")?.replacement)
-                assertEquals(entryPath, analysis.selectedAssembly(leaf)?.entry)
-                val leafTimeline = analysis.editorTimeline(leaf)
-                assertFalse(leafTimeline.includes(file))
-                assertEquals(setOf("inner"), leafTimeline.macroNames)
-            }
-        } finally {
-            withContext(Dispatchers.EDT) {
-                WriteCommandAction.runWriteCommandAction(project) { types.ignoredFilesList = ignored }
-            }
-        }
-    }
-
-    @Test
-    fun `aliases in a binary-classified include participate in completion highlighting and navigation`() = timeoutRunBlocking {
-        val entry = $$".include \"parts/opaque.zip\"\nsll $t0, SOURCE, SHIFT\n"
-        val definitions = ".include \"inner.inc\"\n.eqv SHIFT 4\n"
-        val binary = withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("parts/inner.inc", $$".eqv SOURCE $t1\n")
-            fixture.tempDirFixture.createFile("parts/opaque.zip", definitions)
-        }
-        IndexingTestUtil.suspendUntilIndexesAreReady(project)
-        val file = withContext(Dispatchers.EDT) {
-            val file = fixture.configureByText("entry.s", entry) as MipsFile
+                val entry =
+                    fixture.addFileToProject(
+                        "entry.s",
+                        $$".include \"opaque.png\"\nsll $t0, $t1, SHIFT\n.include \"oversized.inc~\"\nnop\n",
+                    ) as MipsFile
+                entry to
+                    fixture.addFileToProject("leaf.s", ".macro inner\n.end_macro\nnop\n")
+                        as MipsFile
+              }
+          IndexingTestUtil.suspendUntilIndexesAreReady(project)
+          val entryPath = file.virtualFile.toNioPath()
+          assertTrue(project.service<MarsBuildService>().assemble(entryPath))
+          readAction {
             val analysis = project.service<MarsAnalysisService>()
             val timeline = analysis.editorTimeline(file)
-            assertFalse(timeline.hasIncompleteIncludes)
-            assertTrue(timeline.hasUnindexedSources)
-            val highlights = fixture.highlightAfterMipsRefresh()
-            val shift = entry.indexOf("SHIFT")
-            assertTrue(highlights.any { it.startOffset == shift && it.endOffset == shift + "SHIFT".length &&
-                it.forcedTextAttributesKey == DefaultLanguageHighlighterColors.NUMBER })
-            val source = checkNotNull(file.findReferenceAt(entry.indexOf("SOURCE"))?.resolve())
-            assertEquals("inner.inc", source.containingFile.name)
-            val target = checkNotNull(file.findReferenceAt(shift)?.resolve())
-            assertEquals(binary, target.containingFile.virtualFile.mipsAssemblySourceOrigin)
-            assertSame(target.containingFile, target.containingFile.originalFile)
-            assertFalse(target.containingFile.virtualFile.isWritable)
-            assertEquals("SHIFT", (target as PsiNamedElement).name)
-            assertEquals(definitions.indexOf("SHIFT"), target.textOffset)
-
-            fixture.configureByText("completion.s", entry.replace("SHIFT", "SHI<caret>"))
-            assertTrue(fixture.completeBasic().orEmpty().any { it.lookupString == "SHIFT" } ||
-                fixture.editor.document.text.contains(", SHIFT"))
-            file
+            val shift = file.text.indexOf("SHIFT")
+            assertTrue(timeline.hasIncompleteIncludes)
+            assertFalse(timeline.prefix(file, shift).hasIncompleteIncludes)
+            assertEquals("4", timeline.prefix(file, shift).equivalence("SHIFT")?.replacement)
+            assertEquals(entryPath, analysis.selectedAssembly(leaf)?.entry)
+            val leafTimeline = analysis.editorTimeline(leaf)
+            assertFalse(leafTimeline.includes(file))
+            assertEquals(setOf("inner"), leafTimeline.macroNames)
+          }
+        } finally {
+          withContext(Dispatchers.EDT) {
+            WriteCommandAction.runWriteCommandAction(project) { types.ignoredFilesList = ignored }
+          }
         }
+      }
+
+  @Test
+  fun `aliases in a binary-classified include participate in completion highlighting and navigation`() =
+      timeoutRunBlocking {
+        val entry = $$".include \"parts/opaque.zip\"\nsll $t0, SOURCE, SHIFT\n"
+        val definitions = ".include \"inner.inc\"\n.eqv SHIFT 4\n"
+        val binary =
+            withContext(Dispatchers.EDT) {
+              fixture.addFileToProject("parts/inner.inc", $$".eqv SOURCE $t1\n")
+              fixture.tempDirFixture.createFile("parts/opaque.zip", definitions)
+            }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        val file =
+            withContext(Dispatchers.EDT) {
+              val file = fixture.configureByText("entry.s", entry) as MipsFile
+              val analysis = project.service<MarsAnalysisService>()
+              val timeline = analysis.editorTimeline(file)
+              assertFalse(timeline.hasIncompleteIncludes)
+              assertTrue(timeline.hasUnindexedSources)
+              val highlights = fixture.highlightAfterMipsRefresh()
+              val shift = entry.indexOf("SHIFT")
+              assertTrue(
+                  highlights.any {
+                    it.startOffset == shift &&
+                        it.endOffset == shift + "SHIFT".length &&
+                        it.forcedTextAttributesKey == DefaultLanguageHighlighterColors.NUMBER
+                  },
+              )
+              val source = checkNotNull(file.findReferenceAt(entry.indexOf("SOURCE"))?.resolve())
+              assertEquals("inner.inc", source.containingFile.name)
+              val target = checkNotNull(file.findReferenceAt(shift)?.resolve())
+              assertEquals(binary, target.containingFile.virtualFile.mipsAssemblySourceOrigin)
+              assertSame(target.containingFile, target.containingFile.originalFile)
+              assertFalse(target.containingFile.virtualFile.isWritable)
+              assertEquals("SHIFT", (target as PsiNamedElement).name)
+              assertEquals(definitions.indexOf("SHIFT"), target.textOffset)
+
+              fixture.configureByText("completion.s", entry.replace("SHIFT", "SHI<caret>"))
+              assertTrue(
+                  fixture.completeBasic().orEmpty().any { it.lookupString == "SHIFT" } ||
+                      fixture.editor.document.text.contains(", SHIFT"),
+              )
+              file
+            }
 
         withContext(Dispatchers.EDT) {
-            Files.writeString(binary.toNioPath(), definitions.replace("SHIFT", "AMOUNT"))
-            binary.refresh(false, false)
-            assertNull(file.findReferenceAt(entry.indexOf("SHIFT"))?.resolve())
+          Files.writeString(binary.toNioPath(), definitions.replace("SHIFT", "AMOUNT"))
+          binary.refresh(false, false)
+          assertNull(file.findReferenceAt(entry.indexOf("SHIFT"))?.resolve())
         }
-    }
+      }
 
-    @Test
-    fun `equivalence generated macros defer operands and retain boundary diagnostics`() = timeoutRunBlocking {
-        val source = """
+  @Test
+  fun `equivalence generated macros defer operands and retain boundary diagnostics`() =
+      timeoutRunBlocking {
+        val source =
+            """
             .eqv OPEN .macro dormant
             .eqv CLOSE .end_macro
             OPEN
@@ -626,189 +779,292 @@ class MipsAssemblyAnnotatorPlatformTest {
             .word )
             CLOSE
             nop
-        """.trimIndent()
-        val main = withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("aliased-macro.asm", source).virtualFile.also(fixture::configureFromExistingVirtualFile)
-        }
+            """
+                .trimIndent()
+        val main =
+            withContext(Dispatchers.EDT) {
+              fixture
+                  .addFileToProject("aliased-macro.asm", source)
+                  .virtualFile
+                  .also(fixture::configureFromExistingVirtualFile)
+            }
         IndexingTestUtil.suspendUntilIndexesAreReady(project)
-        val program = project.service<MarsSessionService>().context.assemble(listOf(main.toNioPath()))
+        val program =
+            project.service<MarsSessionService>().context.assemble(listOf(main.toNioPath()))
         assertEquals(listOf(0), program.machineList!!.map { it.binaryStatement })
         withContext(Dispatchers.EDT) {
-            suspend fun errors() = fixture.highlightAfterMipsRefresh().filter { it.severity == HighlightSeverity.ERROR }
-            assertTrue(errors().isEmpty())
-            val malformed = source.replace("CLOSE\nnop", ".macro 123\n.end_macro extra\nCLOSE\nnop")
-            edit(main, malformed)
-            val boundaryErrors = errors()
-            val nested = malformed.indexOf(".macro 123")
-            val end = malformed.indexOf(".end_macro extra")
-            assertTrue(boundaryErrors.any { it.startOffset in nested until end })
-            assertTrue(boundaryErrors.any { it.startOffset in end until malformed.indexOf("CLOSE\nnop") })
-            assertTrue(boundaryErrors.all { it.startOffset >= nested })
-            edit(main, source.replace("CLOSE\nnop", "CLOSE\n4 : )\nnop"))
-            assertTrue(errors().any { it.startOffset >= source.indexOf("CLOSE\nnop") })
+          suspend fun errors() =
+              fixture.highlightAfterMipsRefresh().filter { it.severity == HighlightSeverity.ERROR }
+          assertTrue(errors().isEmpty())
+          val malformed = source.replace("CLOSE\nnop", ".macro 123\n.end_macro extra\nCLOSE\nnop")
+          edit(main, malformed)
+          val boundaryErrors = errors()
+          val nested = malformed.indexOf(".macro 123")
+          val end = malformed.indexOf(".end_macro extra")
+          assertTrue(boundaryErrors.any { it.startOffset in nested until end })
+          assertTrue(
+              boundaryErrors.any { it.startOffset in end until malformed.indexOf("CLOSE\nnop") },
+          )
+          assertTrue(boundaryErrors.all { it.startOffset >= nested })
+          edit(main, source.replace("CLOSE\nnop", "CLOSE\n4 : )\nnop"))
+          assertTrue(errors().any { it.startOffset >= source.indexOf("CLOSE\nnop") })
         }
-    }
+      }
 
-    @Test
-    fun `segment-dependent errors defer to assembly only when an entry is available`() = timeoutRunBlocking {
+  @Test
+  fun `segment-dependent errors defer to assembly only when an entry is available`() =
+      timeoutRunBlocking {
         val filter = MipsAssemblySyntaxErrorFilter()
         withContext(Dispatchers.EDT) {
-            val source = ".data\n)\n# comment\n.word 1\n"
-            val file = fixture.configureByText("segments.asm", source) as MipsFile
-            val error = PsiTreeUtil.findChildOfType(file, PsiErrorElement::class.java)!!
-            val analysis = project.service<MarsAnalysisService>()
-            assertTrue(!filter.shouldHighlightErrorElement(error))
-            DumbModeTestUtils.runInDumbModeSynchronously(project) { assertTrue(filter.shouldHighlightErrorElement(error)) }
-            assertTrue(!analysis.defersContextDependentError(file, file.findElementAt(source.indexOf('#'))!!))
-            assertTrue(!analysis.defersContextDependentError(file, file.findElementAt(source.indexOf(".word"))!!))
+          val source = ".data\n)\n# comment\n.word 1\n"
+          val file = fixture.configureByText("segments.asm", source) as MipsFile
+          val error = PsiTreeUtil.findChildOfType(file, PsiErrorElement::class.java)!!
+          val analysis = project.service<MarsAnalysisService>()
+          assertTrue(!filter.shouldHighlightErrorElement(error))
+          DumbModeTestUtils.runInDumbModeSynchronously(project) {
+            assertTrue(filter.shouldHighlightErrorElement(error))
+          }
+          assertTrue(
+              !analysis.defersContextDependentError(
+                  file,
+                  file.findElementAt(source.indexOf('#'))!!,
+              ),
+          )
+          assertTrue(
+              !analysis.defersContextDependentError(
+                  file,
+                  file.findElementAt(source.indexOf(".word"))!!,
+              ),
+          )
 
-            val missing = fixture.configureByText("pending.asm", ".data\n.include \"pending.s\"\n)\n")
-            assertTrue(filter.shouldHighlightErrorElement(PsiTreeUtil.findChildOfType(missing, PsiErrorElement::class.java)!!))
-            val laterMissing = fixture.configureByText("later.asm", ".text\n)\n.include \"later-missing.s\"\n")
-            assertTrue(filter.shouldHighlightErrorElement(PsiTreeUtil.findChildOfType(laterMissing, PsiErrorElement::class.java)!!))
-            val scratch = PsiFileFactory.getInstance(project).createFileFromText("detached.asm", MipsFileType, ".data\n)\n")
-            assertTrue(filter.shouldHighlightErrorElement(PsiTreeUtil.findChildOfType(scratch, PsiErrorElement::class.java)!!))
-            val java = fixture.configureByText("Broken.java", "class {")
-            assertTrue(filter.shouldHighlightErrorElement(PsiTreeUtil.findChildOfType(java, PsiErrorElement::class.java)!!))
+          val missing = fixture.configureByText("pending.asm", ".data\n.include \"pending.s\"\n)\n")
+          assertTrue(
+              filter.shouldHighlightErrorElement(
+                  PsiTreeUtil.findChildOfType(missing, PsiErrorElement::class.java)!!,
+              ),
+          )
+          val laterMissing =
+              fixture.configureByText("later.asm", ".text\n)\n.include \"later-missing.s\"\n")
+          assertTrue(
+              filter.shouldHighlightErrorElement(
+                  PsiTreeUtil.findChildOfType(laterMissing, PsiErrorElement::class.java)!!,
+              ),
+          )
+          val scratch =
+              PsiFileFactory.getInstance(project)
+                  .createFileFromText("detached.asm", MipsFileType, ".data\n)\n")
+          assertTrue(
+              filter.shouldHighlightErrorElement(
+                  PsiTreeUtil.findChildOfType(scratch, PsiErrorElement::class.java)!!,
+              ),
+          )
+          val java = fixture.configureByText("Broken.java", "class {")
+          assertTrue(
+              filter.shouldHighlightErrorElement(
+                  PsiTreeUtil.findChildOfType(java, PsiErrorElement::class.java)!!,
+              ),
+          )
         }
-    }
+      }
 
-    @Test
-    fun `expanded macro segment switches decide syntax diagnostics on the following line`() = timeoutRunBlocking {
-        val source = """
+  @Test
+  fun `expanded macro segment switches decide syntax diagnostics on the following line`() =
+      timeoutRunBlocking {
+        val source =
+            """
             .include "switches.txt"
             .text
             select(.data)
             )
             .text
             nop
-        """.trimIndent()
-        val main = withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("switches.txt", ".macro select (%segment)\n%segment\n.end_macro\n")
-            fixture.addFileToProject("expansion.asm", source).virtualFile.also(fixture::configureFromExistingVirtualFile)
-        }
+            """
+                .trimIndent()
+        val main =
+            withContext(Dispatchers.EDT) {
+              fixture.addFileToProject(
+                  "switches.txt",
+                  ".macro select (%segment)\n%segment\n.end_macro\n",
+              )
+              fixture
+                  .addFileToProject("expansion.asm", source)
+                  .virtualFile
+                  .also(fixture::configureFromExistingVirtualFile)
+            }
         IndexingTestUtil.suspendUntilIndexesAreReady(project)
         withContext(Dispatchers.EDT) {
-            suspend fun errors() = fixture.highlightAfterMipsRefresh().filter { it.severity == HighlightSeverity.ERROR }
-            assertTrue(errors().isEmpty())
-            edit(main, source.replace(".text\nselect(.data)", ".data\nselect(.text)"))
-            val error = errors().single()
-            assertTrue(error.description!!.contains("is not a recognized operator"))
-            assertEquals(source.indexOf("\n)\n") + 1, error.startOffset)
-            assertEquals(")", fixture.file.text.substring(error.startOffset, error.endOffset))
-            edit(main, source)
-            assertTrue(errors().isEmpty())
+          suspend fun errors() =
+              fixture.highlightAfterMipsRefresh().filter { it.severity == HighlightSeverity.ERROR }
+          assertTrue(errors().isEmpty())
+          edit(main, source.replace(".text\nselect(.data)", ".data\nselect(.text)"))
+          val error = errors().single()
+          assertTrue(error.description!!.contains("is not a recognized operator"))
+          assertEquals(source.indexOf("\n)\n") + 1, error.startOffset)
+          assertEquals(")", fixture.file.text.substring(error.startOffset, error.endOffset))
+          edit(main, source)
+          assertTrue(errors().isEmpty())
         }
-    }
+      }
 
-    @Test
-    fun `only a consumed unfinished quote produces an editor error`() = timeoutRunBlocking {
-        val unfinished = "\"data"
-        val source = ".set \"ignored\n.data\n.asciiz $unfinished\n.text\nnext: nop\n"
-        val main = withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("quotes.asm", source).virtualFile.also(fixture::configureFromExistingVirtualFile)
-        }
-        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+  @Test
+  fun `only a consumed unfinished quote produces an editor error`() = timeoutRunBlocking {
+    val unfinished = "\"data"
+    val source = ".set \"ignored\n.data\n.asciiz $unfinished\n.text\nnext: nop\n"
+    val main =
         withContext(Dispatchers.EDT) {
-            val error = fixture.highlightAfterMipsRefresh().single { it.severity == HighlightSeverity.ERROR }
-            assertEquals("Unterminated string literal", error.description)
-            assertEquals(unfinished, source.substring(error.startOffset, error.endOffset))
-            edit(main, source.replace(unfinished, "$unfinished\""))
-            assertTrue(fixture.highlightAfterMipsRefresh().none { it.severity == HighlightSeverity.ERROR })
-
-            val deferred = ".macro later\n.asciiz $unfinished\n.end_macro\n.data\n.text\nnext: nop\n"
-            edit(main, deferred)
-            assertTrue(fixture.highlightAfterMipsRefresh().none { it.severity == HighlightSeverity.ERROR })
-            val invoked = deferred.replace(".data\n", ".data\nlater\n")
-            edit(main, invoked)
-            val expanded = fixture.highlightAfterMipsRefresh().single { it.severity == HighlightSeverity.ERROR }
-            assertEquals("Unterminated string literal", expanded.description)
-            assertEquals(unfinished, invoked.substring(expanded.startOffset, expanded.endOffset))
+          fixture
+              .addFileToProject("quotes.asm", source)
+              .virtualFile
+              .also(fixture::configureFromExistingVirtualFile)
         }
-    }
+    IndexingTestUtil.suspendUntilIndexesAreReady(project)
+    withContext(Dispatchers.EDT) {
+      val error =
+          fixture.highlightAfterMipsRefresh().single { it.severity == HighlightSeverity.ERROR }
+      assertEquals("Unterminated string literal", error.description)
+      assertEquals(unfinished, source.substring(error.startOffset, error.endOffset))
+      edit(main, source.replace(unfinished, "$unfinished\""))
+      assertTrue(
+          fixture.highlightAfterMipsRefresh().none { it.severity == HighlightSeverity.ERROR },
+      )
 
-    @Test
-    fun `inherited circular equivalences highlight their physical use before a build`() = timeoutRunBlocking {
+      val deferred = ".macro later\n.asciiz $unfinished\n.end_macro\n.data\n.text\nnext: nop\n"
+      edit(main, deferred)
+      assertTrue(
+          fixture.highlightAfterMipsRefresh().none { it.severity == HighlightSeverity.ERROR },
+      )
+      val invoked = deferred.replace(".data\n", ".data\nlater\n")
+      edit(main, invoked)
+      val expanded =
+          fixture.highlightAfterMipsRefresh().single { it.severity == HighlightSeverity.ERROR }
+      assertEquals("Unterminated string literal", expanded.description)
+      assertEquals(unfinished, invoked.substring(expanded.startOffset, expanded.endOffset))
+    }
+  }
+
+  @Test
+  fun `inherited circular equivalences highlight their physical use before a build`() =
+      timeoutRunBlocking {
         val definitions = ".eqv OPERATION li\n.eqv FIRST SECOND\n.eqv SECOND FIRST + 1\n"
         val source = $$"\tOPERATION $t0, FIRST # original operand\n"
-        val parent = withContext(Dispatchers.EDT) {
-            val parent = fixture.addFileToProject("entry.asm", "${definitions}.include \"part.s\"\n")
-            val part = fixture.addFileToProject("part.s", source)
-            fixture.configureFromExistingVirtualFile(part.virtualFile)
-            parent.virtualFile
-        }
+        val parent =
+            withContext(Dispatchers.EDT) {
+              val parent =
+                  fixture.addFileToProject("entry.asm", "${definitions}.include \"part.s\"\n")
+              val part = fixture.addFileToProject("part.s", source)
+              fixture.configureFromExistingVirtualFile(part.virtualFile)
+              parent.virtualFile
+            }
         IndexingTestUtil.suspendUntilIndexesAreReady(project)
         withContext(Dispatchers.EDT) {
-            val error = fixture.highlightAfterMipsRefresh().single { it.severity == HighlightSeverity.ERROR }
-            assertEquals("Circular .eqv expansion FIRST -> SECOND -> FIRST", error.description)
-            assertEquals(source.indexOf("FIRST"), error.startOffset)
-            assertEquals("FIRST", source.substring(error.startOffset, error.endOffset))
-            edit(parent, "${definitions.replace("SECOND FIRST + 1", "SECOND 7")}.include \"part.s\"\n")
-            assertTrue(fixture.highlightAfterMipsRefresh().none { it.severity == HighlightSeverity.ERROR })
+          val error =
+              fixture.highlightAfterMipsRefresh().single { it.severity == HighlightSeverity.ERROR }
+          assertEquals("Circular .eqv expansion FIRST -> SECOND -> FIRST", error.description)
+          assertEquals(source.indexOf("FIRST"), error.startOffset)
+          assertEquals("FIRST", source.substring(error.startOffset, error.endOffset))
+          edit(
+              parent,
+              "${definitions.replace("SECOND FIRST + 1", "SECOND 7")}.include \"part.s\"\n",
+          )
+          assertTrue(
+              fixture.highlightAfterMipsRefresh().none { it.severity == HighlightSeverity.ERROR },
+          )
         }
-    }
+      }
 
-    @Test
-    fun `editor marks the invalid literal while assembly retains the error at its alias use`() = timeoutRunBlocking {
+  @Test
+  fun `editor marks the invalid literal while assembly retains the error at its alias use`() =
+      timeoutRunBlocking {
         val source = ".eqv BROKEN 'ab'\n.data\n.word BROKEN, 7\n"
-        val file = withContext(Dispatchers.EDT) {
-            val file = fixture.addFileToProject("characters.asm", source).virtualFile
-            fixture.configureFromExistingVirtualFile(file)
-            file
-        }
+        val file =
+            withContext(Dispatchers.EDT) {
+              val file = fixture.addFileToProject("characters.asm", source).virtualFile
+              fixture.configureFromExistingVirtualFile(file)
+              file
+            }
         IndexingTestUtil.suspendUntilIndexesAreReady(project)
         val input = readAction { requireNotNull(annotator.collectInformation(fixture.file)) }
         val assembled = withContext(Dispatchers.Default) { annotator.doAnnotate(input) }
         val diagnostics = readAction { annotator.acceptResult(fixture.file as MipsFile, assembled) }
-        assertEquals(listOf(source.indexOf("'ab'"), source.lastIndexOf("BROKEN")), diagnostics.map { it.second.startOffset })
+        assertEquals(
+            listOf(source.indexOf("'ab'"), source.lastIndexOf("BROKEN")),
+            diagnostics.map { it.second.startOffset },
+        )
         withContext(Dispatchers.EDT) {
-            val error = fixture.highlightAfterMipsRefresh().single { it.severity == HighlightSeverity.ERROR }
-            assertEquals(source.indexOf("'ab'"), error.startOffset)
-            assertEquals("Invalid MARS character literal", error.description)
-            edit(file, source.replace("'ab'", "'a'"))
-            assertTrue(fixture.highlightAfterMipsRefresh().none { it.severity == HighlightSeverity.ERROR })
+          val error =
+              fixture.highlightAfterMipsRefresh().single { it.severity == HighlightSeverity.ERROR }
+          assertEquals(source.indexOf("'ab'"), error.startOffset)
+          assertEquals("Invalid MARS character literal", error.description)
+          edit(file, source.replace("'ab'", "'a'"))
+          assertTrue(
+              fixture.highlightAfterMipsRefresh().none { it.severity == HighlightSeverity.ERROR },
+          )
         }
-    }
+      }
 
-    @Test
-    fun `unfinished include paths keep highlighting live and resolve when closed`() = timeoutRunBlocking {
-        val (main, include) = withContext(Dispatchers.EDT) {
-            val entry = fixture.addFileToProject("in-progress.asm", ".include \"\ntail: nop\n").virtualFile
-            val part = fixture.addFileToProject("part.s", "target: nop\n").virtualFile
-            fixture.configureFromExistingVirtualFile(entry)
-            entry to part
-        }
+  @Test
+  fun `unfinished include paths keep highlighting live and resolve when closed`() =
+      timeoutRunBlocking {
+        val (main, include) =
+            withContext(Dispatchers.EDT) {
+              val entry =
+                  fixture
+                      .addFileToProject("in-progress.asm", ".include \"\ntail: nop\n")
+                      .virtualFile
+              val part = fixture.addFileToProject("part.s", "target: nop\n").virtualFile
+              fixture.configureFromExistingVirtualFile(entry)
+              entry to part
+            }
         IndexingTestUtil.suspendUntilIndexesAreReady(project)
         val file = fixture.file as MipsFile
         val entryPath = main.toNioPath()
         val includePath = include.toNioPath()
         withContext(Dispatchers.EDT) {
-            for (unfinished in listOf("\"", "\"part.sx")) {
-                val source = ".include $unfinished\ntail: nop\n"
-                edit(main, source)
-                val input = readAction { requireNotNull(annotator.collectInformation(file)) }
-                assertEquals(setOf(entryPath), input.capture.sources.revisions.keys)
-                val result = withContext(Dispatchers.Default) { annotator.doAnnotate(input) }
-                val (error, range) = readAction { annotator.acceptResult(file, result).single() }
-                assertEquals("Unterminated .include path", error.message)
-                assertEquals(unfinished, range.substring(source))
-                val highlight = fixture.highlightAfterMipsRefresh().single { it.severity == HighlightSeverity.ERROR }
-                assertEquals(error.message, highlight.description)
-                assertEquals(range, TextRange(highlight.startOffset, highlight.endOffset))
-                assertEquals(MipsTypes.psi("OPERATION"), file.findElementAt(source.lastIndexOf("nop"))?.parent?.elementType)
-            }
-            val completed = ".include \"part.s\"\nj target\n"
-            edit(main, completed)
-            val captured = readAction { requireNotNull(annotator.collectInformation(file)).capture.sources }
-            assertEquals(setOf(entryPath, includePath), captured.revisions.keys)
-            assertTrue(fixture.highlightAfterMipsRefresh().none { it.severity == HighlightSeverity.ERROR })
-            assertEquals(include, file.findReferenceAt(completed.indexOf("part.s"))?.resolve()?.containingFile?.virtualFile)
+          for (unfinished in listOf("\"", "\"part.sx")) {
+            val source = ".include $unfinished\ntail: nop\n"
+            edit(main, source)
+            val input = readAction { requireNotNull(annotator.collectInformation(file)) }
+            assertEquals(setOf(entryPath), input.capture.sources.revisions.keys)
+            val result = withContext(Dispatchers.Default) { annotator.doAnnotate(input) }
+            val (error, range) = readAction { annotator.acceptResult(file, result).single() }
+            assertEquals("Unterminated .include path", error.message)
+            assertEquals(unfinished, range.substring(source))
+            val highlight =
+                fixture.highlightAfterMipsRefresh().single {
+                  it.severity == HighlightSeverity.ERROR
+                }
+            assertEquals(error.message, highlight.description)
+            assertEquals(range, TextRange(highlight.startOffset, highlight.endOffset))
+            assertEquals(
+                MipsTypes.psi("OPERATION"),
+                file.findElementAt(source.lastIndexOf("nop"))?.parent?.elementType,
+            )
+          }
+          val completed = ".include \"part.s\"\nj target\n"
+          edit(main, completed)
+          val captured = readAction {
+            requireNotNull(annotator.collectInformation(file)).capture.sources
+          }
+          assertEquals(setOf(entryPath, includePath), captured.revisions.keys)
+          assertTrue(
+              fixture.highlightAfterMipsRefresh().none { it.severity == HighlightSeverity.ERROR },
+          )
+          assertEquals(
+              include,
+              file
+                  .findReferenceAt(completed.indexOf("part.s"))
+                  ?.resolve()
+                  ?.containingFile
+                  ?.virtualFile,
+          )
         }
-    }
+      }
 
-    @Test
-    fun `unterminated include paths are highlighted without an inferred assembly entry`() = timeoutRunBlocking {
-        val source = """
+  @Test
+  fun `unterminated include paths are highlighted without an inferred assembly entry`() =
+      timeoutRunBlocking {
+        val source =
+            """
             prefix: .InClUdE ,, "unfinished path
             .eqv ALIAS .include "replacement path
             'a#xx .include "hidden path
@@ -816,96 +1072,135 @@ class MipsAssemblyAnnotatorPlatformTest {
             .include "complete.s" "unused suffix
             # .include "comment
             tail: nop
-        """.trimIndent()
-        val file = withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("first.s", ".include \"shared.s\"")
-            fixture.addFileToProject("second.s", ".include \"shared.s\"")
-            fixture.addFileToProject("complete.s", "nop")
-            val shared = fixture.addFileToProject("shared.s", source) as MipsFile
-            fixture.configureFromExistingVirtualFile(shared.virtualFile)
-            shared
-        }
+            """
+                .trimIndent()
+        val file =
+            withContext(Dispatchers.EDT) {
+              fixture.addFileToProject("first.s", ".include \"shared.s\"")
+              fixture.addFileToProject("second.s", ".include \"shared.s\"")
+              fixture.addFileToProject("complete.s", "nop")
+              val shared = fixture.addFileToProject("shared.s", source) as MipsFile
+              fixture.configureFromExistingVirtualFile(shared.virtualFile)
+              shared
+            }
         IndexingTestUtil.suspendUntilIndexesAreReady(project)
         readAction { assertNull(annotator.collectInformation(file)) }
         withContext(Dispatchers.EDT) {
-            val errors = fixture.highlightAfterMipsRefresh().filter { it.description == "Unterminated .include path" }
-            assertTrue(errors.all { it.severity == HighlightSeverity.ERROR })
-            assertEquals(
-                listOf("\"unfinished path", "\"replacement path", "\"hidden path"),
-                errors.sortedBy { it.startOffset }.map { source.substring(it.startOffset, it.endOffset) },
-            )
-            assertEquals(MipsTypes.psi("LABEL"), file.findElementAt(source.indexOf("prefix"))?.parent?.elementType)
-            assertEquals(MipsTypes.psi("OPERATION"), file.findElementAt(source.lastIndexOf("nop"))?.parent?.elementType)
+          val errors =
+              fixture.highlightAfterMipsRefresh().filter {
+                it.description == "Unterminated .include path"
+              }
+          assertTrue(errors.all { it.severity == HighlightSeverity.ERROR })
+          assertEquals(
+              listOf("\"unfinished path", "\"replacement path", "\"hidden path"),
+              errors
+                  .sortedBy { it.startOffset }
+                  .map { source.substring(it.startOffset, it.endOffset) },
+          )
+          assertEquals(
+              MipsTypes.psi("LABEL"),
+              file.findElementAt(source.indexOf("prefix"))?.parent?.elementType,
+          )
+          assertEquals(
+              MipsTypes.psi("OPERATION"),
+              file.findElementAt(source.lastIndexOf("nop"))?.parent?.elementType,
+          )
         }
-    }
+      }
 
-    @Test
-    fun `physical missing includes are highlighted even with ambiguous entry and syntax errors`() = timeoutRunBlocking {
-        val shared = withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("first.asm", ".include \"shared.s\"\n")
-            fixture.addFileToProject("second.asm", ".include \"shared.s\"\n")
-            fixture.tempDirFixture.createFile("ignored.inc~", "nop\n")
-            fixture.tempDirFixture.findOrCreateDir("directory")
-            val source = """
-                .include "missing.s"
-                .include "directory"
-                .include "ignored.inc~"
-                .word @
-            """.trimIndent()
-            fixture.addFileToProject("shared.s", source).virtualFile.also(fixture::configureFromExistingVirtualFile)
-        }
+  @Test
+  fun `physical missing includes are highlighted even with ambiguous entry and syntax errors`() =
+      timeoutRunBlocking {
+        val shared =
+            withContext(Dispatchers.EDT) {
+              fixture.addFileToProject("first.asm", ".include \"shared.s\"\n")
+              fixture.addFileToProject("second.asm", ".include \"shared.s\"\n")
+              fixture.tempDirFixture.createFile("ignored.inc~", "nop\n")
+              fixture.tempDirFixture.findOrCreateDir("directory")
+              val source =
+                  """
+                  .include "missing.s"
+                  .include "directory"
+                  .include "ignored.inc~"
+                  .word @
+                  """
+                      .trimIndent()
+              fixture
+                  .addFileToProject("shared.s", source)
+                  .virtualFile
+                  .also(fixture::configureFromExistingVirtualFile)
+            }
         IndexingTestUtil.suspendUntilIndexesAreReady(project)
         withContext(Dispatchers.EDT) {
-            assertNull(annotator.collectInformation(fixture.file))
-            suspend fun pathErrors() = fixture.highlightAfterMipsRefresh().filter { it.description?.startsWith("Error reading include file") == true }
-                .map { fixture.file.text.substring(it.startOffset, it.endOffset) }.toSet()
-            assertEquals(setOf("\"missing.s\"", "\"directory\""), pathErrors())
-            fixture.addFileToProject("missing.s", "nop\n")
-            assertEquals(setOf("\"directory\""), pathErrors())
-            edit(shared, ".include \"missing.s\"\n.include \"ignored.inc~\"\n")
-            assertTrue(pathErrors().isEmpty())
-            val invalid = "\"bad\u0000name\""
-            edit(shared, ".include $invalid\n")
-            assertEquals(setOf(invalid), pathErrors())
-            val detached = LightVirtualFile("detached.asm", MipsFileType, ".include \"missing.s\"\n")
-            fixture.configureFromExistingVirtualFile(detached)
-            assertTrue(pathErrors().isEmpty())
+          assertNull(annotator.collectInformation(fixture.file))
+          suspend fun pathErrors() =
+              fixture
+                  .highlightAfterMipsRefresh()
+                  .filter { it.description?.startsWith("Error reading include file") == true }
+                  .map { fixture.file.text.substring(it.startOffset, it.endOffset) }
+                  .toSet()
+          assertEquals(setOf("\"missing.s\"", "\"directory\""), pathErrors())
+          fixture.addFileToProject("missing.s", "nop\n")
+          assertEquals(setOf("\"directory\""), pathErrors())
+          edit(shared, ".include \"missing.s\"\n.include \"ignored.inc~\"\n")
+          assertTrue(pathErrors().isEmpty())
+          val invalid = "\"bad\u0000name\""
+          edit(shared, ".include $invalid\n")
+          assertEquals(setOf(invalid), pathErrors())
+          val detached = LightVirtualFile("detached.asm", MipsFileType, ".include \"missing.s\"\n")
+          fixture.configureFromExistingVirtualFile(detached)
+          assertTrue(pathErrors().isEmpty())
         }
-    }
+      }
 
-    @Test
-    fun `analysis follows unique or selected entries and rejects obsolete include results`() = timeoutRunBlocking {
-        val (main, other, dependency) = withContext(Dispatchers.EDT) {
-            val first = fixture.addFileToProject("first.s", ".include \"dependency.s\"\n.include \"part.s\"\n").virtualFile
-            val second = fixture.addFileToProject("second.s", "nop\n").virtualFile
-            val dependency = fixture.addFileToProject("dependency.s", "nop\n").virtualFile
-            val part = fixture.addFileToProject("part.s", "j missing\n").virtualFile
-            fixture.configureFromExistingVirtualFile(part)
-            Triple(first, second, dependency)
-        }
+  @Test
+  fun `analysis follows unique or selected entries and rejects obsolete include results`() =
+      timeoutRunBlocking {
+        val (main, other, dependency) =
+            withContext(Dispatchers.EDT) {
+              val first =
+                  fixture
+                      .addFileToProject(
+                          "first.s",
+                          ".include \"dependency.s\"\n.include \"part.s\"\n",
+                      )
+                      .virtualFile
+              val second = fixture.addFileToProject("second.s", "nop\n").virtualFile
+              val dependency = fixture.addFileToProject("dependency.s", "nop\n").virtualFile
+              val part = fixture.addFileToProject("part.s", "j missing\n").virtualFile
+              fixture.configureFromExistingVirtualFile(part)
+              Triple(first, second, dependency)
+            }
         IndexingTestUtil.suspendUntilIndexesAreReady(project)
         val part = fixture.file as MipsFile
         suspend fun collect() = readAction { annotator.collectInformation(part) }
         suspend fun analyze(input: MipsAssemblyAnnotator.Input) =
             withContext(Dispatchers.Default) { annotator.doAnnotate(input) }
-        suspend fun current(result: MipsAssemblyAnnotator.Result) = readAction { annotator.acceptResult(part, result) }
+        suspend fun current(result: MipsAssemblyAnnotator.Result) = readAction {
+          annotator.acceptResult(part, result)
+        }
 
         val input = collect()!!
         assertEquals(listOf(main.toNioPath()), input.capture.sources.snapshot.entries())
         val original = analyze(input)
         withContext(Dispatchers.EDT) {
-            DumbModeTestUtils.runInDumbModeSynchronously(project) {
-                assertTrue(annotator.acceptResult(part, original).isEmpty())
-            }
+          DumbModeTestUtils.runInDumbModeSynchronously(project) {
+            assertTrue(annotator.acceptResult(part, original).isEmpty())
+          }
         }
         assertEquals(TextRange(2, 9), current(original).single().second)
         val unknownPosition = AssemblyError(input.capture.source, 99, 0, "unknown position", false)
-        val incomplete = original.outcome.copy(diagnostics = mapOf(input.capture.source to (original.diagnostics + unknownPosition)))
+        val incomplete =
+            original.outcome.copy(
+                diagnostics =
+                    mapOf(input.capture.source to (original.diagnostics + unknownPosition)),
+            )
         assertEquals(1, current(original.copy(outcome = incomplete)).size)
-        val cancelled = async(Dispatchers.Default) {
-            currentCoroutineContext().job.cancel()
-            assertThrows<ProcessCanceledException> { annotator.doAnnotate(input) }
-        }
+        val cancelled =
+            async(Dispatchers.Default) {
+              currentCoroutineContext().job.cancel()
+              assertThrows<ProcessCanceledException> { annotator.doAnnotate(input) }
+            }
         cancelled.join()
         assertTrue(cancelled.isCancelled)
         withContext(Dispatchers.EDT) { edit(dependency, "# edited include\nnop\n") }
@@ -926,254 +1221,348 @@ class MipsAssemblyAnnotatorPlatformTest {
         assertEquals(other.toNioPath(), switched.input.capture.selectedAssembly?.entry)
         assertEquals(1, current(switched).size)
         readAction {
-            val unrelated = PsiManager.getInstance(project).findFile(dependency)!!
-            val inferred = annotator.collectInformation(unrelated)!!
-            assertNull(inferred.capture.selectedAssembly)
-            assertEquals(listOf(main.toNioPath()), inferred.capture.sources.snapshot.entries())
+          val unrelated = PsiManager.getInstance(project).findFile(dependency)!!
+          val inferred = annotator.collectInformation(unrelated)!!
+          assertNull(inferred.capture.selectedAssembly)
+          assertEquals(listOf(main.toNioPath()), inferred.capture.sources.snapshot.entries())
         }
         withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("new-file.txt", "")
+          fixture.addFileToProject("new-file.txt", "")
         }
         assertTrue(current(switched).isEmpty())
 
         withContext(Dispatchers.EDT) { edit(other, "nop\n") }
         assertEquals(listOf(main.toNioPath()), collect()!!.capture.sources.snapshot.entries())
         withContext(Dispatchers.EDT) {
-            WriteCommandAction.runWriteCommandAction(project) { other.delete(this) }
+          WriteCommandAction.runWriteCommandAction(project) { other.delete(this) }
         }
         assertEquals(listOf(main.toNioPath()), collect()!!.capture.sources.snapshot.entries())
-    }
+      }
 
-    @Test
-    fun `rootless cycles highlight each participating path and respect the selected build`() = timeoutRunBlocking {
-        val (first, second, third) = withContext(Dispatchers.EDT) {
-            val a = fixture.addFileToProject("a.asm", ".include \"b.s\"\n.include \"leaf.s\"\n.include \"missing.s\"\n")
-            val b = fixture.addFileToProject("b.s", ".include \"c.s\"\n")
-            val c = fixture.addFileToProject("c.s", ".include \"a.asm\"\n")
-            fixture.addFileToProject("leaf.s", ".asciiz \"ordinary string\"\n")
-            Triple(a.virtualFile, b.virtualFile, c.virtualFile)
-        }
+  @Test
+  fun `rootless cycles highlight each participating path and respect the selected build`() =
+      timeoutRunBlocking {
+        val (first, second, third) =
+            withContext(Dispatchers.EDT) {
+              val a =
+                  fixture.addFileToProject(
+                      "a.asm",
+                      ".include \"b.s\"\n.include \"leaf.s\"\n.include \"missing.s\"\n",
+                  )
+              val b = fixture.addFileToProject("b.s", ".include \"c.s\"\n")
+              val c = fixture.addFileToProject("c.s", ".include \"a.asm\"\n")
+              fixture.addFileToProject("leaf.s", ".asciiz \"ordinary string\"\n")
+              Triple(a.virtualFile, b.virtualFile, c.virtualFile)
+            }
         IndexingTestUtil.suspendUntilIndexesAreReady(project)
         for ((file, target) in listOf(first to "b.s", second to "c.s", third to "a.asm")) {
-            withContext(Dispatchers.EDT) {
-                fixture.configureFromExistingVirtualFile(file)
-                assertNull(annotator.collectInformation(fixture.file))
-            }
-            val errors = fixture.highlightAfterMipsRefresh().filter { it.severity == HighlightSeverity.ERROR }
-            val error = errors.single { it.description == "Recursive .include cycle through $target" }
-            assertEquals(if (file == first) 2 else 1, errors.size)
-            readAction { assertEquals("\"$target\"", fixture.file.text.substring(error.startOffset, error.endOffset)) }
+          withContext(Dispatchers.EDT) {
+            fixture.configureFromExistingVirtualFile(file)
+            assertNull(annotator.collectInformation(fixture.file))
+          }
+          val errors =
+              fixture.highlightAfterMipsRefresh().filter { it.severity == HighlightSeverity.ERROR }
+          val error = errors.single { it.description == "Recursive .include cycle through $target" }
+          assertEquals(if (file == first) 2 else 1, errors.size)
+          readAction {
+            assertEquals(
+                "\"$target\"",
+                fixture.file.text.substring(error.startOffset, error.endOffset),
+            )
+          }
         }
 
         withContext(Dispatchers.EDT) {
-            fixture.configureFromExistingVirtualFile(first)
-            edit(third, "nop\n")
+          fixture.configureFromExistingVirtualFile(first)
+          edit(third, "nop\n")
         }
-        val afterCycleBreak = fixture.highlightAfterMipsRefresh().filter { it.severity == HighlightSeverity.ERROR }
+        val afterCycleBreak =
+            fixture.highlightAfterMipsRefresh().filter { it.severity == HighlightSeverity.ERROR }
         assertTrue(afterCycleBreak.single().description.startsWith("Error reading include file"))
         withContext(Dispatchers.EDT) {
-            edit(third, ".include \"a.asm\"\n")
+          edit(third, ".include \"a.asm\"\n")
         }
-        val restoredCycle = fixture.highlightAfterMipsRefresh().filter { it.severity == HighlightSeverity.ERROR }
-        assertEquals(setOf("Recursive .include cycle through b.s", "Error reading include file missing.s"),
-            restoredCycle.map { it.description }.toSet())
+        val restoredCycle =
+            fixture.highlightAfterMipsRefresh().filter { it.severity == HighlightSeverity.ERROR }
+        assertEquals(
+            setOf("Recursive .include cycle through b.s", "Error reading include file missing.s"),
+            restoredCycle.map { it.description }.toSet(),
+        )
 
         project.service<MarsBuildService>().assemble(first.toNioPath())
         withContext(Dispatchers.EDT) {
-            val documents = FileDocumentManager.getInstance()
-            documents.saveDocument(documents.getDocument(third)!!)
-            fixture.configureFromExistingVirtualFile(third)
+          val documents = FileDocumentManager.getInstance()
+          documents.saveDocument(documents.getDocument(third)!!)
+          fixture.configureFromExistingVirtualFile(third)
         }
-        val selectedErrors = fixture.highlightAfterMipsRefresh().filter { it.severity == HighlightSeverity.ERROR }
+        val selectedErrors =
+            fixture.highlightAfterMipsRefresh().filter { it.severity == HighlightSeverity.ERROR }
         assertTrue(selectedErrors.single().description.startsWith("Recursive include of file"))
+      }
+
+  @ParameterizedTest
+  @ValueSource(strings = ["nested.inc~", "nested.zip"])
+  fun `read-only include editors highlight the entry diagnostics for their displayed revision`(
+      nestedName: String,
+  ) = timeoutRunBlocking {
+    val source = ".data\n.include \"defs.png\"\n.text\nnop\n"
+    val binaryText = ".byte -129\n.include \"$nestedName\"\n"
+    val nestedText = ".byte +256\n"
+    val (entry, physical) =
+        withContext(Dispatchers.EDT) {
+          val binary = fixture.tempDirFixture.createFile("defs.png", binaryText)
+          fixture.tempDirFixture.createFile(nestedName, nestedText)
+          val entry = fixture.addFileToProject("entry.mars", source) as MipsFile
+          fixture.configureFromExistingVirtualFile(entry.virtualFile)
+          entry to binary
+        }
+    IndexingTestUtil.suspendUntilIndexesAreReady(project)
+    val view =
+        withContext(Dispatchers.EDT) {
+          val binary =
+              GotoDeclarationAction.findTargetElement(
+                  project,
+                  fixture.editor,
+                  source.indexOf("defs.png") + 1,
+              ) as MipsFile
+          fixture.openFileInEditor(binary.virtualFile)
+          binary
+        }
+    suspend fun highlightedWarning(text: String): String {
+      val warning =
+          fixture.highlightAfterMipsRefresh().single {
+            it.severity == HighlightSeverity.WARNING &&
+                it.description?.contains("possibly truncated") == true
+          }
+      return text.substring(warning.startOffset, warning.endOffset)
     }
 
-    @ParameterizedTest
-    @ValueSource(strings = ["nested.inc~", "nested.zip"])
-    fun `read-only include editors highlight the entry diagnostics for their displayed revision`(nestedName: String) = timeoutRunBlocking {
-        val source = ".data\n.include \"defs.png\"\n.text\nnop\n"
-        val binaryText = ".byte -129\n.include \"$nestedName\"\n"
-        val nestedText = ".byte +256\n"
-        val (entry, physical) = withContext(Dispatchers.EDT) {
-            val binary = fixture.tempDirFixture.createFile("defs.png", binaryText)
-            fixture.tempDirFixture.createFile(nestedName, nestedText)
-            val entry = fixture.addFileToProject("entry.mars", source) as MipsFile
-            fixture.configureFromExistingVirtualFile(entry.virtualFile)
-            entry to binary
-        }
-        IndexingTestUtil.suspendUntilIndexesAreReady(project)
-        val view = withContext(Dispatchers.EDT) {
-            val binary = GotoDeclarationAction.findTargetElement(project, fixture.editor, source.indexOf("defs.png") + 1) as MipsFile
-            fixture.openFileInEditor(binary.virtualFile)
-            binary
-        }
-        suspend fun highlightedWarning(text: String): String {
-            val warning = fixture.highlightAfterMipsRefresh().single {
-                it.severity == HighlightSeverity.WARNING && it.description?.contains("possibly truncated") == true
-            }
-            return text.substring(warning.startOffset, warning.endOffset)
-        }
-
-        readAction {
-            val readerMode = MipsAssemblySourceReaderModeMatcher()
-            assertEquals(false, readerMode.matches(project, view.virtualFile, null, ReaderMode.READ_ONLY))
-            assertNull(readerMode.matches(project, physical, null, ReaderMode.READ_ONLY))
-        }
-        assertEquals("-129", highlightedWarning(binaryText))
-        val input = readAction { checkNotNull(annotator.collectInformation(view)) }
-        assertSame(readAction { annotator.collectInformation(entry) }?.capture?.sources, input.capture.sources)
-        val result = withContext(Dispatchers.Default) { annotator.doAnnotate(input) }
-        val analysis = project.service<MarsAnalysisService>()
-        val nested = withContext(Dispatchers.EDT) {
-            val nested = GotoDeclarationAction.findTargetElement(project, fixture.editor, binaryText.indexOf(nestedName) + 1) as MipsFile
-            fixture.openFileInEditor(nested.virtualFile)
-            nested
-        }
-        IndexingTestUtil.suspendUntilIndexesAreReady(project)
-        readAction {
-            assertEquals(setOf(entry.virtualFile), nested.virtualFile.mipsAssemblySourceEntries)
-            assertTrue(mipsSourceTimeline(entry).includes(nested))
-            assertEquals(entry.virtualFile, inferredMipsAssemblyRoot(nested))
-        }
-        val nestedInput = readAction { checkNotNull(annotator.collectInformation(nested)) }
-        assertNull(nestedInput.capture.selectedAssembly)
-        assertSame(input.capture.sources, nestedInput.capture.sources)
-        assertEquals("+256", highlightedWarning(nestedText))
-        analysis.beginSymbolBuild(entry.virtualFile.toNioPath())
-        val selected = readAction { checkNotNull(annotator.collectInformation(view)) }
-        val selectedResult = withContext(Dispatchers.Default) { annotator.doAnnotate(selected) }
-        assertEquals(1, readAction { annotator.acceptResult(view, selectedResult).size })
-
-        val revisedText = binaryText.replace("-129", "-130")
-        withContext(Dispatchers.IO) { Files.writeString(physical.toNioPath(), revisedText) }
-        val (revised, orphan) = withContext(Dispatchers.EDT) {
-            physical.refresh(false, false)
-            fixture.configureFromExistingVirtualFile(entry.virtualFile)
-            val revised = GotoDeclarationAction.findTargetElement(project, fixture.editor, source.indexOf("defs.png") + 1) as MipsFile
-            val orphanFile = fixture.tempDirFixture.createFile("orphan.png", ".byte -129\n")
-            val orphan = PsiManager.getInstance(project).findFile(mipsAssemblySourceView(orphanFile, ".byte -129\n")) as MipsFile
-            revised to orphan
-        }
-        IndexingTestUtil.suspendUntilIndexesAreReady(project)
-        val revisedInput = readAction { checkNotNull(annotator.collectInformation(revised)) }
-        val revisedResult = withContext(Dispatchers.Default) { annotator.doAnnotate(revisedInput) }
-        readAction {
-            assertTrue(annotator.acceptResult(view, result).isEmpty())
-            assertTrue(annotator.acceptResult(view, selectedResult).isEmpty())
-            assertTrue(annotator.acceptResult(view, revisedResult).isEmpty())
-            assertNull(annotator.collectInformation(view))
-            assertNull(annotator.collectInformation(orphan))
-            assertFalse(analysis.editorTimeline(view).includes(revised))
-            val (warning, range) = annotator.acceptResult(revised, revisedResult).single()
-            assertTrue(warning.isWarning)
-            assertEquals("-130", range.substring(revisedText))
-        }
+    readAction {
+      val readerMode = MipsAssemblySourceReaderModeMatcher()
+      assertEquals(false, readerMode.matches(project, view.virtualFile, null, ReaderMode.READ_ONLY))
+      assertNull(readerMode.matches(project, physical, null, ReaderMode.READ_ONLY))
     }
+    assertEquals("-129", highlightedWarning(binaryText))
+    val input = readAction { checkNotNull(annotator.collectInformation(view)) }
+    assertSame(
+        readAction { annotator.collectInformation(entry) }?.capture?.sources,
+        input.capture.sources,
+    )
+    val result = withContext(Dispatchers.Default) { annotator.doAnnotate(input) }
+    val analysis = project.service<MarsAnalysisService>()
+    val nested =
+        withContext(Dispatchers.EDT) {
+          val nested =
+              GotoDeclarationAction.findTargetElement(
+                  project,
+                  fixture.editor,
+                  binaryText.indexOf(nestedName) + 1,
+              ) as MipsFile
+          fixture.openFileInEditor(nested.virtualFile)
+          nested
+        }
+    IndexingTestUtil.suspendUntilIndexesAreReady(project)
+    readAction {
+      assertEquals(setOf(entry.virtualFile), nested.virtualFile.mipsAssemblySourceEntries)
+      assertTrue(mipsSourceTimeline(entry).includes(nested))
+      assertEquals(entry.virtualFile, inferredMipsAssemblyRoot(nested))
+    }
+    val nestedInput = readAction { checkNotNull(annotator.collectInformation(nested)) }
+    assertNull(nestedInput.capture.selectedAssembly)
+    assertSame(input.capture.sources, nestedInput.capture.sources)
+    assertEquals("+256", highlightedWarning(nestedText))
+    analysis.beginSymbolBuild(entry.virtualFile.toNioPath())
+    val selected = readAction { checkNotNull(annotator.collectInformation(view)) }
+    val selectedResult = withContext(Dispatchers.Default) { annotator.doAnnotate(selected) }
+    assertEquals(1, readAction { annotator.acceptResult(view, selectedResult).size })
 
-    @Test
-    fun `include navigation rechecks ambiguous and invalidated entry candidates`() = timeoutRunBlocking {
+    val revisedText = binaryText.replace("-129", "-130")
+    withContext(Dispatchers.IO) { Files.writeString(physical.toNioPath(), revisedText) }
+    val (revised, orphan) =
+        withContext(Dispatchers.EDT) {
+          physical.refresh(false, false)
+          fixture.configureFromExistingVirtualFile(entry.virtualFile)
+          val revised =
+              GotoDeclarationAction.findTargetElement(
+                  project,
+                  fixture.editor,
+                  source.indexOf("defs.png") + 1,
+              ) as MipsFile
+          val orphanFile = fixture.tempDirFixture.createFile("orphan.png", ".byte -129\n")
+          val orphan =
+              PsiManager.getInstance(project)
+                  .findFile(mipsAssemblySourceView(orphanFile, ".byte -129\n")) as MipsFile
+          revised to orphan
+        }
+    IndexingTestUtil.suspendUntilIndexesAreReady(project)
+    val revisedInput = readAction { checkNotNull(annotator.collectInformation(revised)) }
+    val revisedResult = withContext(Dispatchers.Default) { annotator.doAnnotate(revisedInput) }
+    readAction {
+      assertTrue(annotator.acceptResult(view, result).isEmpty())
+      assertTrue(annotator.acceptResult(view, selectedResult).isEmpty())
+      assertTrue(annotator.acceptResult(view, revisedResult).isEmpty())
+      assertNull(annotator.collectInformation(view))
+      assertNull(annotator.collectInformation(orphan))
+      assertFalse(analysis.editorTimeline(view).includes(revised))
+      val (warning, range) = annotator.acceptResult(revised, revisedResult).single()
+      assertTrue(warning.isWarning)
+      assertEquals("-130", range.substring(revisedText))
+    }
+  }
+
+  @Test
+  fun `include navigation rechecks ambiguous and invalidated entry candidates`() =
+      timeoutRunBlocking {
         val include = ".include \"shared.inc~\"\n"
         val offset = include.indexOf("shared.inc~") + 1
-        val (first, second) = withContext(Dispatchers.EDT) {
-            fixture.tempDirFixture.createFile("shared.inc~", ".include \"leaf.inc~\"\n")
-            fixture.tempDirFixture.createFile("leaf.inc~", ".byte -129\n")
-            val first = fixture.addFileToProject("first.mars", include + "nop\n").virtualFile
-            val second = fixture.addFileToProject("second.mars", include + "nop\n").virtualFile
-            first to second
-        }
-        IndexingTestUtil.suspendUntilIndexesAreReady(project)
-        val shared = withContext(Dispatchers.EDT) {
-            fixture.configureFromExistingVirtualFile(first)
-            val literal = fixture.file.findElementAt(offset)
-            DumbModeTestUtils.runInDumbModeSynchronously(project) {
-                val target = MipsIncludeNavigation().getGotoDeclarationTargets(literal, offset, fixture.editor)!!.single()
-                assertTrue(target.containingFile.virtualFile.mipsAssemblySourceEntries.isEmpty())
+        val (first, second) =
+            withContext(Dispatchers.EDT) {
+              fixture.tempDirFixture.createFile("shared.inc~", ".include \"leaf.inc~\"\n")
+              fixture.tempDirFixture.createFile("leaf.inc~", ".byte -129\n")
+              val first = fixture.addFileToProject("first.mars", include + "nop\n").virtualFile
+              val second = fixture.addFileToProject("second.mars", include + "nop\n").virtualFile
+              first to second
             }
-            GotoDeclarationAction.findTargetElement(project, fixture.editor, offset) as MipsFile
-        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        val shared =
+            withContext(Dispatchers.EDT) {
+              fixture.configureFromExistingVirtualFile(first)
+              val literal = fixture.file.findElementAt(offset)
+              DumbModeTestUtils.runInDumbModeSynchronously(project) {
+                val target =
+                    MipsIncludeNavigation()
+                        .getGotoDeclarationTargets(literal, offset, fixture.editor)!!
+                        .single()
+                assertTrue(target.containingFile.virtualFile.mipsAssemblySourceEntries.isEmpty())
+              }
+              GotoDeclarationAction.findTargetElement(project, fixture.editor, offset) as MipsFile
+            }
         readAction { assertEquals(first, inferredMipsAssemblyRoot(shared)) }
 
         withContext(Dispatchers.EDT) {
-            fixture.configureFromExistingVirtualFile(second)
-            assertSame(shared, GotoDeclarationAction.findTargetElement(project, fixture.editor, offset))
+          fixture.configureFromExistingVirtualFile(second)
+          assertSame(
+              shared,
+              GotoDeclarationAction.findTargetElement(project, fixture.editor, offset),
+          )
         }
         readAction { assertNull(inferredMipsAssemblyRoot(shared)) }
         withContext(Dispatchers.EDT) {
-            fixture.openFileInEditor(shared.virtualFile)
-            val leaf = GotoDeclarationAction.findTargetElement(project, fixture.editor, shared.text.indexOf("leaf.inc~") + 1) as MipsFile
-            assertTrue(leaf.virtualFile.mipsAssemblySourceEntries.isEmpty())
+          fixture.openFileInEditor(shared.virtualFile)
+          val leaf =
+              GotoDeclarationAction.findTargetElement(
+                  project,
+                  fixture.editor,
+                  shared.text.indexOf("leaf.inc~") + 1,
+              ) as MipsFile
+          assertTrue(leaf.virtualFile.mipsAssemblySourceEntries.isEmpty())
         }
         withContext(Dispatchers.EDT) { edit(first, "nop\n") }
         IndexingTestUtil.suspendUntilIndexesAreReady(project)
         readAction { assertEquals(second, inferredMipsAssemblyRoot(shared)) }
 
         withContext(Dispatchers.EDT) {
-            WriteCommandAction.runWriteCommandAction(project) { second.rename(this, "second.txt") }
+          WriteCommandAction.runWriteCommandAction(project) { second.rename(this, "second.txt") }
         }
         IndexingTestUtil.suspendUntilIndexesAreReady(project)
         readAction { assertNull(inferredMipsAssemblyRoot(shared)) }
         withContext(Dispatchers.EDT) {
-            WriteCommandAction.runWriteCommandAction(project) { second.delete(this) }
+          WriteCommandAction.runWriteCommandAction(project) { second.delete(this) }
         }
         IndexingTestUtil.suspendUntilIndexesAreReady(project)
         readAction { assertNull(inferredMipsAssemblyRoot(shared)) }
-    }
+      }
 
-    @Test
-    fun `signed integer diagnostics highlight the full assembler operand in an included file`() = timeoutRunBlocking {
+  @Test
+  fun `signed integer diagnostics highlight the full assembler operand in an included file`() =
+      timeoutRunBlocking {
         val source = ".data\n\t.byte -129, +256\n"
         withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("main.mars", ".include \"signed.inc\"\n.text\nnop\n")
-            val include = fixture.addFileToProject("signed.inc", source)
-            fixture.configureFromExistingVirtualFile(include.virtualFile)
+          fixture.addFileToProject("main.mars", ".include \"signed.inc\"\n.text\nnop\n")
+          val include = fixture.addFileToProject("signed.inc", source)
+          fixture.configureFromExistingVirtualFile(include.virtualFile)
         }
         IndexingTestUtil.suspendUntilIndexesAreReady(project)
         withContext(Dispatchers.EDT) {
-            val warnings = fixture.highlightAfterMipsRefresh().filter {
-                it.severity == HighlightSeverity.WARNING && it.description?.contains("possibly truncated") == true
-            }
-            assertEquals(listOf("-129", "+256"), warnings.sortedBy { it.startOffset }.map {
-                source.substring(it.startOffset, it.endOffset)
-            })
+          val warnings =
+              fixture.highlightAfterMipsRefresh().filter {
+                it.severity == HighlightSeverity.WARNING &&
+                    it.description?.contains("possibly truncated") == true
+              }
+          assertEquals(
+              listOf("-129", "+256"),
+              warnings
+                  .sortedBy { it.startOffset }
+                  .map {
+                    source.substring(it.startOffset, it.endOffset)
+                  },
+          )
         }
-    }
+      }
 
-    @Test
-    fun `editor diagnostic ranges handle absent positions and columns beyond the line`() = timeoutRunBlocking {
+  @Test
+  fun `editor diagnostic ranges handle absent positions and columns beyond the line`() =
+      timeoutRunBlocking {
         readAction {
-            val document = EditorFactory.getInstance().createDocument("nop\nj label\n")
-            val error = AssemblyError(null, 2, 3, "error", false)
-            assertEquals(TextRange(6, 11), diagnosticRange(document, error))
-            assertEquals(TextRange(4, 11), diagnosticRange(document, AssemblyError(null, 2, 50, "error", false)))
-            assertNull(diagnosticRange(document, AssemblyError(null, 0, 0, "error", false)))
-            assertNull(diagnosticRange(document, AssemblyError(null, 9, 1, "error", false)))
-            val signed = EditorFactory.getInstance().createDocument(".word label -7\n.double 1e-2\n")
-            assertEquals(TextRange(12, 13), diagnosticRange(signed, AssemblyError(null, 1, 13, "error", false)))
-            val exponentSign = signed.text.indexOf("-2")
-            assertEquals(TextRange(exponentSign, exponentSign + 1),
-                diagnosticRange(signed, AssemblyError(null, 2, exponentSign - signed.getLineStartOffset(1) + 1, "error", false)))
-            val files = PsiFileFactory.getInstance(project)
-            assertNull(annotator.collectInformation(files.createFileFromText("plain.txt", PlainTextFileType.INSTANCE, "")))
-            assertNull(annotator.collectInformation(files.createFileFromText("light.asm", MipsFileType, "nop")))
+          val document = EditorFactory.getInstance().createDocument("nop\nj label\n")
+          val error = AssemblyError(null, 2, 3, "error", false)
+          assertEquals(TextRange(6, 11), diagnosticRange(document, error))
+          assertEquals(
+              TextRange(4, 11),
+              diagnosticRange(document, AssemblyError(null, 2, 50, "error", false)),
+          )
+          assertNull(diagnosticRange(document, AssemblyError(null, 0, 0, "error", false)))
+          assertNull(diagnosticRange(document, AssemblyError(null, 9, 1, "error", false)))
+          val signed = EditorFactory.getInstance().createDocument(".word label -7\n.double 1e-2\n")
+          assertEquals(
+              TextRange(12, 13),
+              diagnosticRange(signed, AssemblyError(null, 1, 13, "error", false)),
+          )
+          val exponentSign = signed.text.indexOf("-2")
+          assertEquals(
+              TextRange(exponentSign, exponentSign + 1),
+              diagnosticRange(
+                  signed,
+                  AssemblyError(
+                      null,
+                      2,
+                      exponentSign - signed.getLineStartOffset(1) + 1,
+                      "error",
+                      false,
+                  ),
+              ),
+          )
+          val files = PsiFileFactory.getInstance(project)
+          assertNull(
+              annotator.collectInformation(
+                  files.createFileFromText("plain.txt", PlainTextFileType.INSTANCE, ""),
+              ),
+          )
+          assertNull(
+              annotator.collectInformation(
+                  files.createFileFromText("light.asm", MipsFileType, "nop"),
+              ),
+          )
         }
-    }
+      }
 
-    // Kotlin exposes the reported Java setters as read-only properties.
-    @Suppress("UsePropertyAccessSyntax")
-    private fun edit(file: VirtualFile, text: String) {
-        val document = FileDocumentManager.getInstance().getDocument(file)!!
-        WriteCommandAction.runWriteCommandAction(project) { document.setText(text) }
-        PsiDocumentManager.getInstance(project).commitAllDocuments()
-    }
+  // Kotlin exposes the reported Java setters as read-only properties.
+  @Suppress("UsePropertyAccessSyntax")
+  private fun edit(file: VirtualFile, text: String) {
+    val document = FileDocumentManager.getInstance().getDocument(file)!!
+    WriteCommandAction.runWriteCommandAction(project) { document.setText(text) }
+    PsiDocumentManager.getInstance(project).commitAllDocuments()
+  }
 }
 
 internal suspend fun CodeInsightTestFixture.awaitMipsRefresh() {
-    IndexingTestUtil.suspendUntilIndexesAreReady(project)
-    // The forced fixture pass disallows daemon restarts while highlighting is in progress.
-    withContext(Dispatchers.IO) { project.service<MipsFoldingRefresh>().waitForRefresh() }
+  IndexingTestUtil.suspendUntilIndexesAreReady(project)
+  // The forced fixture pass disallows daemon restarts while highlighting is in progress.
+  withContext(Dispatchers.IO) { project.service<MipsFoldingRefresh>().waitForRefresh() }
 }
 
-internal suspend fun CodeInsightTestFixture.highlightAfterMipsRefresh() = withContext(Dispatchers.EDT) {
-    awaitMipsRefresh()
-    doHighlighting()
-}
+internal suspend fun CodeInsightTestFixture.highlightAfterMipsRefresh() =
+    withContext(Dispatchers.EDT) {
+      awaitMipsRefresh()
+      doHighlighting()
+    }

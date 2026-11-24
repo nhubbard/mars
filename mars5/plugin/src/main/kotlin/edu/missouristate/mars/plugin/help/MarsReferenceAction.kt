@@ -26,72 +26,86 @@ import com.intellij.util.ui.JBUI
 import javax.swing.ListSelectionModel
 
 internal class MarsReferenceAction : DumbAwareAction() {
-    override fun actionPerformed(e: AnActionEvent) = MarsReferenceDialog(e.project, MarsReferenceCatalog.topics.first()).show()
+  override fun actionPerformed(e: AnActionEvent) =
+      MarsReferenceDialog(e.project, MarsReferenceCatalog.topics.first()).show()
 }
 
 internal class MarsAboutAction : DumbAwareAction() {
-    override fun actionPerformed(e: AnActionEvent) = MarsReferenceDialog(e.project, MarsReferenceCatalog.about).show()
+  override fun actionPerformed(e: AnActionEvent) =
+      MarsReferenceDialog(e.project, MarsReferenceCatalog.about).show()
 }
 
 internal class MarsReferenceDialog(project: Project?, initialTopic: MarsReferenceTopic) :
     DialogWrapper(project, false, IdeModalityType.MODELESS) {
-    private val search = SearchTextField(false)
-    private val model = FilteringListModel(CollectionListModel(MarsReferenceCatalog.topics))
-    private val topics = JBList(model).apply {
+  private val search = SearchTextField(false)
+  private val model = FilteringListModel(CollectionListModel(MarsReferenceCatalog.topics))
+  private val topics =
+      JBList(model).apply {
         selectionMode = ListSelectionModel.SINGLE_SELECTION
         cellRenderer = textListCellRenderer("", MarsReferenceTopic::title)
         emptyText.text = referenceMessages.getMessage("reference.empty")
         accessibleContext.accessibleName = referenceMessages.getMessage("reference.topics")
-    }
-    private val details = JBHtmlPane().apply {
+      }
+  private val details =
+      JBHtmlPane().apply {
         accessibleContext.accessibleName = referenceMessages.getMessage("reference.details")
         border = JBUI.Borders.empty(8)
+      }
+  val contents = panel {
+    row(referenceMessages.getMessage("reference.search")) {
+      cell(search).align(AlignX.FILL)
     }
-    val contents = panel {
-        row(referenceMessages.getMessage("reference.search")) {
-            cell(search).align(AlignX.FILL)
-        }
-        row {
-            val split = JBSplitter(false, 0.33f).apply {
-                firstComponent = JBScrollPane(topics)
-                secondComponent = JBScrollPane(details)
-                preferredSize = JBUI.size(820, 490)
-            }
-            cell(split).align(Align.FILL)
-        }.resizableRow()
-        row {
-            cell(BrowserLink(
-                referenceMessages.getMessage("reference.card"),
-                "https://github.com/dpetersanderson/MARS/blob/main/help/mipsref.pdf",
-            ))
-        }
+    row {
+      val split =
+          JBSplitter(false, 0.33f).apply {
+            firstComponent = JBScrollPane(topics)
+            secondComponent = JBScrollPane(details)
+            preferredSize = JBUI.size(820, 490)
+          }
+      cell(split).align(Align.FILL)
     }
+        .resizableRow()
+    row {
+      cell(
+          BrowserLink(
+              referenceMessages.getMessage("reference.card"),
+              "https://github.com/dpetersanderson/MARS/blob/main/help/mipsref.pdf",
+          ),
+      )
+    }
+  }
 
-    init {
-        title = referenceMessages.getMessage("reference.title")
-        setCancelButtonText(CommonBundle.getCloseButtonText())
-        Disposer.register(disposable, details)
-        Disposer.register(disposable) { model.dispose() }
-        ScrollingUtil.installActions(topics, search.textEditor)
-        topics.addListSelectionListener {
-            details.text = topics.selectedValue?.let { topic -> "<h2>${escapeXmlEntities(topic.title)}</h2>${topic.html()}" }.orEmpty()
-            details.caretPosition = 0
-        }
-        search.textEditor.document.whenDocumentChanged(disposable) { filterTopics() }
-        filterTopics()
-        topics.setSelectedValue(initialTopic, true)
-        init()
+  init {
+    title = referenceMessages.getMessage("reference.title")
+    setCancelButtonText(CommonBundle.getCloseButtonText())
+    Disposer.register(disposable, details)
+    Disposer.register(disposable) { model.dispose() }
+    ScrollingUtil.installActions(topics, search.textEditor)
+    topics.addListSelectionListener {
+      details.text =
+          topics.selectedValue
+              ?.let { topic -> "<h2>${escapeXmlEntities(topic.title)}</h2>${topic.html()}" }
+              .orEmpty()
+      details.caretPosition = 0
     }
+    search.textEditor.document.whenDocumentChanged(disposable) { filterTopics() }
+    filterTopics()
+    topics.setSelectedValue(initialTopic, true)
+    init()
+  }
 
-    private fun filterTopics() {
-        val words = search.text.split(Regex("\\s+")).filter(String::isNotEmpty)
-        topics.clearSelection()
-        model.setFilter { it.matches(words) }
-        topics.selectedIndex = 0
-    }
+  private fun filterTopics() {
+    val words = search.text.split(Regex("\\s+")).filter(String::isNotEmpty)
+    topics.clearSelection()
+    model.setFilter { it.matches(words) }
+    topics.selectedIndex = 0
+  }
 
-    override fun createCenterPanel() = contents
-    override fun createActions() = arrayOf(cancelAction)
-    override fun getPreferredFocusedComponent(): JBTextField? = search.textEditor
-    override fun getDimensionServiceKey() = "Mars.Reference"
+  override fun createCenterPanel() = contents
+
+  override fun createActions() = arrayOf(cancelAction)
+
+  override fun getPreferredFocusedComponent(): JBTextField? = search.textEditor
+
+  override fun getDimensionServiceKey() = "Mars.Reference"
 }

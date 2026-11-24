@@ -1,10 +1,10 @@
 package edu.missouristate.mars.plugin.tools
 
 import com.intellij.ide.setToolTipText
-import com.intellij.openapi.util.text.HtmlChunk
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.text.HtmlChunk
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.ui.JBColor
 import com.intellij.ui.components.JBLabel
@@ -20,163 +20,180 @@ import javax.swing.JButton
 import javax.swing.JEditorPane
 import javax.swing.JPanel
 import javax.swing.JToggleButton
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
-import kotlin.time.Duration.Companion.milliseconds
 
 internal class DigitalLabView(project: Project) : Disposable {
-    private var selected: DigitalLabDevice? = null
-    private val selector = MarsToolExecutionSelector(project, ::selectionChanged)
-    private val toggle = JButton()
-    private val reset = JButton(toolsMessages.getMessage("counter.reset"))
-    private val left = SevenSegment("digitalLab.left", "digitalLab.left.value")
-    private val right = SevenSegment("digitalLab.right", "digitalLab.right.value")
-    private lateinit var timer: JEditorPane
-    private var shownTimer: Int? = null
-    private val keypad = JPanel(GridLayout(4, 4, JBUI.scale(4), JBUI.scale(4)))
-    private val keys = List(16) { number ->
+  private var selected: DigitalLabDevice? = null
+  private val selector = MarsToolExecutionSelector(project, ::selectionChanged)
+  private val toggle = JButton()
+  private val reset = JButton(toolsMessages.getMessage("counter.reset"))
+  private val left = SevenSegment("digitalLab.left", "digitalLab.left.value")
+  private val right = SevenSegment("digitalLab.right", "digitalLab.right.value")
+  private lateinit var timer: JEditorPane
+  private var shownTimer: Int? = null
+  private val keypad = JPanel(GridLayout(4, 4, JBUI.scale(4), JBUI.scale(4)))
+  private val keys =
+      List(16) { number ->
         JToggleButton(number.toString(16).uppercase()).apply {
-            preferredSize = JBDimension(40, 30)
-            minimumSize = JBDimension(40, 30)
-            addActionListener {
-                selected!!.toggleKey(number)
-                render()
+          preferredSize = JBDimension(40, 30)
+          minimumSize = JBDimension(40, 30)
+          addActionListener {
+            selected!!.toggleKey(number)
+            render()
+          }
+          keypad.add(this)
+        }
+      }
+
+  val component =
+      scrollableToolPanel(
+          this,
+          marsToolPanel {
+            marsExecutionRow(selector.component)
+            row {
+              cell(toggle)
+              cell(reset)
             }
-            keypad.add(this)
-        }
+            row { label(toolsMessages.getMessage("digitalLab.display")) }
+            row {
+              cell(left.component)
+              cell(right.component)
+            }
+            row { label(toolsMessages.getMessage("digitalLab.keypad")) }
+            row { cell(keypad) }.layout(RowLayout.INDEPENDENT)
+            row { timer = text("").resizableColumn().component }.layout(RowLayout.INDEPENDENT)
+            row { comment(toolsMessages.getMessage("digitalLab.help")).resizableColumn() }
+                .layout(RowLayout.INDEPENDENT)
+          },
+          emptyMap(),
+      )
+
+  init {
+    toggle.addActionListener {
+      val device = selected!!
+      device.setConnected(!device.snapshot().connected)
+      render()
     }
-
-    val component = scrollableToolPanel(this, marsToolPanel {
-        marsExecutionRow(selector.component)
-        row {
-            cell(toggle)
-            cell(reset)
-        }
-        row { label(toolsMessages.getMessage("digitalLab.display")) }
-        row {
-            cell(left.component)
-            cell(right.component)
-        }
-        row { label(toolsMessages.getMessage("digitalLab.keypad")) }
-        row { cell(keypad) }.layout(RowLayout.INDEPENDENT)
-        row { timer = text("").resizableColumn().component }.layout(RowLayout.INDEPENDENT)
-        row { comment(toolsMessages.getMessage("digitalLab.help")).resizableColumn() }.layout(RowLayout.INDEPENDENT)
-    }, emptyMap())
-
-    init {
-        toggle.addActionListener {
-            val device = selected!!
-            device.setConnected(!device.snapshot().connected)
-            render()
-        }
-        reset.addActionListener {
-            selected!!.reset()
-            render()
-        }
-        selector.refresh()
-        selectionChanged()
+    reset.addActionListener {
+      selected!!.reset()
+      render()
     }
+    selector.refresh()
+    selectionChanged()
+  }
 
-    @Suppress("UnstableApiUsage")
-    private val refreshJob = component.launchOnShow("Refresh MARS Digital Lab Sim") {
+  @Suppress("UnstableApiUsage")
+  private val refreshJob =
+      component.launchOnShow("Refresh MARS Digital Lab Sim") {
         while (true) {
-            withContext(Dispatchers.EDT) { refresh() }
-            delay(200.milliseconds)
+          withContext(Dispatchers.EDT) { refresh() }
+          delay(200.milliseconds)
         }
-    }
+      }
 
-    private fun refresh() {
-        selector.refresh()
-        render()
-    }
+  private fun refresh() {
+    selector.refresh()
+    render()
+  }
 
-    private fun selectionChanged() {
-        select(selector.process?.digitalLab)
-        render()
-    }
+  private fun selectionChanged() {
+    select(selector.process?.digitalLab)
+    render()
+  }
 
-    private fun select(current: DigitalLabDevice?) {
-        if (current !== selected) {
-            selected?.releaseView()
-            selected = current
-        }
+  private fun select(current: DigitalLabDevice?) {
+    if (current !== selected) {
+      selected?.releaseView()
+      selected = current
     }
+  }
 
-    private fun render() {
-        val snapshot = selected?.snapshot()
-        val connected = snapshot?.connected == true
-        toggle.isEnabled = snapshot?.available == true
-        toggle.text = toolsMessages.getMessage(if (connected) "counter.disconnect" else "counter.connect")
-        reset.isEnabled = snapshot != null
-        left.showBits(snapshot?.left ?: 0)
-        right.showBits(snapshot?.right ?: 0)
-        val remaining = snapshot?.timerRemaining ?: 0
-        if (remaining != shownTimer) {
-            shownTimer = remaining
-            val message = if (remaining == 0) toolsMessages.getMessage("digitalLab.timer.off")
-            else toolsMessages.getMessage("digitalLab.timer.remaining", remaining)
-            timer.text = StringUtil.escapeXmlEntities(message)
-        }
-        for ((number, key) in keys.withIndex()) {
-            key.isEnabled = toggle.isEnabled && connected
-            key.isSelected = snapshot?.key == number
-        }
+  private fun render() {
+    val snapshot = selected?.snapshot()
+    val connected = snapshot?.connected == true
+    toggle.isEnabled = snapshot?.available == true
+    toggle.text =
+        toolsMessages.getMessage(if (connected) "counter.disconnect" else "counter.connect")
+    reset.isEnabled = snapshot != null
+    left.showBits(snapshot?.left ?: 0)
+    right.showBits(snapshot?.right ?: 0)
+    val remaining = snapshot?.timerRemaining ?: 0
+    if (remaining != shownTimer) {
+      shownTimer = remaining
+      val message =
+          if (remaining == 0) toolsMessages.getMessage("digitalLab.timer.off")
+          else toolsMessages.getMessage("digitalLab.timer.remaining", remaining)
+      timer.text = StringUtil.escapeXmlEntities(message)
     }
+    for ((number, key) in keys.withIndex()) {
+      key.isEnabled = toggle.isEnabled && connected
+      key.isSelected = snapshot?.key == number
+    }
+  }
 
-    override fun dispose() {
-        refreshJob.cancel()
-        select(null)
-    }
+  override fun dispose() {
+    refreshJob.cancel()
+    select(null)
+  }
 }
 
-private class SevenSegment(private val descriptionKey: String, private val valueKey: String) : JPanel() {
-    private val valueLabel = JBLabel()
-    private var bits = -1
-    val component = panel {
-        row { cell(this@SevenSegment) }
-        row { cell(valueLabel) }
-    }
+private class SevenSegment(private val descriptionKey: String, private val valueKey: String) :
+    JPanel() {
+  private val valueLabel = JBLabel()
+  private var bits = -1
+  val component = panel {
+    row { cell(this@SevenSegment) }
+    row { cell(valueLabel) }
+  }
 
-    init {
-        preferredSize = Dimension(JBUI.scale(46), JBUI.scale(73))
-        showBits(0)
-    }
+  init {
+    preferredSize = Dimension(JBUI.scale(46), JBUI.scale(73))
+    showBits(0)
+  }
 
-    fun showBits(value: Int) {
-        if (bits == value) return
-        bits = value
-        val hex = value.toString(16).padStart(2, '0')
-        val description = toolsMessages.getMessage(descriptionKey, hex)
-        valueLabel.text = toolsMessages.getMessage(valueKey, hex)
-        getAccessibleContext().accessibleName = description
-        setToolTipText(HtmlChunk.text(description))
-        repaint()
-    }
+  fun showBits(value: Int) {
+    if (bits == value) return
+    bits = value
+    val hex = value.toString(16).padStart(2, '0')
+    val description = toolsMessages.getMessage(descriptionKey, hex)
+    valueLabel.text = toolsMessages.getMessage(valueKey, hex)
+    getAccessibleContext().accessibleName = description
+    setToolTipText(HtmlChunk.text(description))
+    repaint()
+  }
 
-    override fun paintComponent(graphics: Graphics) {
-        super.paintComponent(graphics)
-        for ((index, shape) in segments.withIndex()) {
-            val x = JBUI.scale(shape[0])
-            val y = JBUI.scale(shape[1])
-            val width = JBUI.scale(shape[2])
-            val height = JBUI.scale(shape[3])
-            val arc = JBUI.scale(3)
-            if (bits and (1 shl index) != 0) {
-                graphics.color = JBColor.RED
-                graphics.fillRoundRect(x, y, width, height, arc, arc)
-            } else {
-                graphics.color = JBColor.foreground()
-                graphics.drawRoundRect(x, y, width - 1, height - 1, arc, arc)
-            }
-        }
+  override fun paintComponent(graphics: Graphics) {
+    super.paintComponent(graphics)
+    for ((index, shape) in segments.withIndex()) {
+      val x = JBUI.scale(shape[0])
+      val y = JBUI.scale(shape[1])
+      val width = JBUI.scale(shape[2])
+      val height = JBUI.scale(shape[3])
+      val arc = JBUI.scale(3)
+      if (bits and (1 shl index) != 0) {
+        graphics.color = JBColor.RED
+        graphics.fillRoundRect(x, y, width, height, arc, arc)
+      } else {
+        graphics.color = JBColor.foreground()
+        graphics.drawRoundRect(x, y, width - 1, height - 1, arc, arc)
+      }
     }
+  }
 
-    private companion object {
-        val segments = listOf(
-            intArrayOf(10, 5, 23, 5), intArrayOf(33, 10, 5, 21), intArrayOf(33, 36, 5, 21),
-            intArrayOf(10, 57, 23, 5), intArrayOf(5, 36, 5, 21), intArrayOf(5, 10, 5, 21),
-            intArrayOf(10, 31, 23, 5), intArrayOf(38, 57, 5, 5),
+  private companion object {
+    private val segments =
+        listOf(
+            intArrayOf(10, 5, 23, 5),
+            intArrayOf(33, 10, 5, 21),
+            intArrayOf(33, 36, 5, 21),
+            intArrayOf(10, 57, 23, 5),
+            intArrayOf(5, 36, 5, 21),
+            intArrayOf(5, 10, 5, 21),
+            intArrayOf(10, 31, 23, 5),
+            intArrayOf(38, 57, 5, 5),
         )
-    }
+  }
 }

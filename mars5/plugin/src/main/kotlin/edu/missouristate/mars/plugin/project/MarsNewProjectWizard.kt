@@ -37,77 +37,92 @@ import kotlin.io.path.invariantSeparatorsPathString
 private val messages = DynamicBundle(MarsNewProjectWizard::class.java, "messages.MarsBundle")
 
 internal class MarsNewProjectWizard : GeneratorNewProjectWizard {
-    override val id = "MarsMips"
-    override val name get() = messages.getMessage("project.wizard.name")
-    override val icon get() = MipsFileType.icon
+  override val id = "MarsMips"
+  override val name
+    get() = messages.getMessage("project.wizard.name")
 
-    override fun createStep(context: WizardContext): NewProjectWizardStep = RootNewProjectWizardStep(context)
-        .nextStep(::NewProjectWizardBaseStep)
-        .nextStep(::StarterStep)
+  override val icon
+    get() = MipsFileType.icon
 
-    private class StarterStep(private val base: NewProjectWizardBaseStep) : AbstractNewProjectWizardStep(base) {
-        private var separateLibrary = false
+  override fun createStep(context: WizardContext): NewProjectWizardStep =
+      RootNewProjectWizardStep(context).nextStep(::NewProjectWizardBaseStep).nextStep(::StarterStep)
 
-        override fun setupUI(builder: Panel) {
-            builder.row {
-                checkBox(messages.getMessage("project.wizard.library")).bindSelected(::separateLibrary)
-                    .comment(messages.getMessage("project.wizard.library.help"))
-            }
-        }
+  private class StarterStep(private val base: NewProjectWizardBaseStep) :
+      AbstractNewProjectWizardStep(base) {
+    private var separateLibrary = false
 
-        override fun setupProject(project: Project) {
-            val root = Path.of(base.path, base.name)
-            val sources = writeStarterSources(root, separateLibrary)
-            ApplicationManager.getApplication().invokeAndWait {
-                val module = runWriteAction {
-                    ModuleManager.getInstance(project).newModule(root.resolve(".idea").resolve("${base.name}.iml"), GeneralModuleType.TYPE_ID)
-                }
-                ModuleRootModificationUtil.updateModel(module) { model ->
-                    val content = model.addContentEntry(fileUrl(root))
-                    content.addSourceFolder(fileUrl(root.resolve("src")), false)
-                    model.sdk = null
-                }
-                project.service<MarsAssemblySettings>().changeSources(sources.map(Path::toString))
-                val manager = RunManager.getInstance(project)
-                val factory = runConfigurationType<MarsRunType>()
-                val settings = manager.createConfiguration(messages.getMessage("project.wizard.run"), factory)
-                (settings.configuration as MarsRunConfiguration).options.useProjectSources = true
-                settings.storeInDotIdeaFolder()
-                manager.addConfiguration(settings)
-                manager.selectedConfiguration = settings
-            }
-            @Suppress("UnstableApiUsage")
-            runAfterOpened(project) { opened -> openStarterInEditor(opened, sources.first()) }
-        }
+    override fun setupUI(builder: Panel) {
+      builder.row {
+        checkBox(messages.getMessage("project.wizard.library"))
+            .bindSelected(::separateLibrary)
+            .comment(messages.getMessage("project.wizard.library.help"))
+      }
     }
+
+    override fun setupProject(project: Project) {
+      val root = Path.of(base.path, base.name)
+      val sources = writeStarterSources(root, separateLibrary)
+      ApplicationManager.getApplication().invokeAndWait {
+        val module = runWriteAction {
+          ModuleManager.getInstance(project)
+              .newModule(
+                  root.resolve(".idea").resolve("${base.name}.iml"),
+                  GeneralModuleType.TYPE_ID,
+              )
+        }
+        ModuleRootModificationUtil.updateModel(module) { model ->
+          val content = model.addContentEntry(fileUrl(root))
+          content.addSourceFolder(fileUrl(root.resolve("src")), false)
+          model.sdk = null
+        }
+        project.service<MarsAssemblySettings>().changeSources(sources.map(Path::toString))
+        val manager = RunManager.getInstance(project)
+        val factory = runConfigurationType<MarsRunType>()
+        val settings =
+            manager.createConfiguration(messages.getMessage("project.wizard.run"), factory)
+        (settings.configuration as MarsRunConfiguration).options.useProjectSources = true
+        settings.storeInDotIdeaFolder()
+        manager.addConfiguration(settings)
+        manager.selectedConfiguration = settings
+      }
+      @Suppress("UnstableApiUsage")
+      runAfterOpened(project) { opened -> openStarterInEditor(opened, sources.first()) }
+    }
+  }
 }
 
 private fun fileUrl(path: Path) = VfsUtilCore.pathToUrl(path.invariantSeparatorsPathString)
 
 internal fun openStarterInEditor(project: Project, path: Path) {
-    val entry = LocalFileSystem.getInstance().refreshAndFindFileByNioFile(path) ?: return
-    NavigationService.getInstance(project).requestNavigate(
-        OpenFileDescriptor(project, entry), NavigationOptions.requestFocus(),
-    )
+  val entry = LocalFileSystem.getInstance().refreshAndFindFileByNioFile(path) ?: return
+  NavigationService.getInstance(project)
+      .requestNavigate(
+          OpenFileDescriptor(project, entry),
+          NavigationOptions.requestFocus(),
+      )
 }
 
-/** Publish the complete source directory together, with the filesystem's existing-target protection. */
+/**
+ * Publish the complete source directory together, with the filesystem's existing-target protection.
+ */
 internal fun writeStarterSources(root: Path, separateLibrary: Boolean): List<Path> {
-    val staging = Files.createTempDirectory(root, ".mars-starter-")
-    val sources = root.resolve("src")
-    try {
-        val entry = "main.asm"
-        val library = "console.s"
-        Files.writeString(staging.resolve(entry), if (separateLibrary) linkedMain else standaloneMain)
-        if (separateLibrary) Files.writeString(staging.resolve(library), consoleLibrary)
-        Files.move(staging, sources)
-        return listOf(sources.resolve(entry)) + listOfNotNull(sources.resolve(library).takeIf { separateLibrary })
-    } finally {
-        FileUtil.delete(staging.toFile())
-    }
+  val staging = Files.createTempDirectory(root, ".mars-starter-")
+  val sources = root.resolve("src")
+  try {
+    val entry = "main.asm"
+    val library = "console.s"
+    Files.writeString(staging.resolve(entry), if (separateLibrary) linkedMain else standaloneMain)
+    if (separateLibrary) Files.writeString(staging.resolve(library), consoleLibrary)
+    Files.move(staging, sources)
+    return listOf(sources.resolve(entry)) +
+        listOfNotNull(sources.resolve(library).takeIf { separateLibrary })
+  } finally {
+    FileUtil.delete(staging.toFile())
+  }
 }
 
-private val standaloneMain = $$"""
+private val standaloneMain =
+    $$"""
     .data
     greeting: .asciiz "Hello from MARS!\n"
 
@@ -120,9 +135,11 @@ private val standaloneMain = $$"""
 
         li $v0, 10
         syscall
-""".trimIndent() + "\n"
+    """
+        .trimIndent() + "\n"
 
-private val linkedMain = $$"""
+private val linkedMain =
+    $$"""
     .data
     greeting: .asciiz "Hello from MARS!\n"
 
@@ -135,9 +152,11 @@ private val linkedMain = $$"""
 
         li $v0, 10
         syscall
-""".trimIndent() + "\n"
+    """
+        .trimIndent() + "\n"
 
-private val consoleLibrary = $$"""
+private val consoleLibrary =
+    $$"""
     .text
     .globl print_string
     print_string:
@@ -145,4 +164,5 @@ private val consoleLibrary = $$"""
         syscall
         jr $ra
         nop
-""".trimIndent() + "\n"
+    """
+        .trimIndent() + "\n"

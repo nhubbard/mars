@@ -24,15 +24,16 @@ application {
 }
 
 val catalogOutput = layout.buildDirectory.dir("instruction-catalog")
-val exerciseInstructions = tasks.register<JavaExec>("exerciseInstructions") {
-  group = "verification"
-  description = "Assemble and execute an isolated MIPS program for every catalog entry."
-  classpath = sourceSets.main.get().runtimeClasspath
-  mainClass = application.mainClass
-  args("catalog", catalogOutput.get().asFile.absolutePath)
-  inputs.files(sourceSets.main.get().output)
-  outputs.dir(catalogOutput)
-}
+val exerciseInstructions =
+    tasks.register<JavaExec>("exerciseInstructions") {
+      group = "verification"
+      description = "Assemble and execute an isolated MIPS program for every catalog entry."
+      classpath = sourceSets.main.get().runtimeClasspath
+      mainClass = application.mainClass
+      args("catalog", catalogOutput.get().asFile.absolutePath)
+      inputs.files(sourceSets.main.get().output)
+      outputs.dir(catalogOutput)
+    }
 
 tasks.test {
   useJUnitPlatform()

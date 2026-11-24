@@ -35,27 +35,47 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /** Formats a captured inclusive range of MIPS memory. */
 interface DumpFormat {
-    val fileExtension: String?
-    val description: String?
-    val commandDescriptor: String?
+  val fileExtension: String?
+  val description: String?
+  val commandDescriptor: String?
 
-    @Throws(AddressErrorException::class, IOException::class)
-    fun dumpMemoryRange(file: File, firstAddress: Int, lastAddress: Int, session: MarsContext) {
-        write(file, capture(session, firstAddress, lastAddress) {})
-    }
+  @Throws(AddressErrorException::class, IOException::class)
+  fun dumpMemoryRange(file: File, firstAddress: Int, lastAddress: Int, session: MarsContext) {
+    write(file, capture(session, firstAddress, lastAddress) {})
+  }
 
-    /** Capture while the caller owns stopped execution. */
-    @Throws(AddressErrorException::class)
-    fun capture(session: MarsContext, firstAddress: Int, lastAddress: Int, checkCancellation: () -> Unit): MemoryDumpSnapshot =
-        capture(session, firstAddress.toUInt().toLong(), lastAddress.toUInt().toLong(), checkCancellation)
+  /** Capture while the caller owns stopped execution. */
+  @Throws(AddressErrorException::class)
+  fun capture(
+      session: MarsContext,
+      firstAddress: Int,
+      lastAddress: Int,
+      checkCancellation: () -> Unit,
+  ): MemoryDumpSnapshot =
+      capture(
+          session,
+          firstAddress.toUInt().toLong(),
+          lastAddress.toUInt().toLong(),
+          checkCancellation,
+      )
 
-    @Throws(AddressErrorException::class)
-    fun capture(session: MarsContext, firstAddress: Long, lastAddress: Long, checkCancellation: () -> Unit): MemoryDumpSnapshot =
-        MemoryDumpSnapshot.capture(session, firstAddress, lastAddress, includesSourceListing(), checkCancellation)
+  @Throws(AddressErrorException::class)
+  fun capture(
+      session: MarsContext,
+      firstAddress: Long,
+      lastAddress: Long,
+      checkCancellation: () -> Unit,
+  ): MemoryDumpSnapshot =
+      MemoryDumpSnapshot.capture(
+          session,
+          firstAddress,
+          lastAddress,
+          includesSourceListing(),
+          checkCancellation,
+      )
 
-    fun includesSourceListing(): Boolean = false
+  fun includesSourceListing(): Boolean = false
 
-    /** Write a snapshot without accessing the machine. */
-    @Throws(IOException::class)
-    fun write(file: File, snapshot: MemoryDumpSnapshot)
+  /** Write a snapshot without accessing the machine. */
+  @Throws(IOException::class) fun write(file: File, snapshot: MemoryDumpSnapshot)
 }

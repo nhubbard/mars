@@ -33,8 +33,8 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 open class SyscallPrintIntHex : AbstractSyscall(34, "PrintIntHex") {
-    override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
-        val value = context.registerFile.getValue(4)
-        context.environment().printString(Binary.intToHexString(value))
-    }
+  override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
+    val value = context.registerFile.getValue(4)
+    context.environment().printString(Binary.intToHexString(value))
+  }
 }

@@ -43,93 +43,126 @@ import org.junit.jupiter.params.provider.CsvSource
 
 @TestApplication
 class MarsNewFilePlatformTest {
-    private val projectFixture = codeInsightProjectFixture()
-    private val fixture by codeInsightFixture(projectFixture)
-    private val project get() = projectFixture.get()
-    private val action get() = assertInstanceOf(MarsNewFileAction::class.java, ActionManager.getInstance().getAction("Mars.NewMipsFile"))
+  private val projectFixture = codeInsightProjectFixture()
+  private val fixture by codeInsightFixture(projectFixture)
+  private val project
+    get() = projectFixture.get()
 
-    @ParameterizedTest
-    @CsvSource(
-        "entry, MIPS Assembly, entry.asm",
-        "routine, MIPS Source, routine.s",
-        "lib/module.s, MIPS Assembly, lib/module.s",
-        "explicit.asm, MIPS Source, explicit.asm",
-        "marsEntry, MARS Assembly, marsEntry.mars",
-        "explicit.mars, MIPS Source, explicit.mars",
-    )
-    fun `native New action creates opens and assembles each source type`(name: String, kind: String, expected: String) =
-        timeoutRunBlocking {
-            val file = withContext(Dispatchers.EDT) {
-                val directory = fixture.addFileToProject("src/existing.asm", "nop\n").containingDirectory
-                val view = DirectoryView(directory)
-                val event = event(context(view, name, kind))
-                action.update(event)
-                assertTrue(event.presentation.isEnabledAndVisible)
-                assertFalse(action.startInWriteAction())
-                assertEquals("Create MIPS File $name", action.getActionName(directory, name, kind))
-                action.actionPerformed(event)
+  private val action
+    get() =
+        assertInstanceOf(
+            MarsNewFileAction::class.java,
+            ActionManager.getInstance().getAction("Mars.NewMipsFile"),
+        )
 
-                val source = assertInstanceOf(MipsFile::class.java, view.selected)
-                val virtualFile = source.virtualFile
-                assertEquals(directory.virtualFile.findFileByRelativePath(expected), virtualFile)
-                assertEquals(MipsFileType, source.fileType)
-                assertEquals(listOf(".text", "nop"), source.text.trim().lines().map(String::trim))
-                assertTrue(FileEditorManager.getInstance(project).isFileOpen(virtualFile))
-                virtualFile
-            }
-            assertTrue(project.service<MarsBuildService>().assemble(file.toNioPath()))
-            assertTrue(project.service<MarsAssemblySettings>().projectSources.isEmpty())
+  @ParameterizedTest
+  @CsvSource(
+      "entry, MIPS Assembly, entry.asm",
+      "routine, MIPS Source, routine.s",
+      "lib/module.s, MIPS Assembly, lib/module.s",
+      "explicit.asm, MIPS Source, explicit.asm",
+      "marsEntry, MARS Assembly, marsEntry.mars",
+      "explicit.mars, MIPS Source, explicit.mars",
+  )
+  fun `native New action creates opens and assembles each source type`(
+      name: String,
+      kind: String,
+      expected: String,
+  ) = timeoutRunBlocking {
+    val file =
+        withContext(Dispatchers.EDT) {
+          val directory = fixture.addFileToProject("src/existing.asm", "nop\n").containingDirectory
+          val view = DirectoryView(directory)
+          val event = event(context(view, name, kind))
+          action.update(event)
+          assertTrue(event.presentation.isEnabledAndVisible)
+          assertFalse(action.startInWriteAction())
+          assertEquals("Create MIPS File $name", action.getActionName(directory, name, kind))
+          action.actionPerformed(event)
+
+          val source = assertInstanceOf(MipsFile::class.java, view.selected)
+          val virtualFile = source.virtualFile
+          assertEquals(directory.virtualFile.findFileByRelativePath(expected), virtualFile)
+          assertEquals(MipsFileType, source.fileType)
+          assertEquals(listOf(".text", "nop"), source.text.trim().lines().map(String::trim))
+          assertTrue(FileEditorManager.getInstance(project).isFileOpen(virtualFile))
+          virtualFile
         }
+    assertTrue(project.service<MarsBuildService>().assemble(file.toNioPath()))
+    assertTrue(project.service<MarsAssemblySettings>().projectSources.isEmpty())
+  }
 
-    @Test
-    fun `include files use the MARS parser and file icon and can be created with the native New action`() = timeoutRunBlocking {
-        val entry = withContext(Dispatchers.EDT) {
-            val directory = fixture.addFileToProject("src/main.mars", ".include \"library.inc\"\nnop\n").containingDirectory
-            val view = DirectoryView(directory)
-            action.actionPerformed(event(context(view, "library.inc", "MIPS Assembly")))
-            val include = assertInstanceOf(MipsFile::class.java, view.selected)
-            assertEquals("library.inc", include.name)
-            assertEquals(directory.virtualFile.findChild("library.inc"), include.virtualFile)
-            for (suffix in listOf("asm", "s", "inc", "mars")) {
+  @Test
+  fun `include files use the MARS parser and file icon and can be created with the native New action`() =
+      timeoutRunBlocking {
+        val entry =
+            withContext(Dispatchers.EDT) {
+              val directory =
+                  fixture
+                      .addFileToProject("src/main.mars", ".include \"library.inc\"\nnop\n")
+                      .containingDirectory
+              val view = DirectoryView(directory)
+              action.actionPerformed(event(context(view, "library.inc", "MIPS Assembly")))
+              val include = assertInstanceOf(MipsFile::class.java, view.selected)
+              assertEquals("library.inc", include.name)
+              assertEquals(directory.virtualFile.findChild("library.inc"), include.virtualFile)
+              for (suffix in listOf("asm", "s", "inc", "mars")) {
                 val type = FileTypeManager.getInstance().getFileTypeByFileName("source.$suffix")
                 assertSame(MipsFileType, type)
                 assertSame(MipsFileType.icon, type.icon)
+              }
+              assertNotNull(MipsFileType::class.java.getResource("/icons/marsMips.svg"))
+              assertNotNull(MipsFileType.icon)
+              directory.virtualFile.findChild("main.mars")!!.toNioPath()
             }
-            assertNotNull(MipsFileType::class.java.getResource("/icons/marsMips.svg"))
-            assertNotNull(MipsFileType.icon)
-            directory.virtualFile.findChild("main.mars")!!.toNioPath()
-        }
         assertTrue(project.service<MarsBuildService>().assemble(entry))
-    }
+      }
 
-    @Test
-    fun `native action is unavailable without a directory and protects existing files`() = timeoutRunBlocking {
+  @Test
+  fun `native action is unavailable without a directory and protects existing files`() =
+      timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
-            val unavailable = event(DataContext.EMPTY_CONTEXT)
-            action.update(unavailable)
-            assertFalse(unavailable.presentation.isEnabledAndVisible)
+          val unavailable = event(DataContext.EMPTY_CONTEXT)
+          action.update(unavailable)
+          assertFalse(unavailable.presentation.isEnabledAndVisible)
 
-            val existing = fixture.addFileToProject("src/existing.s", ".data\n.word 42\n")
-            val view = DirectoryView(existing.containingDirectory)
-            assertThrows<IncorrectOperationException> { action.actionPerformed(event(context(view, "existing.s", "MIPS Assembly"))) }
-            assertEquals(".data\n.word 42\n", existing.text)
+          val existing = fixture.addFileToProject("src/existing.s", ".data\n.word 42\n")
+          val view = DirectoryView(existing.containingDirectory)
+          assertThrows<IncorrectOperationException> {
+            action.actionPerformed(event(context(view, "existing.s", "MIPS Assembly")))
+          }
+          assertEquals(".data\n.word 42\n", existing.text)
         }
+      }
+
+  // Supply IntelliJ's template dialog answers in the headless action fixture.
+  private fun context(view: DirectoryView, name: String, kind: String): DataContext =
+      SimpleDataContext.builder()
+          .add(CommonDataKeys.PROJECT, project)
+          .add(LangDataKeys.IDE_VIEW, view)
+          .add(TestDialogBuilder.TestAnswers.KEY, TestDialogBuilder.TestAnswers(name, kind))
+          .build()
+
+  private fun event(data: DataContext) =
+      AnActionEvent.createEvent(
+          action,
+          data,
+          null,
+          ActionPlaces.PROJECT_VIEW_POPUP,
+          ActionUiKind.NONE,
+          null,
+      )
+
+  private class DirectoryView(private val directory: PsiDirectory) : IdeView {
+    var selected: PsiElement? = null
+      private set
+
+    override fun selectElement(element: PsiElement) {
+      selected = element
     }
 
-    // Supply IntelliJ's template dialog answers in the headless action fixture.
-    private fun context(view: DirectoryView, name: String, kind: String): DataContext = SimpleDataContext.builder()
-        .add(CommonDataKeys.PROJECT, project)
-        .add(LangDataKeys.IDE_VIEW, view)
-        .add(TestDialogBuilder.TestAnswers.KEY, TestDialogBuilder.TestAnswers(name, kind))
-        .build()
+    override fun getDirectories() = arrayOf(directory)
 
-    private fun event(data: DataContext) = AnActionEvent.createEvent(action, data, null, ActionPlaces.PROJECT_VIEW_POPUP, ActionUiKind.NONE, null)
-
-    private class DirectoryView(private val directory: PsiDirectory) : IdeView {
-        var selected: PsiElement? = null
-            private set
-        override fun selectElement(element: PsiElement) { selected = element }
-        override fun getDirectories() = arrayOf(directory)
-        override fun getOrChooseDirectory() = directory
-    }
+    override fun getOrChooseDirectory() = directory
+  }
 }

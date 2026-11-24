@@ -32,7 +32,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 open class SyscallPrintInt : AbstractSyscall(1, "PrintInt") {
-    override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
-        context.environment().printInt(context.registerFile.getValue(4))
-    }
+  override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
+    context.environment().printInt(context.registerFile.getValue(4))
+  }
 }

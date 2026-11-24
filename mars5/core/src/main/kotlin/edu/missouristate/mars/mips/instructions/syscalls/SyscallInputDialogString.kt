@@ -35,30 +35,31 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /** Copies dialog input into the buffer at $a1 and writes its status to $a1. */
 open class SyscallInputDialogString : AbstractSyscall(54, "InputDialogString") {
-    @Throws(ProcessingException::class)
-    override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
-        val message = context.readSyscallString(statement, context.effectiveAddress(4, 0))
-        val input = context.environment().showInputDialog(message)
-        val address = context.effectiveAddress(5, 0)
-        val maxLength = context.registerFile.getValue(6)
-        try {
-            val status = when {
-                input == null -> -2
-                input.isEmpty() -> -3
-                else -> {
-                    for (index in 0 until minOf(input.length, maxLength - 1)) {
-                        context.storeData(address + index, 1, input[index].code)
-                    }
-                    if (input.length < maxLength - 1) {
-                        context.storeData(address + minOf(input.length, maxLength - 2), 1, '\n'.code)
-                    }
-                    context.storeData(address + minOf(input.length + 1, maxLength - 1), 1, 0)
-                    if (input.length > maxLength - 1) -4 else 0
-                }
+  @Throws(ProcessingException::class)
+  override fun simulate(statement: ProgramStatement?, context: InstructionContext) {
+    val message = context.readSyscallString(statement, context.effectiveAddress(4, 0))
+    val input = context.environment().showInputDialog(message)
+    val address = context.effectiveAddress(5, 0)
+    val maxLength = context.registerFile.getValue(6)
+    try {
+      val status =
+          when {
+            input == null -> -2
+            input.isEmpty() -> -3
+            else -> {
+              for (index in 0 until minOf(input.length, maxLength - 1)) {
+                context.storeData(address + index, 1, input[index].code)
+              }
+              if (input.length < maxLength - 1) {
+                context.storeData(address + minOf(input.length, maxLength - 2), 1, '\n'.code)
+              }
+              context.storeData(address + minOf(input.length + 1, maxLength - 1), 1, 0)
+              if (input.length > maxLength - 1) -4 else 0
             }
-            context.updateRegister(5, status)
-        } catch (failure: AddressErrorException) {
-            throw ProcessingException(context, statement, failure)
-        }
+          }
+      context.updateRegister(5, status)
+    } catch (failure: AddressErrorException) {
+      throw ProcessingException(context, statement, failure)
     }
+  }
 }
