@@ -192,7 +192,7 @@ VirtualFile. A binary physical file also cannot be registered as a text copy via
 `originalFile`: native VFS refresh would attempt to load binary contents as text.
 
 The existing project service now weakly indexes read-only projections by physical
-file, display name, and decoded text. The live PSI retains its projection entry;
+file, display name, original file type, and decoded text. The live PSI retains its projection entry;
 closed projections can be collected. Only the published entry creates a VirtualFile,
 using lazy initialization to retain native concurrent-provider semantics. Parsing,
 dependency invalidation, text decoding, and refresh remain with the existing native
@@ -203,3 +203,8 @@ verifies projection identity and the missing-file fallback, and keeps binary cop
 independent from unsupported text-copy registration. All 61 selected capture,
 expansion, macro-inspection, and macro-reference tests pass. New projection paths
 have complete line and branch coverage in the focused report.
+
+The projection key also preserves file-type reclassification independently of
+text changes. The full annotator regression class is included in the focused
+checks, covering original-name changes, binary/text reassignment, live document
+edits, and VFS refresh in addition to native cache collection.
