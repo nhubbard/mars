@@ -1,4 +1,4 @@
-@file:Suppress("JetBrainsInternalApiUsage", "OverrideOnly")
+@file:Suppress("OverrideOnly", "UsePropertyAccessSyntax")
 
 package edu.missouristate.mars.plugin.learning
 
@@ -229,7 +229,7 @@ class MarsDownloadedRequirementsTest {
         assertTrue(description.contains("Run observation: run-one"))
         assertTrue(description.contains("Debug observations: debug-one"))
         assertTrue(description.contains("Independent check: first"))
-        edit(content.installed.entry, program + "# changed\n")
+        edit(content.installed.entry, "$program# changed\n")
         assertFalse(model.ready())
         edit(content.installed.entry, program)
         assertFalse(model.ready())
@@ -238,7 +238,7 @@ class MarsDownloadedRequirementsTest {
         grant(content, "debug-one")
         assertTrue(model.ready())
         val first = content.installed.directory.resolve("first.asm")
-        edit(first, program + "# first changed\n")
+        edit(first, "$program# first changed\n")
         assertFalse(model.ready())
         grant(content, "first")
         assertTrue(model.ready())
@@ -287,13 +287,13 @@ class MarsDownloadedRequirementsTest {
     assertFalse(model.ready())
     grant(content, "debug-one")
     assertTrue(model.ready())
-    edit(content.installed.entry, program + "# unrelated guided entry edit\n")
+    edit(content.installed.entry, "$program# unrelated guided entry edit\n")
     assertTrue(model.ready())
-    edit(content.installed.directory.resolve("first.asm"), program + "# full range edit\n")
+    edit(content.installed.directory.resolve("first.asm"), "$program# full range edit\n")
     assertFalse(model.ready())
     grant(content, "run-one")
     assertTrue(model.ready())
-    edit(content.installed.directory.resolve("second.asm"), program + "# empty range edit\n")
+    edit(content.installed.directory.resolve("second.asm"), "$program# empty range edit\n")
     assertFalse(model.ready())
     grant(content, "run-one")
     assertFalse(model.ready())
@@ -315,7 +315,7 @@ class MarsDownloadedRequirementsTest {
             )
         progress.finishCheck(ticket, true)
         withContext(Dispatchers.IO) {
-          Files.writeString(content.installed.entry, program + "# offline edit\n")
+          Files.writeString(content.installed.entry, "$program# offline edit\n")
         }
         val model = MarsDownloadedRequirements(project, content, assessment(content, "second"))
         model.refresh()
@@ -558,7 +558,7 @@ class MarsDownloadedRequirementsTest {
                                     .findFileByNioPath(content.installed.entry)!!
                             FileDocumentManager.getInstance()
                                 .getDocument(main)!!
-                                .setText(program + "# prerequisite edited during check\n")
+                                .setText("$program# prerequisite edited during check\n")
                           }
                         }
                   }

@@ -18,7 +18,7 @@ class MarsNativeActivitySourceTest {
   private val run =
       """{"kind":"run","id":"run","explanation":"Run this range.","integerInputs":[],"stdout":"","success":"The program exited."}"""
   private val debug =
-      """{"kind":"debug","id":"debug","explanation":"Inspect this range.","integerInputs":[],"stops":[{"id":"test","explanation":"Before the count test.","anchor":{"label":"loop","mnemonic":"beqzc","occurrence":0},"registers":{"${'$'}t1":"0x0000000000000000"},"success":"The range is empty."}],"success":"No glyph was read."}"""
+      $$"""{"kind":"debug","id":"debug","explanation":"Inspect this range.","integerInputs":[],"stops":[{"id":"test","explanation":"Before the count test.","anchor":{"label":"loop","mnemonic":"beqzc","occurrence":0},"registers":{"$t1":"0x0000000000000000"},"success":"The range is empty."}],"success":"No glyph was read."}"""
 
   private fun lesson(activity: String, version: Int = 5) =
       """{"formatVersion":$version,"introduction":"Compare ranges.","conclusion":"Explain the boundary.","steps":[$activity]}"""

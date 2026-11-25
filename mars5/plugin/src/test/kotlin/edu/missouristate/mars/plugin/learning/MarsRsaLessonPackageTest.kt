@@ -54,53 +54,55 @@ class MarsRsaLessonPackageTest {
       assertEquals(3, repeated.calls.size)
       assertTrue(debug.all { requireNotNull(it.source).startsWith("worked/") })
       val shift = debug.single { it.id == "observe-exponent-shift" }.stops[1]
-      assertEquals(Long.MIN_VALUE, shift.registers.getValue("\$t2"))
-      assertEquals(0x4000000000000000L, shift.registers.getValue("\$t3"))
+      assertEquals(Long.MIN_VALUE, shift.registers.getValue($$"$t2"))
+      assertEquals(0x4000000000000000L, shift.registers.getValue($$"$t3"))
       val validation = debug.single { it.id == "observe-validation-boundary" }.stops.last()
-      assertEquals(1L, validation.registers.getValue("\$v0"))
-      assertEquals(0x5a5a5a5aL, validation.registers.getValue("\$t1"))
+      assertEquals(1L, validation.registers.getValue($$"$v0"))
+      assertEquals(0x5a5a5a5aL, validation.registers.getValue($$"$t1"))
     }
   }
 
   @Test
   fun `every delivered RSA prediction and Debug boundary resolves in the student source through native PSI`() =
       timeoutRunBlocking {
-        MarsLessonPackages.prepare(archive()).use { prepared ->
-          val installed = prepared.install(Files.createDirectory(directory.resolve("project")))
-          val content = MarsDownloadedLessonContent(installed, prepared.nativeLesson!!)
-          for (activity in content.plan.steps) {
-            val source = content.source(activity)
-            assertTrue(Files.isRegularFile(source))
-            if (activity is MarsNativeLessonStep)
-                assertEquals(installed.directory.resolve(activity.source!!), source)
-            val anchors =
-                if (activity is MarsNativeDebugStep) activity.stops.map { it.anchor }
-                else listOfNotNull(activity.anchor)
-            if (anchors.isEmpty()) continue
-            val text = Files.readString(source)
-            withContext(Dispatchers.EDT) {
-              fixture.configureByText(source.fileName.toString(), text)
-              for (anchor in anchors) {
-                val range =
-                    requireNotNull(MarsLessonAnchors.range(fixture.editor, anchor)) {
-                      "$source: $anchor"
-                    }
-                assertEquals(
-                    anchor.mnemonic,
-                    text
-                        .substring(range.startOffset, range.endOffset)
-                        .substringBefore(' ')
-                        .substringBefore('\t'),
-                )
+        withContext(Dispatchers.IO) {
+          MarsLessonPackages.prepare(archive()).use { prepared ->
+            val installed = prepared.install(Files.createDirectory(directory.resolve("project")))
+            val content = MarsDownloadedLessonContent(installed, prepared.nativeLesson!!)
+            for (activity in content.plan.steps) {
+              val source = content.source(activity)
+              assertTrue(Files.isRegularFile(source))
+              if (activity is MarsNativeLessonStep)
+                  assertEquals(installed.directory.resolve(activity.source!!), source)
+              val anchors =
+                  if (activity is MarsNativeDebugStep) activity.stops.map { it.anchor }
+                  else listOfNotNull(activity.anchor)
+              if (anchors.isEmpty()) continue
+              val text = Files.readString(source)
+              withContext(Dispatchers.EDT) {
+                fixture.configureByText(source.fileName.toString(), text)
+                for (anchor in anchors) {
+                  val range =
+                      requireNotNull(MarsLessonAnchors.range(fixture.editor, anchor)) {
+                        "$source: $anchor"
+                      }
+                  assertEquals(
+                      anchor.mnemonic,
+                      text
+                          .substring(range.startOffset, range.endOffset)
+                          .substringBefore(' ')
+                          .substringBefore('\t'),
+                  )
+                }
               }
             }
+            assertEquals(
+                7,
+                Files.readString(installed.directory.resolve("independent/rsa-arithmetic.asm"))
+                    .lines()
+                    .count { it.trim() == "break" },
+            )
           }
-          assertEquals(
-              7,
-              Files.readString(installed.directory.resolve("independent/rsa-arithmetic.asm"))
-                  .lines()
-                  .count { it.trim() == "break" },
-          )
         }
       }
 }

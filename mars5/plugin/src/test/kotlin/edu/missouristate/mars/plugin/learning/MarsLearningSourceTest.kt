@@ -1,7 +1,6 @@
 package edu.missouristate.mars.plugin.learning
 
 import com.intellij.openapi.application.EDT
-import com.intellij.openapi.application.runReadActionBlocking
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.components.service
 import com.intellij.openapi.fileEditor.FileDocumentManager
@@ -48,7 +47,7 @@ class MarsLearningSourceTest {
           try {
             val attempt = source.begin("source-boundary")
             assertTrue(source.current(attempt))
-            assertFalse(runReadActionBlocking { source.matches(attempt, handler) })
+            assertFalse(source.matches(attempt, handler))
             val positions = XDebuggerUtil.getInstance()
             assertTrue(source.matchesPosition(positions.createPosition(file, 0)))
             assertFalse(source.matchesPosition(null))
@@ -61,15 +60,15 @@ class MarsLearningSourceTest {
             WriteCommandAction.runWriteCommandAction(project) {
               document.setText(".text\nnop\nnop\n")
             }
-            assertFalse(runReadActionBlocking { source.matches(attempt, handler) })
+            assertFalse(source.matches(attempt, handler))
             assertFalse(source.current(attempt))
             assertFalse(source.finish(attempt, true))
             WriteCommandAction.runWriteCommandAction(project) { file.rename(this, "renamed.asm") }
             assertFalse(source.isBound())
-            assertFalse(runReadActionBlocking { source.matches(attempt, handler) })
+            assertFalse(source.matches(attempt, handler))
             WriteCommandAction.runWriteCommandAction(project) { file.delete(this) }
             assertFalse(source.isBound())
-            assertFalse(runReadActionBlocking { source.matches(attempt, handler) })
+            assertFalse(source.matches(attempt, handler))
           } finally {
             handler.destroyProcess()
             Disposer.dispose(lifetime)

@@ -1,3 +1,5 @@
+@file:Suppress("UnstableApiUsage", "DialogTitleCapitalization")
+
 package edu.missouristate.mars.plugin.learning
 
 import com.google.gson.JsonParseException

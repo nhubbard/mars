@@ -24,12 +24,12 @@ class MarsBase64LessonPackageTest {
       assertEquals(12, debug.size)
       assertEquals(25, debug.sumOf { it.stops.size })
       val encoder = debug.single { it.id == "trace-direct-encode12" }
-      val sextets = encoder.stops[1].vectorRegisters.getValue("\$w1")
+      val sextets = encoder.stops[1].vectorRegisters.getValue($$"$w1")
       assertEquals(
           List(4) { listOf(19L, 22L, 5L, 46L) }.flatten(),
           (0..15).map { sextets.unsignedLane(it, 8) },
       )
-      val ascii = encoder.stops[2].vectorRegisters.getValue("\$w4")
+      val ascii = encoder.stops[2].vectorRegisters.getValue($$"$w4")
       assertEquals(
           "TWFu".repeat(4).map { it.code.toLong() },
           (0..15).map { ascii.unsignedLane(it, 8) },
@@ -39,14 +39,15 @@ class MarsBase64LessonPackageTest {
               .single { it.id == "trace-direct-decode16" }
               .stops[1]
               .vectorRegisters
-              .getValue("\$w7")
+              .getValue($$"$w7")
       assertEquals(
           "Man".repeat(4).map { it.code.toLong() } + List(4) { 0L },
           (0..15).map { decoded.unsignedLane(it, 8) },
       )
-      for (step in debug) for (stop in step.stops.filter { it.anchor.mnemonic == "syscall" }) {
-        assertEquals(10L, stop.registers.getValue("\$v0"))
-        assertEquals("main_done", stop.anchor.label)
+      for (step in debug) for ((_, _, anchor, registers) in
+          step.stops.filter { it.anchor.mnemonic == "syscall" }) {
+        assertEquals(10L, registers.getValue($$"$v0"))
+        assertEquals("main_done", anchor.label)
       }
       assertEquals(3, plan.steps.filterIsInstance<MarsNativeRunStep>().size)
       val assessments = plan.steps.filterIsInstance<MarsNativeAssessmentStep>()

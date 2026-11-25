@@ -40,7 +40,7 @@ class MarsIndependentCheckpointTest {
   private val correct =
       worked
           .replace("Twice your number", "Three times your number")
-          .replace("    addiu \$t0, \$t0, 1", "    addu \$t0, \$t0, \$v0\n    addiu \$t0, \$t0, 1")
+          .replace($$"    addiu $t0, $t0, 1", $$"    addu $t0, $t0, $v0\n    addiu $t0, $t0, 1")
 
   private suspend fun exercise(
       source: String = correct,
@@ -77,7 +77,7 @@ class MarsIndependentCheckpointTest {
   fun `cached assembly supports five independent cases and different labels and registers`() =
       timeoutRunBlocking {
         for (source in
-            listOf(correct, correct.replace("\$t0", "\$s1").replace("main", "student_entry"))) {
+            listOf(correct, correct.replace($$"$t0", $$"$s1").replace("main", "student_entry"))) {
           exercise(source) { checkpoint, _ ->
             assertFalse(checkpoint.passed())
             repeat(2) {
@@ -244,7 +244,7 @@ class MarsIndependentCheckpointTest {
   fun `public cases reject doubling and a constant that matches only one input`() =
       timeoutRunBlocking {
         val doubled = worked.replace("Twice your number", "Three times your number")
-        val constant = correct.replace("    move \$a0, \$t0", "    li \$a0, 61")
+        val constant = correct.replace($$"    move $a0, $t0", $$"    li $a0, 61")
         for (source in listOf(doubled, constant)) exercise(source) { checkpoint, _ ->
           val result =
               assertInstanceOf(

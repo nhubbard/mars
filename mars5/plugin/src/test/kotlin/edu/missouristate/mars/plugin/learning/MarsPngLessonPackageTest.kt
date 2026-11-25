@@ -52,57 +52,59 @@ class MarsPngLessonPackageTest {
           stages.last().functionCases.count { it.byteOrder == ByteOrder.LITTLE_ENDIAN },
       )
       val pipeline = debug.single { it.id == "observe-pipeline" }.stops
-      assertEquals(listOf(46L, 35L, 35L, 40L, 40L), pipeline.map { it.registers.getValue("\$v1") })
-      assertEquals(2L, pipeline.last().registers.getValue("\$s0"))
-      assertEquals(5L, pipeline.last().registers.getValue("\$s1"))
+      assertEquals(listOf(46L, 35L, 35L, 40L, 40L), pipeline.map { it.registers.getValue($$"$v1") })
+      assertEquals(2L, pipeline.last().registers.getValue($$"$s0"))
+      assertEquals(5L, pipeline.last().registers.getValue($$"$s1"))
       val wide = debug.single { it.id == "observe-native-settings" }.stops.first()
-      assertEquals(0x100000001L, wide.registers.getValue("\$s0"))
+      assertEquals(0x100000001L, wide.registers.getValue($$"$s0"))
       val packing = debug.single { it.id == "observe-vector-tail" }.stops
-      assertEquals(0x0706050403020100L, packing.first().vectorRegisters.getValue("\$w0").low)
-      assertEquals(0x0f0e0d0c0b0a0908L, packing.first().vectorRegisters.getValue("\$w0").high)
-      assertEquals(0x0003040500000102L, packing[1].vectorRegisters.getValue("\$w3").low)
-      assertEquals(0x002d2e2f002a2b2cL, packing[2].vectorRegisters.getValue("\$w3").high)
+      assertEquals(0x0706050403020100L, packing.first().vectorRegisters.getValue($$"$w0").low)
+      assertEquals(0x0f0e0d0c0b0a0908L, packing.first().vectorRegisters.getValue($$"$w0").high)
+      assertEquals(0x0003040500000102L, packing[1].vectorRegisters.getValue($$"$w3").low)
+      assertEquals(0x002d2e2f002a2b2cL, packing[2].vectorRegisters.getValue($$"$w3").high)
       val tail = packing.last()
-      assertEquals(68L, tail.registers.getValue("\$v1"))
-      assertEquals(0x00303132L, tail.registers.getValue("\$s2"))
+      assertEquals(68L, tail.registers.getValue($$"$v1"))
+      assertEquals(0x00303132L, tail.registers.getValue($$"$s2"))
     }
   }
 
   @Test
   fun `every PNG prediction pointer and decoder boundary resolves through native PSI`() =
       timeoutRunBlocking {
-        MarsLessonPackages.prepare(archive()).use { prepared ->
-          val installed = prepared.install(Files.createDirectory(directory.resolve("project")))
-          val content = MarsDownloadedLessonContent(installed, prepared.nativeLesson!!)
-          for (activity in content.plan.steps) {
-            val source = content.source(activity)
-            assertTrue(Files.isRegularFile(source))
-            val anchors =
-                if (activity is MarsNativeDebugStep) activity.stops.map { it.anchor }
-                else listOfNotNull(activity.anchor)
-            if (anchors.isEmpty()) continue
-            val text = Files.readString(source)
-            withContext(Dispatchers.EDT) {
-              fixture.configureByText(source.fileName.toString(), text)
-              for (anchor in anchors) {
-                val range =
-                    requireNotNull(MarsLessonAnchors.range(fixture.editor, anchor)) {
-                      "$source: $anchor"
-                    }
-                assertEquals(
-                    anchor.mnemonic,
-                    text
-                        .substring(range.startOffset, range.endOffset)
-                        .substringBefore(' ')
-                        .substringBefore('\t'),
-                )
+        withContext(Dispatchers.IO) {
+          MarsLessonPackages.prepare(archive()).use { prepared ->
+            val installed = prepared.install(Files.createDirectory(directory.resolve("project")))
+            val content = MarsDownloadedLessonContent(installed, prepared.nativeLesson!!)
+            for (activity in content.plan.steps) {
+              val source = content.source(activity)
+              assertTrue(Files.isRegularFile(source))
+              val anchors =
+                  if (activity is MarsNativeDebugStep) activity.stops.map { it.anchor }
+                  else listOfNotNull(activity.anchor)
+              if (anchors.isEmpty()) continue
+              val text = Files.readString(source)
+              withContext(Dispatchers.EDT) {
+                fixture.configureByText(source.fileName.toString(), text)
+                for (anchor in anchors) {
+                  val range =
+                      requireNotNull(MarsLessonAnchors.range(fixture.editor, anchor)) {
+                        "$source: $anchor"
+                      }
+                  assertEquals(
+                      anchor.mnemonic,
+                      text
+                          .substring(range.startOffset, range.endOffset)
+                          .substringBefore(' ')
+                          .substringBefore('\t'),
+                  )
+                }
               }
             }
+            val independent =
+                Files.readString(installed.directory.resolve("independent/png-filter-scanline.asm"))
+            assertEquals(1, independent.lines().count { it.trim() == "break" })
+            assertTrue(independent.endsWith("png_filter_scanline:\n    break\n"))
           }
-          val independent =
-              Files.readString(installed.directory.resolve("independent/png-filter-scanline.asm"))
-          assertEquals(1, independent.lines().count { it.trim() == "break" })
-          assertTrue(independent.endsWith("png_filter_scanline:\n    break\n"))
         }
       }
 }

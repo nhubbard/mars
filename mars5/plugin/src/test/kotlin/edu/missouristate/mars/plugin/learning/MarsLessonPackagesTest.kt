@@ -28,7 +28,7 @@ class MarsLessonPackagesTest {
   private val id = "001-console-calculation"
   private val manifest =
       """{"formatVersion":1,"id":"001-console-calculation","version":"0.2.0","title":"Console calculation","entry":"starter/main.asm","assignment":"assignment.md","environment":{"isa":"MIPS64 Release 6","syscallAbi":"MARS educational"},"steps":[],"publicChecks":["checks/public.kts"]}"""
-  private val source = ".text\nli \$v0, 10\nsyscall\n"
+  private val source = $$".text\nli $v0, 10\nsyscall\n"
 
   private fun files(json: String = manifest) =
       linkedMapOf(

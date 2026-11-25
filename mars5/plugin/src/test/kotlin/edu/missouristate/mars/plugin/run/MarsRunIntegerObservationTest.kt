@@ -31,14 +31,14 @@ class MarsRunIntegerObservationTest {
               fixture
                   .addFileToProject(
                       "observe.asm",
-                      """
+                      $$"""
                       .text
                       main:
-                          dli ${'$'}t0, 0xfedcba9876543210
-                          li ${'$'}v0, 5
+                          dli $t0, 0xfedcba9876543210
+                          li $v0, 5
                           syscall
-                          move ${'$'}t1, ${'$'}v0
-                          li ${'$'}v0, 10
+                          move $t1, $v0
+                          li $v0, 10
                           syscall
                       """
                           .trimIndent(),
@@ -92,7 +92,7 @@ class MarsRunIntegerObservationTest {
   fun `a cancelled input wait leaves a detached register snapshot`() = timeoutRunBlocking {
     val file =
         withContext(Dispatchers.EDT) {
-          fixture.addFileToProject("cancel.asm", ".text\nli ${'$'}v0, 5\nsyscall\n").virtualFile
+          fixture.addFileToProject("cancel.asm", $$".text\nli $v0, 5\nsyscall\n").virtualFile
         }
     val handler =
         projects

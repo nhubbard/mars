@@ -84,7 +84,7 @@ internal class MarsConsoleDebugCheckpoint(
                     evaluator.integerRegisterBits("pc"),
                     evaluator.instructionWord,
                     evaluator.integerRegisterBits($$"$v0"),
-                    evaluator.integerRegisterBits("\$t0"),
+                    evaluator.integerRegisterBits($$"$t0"),
                     evaluator.integerRegisterBits($$"$a0"),
                 ),
             )

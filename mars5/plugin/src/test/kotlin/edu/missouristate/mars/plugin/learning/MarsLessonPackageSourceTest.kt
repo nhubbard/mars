@@ -259,7 +259,7 @@ class MarsLessonPackageSourceTest {
     val canceled = ProgressIndicatorBase().apply { cancel() }
     assertThrows<ProcessCanceledException> {
       ProgressManager.getInstance()
-          .runProcess(Runnable { MarsLessonPackageSource.parse(url).prepare().close() }, canceled)
+          .runProcess({ MarsLessonPackageSource.parse(url).prepare().close() }, canceled)
     }
     assertEquals(before, downloads())
   }
@@ -284,7 +284,7 @@ class MarsLessonPackageSourceTest {
       val download = executor.submit {
         ProgressManager.getInstance()
             .runProcess(
-                Runnable {
+                {
                   MarsLessonPackageSource.parse(url.replace("package.zip", "slow"))
                       .prepare()
                       .close()

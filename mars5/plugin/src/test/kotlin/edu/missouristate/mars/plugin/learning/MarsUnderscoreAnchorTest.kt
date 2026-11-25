@@ -47,17 +47,17 @@ class MarsUnderscoreAnchorTest {
       timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
           val source =
-              ".text\ncounts:\nCOPY_S.D \$t0, \$w5[0]\ncopy_s.d \$t1, \$w5[1]\nnext:\ncopy_s.d \$t2, \$w5[0]\n"
+              $$".text\ncounts:\nCOPY_S.D $t0, $w5[0]\ncopy_s.d $t1, $w5[1]\nnext:\ncopy_s.d $t2, $w5[0]\n"
           fixture.configureByText("population.asm", source)
           val anchor = MarsLessonAnchor("counts", "copy_s.d", 0)
           val first = MarsLessonAnchors.range(fixture.editor, anchor)!!
           val second = MarsLessonAnchors.range(fixture.editor, anchor.copy(occurrence = 1))!!
           assertEquals(
-              "COPY_S.D \$t0, \$w5[0]",
+              $$"COPY_S.D $t0, $w5[0]",
               source.substring(first.startOffset, first.endOffset),
           )
           assertEquals(
-              "copy_s.d \$t1, \$w5[1]",
+              $$"copy_s.d $t1, $w5[1]",
               source.substring(second.startOffset, second.endOffset),
           )
           assertNull(MarsLessonAnchors.range(fixture.editor, anchor.copy(occurrence = 2)))

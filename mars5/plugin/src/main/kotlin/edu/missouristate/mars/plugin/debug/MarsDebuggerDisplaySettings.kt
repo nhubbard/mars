@@ -117,8 +117,7 @@ internal class MarsDebuggerDisplaySettings :
     companion object {
       @Topic.AppLevel
       @JvmField
-      val TOPIC =
-          topicOf<DisplayListener>("MARS debugger display settings", Topic.BroadcastDirection.NONE)
+      val TOPIC = topicOf<DisplayListener>("MARS debugger display settings")
     }
   }
 }

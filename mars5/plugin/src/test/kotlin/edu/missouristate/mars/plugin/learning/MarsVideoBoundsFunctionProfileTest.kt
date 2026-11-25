@@ -45,7 +45,7 @@ class MarsVideoBoundsFunctionProfileTest {
     assertEquals(2, cases.count { it.calls.size == 6 })
     assertEquals(16, cases.count { it.name.startsWith("invalid dimensions ") })
     assertEquals(8, cases.count { it.name.startsWith("misaligned ") })
-    for (case in cases) for (call in case.calls) {
+    for ((name, calls) in cases) for (call in calls) {
       val access = requireNotNull(call.callerAccess)
       assertEquals(6, access.objects.size)
       assertEquals(100_000, access.maxAccesses)
@@ -55,7 +55,7 @@ class MarsVideoBoundsFunctionProfileTest {
       }
       assertTrue(access.readable.none { it.at.label == "bounds_result" })
       assertTrue(access.writable.all { it.at.label == "bounds_result" && it.byteLength == 32 })
-      if (case.name.startsWith("misaligned settings ")) assertTrue(access.readable.isEmpty())
+      if (name.startsWith("misaligned settings ")) assertTrue(access.readable.isEmpty())
     }
   }
 

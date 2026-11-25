@@ -36,7 +36,7 @@ class MarsMarsBotLessonPackageTest {
       assertEquals(7, plan.steps.filterIsInstance<MarsNativeLessonStep>().size)
       val debug = plan.steps.filterIsInstance<MarsNativeDebugStep>()
       assertEquals(listOf(3, 3), debug.map { it.stops.size })
-      assertEquals(listOf(16L, 2L), debug.map { it.stops.first().registers.getValue("\$s1") })
+      assertEquals(listOf(16L, 2L), debug.map { it.stops.first().registers.getValue($$"$s1") })
       val assessments = plan.steps.filterIsInstance<MarsNativeAssessmentStep>()
       assertEquals(listOf(16, 3), assessments.map { it.cases.size })
       assertTrue(
@@ -52,42 +52,45 @@ class MarsMarsBotLessonPackageTest {
   @Test
   fun `imported sources resolve every native PSI anchor and keep the independent program unfinished`() =
       timeoutRunBlocking {
-        MarsLessonPackages.prepare(archive()).use { prepared ->
-          val installed = prepared.install(Files.createDirectory(directory.resolve("project")))
-          val content = MarsDownloadedLessonContent(installed, prepared.nativeLesson!!)
-          var count = 0
-          for (step in content.plan.steps) {
-            val source = content.source(step)
-            assertTrue(Files.isRegularFile(source))
-            val anchors =
-                if (step is MarsNativeDebugStep) step.stops.map { it.anchor }
-                else listOfNotNull(step.anchor)
-            if (anchors.isEmpty()) continue
-            val text = Files.readString(source)
-            withContext(Dispatchers.EDT) {
-              fixture.configureByText(source.fileName.toString(), text)
-              for (anchor in anchors) {
-                val range =
-                    requireNotNull(MarsLessonAnchors.range(fixture.editor, anchor)) {
-                      "$source: $anchor"
-                    }
-                assertEquals(
-                    anchor.mnemonic,
-                    text
-                        .substring(range.startOffset, range.endOffset)
-                        .substringBefore(' ')
-                        .substringBefore('\t'),
-                )
-                count++
+        withContext(Dispatchers.IO) {
+          MarsLessonPackages.prepare(archive()).use { prepared ->
+            val installed = prepared.install(Files.createDirectory(directory.resolve("project")))
+            val content = MarsDownloadedLessonContent(installed, prepared.nativeLesson!!)
+            var count = 0
+            for (step in content.plan.steps) {
+              val source = content.source(step)
+              assertTrue(Files.isRegularFile(source))
+              val anchors =
+                  if (step is MarsNativeDebugStep) step.stops.map { it.anchor }
+                  else listOfNotNull(step.anchor)
+              if (anchors.isEmpty()) continue
+              val text = Files.readString(source)
+              withContext(Dispatchers.EDT) {
+                fixture.configureByText(source.fileName.toString(), text)
+                for (anchor in anchors) {
+                  val range =
+                      requireNotNull(MarsLessonAnchors.range(fixture.editor, anchor)) {
+                        "$source: $anchor"
+                      }
+                  assertEquals(
+                      anchor.mnemonic,
+                      text
+                          .substring(range.startOffset, range.endOffset)
+                          .substringBefore(' ')
+                          .substringBefore('\t'),
+                  )
+                  count++
+                }
               }
             }
+            assertEquals(14, count)
+            val independent =
+                Files.readString(installed.directory.resolve("independent/square.asm"))
+            assertEquals(
+                1,
+                independent.substringAfter("main:").lines().count { it.trim() == "break" },
+            )
           }
-          assertEquals(14, count)
-          val independent = Files.readString(installed.directory.resolve("independent/square.asm"))
-          assertEquals(
-              1,
-              independent.substringAfter("main:").lines().count { it.trim() == "break" },
-          )
         }
       }
 }

@@ -10,7 +10,7 @@ import org.junit.jupiter.api.assertThrows
 
 class MarsNativeVectorDebugPlanTest {
   private val content =
-      """{"formatVersion":7,"introduction":"Inspect lanes.","conclusion":"Explain the bits.","steps":[{"kind":"debug","id":"gather","explanation":"Debug the gather.","integerInputs":[],"source":"worked/lanes.asm","stops":[{"id":"gathered","explanation":"Inspect red halfwords.","anchor":{"label":"gathered","mnemonic":"srli.h","occurrence":0},"registers":{},"vectorRegisters":{"${'$'}w4":"0x8000000000000001fffffffffffffffe"},"success":"Explain both views."}],"success":"Explain the gather."}]}"""
+      $$"""{"formatVersion":7,"introduction":"Inspect lanes.","conclusion":"Explain the bits.","steps":[{"kind":"debug","id":"gather","explanation":"Debug the gather.","integerInputs":[],"source":"worked/lanes.asm","stops":[{"id":"gathered","explanation":"Inspect red halfwords.","anchor":{"label":"gathered","mnemonic":"srli.h","occurrence":0},"registers":{},"vectorRegisters":{"$w4":"0x8000000000000001fffffffffffffffe"},"success":"Explain both views."}],"success":"Explain the gather."}]}"""
 
   private fun JsonObject.step() = getAsJsonArray("steps")[0].asJsonObject
 
@@ -30,15 +30,15 @@ class MarsNativeVectorDebugPlanTest {
     assertEquals(step, parse { addProperty("formatVersion", 9) })
     assertEquals(step, parse { addProperty("formatVersion", 10) })
     assertEquals("worked/lanes.asm", step.source)
-    assertEquals(VectorRegister(-2, Long.MIN_VALUE + 1), stop.vectorRegisters.getValue("\$w4"))
+    assertEquals(VectorRegister(-2, Long.MIN_VALUE + 1), stop.vectorRegisters.getValue($$"$w4"))
     assertTrue(stop.registers.isEmpty())
     assertThrows<UnsupportedOperationException> { (stop.vectorRegisters as MutableMap).clear() }
     val mixed = parse {
-      stop().getAsJsonObject("registers").addProperty("\$t0", "0xffffffffffffffff")
+      stop().getAsJsonObject("registers").addProperty($$"$t0", "0xffffffffffffffff")
     }
         .stops
         .single()
-    assertEquals(-1L, mixed.registers.getValue("\$t0"))
+    assertEquals(-1L, mixed.registers.getValue($$"$t0"))
     assertEquals(stop.vectorRegisters, mixed.vectorRegisters)
     assertEquals(
         32,
@@ -47,7 +47,7 @@ class MarsNativeVectorDebugPlanTest {
               .add(
                   "vectorRegisters",
                   JsonObject().apply {
-                    repeat(32) { addProperty("\$w$it", "0x00000000000000000000000000000000") }
+                    repeat(32) { addProperty($$"$w$$it", "0x00000000000000000000000000000000") }
                   },
               )
         }
@@ -66,7 +66,7 @@ class MarsNativeVectorDebugPlanTest {
         addProperty("formatVersion", version)
         step().remove("source")
         stop().remove("vectorRegisters")
-        stop().getAsJsonObject("registers").addProperty("\$t0", "0x0000000000000001")
+        stop().getAsJsonObject("registers").addProperty($$"$t0", "0x0000000000000001")
       }
       assertTrue(old.stops.single().vectorRegisters.isEmpty())
     }
@@ -74,7 +74,7 @@ class MarsNativeVectorDebugPlanTest {
     assertTrue(
         parse {
           stop().remove("vectorRegisters")
-          stop().getAsJsonObject("registers").addProperty("\$t0", "0x0000000000000000")
+          stop().getAsJsonObject("registers").addProperty($$"$t0", "0x0000000000000000")
         }
             .stops
             .single()
@@ -100,7 +100,8 @@ class MarsNativeVectorDebugPlanTest {
 
   @Test
   fun `strict banks and complete hexadecimal values reject expressions and malformed data`() {
-    for (name in listOf("w0", "\$f0", "\$w32", "\$w-1", "\$w01", "\$W4", "pc", "", "read(0)")) {
+    for (name in
+        listOf("w0", $$"$f0", $$"$w32", $$"$w-1", $$"$w01", $$"$W4", "pc", "", "read(0)")) {
       assertThrows<IllegalArgumentException> {
         parse {
           stop()
@@ -126,7 +127,7 @@ class MarsNativeVectorDebugPlanTest {
         )) {
       assertThrows<IllegalArgumentException> {
         parse {
-          stop().getAsJsonObject("vectorRegisters").add("\$w4", JsonParser.parseString(encoded))
+          stop().getAsJsonObject("vectorRegisters").add($$"$w4", JsonParser.parseString(encoded))
         }
       }
     }
@@ -139,7 +140,7 @@ class MarsNativeVectorDebugPlanTest {
             .add(
                 "vectorRegisters",
                 JsonObject().apply {
-                  repeat(33) { addProperty("\$w$it", "0x00000000000000000000000000000000") }
+                  repeat(33) { addProperty($$"$w$$it", "0x00000000000000000000000000000000") }
                 },
             )
       }

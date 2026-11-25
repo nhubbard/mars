@@ -53,14 +53,14 @@ class MarsQoiLessonPackageTest {
               .single { it.id == "chunk-transitions" }
               .stops
               .filter { it.anchor.label == "after_w_index" }
-      assertEquals(listOf(0xff000000L, 0xff010101L), indexes.map { it.registers.getValue("\$s3") })
+      assertEquals(listOf(0xff000000L, 0xff010101L), indexes.map { it.registers.getValue($$"$s3") })
       assertEquals(
           0L,
-          debug.single { it.id == "counterexample-states" }.stops[1].registers.getValue("\$s3"),
+          debug.single { it.id == "counterexample-states" }.stops[1].registers.getValue($$"$s3"),
       )
       assertEquals(
           1L,
-          debug.single { it.id == "counterexample-states" }.stops[1].registers.getValue("\$fp"),
+          debug.single { it.id == "counterexample-states" }.stops[1].registers.getValue($$"$fp"),
       )
     }
   }
@@ -68,42 +68,46 @@ class MarsQoiLessonPackageTest {
   @Test
   fun `every prediction pointer and Debug boundary resolves in its selected installed source through native PSI`() =
       timeoutRunBlocking {
-        MarsLessonPackages.prepare(archive()).use { prepared ->
-          val installed = prepared.install(Files.createDirectory(directory.resolve("project")))
-          val content = MarsDownloadedLessonContent(installed, prepared.nativeLesson!!)
-          for (activity in content.plan.steps) {
-            val path = content.source(activity)
-            assertTrue(Files.isRegularFile(path))
-            if (activity is MarsNativeLessonStep) {
-              assertNotNull(activity.source)
-              assertEquals(installed.directory.resolve(activity.source!!), path)
-            }
-            val anchors =
-                if (activity is MarsNativeDebugStep) activity.stops.map { it.anchor }
-                else listOfNotNull(activity.anchor)
-            if (anchors.isEmpty()) continue
-            val text = Files.readString(path)
-            withContext(Dispatchers.EDT) {
-              fixture.configureByText(path.fileName.toString(), text)
-              for (anchor in anchors) {
-                val range =
-                    requireNotNull(MarsLessonAnchors.range(fixture.editor, anchor)) {
-                      "$path: $anchor"
-                    }
-                assertEquals(
-                    anchor.mnemonic,
-                    text
-                        .substring(range.startOffset, range.endOffset)
-                        .substringBefore(' ')
-                        .substringBefore('\t'),
-                )
+        withContext(Dispatchers.IO) {
+          MarsLessonPackages.prepare(archive()).use { prepared ->
+            val installed = prepared.install(Files.createDirectory(directory.resolve("project")))
+            val content = MarsDownloadedLessonContent(installed, prepared.nativeLesson!!)
+            for (activity in content.plan.steps) {
+              val path = content.source(activity)
+              assertTrue(Files.isRegularFile(path))
+              if (activity is MarsNativeLessonStep) {
+                assertNotNull(activity.source)
+                assertEquals(installed.directory.resolve(activity.source!!), path)
+              }
+              val anchors =
+                  if (activity is MarsNativeDebugStep) activity.stops.map { it.anchor }
+                  else listOfNotNull(activity.anchor)
+              if (anchors.isEmpty()) continue
+              val text = Files.readString(path)
+              withContext(Dispatchers.EDT) {
+                fixture.configureByText(path.fileName.toString(), text)
+                for (anchor in anchors) {
+                  val range =
+                      requireNotNull(MarsLessonAnchors.range(fixture.editor, anchor)) {
+                        "$path: $anchor"
+                      }
+                  assertEquals(
+                      anchor.mnemonic,
+                      text
+                          .substring(range.startOffset, range.endOffset)
+                          .substringBefore(' ')
+                          .substringBefore('\t'),
+                  )
+                }
               }
             }
+            assertTrue(
+                Files.readString(
+                        content.installed.directory.resolve("independent/qoi-mirrored.asm"),
+                    )
+                    .contains("qoi_decode_mirrored:\n    break"),
+            )
           }
-          assertTrue(
-              Files.readString(content.installed.directory.resolve("independent/qoi-mirrored.asm"))
-                  .contains("qoi_decode_mirrored:\n    break"),
-          )
         }
       }
 }

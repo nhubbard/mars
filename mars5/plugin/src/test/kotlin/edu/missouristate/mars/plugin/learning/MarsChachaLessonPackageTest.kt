@@ -46,56 +46,58 @@ class MarsChachaLessonPackageTest {
       assertTrue(groups.all { it.functionCaseBatches.flatten() == it.functionCases })
       val msa = debug.single { it.id == "follow-msa-rows" }
       assertEquals(8, msa.stops.first().vectorRegisters.size)
-      assertEquals(0x3320646e61707865L, msa.stops.first().vectorRegisters.getValue("\$w0").low)
-      assertEquals(0x6b20657479622d32L, msa.stops.first().vectorRegisters.getValue("\$w0").high)
-      assertEquals(0x15593bd1e4e7f110L, msa.stops[5].vectorRegisters.getValue("\$w0").low)
+      assertEquals(0x3320646e61707865L, msa.stops.first().vectorRegisters.getValue($$"$w0").low)
+      assertEquals(0x6b20657479622d32L, msa.stops.first().vectorRegisters.getValue($$"$w0").high)
+      assertEquals(0x15593bd1e4e7f110L, msa.stops[5].vectorRegisters.getValue($$"$w0").low)
       val visits =
           debug
               .single { it.id == "walk-two-fragments" }
               .stops
               .filter { it.anchor.label == "after_stream_bytes" }
-      assertEquals(listOf(65L, 1L), visits.map { it.registers.getValue("\$s2") })
-      assertEquals(listOf(64L, 1L), visits.map { it.registers.getValue("\$s3") })
+      assertEquals(listOf(65L, 1L), visits.map { it.registers.getValue($$"$s2") })
+      assertEquals(listOf(64L, 1L), visits.map { it.registers.getValue($$"$s3") })
     }
   }
 
   @Test
   fun `every delivered ChaCha20 prediction pointer and Debug boundary resolves through native PSI`() =
       timeoutRunBlocking {
-        MarsLessonPackages.prepare(archive()).use { prepared ->
-          val installed = prepared.install(Files.createDirectory(directory.resolve("project")))
-          val content = MarsDownloadedLessonContent(installed, prepared.nativeLesson!!)
-          for (activity in content.plan.steps) {
-            val source = content.source(activity)
-            assertTrue(Files.isRegularFile(source))
-            if (activity is MarsNativeLessonStep)
-                assertEquals(installed.directory.resolve(activity.source!!), source)
-            val anchors =
-                if (activity is MarsNativeDebugStep) activity.stops.map { it.anchor }
-                else listOfNotNull(activity.anchor)
-            if (anchors.isEmpty()) continue
-            val text = Files.readString(source)
-            withContext(Dispatchers.EDT) {
-              fixture.configureByText(source.fileName.toString(), text)
-              for (anchor in anchors) {
-                val range =
-                    requireNotNull(MarsLessonAnchors.range(fixture.editor, anchor)) {
-                      "$source: $anchor"
-                    }
-                assertEquals(
-                    anchor.mnemonic,
-                    text
-                        .substring(range.startOffset, range.endOffset)
-                        .substringBefore(' ')
-                        .substringBefore('\t'),
-                )
+        withContext(Dispatchers.IO) {
+          MarsLessonPackages.prepare(archive()).use { prepared ->
+            val installed = prepared.install(Files.createDirectory(directory.resolve("project")))
+            val content = MarsDownloadedLessonContent(installed, prepared.nativeLesson!!)
+            for (activity in content.plan.steps) {
+              val source = content.source(activity)
+              assertTrue(Files.isRegularFile(source))
+              if (activity is MarsNativeLessonStep)
+                  assertEquals(installed.directory.resolve(activity.source!!), source)
+              val anchors =
+                  if (activity is MarsNativeDebugStep) activity.stops.map { it.anchor }
+                  else listOfNotNull(activity.anchor)
+              if (anchors.isEmpty()) continue
+              val text = Files.readString(source)
+              withContext(Dispatchers.EDT) {
+                fixture.configureByText(source.fileName.toString(), text)
+                for (anchor in anchors) {
+                  val range =
+                      requireNotNull(MarsLessonAnchors.range(fixture.editor, anchor)) {
+                        "$source: $anchor"
+                      }
+                  assertEquals(
+                      anchor.mnemonic,
+                      text
+                          .substring(range.startOffset, range.endOffset)
+                          .substringBefore(' ')
+                          .substringBefore('\t'),
+                  )
+                }
               }
             }
+            assertTrue(
+                Files.readString(installed.directory.resolve("independent/chacha20.asm"))
+                    .contains("quarter_development:"),
+            )
           }
-          assertTrue(
-              Files.readString(installed.directory.resolve("independent/chacha20.asm"))
-                  .contains("quarter_development:"),
-          )
         }
       }
 }

@@ -48,10 +48,10 @@ class MarsShaLessonPackageTest {
       assertTrue(update.all { it.name.startsWith("update prefix: ") })
       assertTrue(update.flatMap { it.calls }.none { it.entry == "sha256_final" })
       val pending = debug.single { it.id == "fill-before-compressing" }.stops.last()
-      assertEquals(1L, pending.registers.getValue("\$s1"))
-      assertEquals(64L, pending.registers.getValue("\$s2"))
+      assertEquals(1L, pending.registers.getValue($$"$s1"))
+      assertEquals(64L, pending.registers.getValue($$"$s2"))
       val high = debug.single { it.id == "encode-high-length" }.stops.last()
-      assertEquals(0x8000001f8L, high.registers.getValue("\$t3"))
+      assertEquals(0x8000001f8L, high.registers.getValue($$"$t3"))
       val success = debug.single { it.id == "observe-short-file" }
       val failure = debug.single { it.id == "observe-read-failure" }
       val input = requireNotNull(success.fileRead)
@@ -59,7 +59,7 @@ class MarsShaLessonPackageTest {
       assertEquals(2, input.maxReadSize)
       assertEquals(19, input.firstDescriptor)
       assertEquals(input.copy(failAfterBytes = 2), failure.fileRead)
-      assertEquals(2L, failure.stops.last().registers.getValue("\$v0"))
+      assertEquals(2L, failure.stops.last().registers.getValue($$"$v0"))
       assertTrue(debug.all { requireNotNull(it.source).startsWith("worked/") })
       assertEquals("worked/read-prefixes.asm", success.source)
       assertEquals(success.source, failure.source)
@@ -73,42 +73,44 @@ class MarsShaLessonPackageTest {
   @Test
   fun `every delivered SHA prediction and Debug boundary resolves in the student source through native PSI`() =
       timeoutRunBlocking {
-        MarsLessonPackages.prepare(archive()).use { prepared ->
-          val installed = prepared.install(Files.createDirectory(directory.resolve("project")))
-          val content = MarsDownloadedLessonContent(installed, prepared.nativeLesson!!)
-          for (activity in content.plan.steps) {
-            val source = content.source(activity)
-            assertTrue(Files.isRegularFile(source))
-            if (activity is MarsNativeLessonStep)
-                assertEquals(installed.directory.resolve(activity.source!!), source)
-            val anchors =
-                if (activity is MarsNativeDebugStep) activity.stops.map { it.anchor }
-                else listOfNotNull(activity.anchor)
-            if (anchors.isEmpty()) continue
-            val text = Files.readString(source)
-            withContext(Dispatchers.EDT) {
-              fixture.configureByText(source.fileName.toString(), text)
-              for (anchor in anchors) {
-                val range =
-                    requireNotNull(MarsLessonAnchors.range(fixture.editor, anchor)) {
-                      "$source: $anchor"
-                    }
-                assertEquals(
-                    anchor.mnemonic,
-                    text
-                        .substring(range.startOffset, range.endOffset)
-                        .substringBefore(' ')
-                        .substringBefore('\t'),
-                )
+        withContext(Dispatchers.IO) {
+          MarsLessonPackages.prepare(archive()).use { prepared ->
+            val installed = prepared.install(Files.createDirectory(directory.resolve("project")))
+            val content = MarsDownloadedLessonContent(installed, prepared.nativeLesson!!)
+            for (activity in content.plan.steps) {
+              val source = content.source(activity)
+              assertTrue(Files.isRegularFile(source))
+              if (activity is MarsNativeLessonStep)
+                  assertEquals(installed.directory.resolve(activity.source!!), source)
+              val anchors =
+                  if (activity is MarsNativeDebugStep) activity.stops.map { it.anchor }
+                  else listOfNotNull(activity.anchor)
+              if (anchors.isEmpty()) continue
+              val text = Files.readString(source)
+              withContext(Dispatchers.EDT) {
+                fixture.configureByText(source.fileName.toString(), text)
+                for (anchor in anchors) {
+                  val range =
+                      requireNotNull(MarsLessonAnchors.range(fixture.editor, anchor)) {
+                        "$source: $anchor"
+                      }
+                  assertEquals(
+                      anchor.mnemonic,
+                      text
+                          .substring(range.startOffset, range.endOffset)
+                          .substringBefore(' ')
+                          .substringBefore('\t'),
+                  )
+                }
               }
             }
+            assertEquals(
+                6,
+                Files.readString(installed.directory.resolve("independent/sha256.asm"))
+                    .lines()
+                    .count { it.trim() == "break" },
+            )
           }
-          assertEquals(
-              6,
-              Files.readString(installed.directory.resolve("independent/sha256.asm"))
-                  .lines()
-                  .count { it.trim() == "break" },
-          )
         }
       }
 }

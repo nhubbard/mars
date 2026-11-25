@@ -101,11 +101,7 @@ internal fun interface MarsDisassemblyOrderListener {
   companion object {
     @Topic.AppLevel
     @JvmField
-    val TOPIC =
-        topicOf<MarsDisassemblyOrderListener>(
-            "MARS imported disassembly order",
-            Topic.BroadcastDirection.NONE,
-        )
+    val TOPIC = topicOf<MarsDisassemblyOrderListener>("MARS imported disassembly order")
   }
 }
 

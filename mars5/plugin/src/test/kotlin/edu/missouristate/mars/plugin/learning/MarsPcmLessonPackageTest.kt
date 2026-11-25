@@ -25,20 +25,20 @@ class MarsPcmLessonPackageTest {
       assertEquals(listOf(3, 7, 4, 2, 2, 2, 2), debug.map { it.stops.size })
       assertEquals(7, debug.map { it.source }.distinct().size)
       val mask = debug.single { it.id == "trace-mask-nine" }
-      val lanes = mask.stops.single { it.id == "mask" }.vectorRegisters.getValue("\$w4")
+      val lanes = mask.stops.single { it.id == "mask" }.vectorRegisters.getValue($$"$w4")
       assertEquals(
           listOf(0L, 0L, 65535L, 0L, 65535L, 65535L, 65535L, 0L),
           (0..7).map { lanes.unsignedLane(it, 16) },
       )
       assertEquals(
           VectorRegister(16, 48),
-          mask.stops.single { it.id == "population" }.vectorRegisters.getValue("\$w5"),
+          mask.stops.single { it.id == "population" }.vectorRegisters.getValue($$"$w5"),
       )
-      assertEquals(4L, mask.stops.single { it.id == "tail" }.registers.getValue("\$v1"))
-      assertEquals(5L, mask.stops.last().registers.getValue("\$v1"))
+      assertEquals(4L, mask.stops.single { it.id == "tail" }.registers.getValue($$"$v1"))
+      assertEquals(5L, mask.stops.last().registers.getValue($$"$v1"))
       val signed = debug.single { it.id == "trace-signed-one" }.stops.first()
-      assertEquals(-30000L, signed.registers.getValue("\$t0"))
-      assertEquals(-10000L, signed.registers.getValue("\$t1"))
+      assertEquals(-30000L, signed.registers.getValue($$"$t0"))
+      assertEquals(-10000L, signed.registers.getValue($$"$t1"))
       val runs = plan.steps.filterIsInstance<MarsNativeRunStep>()
       assertEquals(debug.map { it.source }, runs.map { it.source })
       assertTrue(runs.all { it.stdout.isEmpty() && it.integerInputs.isEmpty() })

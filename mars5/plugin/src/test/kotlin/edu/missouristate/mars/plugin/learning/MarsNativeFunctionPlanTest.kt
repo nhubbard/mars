@@ -116,13 +116,13 @@ class MarsNativeFunctionPlanTest {
             case.noStores.associate { it.label to it.byteLength },
         )
         assertEquals(listOf("line_complete", "line_repeat"), case.calls.map { it.returnTo })
-        for (call in case.calls) {
-          assertEquals("draw_dashed", call.entry)
-          assertEquals("endpoints", call.argumentAddresses.getValue("a0").label)
-          assertEquals("frame", call.argumentAddresses.getValue("a1").label)
-          assertEquals(256, call.memory.first { it.label == "frame" }.byteLength)
-          assertEquals(setOf("v0"), call.expectedRegisters.keys)
-          assertEquals(setOf("a2"), call.arguments.keys)
+        for ((entry, _, arguments, expectedRegisters, argumentAddresses, memory) in case.calls) {
+          assertEquals("draw_dashed", entry)
+          assertEquals("endpoints", argumentAddresses.getValue("a0").label)
+          assertEquals("frame", argumentAddresses.getValue("a1").label)
+          assertEquals(256, memory.first { it.label == "frame" }.byteLength)
+          assertEquals(setOf("v0"), expectedRegisters.keys)
+          assertEquals(setOf("a2"), arguments.keys)
         }
       }
       assertTrue(step.functionCases.any { it.name == "dashed 0,0 to 4,1" })
@@ -166,14 +166,14 @@ class MarsNativeFunctionPlanTest {
         assertEquals(50000L, case.instructionLimit)
         assertTrue(case.helpers.isEmpty())
         assertEquals(listOf("generation_built", "life_done"), case.calls.map { it.returnTo })
-        for (call in case.calls) {
-          assertEquals("life_changes", call.entry)
-          assertEquals(source, call.argumentAddresses.getValue("a0").label)
-          assertEquals(destination, call.argumentAddresses.getValue("a1").label)
-          assertEquals(100, call.memory.single { it.label == source }.byteLength)
-          assertEquals(100, call.memory.single { it.label == destination }.byteLength)
-          assertEquals(setOf("v0"), call.expectedRegisters.keys)
-          assertTrue(call.arguments.isEmpty())
+        for ((entry, _, arguments, expectedRegisters, argumentAddresses, memory) in case.calls) {
+          assertEquals("life_changes", entry)
+          assertEquals(source, argumentAddresses.getValue("a0").label)
+          assertEquals(destination, argumentAddresses.getValue("a1").label)
+          assertEquals(100, memory.single { it.label == source }.byteLength)
+          assertEquals(100, memory.single { it.label == destination }.byteLength)
+          assertEquals(setOf("v0"), expectedRegisters.keys)
+          assertTrue(arguments.isEmpty())
         }
       }
     }
@@ -284,6 +284,7 @@ class MarsNativeFunctionPlanTest {
     }
   }
 
+  @Suppress("UnusedDataClassCopyResult")
   @Test
   fun `format six explicitly selects function data and retains console assessments`() {
     val step = parse().steps.single() as MarsNativeAssessmentStep

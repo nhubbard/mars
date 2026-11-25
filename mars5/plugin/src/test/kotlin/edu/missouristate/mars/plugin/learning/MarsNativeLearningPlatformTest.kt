@@ -574,9 +574,11 @@ class MarsNativeLearningPlatformTest {
   fun `a fresh lesson file opens from the host write unsafe context without refreshing on that thread`() =
       timeoutRunBlocking {
         val project = projectFixture.get()
-        val source = MarsLearningWorkspace.ensureExample(project)
+        val source = withContext(Dispatchers.IO) { MarsLearningWorkspace.ensureExample(project) }
         val requested = CompletableDeferred<CompletableFuture<Boolean>>()
         val completionOnEdt = CompletableDeferred<Boolean>()
+        // Deliberately reproduce the host's raw write-unsafe callback with ModalityState.any().
+        @Suppress("ForbiddenInSuspectContextMethod")
         ApplicationManager.getApplication()
             .invokeLater(
                 {

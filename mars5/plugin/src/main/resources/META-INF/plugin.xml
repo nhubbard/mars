@@ -1,8 +1,8 @@
 <idea-plugin url="https://github.com/nhubbard/mars">
-  <id>edu.missouristate.mars</id>
-  <name>MARS MIPS</name>
-  <vendor>MARS contributors</vendor>
-  <description><![CDATA[
+    <id>edu.missouristate.mars</id>
+    <name>MARS MIPS</name>
+    <vendor>MARS contributors</vendor>
+    <description><![CDATA[
     <p>Edit, run, and debug MIPS assembly.</p>
     <ul>
       <li>Work with MARS directives, macros, pseudoinstructions, and include files using completion,
@@ -14,223 +14,288 @@
     </ul>
     <p><a href="https://github.com/nhubbard/mars">Project source and documentation</a></p>
   ]]></description>
-  <resource-bundle>messages.MarsBundle</resource-bundle>
-  <content>
-    <module name="mars.jvm.compiler" loading="optional"/>
-    <module name="mars.kotlin.scripting" loading="optional"/>
-  </content>
-  <dependencies>
-    <module name="intellij.platform.monolith"/>
-    <plugin id="com.intellij.modules.compose"/>
-    <plugin id="training"/>
-    <module name="intellij.libraries.compose.foundation.desktop"/>
-    <module name="intellij.libraries.compose.runtime.desktop"/>
-    <module name="intellij.platform.buildView"/>
-    <module name="intellij.platform.debugger"/>
-    <module name="intellij.platform.jewel.ideLafBridge"/>
-    <module name="intellij.platform.jewel.ui"/>
-    <module name="intellij.spellchecker"/>
-    <module name="intellij.platform.syntax"/>
-    <module name="intellij.platform.syntax.psi"/>
-    <module name="intellij.platform.syntax.util"/>
-  </dependencies>
-  <extensionPoints>
-    <extensionPoint name="syscallEnvironmentCustomizer" interface="edu.missouristate.mars.plugin.run.MarsSyscallEnvironmentCustomizer" dynamic="true"/>
-    <extensionPoint name="toolProvider" interface="edu.missouristate.mars.plugin.tools.MarsToolProvider" dynamic="true"/>
-  </extensionPoints>
-  <extensions defaultExtensionNs="training">
-    <ift.language.extension language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.learning.MarsLearningLanguageSupport"/>
-    <ift.learning.course language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.learning.MarsLearningCourse"/>
-  </extensions>
-  <extensions defaultExtensionNs="edu.missouristate.mars">
-    <syscallEnvironmentCustomizer implementation="edu.missouristate.mars.plugin.learning.MarsLearningFileEnvironmentCustomizer"/>
-    <toolProvider id="edu.missouristate.mars.introToTools" implementation="edu.missouristate.mars.plugin.tools.IntroToToolsProvider"/>
-  </extensions>
-  <extensions defaultExtensionNs="com.intellij">
-    <spellchecker.bundledDictionaryProvider implementation="edu.missouristate.mars.plugin.language.MarsBundledDictionaryProvider"/>
-    <newProjectWizard.generator implementation="edu.missouristate.mars.plugin.project.MarsNewProjectWizard"/>
-    <internalFileTemplate name="MIPS Assembly"/>
-    <internalFileTemplate name="MIPS Source"/>
-    <internalFileTemplate name="MARS Assembly"/>
-    <internalFileTemplate name="MIPS Include"/>
-    <projectTaskRunner implementation="edu.missouristate.mars.plugin.build.MarsProjectTaskRunner"/>
-    <stepsBeforeRunProvider implementation="edu.missouristate.mars.plugin.run.MarsBeforeLaunchTaskProvider"/>
-    <projectConfigurable id="mars.assembly" groupId="build" nonDefaultProject="true"
-                         bundle="messages.MarsBundle" key="build.settings.title"
-                         instance="edu.missouristate.mars.plugin.build.MarsAssemblyConfigurable"/>
-    <projectConfigurable id="mars.learning" groupId="tools" nonDefaultProject="true"
-                         bundle="messages.MarsLearningBundle" key="policy.title"
-                         instance="edu.missouristate.mars.plugin.learning.MarsLearningConfigurable"/>
-    <!-- The provider accepts only plugin-created virtual files backed by a running or completed simulation. -->
-    <fileEditorProvider implementation="edu.missouristate.mars.plugin.tools.BitmapDisplayEditorProvider"
-                        allowedInUntrustedFiles="true"/>
-    <toolWindow id="MARS Tools" anchor="right" factoryClass="edu.missouristate.mars.plugin.tools.MarsToolsWindowFactory"
-                icon="AllIcons.Toolwindows.ToolWindowServices" doNotActivateOnStart="true"/>
-    <fileType name="MARS MIPS" language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsFileType" fieldName="INSTANCE" extensions="asm;s;inc;mars"/>
-    <fileTypeOverrider implementation="edu.missouristate.mars.plugin.language.MipsAssemblySourceFileTypeOverrider"/>
-    <readerModeMatcher implementation="edu.missouristate.mars.plugin.language.MipsAssemblySourceReaderModeMatcher"/>
-    <lang.syntaxHighlighterFactory language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsSyntaxHighlighterFactory"/>
-    <annotator language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsInstructionHighlighter"/>
-    <annotator language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsIncludeCycleAnnotator"/>
-    <annotator language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsIncludePathAnnotator"/>
-    <gotoDeclarationHandler implementation="edu.missouristate.mars.plugin.language.references.MipsIncludeNavigation"/>
-    <annotator language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsMacroDiagnosticAnnotator"/>
-    <colorSettings implementation="edu.missouristate.mars.plugin.language.MipsColorSettingsPage" bundle="messages.MarsBundle" key="colors.name"/>
-    <additionalTextAttributes scheme="Default" file="colors/MipsDefault.xml"/>
-    <additionalTextAttributes scheme="Darcula" file="colors/MipsDarcula.xml"/>
-    <localInspection language="MARS_MIPS" shortName="MipsMacroParameter" bundle="messages.MarsBundle"
-                     groupKey="inspection.group" key="inspection.macro.parameters" enabledByDefault="true" level="WARNING"
-                     implementationClass="edu.missouristate.mars.plugin.language.inspection.MipsMacroParameterInspection"/>
-    <localInspection language="MARS_MIPS" shortName="MipsMacroArity" bundle="messages.MarsBundle"
-                     groupKey="inspection.group" key="inspection.macro.arity" enabledByDefault="true" level="WARNING"
-                     implementationClass="edu.missouristate.mars.plugin.language.inspection.MipsMacroArityInspection"/>
-    <localInspection language="MARS_MIPS" shortName="MipsRelease6Merge" bundle="messages.MarsBundle"
-                     groupKey="inspection.group" key="inspection.release6.merge" enabledByDefault="true" level="WARNING"
-                     implementationClass="edu.missouristate.mars.plugin.language.inspection.MipsRelease6MergeInspection"/>
-    <highlightErrorFilter implementation="edu.missouristate.mars.plugin.language.MipsAssemblySyntaxErrorFilter"/>
-    <externalAnnotator language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsAssemblyAnnotator"/>
-    <codeInsight.lineMarkerProvider language="MARS_MIPS"
-                                    implementationClass="edu.missouristate.mars.plugin.language.MipsTransferLineMarkerProvider"/>
-    <highlightUsagesHandlerFactory implementation="edu.missouristate.mars.plugin.language.MipsRegisterUsages"/>
-    <completion.contributor language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsCompletionContributor"/>
-    <codeInsight.parameterInfo language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsParameterInfoHandler"/>
-    <platform.backend.documentation.targetProvider implementation="edu.missouristate.mars.plugin.language.MipsDocumentationTargetProvider"/>
-    <!--suppress UnstableExtensionsUsage -->
-    <platform.backend.documentation.lookupElementTargetProvider implementation="edu.missouristate.mars.plugin.language.MipsDocumentationTargetProvider"/>
-    <lang.parserDefinition language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsParserDefinition"/>
-    <lang.ast.factory language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.psi.MipsAstFactory"/>
-    <lang.elementManipulator forClass="edu.missouristate.mars.plugin.language.psi.MipsStringLiteral" implementationClass="edu.missouristate.mars.plugin.language.psi.MipsStringManipulator"/>
-    <lang.formatter language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.format.MipsFormattingModelBuilder"/>
-    <codeInsight.declarativeInlayProvider language="MARS_MIPS"
-                                         implementationClass="edu.missouristate.mars.plugin.language.MipsAddressInlayProvider"
-                                         providerId="mars.mips.assembled.addresses" group="OTHER_GROUP" isEnabledByDefault="false"
-                                         bundle="messages.MarsBundle" nameKey="inlay.address.name" descriptionKey="inlay.address.description"/>
-    <codeInsight.declarativeInlayProvider language="MARS_MIPS"
-                                         implementationClass="edu.missouristate.mars.plugin.language.MipsExpansionInlayProvider"
-                                         providerId="mars.mips.assembled.expansions" group="OTHER_GROUP" isEnabledByDefault="false"
-                                         bundle="messages.MarsBundle" nameKey="inlay.expansion.name" descriptionKey="inlay.expansion.description"/>
-    <langCodeStyleSettingsProvider implementation="edu.missouristate.mars.plugin.language.format.MipsCodeStyleSettingsProvider"/>
-    <lang.commenter language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsCommenter"/>
-    <lang.braceMatcher language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsBraceMatcher"/>
-    <lang.quoteHandler language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsQuoteHandler"/>
-    <lang.smartEnterProcessor language="MARS_MIPS"
-                              implementationClass="edu.missouristate.mars.plugin.language.MipsSmartEnterProcessor"/>
-    <defaultLiveTemplates file="liveTemplates/MarsMips.xml"/>
-    <liveTemplateContext contextId="MARS_MIPS_STATEMENT"
-                         implementation="edu.missouristate.mars.plugin.language.MipsStatementTemplateContext"/>
-    <liveTemplateContext contextId="MARS_MIPS_TOP_LEVEL" baseContextId="MARS_MIPS_STATEMENT"
-                         implementation="edu.missouristate.mars.plugin.language.MipsTopLevelTemplateContext"/>
-    <lang.psiStructureViewFactory language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsStructureViewFactory"/>
-    <breadcrumbsInfoProvider implementation="edu.missouristate.mars.plugin.language.MipsBreadcrumbsProvider"/>
-    <lang.foldingBuilder language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsFoldingBuilder"/>
-    <customUsageSearcher implementation="edu.missouristate.mars.plugin.language.MipsExcerptUsageSearcher"/>
-    <lang.findUsagesProvider language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsFindUsagesProvider"/>
-    <targetElementEvaluator language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsTargetElementEvaluator"/>
-    <referencesSearch implementation="edu.missouristate.mars.plugin.language.MipsAssembledReferencesSearcher"/>
-    <referencesSearch implementation="edu.missouristate.mars.plugin.language.MipsMacroFormalReferencesSearcher"/>
-    <renamePsiElementProcessor implementation="edu.missouristate.mars.plugin.language.MipsMacroFormalRenameProcessor"/>
-    <renameInputValidator implementation="edu.missouristate.mars.plugin.language.MipsMacroFormalRenameInputValidator"/>
-    <renamePsiElementProcessor implementation="edu.missouristate.mars.plugin.language.MipsSymbolRenameProcessor"/>
-    <renameInputValidator implementation="edu.missouristate.mars.plugin.language.MipsSymbolRenameInputValidator"/>
-    <refactoring.elementListenerProvider implementation="edu.missouristate.mars.plugin.build.MarsSourceRefactoringListener"/>
-    <fileBasedIndex implementation="edu.missouristate.mars.plugin.language.index.MipsDeclarationIndex"/>
-    <fileBasedIndex implementation="edu.missouristate.mars.plugin.language.index.MipsReferenceIndex"/>
-    <gotoSymbolContributor implementation="edu.missouristate.mars.plugin.language.MipsGoToSymbolContributor"/>
-    <configurationType implementation="edu.missouristate.mars.plugin.run.MarsRunType"/>
-    <runConfigurationProducer implementation="edu.missouristate.mars.plugin.run.MarsRunConfigurationProducer"/>
-    <programRunner implementation="edu.missouristate.mars.plugin.run.MarsRunRunner"/>
-    <programRunner implementation="edu.missouristate.mars.plugin.debug.MarsDebugRunner"/>
-    <xdebugger.breakpointType implementation="edu.missouristate.mars.plugin.debug.MarsLineBreakpointType"/>
-    <xdebugger.breakpointType implementation="edu.missouristate.mars.plugin.debug.MarsAddressBreakpointType"/>
-    <xdebugger.breakpointType implementation="edu.missouristate.mars.plugin.debug.MarsMemoryWatchpointType"/>
-    <include.provider implementation="edu.missouristate.mars.plugin.language.index.MipsIncludeProvider"/>
-    <syntax.syntaxDefinition language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsSyntaxDefinition"/>
-    <syntax.elementTypeConverter language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsElementTypeConverterFactory"/>
-    <notificationGroup id="MARS Memory Export" displayType="BALLOON" bundle="messages.MarsBundle" key="export.title"/>
-  </extensions>
-  <applicationListeners>
-    <!-- DevKit 2026.3 sometimes fails to resolve the listener's Kotlin supertype. -->
-    <!--suppress PluginXmlValidity -->
-    <listener class="edu.missouristate.mars.plugin.language.MipsEditorLanguageLifecycle"
-              topic="com.intellij.ide.plugins.DynamicPluginListener"/>
-  </applicationListeners>
-  <projectListeners>
-    <listener class="edu.missouristate.mars.plugin.build.MarsOpenAssemblyListener"
-              topic="com.intellij.openapi.fileEditor.FileEditorManagerListener"/>
-  </projectListeners>
-  <actions resource-bundle="messages.MarsBundle">
-    <action id="Mars.Learning.Open" class="edu.missouristate.mars.plugin.learning.MarsLearningOpenAction">
-      <add-to-group group-id="ToolsMenu" anchor="last"/>
-    </action>
-    <action id="Mars.Learning.ImportPackage" class="edu.missouristate.mars.plugin.learning.MarsLessonPackageImportAction">
-      <add-to-group group-id="ToolsMenu" anchor="after" relative-to-action="Mars.Learning.Open"/>
-    </action>
-    <action id="Mars.Learning.ContinueDownloaded" class="edu.missouristate.mars.plugin.learning.MarsContinueDownloadedLessonAction">
-      <add-to-group group-id="ToolsMenu" anchor="after" relative-to-action="Mars.Learning.ImportPackage"/>
-    </action>
-    <action id="Mars.Learning.ChooseDownloaded" class="edu.missouristate.mars.plugin.learning.MarsChooseDownloadedActivityAction">
-      <add-to-group group-id="ToolsMenu" anchor="after" relative-to-action="Mars.Learning.ContinueDownloaded"/>
-    </action>
-    <action id="Mars.Learning.ConfigureDownloadedPrerequisites" class="edu.missouristate.mars.plugin.learning.MarsConfigureDownloadedPrerequisitesAction">
-      <add-to-group group-id="ToolsMenu" anchor="after" relative-to-action="Mars.Learning.ChooseDownloaded"/>
-    </action>
-    <action id="Mars.Learning.Reset" class="edu.missouristate.mars.plugin.learning.MarsLearningResetAction">
-      <add-to-group group-id="ToolsMenu" anchor="after" relative-to-action="Mars.Learning.Open"/>
-    </action>
-    <action id="Mars.Learning.Recover" class="edu.missouristate.mars.plugin.learning.MarsLearningRecoverAction">
-      <add-to-group group-id="ToolsMenu" anchor="after" relative-to-action="Mars.Learning.Reset"/>
-    </action>
-    <action id="Mars.Learning.PredictDoubling" class="edu.missouristate.mars.plugin.learning.MarsPredictDoublingAction"/>
-    <action id="Mars.Learning.PredictNegative" class="edu.missouristate.mars.plugin.learning.MarsPredictNegativeAction"/>
-    <action id="Mars.Learning.PredictOutput" class="edu.missouristate.mars.plugin.learning.MarsPredictOutputAction"/>
-    <action id="Mars.Learning.PredictWrongOutput" class="edu.missouristate.mars.plugin.learning.MarsPredictWrongOutputAction"/>
-    <action id="Mars.Learning.IndependentHint" class="edu.missouristate.mars.plugin.learning.MarsIndependentHintAction"/>
-    <action id="Mars.Learning.CheckIndependent" class="edu.missouristate.mars.plugin.learning.MarsIndependentCheckAction"/>
-    <action id="Mars.Learning.DiagnoseOutput" class="edu.missouristate.mars.plugin.learning.MarsDiagnoseOutputAction"/>
-    <action id="Mars.ImportVenusPreferences" class="edu.missouristate.mars.plugin.project.MarsImportVenusPreferencesAction">
-      <add-to-group group-id="FileMenu" anchor="last"/>
-    </action>
-    <action id="Mars.ImportVenusEditorPreferences" class="edu.missouristate.mars.plugin.project.MarsImportVenusEditorPreferencesAction">
-      <add-to-group group-id="FileMenu" anchor="after" relative-to-action="Mars.ImportVenusPreferences"/>
-    </action>
-    <action id="Mars.ImportVenusSyntaxStyles" class="edu.missouristate.mars.plugin.project.MarsImportVenusSyntaxStylesAction">
-      <add-to-group group-id="FileMenu" anchor="after" relative-to-action="Mars.ImportVenusEditorPreferences"/>
-    </action>
-    <action id="Mars.ImportVenusDebuggerPreferences" class="edu.missouristate.mars.plugin.project.MarsImportVenusDebuggerPreferencesAction">
-      <add-to-group group-id="FileMenu" anchor="after" relative-to-action="Mars.ImportVenusSyntaxStyles"/>
-    </action>
-    <action id="Mars.ImportVenusMachineStyles" class="edu.missouristate.mars.plugin.project.MarsImportVenusMachineStylesAction">
-      <add-to-group group-id="FileMenu" anchor="after" relative-to-action="Mars.ImportVenusDebuggerPreferences"/>
-    </action>
-    <action id="Mars.NewMipsFile" class="edu.missouristate.mars.plugin.project.MarsNewFileAction" icon="AllIcons.FileTypes.Custom">
-      <add-to-group group-id="NewGroup"/>
-    </action>
-    <action id="Mars.OpenReference" class="edu.missouristate.mars.plugin.help.MarsReferenceAction">
-      <add-to-group group-id="HelpMenu" anchor="after" relative-to-action="HelpTopics"/>
-    </action>
-    <action id="Mars.About" class="edu.missouristate.mars.plugin.help.MarsAboutAction">
-      <add-to-group group-id="HelpMenu" anchor="after" relative-to-action="Mars.OpenReference"/>
-    </action>
-    <action id="Mars.AssembleCurrentFile" class="edu.missouristate.mars.plugin.build.MarsAssembleAction">
-      <add-to-group group-id="BuildMenu" anchor="last"/>
-    </action>
-    <action id="Mars.AssembleDirectory" class="edu.missouristate.mars.plugin.build.MarsAssembleDirectoryAction">
-      <add-to-group group-id="BuildMenu" anchor="after" relative-to-action="Mars.AssembleCurrentFile"/>
-    </action>
-    <action id="Mars.AssembleProject" class="edu.missouristate.mars.plugin.build.MarsAssembleProjectAction">
-      <add-to-group group-id="BuildMenu" anchor="after" relative-to-action="Mars.AssembleDirectory"/>
-    </action>
-    <group id="Mars.AssembleContainingEntry" class="edu.missouristate.mars.plugin.build.MarsContainingEntriesGroup" popup="true">
-      <add-to-group group-id="BuildMenu" anchor="last"/>
-    </group>
-    <action id="Mars.ExportMemory" class="edu.missouristate.mars.plugin.build.MarsMemoryExportAction">
-      <add-to-group group-id="BuildMenu" anchor="last"/>
-    </action>
-    <action id="Mars.ShowExpansion" class="edu.missouristate.mars.plugin.language.MarsShowExpansionAction">
-      <add-to-group group-id="EditorPopupMenu" anchor="last"/>
-    </action>
-    <action id="Mars.ToggleOriginalBreakpoint" class="edu.missouristate.mars.plugin.debug.MarsToggleOriginalBreakpointAction">
-      <add-to-group group-id="EditorPopupMenu" anchor="last"/>
-    </action>
-  </actions>
+    <resource-bundle>messages.MarsBundle</resource-bundle>
+    <content>
+        <module name="mars.jvm.compiler" loading="optional"/>
+        <module name="mars.kotlin.scripting" loading="optional"/>
+    </content>
+    <dependencies>
+        <module name="intellij.platform.monolith"/>
+        <plugin id="com.intellij.modules.compose"/>
+        <plugin id="training"/>
+        <module name="intellij.libraries.compose.foundation.desktop"/>
+        <module name="intellij.libraries.compose.runtime.desktop"/>
+        <module name="intellij.platform.buildView"/>
+        <module name="intellij.platform.debugger"/>
+        <module name="intellij.platform.jewel.ideLafBridge"/>
+        <module name="intellij.platform.jewel.ui"/>
+        <module name="intellij.spellchecker"/>
+        <module name="intellij.platform.syntax"/>
+        <module name="intellij.platform.syntax.psi"/>
+        <module name="intellij.platform.syntax.util"/>
+    </dependencies>
+    <extensionPoints>
+        <extensionPoint name="syscallEnvironmentCustomizer"
+                        interface="edu.missouristate.mars.plugin.run.MarsSyscallEnvironmentCustomizer" dynamic="true"/>
+        <extensionPoint name="toolProvider" interface="edu.missouristate.mars.plugin.tools.MarsToolProvider"
+                        dynamic="true"/>
+    </extensionPoints>
+    <extensions defaultExtensionNs="training">
+        <ift.language.extension language="MARS_MIPS"
+                                implementationClass="edu.missouristate.mars.plugin.learning.MarsLearningLanguageSupport"/>
+        <ift.learning.course language="MARS_MIPS"
+                             implementationClass="edu.missouristate.mars.plugin.learning.MarsLearningCourse"/>
+    </extensions>
+    <extensions defaultExtensionNs="edu.missouristate.mars">
+        <syscallEnvironmentCustomizer
+                implementation="edu.missouristate.mars.plugin.learning.MarsLearningFileEnvironmentCustomizer"/>
+        <toolProvider id="edu.missouristate.mars.introToTools"
+                      implementation="edu.missouristate.mars.plugin.tools.IntroToToolsProvider"/>
+    </extensions>
+    <extensions defaultExtensionNs="com.intellij">
+        <spellchecker.bundledDictionaryProvider
+                implementation="edu.missouristate.mars.plugin.language.MarsBundledDictionaryProvider"/>
+        <newProjectWizard.generator implementation="edu.missouristate.mars.plugin.project.MarsNewProjectWizard"/>
+        <internalFileTemplate name="MIPS Assembly"/>
+        <internalFileTemplate name="MIPS Source"/>
+        <internalFileTemplate name="MARS Assembly"/>
+        <internalFileTemplate name="MIPS Include"/>
+        <projectTaskRunner implementation="edu.missouristate.mars.plugin.build.MarsProjectTaskRunner"/>
+        <stepsBeforeRunProvider implementation="edu.missouristate.mars.plugin.run.MarsBeforeLaunchTaskProvider"/>
+        <projectConfigurable id="mars.assembly" groupId="build" nonDefaultProject="true"
+                             bundle="messages.MarsBundle" key="build.settings.title"
+                             instance="edu.missouristate.mars.plugin.build.MarsAssemblyConfigurable"/>
+        <projectConfigurable id="mars.learning" groupId="tools" nonDefaultProject="true"
+                             bundle="messages.MarsLearningBundle" key="policy.title"
+                             instance="edu.missouristate.mars.plugin.learning.MarsLearningConfigurable"/>
+        <!-- The provider accepts only plugin-created virtual files backed by a running or completed simulation. -->
+        <fileEditorProvider implementation="edu.missouristate.mars.plugin.tools.BitmapDisplayEditorProvider"/>
+        <toolWindow id="MARS Tools" anchor="right"
+                    factoryClass="edu.missouristate.mars.plugin.tools.MarsToolsWindowFactory"
+                    icon="AllIcons.Toolwindows.ToolWindowServices" doNotActivateOnStart="true"/>
+        <fileType name="MARS MIPS" language="MARS_MIPS"
+                  implementationClass="edu.missouristate.mars.plugin.language.MipsFileType" fieldName="INSTANCE"
+                  extensions="asm;s;inc;mars"/>
+        <fileTypeOverrider implementation="edu.missouristate.mars.plugin.language.MipsAssemblySourceFileTypeOverrider"/>
+        <readerModeMatcher implementation="edu.missouristate.mars.plugin.language.MipsAssemblySourceReaderModeMatcher"/>
+        <lang.syntaxHighlighterFactory language="MARS_MIPS"
+                                       implementationClass="edu.missouristate.mars.plugin.language.MipsSyntaxHighlighterFactory"/>
+        <annotator language="MARS_MIPS"
+                   implementationClass="edu.missouristate.mars.plugin.language.MipsInstructionHighlighter"/>
+        <annotator language="MARS_MIPS"
+                   implementationClass="edu.missouristate.mars.plugin.language.MipsIncludeCycleAnnotator"/>
+        <annotator language="MARS_MIPS"
+                   implementationClass="edu.missouristate.mars.plugin.language.MipsIncludePathAnnotator"/>
+        <gotoDeclarationHandler
+                implementation="edu.missouristate.mars.plugin.language.references.MipsIncludeNavigation"/>
+        <annotator language="MARS_MIPS"
+                   implementationClass="edu.missouristate.mars.plugin.language.MipsMacroDiagnosticAnnotator"/>
+        <colorSettings implementation="edu.missouristate.mars.plugin.language.MipsColorSettingsPage"
+                       bundle="messages.MarsBundle" key="colors.name"/>
+        <additionalTextAttributes scheme="Default" file="colors/MipsDefault.xml"/>
+        <additionalTextAttributes scheme="Darcula" file="colors/MipsDarcula.xml"/>
+        <localInspection language="MARS_MIPS" shortName="MipsMacroParameter" bundle="messages.MarsBundle"
+                         groupKey="inspection.group" key="inspection.macro.parameters" enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="edu.missouristate.mars.plugin.language.inspection.MipsMacroParameterInspection"/>
+        <localInspection language="MARS_MIPS" shortName="MipsMacroArity" bundle="messages.MarsBundle"
+                         groupKey="inspection.group" key="inspection.macro.arity" enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="edu.missouristate.mars.plugin.language.inspection.MipsMacroArityInspection"/>
+        <localInspection language="MARS_MIPS" shortName="MipsRelease6Merge" bundle="messages.MarsBundle"
+                         groupKey="inspection.group" key="inspection.release6.merge" enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="edu.missouristate.mars.plugin.language.inspection.MipsRelease6MergeInspection"/>
+        <highlightErrorFilter implementation="edu.missouristate.mars.plugin.language.MipsAssemblySyntaxErrorFilter"/>
+        <externalAnnotator language="MARS_MIPS"
+                           implementationClass="edu.missouristate.mars.plugin.language.MipsAssemblyAnnotator"/>
+        <codeInsight.lineMarkerProvider language="MARS_MIPS"
+                                        implementationClass="edu.missouristate.mars.plugin.language.MipsTransferLineMarkerProvider"/>
+        <highlightUsagesHandlerFactory implementation="edu.missouristate.mars.plugin.language.MipsRegisterUsages"/>
+        <completion.contributor language="MARS_MIPS"
+                                implementationClass="edu.missouristate.mars.plugin.language.MipsCompletionContributor"/>
+        <codeInsight.parameterInfo language="MARS_MIPS"
+                                   implementationClass="edu.missouristate.mars.plugin.language.MipsParameterInfoHandler"/>
+        <platform.backend.documentation.targetProvider
+                implementation="edu.missouristate.mars.plugin.language.MipsDocumentationTargetProvider"/>
+        <!--suppress UnstableExtensionsUsage -->
+        <platform.backend.documentation.lookupElementTargetProvider
+                implementation="edu.missouristate.mars.plugin.language.MipsDocumentationTargetProvider"/>
+        <lang.parserDefinition language="MARS_MIPS"
+                               implementationClass="edu.missouristate.mars.plugin.language.MipsParserDefinition"/>
+        <lang.ast.factory language="MARS_MIPS"
+                          implementationClass="edu.missouristate.mars.plugin.language.psi.MipsAstFactory"/>
+        <lang.elementManipulator forClass="edu.missouristate.mars.plugin.language.psi.MipsStringLiteral"
+                                 implementationClass="edu.missouristate.mars.plugin.language.psi.MipsStringManipulator"/>
+        <lang.formatter language="MARS_MIPS"
+                        implementationClass="edu.missouristate.mars.plugin.language.format.MipsFormattingModelBuilder"/>
+        <codeInsight.declarativeInlayProvider language="MARS_MIPS"
+                                              implementationClass="edu.missouristate.mars.plugin.language.MipsAddressInlayProvider"
+                                              providerId="mars.mips.assembled.addresses" group="OTHER_GROUP"
+                                              isEnabledByDefault="false"
+                                              bundle="messages.MarsBundle" nameKey="inlay.address.name"
+                                              descriptionKey="inlay.address.description"/>
+        <codeInsight.declarativeInlayProvider language="MARS_MIPS"
+                                              implementationClass="edu.missouristate.mars.plugin.language.MipsExpansionInlayProvider"
+                                              providerId="mars.mips.assembled.expansions" group="OTHER_GROUP"
+                                              isEnabledByDefault="false"
+                                              bundle="messages.MarsBundle" nameKey="inlay.expansion.name"
+                                              descriptionKey="inlay.expansion.description"/>
+        <langCodeStyleSettingsProvider
+                implementation="edu.missouristate.mars.plugin.language.format.MipsCodeStyleSettingsProvider"/>
+        <lang.commenter language="MARS_MIPS"
+                        implementationClass="edu.missouristate.mars.plugin.language.MipsCommenter"/>
+        <lang.braceMatcher language="MARS_MIPS"
+                           implementationClass="edu.missouristate.mars.plugin.language.MipsBraceMatcher"/>
+        <lang.quoteHandler language="MARS_MIPS"
+                           implementationClass="edu.missouristate.mars.plugin.language.MipsQuoteHandler"/>
+        <lang.smartEnterProcessor language="MARS_MIPS"
+                                  implementationClass="edu.missouristate.mars.plugin.language.MipsSmartEnterProcessor"/>
+        <defaultLiveTemplates file="liveTemplates/MarsMips.xml"/>
+        <liveTemplateContext contextId="MARS_MIPS_STATEMENT"
+                             implementation="edu.missouristate.mars.plugin.language.MipsStatementTemplateContext"/>
+        <liveTemplateContext contextId="MARS_MIPS_TOP_LEVEL" baseContextId="MARS_MIPS_STATEMENT"
+                             implementation="edu.missouristate.mars.plugin.language.MipsTopLevelTemplateContext"/>
+        <lang.psiStructureViewFactory language="MARS_MIPS"
+                                      implementationClass="edu.missouristate.mars.plugin.language.MipsStructureViewFactory"/>
+        <breadcrumbsInfoProvider implementation="edu.missouristate.mars.plugin.language.MipsBreadcrumbsProvider"/>
+        <lang.foldingBuilder language="MARS_MIPS"
+                             implementationClass="edu.missouristate.mars.plugin.language.MipsFoldingBuilder"/>
+        <customUsageSearcher implementation="edu.missouristate.mars.plugin.language.MipsExcerptUsageSearcher"/>
+        <lang.findUsagesProvider language="MARS_MIPS"
+                                 implementationClass="edu.missouristate.mars.plugin.language.MipsFindUsagesProvider"/>
+        <targetElementEvaluator language="MARS_MIPS"
+                                implementationClass="edu.missouristate.mars.plugin.language.MipsTargetElementEvaluator"/>
+        <referencesSearch implementation="edu.missouristate.mars.plugin.language.MipsAssembledReferencesSearcher"/>
+        <referencesSearch implementation="edu.missouristate.mars.plugin.language.MipsMacroFormalReferencesSearcher"/>
+        <renamePsiElementProcessor
+                implementation="edu.missouristate.mars.plugin.language.MipsMacroFormalRenameProcessor"/>
+        <renameInputValidator
+                implementation="edu.missouristate.mars.plugin.language.MipsMacroFormalRenameInputValidator"/>
+        <renamePsiElementProcessor implementation="edu.missouristate.mars.plugin.language.MipsSymbolRenameProcessor"/>
+        <renameInputValidator implementation="edu.missouristate.mars.plugin.language.MipsSymbolRenameInputValidator"/>
+        <refactoring.elementListenerProvider
+                implementation="edu.missouristate.mars.plugin.build.MarsSourceRefactoringListener"/>
+        <fileBasedIndex implementation="edu.missouristate.mars.plugin.language.index.MipsDeclarationIndex"/>
+        <fileBasedIndex implementation="edu.missouristate.mars.plugin.language.index.MipsReferenceIndex"/>
+        <gotoSymbolContributor implementation="edu.missouristate.mars.plugin.language.MipsGoToSymbolContributor"/>
+        <configurationType implementation="edu.missouristate.mars.plugin.run.MarsRunType"/>
+        <runConfigurationProducer implementation="edu.missouristate.mars.plugin.run.MarsRunConfigurationProducer"/>
+        <programRunner implementation="edu.missouristate.mars.plugin.run.MarsRunRunner"/>
+        <programRunner implementation="edu.missouristate.mars.plugin.debug.MarsDebugRunner"/>
+        <xdebugger.breakpointType implementation="edu.missouristate.mars.plugin.debug.MarsLineBreakpointType"/>
+        <xdebugger.breakpointType implementation="edu.missouristate.mars.plugin.debug.MarsAddressBreakpointType"/>
+        <xdebugger.breakpointType implementation="edu.missouristate.mars.plugin.debug.MarsMemoryWatchpointType"/>
+        <include.provider implementation="edu.missouristate.mars.plugin.language.index.MipsIncludeProvider"/>
+        <syntax.syntaxDefinition language="MARS_MIPS"
+                                 implementationClass="edu.missouristate.mars.plugin.language.MipsSyntaxDefinition"/>
+        <syntax.elementTypeConverter language="MARS_MIPS"
+                                     implementationClass="edu.missouristate.mars.plugin.language.MipsElementTypeConverterFactory"/>
+        <notificationGroup id="MARS Memory Export" displayType="BALLOON" bundle="messages.MarsBundle"
+                           key="export.title"/>
+    </extensions>
+    <applicationListeners>
+        <!-- DevKit 2026.3 sometimes fails to resolve the listener's Kotlin supertype. -->
+        <!--suppress PluginXmlValidity -->
+        <listener class="edu.missouristate.mars.plugin.language.MipsEditorLanguageLifecycle"
+                  topic="com.intellij.ide.plugins.DynamicPluginListener"/>
+    </applicationListeners>
+    <projectListeners>
+        <listener class="edu.missouristate.mars.plugin.build.MarsOpenAssemblyListener"
+                  topic="com.intellij.openapi.fileEditor.FileEditorManagerListener"/>
+    </projectListeners>
+    <actions resource-bundle="messages.MarsBundle">
+        <action id="Mars.Learning.Open" class="edu.missouristate.mars.plugin.learning.MarsLearningOpenAction">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+        <action id="Mars.Learning.ImportPackage"
+                class="edu.missouristate.mars.plugin.learning.MarsLessonPackageImportAction">
+            <add-to-group group-id="ToolsMenu" anchor="after" relative-to-action="Mars.Learning.Open"/>
+        </action>
+        <action id="Mars.Learning.ContinueDownloaded"
+                class="edu.missouristate.mars.plugin.learning.MarsContinueDownloadedLessonAction">
+            <add-to-group group-id="ToolsMenu" anchor="after" relative-to-action="Mars.Learning.ImportPackage"/>
+        </action>
+        <action id="Mars.Learning.ChooseDownloaded"
+                class="edu.missouristate.mars.plugin.learning.MarsChooseDownloadedActivityAction">
+            <add-to-group group-id="ToolsMenu" anchor="after" relative-to-action="Mars.Learning.ContinueDownloaded"/>
+        </action>
+        <action id="Mars.Learning.ConfigureDownloadedPrerequisites"
+                class="edu.missouristate.mars.plugin.learning.MarsConfigureDownloadedPrerequisitesAction">
+            <add-to-group group-id="ToolsMenu" anchor="after" relative-to-action="Mars.Learning.ChooseDownloaded"/>
+        </action>
+        <action id="Mars.Learning.Reset" class="edu.missouristate.mars.plugin.learning.MarsLearningResetAction">
+            <add-to-group group-id="ToolsMenu" anchor="after" relative-to-action="Mars.Learning.Open"/>
+        </action>
+        <action id="Mars.Learning.Recover" class="edu.missouristate.mars.plugin.learning.MarsLearningRecoverAction">
+            <add-to-group group-id="ToolsMenu" anchor="after" relative-to-action="Mars.Learning.Reset"/>
+        </action>
+        <action id="Mars.Learning.PredictDoubling"
+                class="edu.missouristate.mars.plugin.learning.MarsPredictDoublingAction"/>
+        <action id="Mars.Learning.PredictNegative"
+                class="edu.missouristate.mars.plugin.learning.MarsPredictNegativeAction"/>
+        <action id="Mars.Learning.PredictOutput"
+                class="edu.missouristate.mars.plugin.learning.MarsPredictOutputAction"/>
+        <action id="Mars.Learning.PredictWrongOutput"
+                class="edu.missouristate.mars.plugin.learning.MarsPredictWrongOutputAction"/>
+        <action id="Mars.Learning.IndependentHint"
+                class="edu.missouristate.mars.plugin.learning.MarsIndependentHintAction"/>
+        <action id="Mars.Learning.CheckIndependent"
+                class="edu.missouristate.mars.plugin.learning.MarsIndependentCheckAction"/>
+        <action id="Mars.Learning.DiagnoseOutput"
+                class="edu.missouristate.mars.plugin.learning.MarsDiagnoseOutputAction"/>
+        <action id="Mars.ImportVenusPreferences"
+                class="edu.missouristate.mars.plugin.project.MarsImportVenusPreferencesAction">
+            <add-to-group group-id="FileMenu" anchor="last"/>
+        </action>
+        <action id="Mars.ImportVenusEditorPreferences"
+                class="edu.missouristate.mars.plugin.project.MarsImportVenusEditorPreferencesAction">
+            <add-to-group group-id="FileMenu" anchor="after" relative-to-action="Mars.ImportVenusPreferences"/>
+        </action>
+        <action id="Mars.ImportVenusSyntaxStyles"
+                class="edu.missouristate.mars.plugin.project.MarsImportVenusSyntaxStylesAction">
+            <add-to-group group-id="FileMenu" anchor="after" relative-to-action="Mars.ImportVenusEditorPreferences"/>
+        </action>
+        <action id="Mars.ImportVenusDebuggerPreferences"
+                class="edu.missouristate.mars.plugin.project.MarsImportVenusDebuggerPreferencesAction">
+            <add-to-group group-id="FileMenu" anchor="after" relative-to-action="Mars.ImportVenusSyntaxStyles"/>
+        </action>
+        <action id="Mars.ImportVenusMachineStyles"
+                class="edu.missouristate.mars.plugin.project.MarsImportVenusMachineStylesAction">
+            <add-to-group group-id="FileMenu" anchor="after" relative-to-action="Mars.ImportVenusDebuggerPreferences"/>
+        </action>
+        <action id="Mars.NewMipsFile" class="edu.missouristate.mars.plugin.project.MarsNewFileAction"
+                icon="AllIcons.FileTypes.Custom">
+            <add-to-group group-id="NewGroup"/>
+        </action>
+        <action id="Mars.OpenReference" class="edu.missouristate.mars.plugin.help.MarsReferenceAction">
+            <add-to-group group-id="HelpMenu" anchor="after" relative-to-action="HelpTopics"/>
+        </action>
+        <action id="Mars.About" class="edu.missouristate.mars.plugin.help.MarsAboutAction">
+            <add-to-group group-id="HelpMenu" anchor="after" relative-to-action="Mars.OpenReference"/>
+        </action>
+        <action id="Mars.AssembleCurrentFile" class="edu.missouristate.mars.plugin.build.MarsAssembleAction">
+            <add-to-group group-id="BuildMenu" anchor="last"/>
+        </action>
+        <action id="Mars.AssembleDirectory" class="edu.missouristate.mars.plugin.build.MarsAssembleDirectoryAction">
+            <add-to-group group-id="BuildMenu" anchor="after" relative-to-action="Mars.AssembleCurrentFile"/>
+        </action>
+        <action id="Mars.AssembleProject" class="edu.missouristate.mars.plugin.build.MarsAssembleProjectAction">
+            <add-to-group group-id="BuildMenu" anchor="after" relative-to-action="Mars.AssembleDirectory"/>
+        </action>
+        <group id="Mars.AssembleContainingEntry" class="edu.missouristate.mars.plugin.build.MarsContainingEntriesGroup"
+               popup="true">
+            <add-to-group group-id="BuildMenu" anchor="last"/>
+        </group>
+        <action id="Mars.ExportMemory" class="edu.missouristate.mars.plugin.build.MarsMemoryExportAction">
+            <add-to-group group-id="BuildMenu" anchor="last"/>
+        </action>
+        <action id="Mars.ShowExpansion" class="edu.missouristate.mars.plugin.language.MarsShowExpansionAction">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+        </action>
+        <action id="Mars.ToggleOriginalBreakpoint"
+                class="edu.missouristate.mars.plugin.debug.MarsToggleOriginalBreakpointAction">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+        </action>
+    </actions>
 </idea-plugin>
