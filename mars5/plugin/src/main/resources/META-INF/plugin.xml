@@ -29,6 +29,7 @@
     <module name="intellij.platform.debugger"/>
     <module name="intellij.platform.jewel.ideLafBridge"/>
     <module name="intellij.platform.jewel.ui"/>
+    <module name="intellij.spellchecker"/>
     <module name="intellij.platform.syntax"/>
     <module name="intellij.platform.syntax.psi"/>
     <module name="intellij.platform.syntax.util"/>
@@ -46,6 +47,7 @@
     <toolProvider id="edu.missouristate.mars.introToTools" implementation="edu.missouristate.mars.plugin.tools.IntroToToolsProvider"/>
   </extensions>
   <extensions defaultExtensionNs="com.intellij">
+    <spellchecker.bundledDictionaryProvider implementation="edu.missouristate.mars.plugin.language.MarsBundledDictionaryProvider"/>
     <newProjectWizard.generator implementation="edu.missouristate.mars.plugin.project.MarsNewProjectWizard"/>
     <internalFileTemplate name="MIPS Assembly"/>
     <internalFileTemplate name="MIPS Source"/>

@@ -51,6 +51,7 @@ dependencies {
       intellijIdea("2026.3")
     }
     bundledModule("intellij.platform.monolith")
+    bundledModule("intellij.spellchecker")
     bundledModule("intellij.platform.buildView")
     bundledModule("intellij.platform.debugger")
     bundledPlugin("com.intellij.modules.compose")
@@ -555,6 +556,7 @@ val verifyGeneratedParserCoverage =
 tasks.check { dependsOn(verifyGeneratedParserCoverage) }
 
 tasks.named<ProcessResources>("processTestResources") {
+  from(rootProject.file(".idea/dictionaries/mars.xml")) { into("project-dictionary") }
   from(rootProject.file("../examples")) {
     include(
         "**/*.asm",
