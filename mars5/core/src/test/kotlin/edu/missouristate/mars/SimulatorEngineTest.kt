@@ -19,6 +19,7 @@ import edu.missouristate.mars.mips.hardware.MemoryState
 import edu.missouristate.mars.simulator.BackStepper
 import edu.missouristate.mars.simulator.Exceptions.EXTERNAL_INTERRUPT_KEYBOARD
 import edu.missouristate.mars.simulator.SimulatorEngine
+import edu.missouristate.mars.testing.isInstanceOf
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.UUID
@@ -72,7 +73,7 @@ internal class SimulatorEngineTest {
           )
           .isEqualTo(StopEvent.Reason.NORMAL_EXIT)
       Assertions.assertThat<SimulatorState?>(engine.state()).isEqualTo(SimulatorState.STOPPED)
-      Assertions.assertThatThrownBy { engine.run() }.isInstanceOf(IllegalStateException::class.java)
+      Assertions.assertThatThrownBy { engine.run() }.isInstanceOf<IllegalStateException>()
       engine.backstepAsync().get(5, TimeUnit.SECONDS)
       Assertions.assertThat<StopEvent.Reason?>(
               engine.runAsync(0, null).get(5, TimeUnit.SECONDS).reason,
@@ -86,7 +87,7 @@ internal class SimulatorEngineTest {
     load($$"loop: addiu $t0,$t0,1\nj loop\n").use { session ->
       val engine: SimulatorEngine = session.simulator()
       Assertions.assertThatThrownBy { engine.setInstructionLimit(-1) }
-          .isInstanceOf(IllegalArgumentException::class.java)
+          .isInstanceOf<IllegalArgumentException>()
       engine.setInstructionLimit(3)
       val entry: Int = session.registerFile.getPC()
       Assertions.assertThat<StopEvent.Reason?>(
@@ -94,7 +95,7 @@ internal class SimulatorEngineTest {
           )
           .isEqualTo(StopEvent.Reason.STEP_LIMIT)
       Assertions.assertThatThrownBy { engine.setInstructionLimit(4) }
-          .isInstanceOf(IllegalStateException::class.java)
+          .isInstanceOf<IllegalStateException>()
       engine.backstepAsync().get(5, TimeUnit.SECONDS)
       Assertions.assertThat(session.registerFile.getValue(8)).isZero()
       Assertions.assertThat<StopEvent.Reason?>(
@@ -109,7 +110,7 @@ internal class SimulatorEngineTest {
       Assertions.assertThat(session.registerFile.getValue(8)).isEqualTo(1)
       Assertions.assertThat<SimulatorState?>(engine.state()).isEqualTo(SimulatorState.STOPPED)
       engine.backstepAsync().get(5, TimeUnit.SECONDS)
-      Assertions.assertThatThrownBy { engine.run() }.isInstanceOf(IllegalStateException::class.java)
+      Assertions.assertThatThrownBy { engine.run() }.isInstanceOf<IllegalStateException>()
     }
   }
 
@@ -317,9 +318,9 @@ internal class SimulatorEngineTest {
       Assertions.assertThat(session.editIntegerRegister(8, 7)).isFalse()
       Assertions.assertThat(session.backStepper.canBackstep()).isTrue()
       Assertions.assertThatThrownBy { session.editIntegerRegister(0, 1) }
-          .isInstanceOf(IllegalArgumentException::class.java)
+          .isInstanceOf<IllegalArgumentException>()
       Assertions.assertThatThrownBy { session.editIntegerRegister(32, 1) }
-          .isInstanceOf(IllegalArgumentException::class.java)
+          .isInstanceOf<IllegalArgumentException>()
       Assertions.assertThat(session.backStepper.canBackstep()).isTrue()
       Assertions.assertThat(session.editIntegerRegister(8, 42)).isTrue()
       Assertions.assertThat(session.registerFile.getValueNoNotify(8)).isEqualTo(42)
@@ -339,9 +340,9 @@ internal class SimulatorEngineTest {
       engine.runAsync(1, null).get(5, TimeUnit.SECONDS)
       Assertions.assertThat(session.editMemoryWord(address, 7)).isFalse()
       Assertions.assertThatThrownBy { session.editMemoryWord(address + 1, 8) }
-          .isInstanceOf(AddressErrorException::class.java)
+          .isInstanceOf<AddressErrorException>()
       Assertions.assertThatThrownBy { session.editMemoryWord(0x20000000, 8) }
-          .isInstanceOf(AddressErrorException::class.java)
+          .isInstanceOf<AddressErrorException>()
       val originalInstruction: Int = checkNotNull(memory.inspectWord(memory.textBaseAddress))
       Assertions.assertThatThrownBy {
             session.editMemoryWord(
@@ -349,7 +350,7 @@ internal class SimulatorEngineTest {
                 originalInstruction,
             )
           }
-          .isInstanceOf(AddressErrorException::class.java)
+          .isInstanceOf<AddressErrorException>()
       Assertions.assertThat(session.backStepper.canBackstep()).isTrue()
       Assertions.assertThat(session.editMemoryWord(address, 42)).isTrue()
       Assertions.assertThat(session.backStepper.canBackstep()).isFalse()
@@ -367,7 +368,7 @@ internal class SimulatorEngineTest {
       engine.runAsync(1, null).get(5, TimeUnit.SECONDS)
       Assertions.assertThat(session.editCoprocessor0Register(Coprocessor0State.EPC, 0)).isFalse()
       Assertions.assertThatThrownBy { session.editCoprocessor0Register(9, 1) }
-          .isInstanceOf(IllegalArgumentException::class.java)
+          .isInstanceOf<IllegalArgumentException>()
       Assertions.assertThat(session.backStepper.canBackstep()).isTrue()
 
       Assertions.assertThat(session.editCoprocessor0Register(Coprocessor0State.EPC, 42)).isTrue()
@@ -389,13 +390,13 @@ internal class SimulatorEngineTest {
       Assertions.assertThat(session.editCoprocessor1Pair(30, 0)).isFalse()
       Assertions.assertThat(session.editCoprocessor1ConditionFlags(0)).isFalse()
       Assertions.assertThatThrownBy { session.editCoprocessor1Register(32, 1) }
-          .isInstanceOf(IndexOutOfBoundsException::class.java)
+          .isInstanceOf<IndexOutOfBoundsException>()
       Assertions.assertThatThrownBy { session.editCoprocessor1Pair(31, 1) }
-          .isInstanceOf(IllegalArgumentException::class.java)
+          .isInstanceOf<IllegalArgumentException>()
       Assertions.assertThatThrownBy {
             session.editCoprocessor1ConditionFlags(256)
           }
-          .isInstanceOf(IllegalArgumentException::class.java)
+          .isInstanceOf<IllegalArgumentException>()
       Assertions.assertThat(session.backStepper.canBackstep()).isTrue()
 
       val editedPair = -0x7fffffffffeddL
@@ -608,7 +609,7 @@ internal class SimulatorEngineTest {
           .isEqualTo(StopEvent.Reason.BREAKPOINT)
       Assertions.assertThat(session.registerFile.getPC()).isEqualTo(entry + 4)
       Assertions.assertThat(session.registerFile.getValue(8)).isEqualTo(7)
-      Assertions.assertThat(events[1]).isInstanceOf(StepEvent::class.java)
+      Assertions.assertThat(events[1]).isInstanceOf<StepEvent>()
       Assertions.assertThat(events[2]).isEqualTo(StopEvent(StopEvent.Reason.BREAKPOINT, 0))
     }
   }
@@ -657,45 +658,43 @@ internal class SimulatorEngineTest {
       val run: CompletableFuture<StopEvent> = engine.runAsync(0, null)
       Assertions.assertThat(entered.await(5, TimeUnit.SECONDS)).isTrue()
       try {
-        Assertions.assertThatThrownBy { engine.step() }
-            .isInstanceOf(IllegalStateException::class.java)
-        Assertions.assertThatThrownBy { engine.backstep() }
-            .isInstanceOf(IllegalStateException::class.java)
+        Assertions.assertThatThrownBy { engine.step() }.isInstanceOf<IllegalStateException>()
+        Assertions.assertThatThrownBy { engine.backstep() }.isInstanceOf<IllegalStateException>()
         Assertions.assertThatThrownBy { session.editIntegerRegister(8, 42) }
-            .isInstanceOf(IllegalStateException::class.java)
+            .isInstanceOf<IllegalStateException>()
         Assertions.assertThatThrownBy {
               session.editMemoryWord(
                   session.memory.dataBaseAddress,
                   42,
               )
             }
-            .isInstanceOf(IllegalStateException::class.java)
+            .isInstanceOf<IllegalStateException>()
         Assertions.assertThatThrownBy {
               session.editCoprocessor0Register(
                   Coprocessor0State.EPC,
                   42,
               )
             }
-            .isInstanceOf(IllegalStateException::class.java)
+            .isInstanceOf<IllegalStateException>()
         Assertions.assertThatThrownBy {
               session.editCoprocessor1Register(
                   0,
                   42,
               )
             }
-            .isInstanceOf(IllegalStateException::class.java)
+            .isInstanceOf<IllegalStateException>()
         Assertions.assertThatThrownBy { session.editCoprocessor1Pair(0, 42) }
-            .isInstanceOf(IllegalStateException::class.java)
+            .isInstanceOf<IllegalStateException>()
         Assertions.assertThatThrownBy {
               session.editCoprocessor1ConditionFlags(
                   1,
               )
             }
-            .isInstanceOf(IllegalStateException::class.java)
+            .isInstanceOf<IllegalStateException>()
         Assertions.assertThatThrownBy {
               session.setMemoryConfiguration("Default")
             }
-            .isInstanceOf(IllegalStateException::class.java)
+            .isInstanceOf<IllegalStateException>()
         Assertions.assertThatThrownBy {
               session.assemble(
                   listOf(
@@ -703,11 +702,11 @@ internal class SimulatorEngineTest {
                   ),
               )
             }
-            .isInstanceOf(IllegalStateException::class.java)
+            .isInstanceOf<IllegalStateException>()
         Assertions.assertThatThrownBy {
               checkNotNull(session.program).simulate(1)
             }
-            .isInstanceOf(IllegalStateException::class.java)
+            .isInstanceOf<IllegalStateException>()
         engine.pause()
       } finally {
         release.countDown()
@@ -757,7 +756,7 @@ internal class SimulatorEngineTest {
               session.simulator().runAsync(0, null).get(5, TimeUnit.SECONDS).reason,
           )
           .isEqualTo(StopEvent.Reason.EXCEPTION)
-      Assertions.assertThat(events[events.size - 2]).isInstanceOf(ErrorEvent::class.java)
+      Assertions.assertThat(events[events.size - 2]).isInstanceOf<ErrorEvent>()
       Assertions.assertThat(events.last()).isEqualTo(StopEvent(StopEvent.Reason.EXCEPTION, 0))
       Assertions.assertThat(session.backStepper.empty()).isFalse()
       session.simulator().backstepAsync().get(5, TimeUnit.SECONDS)
@@ -822,9 +821,8 @@ internal class SimulatorEngineTest {
         Assertions.assertThatThrownBy {
               session.setMemoryConfiguration("Default")
             }
-            .isInstanceOf(IllegalStateException::class.java)
-        Assertions.assertThatThrownBy { engine.run() }
-            .isInstanceOf(IllegalStateException::class.java)
+            .isInstanceOf<IllegalStateException>()
+        Assertions.assertThatThrownBy { engine.run() }.isInstanceOf<IllegalStateException>()
       } finally {
         release.countDown()
       }

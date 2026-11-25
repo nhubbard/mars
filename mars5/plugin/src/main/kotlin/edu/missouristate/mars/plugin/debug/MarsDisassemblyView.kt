@@ -30,6 +30,7 @@ import edu.missouristate.mars.plugin.run.runMessages
 import edu.missouristate.mars.plugin.topicOf
 import edu.missouristate.mars.simulator.BackStepper.ExecutedInstruction
 import edu.missouristate.mars.util.Binary
+import edu.missouristate.mars.util.javaClassOf
 import java.awt.Font
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
@@ -180,7 +181,7 @@ internal class MarsDisassemblyView(
           sortableColumn(MarsDisassemblyColumn.INSTRUCTION, DisassemblyRow::instruction),
           sortableColumn(MarsDisassemblyColumn.SOURCE, ::sourceLabel),
           object : ColumnInfo<DisassemblyRow, Icon>(MarsDisassemblyColumn.BREAKPOINT.title) {
-            override fun getColumnClass() = Icon::class.java
+            override fun getColumnClass() = javaClassOf<Icon>()
 
             override fun valueOf(item: DisassemblyRow): Icon? = breakpointIcon(item.address)
           },

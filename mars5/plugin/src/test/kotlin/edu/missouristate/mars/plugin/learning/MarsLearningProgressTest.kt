@@ -1,5 +1,6 @@
 package edu.missouristate.mars.plugin.learning
 
+import com.intellij.configurationStore.deserialize
 import com.intellij.openapi.components.service
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.util.xmlb.XmlSerializer
@@ -135,10 +136,10 @@ class MarsLearningProgressTest {
     val pending = progress.beginCheck(lesson, "pending", "source-a")
     val xml = XmlSerializer.serialize(progress.getState())
     val restored = MarsLearningProgress()
-    restored.loadState(XmlSerializer.deserialize(xml, MarsLearningProgress.Progress::class.java))
+    restored.loadState(deserialize<MarsLearningProgress.Progress>(xml))
     assertEquals(progress.snapshot(lesson), restored.snapshot(lesson))
     assertFalse(restored.finishCheck(pending, true))
-    progress.loadState(XmlSerializer.deserialize(xml, MarsLearningProgress.Progress::class.java))
+    progress.loadState(deserialize<MarsLearningProgress.Progress>(xml))
     assertFalse(progress.finishCheck(pending, true))
     assertEquals(setOf("done"), restored.snapshot(lesson)!!.successfulChecks)
     val snapshot = restored.snapshot(lesson)!!
@@ -179,10 +180,7 @@ class MarsLearningProgressTest {
     assertTrue(progress.finishCheck(outside, true))
     val restored = MarsLearningProgress()
     restored.loadState(
-        XmlSerializer.deserialize(
-            XmlSerializer.serialize(progress.getState()),
-            MarsLearningProgress.Progress::class.java,
-        ),
+        deserialize<MarsLearningProgress.Progress>(XmlSerializer.serialize(progress.getState())),
     )
     assertTrue(restored.canRecover(scope))
     restored.open(lesson, "edited-source")
@@ -383,10 +381,7 @@ class MarsLearningProgressTest {
     progress.open(lesson, "edited")
     val restored = MarsLearningProgress()
     restored.loadState(
-        XmlSerializer.deserialize(
-            XmlSerializer.serialize(progress.getState()),
-            MarsLearningProgress.Progress::class.java,
-        ),
+        deserialize<MarsLearningProgress.Progress>(XmlSerializer.serialize(progress.getState())),
     )
     assertEquals(1, restored.snapshot(lesson)!!.completedAssessments)
     assertTrue(restored.resetRecoverably(setOf(lesson)))

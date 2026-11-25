@@ -4,6 +4,7 @@ import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.mips.instructions.basic.CompactComparison
 import edu.missouristate.mars.mips.instructions.basic.InstrCompactCompareBranch
 import edu.missouristate.mars.mips.instructions.basic.release6FloatFactories
+import edu.missouristate.mars.util.javaClassOf
 import java.io.BufferedReader
 import java.io.IOException
 import java.util.List.copyOf
@@ -329,7 +330,7 @@ class InstructionLoader {
 
   private fun pseudoOps(): BufferedReader {
     val input =
-        InstructionLoader::class.java.getResourceAsStream("/PseudoOps.txt")
+        javaClassOf<InstructionLoader>().getResourceAsStream("/PseudoOps.txt")
             ?: throw IllegalStateException("Missing instruction resource: /PseudoOps.txt")
     return input.bufferedReader(Charsets.UTF_8)
   }

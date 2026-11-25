@@ -1,6 +1,7 @@
 package edu.missouristate.mars
 
 import edu.missouristate.mars.core.MarsContext
+import edu.missouristate.mars.util.javaClassOf
 import java.net.URISyntaxException
 import java.net.URL
 import java.nio.file.Path
@@ -97,7 +98,7 @@ internal class AssemblerSmokeTest {
       val resource = "/testPrograms/$filename"
       val url: URL? =
           Objects.requireNonNull<URL?>(
-              AssemblerSmokeTest::class.java.getResource(resource),
+              javaClassOf<AssemblerSmokeTest>().getResource(resource),
               resource,
           )
       return Path.of(url!!.toURI()).toString()

@@ -28,6 +28,8 @@ import edu.missouristate.mars.mips.instructions.basic.InstrMult
 import edu.missouristate.mars.mips.instructions.basic.InstrSyscall
 import edu.missouristate.mars.mips.instructions.syscalls.AbstractSyscall
 import edu.missouristate.mars.simulator.Exceptions.ARITHMETIC_OVERFLOW_EXCEPTION
+import edu.missouristate.mars.testing.isInstanceOf
+import edu.missouristate.mars.util.javaClassOf
 import java.util.concurrent.atomic.AtomicInteger
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
@@ -145,7 +147,7 @@ internal class InstructionContextTest {
     context.registerFile.setValue(9, 1)
     Assertions.assertThatThrownBy { execute(InstrAdd(), context, 10, 8, 9) }
         .isInstanceOfSatisfying<ProcessingException?>(
-            ProcessingException::class.java,
+            javaClassOf<ProcessingException>(),
         ) { error ->
           Assertions.assertThat(
                   checkNotNull(error!!.errors()).generateErrorReport(),
@@ -159,7 +161,7 @@ internal class InstructionContextTest {
     Assertions.assertThat(context.coprocessor0.getValue(Coprocessor0State.STATUS) and 2)
         .isEqualTo(2)
     Assertions.assertThatThrownBy { execute(InstrLw(), context, 10, 3, 0) }
-        .isInstanceOf(ProcessingException::class.java)
+        .isInstanceOf<ProcessingException>()
     Assertions.assertThat(context.coprocessor0.getValue(Coprocessor0State.VADDR)).isEqualTo(3)
   }
 
@@ -190,7 +192,7 @@ internal class InstructionContextTest {
     first.registerFile.setValue(4, 7)
     Assertions.assertThatThrownBy { execute(syscall, first) }
         .isInstanceOfSatisfying<ProcessingException?>(
-            ProcessingException::class.java,
+            javaClassOf<ProcessingException>(),
         ) { error ->
           Assertions.assertThat(error!!.errors()).isNull()
         }

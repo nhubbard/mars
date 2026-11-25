@@ -55,6 +55,7 @@ import edu.missouristate.mars.plugin.run.MarsRunState
 import edu.missouristate.mars.plugin.run.runMessages
 import edu.missouristate.mars.simulator.BackStepper.MemoryWrite
 import edu.missouristate.mars.simulator.SimulatorEngine
+import edu.missouristate.mars.util.javaClassOf
 import java.nio.file.Path
 import kotlin.io.path.invariantSeparatorsPathString
 import kotlinx.coroutines.CompletableDeferred
@@ -135,7 +136,7 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
   private inline fun <reified T : XBreakpointType<B, *>, B : XBreakpoint<*>> bindingHandler(
       registered: MutableSet<B>,
   ): XBreakpointHandler<B> =
-      object : XBreakpointHandler<B>(T::class.java) {
+      object : XBreakpointHandler<B>(javaClassOf<T>()) {
         override fun registerBreakpoint(breakpoint: B) {
           synchronized(bindings) {
             registered.add(breakpoint)

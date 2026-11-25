@@ -1,6 +1,5 @@
 package edu.missouristate.mars.plugin.language
 
-import com.intellij.DynamicBundle
 import com.intellij.lang.annotation.AnnotationHolder
 import com.intellij.lang.annotation.Annotator
 import com.intellij.lang.annotation.HighlightSeverity
@@ -8,6 +7,7 @@ import com.intellij.openapi.components.service
 import com.intellij.psi.PsiElement
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.analysis.closesRootlessMipsIncludeCycle
+import edu.missouristate.mars.plugin.dynamicBundleOf
 import edu.missouristate.mars.plugin.language.psi.MipsStringLiteral
 import edu.missouristate.mars.plugin.language.psi.mipsIncludeSites
 
@@ -27,4 +27,4 @@ internal class MipsIncludeCycleAnnotator : Annotator {
   }
 }
 
-private val bundle = DynamicBundle(MipsIncludeCycleAnnotator::class.java, "messages.MarsBundle")
+private val bundle = dynamicBundleOf<MipsIncludeCycleAnnotator>()

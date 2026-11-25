@@ -20,6 +20,12 @@ counts include the existing helper's implementation.
    and strict plugin/generated-parser coverage gates pass. Test class tokens
    decreased from 943 to 467.
 2. Narrow reified interoperability helpers, subsystem organization, and bundles.
+   Complete: 2,450 core, 317 CLI, 8 datapath, and 83 selected plugin tests pass;
+   all affected modules and benchmark sources compile. Every new production
+   helper line is covered through a real consumer. Test-only adapters stay in
+   test sources. All bundle construction uses the existing helper. The audit
+   now finds zero test class literals and four elsewhere (three in the two
+   class-token helpers and one in the independent grammar generator).
 3. Dagger builder receiver DSL, retaining Dagger's validation.
 4. Native listener implementations with explicit lifetimes and callback DSLs.
 5. Completion providers and table column builders.
@@ -36,6 +42,20 @@ Every phase is reviewed, compiled, tested, and committed before the next begins.
   `childOfType` directly. Neither substitution includes the receiver itself.
 - `descendantsOfType` includes its root and returns a lazy sequence. It cannot
   mechanically replace `findChildrenOfType`, which excludes the root and returns
-  an unmodifiable collection. Preserve both traversal and collection contracts.
+  a collection annotated unmodifiable by the platform. Preserve both traversal and collection contracts.
 - `runWriteAction` is the platform Kotlin wrapper for the same synchronous write
   action. These migrations do not introduce dispatching, suspension, or retries.
+
+- Reified `T::class.java` boxes primitive type arguments. `javaClassOf<T>()`
+  explicitly recovers the primitive token where available; `boxedClassOf<T>()`
+  retains the object token. Object-instance filtering and AssertJ adapters use
+  boxed tokens. Tests cover primitive/reference distinctions and array components.
+- PSI pattern captures retain the nullable generic type expected by the Java
+  rename-validator contract; matching still rejects objects outside that type.
+- Typed Swing, PSI, event, producer, and debugger helpers delegate to native APIs.
+  Traverser filtering returns the native lazy `JBIterable`, not an eager list.
+- The standalone grammar generator deliberately retains its class literal: its
+  isolated classpath does not include MARS runtime helpers. Adding a runtime
+  dependency solely to remove that literal would weaken the build boundary.
+- Test-only XML deserialization uses the existing platform Kotlin function.
+  AssertJ extensions remain test-only and return the original assertion objects.

@@ -6,6 +6,7 @@ import com.intellij.openapi.wm.ToolWindowType
 import com.intellij.openapi.wm.ex.ToolWindowEx
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.util.ui.JBUI
+import edu.missouristate.mars.util.javaClassOf
 import java.lang.reflect.Proxy
 import javax.swing.JPanel
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -34,8 +35,8 @@ class MarsLearningPresentationTest {
     MarsLearningPresentation.fit(null)
     val unsupported =
         Proxy.newProxyInstance(
-            ToolWindow::class.java.classLoader,
-            arrayOf(ToolWindow::class.java),
+            javaClassOf<ToolWindow>().classLoader,
+            arrayOf(javaClassOf<ToolWindow>()),
         ) { _, _, _ ->
           error("Unsupported window must not be inspected")
         } as ToolWindow
@@ -64,8 +65,8 @@ class MarsLearningPresentationTest {
     val stretches = mutableListOf<Int>()
     val window =
         Proxy.newProxyInstance(
-            ToolWindowEx::class.java.classLoader,
-            arrayOf(ToolWindowEx::class.java),
+            javaClassOf<ToolWindowEx>().classLoader,
+            arrayOf(javaClassOf<ToolWindowEx>()),
         ) { _, method, args ->
           when (method.name) {
             "getComponent" -> component

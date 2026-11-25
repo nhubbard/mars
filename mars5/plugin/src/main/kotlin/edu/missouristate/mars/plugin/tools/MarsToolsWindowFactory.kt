@@ -1,6 +1,5 @@
 package edu.missouristate.mars.plugin.tools
 
-import com.intellij.DynamicBundle
 import com.intellij.execution.ui.RunContentManager
 import com.intellij.ide.plugins.DynamicPluginListener
 import com.intellij.ide.plugins.IdeaPluginDescriptor
@@ -28,6 +27,8 @@ import com.intellij.ui.table.JBTable
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
 import com.intellij.util.ui.launchOnShow
+import edu.missouristate.mars.plugin.dynamicBundleOf
+import edu.missouristate.mars.plugin.platform.filterIsInstance
 import edu.missouristate.mars.plugin.run.MarsProcessHandler
 import edu.missouristate.mars.plugin.tools.MemoryGridDisplay.Mode
 import edu.missouristate.mars.plugin.tools.xray.XRayView
@@ -129,8 +130,7 @@ internal class MarsToolWindowUnloadListener(private val toolWindow: ToolWindow) 
   }
 }
 
-internal val toolsMessages =
-    DynamicBundle(MarsToolsWindowFactory::class.java, "messages.MarsBundle")
+internal val toolsMessages = dynamicBundleOf<MarsToolsWindowFactory>()
 
 internal fun marsToolPanel(init: Panel.() -> Unit): DialogPanel =
     panel(init).apply {
@@ -153,7 +153,7 @@ internal fun scrollableToolPanel(
 ) =
     ScrollPaneFactory.createScrollPane(body, true).also {
       it.horizontalScrollBarPolicy = HORIZONTAL_SCROLLBAR_NEVER
-      UIUtil.uiTraverser(body).filter(JComponent::class.java).forEach { control ->
+      UIUtil.uiTraverser(body).filterIsInstance<JComponent>().forEach { control ->
         control.whenFocusGained(owner) {
           // Scroll the tool panel even when the focused control handles scrolling internally.
           val target = focusTargets[control] ?: control

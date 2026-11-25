@@ -59,6 +59,8 @@ import edu.missouristate.mars.plugin.tools.MemoryGridDisplay.Base
 import edu.missouristate.mars.plugin.tools.xray.XRayUnit
 import edu.missouristate.mars.plugin.tools.xray.XRayView
 import edu.missouristate.mars.plugin.tools.xray.xRayLabel
+import edu.missouristate.mars.plugin.ui.findComponentsOfType
+import edu.missouristate.mars.util.javaClassOf
 import java.awt.Color
 import java.awt.event.ActionEvent
 import java.awt.event.FocusEvent
@@ -124,7 +126,7 @@ class InstructionCounterPlatformTest {
           val selector = MarsToolExecutionSelector(project) {}.component
           val body = marsToolPanel { marsExecutionRow(selector) }
           val label =
-              UIUtil.findComponentsOfType(body, JLabel::class.java).single {
+              findComponentsOfType<JLabel>(body).single {
                 it.labelFor === selector
               }
           for (width in listOf(180, 640)) {
@@ -270,54 +272,54 @@ class InstructionCounterPlatformTest {
         val marsBot = panels[10]
         val (floatSelector, floatRegister) =
             withContext(Dispatchers.EDT) {
-              UIUtil.findComponentsOfType(floating, JComboBox::class.java)
+              findComponentsOfType<JComboBox<*>>(floating)
                   .filterNot { it.getItemAt(0) is Format }
                   .sortedBy { it.itemCount }
             }
         fun floatField(columns: Int) =
-            UIUtil.findComponentsOfType(floating, JBTextField::class.java).single {
+            findComponentsOfType<JBTextField>(floating).single {
               it.columns == columns
             }
         fun floatLabels() =
-            UIUtil.findComponentsOfType(floating, JBLabel::class.java).map { it.text } +
-                UIUtil.findComponentsOfType(floating, JEditorPane::class.java).map {
+            findComponentsOfType<JBLabel>(floating).map { it.text } +
+                findComponentsOfType<JEditorPane>(floating).map {
                   it.document.getText(0, it.document.length).trim()
                 }
         val cacheSelector =
             withContext(Dispatchers.EDT) {
-              UIUtil.findComponentsOfType(cache, JComboBox::class.java).single { it.itemCount == 0 }
+              findComponentsOfType<JComboBox<*>>(cache).single { it.itemCount == 0 }
             }
         val selector =
             withContext(Dispatchers.EDT) {
-              UIUtil.findComponentsOfType(panel, JComboBox::class.java).single()
+              findComponentsOfType<JComboBox<*>>(panel).single()
             }
         val statsSelector =
             withContext(Dispatchers.EDT) {
-              UIUtil.findComponentsOfType(statistics, JComboBox::class.java).single()
+              findComponentsOfType<JComboBox<*>>(statistics).single()
             }
         val branchSelector =
             withContext(Dispatchers.EDT) {
-              UIUtil.findComponentsOfType(branches, JComboBox::class.java).single {
+              findComponentsOfType<JComboBox<*>>(branches).single {
                 it.itemCount == 0
               }
             }
         val bitmapSelector =
             withContext(Dispatchers.EDT) {
-              UIUtil.findComponentsOfType(bitmap, JComboBox::class.java).single {
+              findComponentsOfType<JComboBox<*>>(bitmap).single {
                 it.itemCount == 0
               }
             }
         val referenceSelector =
             withContext(Dispatchers.EDT) {
-              UIUtil.findComponentsOfType(references, JComboBox::class.java).single {
+              findComponentsOfType<JComboBox<*>>(references).single {
                 it.itemCount == 0
               }
             }
         fun button(text: String, component: JComponent = panel) =
-            UIUtil.findComponentsOfType(component, JButton::class.java).single { it.text == text }
-        fun labels() = UIUtil.findComponentsOfType(panel, JBLabel::class.java).map { it.text }
+            findComponentsOfType<JButton>(component).single { it.text == text }
+        fun labels() = findComponentsOfType<JBLabel>(panel).map { it.text }
         fun percentages() =
-            UIUtil.findComponentsOfType(statistics, JProgressBar::class.java).associate {
+            findComponentsOfType<JProgressBar>(statistics).associate {
               it.accessibleContext.accessibleName to it.value
             }
 
@@ -390,8 +392,7 @@ class InstructionCounterPlatformTest {
         try {
           lateinit var editor: BitmapDisplayEditor
           fun bitmapView() = editor.component
-          fun canvas(panel: JComponent) =
-              UIUtil.findComponentsOfType(panel, MemoryGridCanvas::class.java).single()
+          fun canvas(panel: JComponent) = findComponentsOfType<MemoryGridCanvas>(panel).single()
           fun gridKey(key: Int, panel: JComponent = references) {
             val grid = canvas(panel)
             grid
@@ -406,7 +407,7 @@ class InstructionCounterPlatformTest {
           fun assertInspection(text: String, panel: JComponent = references) {
             assertEquals(text, canvas(panel).accessibleContext.accessibleDescription)
             assertTrue(
-                UIUtil.findComponentsOfType(panel, JEditorPane::class.java).any {
+                findComponentsOfType<JEditorPane>(panel).any {
                   paneText(it) == text
                 },
             )
@@ -433,7 +434,7 @@ class InstructionCounterPlatformTest {
           }
           @Suppress("UNCHECKED_CAST")
           fun baseChoice() =
-              UIUtil.findComponentsOfType(bitmap, JComboBox::class.java).single {
+              findComponentsOfType<JComboBox<*>>(bitmap).single {
                 it.itemCount > 0 && it.getItemAt(0) is Base
               } as JComboBox<Base>
           fun baseLabel(choice: Base = Base.STATIC_DATA): String {
@@ -457,8 +458,7 @@ class InstructionCounterPlatformTest {
               settings: JButton,
               result: JComponent,
           ) {
-            val label =
-                UIUtil.findComponentsOfType(panel, JLabel::class.java).single { it.text == title }
+            val label = findComponentsOfType<JLabel>(panel).single { it.text == title }
             val section = label.accessibleContext
             assertTrue(section.accessibleStateSet.contains(AccessibleState.COLLAPSED))
             assertFalse(settings.isVisible)
@@ -476,9 +476,8 @@ class InstructionCounterPlatformTest {
             assertTrue(section.accessibleAction.doAccessibleAction(0))
           }
           fun latestBranch() =
-              UIUtil.findComponentsOfType(branches, JLabel::class.java)
-                  .single { it.text == "Latest branch" }
-                  .labelFor as JEditorPane
+              findComponentsOfType<JLabel>(branches).single { it.text == "Latest branch" }.labelFor
+                  as JEditorPane
           fun latestBranchText() = paneText(latestBranch())
           fun assertCompactSettings(
               viewport: JViewport,
@@ -488,8 +487,7 @@ class InstructionCounterPlatformTest {
           ) {
             val body = assertInstanceOf<JComponent>(viewport.view)
             fun setting(name: String): Pair<JLabel, JComboBox<*>> {
-              val label =
-                  UIUtil.findComponentsOfType(body, JLabel::class.java).single { it.text == name }
+              val label = findComponentsOfType<JLabel>(body).single { it.text == name }
               val combo = assertInstanceOf<JComboBox<*>>(label.labelFor)
               assertEquals(label.preferredSize.width, label.width)
               assertTrue(label.y + label.height <= combo.y)
@@ -514,7 +512,7 @@ class InstructionCounterPlatformTest {
             for (width in listOf(240, 610)) {
               statistics.size = JBUI.size(width, 460)
               statistics.doLayout()
-              val bars = UIUtil.findComponentsOfType(statistics, JProgressBar::class.java)
+              val bars = findComponentsOfType<JProgressBar>(statistics)
               assertEquals(1, bars.map { it.x }.distinct().size)
               assertTrue(bars.all { it.width in 1..it.preferredSize.width })
               assertTrue(bars.all { it.x + it.width <= statistics.width }) {
@@ -525,10 +523,10 @@ class InstructionCounterPlatformTest {
             assertTrue("No captured instructions" in xrayText())
             assertFalse(button("Connect").isEnabled)
             assertFalse(button("Reset").isEnabled)
-            val branchTable = UIUtil.findComponentsOfType(branches, JBTable::class.java).single()
+            val branchTable = findComponentsOfType<JBTable>(branches).single()
             val branchTableScroll =
                 assertInstanceOf<JScrollPane>(
-                    SwingUtilities.getAncestorOfClass(JScrollPane::class.java, branchTable),
+                    SwingUtilities.getAncestorOfClass(javaClassOf<JScrollPane>(), branchTable),
                 )
             assertCollapsedSettings(
                 branches,
@@ -543,18 +541,18 @@ class InstructionCounterPlatformTest {
             assertFalse(button("Apply and Reset", branches).isEnabled)
             assertFalse(button("Apply and Clear", bitmap).isEnabled)
             val unselectedAddress =
-                UIUtil.findComponentsOfType(bitmap, JBTextField::class.java).single {
+                findComponentsOfType<JBTextField>(bitmap).single {
                   it.columns == 20
                 }
             val addressValidator = ComponentValidator.getInstance(unselectedAddress).orElseThrow()
             addressValidator.revalidate()
             assertNull(addressValidator.validationInfo)
             assertFalse(button("Apply and Reset", cache).isEnabled)
-            val cacheTable = UIUtil.findComponentsOfType(cache, JBTable::class.java).single()
+            val cacheTable = findComponentsOfType<JBTable>(cache).single()
             assertEquals(0, cacheTable.rowCount)
             val cacheTableScroll =
                 assertInstanceOf<JScrollPane>(
-                    SwingUtilities.getAncestorOfClass(JScrollPane::class.java, cacheTable),
+                    SwingUtilities.getAncestorOfClass(javaClassOf<JScrollPane>(), cacheTable),
                 )
             assertCollapsedSettings(
                 cache,
@@ -572,8 +570,7 @@ class InstructionCounterPlatformTest {
               )
             }
             val memoryDock = layoutDock(references, 280, 460)
-            val gridChoice =
-                UIUtil.findComponentsOfType(references, JBCheckBox::class.java).single()
+            val gridChoice = findComponentsOfType<JBCheckBox>(references).single()
             val gridBounds =
                 SwingUtilities.convertRectangle(
                     gridChoice.parent,
@@ -582,9 +579,9 @@ class InstructionCounterPlatformTest {
                 )
             assertTrue(gridBounds.maxX <= memoryDock.viewport.viewRect.maxX)
             assertEquals(gridChoice.preferredSize.width, gridChoice.width)
-            val threshold = UIUtil.findComponentsOfType(references, JSpinner::class.java).single()
+            val threshold = findComponentsOfType<JSpinner>(references).single()
             val thresholdLabel =
-                UIUtil.findComponentsOfType(references, JLabel::class.java).single {
+                findComponentsOfType<JLabel>(references).single {
                   it.labelFor === threshold
                 }
             assertTrue(thresholdLabel.y + thresholdLabel.height <= threshold.y)
@@ -594,9 +591,9 @@ class InstructionCounterPlatformTest {
               assertFalse(scroll.horizontalScrollBar.isVisible)
               val viewport = scroll.viewport
               val body = viewport.view
-              val table = UIUtil.findComponentsOfType(panel, JBTable::class.java).single()
+              val table = findComponentsOfType<JBTable>(panel).single()
               assertEquals(JTable.AUTO_RESIZE_OFF, table.autoResizeMode)
-              val inner = SwingUtilities.getAncestorOfClass(JScrollPane::class.java, table)
+              val inner = SwingUtilities.getAncestorOfClass(javaClassOf<JScrollPane>(), table)
               val tableBounds = SwingUtilities.convertRectangle(inner.parent, inner.bounds, body)
               assertTrue(tableBounds.height >= JBUI.scale(84))
               assertTrue(tableBounds.maxY > viewport.viewRect.maxY)
@@ -637,7 +634,7 @@ class InstructionCounterPlatformTest {
 
               if (panel === bitmap) {
                 assertTrue(
-                    UIUtil.findComponentsOfType(panel, MemoryGridCanvas::class.java).isEmpty(),
+                    findComponentsOfType<MemoryGridCanvas>(panel).isEmpty(),
                 )
                 val open = button("Open Display", panel)
                 assertFalse(open.isEnabled)
@@ -649,7 +646,7 @@ class InstructionCounterPlatformTest {
               assertTrue(gridBounds.height >= JBUI.scale(128))
               assertTrue(gridBounds.maxY > viewport.viewRect.maxY)
               val details =
-                  UIUtil.findComponentsOfType(panel, JEditorPane::class.java).single {
+                  findComponentsOfType<JEditorPane>(panel).single {
                     paneText(it) == grid.accessibleContext.accessibleDescription
                   }
               grid.focusListeners.forEach {
@@ -713,7 +710,7 @@ class InstructionCounterPlatformTest {
             val fractionField = floatField(23)
             fractionField.parent.doLayout()
             val fractionLabel =
-                UIUtil.findComponentsOfType(floating, JLabel::class.java).single {
+                findComponentsOfType<JLabel>(floating).single {
                   it.labelFor === fractionField
                 }
             val labelBounds =
@@ -737,7 +734,7 @@ class InstructionCounterPlatformTest {
                     fractionField.width - fractionField.insets.left - fractionField.insets.right,
             )
             val formula =
-                UIUtil.findComponentsOfType(floating, JEditorPane::class.java).single {
+                findComponentsOfType<JEditorPane>(floating).single {
                   it.document.getText(0, it.document.length).contains("(binary significand)")
                 }
             val formulaWidthInNarrowDock = formula.width
@@ -787,7 +784,7 @@ class InstructionCounterPlatformTest {
           val second = launch(debug, 2, "nop\nnop\n")
           waitFor(2, "1 (100%)")
           withContext(Dispatchers.EDT) {
-            val cacheLogging = UIUtil.findComponentsOfType(cache, JBCheckBox::class.java).single()
+            val cacheLogging = findComponentsOfType<JBCheckBox>(cache).single()
             assertEquals(1, cacheSelector.selectedIndex)
             cacheLogging.doClick()
             cacheSelector.selectedIndex = 0
@@ -1037,23 +1034,21 @@ class InstructionCounterPlatformTest {
           }
           pollAssertionsAsync(5.seconds, 30.milliseconds) {
             withContext(Dispatchers.EDT) {
-              val status =
-                  UIUtil.findComponentsOfType(cache, JEditorPane::class.java).map(::paneText)
+              val status = findComponentsOfType<JEditorPane>(cache).map(::paneText)
               assertTrue("128 bytes | Accesses 2" in status, status.toString())
               assertTrue("Hits 1 | Misses 1" in status, status.toString())
               assertTrue(
-                  UIUtil.findComponentsOfType(cache, JBLabel::class.java).any { it.text == "50%" },
+                  findComponentsOfType<JBLabel>(cache).any { it.text == "50%" },
               )
               assertEquals(
                   50,
-                  UIUtil.findComponentsOfType(cache, JProgressBar::class.java).single().value,
+                  findComponentsOfType<JProgressBar>(cache).single().value,
               )
             }
           }
           withContext(Dispatchers.EDT) {
-            val hitRate = UIUtil.findComponentsOfType(cache, JProgressBar::class.java).single()
-            val percent =
-                UIUtil.findComponentsOfType(cache, JBLabel::class.java).single { it.text == "50%" }
+            val hitRate = findComponentsOfType<JProgressBar>(cache).single()
+            val percent = findComponentsOfType<JBLabel>(cache).single { it.text == "50%" }
             for (width in listOf(280, 610)) {
               val dock = layoutDock(cache, width, 460)
               assertCompactSettings(dock.viewport, "Cache blocks", "Words per block")
@@ -1064,10 +1059,10 @@ class InstructionCounterPlatformTest {
               if (width == 610) assertEquals(hitRate.preferredSize.width, hitRate.width)
               assertTrue(hitRate.x + hitRate.width <= dock.viewport.extentSize.width)
             }
-            val blockTable = UIUtil.findComponentsOfType(cache, JBTable::class.java).single()
+            val blockTable = findComponentsOfType<JBTable>(cache).single()
             val tag = blockTable.prepareRenderer(blockTable.getCellRenderer(0, 2), 0, 2)
             assertTrue(tag.preferredSize.width <= blockTable.getCellRect(0, 2, false).width)
-            val combos = UIUtil.findComponentsOfType(cache, JComboBox::class.java)
+            val combos = findComponentsOfType<JComboBox<*>>(cache)
             val placement = combos.single { it.selectedItem is Placement }
             val replacement = combos.single { it.selectedItem is Replacement }
             combos.filter { it.itemCount == 12 }.forEach { it.selectedItem = 2 }
@@ -1078,7 +1073,7 @@ class InstructionCounterPlatformTest {
                 DataCacheSimulator.Options(2, 2, Placement.FULL, 2, Replacement.RANDOM),
                 dataCache.snapshot().options,
             )
-            val logToggle = UIUtil.findComponentsOfType(cache, JBCheckBox::class.java).single()
+            val logToggle = findComponentsOfType<JBCheckBox>(cache).single()
             logToggle.doClick()
             assertTrue(dataCache.snapshot().logging)
             AccessOrigin.duringExecution<Unit, RuntimeException> {
@@ -1089,7 +1084,7 @@ class InstructionCounterPlatformTest {
             }
             button("Disconnect", cache).doClick()
             assertFalse(dataCache.snapshot().connected)
-            val table = UIUtil.findComponentsOfType(cache, JBTable::class.java).single()
+            val table = findComponentsOfType<JBTable>(cache).single()
             assertEquals(
                 listOf("Block", "Set", "Tag", "Last access", "Last result"),
                 (0 until table.columnCount).map(table::getColumnName),
@@ -1100,7 +1095,7 @@ class InstructionCounterPlatformTest {
                 (0 until table.columnCount).map { table.getValueAt(0, it) },
             )
             assertEquals("Miss", table.getValueAt(1, 4))
-            val log = UIUtil.findComponentsOfType(cache, JBTextArea::class.java).single()
+            val log = findComponentsOfType<JBTextArea>(cache).single()
             assertTrue(
                 log.text.contains(
                     "Write 0x10010000 · tag 0x02002000 · set 0 · block 0 · Miss, filled empty block",
@@ -1157,17 +1152,15 @@ class InstructionCounterPlatformTest {
             assertEquals(Color.BLUE.rgb, selectedPixel.getRGB(1, 128))
             assertEquals(Color.WHITE.rgb, selectedPixel.getRGB(1 + JBUI.scale(7) / 2, 128))
             assertEquals(null, tooltip(references, -1, 10))
-            UIUtil.findComponentsOfType(references, JSpinner::class.java).single().value = 1
-            UIUtil.findComponentsOfType(references, ColorPanel::class.java).single().selectedColor =
-                Color.MAGENTA
+            findComponentsOfType<JSpinner>(references).single().value = 1
+            findComponentsOfType<ColorPanel>(references).single().selectedColor = Color.MAGENTA
             references.setSize(JBUI.scale(420), JBUI.scale(600))
             references.doLayout()
             val setColor = button("Set Color", references)
             assertTrue(setColor.width > 0 && setColor.x + setColor.width <= references.width)
             setColor.doClick()
             assertEquals(Color.MAGENTA.rgb, renderBitmap(references).getRGB(10, 10))
-            val boundaries =
-                UIUtil.findComponentsOfType(references, JBCheckBox::class.java).single()
+            val boundaries = findComponentsOfType<JBCheckBox>(references).single()
             boundaries.doClick()
             val withGrid = renderBitmap(references)
             assertTrue(withGrid.getRGB(0, 10) != withGrid.getRGB(10, 10))
@@ -1180,7 +1173,7 @@ class InstructionCounterPlatformTest {
             gridKey(KeyEvent.VK_RIGHT)
             assertInspection("0x10010004 · 1 accesses")
             assertEquals(Color.WHITE.rgb, renderBitmap(references).getRGB(32, 10))
-            UIUtil.findComponentsOfType(references, JComboBox::class.java)
+            findComponentsOfType<JComboBox<*>>(references)
                 .single { it.itemCount == 12 }
                 .selectedItem = 2
             button("Apply and Clear", references).doClick()
@@ -1206,7 +1199,7 @@ class InstructionCounterPlatformTest {
             button("Reset", bitmap).doClick()
             assertEquals(Base.HEAP, baseChoice().selectedItem)
             val custom =
-                UIUtil.findComponentsOfType(bitmap, JBTextField::class.java).single {
+                findComponentsOfType<JBTextField>(bitmap).single {
                   it.columns == 20
                 }
             val customValidator = ComponentValidator.getInstance(custom).orElseThrow()
@@ -1260,8 +1253,8 @@ class InstructionCounterPlatformTest {
           waitFor(1, "2 (100%)")
           pollAssertionsAsync(5.seconds, 30.milliseconds) {
             withContext(Dispatchers.EDT) {
-              val table = UIUtil.findComponentsOfType(branches, JBTable::class.java).single()
-              val log = UIUtil.findComponentsOfType(branches, JBTextArea::class.java).single()
+              val table = findComponentsOfType<JBTable>(branches).single()
+              val log = findComponentsOfType<JBTextArea>(branches).single()
               assertEquals(
                   listOf(
                       "Index",
@@ -1308,11 +1301,11 @@ class InstructionCounterPlatformTest {
             }
           }
           withContext(Dispatchers.EDT) {
-            val table = UIUtil.findComponentsOfType(branches, JBTable::class.java).single()
-            val choices = UIUtil.findComponentsOfType(branches, JComboBox::class.java)
+            val table = findComponentsOfType<JBTable>(branches).single()
+            val choices = findComponentsOfType<JComboBox<*>>(branches)
             choices.single { it.itemCount == 3 }.selectedItem = 8
             choices.single { it.itemCount == 2 }.selectedItem = 2
-            UIUtil.findComponentsOfType(branches, JBCheckBox::class.java).single().isSelected = true
+            findComponentsOfType<JBCheckBox>(branches).single().isSelected = true
             button("Disconnect", branches).doClick()
             button("Apply and Reset", branches).doClick()
             assertEquals(8, table.rowCount)
@@ -1321,10 +1314,7 @@ class InstructionCounterPlatformTest {
             assertEquals("", table.getValueAt(1, 6))
             assertEquals("No branches recorded.", latestBranchText())
             assertTrue(
-                UIUtil.findComponentsOfType(branches, JBTextArea::class.java)
-                    .single()
-                    .text
-                    .isEmpty(),
+                findComponentsOfType<JBTextArea>(branches).single().text.isEmpty(),
             )
             button("Connect", branches).doClick()
             button("Reset", branches).doClick()
@@ -1360,11 +1350,9 @@ class InstructionCounterPlatformTest {
           ) {
             pollAssertionsAsync(5.seconds, 30.milliseconds) {
               withContext(Dispatchers.EDT) {
-                val cacheTable = UIUtil.findComponentsOfType(cache, JBTable::class.java).single()
-                val branchTable =
-                    UIUtil.findComponentsOfType(branches, JBTable::class.java).single()
-                val branchLog =
-                    UIUtil.findComponentsOfType(branches, JBTextArea::class.java).single()
+                val cacheTable = findComponentsOfType<JBTable>(cache).single()
+                val branchTable = findComponentsOfType<JBTable>(branches).single()
+                val branchLog = findComponentsOfType<JBTextArea>(branches).single()
                 assertTrue(cacheTable.rowCount > 1 && branchTable.rowCount > 1)
                 assertEquals(accesses, cacheTable.getValueAt(0, 3))
                 assertEquals(decisions, branchLog.text.lineSequence().count { it.isNotBlank() })
@@ -1381,7 +1369,7 @@ class InstructionCounterPlatformTest {
               button("Reset", panel).doClick()
               assertEquals(
                   -1,
-                  UIUtil.findComponentsOfType(panel, JBTable::class.java).single().selectedRow,
+                  findComponentsOfType<JBTable>(panel).single().selectedRow,
               )
             }
             assertTrue(checkNotNull(liveTablesRun.manager).removeContent(liveTablesRun, true))
@@ -1412,7 +1400,7 @@ class InstructionCounterPlatformTest {
           val precision =
               withContext(Dispatchers.EDT) {
                 assertNull(wideProcess.floatingDoublewordBits(31))
-                UIUtil.findComponentsOfType(floating, JComboBox::class.java).single {
+                findComponentsOfType<JComboBox<*>>(floating).single {
                   it.getItemAt(0) is Format
                 }
               }
@@ -1434,13 +1422,13 @@ class InstructionCounterPlatformTest {
                   },
               )
               val refBases =
-                  UIUtil.findComponentsOfType(references, JComboBox::class.java).single {
+                  findComponentsOfType<JComboBox<*>>(references).single {
                     it.itemCount > 0 && it.getItemAt(0) is Base
                   }
               assertTrue(
                   (0 until refBases.itemCount).any { refBases.getItemAt(it) == Base.WIDE_TEXT },
               )
-              val log = UIUtil.findComponentsOfType(branches, JBTextArea::class.java).single()
+              val log = findComponentsOfType<JBTextArea>(branches).single()
               assertTrue("0x0000000100400000 to No branch destination" in log.text)
               assertTrue("beqc" in latestBranchText())
             }
@@ -1514,13 +1502,13 @@ class InstructionCounterPlatformTest {
           val labProcess =
               labRun.getUserData(RunContentDescriptor.DESCRIPTOR_KEY)!!.processHandler
                   as MarsProcessHandler
-          fun labPanels() = UIUtil.findComponentsOfType(lab, JPanel::class.java)
+          fun labPanels() = findComponentsOfType<JPanel>(lab)
           pollAssertionsAsync(5.seconds, 30.milliseconds) {
             withContext(Dispatchers.EDT) { assertTrue(button("Connect", lab).isEnabled) }
           }
           withContext(Dispatchers.EDT) {
             assertTrue(
-                UIUtil.findComponentsOfType(lab, JToggleButton::class.java).none { it.isEnabled },
+                findComponentsOfType<JToggleButton>(lab).none { it.isEnabled },
             )
             button("Connect", lab).doClick()
           }
@@ -1529,7 +1517,7 @@ class InstructionCounterPlatformTest {
             withContext(Dispatchers.EDT) {
               assertTrue(labPanels().any { it.toolTipText == "Right display (0x3f)" })
               assertTrue(labPanels().any { it.toolTipText == "Left display (0x06)" })
-              val labels = UIUtil.findComponentsOfType(lab, JBLabel::class.java).map { it.text }
+              val labels = findComponentsOfType<JBLabel>(lab).map { it.text }
               assertTrue(
                   labels.containsAll(
                       listOf(
@@ -1539,7 +1527,7 @@ class InstructionCounterPlatformTest {
                   ),
               )
               assertTrue(
-                  UIUtil.findComponentsOfType(lab, JEditorPane::class.java).any {
+                  findComponentsOfType<JEditorPane>(lab).any {
                     it.document.getText(0, it.document.length).trim() ==
                         "Counter interrupt in 28 instructions"
                   },
@@ -1562,7 +1550,7 @@ class InstructionCounterPlatformTest {
             assertEquals(background, image.getRGB(JBUI.scale(20), JBUI.scale(33)))
             assertEquals("Right display (0x3f)", right.accessibleContext.accessibleName)
             val key =
-                UIUtil.findComponentsOfType(lab, JToggleButton::class.java).single {
+                findComponentsOfType<JToggleButton>(lab).single {
                   it.text == "A"
                 }
             val scroll = assertInstanceOf<JScrollPane>(lab)
@@ -1574,7 +1562,7 @@ class InstructionCounterPlatformTest {
             body.doLayout()
             key.parent.doLayout()
             val lastKey =
-                UIUtil.findComponentsOfType(lab, JToggleButton::class.java).single {
+                findComponentsOfType<JToggleButton>(lab).single {
                   it.text == "F"
                 }
             val bounds = SwingUtilities.convertRectangle(lastKey.parent, lastKey.bounds, body)
@@ -1594,7 +1582,7 @@ class InstructionCounterPlatformTest {
             assertFalse(key.isSelected)
             assertEquals("Right display (0x00)", right.toolTipText)
             assertTrue(
-                UIUtil.findComponentsOfType(lab, JBLabel::class.java).any {
+                findComponentsOfType<JBLabel>(lab).any {
                   it.text == "Right · 0x00"
                 },
             )
@@ -1609,9 +1597,9 @@ class InstructionCounterPlatformTest {
             assertTrue(checkNotNull(labRun.manager).removeContent(labRun, true))
           }
           waitFor(0, "0 (0%)")
-          fun robotClock() = UIUtil.findComponentsOfType(marsBot, JBTextField::class.java).single()
-          fun robotLabels() = UIUtil.findComponentsOfType(marsBot, JBLabel::class.java)
-          fun robotBoard() = UIUtil.findComponentsOfType(marsBot, MarsBotBoard::class.java).single()
+          fun robotClock() = findComponentsOfType<JBTextField>(marsBot).single()
+          fun robotLabels() = findComponentsOfType<JBLabel>(marsBot)
+          fun robotBoard() = findComponentsOfType<MarsBotBoard>(marsBot).single()
           fun paintRobot(width: Int, height: Int): BufferedImage {
             val board = robotBoard()
             board.setSize(width, height)

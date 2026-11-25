@@ -1,6 +1,5 @@
 package edu.missouristate.mars.plugin.language.psi
 
-import com.intellij.DynamicBundle
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElement
@@ -12,12 +11,13 @@ import edu.missouristate.mars.ErrorList
 import edu.missouristate.mars.assembler.Tokenizer
 import edu.missouristate.mars.plugin.analysis.mipsAssemblyRoots
 import edu.missouristate.mars.plugin.analysis.mipsSourceTimeline
+import edu.missouristate.mars.plugin.dynamicBundleOf
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.MipsFileType
 import edu.missouristate.mars.plugin.language.MipsLexer
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes
 
-private val bundle = DynamicBundle(MipsMacroFormal::class.java, "messages.MarsBundle")
+private val bundle = dynamicBundleOf<MipsMacroFormal>()
 private val formalTokens = setOf(MipsSyntaxTypes.PARAMETER, MipsSyntaxTypes.DOLLAR_WORD)
 
 internal fun formalRenameError(key: String) = IncorrectOperationException(bundle.getMessage(key))

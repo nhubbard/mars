@@ -1,6 +1,5 @@
 package edu.missouristate.mars.plugin.language.syntax
 
-import com.intellij.DynamicBundle
 import com.intellij.platform.syntax.SyntaxElementType
 import com.intellij.platform.syntax.element.SyntaxTokenTypes.WHITE_SPACE
 import com.intellij.platform.syntax.parser.SyntaxTreeBuilder
@@ -14,6 +13,7 @@ import edu.missouristate.mars.ErrorList
 import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.assembler.Tokenizer
 import edu.missouristate.mars.mips.instructions.InstructionDefaults
+import edu.missouristate.mars.plugin.dynamicBundleOf
 import edu.missouristate.mars.plugin.language.parser.MipsParser
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.BAD_CHARACTER
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.CHARACTER
@@ -55,7 +55,7 @@ private val spacing = setOf(WHITE_SPACE)
 private val separators = spacing + COMMA
 private val unfinishedIncludeRecoveryHeads =
     setOf(MACRO, END_MACRO, BAD_CHARACTER, UNCLOSED_CHARACTER, INVALID_CHARACTER)
-private val syntaxMessages = DynamicBundle(MipsScanner::class.java, "messages.MarsBundle")
+private val syntaxMessages = dynamicBundleOf<MipsScanner>()
 private const val detachedSignMessage = "syntax.operand.detached.sign"
 private val labelOffsetMnemonics by lazy {
   InstructionDefaults.editorCatalog()

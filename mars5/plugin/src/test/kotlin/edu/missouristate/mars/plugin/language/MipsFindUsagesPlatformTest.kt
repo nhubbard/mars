@@ -13,7 +13,6 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.search.LocalSearchScope
 import com.intellij.psi.search.searches.ReferencesSearch
-import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.testFramework.DumbModeTestUtils
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.common.timeoutRunBlocking
@@ -26,6 +25,7 @@ import edu.missouristate.mars.plugin.build.MarsBuildService
 import edu.missouristate.mars.plugin.build.MarsSourceSet
 import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
 import edu.missouristate.mars.plugin.language.psi.MipsMacroFormal
+import edu.missouristate.mars.plugin.language.psi.findChildrenOfType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -187,7 +187,7 @@ class MipsFindUsagesPlatformTest {
             }
         IndexingTestUtil.suspendUntilIndexesAreReady(current)
         val formals = readAction {
-          PsiTreeUtil.findChildrenOfType(headerFile, MipsMacroFormal::class.java).sortedBy {
+          findChildrenOfType<MipsMacroFormal>(headerFile).sortedBy {
             it.textOffset
           }
         }
@@ -444,8 +444,7 @@ class MipsFindUsagesPlatformTest {
         results.toSet()
       }
 
-  private fun declarations(file: PsiFile) =
-      PsiTreeUtil.findChildrenOfType(file, MipsDeclaration::class.java)
+  private fun declarations(file: PsiFile) = findChildrenOfType<MipsDeclaration>(file)
 
   private suspend fun usageLocations(target: PsiElement): Set<Pair<String, Int>> = readAction {
     fixture

@@ -24,9 +24,10 @@ import com.intellij.ui.UiInterceptors
 import com.intellij.ui.components.BrowserLink
 import com.intellij.ui.components.JBHtmlPane
 import com.intellij.ui.components.JBList
-import com.intellij.util.ui.UIUtil
 import edu.missouristate.mars.plugin.language.MipsDocumentationCatalog
 import edu.missouristate.mars.plugin.language.MipsSyscallDocumentation
+import edu.missouristate.mars.plugin.ui.findComponentsOfType
+import edu.missouristate.mars.util.javaClassOf
 import java.nio.file.Path
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -85,7 +86,7 @@ class MarsReferencePlatformTest {
           val opened = mutableListOf<String>()
           ApplicationManager.getApplication()
               .replaceService(
-                  BrowserLauncher::class.java,
+                  javaClassOf<BrowserLauncher>(),
                   object : BrowserLauncher() {
                     override fun open(url: String) = error("Expected browser navigation")
 
@@ -99,8 +100,7 @@ class MarsReferencePlatformTest {
               )
           try {
             inspectDialog("Mars.About") { dialog ->
-              val details =
-                  UIUtil.findComponentsOfType(dialog.contents, JBHtmlPane::class.java).single()
+              val details = findComponentsOfType<JBHtmlPane>(dialog.contents).single()
               val version =
                   PluginDetailsService.getInstance()
                       .findDetails(PluginId.getId("edu.missouristate.mars"))!!
@@ -108,9 +108,7 @@ class MarsReferencePlatformTest {
               assertTrue(details.text.contains("Installed MARS MIPS plugin version $version"))
               assertTrue(details.text.contains("Pete Sanderson and Kenneth Vollmar"))
               assertTrue(opened.isEmpty())
-              UIUtil.findComponentsOfType(dialog.contents, BrowserLink::class.java)
-                  .single()
-                  .doClick(0)
+              findComponentsOfType<BrowserLink>(dialog.contents).single().doClick(0)
               assertEquals(
                   listOf("https://github.com/dpetersanderson/MARS/blob/main/help/mipsref.pdf"),
                   opened,
@@ -128,9 +126,9 @@ class MarsReferencePlatformTest {
         withContext(Dispatchers.EDT) {
           inspectDialog("Mars.OpenReference") { dialog ->
             val content = dialog.contents
-            val search = UIUtil.findComponentsOfType(content, SearchTextField::class.java).single()
-            val topics = UIUtil.findComponentsOfType(content, JBList::class.java).single()
-            val details = UIUtil.findComponentsOfType(content, JBHtmlPane::class.java).single()
+            val search = findComponentsOfType<SearchTextField>(content).single()
+            val topics = findComponentsOfType<JBList<*>>(content).single()
+            val details = findComponentsOfType<JBHtmlPane>(content).single()
             assertEquals(search.textEditor, dialog.preferredFocusedComponent)
             assertEquals("Mars.Reference", dialog.dimensionKey)
             assertTrue(details.text.contains("Getting started with MARS"))
@@ -164,7 +162,7 @@ class MarsReferencePlatformTest {
     var inspected = false
     UiInterceptors.register(
         object :
-            UiInterceptors.UiInterceptor<MarsReferenceDialog>(MarsReferenceDialog::class.java) {
+            UiInterceptors.UiInterceptor<MarsReferenceDialog>(javaClassOf<MarsReferenceDialog>()) {
           override fun doIntercept(dialog: MarsReferenceDialog) {
             try {
               inspect(dialog)

@@ -23,7 +23,6 @@ import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.xdebugger.XDebugSession
 import com.intellij.xdebugger.XDebugSessionListener
 import com.intellij.xdebugger.XDebuggerManager
-import com.intellij.xdebugger.XDebuggerUtil
 import com.intellij.xdebugger.frame.XValueModifier.XModificationCallback
 import edu.missouristate.mars.api.InstructionSourceMap.Location
 import edu.missouristate.mars.plugin.run.MarsRunType
@@ -288,8 +287,7 @@ class MarsDebugObservationPlatformTest {
             val offset = example.indexOf("$mnemonic ", start)
             assertTrue(offset >= 0)
             val line = example.take(offset).count { it == '\n' }
-            val type =
-                XDebuggerUtil.getInstance().findBreakpointType(MarsLineBreakpointType::class.java)
+            val type = findBreakpointType<MarsLineBreakpointType>()
             WriteCommandAction.runWriteCommandAction(project) {
               XDebuggerManager.getInstance(project)
                   .breakpointManager

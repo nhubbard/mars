@@ -2,6 +2,7 @@ package edu.missouristate.mars.plugin.language
 
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemsHolder
+import com.intellij.configurationStore.deserialize
 import com.intellij.modcommand.ActionContext
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.command.WriteCommandAction
@@ -14,7 +15,6 @@ import com.intellij.psi.PsiElementVisitor
 import com.intellij.psi.PsiRecursiveElementWalkingVisitor
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
-import com.intellij.util.xmlb.XmlSerializer
 import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.plugin.build.MarsAssemblySettings
 import edu.missouristate.mars.plugin.language.inspection.MipsRelease6MergeInspection
@@ -174,7 +174,7 @@ class MipsRelease6MergePlatformTest {
                   Element("option").setAttribute("name", "target").setAttribute("value", "MARS32"),
               )
       settings.loadState(
-          XmlSerializer.deserialize(oldSettings, MarsAssemblySettings.Settings::class.java),
+          deserialize<MarsAssemblySettings.Settings>(oldSettings),
       )
       suspend fun mergeWarnings() =
           fixture

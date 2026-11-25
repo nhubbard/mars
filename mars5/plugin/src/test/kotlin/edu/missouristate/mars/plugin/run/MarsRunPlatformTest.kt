@@ -10,6 +10,7 @@ import com.intellij.build.events.FileMessageEvent
 import com.intellij.build.events.FinishBuildEvent
 import com.intellij.build.events.SkippedResult
 import com.intellij.build.events.StartBuildEvent
+import com.intellij.configurationStore.deserialize
 import com.intellij.execution.BeforeRunTask
 import com.intellij.execution.BeforeRunTaskProvider
 import com.intellij.execution.ExecutionException
@@ -19,7 +20,6 @@ import com.intellij.execution.Executor
 import com.intellij.execution.PsiLocation
 import com.intellij.execution.RunManager
 import com.intellij.execution.actions.ConfigurationContext
-import com.intellij.execution.actions.RunConfigurationProducer
 import com.intellij.execution.configurations.RunConfiguration
 import com.intellij.execution.configurations.RunProfile
 import com.intellij.execution.configurations.RuntimeConfigurationError
@@ -64,7 +64,6 @@ import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsigh
 import com.intellij.psi.PsiErrorElement
 import com.intellij.psi.PsiFileFactory
 import com.intellij.psi.PsiManager
-import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.LightVirtualFile
 import com.intellij.testFramework.TestActionEvent
@@ -76,7 +75,6 @@ import com.intellij.testFramework.replaceService
 import com.intellij.ui.RawCommandLineEditor
 import com.intellij.ui.ToolbarDecorator
 import com.intellij.ui.UiInterceptors
-import com.intellij.util.ui.UIUtil
 import com.intellij.util.xmlb.XmlSerializer
 import com.intellij.xdebugger.XDebuggerManager
 import edu.missouristate.mars.api.MarsTarget
@@ -95,6 +93,10 @@ import edu.missouristate.mars.plugin.build.replaceMemoryExportSaveDialog
 import edu.missouristate.mars.plugin.classicMipsProjectFixture
 import edu.missouristate.mars.plugin.language.MipsFileType
 import edu.missouristate.mars.plugin.language.mipsAssemblySourceOrigin
+import edu.missouristate.mars.plugin.language.psi.findChildrenOfType
+import edu.missouristate.mars.plugin.ui.findComponentOfType
+import edu.missouristate.mars.plugin.ui.findComponentsOfType
+import edu.missouristate.mars.util.javaClassOf
 import java.nio.file.Files
 import java.nio.file.Path
 import javax.imageio.ImageIO
@@ -363,7 +365,7 @@ class MarsRunPlatformTest {
             config.options.programArguments = "a"
             config.beforeRunTasks = listOf(MarsBeforeLaunchTask().apply { isEnabled = true })
             project.replaceService(
-                BuildViewManager::class.java,
+                javaClassOf<BuildViewManager>(),
                 object : BuildViewManager(project) {
                   override fun onEvent(buildId: Any, event: BuildEvent) {
                     if (event is StartBuildEvent) check(builds.trySend(event).isSuccess)
@@ -531,7 +533,7 @@ class MarsRunPlatformTest {
               config.beforeRunTasks = listOf(assemble, later)
             }
             project.replaceService(
-                BuildViewManager::class.java,
+                javaClassOf<BuildViewManager>(),
                 object : BuildViewManager(project) {
                   override fun onEvent(buildId: Any, event: BuildEvent) {
                     if (scenario == "assembly-cancelled" && event is FileMessageEvent)
@@ -629,7 +631,7 @@ class MarsRunPlatformTest {
         val disposable = Disposer.newDisposable()
         try {
           project.replaceService(
-              BuildViewManager::class.java,
+              javaClassOf<BuildViewManager>(),
               object : BuildViewManager(project) {
                 override fun onEvent(buildId: Any, event: BuildEvent) {
                   if (event is FinishBuildEvent) Disposer.dispose(launch)
@@ -677,8 +679,7 @@ class MarsRunPlatformTest {
                 ConfigurationContext.createEmptyContextForLocation(
                     PsiLocation.fromPsiElement(source),
                 )
-            val producer =
-                RunConfigurationProducer.getInstance(MarsRunConfigurationProducer::class.java)
+            val producer = runConfigurationProducer<MarsRunConfigurationProducer>()
             val config =
                 assertInstanceOf<MarsRunConfiguration>(
                     producer.createConfigurationFromContext(context)?.configuration,
@@ -750,7 +751,7 @@ class MarsRunPlatformTest {
               try {
                 editor.resetFrom(config)
                 val entry =
-                    UIUtil.findComponentsOfType(editor.component, JComboBox::class.java).last {
+                    findComponentsOfType<JComboBox<*>>(editor.component).last {
                       it.selectedItem is ProjectOptionOverride
                     }
                 entry.selectedItem = selection
@@ -796,7 +797,7 @@ class MarsRunPlatformTest {
               val panel = page.createComponent()
               page.reset()
               val entry =
-                  UIUtil.findComponentsOfType(panel, JCheckBox::class.java).single {
+                  findComponentsOfType<JCheckBox>(panel).single {
                     it.text == "Start at global main"
                   }
               assertFalse(entry.isSelected)
@@ -805,7 +806,7 @@ class MarsRunPlatformTest {
               page.apply()
               val saved = XmlSerializer.serialize(settings.getState())
               settings.loadState(
-                  XmlSerializer.deserialize(saved, MarsAssemblySettings.Settings::class.java),
+                  deserialize<MarsAssemblySettings.Settings>(saved),
               )
               page.reset()
               assertTrue(entry.isSelected)
@@ -875,12 +876,7 @@ class MarsRunPlatformTest {
             val macro = $$"$PROJECT_DIR$/runtime inputs"
             try {
               editor.resetFrom(config)
-              val field =
-                  UIUtil.findComponentsOfType(
-                          editor.component,
-                          TextFieldWithBrowseButton::class.java,
-                      )
-                      .single()
+              val field = findComponentsOfType<TextFieldWithBrowseButton>(editor.component).single()
               assertEquals("", field.text)
               field.text = " $macro "
               editor.applyTo(config)
@@ -955,7 +951,7 @@ class MarsRunPlatformTest {
             try {
               editor.resetFrom(config)
               val field =
-                  UIUtil.findComponentsOfType(editor.component, JTextField::class.java).single {
+                  findComponentsOfType<JTextField>(editor.component).single {
                     it.text == "0"
                   }
               field.text = "-1"
@@ -1028,7 +1024,7 @@ class MarsRunPlatformTest {
                 try {
                   editor.resetFrom(config)
                   val speeds =
-                      UIUtil.findComponentsOfType(editor.component, JComboBox::class.java).single {
+                      findComponentsOfType<JComboBox<*>>(editor.component).single {
                         it.selectedItem == 0f
                       }
                   speeds.selectedItem = 0.05f
@@ -1159,7 +1155,7 @@ class MarsRunPlatformTest {
           editor.resetFrom(config)
           val field =
               requireNotNull(
-                  UIUtil.findComponentOfType(editor.component, RawCommandLineEditor::class.java),
+                  findComponentOfType<RawCommandLineEditor>(editor.component),
               )
           assertEquals("", field.text)
           field.text = raw
@@ -1302,7 +1298,7 @@ class MarsRunPlatformTest {
               try {
                 editor.resetFrom(config)
                 val combos =
-                    UIUtil.findComponentsOfType(editor.component, JComboBox::class.java).filter {
+                    findComponentsOfType<JComboBox<*>>(editor.component).filter {
                       it.selectedItem is ProjectOptionOverride
                     }
                 assertEquals(6, combos.size)
@@ -1400,11 +1396,10 @@ class MarsRunPlatformTest {
                   editor.resetFrom(config)
                   val form = editor.component
                   val option =
-                      UIUtil.findComponentsOfType(form, JCheckBox::class.java).single {
+                      findComponentsOfType<JCheckBox>(form).single {
                         it.text == "Use project assembly sources"
                       }
-                  val field =
-                      requireNotNull(UIUtil.findComponentOfType(form, JTextField::class.java))
+                  val field = requireNotNull(findComponentOfType<JTextField>(form))
                   assertTrue(field.isEnabled)
                   option.isSelected = true
                   assertFalse(field.isEnabled)
@@ -1436,8 +1431,7 @@ class MarsRunPlatformTest {
                     ConfigurationContext.createEmptyContextForLocation(
                         PsiLocation.fromPsiElement(source),
                     )
-                val producer =
-                    RunConfigurationProducer.getInstance(MarsRunConfigurationProducer::class.java)
+                val producer = runConfigurationProducer<MarsRunConfigurationProducer>()
                 assertFalse(producer.isConfigurationFromContext(restored, context))
                 val environment = ExecutionEnvironmentBuilder.create(executor, restored).build()
                 val runner = assertInstanceOf<MarsRunRunner>(environment.runner)
@@ -1503,8 +1497,7 @@ class MarsRunPlatformTest {
                 ConfigurationContext.createEmptyContextForLocation(
                     PsiLocation.fromPsiElement(source),
                 )
-            val producer =
-                RunConfigurationProducer.getInstance(MarsRunConfigurationProducer::class.java)
+            val producer = runConfigurationProducer<MarsRunConfigurationProducer>()
             val config =
                 assertInstanceOf<MarsRunConfiguration>(
                     producer.createConfigurationFromContext(context)?.configuration,
@@ -2023,14 +2016,14 @@ class MarsRunPlatformTest {
             editor.resetFrom(type.createTemplateConfiguration(project))
             assertEquals(
                 "",
-                UIUtil.findComponentOfType(editor.component, JTextField::class.java)!!.text,
+                findComponentOfType<JTextField>(editor.component)!!.text,
             )
             val flags =
-                UIUtil.findComponentsOfType(editor.component, JCheckBox::class.java).associateBy {
+                findComponentsOfType<JCheckBox>(editor.component).associateBy {
                   it.text
                 }
             val overrides =
-                UIUtil.findComponentsOfType(editor.component, JComboBox::class.java).filter {
+                findComponentsOfType<JComboBox<*>>(editor.component).filter {
                   it.selectedItem is ProjectOptionOverride
                 }
             val delay = overrides[2]
@@ -2064,7 +2057,7 @@ class MarsRunPlatformTest {
             assertTrue(keyboardDisplay.isSelected)
             assertTrue(marsBot.isSelected)
             assertTrue(hunt.isSelected)
-            val field = UIUtil.findComponentOfType(editor.component, JTextField::class.java)!!
+            val field = findComponentOfType<JTextField>(editor.component)!!
             assertEquals(source.virtualFile.path, field.text)
             field.text = "  ${source.virtualFile.path}  "
             modify.selectedItem = ProjectOptionOverride.DISABLED
@@ -2105,8 +2098,7 @@ class MarsRunPlatformTest {
             }
           }
 
-          val producer =
-              RunConfigurationProducer.getInstance(MarsRunConfigurationProducer::class.java)
+          val producer = runConfigurationProducer<MarsRunConfigurationProducer>()
           val other = fixture.addFileToProject("other.txt", "text")
           val light =
               PsiFileFactory.getInstance(project).createFileFromText("light.s", MipsFileType, "nop")
@@ -2143,7 +2135,7 @@ class MarsRunPlatformTest {
       try {
         editor.resetFrom(config)
         val form = editor.component
-        val list = UIUtil.findComponentOfType(form, JList::class.java)!!
+        val list = findComponentOfType<JList<*>>(form)!!
         val add = ToolbarDecorator.findAddButton(form)!!
         val edit = ToolbarDecorator.findEditButton(form)!!
         val remove = ToolbarDecorator.findRemoveButton(form)!!
@@ -2170,22 +2162,22 @@ class MarsRunPlatformTest {
         assertEquals(1, list.model.size)
         assertEquals(0, list.selectedIndex)
         interceptMemoryExportDialog { dialog ->
-          val (region, format) = UIUtil.findComponentsOfType(dialog.fields, JComboBox::class.java)
+          val (region, format) = findComponentsOfType<JComboBox<*>>(dialog.fields)
           assertEquals(MemoryExportRegion.RANGE, region.selectedItem)
           assertSame(DumpFormatLoader.findByCommandDescriptor("HEX"), format.selectedItem)
-          val (start, end) = UIUtil.findComponentsOfType(dialog.fields, JTextField::class.java)
+          val (start, end) = findComponentsOfType<JTextField>(dialog.fields)
           assertEquals("0x10010000", start.text)
           assertEquals("0x10010004", end.text)
           setDumpDialog(dialog, MemoryExportRegion.DATA, "Binary")
         }
         editRow()
         interceptMemoryExportDialog { dialog ->
-          val region = UIUtil.findComponentsOfType(dialog.fields, JComboBox::class.java).first()
+          val region = findComponentsOfType<JComboBox<*>>(dialog.fields).first()
           assertEquals(MemoryExportRegion.DATA, region.selectedItem)
           dialog.doCancelAction()
         }
         editRow()
-        UIUtil.findComponentOfType(form, JTextField::class.java)!!.text = source.path
+        findComponentOfType<JTextField>(form)!!.text = source.path
         interceptMemoryExportDialog { dialog ->
           setDumpDialog(dialog, MemoryExportRegion.TEXT, "Binary")
         }
@@ -2398,10 +2390,10 @@ class MarsRunPlatformTest {
       first: String = "",
       last: String = "",
   ) {
-    val (regionBox, formatBox) = UIUtil.findComponentsOfType(dialog.fields, JComboBox::class.java)
+    val (regionBox, formatBox) = findComponentsOfType<JComboBox<*>>(dialog.fields)
     regionBox.selectedItem = region
     formatBox.selectedItem = DumpFormatLoader.findByCommandDescriptor(name)
-    val (start, end) = UIUtil.findComponentsOfType(dialog.fields, JTextField::class.java)
+    val (start, end) = findComponentsOfType<JTextField>(dialog.fields)
     start.text = first
     end.text = last
     assertTrue(dialog.performValidateAll().isEmpty())
@@ -2968,7 +2960,7 @@ class MarsRunPlatformTest {
             Thread.getAllStackTraces().any { (thread, trace) ->
               thread.name == "mars-simulator" &&
                   trace.any {
-                    it.className == MarsIdeSyscallEnvironment::class.java.name &&
+                    it.className == javaClassOf<MarsIdeSyscallEnvironment>().name &&
                         it.methodName == "sleepMillis"
                   }
             },
@@ -3010,7 +3002,7 @@ class MarsRunPlatformTest {
             Thread.getAllStackTraces().any { (thread, trace) ->
               thread.name == "mars-simulator" &&
                   trace.any {
-                    it.className == SessionSyscallEnvironment::class.java.name &&
+                    it.className == javaClassOf<SessionSyscallEnvironment>().name &&
                         it.methodName == "readLine"
                   }
             },
@@ -3079,7 +3071,7 @@ class MarsRunPlatformTest {
           )
           .also { file ->
             assertSame(MipsFileType, file.fileType)
-            val errors = PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java)
+            val errors = findChildrenOfType<PsiErrorElement>(file)
             assertTrue(errors.isEmpty()) {
               "$path: ${errors.joinToString { it.errorDescription + " at " + it.textRange }}"
             }

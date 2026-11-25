@@ -38,10 +38,11 @@ import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.testFramework.replaceService
 import com.intellij.ui.UiInterceptors
-import com.intellij.util.ui.UIUtil
 import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.mips.dump.DumpFormatLoader
 import edu.missouristate.mars.plugin.MarsSessionService
+import edu.missouristate.mars.plugin.ui.findComponentsOfType
+import edu.missouristate.mars.util.javaClassOf
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.HexFormat
@@ -303,10 +304,10 @@ class MarsMemoryExportPlatformTest {
 
             cancelSave = false
             interceptMemoryExportDialog { dialog ->
-              val combos = UIUtil.findComponentsOfType(dialog.fields, JComboBox::class.java)
+              val combos = findComponentsOfType<JComboBox<*>>(dialog.fields)
               combos[0].selectedItem = MemoryExportRegion.RANGE
               combos[1].selectedItem = format("HEX")
-              val (first, last) = UIUtil.findComponentsOfType(dialog.fields, JTextField::class.java)
+              val (first, last) = findComponentsOfType<JTextField>(dialog.fields)
               assertEquals(first, dialog.performValidateAll().single().component)
               first.text = "-4"
               assertEquals(first, dialog.performValidateAll().single().component)
@@ -379,7 +380,7 @@ internal fun interceptMemoryExportDialog(onShow: (MarsMemoryExportDialog) -> Uni
     UiInterceptors.register(
         object :
             UiInterceptors.UiInterceptor<MarsMemoryExportDialog>(
-                MarsMemoryExportDialog::class.java,
+                javaClassOf<MarsMemoryExportDialog>(),
             ) {
           override fun doIntercept(component: MarsMemoryExportDialog) = onShow(component)
         },
@@ -392,7 +393,7 @@ internal fun replaceMemoryExportSaveDialog(
 ) {
   ApplicationManager.getApplication()
       .replaceService(
-          FileChooserFactory::class.java,
+          javaClassOf<FileChooserFactory>(),
           object : FileChooserFactoryImpl() {
             override fun createSaveFileDialog(
                 descriptor: FileSaverDescriptor,

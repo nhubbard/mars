@@ -3,6 +3,7 @@ package edu.missouristate.mars
 import edu.missouristate.mars.mips.dump.DumpFormatLoader
 import edu.missouristate.mars.mips.dump.MemoryDumpSnapshot
 import edu.missouristate.mars.mips.hardware.MemoryAccessNotice
+import edu.missouristate.mars.testing.isInstanceOf
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.CancellationException
@@ -102,7 +103,7 @@ internal class MemoryDumpTest {
                 throw CancellationException()
               }
             }
-            .isInstanceOf(CancellationException::class.java)
+            .isInstanceOf<CancellationException>()
       }
       Assertions.assertThat(notices).isEmpty()
       val statement = requireNotNull(session.memory.getStatementNoNotify(text))

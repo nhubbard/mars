@@ -3,6 +3,7 @@
 package edu.missouristate.mars.plugin.learning
 
 import com.google.gson.JsonParser
+import com.intellij.configurationStore.deserialize
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionPlaces
 import com.intellij.openapi.actionSystem.ActionUiKind
@@ -25,10 +26,11 @@ import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsigh
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.ui.UiInterceptors
-import com.intellij.util.ui.UIUtil
 import com.intellij.util.xmlb.XmlSerializer
 import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.learning.MarsDownloadedAssessmentCheckpoint.Feedback
+import edu.missouristate.mars.plugin.ui.findComponentsOfType
+import edu.missouristate.mars.util.javaClassOf
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.zip.ZipEntry
@@ -336,7 +338,7 @@ class MarsDownloadedRequirementsTest {
     require(content, "second", "first")
     val saved = XmlSerializer.serialize(policy.getState())
     val restored = MarsLearningPolicy(project)
-    restored.loadState(XmlSerializer.deserialize(saved, MarsLearningPolicy.Policy::class.java))
+    restored.loadState(deserialize<MarsLearningPolicy.Policy>(saved))
     assertEquals(
         setOf("predict", "run-one"),
         restored.downloadedRequirements(content.assessmentIdentity(first)),
@@ -410,11 +412,12 @@ class MarsDownloadedRequirementsTest {
         withContext(Dispatchers.EDT) {
           fun configure(dialog: MarsDownloadedPrerequisitesDialog) {
             fun box(id: String) =
-                UIUtil.findComponentsOfType(dialog.requirementsPanel, JCheckBox::class.java)
-                    .single { it.text.endsWith(": $id") }
+                findComponentsOfType<JCheckBox>(dialog.requirementsPanel).single {
+                  it.text.endsWith(": $id")
+                }
             assertEquals(
                 3,
-                UIUtil.findComponentsOfType(dialog.requirementsPanel, JCheckBox::class.java).size,
+                findComponentsOfType<JCheckBox>(dialog.requirementsPanel).size,
             )
             assertTrue(box("predict").toolTipText.contains("&lt;the argument&gt; &amp; retain it."))
             box("run-one").doClick()
@@ -422,7 +425,7 @@ class MarsDownloadedRequirementsTest {
             dialog.activityBox.selectedIndex = 1
             assertEquals(
                 6,
-                UIUtil.findComponentsOfType(dialog.requirementsPanel, JCheckBox::class.java).size,
+                findComponentsOfType<JCheckBox>(dialog.requirementsPanel).size,
             )
             box("first").doClick()
             box("again").doClick()
@@ -463,7 +466,7 @@ class MarsDownloadedRequirementsTest {
           val dialog = MarsDownloadedPrerequisitesDialog.create(project, only)
           try {
             assertTrue(
-                UIUtil.findComponentsOfType(dialog.requirementsPanel, JLabel::class.java).any {
+                findComponentsOfType<JLabel>(dialog.requirementsPanel).any {
                   it.text.contains("no earlier")
                 },
             )
@@ -496,7 +499,7 @@ class MarsDownloadedRequirementsTest {
           try {
             assertEquals(
                 50,
-                UIUtil.findComponentsOfType(dialog.requirementsPanel, JCheckBox::class.java).size,
+                findComponentsOfType<JCheckBox>(dialog.requirementsPanel).size,
             )
             assertTrue(
                 dialog.requirementsPanel.preferredSize.height >
@@ -662,7 +665,7 @@ class MarsDownloadedRequirementsTest {
           UiInterceptors.register(
               object :
                   UiInterceptors.UiInterceptor<MarsDownloadedPrerequisitesDialog>(
-                      MarsDownloadedPrerequisitesDialog::class.java,
+                      javaClassOf<MarsDownloadedPrerequisitesDialog>(),
                   ) {
                 override fun doIntercept(dialog: MarsDownloadedPrerequisitesDialog) {
                   dialog.close(DialogWrapper.CANCEL_EXIT_CODE)

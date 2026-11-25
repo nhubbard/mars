@@ -11,6 +11,8 @@ import edu.missouristate.mars.mips.hardware.memory.WordMemorySegment
 import edu.missouristate.mars.mips.instructions.syscalls.SyscallMidiOut
 import edu.missouristate.mars.mips.instructions.syscalls.SyscallMidiOutSync
 import edu.missouristate.mars.simulator.Exceptions.EXTERNAL_INTERRUPT_KEYBOARD
+import edu.missouristate.mars.testing.isInstanceOf
+import edu.missouristate.mars.util.javaClassOf
 import java.lang.reflect.InvocationHandler
 import java.lang.reflect.Method
 import java.lang.reflect.Proxy
@@ -136,7 +138,7 @@ internal class RuntimeServicesTest {
       Assertions.assertThat(success.errors()).hasSize(1).allMatch(AssemblyError::isWarning)
       Assertions.assertThat(success.program()).isNotNull()
       Assertions.assertThatThrownBy { (success.errors() as MutableList).clear() }
-          .isInstanceOf(UnsupportedOperationException::class.java)
+          .isInstanceOf<UnsupportedOperationException>()
       val failure =
           assembler.assemble(
               listOf(source),
@@ -152,8 +154,8 @@ internal class RuntimeServicesTest {
   companion object {
     private fun midiRecorder(calls: MutableList<List<Any?>>): SyscallEnvironment {
       return Proxy.newProxyInstance(
-          SyscallEnvironment::class.java.classLoader,
-          arrayOf<Class<*>>(SyscallEnvironment::class.java),
+          javaClassOf<SyscallEnvironment>().classLoader,
+          arrayOf<Class<*>>(javaClassOf<SyscallEnvironment>()),
           InvocationHandler { proxy: Any?, method: Method?, args: Array<Any?>? ->
             if (method!!.name == "playTone") {
               calls.add(requireNotNull(args).toList())

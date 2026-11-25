@@ -28,7 +28,6 @@ import com.intellij.xdebugger.XDebugProcessStarter
 import com.intellij.xdebugger.XDebugSession
 import com.intellij.xdebugger.XDebugSessionListener
 import com.intellij.xdebugger.XDebuggerManager
-import com.intellij.xdebugger.XDebuggerUtil
 import com.intellij.xdebugger.frame.XValueModifier.XModificationCallback
 import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.cli.grading.FunctionFileReadCheck
@@ -41,11 +40,13 @@ import edu.missouristate.mars.plugin.debug.MarsLineBreakpointType
 import edu.missouristate.mars.plugin.debug.MarsSuspendContext
 import edu.missouristate.mars.plugin.debug.RegisterBank
 import edu.missouristate.mars.plugin.debug.RegisterEditRequest
+import edu.missouristate.mars.plugin.debug.findBreakpointType
 import edu.missouristate.mars.plugin.debug.submitEdit
 import edu.missouristate.mars.plugin.learning.MarsDownloadedDebugCheckpoint.Outcome
 import edu.missouristate.mars.plugin.run.MarsRunService
 import edu.missouristate.mars.plugin.run.MarsRunType
 import edu.missouristate.mars.plugin.run.runMessages
+import edu.missouristate.mars.util.javaClassOf
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
@@ -380,7 +381,7 @@ class MarsDownloadedDebugCheckpointTest {
             .get(session)
     val listeners = dispatcher.javaClass.getMethod("getListeners").invoke(dispatcher) as List<*>
     return listeners.filterIsInstance<XDebugSessionListener>().single {
-      it.javaClass.name.startsWith(MarsDownloadedDebugCheckpoint::class.java.name + "$")
+      it.javaClass.name.startsWith(javaClassOf<MarsDownloadedDebugCheckpoint>().name + "$")
     }
   }
 
@@ -517,8 +518,7 @@ class MarsDownloadedDebugCheckpointTest {
             val project = projects.get()
             Disposer.dispose(f.observationLifetime)
             assertNull(project.service<MarsLearningFileInputs>().definition(f.file.toNioPath()))
-            val type =
-                XDebuggerUtil.getInstance().findBreakpointType(MarsLineBreakpointType::class.java)
+            val type = findBreakpointType<MarsLineBreakpointType>()
             WriteCommandAction.runWriteCommandAction(project) {
               XDebuggerManager.getInstance(project)
                   .breakpointManager
@@ -665,8 +665,7 @@ class MarsDownloadedDebugCheckpointTest {
                         plan,
                         feedback::add,
                     )
-            val type =
-                XDebuggerUtil.getInstance().findBreakpointType(MarsLineBreakpointType::class.java)
+            val type = findBreakpointType<MarsLineBreakpointType>()
             WriteCommandAction.runWriteCommandAction(project) {
               XDebuggerManager.getInstance(project)
                   .breakpointManager

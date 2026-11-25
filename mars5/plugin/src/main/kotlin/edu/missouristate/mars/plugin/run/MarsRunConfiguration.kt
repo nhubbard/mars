@@ -1,6 +1,5 @@
 package edu.missouristate.mars.plugin.run
 
-import com.intellij.DynamicBundle
 import com.intellij.execution.DefaultExecutionResult
 import com.intellij.execution.ExecutionException
 import com.intellij.execution.Executor
@@ -65,17 +64,19 @@ import edu.missouristate.mars.plugin.build.MarsAssemblyMode
 import edu.missouristate.mars.plugin.build.MarsAssemblySettings
 import edu.missouristate.mars.plugin.build.MarsSourceSet
 import edu.missouristate.mars.plugin.build.MemoryExportSelection
+import edu.missouristate.mars.plugin.dynamicBundleOf
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.MipsFileType
 import edu.missouristate.mars.plugin.projectAbsolutePath
 import edu.missouristate.mars.plugin.projectFilePath
+import edu.missouristate.mars.util.javaClassOf
 import java.nio.file.Files
 import java.nio.file.Path
 import javax.swing.JCheckBox
 import javax.swing.JTextField
 import org.jdom.Element
 
-internal val runMessages = DynamicBundle(MarsRunConfiguration::class.java, "messages.MarsBundle")
+internal val runMessages = dynamicBundleOf<MarsRunConfiguration>()
 
 private val resetLaunchKey = Key.create<MarsResetLaunch>("MARS reset launch")
 private const val EXECUTION_DEFAULTS_VERSION = "marsExecutionDefaults"
@@ -138,7 +139,7 @@ internal class MarsRunType :
   override fun createTemplateConfiguration(project: Project) =
       MarsRunConfiguration(project, this, displayName)
 
-  override fun getOptionsClass() = MarsRunOptions::class.java
+  override fun getOptionsClass() = javaClassOf<MarsRunOptions>()
 }
 
 internal class MarsRunConfiguration(project: Project, factory: ConfigurationFactory, name: String) :

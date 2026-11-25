@@ -16,6 +16,7 @@ import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.testFramework.replaceService
 import edu.missouristate.mars.plugin.MarsExecutionOptions
+import edu.missouristate.mars.util.javaClassOf
 import java.nio.ByteOrder
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlinx.coroutines.CoroutineStart
@@ -43,7 +44,7 @@ class MarsBuildEventThreadTest {
         try {
           // Headless BuildViewManager omits its UI/listeners; observe its public event boundary.
           project.replaceService(
-              BuildViewManager::class.java,
+              javaClassOf<BuildViewManager>(),
               object : BuildViewManager(project) {
                 override fun onEvent(buildId: Any, event: BuildEvent) {
                   events += event to ApplicationManager.getApplication().isDispatchThread
@@ -102,7 +103,7 @@ class MarsBuildEventThreadTest {
                 .prepare(MarsSourceSet(entry), MarsExecutionOptions(), true)
           }
       project.replaceService(
-          BuildViewManager::class.java,
+          javaClassOf<BuildViewManager>(),
           object : BuildViewManager(project) {
             override fun onEvent(buildId: Any, event: BuildEvent) {
               events += event to ApplicationManager.getApplication().isDispatchThread

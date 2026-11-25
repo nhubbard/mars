@@ -1,6 +1,5 @@
 package edu.missouristate.mars.plugin.language
 
-import com.intellij.patterns.PlatformPatterns
 import com.intellij.patterns.PsiElementPattern
 import com.intellij.psi.PsiElement
 import com.intellij.refactoring.listeners.RefactoringElementListener
@@ -12,6 +11,7 @@ import edu.missouristate.mars.plugin.language.psi.MipsMacroFormal
 import edu.missouristate.mars.plugin.language.psi.checkedRenameSites
 import edu.missouristate.mars.plugin.language.psi.formalRenameError
 import edu.missouristate.mars.plugin.language.psi.isMacroFormalName
+import edu.missouristate.mars.plugin.language.psi.psiElement
 
 internal class MipsMacroFormalRenameProcessor : RenamePsiElementProcessor() {
   override fun canProcessElement(element: PsiElement) = element is MipsMacroFormal
@@ -31,7 +31,7 @@ internal class MipsMacroFormalRenameProcessor : RenamePsiElementProcessor() {
 
 internal class MipsMacroFormalRenameInputValidator : RenameInputValidator {
   override fun getPattern(): PsiElementPattern.Capture<MipsMacroFormal?> =
-      PlatformPatterns.psiElement(MipsMacroFormal::class.java)
+      psiElement<MipsMacroFormal>()
 
   override fun isInputValid(newName: String, element: PsiElement, context: ProcessingContext) =
       isMacroFormalName(newName)

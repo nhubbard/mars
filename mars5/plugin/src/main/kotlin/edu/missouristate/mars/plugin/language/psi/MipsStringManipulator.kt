@@ -1,14 +1,14 @@
 package edu.missouristate.mars.plugin.language.psi
 
-import com.intellij.DynamicBundle
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.AbstractElementManipulator
 import com.intellij.util.IncorrectOperationException
+import edu.missouristate.mars.plugin.dynamicBundleOf
 import edu.missouristate.mars.plugin.language.MipsLexer
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.STRING
 
 class MipsStringManipulator : AbstractElementManipulator<MipsStringLiteral>() {
-  private val bundle = DynamicBundle(MipsStringManipulator::class.java, "messages.MarsBundle")
+  private val bundle = dynamicBundleOf<MipsStringManipulator>()
 
   override fun getRangeInElement(element: MipsStringLiteral): TextRange =
       TextRange(1, element.textLength - 1)

@@ -24,6 +24,8 @@ import com.intellij.util.ui.UIUtil
 import com.intellij.util.ui.withForcedRespectIsShowingClientProperty
 import com.intellij.util.ui.withShowingChanged
 import edu.missouristate.mars.plugin.run.MarsRunService
+import edu.missouristate.mars.plugin.ui.findComponentsOfType
+import edu.missouristate.mars.util.javaClassOf
 import java.awt.event.ActionEvent
 import java.awt.event.FocusEvent
 import java.awt.image.BufferedImage
@@ -84,12 +86,12 @@ class ScavengerHuntPlatformTest {
               )
             }
             val rate =
-                UIUtil.findComponentsOfType(bot.component, JButton::class.java).single {
+                findComponentsOfType<JButton>(bot.component).single {
                   it.text == "Set Rate"
                 }
-            val table = UIUtil.findComponentsOfType(hunt.component, JBTable::class.java).single()
+            val table = findComponentsOfType<JBTable>(hunt.component).single()
             val scoreboard =
-                SwingUtilities.getAncestorOfClass(JScrollPane::class.java, table) as JScrollPane
+                SwingUtilities.getAncestorOfClass(javaClassOf<JScrollPane>(), table) as JScrollPane
             reveal(bot.component, rate)
             reveal(hunt.component, table, scoreboard)
           } finally {
@@ -110,18 +112,16 @@ class ScavengerHuntPlatformTest {
         val bot = withContext(Dispatchers.EDT) { MarsBotView(project) }
         val container = JPanel()
         fun button(panel: JComponent, name: String) =
-            UIUtil.findComponentsOfType(panel, JButton::class.java).single { it.text == name }
+            findComponentsOfType<JButton>(panel).single { it.text == name }
         fun huntButton(name: String) = button(hunt.component, name)
         fun botButton(name: String) = button(bot.component, name)
-        fun labels() =
-            UIUtil.findComponentsOfType(hunt.component, JBLabel::class.java).map { it.text }
+        fun labels() = findComponentsOfType<JBLabel>(hunt.component).map { it.text }
         fun diagnostic() =
-            UIUtil.findComponentsOfType(hunt.component, JEditorPane::class.java).single {
+            findComponentsOfType<JEditorPane>(hunt.component).single {
               it.toolTipText?.startsWith("0x") == true
             }
-        fun board() =
-            UIUtil.findComponentsOfType(hunt.component, ScavengerHuntBoard::class.java).single()
-        fun table() = UIUtil.findComponentsOfType(hunt.component, JBTable::class.java).single()
+        fun board() = findComponentsOfType<ScavengerHuntBoard>(hunt.component).single()
+        fun table() = findComponentsOfType<JBTable>(hunt.component).single()
         fun layoutScoreboard(): JScrollPane {
           val outer = assertInstanceOf<JScrollPane>(hunt.component)
           outer.setSize(JBUI.scale(295), JBUI.scale(350))
@@ -130,7 +130,8 @@ class ScavengerHuntPlatformTest {
           outer.viewport.view.doLayout()
           val scoreboard = table()
           val scroll =
-              SwingUtilities.getAncestorOfClass(JScrollPane::class.java, scoreboard) as JScrollPane
+              SwingUtilities.getAncestorOfClass(javaClassOf<JScrollPane>(), scoreboard)
+                  as JScrollPane
           scroll.setSize(JBUI.scale(205), JBUI.scale(115))
           scroll.doLayout()
           scroll.viewport.doLayout()

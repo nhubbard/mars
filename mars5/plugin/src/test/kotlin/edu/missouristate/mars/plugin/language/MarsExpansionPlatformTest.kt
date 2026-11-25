@@ -33,6 +33,7 @@ import edu.missouristate.mars.api.InstructionSourceMap.Location
 import edu.missouristate.mars.api.InstructionSourceMap.Origin
 import edu.missouristate.mars.plugin.analysis.inferredMipsAssemblyRoot
 import edu.missouristate.mars.plugin.run.MarsExecutionSources
+import edu.missouristate.mars.util.javaClassOf
 import java.nio.file.Files
 import java.nio.file.StandardOpenOption.APPEND
 import kotlinx.coroutines.CompletableDeferred
@@ -122,7 +123,7 @@ class MarsExpansionPlatformTest {
           ActionUtil.updateAction(action, event)
           assertTrue(event.presentation.isEnabled)
           UiInterceptors.register(
-              object : UiInterceptors.UiInterceptor<ListPopup>(ListPopup::class.java) {
+              object : UiInterceptors.UiInterceptor<ListPopup>(javaClassOf<ListPopup>()) {
                 override fun doIntercept(component: ListPopup) {
                   intercepted.complete(component)
                 }

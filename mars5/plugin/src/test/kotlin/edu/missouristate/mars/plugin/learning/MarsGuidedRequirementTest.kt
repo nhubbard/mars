@@ -2,6 +2,7 @@
 
 package edu.missouristate.mars.plugin.learning
 
+import com.intellij.configurationStore.deserialize
 import com.intellij.mock.MockProject
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.readAction
@@ -87,10 +88,7 @@ class MarsGuidedRequirementTest {
         }
         val restored = MarsLearningPolicy(project)
         restored.loadState(
-            XmlSerializer.deserialize(
-                XmlSerializer.serialize(policy.getState()),
-                MarsLearningPolicy.Policy::class.java,
-            ),
+            deserialize<MarsLearningPolicy.Policy>(XmlSerializer.serialize(policy.getState())),
         )
         assertEquals(
             MarsGuidedRequirement.entries.map { it.id }.toSet(),

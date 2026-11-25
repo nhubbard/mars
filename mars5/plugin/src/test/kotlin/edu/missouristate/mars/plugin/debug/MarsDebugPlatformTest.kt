@@ -5,6 +5,7 @@
 package edu.missouristate.mars.plugin.debug
 
 import com.intellij.codeInsight.navigation.actions.GotoDeclarationAction
+import com.intellij.configurationStore.deserialize
 import com.intellij.execution.ExecutionListener
 import com.intellij.execution.ExecutionManager
 import com.intellij.execution.Executor
@@ -68,7 +69,6 @@ import com.intellij.openapi.vfs.limits.FileSizeLimit
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
 import com.intellij.psi.PsiErrorElement
-import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.testFramework.DumbModeTestUtils
 import com.intellij.testFramework.LightVirtualFile
 import com.intellij.testFramework.common.timeoutRunBlocking
@@ -142,6 +142,7 @@ import edu.missouristate.mars.plugin.classicMipsProjectFixture
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.MipsFileType
 import edu.missouristate.mars.plugin.language.MipsTypes
+import edu.missouristate.mars.plugin.language.psi.findChildrenOfType
 import edu.missouristate.mars.plugin.run.MarsBeforeLaunchTask
 import edu.missouristate.mars.plugin.run.MarsExecutionSources
 import edu.missouristate.mars.plugin.run.MarsProcessHandler
@@ -154,7 +155,10 @@ import edu.missouristate.mars.plugin.run.RunMemoryDumpState
 import edu.missouristate.mars.plugin.run.runMessages
 import edu.missouristate.mars.plugin.tools.FloatingPointRepresentation.Format
 import edu.missouristate.mars.plugin.tools.FloatingPointView
+import edu.missouristate.mars.plugin.ui.findComponentOfType
+import edu.missouristate.mars.plugin.ui.findComponentsOfType
 import edu.missouristate.mars.util.Binary
+import edu.missouristate.mars.util.javaClassOf
 import java.awt.Color
 import java.awt.Font
 import java.awt.event.ActionEvent
@@ -206,22 +210,21 @@ class MarsDebugPlatformTest {
     get() = XDebuggerManager.getInstance(project)
 
   private val breakpointType
-    get() = XDebuggerUtil.getInstance().findBreakpointType(MarsLineBreakpointType::class.java)
+    get() = findBreakpointType<MarsLineBreakpointType>()
 
   @Test
   // Exercise the intercepted dialog's validation and confirmation without showing a window.
   fun `native watchpoint dialog validates and saves inclusive unsigned addresses`() =
       timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
-          val type =
-              XDebuggerUtil.getInstance().findBreakpointType(MarsMemoryWatchpointType::class.java)
+          val type = findBreakpointType<MarsMemoryWatchpointType>()
           assertTrue(type.isAddBreakpointButtonVisible)
           val manager = debugger.breakpointManager
           fun intercept(action: (MarsMemoryWatchpointDialog) -> Unit) =
               UiInterceptors.register(
                   object :
                       UiInterceptors.UiInterceptor<MarsMemoryWatchpointDialog>(
-                          MarsMemoryWatchpointDialog::class.java,
+                          javaClassOf<MarsMemoryWatchpointDialog>(),
                       ) {
                     override fun doIntercept(component: MarsMemoryWatchpointDialog) =
                         action(component)
@@ -231,7 +234,7 @@ class MarsDebugPlatformTest {
             intercept { it.doCancelAction() }
             assertNull(type.addBreakpoint(project, null))
             intercept { dialog ->
-              val (first, last) = UIUtil.findComponentsOfType(dialog.fields, JTextField::class.java)
+              val (first, last) = findComponentsOfType<JTextField>(dialog.fields)
               assertSame(first, dialog.getPreferredFocusedComponent())
               assertSame(first, dialog.performValidateAll().single().component)
               first.text = " 0Xfffffffe "
@@ -248,7 +251,7 @@ class MarsDebugPlatformTest {
               last.text = "4294967295"
               @Suppress("UNCHECKED_CAST")
               val modes =
-                  UIUtil.findComponentsOfType(dialog.fields, JComboBox::class.java).single()
+                  findComponentsOfType<JComboBox<*>>(dialog.fields).single()
                       as JComboBox<MemoryWatchMode>
               val list = JList(MemoryWatchMode.entries.toTypedArray())
               for ((index, mode) in MemoryWatchMode.entries.withIndex()) {
@@ -267,7 +270,7 @@ class MarsDebugPlatformTest {
             val state = XmlSerializer.serialize(requireNotNull(point.properties).getState())
             val restored = type.createProperties()
             restored.loadState(
-                XmlSerializer.deserialize(state, MarsMemoryWatchpointProperties::class.java),
+                deserialize<MarsMemoryWatchpointProperties>(state),
             )
             val range = requireNotNull(restored.range())
             assertEquals(MemoryWatchRange(0xfffffffeL, 0xffffffffL, MemoryWatchMode.READ), range)
@@ -301,7 +304,7 @@ class MarsDebugPlatformTest {
   internal fun `native memory watchpoints stop after overlapping accesses from the program`(
       mode: MemoryWatchMode,
   ) = timeoutRunBlocking {
-    val type = XDebuggerUtil.getInstance().findBreakpointType(MarsMemoryWatchpointType::class.java)
+    val type = findBreakpointType<MarsMemoryWatchpointType>()
     val manager = debugger.breakpointManager
     val address = 0x10010000
     val (source, point) =
@@ -376,8 +379,7 @@ class MarsDebugPlatformTest {
       val file =
           withContext(Dispatchers.EDT) {
             settings.changeTarget(MarsTarget.MARS64)
-            val type =
-                XDebuggerUtil.getInstance().findBreakpointType(MarsMemoryWatchpointType::class.java)
+            val type = findBreakpointType<MarsMemoryWatchpointType>()
             runWriteAction {
               debugger.breakpointManager.addBreakpoint(
                   type,
@@ -527,7 +529,7 @@ class MarsDebugPlatformTest {
                   )
                   .also {
                     assertTrue(
-                        PsiTreeUtil.findChildrenOfType(it, PsiErrorElement::class.java).isEmpty(),
+                        findChildrenOfType<PsiErrorElement>(it).isEmpty(),
                         name,
                     )
                   }
@@ -3022,19 +3024,18 @@ class MarsDebugPlatformTest {
                         .create("MarsHighAddressTest", "Debug", "MIPS", disposable)
                 debug.session.debugProcess.createTabLayouter().registerAdditionalContent(layout)
                 val memory = requireNotNull(layout.findContent("MarsMipsMemory")).component
-                val field =
-                    requireNotNull(UIUtil.findComponentOfType(memory, JBTextField::class.java))
+                val field = requireNotNull(findComponentOfType<JBTextField>(memory))
                 field.text = "0x200000000"
                 field.postActionEvent()
                 assertTrue(
-                    UIUtil.findComponentsOfType(memory, JBLabel::class.java).any {
+                    findComponentsOfType<JBLabel>(memory).any {
                       it.text?.startsWith("Enter an address from 0 through") == true
                     },
                 )
                 val listing = requireNotNull(layout.findContent("MarsMipsDisassembly")).component
-                val rows = requireNotNull(UIUtil.findComponentOfType(listing, JBTable::class.java))
+                val rows = requireNotNull(findComponentOfType<JBTable>(listing))
                 val button =
-                    UIUtil.findComponentsOfType(listing, JButton::class.java).single {
+                    findComponentsOfType<JButton>(listing).single {
                       it.text == "Toggle Address Breakpoint"
                     }
                 rows to button
@@ -3052,7 +3053,7 @@ class MarsDebugPlatformTest {
             toggle.doClick(0)
             val type =
                 XDebuggerUtil.getInstance()
-                    .findBreakpointType(MarsAddressBreakpointType::class.java)
+                    .findBreakpointType(javaClassOf<MarsAddressBreakpointType>())
             val point = debugger.breakpointManager.getBreakpoints(type).single()
             assertEquals(
                 0x1_0040_0024L,
@@ -3828,19 +3829,19 @@ class MarsDebugPlatformTest {
                 }
             val button =
                 withContext(Dispatchers.EDT) {
-                  UIUtil.findComponentsOfType(view.component, JButton::class.java).single {
+                  findComponentsOfType<JButton>(view.component).single {
                     it.text == "Edit Word…"
                   }
                 }
             val table =
                 withContext(Dispatchers.EDT) {
-                  requireNotNull(UIUtil.findComponentOfType(view.component, JBTable::class.java))
+                  requireNotNull(findComponentOfType<JBTable>(view.component))
                 }
             suspend fun assertStatus(text: String) =
                 pollAssertionsAsync(5.seconds, 10.milliseconds) {
                   withContext(Dispatchers.EDT) {
                     val labels =
-                        UIUtil.findComponentsOfType(view.component, JBLabel::class.java).map {
+                        findComponentsOfType<JBLabel>(view.component).map {
                           it.text
                         }
                     assertTrue(
@@ -3858,8 +3859,7 @@ class MarsDebugPlatformTest {
             withContext(Dispatchers.EDT) {
               assertTrue(button.isEnabled)
               interceptMemoryEdit { dialog ->
-                val (address, value) =
-                    UIUtil.findComponentsOfType(dialog.fields, JTextField::class.java)
+                val (address, value) = findComponentsOfType<JTextField>(dialog.fields)
                 assertEquals("0x10010000", address.text)
                 assertSame(value, dialog.getPreferredFocusedComponent())
                 assertSame(value, dialog.performValidateAll().single().component)
@@ -3955,7 +3955,7 @@ class MarsDebugPlatformTest {
                   debug.session.debugProcess.createTabLayouter().registerAdditionalContent(layout)
                   val memory = requireNotNull(layout.findContent("MarsMipsMemory")).component
                   val edit =
-                      UIUtil.findComponentsOfType(memory, JButton::class.java).single {
+                      findComponentsOfType<JButton>(memory).single {
                         it.text == "Edit Word…"
                       }
                   val context = assertInstanceOf<MarsSuspendContext>(debug.session.suspendContext)
@@ -3964,7 +3964,7 @@ class MarsDebugPlatformTest {
                   edit.doClick()
                   val disassembly =
                       requireNotNull(layout.findContent("MarsMipsDisassembly")).component
-                  requireNotNull(UIUtil.findComponentOfType(disassembly, JBTable::class.java))
+                  requireNotNull(findComponentOfType<JBTable>(disassembly))
                 }
             pollAssertionsAsync(5.seconds, 10.milliseconds) {
               withContext(Dispatchers.EDT) {
@@ -3997,15 +3997,16 @@ class MarsDebugPlatformTest {
   private fun interceptMemoryEdit(action: (MarsMemoryEditDialog) -> Unit) =
       UiInterceptors.register(
           object :
-              UiInterceptors.UiInterceptor<MarsMemoryEditDialog>(MarsMemoryEditDialog::class.java) {
+              UiInterceptors.UiInterceptor<MarsMemoryEditDialog>(
+                  javaClassOf<MarsMemoryEditDialog>(),
+              ) {
             override fun doIntercept(component: MarsMemoryEditDialog) = action(component)
           },
       )
 
   // Exercise the intercepted dialog's validation and confirmation without showing a window.
   private fun finishMemoryEdit(dialog: MarsMemoryEditDialog, address: String, expression: String) {
-    val (addressField, valueField) =
-        UIUtil.findComponentsOfType(dialog.fields, JTextField::class.java)
+    val (addressField, valueField) = findComponentsOfType<JTextField>(dialog.fields)
     addressField.text = address
     valueField.text = expression
     assertTrue(dialog.performValidateAll().isEmpty())
@@ -4053,22 +4054,21 @@ class MarsDebugPlatformTest {
                   assertEquals("Memory", content.displayName)
                   assertFalse(content.isCloseable)
                   val panel = content.component
-                  val table = requireNotNull(UIUtil.findComponentOfType(panel, JBTable::class.java))
-                  val address =
-                      requireNotNull(UIUtil.findComponentOfType(panel, JBTextField::class.java))
+                  val table = requireNotNull(findComponentOfType<JBTable>(panel))
+                  val address = requireNotNull(findComponentOfType<JBTextField>(panel))
                   Triple(table, address, panel)
                 }
             val buttons =
                 withContext(Dispatchers.EDT) {
-                  UIUtil.findComponentsOfType(panel, JButton::class.java).associateBy { it.text }
+                  findComponentsOfType<JButton>(panel).associateBy { it.text }
                 }
             val labels =
                 withContext(Dispatchers.EDT) {
-                  UIUtil.findComponentsOfType(panel, JBLabel::class.java)
+                  findComponentsOfType<JBLabel>(panel)
                 }
             val regions =
                 withContext(Dispatchers.EDT) {
-                  requireNotNull(UIUtil.findComponentOfType(panel, ComboBox::class.java))
+                  requireNotNull(findComponentOfType<ComboBox<*>>(panel))
                 }
             assertMemory(table, "0x10010000", "41 00 7f ff", "A...")
             for ((region, address) in
@@ -4226,16 +4226,16 @@ class MarsDebugPlatformTest {
             val (table, address, last) =
                 withContext(Dispatchers.EDT) {
                   Triple(
-                      requireNotNull(UIUtil.findComponentOfType(panel, JBTable::class.java)),
-                      requireNotNull(UIUtil.findComponentOfType(panel, JBTextField::class.java)),
-                      UIUtil.findComponentsOfType(panel, JButton::class.java).single {
+                      requireNotNull(findComponentOfType<JBTable>(panel)),
+                      requireNotNull(findComponentOfType<JBTextField>(panel)),
+                      findComponentsOfType<JButton>(panel).single {
                         it.text == "Last Write"
                       },
                   )
                 }
             val labels =
                 withContext(Dispatchers.EDT) {
-                  UIUtil.findComponentsOfType(panel, JBLabel::class.java)
+                  findComponentsOfType<JBLabel>(panel)
                 }
             fun bold(column: Int): List<String> {
               val cell =
@@ -4295,8 +4295,7 @@ class MarsDebugPlatformTest {
               assertSame(suspension, debug.session.suspendContext)
               val saved = XmlSerializer.serialize(display.getState())
               assertFalse(
-                  XmlSerializer.deserialize(saved, MarsDebuggerDisplaySettings.Settings::class.java)
-                      .highlightMemoryWrites,
+                  deserialize<MarsDebuggerDisplaySettings.Settings>(saved).highlightMemoryWrites,
               )
             }
             assertWrite("Last write at 0x10010000 (4 bytes)")
@@ -4717,25 +4716,19 @@ class MarsDebugPlatformTest {
                   assertFalse(content.isCloseable)
                   Triple(
                       requireNotNull(
-                          UIUtil.findComponentOfType(content.component, JBTable::class.java),
+                          findComponentOfType<JBTable>(content.component),
                       ),
                       requireNotNull(
-                          UIUtil.findComponentOfType(
-                              content.component,
-                              SearchTextField::class.java,
-                          ),
+                          findComponentOfType<SearchTextField>(content.component),
                       ),
-                      UIUtil.findComponentsOfType(content.component, JBLabel::class.java).single {
+                      findComponentsOfType<JBLabel>(content.component).single {
                         it.text.contains("image")
                       },
                   )
                 }
             val button =
                 withContext(Dispatchers.EDT) {
-                  UIUtil.findComponentsOfType(
-                          layout.findContent("MarsMipsSymbols")!!.component,
-                          JButton::class.java,
-                      )
+                  findComponentsOfType<JButton>(layout.findContent("MarsMipsSymbols")!!.component)
                       .single { it.text == "Open Source" }
                 }
             fun row(name: String) =
@@ -4837,9 +4830,8 @@ class MarsDebugPlatformTest {
               debug.session.debugProcess.createTabLayouter().registerAdditionalContent(second)
               val secondTable =
                   requireNotNull(
-                      UIUtil.findComponentOfType(
+                      findComponentOfType<JBTable>(
                           second.findContent("MarsMipsSymbols")!!.component,
-                          JBTable::class.java,
                       ),
                   )
               assertEquals(1, secondTable.rowSorter.sortKeys.single().column)
@@ -4911,8 +4903,7 @@ class MarsDebugPlatformTest {
                 }
             val (labels, bytes, instructions) =
                 withContext(Dispatchers.EDT) {
-                  fun table(panel: JComponent) =
-                      requireNotNull(UIUtil.findComponentOfType(panel, JBTable::class.java))
+                  fun table(panel: JComponent) = requireNotNull(findComponentOfType<JBTable>(panel))
                   Triple(
                       table(symbols.component),
                       table(memory.component),
@@ -4920,14 +4911,14 @@ class MarsDebugPlatformTest {
                   )
                 }
             fun button(panel: JComponent, text: String) =
-                UIUtil.findComponentsOfType(panel, JButton::class.java).single { it.text == text }
+                findComponentsOfType<JButton>(panel).single { it.text == text }
             val inspect =
                 withContext(Dispatchers.EDT) { button(symbols.component, "Inspect Address") }
             val follow = withContext(Dispatchers.EDT) { button(disassembly.component, "Follow PC") }
             val address =
                 withContext(Dispatchers.EDT) {
                   requireNotNull(
-                      UIUtil.findComponentOfType(memory.component, JBTextField::class.java),
+                      findComponentOfType<JBTextField>(memory.component),
                   )
                 }
             fun inspect(label: String) {
@@ -5005,7 +4996,7 @@ class MarsDebugPlatformTest {
               assertEquals(5, debug.session.topFramePosition!!.line)
               val status =
                   requireNotNull(
-                      UIUtil.findComponentOfType(disassembly.component, JBLabel::class.java),
+                      findComponentOfType<JBLabel>(disassembly.component),
                   )
               assertEquals("Inspecting 0x00400100 (program counter 0x00400000)", status.text)
               follow.doClick(0)
@@ -5104,22 +5095,23 @@ class MarsDebugPlatformTest {
                       layout.findContent("MarsMipsDisassembly")!!.component,
                   )
                 }
-            fun table(panel: JComponent) =
-                requireNotNull(UIUtil.findComponentOfType(panel, JBTable::class.java))
+            fun table(panel: JComponent) = requireNotNull(findComponentOfType<JBTable>(panel))
             val bytes = withContext(Dispatchers.EDT) { table(memory) }
             val instructions = withContext(Dispatchers.EDT) { table(listing) }
             val labels = withContext(Dispatchers.EDT) { table(symbols) }
             val field =
                 withContext(Dispatchers.EDT) {
-                  requireNotNull(UIUtil.findComponentOfType(memory, JBTextField::class.java))
+                  requireNotNull(findComponentOfType<JBTextField>(memory))
                 }
             val search =
                 withContext(Dispatchers.EDT) {
-                  requireNotNull(UIUtil.findComponentOfType(symbols, SearchTextField::class.java))
+                  requireNotNull(
+                      findComponentOfType<SearchTextField>(symbols),
+                  )
                 }
             val status =
                 withContext(Dispatchers.EDT) {
-                  requireNotNull(UIUtil.findComponentOfType(listing, JBLabel::class.java))
+                  requireNotNull(findComponentOfType<JBLabel>(listing))
                 }
             val context = debug.session.suspendContext
             val display = service<MarsDebuggerDisplaySettings>()
@@ -5135,7 +5127,7 @@ class MarsDebugPlatformTest {
               assertEquals(1, labels.rowCount)
               assertEquals("kernelWord", labels.getValueAt(0, 0))
               labels.setRowSelectionInterval(0, 0)
-              UIUtil.findComponentsOfType(symbols, JButton::class.java)
+              findComponentsOfType<JButton>(symbols)
                   .single { it.text == "Inspect Address" }
                   .doClick(0)
             }
@@ -5160,8 +5152,7 @@ class MarsDebugPlatformTest {
               assertEquals("9223372036854775808", display.formatAddress(Long.MIN_VALUE))
               val xml = XmlSerializer.serialize(display.getState())
               assertFalse(
-                  XmlSerializer.deserialize(xml, MarsDebuggerDisplaySettings.Settings::class.java)
-                      .hexAddresses,
+                  deserialize<MarsDebuggerDisplaySettings.Settings>(xml).hexAddresses,
               )
               field.text = "0xffffffff"
               action.actionPerformed(event)
@@ -5169,7 +5160,7 @@ class MarsDebugPlatformTest {
               assertEquals("0xffffffff", field.text)
               assertEquals("0x90000000", bytes.getValueAt(0, 0))
               display.loadState(
-                  XmlSerializer.deserialize(xml, MarsDebuggerDisplaySettings.Settings::class.java),
+                  deserialize<MarsDebuggerDisplaySettings.Settings>(xml),
               )
               assertEquals("0xffffffff", field.text)
               assertEquals("2415919104", bytes.getValueAt(0, 0))
@@ -5183,10 +5174,7 @@ class MarsDebugPlatformTest {
               val unattached = MarsMemoryView(debug.session, file.toNioPath())
               Disposer.register(lifetime, unattached)
               display.loadState(
-                  XmlSerializer.deserialize(
-                      Element("state"),
-                      MarsDebuggerDisplaySettings.Settings::class.java,
-                  ),
+                  deserialize<MarsDebuggerDisplaySettings.Settings>(Element("state")),
               )
               assertTrue(action.isSelected(event))
               assertEquals("0xffffffff", field.text)
@@ -5269,8 +5257,8 @@ class MarsDebugPlatformTest {
                 }
             val (table, field) =
                 withContext(Dispatchers.EDT) {
-                  requireNotNull(UIUtil.findComponentOfType(panel, JBTable::class.java)) to
-                      requireNotNull(UIUtil.findComponentOfType(panel, JBTextField::class.java))
+                  requireNotNull(findComponentOfType<JBTable>(panel)) to
+                      requireNotNull(findComponentOfType<JBTextField>(panel))
                 }
             assertMemory(table, "0x10010000", "ff ff ff ff 00 00 00 80")
             val context = debug.session.suspendContext
@@ -5311,8 +5299,7 @@ class MarsDebugPlatformTest {
               }
               assertEquals("0xfffffffe", evaluate(debug.session, frame, $$"$t0"))
               val xml = XmlSerializer.serialize(display.getState())
-              val loaded =
-                  XmlSerializer.deserialize(xml, MarsDebuggerDisplaySettings.Settings::class.java)
+              val loaded = deserialize<MarsDebuggerDisplaySettings.Settings>(xml)
               assertFalse(loaded.hexValues)
               assertTrue(loaded.hexAddresses)
               val addressOnly =
@@ -5322,11 +5309,7 @@ class MarsDebugPlatformTest {
                               .setAttribute("name", "hexAddresses")
                               .setAttribute("value", "false"),
                       )
-              val previous =
-                  XmlSerializer.deserialize(
-                      addressOnly,
-                      MarsDebuggerDisplaySettings.Settings::class.java,
-                  )
+              val previous = deserialize<MarsDebuggerDisplaySettings.Settings>(addressOnly)
               assertFalse(previous.hexAddresses)
               assertTrue(previous.hexValues)
               field.text = "0"
@@ -5416,9 +5399,7 @@ class MarsDebugPlatformTest {
         assertEquals(0, view.focus.rowCount)
         assertEquals(
             "Waiting for an assembled image…",
-            UIUtil.findComponentsOfType(view.component, JBLabel::class.java)
-                .single { it.text.contains("image") }
-                .text,
+            findComponentsOfType<JBLabel>(view.component).single { it.text.contains("image") }.text,
         )
         val detached = EditorFactory.getInstance().createDocument("before")
         runWriteAction { detached.setText("after") }
@@ -5435,7 +5416,7 @@ class MarsDebugPlatformTest {
           assertEquals(second.toString(), table.getValueAt(1, 4))
           assertEquals("", table.getValueAt(1, 5))
           val openSource =
-              UIUtil.findComponentsOfType(view.component, JButton::class.java).single {
+              findComponentsOfType<JButton>(view.component).single {
                 it.text == "Open Source"
               }
           if (!defaultProject) {
@@ -5839,7 +5820,7 @@ class MarsDebugPlatformTest {
               val panel = withContext(Dispatchers.EDT) { listing("MarsDisassemblyLayoutTest") }
               val table =
                   withContext(Dispatchers.EDT) {
-                    requireNotNull(UIUtil.findComponentOfType(panel, JBTable::class.java))
+                    requireNotNull(findComponentOfType<JBTable>(panel))
                   }
               fun selectedAddress(listing: JBTable) =
                   listing.getValueAt(listing.selectedRow, listing.convertColumnIndexToView(1))
@@ -5901,17 +5882,15 @@ class MarsDebugPlatformTest {
                     }
                 table.setRowSelectionInterval(row, row)
                 assertEquals("0x00400004", selectedAddress(table))
-                UIUtil.findComponentsOfType(panel, JButton::class.java)
-                    .single { it.text == "Open Source" }
-                    .doClick(0)
+                findComponentsOfType<JButton>(panel).single { it.text == "Open Source" }.doClick(0)
                 val toggle =
-                    UIUtil.findComponentsOfType(panel, JButton::class.java).single {
+                    findComponentsOfType<JButton>(panel).single {
                       it.text == "Toggle Address Breakpoint"
                     }
                 toggle.doClick(0)
                 val type =
                     XDebuggerUtil.getInstance()
-                        .findBreakpointType(MarsAddressBreakpointType::class.java)
+                        .findBreakpointType(javaClassOf<MarsAddressBreakpointType>())
                 val point = debugger.breakpointManager.getBreakpoints(type).single()
                 assertEquals(
                     0x00400004L,
@@ -5929,9 +5908,8 @@ class MarsDebugPlatformTest {
               val restored =
                   withContext(Dispatchers.EDT) {
                     requireNotNull(
-                            UIUtil.findComponentOfType(
+                            findComponentOfType<JBTable>(
                                 listing("MarsRestoredDisassemblyLayoutTest"),
-                                JBTable::class.java,
                             ),
                         )
                         .also {
@@ -5974,10 +5952,7 @@ class MarsDebugPlatformTest {
                 assertEquals(SortKey(1, SortOrder.DESCENDING), table.rowSorter.sortKeys.single())
                 val reopened =
                     requireNotNull(
-                        UIUtil.findComponentOfType(
-                            listing("MarsImportedDisassemblyLayoutTest"),
-                            JBTable::class.java,
-                        ),
+                        findComponentOfType<JBTable>(listing("MarsImportedDisassemblyLayoutTest")),
                     )
                 assertEquals(expected, columnNames(reopened))
                 assertEquals(235, reopened.columnModel.getColumn(3).preferredWidth)
@@ -5987,10 +5962,7 @@ class MarsDebugPlatformTest {
                 assertNull(properties.importedDisassemblyOrder())
                 val afterDrag =
                     requireNotNull(
-                        UIUtil.findComponentOfType(
-                            listing("MarsDraggedDisassemblyLayoutTest"),
-                            JBTable::class.java,
-                        ),
+                        findComponentOfType<JBTable>(listing("MarsDraggedDisassemblyLayoutTest")),
                     )
                 assertEquals(columnNames(table), columnNames(afterDrag))
                 assertEquals(235, afterDrag.columnModel.getColumn(0).preferredWidth)
@@ -6040,8 +6012,8 @@ class MarsDebugPlatformTest {
                           .create("MarsExecutionMarkersTest", "Debug", "MIPS", lifetime)
                   debug.session.debugProcess.createTabLayouter().registerAdditionalContent(layout)
                   val panel = requireNotNull(layout.findContent("MarsMipsDisassembly")).component
-                  requireNotNull(UIUtil.findComponentOfType(panel, JBTable::class.java)) to
-                      UIUtil.findComponentsOfType(panel, JButton::class.java).single {
+                  requireNotNull(findComponentOfType<JBTable>(panel)) to
+                      findComponentsOfType<JButton>(panel).single {
                         it.text == "Last Executed"
                       }
                 }
@@ -6242,8 +6214,7 @@ class MarsDebugPlatformTest {
               assertSame(suspension, debug.session.suspendContext)
               val saved = XmlSerializer.serialize(display.getState())
               assertFalse(
-                  XmlSerializer.deserialize(saved, MarsDebuggerDisplaySettings.Settings::class.java)
-                      .highlightRegisterWrites,
+                  deserialize<MarsDebuggerDisplaySettings.Settings>(saved).highlightRegisterWrites,
               )
             }
             assertHighlighted()
@@ -6319,11 +6290,11 @@ class MarsDebugPlatformTest {
                   assertFalse(content.isCloseable)
                   val panel = content.component
                   Triple(
-                      requireNotNull(UIUtil.findComponentOfType(panel, JBTable::class.java)),
-                      UIUtil.findComponentsOfType(panel, JButton::class.java).single {
+                      requireNotNull(findComponentOfType<JBTable>(panel)),
+                      findComponentsOfType<JButton>(panel).single {
                         it.text == "Open Source"
                       },
-                      requireNotNull(UIUtil.findComponentOfType(panel, JBLabel::class.java)),
+                      requireNotNull(findComponentOfType<JBLabel>(panel)),
                   )
                 }
             pollAssertionsAsync(3.seconds, 10.milliseconds) {
@@ -6450,8 +6421,7 @@ class MarsDebugPlatformTest {
   @Test
   fun `address breakpoints persist by entry and stop in code without source`() =
       timeoutRunBlocking {
-        val type =
-            XDebuggerUtil.getInstance().findBreakpointType(MarsAddressBreakpointType::class.java)
+        val type = findBreakpointType<MarsAddressBreakpointType>()
         val source =
             withContext(Dispatchers.EDT) {
               val other = fixture.addFileToProject("other.s", "nop\n").virtualFile
@@ -6499,10 +6469,10 @@ class MarsDebugPlatformTest {
                           .create("MarsAddressTest", "Debug", "MIPS", disposable)
                   debug.session.debugProcess.createTabLayouter().registerAdditionalContent(layout)
                   val panel = requireNotNull(layout.findContent("MarsMipsDisassembly")).component
-                  val table = requireNotNull(UIUtil.findComponentOfType(panel, JBTable::class.java))
-                  assertEquals(Icon::class.java, table.getColumnClass(5))
+                  val table = requireNotNull(findComponentOfType<JBTable>(panel))
+                  assertEquals(javaClassOf<Icon>(), table.getColumnClass(5))
                   table to
-                      UIUtil.findComponentsOfType(panel, JButton::class.java).single {
+                      findComponentsOfType<JButton>(panel).single {
                         it.text == "Toggle Address Breakpoint"
                       }
                 }
@@ -6543,10 +6513,7 @@ class MarsDebugPlatformTest {
                   val restored =
                       type.createProperties().also {
                         it.loadState(
-                            XmlSerializer.deserialize(
-                                saved,
-                                MarsAddressBreakpointProperties::class.java,
-                            ),
+                            deserialize<MarsAddressBreakpointProperties>(saved),
                         )
                       }
                   assertEquals(source.path, restored.entry)
@@ -6715,7 +6682,7 @@ class MarsDebugPlatformTest {
                       .create("MarsExportTest", "Debug", "MIPS", disposable)
               debug.session.debugProcess.createTabLayouter().registerAdditionalContent(layout)
               val panel = requireNotNull(layout.findContent("MarsMipsMemory")).component
-              UIUtil.findComponentsOfType(panel, JButton::class.java).single {
+              findComponentsOfType<JButton>(panel).single {
                 it.text == "Export Memory…"
               }
             }
@@ -6854,10 +6821,10 @@ class MarsDebugPlatformTest {
 
   // Exercise the intercepted dialog's validation and confirmation without showing a window.
   private fun selectExportDataWord(dialog: MarsMemoryExportDialog) {
-    val (region, format) = UIUtil.findComponentsOfType(dialog.fields, JComboBox::class.java)
+    val (region, format) = findComponentsOfType<JComboBox<*>>(dialog.fields)
     region.selectedItem = MemoryExportRegion.RANGE
     format.selectedItem = DumpFormatLoader.FORMATS.single { it.commandDescriptor == "HexText" }
-    val (first, last) = UIUtil.findComponentsOfType(dialog.fields, JTextField::class.java)
+    val (first, last) = findComponentsOfType<JTextField>(dialog.fields)
     first.text = "0x10010000"
     last.text = first.text
     assertTrue(dialog.performValidateAll().isEmpty())
@@ -7217,8 +7184,7 @@ class MarsDebugPlatformTest {
                   )
                   .virtualFile
           fun <B : XBreakpoint<*>> configure(point: B, panel: XBreakpointCustomPropertiesPanel<B>) {
-            val spinner =
-                UIUtil.findComponentsOfType(panel.component, JSpinner::class.java).single()
+            val spinner = findComponentsOfType<JSpinner>(panel.component).single()
             panel.loadFrom(point)
             assertEquals(1, spinner.value)
             spinner.value = 2
@@ -7237,7 +7203,7 @@ class MarsDebugPlatformTest {
             if (addressBreakpoint) {
               val type =
                   XDebuggerUtil.getInstance()
-                      .findBreakpointType(MarsAddressBreakpointType::class.java)
+                      .findBreakpointType(javaClassOf<MarsAddressBreakpointType>())
               val point =
                   debugger.breakpointManager.addBreakpoint(
                       type,
@@ -7247,16 +7213,12 @@ class MarsDebugPlatformTest {
               val saved = XmlSerializer.serialize(point.properties.state)
               val restored = type.createProperties()
               restored.loadState(
-                  XmlSerializer.deserialize(saved, MarsAddressBreakpointProperties::class.java),
+                  deserialize<MarsAddressBreakpointProperties>(saved),
               )
               assertEquals(2, restored.hitInterval)
               assertEquals(
                   1,
-                  XmlSerializer.deserialize(
-                          Element("state"),
-                          MarsAddressBreakpointProperties::class.java,
-                      )
-                      .hitInterval,
+                  deserialize<MarsAddressBreakpointProperties>(Element("state")).hitInterval,
               )
             } else {
               val point = addBreakpoint(file, 3)
@@ -7265,23 +7227,19 @@ class MarsDebugPlatformTest {
               val saved = XmlSerializer.serialize(point.properties.state)
               val restored = breakpointType.createProperties()
               restored.loadState(
-                  XmlSerializer.deserialize(saved, MarsLineBreakpointProperties::class.java),
+                  deserialize<MarsLineBreakpointProperties>(saved),
               )
               assertEquals(2, restored.hitInterval)
               assertEquals(
                   1,
-                  XmlSerializer.deserialize(
-                          Element("state"),
-                          MarsLineBreakpointProperties::class.java,
-                      )
-                      .hitInterval,
+                  deserialize<MarsLineBreakpointProperties>(Element("state")).hitInterval,
               )
               val withoutProperties =
                   debugger.breakpointManager.addLineBreakpoint(breakpointType, file.url, 0, null)
               panel.loadFrom(withoutProperties)
               assertEquals(
                   1,
-                  UIUtil.findComponentsOfType(panel.component, JSpinner::class.java).single().value,
+                  findComponentsOfType<JSpinner>(panel.component).single().value,
               )
               panel.saveTo(withoutProperties)
               debugger.breakpointManager.removeBreakpoint(withoutProperties)
@@ -7339,8 +7297,7 @@ class MarsDebugPlatformTest {
                   )
                   .virtualFile
           val line = addBreakpoint(file, 3)
-          val type =
-              XDebuggerUtil.getInstance().findBreakpointType(MarsAddressBreakpointType::class.java)
+          val type = findBreakpointType<MarsAddressBreakpointType>()
           val address =
               WriteAction.compute<_, RuntimeException> {
                 line.setCondition($$"$t0 == 0")
@@ -7425,15 +7382,15 @@ class MarsDebugPlatformTest {
                 Triple(view, content, other)
               }
           fun hex() =
-              UIUtil.findComponentsOfType(view.component, JBTextField::class.java).single {
+              findComponentsOfType<JBTextField>(view.component).single {
                 it.columns == 12
               }
           fun precision() =
-              UIUtil.findComponentsOfType(view.component, JComboBox::class.java).single {
+              findComponentsOfType<JComboBox<*>>(view.component).single {
                 it.getItemAt(0) is Format
               }
           fun register() =
-              UIUtil.findComponentsOfType(view.component, JComboBox::class.java).single {
+              findComponentsOfType<JComboBox<*>>(view.component).single {
                 it.itemCount == 33
               }
           fun write(bits: String) {
@@ -7445,7 +7402,7 @@ class MarsDebugPlatformTest {
                 withContext(Dispatchers.EDT) {
                   register().selectedIndex = 1
                   assertFalse(hex().isEditable)
-                  UIUtil.findComponentsOfType(view.component, JComboBox::class.java)
+                  findComponentsOfType<JComboBox<*>>(view.component)
                       .single { it.itemCount == 2 && it.getItemAt(0) !is Format }
                       .selectedIndex = 1
                   assertEquals("0x3fc00000", hex().text)
@@ -7470,9 +7427,7 @@ class MarsDebugPlatformTest {
               }
             }
             withContext(Dispatchers.EDT) {
-              UIUtil.findComponentsOfType(view.component, JButton::class.java)
-                  .single { it.text == "Reset" }
-                  .doClick()
+              findComponentsOfType<JButton>(view.component).single { it.text == "Reset" }.doClick()
             }
             pollAssertionsAsync(5.seconds, 20.milliseconds) {
               withContext(Dispatchers.EDT) { assertEquals("0x00000000", hex().text) }
@@ -7507,7 +7462,7 @@ class MarsDebugPlatformTest {
               withContext(Dispatchers.EDT) {
                 repeat(17) { write("3f800000") }
                 val messages =
-                    UIUtil.findComponentsOfType(view.component, JEditorPane::class.java).map {
+                    findComponentsOfType<JEditorPane>(view.component).map {
                       it.document.getText(0, it.document.length).trim()
                     }
                 assertTrue(

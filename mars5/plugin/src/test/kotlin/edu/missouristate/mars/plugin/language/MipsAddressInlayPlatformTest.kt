@@ -34,6 +34,7 @@ import com.intellij.testFramework.fixtures.EditorTestFixture
 import com.intellij.testFramework.junit5.TestApplication
 import edu.missouristate.mars.plugin.MarsMemoryLayout
 import edu.missouristate.mars.plugin.build.MarsAssemblySettings
+import edu.missouristate.mars.util.javaClassOf
 import java.awt.Point
 import java.awt.event.MouseEvent
 import java.nio.file.Files
@@ -208,7 +209,7 @@ class MipsAddressInlayPlatformTest {
                     .getAfterLineEndElementsInRange(
                         0,
                         editor.document.textLength,
-                        DeclarativeInlayRenderer::class.java,
+                        javaClassOf<DeclarativeInlayRenderer>(),
                     )
                     .filter { it.renderer.providerId == MIPS_EXPANSION_HINTS_ID }
             assertEquals(
@@ -344,13 +345,13 @@ class MipsAddressInlayPlatformTest {
             model.getAfterLineEndElementsInRange(
                 0,
                 editor.document.textLength,
-                DeclarativeInlayRenderer::class.java,
+                javaClassOf<DeclarativeInlayRenderer>(),
             )
           } else {
             model.getInlineElementsInRange(
                 0,
                 editor.document.textLength,
-                DeclarativeInlayRenderer::class.java,
+                javaClassOf<DeclarativeInlayRenderer>(),
             )
           }
       val hints =

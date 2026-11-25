@@ -25,6 +25,7 @@ import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.ui.UiInterceptors
 import edu.missouristate.mars.cli.grading.ConsoleCheckResult
+import edu.missouristate.mars.util.javaClassOf
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -180,7 +181,7 @@ class MarsIndependentCheckActionTest {
         UiInterceptors.register(
             object :
                 UiInterceptors.UiInterceptor<MarsIndependentFeedbackDialog>(
-                    MarsIndependentFeedbackDialog::class.java,
+                    javaClassOf<MarsIndependentFeedbackDialog>(),
                 ) {
               override fun doIntercept(dialog: MarsIndependentFeedbackDialog) {
                 shown.complete(dialog.report)

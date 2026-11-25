@@ -1,6 +1,5 @@
 package edu.missouristate.mars.plugin.language.inspection
 
-import com.intellij.DynamicBundle
 import com.intellij.codeInspection.LocalInspectionTool
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.openapi.components.service
@@ -8,6 +7,7 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiElementVisitor
 import com.intellij.psi.util.elementType
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
+import edu.missouristate.mars.plugin.dynamicBundleOf
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.MipsTypes
 import edu.missouristate.mars.plugin.language.operationHead
@@ -46,6 +46,6 @@ internal class MipsMacroArityInspection : LocalInspectionTool() {
   }
 }
 
-private val messages = DynamicBundle(MipsMacroArityInspection::class.java, "messages.MarsBundle")
+private val messages = dynamicBundleOf<MipsMacroArityInspection>()
 private val statement = MipsTypes.psi("STATEMENT")
 private val label = MipsTypes.psi("LABEL")

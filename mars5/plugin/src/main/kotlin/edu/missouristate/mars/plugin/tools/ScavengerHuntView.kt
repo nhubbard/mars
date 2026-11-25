@@ -22,6 +22,8 @@ import edu.missouristate.mars.plugin.tools.ScavengerHuntGame.Companion.BOARD_HEI
 import edu.missouristate.mars.plugin.tools.ScavengerHuntGame.Companion.BOARD_WIDTH
 import edu.missouristate.mars.plugin.tools.ScavengerHuntGame.Companion.LOCATION_COUNT
 import edu.missouristate.mars.plugin.tools.ScavengerHuntGame.Round
+import edu.missouristate.mars.util.boxedClassOf
+import edu.missouristate.mars.util.javaClassOf
 import java.awt.Color
 import java.awt.Graphics
 import java.awt.Graphics2D
@@ -212,9 +214,9 @@ internal class ScavengerScoreboard : AbstractTableModel() {
   override fun getColumnClass(column: Int): Class<*> =
       when (column) {
         0,
-        2 -> Int::class.javaObjectType
-        4 -> Long::class.javaObjectType
-        else -> String::class.java
+        2 -> boxedClassOf<Int>()
+        4 -> boxedClassOf<Long>()
+        else -> javaClassOf<String>()
       }
 
   override fun getValueAt(row: Int, column: Int): Any? {

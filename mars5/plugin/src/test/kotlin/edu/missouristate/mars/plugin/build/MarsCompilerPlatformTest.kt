@@ -1,5 +1,6 @@
 package edu.missouristate.mars.plugin.build
 
+import com.intellij.configurationStore.deserialize
 import com.intellij.execution.configurations.runConfigurationType
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.command.WriteCommandAction
@@ -22,10 +23,10 @@ import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsigh
 import com.intellij.pom.Navigatable
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
-import com.intellij.util.ui.UIUtil
 import com.intellij.util.xmlb.XmlSerializer
 import edu.missouristate.mars.plugin.compiler.MarsCompilerTask
 import edu.missouristate.mars.plugin.run.MarsRunType
+import edu.missouristate.mars.plugin.ui.findComponentsOfType
 import javax.swing.JCheckBox
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -73,7 +74,7 @@ class MarsCompilerPlatformTest {
             val form = page.createComponent()
             page.reset()
             val checkbox =
-                UIUtil.findComponentsOfType(form, JCheckBox::class.java).single {
+                findComponentsOfType<JCheckBox>(form).single {
                   it.text == "Assemble project sources before IntelliJ JVM compilation"
                 }
             assertFalse(checkbox.isSelected)
@@ -81,7 +82,7 @@ class MarsCompilerPlatformTest {
             page.apply()
             val persisted = XmlSerializer.serialize(settings.getState())
             settings.loadState(
-                XmlSerializer.deserialize(persisted, MarsAssemblySettings.Settings::class.java),
+                deserialize<MarsAssemblySettings.Settings>(persisted),
             )
             assertTrue(settings.assembleBeforeJvmCompile)
           } finally {

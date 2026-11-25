@@ -28,6 +28,7 @@ import com.intellij.util.ui.withShowingChanged
 import edu.missouristate.mars.api.StepEvent
 import edu.missouristate.mars.plugin.run.MarsProcessHandler
 import edu.missouristate.mars.plugin.run.MarsRunService
+import edu.missouristate.mars.plugin.ui.findComponentsOfType
 import javax.swing.JComboBox
 import javax.swing.JComponent
 import javax.swing.JPanel
@@ -250,9 +251,9 @@ class MarsToolProviderPlatformTest {
         val secondReady = CompletableDeferred<Unit>()
         val first = withContext(Dispatchers.EDT) { execution(1, firstReady) }
         val second = withContext(Dispatchers.EDT) { execution(2, secondReady) }
-        fun selector() = UIUtil.findComponentsOfType(tool.component, JComboBox::class.java).single()
+        fun selector() = findComponentsOfType<JComboBox<*>>(tool.component).single()
         fun steps() =
-            UIUtil.findComponentsOfType(tool.component, JBLabel::class.java)
+            findComponentsOfType<JBLabel>(tool.component)
                 .single { it.text.startsWith("Observed instructions") }
                 .text
         suspend fun checkUi(assert: () -> Unit) =
@@ -275,7 +276,7 @@ class MarsToolProviderPlatformTest {
           checkUi {
             assertEquals(2, selector().itemCount)
             assertEquals("Observed instructions: 0", steps())
-            val guide = UIUtil.findComponentsOfType(tool.component, JBTextArea::class.java).single()
+            val guide = findComponentsOfType<JBTextArea>(tool.component).single()
             assertFalse(guide.isEditable)
             assertTrue(guide.text.contains("MarsToolProvider"))
             selector().selectedIndex = 1

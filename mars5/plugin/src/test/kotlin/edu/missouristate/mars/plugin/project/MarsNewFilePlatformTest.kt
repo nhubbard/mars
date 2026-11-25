@@ -28,6 +28,7 @@ import edu.missouristate.mars.plugin.build.MarsAssemblySettings
 import edu.missouristate.mars.plugin.build.MarsBuildService
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.MipsFileType
+import edu.missouristate.mars.util.javaClassOf
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -110,7 +111,7 @@ class MarsNewFilePlatformTest {
                 assertSame(MipsFileType, type)
                 assertSame(MipsFileType.icon, type.icon)
               }
-              assertNotNull(MipsFileType::class.java.getResource("/icons/marsMips.svg"))
+              assertNotNull(javaClassOf<MipsFileType>().getResource("/icons/marsMips.svg"))
               assertNotNull(MipsFileType.icon)
               directory.virtualFile.findChild("main.mars")!!.toNioPath()
             }

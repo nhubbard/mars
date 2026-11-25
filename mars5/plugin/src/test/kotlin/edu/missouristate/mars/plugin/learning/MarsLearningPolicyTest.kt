@@ -1,12 +1,13 @@
 package edu.missouristate.mars.plugin.learning
 
+import com.intellij.configurationStore.deserialize
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.components.service
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
-import com.intellij.util.ui.UIUtil
 import com.intellij.util.xmlb.XmlSerializer
+import edu.missouristate.mars.plugin.ui.findComponentsOfType
 import javax.swing.JCheckBox
 import javax.swing.JSpinner
 import javax.swing.JTextField
@@ -33,7 +34,7 @@ class MarsLearningPolicyTest {
     policy.update(2, true)
     val xml = XmlSerializer.serialize(policy.getState())
     val restored = MarsLearningPolicy(project)
-    restored.loadState(XmlSerializer.deserialize(xml, MarsLearningPolicy.Policy::class.java))
+    restored.loadState(deserialize<MarsLearningPolicy.Policy>(xml))
     assertEquals(2, restored.releasedHints)
     assertTrue(restored.requirePredictions)
     assertFalse(restored.canStartIndependent())
@@ -87,8 +88,8 @@ class MarsLearningPolicyTest {
             assertEquals("MARS Learning", page.displayName)
             val root = page.createComponent()
             page.reset()
-            val count = UIUtil.findComponentsOfType(root, JSpinner::class.java).single()
-            val boxes = UIUtil.findComponentsOfType(root, JCheckBox::class.java)
+            val count = findComponentsOfType<JSpinner>(root).single()
+            val boxes = findComponentsOfType<JCheckBox>(root)
             val required = boxes.single {
               it.text == learningMessages.getMessage("policy.predictions")
             }
@@ -106,7 +107,7 @@ class MarsLearningPolicyTest {
             required.isSelected = true
             free.isSelected = false
             boxes.single { it.text == MarsGuidedRequirement.RUN.title }.isSelected = true
-            UIUtil.findComponentsOfType(root, JTextField::class.java)
+            findComponentsOfType<JTextField>(root)
                 .single {
                   it.accessibleContext.accessibleName ==
                       learningMessages.getMessage("policy.assessments")
@@ -152,10 +153,7 @@ class MarsLearningPolicyTest {
     assertTrue(policy.canAssessIndependent())
     val restored = MarsLearningPolicy(project)
     restored.loadState(
-        XmlSerializer.deserialize(
-            XmlSerializer.serialize(policy.getState()),
-            MarsLearningPolicy.Policy::class.java,
-        ),
+        deserialize<MarsLearningPolicy.Policy>(XmlSerializer.serialize(policy.getState())),
     )
     assertEquals(2, restored.maxIndependentAssessments)
     for ((stored, expected) in listOf(-1 to 0, 1001 to 1000)) {

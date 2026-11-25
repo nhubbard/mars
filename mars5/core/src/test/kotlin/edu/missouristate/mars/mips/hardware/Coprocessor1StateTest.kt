@@ -1,5 +1,6 @@
 package edu.missouristate.mars.mips.hardware
 
+import edu.missouristate.mars.testing.assertThatExceptionOfType
 import kotlin.Int
 import kotlin.Long
 import kotlin.RuntimeException
@@ -121,16 +122,16 @@ internal class Coprocessor1StateTest {
   @ValueSource(ints = [1, 31])
   fun oddRegisterPairsAreRejectedWithoutWriting(number: Int) {
     val state = Coprocessor1State()
-    Assertions.assertThatExceptionOfType(InvalidRegisterAccessException::class.java).isThrownBy {
+    assertThatExceptionOfType<InvalidRegisterAccessException>().isThrownBy {
       state.setRegisterPairToDouble(number, 1.5)
     }
-    Assertions.assertThatExceptionOfType(InvalidRegisterAccessException::class.java).isThrownBy {
+    assertThatExceptionOfType<InvalidRegisterAccessException>().isThrownBy {
       state.setRegisterPairToLong(number, 42L)
     }
-    Assertions.assertThatExceptionOfType(InvalidRegisterAccessException::class.java).isThrownBy {
+    assertThatExceptionOfType<InvalidRegisterAccessException>().isThrownBy {
       state.getDoubleFromRegisterPair(number)
     }
-    Assertions.assertThatExceptionOfType(InvalidRegisterAccessException::class.java).isThrownBy {
+    assertThatExceptionOfType<InvalidRegisterAccessException>().isThrownBy {
       state.getLongFromRegisterPair(number)
     }
     Assertions.assertThat(state.getValue(number)).isZero()

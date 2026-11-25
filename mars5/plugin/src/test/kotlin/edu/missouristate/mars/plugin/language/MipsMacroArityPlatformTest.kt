@@ -10,6 +10,7 @@ import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.language.inspection.MipsMacroArityInspection
+import edu.missouristate.mars.util.javaClassOf
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -134,7 +135,7 @@ class MipsMacroArityPlatformTest {
             """
                 .trimIndent()
         withContext(Dispatchers.EDT) {
-          fixture.enableInspections(MipsMacroArityInspection::class.java)
+          fixture.enableInspections(javaClassOf<MipsMacroArityInspection>())
           fixture.addFileToProject(
               "overloads.s",
               ".macro load (%first, %second)\nnop\n.end_macro\n",
@@ -179,7 +180,7 @@ class MipsMacroArityPlatformTest {
   fun `macro hints yield to valid data continuations when no overload matches`() =
       timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
-          fixture.enableInspections(MipsMacroArityInspection::class.java)
+          fixture.enableInspections(javaClassOf<MipsMacroArityInspection>())
           val source =
               """
               .macro emit (%one)

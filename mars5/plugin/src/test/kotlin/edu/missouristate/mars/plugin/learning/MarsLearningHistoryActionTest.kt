@@ -17,6 +17,7 @@ import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsigh
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.ui.UiInterceptors
+import edu.missouristate.mars.util.javaClassOf
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -73,7 +74,7 @@ class MarsLearningHistoryActionTest {
             UiInterceptors.register(
                 object :
                     UiInterceptors.UiInterceptor<MarsLearningHistoryDialog>(
-                        MarsLearningHistoryDialog::class.java,
+                        javaClassOf<MarsLearningHistoryDialog>(),
                     ) {
                   override fun doIntercept(dialog: MarsLearningHistoryDialog) {
                     assertTrue(dialog.panel.componentCount > 0)
@@ -109,7 +110,7 @@ class MarsLearningHistoryActionTest {
             UiInterceptors.register(
                 object :
                     UiInterceptors.UiInterceptor<MarsLearningHistoryDialog>(
-                        MarsLearningHistoryDialog::class.java,
+                        javaClassOf<MarsLearningHistoryDialog>(),
                     ) {
                   override fun doIntercept(dialog: MarsLearningHistoryDialog) {
                     dialog.close(DialogWrapper.OK_EXIT_CODE)
@@ -157,7 +158,7 @@ class MarsLearningHistoryActionTest {
           UiInterceptors.register(
               object :
                   UiInterceptors.UiInterceptor<MarsLearningHistoryDialog>(
-                      MarsLearningHistoryDialog::class.java,
+                      javaClassOf<MarsLearningHistoryDialog>(),
                   ) {
                 override fun doIntercept(dialog: MarsLearningHistoryDialog) {
                   progress.loadState(MarsLearningProgress.Progress())

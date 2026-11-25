@@ -1,6 +1,5 @@
 package edu.missouristate.mars.plugin.project
 
-import com.intellij.DynamicBundle
 import com.intellij.execution.RunManager
 import com.intellij.execution.configurations.runConfigurationType
 import com.intellij.ide.util.projectWizard.WizardContext
@@ -27,6 +26,7 @@ import com.intellij.platform.ide.navigation.NavigationService
 import com.intellij.ui.dsl.builder.Panel
 import com.intellij.ui.dsl.builder.bindSelected
 import edu.missouristate.mars.plugin.build.MarsAssemblySettings
+import edu.missouristate.mars.plugin.dynamicBundleOf
 import edu.missouristate.mars.plugin.language.MipsFileType
 import edu.missouristate.mars.plugin.run.MarsRunConfiguration
 import edu.missouristate.mars.plugin.run.MarsRunType
@@ -34,7 +34,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.invariantSeparatorsPathString
 
-private val messages = DynamicBundle(MarsNewProjectWizard::class.java, "messages.MarsBundle")
+private val messages = dynamicBundleOf<MarsNewProjectWizard>()
 
 internal class MarsNewProjectWizard : GeneratorNewProjectWizard {
   override val id = "MarsMips"

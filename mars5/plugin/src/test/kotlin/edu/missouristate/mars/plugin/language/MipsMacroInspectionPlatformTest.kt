@@ -23,6 +23,7 @@ import edu.missouristate.mars.plugin.build.MarsAssemblySettings
 import edu.missouristate.mars.plugin.build.MarsBuildService
 import edu.missouristate.mars.plugin.language.inspection.MipsMacroParameterInspection
 import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
+import edu.missouristate.mars.util.javaClassOf
 import java.nio.file.Path
 import kotlin.io.path.writeText
 import kotlinx.coroutines.Dispatchers
@@ -107,7 +108,7 @@ class MipsMacroInspectionPlatformTest {
   fun `alias generated parameters point to the original alias and ignore invalid expansions`() =
       timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
-          fixture.enableInspections(MipsMacroParameterInspection::class.java)
+          fixture.enableInspections(javaClassOf<MipsMacroParameterInspection>())
           val source =
               $$"""
               .eqv BEGIN .macro
@@ -157,7 +158,7 @@ class MipsMacroInspectionPlatformTest {
             $$".macro emit (%value)\n%discarded: .include \"body.s\"\nli $t0, %missing\n.end_macro\n"
         val project = projectFixture.get()
         withContext(Dispatchers.EDT) {
-          fixture.enableInspections(MipsMacroParameterInspection::class.java)
+          fixture.enableInspections(javaClassOf<MipsMacroParameterInspection>())
           fixture.addFileToProject("body.s", "nop\n")
           fixture.addFileToProject("entry.asm", source).also {
             fixture.configureFromExistingVirtualFile(it.virtualFile)
@@ -1339,7 +1340,7 @@ class MipsMacroInspectionPlatformTest {
         val project = projectFixture.get()
         val (entry, body) =
             withContext(Dispatchers.EDT) {
-              fixture.enableInspections(MipsMacroParameterInspection::class.java)
+              fixture.enableInspections(javaClassOf<MipsMacroParameterInspection>())
               fixture.addFileToProject("macro-start.s", ".macro scoped (%used)\n")
               val body =
                   fixture.addFileToProject(

@@ -1,5 +1,6 @@
 package edu.missouristate.mars.mips.instructions.syscalls
 
+import edu.missouristate.mars.util.javaClassOf
 import java.lang.reflect.InvocationHandler
 import java.lang.reflect.Method
 import java.lang.reflect.Proxy
@@ -125,8 +126,8 @@ internal class ToneGeneratorTest {
 
     fun proxy(): Sequencer {
       return Proxy.newProxyInstance(
-          Sequencer::class.java.classLoader,
-          arrayOf<Class<*>>(Sequencer::class.java),
+          javaClassOf<Sequencer>().classLoader,
+          arrayOf<Class<*>>(javaClassOf<Sequencer>()),
           InvocationHandler { proxy: Any?, method: Method?, args: Array<Any?>? ->
             when (method!!.name) {
               "open" -> {

@@ -9,10 +9,11 @@ import com.intellij.lang.documentation.DocumentationMarkup.SECTION_END
 import com.intellij.lang.documentation.DocumentationMarkup.SECTION_HEADER_START
 import com.intellij.lang.documentation.DocumentationMarkup.SECTION_SEPARATOR
 import com.intellij.openapi.util.text.StringUtil
+import edu.missouristate.mars.plugin.dynamicBundleOf
 
 /** Offline syscall contracts shared by the editor and completion documentation. */
 internal object MipsSyscallDocumentation {
-  private val labels = DynamicBundle(javaClass, "messages.MarsBundle")
+  private val labels = dynamicBundleOf<MipsSyscallDocumentation>()
 
   val entries: List<MipsSyscallEntry> by lazy {
     val catalog = DynamicBundle.getResourceBundle(javaClass.classLoader, "messages.MarsSyscalls")

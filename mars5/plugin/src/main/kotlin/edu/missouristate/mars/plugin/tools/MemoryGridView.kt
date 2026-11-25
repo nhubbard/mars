@@ -23,6 +23,7 @@ import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
 import com.intellij.util.ui.launchOnShow
 import edu.missouristate.mars.plugin.debug.parseMemoryAddress
+import edu.missouristate.mars.plugin.platform.filterIsInstance
 import edu.missouristate.mars.plugin.run.MarsProcessHandler
 import edu.missouristate.mars.plugin.tools.MemoryGridDisplay.Base
 import edu.missouristate.mars.plugin.tools.MemoryGridDisplay.Frame
@@ -177,7 +178,7 @@ internal class MemoryGridView(
       }
 
   init {
-    UIUtil.uiTraverser(component.viewport.view).filter(JComponent::class.java).forEach { control ->
+    UIUtil.uiTraverser(component.viewport.view).filterIsInstance<JComponent>().forEach { control ->
       control.whenFocusGained(this) {
         if (canvas != null && control === canvas) {
           // The initial inspection can change the height of the wrapping text.

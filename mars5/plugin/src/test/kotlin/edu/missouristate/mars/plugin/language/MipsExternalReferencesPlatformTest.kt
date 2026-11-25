@@ -17,6 +17,7 @@ import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.analysis.SymbolKind
 import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
+import edu.missouristate.mars.util.javaClassOf
 import java.nio.file.Path
 import kotlin.io.path.writeText
 import kotlinx.coroutines.Dispatchers
@@ -118,7 +119,7 @@ class MipsExternalReferencesPlatformTest {
     val alias = source.indexOf(".extern NAME") + ".extern ".length
     readAction {
       val file = fixture.file as MipsFile
-      assertTrue(PsiTreeUtil.collectElementsOfType(file, PsiErrorElement::class.java).isEmpty())
+      assertTrue(PsiTreeUtil.collectElementsOfType(file, javaClassOf<PsiErrorElement>()).isEmpty())
       val expected =
           mapOf(
               slot to source.indexOf($$"($slot") + 1,
@@ -353,7 +354,7 @@ class MipsExternalReferencesPlatformTest {
     configure(source)
     return readAction {
       assertTrue(
-          PsiTreeUtil.collectElementsOfType(fixture.file, PsiErrorElement::class.java).isEmpty(),
+          PsiTreeUtil.collectElementsOfType(fixture.file, javaClassOf<PsiErrorElement>()).isEmpty(),
           source,
       )
       val declaration =
