@@ -613,7 +613,10 @@ internal fun assemblySourceSyntax(source: PsiFile?): MipsFile? {
         // CachedValue can evaluate competing providers. Create PSI only for the published value.
         val syntax = lazy {
           if (source.fileType.isBinary) {
-            readOnlyAssemblySource(source.project, file)
+            readOnlyAssemblySource(source.project, file)?.apply {
+              // Retain the physical PSI owner of its cached syntax, as text copies do below.
+              originalFile = source
+            }
           } else {
             val copy =
                 PsiFileFactory.getInstance(source.project)

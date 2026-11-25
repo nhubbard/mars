@@ -31,6 +31,7 @@ import com.intellij.ui.UiInterceptors
 import edu.missouristate.mars.api.AssembledInstruction
 import edu.missouristate.mars.api.InstructionSourceMap.Location
 import edu.missouristate.mars.api.InstructionSourceMap.Origin
+import edu.missouristate.mars.plugin.analysis.assemblySourceSyntax
 import edu.missouristate.mars.plugin.analysis.inferredMipsAssemblyRoot
 import edu.missouristate.mars.plugin.run.MarsExecutionSources
 import edu.missouristate.mars.util.javaClassOf
@@ -42,6 +43,7 @@ import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
@@ -170,6 +172,24 @@ class MarsExpansionPlatformTest {
           }
         }
       }
+
+  @Test
+  fun `binary include syntax retains its native physical PSI owner`() = timeoutRunBlocking {
+    withContext(Dispatchers.EDT) {
+      val current = project.get()
+      val file = fixture.tempDirFixture.createFile("owner.png", "nop\n")
+      val manager = PsiManager.getInstance(current)
+      val physical = checkNotNull(manager.findFile(file))
+      assertTrue(physical.fileType.isBinary)
+      val syntax = checkNotNull(assemblySourceSyntax(physical))
+      assertSame(physical, syntax.originalFile)
+      assertSame(syntax, assemblySourceSyntax(manager.findFile(file)))
+      val missing = fixture.tempDirFixture.createFile("missing.png", "nop\n")
+      val physicalMissing = checkNotNull(manager.findFile(missing))
+      Files.delete(missing.toNioPath())
+      assertNull(assemblySourceSyntax(physicalMissing))
+    }
+  }
 
   @ParameterizedTest
   @ValueSource(strings = ["defs.png", "defs.inc~"])
