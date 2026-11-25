@@ -2,6 +2,7 @@ package edu.missouristate.mars.cli.grading
 
 import edu.missouristate.mars.api.AssemblySourceSnapshot
 import edu.missouristate.mars.cli.HeadlessGuiProxy
+import edu.missouristate.mars.cli.assemblyStringLiteral
 import edu.missouristate.mars.core.AssemblyImage
 import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.di.MarsComponent
@@ -78,7 +79,7 @@ class PreparedFunctionFileReadTest {
       session().use { machine ->
         val source = directory.resolve("read.asm")
         val text =
-            ".data\npath: .asciiz \"$path\"\nother: .asciiz \"other.bin\"\nbuffer: .space 32\n.text\n" +
+            ".data\npath: .asciiz ${assemblyStringLiteral(path)}\nother: .asciiz \"other.bin\"\nbuffer: .space 32\n.text\n" +
                 $$"main: li $v0,10\nsyscall\nreturned: bc main\nnop\nfunction:\n$$body\n" +
                 $$"publish: move $v0,$zero\nmove $v1,$zero\njrc $ra\nnop\n" +
                 $$"late_close:\n$$close\nmove $v0,$zero\njrc $ra\nnop\n"

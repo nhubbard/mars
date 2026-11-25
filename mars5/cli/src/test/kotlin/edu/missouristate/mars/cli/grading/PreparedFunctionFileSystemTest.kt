@@ -2,6 +2,7 @@ package edu.missouristate.mars.cli.grading
 
 import edu.missouristate.mars.api.AssemblySourceSnapshot
 import edu.missouristate.mars.cli.HeadlessGuiProxy
+import edu.missouristate.mars.cli.assemblyStringLiteral
 import edu.missouristate.mars.di.MarsComponent
 import java.nio.file.Files
 import java.nio.file.Path
@@ -215,7 +216,9 @@ class PreparedFunctionFileSystemTest {
     Files.write(inputPath, byteArrayOf(91))
     Files.write(outputPath, byteArrayOf(92))
     val source =
-        body.replace("in.wav", inputPath.toString()).replace("out.wav", outputPath.toString())
+        body
+            .replace("\"in.wav\"", assemblyStringLiteral(inputPath.toString()))
+            .replace("\"out.wav\"", assemblyStringLiteral(outputPath.toString()))
     val check =
         fixture()
             .copy(

@@ -1064,8 +1064,9 @@ internal class PackagedCliTest {
     )
   }
 
-  @Test
-  fun gradingChecksStructureAndIntermediateStateAndIsolatesCases() {
+  @ParameterizedTest
+  @ValueSource(strings = ["\n", "\r\n"])
+  fun gradingChecksStructureAndIntermediateStateAndIsolatesCases(lineSeparator: String) {
     val script =
         source(
             "linked-list checks.kts",
@@ -1135,10 +1136,20 @@ internal class PackagedCliTest {
         )
     val include = source("storage.inc", ".data\ncell: .word 0\nbuffer: .space 4\n")
     val result =
-        launch("grade", script.toString(), entry.toString(), "--include", include.toString())
+        launch(
+            "grade",
+            script.toString(),
+            entry.toString(),
+            "--include",
+            include.toString(),
+            lineSeparator = lineSeparator,
+        )
     assertEquals(1, result.status, result.err)
     assertTrue(
-        result.out.contains("PASS double a word\nPASS UTF-8 fixture\nPASS fresh machine\n"),
+        result.out.contains(
+            listOf("PASS double a word", "PASS UTF-8 fixture", "PASS fresh machine", "")
+                .joinToString(lineSeparator),
+        ),
         result.out,
     )
     assertTrue(
@@ -1158,8 +1169,9 @@ internal class PackagedCliTest {
     assertTrue(withoutInclude.out.contains("storage.inc"), withoutInclude.out)
   }
 
-  @Test
-  fun gradingReadsOnlyExplicitBinaryFixturesAndChecksCleanup() {
+  @ParameterizedTest
+  @ValueSource(strings = ["\n", "\r\n"])
+  fun gradingReadsOnlyExplicitBinaryFixturesAndChecksCleanup(lineSeparator: String) {
     val script =
         source(
             "files.kts",
@@ -1209,9 +1221,12 @@ internal class PackagedCliTest {
             """
                 .trimIndent(),
         )
-    val result = launch("grade", script.toString(), entry.toString())
+    val result = launch("grade", script.toString(), entry.toString(), lineSeparator = lineSeparator)
     assertEquals(0, result.status, result.err + result.out)
-    assertEquals("PASS binary fixture\nPASS fresh file policy\n", result.out)
+    assertEquals(
+        listOf("PASS binary fixture", "PASS fresh file policy", "").joinToString(lineSeparator),
+        result.out,
+    )
   }
 
   @Test
@@ -1796,19 +1811,27 @@ internal class PackagedCliTest {
     return directory.resolve("dump-$descriptor")
   }
 
-  private fun launch(vararg arguments: String): Result {
-    return launch("", arguments.toList())
+  private fun launch(vararg arguments: String, lineSeparator: String? = null): Result {
+    return launch("", arguments.toList(), lineSeparator)
   }
 
-  private fun launch(input: String, arguments: List<String>): Result {
+  private fun launch(
+      input: String,
+      arguments: List<String>,
+      lineSeparator: String? = null,
+  ): Result {
     val bin = Path.of(System.getProperty("java.home"), "bin")
     val java = bin.resolve(if (Files.exists(bin.resolve("java.exe"))) "java.exe" else "java")
+    // Redirected fixtures are UTF-8; Windows stdout/stderr can otherwise use a legacy code page.
     val command =
         mutableListOf(
             java.toString(),
-            "-jar",
-            System.getProperty("mars.cli.jar"),
+            "-Dstdout.encoding=UTF-8",
+            "-Dstderr.encoding=UTF-8",
         )
+    if (lineSeparator != null) command.add("-Dline.separator=$lineSeparator")
+    command.add("-jar")
+    command.add(System.getProperty("mars.cli.jar"))
     command.addAll(arguments)
     val stdout = Files.createTempFile(directory, "stdout-", ".txt")
     val stderr = Files.createTempFile(directory, "stderr-", ".txt")
