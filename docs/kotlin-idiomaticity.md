@@ -208,3 +208,33 @@ The projection key also preserves file-type reclassification independently of
 text changes. The full annotator regression class is included in the focused
 checks, covering original-name changes, binary/text reassignment, live document
 edits, and VFS refresh in addition to native cache collection.
+
+## Complete verification
+
+The final source passes the complete build on JDK 25 against IntelliJ
+IU-263.7307.200. All 2,463 core, 317 CLI, 8 datapath, and 1,380 plugin tests pass,
+with zero failures, errors, or skipped tests. The plugin package coverage gates
+retain 100% line and branch thresholds, and the separate generated-parser gate
+passes. Formatting, benchmark compilation, plugin structure, project
+configuration, license notices, and packaged verification pass.
+
+The packaged verifier reports `Compatible`, with 97 experimental API usages and
+no configured compatibility, internal-API, or override-only API violations.
+The final command is:
+
+```sh
+./mars5/gradlew -p mars5 build :core:benchmarkClasses \
+  :plugin:verifyPluginStructure :plugin:verifyPluginProjectConfiguration \
+  :plugin:verifyPlugin
+```
+
+Standalone smoke verification passes the instruction-lab test and all five PNG
+decoder tests. The catalog exercise executes 867 basic and 430 pseudo-instruction
+forms, including their expected traps, with an empty failure report. The CLI JAR
+also passes its `--help` smoke check with JDK 25. The final focused source-view
+contract run passes all 91 tests before the complete suite.
+
+The final audit matches the committed after snapshot. The remaining assertions
+and deferred type/lifecycle improvements are documented in
+`kotlin-nullability-audit.md`; this work does not claim that every nullable public
+compatibility API has been redesigned.
