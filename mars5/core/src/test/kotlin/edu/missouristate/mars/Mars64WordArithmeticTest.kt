@@ -6,9 +6,9 @@ import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
@@ -81,7 +81,7 @@ class Mars64WordArithmeticTest {
       val program = session.assemble(listOf(file), null, extended = false, warnings = false)
       session.editIntegerRegister(9, Long.MIN_VALUE)
       session.editIntegerRegister(10, -7)
-      assertThrows(ProcessingException::class.java) { program.simulate(1) }
+      assertThrows<ProcessingException> { program.simulate(1) }
       assertEquals(Long.MIN_VALUE, session.registerFile.getLongValueNoNotify(9))
     }
   }
@@ -99,7 +99,7 @@ class Mars64WordArithmeticTest {
       session.assemble(listOf(file), null, extended = false, warnings = false)
       session.selectTarget(MarsTarget.MARS64)
       for (word in words.keys) assertNull(session.instructionSet.findByBinaryCode(word))
-      assertThrows(ProcessingException::class.java) {
+      assertThrows<ProcessingException> {
         session.assemble(listOf(file), null, extended = false, warnings = false)
       }
     }

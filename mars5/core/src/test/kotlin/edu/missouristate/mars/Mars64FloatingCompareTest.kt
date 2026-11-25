@@ -8,8 +8,8 @@ import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
@@ -104,7 +104,7 @@ class Mars64FloatingCompareTest {
       session.editCoprocessor1Pair(3, 0x7fc0_0001L)
       session.editCoprocessor1Pair(31, 123L)
       program.simulate(1)
-      assertThrows(ProcessingException::class.java) { program.simulate(1) }
+      assertThrows<ProcessingException> { program.simulate(1) }
       assertEquals(FLOATING_POINT_EXCEPTION, session.coprocessor0.getValue(CAUSE) ushr 2 and 31)
       assertEquals(0x000d0800, session.coprocessor1.floatingStatus)
       assertEquals(123L, session.coprocessor1.getDoublewordNoNotify(31))
@@ -164,7 +164,7 @@ class Mars64FloatingCompareTest {
     TestSessions.create().use { session ->
       session.selectTarget(MarsTarget.MARS64)
       val program = session.assemble(listOf(source), null, extended = false, warnings = false)
-      assertThrows(ProcessingException::class.java) { program.simulate(1) }
+      assertThrows<ProcessingException> { program.simulate(1) }
       assertEquals(
           RESERVED_INSTRUCTION_EXCEPTION,
           session.coprocessor0.getValue(CAUSE) ushr 2 and 31,

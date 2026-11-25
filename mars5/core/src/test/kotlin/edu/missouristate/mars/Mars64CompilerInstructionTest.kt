@@ -5,9 +5,9 @@ import edu.missouristate.mars.mips.hardware.MemoryState
 import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 
 class Mars64CompilerInstructionTest {
@@ -136,8 +136,7 @@ class Mars64CompilerInstructionTest {
       assertTrue(program.simulate(30))
       assertEquals(7L, machine.registerFile.getLongValueNoNotify(2))
       Files.writeString(file, ".section .got,\"aw\",@progbits\n.nan legacy\n")
-      val unsupported =
-          assertThrows(ProcessingException::class.java) { machine.assemble(listOf(file)) }
+      val unsupported = assertThrows<ProcessingException> { machine.assemble(listOf(file)) }
       val errors = unsupported.errors()!!.generateErrorReport()
       assertTrue(errors.contains("Unsupported section \".got\""))
       assertTrue(errors.contains("Only .nan 2008 is supported"))
@@ -214,8 +213,7 @@ class Mars64CompilerInstructionTest {
               $$"dsll $t0,$t0,%lo(main)" to "operand is of incorrect type",
           )) {
         Files.writeString(file, "$source\nmain: nop\n")
-        val invalid =
-            assertThrows(ProcessingException::class.java) { machine.assemble(listOf(file)) }
+        val invalid = assertThrows<ProcessingException> { machine.assemble(listOf(file)) }
         assertTrue(invalid.errors()!!.generateErrorReport().contains(message), source)
       }
     }
@@ -280,7 +278,7 @@ class Mars64CompilerInstructionTest {
         assertEquals(result, machine.registerFile.getLongValueNoNotify(9))
       }
       Files.writeString(file, $$"drotr $9,$10,64")
-      val invalid = assertThrows(ProcessingException::class.java) { machine.assemble(listOf(file)) }
+      val invalid = assertThrows<ProcessingException> { machine.assemble(listOf(file)) }
       assertTrue(
           invalid
               .errors()!!

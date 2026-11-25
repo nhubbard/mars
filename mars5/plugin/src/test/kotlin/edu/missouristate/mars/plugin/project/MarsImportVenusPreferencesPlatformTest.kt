@@ -45,9 +45,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertInstanceOf
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.NullSource
 import org.junit.jupiter.params.provider.ValueSource
@@ -80,8 +80,7 @@ class MarsImportVenusPreferencesPlatformTest {
       timeoutRunBlocking {
         withContext(Dispatchers.EDT) {
           val action =
-              assertInstanceOf(
-                  MarsImportVenusPreferencesAction::class.java,
+              assertInstanceOf<MarsImportVenusPreferencesAction>(
                   ActionManager.getInstance().getAction("Mars.ImportVenusPreferences"),
               )
           assertEquals(ActionUpdateThread.BGT, action.actionUpdateThread)
@@ -276,8 +275,7 @@ class MarsImportVenusPreferencesPlatformTest {
           val context =
               ConfigurationContext.createEmptyContextForLocation(PsiLocation.fromPsiElement(source))
           val created =
-              assertInstanceOf(
-                  MarsRunConfiguration::class.java,
+              assertInstanceOf<MarsRunConfiguration>(
                   producer.createConfigurationFromContext(context)?.configuration,
               )
           assertTrue(created.options.assembleDirectory)
@@ -439,8 +437,7 @@ class MarsImportVenusPreferencesPlatformTest {
         withContext(Dispatchers.EDT) {
           withEditorDefaults { editor, fonts, properties ->
             val registered =
-                assertInstanceOf(
-                    MarsImportVenusEditorPreferencesAction::class.java,
+                assertInstanceOf<MarsImportVenusEditorPreferencesAction>(
                     ActionManager.getInstance().getAction("Mars.ImportVenusEditorPreferences"),
                 )
             assertEquals(ActionUpdateThread.BGT, registered.actionUpdateThread)

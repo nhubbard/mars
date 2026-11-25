@@ -5,7 +5,7 @@ import edu.missouristate.mars.mips.hardware.VectorRegister
 import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertThrows
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
@@ -112,7 +112,7 @@ class Mars64VectorMiscTest {
       assertEquals(vector(bits, -8, 7), fpu.readVector(5))
       assertEquals(vector(bits, 15, 15), fpu.readVector(6))
       Files.writeString(file, $$"insve.$$suffix $w31[0],$w3[1]")
-      assertThrows(ProcessingException::class.java) {
+      assertThrows<ProcessingException> {
         session.assemble(listOf(file), null, extended = false, warnings = false)
       }
     }

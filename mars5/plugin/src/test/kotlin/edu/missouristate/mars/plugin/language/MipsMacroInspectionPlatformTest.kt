@@ -10,7 +10,7 @@ import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsigh
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiErrorElement
-import com.intellij.psi.util.PsiTreeUtil
+import com.intellij.psi.util.childOfType
 import com.intellij.testFramework.DumbModeTestUtils
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.common.timeoutRunBlocking
@@ -1184,7 +1184,7 @@ class MipsMacroInspectionPlatformTest {
           ),
           errors(),
       )
-      val physicalError = PsiTreeUtil.findChildOfType(fixture.file, PsiErrorElement::class.java)!!
+      val physicalError = fixture.file.childOfType<PsiErrorElement>()!!
       DumbModeTestUtils.runInDumbModeSynchronously(project) {
         assertTrue(MipsAssemblySyntaxErrorFilter().shouldHighlightErrorElement(physicalError))
       }

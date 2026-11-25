@@ -7,8 +7,8 @@ import edu.missouristate.mars.simulator.Exceptions.MSA_FLOATING_POINT_EXCEPTION
 import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 
 class Mars64VectorControlTest {
@@ -43,7 +43,7 @@ class Mars64VectorControlTest {
       assertEquals(0, session.registerFile.getValueNoNotify(10))
       assertEquals(0, session.registerFile.getValueNoNotify(11))
       assertEquals(0x000c0000, session.coprocessor1.floatingStatus)
-      assertThrows(ProcessingException::class.java) { program.simulate(1) }
+      assertThrows<ProcessingException> { program.simulate(1) }
       assertEquals(0x1010800, session.coprocessor1.msaStatus)
       assertEquals(MSA_FLOATING_POINT_EXCEPTION, session.coprocessor0.getValue(CAUSE) ushr 2 and 31)
       assertEquals(statements.last().address, session.coprocessor0.getValue(EPC))

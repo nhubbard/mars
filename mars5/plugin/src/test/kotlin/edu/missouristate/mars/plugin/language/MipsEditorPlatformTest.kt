@@ -60,12 +60,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertInstanceOf
 import org.junit.jupiter.api.io.TempDir
 
 @TestApplication
@@ -724,7 +724,7 @@ class MipsEditorPlatformTest {
             .single()
     assertEquals("MARS MIPS", page.displayName)
     assertSame(MipsFileType.icon, page.icon)
-    assertInstanceOf(MipsSyntaxHighlighter::class.java, page.highlighter)
+    assertInstanceOf<MipsSyntaxHighlighter>(page.highlighter)
     assertTrue(page.colorDescriptors.isEmpty())
     assertEquals(
         mapOf(
@@ -1169,7 +1169,7 @@ class MipsEditorPlatformTest {
           )
 
           val matcher = LanguageBraceMatching.INSTANCE.forLanguage(MipsLanguage)
-          assertInstanceOf(MipsBraceMatcher::class.java, matcher)
+          assertInstanceOf<MipsBraceMatcher>(matcher)
           val pair = matcher.pairs.single { it.leftBraceType == MipsTypes.psi("LEFT_PAREN") }
           assertSame(MipsTypes.psi("RIGHT_PAREN"), pair.rightBraceType)
           val lanePair = matcher.pairs.single { it.leftBraceType == MipsTypes.psi("LEFT_BRACKET") }
@@ -1186,7 +1186,7 @@ class MipsEditorPlatformTest {
   @Test
   fun `registered commenter exposes only the MARS line marker`() {
     val commenter = LanguageCommenters.INSTANCE.forLanguage(MipsLanguage)
-    assertInstanceOf(MipsCommenter::class.java, commenter)
+    assertInstanceOf<MipsCommenter>(commenter)
     assertEquals("#", commenter.lineCommentPrefix)
     assertNull(commenter.blockCommentPrefix)
     assertNull(commenter.blockCommentSuffix)

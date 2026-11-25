@@ -8,8 +8,8 @@ import com.intellij.codeInsight.navigation.actions.GotoDeclarationAction
 import com.intellij.execution.ExecutionListener
 import com.intellij.execution.ExecutionManager
 import com.intellij.execution.Executor
-import com.intellij.execution.configurations.ConfigurationTypeUtil
 import com.intellij.execution.configurations.RunProfile
+import com.intellij.execution.configurations.runConfigurationType
 import com.intellij.execution.executors.DefaultDebugExecutor
 import com.intellij.execution.executors.DefaultRunExecutor
 import com.intellij.execution.impl.ConsoleViewImpl
@@ -41,6 +41,7 @@ import com.intellij.openapi.actionSystem.impl.SimpleDataContext
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.WriteAction
 import com.intellij.openapi.application.readAction
+import com.intellij.openapi.application.runWriteAction
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.DefaultLanguageHighlighterColors
@@ -188,6 +189,7 @@ import org.jdom.Element
 import org.jetbrains.concurrency.await
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertInstanceOf
 import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.EnumSource
@@ -342,7 +344,7 @@ class MarsDebugPlatformTest {
     withDebug(source) { debug ->
       debug.assertPausedAt(source, 3)
       suspend fun readWord(): Int {
-        val context = assertInstanceOf(MarsSuspendContext::class.java, debug.session.suspendContext)
+        val context = assertInstanceOf<MarsSuspendContext>(debug.session.suspendContext)
         val read = CompletableDeferred<Int>()
         context.inspectionRequests.send { read.complete(it.getWord(address)) }
         return read.await()
@@ -358,7 +360,7 @@ class MarsDebugPlatformTest {
         debug.assertPausedAt(source, 9)
         assertEquals(0x01000001, readWord())
         withContext(Dispatchers.EDT) {
-          WriteAction.run<RuntimeException> { point.isEnabled = false }
+          runWriteAction { point.isEnabled = false }
           debug.session.resume()
         }
       }
@@ -376,7 +378,7 @@ class MarsDebugPlatformTest {
             settings.changeTarget(MarsTarget.MARS64)
             val type =
                 XDebuggerUtil.getInstance().findBreakpointType(MarsMemoryWatchpointType::class.java)
-            WriteAction.run<RuntimeException> {
+            runWriteAction {
               debugger.breakpointManager.addBreakpoint(
                   type,
                   MarsMemoryWatchpointProperties(0x10000, 0x10003, MemoryWatchMode.WRITE),
@@ -433,10 +435,10 @@ class MarsDebugPlatformTest {
                   .addFileToProject("exception/kernel/handler.s", ".ktext 0x80000180\nnop\n")
                   .virtualFile
           val document = requireNotNull(FileDocumentManager.getInstance().getDocument(kernel))
-          WriteAction.run<RuntimeException> {
+          runWriteAction {
             document.setText($$".ktext 0x80000180\nli $t0, 42\nli $v0, 10\nsyscall\n")
           }
-          project.getService(MarsAssemblySettings::class.java).changeExceptionHandler(kernel.path)
+          project.service<MarsAssemblySettings>().changeExceptionHandler(kernel.path)
           addBreakpoint(kernel, 2)
           main to kernel
         }
@@ -489,9 +491,7 @@ class MarsDebugPlatformTest {
                   )
                   .virtualFile
           if (orderedProject) {
-            project
-                .getService(MarsAssemblySettings::class.java)
-                .changeSources(listOf(main.path, sibling.path))
+            project.service<MarsAssemblySettings>().changeSources(listOf(main.path, sibling.path))
           }
           addBreakpoint(sibling, 4)
           main to sibling
@@ -541,7 +541,7 @@ class MarsDebugPlatformTest {
     withDebug(entry) { debug ->
       val console =
           withContext(Dispatchers.EDT) {
-            assertInstanceOf(ConsoleViewImpl::class.java, debug.session.consoleView).also {
+            assertInstanceOf<ConsoleViewImpl>(debug.session.consoleView).also {
               it.component
             }
           }
@@ -601,12 +601,12 @@ class MarsDebugPlatformTest {
               XDebuggerUtil.getInstance().toggleLineBreakpoint(project, breakpointType, body, 2)
               addBreakpoint(main, 0)
               addBreakpoint(main, 1).also { point ->
-                WriteAction.run<RuntimeException> { point.setCondition("0") }
+                runWriteAction { point.setCondition("0") }
               }
               addBreakpoint(main, 2).also { point ->
-                WriteAction.run<RuntimeException> { point.setLogExpression("1") }
+                runWriteAction { point.setLogExpression("1") }
               }
-              WriteAction.run<RuntimeException> {
+              runWriteAction {
                 debugger.breakpointManager.addLineBreakpoint(
                     breakpointType,
                     "${main.url}.missing",
@@ -627,8 +627,7 @@ class MarsDebugPlatformTest {
         withDebug(entry) { debug ->
           debug.assertPausedAt(include, 2)
           val process =
-              assertInstanceOf(
-                  MarsProcessHandler::class.java,
+              assertInstanceOf<MarsProcessHandler>(
                   debug.session.debugProcess.processHandler,
               )
           val counter = process.instructionCounter
@@ -997,7 +996,7 @@ class MarsDebugPlatformTest {
       debug.assertPausedAt(source, 0)
       withContext(Dispatchers.EDT) { debug.session.stepInto() }
       assertNull(debug.nextPosition())
-      val pause = assertInstanceOf(MarsSuspendContext::class.java, debug.session.suspendContext)
+      val pause = assertInstanceOf<MarsSuspendContext>(debug.session.suspendContext)
       val edited = CompletableDeferred<String?>()
       pause.machineEdits.submitEdit(
           MemoryWordEditRequest(
@@ -1035,7 +1034,7 @@ class MarsDebugPlatformTest {
           debug.assertPausedAt(source, 0)
           val session = debug.session
           val process = session.debugProcess
-          val first = assertInstanceOf(MarsSuspendContext::class.java, session.suspendContext)
+          val first = assertInstanceOf<MarsSuspendContext>(session.suspendContext)
           val inspecting = CompletableDeferred<Unit>()
           val release = CompletableDeferred<Unit>()
           first.inspectionRequests.send {
@@ -1061,7 +1060,7 @@ class MarsDebugPlatformTest {
             release.complete(Unit)
           }
           debug.assertPausedAt(source, 1)
-          val second = assertInstanceOf(MarsSuspendContext::class.java, session.suspendContext)
+          val second = assertInstanceOf<MarsSuspendContext>(session.suspendContext)
           withContext(Dispatchers.EDT) {
             process.resume(first)
             process.startStepInto(first)
@@ -1110,7 +1109,7 @@ class MarsDebugPlatformTest {
                       .virtualFile
               addBreakpoint(file, 1)
               val finish = addBreakpoint(file, 4)
-              WriteAction.run<RuntimeException> { finish.setCondition("0") }
+              runWriteAction { finish.setCondition("0") }
               file to macro
             }
         withDebug(entry) { debug ->
@@ -1194,8 +1193,7 @@ class MarsDebugPlatformTest {
         withDebug(file, { delayedBranchingMode = ProjectOptionOverride.ENABLED }) { debug ->
           debug.assertPausedAt(file, 0)
           val process =
-              assertInstanceOf(
-                  MarsProcessHandler::class.java,
+              assertInstanceOf<MarsProcessHandler>(
                   debug.session.debugProcess.processHandler,
               )
           assertTrue(process.branchHistory.snapshot().recent.isEmpty())
@@ -1252,7 +1250,7 @@ class MarsDebugPlatformTest {
               .also {
                 addBreakpoint(it, 1)
                 val logpoint = addBreakpoint(it, 10)
-                WriteAction.run<RuntimeException> { logpoint.suspendPolicy = SuspendPolicy.NONE }
+                runWriteAction { logpoint.suspendPolicy = SuspendPolicy.NONE }
               }
         }
     withDebug(file) { debug ->
@@ -1354,7 +1352,7 @@ class MarsDebugPlatformTest {
               .virtualFile
               .also {
                 val breakpoint = addBreakpoint(it, 4)
-                WriteAction.run<RuntimeException> { breakpoint.setCondition($$"$a0 == 0") }
+                runWriteAction { breakpoint.setCondition($$"$a0 == 0") }
               }
         }
     withDebug(file) { debug ->
@@ -2397,8 +2395,7 @@ class MarsDebugPlatformTest {
         withDebug(source, { connectKeyboardDisplay = true }) { debug ->
           debug.assertPausedAt(source, 2)
           val process =
-              assertInstanceOf(
-                  MarsProcessHandler::class.java,
+              assertInstanceOf<MarsProcessHandler>(
                   debug.session.debugProcess.processHandler,
               )
           val terminal = process.keyboardDisplay
@@ -2458,8 +2455,7 @@ class MarsDebugPlatformTest {
     withDebug(source, { connectMarsBot = true }) { debug ->
       debug.assertPausedAt(source, 6)
       val process =
-          assertInstanceOf(
-              MarsProcessHandler::class.java,
+          assertInstanceOf<MarsProcessHandler>(
               debug.session.debugProcess.processHandler,
           )
       val robot = process.marsBot
@@ -2516,8 +2512,7 @@ class MarsDebugPlatformTest {
     withDebug(source, { connectScavengerHunt = true }) { debug ->
       debug.assertPausedAt(source, 6)
       val process =
-          assertInstanceOf(
-              MarsProcessHandler::class.java,
+          assertInstanceOf<MarsProcessHandler>(
               debug.session.debugProcess.processHandler,
           )
       val started = requireNotNull(process.scavengerHuntSnapshot())
@@ -2578,8 +2573,7 @@ class MarsDebugPlatformTest {
         withDebug(source, { connectDigitalLab = true }) { debug ->
           debug.assertPausedAt(source, 2)
           val process =
-              assertInstanceOf(
-                  MarsProcessHandler::class.java,
+              assertInstanceOf<MarsProcessHandler>(
                   debug.session.debugProcess.processHandler,
               )
           assertTrue(process.digitalLab.snapshot().connected)
@@ -2651,8 +2645,7 @@ class MarsDebugPlatformTest {
         withDebug(source, { captureBitmap = true }) { debug ->
           debug.assertPausedAt(source, 6)
           val process =
-              assertInstanceOf(
-                  MarsProcessHandler::class.java,
+              assertInstanceOf<MarsProcessHandler>(
                   debug.session.debugProcess.processHandler,
               )
           val display = process.bitmapDisplay
@@ -2814,7 +2807,7 @@ class MarsDebugPlatformTest {
     try {
       val root = XStackFrameNode(tree, frame, null)
       tree.setRoot(root, true)
-      val values = children(root, count).map { assertInstanceOf(XValueNodeImpl::class.java, it) }
+      val values = children(root, count).map { assertInstanceOf<XValueNodeImpl>(it) }
       pollAssertionsAsync(3.seconds, 10.milliseconds) { assertTrue(values.all { it.isComputed }) }
       assertTrue(values.all { it.valueContainer.modifier == null })
       return values.associate { requireNotNull(it.name) to requireNotNull(it.rawValue) }
@@ -2847,14 +2840,14 @@ class MarsDebugPlatformTest {
       val wide = project.service<MarsAssemblySettings>().target == MarsTarget.MARS64
       val groups =
           children(root, if (wide) 4 else 3).map {
-            assertInstanceOf(XValueGroupNodeImpl::class.java, it)
+            assertInstanceOf<XValueGroupNodeImpl>(it)
           }
       val (cpu, cp0, cp1) = groups
       assertTrue(cpu.valueContainer.isAutoExpand)
       assertFalse(cp1.valueContainer.isAutoExpand)
       assertTrue(cp0.valueContainer.isRestoreExpansion)
       val floating = children(cp1, 34)
-      val doublewords = assertInstanceOf(XValueGroupNodeImpl::class.java, floating.last())
+      val doublewords = assertInstanceOf<XValueGroupNodeImpl>(floating.last())
       val doublewordCount = if (wide) 32 else 16
       val nodes = buildList {
         addAll(children(cpu, 35))
@@ -2863,7 +2856,7 @@ class MarsDebugPlatformTest {
         addAll(children(doublewords, doublewordCount))
         if (wide) addAll(children(groups[3], 32))
       }
-      val values = nodes.map { assertInstanceOf(XValueNodeImpl::class.java, it) }
+      val values = nodes.map { assertInstanceOf<XValueNodeImpl>(it) }
       pollAssertionsAsync(3.seconds, 10.milliseconds) { assertTrue(values.all { it.isComputed }) }
       return inspect(values)
     } finally {
@@ -2912,8 +2905,7 @@ class MarsDebugPlatformTest {
       withDebug(source) { debug ->
         debug.assertPausedAt(source, 7)
         val process =
-            assertInstanceOf(
-                MarsProcessHandler::class.java,
+            assertInstanceOf<MarsProcessHandler>(
                 debug.session.debugProcess.processHandler,
             )
         withContext(Dispatchers.IO) { process.processInput.write("é💡\n".encodeToByteArray()) }
@@ -2997,7 +2989,7 @@ class MarsDebugPlatformTest {
           val caller =
               MarsCallerFrame(DebuggerCallStack.CallerSite(1, 0x1_0040_0000L, null, null), null)
           assertTrue(frameLabel(caller).contains("0x0000000100400000"))
-          val evaluator = assertInstanceOf(MarsExpressionEvaluator::class.java, frame.evaluator)
+          val evaluator = assertInstanceOf<MarsExpressionEvaluator>(frame.evaluator)
           MarsSessionService.createMarsComponent().context().use { machine ->
             val cases =
                 listOf(
@@ -3259,8 +3251,7 @@ class MarsDebugPlatformTest {
                 assertEquals("0x0000002a", values[$$"$t0"])
                 assertEquals("0xffffffff", values["hi"])
                 assertEquals("0x80000000", values["lo"])
-                val context =
-                    assertInstanceOf(MarsSuspendContext::class.java, debug.session.suspendContext)
+                val context = assertInstanceOf<MarsSuspendContext>(debug.session.suspendContext)
                 assertEquals(
                     values[$$"$sp"],
                     "0x" + context.memoryRegions.getValue(MemoryRegion.STACK).toString(16),
@@ -3480,8 +3471,7 @@ class MarsDebugPlatformTest {
               assertEquals(32, registers.keys.count { it.startsWith($$"$w") })
               inspectRegisterNodes(debug.session, frame) { nodes ->
                 val vector = nodes.single { it.name == $$"$w0" }
-                val lanes =
-                    children(vector, 6).map { assertInstanceOf(XValueNodeImpl::class.java, it) }
+                val lanes = children(vector, 6).map { assertInstanceOf<XValueNodeImpl>(it) }
                 pollAssertionsAsync(3.seconds, 10.milliseconds) {
                   assertTrue(lanes.all { it.isComputed })
                 }
@@ -3549,8 +3539,7 @@ class MarsDebugPlatformTest {
           }
       withDebug(source) { debug ->
         val process =
-            assertInstanceOf(
-                MarsProcessHandler::class.java,
+            assertInstanceOf<MarsProcessHandler>(
                 debug.session.debugProcess.processHandler,
             )
         debug.assertPausedAt(source, 1)
@@ -3689,8 +3678,7 @@ class MarsDebugPlatformTest {
         withDebug(source) { debug ->
           debug.assertPausedAt(source, 0)
           val process =
-              assertInstanceOf(
-                  MarsProcessHandler::class.java,
+              assertInstanceOf<MarsProcessHandler>(
                   debug.session.debugProcess.processHandler,
               )
           assertTrue(process.xray.snapshot().isEmpty())
@@ -3970,8 +3958,7 @@ class MarsDebugPlatformTest {
                       UIUtil.findComponentsOfType(memory, JButton::class.java).single {
                         it.text == "Edit Word…"
                       }
-                  val context =
-                      assertInstanceOf(MarsSuspendContext::class.java, debug.session.suspendContext)
+                  val context = assertInstanceOf<MarsSuspendContext>(debug.session.suspendContext)
                   assertEquals(0x00400000, context.executionMarkers.previous?.address)
                   interceptMemoryEdit { finishMemoryEdit(it, "0x00400004", "0x2404002a") }
                   edit.doClick()
@@ -3982,8 +3969,7 @@ class MarsDebugPlatformTest {
             pollAssertionsAsync(5.seconds, 10.milliseconds) {
               withContext(Dispatchers.EDT) {
                 assertNull(debug.session.topFramePosition)
-                val context =
-                    assertInstanceOf(MarsSuspendContext::class.java, debug.session.suspendContext)
+                val context = assertInstanceOf<MarsSuspendContext>(debug.session.suspendContext)
                 assertNull(context.sourceStep)
                 assertNull(context.executionMarkers.previous)
                 val row =
@@ -4253,8 +4239,7 @@ class MarsDebugPlatformTest {
                 }
             fun bold(column: Int): List<String> {
               val cell =
-                  assertInstanceOf(
-                      SimpleColoredComponent::class.java,
+                  assertInstanceOf<SimpleColoredComponent>(
                       table.prepareRenderer(table.getCellRenderer(0, column), 0, column),
                   )
               val fragments = cell.iterator()
@@ -4340,8 +4325,7 @@ class MarsDebugPlatformTest {
                   },
               ) {
                 val cell =
-                    assertInstanceOf(
-                        SimpleColoredComponent::class.java,
+                    assertInstanceOf<SimpleColoredComponent>(
                         table
                             .getCellRenderer(0, 1)
                             .getTableCellRendererComponent(
@@ -4435,8 +4419,7 @@ class MarsDebugPlatformTest {
         withDebug(file, { instructionLimit = 3 }) { debug ->
           debug.assertPausedAt(file, 1)
           val process =
-              assertInstanceOf(
-                  MarsProcessHandler::class.java,
+              assertInstanceOf<MarsProcessHandler>(
                   debug.session.debugProcess.processHandler,
               )
           withContext(Dispatchers.EDT) {
@@ -4472,8 +4455,7 @@ class MarsDebugPlatformTest {
             debug ->
           debug.assertPausedAt(file, 4)
           val process =
-              assertInstanceOf(
-                  MarsProcessHandler::class.java,
+              assertInstanceOf<MarsProcessHandler>(
                   debug.session.debugProcess.processHandler,
               )
           assertEquals(0L, process.instructionCounter.snapshot().total)
@@ -4538,7 +4520,7 @@ class MarsDebugPlatformTest {
       debug.assertPausedAt(file, 0)
       withContext(Dispatchers.EDT) {
         val (action, event) = toolbarAction(debug.session, "Run Speed")
-        val speed = assertInstanceOf(MarsRunSpeedAction::class.java, action)
+        val speed = assertInstanceOf<MarsRunSpeedAction>(action)
         assertTrue(event.presentation.isEnabled)
         assertEquals("Speed: 0.05 instr/s", event.presentation.text)
         val choices =
@@ -4601,7 +4583,7 @@ class MarsDebugPlatformTest {
       debug.assertPausedAt(file, 4)
       withContext(Dispatchers.EDT) {
         settings.changeMemoryLayout(MarsMemoryLayout.DEFAULT)
-        val context = assertInstanceOf(MarsSuspendContext::class.java, debug.session.suspendContext)
+        val context = assertInstanceOf<MarsSuspendContext>(debug.session.suspendContext)
         assertEquals(
             layout.textBaseAddress.toLong(),
             context.memoryRegions.getValue(MemoryRegion.TEXT),
@@ -4815,7 +4797,7 @@ class MarsDebugPlatformTest {
                       LightVirtualFile("symbols-body.s", MipsFileType, includedText)
                   val copy = requireNotNull(documents.getDocument(formattingCopy))
                   assertEquals(formattingCopy, documents.getFile(copy))
-                  WriteAction.run<RuntimeException> {
+                  runWriteAction {
                     detached.setText("edited")
                     copy.setText("# formatting copy\n$includedText")
                     other.setText("nop\nnop\n")
@@ -4840,7 +4822,7 @@ class MarsDebugPlatformTest {
                 assertFalse(captured.isWritable)
                 assertEquals(includedText, editor.document.text)
                 assertEquals(3, editor.caretModel.logicalPosition.line)
-                WriteAction.run<RuntimeException> { bodyDocument.setText(includedText) }
+                runWriteAction { bodyDocument.setText(includedText) }
               }
             }
             pollAssertionsAsync(3.seconds, 10.milliseconds) {
@@ -4863,7 +4845,7 @@ class MarsDebugPlatformTest {
               assertEquals(1, secondTable.rowSorter.sortKeys.single().column)
               assertEquals(SortOrder.DESCENDING, secondTable.rowSorter.sortKeys.single().sortOrder)
               search.text = ""
-              WriteAction.run<RuntimeException> { include.delete(this) }
+              runWriteAction { include.delete(this) }
               debug.session.resume()
             }
             assertEquals(0, debug.exit.await())
@@ -5439,7 +5421,7 @@ class MarsDebugPlatformTest {
                 .text,
         )
         val detached = EditorFactory.getInstance().createDocument("before")
-        WriteAction.run<RuntimeException> { detached.setText("after") }
+        runWriteAction { detached.setText("after") }
         image.value = LoadedSymbols(AssemblySymbolMap(locals, emptyMap()), sources)
       }
       pollAssertionsAsync(3.seconds, 10.milliseconds) {
@@ -5500,14 +5482,14 @@ class MarsDebugPlatformTest {
       assertEquals(file, sources.position(location).file)
       assertEquals(location, sources.location(file, 0))
       assertNull(sources.location(other, 0))
-      WriteAction.run<RuntimeException> { file.setBinaryContent("nop\nnop\n".toByteArray()) }
+      runWriteAction { file.setBinaryContent("nop\nnop\n".toByteArray()) }
       assertNull(documents.getCachedDocument(file))
       assertNull(sources.location(file, 0))
       val snapshot = sources.position(location).file
       assertNull(sources.originalLine(file, 0))
       assertNull(sources.originalLine(snapshot, 0))
       assertNull(MarsExecutionSources(capture).originalLine(snapshot, 0))
-      WriteAction.run<RuntimeException> { file.delete(this) }
+      runWriteAction { file.delete(this) }
       assertSame(snapshot, sources.position(location).file)
       assertEquals(location, sources.location(snapshot, 0))
       assertNull(MarsExecutionSources(capture).location(snapshot, 0))
@@ -5663,12 +5645,11 @@ class MarsDebugPlatformTest {
               withContext(Dispatchers.EDT) {
                 val document =
                     requireNotNull(FileDocumentManager.getInstance().getDocument(include))
-                WriteAction.run<RuntimeException> {
+                runWriteAction {
                   document.setText("# changed\n" + body.replace("42", "99"))
                 }
                 val descriptor =
-                    assertInstanceOf(
-                        OpenFileDescriptor::class.java,
+                    assertInstanceOf<OpenFileDescriptor>(
                         initial.createNavigatable(project),
                     )
                 assertEquals(0, descriptor.line)
@@ -5704,7 +5685,7 @@ class MarsDebugPlatformTest {
                 ),
             )
             val document = requireNotNull(FileDocumentManager.getInstance().getDocument(include))
-            WriteAction.run<RuntimeException> {
+            runWriteAction {
               debugger.breakpointManager.removeBreakpoint(staleBreakpoint)
               document.setText(body)
             }
@@ -5818,7 +5799,7 @@ class MarsDebugPlatformTest {
           include.refresh(false, false)
           ActionUtil.updateAction(action, stale)
           assertFalse(stale.presentation.isEnabledAndVisible)
-          WriteAction.run<RuntimeException> { include.delete(this) }
+          runWriteAction { include.delete(this) }
           ActionUtil.updateAction(action, stale)
           assertFalse(stale.presentation.isEnabledAndVisible)
         }
@@ -6374,7 +6355,7 @@ class MarsDebugPlatformTest {
                   (0 until table.rowCount).first {
                     table.getValueAt(it, 4) == "disassembly-body.s:1"
                   }
-              WriteAction.run<RuntimeException> { fragment.delete(this) }
+              runWriteAction { fragment.delete(this) }
               table.setRowSelectionInterval(includeRow, includeRow)
               assertTrue(open.isEnabled)
               open.doClick(0)
@@ -6448,8 +6429,7 @@ class MarsDebugPlatformTest {
             // stopping.
             val inspected = CompletableDeferred<Unit>()
             withContext(Dispatchers.EDT) {
-              val context =
-                  assertInstanceOf(MarsSuspendContext::class.java, debug.session.suspendContext)
+              val context = assertInstanceOf<MarsSuspendContext>(debug.session.suspendContext)
               context.inspectionRequests.send { inspected.complete(Unit) }
             }
             inspected.await()
@@ -6490,7 +6470,7 @@ class MarsDebugPlatformTest {
                       )
                       .virtualFile
               addBreakpoint(file, 4)
-              WriteAction.run<RuntimeException> {
+              runWriteAction {
                 val manager = debugger.breakpointManager
                 manager.addBreakpoint(type, MarsAddressBreakpointProperties(other.path, 0x00400000))
                 manager.addBreakpoint(type, MarsAddressBreakpointProperties(file.path, 0x00400002))
@@ -6571,18 +6551,18 @@ class MarsDebugPlatformTest {
                       }
                   assertEquals(source.path, restored.entry)
                   assertEquals(0x10010004, restored.address)
-                  WriteAction.run<RuntimeException> {
+                  runWriteAction {
                     point.setCondition("(word(pc) & 0xff) == 2")
                   }
                   point
                 }
             marker(hitAddress, type.enabledIcon)
             withContext(Dispatchers.EDT) {
-              WriteAction.run<RuntimeException> { point.isEnabled = false }
+              runWriteAction { point.isEnabled = false }
             }
             marker(hitAddress, type.disabledIcon)
             withContext(Dispatchers.EDT) {
-              WriteAction.run<RuntimeException> { point.isEnabled = true }
+              runWriteAction { point.isEnabled = true }
               debug.session.setBreakpointMuted(true)
             }
             marker(hitAddress, type.mutedEnabledIcon)
@@ -6595,7 +6575,7 @@ class MarsDebugPlatformTest {
                   debugger.breakpointManager.getBreakpoints(type).single {
                     it.properties?.address == 0x10010008
                   }
-              WriteAction.run<RuntimeException> {
+              runWriteAction {
                 logpoint.suspendPolicy = SuspendPolicy.NONE
                 logpoint.setLogExpression($$"$t1")
               }
@@ -6603,7 +6583,7 @@ class MarsDebugPlatformTest {
             marker(logAddress, type.suspendNoneIcon)
             val console =
                 withContext(Dispatchers.EDT) {
-                  assertInstanceOf(ConsoleViewImpl::class.java, debug.session.consoleView).also {
+                  assertInstanceOf<ConsoleViewImpl>(debug.session.consoleView).also {
                     it.component
                   }
                 }
@@ -6803,7 +6783,7 @@ class MarsDebugPlatformTest {
     val options = MemoryExportOptions(format, MemoryExportRegion.RANGE, 0x10010000L..0x10010000L)
     withDebug(file) { debug ->
       debug.assertPausedAt(file, 3)
-      val pause = assertInstanceOf(MarsSuspendContext::class.java, debug.session.suspendContext)
+      val pause = assertInstanceOf<MarsSuspendContext>(debug.session.suspendContext)
       val output = directory.resolve("detached")
       val job =
           project.service<MarsMemoryExportService>().exportCapturedInBackground(options, output) {
@@ -6828,11 +6808,10 @@ class MarsDebugPlatformTest {
           releaseInspection.complete(Unit)
         }
         debug.assertPausedAt(file, 5)
-        val stale = assertInstanceOf(MemoryExportCapture.Failed::class.java, queued.await())
+        val stale = assertInstanceOf<MemoryExportCapture.Failed>(queued.await())
         assertTrue(stale.message.contains("resumed or stopped"))
         val late =
-            assertInstanceOf(
-                MemoryExportCapture.Failed::class.java,
+            assertInstanceOf<MemoryExportCapture.Failed>(
                 pause.captureForExport(options),
             )
         assertEquals(stale.message, late.message)
@@ -6919,8 +6898,7 @@ class MarsDebugPlatformTest {
               )
           val factory = EditorFactory.getInstance()
           val editor =
-              assertInstanceOf(
-                  EditorEx::class.java,
+              assertInstanceOf<EditorEx>(
                   factory.createEditor(document, project, MipsFileType, false),
               )
           try {
@@ -7000,7 +6978,7 @@ class MarsDebugPlatformTest {
                 val badLog = addBreakpoint(file, 8)
                 val trueHit = addBreakpoint(file, 9)
                 assertSame(MarsDebugEditors, breakpointType.getEditorsProvider(trueHit, project))
-                WriteAction.run<RuntimeException> {
+                runWriteAction {
                   falseHit.setCondition("(word(flag) & 1) != 0")
                   falseHit.setLogExpression("0x11111111")
                   badCondition.setCondition("unknown")
@@ -7038,7 +7016,7 @@ class MarsDebugPlatformTest {
             )
             val console =
                 withContext(Dispatchers.EDT) {
-                  assertInstanceOf(ConsoleViewImpl::class.java, debug.session.consoleView).also {
+                  assertInstanceOf<ConsoleViewImpl>(debug.session.consoleView).also {
                     it.component
                   }
                 }
@@ -7092,7 +7070,7 @@ class MarsDebugPlatformTest {
       debug.assertPausedAt(source, 12)
       val console =
           withContext(Dispatchers.EDT) {
-            assertInstanceOf(ConsoleViewImpl::class.java, debug.session.consoleView)
+            assertInstanceOf<ConsoleViewImpl>(debug.session.consoleView)
           }
       pollAssertionsAsync(5.seconds, 10.milliseconds) {
         withContext(Dispatchers.EDT) {
@@ -7115,7 +7093,7 @@ class MarsDebugPlatformTest {
                       .virtualFile
               val log = addBreakpoint(file, 0)
               val stop = addBreakpoint(file, 3)
-              WriteAction.run<RuntimeException> {
+              runWriteAction {
                 log.suspendPolicy = SuspendPolicy.NONE
                 log.isLogMessage = true
                 stop.isEnabled = false
@@ -7126,7 +7104,7 @@ class MarsDebugPlatformTest {
           debug.output.await()
           val console =
               withContext(Dispatchers.EDT) {
-                assertInstanceOf(ConsoleViewImpl::class.java, debug.session.consoleView).also {
+                assertInstanceOf<ConsoleViewImpl>(debug.session.consoleView).also {
                   it.component
                 }
               }
@@ -7147,7 +7125,7 @@ class MarsDebugPlatformTest {
           debug.assertPausedAt(source.first, 3)
           withContext(Dispatchers.EDT) {
             debug.session.setBreakpointMuted(true)
-            WriteAction.run<RuntimeException> { source.second.isEnabled = true }
+            runWriteAction { source.second.isEnabled = true }
             debug.session.setBreakpointMuted(false)
             debug.session.resume()
           }
@@ -7192,9 +7170,8 @@ class MarsDebugPlatformTest {
           val dependent = addBreakpoint(file, 3)
           val trigger = addBreakpoint(file, 9)
           // Match the platform fixture's setup for the native Breakpoints dialog option.
-          val manager =
-              assertInstanceOf(XBreakpointManagerImpl::class.java, debugger.breakpointManager)
-          WriteAction.run<RuntimeException> {
+          val manager = assertInstanceOf<XBreakpointManagerImpl>(debugger.breakpointManager)
+          runWriteAction {
             trigger.suspendPolicy = SuspendPolicy.NONE
             manager.dependentBreakpointManager.setMasterBreakpoint(dependent, trigger, leaveEnabled)
           }
@@ -7249,14 +7226,14 @@ class MarsDebugPlatformTest {
             spinner.value = 1
             panel.loadFrom(point)
             assertEquals(2, spinner.value)
-            val editor = assertInstanceOf(JSpinner.NumberEditor::class.java, spinner.editor)
+            val editor = assertInstanceOf<JSpinner.NumberEditor>(spinner.editor)
             editor.textField.text = "0"
             panel.saveTo(point)
             panel.loadFrom(point)
             assertEquals(2, spinner.value)
             point.setCondition($$"$t0 > 0")
           }
-          WriteAction.run<RuntimeException> {
+          runWriteAction {
             if (addressBreakpoint) {
               val type =
                   XDebuggerUtil.getInstance()
@@ -7408,8 +7385,7 @@ class MarsDebugPlatformTest {
         withDebug(file) { debug ->
           debug.assertPausedAt(file, 2)
           val process =
-              assertInstanceOf(
-                  MarsProcessHandler::class.java,
+              assertInstanceOf<MarsProcessHandler>(
                   debug.session.debugProcess.processHandler,
               )
           val parent = JPanel()
@@ -7516,7 +7492,7 @@ class MarsDebugPlatformTest {
             val release = CompletableDeferred<Unit>()
             val suspension =
                 withContext(Dispatchers.EDT) {
-                  assertInstanceOf(MarsSuspendContext::class.java, debug.session.suspendContext)
+                  assertInstanceOf<MarsSuspendContext>(debug.session.suspendContext)
                 }
             assertTrue(
                 suspension.inspectionRequests
@@ -7574,9 +7550,7 @@ class MarsDebugPlatformTest {
     val previous = manager.forceCompilationInTests
     try {
       withContext(Dispatchers.EDT) {
-        val config =
-            ConfigurationTypeUtil.findConfigurationType(MarsRunType::class.java)
-                .createTemplateConfiguration(project)
+        val config = runConfigurationType<MarsRunType>().createTemplateConfiguration(project)
         config.options.sourcePath = file.path
         configure(config.options)
         if (beforeLaunch) {
@@ -7589,7 +7563,7 @@ class MarsDebugPlatformTest {
                     config,
                 )
                 .build()
-        val runner = assertInstanceOf(MarsDebugRunner::class.java, environment.runner)
+        val runner = assertInstanceOf<MarsDebugRunner>(environment.runner)
         assertFalse(runner.canRun(DefaultRunExecutor.EXECUTOR_ID, config))
         assertFalse(
             runner.canRun(

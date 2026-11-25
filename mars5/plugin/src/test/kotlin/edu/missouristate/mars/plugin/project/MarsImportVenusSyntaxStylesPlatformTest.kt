@@ -47,11 +47,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertInstanceOf
 
 @TestApplication
 class MarsImportVenusSyntaxStylesPlatformTest {
@@ -73,8 +73,7 @@ class MarsImportVenusSyntaxStylesPlatformTest {
         withContext(Dispatchers.EDT) {
           withSchemes {
             val registered =
-                assertInstanceOf(
-                    MarsImportVenusSyntaxStylesAction::class.java,
+                assertInstanceOf<MarsImportVenusSyntaxStylesAction>(
                     ActionManager.getInstance().getAction("Mars.ImportVenusSyntaxStyles"),
                 )
             val withoutProject = event(registered, DataContext.EMPTY_CONTEXT)
@@ -135,8 +134,7 @@ class MarsImportVenusSyntaxStylesPlatformTest {
 
             withDialog(TestDialog.OK) { action.actionPerformed(event(action)) }
             val imported =
-                assertInstanceOf(
-                    AbstractColorsScheme::class.java,
+                assertInstanceOf<AbstractColorsScheme>(
                     colors.getScheme("MARS Venus (2)"),
                 )
             assertEquals(SchemeState.POSSIBLY_CHANGED, imported.schemeState)
@@ -267,8 +265,7 @@ class MarsImportVenusSyntaxStylesPlatformTest {
             val previous = properties.getValue(marker)
             try {
               properties.unsetValue(marker)
-              assertInstanceOf(
-                  MarsImportVenusMachineStylesAction::class.java,
+              assertInstanceOf<MarsImportVenusMachineStylesAction>(
                   ActionManager.getInstance().getAction("Mars.ImportVenusMachineStyles"),
               )
               val base = colors.globalScheme

@@ -5,9 +5,9 @@ import edu.missouristate.mars.mips.hardware.MemoryState
 import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvFileSource
@@ -18,13 +18,13 @@ class GnuMips64EncodingTest {
     val file = Files.writeString(directory.resolve("invalid.s"), $$"teq $12,$9,1024\n")
     TestSessions.create().use { machine ->
       machine.selectTarget(MarsTarget.MARS64)
-      val failure = assertThrows(ProcessingException::class.java) { machine.assemble(listOf(file)) }
+      val failure = assertThrows<ProcessingException> { machine.assemble(listOf(file)) }
       assertTrue(
           "Trap code must be an unsigned 10-bit integer" in
               failure.errors()!!.generateErrorReport(),
       )
       Files.writeString(file, $$"tne $12,$9,-1\n")
-      assertThrows(ProcessingException::class.java) { machine.assemble(listOf(file)) }
+      assertThrows<ProcessingException> { machine.assemble(listOf(file)) }
     }
   }
 
@@ -34,7 +34,7 @@ class GnuMips64EncodingTest {
     TestSessions.create().use { machine ->
       machine.selectTarget(MarsTarget.MARS64)
       val program = machine.assemble(listOf(file))
-      val failure = assertThrows(ProcessingException::class.java) { program.simulate(1) }
+      val failure = assertThrows<ProcessingException> { program.simulate(1) }
       assertTrue(failure.message.orEmpty().endsWith(": trap"))
     }
   }

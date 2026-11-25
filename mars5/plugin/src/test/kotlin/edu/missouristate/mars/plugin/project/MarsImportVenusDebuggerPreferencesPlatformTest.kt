@@ -36,9 +36,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertInstanceOf
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
 
@@ -69,8 +69,7 @@ class MarsImportVenusDebuggerPreferencesPlatformTest {
         withContext(Dispatchers.EDT) {
           withDefaults {
             val registered =
-                assertInstanceOf(
-                    MarsImportVenusDebuggerPreferencesAction::class.java,
+                assertInstanceOf<MarsImportVenusDebuggerPreferencesAction>(
                     ActionManager.getInstance().getAction("Mars.ImportVenusDebuggerPreferences"),
                 )
             assertEquals(ActionUpdateThread.BGT, registered.actionUpdateThread)

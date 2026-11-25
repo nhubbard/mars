@@ -26,6 +26,7 @@ import com.intellij.psi.PsiFileFactory
 import com.intellij.psi.PsiManager
 import com.intellij.psi.PsiNamedElement
 import com.intellij.psi.util.PsiTreeUtil
+import com.intellij.psi.util.childOfType
 import com.intellij.psi.util.elementType
 import com.intellij.testFramework.DumbModeTestUtils
 import com.intellij.testFramework.IndexingTestUtil
@@ -818,7 +819,7 @@ class MipsAssemblyAnnotatorPlatformTest {
         withContext(Dispatchers.EDT) {
           val source = ".data\n)\n# comment\n.word 1\n"
           val file = fixture.configureByText("segments.asm", source) as MipsFile
-          val error = PsiTreeUtil.findChildOfType(file, PsiErrorElement::class.java)!!
+          val error = file.childOfType<PsiErrorElement>()!!
           val analysis = project.service<MarsAnalysisService>()
           assertTrue(!filter.shouldHighlightErrorElement(error))
           DumbModeTestUtils.runInDumbModeSynchronously(project) {
@@ -840,14 +841,14 @@ class MipsAssemblyAnnotatorPlatformTest {
           val missing = fixture.configureByText("pending.asm", ".data\n.include \"pending.s\"\n)\n")
           assertTrue(
               filter.shouldHighlightErrorElement(
-                  PsiTreeUtil.findChildOfType(missing, PsiErrorElement::class.java)!!,
+                  missing.childOfType<PsiErrorElement>()!!,
               ),
           )
           val laterMissing =
               fixture.configureByText("later.asm", ".text\n)\n.include \"later-missing.s\"\n")
           assertTrue(
               filter.shouldHighlightErrorElement(
-                  PsiTreeUtil.findChildOfType(laterMissing, PsiErrorElement::class.java)!!,
+                  laterMissing.childOfType<PsiErrorElement>()!!,
               ),
           )
           val scratch =
@@ -855,13 +856,13 @@ class MipsAssemblyAnnotatorPlatformTest {
                   .createFileFromText("detached.asm", MipsFileType, ".data\n)\n")
           assertTrue(
               filter.shouldHighlightErrorElement(
-                  PsiTreeUtil.findChildOfType(scratch, PsiErrorElement::class.java)!!,
+                  scratch.childOfType<PsiErrorElement>()!!,
               ),
           )
           val java = fixture.configureByText("Broken.java", "class {")
           assertTrue(
               filter.shouldHighlightErrorElement(
-                  PsiTreeUtil.findChildOfType(java, PsiErrorElement::class.java)!!,
+                  java.childOfType<PsiErrorElement>()!!,
               ),
           )
         }

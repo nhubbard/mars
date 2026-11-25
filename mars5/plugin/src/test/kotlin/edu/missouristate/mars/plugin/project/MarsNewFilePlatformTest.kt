@@ -32,11 +32,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertInstanceOf
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
@@ -50,8 +50,7 @@ class MarsNewFilePlatformTest {
 
   private val action
     get() =
-        assertInstanceOf(
-            MarsNewFileAction::class.java,
+        assertInstanceOf<MarsNewFileAction>(
             ActionManager.getInstance().getAction("Mars.NewMipsFile"),
         )
 
@@ -80,7 +79,7 @@ class MarsNewFilePlatformTest {
           assertEquals("Create MIPS File $name", action.getActionName(directory, name, kind))
           action.actionPerformed(event)
 
-          val source = assertInstanceOf(MipsFile::class.java, view.selected)
+          val source = assertInstanceOf<MipsFile>(view.selected)
           val virtualFile = source.virtualFile
           assertEquals(directory.virtualFile.findFileByRelativePath(expected), virtualFile)
           assertEquals(MipsFileType, source.fileType)
@@ -103,7 +102,7 @@ class MarsNewFilePlatformTest {
                       .containingDirectory
               val view = DirectoryView(directory)
               action.actionPerformed(event(context(view, "library.inc", "MIPS Assembly")))
-              val include = assertInstanceOf(MipsFile::class.java, view.selected)
+              val include = assertInstanceOf<MipsFile>(view.selected)
               assertEquals("library.inc", include.name)
               assertEquals(directory.virtualFile.findChild("library.inc"), include.virtualFile)
               for (suffix in listOf("asm", "s", "inc", "mars")) {

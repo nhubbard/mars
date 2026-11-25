@@ -11,9 +11,9 @@ import edu.missouristate.mars.simulator.Exceptions.ADDRESS_EXCEPTION_STORE
 import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
@@ -39,7 +39,7 @@ class MarsAddressWidthTest {
     TestSessions.create().use { machine ->
       machine.selectTarget(MarsTarget.MARS64)
       val errors =
-          assertThrows(ProcessingException::class.java) { machine.assemble(listOf(source)) }
+          assertThrows<ProcessingException> { machine.assemble(listOf(source)) }
               .errors()!!
               .generateErrorReport()
       assertEquals(2, errors.lineSequence().count { "This address expansion uses" in it })
@@ -188,8 +188,7 @@ class MarsAddressWidthTest {
       assertEquals(generated[6].binaryStatement, machine.registerFile.getValue(10))
       val jump = program.executeSessionInstruction()
       assertEquals(high + 20, (jump.transfer as StepEvent.Jump).targetBits)
-      val fault =
-          assertThrows(ProcessingException::class.java) { program.executeSessionInstruction() }
+      val fault = assertThrows<ProcessingException> { program.executeSessionInstruction() }
       assertTrue(fault.message.orEmpty().contains("0x0000000100001014"))
       assertEquals(high + 20, machine.coprocessor0.getRegister(14)!!.longValueNoNotify)
       machine.backStepper.backStep()
@@ -281,7 +280,7 @@ class MarsAddressWidthTest {
     TestSessions.create().use { machine ->
       machine.selectTarget(MarsTarget.MARS64)
       val program = machine.assemble(listOf(source))
-      assertThrows(ProcessingException::class.java) { program.simulate(20) }
+      assertThrows<ProcessingException> { program.simulate(20) }
       assertEquals(0x1_003f_fffcL, machine.coprocessor0.getRegister(VADDR)!!.longValueNoNotify)
       assertEquals(0, machine.memory.readData(0x1_003f_fffcL, 4))
     }
@@ -315,7 +314,7 @@ class MarsAddressWidthTest {
       program.simulate(4)
       assertEquals(bits, machine.registerFile.getLongValueNoNotify(10))
       assertEquals(0xfedc_ba98L, machine.registerFile.getLongValueNoNotify(11))
-      assertThrows(ProcessingException::class.java) { program.simulate(1) }
+      assertThrows<ProcessingException> { program.simulate(1) }
       repeat(5) { machine.backStepper.backStep() }
       assertEquals(0L, machine.coprocessor0.getRegister(14)!!.longValueNoNotify)
       assertEquals(0L, machine.registerFile.getLongValueNoNotify(10))
@@ -404,7 +403,7 @@ class MarsAddressWidthTest {
       val unmapped = mapped.toLong() + 0x1_0000_0000L
       machine.editIntegerRegister(4, unmapped)
       machine.editIntegerRegister(8, 99)
-      val failure = assertThrows(ProcessingException::class.java) { program.simulate(1) }
+      val failure = assertThrows<ProcessingException> { program.simulate(1) }
       val effectiveAddress = unmapped + if (instruction.startsWith('u')) 1 else 0
       assertTrue(
           failure.message!!.contains(
@@ -451,7 +450,7 @@ class MarsAddressWidthTest {
           }
       assertEquals(link, machine.registerFile.getLongValueNoNotify(31))
       assertEquals(if (compact) 0 else 27, machine.registerFile.getValue(12))
-      val failure = assertThrows(ProcessingException::class.java) { program.simulate(1) }
+      val failure = assertThrows<ProcessingException> { program.simulate(1) }
       assertTrue(failure.message!!.contains("outside mapped memory"))
       assertEquals(link, machine.registerFile.getLongValueNoNotify(31))
       assertEquals(target, machine.coprocessor0.readRegisterBits(EPC))

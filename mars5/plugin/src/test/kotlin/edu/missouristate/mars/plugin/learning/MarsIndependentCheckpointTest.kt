@@ -21,9 +21,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertInstanceOf
 import org.junit.jupiter.api.assertThrows
 
 @TestApplication
@@ -82,8 +82,7 @@ class MarsIndependentCheckpointTest {
             assertFalse(checkpoint.passed())
             repeat(2) {
               val result =
-                  assertInstanceOf(
-                      MarsIndependentCheckpoint.Feedback.Checked::class.java,
+                  assertInstanceOf<MarsIndependentCheckpoint.Feedback.Checked>(
                       checkpoint.check(),
                   )
               assertEquals(5, result.results.size)
@@ -147,8 +146,7 @@ class MarsIndependentCheckpointTest {
             withContext(Dispatchers.EDT) { dialog.close(DialogWrapper.OK_EXIT_CODE) }
           }
           policy.update(requirePredictions = false)
-          assertInstanceOf(
-              MarsIndependentCheckpoint.Feedback.Checked::class.java,
+          assertInstanceOf<MarsIndependentCheckpoint.Feedback.Checked>(
               checkpoint.check(),
           )
           assertTrue(checkpoint.passed())
@@ -233,7 +231,7 @@ class MarsIndependentCheckpointTest {
               assertEquals(1, policy.completedIndependentAssessments())
               assertFalse(checkpoint.passed())
             } else {
-              assertInstanceOf(MarsIndependentCheckpoint.Feedback.Checked::class.java, feedback)
+              assertInstanceOf<MarsIndependentCheckpoint.Feedback.Checked>(feedback)
               assertTrue(checkpoint.passed())
             }
           }
@@ -247,8 +245,7 @@ class MarsIndependentCheckpointTest {
         val constant = correct.replace($$"    move $a0, $t0", $$"    li $a0, 61")
         for (source in listOf(doubled, constant)) exercise(source) { checkpoint, _ ->
           val result =
-              assertInstanceOf(
-                  MarsIndependentCheckpoint.Feedback.Checked::class.java,
+              assertInstanceOf<MarsIndependentCheckpoint.Feedback.Checked>(
                   checkpoint.check(),
               )
           assertEquals(1, result.results.count { it.passed })
@@ -354,8 +351,7 @@ class MarsIndependentCheckpointTest {
         policy.update(maxIndependentAssessments = 1)
         exercise { checkpoint, _ ->
           val result =
-              assertInstanceOf(
-                  MarsIndependentCheckpoint.Feedback.Checked::class.java,
+              assertInstanceOf<MarsIndependentCheckpoint.Feedback.Checked>(
                   checkpoint.check(),
               )
           assertEquals(1, result.completedAssessments)
@@ -380,8 +376,7 @@ class MarsIndependentCheckpointTest {
             }
           }
           policy.update(maxIndependentAssessments = 2)
-          assertInstanceOf(
-              MarsIndependentCheckpoint.Feedback.Checked::class.java,
+          assertInstanceOf<MarsIndependentCheckpoint.Feedback.Checked>(
               checkpoint.check(),
           )
           assertEquals(2, policy.completedIndependentAssessments())
@@ -401,8 +396,7 @@ class MarsIndependentCheckpointTest {
         }
         exercise(worked) { checkpoint, _ ->
           val result =
-              assertInstanceOf(
-                  MarsIndependentCheckpoint.Feedback.Checked::class.java,
+              assertInstanceOf<MarsIndependentCheckpoint.Feedback.Checked>(
                   checkpoint.check(),
               )
           assertTrue(result.results.any { !it.passed })
@@ -417,8 +411,7 @@ class MarsIndependentCheckpointTest {
           assertEquals(1, policy.completedIndependentAssessments())
           assertFalse(checkpoint.passed())
           policy.update(maxIndependentAssessments = 0)
-          assertInstanceOf(
-              MarsIndependentCheckpoint.Feedback.Checked::class.java,
+          assertInstanceOf<MarsIndependentCheckpoint.Feedback.Checked>(
               checkpoint.check(),
           )
           assertEquals(2, policy.completedIndependentAssessments())
@@ -431,8 +424,7 @@ class MarsIndependentCheckpointTest {
       timeoutRunBlocking {
         val policy = projectFixture.get().service<MarsLearningPolicy>()
         exercise { checkpoint, _ ->
-          assertInstanceOf(
-              MarsIndependentCheckpoint.Feedback.Checked::class.java,
+          assertInstanceOf<MarsIndependentCheckpoint.Feedback.Checked>(
               checkpoint.check(),
           )
         }
@@ -469,7 +461,7 @@ class MarsIndependentCheckpointTest {
       assertThrows<CancellationException> { checkpoint.check() }
       assertEquals(0, policy.completedIndependentAssessments())
       assertFalse(checkpoint.passed())
-      assertInstanceOf(MarsIndependentCheckpoint.Feedback.Checked::class.java, checkpoint.check())
+      assertInstanceOf<MarsIndependentCheckpoint.Feedback.Checked>(checkpoint.check())
       assertEquals(1, policy.completedIndependentAssessments())
       assertTrue(checkpoint.passed())
     }

@@ -18,6 +18,7 @@ import com.intellij.execution.executors.DefaultRunExecutor
 import com.intellij.execution.ui.RunContentDescriptor
 import com.intellij.execution.ui.RunContentManager
 import com.intellij.openapi.application.EDT
+import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.FileEditorState
@@ -91,7 +92,6 @@ import org.jetbrains.jewel.foundation.ExperimentalJewelApi
 import org.jetbrains.skia.Surface
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
@@ -99,6 +99,7 @@ import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertInstanceOf
 
 @TestApplication
 class InstructionCounterPlatformTest {
@@ -367,7 +368,7 @@ class InstructionCounterPlatformTest {
               val file = fixture.addFileToProject("counter-$number.asm", source).virtualFile
               val process =
                   project
-                      .getService(MarsRunService::class.java)
+                      .service<MarsRunService>()
                       .createProcess(
                           file.toNioPath(),
                           options = MarsExecutionOptions(target = target),
@@ -443,7 +444,7 @@ class InstructionCounterPlatformTest {
                 .accessibleName
           }
           fun layoutDock(panel: JComponent, width: Int, height: Int): JScrollPane {
-            val scroll = assertInstanceOf(JScrollPane::class.java, panel)
+            val scroll = assertInstanceOf<JScrollPane>(panel)
             scroll.size = JBUI.size(width, height)
             scroll.doLayout()
             scroll.viewport.doLayout()
@@ -485,11 +486,11 @@ class InstructionCounterPlatformTest {
               secondName: String,
               stacked: Boolean = false,
           ) {
-            val body = assertInstanceOf(JComponent::class.java, viewport.view)
+            val body = assertInstanceOf<JComponent>(viewport.view)
             fun setting(name: String): Pair<JLabel, JComboBox<*>> {
               val label =
                   UIUtil.findComponentsOfType(body, JLabel::class.java).single { it.text == name }
-              val combo = assertInstanceOf(JComboBox::class.java, label.labelFor)
+              val combo = assertInstanceOf<JComboBox<*>>(label.labelFor)
               assertEquals(label.preferredSize.width, label.width)
               assertTrue(label.y + label.height <= combo.y)
               assertEquals(combo.preferredSize.width, combo.width)
@@ -526,8 +527,7 @@ class InstructionCounterPlatformTest {
             assertFalse(button("Reset").isEnabled)
             val branchTable = UIUtil.findComponentsOfType(branches, JBTable::class.java).single()
             val branchTableScroll =
-                assertInstanceOf(
-                    JScrollPane::class.java,
+                assertInstanceOf<JScrollPane>(
                     SwingUtilities.getAncestorOfClass(JScrollPane::class.java, branchTable),
                 )
             assertCollapsedSettings(
@@ -553,8 +553,7 @@ class InstructionCounterPlatformTest {
             val cacheTable = UIUtil.findComponentsOfType(cache, JBTable::class.java).single()
             assertEquals(0, cacheTable.rowCount)
             val cacheTableScroll =
-                assertInstanceOf(
-                    JScrollPane::class.java,
+                assertInstanceOf<JScrollPane>(
                     SwingUtilities.getAncestorOfClass(JScrollPane::class.java, cacheTable),
                 )
             assertCollapsedSettings(
@@ -618,7 +617,7 @@ class InstructionCounterPlatformTest {
             }
             assertEquals("Static data", baseLabel())
             for (panel in listOf(bitmap, references)) {
-              val scroll = assertInstanceOf(JScrollPane::class.java, panel)
+              val scroll = assertInstanceOf<JScrollPane>(panel)
               scroll.setSize(JBUI.scale(240), JBUI.scale(208))
               scroll.doLayout()
               val viewport = scroll.viewport
@@ -698,12 +697,12 @@ class InstructionCounterPlatformTest {
             enter(16, "invalid")
             assertTrue(floatLabels().any { it.startsWith("Enter a floating-point value") })
             assertEquals("0x00000001", floatField(12).text)
-            val floatScroll = assertInstanceOf(JScrollPane::class.java, floating)
+            val floatScroll = assertInstanceOf<JScrollPane>(floating)
             floatScroll.setSize(JBUI.scale(295), JBUI.scale(180))
             floatScroll.doLayout()
             val floatViewport = floatScroll.viewport
             floatViewport.doLayout()
-            val floatBody = assertInstanceOf(JComponent::class.java, floatViewport.view)
+            val floatBody = assertInstanceOf<JComponent>(floatViewport.view)
             floatBody.doLayout()
             assertTrue(floatBody.width <= floatViewport.width) {
               "Floating-point panel width ${floatBody.width} exceeds viewport width ${floatViewport.width}; " +
@@ -931,7 +930,7 @@ class InstructionCounterPlatformTest {
             val noRunYet = fixture.addFileToProject("pending-bitmap.asm", "nop").virtualFile
             val pendingProcess =
                 project
-                    .getService(MarsRunService::class.java)
+                    .service<MarsRunService>()
                     .createProcess(
                         noRunYet.toNioPath(),
                         memoryDumps = emptyList(),
@@ -939,7 +938,7 @@ class InstructionCounterPlatformTest {
             val other = fixture.addFileToProject("other-bitmap.asm", "nop").virtualFile
             val otherProcess =
                 project
-                    .getService(MarsRunService::class.java)
+                    .service<MarsRunService>()
                     .createProcess(
                         other.toNioPath(),
                         memoryDumps = emptyList(),
@@ -1002,8 +1001,7 @@ class InstructionCounterPlatformTest {
               withContext(Dispatchers.EDT) {
                 val provider = BitmapDisplayEditorProvider()
                 val view =
-                    assertInstanceOf(
-                        BitmapDisplayEditor::class.java,
+                    assertInstanceOf<BitmapDisplayEditor>(
                         provider.createEditor(project, bitmapProcess.bitmapFile),
                     )
                 withForcedRespectIsShowingClientProperty {
@@ -1019,8 +1017,7 @@ class InstructionCounterPlatformTest {
               assertEquals("Bitmap Display", window.contentManager.selectedContent?.displayName)
               assertTrue(button("Apply and Clear", bitmap).isVisible)
               editor =
-                  assertInstanceOf(
-                      BitmapDisplayEditor::class.java,
+                  assertInstanceOf<BitmapDisplayEditor>(
                       files.getEditors(bitmapProcess.bitmapFile).singleOrNull(),
                   )
               assertSame(canvas(bitmapView()), editor.preferredFocusedComponent)
@@ -1243,8 +1240,7 @@ class InstructionCounterPlatformTest {
           pollAssertionsAsync(5.seconds, 30.milliseconds) {
             withContext(Dispatchers.EDT) {
               val reopened =
-                  assertInstanceOf(
-                      BitmapDisplayEditor::class.java,
+                  assertInstanceOf<BitmapDisplayEditor>(
                       files.getEditors(bitmapProcess.bitmapFile).singleOrNull(),
                   )
               assertTrue(reopened !== editor)
@@ -1569,7 +1565,7 @@ class InstructionCounterPlatformTest {
                 UIUtil.findComponentsOfType(lab, JToggleButton::class.java).single {
                   it.text == "A"
                 }
-            val scroll = assertInstanceOf(JScrollPane::class.java, lab)
+            val scroll = assertInstanceOf<JScrollPane>(lab)
             scroll.setSize(JBUI.scale(210), JBUI.scale(200))
             scroll.doLayout()
             val viewport = scroll.viewport
@@ -1709,7 +1705,7 @@ class InstructionCounterPlatformTest {
                 assertTrue(robot.snapshot().connected)
                 marsBot.setSize(JBUI.scale(295), JBUI.scale(175))
                 marsBot.doLayout()
-                val viewport = assertInstanceOf(JScrollPane::class.java, marsBot).viewport
+                val viewport = assertInstanceOf<JScrollPane>(marsBot).viewport
                 viewport.doLayout()
                 assertTrue(viewport.view.width <= viewport.width) {
                   "Live MarsBot width ${viewport.view.width} exceeds viewport width ${viewport.width}"

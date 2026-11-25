@@ -4,9 +4,9 @@ import edu.missouristate.mars.api.MarsTarget
 import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
@@ -72,7 +72,7 @@ class CompactControlFlowTest {
       program.simulate(1)
       assertEquals(pc + 4, machine.registerFile.programCounter)
       repeat(2) {
-        val failure = assertThrows(ProcessingException::class.java) { program.simulate(1) }
+        val failure = assertThrows<ProcessingException> { program.simulate(1) }
         assertTrue(failure.message!!.contains("control transfer in a forbidden slot"))
         machine.backStepper.backStep()
         assertEquals(pc + 4, machine.registerFile.programCounter)
@@ -254,7 +254,7 @@ class CompactControlFlowTest {
     TestSessions.create().use { machine ->
       machine.selectTarget(MarsTarget.MARS64)
       val failure =
-          assertThrows(ProcessingException::class.java) {
+          assertThrows<ProcessingException> {
             machine.assemble(listOf(source), null, extended = false, warnings = false)
           }
       assertTrue(
@@ -318,8 +318,7 @@ class CompactControlFlowTest {
                 .trimIndent(),
         )
     TestSessions.create().use { machine ->
-      val failure =
-          assertThrows(ProcessingException::class.java) { machine.assemble(listOf(source)) }
+      val failure = assertThrows<ProcessingException> { machine.assemble(listOf(source)) }
       assertEquals(
           3,
           failure.errors()!!.generateErrorReport().lineSequence().count {
@@ -378,8 +377,7 @@ class CompactControlFlowTest {
     val source =
         Files.writeString(directory.resolve("reserved.s"), $$"beqzc $zero,target\ntarget: nop\n")
     TestSessions.create().use { machine ->
-      val failure =
-          assertThrows(ProcessingException::class.java) { machine.assemble(listOf(source)) }
+      val failure = assertThrows<ProcessingException> { machine.assemble(listOf(source)) }
       assertTrue(
           failure.errors()!!.generateErrorReport().contains("requires a nonzero register number"),
       )
@@ -463,7 +461,7 @@ class CompactControlFlowTest {
     TestSessions.create().use { machine ->
       machine.settings.setDelayedBranchingEnabled(true)
       val program = machine.assemble(listOf(source))
-      val failure = assertThrows(ProcessingException::class.java) { program.simulate(10) }
+      val failure = assertThrows<ProcessingException> { program.simulate(10) }
       assertTrue(failure.message!!.contains("compact control transfer in a delay slot"))
     }
   }

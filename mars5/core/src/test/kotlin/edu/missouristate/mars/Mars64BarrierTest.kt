@@ -5,9 +5,9 @@ import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 
 class Mars64BarrierTest {
@@ -26,7 +26,7 @@ class Mars64BarrierTest {
     TestSessions.create().use { session ->
       session.selectTarget(MarsTarget.MARS64)
       val program = session.assemble(listOf(source), null, extended = false, warnings = false)
-      val failure = assertThrows(ProcessingException::class.java) { program.simulate(2) }
+      val failure = assertThrows<ProcessingException> { program.simulate(2) }
       assertTrue(failure.message!!.contains("control transfer in a delay slot"))
     }
   }
@@ -126,7 +126,7 @@ class Mars64BarrierTest {
       session.editIntegerRegister(9, 0x24080007)
       session.editIntegerRegister(10, replacement)
       session.editIntegerRegister(11, replacement + 8)
-      assertThrows(ProcessingException::class.java) { program.simulate(1) }
+      assertThrows<ProcessingException> { program.simulate(1) }
 
       session.settings.setSelfModifyingCodeEnabled(true)
       program = session.assemble(listOf(source), null, extended = false, warnings = false)
@@ -174,7 +174,7 @@ class Mars64BarrierTest {
       program.simulate(2)
       assertEquals(statements[5].address, session.registerFile.getValueNoNotify(31))
       Files.writeString(source, $$"jalr.hb $9,$9\n")
-      assertThrows(ProcessingException::class.java) {
+      assertThrows<ProcessingException> {
         session.assemble(listOf(source), null, extended = false, warnings = false)
       }
     }

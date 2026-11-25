@@ -5,8 +5,8 @@ import edu.missouristate.mars.mips.hardware.VectorRegister
 import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
@@ -65,7 +65,7 @@ class Mars64VectorBitsTest {
         )
       }
       Files.writeString(file, $$"bseti.$$suffix $w31,$w3,$$bits")
-      assertThrows(ProcessingException::class.java) {
+      assertThrows<ProcessingException> {
         session.assemble(listOf(file), null, extended = false, warnings = false)
       }
     }

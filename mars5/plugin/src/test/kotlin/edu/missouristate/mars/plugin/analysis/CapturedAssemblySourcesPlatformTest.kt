@@ -42,12 +42,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertInstanceOf
 
 @TestApplication
 class CapturedAssemblySourcesPlatformTest {
@@ -97,7 +97,7 @@ class CapturedAssemblySourcesPlatformTest {
         assertEquals(innerText, capture.snapshot.texts()[leaf])
         assertFalse(capture.revisions[leaf] == newer.revisions[leaf])
 
-        val context = project.get().getService(MarsSessionService::class.java).context
+        val context = project.get().service<MarsSessionService>().context
         val program =
             context.assembleSnapshot(
                 capture.snapshot,
@@ -216,7 +216,7 @@ class CapturedAssemblySourcesPlatformTest {
                   AssemblyError(path, 4, 1, "Test warning", true),
                   sources,
               )
-          assertInstanceOf(FileMessageEvent::class.java, diagnostic)
+          assertInstanceOf<FileMessageEvent>(diagnostic)
           assertEquals("Test warning", diagnostic.message)
         }
 
@@ -330,8 +330,7 @@ class CapturedAssemblySourcesPlatformTest {
               capture.sources,
               sources,
           )
-      val link =
-          assertInstanceOf(OpenFileDescriptor::class.java, diagnostic.getNavigatable(project.get()))
+      val link = assertInstanceOf<OpenFileDescriptor>(diagnostic.getNavigatable(project.get()))
       assertSame(line.file, link.file)
       for (name in listOf("emit", "target")) {
         val target = checkNotNull(main.findReferenceAt(main.text.indexOf(name))?.resolve())
@@ -468,8 +467,7 @@ class CapturedAssemblySourcesPlatformTest {
             assertSame(excerptFile, macro.containingFile.virtualFile)
             val docs =
                 MipsDocumentationTargetProvider().documentationTargets(main, macroCall).single()
-            val documentationLink =
-                assertInstanceOf(OpenFileDescriptor::class.java, docs.navigatable)
+            val documentationLink = assertInstanceOf<OpenFileDescriptor>(docs.navigatable)
             assertSame(excerptFile, documentationLink.file)
             assertEquals(macro.textOffset, documentationLink.offset)
             assertNull(
@@ -491,7 +489,7 @@ class CapturedAssemblySourcesPlatformTest {
             assertEquals(0, wideMacro.textOffset)
             val wideDocs =
                 MipsDocumentationTargetProvider().documentationTargets(main, wideCall).single()
-            val wideLink = assertInstanceOf(OpenFileDescriptor::class.java, wideDocs.navigatable)
+            val wideLink = assertInstanceOf<OpenFileDescriptor>(wideDocs.navigatable)
             assertSame(wideMacro.containingFile.virtualFile, wideLink.file)
             assertEquals(0, wideLink.offset)
 
@@ -513,8 +511,7 @@ class CapturedAssemblySourcesPlatformTest {
             assertSame(position.file, descriptor?.file)
             assertEquals(lineStart + 1, descriptor?.offset)
             val frameLink =
-                assertInstanceOf(
-                    OpenFileDescriptor::class.java,
+                assertInstanceOf<OpenFileDescriptor>(
                     position.createNavigatable(project.get()),
                 )
             assertSame(position.file, frameLink.file)

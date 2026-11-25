@@ -6,8 +6,8 @@ import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
@@ -24,7 +24,7 @@ class Mars64InstructionBaselineTest {
     val file = Files.writeString(directory.resolve("instruction.s"), ".text\n$source\n")
     TestSessions.create().use { session ->
       assertNull(session.instructionSet.findByBinaryCode(word))
-      assertThrows(ProcessingException::class.java) {
+      assertThrows<ProcessingException> {
         session.assemble(listOf(file), null, extended = false, warnings = false)
       }
       session.selectTarget(MarsTarget.MARS64)

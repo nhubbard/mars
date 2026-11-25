@@ -23,11 +23,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertInstanceOf
 
 @TestApplication
 class MarsBuildEventThreadTest {
@@ -114,11 +114,11 @@ class MarsBuildEventThreadTest {
       operation.start()
       operation.join()
       assertTrue(operation.isCancelled)
-      val start = assertInstanceOf(StartBuildEvent::class.java, events[0].first)
-      val finish = assertInstanceOf(FinishBuildEvent::class.java, events[1].first)
+      val start = assertInstanceOf<StartBuildEvent>(events[0].first)
+      val finish = assertInstanceOf<FinishBuildEvent>(events[1].first)
       assertEquals(2, events.size)
       assertEquals(start.id, finish.id)
-      assertInstanceOf(SkippedResult::class.java, finish.result)
+      assertInstanceOf<SkippedResult>(finish.result)
       assertTrue(events.all { it.second })
     } finally {
       withContext(Dispatchers.EDT) { Disposer.dispose(lifetime) }

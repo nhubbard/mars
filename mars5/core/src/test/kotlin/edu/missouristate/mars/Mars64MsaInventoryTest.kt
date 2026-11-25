@@ -8,9 +8,9 @@ import edu.missouristate.mars.simulator.Exceptions.ADDRESS_EXCEPTION_STORE
 import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
@@ -145,7 +145,7 @@ class Mars64MsaInventoryTest {
       machine.editIntegerRegister(5, memory.dataBaseAddress)
 
       if (crossesTop) {
-        assertThrows(ProcessingException::class.java) { program.simulate(2) }
+        assertThrows<ProcessingException> { program.simulate(2) }
         assertEquals(ADDRESS_EXCEPTION_STORE, (machine.coprocessor0.getValue(CAUSE) ushr 2) and 31)
         assertEquals(firstByte, machine.coprocessor0.getValue(VADDR))
       } else {

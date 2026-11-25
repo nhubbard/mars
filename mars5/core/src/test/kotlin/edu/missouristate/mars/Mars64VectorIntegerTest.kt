@@ -6,7 +6,7 @@ import java.math.BigInteger
 import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertThrows
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
@@ -152,7 +152,7 @@ class Mars64VectorIntegerTest {
         )
       }
       Files.writeString(source, $$"slli.$$suffix $w31,$w3,$$bits")
-      assertThrows(ProcessingException::class.java) {
+      assertThrows<ProcessingException> {
         session.assemble(listOf(source), null, extended = false, warnings = false)
       }
     }
@@ -213,7 +213,7 @@ class Mars64VectorIntegerTest {
       }
       for ((name, value) in listOf("ceqi" to 16, "ceqi" to -17, "addvi" to 32, "addvi" to -1)) {
         Files.writeString(source, $$"$$name.$$suffix $w31,$w3,$$value")
-        assertThrows(ProcessingException::class.java) {
+        assertThrows<ProcessingException> {
           session.assemble(listOf(source), null, extended = false, warnings = false)
         }
       }

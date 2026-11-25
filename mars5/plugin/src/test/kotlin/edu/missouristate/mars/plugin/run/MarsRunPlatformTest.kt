@@ -20,11 +20,11 @@ import com.intellij.execution.PsiLocation
 import com.intellij.execution.RunManager
 import com.intellij.execution.actions.ConfigurationContext
 import com.intellij.execution.actions.RunConfigurationProducer
-import com.intellij.execution.configurations.ConfigurationTypeUtil
 import com.intellij.execution.configurations.RunConfiguration
 import com.intellij.execution.configurations.RunProfile
 import com.intellij.execution.configurations.RuntimeConfigurationError
 import com.intellij.execution.configurations.UnknownConfigurationType
+import com.intellij.execution.configurations.runConfigurationType
 import com.intellij.execution.executors.DefaultDebugExecutor
 import com.intellij.execution.executors.DefaultRunExecutor
 import com.intellij.execution.filters.FileHyperlinkInfo
@@ -114,6 +114,7 @@ import kotlinx.coroutines.withContext
 import org.jdom.Element
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertInstanceOf
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.params.ParameterizedTest
@@ -128,7 +129,7 @@ class MarsRunPlatformTest {
     get() = projectFixture.get()
 
   private val type
-    get() = ConfigurationTypeUtil.findConfigurationType(MarsRunType::class.java)
+    get() = runConfigurationType<MarsRunType>()
 
   private val executor
     get() = DefaultRunExecutor.getRunExecutorInstance()
@@ -189,8 +190,7 @@ class MarsRunPlatformTest {
                       ) {
                         if (env !== environment) return
                         val console =
-                            assertInstanceOf(
-                                ConsoleViewImpl::class.java,
+                            assertInstanceOf<ConsoleViewImpl>(
                                 env.contentToReuse?.executionConsole,
                             )
                         console.component
@@ -239,8 +239,7 @@ class MarsRunPlatformTest {
           val line =
               consoleEditor.document.text.lineSequence().indexOfFirst { it.startsWith(prefix) }
           val highlighter = links.findAllHyperlinksOnLine(line).single()
-          return assertInstanceOf(
-              FileHyperlinkInfo::class.java,
+          return assertInstanceOf<FileHyperlinkInfo>(
               EditorHyperlinkSupport.getHyperlinkInfo(highlighter),
           )
         }
@@ -546,7 +545,7 @@ class MarsRunPlatformTest {
             assertFalse(
                 provider.executeTask(DataContext.EMPTY_CONTEXT, config, environment, assemble),
             )
-            project.getService(MarsRunService::class.java)
+            project.service<MarsRunService>()
             project.messageBus
                 .syncPublisher(ExecutionManager.EXECUTION_TOPIC)
                 .processNotStarted(executor.id, environment)
@@ -638,7 +637,7 @@ class MarsRunPlatformTest {
               },
               disposable,
           )
-          assertFalse(project.getService(MarsRunService::class.java).prepareLaunch(launch).await())
+          assertFalse(project.service<MarsRunService>().prepareLaunch(launch).await())
           assertNull(launch.take())
         } finally {
           withContext(Dispatchers.EDT) { Disposer.dispose(disposable) }
@@ -681,14 +680,13 @@ class MarsRunPlatformTest {
             val producer =
                 RunConfigurationProducer.getInstance(MarsRunConfigurationProducer::class.java)
             val config =
-                assertInstanceOf(
-                    MarsRunConfiguration::class.java,
+                assertInstanceOf<MarsRunConfiguration>(
                     producer.createConfigurationFromContext(context)?.configuration,
                 )
             assertEquals("main", config.name)
             assertTrue(producer.isConfigurationFromContext(config, context))
             val environment = ExecutionEnvironmentBuilder.create(executor, config).build()
-            val runner = assertInstanceOf(MarsRunRunner::class.java, environment.runner)
+            val runner = assertInstanceOf<MarsRunRunner>(environment.runner)
             project.messageBus
                 .connect(disposable)
                 .subscribe(
@@ -719,8 +717,8 @@ class MarsRunPlatformTest {
   fun `Run inherits or overrides the global main preference without changing its assembly image`() =
       timeoutRunBlocking {
         val lifetime = Disposer.newDisposable()
-        val settings = project.getService(MarsAssemblySettings::class.java)
-        val build = project.getService(MarsBuildService::class.java)
+        val settings = project.service<MarsAssemblySettings>()
+        val build = project.service<MarsBuildService>()
         try {
           val source =
               withContext(Dispatchers.EDT) {
@@ -994,7 +992,7 @@ class MarsRunPlatformTest {
                       ) {
                         if (env !== environment) return
                         handler.addProcessListener(recording)
-                        started.complete(assertInstanceOf(MarsProcessHandler::class.java, handler))
+                        started.complete(assertInstanceOf<MarsProcessHandler>(handler))
                       }
                     },
                 )
@@ -1054,10 +1052,9 @@ class MarsRunPlatformTest {
                   val result = restored.getState(executor, env).execute(executor, env.runner)!!
                   Disposer.register(lifetime, result.executionConsole!!)
                   val handler =
-                      assertInstanceOf(MarsProcessHandler::class.java, result.processHandler)
+                      assertInstanceOf<MarsProcessHandler>(result.processHandler)
                           .also(handlers::add)
-                  val speed =
-                      assertInstanceOf(MarsRunSpeedAction::class.java, result.actions.single())
+                  val speed = assertInstanceOf<MarsRunSpeedAction>(result.actions.single())
                   val recording = Recording()
                   handler.addProcessListener(recording)
                   handler.startNotify()
@@ -1228,7 +1225,7 @@ class MarsRunPlatformTest {
         val options = MarsExecutionOptions(memoryLayout = MarsMemoryLayout.DATA_AT_ZERO)
         val process =
             project
-                .getService(MarsRunService::class.java)
+                .service<MarsRunService>()
                 .createProcess(
                     file.toNioPath(),
                     options,
@@ -1259,7 +1256,7 @@ class MarsRunPlatformTest {
           for (limit in listOf(2, 4)) {
             settings.changeAssemblerErrorLimit(limit)
             val environment = ExecutionEnvironmentBuilder.create(executor, config).build()
-            assertInstanceOf(MarsRunState::class.java, config.getState(executor, environment))
+            assertInstanceOf<MarsRunState>(config.getState(executor, environment))
             val launch = requireNotNull(environment.getUserData(launchAssemblyKey))
             try {
               assertEquals(limit, launch.options.assemblerErrorLimit)
@@ -1283,7 +1280,7 @@ class MarsRunPlatformTest {
                         $$".data\n.byte 300\n.text\nli $a0, 42\nli $v0, 1\nsyscall\nli $v0, 10\nsyscall\n",
                     )
                 project
-                    .getService(MarsAssemblySettings::class.java)
+                    .service<MarsAssemblySettings>()
                     .changeAssemblerOptions(
                         allowPseudoInstructions = false,
                         warningsAreErrors = true,
@@ -1356,7 +1353,7 @@ class MarsRunPlatformTest {
                   warningsAreErrors = true,
                   target = MarsTarget.MARS32,
               ),
-              project.getService(MarsAssemblySettings::class.java).executionOptions,
+              project.service<MarsAssemblySettings>().executionOptions,
           )
         } finally {
           withContext(Dispatchers.EDT) { Disposer.dispose(lifetime) }
@@ -1420,7 +1417,7 @@ class MarsRunPlatformTest {
                   val empty = ExecutionEnvironmentBuilder.create(executor, config).build()
                   assertThrows<ExecutionException> { config.getState(executor, empty) }
                   project
-                      .getService(MarsAssemblySettings::class.java)
+                      .service<MarsAssemblySettings>()
                       .changeSources(listOf(source.virtualFile.path, library.path, early.path))
                   interceptMemoryExportDialog { it.doCancelAction() }
                   ActionUtil.performAction(add, TestActionEvent.createTestEvent(add))
@@ -1443,7 +1440,7 @@ class MarsRunPlatformTest {
                     RunConfigurationProducer.getInstance(MarsRunConfigurationProducer::class.java)
                 assertFalse(producer.isConfigurationFromContext(restored, context))
                 val environment = ExecutionEnvironmentBuilder.create(executor, restored).build()
-                val runner = assertInstanceOf(MarsRunRunner::class.java, environment.runner)
+                val runner = assertInstanceOf<MarsRunRunner>(environment.runner)
                 project.messageBus
                     .connect(disposable)
                     .subscribe(
@@ -1509,15 +1506,14 @@ class MarsRunPlatformTest {
             val producer =
                 RunConfigurationProducer.getInstance(MarsRunConfigurationProducer::class.java)
             val config =
-                assertInstanceOf(
-                    MarsRunConfiguration::class.java,
+                assertInstanceOf<MarsRunConfiguration>(
                     producer.createConfigurationFromContext(context)?.configuration,
                 )
             assertEquals("main", config.name)
             assertTrue(producer.isConfigurationFromContext(config, context))
             config.options.assembleDirectory = true
             val environment = ExecutionEnvironmentBuilder.create(executor, config).build()
-            val runner = assertInstanceOf(MarsRunRunner::class.java, environment.runner)
+            val runner = assertInstanceOf<MarsRunRunner>(environment.runner)
             project.messageBus
                 .connect(disposable)
                 .subscribe(
@@ -1637,7 +1633,7 @@ class MarsRunPlatformTest {
             assertEquals(selfModifying, config.options.selfModifyingCodeMode)
             assertEquals(bare, config.options.bareMachineMode)
             val environment = ExecutionEnvironmentBuilder.create(executor, config).build()
-            assertInstanceOf(MarsRunState::class.java, config.getState(executor, environment))
+            assertInstanceOf<MarsRunState>(config.getState(executor, environment))
             val launch = requireNotNull(environment.getUserData(launchAssemblyKey))
             try {
               assertEquals(
@@ -1923,7 +1919,7 @@ class MarsRunPlatformTest {
   @Test
   fun `Scavenger Hunt requires the default project memory layout`() = timeoutRunBlocking {
     withContext(Dispatchers.EDT) {
-      val settings = project.getService(MarsAssemblySettings::class.java)
+      val settings = project.service<MarsAssemblySettings>()
       val source = fixture.addFileToProject("entry.s", "nop\n")
       val config = type.createTemplateConfiguration(project)
       config.options.sourcePath = source.virtualFile.path
@@ -1983,7 +1979,7 @@ class MarsRunPlatformTest {
           assertThrows<ExecutionException> { config.getState(executor, conflictEnvironment) }
           assertThrows<IllegalArgumentException> {
             project
-                .getService(MarsRunService::class.java)
+                .service<MarsRunService>()
                 .createProcess(
                     source.virtualFile.toNioPath(),
                     memoryDumps = emptyList(),
@@ -2784,8 +2780,7 @@ class MarsRunPlatformTest {
     val console =
         withContext(Dispatchers.EDT) {
           val view =
-              assertInstanceOf(
-                  ConsoleViewImpl::class.java,
+              assertInstanceOf<ConsoleViewImpl>(
                   TextConsoleBuilderFactory.getInstance().createBuilder(project).console,
               )
           view.attachToProcess(handler)
@@ -2843,8 +2838,8 @@ class MarsRunPlatformTest {
           config.options.instructionLimit = lineCount * 10
           val env = ExecutionEnvironmentBuilder.create(executor, config).build()
           val result = config.getState(executor, env).execute(executor, env.runner)!!
-          val process = assertInstanceOf(MarsProcessHandler::class.java, result.processHandler)
-          val view = assertInstanceOf(ConsoleViewImpl::class.java, result.executionConsole)
+          val process = assertInstanceOf<MarsProcessHandler>(result.processHandler)
+          val view = assertInstanceOf<ConsoleViewImpl>(result.executionConsole)
           view.component
           process.addProcessListener(recording)
           process to view
@@ -2921,10 +2916,9 @@ class MarsRunPlatformTest {
                   val env = ExecutionEnvironmentBuilder.create(executor, config).build()
                   val result = config.getState(executor, env).execute(executor, env.runner)!!
                   val handler =
-                      assertInstanceOf(MarsProcessHandler::class.java, result.processHandler)
+                      assertInstanceOf<MarsProcessHandler>(result.processHandler)
                           .also(handlers::add)
-                  val console =
-                      assertInstanceOf(ConsoleViewImpl::class.java, result.executionConsole)
+                  val console = assertInstanceOf<ConsoleViewImpl>(result.executionConsole)
                   Disposer.register(lifetime, console)
                   if (showConsole) console.component
                   val recording = Recording()
@@ -3039,7 +3033,7 @@ class MarsRunPlatformTest {
               fixture.addFileToProject("loop.asm", "again: j again\n").virtualFile
             }
         val handler =
-            project.getService(MarsRunService::class.java).createProcess(
+            project.service<MarsRunService>().createProcess(
                 entry.toNioPath(),
                 memoryDumps = emptyList(),
             ) { machine, _ ->
@@ -3110,7 +3104,7 @@ class MarsRunPlatformTest {
           fixture.addFileToProject("run${++runCount}.asm", source).virtualFile
         }
     val handler =
-        project.getService(MarsRunService::class.java).createProcess(
+        project.service<MarsRunService>().createProcess(
             file.toNioPath(),
             memoryDumps = dumps.map { requireNotNull(it.resolve(project)) },
         ) { machine, _ ->

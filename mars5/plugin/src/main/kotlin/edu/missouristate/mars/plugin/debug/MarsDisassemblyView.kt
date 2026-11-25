@@ -5,7 +5,7 @@ import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.ModalityState
-import com.intellij.openapi.application.WriteAction
+import com.intellij.openapi.application.runWriteAction
 import com.intellij.openapi.components.service
 import com.intellij.ui.ColoredTableCellRenderer
 import com.intellij.ui.components.JBLabel
@@ -491,7 +491,7 @@ internal class MarsDisassemblyView(
 
   private fun toggleSelectedBreakpoint() {
     val address = table.selectedObject!!.address
-    WriteAction.run<RuntimeException> {
+    runWriteAction {
       val existing =
           breakpointManager.getBreakpoints(breakpointType).firstOrNull {
             it.properties?.addressBitsIn(entry) == address

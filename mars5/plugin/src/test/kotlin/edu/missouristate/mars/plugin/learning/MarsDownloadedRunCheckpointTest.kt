@@ -3,7 +3,7 @@
 package edu.missouristate.mars.plugin.learning
 
 import com.intellij.execution.ExecutionManager
-import com.intellij.execution.configurations.ConfigurationTypeUtil
+import com.intellij.execution.configurations.runConfigurationType
 import com.intellij.execution.executors.DefaultRunExecutor
 import com.intellij.execution.process.NopProcessHandler
 import com.intellij.execution.process.ProcessEvent
@@ -110,7 +110,7 @@ class MarsDownloadedRunCheckpointTest {
         create(contract(input)).use { f ->
           withContext(Dispatchers.EDT) {
             val project = projects.get()
-            val type = ConfigurationTypeUtil.findConfigurationType(MarsRunType::class.java)
+            val type = runConfigurationType<MarsRunType>()
             val config =
                 MarsRunConfiguration(
                     project,

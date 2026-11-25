@@ -6,8 +6,8 @@ import java.io.ByteArrayOutputStream
 import java.nio.file.Path
 import kotlin.io.path.writeText
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 
 class ExecutionTraceTest {
@@ -45,14 +45,14 @@ class ExecutionTraceTest {
     DaggerMarsComponent.builder().guiProxy(HeadlessGuiProxy()).build().context().use { session ->
       val program = session.assemble(listOf(entry))
       AssemblyCase(session, program.symbolMap(), ByteArrayOutputStream()).use { case ->
-        assertThrows(IllegalArgumentException::class.java) {
+        assertThrows<IllegalArgumentException> {
           case.traceExecution("finish", "window")
         }
-        assertThrows(IllegalArgumentException::class.java) {
+        assertThrows<IllegalArgumentException> {
           case.traceExecution("window", "window")
         }
-        assertThrows(CaseFailure::class.java) { case.traceExecution("value", "finish") }
-        assertThrows(CaseFailure::class.java) { case.traceExecution("missing", "finish") }
+        assertThrows<CaseFailure> { case.traceExecution("value", "finish") }
+        assertThrows<CaseFailure> { case.traceExecution("missing", "finish") }
         val all = case.traceExecution()
         val range = case.traceExecution("window", "finish")
         val activeRange = case.traceExecution("window", "finish")
@@ -70,10 +70,10 @@ class ExecutionTraceTest {
         suffix.expectCounts(2, 0, 0)
         activeRange.expectCounts(8, 1, 1)
         assertEquals(13L, prefix.instructions)
-        assertThrows(CaseFailure::class.java) { all.expectCounts(14, 2, 1) }
-        assertThrows(IllegalArgumentException::class.java) { all.expectCounts(-1, 0, 0) }
-        assertThrows(IllegalArgumentException::class.java) { all.expectCounts(0, -1, 0) }
-        assertThrows(IllegalArgumentException::class.java) { all.expectCounts(0, 0, -1) }
+        assertThrows<CaseFailure> { all.expectCounts(14, 2, 1) }
+        assertThrows<IllegalArgumentException> { all.expectCounts(-1, 0, 0) }
+        assertThrows<IllegalArgumentException> { all.expectCounts(0, -1, 0) }
+        assertThrows<IllegalArgumentException> { all.expectCounts(0, 0, -1) }
       }
     }
   }
@@ -139,7 +139,7 @@ class ExecutionTraceTest {
       val program = session.assemble(listOf(entry))
       val case = AssemblyCase(session, program.symbolMap(), ByteArrayOutputStream())
       val counter = case.traceExecution()
-      assertThrows(CaseFailure::class.java) {
+      assertThrows<CaseFailure> {
         case.use {
           it.step()
           counter.expectCounts(2, 0, 0)

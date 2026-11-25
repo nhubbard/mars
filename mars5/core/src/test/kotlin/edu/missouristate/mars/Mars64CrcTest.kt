@@ -7,7 +7,7 @@ import java.util.zip.CRC32
 import java.util.zip.CRC32C
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
-import org.junit.jupiter.api.Assertions.assertThrows
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
@@ -66,7 +66,7 @@ class Mars64CrcTest {
       repeat(2) { session.backStepper.backStep() }
       assertEquals(seed, session.registerFile.getLongValueNoNotify(9))
       Files.writeString(path, $$"$$mnemonic $9,$10,$11\n")
-      assertThrows(ProcessingException::class.java) {
+      assertThrows<ProcessingException> {
         session.assemble(listOf(path), null, extended = false, warnings = false)
       }
     }

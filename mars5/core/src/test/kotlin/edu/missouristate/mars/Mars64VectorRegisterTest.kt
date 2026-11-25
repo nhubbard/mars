@@ -6,9 +6,9 @@ import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
@@ -63,7 +63,7 @@ class Mars64VectorRegisterTest {
       repeat(2) { session.backStepper.backStep() }
       assertEquals(VectorRegister(0, 0), fpu.readVector(31))
       Files.writeString(path, $$"fill.$$suffix $f31,$9\n")
-      assertThrows(ProcessingException::class.java) {
+      assertThrows<ProcessingException> {
         session.assemble(listOf(path), null, extended = false, warnings = false)
       }
     }
@@ -122,7 +122,7 @@ class Mars64VectorRegisterTest {
       repeat(words.size) { session.backStepper.backStep() }
       assertEquals(initial, session.coprocessor1.readVector(5))
       Files.writeString(path, $$"insert.$$suffix $w5[$${lane + 1}],$9")
-      assertThrows(ProcessingException::class.java) {
+      assertThrows<ProcessingException> {
         session.assemble(listOf(path), null, extended = false, warnings = false)
       }
     }

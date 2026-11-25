@@ -5,8 +5,8 @@ import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
@@ -111,7 +111,7 @@ class Mars64LinkedMemoryTest {
       assertEquals(listOf(9, -8, 10), decoded.operands.take(3))
       for (offset in listOf(-257, 256)) {
         Files.writeString(file, "$mnemonic $9,$offset($10)\n")
-        assertThrows(ProcessingException::class.java) {
+        assertThrows<ProcessingException> {
           session.assemble(listOf(file), null, extended = false, warnings = false)
         }
       }
@@ -216,7 +216,7 @@ class Mars64LinkedMemoryTest {
       val program = session.assemble(listOf(file), null, extended = false, warnings = false)
       session.editIntegerRegister(10, session.memory.dataBaseAddress.toLong())
       session.editIntegerRegister(9, 42)
-      assertThrows(ProcessingException::class.java) { program.simulate(1) }
+      assertThrows<ProcessingException> { program.simulate(1) }
       assertEquals(42L, session.registerFile.getLongValueNoNotify(9))
     }
   }

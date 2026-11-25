@@ -14,9 +14,9 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertInstanceOf
 
 @TestApplication
 class MarsMidiPlatformTest {
@@ -91,7 +91,7 @@ class MarsMidiPlatformTest {
             assertFalse(waiting.isCompleted)
             execution.cancel()
             interrupted.await()
-            assertInstanceOf(CancellationException::class.java, waiting.await().exceptionOrNull())
+            assertInstanceOf<CancellationException>(waiting.await().exceptionOrNull())
           }
         } finally {
           execution.cancel()

@@ -4,9 +4,9 @@ import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.math.pow
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 
 class Release6FloatTest {
@@ -85,7 +85,7 @@ class Release6FloatTest {
     val file = Files.writeString(directory.resolve("odd.s"), $$"max.d $f2,$f5,$f6")
     TestSessions.create().use { machine ->
       val program = machine.assemble(listOf(file))
-      val failure = assertThrows(ProcessingException::class.java) { program.simulate(1) }
+      val failure = assertThrows<ProcessingException> { program.simulate(1) }
       assertTrue(failure.message!!.contains("all registers must be even-numbered"))
     }
   }

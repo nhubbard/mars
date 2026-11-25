@@ -26,12 +26,12 @@ import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertInstanceOf
+import org.junit.jupiter.api.assertThrows
 
 @TestApplication
 class MipsGoToSymbolPlatformTest {
@@ -61,8 +61,7 @@ class MipsGoToSymbolPlatformTest {
           assertTrue(names.containsAll(setOf("shared", "MAIN")))
 
           val firstScope = GlobalSearchScope.fileScope(project.get(), first.virtualFile)
-          val firstItems =
-              items("shared", firstScope).map { assertInstanceOf(MipsDeclaration::class.java, it) }
+          val firstItems = items("shared", firstScope).map { assertInstanceOf<MipsDeclaration>(it) }
           assertEquals(
               listOf(SymbolKind.LABEL, SymbolKind.MACRO, SymbolKind.CONSTANT),
               firstItems.map { it.kind },
@@ -84,8 +83,7 @@ class MipsGoToSymbolPlatformTest {
             assertNotNull(presentation.getIcon(false))
             assertTrue(item.canNavigateToSource())
             val descriptor =
-                assertInstanceOf(
-                    OpenFileDescriptor::class.java,
+                assertInstanceOf<OpenFileDescriptor>(
                     PsiNavigationSupport.getInstance().getDescriptor(item),
                 )
             assertEquals(first.virtualFile, descriptor.file)
@@ -102,7 +100,7 @@ class MipsGoToSymbolPlatformTest {
           assertEquals(source.indexOf(".eqv 7 8"), incomplete.textOffset)
           val shortDirective = first.findElementAt(source.indexOf(".eqv\n"))!!
           assertEquals(MipsTypes.psi("DIRECTIVE_STATEMENT"), shortDirective.parent.node.elementType)
-          assertThrows(IncorrectOperationException::class.java) {
+          assertThrows<IncorrectOperationException> {
             firstItems.first().setName("different")
           }
           assertNull(MipsDeclaration.findAt(first, source.indexOf(':'), "shared"))
@@ -203,7 +201,7 @@ class MipsGoToSymbolPlatformTest {
             assertEquals(name, item.name)
             assertEquals("symbol-body.s", item.presentation?.locationString)
             assertTrue(item.canNavigateToSource())
-            val descriptor = assertInstanceOf(OpenFileDescriptor::class.java, item)
+            val descriptor = assertInstanceOf<OpenFileDescriptor>(item)
             assertEquals(body.virtualFile, descriptor.file)
             assertEquals(source.indexOf(spelling), descriptor.offset)
             assertTrue(
@@ -278,7 +276,7 @@ class MipsGoToSymbolPlatformTest {
           assertEquals("literal", items("literal", scope).single().name)
           assertEquals("nested", items("nested", scope).single().name)
           for ((name, origin) in expected) {
-            val item = assertInstanceOf(OpenFileDescriptor::class.java, items(name, scope).single())
+            val item = assertInstanceOf<OpenFileDescriptor>(items(name, scope).single())
             assertEquals(body.virtualFile, item.file)
             assertEquals(source.indexOf(origin), item.offset)
           }
@@ -339,7 +337,7 @@ class MipsGoToSymbolPlatformTest {
       assertTrue(names.containsAll(setOf("renamed", "generated", "literal", $$"$t0")))
       for ((name, origin) in
           listOf("renamed" to "STORAGE", "generated" to "RESERVE", $$"$t0" to "REGISTER")) {
-        val result = assertInstanceOf(OpenFileDescriptor::class.java, items(name, scope).single())
+        val result = assertInstanceOf<OpenFileDescriptor>(items(name, scope).single())
         assertEquals(body.virtualFile, result.file)
         assertEquals(source.indexOf(origin), result.offset)
       }
@@ -376,8 +374,7 @@ class MipsGoToSymbolPlatformTest {
           contributor.processNames(names::add, scope, null)
           assertTrue("%storage" in names)
           assertTrue("%slot" !in names)
-          val item =
-              assertInstanceOf(OpenFileDescriptor::class.java, items("%storage", scope).single())
+          val item = assertInstanceOf<OpenFileDescriptor>(items("%storage", scope).single())
           assertEquals(literal.virtualFile, item.file)
           assertEquals(literal.text.indexOf("%storage"), item.offset)
           assertTrue(
@@ -487,8 +484,7 @@ class MipsGoToSymbolPlatformTest {
           assertTrue(names.containsAll(expected.keys + "repeatedLabel"))
           assertEquals(names.toSet().size, names.size)
           for ((name, spelling) in expected) {
-            val descriptor =
-                assertInstanceOf(OpenFileDescriptor::class.java, items(name, bodyScope).single())
+            val descriptor = assertInstanceOf<OpenFileDescriptor>(items(name, bodyScope).single())
             assertEquals(body.virtualFile, descriptor.file)
             assertEquals(source.indexOf(spelling), descriptor.offset, name)
             val item = descriptor as NavigationItem
@@ -537,8 +533,7 @@ class MipsGoToSymbolPlatformTest {
         readAction {
           assertTrue(items("sharedLabel", bodyScope).isEmpty())
           val updated =
-              assertInstanceOf(
-                  OpenFileDescriptor::class.java,
+              assertInstanceOf<OpenFileDescriptor>(
                   items("updatedLabel", bodyScope).single(),
               )
           assertEquals(source.indexOf("sharedLabel") + 1, updated.offset)
@@ -580,8 +575,7 @@ class MipsGoToSymbolPlatformTest {
                   Triple("expandedLabel", included, 0),
                   Triple("handlerLabel", handler, 0),
               )) {
-            val descriptor =
-                assertInstanceOf(OpenFileDescriptor::class.java, items(name, scope).single())
+            val descriptor = assertInstanceOf<OpenFileDescriptor>(items(name, scope).single())
             assertEquals(file, descriptor.file)
             assertEquals(offset, descriptor.offset)
           }
@@ -616,7 +610,7 @@ class MipsGoToSymbolPlatformTest {
     }
     readAction {
       assertTrue(items("before", scope).isEmpty())
-      val item = assertInstanceOf(MipsDeclaration::class.java, items("after", scope).single())
+      val item = assertInstanceOf<MipsDeclaration>(items("after", scope).single())
       assertEquals(2, item.textOffset)
     }
     withContext(Dispatchers.EDT) {

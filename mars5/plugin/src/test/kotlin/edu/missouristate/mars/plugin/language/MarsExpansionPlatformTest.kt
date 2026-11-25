@@ -8,8 +8,8 @@ import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.ex.ActionUtil
 import com.intellij.openapi.actionSystem.impl.SimpleDataContext
 import com.intellij.openapi.application.EDT
-import com.intellij.openapi.application.WriteAction
 import com.intellij.openapi.application.readAction
+import com.intellij.openapi.application.runWriteAction
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.fileEditor.FileDocumentManager
@@ -253,7 +253,7 @@ class MarsExpansionPlatformTest {
           assertNull(inferredMipsAssemblyRoot(definition))
           assertNull(definition.findReferenceAt(definitionText.indexOf("DEST"))?.resolve())
           val entryFile = entry.virtualFile
-          WriteAction.run<RuntimeException> { entryFile.delete(this) }
+          runWriteAction { entryFile.delete(this) }
           chain.finalRunnable!!.run()
           assertEquals(setOf(entryFile), definition.virtualFile.mipsAssemblySourceEntries)
           assertNull(inferredMipsAssemblyRoot(definition))

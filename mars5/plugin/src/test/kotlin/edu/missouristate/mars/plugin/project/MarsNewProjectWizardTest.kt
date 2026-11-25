@@ -29,7 +29,7 @@ import com.intellij.openapi.util.Key
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.psi.PsiErrorElement
 import com.intellij.psi.PsiManager
-import com.intellij.psi.util.PsiTreeUtil
+import com.intellij.psi.util.childOfType
 import com.intellij.task.ProjectTaskManager
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.common.timeoutRunBlocking
@@ -59,6 +59,7 @@ import kotlinx.coroutines.withContext
 import org.jetbrains.concurrency.await
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertInstanceOf
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.params.ParameterizedTest
@@ -122,11 +123,10 @@ class MarsNewProjectWizardTest {
             paths.map { path ->
               requireNotNull(LocalFileSystem.getInstance().findFileByNioFile(path)).also { file ->
                 val psi =
-                    assertInstanceOf(
-                        MipsFile::class.java,
+                    assertInstanceOf<MipsFile>(
                         PsiManager.getInstance(project).findFile(file),
                     )
-                assertNull(PsiTreeUtil.findChildOfType(psi, PsiErrorElement::class.java))
+                assertNull(psi.childOfType<PsiErrorElement>())
               }
             }
           }
@@ -152,7 +152,7 @@ class MarsNewProjectWizardTest {
                 requireNotNull(RunManager.getInstanceAsync(project).selectedConfiguration)
             assertEquals("Run MIPS Program", settings.name)
             assertTrue(settings.isStoredInDotIdeaFolder)
-            val config = assertInstanceOf(MarsRunConfiguration::class.java, settings.configuration)
+            val config = assertInstanceOf<MarsRunConfiguration>(settings.configuration)
             assertTrue(config.options.useProjectSources)
             assertNull(config.options.sourcePath)
             val executor =

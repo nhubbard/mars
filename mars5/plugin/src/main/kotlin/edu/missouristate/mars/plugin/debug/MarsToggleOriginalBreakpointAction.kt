@@ -3,7 +3,7 @@ package edu.missouristate.mars.plugin.debug
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
-import com.intellij.openapi.application.WriteAction
+import com.intellij.openapi.application.runWriteAction
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.project.Project
@@ -29,7 +29,7 @@ internal class MarsToggleOriginalBreakpointAction : DumbAwareAction() {
     val manager = XDebuggerManager.getInstance(e.project!!).breakpointManager
     val type = findBreakpointType<MarsLineBreakpointType>()
     val line = location.line() - 1
-    WriteAction.run<RuntimeException> {
+    runWriteAction {
       val existing = manager.findBreakpointsAtLine(type, file, line).firstOrNull()
       if (existing == null)
           manager.addLineBreakpoint(

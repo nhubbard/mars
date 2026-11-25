@@ -12,9 +12,9 @@ import kotlin.io.path.writeText
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 
 class KeyboardDisplayDeviceTest {
@@ -234,8 +234,8 @@ class KeyboardDisplayDeviceTest {
         }
       }
     }
-    assertThrows(IllegalArgumentException::class.java) { Options(instructions = 0) }
-    assertThrows(IllegalArgumentException::class.java) { Options(instructions = 1_000_001) }
+    assertThrows<IllegalArgumentException> { Options(instructions = 0) }
+    assertThrows<IllegalArgumentException> { Options(instructions = 1_000_001) }
   }
 
   @Test
@@ -262,10 +262,10 @@ class KeyboardDisplayDeviceTest {
 
   @Test
   fun `custom geometry defines the grid wrap clamp and caret without changing sequential output`() {
-    assertThrows(IllegalArgumentException::class.java) { Geometry(columns = 0) }
-    assertThrows(IllegalArgumentException::class.java) { Geometry(columns = 257) }
-    assertThrows(IllegalArgumentException::class.java) { Geometry(rows = 0) }
-    assertThrows(IllegalArgumentException::class.java) { Geometry(rows = 129) }
+    assertThrows<IllegalArgumentException> { Geometry(columns = 0) }
+    assertThrows<IllegalArgumentException> { Geometry(columns = 257) }
+    assertThrows<IllegalArgumentException> { Geometry(rows = 0) }
+    assertThrows<IllegalArgumentException> { Geometry(rows = 129) }
     val dimensions = Geometry(3, 2)
     val sequential = MmioTerminalDisplay(dimensions).transmit('x'.code)
     assertEquals("x", sequential.text)

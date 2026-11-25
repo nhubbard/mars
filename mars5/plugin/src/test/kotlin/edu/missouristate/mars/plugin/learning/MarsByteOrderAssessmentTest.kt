@@ -24,11 +24,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertNotSame
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertInstanceOf
 
 @TestApplication
 class MarsByteOrderAssessmentTest {
@@ -107,7 +107,7 @@ class MarsByteOrderAssessmentTest {
                   step,
                   { true },
               )
-          val result = assertInstanceOf(Feedback.Checked::class.java, checkpoint.check())
+          val result = assertInstanceOf<Feedback.Checked>(checkpoint.check())
           assertEquals(cases.map { it.name }, result.results.map { it.name })
           assertTrue(result.results.all { it.passed })
           assertEquals(1, result.completed)
@@ -118,7 +118,7 @@ class MarsByteOrderAssessmentTest {
             }
           }
           assertFalse(checkpoint.passed())
-          val edited = assertInstanceOf(Feedback.Checked::class.java, checkpoint.check())
+          val edited = assertInstanceOf<Feedback.Checked>(checkpoint.check())
           assertTrue(edited.results.none { it.passed })
           assertEquals(2, edited.completed)
         } finally {

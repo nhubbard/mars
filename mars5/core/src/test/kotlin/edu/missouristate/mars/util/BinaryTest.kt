@@ -3,9 +3,9 @@ package edu.missouristate.mars.util
 import edu.missouristate.mars.util.NumberDisplayBase.HEXADECIMAL
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 
 class BinaryTest {
   @Test
@@ -13,8 +13,8 @@ class BinaryTest {
     assertEquals(Int.MIN_VALUE, Binary.stringToInt("0X80000000"))
     assertEquals(Long.MIN_VALUE, Binary.stringToLong("0x8000000000000000"))
     assertEquals(1, Binary.stringToInt("4294967297"))
-    assertThrows(NumberFormatException::class.java) { Binary.stringToLong("18446744073709551615") }
-    assertThrows(NumberFormatException::class.java) { Binary.stringToInt("0x8000000g") }
+    assertThrows<NumberFormatException> { Binary.stringToLong("18446744073709551615") }
+    assertThrows<NumberFormatException> { Binary.stringToInt("0x8000000g") }
   }
 
   @Test

@@ -5,7 +5,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
-import org.junit.jupiter.api.Assertions.assertThrows
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
@@ -32,7 +32,7 @@ class Mars64ScalarInstructionTest {
   ) {
     val file = Files.writeString(directory.resolve("wide.s"), "$source\n")
     TestSessions.create().use { session ->
-      assertThrows(ProcessingException::class.java) {
+      assertThrows<ProcessingException> {
         session.assemble(listOf(file), null, extended = false, warnings = false)
       }
       session.selectTarget(MarsTarget.MARS64)
@@ -74,7 +74,7 @@ class Mars64ScalarInstructionTest {
     val file = Files.writeString(directory.resolve("invalid.s"), "$source\n")
     TestSessions.create().use { session ->
       session.selectTarget(MarsTarget.MARS64)
-      assertThrows(ProcessingException::class.java) {
+      assertThrows<ProcessingException> {
         session.assemble(listOf(file), null, extended = false, warnings = false)
       }
     }

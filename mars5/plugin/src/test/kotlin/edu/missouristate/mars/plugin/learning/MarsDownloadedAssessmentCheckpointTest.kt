@@ -38,9 +38,9 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertInstanceOf
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
@@ -147,7 +147,7 @@ class MarsDownloadedAssessmentCheckpointTest {
             $$".text\n.globl main\nmain: li $v0,10\nsyscall\nreturned: nop\nidentity: move $v0,$a0\njrc $ra\n"
         val machines = mutableListOf<MarsContext>()
         exercise(source, create = { machine().also(machines::add) }, selectedStep = selected) { f ->
-          val result = assertInstanceOf(Feedback.Checked::class.java, f.checkpoint.check())
+          val result = assertInstanceOf<Feedback.Checked>(f.checkpoint.check())
           assertEquals(cases.map { it.name }, result.results.map { it.name })
           assertTrue(result.results.all { it.passed })
           assertTrue(f.checkpoint.passed())
@@ -166,7 +166,7 @@ class MarsDownloadedAssessmentCheckpointTest {
             }
         val selected = step.copy(cases = cases, consoleCaseBatches = cases.chunked(2))
         exercise(selectedStep = selected) { f ->
-          val result = assertInstanceOf(Feedback.Checked::class.java, f.checkpoint.check())
+          val result = assertInstanceOf<Feedback.Checked>(f.checkpoint.check())
           assertEquals(listOf(true, true, false), result.results.map { it.passed })
           assertEquals(1, result.completed)
           assertFalse(f.checkpoint.passed())
@@ -207,7 +207,7 @@ class MarsDownloadedAssessmentCheckpointTest {
           assertTrue(f.checkpoint.accepts(f.document))
           assertFalse(f.checkpoint.accepts(null))
           assertFalse(f.checkpoint.accepts(EditorFactory.getInstance().createDocument("different")))
-          val result = assertInstanceOf(Feedback.Checked::class.java, f.checkpoint.check())
+          val result = assertInstanceOf<Feedback.Checked>(f.checkpoint.check())
           assertTrue(result.results.all { it.passed })
           assertEquals(1, result.completed)
           assertEquals(0, result.limit)
@@ -292,7 +292,7 @@ class MarsDownloadedAssessmentCheckpointTest {
             create = { machine().also(machines::add) },
             selectedStep = functionStep,
         ) { f ->
-          val failed = assertInstanceOf(Feedback.Checked::class.java, f.checkpoint.check())
+          val failed = assertInstanceOf<Feedback.Checked>(f.checkpoint.check())
           assertEquals(3, failed.results.size)
           assertTrue(failed.results.none { it.passed })
           assertTrue(failed.results.all { it.failure!!.contains("Expected s0") })
@@ -305,13 +305,13 @@ class MarsDownloadedAssessmentCheckpointTest {
                 }
               }
           edit(wrapper)
-          val passed = assertInstanceOf(Feedback.Checked::class.java, f.checkpoint.check())
+          val passed = assertInstanceOf<Feedback.Checked>(f.checkpoint.check())
           assertTrue(passed.results.all { it.passed })
           assertEquals(2, passed.completed)
           assertTrue(f.checkpoint.passed())
           edit($$"xori $a0,$a0,255\nbc mask_byte\n")
           assertFalse(f.checkpoint.passed())
-          val equivalent = assertInstanceOf(Feedback.Checked::class.java, f.checkpoint.check())
+          val equivalent = assertInstanceOf<Feedback.Checked>(f.checkpoint.check())
           assertTrue(equivalent.results.all { it.passed })
           assertEquals(3, equivalent.completed)
           assertEquals(9, machines.toSet().size)
@@ -323,7 +323,7 @@ class MarsDownloadedAssessmentCheckpointTest {
   fun `incorrect current programs consume one assessment and useful case failures do not require a source recipe`() =
       timeoutRunBlocking {
         exercise(correct.replace($$"addiu $t3, $v0, 2", $$"move $t3, $v0")) { f ->
-          val result = assertInstanceOf(Feedback.Checked::class.java, f.checkpoint.check())
+          val result = assertInstanceOf<Feedback.Checked>(f.checkpoint.check())
           assertTrue(result.results.none { it.passed })
           assertEquals(1, result.completed)
           assertFalse(f.checkpoint.passed())
@@ -372,7 +372,7 @@ class MarsDownloadedAssessmentCheckpointTest {
                     { true },
                 )
               }
-          val wrong = assertInstanceOf(Feedback.Checked::class.java, checkpoint.check())
+          val wrong = assertInstanceOf<Feedback.Checked>(checkpoint.check())
           assertFalse(wrong.results.single().passed)
           assertTrue(wrong.results.single().failure!!.contains("Expected byte"))
           assertFalse(checkpoint.passed())
@@ -381,10 +381,7 @@ class MarsDownloadedAssessmentCheckpointTest {
               failed.replace(".text", $$".text\nli $t5,0xaa6699\nli $s1,0x10010000\nsw $t5,0($s1)")
           edit(fixture.editor.document, correct)
           assertTrue(
-              assertInstanceOf(Feedback.Checked::class.java, checkpoint.check())
-                  .results
-                  .single()
-                  .passed,
+              assertInstanceOf<Feedback.Checked>(checkpoint.check()).results.single().passed,
           )
           assertTrue(checkpoint.passed())
           assertEquals(2, count())
@@ -417,17 +414,14 @@ class MarsDownloadedAssessmentCheckpointTest {
                     { true },
                 )
               }
-          val wrong = assertInstanceOf(Feedback.Checked::class.java, checkpoint.check())
+          val wrong = assertInstanceOf<Feedback.Checked>(checkpoint.check())
           assertFalse(wrong.results.single().passed)
           assertTrue(wrong.results.single().failure!!.contains("Expected 2 byte stores"))
           assertFalse(checkpoint.passed())
           assertEquals(1, count())
           edit(fixture.editor.document, failed.replace($$"li $v0,10", $$"sb $t0,0($t7)\nli $v0,10"))
           assertTrue(
-              assertInstanceOf(Feedback.Checked::class.java, checkpoint.check())
-                  .results
-                  .single()
-                  .passed,
+              assertInstanceOf<Feedback.Checked>(checkpoint.check()).results.single().passed,
           )
           assertTrue(checkpoint.passed())
           assertEquals(2, count())
@@ -450,7 +444,7 @@ class MarsDownloadedAssessmentCheckpointTest {
           predictions = true
           policy.update(maxIndependentAssessments = 1)
           assertTrue(
-              assertInstanceOf(Feedback.Checked::class.java, f.checkpoint.check()).results.all {
+              assertInstanceOf<Feedback.Checked>(f.checkpoint.check()).results.all {
                 it.passed
               },
           )
@@ -465,7 +459,7 @@ class MarsDownloadedAssessmentCheckpointTest {
           assertEquals(Feedback.LIMIT, f.checkpoint.check())
           assertEquals(1, count())
           policy.update(maxIndependentAssessments = 2)
-          val second = assertInstanceOf(Feedback.Checked::class.java, f.checkpoint.check())
+          val second = assertInstanceOf<Feedback.Checked>(f.checkpoint.check())
           assertEquals(2, second.completed)
           assertEquals(2, second.limit)
         }
@@ -496,7 +490,7 @@ class MarsDownloadedAssessmentCheckpointTest {
       assertEquals(Feedback.STALE, f.checkpoint.check())
       assertFalse(f.checkpoint.passed())
       assertEquals(0, count())
-      assertInstanceOf(Feedback.Checked::class.java, f.checkpoint.check())
+      assertInstanceOf<Feedback.Checked>(f.checkpoint.check())
       assertTrue(f.checkpoint.passed())
     }
   }
@@ -557,7 +551,7 @@ class MarsDownloadedAssessmentCheckpointTest {
         exercise { f ->
           project.service<MarsLearningPolicy>().update(maxIndependentAssessments = 1)
           project.service<MarsLearningProgress>().reset(identity)
-          assertInstanceOf(Feedback.Checked::class.java, f.checkpoint.check())
+          assertInstanceOf<Feedback.Checked>(f.checkpoint.check())
           assertEquals(1, count())
           withContext(Dispatchers.EDT) {
             WriteCommandAction.runWriteCommandAction(project) {
@@ -622,7 +616,7 @@ class MarsDownloadedAssessmentCheckpointTest {
             val old = async(Dispatchers.Default) { f.checkpoint.check() }
             try {
               entered.await()
-              assertInstanceOf(Feedback.Checked::class.java, f.checkpoint.check())
+              assertInstanceOf<Feedback.Checked>(f.checkpoint.check())
               release.countDown()
               assertEquals(Feedback.STALE, old.await())
               assertEquals(1, count())
@@ -674,7 +668,7 @@ class MarsDownloadedAssessmentCheckpointTest {
           waiting.await()
           exercise { f ->
             assertTrue(
-                assertInstanceOf(Feedback.Checked::class.java, f.checkpoint.check()).results.all {
+                assertInstanceOf<Feedback.Checked>(f.checkpoint.check()).results.all {
                   it.passed
                 },
             )

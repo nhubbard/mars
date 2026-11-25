@@ -21,9 +21,9 @@ import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertSame
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 
 internal class WarmSessionTest {
@@ -31,9 +31,9 @@ internal class WarmSessionTest {
   fun `shared definitions resist mutation through catalog and token APIs`() {
     val catalog = InstructionDefaults.forTarget(MarsTarget.MARS64)
     val editor = InstructionDefaults.editorCatalog()
-    assertThrows(IllegalStateException::class.java) { catalog.populate() }
-    assertThrows(IllegalStateException::class.java) { editor.populate() }
-    assertThrows(UnsupportedOperationException::class.java) {
+    assertThrows<IllegalStateException> { catalog.populate() }
+    assertThrows<IllegalStateException> { editor.populate() }
+    assertThrows<UnsupportedOperationException> {
       (catalog.instructionList as MutableList<Instruction>).clear()
     }
 
@@ -54,26 +54,26 @@ internal class WarmSessionTest {
             templates.basicIntructionTemplateList,
             templates.compactBasicIntructionTemplateList,
         )) {
-      assertThrows(UnsupportedOperationException::class.java) {
+      assertThrows<UnsupportedOperationException> {
         (translation as MutableList<String>).clear()
       }
     }
 
     val example = form.tokenList
     val operand = example[1]
-    assertThrows(IllegalStateException::class.java) { form.createExampleTokenList(catalog) }
-    assertThrows(IllegalStateException::class.java) { example.add(operand) }
-    assertThrows(IllegalStateException::class.java) { example.remove(1) }
-    assertThrows(IllegalStateException::class.java) { example[1] = example[0] }
-    assertThrows(IllegalStateException::class.java) { example.processedLine = "changed" }
-    assertThrows(IllegalStateException::class.java) { example.markEquivalenceExpansionIncomplete() }
-    assertThrows(IllegalStateException::class.java) { operand.type = TokenTypes.IDENTIFIER }
-    assertThrows(IllegalStateException::class.java) { operand.setOriginal(null, 9) }
-    assertThrows(IllegalStateException::class.java) { operand.setOriginalStartPos(9) }
-    assertThrows(IllegalStateException::class.java) { operand.setDiagnosticOrigin(example[0]) }
-    assertThrows(IllegalStateException::class.java) { operand.setExpansionSource(example[0]) }
-    assertThrows(IllegalStateException::class.java) { operand.setArgumentOrigin(example[0]) }
-    assertThrows(IllegalStateException::class.java) { operand.setEquivalenceSource(null) }
+    assertThrows<IllegalStateException> { form.createExampleTokenList(catalog) }
+    assertThrows<IllegalStateException> { example.add(operand) }
+    assertThrows<IllegalStateException> { example.remove(1) }
+    assertThrows<IllegalStateException> { example[1] = example[0] }
+    assertThrows<IllegalStateException> { example.processedLine = "changed" }
+    assertThrows<IllegalStateException> { example.markEquivalenceExpansionIncomplete() }
+    assertThrows<IllegalStateException> { operand.type = TokenTypes.IDENTIFIER }
+    assertThrows<IllegalStateException> { operand.setOriginal(null, 9) }
+    assertThrows<IllegalStateException> { operand.setOriginalStartPos(9) }
+    assertThrows<IllegalStateException> { operand.setDiagnosticOrigin(example[0]) }
+    assertThrows<IllegalStateException> { operand.setExpansionSource(example[0]) }
+    assertThrows<IllegalStateException> { operand.setArgumentOrigin(example[0]) }
+    assertThrows<IllegalStateException> { operand.setEquivalenceSource(null) }
 
     val clone = example.clone() as TokenList
     clone[1].type = TokenTypes.IDENTIFIER

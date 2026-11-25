@@ -5,9 +5,9 @@ import edu.missouristate.mars.assembler.release6HardwareRequirement
 import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 
 class Mars64ScalarInventoryTest {
@@ -47,7 +47,7 @@ class Mars64ScalarInventoryTest {
     val file = Files.writeString(directory.resolve("hardware.mars"), names.joinToString("\n"))
     TestSessions.create().use { machine ->
       machine.selectTarget(MarsTarget.MARS64)
-      val failure = assertThrows(ProcessingException::class.java) { machine.assemble(listOf(file)) }
+      val failure = assertThrows<ProcessingException> { machine.assemble(listOf(file)) }
       val diagnostics = failure.errors()!!.generateErrorReport()
       for (name in names) {
         val requirement = checkNotNull(release6HardwareRequirement(name)) { name }
@@ -110,7 +110,7 @@ class Mars64ScalarInventoryTest {
     val file = Files.writeString(directory.resolve("removed.mars"), names.joinToString("\n"))
     TestSessions.create().use { machine ->
       machine.selectTarget(MarsTarget.MARS64)
-      val failure = assertThrows(ProcessingException::class.java) { machine.assemble(listOf(file)) }
+      val failure = assertThrows<ProcessingException> { machine.assemble(listOf(file)) }
       val diagnostics = failure.errors()!!.generateErrorReport()
       for (name in names) assertTrue(diagnostics.contains("Release 6 removed \"$name\"."), name)
     }

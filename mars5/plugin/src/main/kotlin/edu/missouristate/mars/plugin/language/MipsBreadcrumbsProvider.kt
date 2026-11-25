@@ -7,6 +7,7 @@ import com.intellij.psi.PsiFile
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.util.PsiTreeUtil
+import com.intellij.psi.util.childrenOfType
 import com.intellij.psi.util.elementType
 import com.intellij.ui.breadcrumbs.BreadcrumbsProvider
 import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
@@ -34,8 +35,7 @@ internal class MipsBreadcrumbsProvider : BreadcrumbsProvider {
     val scope =
         PsiTreeUtil.findFirstParent(element, false) { it.elementType == macroDefinition }
             ?: element.containingFile
-    val container =
-        PsiTreeUtil.getChildOfType(scope, MipsDeclaration::class.java) ?: element.containingFile
+    val container = scope.childrenOfType<MipsDeclaration>().firstOrNull() ?: element.containingFile
     if (element.isSegment()) return container
     val boundaries = boundaries(scope)
     val positions =

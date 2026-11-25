@@ -9,7 +9,7 @@ package edu.missouristate.mars.plugin.learning
 
 import com.intellij.execution.ExecutionListener
 import com.intellij.execution.ExecutionManager
-import com.intellij.execution.configurations.ConfigurationTypeUtil
+import com.intellij.execution.configurations.runConfigurationType
 import com.intellij.execution.executors.DefaultDebugExecutor
 import com.intellij.execution.executors.DefaultRunExecutor
 import com.intellij.execution.process.ProcessEvent
@@ -664,9 +664,7 @@ class MarsDownloadedLessonsTest {
                   .breakpointManager
                   .addLineBreakpoint(type, file.virtualFile.url, 2, null)
             }
-            val config =
-                ConfigurationTypeUtil.findConfigurationType(MarsRunType::class.java)
-                    .createTemplateConfiguration(project)
+            val config = runConfigurationType<MarsRunType>().createTemplateConfiguration(project)
             config.options.sourcePath = file.virtualFile.path
             val env =
                 ExecutionEnvironmentBuilder.create(

@@ -13,9 +13,9 @@ import kotlin.io.path.writeText
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 
 class DigitalLabDeviceTest {
@@ -157,7 +157,7 @@ class DigitalLabDeviceTest {
         assertEquals(0x40, session.pendingDeviceInterrupts())
         session.setDeviceInterrupts(0x40, 0)
         step()
-        assertThrows(ProcessingException::class.java) { program.executeSessionInstruction() }
+        assertThrows<ProcessingException> { program.executeSessionInstruction() }
         assertEquals(0, session.pendingDeviceInterrupts())
         assertEquals(0x400, session.coprocessor0.getRegister(CAUSE)!!.valueNoNotify)
         session.backStepper.backStep()

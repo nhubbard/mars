@@ -6,9 +6,9 @@ import edu.missouristate.mars.mips.instructions.InstructionDefaults
 import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 
 class Release6MigrationTest {
@@ -57,11 +57,10 @@ class Release6MigrationTest {
       val program = machine.assemble(listOf(source))
       machine.editIntegerRegister(8, Int.MAX_VALUE)
       machine.editIntegerRegister(9, 42)
-      assertThrows(ProcessingException::class.java) { program.simulate(5) }
+      assertThrows<ProcessingException> { program.simulate(5) }
       assertEquals(42L, machine.registerFile.getLongValueNoNotify(9))
       Files.writeString(source, $$"addi $t1,$at,100000\n")
-      val failure =
-          assertThrows(ProcessingException::class.java) { machine.assemble(listOf(source)) }
+      val failure = assertThrows<ProcessingException> { machine.assemble(listOf(source)) }
       assertTrue(
           "Load the immediate into a different temporary" in
               failure.errors()!!.generateErrorReport(),
@@ -86,8 +85,7 @@ class Release6MigrationTest {
         )
     TestSessions.create().use { machine ->
       machine.selectTarget(MarsTarget.MARS64)
-      val failure =
-          assertThrows(ProcessingException::class.java) { machine.assemble(listOf(source)) }
+      val failure = assertThrows<ProcessingException> { machine.assemble(listOf(source)) }
       val diagnostics = failure.errors()!!.generateErrorReport()
       for ((divide, remainder) in
           listOf("div" to "mod", "divu" to "modu", "ddiv" to "dmod", "ddivu" to "dmodu")) {
@@ -116,8 +114,7 @@ class Release6MigrationTest {
         )
     TestSessions.create().use { machine ->
       machine.selectTarget(MarsTarget.MARS64)
-      val failure =
-          assertThrows(ProcessingException::class.java) { machine.assemble(listOf(source)) }
+      val failure = assertThrows<ProcessingException> { machine.assemble(listOf(source)) }
       val diagnostics = failure.errors()!!.generateErrorReport()
       assertTrue(
           "Release 6 removed \"beql\". Move the annulled delay-slot instruction" in diagnostics,
@@ -159,8 +156,7 @@ class Release6MigrationTest {
     TestSessions.create().use { machine ->
       machine.assemble(listOf(source))
       machine.selectTarget(MarsTarget.MARS64)
-      val failure =
-          assertThrows(ProcessingException::class.java) { machine.assemble(listOf(source)) }
+      val failure = assertThrows<ProcessingException> { machine.assemble(listOf(source)) }
       val diagnostics = failure.errors()!!.generateErrorReport()
       for ((instruction, replacement) in
           listOf(
