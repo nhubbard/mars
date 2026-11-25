@@ -36,7 +36,9 @@ counts include the existing helper's implementation.
    Complete: migrated 66 anonymous listener objects. All 2,457 core, 317 CLI,
    8 datapath, and 1,373 plugin tests pass, including the four new platform
    contract tests. Strict plugin and generated-parser coverage gates pass.
-5. Completion providers and table column builders.
+5. Completion providers and table column builders. Complete: native completion
+   providers and columns replace the repeated objects. The focused completion,
+   debugger, and new column-contract tests pass; all affected modules compile.
 6. Remaining callback adapters, retaining explicit objects where clearer.
 7. Core collection and simulation configuration APIs, preserving compatibility.
 8. Nullable state and lifecycle invariants, followed by complete validation.
@@ -91,3 +93,11 @@ Every phase is reviewed, compiled, tested, and committed before the next begins.
   listener identities. SDK modules may add listeners concurrently and can share
   the fixture's classloader. No generated class-name assumption or production
   capture hook is needed; the original stale/disposed-callback checks remain.
+
+- Completion registration delegates directly to `CompletionContributor.extend`.
+  It preserves nullable completion types, native patterns, processing contexts,
+  results, and synchronous callback propagation.
+- Columns retain native nullable values, String class defaults, read-only cells,
+  and renderer/editor behavior. Only comparators and column classes need builder
+  options today. `buildColumnInfo` has a distinct name from the value-only factory
+  to avoid ambiguous Kotlin Function1 overloads. Builder settings are snapshotted.

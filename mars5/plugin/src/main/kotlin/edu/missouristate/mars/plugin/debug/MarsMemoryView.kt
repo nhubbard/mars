@@ -16,7 +16,6 @@ import com.intellij.ui.dsl.builder.Align
 import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.dsl.listCellRenderer.textListCellRenderer
 import com.intellij.ui.table.JBTable
-import com.intellij.util.ui.ColumnInfo
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.ListTableModel
 import com.intellij.util.ui.UIUtil
@@ -28,6 +27,7 @@ import edu.missouristate.mars.mips.hardware.MemoryState
 import edu.missouristate.mars.plugin.build.MarsMemoryExportService
 import edu.missouristate.mars.plugin.build.chooseMemoryExport
 import edu.missouristate.mars.plugin.run.runMessages
+import edu.missouristate.mars.plugin.ui.columnInfo
 import edu.missouristate.mars.simulator.BackStepper.MemoryWrite
 import java.awt.Font
 import java.awt.event.ItemEvent
@@ -388,9 +388,7 @@ internal class MarsMemoryView(private val session: XDebugSession, private val en
   }
 
   private fun column(key: String, value: (MemoryRow) -> String) =
-      object : ColumnInfo<MemoryRow, String>(runMessages.getMessage(key)) {
-        override fun valueOf(item: MemoryRow) = value(item)
-      }
+      columnInfo(runMessages.getMessage(key), value)
 }
 
 internal class MarsMemoryEditDialog(
