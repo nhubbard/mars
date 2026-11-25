@@ -86,9 +86,9 @@ class MarsDownloadedDebugCheckpointTest {
           "Debug with 150.",
           listOf(150),
           listOf(
-              stop("before-mask", "interpret", "andi", mapOf("\$v0" to 150L)),
-              stop("after-mask", "interpret", "seb", mapOf("\$v0" to 150L, "\$t0" to 150L)),
-              stop("after-extension", "report", "la", mapOf("\$t0" to 150L, "\$t1" to -106L)),
+              stop("before-mask", "interpret", "andi", mapOf($$"$v0" to 150L)),
+              stop("after-mask", "interpret", "seb", mapOf($$"$v0" to 150L, $$"$t0" to 150L)),
+              stop("after-extension", "report", "la", mapOf($$"$t0" to 150L, $$"$t1" to -106L)),
           ),
           "Explain the whole register.",
           emptyList(),
@@ -106,7 +106,7 @@ class MarsDownloadedDebugCheckpointTest {
           step(launch)
           assertEquals(2, f.checkpoint.phase)
           val extended = step(launch)
-          assertEquals(-106L, extended.frame.evaluator.integerRegisterBits("\$t1"))
+          assertEquals(-106L, extended.frame.evaluator.integerRegisterBits($$"$t1"))
           assertEquals(3, f.checkpoint.phase)
           assertTrue(f.checkpoint.passed())
           assertTrue(f.feedback.isEmpty())
@@ -194,7 +194,7 @@ class MarsDownloadedDebugCheckpointTest {
   fun `source capture containing an additional file is not the single-file activity`() =
       timeoutRunBlocking {
         withContext(Dispatchers.EDT) { fixture.addFileToProject("extra.inc", "# extra input\n") }
-        withDebug(source = example + ".include \"extra.inc\"\n") { f ->
+        withDebug(source = "$example.include \"extra.inc\"\n") { f ->
           f.start().pauses.receive()
           assertEquals(listOf(Outcome.SOURCE_CHANGED), f.feedback)
           assertFalse(f.checkpoint.passed())
@@ -244,7 +244,7 @@ class MarsDownloadedDebugCheckpointTest {
       val launch = f.start()
       val pause = launch.pauses.receive()
       if (reverse) {
-        command(launch.session, "debug.backstep")
+        command(launch.session)
         launch.pauses.receive()
       } else {
         val changed = CompletableDeferred<String?>()
@@ -292,7 +292,7 @@ class MarsDownloadedDebugCheckpointTest {
                         ),
                 ) to Outcome.ANCHOR,
                 contract.copy(
-                    stops = listOf(contract.stops.first().copy(registers = mapOf("\$v0" to 406L))),
+                    stops = listOf(contract.stops.first().copy(registers = mapOf($$"$v0" to 406L))),
                 ) to Outcome.VALUES,
             )
         for ((plan, outcome) in invalid) withDebug(plan) { f ->
@@ -404,12 +404,12 @@ class MarsDownloadedDebugCheckpointTest {
           val plan =
               contract.copy(
                   integerInputs = emptyList(),
-                  stops = listOf(stop("scalar", "observed", "andi", mapOf("\$t0" to 0L))),
+                  stops = listOf(stop("scalar", "observed", "andi", mapOf($$"$t0" to 0L))),
               )
           withDebug(plan, source) { f ->
             val first = f.start().pauses.receive().frame.evaluator
-            assertNull(first.vectorRegisterBits("\$w0"))
-            assertNull(first.vectorRegisterBits("\$w32"))
+            assertNull(first.vectorRegisterBits($$"$w0"))
+            assertNull(first.vectorRegisterBits($$"$w32"))
           }
         } finally {
           withContext(Dispatchers.EDT) { settings.changeTarget(target) }
@@ -438,24 +438,24 @@ class MarsDownloadedDebugCheckpointTest {
               """
                   .trimIndent()
           val before =
-              stop("loaded", "observed", "andi", mapOf("\$t0" to 0L))
-                  .copy(vectorRegisters = mapOf("\$w4" to VectorRegister(-1, -1)))
+              stop("loaded", "observed", "andi", mapOf($$"$t0" to 0L))
+                  .copy(vectorRegisters = mapOf($$"$w4" to VectorRegister(-1, -1)))
           val after =
               stop("alias-written", "changed", "nop", emptyMap())
-                  .copy(vectorRegisters = mapOf("\$w4" to VectorRegister(0, -1)))
+                  .copy(vectorRegisters = mapOf($$"$w4" to VectorRegister(0, -1)))
           val plan = contract.copy(integerInputs = emptyList(), stops = listOf(before, after))
           withDebug(plan, source) { f ->
             val launch = f.start()
             val first = launch.pauses.receive().frame.evaluator
-            assertEquals(VectorRegister(-1, -1), first.vectorRegisterBits("\$w4"))
-            assertNull(first.vectorRegisterBits("\$w32"))
+            assertEquals(VectorRegister(-1, -1), first.vectorRegisterBits($$"$w4"))
+            assertNull(first.vectorRegisterBits($$"$w32"))
             assertEquals(1, f.checkpoint.phase)
             step(launch)
             val changed = step(launch).frame.evaluator
-            assertEquals(VectorRegister(0, -1), changed.vectorRegisterBits("\$w4"))
+            assertEquals(VectorRegister(0, -1), changed.vectorRegisterBits($$"$w4"))
             assertEquals(
                 VectorRegister(-1, -1),
-                first.vectorRegisterBits("\$w4"),
+                first.vectorRegisterBits($$"$w4"),
                 "Retained snapshots must not read the live machine",
             )
             assertEquals(2, f.checkpoint.phase)
@@ -506,7 +506,7 @@ class MarsDownloadedDebugCheckpointTest {
         val plan =
             contract.copy(
                 integerInputs = emptyList(),
-                stops = listOf(stop("opened", "observed", "andi", mapOf("\$t5" to 19L))),
+                stops = listOf(stop("opened", "observed", "andi", mapOf($$"$t5" to 19L))),
                 fileRead = FunctionFileReadCheck("input.bin", "313233343536373839", 7, 3, 5, 19),
             )
         withDebug(plan, source) { f ->
@@ -532,9 +532,9 @@ class MarsDownloadedDebugCheckpointTest {
             launch.session.resume()
           }
           val finished = launch.pauses.receive().frame.evaluator
-          assertEquals(3L, finished.integerRegisterBits("\$s0"))
-          assertEquals(2L, finished.integerRegisterBits("\$s1"))
-          assertEquals(-1L, finished.integerRegisterBits("\$s2"))
+          assertEquals(3L, finished.integerRegisterBits($$"$s0"))
+          assertEquals(2L, finished.integerRegisterBits($$"$s1"))
+          assertEquals(-1L, finished.integerRegisterBits($$"$s2"))
           withContext(Dispatchers.EDT) { launch.session.resume() }
           launch.stopped.await()
         }
@@ -545,7 +545,7 @@ class MarsDownloadedDebugCheckpointTest {
     return launch.pauses.receive()
   }
 
-  private suspend fun command(session: XDebugSession, key: String) =
+  private suspend fun command(session: XDebugSession, key: String = "debug.backstep") =
       withContext(Dispatchers.EDT) {
         val toolbar = DefaultActionGroup()
         session.debugProcess.registerAdditionalActions(
@@ -685,10 +685,10 @@ class MarsDownloadedDebugCheckpointTest {
       state = current
       body(current)
     } finally {
-      for (launch in state?.launches.orEmpty()) {
-        withContext(Dispatchers.EDT) { launch.session.stop() }
-        launch.stopped.await()
-        launch.pauses.close()
+      for ((session, pauses, stopped) in state?.launches.orEmpty()) {
+        withContext(Dispatchers.EDT) { session.stop() }
+        stopped.await()
+        pauses.close()
       }
       withContext(Dispatchers.EDT) { Disposer.dispose(lifetime) }
     }

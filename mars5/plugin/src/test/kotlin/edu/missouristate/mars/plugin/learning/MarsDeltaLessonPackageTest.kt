@@ -25,12 +25,12 @@ class MarsDeltaLessonPackageTest {
       assertEquals(25, debug.sumOf { it.stops.size })
       assertEquals(11, debug.map { it.source }.distinct().size)
       val rejected = debug.single { it.id == "trace-redundant-zero" }.stops.first().registers
-      assertEquals(3L, rejected.getValue("\$t0"))
-      assertEquals(0L, rejected.getValue("\$t1"))
-      for (name in listOf("\$s4", "\$s5", "\$s6")) assertEquals(1L, rejected.getValue(name))
+      assertEquals(3L, rejected.getValue($$"$t0"))
+      assertEquals(0L, rejected.getValue($$"$t1"))
+      for (name in listOf($$"$s4", $$"$s5", $$"$s6")) assertEquals(1L, rejected.getValue(name))
       val range = debug.single { it.id == "trace-range-failure" }.stops.first().registers
-      assertEquals(8589934591L, range.getValue("\$t1"))
-      assertEquals(-4294967296L, range.getValue("\$t6"))
+      assertEquals(8589934591L, range.getValue($$"$t1"))
+      assertEquals(-4294967296L, range.getValue($$"$t6"))
       assertEquals(3, plan.steps.filterIsInstance<MarsNativeRunStep>().size)
       val assessments = plan.steps.filterIsInstance<MarsNativeAssessmentStep>()
       assertEquals(4, assessments.size)

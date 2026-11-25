@@ -40,7 +40,7 @@ class MarsClippedLessonPackageTest {
           listOf("blit_call", "blit_ready", "done"),
           debug.last().stops.map { it.anchor.label },
       )
-      assertEquals(2147483652L, debug[1].stops[1].registers.getValue("\$t1"))
+      assertEquals(2147483652L, debug[1].stops[1].registers.getValue($$"$t1"))
       val assessments = plan.steps.filterIsInstance<MarsNativeAssessmentStep>()
       assertEquals(listOf(474, 107), assessments.take(2).map { it.functionCases.size })
       assertEquals(List(9) { 50 } + 24, assessments.first().functionCaseBatches.map { it.size })
@@ -66,38 +66,40 @@ class MarsClippedLessonPackageTest {
   @Test
   fun `native clipped sources resolve all twenty PSI pointers while the blitter remains unfinished`() =
       timeoutRunBlocking {
-        MarsLessonPackages.prepare(archive()).use { prepared ->
-          val installed = prepared.install(Files.createDirectory(directory.resolve("project")))
-          val content = MarsDownloadedLessonContent(installed, prepared.nativeLesson!!)
-          var count = 0
-          for (step in content.plan.steps) {
-            val source = content.source(step)
-            val anchors =
-                if (step is MarsNativeDebugStep) step.stops.map { it.anchor }
-                else listOfNotNull(step.anchor)
-            if (anchors.isEmpty()) continue
-            val text = Files.readString(source)
-            withContext(Dispatchers.EDT) {
-              fixture.configureByText(source.fileName.toString(), text)
-              for (anchor in anchors) {
-                val range =
-                    requireNotNull(MarsLessonAnchors.range(fixture.editor, anchor)) {
-                      "$source: $anchor"
-                    }
-                assertEquals(
-                    anchor.mnemonic,
-                    text
-                        .substring(range.startOffset, range.endOffset)
-                        .substringBefore(' ')
-                        .substringBefore('\t'),
-                )
-                count++
+        withContext(Dispatchers.IO) {
+          MarsLessonPackages.prepare(archive()).use { prepared ->
+            val installed = prepared.install(Files.createDirectory(directory.resolve("project")))
+            val content = MarsDownloadedLessonContent(installed, prepared.nativeLesson!!)
+            var count = 0
+            for (step in content.plan.steps) {
+              val source = content.source(step)
+              val anchors =
+                  if (step is MarsNativeDebugStep) step.stops.map { it.anchor }
+                  else listOfNotNull(step.anchor)
+              if (anchors.isEmpty()) continue
+              val text = Files.readString(source)
+              withContext(Dispatchers.EDT) {
+                fixture.configureByText(source.fileName.toString(), text)
+                for (anchor in anchors) {
+                  val range =
+                      requireNotNull(MarsLessonAnchors.range(fixture.editor, anchor)) {
+                        "$source: $anchor"
+                      }
+                  assertEquals(
+                      anchor.mnemonic,
+                      text
+                          .substring(range.startOffset, range.endOffset)
+                          .substringBefore(' ')
+                          .substringBefore('\t'),
+                  )
+                  count++
+                }
               }
             }
+            assertEquals(20, count)
+            val independent = Files.readString(installed.directory.resolve("independent/blit.asm"))
+            assertEquals(1, independent.lines().count { it.trim() == "break" })
           }
-          assertEquals(20, count)
-          val independent = Files.readString(installed.directory.resolve("independent/blit.asm"))
-          assertEquals(1, independent.lines().count { it.trim() == "break" })
         }
       }
 }

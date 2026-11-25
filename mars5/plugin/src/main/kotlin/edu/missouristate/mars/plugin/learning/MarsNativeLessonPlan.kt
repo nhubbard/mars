@@ -128,8 +128,8 @@ internal data class MarsNativeLessonPlan(
       require(steps.size() in 1..128) { "A native lesson needs 1 through 128 steps" }
       val profiles = mutableMapOf<String, List<ConsoleCheckCase>>()
       val functionProfiles = mutableMapOf<String, List<FunctionCheckCase>>()
-      val parsed = steps.map {
-        val step = it.objectValue()
+      val parsed = steps.map { element ->
+        val step = element.objectValue()
         if (version == "1") parsePrediction(step, false, version)
         else
             when (step.text("kind", 32)) {
@@ -150,11 +150,15 @@ internal data class MarsNativeLessonPlan(
                     if (version in setOf("8", "9", "10", "11")) setOf("caseProfile", "caseProfiles")
                     else setOf("caseProfile")
                 step.fields(
-                    fields +
-                        references +
-                        "hints" +
-                        if (version in setOf("6", "7", "8", "9", "10", "11")) setOf("checkKind")
-                        else emptySet(),
+                    buildSet {
+                      addAll(fields)
+                      addAll(references)
+                      add("hints")
+                      addAll(
+                          if (version in setOf("6", "7", "8", "9", "10", "11")) setOf("checkKind")
+                          else emptySet(),
+                      )
+                    },
                     fields,
                 )
                 val source = MarsLessonPackages.path(step.text("source", 240))
@@ -249,9 +253,11 @@ internal data class MarsNativeLessonPlan(
           setOf("id", "explanation", "question", "choices", "correctChoice") +
               if (tagged) setOf("kind") else emptySet()
       step.fields(
-          required +
-              setOf("anchor", "hints") +
-              if (version == "11") setOf("source") else emptySet(),
+          buildSet {
+            addAll(required)
+            addAll(setOf("anchor", "hints"))
+            addAll(if (version == "11") setOf("source") else emptySet())
+          },
           required,
       )
       val id = step.identifier("id")
@@ -282,7 +288,14 @@ internal data class MarsNativeLessonPlan(
 
     private fun parseRun(step: JsonObject, version: String): MarsNativeRunStep {
       val required = setOf("kind", "id", "explanation", "integerInputs", "stdout", "success")
-      step.fields(required + setOf("anchor", "hints") + sourceField(version), required)
+      step.fields(
+          buildSet {
+            addAll(required)
+            addAll(setOf("anchor", "hints"))
+            addAll(sourceField(version))
+          },
+          required,
+      )
       return MarsNativeRunStep(
           step.identifier("id"),
           step.text("explanation", 8192),
@@ -314,10 +327,12 @@ internal data class MarsNativeLessonPlan(
     private fun parseDebug(step: JsonObject, version: String): MarsNativeDebugStep {
       val required = setOf("kind", "id", "explanation", "integerInputs", "stops", "success")
       step.fields(
-          required +
-              "hints" +
-              sourceField(version) +
-              if (version in setOf("9", "10", "11")) setOf("fileRead") else emptySet(),
+          buildSet {
+            addAll(required)
+            add("hints")
+            addAll(sourceField(version))
+            addAll(if (version in setOf("9", "10", "11")) setOf("fileRead") else emptySet())
+          },
           required,
       )
       val stops = step.array("stops")
@@ -326,10 +341,14 @@ internal data class MarsNativeLessonPlan(
         val stop = it.objectValue()
         val fields = setOf("id", "explanation", "anchor", "registers", "success")
         stop.fields(
-            fields +
-                "hints" +
-                if (version in setOf("7", "8", "9", "10", "11")) setOf("vectorRegisters")
-                else emptySet(),
+            buildSet {
+              addAll(fields)
+              add("hints")
+              addAll(
+                  if (version in setOf("7", "8", "9", "10", "11")) setOf("vectorRegisters")
+                  else emptySet(),
+              )
+            },
             fields,
         )
         val registers = stop.get("registers").objectValue()

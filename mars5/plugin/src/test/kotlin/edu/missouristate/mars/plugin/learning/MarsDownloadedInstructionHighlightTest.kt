@@ -1,3 +1,5 @@
+@file:Suppress("UnstableApiUsage")
+
 package edu.missouristate.mars.plugin.learning
 
 import com.intellij.openapi.application.EDT
@@ -29,11 +31,11 @@ class MarsDownloadedInstructionHighlightTest {
           val manager = FileEditorManager.getInstance(project)
           val file =
               fixture
-                  .addFileToProject("memory.asm", ".text\nstore_color:\n    sw \$t1, 0(\$t0)\n")
+                  .addFileToProject("memory.asm", $$".text\nstore_color:\n    sw $t1, 0($t0)\n")
                   .virtualFile
           val other =
               fixture
-                  .addFileToProject("other.asm", ".text\nstore_color:\n    sw \$s1, 0(\$s0)\n")
+                  .addFileToProject("other.asm", $$".text\nstore_color:\n    sw $s1, 0($s0)\n")
                   .virtualFile
           manager.openFiles.forEach(manager::closeFile)
           assertNull(manager.selectedTextEditor)

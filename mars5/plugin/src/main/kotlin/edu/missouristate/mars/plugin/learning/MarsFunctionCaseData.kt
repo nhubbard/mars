@@ -137,48 +137,62 @@ internal object MarsFunctionCaseData {
                 else -> emptySet()
               }
           row.fields(
-              required +
-                  (if (version in setOf("21", "22", "23")) setOf("byteOrder") else emptySet()) +
-                  (if (version in setOf("20", "21", "22", "23")) setOf("fileSystem")
-                  else emptySet()) +
-                  setOf(
-                      "initialRegisters",
-                      "preservedRegisters",
-                      "helpers",
-                      "stackAlignment",
-                      "callerStackBytes",
-                  ) +
-                  extensions +
-                  (if (
-                      version in
-                          setOf(
-                              "10",
-                              "11",
-                              "12",
-                              "13",
-                              "14",
-                              "15",
-                              "16",
-                              "17",
-                              "18",
-                              "19",
-                              "20",
-                              "21",
-                              "22",
-                              "23",
-                          )
-                  )
-                      setOf("initialRegisterAddresses")
-                  else emptySet()) +
-                  (if (
-                      version in
-                          setOf("13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23")
-                  )
-                      setOf("fileRead")
-                  else emptySet()) +
-                  (if (version in setOf("14", "15", "16", "17", "18", "19", "20", "21", "22", "23"))
-                      setOf("exit")
-                  else emptySet()),
+              buildSet {
+                addAll(required)
+                addAll(if (version in setOf("21", "22", "23")) setOf("byteOrder") else emptySet())
+                addAll(
+                    if (version in setOf("20", "21", "22", "23")) setOf("fileSystem")
+                    else emptySet(),
+                )
+                addAll(
+                    setOf(
+                        "initialRegisters",
+                        "preservedRegisters",
+                        "helpers",
+                        "stackAlignment",
+                        "callerStackBytes",
+                    ),
+                )
+                addAll(extensions)
+                addAll(
+                    if (
+                        version in
+                            setOf(
+                                "10",
+                                "11",
+                                "12",
+                                "13",
+                                "14",
+                                "15",
+                                "16",
+                                "17",
+                                "18",
+                                "19",
+                                "20",
+                                "21",
+                                "22",
+                                "23",
+                            )
+                    )
+                        setOf("initialRegisterAddresses")
+                    else emptySet(),
+                )
+                addAll(
+                    if (
+                        version in
+                            setOf("13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23")
+                    )
+                        setOf("fileRead")
+                    else emptySet(),
+                )
+                addAll(
+                    if (
+                        version in setOf("14", "15", "16", "17", "18", "19", "20", "21", "22", "23")
+                    )
+                        setOf("exit")
+                    else emptySet(),
+                )
+              },
               required,
           )
           val name = row.string("name", 128)
@@ -190,92 +204,116 @@ internal object MarsFunctionCaseData {
                 val call = it.objectValue()
                 val callRequired = setOf("entry", "returnTo", "arguments", "expectedRegisters")
                 call.fields(
-                    callRequired +
-                        (if (version in setOf("22", "23")) setOf("setupAddressMemory")
-                        else emptySet()) +
-                        (if (version in setOf("20", "21", "22", "23")) setOf("expectedFiles")
-                        else emptySet()) +
-                        (if (version in setOf("18", "19", "20", "21", "22", "23"))
-                            setOf("callerAccess")
-                        else emptySet()) +
-                        (if (version in setOf("16", "17", "18", "19", "20", "21", "22", "23"))
-                            setOf("fileReadInvocation")
-                        else emptySet()) +
-                        (if (version in setOf("15", "16", "17", "18", "19", "20", "21", "22", "23"))
-                            setOf("setupMemory")
-                        else emptySet()) +
-                        (if (version != "1") setOf("argumentAddresses", "memory") else emptySet()) +
-                        (if (
-                            version in
-                                setOf(
-                                    "6",
-                                    "7",
-                                    "8",
-                                    "9",
-                                    "10",
-                                    "11",
-                                    "12",
-                                    "13",
-                                    "14",
-                                    "15",
-                                    "16",
-                                    "17",
-                                    "18",
-                                    "19",
-                                    "20",
-                                    "21",
-                                    "22",
-                                    "23",
-                                )
-                        )
-                            setOf("expectedAddresses", "addressMemory")
-                        else emptySet()) +
-                        (if (
-                            version in
-                                setOf(
-                                    "9",
-                                    "10",
-                                    "11",
-                                    "12",
-                                    "13",
-                                    "14",
-                                    "15",
-                                    "16",
-                                    "17",
-                                    "18",
-                                    "19",
-                                    "20",
-                                    "21",
-                                    "22",
-                                    "23",
-                                )
-                        )
-                            setOf("accessPolicies")
-                        else emptySet()) +
-                        (if (
-                            version in
-                                setOf(
-                                    "13",
-                                    "14",
-                                    "15",
-                                    "16",
-                                    "17",
-                                    "18",
-                                    "19",
-                                    "20",
-                                    "21",
-                                    "22",
-                                    "23",
-                                )
-                        )
-                            setOf("readFile")
-                        else emptySet()) +
-                        (if (
-                            version in
-                                setOf("14", "15", "16", "17", "18", "19", "20", "21", "22", "23")
-                        )
-                            setOf("accessHistory")
-                        else emptySet()),
+                    buildSet {
+                      addAll(callRequired)
+                      addAll(
+                          if (version in setOf("22", "23")) setOf("setupAddressMemory")
+                          else emptySet(),
+                      )
+                      addAll(
+                          if (version in setOf("20", "21", "22", "23")) setOf("expectedFiles")
+                          else emptySet(),
+                      )
+                      addAll(
+                          if (version in setOf("18", "19", "20", "21", "22", "23"))
+                              setOf("callerAccess")
+                          else emptySet(),
+                      )
+                      addAll(
+                          if (version in setOf("16", "17", "18", "19", "20", "21", "22", "23"))
+                              setOf("fileReadInvocation")
+                          else emptySet(),
+                      )
+                      addAll(
+                          if (
+                              version in setOf("15", "16", "17", "18", "19", "20", "21", "22", "23")
+                          )
+                              setOf("setupMemory")
+                          else emptySet(),
+                      )
+                      addAll(
+                          if (version != "1") setOf("argumentAddresses", "memory") else emptySet(),
+                      )
+                      addAll(
+                          if (
+                              version in
+                                  setOf(
+                                      "6",
+                                      "7",
+                                      "8",
+                                      "9",
+                                      "10",
+                                      "11",
+                                      "12",
+                                      "13",
+                                      "14",
+                                      "15",
+                                      "16",
+                                      "17",
+                                      "18",
+                                      "19",
+                                      "20",
+                                      "21",
+                                      "22",
+                                      "23",
+                                  )
+                          )
+                              setOf("expectedAddresses", "addressMemory")
+                          else emptySet(),
+                      )
+                      addAll(
+                          if (
+                              version in
+                                  setOf(
+                                      "9",
+                                      "10",
+                                      "11",
+                                      "12",
+                                      "13",
+                                      "14",
+                                      "15",
+                                      "16",
+                                      "17",
+                                      "18",
+                                      "19",
+                                      "20",
+                                      "21",
+                                      "22",
+                                      "23",
+                                  )
+                          )
+                              setOf("accessPolicies")
+                          else emptySet(),
+                      )
+                      addAll(
+                          if (
+                              version in
+                                  setOf(
+                                      "13",
+                                      "14",
+                                      "15",
+                                      "16",
+                                      "17",
+                                      "18",
+                                      "19",
+                                      "20",
+                                      "21",
+                                      "22",
+                                      "23",
+                                  )
+                          )
+                              setOf("readFile")
+                          else emptySet(),
+                      )
+                      addAll(
+                          if (
+                              version in
+                                  setOf("14", "15", "16", "17", "18", "19", "20", "21", "22", "23")
+                          )
+                              setOf("accessHistory")
+                          else emptySet(),
+                      )
+                    },
                     callRequired,
                 )
                 FunctionCallCheck(
@@ -480,11 +518,15 @@ internal object MarsFunctionCaseData {
     val fixture = row.get("fileRead").objectValue()
     val required = setOf("path", "bytes", "maxRequest")
     fixture.fields(
-        required +
-            (if (version in setOf("16", "17", "18", "19", "20", "21", "22", "23"))
-                setOf("additionalFiles")
-            else emptySet()) +
-            setOf("maxReadSize", "failAfterBytes", "firstDescriptor", "missing"),
+        buildSet {
+          addAll(required)
+          addAll(
+              if (version in setOf("16", "17", "18", "19", "20", "21", "22", "23"))
+                  setOf("additionalFiles")
+              else emptySet(),
+          )
+          addAll(setOf("maxReadSize", "failAfterBytes", "firstDescriptor", "missing"))
+        },
         required,
     )
     return FunctionFileReadCheck(
@@ -553,32 +595,38 @@ internal object MarsFunctionCaseData {
         row.array("accessPolicies", 0, 64).map {
           val policy = it.objectValue()
           policy.fields(
-              setOf("from", "until", "readable", "writable") +
-                  (if (
-                      version in
-                          setOf(
-                              "12",
-                              "13",
-                              "14",
-                              "15",
-                              "16",
-                              "17",
-                              "18",
-                              "19",
-                              "20",
-                              "21",
-                              "22",
-                              "23",
-                          )
-                  )
-                      setOf("maxAccesses")
-                  else emptySet()) +
-                  (if (
-                      version in
-                          setOf("13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23")
-                  )
-                      setOf("checkReads")
-                  else emptySet()),
+              buildSet {
+                addAll(setOf("from", "until", "readable", "writable"))
+                addAll(
+                    if (
+                        version in
+                            setOf(
+                                "12",
+                                "13",
+                                "14",
+                                "15",
+                                "16",
+                                "17",
+                                "18",
+                                "19",
+                                "20",
+                                "21",
+                                "22",
+                                "23",
+                            )
+                    )
+                        setOf("maxAccesses")
+                    else emptySet(),
+                )
+                addAll(
+                    if (
+                        version in
+                            setOf("13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23")
+                    )
+                        setOf("checkReads")
+                    else emptySet(),
+                )
+              },
               setOf("from", "until"),
           )
           FunctionAccessPolicyCheck(

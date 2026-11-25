@@ -1,4 +1,9 @@
-@file:Suppress("JetBrainsInternalApiUsage", "OverrideOnly")
+@file:Suppress(
+    "JetBrainsInternalApiUsage",
+    "OverrideOnly",
+    "UnstableApiUsage",
+    "UsePropertyAccessSyntax",
+)
 
 package edu.missouristate.mars.plugin.learning
 
@@ -70,6 +75,7 @@ import java.util.concurrent.CompletableFuture
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 import javax.swing.Timer
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -244,7 +250,7 @@ class MarsDownloadedLessonsTest {
   fun `anchors follow label blocks and occurrences across edited source`() = timeoutRunBlocking {
     withContext(Dispatchers.EDT) {
       val source =
-          ".eqv constant, 1\n.text\nmain:\nandi \$t0, \$v0, 1\ninterpret:\nANDI \$t0, \$v0, 255\nandi \$t1, \$v0, 15\nreport:\nmove \$a0, \$t0\nlast:\nnop\n"
+          $$".eqv constant, 1\n.text\nmain:\nandi $t0, $v0, 1\ninterpret:\nANDI $t0, $v0, 255\nandi $t1, $v0, 15\nreport:\nmove $a0, $t0\nlast:\nnop\n"
       fixture.configureByText("anchors.asm", source)
       val first = MarsLessonAnchor("interpret", "andi", 0)
       val second = first.copy(occurrence = 1)
@@ -283,7 +289,7 @@ class MarsDownloadedLessonsTest {
       timeoutRunBlocking {
         val observed = CompletableDeferred<Rectangle?>()
         withContext(Dispatchers.EDT) {
-          fixture.configureByText("timer.asm", ".text\ninterpret:\nandi \$t0, \$v0, 255\n")
+          fixture.configureByText("timer.asm", $$".text\ninterpret:\nandi $t0, $v0, 255\n")
           val editor = fixture.editor
           val anchor = MarsLessonAnchor("interpret", "andi", 0)
           Timer(1) {
@@ -334,7 +340,7 @@ class MarsDownloadedLessonsTest {
           mapOf(
               "package.json" to json,
               "main.asm" to
-                  ".text\nmain:\nnop\nli \$a0, 1\nli \$v0, 1\nsyscall\nli \$v0, 10\nsyscall\n",
+                  $$".text\nmain:\nnop\nli $a0, 1\nli $v0, 1\nsyscall\nli $v0, 10\nsyscall\n",
               "assignment.md" to "Explain.",
               "lesson.json" to plan,
           )) {
@@ -460,7 +466,7 @@ class MarsDownloadedLessonsTest {
                       "before-load",
                       "Inspect <the first load>.",
                       MarsLessonAnchor("main", "li", 0),
-                      mapOf("\$zero" to 0L),
+                      mapOf($$"$zero" to 0L),
                       "First boundary.",
                       hints,
                   ),
@@ -468,7 +474,7 @@ class MarsDownloadedLessonsTest {
                       "after-load",
                       "Inspect <the next load>.",
                       MarsLessonAnchor("main", "li", 1),
-                      mapOf("\$a0" to 1L),
+                      mapOf($$"$a0" to 1L),
                       "One is retained.",
                       hints,
                   ),
@@ -868,7 +874,7 @@ class MarsDownloadedLessonsTest {
           history.recordChoice(content.identity, anchored.prediction.id, "b")
           val original = fixture.editor.document.text
           WriteCommandAction.runWriteCommandAction(project) {
-            fixture.editor.document.setText(original.replace("li \$a0, 1", "li \$a0, 2"))
+            fixture.editor.document.setText(original.replace($$"li $a0, 1", $$"li $a0, 2"))
           }
           assessmentControls[0]()
           assessmentControls[0]()
@@ -1080,9 +1086,9 @@ class MarsDownloadedLessonsTest {
             Disposer.dispose(lifetime)
           }
         }
-        withTimeout(10_000) {
+        withTimeout(10_000.milliseconds) {
           while (project.service<MarsLearningProgress>().snapshot(content.identity) == null) delay(
-              50,
+              50.milliseconds,
           )
         }
         withContext(Dispatchers.EDT) {

@@ -62,7 +62,7 @@ class MarsNativeLessonPlanTest {
 
   @Test
   fun `format field and object shapes cannot silently acquire unsupported behavior`() {
-    for (raw in listOf("", "[]", "true", "null", "1", "\"text\"", "{bad", content + " {}")) {
+    for (raw in listOf("", "[]", "true", "null", "1", "\"text\"", "{bad", "$content {}")) {
       assertThrows<Exception>(raw) { MarsNativeLessonPlan.parse(raw.toByteArray()) }
     }
     reject { addProperty("formatVersion", 4) }

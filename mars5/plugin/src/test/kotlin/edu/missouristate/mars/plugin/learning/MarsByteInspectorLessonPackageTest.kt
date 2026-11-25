@@ -53,39 +53,41 @@ class MarsByteInspectorLessonPackageTest {
   @Test
   fun `current byte inspector sources resolve every instruction pointer and retain both unfinished programs`() =
       timeoutRunBlocking {
-        MarsLessonPackages.prepare(archive()).use { prepared ->
-          val installed = prepared.install(Files.createDirectory(directory.resolve("project")))
-          val content = MarsDownloadedLessonContent(installed, prepared.nativeLesson!!)
-          var count = 0
-          for (step in content.plan.steps) {
-            val source = content.source(step)
-            val anchors =
-                if (step is MarsNativeDebugStep) step.stops.map { it.anchor }
-                else listOfNotNull(step.anchor)
-            if (anchors.isEmpty()) continue
-            val text = Files.readString(source)
-            withContext(Dispatchers.EDT) {
-              fixture.configureByText(source.fileName.toString(), text)
-              for (anchor in anchors) {
-                val range =
-                    requireNotNull(MarsLessonAnchors.range(fixture.editor, anchor)) {
-                      "$source: $anchor"
-                    }
-                assertEquals(
-                    anchor.mnemonic,
-                    text
-                        .substring(range.startOffset, range.endOffset)
-                        .substringBefore(' ')
-                        .substringBefore('\t'),
-                )
-                count++
+        withContext(Dispatchers.IO) {
+          MarsLessonPackages.prepare(archive()).use { prepared ->
+            val installed = prepared.install(Files.createDirectory(directory.resolve("project")))
+            val content = MarsDownloadedLessonContent(installed, prepared.nativeLesson!!)
+            var count = 0
+            for (step in content.plan.steps) {
+              val source = content.source(step)
+              val anchors =
+                  if (step is MarsNativeDebugStep) step.stops.map { it.anchor }
+                  else listOfNotNull(step.anchor)
+              if (anchors.isEmpty()) continue
+              val text = Files.readString(source)
+              withContext(Dispatchers.EDT) {
+                fixture.configureByText(source.fileName.toString(), text)
+                for (anchor in anchors) {
+                  val range =
+                      requireNotNull(MarsLessonAnchors.range(fixture.editor, anchor)) {
+                        "$source: $anchor"
+                      }
+                  assertEquals(
+                      anchor.mnemonic,
+                      text
+                          .substring(range.startOffset, range.endOffset)
+                          .substringBefore(' ')
+                          .substringBefore('\t'),
+                  )
+                  count++
+                }
               }
             }
-          }
-          assertEquals(12, count)
-          for (name in listOf("plus-one.asm", "wrapped-byte.asm")) {
-            val source = Files.readString(installed.directory.resolve("independent/" + name))
-            assertTrue(source.contains("syscall"))
+            assertEquals(12, count)
+            for (name in listOf("plus-one.asm", "wrapped-byte.asm")) {
+              val source = Files.readString(installed.directory.resolve("independent/$name"))
+              assertTrue(source.contains("syscall"))
+            }
           }
         }
       }

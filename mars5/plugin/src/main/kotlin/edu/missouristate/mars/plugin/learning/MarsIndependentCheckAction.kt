@@ -1,3 +1,5 @@
+@file:Suppress("UnstableApiUsage")
+
 package edu.missouristate.mars.plugin.learning
 
 import com.intellij.openapi.actionSystem.ActionPlaces
@@ -104,7 +106,9 @@ internal class MarsIndependentFeedbackDialog(
       }
 
   init {
+    @Suppress("DialogTitleCapitalization")
     title = learningMessages.getMessage("independent.check.title")
+    @Suppress("DialogTitleCapitalization")
     setOKButtonText(learningMessages.getMessage("independent.check.close"))
     init()
   }

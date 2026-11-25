@@ -1,3 +1,5 @@
+@file:Suppress("DialogTitleCapitalization")
+
 package edu.missouristate.mars.plugin.learning
 
 import com.intellij.openapi.actionSystem.ActionUpdateThread

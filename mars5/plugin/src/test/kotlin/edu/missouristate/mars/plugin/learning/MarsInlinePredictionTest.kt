@@ -179,7 +179,7 @@ class MarsInlinePredictionTest {
   fun `source anchors follow parsed instructions and preserve student text`() = timeoutRunBlocking {
     withContext(Dispatchers.EDT) {
       val source =
-          ".text\n# addu in a comment\nmain:\n    addu \$t0, \$v0, \$v0\n    addiu \$t0, \$t0, 1\n    move \$a0, \$t0\n    addu \$t2, \$t2, \$t2\n"
+          $$".text\n# addu in a comment\nmain:\n    addu $t0, $v0, $v0\n    addiu $t0, $t0, 1\n    move $a0, $t0\n    addu $t2, $t2, $t2\n"
       fixture.configureByText("anchors.asm", source)
       for ((prediction, mnemonic) in
           listOf(
@@ -218,7 +218,7 @@ class MarsInlinePredictionTest {
       timeoutRunBlocking {
         val result = CompletableDeferred<Rectangle?>()
         withContext(Dispatchers.EDT) {
-          fixture.configureByText("timer.asm", ".text\naddu \$t0, \$v0, \$v0\n")
+          fixture.configureByText("timer.asm", $$".text\naddu $t0, $v0, $v0\n")
           val editor = fixture.editor
           Timer(1) {
                 try {
@@ -245,7 +245,7 @@ class MarsInlinePredictionTest {
     withContext(Dispatchers.EDT) {
       val factory = EditorFactory.getInstance()
       for (project in listOf(null, projectFixture.get())) {
-        val editor = factory.createEditor(factory.createDocument("addu \$t0, \$v0, \$v0"), project)
+        val editor = factory.createEditor(factory.createDocument($$"addu $t0, $v0, $v0"), project)
         try {
           assertNull(MarsInlinePrediction.instructionRange(editor, MarsPredictions.doubling))
         } finally {
@@ -261,7 +261,7 @@ class MarsInlinePredictionTest {
         withContext(Dispatchers.EDT) {
           fixture.configureByText(
               "first-program.asm",
-              ".text\naddu \$t0, \$v0, \$v0\naddiu \$t0, \$t0, 1\n",
+              $$".text\naddu $t0, $v0, $v0\naddiu $t0, $t0, 1\n",
           )
           projectFixture.get().service<MarsLearningProgress>().reset(MarsPredictions.identity)
           val lesson = MarsLearningCourse().modules().single().lessons.first()

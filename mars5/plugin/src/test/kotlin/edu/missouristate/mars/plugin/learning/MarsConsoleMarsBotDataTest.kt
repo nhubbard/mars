@@ -26,7 +26,18 @@ class MarsConsoleMarsBotDataTest {
   @Test
   fun `version five retains exact device expectations and detached vertex order`() {
     val bot = parse().marsBot!!
-    assertEquals(ConsoleMarsBotCheck(64, 16, 0, 90, false, false, listOf(0 to 0, 16 to 0)), bot)
+    assertEquals(
+        ConsoleMarsBotCheck(
+            64,
+            16,
+            0,
+            90,
+            moving = false,
+            penDown = false,
+            trail = listOf(0 to 0, 16 to 0),
+        ),
+        bot,
+    )
     assertThrows<UnsupportedOperationException> { (bot.trail as MutableList).clear() }
     assertNull(parse { row().remove("marsBot") }.marsBot)
     assertEquals(
@@ -68,7 +79,7 @@ class MarsConsoleMarsBotDataTest {
   }
 
   @Test
-  fun `unknown nested fields wrong shapes and nonboolean flags are rejected`() {
+  fun `unknown nested fields wrong shapes and non-boolean flags are rejected`() {
     for (raw in listOf("null", "[]", "0", "true", "\"device\"")) {
       assertThrows<IllegalArgumentException> {
         parse { row().add("marsBot", JsonParser.parseString(raw)) }

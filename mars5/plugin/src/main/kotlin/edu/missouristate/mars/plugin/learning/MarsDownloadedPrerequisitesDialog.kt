@@ -1,6 +1,9 @@
+@file:Suppress("DialogTitleCapitalization")
+
 package edu.missouristate.mars.plugin.learning
 
 import com.google.gson.JsonParseException
+import com.intellij.ide.setToolTipText
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.components.service
@@ -9,6 +12,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.openapi.ui.Messages
+import com.intellij.openapi.util.text.HtmlChunk
 import com.intellij.openapi.util.text.StringUtil.escapeXmlEntities
 import com.intellij.platform.ide.progress.ModalTaskOwner
 import com.intellij.platform.ide.progress.runWithModalProgressBlocking
@@ -106,10 +110,13 @@ private constructor(
           checkBox(downloadedLessonMessages.getMessage("requirements.$kind", activity.id))
               .applyToComponent {
                 isSelected = activity.id in draft.getValue(step.id)
-                toolTipText =
-                    "<html>" +
-                        escapeXmlEntities(activity.explanation).replace("\n", "<br>") +
-                        "</html>"
+                setToolTipText(
+                    HtmlChunk.raw(
+                        "<html>" +
+                            escapeXmlEntities(activity.explanation).replace("\n", "<br>") +
+                            "</html>",
+                    ),
+                )
               }
               .onChanged { box ->
                 val ids = draft.getValue(step.id)
@@ -168,6 +175,7 @@ internal class MarsConfigureDownloadedPrerequisitesAction : DumbAwareAction() {
         event.project?.service<MarsDownloadedLessonSelection>()?.hasSelection == true
   }
 
+  @Suppress("DialogTitleCapitalization")
   override fun actionPerformed(event: AnActionEvent) {
     val project = event.project ?: return
     try {

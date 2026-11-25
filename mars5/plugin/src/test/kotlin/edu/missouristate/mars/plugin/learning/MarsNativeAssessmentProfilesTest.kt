@@ -77,6 +77,7 @@ class MarsNativeAssessmentProfilesTest {
     assertThrows<IllegalArgumentException> { parse(larger) { profile(it, count = 3) } }
   }
 
+  @Suppress("UnusedDataClassCopyResult")
   @Test
   fun `one student check retains profile order budgets and immutable results`() {
     val reads = mutableListOf<String>()

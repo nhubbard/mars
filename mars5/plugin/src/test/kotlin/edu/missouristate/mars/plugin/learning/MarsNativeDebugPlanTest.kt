@@ -10,7 +10,7 @@ import org.junit.jupiter.api.assertThrows
 
 class MarsNativeDebugPlanTest {
   private val content =
-      """{"formatVersion":3,"introduction":"Inspect a byte.","conclusion":"Explain the extension.","steps":[{"kind":"debug","id":"trace-150","explanation":"Debug with 150.","integerInputs":[150],"stops":[{"id":"after-extension","explanation":"Pause before reporting.","anchor":{"label":"report","mnemonic":"la","occurrence":0},"registers":{"${'$'}t0":"0x0000000000000096","${'$'}t1":"0xFFFFFFFFFFFFFF96"},"success":"The high bits are ones.","hints":[{"id":"width","text":"Inspect all sixteen digits."}]}],"success":"Both interpretations use the same low byte."}]}"""
+      $$"""{"formatVersion":3,"introduction":"Inspect a byte.","conclusion":"Explain the extension.","steps":[{"kind":"debug","id":"trace-150","explanation":"Debug with 150.","integerInputs":[150],"stops":[{"id":"after-extension","explanation":"Pause before reporting.","anchor":{"label":"report","mnemonic":"la","occurrence":0},"registers":{"$t0":"0x0000000000000096","$t1":"0xFFFFFFFFFFFFFF96"},"success":"The high bits are ones.","hints":[{"id":"width","text":"Inspect all sixteen digits."}]}],"success":"Both interpretations use the same low byte."}]}"""
 
   private fun JsonObject.debug() = getAsJsonArray("steps")[0].asJsonObject
 
@@ -29,7 +29,7 @@ class MarsNativeDebugPlanTest {
         MarsNativeLessonPlan.parse(content.toByteArray()).steps.single() as MarsNativeDebugStep
     assertEquals(listOf(150), debug.integerInputs)
     assertEquals(MarsLessonAnchor("report", "la", 0), debug.anchor)
-    assertEquals(mapOf("\$t0" to 150L, "\$t1" to -106L), debug.stops.single().registers)
+    assertEquals(mapOf($$"$t0" to 150L, $$"$t1" to -106L), debug.stops.single().registers)
     assertEquals("The high bits are ones.", debug.stops.single().success)
     assertEquals(
         listOf(MarsLessonHint("width", "Inspect all sixteen digits.")),
@@ -47,8 +47,8 @@ class MarsNativeDebugPlanTest {
                       .add(
                           "registers",
                           JsonObject().apply {
-                            addProperty("\$8", "0x0000000000000096")
-                            addProperty("\$9", "0xffffffffffffff96")
+                            addProperty($$"$8", "0x0000000000000096")
+                            addProperty($$"$9", "0xffffffffffffff96")
                           },
                       )
                 },
@@ -84,21 +84,21 @@ class MarsNativeDebugPlanTest {
             "true",
             "{}",
         )) {
-      reject { stop().getAsJsonObject("registers").add("\$t0", JsonParser.parseString(bad)) }
+      reject { stop().getAsJsonObject("registers").add($$"$t0", JsonParser.parseString(bad)) }
     }
-    for (bad in listOf("", "pc", "\$f0", "\$w0", "\$32", "evaluate me")) {
+    for (bad in listOf("", "pc", $$"$f0", $$"$w0", $$"$32", "evaluate me")) {
       reject {
         stop().add("registers", JsonObject().apply { addProperty(bad, "0x0000000000000000") })
       }
     }
-    reject { stop().getAsJsonObject("registers").addProperty("\$8", "0x0000000000000096") }
+    reject { stop().getAsJsonObject("registers").addProperty($$"$8", "0x0000000000000096") }
     reject { stop().add("registers", JsonObject()) }
     reject { stop().add("registers", JsonArray()) }
     reject {
       stop()
           .add(
               "registers",
-              JsonObject().apply { repeat(33) { addProperty("\$$it", "0x0000000000000000") } },
+              JsonObject().apply { repeat(33) { addProperty($$"$$$it", "0x0000000000000000") } },
           )
     }
     val all =
@@ -108,7 +108,7 @@ class MarsNativeDebugPlanTest {
                       .add(
                           "registers",
                           JsonObject().apply {
-                            repeat(32) { addProperty("\$$it", "0x0000000000000000") }
+                            repeat(32) { addProperty($$"$$$it", "0x0000000000000000") }
                           },
                       )
                 },

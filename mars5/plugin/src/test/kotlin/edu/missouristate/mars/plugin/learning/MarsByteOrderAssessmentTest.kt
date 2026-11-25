@@ -1,3 +1,5 @@
+@file:Suppress("UsePropertyAccessSyntax")
+
 package edu.missouristate.mars.plugin.learning
 
 import com.intellij.openapi.application.EDT

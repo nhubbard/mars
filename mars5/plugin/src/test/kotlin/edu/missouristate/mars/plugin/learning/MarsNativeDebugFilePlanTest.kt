@@ -8,7 +8,7 @@ import org.junit.jupiter.api.assertThrows
 
 class MarsNativeDebugFilePlanTest {
   private val content =
-      """{"formatVersion":9,"introduction":"Read a fixture.","conclusion":"Distinguish errors.","steps":[{"kind":"debug","id":"file","explanation":"The lesson supplies virtual input.","integerInputs":[],"source":"worked/file.asm","stops":[{"id":"return","explanation":"Inspect the status.","anchor":{"label":"done","mnemonic":"nop","occurrence":0},"registers":{"${'$'}v1":"0x0000000000000002"},"success":"The error is explicit."}],"success":"Close the descriptor.","fileRead":{"path":"fixture.bin","bytes":"313233343536373839","maxRequest":7,"maxReadSize":3,"failAfterBytes":5,"firstDescriptor":19}}]}"""
+      $$"""{"formatVersion":9,"introduction":"Read a fixture.","conclusion":"Distinguish errors.","steps":[{"kind":"debug","id":"file","explanation":"The lesson supplies virtual input.","integerInputs":[],"source":"worked/file.asm","stops":[{"id":"return","explanation":"Inspect the status.","anchor":{"label":"done","mnemonic":"nop","occurrence":0},"registers":{"$v1":"0x0000000000000002"},"success":"The error is explicit."}],"success":"Close the descriptor.","fileRead":{"path":"fixture.bin","bytes":"313233343536373839","maxRequest":7,"maxReadSize":3,"failAfterBytes":5,"firstDescriptor":19}}]}"""
 
   private fun parse(change: JsonObject.() -> Unit = {}): MarsNativeDebugStep {
     val root = JsonParser.parseString(content).asJsonObject.apply(change)
@@ -23,7 +23,7 @@ class MarsNativeDebugFilePlanTest {
     val step = parse()
     assertEquals(step, parse { addProperty("formatVersion", 10) })
     assertEquals("worked/file.asm", step.source)
-    assertEquals(2L, step.stops.single().registers["\$v1"])
+    assertEquals(2L, step.stops.single().registers[$$"$v1"])
     val fixture = requireNotNull(step.fileRead)
     assertEquals("fixture.bin", fixture.path)
     assertEquals(9, fixture.byteLength)

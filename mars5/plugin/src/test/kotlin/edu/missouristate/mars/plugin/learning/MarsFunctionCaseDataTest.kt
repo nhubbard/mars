@@ -116,7 +116,7 @@ class MarsFunctionCaseDataTest {
             "null",
             "true",
             "{bad",
-            profile + " {}",
+            "$profile {}",
             """{"formatVersion":1,"formatVersion":1,"cases":[]}""",
         )) {
       assertThrows<Exception> { MarsFunctionCaseData.parse(raw.toByteArray()) }
@@ -273,8 +273,8 @@ class MarsFunctionCaseDataTest {
 
   @Test
   fun `core validation rejects alias collisions invalid labels and unsupported register banks`() {
-    reject { call().getAsJsonObject("arguments").addProperty("\$4", "0x0000000000000016") }
-    reject { row().getAsJsonArray("preservedRegisters").add("\$16") }
+    reject { call().getAsJsonObject("arguments").addProperty($$"$4", "0x0000000000000016") }
+    reject { row().getAsJsonArray("preservedRegisters").add($$"$16") }
     reject { call().add("expectedRegisters", JsonObject()) }
     for (name in listOf("", "$")) {
       reject {
@@ -298,7 +298,7 @@ class MarsFunctionCaseDataTest {
       call()
           .add(
               "expectedRegisters",
-              JsonObject().apply { repeat(32) { addProperty("\$$it", "0x0000000000000000") } },
+              JsonObject().apply { repeat(32) { addProperty($$"$$$it", "0x0000000000000000") } },
           )
     }
         .single()

@@ -38,9 +38,9 @@ class MarsH263StreamLessonPackageTest {
       assertEquals(6, debug.size)
       assertEquals(18, debug.sumOf { it.stops.size })
       val clip = debug.single { it.id == "observe-clip" }.stops
-      assertEquals(listOf(0L, 3L, 3L), clip.map { it.registers.getValue("\$v0") })
-      assertEquals(listOf(8L, 1L, 2L), clip.map { it.registers.getValue("\$v1") })
-      assertEquals(listOf(2212L, 696L, 908L), clip.map { it.registers.getValue("\$s1") })
+      assertEquals(listOf(0L, 3L, 3L), clip.map { it.registers.getValue($$"$v0") })
+      assertEquals(listOf(8L, 1L, 2L), clip.map { it.registers.getValue($$"$v1") })
+      assertEquals(listOf(2212L, 696L, 908L), clip.map { it.registers.getValue($$"$s1") })
       val run = plan.steps.filterIsInstance<MarsNativeRunStep>().single()
       assertEquals("0/8\n3/1\n3/2\n", run.stdout)
       assertEquals("worked/clip-progress.asm", run.source)
@@ -64,56 +64,60 @@ class MarsH263StreamLessonPackageTest {
   @Test
   fun `imported stream sources resolve thirty native PSI anchors and retain binary raw fixtures`() =
       timeoutRunBlocking {
-        MarsLessonPackages.prepare(archive()).use { prepared ->
-          val installed = prepared.install(Files.createDirectory(directory.resolve("project")))
-          val content = MarsDownloadedLessonContent(installed, prepared.nativeLesson!!)
-          var count = 0
-          for (activity in content.plan.steps) {
-            val source = content.source(activity)
-            assertTrue(Files.isRegularFile(source))
-            val anchors =
-                if (activity is MarsNativeDebugStep) activity.stops.map { it.anchor }
-                else listOfNotNull(activity.anchor)
-            if (anchors.isEmpty()) continue
-            val text = Files.readString(source)
-            withContext(Dispatchers.EDT) {
-              fixture.configureByText(source.fileName.toString(), text)
-              for (anchor in anchors) {
-                val range =
-                    requireNotNull(MarsLessonAnchors.range(fixture.editor, anchor)) {
-                      "$source: $anchor"
-                    }
-                assertEquals(
-                    anchor.mnemonic,
-                    text
-                        .substring(range.startOffset, range.endOffset)
-                        .substringBefore(' ')
-                        .substringBefore('\t'),
-                )
-                count++
+        withContext(Dispatchers.IO) {
+          MarsLessonPackages.prepare(archive()).use { prepared ->
+            val installed = prepared.install(Files.createDirectory(directory.resolve("project")))
+            val content = MarsDownloadedLessonContent(installed, prepared.nativeLesson!!)
+            var count = 0
+            for (activity in content.plan.steps) {
+              val source = content.source(activity)
+              assertTrue(Files.isRegularFile(source))
+              val anchors =
+                  if (activity is MarsNativeDebugStep) activity.stops.map { it.anchor }
+                  else listOfNotNull(activity.anchor)
+              if (anchors.isEmpty()) continue
+              val text = Files.readString(source)
+              withContext(Dispatchers.EDT) {
+                fixture.configureByText(source.fileName.toString(), text)
+                for (anchor in anchors) {
+                  val range =
+                      requireNotNull(MarsLessonAnchors.range(fixture.editor, anchor)) {
+                        "$source: $anchor"
+                      }
+                  assertEquals(
+                      anchor.mnemonic,
+                      text
+                          .substring(range.startOffset, range.endOffset)
+                          .substringBefore(' ')
+                          .substringBefore('\t'),
+                  )
+                  count++
+                }
               }
             }
+            assertEquals(30, count)
+            val raw = Files.readAllBytes(installed.directory.resolve("worked/clip.yuv"))
+            assertEquals(304128, raw.size)
+            assertTrue(
+                raw.copyOfRange(0, 38032)
+                    .contentEquals(
+                        Files.readAllBytes(installed.directory.resolve("worked/truncated.yuv")),
+                    ),
+            )
+            assertTrue(
+                (raw.copyOfRange(0, 76032) + byteArrayOf(0xa5.toByte())).contentEquals(
+                    Files.readAllBytes(installed.directory.resolve("worked/trailing.yuv")),
+                ),
+            )
+            val independent =
+                Files.readString(installed.directory.resolve("independent/h263-read-bits.asm"))
+            assertEquals(
+                1,
+                independent.substringAfter("h263_read_bits:").lines().count {
+                  it.trim() == "break"
+                },
+            )
           }
-          assertEquals(30, count)
-          val raw = Files.readAllBytes(installed.directory.resolve("worked/clip.yuv"))
-          assertEquals(304128, raw.size)
-          assertTrue(
-              raw.copyOfRange(0, 38032)
-                  .contentEquals(
-                      Files.readAllBytes(installed.directory.resolve("worked/truncated.yuv")),
-                  ),
-          )
-          assertTrue(
-              (raw.copyOfRange(0, 76032) + byteArrayOf(0xa5.toByte())).contentEquals(
-                  Files.readAllBytes(installed.directory.resolve("worked/trailing.yuv")),
-              ),
-          )
-          val independent =
-              Files.readString(installed.directory.resolve("independent/h263-read-bits.asm"))
-          assertEquals(
-              1,
-              independent.substringAfter("h263_read_bits:").lines().count { it.trim() == "break" },
-          )
         }
       }
 }

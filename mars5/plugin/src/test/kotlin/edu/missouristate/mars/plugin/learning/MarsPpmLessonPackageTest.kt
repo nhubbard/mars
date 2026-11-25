@@ -28,11 +28,11 @@ class MarsPpmLessonPackageTest {
       assertEquals(12, debug.map { it.source }.distinct().size)
       val pipeline = debug.single { it.id == "trace-pipeline" }
       assertEquals(5, pipeline.stops.size)
-      assertEquals(3L, pipeline.stops.first().registers.getValue("\$s3"))
-      assertEquals(23L, pipeline.stops.last().registers.getValue("\$v1"))
+      assertEquals(3L, pipeline.stops.first().registers.getValue($$"$s3"))
+      assertEquals(23L, pipeline.stops.last().registers.getValue($$"$v1"))
       assertEquals("results_ready", pipeline.stops.last().anchor.label)
       for (step in debug) for (stop in step.stops.filter { it.anchor.mnemonic == "syscall" }) {
-        assertEquals(10L, stop.registers.getValue("\$v0"))
+        assertEquals(10L, stop.registers.getValue($$"$v0"))
       }
       val assessments = plan.steps.filterIsInstance<MarsNativeAssessmentStep>()
       assertEquals(5, assessments.size)

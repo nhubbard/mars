@@ -138,8 +138,7 @@ internal fun interface MarsSymbolSortListener {
   companion object {
     @Topic.ProjectLevel
     @JvmField
-    val TOPIC =
-        topicOf<MarsSymbolSortListener>("MARS imported symbol sort", Topic.BroadcastDirection.NONE)
+    val TOPIC = topicOf<MarsSymbolSortListener>("MARS imported symbol sort")
   }
 }
 

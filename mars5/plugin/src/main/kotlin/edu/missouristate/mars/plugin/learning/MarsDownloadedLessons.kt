@@ -1,3 +1,5 @@
+@file:Suppress("DialogTitleCapitalization")
+
 package edu.missouristate.mars.plugin.learning
 
 import com.google.gson.JsonParseException
@@ -245,7 +247,8 @@ internal class MarsDownloadedLesson(private val content: MarsDownloadedLessonCon
     }
     text(escapeXmlEntities(content.plan.introduction))
     val checks = mutableListOf<() -> Boolean>()
-    var selectedSource = content.installed.entry
+    // The inspection is wrong, the if statement below modifies selectedSource.
+    @Suppress("CanBeVal") var selectedSource = content.installed.entry
     for (step in content.plan.steps) {
       val source = content.source(step)
       if (source != selectedSource) {

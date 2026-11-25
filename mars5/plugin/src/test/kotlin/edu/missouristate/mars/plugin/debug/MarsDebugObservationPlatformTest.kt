@@ -60,8 +60,8 @@ class MarsDebugObservationPlatformTest {
       val before = launch.pauses.receive()
       val original = before.frame.evaluator
       assertEquals(0L, before.executionRevision)
-      assertEquals(150L, original.integerRegisterBits("\$v0"))
-      assertEquals(0L, original.integerRegisterBits("\$t0"))
+      assertEquals(150L, original.integerRegisterBits($$"$v0"))
+      assertEquals(0L, original.integerRegisterBits($$"$t0"))
 
       // Failed and no-op modifications cannot create a fictitious history change.
       assertTrue(edit(before, "unknown_symbol") != null)
@@ -70,10 +70,10 @@ class MarsDebugObservationPlatformTest {
       assertEquals(0L, before.executionRevision)
       assertNull(edit(before, "7"))
       assertEquals(1L, before.executionRevision)
-      assertEquals(7L, before.frame.evaluator.integerRegisterBits("\$t0"))
+      assertEquals(7L, before.frame.evaluator.integerRegisterBits($$"$t0"))
       assertEquals(
           0L,
-          original.integerRegisterBits("\$t0"),
+          original.integerRegisterBits($$"$t0"),
           "Retained snapshots must not change after a machine edit",
       )
 
@@ -81,14 +81,14 @@ class MarsDebugObservationPlatformTest {
       val masked = launch.pauses.receive()
       assertTrue(masked.number > before.number)
       assertEquals(1L, masked.executionRevision)
-      assertEquals(150L, masked.frame.evaluator.integerRegisterBits("\$t0"))
+      assertEquals(150L, masked.frame.evaluator.integerRegisterBits($$"$t0"))
 
       command(launch.session, if (sourceReverse) "debug.backstep.source" else "debug.backstep")
       val reversed = launch.pauses.receive()
       assertTrue(reversed.number > masked.number)
       assertEquals(2L, reversed.executionRevision)
-      assertEquals(7L, reversed.frame.evaluator.integerRegisterBits("\$t0"))
-      assertEquals(150L, masked.frame.evaluator.integerRegisterBits("\$t0"))
+      assertEquals(7L, reversed.frame.evaluator.integerRegisterBits($$"$t0"))
+      assertEquals(150L, masked.frame.evaluator.integerRegisterBits($$"$t0"))
       withContext(Dispatchers.EDT) { launch.session.stepOver(false) }
       assertEquals(
           2L,
@@ -146,9 +146,9 @@ class MarsDebugObservationPlatformTest {
             second = start(file, lifetime)
             val secondPause = second.pauses.receive()
             assertEquals(0L, secondPause.executionRevision)
-            assertEquals(0L, secondPause.frame.evaluator.integerRegisterBits("\$t0"))
+            assertEquals(0L, secondPause.frame.evaluator.integerRegisterBits($$"$t0"))
             assertEquals(1L, firstPause.executionRevision)
-            assertEquals(7L, firstPause.frame.evaluator.integerRegisterBits("\$t0"))
+            assertEquals(7L, firstPause.frame.evaluator.integerRegisterBits($$"$t0"))
             assertEquals(
                 firstPause.frame.evaluator.instructionSources,
                 secondPause.frame.evaluator.instructionSources,

@@ -60,57 +60,65 @@ class MarsLosslessLessonPackageTest {
           },
       )
       val xor = debug.single { it.id == "observe-xor" }.stops
-      assertEquals(0x0000000080000000L, xor.first().vectorRegisters.getValue("\$w2").low)
-      assertEquals(0xffffffff00000010uL.toLong(), xor.first().vectorRegisters.getValue("\$w2").high)
-      assertEquals(listOf(3L, 4L, 0L), xor.map { it.registers.getValue("\$v1") })
+      assertEquals(0x0000000080000000L, xor.first().vectorRegisters.getValue($$"$w2").low)
+      assertEquals(
+          0xffffffff00000010uL.toLong(),
+          xor.first().vectorRegisters.getValue($$"$w2").high,
+      )
+      assertEquals(listOf(3L, 4L, 0L), xor.map { it.registers.getValue($$"$v1") })
       assertEquals(
           listOf(40L, 20L, 0L),
-          debug.single { it.id == "observe-encoding" }.stops.map { it.registers.getValue("\$v1") },
+          debug.single { it.id == "observe-encoding" }.stops.map { it.registers.getValue($$"$v1") },
       )
       val seek = debug.single { it.id == "observe-seek" }.stops[1]
-      assertEquals(listOf(6L, 4L, 3L), listOf("\$s0", "\$s1", "\$s2").map(seek.registers::getValue))
+      assertEquals(
+          listOf(6L, 4L, 3L),
+          listOf($$"$s0", $$"$s1", $$"$s2").map(seek.registers::getValue),
+      )
       val geometry = debug.single { it.id == "observe-coordinates" }.stops
-      assertEquals(6L, geometry[1].registers.getValue("\$s6"))
-      assertEquals(2L, geometry[1].registers.getValue("\$s7"))
-      assertEquals(0x100000001L, geometry.last().registers.getValue("\$s0"))
+      assertEquals(6L, geometry[1].registers.getValue($$"$s6"))
+      assertEquals(2L, geometry[1].registers.getValue($$"$s7"))
+      assertEquals(0x100000001L, geometry.last().registers.getValue($$"$s0"))
     }
   }
 
   @Test
   fun `every lossless prediction and helper boundary resolves through native PSI in the imported source`() =
       timeoutRunBlocking {
-        MarsLessonPackages.prepare(archive()).use { prepared ->
-          val installed = prepared.install(Files.createDirectory(directory.resolve("project")))
-          val content = MarsDownloadedLessonContent(installed, prepared.nativeLesson!!)
-          for (activity in content.plan.steps) {
-            val source = content.source(activity)
-            assertTrue(Files.isRegularFile(source))
-            val anchors =
-                if (activity is MarsNativeDebugStep) activity.stops.map { it.anchor }
-                else listOfNotNull(activity.anchor)
-            if (anchors.isEmpty()) continue
-            val text = Files.readString(source)
-            withContext(Dispatchers.EDT) {
-              fixture.configureByText(source.fileName.toString(), text)
-              for (anchor in anchors) {
-                val range =
-                    requireNotNull(MarsLessonAnchors.range(fixture.editor, anchor)) {
-                      "$source: $anchor"
-                    }
-                assertEquals(
-                    anchor.mnemonic,
-                    text
-                        .substring(range.startOffset, range.endOffset)
-                        .substringBefore(' ')
-                        .substringBefore('\t'),
-                )
+        withContext(Dispatchers.IO) {
+          MarsLessonPackages.prepare(archive()).use { prepared ->
+            val installed = prepared.install(Files.createDirectory(directory.resolve("project")))
+            val content = MarsDownloadedLessonContent(installed, prepared.nativeLesson!!)
+            for (activity in content.plan.steps) {
+              val source = content.source(activity)
+              assertTrue(Files.isRegularFile(source))
+              val anchors =
+                  if (activity is MarsNativeDebugStep) activity.stops.map { it.anchor }
+                  else listOfNotNull(activity.anchor)
+              if (anchors.isEmpty()) continue
+              val text = Files.readString(source)
+              withContext(Dispatchers.EDT) {
+                fixture.configureByText(source.fileName.toString(), text)
+                for (anchor in anchors) {
+                  val range =
+                      requireNotNull(MarsLessonAnchors.range(fixture.editor, anchor)) {
+                        "$source: $anchor"
+                      }
+                  assertEquals(
+                      anchor.mnemonic,
+                      text
+                          .substring(range.startOffset, range.endOffset)
+                          .substringBefore(' ')
+                          .substringBefore('\t'),
+                  )
+                }
               }
             }
+            val independent =
+                Files.readString(installed.directory.resolve("independent/video-change-bounds.asm"))
+            assertEquals(1, independent.lines().count { it.trim() == "break" })
+            assertTrue(independent.endsWith("video_change_bounds:\n    break\n"))
           }
-          val independent =
-              Files.readString(installed.directory.resolve("independent/video-change-bounds.asm"))
-          assertEquals(1, independent.lines().count { it.trim() == "break" })
-          assertTrue(independent.endsWith("video_change_bounds:\n    break\n"))
         }
       }
 }

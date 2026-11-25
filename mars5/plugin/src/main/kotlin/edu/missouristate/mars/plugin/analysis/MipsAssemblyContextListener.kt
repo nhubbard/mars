@@ -9,7 +9,6 @@ internal fun interface MipsAssemblyContextListener {
   companion object {
     @Topic.ProjectLevel
     @JvmField
-    val TOPIC =
-        topicOf<MipsAssemblyContextListener>("MARS assembly context", Topic.BroadcastDirection.NONE)
+    val TOPIC = topicOf<MipsAssemblyContextListener>("MARS assembly context")
   }
 }

@@ -51,48 +51,50 @@ class MarsWavLessonPackageTest {
       assertEquals(5, pipeline.fileSystem!!.maxWriteSize)
       assertEquals(60, pipeline.calls.single().expectedFiles!!.getValue("output.wav")!!.length / 2)
       val failure = debug.single { it.id == "observe-publication" }.stops.last()
-      assertEquals(1L, failure.registers.getValue("\$v0"))
-      assertEquals(-6510615555426900571L, failure.registers.getValue("\$s3"))
+      assertEquals(1L, failure.registers.getValue($$"$v0"))
+      assertEquals(-6510615555426900571L, failure.registers.getValue($$"$s3"))
       val wide = debug.single { it.id == "observe-chunk-offsets" }.stops.last()
-      assertEquals(0x100000000L, wide.registers.getValue("\$t2"))
+      assertEquals(0x100000000L, wide.registers.getValue($$"$t2"))
     }
   }
 
   @Test
   fun `every WAV source pointer and Debug boundary resolves through native PSI`() =
       timeoutRunBlocking {
-        MarsLessonPackages.prepare(archive()).use { prepared ->
-          val installed = prepared.install(Files.createDirectory(directory.resolve("project")))
-          val content = MarsDownloadedLessonContent(installed, prepared.nativeLesson!!)
-          for (activity in content.plan.steps) {
-            val source = content.source(activity)
-            assertTrue(Files.isRegularFile(source))
-            val anchors =
-                if (activity is MarsNativeDebugStep) activity.stops.map { it.anchor }
-                else listOfNotNull(activity.anchor)
-            if (anchors.isEmpty()) continue
-            val text = Files.readString(source)
-            withContext(Dispatchers.EDT) {
-              fixture.configureByText(source.fileName.toString(), text)
-              for (anchor in anchors) {
-                val range =
-                    requireNotNull(MarsLessonAnchors.range(fixture.editor, anchor)) {
-                      "$source: $anchor"
-                    }
-                assertEquals(
-                    anchor.mnemonic,
-                    text
-                        .substring(range.startOffset, range.endOffset)
-                        .substringBefore(' ')
-                        .substringBefore('\t'),
-                )
+        withContext(Dispatchers.IO) {
+          MarsLessonPackages.prepare(archive()).use { prepared ->
+            val installed = prepared.install(Files.createDirectory(directory.resolve("project")))
+            val content = MarsDownloadedLessonContent(installed, prepared.nativeLesson!!)
+            for (activity in content.plan.steps) {
+              val source = content.source(activity)
+              assertTrue(Files.isRegularFile(source))
+              val anchors =
+                  if (activity is MarsNativeDebugStep) activity.stops.map { it.anchor }
+                  else listOfNotNull(activity.anchor)
+              if (anchors.isEmpty()) continue
+              val text = Files.readString(source)
+              withContext(Dispatchers.EDT) {
+                fixture.configureByText(source.fileName.toString(), text)
+                for (anchor in anchors) {
+                  val range =
+                      requireNotNull(MarsLessonAnchors.range(fixture.editor, anchor)) {
+                        "$source: $anchor"
+                      }
+                  assertEquals(
+                      anchor.mnemonic,
+                      text
+                          .substring(range.startOffset, range.endOffset)
+                          .substringBefore(' ')
+                          .substringBefore('\t'),
+                  )
+                }
               }
             }
+            val independent =
+                Files.readString(installed.directory.resolve("independent/wav-reverse-frames.asm"))
+            assertEquals(1, independent.lines().count { it.trim() == "break" })
+            assertTrue(independent.endsWith("wav_reverse_frames:\n    break\n"))
           }
-          val independent =
-              Files.readString(installed.directory.resolve("independent/wav-reverse-frames.asm"))
-          assertEquals(1, independent.lines().count { it.trim() == "break" })
-          assertTrue(independent.endsWith("wav_reverse_frames:\n    break\n"))
         }
       }
 }

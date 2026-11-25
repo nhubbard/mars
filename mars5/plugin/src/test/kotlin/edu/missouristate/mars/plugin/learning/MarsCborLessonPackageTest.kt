@@ -49,15 +49,15 @@ class MarsCborLessonPackageTest {
               .single { it.id == "follow-parent-and-child" }
               .stops
               .filter { it.anchor.label == "after_k_child" }
-      assertEquals(listOf(4L, 4L, 5L), nested.map { it.registers.getValue("\$s6") })
-      assertEquals(listOf(2L, 2L, 1L), nested.map { it.registers.getValue("\$s2") })
-      assertEquals(1L, nested[1].registers.getValue("\$a2"))
+      assertEquals(listOf(4L, 4L, 5L), nested.map { it.registers.getValue($$"$s6") })
+      assertEquals(listOf(2L, 2L, 1L), nested.map { it.registers.getValue($$"$s2") })
+      assertEquals(1L, nested[1].registers.getValue($$"$a2"))
       assertEquals(
           listOf(52L, 37L, 0L),
           debug
               .single { it.id == "capacity-before-output" }
               .stops
-              .map { it.registers.getValue("\$v1") },
+              .map { it.registers.getValue($$"$v1") },
       )
     }
   }
@@ -65,40 +65,42 @@ class MarsCborLessonPackageTest {
   @Test
   fun `every delivered CBOR prediction pointer and Debug boundary resolves through native PSI`() =
       timeoutRunBlocking {
-        MarsLessonPackages.prepare(archive()).use { prepared ->
-          val installed = prepared.install(Files.createDirectory(directory.resolve("project")))
-          val content = MarsDownloadedLessonContent(installed, prepared.nativeLesson!!)
-          for (activity in content.plan.steps) {
-            val source = content.source(activity)
-            assertTrue(Files.isRegularFile(source))
-            if (activity is MarsNativeLessonStep)
-                assertEquals(installed.directory.resolve(activity.source!!), source)
-            val anchors =
-                if (activity is MarsNativeDebugStep) activity.stops.map { it.anchor }
-                else listOfNotNull(activity.anchor)
-            if (anchors.isEmpty()) continue
-            val text = Files.readString(source)
-            withContext(Dispatchers.EDT) {
-              fixture.configureByText(source.fileName.toString(), text)
-              for (anchor in anchors) {
-                val range =
-                    requireNotNull(MarsLessonAnchors.range(fixture.editor, anchor)) {
-                      "$source: $anchor"
-                    }
-                assertEquals(
-                    anchor.mnemonic,
-                    text
-                        .substring(range.startOffset, range.endOffset)
-                        .substringBefore(' ')
-                        .substringBefore('\t'),
-                )
+        withContext(Dispatchers.IO) {
+          MarsLessonPackages.prepare(archive()).use { prepared ->
+            val installed = prepared.install(Files.createDirectory(directory.resolve("project")))
+            val content = MarsDownloadedLessonContent(installed, prepared.nativeLesson!!)
+            for (activity in content.plan.steps) {
+              val source = content.source(activity)
+              assertTrue(Files.isRegularFile(source))
+              if (activity is MarsNativeLessonStep)
+                  assertEquals(installed.directory.resolve(activity.source!!), source)
+              val anchors =
+                  if (activity is MarsNativeDebugStep) activity.stops.map { it.anchor }
+                  else listOfNotNull(activity.anchor)
+              if (anchors.isEmpty()) continue
+              val text = Files.readString(source)
+              withContext(Dispatchers.EDT) {
+                fixture.configureByText(source.fileName.toString(), text)
+                for (anchor in anchors) {
+                  val range =
+                      requireNotNull(MarsLessonAnchors.range(fixture.editor, anchor)) {
+                        "$source: $anchor"
+                      }
+                  assertEquals(
+                      anchor.mnemonic,
+                      text
+                          .substring(range.startOffset, range.endOffset)
+                          .substringBefore(' ')
+                          .substringBefore('\t'),
+                  )
+                }
               }
             }
+            assertTrue(
+                Files.readString(installed.directory.resolve("independent/cbor-sequence.asm"))
+                    .contains("cbor_sequence_count:\n    break"),
+            )
           }
-          assertTrue(
-              Files.readString(installed.directory.resolve("independent/cbor-sequence.asm"))
-                  .contains("cbor_sequence_count:\n    break"),
-          )
         }
       }
 }

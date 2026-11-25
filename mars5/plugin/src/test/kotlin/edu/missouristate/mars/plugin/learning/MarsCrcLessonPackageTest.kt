@@ -43,13 +43,13 @@ class MarsCrcLessonPackageTest {
       assertEquals(5, error.fileRead!!.failAfterBytes)
       assertEquals(3, error.fileRead.maxReadSize)
       assertEquals(19, error.fileRead.firstDescriptor)
-      assertEquals(listOf(3L, 2L, -1L, 0L), error.stops.map { it.registers.getValue("\$v0") })
-      assertEquals(2L, error.stops.last().registers.getValue("\$v1"))
+      assertEquals(listOf(3L, 2L, -1L, 0L), error.stops.map { it.registers.getValue($$"$v0") })
+      assertEquals(2L, error.stops.last().registers.getValue($$"$v1"))
       assertTrue(debug.single { it.id == "trace-file-missing" }.fileRead!!.missing)
       val prefix = debug.single { it.id == "trace-stream" }
-      assertEquals(0x641c1f5cL, prefix.stops[1].registers.getValue("\$a2"))
-      assertEquals(5L, prefix.stops[1].registers.getValue("\$a1"))
-      assertEquals(0x340bc6d9L, prefix.stops.last().registers.getValue("\$v0"))
+      assertEquals(0x641c1f5cL, prefix.stops[1].registers.getValue($$"$a2"))
+      assertEquals(5L, prefix.stops[1].registers.getValue($$"$a1"))
+      assertEquals(0x340bc6d9L, prefix.stops.last().registers.getValue($$"$v0"))
       val assessments = plan.steps.filterIsInstance<MarsNativeAssessmentStep>()
       assertEquals(listOf(80, 32, 23, 2, 27, 0), assessments.map { it.functionCases.size })
       assertEquals(listOf(8, 4, 3, 1, 7, 1), assessments.map { it.caseProfiles.size })
@@ -80,46 +80,50 @@ class MarsCrcLessonPackageTest {
   @Test
   fun `every delivered source pointer and Debug stop resolves in the actual source through native PSI`() =
       timeoutRunBlocking {
-        val archive = archive()
-        val plan = MarsLessonPackages.prepare(archive).use { it.nativeLesson!! }
-        ZipFile(archive.toFile()).use { zip ->
-          for (activity in plan.steps) {
-            val relative = (activity as? MarsNativeDebugStep)?.source ?: "crc32.asm"
-            val anchors =
-                if (activity is MarsNativeDebugStep) activity.stops.map { it.anchor }
-                else listOfNotNull(activity.anchor)
-            if (anchors.isEmpty()) continue
-            val text =
-                zip.getInputStream(zip.getEntry("024-crc32/$relative")).use {
-                  it.readBytes().toString(Charsets.UTF_8)
+        withContext(Dispatchers.IO) {
+          val archive = archive()
+          val plan = MarsLessonPackages.prepare(archive).use { it.nativeLesson!! }
+          ZipFile(archive.toFile()).use { zip ->
+            for (activity in plan.steps) {
+              val relative = (activity as? MarsNativeDebugStep)?.source ?: "crc32.asm"
+              val anchors =
+                  if (activity is MarsNativeDebugStep) activity.stops.map { it.anchor }
+                  else listOfNotNull(activity.anchor)
+              if (anchors.isEmpty()) continue
+              val text =
+                  zip.getInputStream(zip.getEntry("024-crc32/$relative")).use {
+                    it.readBytes().toString(Charsets.UTF_8)
+                  }
+              withContext(Dispatchers.EDT) {
+                fixture.configureByText(relative.substringAfterLast('/'), text)
+                for (anchor in anchors) {
+                  val range =
+                      requireNotNull(MarsLessonAnchors.range(fixture.editor, anchor)) {
+                        "$relative: $anchor"
+                      }
+                  assertTrue(
+                      text
+                          .substring(range.startOffset, range.endOffset)
+                          .startsWith(anchor.mnemonic),
+                      "$relative: $anchor",
+                  )
                 }
-            withContext(Dispatchers.EDT) {
-              fixture.configureByText(relative.substringAfterLast('/'), text)
-              for (anchor in anchors) {
-                val range =
-                    requireNotNull(MarsLessonAnchors.range(fixture.editor, anchor)) {
-                      "$relative: $anchor"
-                    }
-                assertTrue(
-                    text.substring(range.startOffset, range.endOffset).startsWith(anchor.mnemonic),
-                    "$relative: $anchor",
-                )
               }
             }
+            val input =
+                zip.getInputStream(zip.getEntry("024-crc32/worked/fixture.bin")).use {
+                  it.readBytes()
+                }
+            assertArrayEquals("123456789".toByteArray(), input)
+            val starter =
+                zip.getInputStream(zip.getEntry("024-crc32/independent/crc32-chunk.asm")).use {
+                  it.readBytes().toString(Charsets.UTF_8)
+                }
+            assertTrue(
+                starter.contains("crc32_check_chunk:\n    break"),
+                "The student archive must retain the unfinished checker",
+            )
           }
-          val input =
-              zip.getInputStream(zip.getEntry("024-crc32/worked/fixture.bin")).use {
-                it.readBytes()
-              }
-          assertArrayEquals("123456789".toByteArray(), input)
-          val starter =
-              zip.getInputStream(zip.getEntry("024-crc32/independent/crc32-chunk.asm")).use {
-                it.readBytes().toString(Charsets.UTF_8)
-              }
-          assertTrue(
-              starter.contains("crc32_check_chunk:\n    break"),
-              "The student archive must retain the unfinished checker",
-          )
         }
       }
 }

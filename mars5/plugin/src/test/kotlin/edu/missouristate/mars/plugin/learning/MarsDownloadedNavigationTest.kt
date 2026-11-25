@@ -28,6 +28,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -46,7 +47,7 @@ import training.statistic.LessonStartingWay
 class MarsDownloadedNavigationTest {
   private val fixture = codeInsightProjectFixture()
   @TempDir lateinit var temporary: Path
-  private val source = ".text\nmain:\nli \$v0, 10\nsyscall\n"
+  private val source = $$".text\nmain:\nli $v0, 10\nsyscall\n"
 
   private fun content(version: String = "1.0.0"): MarsDownloadedLessonContent {
     val path = Files.createTempFile(temporary, "navigation-", ".zip")
@@ -92,7 +93,7 @@ class MarsDownloadedNavigationTest {
     val identity = content.assessmentIdentity(step)
     val ticket = progress.beginCheck(identity, step.id, MarsLearningSource.revision(source))
     assertTrue(progress.finishAssessment(ticket, true, 0))
-    Files.writeString(content.installed.directory.resolve("two.asm"), "# student edit\n" + source)
+    Files.writeString(content.installed.directory.resolve("two.asm"), "# student edit\n$source")
     val saved = XmlSerializer.serialize(selection.getState())
     val restored = MarsDownloadedLessonSelection(project)
     restored.loadState(
@@ -241,9 +242,9 @@ class MarsDownloadedNavigationTest {
             Disposer.dispose(life)
           }
         }
-        withTimeout(10_000) {
+        withTimeout(10_000.milliseconds) {
           while (project.service<MarsLearningProgress>().snapshot(content.identity) == null) delay(
-              50,
+              50.milliseconds,
           )
         }
         withContext(Dispatchers.EDT) {

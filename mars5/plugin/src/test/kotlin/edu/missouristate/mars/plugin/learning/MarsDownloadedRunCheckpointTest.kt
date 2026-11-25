@@ -1,3 +1,5 @@
+@file:Suppress("UsePropertyAccessSyntax")
+
 package edu.missouristate.mars.plugin.learning
 
 import com.intellij.execution.ExecutionManager
@@ -146,11 +148,11 @@ class MarsDownloadedRunCheckpointTest {
 
   @Test
   fun `a missing extension fails while an equivalent conversion passes`() = timeoutRunBlocking {
-    val wrong = example.replace("seb ${'$'}t1, ${'$'}t0", "move ${'$'}t1, ${'$'}t0")
+    val wrong = example.replace($$"seb $t1, $t0", $$"move $t1, $t0")
     val alternative =
         example.replace(
-            "seb ${'$'}t1, ${'$'}t0",
-            "andi ${'$'}t1, ${'$'}t0, 0x7f\n    andi ${'$'}t2, ${'$'}t0, 0x80\n    dsubu ${'$'}t1, ${'$'}t1, ${'$'}t2",
+            $$"seb $t1, $t0",
+            $$"andi $t1, $t0, 0x7f\n    andi $t2, $t0, 0x80\n    dsubu $t1, $t1, $t2",
         )
     for ((source, result) in
         listOf(
@@ -169,7 +171,7 @@ class MarsDownloadedRunCheckpointTest {
 
   @Test
   fun `abnormal termination is reported even after correct output`() = timeoutRunBlocking {
-    val failing = example.replace("li ${'$'}v0, 10", "li ${'$'}a0, 7\n    li ${'$'}v0, 17")
+    val failing = example.replace($$"li $v0, 10", $$"li $a0, 7\n    li $v0, 17")
     create(contract(150), failing).use { f ->
       f.checkpoint.starting(DefaultRunExecutor.EXECUTOR_ID, f.handler)
       run(f.handler, "150\n", 7)
@@ -187,7 +189,7 @@ class MarsDownloadedRunCheckpointTest {
       else
           withContext(Dispatchers.EDT) {
             WriteCommandAction.runWriteCommandAction(projects.get()) {
-              f.document.setText(example + "\n# edit\n")
+              f.document.setText("$example\n# edit\n")
             }
             WriteCommandAction.runWriteCommandAction(projects.get()) { f.document.setText(example) }
           }

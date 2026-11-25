@@ -25,21 +25,21 @@ class MarsFirLessonPackageTest {
       assertEquals(listOf(3, 2, 3, 7, 3, 3, 3, 3, 2, 3), debug.map { it.stops.size })
       assertEquals(10, debug.map { it.source }.distinct().size)
       val wide = debug.single { it.id == "trace-wide-sum" }
-      val words = wide.stops.first().vectorRegisters.getValue("\$w5")
+      val words = wide.stops.first().vectorRegisters.getValue($$"$w5")
       assertEquals(List(4) { 0xffff8000L }, (0..3).map { words.unsignedLane(it, 32) })
       assertEquals(
           VectorRegister(2147483648, 2147483648),
-          wide.stops.single { it.id == "pairs" }.vectorRegisters.getValue("\$w7"),
+          wide.stops.single { it.id == "pairs" }.vectorRegisters.getValue($$"$w7"),
       )
       assertEquals(
           VectorRegister(4294967296, 4294967296),
-          wide.stops.single { it.id == "combined" }.vectorRegisters.getValue("\$w7"),
+          wide.stops.single { it.id == "combined" }.vectorRegisters.getValue($$"$w7"),
       )
       assertEquals(
           8589934592L,
-          wide.stops.single { it.id == "numerator" }.registers.getValue("\$t0"),
+          wide.stops.single { it.id == "numerator" }.registers.getValue($$"$t0"),
       )
-      assertEquals(262144L, wide.stops.single { it.id == "quantized" }.registers.getValue("\$t0"))
+      assertEquals(262144L, wide.stops.single { it.id == "quantized" }.registers.getValue($$"$t0"))
       for ((id, value, clips) in
           listOf(
               Triple("negative-tie", -32768L, 0L),
@@ -47,8 +47,8 @@ class MarsFirLessonPackageTest {
               Triple("positive-tie", 32768L, 1L),
           )) {
         val step = debug.single { it.id == "trace-$id" }
-        assertEquals(value, step.stops.single { it.id == "quantized" }.registers.getValue("\$t0"))
-        assertEquals(clips, step.stops.last().registers.getValue("\$v1"))
+        assertEquals(value, step.stops.single { it.id == "quantized" }.registers.getValue($$"$t0"))
+        assertEquals(clips, step.stops.last().registers.getValue($$"$v1"))
       }
       val runs = plan.steps.filterIsInstance<MarsNativeRunStep>()
       assertEquals(

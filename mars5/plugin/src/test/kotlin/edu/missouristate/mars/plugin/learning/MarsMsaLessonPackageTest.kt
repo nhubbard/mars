@@ -37,18 +37,18 @@ class MarsMsaLessonPackageTest {
       val gathered = debug.first().stops.single { it.id == "gathered" }
       assertEquals(
           VectorRegister(0x008000ff0000007bL, 0x001f00f800080007L),
-          gathered.vectorRegisters.getValue("\$w4"),
+          gathered.vectorRegisters.getValue($$"$w4"),
       )
       val fields = debug.first().stops.single { it.id == "fields" }
-      assertEquals(0x7968L, fields.vectorRegisters.getValue("\$w4").low and 0xffffL)
+      assertEquals(0x7968L, fields.vectorRegisters.getValue($$"$w4").low and 0xffffL)
       assertEquals(
           24L,
-          debug.first().stops.single { it.id == "second-loaded" }.registers.getValue("\$a2"),
+          debug.first().stops.single { it.id == "second-loaded" }.registers.getValue($$"$a2"),
       )
       for ((step, count) in debug.zip(listOf(32, 17, 0, 7, 8, 9))) {
-        assertEquals(count.toLong(), step.stops.last().registers.getValue("\$v0"))
+        assertEquals(count.toLong(), step.stops.last().registers.getValue($$"$v0"))
         if (count != 32)
-            assertEquals((count % 8).toLong(), step.stops.first().registers.getValue("\$a2"))
+            assertEquals((count % 8).toLong(), step.stops.first().registers.getValue($$"$a2"))
       }
       val runs = plan.steps.filterIsInstance<MarsNativeRunStep>()
       assertEquals(debug.map { it.source }, runs.map { it.source })

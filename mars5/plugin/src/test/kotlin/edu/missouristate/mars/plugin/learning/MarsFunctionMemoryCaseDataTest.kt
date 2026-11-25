@@ -141,14 +141,14 @@ class MarsFunctionMemoryCaseDataTest {
             .offset,
     )
     reject { call().getAsJsonObject("arguments").addProperty("a0", "0x0000000000000001") }
-    reject { call().getAsJsonObject("arguments").addProperty("\$4", "0x0000000000000001") }
+    reject { call().getAsJsonObject("arguments").addProperty($$"$4", "0x0000000000000001") }
     for (name in listOf("sp", "ra", "zero", "pc", "r".repeat(33))) {
       reject {
         val value = address().deepCopy()
         call().add("argumentAddresses", JsonObject().apply { add(name, value) })
       }
     }
-    reject { call().getAsJsonObject("argumentAddresses").add("\$4", address().deepCopy()) }
+    reject { call().getAsJsonObject("argumentAddresses").add($$"$4", address().deepCopy()) }
     reject {
       call()
           .add("argumentAddresses", JsonObject().apply { repeat(33) { add("r$it", JsonObject()) } })

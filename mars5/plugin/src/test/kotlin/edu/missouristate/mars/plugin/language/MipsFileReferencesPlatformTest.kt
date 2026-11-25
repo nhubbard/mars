@@ -1,3 +1,5 @@
+@file:Suppress("JetBrainsInternalApiUsage")
+
 package edu.missouristate.mars.plugin.language
 
 import com.intellij.codeInsight.inline.edit.InlineEditAwaiter
@@ -666,25 +668,26 @@ class MipsFileReferencesPlatformTest {
       }
 
   @Test
-  fun `platform filename completion supplies and inserts include path candidates`() =
-      timeoutRunBlocking {
-        withContext(Dispatchers.EDT) {
-          fixture.addFileToProject("parts/target.asm", "target: nop\n")
-          fixture.addFileToProject("parts/tangent.s", "tangent: nop\n")
-          fixture.configureByText("main.asm", ".include \"parts/ta<caret>\"\n")
-        }
-        IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
-        withContext(Dispatchers.EDT) {
-          fixture.completeBasic()
-          assertTrue(fixture.lookupElementStrings!!.containsAll(listOf("target.asm", "tangent.s")))
-          val selected = fixture.lookup.currentItem!!.lookupString
-          fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR)
-          assertEquals(".include \"parts/$selected\"\n", fixture.file.text)
-        }
-        // Test-only platform hook: finish bundled inline requests before fixture teardown closes
-        // the editor.
-        InlineEditAwaiter.awaitAllInlineEdits(project.get(), fixture.editor)
+  fun `platform filename completion supplies and inserts include path candidates`() {
+    timeoutRunBlocking {
+      withContext(Dispatchers.EDT) {
+        fixture.addFileToProject("parts/target.asm", "target: nop\n")
+        fixture.addFileToProject("parts/tangent.s", "tangent: nop\n")
+        fixture.configureByText("main.asm", ".include \"parts/ta<caret>\"\n")
       }
+      IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
+      withContext(Dispatchers.EDT) {
+        fixture.completeBasic()
+        assertTrue(fixture.lookupElementStrings!!.containsAll(listOf("target.asm", "tangent.s")))
+        val selected = fixture.lookup.currentItem!!.lookupString
+        fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR)
+        assertEquals(".include \"parts/$selected\"\n", fixture.file.text)
+      }
+      // Test-only platform hook: finish bundled inline requests before fixture teardown closes
+      // the editor.
+      InlineEditAwaiter.awaitAllInlineEdits(project.get(), fixture.editor)
+    }
+  }
 
   @Test
   fun `unterminated include paths keep native filename completion without adding an include edge`() =

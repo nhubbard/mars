@@ -1,3 +1,5 @@
+@file:Suppress("UsePropertyAccessSyntax")
+
 package edu.missouristate.mars.plugin.learning
 
 import com.intellij.execution.process.ProcessEvent
@@ -198,8 +200,8 @@ class MarsDownloadedAssessmentCheckpointTest {
         exercise(
             text =
                 correct
-                    .replace("addiu \$t3, \$v0, 2", "addiu \$s2, \$v0, 1\n    addiu \$s2, \$s2, 1")
-                    .replace("move \$a0, \$t3", "move \$a0, \$s2"),
+                    .replace($$"addiu $t3, $v0, 2", $$"addiu $s2, $v0, 1\n    addiu $s2, $s2, 1")
+                    .replace($$"move $a0, $t3", $$"move $a0, $s2"),
             create = { machine().also { machines += it } },
         ) { f ->
           assertTrue(f.checkpoint.accepts(f.document))
@@ -320,7 +322,7 @@ class MarsDownloadedAssessmentCheckpointTest {
   @Test
   fun `incorrect current programs consume one assessment and useful case failures do not require a source recipe`() =
       timeoutRunBlocking {
-        exercise(correct.replace("addiu \$t3, \$v0, 2", "move \$t3, \$v0")) { f ->
+        exercise(correct.replace($$"addiu $t3, $v0, 2", $$"move $t3, $v0")) { f ->
           val result = assertInstanceOf(Feedback.Checked::class.java, f.checkpoint.check())
           assertTrue(result.results.none { it.passed })
           assertEquals(1, result.completed)
@@ -336,7 +338,7 @@ class MarsDownloadedAssessmentCheckpointTest {
           assertEquals(0, count())
         }
         withContext(Dispatchers.EDT) { fixture.addFileToProject("extra.inc", "# extra source\n") }
-        exercise(correct + ".include \"extra.inc\"\n") { f ->
+        exercise("$correct.include \"extra.inc\"\n") { f ->
           assertEquals(Feedback.STALE, f.checkpoint.check())
           assertEquals(0, count())
         }
@@ -458,7 +460,7 @@ class MarsDownloadedAssessmentCheckpointTest {
           assertFalse(f.checkpoint.passed())
           predictions = true
           assertTrue(f.checkpoint.passed())
-          edit(f.document, correct + "# changed\n")
+          edit(f.document, "$correct# changed\n")
           assertFalse(f.checkpoint.passed())
           assertEquals(Feedback.LIMIT, f.checkpoint.check())
           assertEquals(1, count())
@@ -482,7 +484,7 @@ class MarsDownloadedAssessmentCheckpointTest {
             changed = true
             ApplicationManager.getApplication().invokeAndWait {
               WriteCommandAction.runWriteCommandAction(projects.get()) {
-                document.setText(correct + "# in flight\n")
+                document.setText("$correct# in flight\n")
                 if (restore) document.setText(correct)
               }
             }
@@ -645,8 +647,8 @@ class MarsDownloadedAssessmentCheckpointTest {
                   correct
                       .replace(".text", ".data\nprompt: .asciiz \"Waiting: \"\n.text")
                       .replace(
-                          "    li \$v0, 5",
-                          "    la \$a0, prompt\n    li \$v0, 4\n    syscall\n    li \$v0, 5",
+                          $$"    li $v0, 5",
+                          $$"    la $a0, prompt\n    li $v0, 4\n    syscall\n    li $v0, 5",
                       )
               val file = fixture.addFileToProject("live.asm", source).virtualFile
               project

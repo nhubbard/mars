@@ -177,56 +177,60 @@ class MarsLessonPackageImportActionTest {
   @Test
   fun `invalid ZIP metadata and unsupported packages show native errors without creating work`() =
       timeoutRunBlocking {
-        val invalidZip = Files.writeString(temporary.resolve("broken.zip"), "not a zip")
-        for (path in
-            listOf(
-                invalidZip,
-                archive("{}"),
-                archive("{\"formatVersion\":1, bad"),
-                archive("{\"formatVersion\":1,\"other\":[}"),
-            )) {
-          withContext(Dispatchers.EDT) {
-            val project = fixture.get()
-            var shown = false
-            val previous = TestDialogManager.setTestDialog { text ->
-              assertFalse(text.isBlank())
-              shown = true
-              Messages.OK
+        withContext(Dispatchers.IO) {
+          val invalidZip = Files.writeString(temporary.resolve("broken.zip"), "not a zip")
+          for (path in
+              listOf(
+                  invalidZip,
+                  archive("{}"),
+                  archive("{\"formatVersion\":1, bad"),
+                  archive("{\"formatVersion\":1,\"other\":[}"),
+              )) {
+            withContext(Dispatchers.EDT) {
+              val project = fixture.get()
+              var shown = false
+              val previous = TestDialogManager.setTestDialog { text ->
+                assertFalse(text.isBlank())
+                shown = true
+                Messages.OK
+              }
+              UiInterceptors.register(fileDialog(path.toString()))
+              try {
+                AutoCloseable { UiInterceptors.clear() }
+                    .use {
+                      action.actionPerformed(
+                          event(
+                              SimpleDataContext.builder()
+                                  .add(CommonDataKeys.PROJECT, project)
+                                  .build(),
+                          ),
+                      )
+                    }
+              } finally {
+                TestDialogManager.setTestDialog(previous)
+              }
+              assertTrue(shown)
+              assertFalse(Files.exists(Path.of(project.basePath!!).resolve("mars-labs/packages")))
             }
-            UiInterceptors.register(fileDialog(path.toString()))
-            try {
-              AutoCloseable { UiInterceptors.clear() }
-                  .use {
-                    action.actionPerformed(
-                        event(
-                            SimpleDataContext.builder()
-                                .add(CommonDataKeys.PROJECT, project)
-                                .build(),
-                        ),
-                    )
-                  }
-            } finally {
-              TestDialogManager.setTestDialog(previous)
-            }
-            assertTrue(shown)
-            assertFalse(Files.exists(Path.of(project.basePath!!).resolve("mars-labs/packages")))
           }
+          assertEquals(
+              packageMessages.getMessage("import.error.unknown"),
+              packageImportFailure(IOException()),
+          )
+          assertEquals("specific error", packageImportFailure(IOException("specific error")))
         }
-        assertEquals(
-            packageMessages.getMessage("import.error.unknown"),
-            packageImportFailure(IOException()),
-        )
-        assertEquals("specific error", packageImportFailure(IOException("specific error")))
       }
 
   @Test
   fun `reopening reports a missing working file rather than fabricating its contents`() =
       timeoutRunBlocking {
-        val project = fixture.get()
-        val installed =
-            MarsLessonPackages.prepare(archive()).use { it.install(Path.of(project.basePath!!)) }
-        Files.delete(installed.entry)
-        assertThrows<IOException> { openInstalledPackage(project, installed) }
-        assertFalse(Files.exists(installed.entry))
+        withContext(Dispatchers.IO) {
+          val project = fixture.get()
+          val installed =
+              MarsLessonPackages.prepare(archive()).use { it.install(Path.of(project.basePath!!)) }
+          Files.delete(installed.entry)
+          assertThrows<IOException> { openInstalledPackage(project, installed) }
+          assertFalse(Files.exists(installed.entry))
+        }
       }
 }
