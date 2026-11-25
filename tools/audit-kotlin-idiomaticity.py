@@ -1,9 +1,17 @@
 #!/usr/bin/env python3
 """Repeatable textual inventory of tracked Kotlin sources (not generated build output)."""
+import argparse
 import json
 import re
 import subprocess
 from pathlib import Path
+
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument(
+    "--non-null-inventory", action="store_true",
+    help="list production assertions by file and line instead of aggregate metrics",
+)
+options = parser.parse_args()
 
 ROOT = Path(__file__).resolve().parents[1]
 paths = sorted(
@@ -28,6 +36,7 @@ metrics = dict(
     raw_dynamic_bundles=0,
     production_non_null_assertions=0,
 )
+non_null_inventory = []
 for name in paths:
     source = (ROOT / name).read_text()
     group = "test" if "/src/test/" in name else "other"
@@ -40,5 +49,12 @@ for name in paths:
     )
     metrics["raw_dynamic_bundles"] += len(re.findall(r"\bDynamicBundle\s*\(", source))
     if "/src/main/" in name:
-        metrics["production_non_null_assertions"] += source.count("!!")
-print(json.dumps(metrics, indent=2))
+        count = source.count("!!")
+        metrics["production_non_null_assertions"] += count
+        if count:
+            non_null_inventory.append({
+                "file": name,
+                "count": count,
+                "lines": [i for i, line in enumerate(source.splitlines(), 1) if "!!" in line],
+            })
+print(json.dumps(non_null_inventory if options.non_null_inventory else metrics, indent=2))

@@ -81,7 +81,9 @@ constructor(
   }
 
   private class IncludeFrame(val program: MIPSprogram) {
-    val lines = program.sourceList!!.listIterator()
+    val filename = checkNotNull(program.filename) { "Read a source before expanding includes" }
+    val source = checkNotNull(program.sourceList) { "Read $filename before expanding includes" }
+    val lines = source.listIterator()
   }
 
   // Expand depth first and retain each line's original file and line number.
@@ -90,9 +92,10 @@ constructor(
       checkCancellation: () -> Unit,
   ): ArrayList<SourceLine> {
     val pending = ArrayDeque<IncludeFrame>()
-    pending.addLast(IncludeFrame(root))
+    val rootFrame = IncludeFrame(root)
+    pending.addLast(rootFrame)
     val includedPaths = HashSet<Path>()
-    val result = ArrayList<SourceLine>(root.sourceList!!.size)
+    val result = ArrayList<SourceLine>(rootFrame.source.size)
     while (pending.isNotEmpty()) {
       val frame = pending.last()
       val program = frame.program
@@ -106,7 +109,7 @@ constructor(
       val lineNumber = lines.nextIndex()
       val candidates = scanPossibleInclude(program, lineNumber, line, checkCancellation)
       val includeIndex = firstIncludePathIndex(candidates)
-      val include = if (includeIndex >= 0) candidates!![includeIndex] else null
+      val include = if (includeIndex >= 0) candidates?.get(includeIndex) else null
       val path = include?.let(::quotedIncludePath)
       if (include == null || path == null) {
         if (include != null) {
@@ -123,8 +126,8 @@ constructor(
         continue
       }
       // The assembly pass only sees the included lines.
-      reportLexicalErrors(program, lineNumber, line, candidates!!)
-      val filename = resolveIncludePath(program.filename!!, path)
+      reportLexicalErrors(program, lineNumber, line, checkNotNull(candidates))
+      val filename = resolveIncludePath(frame.filename, path)
       val included = program.createRelatedProgram()
       try {
         included.readIncludedSource(filename, checkCancellation)
@@ -859,7 +862,8 @@ constructor(
 
     private fun physicalLocation(program: MIPSprogram?, lineNum: Int): Location? {
       val source = program?.sourceLineList?.getOrNull(lineNum - 1) ?: return null
-      return Location(Path.of(source.filename!!), source.lineNumber)
+      val filename = source.filename ?: return null
+      return Location(Path.of(filename), source.lineNumber)
     }
 
     private fun equivalenceSite(

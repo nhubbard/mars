@@ -20,6 +20,7 @@ import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.xdebugger.XDebugSession
 import com.intellij.xdebugger.XDebuggerManager
 import edu.missouristate.mars.api.InstructionSourceMap.Location
+import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.plugin.run.MarsRunType
 import edu.missouristate.mars.plugin.run.executionListener
 import edu.missouristate.mars.plugin.run.runMessages
@@ -155,6 +156,47 @@ class MarsDebugObservationPlatformTest {
             second?.let { stop(it) }
             withContext(Dispatchers.EDT) { Disposer.dispose(lifetime) }
           }
+        }
+      }
+
+  @Test
+  fun `an edit failure without a message is reported without advancing the stopped execution`() =
+      timeoutRunBlocking {
+        withDebug("andi") { launch, _ ->
+          val pause = launch.pauses.receive()
+          val failure = IllegalStateException()
+          val rejected = CompletableDeferred<String>()
+          pause.machineEdits.submitEdit(
+              object : MachineEditRequest {
+                override val callback =
+                    modificationCallback(
+                        valueModified = {
+                          rejected.completeExceptionally(
+                              AssertionError("A failed edit was accepted"),
+                          )
+                        },
+                        errorOccurred = { rejected.complete(it) },
+                    )
+
+                override suspend fun apply(
+                    machine: MarsContext,
+                    evaluator: MarsExpressionEvaluator,
+                ): Result<Boolean> = Result.failure(failure)
+
+                override fun unavailable() {
+                  rejected.completeExceptionally(AssertionError("The paused edit was unavailable"))
+                }
+              },
+          )
+          assertEquals(failure.toString(), rejected.await())
+          assertEquals(0L, pause.executionRevision)
+          withContext(Dispatchers.EDT) { launch.session.stepOver(false) }
+          val next = launch.pauses.receive()
+          assertEquals(0L, next.executionRevision)
+          assertEquals(
+              pause.frame.evaluator.integerRegisterBits("pc") + 4,
+              next.frame.evaluator.integerRegisterBits("pc"),
+          )
         }
       }
 

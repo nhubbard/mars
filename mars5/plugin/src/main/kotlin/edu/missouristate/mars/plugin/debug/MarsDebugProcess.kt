@@ -29,6 +29,7 @@ import com.intellij.xdebugger.evaluation.EvaluationMode
 import com.intellij.xdebugger.evaluation.XDebuggerEditorsProvider
 import com.intellij.xdebugger.frame.XSuspendContext
 import com.intellij.xdebugger.ui.XDebugTabLayouter
+import edu.missouristate.mars.MIPSprogram
 import edu.missouristate.mars.ProgramStatement
 import edu.missouristate.mars.api.AssemblySymbolMap.Kind
 import edu.missouristate.mars.api.ErrorEvent
@@ -105,7 +106,14 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
   private data class HitProgress(val interval: Int, val hits: Int)
 
   private val hitProgress = mutableMapOf<XBreakpoint<*>, HitProgress>()
-  private var boundMachine: MarsContext? = null
+
+  private class DebugExecution(
+      val machine: MarsContext,
+      val program: MIPSprogram,
+      val symbols: LoadedSymbols,
+  )
+
+  private var boundExecution: DebugExecution? = null
   @Volatile private var addresses = emptyMap<Long, List<XBreakpoint<*>>>()
   @Volatile private var watchpoints = emptyMap<MemoryWatchpoint, MemoryWatchRange>()
   // Written on the simulator worker and drained when its slice completes.
@@ -125,8 +133,11 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
   private val loadedSymbols = MutableStateFlow<LoadedSymbols?>(null)
   private val handler = state.createProcess { machine, executionSources ->
     sources = executionSources
-    loadedSymbols.value = LoadedSymbols(machine.program!!.symbolMap(), executionSources)
-    debug(this, machine)
+    val program =
+        checkNotNull(machine.program) { "Load an assembled program before starting Debug" }
+    val symbols = LoadedSymbols(program.symbolMap(), executionSources)
+    loadedSymbols.value = symbols
+    debug(this, DebugExecution(machine, program, symbols))
   }
 
   private val lineHandler = bindingHandler<MarsLineBreakpointType, _>(registeredLines)
@@ -336,10 +347,10 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
 
   internal fun originalBreakpointLine(file: VirtualFile, line: Int): Pair<VirtualFile, Location>? =
       synchronized(bindings) {
-        val machine = boundMachine ?: return@synchronized null
+        val execution = boundExecution ?: return@synchronized null
         val target = sources.originalLine(file, line) ?: return@synchronized null
         target.takeIf {
-          machine.program!!.sourceMap().breakpointsByAddress.containsKey(target.second)
+          execution.program.sourceMap().breakpointsByAddress.containsKey(target.second)
         }
       }
 
@@ -349,8 +360,9 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
   }
 
   private fun updateBindings() {
-    val machine = boundMachine ?: return
-    val map = machine.program!!.sourceMap()
+    val execution = boundExecution ?: return
+    val machine = execution.machine
+    val map = execution.program.sourceMap()
     val next = mutableMapOf<Long, MutableList<XBreakpoint<*>>>()
     for (breakpoint in registeredLines) {
       val file = VirtualFileManager.getInstance().findFileByUrl(breakpoint.fileUrl)
@@ -395,7 +407,8 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
     else memory.addAddressObserver(watchMemory, includeInstructionFetch = false)
   }
 
-  private suspend fun debug(process: MarsProcessHandler, machine: MarsContext): StopEvent {
+  private suspend fun debug(process: MarsProcessHandler, execution: DebugExecution): StopEvent {
+    val machine = execution.machine
     val engine = machine.simulator()
     val calls =
         DebuggerCallStack(machine.backStepper.capacity()) {
@@ -403,10 +416,10 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
         }
     engine.addListener(calls)
     simulator = engine
-    val map = machine.program!!.sourceMap()
+    val map = execution.program.sourceMap()
     try {
       synchronized(bindings) {
-        boundMachine = machine
+        boundExecution = execution
         updateBindings()
       }
       var command = Command()
@@ -416,7 +429,7 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
         if (backstep != null) {
           executionRevision++
           process.backstepSlice(engine, wholeSource = backstep == ReverseStep.SOURCE)
-          withSuspension(machine, calls) { pause ->
+          withSuspension(execution, calls) { pause ->
             withContext(Dispatchers.EDT) { session.positionReached(pause.context) }
             command = awaitCommand(pause, machine)
           }
@@ -428,7 +441,7 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
         var hits = emptyList<XBreakpoint<*>>()
         var stepOrTargetReached = false
         if (target != null && targets.isEmpty()) {
-          withSuspension(machine, calls) { pause ->
+          withSuspension(execution, calls) { pause ->
             withContext(Dispatchers.EDT) {
               session.reportError(runMessages.getMessage("debug.breakpoint.no.code"))
               session.positionReached(pause.context)
@@ -469,7 +482,7 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
                 if (reason == StopEvent.Reason.BREAKPOINT) hits + watchpointHits
                 else watchpointHits.toList()
             watchpointHits.clear()
-            withSuspension(machine, calls) { pause ->
+            withSuspension(execution, calls) { pause ->
               val context = pause.context
               val breakpointSuspended =
                   reached
@@ -489,7 +502,7 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
       }
     } finally {
       synchronized(bindings) {
-        boundMachine = null
+        boundExecution = null
         bindWatchpoints(machine.memory, emptyMap())
       }
       watchpointHits.clear()
@@ -586,7 +599,9 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
   ) {
     val changed =
         request.apply(machine, context.frame.evaluator).getOrElse { error ->
-          withContext(Dispatchers.EDT) { request.callback.errorOccurred(error.message!!) }
+          withContext(Dispatchers.EDT) {
+            request.callback.errorOccurred(error.message ?: error.toString())
+          }
           return
         }
     if (changed) {
@@ -606,11 +621,11 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
   }
 
   private suspend fun withSuspension(
-      machine: MarsContext,
+      execution: DebugExecution,
       calls: DebuggerCallStack,
       action: suspend (Suspension) -> Unit,
   ) = coroutineScope {
-    val context = suspendContext(machine, calls.stepOutTarget(), calls.callers(), this)
+    val context = suspendContext(execution, calls.stepOutTarget(), calls.callers(), this)
     val pause = Suspension(context)
     suspension = pause
     try {
@@ -627,53 +642,55 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
   }
 
   private fun suspendContext(
-      machine: MarsContext,
+      execution: DebugExecution,
       stepOutTarget: DebuggerCallStack.StepOutTarget?,
       callers: Sequence<CallerSite>,
       frameScope: CoroutineScope,
-  ): MarsSuspendContext =
-      machine.claimStoppedSession().use {
-        val pc = machine.registerFile.programCounterBits
-        val statement = machine.memory.sourceStatement(pc)
-        val origin = statement?.instructionOrigin
-        val program = machine.program!!
-        val symbols = program.symbolMap()
-        val assemblyEntry = statement?.sourceFile?.ifEmpty { program.filename } ?: program.filename
-        val localSymbols =
-            symbols.locals().getValue(Path.of(assemblyEntry).toAbsolutePath().normalize())
-        val watchRequests = watchMemoryRequests()
-        val machineEdits = machineEditRequests()
-        val number = ++suspensionNumber
-        val frame =
-            MarsStackFrame(
-                sourcePosition(origin),
-                machine,
-                session.project,
-                localSymbols,
-                symbols.globals(),
-                loadedSymbols.value!!,
-                watchRequests,
-                machineEdits,
-            ) {
-              val current = session.suspendContext
-              current is MarsSuspendContext && current.machineEdits === machineEdits
-            }
-        MarsSuspendContext(
-            frame,
-            machine.backStepper.canBackstep(),
-            MemoryRegion.entries.associateWith { it.address(machine) },
-            machine.memory.highestInspectableAddress,
-            ExecutionMarkers.capture(machine),
-            machine.backStepper.previousMemoryWrite(),
-            number,
-            watchRequests,
-            machineEdits,
-            origin?.let { SourceStep(pc, it) },
-            stepOutTarget,
-            MarsExecutionStack(frame, callers, ::sourcePosition, frameScope),
-            executionRevision,
-        )
-      }
+  ): MarsSuspendContext {
+    val machine = execution.machine
+    return machine.claimStoppedSession().use {
+      val pc = machine.registerFile.programCounterBits
+      val statement = machine.memory.sourceStatement(pc)
+      val origin = statement?.instructionOrigin
+      val program = execution.program
+      val symbols = program.symbolMap()
+      val assemblyEntry = statement?.sourceFile?.ifEmpty { program.filename } ?: program.filename
+      val localSymbols =
+          symbols.locals().getValue(Path.of(assemblyEntry).toAbsolutePath().normalize())
+      val watchRequests = watchMemoryRequests()
+      val machineEdits = machineEditRequests()
+      val number = ++suspensionNumber
+      val frame =
+          MarsStackFrame(
+              sourcePosition(origin),
+              machine,
+              session.project,
+              localSymbols,
+              symbols.globals(),
+              execution.symbols,
+              watchRequests,
+              machineEdits,
+          ) {
+            val current = session.suspendContext
+            current is MarsSuspendContext && current.machineEdits === machineEdits
+          }
+      MarsSuspendContext(
+          frame,
+          machine.backStepper.canBackstep(),
+          MemoryRegion.entries.associateWith { it.address(machine) },
+          machine.memory.highestInspectableAddress,
+          ExecutionMarkers.capture(machine),
+          machine.backStepper.previousMemoryWrite(),
+          number,
+          watchRequests,
+          machineEdits,
+          origin?.let { SourceStep(pc, it) },
+          stepOutTarget,
+          MarsExecutionStack(frame, callers, ::sourcePosition, frameScope),
+          executionRevision,
+      )
+    }
+  }
 
   private fun sourcePosition(origin: Origin?): XSourcePosition? = origin?.let {
     sourcePosition(it.location)

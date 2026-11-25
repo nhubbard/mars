@@ -1,0 +1,715 @@
+[
+  {
+    "file": "examples/smoke/instruction-lab/src/main/kotlin/edu/missouristate/mars/smoke/InstructionLab.kt",
+    "count": 4,
+    "lines": [
+      188,
+      193,
+      219,
+      278
+    ]
+  },
+  {
+    "file": "mars5/cli/src/main/kotlin/edu/missouristate/mars/cli/grading/ExecutionTrace.kt",
+    "count": 1,
+    "lines": [
+      32
+    ]
+  },
+  {
+    "file": "mars5/core/src/main/kotlin/edu/missouristate/mars/ErrorList.kt",
+    "count": 1,
+    "lines": [
+      87
+    ]
+  },
+  {
+    "file": "mars5/core/src/main/kotlin/edu/missouristate/mars/ErrorMessage.kt",
+    "count": 1,
+    "lines": [
+      90
+    ]
+  },
+  {
+    "file": "mars5/core/src/main/kotlin/edu/missouristate/mars/ProcessingException.kt",
+    "count": 1,
+    "lines": [
+      83
+    ]
+  },
+  {
+    "file": "mars5/core/src/main/kotlin/edu/missouristate/mars/ProgramStatement.kt",
+    "count": 7,
+    "lines": [
+      152,
+      278,
+      287,
+      314,
+      481,
+      485
+    ]
+  },
+  {
+    "file": "mars5/core/src/main/kotlin/edu/missouristate/mars/assembler/AssemblySymbolUses.kt",
+    "count": 2,
+    "lines": [
+      20
+    ]
+  },
+  {
+    "file": "mars5/core/src/main/kotlin/edu/missouristate/mars/assembler/FirstPassProcessor.kt",
+    "count": 6,
+    "lines": [
+      139,
+      157,
+      253,
+      456,
+      601
+    ]
+  },
+  {
+    "file": "mars5/core/src/main/kotlin/edu/missouristate/mars/assembler/Macro.kt",
+    "count": 4,
+    "lines": [
+      50,
+      86,
+      87
+    ]
+  },
+  {
+    "file": "mars5/core/src/main/kotlin/edu/missouristate/mars/assembler/MacroPool.kt",
+    "count": 1,
+    "lines": [
+      52
+    ]
+  },
+  {
+    "file": "mars5/core/src/main/kotlin/edu/missouristate/mars/assembler/Parser.kt",
+    "count": 1,
+    "lines": [
+      146
+    ]
+  },
+  {
+    "file": "mars5/core/src/main/kotlin/edu/missouristate/mars/assembler/PseudoInstructionExpander.kt",
+    "count": 2,
+    "lines": [
+      28,
+      30
+    ]
+  },
+  {
+    "file": "mars5/core/src/main/kotlin/edu/missouristate/mars/assembler/SecondPassProcessor.kt",
+    "count": 3,
+    "lines": [
+      41,
+      65,
+      78
+    ]
+  },
+  {
+    "file": "mars5/core/src/main/kotlin/edu/missouristate/mars/assembler/Token.kt",
+    "count": 1,
+    "lines": [
+      116
+    ]
+  },
+  {
+    "file": "mars5/core/src/main/kotlin/edu/missouristate/mars/core/MarsContext.kt",
+    "count": 7,
+    "lines": [
+      90,
+      298,
+      299,
+      401,
+      407,
+      408,
+      440
+    ]
+  },
+  {
+    "file": "mars5/core/src/main/kotlin/edu/missouristate/mars/core/SessionAssembler.kt",
+    "count": 2,
+    "lines": [
+      50,
+      52
+    ]
+  },
+  {
+    "file": "mars5/core/src/main/kotlin/edu/missouristate/mars/devices/MarsBotDevice.kt",
+    "count": 7,
+    "lines": [
+      112,
+      119,
+      120,
+      141,
+      185
+    ]
+  },
+  {
+    "file": "mars5/core/src/main/kotlin/edu/missouristate/mars/mips/dump/MemoryDumpSnapshot.kt",
+    "count": 1,
+    "lines": [
+      63
+    ]
+  },
+  {
+    "file": "mars5/core/src/main/kotlin/edu/missouristate/mars/mips/hardware/Coprocessor0State.kt",
+    "count": 2,
+    "lines": [
+      65,
+      67
+    ]
+  },
+  {
+    "file": "mars5/core/src/main/kotlin/edu/missouristate/mars/mips/instructions/ExtendedInstruction.kt",
+    "count": 1,
+    "lines": [
+      216
+    ]
+  },
+  {
+    "file": "mars5/core/src/main/kotlin/edu/missouristate/mars/simulator/ProgramArgumentList.kt",
+    "count": 3,
+    "lines": [
+      112,
+      113,
+      114
+    ]
+  },
+  {
+    "file": "mars5/core/src/main/kotlin/edu/missouristate/mars/util/FilenameFinder.kt",
+    "count": 1,
+    "lines": [
+      63
+    ]
+  },
+  {
+    "file": "mars5/plugin-jvm-compiler/src/main/kotlin/edu/missouristate/mars/plugin/compiler/MarsCompilerTask.kt",
+    "count": 1,
+    "lines": [
+      58
+    ]
+  },
+  {
+    "file": "mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/analysis/BackgroundAssemblyMemo.kt",
+    "count": 1,
+    "lines": [
+      81
+    ]
+  },
+  {
+    "file": "mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/analysis/CapturedAssemblySources.kt",
+    "count": 1,
+    "lines": [
+      203
+    ]
+  },
+  {
+    "file": "mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/analysis/MarsAnalysisService.kt",
+    "count": 13,
+    "lines": [
+      484,
+      507,
+      515,
+      525,
+      575,
+      583,
+      601,
+      798,
+      828,
+      848,
+      1021,
+      1138,
+      1523
+    ]
+  },
+  {
+    "file": "mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/analysis/MipsAssemblyRoots.kt",
+    "count": 1,
+    "lines": [
+      107
+    ]
+  },
+  {
+    "file": "mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/analysis/MipsSourceEvents.kt",
+    "count": 3,
+    "lines": [
+      201,
+      288,
+      348
+    ]
+  },
+  {
+    "file": "mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/build/MarsBuildService.kt",
+    "count": 3,
+    "lines": [
+      272,
+      332,
+      340
+    ]
+  },
+  {
+    "file": "mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/build/MarsMemoryExportAction.kt",
+    "count": 2,
+    "lines": [
+      152
+    ]
+  },
+  {
+    "file": "mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/build/MarsSourceRefactoringListener.kt",
+    "count": 1,
+    "lines": [
+      64
+    ]
+  },
+  {
+    "file": "mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/debug/MarsDisassemblyView.kt",
+    "count": 3,
+    "lines": [
+      261,
+      263,
+      490
+    ]
+  },
+  {
+    "file": "mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/debug/MarsExpressionEvaluator.kt",
+    "count": 2,
+    "lines": [
+      67,
+      243
+    ]
+  },
+  {
+    "file": "mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/debug/MarsMemoryView.kt",
+    "count": 3,
+    "lines": [
+      187,
+      263,
+      401
+    ]
+  },
+  {
+    "file": "mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/debug/MarsMemoryWatchpointType.kt",
+    "count": 2,
+    "lines": [
+      161,
+      162
+    ]
+  },
+  {
+    "file": "mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/debug/MarsSymbolsView.kt",
+    "count": 4,
+    "lines": [
+      212,
+      265,
+      266,
+      268
+    ]
+  },
+  {
+    "file": "mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/debug/MarsToggleOriginalBreakpointAction.kt",
+    "count": 1,
+    "lines": [
+      29
+    ]
+  },
+  {
+    "file": "mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/help/MarsReferenceCatalog.kt",
+    "count": 3,
+    "lines": [
+      35,
+      36,
+      96
+    ]
+  },
+  {
+    "file": "mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/language/MarsShowExpansionAction.kt",
+    "count": 1,
+    "lines": [
+      149
+    ]
+  },
+  {
+    "file": "mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/language/MipsAssembledReferencesSearcher.kt",
+    "count": 6,
+    "lines": [
+      68,
+      81,
+      94,
+      100,
+      115
+    ]
+  },
+  {
+    "file": "mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/language/MipsAssemblyAnnotator.kt",
+    "count": 3,
+    "lines": [
+      52,
+      55,
+      82
+    ]
+  },
+  {
+    "file": "mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/language/MipsAssemblyInlays.kt",
+    "count": 4,
+    "lines": [
+      64,
+      143,
+      166,
+      171
+    ]
+  },
+  {
+    "file": "mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/language/MipsDocumentationTargetProvider.kt",
+    "count": 1,
+    "lines": [
+      177
+    ]
+  },
+  {
+    "file": "mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/language/MipsFileType.kt",
+    "count": 1,
+    "lines": [
+      15
+    ]
+  },
+  {
+    "file": "mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/language/MipsInstructionOperand.kt",
+    "count": 1,
+    "lines": [
+      161
+    ]
+  },
+  {
+    "file": "mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/language/MipsMacroDiagnosticAnnotator.kt",
+    "count": 7,
+    "lines": [
+      59,
+      76,
+      99,
+      113,
+      134,
+      188,
+      235
+    ]
+  },
+  {
+    "file": "mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/language/MipsRegisterUsages.kt",
+    "count": 2,
+    "lines": [
+      184,
+      196
+    ]
+  },
+  {
+    "file": "mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/language/MipsRelease6QuickFix.kt",
+    "count": 2,
+    "lines": [
+      43,
+      72
+    ]
+  },
+  {
+    "file": "mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/language/MipsSmartEnterProcessor.kt",
+    "count": 2,
+    "lines": [
+      22,
+      30
+    ]
+  },
+  {
+    "file": "mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/language/MipsStructureViewFactory.kt",
+    "count": 1,
+    "lines": [
+      198
+    ]
+  },
+  {
+    "file": "mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/language/MipsSymbolRenameProcessor.kt",
+    "count": 13,
+    "lines": [
+      114,
+      146,
+      147,
+      162,
+      255,
+      315,
+      342,
+      466,
+      529,
+      580,
+      581,
+      586,
+      645
+    ]
+  },
+  {
+    "file": "mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/language/inspection/MipsMacroParameterInspection.kt",
+    "count": 2,
+    "lines": [
+      60,
+      89
+    ]
+  },
+  {
+    "file": "mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/language/inspection/MipsRelease6MergeInspection.kt",
+    "count": 1,
+    "lines": [
+      51
+    ]
+  },
+  {
+    "file": "mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/language/psi/MipsIncludedDeclaration.kt",
+    "count": 1,
+    "lines": [
+      34
+    ]
+  },
+  {
+    "file": "mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/language/psi/MipsMacroFormalRename.kt",
+    "count": 2,
+    "lines": [
+      36,
+      102
+    ]
+  },
+  {
+    "file": "mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/language/references/MipsFileReferenceSet.kt",
+    "count": 1,
+    "lines": [
+      48
+    ]
+  },
+  {
+    "file": "mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/language/syntax/MipsScanner.kt",
+    "count": 1,
+    "lines": [
+      50
+    ]
+  },
+  {
+    "file": "mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/language/syntax/MipsSyntaxParserUtil.kt",
+    "count": 1,
+    "lines": [
+      143
+    ]
+  },
+  {
+    "file": "mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/learning/MarsDownloadedAssessmentLesson.kt",
+    "count": 1,
+    "lines": [
+      111
+    ]
+  },
+  {
+    "file": "mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/learning/MarsDownloadedDebugCheckpoint.kt",
+    "count": 1,
+    "lines": [
+      96
+    ]
+  },
+  {
+    "file": "mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/learning/MarsDownloadedRunCheckpoint.kt",
+    "count": 1,
+    "lines": [
+      67
+    ]
+  },
+  {
+    "file": "mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/learning/MarsLearningCourse.kt",
+    "count": 1,
+    "lines": [
+      149
+    ]
+  },
+  {
+    "file": "mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/learning/MarsLearningSource.kt",
+    "count": 1,
+    "lines": [
+      89
+    ]
+  },
+  {
+    "file": "mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/learning/MarsLearningWorkspace.kt",
+    "count": 1,
+    "lines": [
+      44
+    ]
+  },
+  {
+    "file": "mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/learning/MarsLessonHints.kt",
+    "count": 2,
+    "lines": [
+      20,
+      25
+    ]
+  },
+  {
+    "file": "mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/run/MarsExecutionSources.kt",
+    "count": 2,
+    "lines": [
+      148,
+      173
+    ]
+  },
+  {
+    "file": "mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/run/MarsIdeSyscallEnvironment.kt",
+    "count": 3,
+    "lines": [
+      61,
+      63,
+      66
+    ]
+  },
+  {
+    "file": "mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/run/MarsRunService.kt",
+    "count": 1,
+    "lines": [
+      400
+    ]
+  },
+  {
+    "file": "mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/tools/BitmapDisplayEditor.kt",
+    "count": 2,
+    "lines": [
+      61
+    ]
+  },
+  {
+    "file": "mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/tools/BranchHistoryView.kt",
+    "count": 3,
+    "lines": [
+      118,
+      125,
+      130
+    ]
+  },
+  {
+    "file": "mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/tools/DataCacheView.kt",
+    "count": 5,
+    "lines": [
+      157,
+      171,
+      177,
+      181,
+      282
+    ]
+  },
+  {
+    "file": "mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/tools/DigitalLabDevice.kt",
+    "count": 3,
+    "lines": [
+      119,
+      148,
+      200
+    ]
+  },
+  {
+    "file": "mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/tools/DigitalLabView.kt",
+    "count": 3,
+    "lines": [
+      44,
+      76,
+      81
+    ]
+  },
+  {
+    "file": "mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/tools/KeyboardDisplayDevice.kt",
+    "count": 4,
+    "lines": [
+      178,
+      224,
+      255,
+      279
+    ]
+  },
+  {
+    "file": "mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/tools/KeyboardDisplayView.kt",
+    "count": 5,
+    "lines": [
+      143,
+      149,
+      156,
+      203,
+      216
+    ]
+  },
+  {
+    "file": "mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/tools/MarsBotView.kt",
+    "count": 3,
+    "lines": [
+      76,
+      77,
+      81
+    ]
+  },
+  {
+    "file": "mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/tools/MarsSourceTools.kt",
+    "count": 2,
+    "lines": [
+      50,
+      128
+    ]
+  },
+  {
+    "file": "mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/tools/MarsToolExtensions.kt",
+    "count": 1,
+    "lines": [
+      78
+    ]
+  },
+  {
+    "file": "mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/tools/MarsToolsWindowFactory.kt",
+    "count": 2,
+    "lines": [
+      307,
+      312
+    ]
+  },
+  {
+    "file": "mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/tools/MemoryGridDisplay.kt",
+    "count": 1,
+    "lines": [
+      261
+    ]
+  },
+  {
+    "file": "mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/tools/MemoryGridView.kt",
+    "count": 6,
+    "lines": [
+      202,
+      203,
+      217,
+      222,
+      340
+    ]
+  },
+  {
+    "file": "mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/tools/ScavengerHuntDevice.kt",
+    "count": 2,
+    "lines": [
+      163,
+      223
+    ]
+  },
+  {
+    "file": "mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/tools/ScavengerHuntView.kt",
+    "count": 5,
+    "lines": [
+      87,
+      88,
+      92,
+      223,
+      232
+    ]
+  },
+  {
+    "file": "mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/tools/xray/XRayView.kt",
+    "count": 2,
+    "lines": [
+      100,
+      106
+    ]
+  }
+]
