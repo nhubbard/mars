@@ -29,7 +29,6 @@ import com.intellij.xdebugger.evaluation.EvaluationMode
 import com.intellij.xdebugger.evaluation.XDebuggerEditorsProvider
 import com.intellij.xdebugger.frame.XSuspendContext
 import com.intellij.xdebugger.ui.XDebugTabLayouter
-import edu.missouristate.mars.MIPSprogram
 import edu.missouristate.mars.ProgramStatement
 import edu.missouristate.mars.api.AssemblySymbolMap.Kind
 import edu.missouristate.mars.api.ErrorEvent
@@ -107,12 +106,6 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
 
   private val hitProgress = mutableMapOf<XBreakpoint<*>, HitProgress>()
 
-  private class DebugExecution(
-      val machine: MarsContext,
-      val program: MIPSprogram,
-      val symbols: LoadedSymbols,
-  )
-
   private var boundExecution: DebugExecution? = null
   @Volatile private var addresses = emptyMap<Long, List<XBreakpoint<*>>>()
   @Volatile private var watchpoints = emptyMap<MemoryWatchpoint, MemoryWatchRange>()
@@ -133,11 +126,9 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
   private val loadedSymbols = MutableStateFlow<LoadedSymbols?>(null)
   private val handler = state.createProcess { machine, executionSources ->
     sources = executionSources
-    val program =
-        checkNotNull(machine.program) { "Load an assembled program before starting Debug" }
-    val symbols = LoadedSymbols(program.symbolMap(), executionSources)
-    loadedSymbols.value = symbols
-    debug(this, DebugExecution(machine, program, symbols))
+    val execution = DebugExecution(machine, executionSources)
+    loadedSymbols.value = execution.symbols
+    debug(this, execution)
   }
 
   private val lineHandler = bindingHandler<MarsLineBreakpointType, _>(registeredLines)

@@ -352,7 +352,7 @@ internal class MarsMemoryView(private val session: XDebugSession, private val en
   }
 
   private fun writeRenderer(bytesPerValue: Int, separator: String) =
-      coloredTableCellRenderer { table, value, selected, _, row, _ ->
+      coloredTableCellRenderer { table, value, _, _, row, _ ->
         val text = value as String
         val write = displayedWrite
         if (write == null || !display.highlightMemoryWrites) {
