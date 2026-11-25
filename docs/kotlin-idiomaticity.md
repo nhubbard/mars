@@ -145,3 +145,41 @@ Every phase is reviewed, compiled, tested, and committed before the next begins.
   cast cannot bypass freeze guards. Token values retain their own freezing, and
   cloning frozen lists continues to produce independent mutable example tokens.
   No mutable collection interface or backing-list accessor has been exposed.
+
+## Final audit
+
+| Metric | Before | After |
+| --- | ---: | ---: |
+| Kotlin / Gradle Kotlin files | 970 | 1,002 |
+| Class literals in tests | 943 | 0 |
+| Class literals outside tests | 51 | 4 |
+| Anonymous objects in tests | 139 | 92 |
+| Anonymous objects outside tests | 103 | 76 |
+| Raw Dagger builder calls | 77 | 1 |
+| Raw DynamicBundle constructors | 24 | 1 |
+| Production non-null assertions | 263 | 219 |
+
+The after snapshot is `kotlin-idiomaticity-after.json`. Both snapshots use the
+same tracked/unignored source inventory and textual counting rules. Remaining
+raw Dagger and bundle calls are their factories' implementations. The four class
+literals are centralized interop implementations and the isolated grammar
+generator; no test class literals remain. Anonymous objects remain where they
+implement a native factory, express stateful behavior, or preserve a clearer
+inheritance/extension contract. New regression doubles also contribute to that
+count.
+
+## Coverage follow-up
+
+The first complete post-refactoring run passed all 1,378 plugin tests. Strict
+branch verification identified two gaps, which were addressed without relaxing
+thresholds or adding exclusions. The macro inspection now iterates token/index
+pairs directly with `withIndex()` instead of constructing a range and looking up
+each token. Its native PSI statements are nonempty; the former custom-range
+loop had introduced an unreachable empty-range branch at that call site.
+
+The debugger execution binding now validates its loaded-program invariant in its
+constructor. A direct regression test covers both an unloaded session and a
+loaded binding that must retain its original program across reassembly. All 36
+focused binding and macro-inspection tests pass, with 100% line and branch coverage
+in both corrected source files. The packaged verifier reports compatibility with
+IntelliJ IU-263.7307.200, with 97 experimental API usages.

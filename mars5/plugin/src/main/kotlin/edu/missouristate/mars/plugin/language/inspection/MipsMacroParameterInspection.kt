@@ -78,8 +78,7 @@ internal class MipsMacroParameterInspection : LocalInspectionTool() {
     val tokens = mapped.tokens()
 
     val reported = HashSet<Pair<Int, String>>()
-    for (index in tokens.indices) {
-      val token = tokens[index]
+    for ((index, token) in tokens.withIndex()) {
       val name = token.value
       if (index == 0 && Directives.matchDirective(name) in boundaries) return
       if (!Macro.tokenIsMacroParameter(name, true) || name in macro.parametersByName) continue
