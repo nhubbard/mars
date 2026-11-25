@@ -240,10 +240,10 @@ class PreparedFunctionFileSystemTest {
   fun `leaks wrong descriptors dropped short writes and incorrect bytes fail named checks`() {
     val faults =
         listOf(
-            body.replace("move \$t8,\$v0", "li \$t8,3"),
-            body.replace("li \$v0,16\n    move \$a0,\$t9\n    syscall", "nop"),
-            body.replace("bnezc \$t6,write_loop", "nop"),
-            body.replace("move \$t6,\$v0", "li \$t6,4"),
+            body.replace($$"move $t8,$v0", $$"li $t8,3"),
+            body.replace($$"li $v0,16\n    move $a0,$t9\n    syscall", "nop"),
+            body.replace($$"bnezc $t6,write_loop", "nop"),
+            body.replace($$"move $t6,$v0", $$"li $t6,4"),
         )
     for (source in faults) {
       val result =

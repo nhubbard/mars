@@ -18,8 +18,8 @@ class PreparedFunctionStoreProtectionTest {
   private fun session() =
       DaggerMarsComponent.builder().guiProxy(HeadlessGuiProxy()).build().context()
 
-  private val read = "lbu \$v0,0(\$a0)\njrc \$ra"
-  private val restoredWrite = "lw \$t0,0(\$a0)\nsw \$zero,0(\$a0)\nsw \$t0,0(\$a0)\n$read"
+  private val read = $$"lbu $v0,0($a0)\njrc $ra"
+  private val restoredWrite = $$"lw $t0,0($a0)\nsw $zero,0($a0)\nsw $t0,0($a0)\n$$read"
 
   private fun image(
       body: String = read,
@@ -31,7 +31,7 @@ class PreparedFunctionStoreProtectionTest {
         val path = directory.resolve("protected.asm")
         val source =
             ".data\n.space $padding\n.align 3\nrecord: .byte 1,2,3,4\nguard: .byte 5,6,7,8\ncount: .byte 0\n" +
-                ".text\nmain: li \$v0,10\nsyscall\nreturned: bc main\nother_return: bc main\nread_record:\n$body\n"
+                $$".text\nmain: li $v0,10\nsyscall\nreturned: bc main\nother_return: bc main\nread_record:\n$$body\n"
         machine.assembleSnapshot(
             AssemblySourceSnapshot(listOf(path), mapOf(path to source)),
             null,
@@ -79,8 +79,8 @@ class PreparedFunctionStoreProtectionTest {
 
   @Test
   fun `restored and same value stores cannot hide behind final byte equality`() {
-    val sameValue = "lw \$t0,0(\$a0)\nsw \$t0,0(\$a0)\n$read"
-    val wide = "ld \$t0,0(\$a0)\nsd \$zero,0(\$a0)\nsd \$t0,0(\$a0)\n$read"
+    val sameValue = $$"lw $t0,0($a0)\nsw $t0,0($a0)\n$$read"
+    val wide = $$"ld $t0,0($a0)\nsd $zero,0($a0)\nsd $t0,0($a0)\n$$read"
     for ((body, region) in
         listOf(
             restoredWrite to FunctionNoStoreCheck("record", 4),
@@ -112,8 +112,8 @@ class PreparedFunctionStoreProtectionTest {
   @Test
   fun `a write only in a later call still fails while unprotected scratch writes are allowed`() {
     val body =
-        "lbu \$t2,count\naddiu \$t2,\$t2,1\nsb \$t2,count\nli \$t3,2\n" +
-            "bnec \$t2,\$t3,read_only\nnop\n" +
+        $$"lbu $t2,count\naddiu $t2,$t2,1\nsb $t2,count\nli $t3,2\n" +
+            $$"bnec $t2,$t3,read_only\nnop\n" +
             restoredWrite.substringBefore(read) +
             "read_only:\n$read"
     val assembly = image(body)
@@ -177,7 +177,7 @@ class PreparedFunctionStoreProtectionTest {
   @Test
   fun `protected regions cannot request unbounded or invalid ranges`() {
     for (invalid in
-        listOf<() -> Any>(
+        listOf(
             { FunctionNoStoreCheck("../file", 1) },
             { FunctionNoStoreCheck("record", 0) },
             { FunctionNoStoreCheck("record", -1) },

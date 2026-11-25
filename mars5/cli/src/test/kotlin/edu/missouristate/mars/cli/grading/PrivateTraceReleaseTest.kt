@@ -22,8 +22,8 @@ class PrivateTraceReleaseTest {
           machine.assembleSnapshot(
               AssemblySourceSnapshot(listOf(path), mapOf(path to source)),
               null,
-              true,
-              false,
+              extended = true,
+              warnings = false,
           )
       AssemblyCase(machine, program.symbolMap(), ByteArrayOutputStream()).use { execution ->
         val private = execution.traceMemoryAccesses("value", 4)

@@ -32,7 +32,7 @@ class PreparedFunctionInitializationTest {
         val source =
             ".data ${if (wide) "0x100000000" else "0x10010000"}\n.space $padding\n.align 3\n" +
                 "output: .dword 123,456\nmarker: .word 0\n" +
-                ".text\nmain: li \$v0,10\nsyscall\nreturned: bc main\nother_return: bc main\nfunction:\n$body\nli \$v0,0\njrc \$ra\n"
+                $$".text\nmain: li $v0,10\nsyscall\nreturned: bc main\nother_return: bc main\nfunction:\n$$body\nli $v0,0\njrc $ra\n"
         machine.assembleSnapshot(
             AssemblySourceSnapshot(listOf(path), mapOf(path to source)),
             null,
@@ -64,9 +64,9 @@ class PreparedFunctionInitializationTest {
   fun `different widths orders relocation and byte orders permit initialized reductions`() {
     val bodies =
         listOf(
-            "sd \$zero,0(\$a0)\nld \$t0,0(\$a0)\nsd \$t0,0(\$a0)",
-            "sw \$zero,4(\$a0)\nsw \$zero,0(\$a0)\nld \$t0,0(\$a0)",
-            (0..7).joinToString("\n") { "sb \$zero,$it(\$a0)" } + "\nld \$t0,0(\$a0)",
+            $$"sd $zero,0($a0)\nld $t0,0($a0)\nsd $t0,0($a0)",
+            $$"sw $zero,4($a0)\nsw $zero,0($a0)\nld $t0,0($a0)",
+            (0..7).joinToString("\n") { $$"sb $zero,$$it($a0)" } + $$"\nld $t0,0($a0)",
         )
     for (body in bodies) for (padding in listOf(0, 264)) for (wide in
         listOf(false, true)) for (endian in listOf(false, true)) {
@@ -84,16 +84,15 @@ class PreparedFunctionInitializationTest {
 
   @Test
   fun `old correct bytes and a later repaired result cannot hide an early read`() {
-    val result = evaluate("ld \$t0,0(\$a0)\nsd \$zero,0(\$a0)")
+    val result = evaluate($$"ld $t0,0($a0)\nsd $zero,0($a0)")
     assertFalse(result.passed)
     assertTrue(result.failure!!.contains("read before initialization"), result.failure)
   }
 
   @Test
   fun `partial stores do not initialize untouched bytes of a wider read`() {
-    for (body in
-        listOf("sw \$zero,0(\$a0)\nld \$t0,0(\$a0)", "sb \$zero,0(\$a0)\nlhu \$t0,0(\$a0)")) {
-      val result = evaluate(body + "\nsd \$zero,0(\$a0)")
+    for (body in listOf($$"sw $zero,0($a0)\nld $t0,0($a0)", $$"sb $zero,0($a0)\nlhu $t0,0($a0)")) {
+      val result = evaluate($$"$$body\nsd $zero,0($a0)")
       assertFalse(result.passed)
       assertTrue(result.failure!!.contains("read before initialization"), result.failure)
     }
@@ -101,7 +100,7 @@ class PreparedFunctionInitializationTest {
 
   @Test
   fun `missing writes fail even when original data equals the expected final result`() {
-    for (body in listOf("", "sw \$zero,0(\$a0)")) {
+    for (body in listOf("", $$"sw $zero,0($a0)")) {
       val result = evaluate(body)
       assertFalse(result.passed)
       assertTrue(result.failure!!.contains("was not initialized"), result.failure)
@@ -111,7 +110,7 @@ class PreparedFunctionInitializationTest {
   @Test
   fun `initialization resets for each call and later cases use fresh machines`() {
     val body =
-        "lw \$t0,marker\nbnezc \$t0,skip\nnop\nli \$t0,1\nsw \$t0,marker\nsd \$zero,0(\$a0)\nskip:"
+        $$"lw $t0,marker\nbnezc $t0,skip\nnop\nli $t0,1\nsw $t0,marker\nsd $zero,0($a0)\nskip:"
     val image = image(body)
     val case = contract()
     assertTrue(
@@ -130,7 +129,7 @@ class PreparedFunctionInitializationTest {
         result.failure!!.contains("Call 2") && result.failure.contains("was not initialized"),
         result.failure,
     )
-    val readOnSecond = body + "\nld \$t0,0(\$a0)"
+    val readOnSecond = $$"$$body\nld $t0,0($a0)"
     assertTrue(evaluate(readOnSecond).passed)
     val second = evaluate(readOnSecond, case.copy(calls = listOf(call(), call())))
     assertTrue(
@@ -143,13 +142,13 @@ class PreparedFunctionInitializationTest {
   @Test
   fun `crossing notices initialize or read the intersecting bytes without prescribing ownership`() {
     val subrange = contract().copy(initializedOutput = listOf(range(2, 3)))
-    assertTrue(evaluate("sd \$zero,0(\$a0)\nld \$t0,0(\$a0)", subrange).passed)
-    val result = evaluate("lw \$t0,0(\$a0)\nsd \$zero,0(\$a0)", subrange)
+    assertTrue(evaluate($$"sd $zero,0($a0)\nld $t0,0($a0)", subrange).passed)
+    val result = evaluate($$"lw $t0,0($a0)\nsd $zero,0($a0)", subrange)
     assertFalse(result.passed)
     assertTrue(result.failure!!.contains("byte 0"), result.failure)
     assertTrue(
         evaluate(
-                "sw \$zero,4(\$a0)\nlw \$t0,4(\$a0)",
+                $$"sw $zero,4($a0)\nlw $t0,4($a0)",
                 contract().copy(initializedOutput = listOf(range(1, 7))),
             )
             .passed,
@@ -161,15 +160,15 @@ class PreparedFunctionInitializationTest {
     val setup =
         contract().copy(initialMemory = listOf(FunctionMemoryCheck("output", "0000000000000000")))
     assertFalse(evaluate("", setup).passed)
-    assertTrue(evaluate("lw \$t0,8(\$a0)\nsw \$t0,8(\$a0)\nsd \$zero,0(\$a0)", setup).passed)
+    assertTrue(evaluate($$"lw $t0,8($a0)\nsw $t0,8($a0)\nsd $zero,0($a0)", setup).passed)
     assertTrue(evaluate("", contract().copy(initializedOutput = listOf(range(0)))).passed)
   }
 
   @Test
   fun `multiple independent ranges require all bytes`() {
     val case = contract().copy(initializedOutput = listOf(range(4), range(4, 8)))
-    assertTrue(evaluate("sw \$zero,0(\$a0)\nsw \$zero,8(\$a0)", case).passed)
-    assertFalse(evaluate("sw \$zero,0(\$a0)", case).passed)
+    assertTrue(evaluate($$"sw $zero,0($a0)\nsw $zero,8($a0)", case).passed)
+    assertFalse(evaluate($$"sw $zero,0($a0)", case).passed)
   }
 
   @Test
@@ -221,7 +220,7 @@ class PreparedFunctionInitializationTest {
   @Test
   fun `closing detaches observers and repeated close is harmless`() {
     session().use { machine ->
-      machine.loadAssemblyImage(image("ld \$t0,0(\$a0)")) {}
+      machine.loadAssemblyImage(image($$"ld $t0,0($a0)")) {}
       AssemblyCase(machine, checkNotNull(machine.program).symbolMap(), ByteArrayOutputStream())
           .use { execution ->
             val observation =
@@ -257,6 +256,7 @@ class PreparedFunctionInitializationTest {
     }
   }
 
+  @Suppress("UnusedDataClassCopyResult")
   @Test
   fun `invalid lengths and excessive aggregate storage reject bounded data`() {
     for (length in listOf(-1, 1048577)) assertThrows<IllegalArgumentException> { range(length) }

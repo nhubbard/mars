@@ -238,6 +238,7 @@ class PreparedTraceChecksTest {
     }
   }
 
+  @Suppress("UnusedDataClassCopyResult")
   @Test
   fun `trace definitions reject ambiguous overflowing or excessive configuration`() {
     assertThrows<IllegalArgumentException> { ConsoleStoreCheck(-1, 1) }

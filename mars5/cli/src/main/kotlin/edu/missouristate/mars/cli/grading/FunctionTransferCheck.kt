@@ -7,9 +7,9 @@ import edu.missouristate.mars.mips.hardware.MemoryState
 
 /**
  * One execution data notice for each read and each write of an element, with each read preceding
- * its mapped write. destinationIndices[sourceIndex] declares the destination index. Traversal order
- * is unrestricted. Check final bytes separately; use accessBounds to forbid traffic outside the
- * active windows, including an empty transfer's allocation.
+ * its mapped write. `destinationIndices[sourceIndex]` declares the destination index. Traversal
+ * order is unrestricted. Check final bytes separately; use accessBounds to forbid traffic outside
+ * the active windows, including an empty transfer's allocation.
  */
 data class FunctionTransferCheck(
     val source: FunctionDataAddress,

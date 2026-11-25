@@ -61,8 +61,8 @@ class ConsolePublicationCheckTest {
         machine.assembleSnapshot(
             AssemblySourceSnapshot(listOf(path), mapOf(path to text)),
             null,
-            true,
-            false,
+            extended = true,
+            warnings = false,
         )
         machine.captureAssemblyImage {}
       }
@@ -133,8 +133,8 @@ class ConsolePublicationCheckTest {
           machine.assembleSnapshot(
               AssemblySourceSnapshot(listOf(path), mapOf(path to source)),
               null,
-              true,
-              false,
+              extended = true,
+              warnings = false,
           )
       AssemblyCase(machine, program.symbolMap(), ByteArrayOutputStream()).use { execution ->
         assertEquals(image().byteOrder, execution.byteOrder)
@@ -203,8 +203,8 @@ class ConsolePublicationCheckTest {
           machine.assembleSnapshot(
               AssemblySourceSnapshot(listOf(path), mapOf(path to source)),
               null,
-              true,
-              false,
+              extended = true,
+              warnings = false,
           )
       var calls = 0
       assertThrows<CancellationException> {
@@ -219,6 +219,7 @@ class ConsolePublicationCheckTest {
     assertTrue(evaluate().passed)
   }
 
+  @Suppress("UnusedDataClassCopyResult")
   @Test
   fun `constructor bounds prevent oversized downloaded observation schedules and mixed protocols`() {
     assertThrows<IllegalArgumentException> { check().copy(label = "not a label") }

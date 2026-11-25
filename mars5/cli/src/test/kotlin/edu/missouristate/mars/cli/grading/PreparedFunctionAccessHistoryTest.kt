@@ -26,7 +26,7 @@ class PreparedFunctionAccessHistoryTest {
         val source =
             ".data ${if (wide) "0x100000000" else "0x10010000"}\n" +
                 "${names[0]}: .word 11\ngap: .space $gap\n${names[1]}: .word 22\noutside: .word 7\n" +
-                ".text\nmain: li \$v0,10\nsyscall\nreturned: bc main\nfunction:\n$body\nli \$v0,0\njrc \$ra\n"
+                $$".text\nmain: li $v0,10\nsyscall\nreturned: bc main\nfunction:\n$$body\nli $v0,0\njrc $ra\n"
         val path = directory.resolve("history.asm")
         machine.assembleSnapshot(
             AssemblySourceSnapshot(listOf(path), mapOf(path to source)),
@@ -55,7 +55,7 @@ class PreparedFunctionAccessHistoryTest {
   private fun contract() = FunctionCheckCase("enclosing history", listOf(call()))
 
   private val paddingReads =
-      "dla \$t0,gap\nlw \$t1,0(\$t0)\nlw \$t1,4(\$t0)\ndla \$t0,outside\nlw \$t1,0(\$t0)"
+      $$"dla $t0,gap\nlw $t1,0($t0)\nlw $t1,4($t0)\ndla $t0,outside\nlw $t1,0($t0)"
 
   @Test
   fun `enclosing history includes padding and counts only the assembled span under relocation and reordering`() {
@@ -81,13 +81,14 @@ class PreparedFunctionAccessHistoryTest {
     val pass =
         PreparedFunctionChecks.evaluate(image(paddingReads), listOf(case), ::session).single()
     assertTrue(pass.passed, pass.failure)
-    for (body in listOf("dla \$t0,first\nlw \$t1,0(\$t0)", "dla \$t0,first\nsw \$zero,0(\$t0)")) {
+    for (body in listOf($$"dla $t0,first\nlw $t1,0($t0)", $$"dla $t0,first\nsw $zero,0($t0)")) {
       val fail = PreparedFunctionChecks.evaluate(image(body), listOf(case), ::session).single()
       assertFalse(fail.passed)
       assertTrue(fail.failure!!.contains("outside its permitted caller windows"), fail.failure)
     }
   }
 
+  @Suppress("UnusedDataClassCopyResult")
   @Test
   fun `regions and aggregate observation budgets are revalidated before machine acquisition`() {
     for (bad in listOf(0, -1, 1_000_001)) assertThrows<IllegalArgumentException> { history(bad) }
@@ -151,7 +152,7 @@ class PreparedFunctionAccessHistoryTest {
 
   @Test
   fun `six million budget executes beyond the previous ceiling and remains cumulative`() {
-    val body = "li \$t0,1600001\nagain: daddiu \$t0,\$t0,-1\nbnezc \$t0,again"
+    val body = $$"li $t0,1600001\nagain: daddiu $t0,$t0,-1\nbnezc $t0,again"
     val image = image(body)
     val plain = call().copy(accessHistory = null)
     val old = contract().copy(calls = listOf(plain), instructionLimit = 3_000_000)

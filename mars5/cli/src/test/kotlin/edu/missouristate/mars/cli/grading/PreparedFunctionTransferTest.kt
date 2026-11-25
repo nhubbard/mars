@@ -31,7 +31,7 @@ class PreparedFunctionTransferTest {
         val source =
             ".data ${if (wide) "0x100000000" else "0x10010000"}\n.space $padding\n.align 3\n" +
                 "input: .word 123,0x80ffffff,0x12345678,456\noutput: .space 16\nmarker: .byte 0\n" +
-                ".text\nmain: li \$v0,10\nsyscall\nreturned: bc main\nother_return: bc main\nfunction:\n$body\nli \$v0,0\njrc \$ra\n"
+                $$".text\nmain: li $v0,10\nsyscall\nreturned: bc main\nother_return: bc main\nfunction:\n$$body\nli $v0,0\njrc $ra\n"
         machine.assembleSnapshot(
             AssemblySourceSnapshot(listOf(path), mapOf(path to source)),
             null,
@@ -65,14 +65,14 @@ class PreparedFunctionTransferTest {
   private fun contract() =
       FunctionCheckCase("permuted word transfer", listOf(call()), transfers = listOf(transfer()))
 
-  private val forward = "lw \$t0,0(\$a0)\nlw \$t1,4(\$a0)\nsw \$t0,4(\$a1)\nsw \$t1,0(\$a1)"
+  private val forward = $$"lw $t0,0($a0)\nlw $t1,4($a0)\nsw $t0,4($a1)\nsw $t1,0($a1)"
 
   private fun evaluate(body: String, case: FunctionCheckCase = contract()) =
       PreparedFunctionChecks.evaluate(image(body), listOf(case), ::session).single()
 
   @Test
   fun `different valid schedules relocation wide pointers byte orders and repeated calls are accepted`() {
-    val reverse = "lw \$t1,4(\$a0)\nsw \$t1,0(\$a1)\nlw \$t0,0(\$a0)\nsw \$t0,4(\$a1)"
+    val reverse = $$"lw $t1,4($a0)\nsw $t1,0($a1)\nlw $t0,0($a0)\nsw $t0,4($a1)"
     for (body in listOf(forward, reverse)) for (padding in listOf(0, 264)) for (wide in
         listOf(false, true)) for (endian in listOf(false, true)) {
       val case = contract().copy(calls = listOf(call(), call().copy(returnTo = "other_return")))
@@ -90,9 +90,9 @@ class PreparedFunctionTransferTest {
   fun `duplicate source and destination visits fail despite identical final copied values`() {
     for ((body, expected) in
         listOf(
-            ("lw \$t0,0(\$a0)\n" + forward) to "source element 0 was read more than once",
-            (forward + "\nsw \$t0,4(\$a1)") to "destination element 1 was written more than once",
-            ("sw \$zero,0(\$a1)\n" + forward) to "written before source element 1 was read",
+            ($$"lw $t0,0($a0)\n$$forward") to "source element 0 was read more than once",
+            ($$"$$forward\nsw $t0,4($a1)") to "destination element 1 was written more than once",
+            ($$"sw $zero,0($a1)\n$$forward") to "written before source element 1 was read",
         )) {
       val result = evaluate(body)
       assertFalse(result.passed)
@@ -104,11 +104,11 @@ class PreparedFunctionTransferTest {
   fun `source writes destination reads missing visits and per-cell causal order fail`() {
     for ((body, expected) in
         listOf(
-            "sw \$zero,0(\$a0)" to "source must be read-only",
-            "lw \$t0,0(\$a1)" to "destination must be write-only",
+            $$"sw $zero,0($a0)" to "source must be read-only",
+            $$"lw $t0,0($a1)" to "destination must be write-only",
             "" to "source element 0 was not read",
-            "lw \$t0,0(\$a0)\nlw \$t1,4(\$a0)" to "destination element 0 was not written",
-            "lw \$t0,0(\$a0)\nsw \$t0,0(\$a1)" to "written before source element 1 was read",
+            $$"lw $t0,0($a0)\nlw $t1,4($a0)" to "destination element 0 was not written",
+            $$"lw $t0,0($a0)\nsw $t0,0($a1)" to "written before source element 1 was read",
         )) {
       val result = evaluate(body)
       assertFalse(result.passed)
@@ -118,7 +118,7 @@ class PreparedFunctionTransferTest {
 
   @Test
   fun `partial unaligned and crossing notices cannot stand in for complete scalar elements`() {
-    for (body in listOf("lbu \$t0,0(\$a0)", "lbu \$t0,1(\$a0)", "sb \$zero,0(\$a1)")) {
+    for (body in listOf($$"lbu $t0,0($a0)", $$"lbu $t0,1($a0)", $$"sb $zero,0($a1)")) {
       val result = evaluate(body)
       assertFalse(result.passed)
       assertTrue(result.failure!!.contains("one aligned 4-byte element"), result.failure)
@@ -127,7 +127,7 @@ class PreparedFunctionTransferTest {
 
   @Test
   fun `crossing doubleword traffic cannot evade the active word span`() {
-    for (body in listOf("ld \$t0,-4(\$a0)", "ld \$t0,4(\$a0)")) {
+    for (body in listOf($$"ld $t0,-4($a0)", $$"ld $t0,4($a0)")) {
       assertFalse(evaluate(body).passed)
       val bounded = contract().copy(accessBounds = listOf(FunctionAccessCheck("input", 16, 4, 8)))
       assertFalse(evaluate(body + "\n" + forward, bounded).passed)
@@ -138,7 +138,7 @@ class PreparedFunctionTransferTest {
   fun `byte and halfword elements observe their native notice widths`() {
     for ((bytes, load, store) in listOf(Triple(1, "lbu", "sb"), Triple(2, "lhu", "sh"))) {
       val body =
-          "$load \$t0,0(\$a0)\n$load \$t1,$bytes(\$a0)\n$store \$t0,$bytes(\$a1)\n$store \$t1,0(\$a1)"
+          $$"$$load $t0,0($a0)\n$$load $t1,$$bytes($a0)\n$$store $t0,$$bytes($a1)\n$$store $t1,0($a1)"
       val result = evaluate(body, contract().copy(transfers = listOf(transfer(bytes = bytes))))
       assertTrue(result.passed, result.failure)
     }
@@ -149,14 +149,14 @@ class PreparedFunctionTransferTest {
     val empty = contract().copy(transfers = listOf(transfer(emptyList())))
     assertTrue(evaluate("", empty).passed)
     val bounded = empty.copy(accessBounds = listOf(FunctionAccessCheck("input", 16, 4, 0)))
-    val result = evaluate("lw \$t0,0(\$a0)", bounded)
+    val result = evaluate($$"lw $t0,0($a0)", bounded)
     assertFalse(result.passed)
     assertTrue(result.failure!!.contains("within 0 bytes"), result.failure)
   }
 
   @Test
   fun `a second call must perform its own complete transfer instead of inheriting earlier visits`() {
-    val body = "lbu \$t2,marker\nbnezc \$t2,skip\nnop\nli \$t2,1\nsb \$t2,marker\n$forward\nskip:\n"
+    val body = $$"lbu $t2,marker\nbnezc $t2,skip\nnop\nli $t2,1\nsb $t2,marker\n$$forward\nskip:\n"
     assertTrue(evaluate(body).passed)
     val result =
         evaluate(
@@ -273,7 +273,7 @@ class PreparedFunctionTransferTest {
   @Test
   fun `invalid or excessive maps reject before execution`() {
     for (invalid in
-        listOf<() -> Any>(
+        listOf(
             { transfer(listOf(0, 0)) },
             { transfer(listOf(-1)) },
             { transfer(listOf(1)) },

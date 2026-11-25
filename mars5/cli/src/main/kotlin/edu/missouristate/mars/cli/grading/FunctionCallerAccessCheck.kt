@@ -70,12 +70,12 @@ internal class FunctionCallerAccessObservation(
 
   fun expectAllowed() {
     // Snapshot also rejects overflow caused by accesses to private gaps.
-    for (access in trace.snapshot()) {
-      if (objects.none { it.overlaps(access.address, access.length) }) continue
-      val permitted = if (access.write) writable else readable
+    for ((address, length, write) in trace.snapshot()) {
+      if (objects.none { it.overlaps(address, length) }) continue
+      val permitted = if (write) writable else readable
       execution.expectCondition(
-          permitted.any { it.fits(access.address, access.length) },
-          "Execution ${if (access.write) "store" else "read"} of ${access.length} bytes at 0x${access.address.toString(16)} is outside its permitted caller-object windows",
+          permitted.any { it.fits(address, length) },
+          "Execution ${if (write) "store" else "read"} of $length bytes at 0x${address.toString(16)} is outside its permitted caller-object windows",
       )
     }
     for ((index, region) in objects.withIndex()) {

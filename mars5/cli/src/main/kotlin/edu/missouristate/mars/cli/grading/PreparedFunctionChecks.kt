@@ -511,14 +511,14 @@ object PreparedFunctionChecks {
             *range.decoded(),
             offset = range.offset,
         )
-        for (range in call.setupAddressMemory) {
-          val value = execution.readDataAddress(range.value.label, range.value.offset.toLong())
+        for ((at, valueAddress) in call.setupAddressMemory) {
+          val value = execution.readDataAddress(valueAddress.label, valueAddress.offset.toLong())
           val bytes =
               IntArray(8) { byte ->
                 val shift = 8 * if (littleEndian) byte else 7 - byte
                 (value ushr shift and 255L).toInt()
               }
-          execution.setBytes(range.at.label, *bytes, offset = range.at.offset)
+          execution.setBytes(at.label, *bytes, offset = at.offset)
         }
         for ((register, value) in call.arguments) execution.setRegister(register, value)
         for ((register, address) in call.argumentAddresses) execution.setRegisterToDataAddress(
@@ -551,36 +551,38 @@ object PreparedFunctionChecks {
             *range.decoded(),
             offset = range.offset,
         )
-        for (range in call.addressMemory) {
-          val value = execution.readDataAddress(range.value.label, range.value.offset.toLong())
+        for ((at, valueAddress) in call.addressMemory) {
+          val value = execution.readDataAddress(valueAddress.label, valueAddress.offset.toLong())
           val bytes =
               IntArray(8) { byte ->
                 val shift = 8 * if (littleEndian) byte else 7 - byte
                 (value ushr shift and 255L).toInt()
               }
-          execution.expectBytes(range.at.label, *bytes, offset = range.at.offset)
+          execution.expectBytes(at.label, *bytes, offset = at.offset)
         }
         transfers.forEach(FunctionTransferObservation::expectComplete)
         initialized.forEach(FunctionInitializationObservation::expectComplete)
         protected.forEach(MemoryStoreTrace::expectNone)
         callerStores?.expectNone()
-        for ((trace, first, length) in accessBounds) for (access in trace.snapshot()) {
+        for ((trace, first, length) in accessBounds) for ((address, accessLength, write) in
+            trace.snapshot()) {
           execution.expectCondition(
-              access.address >= first &&
-                  access.length <= length &&
-                  access.address - first <= length.toLong() - access.length,
+              address >= first &&
+                  accessLength <= length &&
+                  address - first <= length.toLong() - accessLength,
               "Expected accesses within $length bytes at 0x${first.toString(16)}, observed " +
-                  "${access.length}-byte ${if (access.write) "store" else "read"} at 0x${access.address.toString(16)}",
+                  "$accessLength-byte ${if (write) "store" else "read"} at 0x${address.toString(16)}",
           )
         }
-        for ((trace, first, length) in storeBounds) for (access in trace.snapshot()) {
-          if (!access.write) continue
+        for ((trace, first, length) in storeBounds) for ((address, accessLength, write) in
+            trace.snapshot()) {
+          if (!write) continue
           execution.expectCondition(
-              access.address >= first &&
-                  access.length <= length &&
-                  access.address - first <= length.toLong() - access.length,
+              address >= first &&
+                  accessLength <= length &&
+                  address - first <= length.toLong() - accessLength,
               "Expected stores within $length bytes at 0x${first.toString(16)}, observed " +
-                  "${access.length}-byte store at 0x${access.address.toString(16)}",
+                  "$accessLength-byte store at 0x${address.toString(16)}",
           )
         }
         accessPolicies.expectAllowed()

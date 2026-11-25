@@ -50,7 +50,7 @@ class PreparedFunctionCallerAccessTest {
                 "${names[0]}: .word 11\ngap: .space $gap\n" +
                 (if (distant) ".data 0x100000000\n" else "") +
                 "${names[1]}: .word 22\noutside: .word 7\n" +
-                ".text\nmain: li \$v0,10\nsyscall\nreturned: bc main\nfunction:\n$body\nli \$v0,0\njrc \$ra\n"
+                $$".text\nmain: li $v0,10\nsyscall\nreturned: bc main\nfunction:\n$$body\nli $v0,0\njrc $ra\n"
         val path = directory.resolve("caller-access.asm")
         machine.assembleSnapshot(
             AssemblySourceSnapshot(listOf(path), mapOf(path to source)),
@@ -72,8 +72,8 @@ class PreparedFunctionCallerAccessTest {
   @Test
   fun `private gaps and outside memory remain available under caller reordering and wide addresses`() {
     val body =
-        "dla \$t0,left\nlw \$t1,0(\$t0)\ndla \$t0,right\nsw \$t1,0(\$t0)\n" +
-            "dla \$t0,gap\nsw \$t1,0(\$t0)\nlw \$t1,0(\$t0)\ndla \$t0,outside\nsw \$t1,0(\$t0)"
+        $$"dla $t0,left\nlw $t1,0($t0)\ndla $t0,right\nsw $t1,0($t0)\n" +
+            $$"dla $t0,gap\nsw $t1,0($t0)\nlw $t1,0($t0)\ndla $t0,outside\nsw $t1,0($t0)"
     for (reverse in listOf(false, true)) for (wide in listOf(false, true)) {
       val result =
           PreparedFunctionChecks.evaluate(
@@ -90,24 +90,24 @@ class PreparedFunctionCallerAccessTest {
   fun `same value forbidden stores and restore after writing cannot hide an access violation`() {
     for (body in
         listOf(
-            "dla \$t0,left\nlw \$t1,0(\$t0)\nsw \$t1,0(\$t0)",
-            "dla \$t0,left\nlw \$t1,0(\$t0)\nsw \$zero,0(\$t0)\nsw \$t1,0(\$t0)",
-            "dla \$t0,left\nsd \$zero,0(\$t0)",
-            "dla \$t0,left\nlw \$t1,0(\$t0)",
+            $$"dla $t0,left\nlw $t1,0($t0)\nsw $t1,0($t0)",
+            $$"dla $t0,left\nlw $t1,0($t0)\nsw $zero,0($t0)\nsw $t1,0($t0)",
+            $$"dla $t0,left\nsd $zero,0($t0)",
+            $$"dla $t0,left\nlw $t1,0($t0)",
         )) {
       val check =
-          if (body.endsWith("lw \$t1,0(\$t0)")) contract().copy(readable = emptyList())
+          if (body.endsWith($$"lw $t1,0($t0)")) contract().copy(readable = emptyList())
           else contract()
       val result = evaluate(body, check)
       assertFalse(result.passed)
       assertTrue(result.failure!!.contains("permitted caller-object windows"), result.failure)
     }
-    val sameValue = evaluate("dla \$t0,left\nlw \$t1,0(\$t0)\nsw \$t1,0(\$t0)")
+    val sameValue = evaluate($$"dla $t0,left\nlw $t1,0($t0)\nsw $t1,0($t0)")
     assertFalse(sameValue.passed)
     assertTrue(sameValue.failure!!.contains("store"), sameValue.failure)
     val crossing =
         evaluate(
-            "dla \$t0,right\nlw \$t1,0(\$t0)",
+            $$"dla $t0,right\nlw $t1,0($t0)",
             contract()
                 .copy(
                     objects = listOf(region("right", 2)),
@@ -120,7 +120,7 @@ class PreparedFunctionCallerAccessTest {
 
   @Test
   fun `one capacity includes gaps resets each call and excludes host setup`() {
-    val body = "dla \$t0,gap\nlw \$t1,0(\$t0)\nlw \$t1,4(\$t0)"
+    val body = $$"dla $t0,gap\nlw $t1,0($t0)\nlw $t1,4($t0)"
     val pass = evaluate(body, contract(2))
     assertTrue(pass.passed, pass.failure)
     val fail = evaluate(body, contract(1))
@@ -146,10 +146,11 @@ class PreparedFunctionCallerAccessTest {
                 objects = listOf(region("left"), region("left", 2)),
                 writable = listOf(region("left")),
             )
-    val pass = evaluate("dla \$t0,left\nlw \$t1,0(\$t0)\nsw \$t1,0(\$t0)", check)
+    val pass = evaluate($$"dla $t0,left\nlw $t1,0($t0)\nsw $t1,0($t0)", check)
     assertTrue(pass.passed, pass.failure)
   }
 
+  @Suppress("UnusedDataClassCopyResult")
   @Test
   fun `objects and combined notice capacity are bounded before opening a session`() {
     for (bad in listOf(0, -1, 2_000_001)) assertThrows<IllegalArgumentException> { contract(bad) }
@@ -201,7 +202,7 @@ class PreparedFunctionCallerAccessTest {
             "detached windows",
             listOf(call(contract().copy(objects = objects, readable = reads, writable = writes))),
         )
-    val image = image("dla \$t0,left\nlw \$t1,0(\$t0)\ndla \$t0,right\nsw \$t1,0(\$t0)")
+    val image = image($$"dla $t0,left\nlw $t1,0($t0)\ndla $t0,right\nsw $t1,0($t0)")
     val pass =
         PreparedFunctionChecks.evaluate(
                 image,

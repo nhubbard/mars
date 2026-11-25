@@ -16,15 +16,15 @@ class PreparedFunctionExitTest {
       DaggerMarsComponent.builder().guiProxy(HeadlessGuiProxy()).build().context()
 
   private fun image(
-      continuation: String = publish + exit,
+      continuation: String = PUBLISH + EXIT,
       wide: Boolean = false,
-      function: String = "li \$v0,7\njrc \$ra",
+      function: String = $$"li $v0,7\njrc $ra",
   ) =
       session().use { machine ->
         val path = directory.resolve("exit.asm")
         val source =
             ".data ${if (wide) "0x100000000" else "0x10010000"}\nresult: .word 0\npath: .asciiz \"input.bin\"\nbuffer: .byte 0\n" +
-                ".text\nmain: li \$v0,10\nsyscall\nreturned:\n$continuation\nfunction:\n$function\nfunction_end: nop\n"
+                $$".text\nmain: li $v0,10\nsyscall\nreturned:\n$$continuation\nfunction:\n$$function\nfunction_end: nop\n"
         machine.assembleSnapshot(
             AssemblySourceSnapshot(listOf(path), mapOf(path to source)),
             null,
@@ -79,14 +79,14 @@ class PreparedFunctionExitTest {
           PreparedFunctionChecks.evaluate(image(wide = wide), listOf(case), ::session).single()
       assertTrue(result.passed, result.failure)
     }
-    val wrong = PreparedFunctionChecks.evaluate(image(exit), listOf(contract()), ::session).single()
+    val wrong = PreparedFunctionChecks.evaluate(image(EXIT), listOf(contract()), ::session).single()
     assertFalse(wrong.passed)
   }
 
   @Test
   fun `termination code output and remaining cumulative budget are checked rather than inferred at return`() {
     for (code in listOf(7, -3)) {
-      val image = image(publish + "li \$a0,$code\nli \$v0,17\nsyscall")
+      val image = image(PUBLISH + $$"li $a0,$$code\nli $v0,17\nsyscall")
       val result =
           PreparedFunctionChecks.evaluate(
                   image,
@@ -109,12 +109,13 @@ class PreparedFunctionExitTest {
     assertFalse(
         PreparedFunctionChecks.evaluate(infinite, listOf(bounded), ::session).single().passed,
     )
-    val prints = image("li \$a0,65\nli \$v0,11\nsyscall\n" + publish + exit)
+    val prints = image($$"li $a0,65\nli $v0,11\nsyscall\n$$PUBLISH$$EXIT")
     assertFalse(
         PreparedFunctionChecks.evaluate(prints, listOf(contract()), ::session).single().passed,
     )
   }
 
+  @Suppress("UnusedDataClassCopyResult")
   @Test
   fun `exit data is copied and included in pre-session result bounds`() {
     val expected = contract().exit!!.memory.toMutableList()
@@ -145,13 +146,13 @@ class PreparedFunctionExitTest {
 
   @Test
   fun `exit continuation cannot hide extra file operations after a marked invocation`() {
-    val open = "dla \$a0,path\nli \$a1,0\nli \$v0,13\nsyscall"
-    val close = "move \$a0,\$t5\nli \$v0,16\nsyscall"
+    val open = $$"dla $a0,path\nli $a1,0\nli $v0,13\nsyscall"
+    val close = $$"move $a0,$t5\nli $v0,16\nsyscall"
     val function =
         open +
-            "\nmove \$t5,\$v0\nmove \$a0,\$t5\ndla \$a1,buffer\nli \$a2,1\nli \$v0,14\nsyscall\n" +
+            $$"\nmove $t5,$v0\nmove $a0,$t5\ndla $a1,buffer\nli $a2,1\nli $v0,14\nsyscall\n" +
             close +
-            "\nli \$v0,7\njrc \$ra"
+            $$"\nli $v0,7\njrc $ra"
     val original = contract()
     val case =
         original.copy(
@@ -160,11 +161,11 @@ class PreparedFunctionExitTest {
             exit = FunctionExitCheck(),
         )
     assertTrue(
-        PreparedFunctionChecks.evaluate(image(exit, function = function), listOf(case), ::session)
+        PreparedFunctionChecks.evaluate(image(EXIT, function = function), listOf(case), ::session)
             .single()
             .passed,
     )
-    val extra = open + "\nmove \$t5,\$v0\n" + close + "\n" + exit
+    val extra = $$"$$open\nmove $t5,$v0\n$$close\n$$EXIT"
     val result =
         PreparedFunctionChecks.evaluate(image(extra, function = function), listOf(case), ::session)
             .single()
@@ -173,7 +174,7 @@ class PreparedFunctionExitTest {
   }
 
   companion object {
-    private const val publish = "dla \$t0,result\nli \$t1,0x11223344\nsw \$t1,0(\$t0)\n"
-    private const val exit = "li \$v0,10\nsyscall"
+    private const val PUBLISH = $$"dla $t0,result\nli $t1,0x11223344\nsw $t1,0($t0)\n"
+    private const val EXIT = $$"li $v0,10\nsyscall"
   }
 }

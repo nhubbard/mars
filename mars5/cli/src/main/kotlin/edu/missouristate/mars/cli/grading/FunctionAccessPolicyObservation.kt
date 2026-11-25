@@ -13,7 +13,8 @@ internal class FunctionAccessPolicyObservation(
   )
 
   private val observed = run {
-    var watchedBytes = 0L
+    // This accumulator includes each policy interval, not just the current mapping.
+    @Suppress("CanBeVal") var watchedBytes = 0L
     policies.map { policy ->
       val first = execution.readDataAddress(policy.from.label, policy.from.offset.toLong())
       val until = execution.readDataAddress(policy.until.label, policy.until.offset.toLong())
@@ -44,17 +45,19 @@ internal class FunctionAccessPolicyObservation(
   }
 
   fun expectAllowed() {
-    for ((trace, readable, writable, checkReads) in observed) for (access in trace.snapshot()) {
-      if (!access.write && !checkReads) continue
-      val windows = if (access.write) writable else readable
-      execution.expectCondition(
-          windows.any { (first, length) ->
-            access.address >= first &&
-                access.length <= length &&
-                access.address - first <= length.toLong() - access.length
-          },
-          "Execution ${if (access.write) "store" else "read"} of ${access.length} bytes at 0x${access.address.toString(16)} is outside its permitted caller windows",
-      )
+    for ((trace, readable, writable, checkReads) in observed) {
+      for ((address, accessLength, write) in trace.snapshot()) {
+        if (!write && !checkReads) continue
+        val windows = if (write) writable else readable
+        execution.expectCondition(
+            windows.any { (first, length) ->
+              address >= first &&
+                  accessLength <= length &&
+                  address - first <= length.toLong() - accessLength
+            },
+            "Execution ${if (write) "store" else "read"} of $accessLength bytes at 0x${address.toString(16)} is outside its permitted caller windows",
+        )
+      }
     }
   }
 

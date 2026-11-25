@@ -150,6 +150,7 @@ internal class FunctionFileReadObservation(
     }
     val error = definition.failAfterBytes?.let { it <= contents.size } == true
     val accepted = if (error) checkNotNull(definition.failAfterBytes) else contents.size
+    // An injected read failure terminates with -1, including a failure exactly at EOF.
     requireCase(reads.isNotEmpty() && reads.last().result == if (error) -1 else 0) {
       "Read through the declared ${if (error) "failure" else "EOF"}; they are different outcomes"
     }

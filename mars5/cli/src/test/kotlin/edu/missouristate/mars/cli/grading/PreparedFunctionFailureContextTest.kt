@@ -23,8 +23,8 @@ class PreparedFunctionFailureContextTest {
       session().use { machine ->
         val path = directory.resolve("context.asm")
         val source =
-            ".text\nmain: li \$v0,10\nsyscall\nreturned: bc main\nother_return: bc main\n" +
-                "echo:\nmove \$v0,\$a0\nli \$a0,999\njrc \$ra\n"
+            $$".text\nmain: li $v0,10\nsyscall\nreturned: bc main\nother_return: bc main\n" +
+                $$"echo:\nmove $v0,$a0\nli $a0,999\njrc $ra\n"
         machine.assembleSnapshot(
             AssemblySourceSnapshot(listOf(path), mapOf(path to source)),
             null,

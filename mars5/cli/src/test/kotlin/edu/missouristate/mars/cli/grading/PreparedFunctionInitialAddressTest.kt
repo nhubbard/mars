@@ -22,7 +22,7 @@ class PreparedFunctionInitialAddressTest {
         val path = directory.resolve("initial-address.asm")
         val source =
             ".data ${if (wide) "0x100010000" else "0x10010000"}\n.space $padding\n.align 4\nworkspace: .space 256\n" +
-                "caller: .byte 11:32\ninput: .byte 1,2,3,4\n.text\nmain: li \$v0,10\nsyscall\nreturned: nop\nfunction:\n$body\njrc \$ra\n"
+                $$"caller: .byte 11:32\ninput: .byte 1,2,3,4\n.text\nmain: li $v0,10\nsyscall\nreturned: nop\nfunction:\n$$body\njrc $ra\n"
         machine.assembleSnapshot(
             AssemblySourceSnapshot(listOf(path), mapOf(path to source)),
             null,
@@ -59,7 +59,7 @@ class PreparedFunctionInitialAddressTest {
       )
 
   private val body =
-      "daddiu \$sp,\$sp,-16\nsd \$s0,0(\$sp)\nld \$s0,0(\$sp)\ndaddiu \$sp,\$sp,16\nmove \$v0,\$s0"
+      $$"daddiu $sp,$sp,-16\nsd $s0,0($sp)\nld $s0,0($sp)\ndaddiu $sp,$sp,16\nmove $v0,$s0"
 
   @Test
   fun `initial pointers and stack follow assembled layout including full-width relocation`() {
@@ -85,7 +85,7 @@ class PreparedFunctionInitialAddressTest {
     )
     val changed =
         PreparedFunctionChecks.evaluate(
-                image("sb \$zero,0(\$sp)\n$body"),
+                image($$"sb $zero,0($sp)\n$$body"),
                 listOf(contract()),
                 ::session,
             )
@@ -94,19 +94,20 @@ class PreparedFunctionInitialAddressTest {
     assertTrue(checkNotNull(changed.failure).contains("stack"), changed.failure)
   }
 
+  @Suppress("UnusedDataClassCopyResult")
   @Test
   fun `integer and address initialization reject collisions aliases zero and unknown registers`() {
     assertThrows<IllegalArgumentException> {
       contract().copy(initialRegisters = mapOf("sp" to 123L))
     }
     assertThrows<IllegalArgumentException> {
-      contract().copy(initialRegisters = mapOf("\$sp" to 123L))
+      contract().copy(initialRegisters = mapOf($$"$sp" to 123L))
     }
     assertThrows<IllegalArgumentException> {
       contract(
           mapOf(
               "sp" to FunctionDataAddress("workspace"),
-              "\$sp" to FunctionDataAddress("workspace"),
+              $$"$sp" to FunctionDataAddress("workspace"),
           ),
       )
     }

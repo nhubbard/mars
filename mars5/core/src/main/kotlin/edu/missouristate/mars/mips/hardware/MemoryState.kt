@@ -761,7 +761,6 @@ open class MemoryState(
       address in kernelDataBaseAddress..<kernelDataSegmentLimitAddress
 
   // The stack grows down. Keep the lower boundary exclusive without offset arithmetic.
-  @Suppress("ConvertTwoComparisonsToRangeCheck")
   private fun inStack(address: Int): Boolean {
     if (address <= stackLimitAddress) return false
     if (address <= stackBaseAddress) return true

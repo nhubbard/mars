@@ -24,7 +24,7 @@ sealed class ConsoleMazeCheck {
       }
     }
 
-    internal override fun run(execution: AssemblyCase, checkCancellation: () -> Unit) =
+    override fun run(execution: AssemblyCase, checkCancellation: () -> Unit) =
         with(execution) {
           expectDataAddress("frame", 0x10010000L)
           expectDataAddress("frame_guard", 0x10010100L)
@@ -193,7 +193,7 @@ sealed class ConsoleMazeCheck {
       require(fixture in 0..4) { "Choose renderer fixture zero through four" }
     }
 
-    internal override fun run(execution: AssemblyCase, checkCancellation: () -> Unit) =
+    override fun run(execution: AssemblyCase, checkCancellation: () -> Unit) =
         with(execution) {
           val walls = List(64) { if (fixture == 1 || fixture >= 3 && it % 4 == 0) 1 else 0 }
           val states = List(64) { if (fixture < 2) 0 else (it + fixture) % 3 }

@@ -1,3 +1,5 @@
+@file:Suppress("SameReturnValue")
+
 package edu.missouristate.mars.cli.grading
 
 import edu.missouristate.mars.ProcessingException
@@ -45,8 +47,8 @@ class PreparedConsoleMazeChecksTest {
           machine.assembleSnapshot(
               AssemblySourceSnapshot(listOf(entry), mapOf(entry to source)),
               null,
-              true,
-              false,
+              extended = true,
+              warnings = false,
           )
         } catch (failure: ProcessingException) {
           throw AssertionError(failure.errors()?.generateErrorAndWarningReport(), failure)
@@ -67,7 +69,7 @@ class PreparedConsoleMazeChecksTest {
           .single()
 
   private fun store(label: String, value: Int, offset: Int = 0, opcode: String = "sw") =
-      "li \$t0, $value\nla \$t1, $label\n$opcode \$t0, $offset(\$t1)\n"
+      $$"li $t0, $$value\nla $t1, $$label\n$$opcode $t0, $$offset($t1)\n"
 
   private fun StringBuilder.word(label: String, value: Int, offset: Int = 0) {
     append(store(label, value, offset))
@@ -84,7 +86,7 @@ class PreparedConsoleMazeChecksTest {
     append(".text\n.globl main\nmain:\n")
   }
 
-  private fun footer() = "done:\nli \$v0,10\nsyscall\nmaze_ready:\njrc \$ra\n"
+  private fun footer() = $$"done:\nli $v0,10\nsyscall\nmaze_ready:\njrc $ra\n"
 
   private fun color(wall: Int, state: Int, path: Int) =
       when {
@@ -192,12 +194,12 @@ class PreparedConsoleMazeChecksTest {
             source.replaceFirst(store("distance", 0, 0, "sb"), store("distance", 1, 0, "sb")),
             source.replaceFirst(store("length", 2, 0), store("length", 3, 0)),
             source.replace("done:\n", "balc maze_ready\ndone:\n"),
-            source.replace("done:\n", "li \$t0,0\nsb \$t0,path\ndone:\n"),
-            source.replace("main:\n", "main:\nlbu \$t0,walls\nsb \$t0,walls\n"),
+            source.replace("done:\n", $$"li $t0,0\nsb $t0,path\ndone:\n"),
+            source.replace("main:\n", $$"main:\nlbu $t0,walls\nsb $t0,walls\n"),
             source.replaceFirst(store("path", 0, 0, "sb"), store("path", 1, 0, "sb")),
             source.replaceFirst(store("head", 0, 0), store("head", 1, 0)),
             source.replaceFirst(store("states", 0, 1, "sb"), store("states", 2, 1, "sb")),
-            source.replaceFirst("li \$t0, 15113984", "li \$t0, 0"),
+            source.replaceFirst($$"li $t0, 15113984", $$"li $t0, 0"),
         )
     for ((index, fault) in faults.withIndex()) {
       assertTrue(fault != source, "fault $index must change the probe")
@@ -231,11 +233,11 @@ class PreparedConsoleMazeChecksTest {
     }
     for (injection in
         listOf(
-            "li \$s7,7\n",
-            "addiu \$sp,\$sp,-16\n",
-            "li \$t0,0\nla \$t1,frame\nsw \$t0,252(\$t1)\n",
-            "lbu \$t0,states\nsb \$t0,states\n",
-            "li \$t0,0\nsw \$t0,metadata_guard\n",
+            $$"li $s7,7\n",
+            $$"addiu $sp,$sp,-16\n",
+            $$"li $t0,0\nla $t1,frame\nsw $t0,252($t1)\n",
+            $$"lbu $t0,states\nsb $t0,states\n",
+            $$"li $t0,0\nsw $t0,metadata_guard\n",
         )) {
       val result =
           evaluate(
@@ -246,8 +248,8 @@ class PreparedConsoleMazeChecksTest {
     }
     val lateRestore =
         renderer(0)
-            .replace("bc maze_ready", "move \$t1,\$s0\nli \$s0,0\nbc maze_ready")
-            .replace("maze_ready:\n", "maze_ready:\nmove \$s0,\$t1\n")
+            .replace("bc maze_ready", $$"move $t1,$s0\nli $s0,0\nbc maze_ready")
+            .replace("maze_ready:\n", $$"maze_ready:\nmove $s0,$t1\n")
     assertFalse(evaluate(lateRestore, ConsoleMazeCheck.Renderer(0)).passed)
   }
 
@@ -260,8 +262,8 @@ class PreparedConsoleMazeChecksTest {
           machine.assembleSnapshot(
               AssemblySourceSnapshot(listOf(entry), mapOf(entry to source)),
               null,
-              true,
-              false,
+              extended = true,
+              warnings = false,
           )
       assertThrows<CancellationException> {
         AssemblyCase(machine, program.symbolMap(), ByteArrayOutputStream()).use { execution ->
@@ -276,8 +278,8 @@ class PreparedConsoleMazeChecksTest {
           machine.assembleSnapshot(
               AssemblySourceSnapshot(listOf(entry), mapOf(entry to source)),
               null,
-              true,
-              false,
+              extended = true,
+              warnings = false,
           )
       AssemblyCase(machine, program.symbolMap(), ByteArrayOutputStream()).use { check.verify(it) }
       assertEquals(0, machine.memory.countObservers())
@@ -298,7 +300,7 @@ class PreparedConsoleMazeChecksTest {
   @Test
   fun `missing labels traps and exhausted instruction budgets are formative failures`() {
     val check = ConsoleMazeCheck.Search("00".repeat(64), 0, 63, 0)
-    assertFalse(evaluate(".text\nli \$v0,10\nsyscall\n", check).passed)
+    assertFalse(evaluate($$".text\nli $v0,10\nsyscall\n", check).passed)
     assertFalse(evaluate(header() + "break\n" + footer(), check).passed)
     assertFalse(evaluate(header() + "again: bc again\n" + footer(), check).passed)
   }
