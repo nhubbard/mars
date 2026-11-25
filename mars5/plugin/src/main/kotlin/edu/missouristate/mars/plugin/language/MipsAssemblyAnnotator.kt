@@ -97,7 +97,7 @@ internal fun diagnosticRange(document: Document, error: AssemblyError): TextRang
     // The lexer keeps signs separate. The assembler can attach one to a number.
     val source = document.getText(TextRange(start, end))
     val tokens = Tokenizer().tokenizeLine(null, error.line, source, false)
-    val index = (0 until tokens.size()).firstOrNull { tokens[it].startPos == offset - start + 1 }
+    val index = (tokens.indices).firstOrNull { tokens[it].startPos == offset - start + 1 }
     if (index != null) return TextRange(offset, start + tokens[index].endPos - 1)
   }
   return TextRange(offset, token.end)

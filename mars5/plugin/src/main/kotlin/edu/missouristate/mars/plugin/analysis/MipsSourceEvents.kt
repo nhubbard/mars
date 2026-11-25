@@ -38,7 +38,7 @@ internal sealed interface MipsSourceEvent {
 
     fun bind(inMacro: Boolean, replacement: (String) -> String?): Effective? {
       val needsExpansion =
-          (0 until tokens.size()).any {
+          (tokens.indices).any {
             val token = tokens[it]
             token.type == TokenTypes.IDENTIFIER && replacement(token.value) != null
           }
@@ -71,7 +71,7 @@ internal sealed interface MipsSourceEvent {
                 }
             ) {
               val tokens = macroLineTokens(head)
-              (0 until minOf(tokens.size(), 3)).map(tokens::get)
+              (0 until minOf(tokens.size, 3)).map(tokens::get)
             } else emptyList()
           }
         } else null
@@ -131,7 +131,7 @@ internal sealed interface MipsSourceEvent {
       val operation = tokens.operationIndex(inMacro)
       // Handle operations supplied by the label and macro diagnostics deferred by the parser.
       val operationInLabel =
-          operation < tokens.size() &&
+          operation < tokens.size &&
               start + expanded.originalOffset(tokens[operation].startPos - 1) <
                   declaration.textRange.endOffset
       val directive =
@@ -270,7 +270,7 @@ private fun sectionEvent(
     tokens: TokenList,
     operation: Int,
 ): MipsSourceEvent.DataDirective? {
-  if (operation + 1 >= tokens.size()) return null
+  if (operation + 1 >= tokens.size) return null
   val segment = Directives.sectionSegment(tokens[operation + 1].value) ?: return null
   return MipsSourceEvent.DataDirective(head.textOffset, segment)
 }
@@ -296,7 +296,7 @@ private fun expandedDirective(
     Directives.MACRO -> macroSignature(head, tokens, operation, start, expanded)
     Directives.END_MACRO -> {
       val offset = start + expanded.originalOffset(tokens[operation].startPos - 1)
-      if (tokens.size() == operation + 1) MipsSourceEvent.End(offset)
+      if (tokens.size == operation + 1) MipsSourceEvent.End(offset)
       else MipsSourceEvent.RejectedMacro(offset, Kind.TRAILING_TEXT)
     }
     Directives.EXTERN -> externalReservation(head, tokens, operation, inMacro)
@@ -418,13 +418,13 @@ private fun macroSignature(
       else originalOffset(token)
   val directive = originalOffset(tokens[operation])
   val nameIndex = operation + 1
-  if (nameIndex == tokens.size()) return MipsSourceEvent.RejectedMacro(directive, Kind.MISSING_NAME)
+  if (nameIndex == tokens.size) return MipsSourceEvent.RejectedMacro(directive, Kind.MISSING_NAME)
   val name = tokens[nameIndex]
   if (name.type != TokenTypes.IDENTIFIER) {
     return MipsSourceEvent.RejectedMacro(originalOffset(name), Kind.INVALID_NAME, lastOffset(name))
   }
   val arguments =
-      (nameIndex + 1 until tokens.size()).map(tokens::get).filter {
+      (nameIndex + 1 until tokens.size).map(tokens::get).filter {
         it.type != TokenTypes.LEFT_PAREN && it.type != TokenTypes.RIGHT_PAREN
       }
   val parameters = arguments.takeWhile {
@@ -447,7 +447,7 @@ private fun writtenMacroEnd(element: PsiElement): MipsSourceEvent? {
   if (tokens.directiveAt(operation) != Directives.END_MACRO) return null
   if (sourceLineStart(element) + tokens[operation].startPos - 1 != element.textOffset) return null
   val offset = element.textOffset
-  if (tokens.size() == operation + 1) {
+  if (tokens.size == operation + 1) {
     val end = MipsSourceEvent.End(offset)
     return if (operation == 0) end else MipsSourceEvent.LabeledMacro(end, tokens[0].value)
   }
@@ -474,7 +474,7 @@ private fun externalReservation(
     operation: Int,
     inMacro: Boolean,
 ): MipsSourceEvent.External? {
-  if (tokens.size() != operation + 3) return null
+  if (tokens.size != operation + 3) return null
   val size = tokens[operation + 2]
   if (!TokenTypes.isIntegerTokenType(size.type) || Binary.stringToInt(size.value) < 0) return null
   val name = tokens[operation + 1]

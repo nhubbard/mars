@@ -50,8 +50,8 @@ object OperandFormat {
       bareMachine: Boolean,
   ): Boolean =
       firstOperand in 1..<endOperand &&
-          endOperand <= tokens.size() &&
-          endOperand <= instruction.tokenList.size() &&
+          endOperand <= tokens.size &&
+          endOperand <= instruction.tokenList.size &&
           operandTypeCheck(
               tokens.clone() as TokenList,
               instruction,
@@ -91,7 +91,7 @@ object OperandFormat {
       errors: ErrorList,
   ): Boolean {
     val written = candidate.size() - 1
-    val expected = instruction.tokenList.size() - 1
+    val expected = instruction.tokenList.size - 1
     val operator = candidate[0]
     if (written == expected) return true
     val amount = if (written < expected) "few" else "many"

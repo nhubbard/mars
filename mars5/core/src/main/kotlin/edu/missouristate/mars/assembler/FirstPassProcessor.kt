@@ -119,7 +119,7 @@ internal class FirstPassProcessor(
         if (errors.errorLimitExceeded()) break
         val line = lines[index]
         val tokens = tokenLists[index]
-        for (tokenIndex in 0 until tokens.size()) {
+        for (tokenIndex in tokens.indices) {
           tokens[tokenIndex].setOriginal(line.getMIPSprogram(), line.lineNumber)
         }
         parser.parseLine(tokens, line, extendedAssemblerEnabled)?.let(parsed::addAll)
@@ -161,9 +161,9 @@ internal class FirstPassProcessor(
     val number =
         if (
             context.session.target == MarsTarget.MARS64 &&
-                tokens.size() >= 2 &&
+                tokens.size >= 2 &&
                 tokens[1].type == TokenTypes.COLON &&
-                (!inDataSegment || tokens.size() == 2 || tokens[2].type == TokenTypes.DIRECTIVE)
+                (!inDataSegment || tokens.size == 2 || tokens[2].type == TokenTypes.DIRECTIVE)
         ) {
           LocalNumericLabels.decimal(tokens[0].value)
         } else null
@@ -215,7 +215,7 @@ internal class FirstPassProcessor(
 
   private fun beginMacro(tokens: TokenList) {
     val token = tokens[0]
-    if (tokens.size() < 2) {
+    if (tokens.size < 2) {
       errors.add(ErrorMessage(token, "\"$token\" directive requires at least one argument."))
       return
     }
@@ -231,7 +231,7 @@ internal class FirstPassProcessor(
     inMacroSegment = true
     val pool = fileCurrentlyBeingAssembled.localMacroPool!!
     pool.beginMacro(name)
-    for (index in 2 until tokens.size()) {
+    for (index in 2 until tokens.size) {
       val argument = tokens[index]
       if (argument.type == TokenTypes.RIGHT_PAREN || argument.type == TokenTypes.LEFT_PAREN)
           continue
@@ -248,7 +248,7 @@ internal class FirstPassProcessor(
 
   private fun endMacro(tokens: TokenList) {
     val token = tokens[0]
-    if (tokens.size() > 1) {
+    if (tokens.size > 1) {
       errors.add(ErrorMessage(token, "invalid text after .END_MACRO"))
       return
     }
@@ -274,7 +274,7 @@ internal class FirstPassProcessor(
       Directives.TEXT,
       Directives.KTEXT -> {
         val address = switchSegment(directive)
-        if (tokens.size() > 1) {
+        if (tokens.size > 1) {
           val operand = tokens[1]
           if (context.session.target == MarsTarget.MARS64) {
             try {
@@ -298,7 +298,7 @@ internal class FirstPassProcessor(
         if (passesDataSegmentCheck(token)) {
           if (directive == Directives.DWORD && context.session.target != MarsTarget.MARS64) {
             errors.add(ErrorMessage(token, ".dword requires the MARS64 target"))
-          } else if (tokens.size() > 1) storeNumeric(tokens, directive)
+          } else if (tokens.size > 1) storeNumeric(tokens, directive)
         }
       }
       Directives.ASCII,
@@ -322,7 +322,7 @@ internal class FirstPassProcessor(
       Directives.NAN ->
           if (
               context.session.target != MarsTarget.MARS64 ||
-                  tokens.size() != 2 ||
+                  tokens.size != 2 ||
                   tokens[1].value != "2008"
           ) {
             errors.add(ErrorMessage(token, "Only .nan 2008 is supported, with the MARS64 target"))
@@ -351,7 +351,7 @@ internal class FirstPassProcessor(
 
   private fun applySection(tokens: TokenList) {
     val token = tokens[0]
-    if (context.session.target != MarsTarget.MARS64 || tokens.size() < 2) {
+    if (context.session.target != MarsTarget.MARS64 || tokens.size < 2) {
       errors.add(ErrorMessage(token, ".section requires a section name and the MARS64 target"))
       return
     }
@@ -373,7 +373,7 @@ internal class FirstPassProcessor(
   private fun applySet(tokens: TokenList) {
     if (
         context.session.target == MarsTarget.MARS64 &&
-            tokens.size() == 2 &&
+            tokens.size == 2 &&
             tokens[1].value in sourceModeDeclarations
     )
         return
@@ -395,14 +395,14 @@ internal class FirstPassProcessor(
     }
     val exponent = directive != Directives.BALIGN
     val operandCount = if (directive == Directives.ALIGN) 2..2 else 2..3
-    val value = if (tokens.size() in operandCount) nonNegativeInteger(tokens[1]) else null
+    val value = if (tokens.size in operandCount) nonNegativeInteger(tokens[1]) else null
     if (value == null || (exponent && value > 31) || (!exponent && value == 0)) {
       val allowed = if (exponent) "an exponent from 0 through 31" else "a positive byte boundary"
       val fill = if (directive == Directives.ALIGN) "" else " and an optional fill byte"
       errors.add(ErrorMessage(token, "$directive requires $allowed$fill"))
       return
     }
-    val fill = if (tokens.size() == 3) nonNegativeInteger(tokens[2]) else 0
+    val fill = if (tokens.size == 3) nonNegativeInteger(tokens[2]) else 0
     if (fill == null || fill > 255 || !inDataSegment && fill != 0) {
       errors.add(
           ErrorMessage(
@@ -470,7 +470,7 @@ internal class FirstPassProcessor(
   private fun applyDataLayout(tokens: TokenList, directive: Directives) {
     val token = tokens[0]
     if (!passesDataSegmentCheck(token)) return
-    if (tokens.size() != 2) {
+    if (tokens.size != 2) {
       errors.add(ErrorMessage(token, "\"$token\" requires one operand"))
       return
     }
@@ -498,7 +498,7 @@ internal class FirstPassProcessor(
       renamedLabels: Set<String>,
   ) {
     val token = tokens[0]
-    if (tokens.size() != 3) {
+    if (tokens.size != 3) {
       errors.add(
           ErrorMessage(token, "\"$token\" directive requires two operands (label and size)."),
       )
@@ -530,11 +530,11 @@ internal class FirstPassProcessor(
 
   private fun declareGlobals(tokens: TokenList) {
     val token = tokens[0]
-    if (tokens.size() < 2) {
+    if (tokens.size < 2) {
       errors.add(ErrorMessage(token, "\"$token\" directive requires at least one argument."))
       return
     }
-    for (index in 1 until tokens.size()) {
+    for (index in 1 until tokens.size) {
       val label = tokens[index]
       if (label.type != TokenTypes.IDENTIFIER && label.type != TokenTypes.OPERATOR) {
         errors.add(ErrorMessage(token, "\"$token\" directive argument must be label."))
@@ -547,7 +547,7 @@ internal class FirstPassProcessor(
   private fun transferGlobals() {
     val local = fileCurrentlyBeingAssembled.localSymbolTable!!
     val global = context.symbols()
-    for (index in 0 until globalDeclarations.size()) {
+    for (index in globalDeclarations.indices) {
       checkCancellation()
       val label = globalDeclarations[index]
       val symbol = local.getSymbol(label.value)
@@ -641,7 +641,7 @@ internal class FirstPassProcessor(
     }
 
     val firstValue = if (tokens[0].type == TokenTypes.DIRECTIVE) 1 else 0
-    for (index in firstValue until tokens.size()) {
+    for (index in firstValue until tokens.size) {
       checkCancellation()
       val token = tokens[index]
       storeNumericValue(token, directive)
@@ -756,7 +756,7 @@ internal class FirstPassProcessor(
 
   private fun storeStrings(tokens: TokenList, directive: Directives) {
     val firstValue = if (tokens[0].type == TokenTypes.DIRECTIVE) 1 else 0
-    for (index in firstValue until tokens.size()) {
+    for (index in firstValue until tokens.size) {
       checkCancellation()
       val token = tokens[index]
       if (token.type != TokenTypes.QUOTED_STRING) {

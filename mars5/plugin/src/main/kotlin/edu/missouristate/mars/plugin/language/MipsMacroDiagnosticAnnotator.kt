@@ -207,7 +207,7 @@ private class CommentAfterMacroEnd(site: PsiElement) : PsiBasedModCommandAction<
         )
     val tokens = mapped.tokens()
     tokens.discardTrailingComment()
-    if (tokens.size() < 2 || Directives.matchDirective(tokens[0].value) != Directives.END_MACRO)
+    if (tokens.size < 2 || Directives.matchDirective(tokens[0].value) != Directives.END_MACRO)
         return null
     val head = mapped.originalOffset(tokens[0].startPos - 1)
     val tail = mapped.originalOffset(tokens[1].startPos - 1)

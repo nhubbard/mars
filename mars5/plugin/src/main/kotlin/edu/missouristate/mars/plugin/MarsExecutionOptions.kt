@@ -37,11 +37,11 @@ internal data class MarsExecutionOptions(
 
   fun applyTo(settings: SimulationSettings) {
     settings.isUtf8TextEnabled = utf8Text
-    settings.setDelayedBranchingEnabled(delayedBranching)
-    settings.setSelfModifyingCodeEnabled(selfModifyingCode)
-    settings.setExtendedAssemblerEnabled(allowPseudoInstructions)
-    settings.setWarningsAreErrors(warningsAreErrors)
-    settings.setBareMachineEnabled(bareMachine)
-    settings.setAssemblerErrorLimit(assemblerErrorLimit)
+    settings.isDelayedBranchingEnabled = delayedBranching
+    settings.isSelfModifyingCodeEnabled = selfModifyingCode
+    settings.isExtendedAssemblerEnabled = allowPseudoInstructions
+    settings.isWarningsAreErrors = warningsAreErrors
+    settings.isBareMachineEnabled = bareMachine
+    settings.assemblerErrorLimit = assemblerErrorLimit
   }
 }

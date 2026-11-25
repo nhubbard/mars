@@ -538,7 +538,7 @@ class MipsParserPlatformTest {
         val arguments = "1,$first$separator$second"
         for (line in listOf("capture $arguments", "capture($arguments)")) {
           val tokens = tokenizer.tokenizeLine(null, 1, line, false)
-          val written = (1 until tokens.size()).map { tokens[it] }
+          val written = (1 until tokens.size).map { tokens[it] }
           if (written.any { it.type == TokenTypes.ERROR }) continue
           val arity = written.size - if (Macro.hasCallParentheses(tokens)) 2 else 0
           val ranges = written.map { TextRange(it.startPos - 1, it.endPos - 1) }
@@ -1690,7 +1690,7 @@ class MipsParserPlatformTest {
     val integerRegisters = setOf(TokenTypes.REGISTER_NAME, TokenTypes.REGISTER_NUMBER)
     val operands = instructions.map { instruction ->
       val tokens = instruction.tokenList
-      (1 until tokens.size()).map { tokens[it] }
+      (1 until tokens.size).map { tokens[it] }
     }
     val labels =
         operands
@@ -2228,7 +2228,7 @@ class MipsParserPlatformTest {
               .lineSequence()
               .flatMap { line ->
                 val tokens = tokenizer.tokenizeLine(null, 1, line, false)
-                (0 until tokens.size())
+                (tokens.indices)
                     .asSequence()
                     .map(tokens::get)
                     .filter { it.type == TokenTypes.ERROR }
@@ -3286,7 +3286,7 @@ class MipsParserPlatformTest {
     val examples =
         catalog.filterIsInstance<ExtendedInstruction>().filter {
           it.name in basicNames &&
-              it.tokenList.size() == 6 &&
+              it.tokenList.size == 6 &&
               it.tokenList[2].type == TokenTypes.INTEGER_16U &&
               it.tokenList[3].type == TokenTypes.LEFT_PAREN
         }

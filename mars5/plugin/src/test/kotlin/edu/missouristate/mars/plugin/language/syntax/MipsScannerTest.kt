@@ -311,7 +311,7 @@ class MipsScannerTest {
       // The target-neutral editor accepts the padded hex; the MARS32 assembler rejects its detached
       // form.
       val legacyError = kind == MipsTokenKind.BAD_CHARACTER || source == "head -$minimum"
-      assertEquals(legacyError, tokens[tokens.size() - 1].type == TokenTypes.ERROR, source)
+      assertEquals(legacyError, tokens[tokens.size - 1].type == TokenTypes.ERROR, source)
     }
   }
 

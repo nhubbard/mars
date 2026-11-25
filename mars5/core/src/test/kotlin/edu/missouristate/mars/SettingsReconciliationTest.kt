@@ -5,19 +5,134 @@ import edu.missouristate.mars.api.MarsRegisterFile
 import edu.missouristate.mars.api.MarsSettings
 import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.core.SimulationSettings
+import edu.missouristate.mars.core.configureSimulation
 import edu.missouristate.mars.di.CoreModule
 import edu.missouristate.mars.di.MarsComponent
 import edu.missouristate.mars.mips.hardware.Coprocessor0State
 import edu.missouristate.mars.mips.hardware.Coprocessor1State
 import edu.missouristate.mars.mips.hardware.MemoryConfigurations
+import edu.missouristate.mars.util.javaClassOf
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.prefs.AbstractPreferences
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 
 internal class SettingsReconciliationTest {
+  @Test
+  fun propertyConfigurationPreservesLegacyEffectsAndJvmSignatures() {
+    val legacy = RecordingSettings()
+    val modern = RecordingSettings()
+    val notifications = mutableListOf<Settings>()
+    modern.subscribeChange { notifications += it }
+    legacy.simulationSettings
+        .setMemoryConfiguration("CompactTextAtZero")
+        .setDelayedBranchingEnabled(true)
+        .setSelfModifyingCodeEnabled(true)
+        .setWarningsAreErrors(true)
+        .setExtendedAssemblerEnabled(false)
+        .setAssemblerErrorLimit(19)
+        .setStartAtMainEnabled(true)
+        .setBareMachineEnabled(true)
+    val configured =
+        modern.simulationSettings.configureSimulation {
+          memoryConfiguration = "CompactTextAtZero"
+          isDelayedBranchingEnabled = true
+          isSelfModifyingCodeEnabled = true
+          isWarningsAreErrors = true
+          isExtendedAssemblerEnabled = false
+          assemblerErrorLimit = 19
+          isStartAtMainEnabled = true
+          isBareMachineEnabled = true
+        }
+    Assertions.assertThat(configured).isSameAs(modern.simulationSettings)
+    Assertions.assertThat(modern.operations).containsExactlyElementsOf(legacy.operations)
+    Assertions.assertThat(notifications).isEmpty()
+    Assertions.assertThat(configured.memoryConfiguration).isEqualTo("CompactTextAtZero")
+    Assertions.assertThat(configured.isDelayedBranchingEnabled).isTrue()
+    Assertions.assertThat(configured.isSelfModifyingCodeEnabled).isTrue()
+    Assertions.assertThat(configured.isWarningsAreErrors).isTrue()
+    Assertions.assertThat(configured.isExtendedAssemblerEnabled).isFalse()
+    Assertions.assertThat(configured.assemblerErrorLimit).isEqualTo(19)
+    Assertions.assertThat(configured.isStartAtMainEnabled).isTrue()
+    Assertions.assertThat(configured.isBareMachineEnabled).isTrue()
+    val type = javaClassOf<SimulationSettings>()
+    for (name in
+        listOf(
+            "DelayedBranchingEnabled",
+            "SelfModifyingCodeEnabled",
+            "WarningsAreErrors",
+            "ExtendedAssemblerEnabled",
+            "StartAtMainEnabled",
+            "BareMachineEnabled",
+        )) {
+      Assertions.assertThat(type.getMethod("set$name", javaClassOf<Boolean>()).returnType)
+          .isEqualTo(type)
+      Assertions.assertThat(type.getMethod("set${name}Value", javaClassOf<Boolean>()).returnType)
+          .isEqualTo(javaClassOf<Void>())
+    }
+  }
+
+  @Test
+  fun standalonePropertyConfigurationRemainsIndependentAndImmediate() {
+    val first =
+        SimulationSettings().configureSimulation {
+          memoryConfiguration = null
+          isDelayedBranchingEnabled = true
+          isSelfModifyingCodeEnabled = true
+          isWarningsAreErrors = true
+          isExtendedAssemblerEnabled = false
+          assemblerErrorLimit = 7
+          isStartAtMainEnabled = true
+          isBareMachineEnabled = true
+        }
+    val second = SimulationSettings()
+    Assertions.assertThat(first.memoryConfiguration).isNull()
+    Assertions.assertThat(first.isDelayedBranchingEnabled).isTrue()
+    Assertions.assertThat(first.isSelfModifyingCodeEnabled).isTrue()
+    Assertions.assertThat(first.isWarningsAreErrors).isTrue()
+    Assertions.assertThat(first.isExtendedAssemblerEnabled).isFalse()
+    Assertions.assertThat(first.assemblerErrorLimit).isEqualTo(7)
+    Assertions.assertThat(first.isStartAtMainEnabled).isTrue()
+    Assertions.assertThat(first.isBareMachineEnabled).isTrue()
+    Assertions.assertThat(second.memoryConfiguration).isEqualTo("Default")
+    Assertions.assertThat(second.isDelayedBranchingEnabled).isFalse()
+    Assertions.assertThat(second.assemblerErrorLimit).isEqualTo(200)
+    val failure = IllegalStateException("stop configuration")
+    val thrown =
+        assertThrows<IllegalStateException> {
+          second.configureSimulation {
+            isDelayedBranchingEnabled = true
+            throw failure
+          }
+        }
+    Assertions.assertThat(thrown).isSameAs(failure)
+    Assertions.assertThat(second.isDelayedBranchingEnabled).isTrue()
+  }
+
+  private class RecordingSettings : Settings(MemoryPreferences()) {
+    val operations = mutableListOf<String>()
+
+    override fun setBooleanSettingNonPersistent(id: Int, value: Boolean) {
+      operations += "$id:$value"
+      super.setBooleanSettingNonPersistent(id, value)
+    }
+
+    override fun setMemoryConfigurationNonPersistent(config: String?) {
+      operations += "layout:$config"
+      super.setMemoryConfigurationNonPersistent(config)
+    }
+
+    override var assemblerErrorLimit: Int
+      get() = super.assemblerErrorLimit
+      set(value) {
+        operations += "limit:$value"
+        super.assemblerErrorLimit = value
+      }
+  }
+
   @ParameterizedTest
   @ValueSource(
       ints =

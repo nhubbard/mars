@@ -11,7 +11,11 @@ import edu.missouristate.mars.Settings.Companion.START_AT_MAIN
 import edu.missouristate.mars.Settings.Companion.WARNINGS_ARE_ERRORS
 import edu.missouristate.mars.api.MarsSettings
 
-/** Live session settings with optional preference ownership and independent in-memory defaults. */
+/**
+ * Live session settings with optional preference ownership and independent in-memory defaults.
+ * Property setters use distinct JVM names so the existing fluent setters retain their return types
+ * and binary signatures. Both routes use the same persistence and notification paths.
+ */
 class SimulationSettings : MarsSettings {
   private val settingsOwner: Settings?
   override var isUtf8TextEnabled: Boolean = false
@@ -39,8 +43,12 @@ class SimulationSettings : MarsSettings {
   fun displayValuesInHex(): Boolean =
       settingsOwner?.getBooleanSetting(DISPLAY_VALUES_IN_HEX) ?: true
 
-  override val memoryConfiguration: String?
+  @set:JvmName("setMemoryConfigurationValue")
+  override var memoryConfiguration: String?
     get() = if (settingsOwner == null) memoryLayout else settingsOwner.memoryConfiguration
+    set(value) {
+      setMemoryConfiguration(value)
+    }
 
   fun setMemoryConfiguration(memoryConfiguration: String?): SimulationSettings = apply {
     if (settingsOwner == null) {
@@ -50,32 +58,52 @@ class SimulationSettings : MarsSettings {
     }
   }
 
-  override val isDelayedBranchingEnabled: Boolean
+  @set:JvmName("setDelayedBranchingEnabledValue")
+  override var isDelayedBranchingEnabled: Boolean
     get() = settingsOwner?.getBooleanSetting(DELAYED_BRANCHING_ENABLED) ?: delayedBranching
+    set(value) {
+      setDelayedBranchingEnabled(value)
+    }
 
   fun setDelayedBranchingEnabled(enabled: Boolean): SimulationSettings =
       setFlag(DELAYED_BRANCHING_ENABLED, enabled) { delayedBranching = enabled }
 
-  override val isSelfModifyingCodeEnabled: Boolean
+  @set:JvmName("setSelfModifyingCodeEnabledValue")
+  override var isSelfModifyingCodeEnabled: Boolean
     get() = settingsOwner?.getBooleanSetting(SELF_MODIFYING_CODE_ENABLED) ?: selfModifyingCode
+    set(value) {
+      setSelfModifyingCodeEnabled(value)
+    }
 
   fun setSelfModifyingCodeEnabled(enabled: Boolean): SimulationSettings =
       setFlag(SELF_MODIFYING_CODE_ENABLED, enabled) { selfModifyingCode = enabled }
 
-  override val isWarningsAreErrors: Boolean
+  @set:JvmName("setWarningsAreErrorsValue")
+  override var isWarningsAreErrors: Boolean
     get() = settingsOwner?.getBooleanSetting(WARNINGS_ARE_ERRORS) ?: warningsAsErrors
+    set(value) {
+      setWarningsAreErrors(value)
+    }
 
   fun setWarningsAreErrors(enabled: Boolean): SimulationSettings =
       setFlag(WARNINGS_ARE_ERRORS, enabled) { warningsAsErrors = enabled }
 
-  override val isExtendedAssemblerEnabled: Boolean
+  @set:JvmName("setExtendedAssemblerEnabledValue")
+  override var isExtendedAssemblerEnabled: Boolean
     get() = settingsOwner?.getBooleanSetting(EXTENDED_ASSEMBLER_ENABLED) ?: extendedAssembler
+    set(value) {
+      setExtendedAssemblerEnabled(value)
+    }
 
   fun setExtendedAssemblerEnabled(enabled: Boolean): SimulationSettings =
       setFlag(EXTENDED_ASSEMBLER_ENABLED, enabled) { extendedAssembler = enabled }
 
-  override val assemblerErrorLimit: Int
+  @set:JvmName("setAssemblerErrorLimitValue")
+  override var assemblerErrorLimit: Int
     get() = settingsOwner?.assemblerErrorLimit ?: errorLimit
+    set(value) {
+      setAssemblerErrorLimit(value)
+    }
 
   fun setAssemblerErrorLimit(limit: Int): SimulationSettings = apply {
     if (settingsOwner == null) {
@@ -85,14 +113,22 @@ class SimulationSettings : MarsSettings {
     }
   }
 
-  val isStartAtMainEnabled: Boolean
+  @set:JvmName("setStartAtMainEnabledValue")
+  var isStartAtMainEnabled: Boolean
     get() = settingsOwner?.getBooleanSetting(START_AT_MAIN) ?: startAtMain
+    set(value) {
+      setStartAtMainEnabled(value)
+    }
 
   fun setStartAtMainEnabled(enabled: Boolean): SimulationSettings =
       setFlag(START_AT_MAIN, enabled) { startAtMain = enabled }
 
-  val isBareMachineEnabled: Boolean
+  @set:JvmName("setBareMachineEnabledValue")
+  var isBareMachineEnabled: Boolean
     get() = settingsOwner?.getBooleanSetting(BARE_MACHINE_ENABLED) ?: bareMachine
+    set(value) {
+      setBareMachineEnabled(value)
+    }
 
   fun setBareMachineEnabled(enabled: Boolean): SimulationSettings =
       setFlag(BARE_MACHINE_ENABLED, enabled) { bareMachine = enabled }
@@ -103,3 +139,8 @@ class SimulationSettings : MarsSettings {
         else settingsOwner.setBooleanSettingNonPersistent(index, value)
       }
 }
+
+/** Apply settings immediately in source order, retaining the fluent API's notifications. */
+inline fun SimulationSettings.configureSimulation(
+    configure: SimulationSettings.() -> Unit,
+): SimulationSettings = apply(configure)

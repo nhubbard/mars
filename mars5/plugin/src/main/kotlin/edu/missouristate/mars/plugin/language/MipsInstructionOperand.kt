@@ -47,7 +47,7 @@ internal val Instruction.hasCoprocessor0Register: Boolean
 internal fun coprocessor0Operand(head: PsiElement): Int? {
   if (head.text.lowercase() !in coprocessor0Transfers) return null
   val tokens = macroLineTokens(head)
-  if (tokens.size() <= COPROCESSOR0_REGISTER_INDEX) return null
+  if (tokens.size <= COPROCESSOR0_REGISTER_INDEX) return null
   return head.textOffset + tokens[COPROCESSOR0_REGISTER_INDEX].startPos - 1
 }
 
@@ -98,7 +98,7 @@ internal fun matchesMacroCall(tokens: TokenList, end: Int, arities: Set<Int>): B
   if (Macro.hasCallParentheses(tokens)) return arguments in arities
   // An unfinished opening wrapper can still be closed as the user finishes the call.
   val minimum =
-      if (tokens.size() > 1 && tokens[1].type == TokenTypes.LEFT_PAREN) arguments - 1 else arguments
+      if (tokens.size > 1 && tokens[1].type == TokenTypes.LEFT_PAREN) arguments - 1 else arguments
   return arities.any { it >= minimum }
 }
 
@@ -109,11 +109,10 @@ private fun matchesInstructionHead(
 ): Boolean {
   // A broken written operand should not hide aliases whose own operands already fit.
   val checkedEnd =
-      if ((end until tokens.size()).any { tokens[it].type == TokenTypes.ERROR }) end
-      else tokens.size()
+      if ((end until tokens.size).any { tokens[it].type == TokenTypes.ERROR }) end else tokens.size
   return enabledInstructionFormats(tokens[0].value, options.allowPseudoInstructions, options.target)
       .any { format ->
-        tokens.size() <= format.tokenList.size() &&
+        tokens.size <= format.tokenList.size &&
             (checkedEnd == 1 ||
                 OperandFormat.matchesOperands(
                     tokens,
@@ -135,7 +134,7 @@ private val addressPunctuation =
     )
 
 private fun matchesAddressShape(tokens: TokenList, format: TokenList, first: Int = 1): Boolean =
-    (first until tokens.size()).all { index ->
+    (first until tokens.size).all { index ->
       val actual = tokens[index].type
       val expected = format[index].type
       actual == expected || (actual !in addressPunctuation && expected !in addressPunctuation)
@@ -194,7 +193,7 @@ private constructor(
       !tokens.isEmpty &&
           formats.any {
             it.name.equals(tokens[0].value, ignoreCase = true) &&
-                tokens.size() <= it.tokenList.size() &&
+                tokens.size <= it.tokenList.size &&
                 OperandFormat.matchesOperands(tokens, it, index, end, bareMachine) &&
                 matchesAddressShape(tokens, it.tokenList, end)
           }
@@ -223,10 +222,10 @@ private constructor(
                   prefix,
                   allowIncompleteOperand = true,
               ) ?: return null
-      val index = tokens.size()
+      val index = tokens.size
       val formats =
           enabledInstructionFormats(tokens[0].value, allowPseudo, target).filter {
-            index < it.tokenList.size() && matchesAddressShape(tokens, it.tokenList)
+            index < it.tokenList.size && matchesAddressShape(tokens, it.tokenList)
           }
       return MipsInstructionOperand(index, formats, position.textOffset)
     }

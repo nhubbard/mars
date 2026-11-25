@@ -749,7 +749,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
               options.target,
           )
           .any { format ->
-            completed.size() == format.tokenList.size() &&
+            completed.size() == format.tokenList.size &&
                 OperandFormat.matchesOperands(
                     completed,
                     format,
@@ -863,7 +863,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
     }
     // A macro name is an identifier, which only an integer list can consume as an address.
     return integer &&
-        (0 until tokens.size()).all { index ->
+        (tokens.indices).all { index ->
           val token = tokens[index]
           TokenTypes.isIntegerTokenType(token.type) ||
               token.type == TokenTypes.IDENTIFIER &&
@@ -938,8 +938,8 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
                 ?.let { expandedOperation(visible, throughAlias, allowIncompleteOperand = true) }
             ?: return null
     val end =
-        (0 until tokens.size()).firstOrNull { tokens[it].originalStartPos > throughAlias.length }
-            ?: tokens.size()
+        (tokens.indices).firstOrNull { tokens[it].originalStartPos > throughAlias.length }
+            ?: tokens.size
     return tokens to end
   }
 
@@ -999,7 +999,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
     val tokens = expansion.tokens()
     tokens.discardTrailingComment()
     val operationIndex = if (tokens.beginsWithLabel()) 2 else 0
-    if (operationIndex == tokens.size()) return null
+    if (operationIndex == tokens.size) return null
     val operation = tokens[operationIndex]
     val type =
         prefix.operationType(tokens, operationIndex)
@@ -1008,7 +1008,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
             else return null
     val written = expansion.originalOffset(operation.startPos - 1)
     val composite =
-        (0 until tokens.size()).any {
+        (tokens.indices).any {
           it != operationIndex && expansion.originalOffset(tokens[it].startPos - 1) == written
         }
     val macro =
@@ -1057,7 +1057,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
       // A formal can absorb the rest of a row as a quoted argument, even when a
       // later macro expansion supplies the closing quote. Instructions require typed operands.
       if (type != TokenTypes.OPERATOR) {
-        val first = (0 until tokens.size()).firstOrNull { tokens[it].value in formals }
+        val first = (tokens.indices).firstOrNull { tokens[it].value in formals }
         if (first != null) {
           val writtenStart = start + mapped.originalOffset(tokens[first].startPos - 1)
           add(TextRange(writtenStart, start + source.length))
@@ -1108,7 +1108,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
 
   // An opening quote supplied by an alias can absorb written tokens and whitespace.
   private fun quotedStringRanges(tokens: TokenList, writtenOffset: (Int) -> Int): List<TextRange> =
-      (0 until tokens.size()).mapNotNull { index ->
+      (tokens.indices).mapNotNull { index ->
         val token = tokens[index]
         if (token.type != TokenTypes.QUOTED_STRING) return@mapNotNull null
         TextRange(writtenOffset(token.startPos - 1), writtenOffset(token.endPos - 1))
@@ -1319,7 +1319,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
           // Segment switches use their first operand. Allocation and alignment require exact arity.
           end == slot + 1 &&
               TokenTypes.isIntegerTokenType(tokens[slot].type) &&
-              (segment || tokens.size() == end && Binary.stringToInt(tokens[slot].value) >= 0)
+              (segment || tokens.size == end && Binary.stringToInt(tokens[slot].value) >= 0)
         }
       }
     }
@@ -1351,7 +1351,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         // The assembler recognizes the four-token repetition shape before it walks a numeric list.
         tokens.acceptsDataRepetition(directive)
       } else {
-        (first until tokens.size()).all {
+        (first until tokens.size).all {
           tokens[it].acceptsDataValue(directive, allowLabel = true)
         }
       }
@@ -1413,7 +1413,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         expandedOperation(prefix, sourceLine(head, fromLineStart = true))
             ?.takeUnless(TokenList::isEmpty) ?: return false
     val integerOperands =
-        (0 until tokens.size()).all { index ->
+        (tokens.indices).all { index ->
           val token = tokens[index]
           when (token.type) {
             TokenTypes.DIRECTIVE ->
@@ -1461,7 +1461,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
       val names = HashSet<String>()
       // Compare expanded spellings on both sides. Exporting a name twice fails during global
       // transfer.
-      (1 until tokens.size()).all { index ->
+      (1 until tokens.size).all { index ->
         val token = tokens[index]
         token.type == TokenTypes.IDENTIFIER &&
             names.add(token.value) &&

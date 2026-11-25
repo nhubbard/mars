@@ -93,8 +93,8 @@ internal class Parser(private val pass: FirstPassProcessor) {
     val closing: Token?
     if (Macro.hasCallParentheses(tokens)) {
       macroTokens = tokens.clone() as TokenList
-      closing = tokens[tokens.size() - 1]
-      macroTokens.remove(tokens.size() - 1)
+      closing = tokens[tokens.size - 1]
+      macroTokens.remove(tokens.size - 1)
       macroTokens.remove(1)
     } else {
       macroTokens = tokens
@@ -244,13 +244,12 @@ internal class Parser(private val pass: FirstPassProcessor) {
   }
 
   private fun bindNumericReferences(tokens: TokenList, matches: List<Instruction>) {
-    for (index in 1 until tokens.size()) {
+    for (index in 1 until tokens.size) {
       val value = tokens[index].value
       if (value.lastOrNull() != 'f' && value.lastOrNull() != 'b') continue
       if (
           matches.none {
-            it.tokenList.size() == tokens.size() &&
-                it.tokenList[index].type == TokenTypes.IDENTIFIER
+            it.tokenList.size == tokens.size && it.tokenList[index].type == TokenTypes.IDENTIFIER
           }
       )
           continue
@@ -286,7 +285,7 @@ internal class Parser(private val pass: FirstPassProcessor) {
       val call = SourceToken(invocation.location, operator.writtenOrigin().originalStartPos)
       val spelling = operator.equivalenceSource() ?: operator.diagnosticSite()
       val argumentColumns =
-          (1 until tokens.size()).map { tokens[it].writtenOrigin().originalStartPos }
+          (1 until tokens.size).map { tokens[it].writtenOrigin().originalStartPos }
       val occurrence =
           MacroCall(
               macro.definitionSite(),
@@ -336,7 +335,7 @@ internal class Parser(private val pass: FirstPassProcessor) {
       location: Location,
   ): List<SourceOperand> {
     var operands: ArrayList<SourceOperand>? = null
-    for (index in 1 until tokens.size()) {
+    for (index in 1 until tokens.size) {
       val token = tokens[index]
       val written = token.writtenOrigin()
       val arguments = token.argumentSites()

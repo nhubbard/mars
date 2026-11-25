@@ -61,7 +61,7 @@ private val labelOffsetMnemonics by lazy {
   InstructionDefaults.editorCatalog()
       .instructionList
       .asSequence()
-      .filter { it.tokenList.size() > 3 && it.tokenList[3].type == TokenTypes.PLUS }
+      .filter { it.tokenList.size > 3 && it.tokenList[3].type == TokenTypes.PLUS }
       .mapTo(TreeSet(String.CASE_INSENSITIVE_ORDER)) { it.name }
 }
 
@@ -163,7 +163,7 @@ internal fun isDataRepeatPrefix(runtime: SyntaxGeneratedParserRuntime, level: In
   if (tokens.hasNumericRepetitionShape()) return true
   if (!detachedSign) return false
   val firstSubstitutable =
-      (1 until tokens.size()).firstOrNull {
+      (1 until tokens.size).firstOrNull {
         val type = tokens[it].type
         type == TokenTypes.IDENTIFIER || type == TokenTypes.MACRO_PARAMETER
       } ?: return false

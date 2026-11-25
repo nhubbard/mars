@@ -83,7 +83,7 @@ internal class MipsParameterInfoHandler :
       atHeadEnd: Boolean,
       options: MarsExecutionOptions,
   ): Hint? {
-    val count = tokens.size()
+    val count = tokens.size
     val last = tokens[count - 1]
     val next =
         count == 1 ||
@@ -99,20 +99,20 @@ internal class MipsParameterInfoHandler :
 
   private fun macroHint(invocation: MacroInvocation): Hint? {
     val (tokens, fullTokens, parameters) = invocation
-    val last = tokens[tokens.size() - 1]
+    val last = tokens[tokens.size - 1]
     val wrapped = fullTokens?.let(Macro::hasCallParentheses) == true
     val fullCount = fullTokens?.size() ?: 0
-    if (wrapped && tokens.size() == fullCount && last.type == TokenTypes.RIGHT_PAREN) return null
+    if (wrapped && tokens.size == fullCount && last.type == TokenTypes.RIGHT_PAREN) return null
     // A trailing comma in an unfinished call signals another argument in the wrapper.
     // Otherwise, an unmatched opening parenthesis can itself be an argument if the raw arity
     // matches.
     val openingWrapper =
-        tokens.size() > 1 &&
+        tokens.size > 1 &&
             tokens[1].type == TokenTypes.LEFT_PAREN &&
             (wrapped ||
                 fullTokens?.processedLine?.trimEnd()?.endsWith(',') == true ||
                 parameters.none { it.size + 1 == fullCount })
-    val count = tokens.size() - if (openingWrapper) 2 else 1
+    val count = tokens.size - if (openingWrapper) 2 else 1
     val index =
         if (count == 0 || last.endPos - 1 < tokens.processedLine.length) count else count - 1
     val rows = parameters.map { macroRow(tokens[0].value, it) }

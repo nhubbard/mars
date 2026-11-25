@@ -33,7 +33,7 @@ private fun Tokenizer.isInstructionOrBlank(line: String): Boolean {
   if (tokens.isEmpty || tokens[0].type == TokenTypes.COMMENT) return true
   // An opcode spelling can also be a label, and the include prepass looks anywhere on the line.
   return tokens[0].type == TokenTypes.OPERATOR &&
-      (1 until tokens.size()).none {
+      (1 until tokens.size).none {
         tokens[it].type == TokenTypes.COLON || tokens[it].type == TokenTypes.DIRECTIVE
       }
 }

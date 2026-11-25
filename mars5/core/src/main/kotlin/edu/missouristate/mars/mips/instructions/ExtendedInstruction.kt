@@ -124,7 +124,7 @@ constructor(
         }
       }
 
-      for (position in 1 until tokens.size()) {
+      for (position in 1 until tokens.size) {
         val value = tokens[position].value
         instruction = instruction.replace("RG$position", value).replace("OP$position", value)
 
@@ -196,7 +196,7 @@ constructor(
         }
       }
       if (instruction.contains("NR")) {
-        for (position in 1 until tokens.size()) {
+        for (position in 1 until tokens.size) {
           val token = tokens[position].value
           val integer = context.integerRegister(token)
           if (integer != null) {
@@ -210,9 +210,9 @@ constructor(
         }
       }
       if (instruction.contains("S32"))
-          number("S32", 32 - parseNumber(tokens[tokens.size() - 1].value))
+          number("S32", 32 - parseNumber(tokens[tokens.size - 1].value))
       if (instruction.contains("LAB")) {
-        val label = tokens[tokens.size() - 1].value
+        val label = tokens[tokens.size - 1].value
         val symbol = program.localSymbolTable!!.getSymbolGivenAddressLocalOrGlobal(label)
         if (symbol != null) instruction = instruction.replaceFirst("LAB", symbol.name)
       }

@@ -1,5 +1,7 @@
 package edu.missouristate.mars.assembler
 
+import java.util.Collections
+
 /*
 Copyright (c) 2003-2013,  Pete Sanderson and Kenneth Vollmar
 
@@ -29,7 +31,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 /** Tokens for one source line, with the text and status of equivalence expansion. */
-open class TokenList : Cloneable {
+open class TokenList : Cloneable, Iterable<Token> {
   private var tokens = ArrayList<Token>()
   private var equivalenceExpansionIncomplete = false
 
@@ -62,6 +64,16 @@ open class TokenList : Cloneable {
     tokens[position] = replacement
   }
 
+  /** Retain virtual size() dispatch for existing subclasses and JVM callers. */
+  val size: Int
+    get() = size()
+
+  val indices: IntRange
+    get() = 0 until size
+
+  /** A Java cast cannot use iterator.remove() to bypass freezing. */
+  override fun iterator(): Iterator<Token> = Collections.unmodifiableList(tokens).iterator()
+
   open fun size(): Int = tokens.size
 
   open fun add(token: Token) {
@@ -78,12 +90,12 @@ open class TokenList : Cloneable {
     get() = tokens.isEmpty()
 
   open fun beginsWithLabel(): Boolean =
-      size() >= 2 &&
+      size >= 2 &&
           (get(0).type == TokenTypes.IDENTIFIER || get(0).type == TokenTypes.OPERATOR) &&
           get(1).type == TokenTypes.COLON
 
   open fun hasNumericRepetitionShape(): Boolean =
-      (size() == 4 || size() == 5 && get(4).type == TokenTypes.COMMENT) &&
+      (size == 4 || size == 5 && get(4).type == TokenTypes.COMMENT) &&
           get(2).type == TokenTypes.COLON
 
   override fun toString(): String = buildString {

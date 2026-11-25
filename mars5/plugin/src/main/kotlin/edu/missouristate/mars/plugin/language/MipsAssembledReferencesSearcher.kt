@@ -121,7 +121,7 @@ internal fun assemblerTokensStartingAt(text: CharSequence, offset: Int): Sequenc
   val start = sourceLineStart(text, offset)
   val end = CharArrayUtil.shiftForwardUntil(text, offset, "\r\n")
   val tokens = Tokenizer().tokenizeLine(null, 1, text.subSequence(start, end).toString(), false)
-  return (0 until tokens.size()).asSequence().map(tokens::get).filter {
+  return (tokens.indices).asSequence().map(tokens::get).filter {
     start + it.startPos - 1 == offset
   }
 }
