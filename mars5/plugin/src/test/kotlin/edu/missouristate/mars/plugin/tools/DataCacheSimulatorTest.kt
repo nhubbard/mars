@@ -2,7 +2,6 @@ package edu.missouristate.mars.plugin.tools
 
 import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.devices.DataCacheSimulator
-import edu.missouristate.mars.mips.hardware.AccessNotice.Companion.READ
 import edu.missouristate.mars.mips.hardware.AccessOrigin
 import edu.missouristate.mars.mips.hardware.MemoryAccessNotice
 import edu.missouristate.mars.plugin.MarsSessionService

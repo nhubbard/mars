@@ -591,7 +591,7 @@ internal constructor(
   }
 
   private fun registerNumber(register: String): Int {
-    requireCase(register.isNotBlank() && register != "\$") { "Unknown register: $register" }
+    requireCase(register.isNotBlank() && register != "$") { "Unknown register: $register" }
     val name = if (register.startsWith('$')) register else "$$register"
     return machine.registerFile.getUserRegister(name)?.number
         ?: throw CaseFailure("Unknown register: $register")

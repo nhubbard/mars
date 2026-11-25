@@ -127,6 +127,7 @@ class CustomMemoryGridTest {
     }
   }
 
+  @Suppress("KotlinMisorderedAssertEqualsArguments")
   @Test
   fun `custom ranges reject invalid addresses and stop at a segment boundary`() {
     for (address in listOf(-4L, 1L)) assertThrows<IllegalArgumentException> {

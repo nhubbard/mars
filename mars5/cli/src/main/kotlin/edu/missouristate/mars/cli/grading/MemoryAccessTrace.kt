@@ -54,15 +54,15 @@ internal constructor(
     ) {
       "Choose a nonnegative byte address and a nonnegative, non-overflowing permitted length"
     }
-    for (access in snapshot()) {
-      if (access.write) continue
+    for ((address1, length, write) in snapshot()) {
+      if (write) continue
       val fits =
-          access.address >= address &&
-              access.length.toLong() <= byteLength &&
-              access.address - address <= byteLength.toLong() - access.length
+          address1 >= address &&
+              length.toLong() <= byteLength &&
+              address1 - address <= byteLength.toLong() - length
       requireCase(fits) {
         "Expected reads within $byteLength bytes at 0x${address.toString(16)}, " +
-            "observed ${access.length}-byte read at 0x${access.address.toString(16)}"
+            "observed $length-byte read at 0x${address1.toString(16)}"
       }
     }
   }

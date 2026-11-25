@@ -324,6 +324,7 @@ class MarsLearningProgressTest {
     assertTrue(progress.getState().lessons.isEmpty())
   }
 
+  @Suppress("UnusedDataClassCopyResult")
   @ParameterizedTest
   @ValueSource(strings = ["", "../lesson", "a/b", "a b", "a\nb"])
   fun `identity components cannot collide with another lesson path`(invalid: String) {
@@ -332,6 +333,7 @@ class MarsLearningProgressTest {
     assertThrows<IllegalArgumentException> { lesson.copy(version = invalid) }
   }
 
+  @Suppress("UnusedDataClassCopyResult")
   @ParameterizedTest
   @ValueSource(
       strings =

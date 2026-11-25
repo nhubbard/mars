@@ -1,5 +1,6 @@
 package edu.missouristate.mars.plugin.language
 
+import com.intellij.codeInsight.inline.edit.InlineEditAwaiter
 import com.intellij.codeInsight.lookup.Lookup
 import com.intellij.codeInsight.navigation.actions.GotoDeclarationAction
 import com.intellij.lang.annotation.HighlightSeverity
@@ -680,6 +681,9 @@ class MipsFileReferencesPlatformTest {
           fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR)
           assertEquals(".include \"parts/$selected\"\n", fixture.file.text)
         }
+        // Test-only platform hook: finish bundled inline requests before fixture teardown closes
+        // the editor.
+        InlineEditAwaiter.awaitAllInlineEdits(project.get(), fixture.editor)
       }
 
   @Test

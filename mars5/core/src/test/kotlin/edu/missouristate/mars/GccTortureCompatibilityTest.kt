@@ -8,21 +8,28 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.MethodSource
 
 class GccTortureCompatibilityTest {
   @ParameterizedTest
   @MethodSource("programs")
-  fun `freestanding GCC torture cases pass`(name: String, @TempDir directory: Path) {
+  fun `freestanding GCC torture cases pass`(
+      name: String,
+      windowsLineEndings: Boolean,
+      @TempDir directory: Path,
+  ) {
     val source = directory.resolve("$name.s")
     val assembly =
         checkNotNull(javaClass.getResourceAsStream("/gcc-torture/$name.s")).bufferedReader().use {
-          it.readText()
+          it.readText().replace("\r\n", "\n")
         }
+    val checkedOutAssembly = if (windowsLineEndings) assembly.replace("\n", "\r\n") else assembly
     // Drop the ELF debug-section switch and allocate the one file-local BSS object.
     Files.writeString(
         source,
-        assembly
+        checkedOutAssembly
+            .replace("\r\n", "\n")
             .replace("\t.section .mdebug.abi64\n\t.previous\n", "")
             .replace(
                 "\t.local\ttest\n\t.comm\ttest,4,4\n",
@@ -75,7 +82,7 @@ class GccTortureCompatibilityTest {
 
   companion object {
     @JvmStatic
-    fun programs(): List<String> =
+    fun programs(): List<Arguments> =
         checkNotNull(javaClass.getResourceAsStream("/gcc-torture/sources.tsv"))
             .bufferedReader()
             .useLines { lines ->
@@ -83,7 +90,9 @@ class GccTortureCompatibilityTest {
                   .filterNot { it.startsWith('#') }
                   .flatMap { line ->
                     val name = line.substringBefore('\t').removeSuffix(".c")
-                    sequenceOf("$name-O0", "$name-O2")
+                    sequenceOf("$name-O0", "$name-O2").flatMap { variant ->
+                      sequenceOf(Arguments.of(variant, false), Arguments.of(variant, true))
+                    }
                   }
                   .toList()
             }

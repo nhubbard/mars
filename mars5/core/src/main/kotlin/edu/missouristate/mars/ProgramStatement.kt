@@ -451,7 +451,7 @@ private constructor(
         return
       }
       values[0] = values[0] ushr 2
-      insertBinaryCode(values[0], Instruction.operandMask[0], errors)
+      insertBinaryCode(values[0], Instruction.OPERAND_MASK[0], errors)
     } else {
       val encoded =
           try {
@@ -462,7 +462,7 @@ private constructor(
           }
       machineStatement = basic.encodingMask(values).replace(" ", "").replace('c', '0')
       for (index in 0 until basic.encodedOperandCount(numOperands)) {
-        insertBinaryCode(encoded[index], Instruction.operandMask[index], errors)
+        insertBinaryCode(encoded[index], Instruction.OPERAND_MASK[index], errors)
       }
     }
     binaryStatement = Binary.binaryStringToInt(machineStatement!!)
@@ -490,7 +490,7 @@ private constructor(
   private fun decodeOperands(instruction: BasicInstruction, binary: Int, address: Int) {
     val mask = instruction.operationMask
     val values = operandValues!!
-    for (code in Instruction.operandMask) {
+    for (code in Instruction.OPERAND_MASK) {
       val first = mask.indexOf(code)
       if (first < 0) continue
       val low = 31 - mask.lastIndexOf(code)

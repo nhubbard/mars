@@ -20,10 +20,18 @@ import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
 import java.io.DataInput
 import java.io.DataOutput
 
+interface Site {
+  operator fun component1(): SymbolKind
+
+  operator fun component2(): Int
+
+  operator fun component3(): Int
+}
+
 /**
  * A syntactic candidate. The macro offset describes physical PSI nesting before source expansion.
  */
-data class MipsDeclarationSite(val kind: SymbolKind, val offset: Int, val macroOffset: Int)
+data class MipsDeclarationSite(val kind: SymbolKind, val offset: Int, val macroOffset: Int) : Site
 
 /**
  * Index only this file's syntax. Never resolve names or query another index while producing facts.

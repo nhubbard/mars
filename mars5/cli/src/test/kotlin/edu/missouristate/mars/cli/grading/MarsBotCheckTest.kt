@@ -41,7 +41,7 @@ class MarsBotCheckTest {
     DaggerMarsComponent.builder().guiProxy(HeadlessGuiProxy()).build().context().use { session ->
       session.assemble(listOf(entry))
       val bot = MarsBotCheck(session, 1)
-      bot.expectState(0.0, 0.0, 0, false, false)
+      bot.expectState(0.0, 0.0, 0, moving = false, penDown = false)
       bot.expectTrail()
       duringExecution<Unit, Exception> {
         session.memory.setWord(0xffff8010.toInt(), 90)
@@ -49,13 +49,21 @@ class MarsBotCheckTest {
         session.memory.setWord(0xffff8050.toInt(), 1)
       }
       session.simulator().runAsync(2, null).join()
-      bot.expectState(2.0, 0.0, 90, true, true)
+      bot.expectState(2.0, 0.0, 90, moving = true, penDown = true)
       bot.expectTrail(0.0 to 0.0, 2.0 to 0.0)
-      bot.expectState(2.01, 0.0, 90, true, true, tolerance = 0.02)
-      assertThrows(CaseFailure::class.java) { bot.expectState(2.0, 0.0, 90, false, true) }
-      assertThrows(CaseFailure::class.java) { bot.expectState(2.0, 0.0, 0, true, true) }
-      assertThrows(CaseFailure::class.java) { bot.expectState(2.0, 0.0, 90, true, false) }
-      assertThrows(CaseFailure::class.java) { bot.expectState(1.0, 0.0, 90, true, true) }
+      bot.expectState(2.01, 0.0, 90, moving = true, penDown = true, tolerance = 0.02)
+      assertThrows(CaseFailure::class.java) {
+        bot.expectState(2.0, 0.0, 90, moving = false, penDown = true)
+      }
+      assertThrows(CaseFailure::class.java) {
+        bot.expectState(2.0, 0.0, 0, moving = true, penDown = true)
+      }
+      assertThrows(CaseFailure::class.java) {
+        bot.expectState(2.0, 0.0, 90, moving = true, penDown = false)
+      }
+      assertThrows(CaseFailure::class.java) {
+        bot.expectState(1.0, 0.0, 90, moving = true, penDown = true)
+      }
       assertThrows(CaseFailure::class.java) { bot.expectTrail() }
       assertThrows(CaseFailure::class.java) { bot.expectTrail(0.0 to 0.0, 1.0 to 0.0) }
       assertThrows(CaseFailure::class.java) { bot.expectTrail(0.0 to 1.0, 2.0 to 0.0) }
@@ -68,13 +76,19 @@ class MarsBotCheckTest {
         bot.expectTrail(tolerance = Double.POSITIVE_INFINITY)
       }
       assertThrows(IllegalArgumentException::class.java) {
-        bot.expectState(Double.NaN, 0.0, 0, false, false)
+        bot.expectState(
+            Double.NaN,
+            0.0,
+            0,
+            moving = false,
+            penDown = false,
+        )
       }
       bot.close()
       bot.close()
       assertEquals(0, session.memory.countObservers())
       session.simulator().runAsync(1, null).join()
-      bot.expectState(2.0, 0.0, 90, true, true)
+      bot.expectState(2.0, 0.0, 90, moving = true, penDown = true)
       bot.expectTrail(0.0 to 0.0, 2.0 to 0.0)
     }
   }

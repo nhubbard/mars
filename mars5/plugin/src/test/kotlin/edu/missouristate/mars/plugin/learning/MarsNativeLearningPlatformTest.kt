@@ -1,13 +1,9 @@
+@file:Suppress("OverrideOnly")
+
 package edu.missouristate.mars.plugin.learning
 
 import com.intellij.openapi.Disposable
-import com.intellij.openapi.actionSystem.ActionManager
-import com.intellij.openapi.actionSystem.ActionPlaces
-import com.intellij.openapi.actionSystem.ActionUiKind
-import com.intellij.openapi.actionSystem.ActionUpdateThread
-import com.intellij.openapi.actionSystem.AnActionEvent
-import com.intellij.openapi.actionSystem.CommonDataKeys
-import com.intellij.openapi.actionSystem.DataContext
+import com.intellij.openapi.actionSystem.*
 import com.intellij.openapi.actionSystem.impl.SimpleDataContext
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.EDT
@@ -38,21 +34,11 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.future.await
 import kotlinx.coroutines.withContext
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertInstanceOf
-import org.junit.jupiter.api.Assertions.assertNotNull
-import org.junit.jupiter.api.Assertions.assertNull
-import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
-import training.dsl.LearningBalloonConfig
-import training.dsl.LessonContext
-import training.dsl.PreviousTaskInfo
-import training.dsl.RuntimeTextContext
-import training.dsl.TaskContext
-import training.dsl.TaskRuntimeContext
+import training.dsl.*
 import training.lang.LangManager
 import training.learn.CourseManager
 import training.learn.course.LessonType
@@ -131,7 +117,7 @@ class MarsNativeLearningPlatformTest {
     assertTrue(source.contains("calculate:"))
     for ((input, expected) in listOf("20\n" to "41", "0\n" to "1", "-3\n" to "-5")) {
       MarsSessionService.createMarsComponent().context().use { context ->
-        val program = context.assemble(listOf(file), null, true, true)
+        val program = context.assemble(listOf(file), null, extended = true, warnings = true)
         val bytes = ByteArrayOutputStream()
         PrintStream(bytes, true, Charsets.UTF_8).use { output ->
           SessionSyscallEnvironment(
@@ -388,91 +374,105 @@ class MarsNativeLearningPlatformTest {
                 }
               }
               val progress = projectFixture.get().service<MarsLearningProgress>()
-              if (lesson is MarsConsoleRunLesson) {
-                val ticket =
-                    progress.beginCheck(
-                        MarsConsoleRunCheckpoint.identity,
-                        MarsConsoleRunCheckpoint.STEP,
-                        "test observation",
-                    )
-                progress.finishCheck(ticket, true)
-              } else if (lesson is MarsConsoleDebugLesson) {
-                val ticket =
-                    progress.beginCheck(
-                        MarsConsoleDebugCheckpoint.identity,
-                        MarsConsoleDebugCheckpoint.STEP,
-                        "test debug observation",
-                    )
-                progress.finishCheck(ticket, true)
-              } else if (lesson is MarsConsoleOutputLesson) {
-                progress.recordChoice(
-                    MarsPredictions.identity,
-                    "output",
-                    MarsPredictions.output.correct,
-                )
-                val ticket =
-                    progress.beginCheck(
-                        MarsConsoleDebugCheckpoint.Segment.OUTPUT.identity,
-                        MarsConsoleDebugCheckpoint.STEP,
-                        "test output observation",
-                    )
-                progress.finishCheck(ticket, true)
-              } else if (lesson is MarsConsoleDiagnosisLesson) {
-                progress.recordChoice(
-                    MarsPredictions.identity,
-                    "wrong-output",
-                    MarsPredictions.wrongOutput.correct,
-                )
-                progress.recordChoice(
-                    MarsPredictions.identity,
-                    "diagnosis",
-                    MarsPredictions.diagnosis.correct,
-                )
-                val ticket =
-                    progress.beginCheck(
-                        MarsConsoleDebugCheckpoint.Segment.DIAGNOSIS.identity,
-                        MarsConsoleDebugCheckpoint.STEP,
-                        "test faulty argument observation",
-                    )
-                progress.finishCheck(ticket, true)
-              } else if (lesson is MarsConsoleRepairLesson) {
-                val ticket =
-                    progress.beginCheck(
-                        MarsConsoleRunCheckpoint.repairIdentity,
-                        MarsConsoleRunCheckpoint.STEP,
-                        "test repair",
-                    )
-                progress.finishCheck(ticket, true)
-              } else if (lesson is MarsIndependentLesson) {
-                progress.open(MarsPredictions.identity, MarsPredictions.identity.contentSha256)
-                progress.recordChoice(
-                    MarsPredictions.identity,
-                    "doubling",
-                    MarsPredictions.doubling.correct,
-                )
-                progress.recordChoice(
-                    MarsPredictions.identity,
-                    "negative",
-                    MarsPredictions.negative.correct,
-                )
-                val ticket =
-                    progress.beginCheck(
-                        MarsIndependentCheckpoint.identity,
-                        MarsIndependentCheckpoint.STEP,
-                        "test independent assessment",
-                    )
-                progress.finishCheck(ticket, true)
-              } else {
-                progress.recordChoice(
-                    MarsPredictions.identity,
-                    "doubling",
-                    MarsPredictions.doubling.correct,
-                )
-                progress.recordChoice(
-                    MarsPredictions.identity,
-                    "negative",
-                    MarsPredictions.negative.correct,
-                )
+              when (lesson) {
+                is MarsConsoleRunLesson -> {
+                  val ticket =
+                      progress.beginCheck(
+                          MarsConsoleRunCheckpoint.identity,
+                          MarsConsoleRunCheckpoint.STEP,
+                          "test observation",
+                      )
+                  progress.finishCheck(ticket, true)
+                }
+
+                is MarsConsoleDebugLesson -> {
+                  val ticket =
+                      progress.beginCheck(
+                          MarsConsoleDebugCheckpoint.identity,
+                          MarsConsoleDebugCheckpoint.STEP,
+                          "test debug observation",
+                      )
+                  progress.finishCheck(ticket, true)
+                }
+
+                is MarsConsoleOutputLesson -> {
+                  progress.recordChoice(
+                      MarsPredictions.identity,
+                      "output",
+                      MarsPredictions.output.correct,
+                  )
+                  val ticket =
+                      progress.beginCheck(
+                          MarsConsoleDebugCheckpoint.Segment.OUTPUT.identity,
+                          MarsConsoleDebugCheckpoint.STEP,
+                          "test output observation",
+                      )
+                  progress.finishCheck(ticket, true)
+                }
+
+                is MarsConsoleDiagnosisLesson -> {
+                  progress.recordChoice(
+                      MarsPredictions.identity,
+                      "wrong-output",
+                      MarsPredictions.wrongOutput.correct,
+                  )
+                  progress.recordChoice(
+                      MarsPredictions.identity,
+                      "diagnosis",
+                      MarsPredictions.diagnosis.correct,
+                  )
+                  val ticket =
+                      progress.beginCheck(
+                          MarsConsoleDebugCheckpoint.Segment.DIAGNOSIS.identity,
+                          MarsConsoleDebugCheckpoint.STEP,
+                          "test faulty argument observation",
+                      )
+                  progress.finishCheck(ticket, true)
+                }
+
+                is MarsConsoleRepairLesson -> {
+                  val ticket =
+                      progress.beginCheck(
+                          MarsConsoleRunCheckpoint.repairIdentity,
+                          MarsConsoleRunCheckpoint.STEP,
+                          "test repair",
+                      )
+                  progress.finishCheck(ticket, true)
+                }
+
+                is MarsIndependentLesson -> {
+                  progress.open(MarsPredictions.identity, MarsPredictions.identity.contentSha256)
+                  progress.recordChoice(
+                      MarsPredictions.identity,
+                      "doubling",
+                      MarsPredictions.doubling.correct,
+                  )
+                  progress.recordChoice(
+                      MarsPredictions.identity,
+                      "negative",
+                      MarsPredictions.negative.correct,
+                  )
+                  val ticket =
+                      progress.beginCheck(
+                          MarsIndependentCheckpoint.identity,
+                          MarsIndependentCheckpoint.STEP,
+                          "test independent assessment",
+                      )
+                  progress.finishCheck(ticket, true)
+                }
+
+                else -> {
+                  progress.recordChoice(
+                      MarsPredictions.identity,
+                      "doubling",
+                      MarsPredictions.doubling.correct,
+                  )
+                  progress.recordChoice(
+                      MarsPredictions.identity,
+                      "negative",
+                      MarsPredictions.negative.correct,
+                  )
+                }
               }
               assertTrue(predicates.all { it(runtime) })
               if (lesson is MarsIndependentLesson)
@@ -511,9 +511,9 @@ class MarsNativeLearningPlatformTest {
     val worked = files.getValue(MarsLearningWorkspace.Exercise.EXAMPLE)
     val faulty = files.getValue(MarsLearningWorkspace.Exercise.DIAGNOSIS)
     val repair = files.getValue(MarsLearningWorkspace.Exercise.REPAIR)
-    assertTrue(Files.readString(worked).contains("move \$a0, \$t0"))
+    assertTrue(Files.readString(worked).contains($$"move $a0, $t0"))
     val originalFault = Files.readString(faulty)
-    assertTrue(originalFault.contains("move \$a0, \$v0"))
+    assertTrue(originalFault.contains($$"move $a0, $v0"))
     assertEquals(originalFault, Files.readString(repair))
     Files.writeString(repair, "# student repair retained\n")
     for (exercise in MarsLearningWorkspace.Exercise.entries) MarsLearningWorkspace.ensureExampleAt(
@@ -522,7 +522,7 @@ class MarsNativeLearningPlatformTest {
     )
     assertEquals("# student repair retained\n", Files.readString(repair))
     assertEquals(originalFault, Files.readString(faulty))
-    assertTrue(Files.readString(worked).contains("move \$a0, \$t0"))
+    assertTrue(Files.readString(worked).contains($$"move $a0, $t0"))
   }
 
   @Test

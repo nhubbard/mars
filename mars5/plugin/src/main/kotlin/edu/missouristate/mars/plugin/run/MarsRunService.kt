@@ -180,7 +180,7 @@ internal class MarsProcessHandler(
     connectDigitalLab: Boolean,
     connectKeyboardDisplay: Boolean,
     connectMarsBot: Boolean,
-    connectScavengerHunt: Boolean,
+    internal var connectScavengerHunt: Boolean,
     private val backstepLimit: Int,
     private val execute:
         suspend MarsProcessHandler.(MarsContext, MarsExecutionSources) -> StopEvent,
@@ -223,7 +223,6 @@ internal class MarsProcessHandler(
   val digitalLab = DigitalLabDevice(connectDigitalLab)
   val keyboardDisplay = KeyboardDisplayDevice(connectKeyboardDisplay)
   val marsBot = MarsBotDevice(connectMarsBot)
-  internal var connectScavengerHunt = connectScavengerHunt
   private var scavengerHunt: ScavengerHuntDevice? = null
   private var finishedHunt: ScavengerHuntDevice.Snapshot? = null
   val xray = XRayTrace()

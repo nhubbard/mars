@@ -373,7 +373,7 @@ class MipsStructureViewPlatformTest {
 
   @Test
   // Kotlin exposes the reported Java setters as read-only properties.
-  @Suppress("UsePropertyAccessSyntax")
+  @Suppress("UsePropertyAccessSyntax", "UnstableApiUsage")
   fun `outline shows generated equivalences and navigates to their written directive`() =
       timeoutRunBlocking {
         val current = project.get()
@@ -525,7 +525,7 @@ class MipsStructureViewPlatformTest {
 
   @Test
   // Kotlin exposes the reported Java setters as read-only properties.
-  @Suppress("UsePropertyAccessSyntax")
+  @Suppress("UsePropertyAccessSyntax", "UnstableApiUsage")
   fun `outline follows unsaved edits while indexing and releases removed declarations`() =
       timeoutRunBlocking {
         val current = project.get()

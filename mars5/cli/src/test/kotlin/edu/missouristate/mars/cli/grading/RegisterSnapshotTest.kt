@@ -31,8 +31,8 @@ class RegisterSnapshotTest {
           assertEquals(value, case.readRegister("$$number"))
         }
         assertEquals(case.readRegister("4"), case.readRegister("a0"))
-        assertEquals(case.readRegister("4"), case.readRegister("\$a0"))
-        for (name in listOf("absent", "32", "-1", "v32", "", " ", "\$")) {
+        assertEquals(case.readRegister("4"), case.readRegister($$"$a0"))
+        for (name in listOf("absent", "32", "-1", "v32", "", " ", "$")) {
           assertThrows<CaseFailure> { case.readRegister(name) }
         }
       }

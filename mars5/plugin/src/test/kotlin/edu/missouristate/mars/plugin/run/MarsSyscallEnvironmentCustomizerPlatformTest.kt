@@ -182,7 +182,7 @@ class MarsSyscallEnvironmentCustomizerPlatformTest {
         val failure =
             assertThrows(IllegalStateException::class.java) {
               withCustomizedSyscallEnvironment(project, entry, io) {
-                fail<Unit>("Guest must not execute")
+                fail("Guest must not execute")
               }
             }
         assertEquals("setup failure", failure.message)
@@ -263,7 +263,7 @@ class MarsSyscallEnvironmentCustomizerPlatformTest {
             if (stop) $$"li $a0, 600000\nli $v0, 32\nsyscall\n"
             else $$"li $a0, 2\nli $v0, 1\nsyscall\nli $v0, 10\nsyscall\n"
         withContext(Dispatchers.IO) {
-          Files.writeString(entry, ".text\n" + source)
+          Files.writeString(entry, ".text\n$source")
           assertNotNull(LocalFileSystem.getInstance().refreshAndFindFileByNioFile(entry))
         }
         extensions(listOf(customizer)) {

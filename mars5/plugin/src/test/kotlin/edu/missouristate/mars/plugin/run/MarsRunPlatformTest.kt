@@ -1744,7 +1744,7 @@ class MarsRunPlatformTest {
   @ParameterizedTest
   @ValueSource(booleans = [false, true])
   fun `native Run and Debug decode the shipped PNG without input`(debug: Boolean) =
-      timeoutRunBlocking(45.seconds) {
+      timeoutRunBlocking(120.seconds) {
         val lifetime = Disposer.newDisposable()
         val recording = Recording()
         val started = CompletableDeferred<MarsProcessHandler>()

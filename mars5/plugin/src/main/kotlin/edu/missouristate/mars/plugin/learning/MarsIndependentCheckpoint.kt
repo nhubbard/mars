@@ -145,7 +145,7 @@ internal class MarsIndependentCheckpoint(
   data class LearningHint(val id: String, val title: String, val text: String)
 
   companion object {
-    val hints =
+    val hints: List<LearningHint> =
         copyOf(
             listOf("plan", "lifetime", "combine", "trace").map { id ->
               LearningHint(
@@ -156,7 +156,7 @@ internal class MarsIndependentCheckpoint(
             },
         )
     const val STEP = "independent-cases"
-    val cases =
+    val cases: List<ConsoleCheckCase> =
         copyOf(
             listOf(20, 0, -3, -1000, 1000).map { value ->
               ConsoleCheckCase(

@@ -2458,6 +2458,7 @@ class MipsParserPlatformTest {
     }
   }
 
+  @Suppress("RedundantInterpolationPrefix")
   @Test
   fun `Unicode include paths symbols and decimal digits preserve syntax and expansion origins`(
       @TempDir directory: Path,

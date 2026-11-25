@@ -1,3 +1,5 @@
+@file:Suppress("OverrideOnly")
+
 package edu.missouristate.mars.plugin.learning
 
 import com.intellij.openapi.actionSystem.ActionManager

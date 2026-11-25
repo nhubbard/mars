@@ -21,7 +21,7 @@ import java.nio.file.Path
 internal class MarsConsoleDebugCheckpoint(
     private val project: Project,
     private val lifetime: Disposable,
-    private val entry: Path,
+    entry: Path,
     document: Document,
     private val segment: Segment = Segment.ARITHMETIC,
 ) {
@@ -83,9 +83,9 @@ internal class MarsConsoleDebugCheckpoint(
                     context.number,
                     evaluator.integerRegisterBits("pc"),
                     evaluator.instructionWord,
-                    evaluator.integerRegisterBits("\$v0"),
+                    evaluator.integerRegisterBits($$"$v0"),
                     evaluator.integerRegisterBits("\$t0"),
-                    evaluator.integerRegisterBits("\$a0"),
+                    evaluator.integerRegisterBits($$"$a0"),
                 ),
             )
             if (trace.phase == 3) source.finish(attempt, true)
@@ -186,7 +186,7 @@ internal class MarsConsoleDebugCheckpoint(
   }
 
   internal enum class Segment(val identity: MarsLessonIdentity) {
-    ARITHMETIC(MarsConsoleDebugCheckpoint.identity),
+    ARITHMETIC(identity),
     OUTPUT(
         MarsLearningSource.identity(
             "console-output",

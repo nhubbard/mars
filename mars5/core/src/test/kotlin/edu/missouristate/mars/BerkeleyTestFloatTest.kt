@@ -129,7 +129,7 @@ class BerkeleyTestFloatTest {
           else -> {
             val signed = if (source.startsWith("u") || target.startsWith("u")) "u" else "s"
             val prefix = if (source.startsWith("f")) "ftint_" else "ffint_"
-            prefix + $$"$$signed.$$lanes $w9,$w10"
+            $$"$$prefix$$signed.$$lanes $w9,$w10"
           }
         }
 

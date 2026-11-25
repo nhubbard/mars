@@ -77,7 +77,7 @@ class MarsConsoleRunCheckpointTest {
   @Test
   fun `native process starting event observes actual console input output and source`() =
       timeoutRunBlocking {
-        exercise(true) { checkpoint, handler ->
+        exercise(true) { _, handler ->
           val project = projectFixture.get()
           withContext(Dispatchers.EDT) {
             val type = ConfigurationTypeUtil.findConfigurationType(MarsRunType::class.java)
@@ -111,7 +111,7 @@ class MarsConsoleRunCheckpointTest {
       timeoutRunBlocking {
         exercise(false) { checkpoint, handler ->
           checkpoint.starting(DefaultRunExecutor.EXECUTOR_ID, handler)
-          edit { it + "\n# student edit\n" }
+          edit { "$it\n# student edit\n" }
           edit { example }
           run(handler, "20\n")
         }
@@ -146,7 +146,7 @@ class MarsConsoleRunCheckpointTest {
         exercise(
             true,
             after = { checkpoint ->
-              edit { it + "\n# changed after success\n" }
+              edit { "$it\n# changed after success\n" }
               assertFalse(checkpoint.passed())
               edit { example }
               assertFalse(checkpoint.passed())
@@ -165,6 +165,7 @@ class MarsConsoleRunCheckpointTest {
     }
   }
 
+  @Suppress("UsePropertyAccessSyntax")
   @Test
   fun `saving source and unrelated files retain success but renaming it invalidates it`() =
       timeoutRunBlocking {
@@ -188,7 +189,7 @@ class MarsConsoleRunCheckpointTest {
               }
             },
         ) { checkpoint, handler ->
-          edit { it + "\n# unsaved work included in this run\n" }
+          edit { "$it\n# unsaved work included in this run\n" }
           checkpoint.starting(DefaultRunExecutor.EXECUTOR_ID, handler)
           run(handler, "20\n")
         }
@@ -199,7 +200,7 @@ class MarsConsoleRunCheckpointTest {
     withContext(Dispatchers.EDT) {
       fixture.addFileToProject("mars-labs/console/extra.inc", "# included source\n")
     }
-    exercise(false, source = example + ".include \"extra.inc\"\n") { checkpoint, handler ->
+    exercise(false, source = "$example.include \"extra.inc\"\n") { checkpoint, handler ->
       checkpoint.starting(DefaultRunExecutor.EXECUTOR_ID, handler)
       run(handler, "20\n")
     }
@@ -262,8 +263,8 @@ class MarsConsoleRunCheckpointTest {
   @Test
   fun `repair rejects the counterexample and accepts different correct argument preparations`() =
       timeoutRunBlocking {
-        val faulty = example.replace("move \$a0, \$t0", "move \$a0, \$v0")
-        val alternative = example.replace("move \$a0, \$t0", "or \$a0, \$t0, \$zero")
+        val faulty = example.replace($$"move $a0, $t0", $$"move $a0, $v0")
+        val alternative = example.replace($$"move $a0, $t0", $$"or $a0, $t0, $zero")
         for ((source, expected) in listOf(faulty to false, example to true, alternative to true)) {
           exercise(
               expected,
@@ -331,6 +332,7 @@ class MarsConsoleRunCheckpointTest {
     }
   }
 
+  @Suppress("UsePropertyAccessSyntax")
   private suspend fun edit(change: (String) -> String) =
       withContext(Dispatchers.EDT) {
         val document = FileDocumentManager.getInstance().getDocument(fixture.file.virtualFile)!!

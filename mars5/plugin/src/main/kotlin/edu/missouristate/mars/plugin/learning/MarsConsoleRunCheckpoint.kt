@@ -180,7 +180,7 @@ internal class MarsLearningExecution(
 
 /** Observes the first unit's ordinary Run; it never launches or alters a simulated program. */
 internal class MarsConsoleRunCheckpoint(
-    private val project: Project,
+    project: Project,
     private val scope: CoroutineScope,
     private val lifetime: Disposable,
     entry: Path,
