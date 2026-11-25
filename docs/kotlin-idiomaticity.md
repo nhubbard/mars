@@ -40,6 +40,9 @@ counts include the existing helper's implementation.
    providers and columns replace the repeated objects. The focused completion,
    debugger, and new column-contract tests pass; all affected modules compile.
 6. Remaining callback adapters, retaining explicit objects where clearer.
+   Complete: native focus and lazy PSI APIs, thin debugger outcome/starter
+   and table callback adapters. All 134 selected debugger, learning-anchor,
+   memory-display, and new callback-contract tests pass; affected modules compile.
 7. Core collection and simulation configuration APIs, preserving compatibility.
 8. Nullable state and lifecycle invariants, followed by complete validation.
 
@@ -101,3 +104,22 @@ Every phase is reviewed, compiled, tested, and committed before the next begins.
   and renderer/editor behavior. Only comparators and column classes need builder
   options today. `buildColumnInfo` has a distinct name from the value-only factory
   to avoid ambiguous Kotlin Function1 overloads. Builder settings are snapshotted.
+
+- The native `whenFocusGained` helper retains component lifetime for the memory
+  grid. Its mouse-click handler remains explicit: it is a short single local
+  handler with no repeated callback boilerplate. The disassembly header adapter
+  retains its before/after layout state and two-event pairing.
+- Renderer factories override only customization, retaining native clearing,
+  selection/focus setup, and cell state. Debug modification callbacks require both
+  outcomes and propagate exceptions without scheduling or catching them.
+- The script-debugger module has a similar starter helper, but MARS does not
+  depend on that separate module. The local three-line native adapter avoids
+  adding an unrelated debugger dependency. Sessions remain uninitialized during
+  the factory callback; initialization still belongs in `sessionInitialized`.
+- Native lazy pre-order PSI traversal replaces local visitors only where root
+  inclusion and short-circuiting are equivalent. Inspection visitors and index
+  walkers with distinct contracts remain native visitors.
+- Remaining objects include native instruction subclasses, breakpoint handlers,
+  debugger layouts/presentations, refactoring and undo actions, persistent UI
+  subclasses, test doubles, and the small implementations inside these factories.
+  Their state, inheritance, or multi-method contracts remain explicit.
