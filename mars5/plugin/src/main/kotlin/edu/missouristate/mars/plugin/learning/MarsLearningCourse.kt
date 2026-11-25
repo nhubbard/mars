@@ -85,13 +85,7 @@ internal class MarsRegisterPredictionLesson :
   }
 
   override val lessonContent: LessonContext.() -> Unit = {
-    task {
-      val task = this
-      before { task.addStep(MarsLearningWorkspace.openExample(project)) }
-    }
-    task {
-      prediction(MarsPredictions.doubling)
-    }
+    openExampleAndPredict(MarsPredictions.doubling)
     task { runtimeText { MarsPredictions.doubling.answerExplanation } }
     task {
       prediction(MarsPredictions.negative)
@@ -261,13 +255,7 @@ internal class MarsConsoleOutputLesson :
 
   override val lessonContent: LessonContext.() -> Unit = {
     lateinit var observation: MarsConsoleDebugCheckpoint
-    task {
-      val task = this
-      before { task.addStep(MarsLearningWorkspace.openExample(project)) }
-    }
-    task {
-      prediction(MarsPredictions.output)
-    }
+    openExampleAndPredict(MarsPredictions.output)
     task { runtimeText { MarsPredictions.output.answerExplanation } }
     task {
       before {
@@ -439,4 +427,13 @@ internal class MarsIndependentLesson :
     }
     text(learningMessages.getMessage("lesson.independent.conclusion"))
   }
+}
+
+/** Keep source preparation and its prediction as separate native trainer tasks. */
+private fun LessonContext.openExampleAndPredict(question: MarsPrediction) {
+  task {
+    val preparation = this
+    before { preparation.addStep(MarsLearningWorkspace.openExample(project)) }
+  }
+  task { prediction(question) }
 }
