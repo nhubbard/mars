@@ -46,7 +46,13 @@ counts include the existing helper's implementation.
 7. Core collection and simulation configuration APIs, preserving compatibility.
    All 2,461 core, 317 CLI, and 8 datapath tests pass; benchmark sources compile.
    All 186 selected plugin token/settings, completion, parser, and Run tests pass.
-8. Nullable state and lifecycle invariants, followed by complete validation.
+8. Nullable state and lifecycle invariants. Complete: the full 2,463 core,
+   317 CLI, and 8 datapath suites and 122 selected Debug tests pass. Final
+   lifecycle/image and debugger-error regressions also pass. Benchmark sources
+   compile. Production non-null assertions decrease from 263 to 219; see
+   `kotlin-nullability-audit.md` and its repeatable remaining-assertion inventory.
+
+Complete repository and packaged-plugin validation follows these phase checks.
 
 Every phase is reviewed, compiled, tested, and committed before the next begins.
 

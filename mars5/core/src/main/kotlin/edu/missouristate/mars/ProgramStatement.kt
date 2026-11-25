@@ -65,7 +65,7 @@ private constructor(
     open val instructionOrigin: Origin?,
     open val sourceOperands: List<SourceOperand>,
     private val displaySettings: SimulationSettings?,
-    private val operandValues: IntArray?,
+    private val operandValues: IntArray,
     private var numOperands: Int,
     open var binaryStatement: Int,
     open var basicAssemblyStatement: String?,
@@ -155,7 +155,7 @@ private constructor(
       null,
       emptyList(),
       settings,
-      if (decoded == null) null else IntArray(4),
+      if (decoded == null) IntArray(0) else IntArray(4),
       0,
       binary,
       null,
@@ -176,8 +176,13 @@ private constructor(
   /** A detached copy of the instruction, safe to install in a different session. */
   open fun captureImage(): Image = Image.capture(this)
 
-  class Image private constructor(statement: ProgramStatement) {
-    private val format = statement.instruction!!.exampleFormat
+  class Image
+  private constructor(
+      statement: ProgramStatement,
+      instruction: Instruction,
+      operandValues: IntArray,
+  ) {
+    private val format = instruction.exampleFormat
     private val sourceFile = statement.sourceFile
     private val source = statement.source
     private val basicAssembly = statement.basicAssemblyStatement
@@ -187,7 +192,7 @@ private constructor(
     private val line = statement.sourceLine
     private val binary = statement.binaryStatement
     private val numOperands = statement.numOperands
-    private val operands = statement.operandValues!!.copyOf()
+    private val operands = operandValues.copyOf()
     private val origin = statement.instructionOrigin
     private val sourceOperands = statement.sourceOperands
     private val display = copyList(statement.display)
@@ -223,7 +228,15 @@ private constructor(
         addressBits == other.addressBits && binary == other.binary
 
     companion object {
-      internal fun capture(statement: ProgramStatement): Image = Image(statement)
+      internal fun capture(statement: ProgramStatement): Image {
+        val instruction =
+            checkNotNull(statement.instruction) {
+              "Cannot capture an invalid instruction in an assembly image"
+            }
+        val operands = statement.operandValues
+        check(operands.isNotEmpty()) { "Cannot capture undecoded operands in an assembly image" }
+        return Image(statement, instruction, operands)
+      }
     }
   }
 
@@ -234,7 +247,7 @@ private constructor(
     }
 
   /** Invalid machine words have no decoded operands. */
-  open fun getOperands(): IntArray? = operandValues
+  open fun getOperands(): IntArray? = operandValues.takeIf { it.isNotEmpty() }
 
   /** The encoded destination of a relative branch, independent of its execution outcome. */
   fun relativeBranchDestination(): Long? {
@@ -320,11 +333,11 @@ private constructor(
             errors.add(ErrorMessage(token, "invalid ${kind}register name"))
             return
           }
-          operandValues!![numOperands++] = register
+          operandValues[numOperands++] = register
         }
         TokenTypes.VECTOR_REGISTER_NAME -> {
           appendText(value)
-          operandValues!![numOperands++] = checkNotNull(RegisterNames.vector(value))
+          operandValues[numOperands++] = checkNotNull(RegisterNames.vector(value))
         }
         TokenTypes.IDENTIFIER -> {
           val symbol = resolveSymbol(token) ?: return
@@ -382,7 +395,7 @@ private constructor(
               if (relative) DisplayElement.Value(operand.toInt())
               else DisplayElement.Address(operand.toInt()),
           )
-          operandValues!![numOperands++] = operand.toInt()
+          operandValues[numOperands++] = operand.toInt()
         }
         TokenTypes.ADDRESS_RELOCATION -> {
           val relocation = token as AddressRelocation
@@ -390,7 +403,7 @@ private constructor(
           val field = relocation.part.field(symbol.addressBits + relocation.addend)
           basic.append(field)
           display.add(DisplayElement.Value(field))
-          operandValues!![numOperands++] = field
+          operandValues[numOperands++] = field
         }
         TokenTypes.INTEGER_5,
         TokenTypes.INTEGER_16,
@@ -399,7 +412,7 @@ private constructor(
           val operand = Binary.stringToInt(value)
           basic.append(if (instruction?.name == "dli") value else operand)
           display.add(DisplayElement.Value(operand))
-          operandValues!![numOperands++] = operand
+          operandValues[numOperands++] = operand
         }
         else -> appendText(value)
       }
@@ -430,7 +443,7 @@ private constructor(
       )
       return
     }
-    val values = operandValues!!
+    val values = operandValues
     if (basic.instructionFormat == BasicInstructionFormat.J_FORMAT) {
       machineStatement = basic.operationMask.replace('c', '0')
       val target = absoluteJumpAddress ?: values[0].toLong()
@@ -489,7 +502,7 @@ private constructor(
 
   private fun decodeOperands(instruction: BasicInstruction, binary: Int, address: Int) {
     val mask = instruction.operationMask
-    val values = operandValues!!
+    val values = operandValues
     for (code in Instruction.OPERAND_MASK) {
       val first = mask.indexOf(code)
       if (first < 0) continue
@@ -514,7 +527,7 @@ private constructor(
 
   private fun describeDecodedInstruction(instruction: BasicInstruction) {
     val tokens = instruction.tokenList
-    val values = operandValues!!
+    val values = operandValues
     display.add(DisplayElement.Text("${instruction.name} "))
     var cursor = 1
     for (index in 0 until numOperands) {
@@ -592,9 +605,7 @@ private constructor(
     }
     append(PADDING, 0, 40 - length).append(";  ")
     val values = operandValues
-    if (values != null) {
-      for (index in 0 until numOperands) append(values[index].toString(16)).append(' ')
-    }
+    for (index in 0 until numOperands) append(values[index].toString(16)).append(' ')
     val binary = machineStatement
     if (binary != null) {
       append('[').append(Binary.binaryStringToHexString(binary)).append("]  ")

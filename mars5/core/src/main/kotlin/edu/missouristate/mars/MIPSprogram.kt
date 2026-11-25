@@ -110,6 +110,26 @@ constructor(
 
   open var localMacroPool: MacroPool? = null
 
+  /**
+   * A validated snapshot for an assembler pass; nullable public preparation APIs stay compatible.
+   */
+  internal class TokenizedSource(
+      val filename: String,
+      val lines: ArrayList<SourceLine>,
+      val tokens: ArrayList<TokenList>,
+      val symbols: SymbolTable,
+      val tokenizer: Tokenizer,
+  )
+
+  internal fun tokenizedSource(): TokenizedSource {
+    val name = checkNotNull(filename) { "Read a source before assembling it" }
+    val lines = checkNotNull(sourceLineList) { "Tokenize $name before assembling it" }
+    val tokens = checkNotNull(tokenList) { "Tokenize $name before assembling it" }
+    val symbols = checkNotNull(localSymbolTable) { "Tokenize $name before assembling it" }
+    val tokenizer = checkNotNull(tokenizer) { "Tokenize $name before assembling it" }
+    return TokenizedSource(name, lines, tokens, symbols, tokenizer)
+  }
+
   open fun assemblyContext(): AssemblyContext = assemblyContext
 
   open fun newErrorList(): ErrorList = assemblyContext.newErrorList()
@@ -120,13 +140,19 @@ constructor(
     get() = physicalLines
     set(lines) {
       physicalLines = lines
-      writtenLines = lines!!.mapTo(ArrayList(lines.size)) { it.source }
+      writtenLines = lines?.mapTo(ArrayList(lines.size)) { it.source }
     }
 
   /** Identifies a source and its relative-include directory without changing the display path. */
   open val includeIdentity: Path
     get() {
-      val path = Path.of(sourceFilename!!).toAbsolutePath()
+      val path =
+          Path.of(
+                  checkNotNull(sourceFilename) {
+                    "Read a source before resolving its include identity"
+                  },
+              )
+              .toAbsolutePath()
       if (sourceSnapshot != null) return sourceSnapshot.includeIdentity(path)
       return try {
         // Relative includes still start beside a source that is a symlink.
@@ -272,7 +298,8 @@ constructor(
         assemblyBackStepper = session.backStepper
         sessionExecution = null
         assemblyContext.finishAssembly(this)
-        assembler.errorList!!.also { diagnostics = it }
+        checkNotNull(assembler.errorList) { "Successful assembly must publish diagnostics" }
+            .also { diagnostics = it }
       }
 
   @Throws(ProcessingException::class)
@@ -332,7 +359,7 @@ constructor(
     val addresses = sourceMap.pseudoAddressBits
     if (addresses.isEmpty()) return emptyList()
     val instructions = ArrayList<AssembledInstruction>(addresses.size)
-    for (statement in this.instructions!!) {
+    for (statement in this.instructions ?: return emptyList()) {
       checkCancellation()
       val address = statement.addressBits
       if (address in addresses)

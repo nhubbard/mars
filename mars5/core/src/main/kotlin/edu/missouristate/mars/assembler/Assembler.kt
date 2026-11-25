@@ -64,10 +64,15 @@ class Assembler(private val context: AssemblyContext) {
         val equivalences = HashMap<Path, Set<EquivalenceOccurrence>>()
         for (program in programs) {
           checkCancellation()
-          val entry = Path.of(program.filename).toAbsolutePath().normalize()
-          locals[entry] = definitions(program.localSymbolTable!!, checkCancellation)
-          macros[entry] = program.localMacroPool!!.definitions(checkCancellation)
-          equivalences[entry] = program.tokenizer!!.equivalenceOccurrences()
+          val source = program.tokenizedSource()
+          val entry = Path.of(source.filename).toAbsolutePath().normalize()
+          locals[entry] = definitions(source.symbols, checkCancellation)
+          macros[entry] =
+              checkNotNull(program.localMacroPool) {
+                    "First assembly pass must create a macro pool"
+                  }
+                  .definitions(checkCancellation)
+          equivalences[entry] = source.tokenizer.equivalenceOccurrences()
         }
         symbolMap =
             AssemblySymbolMap(
