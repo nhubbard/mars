@@ -1,7 +1,7 @@
 package edu.missouristate.mars.cli.grading
 
 import edu.missouristate.mars.cli.HeadlessGuiProxy
-import edu.missouristate.mars.di.DaggerMarsComponent
+import edu.missouristate.mars.di.MarsComponent
 import java.io.ByteArrayOutputStream
 import java.nio.file.Path
 import kotlin.io.path.writeText
@@ -42,32 +42,36 @@ class FunctionCallTest {
                   .trimIndent(),
           )
         }
-    DaggerMarsComponent.builder().guiProxy(HeadlessGuiProxy()).build().context().use { machine ->
-      val program = machine.assemble(listOf(source))
-      AssemblyCase(machine, program.symbolMap(), ByteArrayOutputStream()).use { case ->
-        val counts = case.traceExecution()
-        val data = case.traceMemoryAccesses("value", 4)
-        case.setRegisterToDataAddress("a0", "value")
-        case.setRegister("s0", 0x2345678900000011L)
-        for ((index, delta) in listOf(2, 5, -1).withIndex()) {
-          case.setRegister("a1", delta)
-          case.callFunction("worker", if (index % 2 == 0) "return_a" else "return_b")
+    MarsComponent.build {
+          guiProxy(HeadlessGuiProxy())
         }
-        case.expectWord("value", 6)
-        case.expectRegister("v0", 6)
-        case.expectRegister("s0", 0x2345678900000011L)
-        assertEquals(18, counts.snapshot().instructions)
-        assertEquals(List(6) { 0x100000000L }, data.snapshot().map { it.address })
-        assertEquals(3, data.snapshot().count { it.write })
-        val ra = machine.registerFile.getLongValueNoNotify(31)
-        repeat(6) { machine.simulator().backstepAsync().join() }
-        case.expectWord("value", 7)
-        assertFalse(machine.backStepper.canBackstep())
-        assertEquals(ra, machine.registerFile.getLongValueNoNotify(31))
-        assertEquals(18, counts.snapshot().instructions)
-        assertEquals(3, data.snapshot().count { it.write })
-      }
-    }
+        .context()
+        .use { machine ->
+          val program = machine.assemble(listOf(source))
+          AssemblyCase(machine, program.symbolMap(), ByteArrayOutputStream()).use { case ->
+            val counts = case.traceExecution()
+            val data = case.traceMemoryAccesses("value", 4)
+            case.setRegisterToDataAddress("a0", "value")
+            case.setRegister("s0", 0x2345678900000011L)
+            for ((index, delta) in listOf(2, 5, -1).withIndex()) {
+              case.setRegister("a1", delta)
+              case.callFunction("worker", if (index % 2 == 0) "return_a" else "return_b")
+            }
+            case.expectWord("value", 6)
+            case.expectRegister("v0", 6)
+            case.expectRegister("s0", 0x2345678900000011L)
+            assertEquals(18, counts.snapshot().instructions)
+            assertEquals(List(6) { 0x100000000L }, data.snapshot().map { it.address })
+            assertEquals(3, data.snapshot().count { it.write })
+            val ra = machine.registerFile.getLongValueNoNotify(31)
+            repeat(6) { machine.simulator().backstepAsync().join() }
+            case.expectWord("value", 7)
+            assertFalse(machine.backStepper.canBackstep())
+            assertEquals(ra, machine.registerFile.getLongValueNoNotify(31))
+            assertEquals(18, counts.snapshot().instructions)
+            assertEquals(3, data.snapshot().count { it.write })
+          }
+        }
   }
 
   @Test
@@ -99,31 +103,35 @@ class FunctionCallTest {
                   .trimIndent(),
           )
         }
-    DaggerMarsComponent.builder().guiProxy(HeadlessGuiProxy()).build().context().use { machine ->
-      val program = machine.assemble(listOf(source))
-      AssemblyCase(machine, program.symbolMap(), ByteArrayOutputStream()).use { case ->
-        case.startAt("delayed")
-        case.step()
-        assertTrue(machine.delayedBranch.isTriggered)
-        val delayed = machine.delayedBranch.snapshot()
-        val pc = machine.registerFile.programCounterBits
-        val ra = machine.registerFile.getLongValueNoNotify(31)
-        assertThrows<CaseFailure> { case.callFunction("worker", "done") }
-        assertEquals(delayed, machine.delayedBranch.snapshot())
-        assertEquals(pc, machine.registerFile.programCounterBits)
-        assertEquals(ra, machine.registerFile.getLongValueNoNotify(31))
-        case.step()
-        case.step(2)
-        val forbidden = machine.delayedBranch.snapshot()
-        assertTrue(forbidden.forbiddenSlot)
-        assertThrows<CaseFailure> { case.callFunction("worker", "done") }
-        assertEquals(forbidden, machine.delayedBranch.snapshot())
-        case.step()
-        case.callFunction("worker", "done")
-        case.expectRegister("s0", 1)
-        case.runToExit()
-      }
-    }
+    MarsComponent.build {
+          guiProxy(HeadlessGuiProxy())
+        }
+        .context()
+        .use { machine ->
+          val program = machine.assemble(listOf(source))
+          AssemblyCase(machine, program.symbolMap(), ByteArrayOutputStream()).use { case ->
+            case.startAt("delayed")
+            case.step()
+            assertTrue(machine.delayedBranch.isTriggered)
+            val delayed = machine.delayedBranch.snapshot()
+            val pc = machine.registerFile.programCounterBits
+            val ra = machine.registerFile.getLongValueNoNotify(31)
+            assertThrows<CaseFailure> { case.callFunction("worker", "done") }
+            assertEquals(delayed, machine.delayedBranch.snapshot())
+            assertEquals(pc, machine.registerFile.programCounterBits)
+            assertEquals(ra, machine.registerFile.getLongValueNoNotify(31))
+            case.step()
+            case.step(2)
+            val forbidden = machine.delayedBranch.snapshot()
+            assertTrue(forbidden.forbiddenSlot)
+            assertThrows<CaseFailure> { case.callFunction("worker", "done") }
+            assertEquals(forbidden, machine.delayedBranch.snapshot())
+            case.step()
+            case.callFunction("worker", "done")
+            case.expectRegister("s0", 1)
+            case.runToExit()
+          }
+        }
   }
 
   @Test
@@ -147,27 +155,31 @@ class FunctionCallTest {
                   .trimIndent(),
           )
         }
-    DaggerMarsComponent.builder().guiProxy(HeadlessGuiProxy()).build().context().use { machine ->
-      val program = machine.assemble(listOf(source))
-      AssemblyCase(machine, program.symbolMap(), ByteArrayOutputStream()).use { case ->
-        case.setRegister("ra", 1234)
-        val pc = machine.registerFile.programCounterBits
-        for ((entry, continuation) in
-            listOf(
-                "missing" to "main",
-                "worker" to "missing",
-                "value" to "main",
-                "worker" to "value",
-                "worker" to "worker",
-            )) {
-          assertThrows<CaseFailure> { case.callFunction(entry, continuation) }
-          case.expectRegister("ra", 1234)
-          assertEquals(pc, machine.registerFile.programCounterBits)
+    MarsComponent.build {
+          guiProxy(HeadlessGuiProxy())
         }
-        case.runToExit()
-        assertThrows<CaseFailure> { case.callFunction("worker", "main") }
-        case.expectRegister("ra", 1234)
-      }
-    }
+        .context()
+        .use { machine ->
+          val program = machine.assemble(listOf(source))
+          AssemblyCase(machine, program.symbolMap(), ByteArrayOutputStream()).use { case ->
+            case.setRegister("ra", 1234)
+            val pc = machine.registerFile.programCounterBits
+            for ((entry, continuation) in
+                listOf(
+                    "missing" to "main",
+                    "worker" to "missing",
+                    "value" to "main",
+                    "worker" to "value",
+                    "worker" to "worker",
+                )) {
+              assertThrows<CaseFailure> { case.callFunction(entry, continuation) }
+              case.expectRegister("ra", 1234)
+              assertEquals(pc, machine.registerFile.programCounterBits)
+            }
+            case.runToExit()
+            assertThrows<CaseFailure> { case.callFunction("worker", "main") }
+            case.expectRegister("ra", 1234)
+          }
+        }
   }
 }

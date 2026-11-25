@@ -26,7 +26,12 @@ counts include the existing helper's implementation.
    test sources. All bundle construction uses the existing helper. The audit
    now finds zero test class literals and four elsewhere (three in the two
    class-token helpers and one in the independent grammar generator).
-3. Dagger builder receiver DSL, retaining Dagger's validation.
+3. Dagger builder receiver DSL, retaining Dagger's validation. Complete:
+   migrated all 77 construction chains, leaving only the generated-builder call
+   in the helper. All 2,454 core, 317 CLI, 8 datapath, and 10 selected plugin
+   tests pass. Standalone instruction-lab and PNG smoke checks pass, and benchmark
+   sources compile. New tests cover default modules, missing bindings, configuration
+   exceptions, exact binding identity, and independent execution state.
 4. Native listener implementations with explicit lifetimes and callback DSLs.
 5. Completion providers and table column builders.
 6. Remaining callback adapters, retaining explicit objects where clearer.

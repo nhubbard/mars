@@ -7,7 +7,7 @@ import edu.missouristate.mars.api.MarsGuiProxy
 import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.api.SessionSyscallEnvironment
 import edu.missouristate.mars.di.CoreModule
-import edu.missouristate.mars.di.DaggerMarsComponent
+import edu.missouristate.mars.di.MarsComponent
 import edu.missouristate.mars.simulator.ProgramArgumentList
 import java.awt.image.BufferedImage
 import java.io.ByteArrayInputStream
@@ -145,10 +145,10 @@ internal class PngDecoderTest {
           .setExtendedAssemblerEnabled(true)
       val output = ByteArrayOutputStream()
       try {
-        DaggerMarsComponent.builder()
-            .coreModule(CoreModule(settings, 32))
-            .guiProxy(HEADLESS)
-            .build()
+        MarsComponent.build {
+              coreModule(CoreModule(settings, 32))
+              guiProxy(HEADLESS)
+            }
             .context()
             .use { session ->
               session.selectTarget(MarsTarget.MARS64)

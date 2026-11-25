@@ -3,7 +3,7 @@ package edu.missouristate.mars
 import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.core.InstructionContext
 import edu.missouristate.mars.di.CoreModule
-import edu.missouristate.mars.di.DaggerMarsComponent
+import edu.missouristate.mars.di.MarsComponent
 import edu.missouristate.mars.mips.hardware.Coprocessor0State
 import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
@@ -253,10 +253,10 @@ internal class InstructionContextTest {
       val settings = Settings()
       settings.simulationSettings.setDelayedBranchingEnabled(delayed)
       val session =
-          DaggerMarsComponent.builder()
-              .coreModule(CoreModule(settings, target = MarsTarget.MARS32))
-              .guiProxy(TestSessions.NO_GUI)
-              .build()
+          MarsComponent.build {
+                coreModule(CoreModule(settings, target = MarsTarget.MARS32))
+                guiProxy(TestSessions.NO_GUI)
+              }
               .context()
       return InstructionContext(session, environment)
     }

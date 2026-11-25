@@ -3,7 +3,7 @@ package edu.missouristate.mars.cli.grading
 import edu.missouristate.mars.api.SessionSyscallEnvironment
 import edu.missouristate.mars.api.SyscallEnvironment
 import edu.missouristate.mars.cli.HeadlessGuiProxy
-import edu.missouristate.mars.di.DaggerMarsComponent
+import edu.missouristate.mars.di.MarsComponent
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.PrintStream
@@ -27,20 +27,24 @@ class ReadOnlyFileEnvironmentTest {
   }
 
   private fun withIo(action: (SyscallEnvironment, ByteArrayOutputStream) -> Unit) {
-    DaggerMarsComponent.builder().guiProxy(HeadlessGuiProxy()).build().context().use { session ->
-      val bytes = ByteArrayOutputStream()
-      PrintStream(bytes).use { out ->
-        SessionSyscallEnvironment(
-                session.memory,
-                ByteArrayInputStream("42\n".toByteArray()),
-                out,
-                out,
-            )
-            .use {
-              action(it, bytes)
-            }
-      }
-    }
+    MarsComponent.build {
+          guiProxy(HeadlessGuiProxy())
+        }
+        .context()
+        .use { session ->
+          val bytes = ByteArrayOutputStream()
+          PrintStream(bytes).use { out ->
+            SessionSyscallEnvironment(
+                    session.memory,
+                    ByteArrayInputStream("42\n".toByteArray()),
+                    out,
+                    out,
+                )
+                .use {
+                  action(it, bytes)
+                }
+          }
+        }
   }
 
   @Test

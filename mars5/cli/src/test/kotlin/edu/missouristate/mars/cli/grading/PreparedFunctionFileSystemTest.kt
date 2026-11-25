@@ -2,7 +2,7 @@ package edu.missouristate.mars.cli.grading
 
 import edu.missouristate.mars.api.AssemblySourceSnapshot
 import edu.missouristate.mars.cli.HeadlessGuiProxy
-import edu.missouristate.mars.di.DaggerMarsComponent
+import edu.missouristate.mars.di.MarsComponent
 import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertArrayEquals
@@ -17,7 +17,10 @@ class PreparedFunctionFileSystemTest {
   @TempDir lateinit var directory: Path
 
   private fun session() =
-      DaggerMarsComponent.builder().guiProxy(HeadlessGuiProxy()).build().context()
+      MarsComponent.build {
+            guiProxy(HeadlessGuiProxy())
+          }
+          .context()
 
   private val input = "003180ff72"
   private val old = "6f6c64"

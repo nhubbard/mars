@@ -9,7 +9,7 @@ import edu.missouristate.mars.core.AssemblyImage
 import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.core.SessionAssembler
 import edu.missouristate.mars.di.CoreModule
-import edu.missouristate.mars.di.DaggerMarsComponent
+import edu.missouristate.mars.di.MarsComponent
 import edu.missouristate.mars.mips.hardware.Coprocessor0State
 import edu.missouristate.mars.mips.hardware.MemoryState
 import edu.missouristate.mars.simulator.ProgramArgumentList
@@ -2872,10 +2872,10 @@ internal class SessionAssemblyTest {
           .setBareMachineEnabled(false)
           .setExtendedAssemblerEnabled(true)
           .setWarningsAreErrors(false)
-      return DaggerMarsComponent.builder()
-          .coreModule(CoreModule(settings, target = MarsTarget.MARS32))
-          .guiProxy(NO_GUI)
-          .build()
+      return MarsComponent.build {
+            coreModule(CoreModule(settings, target = MarsTarget.MARS32))
+            guiProxy(NO_GUI)
+          }
           .context()
     }
 

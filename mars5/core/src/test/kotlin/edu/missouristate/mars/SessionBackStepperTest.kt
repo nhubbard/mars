@@ -4,7 +4,6 @@ import edu.missouristate.mars.api.MarsGuiProxy
 import edu.missouristate.mars.core.InstructionContext
 import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.di.CoreModule
-import edu.missouristate.mars.di.DaggerMarsComponent
 import edu.missouristate.mars.di.MarsComponent
 import edu.missouristate.mars.mips.hardware.AddressErrorException
 import edu.missouristate.mars.mips.hardware.Coprocessor0State
@@ -326,10 +325,10 @@ internal class SessionBackStepperTest {
       settings.simulationSettings
           .setMemoryConfiguration("Default")
           .setDelayedBranchingEnabled(false)
-      return DaggerMarsComponent.builder()
-          .coreModule(CoreModule(settings, capacity))
-          .guiProxy(NO_GUI)
-          .build()
+      return MarsComponent.build {
+        coreModule(CoreModule(settings, capacity))
+        guiProxy(NO_GUI)
+      }
     }
 
     private fun session(capacity: Int): MarsContext {

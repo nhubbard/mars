@@ -10,7 +10,7 @@ import edu.missouristate.mars.api.SessionSyscallEnvironment
 import edu.missouristate.mars.api.StopEvent
 import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.di.CoreModule
-import edu.missouristate.mars.di.DaggerMarsComponent
+import edu.missouristate.mars.di.MarsComponent
 import edu.missouristate.mars.mips.hardware.Coprocessor0State
 import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.Instruction
@@ -291,10 +291,10 @@ object InstructionLab {
         .setExtendedAssemblerEnabled(true)
         .setSelfModifyingCodeEnabled(false)
         .setWarningsAreErrors(false)
-    return DaggerMarsComponent.builder()
-        .coreModule(CoreModule(settings, 32))
-        .guiProxy(HEADLESS)
-        .build()
+    return MarsComponent.build {
+          coreModule(CoreModule(settings, 32))
+          guiProxy(HEADLESS)
+        }
         .context()
   }
 

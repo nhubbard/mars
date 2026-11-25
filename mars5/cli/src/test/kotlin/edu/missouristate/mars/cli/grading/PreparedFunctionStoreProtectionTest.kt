@@ -4,7 +4,7 @@ import edu.missouristate.mars.api.AssemblySourceSnapshot
 import edu.missouristate.mars.cli.HeadlessGuiProxy
 import edu.missouristate.mars.core.AssemblyImage
 import edu.missouristate.mars.core.MarsContext
-import edu.missouristate.mars.di.DaggerMarsComponent
+import edu.missouristate.mars.di.MarsComponent
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -16,7 +16,10 @@ class PreparedFunctionStoreProtectionTest {
   @TempDir lateinit var directory: Path
 
   private fun session() =
-      DaggerMarsComponent.builder().guiProxy(HeadlessGuiProxy()).build().context()
+      MarsComponent.build {
+            guiProxy(HeadlessGuiProxy())
+          }
+          .context()
 
   private val read = $$"lbu $v0,0($a0)\njrc $ra"
   private val restoredWrite = $$"lw $t0,0($a0)\nsw $zero,0($a0)\nsw $t0,0($a0)\n$$read"

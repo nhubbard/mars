@@ -6,7 +6,7 @@ import edu.missouristate.mars.api.SessionSyscallEnvironment
 import edu.missouristate.mars.core.InstructionContext
 import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.di.CoreModule
-import edu.missouristate.mars.di.DaggerMarsComponent
+import edu.missouristate.mars.di.MarsComponent
 import edu.missouristate.mars.mips.instructions.syscalls.RandomStreams
 import edu.missouristate.mars.mips.instructions.syscalls.SyscallRandDouble
 import edu.missouristate.mars.mips.instructions.syscalls.SyscallRandFloat
@@ -466,29 +466,29 @@ internal class SessionSyscallTest {
           .setBareMachineEnabled(false)
           .setExtendedAssemblerEnabled(true)
           .setWarningsAreErrors(false)
-      return DaggerMarsComponent.builder()
-          .coreModule(CoreModule(settings, target = MarsTarget.MARS32))
-          .guiProxy(
-              object : MarsGuiProxy {
-                override val isGuiMode: Boolean
-                  get() = false
+      return MarsComponent.build {
+            coreModule(CoreModule(settings, target = MarsTarget.MARS32))
+            guiProxy(
+                object : MarsGuiProxy {
+                  override val isGuiMode: Boolean
+                    get() = false
 
-                override fun postMessage(message: String) {}
+                  override fun postMessage(message: String) {}
 
-                override fun postRunMessage(message: String) {}
+                  override fun postRunMessage(message: String) {}
 
-                override fun readInput(maxLength: Int): String {
-                  return ""
-                }
+                  override fun readInput(maxLength: Int): String {
+                    return ""
+                  }
 
-                override fun readInputWithPrompt(prompt: String): String {
-                  return ""
-                }
+                  override fun readInputWithPrompt(prompt: String): String {
+                    return ""
+                  }
 
-                override fun clearRunConsole() {}
-              },
-          )
-          .build()
+                  override fun clearRunConsole() {}
+                },
+            )
+          }
           .context()
     }
   }

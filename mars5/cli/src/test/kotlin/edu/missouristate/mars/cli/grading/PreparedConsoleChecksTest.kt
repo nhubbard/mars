@@ -9,7 +9,7 @@ import edu.missouristate.mars.api.StopEvent
 import edu.missouristate.mars.cli.HeadlessGuiProxy
 import edu.missouristate.mars.core.AssemblyImage
 import edu.missouristate.mars.core.MarsContext
-import edu.missouristate.mars.di.DaggerMarsComponent
+import edu.missouristate.mars.di.MarsComponent
 import java.nio.file.Path
 import java.util.concurrent.CancellationException
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -23,7 +23,10 @@ class PreparedConsoleChecksTest {
   @TempDir lateinit var directory: Path
 
   private fun session() =
-      DaggerMarsComponent.builder().guiProxy(HeadlessGuiProxy()).build().context()
+      MarsComponent.build {
+            guiProxy(HeadlessGuiProxy())
+          }
+          .context()
 
   private fun image(
       source: String,
