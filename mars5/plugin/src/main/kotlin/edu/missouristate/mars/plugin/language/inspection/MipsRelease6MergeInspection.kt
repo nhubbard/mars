@@ -1,6 +1,5 @@
 package edu.missouristate.mars.plugin.language.inspection
 
-import com.intellij.DynamicBundle
 import com.intellij.codeInspection.LocalInspectionTool
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.modcommand.ModCommandService
@@ -15,6 +14,7 @@ import edu.missouristate.mars.assembler.release6Migration
 import edu.missouristate.mars.mips.instructions.InstructionDefaults
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.build.MarsAssemblySettings
+import edu.missouristate.mars.plugin.dynamicBundleOf
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.operationHead
 import edu.missouristate.mars.plugin.language.operationOwners
@@ -62,6 +62,6 @@ internal class MipsRelease6MergeInspection : LocalInspectionTool() {
   }
 }
 
-private val messages = DynamicBundle(MipsRelease6MergeInspection::class.java, "messages.MarsBundle")
+private val messages = dynamicBundleOf<MipsRelease6MergeInspection>()
 private val divides = setOf("div", "divu", "ddiv", "ddivu")
 private val instructionTypes = setOf(TokenTypes.OPERATOR, TokenTypes.IDENTIFIER)

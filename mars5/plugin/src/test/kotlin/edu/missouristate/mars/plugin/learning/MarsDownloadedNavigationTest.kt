@@ -2,6 +2,7 @@
 
 package edu.missouristate.mars.plugin.learning
 
+import com.intellij.configurationStore.deserialize
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionPlaces
 import com.intellij.openapi.actionSystem.ActionUiKind
@@ -24,6 +25,7 @@ import com.intellij.testFramework.replaceService
 import com.intellij.toolWindow.ToolWindowHeadlessManagerImpl
 import com.intellij.ui.UiInterceptors
 import com.intellij.util.xmlb.XmlSerializer
+import edu.missouristate.mars.util.javaClassOf
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.zip.ZipEntry
@@ -97,7 +99,7 @@ class MarsDownloadedNavigationTest {
     val saved = XmlSerializer.serialize(selection.getState())
     val restored = MarsDownloadedLessonSelection(project)
     restored.loadState(
-        XmlSerializer.deserialize(saved, MarsDownloadedLessonSelection.Selection::class.java),
+        deserialize<MarsDownloadedLessonSelection.Selection>(saved),
     )
     val loaded = restored.load()
     assertEquals("second", restored.activity(loaded))
@@ -207,7 +209,7 @@ class MarsDownloadedNavigationTest {
           val queued = mutableListOf<Runnable>()
           try {
             project.replaceService(
-                ToolWindowManager::class.java,
+                javaClassOf<ToolWindowManager>(),
                 object : ToolWindowHeadlessManagerImpl(project) {
                   override fun invokeLater(runnable: Runnable) {
                     queued += runnable
@@ -219,7 +221,7 @@ class MarsDownloadedNavigationTest {
               UiInterceptors.register(
                   object :
                       UiInterceptors.UiInterceptor<MarsDownloadedActivityDialog>(
-                          MarsDownloadedActivityDialog::class.java,
+                          javaClassOf<MarsDownloadedActivityDialog>(),
                       ) {
                     override fun doIntercept(dialog: MarsDownloadedActivityDialog) {
                       dialog.activityBox.selectedIndex = 2

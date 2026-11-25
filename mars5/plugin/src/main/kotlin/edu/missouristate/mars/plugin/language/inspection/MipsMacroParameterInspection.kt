@@ -1,6 +1,5 @@
 package edu.missouristate.mars.plugin.language.inspection
 
-import com.intellij.DynamicBundle
 import com.intellij.codeInspection.LocalInspectionTool
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.openapi.components.service
@@ -17,6 +16,7 @@ import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.analysis.MipsSourceEvent.Begin
 import edu.missouristate.mars.plugin.analysis.MipsSourceTimeline
 import edu.missouristate.mars.plugin.analysis.sourceLineStart
+import edu.missouristate.mars.plugin.dynamicBundleOf
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.MipsTypes
 
@@ -110,8 +110,7 @@ internal class MipsMacroParameterInspection : LocalInspectionTool() {
   }
 }
 
-private val messages =
-    DynamicBundle(MipsMacroParameterInspection::class.java, "messages.MarsBundle")
+private val messages = dynamicBundleOf<MipsMacroParameterInspection>()
 private val statement = MipsTypes.psi("STATEMENT")
 private val includeLine = MipsTypes.psi("INCLUDE_LINE")
 private val boundaries = setOf(Directives.MACRO, Directives.END_MACRO, Directives.INCLUDE)

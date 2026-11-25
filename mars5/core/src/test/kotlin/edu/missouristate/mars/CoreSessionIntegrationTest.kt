@@ -3,6 +3,8 @@ package edu.missouristate.mars
 import edu.missouristate.mars.api.StopEvent
 import edu.missouristate.mars.mips.hardware.IntegerRegisterFile
 import edu.missouristate.mars.mips.hardware.MemoryState
+import edu.missouristate.mars.testing.isInstanceOf
+import edu.missouristate.mars.util.javaClassOf
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.CompletableFuture
@@ -23,7 +25,7 @@ internal class CoreSessionIntegrationTest {
     Assertions.assertThatThrownBy {
           Class.forName("edu.missouristate.mars.Globals")
         }
-        .isInstanceOf(ClassNotFoundException::class.java)
+        .isInstanceOf<ClassNotFoundException>()
     TestSessions.create().use { session ->
       Assertions.assertThat(session.assemble(listOf(source)).instructionCount()).isPositive()
     }
@@ -73,7 +75,7 @@ internal class CoreSessionIntegrationTest {
     @JvmStatic
     fun corpus(): List<Path> {
       val resources =
-          checkNotNull(CoreSessionIntegrationTest::class.java.getResource("/testPrograms")) {
+          checkNotNull(javaClassOf<CoreSessionIntegrationTest>().getResource("/testPrograms")) {
             "testPrograms"
           }
       return Path.of(resources.toURI()).useDirectoryEntries("*.asm") { paths ->

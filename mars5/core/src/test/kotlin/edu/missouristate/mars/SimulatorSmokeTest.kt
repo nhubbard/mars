@@ -1,6 +1,7 @@
 package edu.missouristate.mars
 
 import edu.missouristate.mars.core.MarsContext
+import edu.missouristate.mars.util.javaClassOf
 import java.io.ByteArrayOutputStream
 import java.io.PrintStream
 import java.net.URISyntaxException
@@ -174,7 +175,7 @@ internal class SimulatorSmokeTest {
       val resource = "/testPrograms/$filename"
       val url: URL? =
           Objects.requireNonNull<URL?>(
-              SimulatorSmokeTest::class.java.getResource(resource),
+              javaClassOf<SimulatorSmokeTest>().getResource(resource),
               resource,
           )
       return Path.of(url!!.toURI()).toString()

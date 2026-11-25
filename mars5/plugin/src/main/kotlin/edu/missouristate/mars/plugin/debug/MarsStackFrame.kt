@@ -28,6 +28,7 @@ import edu.missouristate.mars.plugin.run.runMessages
 import edu.missouristate.mars.simulator.BackStepper.RegisterWrite
 import edu.missouristate.mars.simulator.BackStepper.RegisterWriteBank
 import edu.missouristate.mars.util.Binary
+import edu.missouristate.mars.util.javaClassOf
 import kotlinx.coroutines.channels.SendChannel
 
 /**
@@ -266,7 +267,7 @@ internal class MarsStackFrame(
 
   override fun getEvaluator() = snapshot.evaluator
 
-  override fun getEqualityObject(): Any = MarsStackFrame::class.java
+  override fun getEqualityObject(): Any = javaClassOf<MarsStackFrame>()
 
   override fun computeChildren(node: XCompositeNode) = node.addChildren(snapshot.groups, true)
 }

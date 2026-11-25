@@ -13,6 +13,7 @@ import edu.missouristate.mars.mips.instructions.syscalls.SyscallRandFloat
 import edu.missouristate.mars.mips.instructions.syscalls.SyscallRandInt
 import edu.missouristate.mars.mips.instructions.syscalls.SyscallRandIntRange
 import edu.missouristate.mars.mips.instructions.syscalls.SyscallRandSeed
+import edu.missouristate.mars.testing.isInstanceOf
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
@@ -297,10 +298,9 @@ internal class SessionSyscallTest {
             Assertions.assertThat(io.readString(3)).isEqualTo("abc")
             Assertions.assertThat(io.showInputDialog("prompt")).isEqualTo("answer")
             Assertions.assertThat(io.readString(20)).isNull()
-            Assertions.assertThatThrownBy { io.readInt() }
-                .isInstanceOf(NumberFormatException::class.java)
+            Assertions.assertThatThrownBy { io.readInt() }.isInstanceOf<NumberFormatException>()
             Assertions.assertThatThrownBy { io.readChar() }
-                .isInstanceOf(IndexOutOfBoundsException::class.java)
+                .isInstanceOf<IndexOutOfBoundsException>()
             io.printString("value=")
             io.printInt(42)
             io.printChar(' ')

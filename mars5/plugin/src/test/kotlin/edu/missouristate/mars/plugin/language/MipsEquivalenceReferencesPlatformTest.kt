@@ -11,7 +11,6 @@ import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsigh
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiErrorElement
-import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.testFramework.DumbModeTestUtils
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.common.timeoutRunBlocking
@@ -21,6 +20,7 @@ import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.analysis.SymbolKind
 import edu.missouristate.mars.plugin.build.MarsBuildService
 import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
+import edu.missouristate.mars.plugin.language.psi.findChildrenOfType
 import java.nio.file.Path
 import kotlin.io.path.writeText
 import kotlinx.coroutines.Dispatchers
@@ -202,7 +202,7 @@ class MipsEquivalenceReferencesPlatformTest {
       assertEquals(beforeBody.length + body.indexOf(site), declaration?.offset, body)
       readAction {
         assertTrue(
-            PsiTreeUtil.findChildrenOfType(fixture.file, PsiErrorElement::class.java).isEmpty(),
+            findChildrenOfType<PsiErrorElement>(fixture.file).isEmpty(),
             body,
         )
       }

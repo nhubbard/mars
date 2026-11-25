@@ -2,6 +2,7 @@
 
 package edu.missouristate.mars.plugin.learning
 
+import com.intellij.configurationStore.deserialize
 import com.intellij.mock.MockProject
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionPlaces
@@ -21,8 +22,9 @@ import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.ui.UiInterceptors
 import com.intellij.ui.components.JBRadioButton
-import com.intellij.util.ui.UIUtil
 import com.intellij.util.xmlb.XmlSerializer
+import edu.missouristate.mars.plugin.ui.findComponentsOfType
+import edu.missouristate.mars.util.javaClassOf
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.time.Duration.Companion.milliseconds
@@ -64,9 +66,8 @@ class MarsLearningNavigationTest {
     )
     val copy = MarsLearningNavigation(project)
     copy.loadState(
-        XmlSerializer.deserialize(
+        deserialize<MarsLearningNavigation.Navigation>(
             XmlSerializer.serialize(navigation.getState()),
-            MarsLearningNavigation.Navigation::class.java,
         ),
     )
     assertEquals(navigation.getState(), copy.getState())
@@ -104,11 +105,10 @@ class MarsLearningNavigationTest {
             UiInterceptors.register(
                 object :
                     UiInterceptors.UiInterceptor<MarsLearningModeDialog>(
-                        MarsLearningModeDialog::class.java,
+                        javaClassOf<MarsLearningModeDialog>(),
                     ) {
                   override fun doIntercept(dialog: MarsLearningModeDialog) {
-                    val buttons =
-                        UIUtil.findComponentsOfType(dialog.panel, JBRadioButton::class.java)
+                    val buttons = findComponentsOfType<JBRadioButton>(dialog.panel)
                     assertEquals(2, buttons.size)
                     assertEquals(MarsLearningMode.GUIDED, dialog.selectedMode)
                     if (mode == null) dialog.close(DialogWrapper.CANCEL_EXIT_CODE)
@@ -164,7 +164,7 @@ class MarsLearningNavigationTest {
             assertTrue(policy.independentRestriction().contains("requires guided work"))
             dialog.doOKAction()
             assertFalse(dialog.isOK)
-            UIUtil.findComponentsOfType(dialog.panel, JBRadioButton::class.java).first().doClick()
+            findComponentsOfType<JBRadioButton>(dialog.panel).first().doClick()
             dialog.doOKAction()
             assertTrue(dialog.isOK)
           } finally {
@@ -174,9 +174,7 @@ class MarsLearningNavigationTest {
           try {
             assertEquals(MarsLearningMode.GUIDED, dialog.selectedMode)
             assertFalse(
-                UIUtil.findComponentsOfType(dialog.panel, JBRadioButton::class.java)
-                    .last()
-                    .isEnabled,
+                findComponentsOfType<JBRadioButton>(dialog.panel).last().isEnabled,
             )
           } finally {
             dialog.close(DialogWrapper.CANCEL_EXIT_CODE)

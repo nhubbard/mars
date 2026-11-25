@@ -10,7 +10,6 @@ import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsigh
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiFile
-import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.refactoring.rename.RenameProcessor
 import com.intellij.refactoring.rename.RenamePsiElementProcessor
 import com.intellij.testFramework.IndexingTestUtil
@@ -20,6 +19,7 @@ import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.util.IncorrectOperationException
 import com.intellij.util.ProcessingContext
 import edu.missouristate.mars.plugin.language.psi.MipsMacroFormal
+import edu.missouristate.mars.plugin.language.psi.findChildrenOfType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -228,5 +228,5 @@ class MipsMacroFormalRenamePlatformTest {
       }
 
   private fun formals(file: PsiFile) =
-      PsiTreeUtil.findChildrenOfType(file, MipsMacroFormal::class.java).sortedBy { it.textOffset }
+      findChildrenOfType<MipsMacroFormal>(file).sortedBy { it.textOffset }
 }

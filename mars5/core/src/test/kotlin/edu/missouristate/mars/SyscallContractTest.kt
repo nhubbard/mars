@@ -5,6 +5,8 @@ import edu.missouristate.mars.core.InstructionContext
 import edu.missouristate.mars.mips.hardware.IntegerRegisterFile
 import edu.missouristate.mars.mips.instructions.SyscallRegistry
 import edu.missouristate.mars.mips.instructions.syscalls.Syscall
+import edu.missouristate.mars.testing.isInstanceOf
+import edu.missouristate.mars.util.javaClassOf
 import java.lang.reflect.InvocationHandler
 import java.lang.reflect.Method
 import java.lang.reflect.Proxy
@@ -24,10 +26,10 @@ internal class SyscallContractTest {
       val wallTime = 0x0123456789abcdefL
       val environment =
           Proxy.newProxyInstance(
-              SyscallEnvironment::class.java.classLoader,
-              arrayOf<Class<*>>(SyscallEnvironment::class.java),
+              javaClassOf<SyscallEnvironment>().classLoader,
+              arrayOf<Class<*>>(javaClassOf<SyscallEnvironment>()),
               InvocationHandler { proxy: Any?, method: Method?, args: Array<Any?>? ->
-                if (method!!.declaringClass == Any::class.java) {
+                if (method!!.declaringClass == javaClassOf<Any>()) {
                   return@InvocationHandler when (method.name) {
                     "equals" -> proxy === checkNotNull(args)[0]
                     "hashCode" -> System.identityHashCode(proxy)
@@ -129,7 +131,7 @@ internal class SyscallContractTest {
           checkNotNull(session.syscalls.findByNumber(number)) { "Missing syscall $number" }
       if (number == 10 || number == 17) {
         val failure = Assertions.catchThrowable { service.simulate(null, context) }
-        Assertions.assertThat<Throwable?>(failure).isInstanceOf(ProcessingException::class.java)
+        Assertions.assertThat<Throwable?>(failure).isInstanceOf<ProcessingException>()
         Assertions.assertThat((failure as ProcessingException).errors()).isNull()
         Assertions.assertThat(context.exitCode).isEqualTo(if (number == 17) 7 else 0)
       } else {

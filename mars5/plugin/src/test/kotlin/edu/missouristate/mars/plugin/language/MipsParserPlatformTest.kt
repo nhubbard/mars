@@ -13,7 +13,6 @@ import com.intellij.psi.PsiErrorElement
 import com.intellij.psi.PsiFileFactory
 import com.intellij.psi.SyntaxTraverser
 import com.intellij.psi.TokenType
-import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.testFramework.junit5.fixture.projectFixture
@@ -34,6 +33,7 @@ import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.analysis.MacroBoundaryProblem.Kind
 import edu.missouristate.mars.plugin.analysis.mipsSourceTimeline
 import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
+import edu.missouristate.mars.plugin.language.psi.findChildrenOfType
 import edu.missouristate.mars.util.Binary
 import java.nio.file.Path
 import kotlin.io.path.writeText
@@ -136,7 +136,7 @@ class MipsParserPlatformTest {
           val file =
               PsiFileFactory.getInstance(project.get())
                   .createFileFromText("vector.mars", MipsFileType, source)
-          assertTrue(PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java).isEmpty())
+          assertTrue(findChildrenOfType<PsiErrorElement>(file).isEmpty())
           val nodes =
               SyntaxTraverser.psiTraverser(file)
                   .filter { it.node.elementType == MipsTypes.psi("LANE_EXPR") }
@@ -160,7 +160,7 @@ class MipsParserPlatformTest {
                         $$"insert.b $$operand\naddiu $8,$0,1\n",
                     )
             assertTrue(
-                PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java).isNotEmpty(),
+                findChildrenOfType<PsiErrorElement>(file).isNotEmpty(),
                 operand,
             )
             val lanes =
@@ -246,7 +246,7 @@ class MipsParserPlatformTest {
               MipsFileType,
               $$"addiu $t0, :\n.macro bad\n.word 'bad'\n.end_macro\nnext: nop",
           )
-      assertEquals(2, PsiTreeUtil.findChildrenOfType(invalid, PsiErrorElement::class.java).size)
+      assertEquals(2, findChildrenOfType<PsiErrorElement>(invalid).size)
       assertEquals("next:", descendants(invalid.node, "LABEL").single().text)
     }
   }
@@ -367,7 +367,7 @@ class MipsParserPlatformTest {
                 .createFileFromText("invalid.asm", MipsFileType, "$line\nnop")
         assertEquals(1, descendants(file.node, "EQUIVALENCE").count(), line)
         assertTrue(
-            PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java).isNotEmpty(),
+            findChildrenOfType<PsiErrorElement>(file).isNotEmpty(),
             line,
         )
         assertEquals("nop", descendants(file.node, "INSTRUCTION").single().text)
@@ -827,7 +827,7 @@ class MipsParserPlatformTest {
             val file = factory.createFileFromText("main.s", MipsFileType, "$line\nnext: nop")
             assertEquals(line, descendants(file.node, "INCLUDE_LINE").single().text)
             assertEquals(listOf("next:"), descendants(file.node, "LABEL").map { it.text }.toList())
-            val errors = PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java)
+            val errors = findChildrenOfType<PsiErrorElement>(file)
             assertEquals(expectedErrors, errors.map { it.text })
             assertTrue(
                 errors
@@ -875,7 +875,7 @@ class MipsParserPlatformTest {
             assertEquals("nop", descendants(file.node, "INSTRUCTION").single().text)
             assertEquals(
                 expectedErrors,
-                PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java).map { it.text },
+                findChildrenOfType<PsiErrorElement>(file).map { it.text },
             )
           }
           val invocation = assertParses("call .include \"unfinished")
@@ -993,7 +993,7 @@ class MipsParserPlatformTest {
             )
             assertEquals(".end_macro", macro.lastChildNode.text)
             assertTrue(descendants(file.node, "EQUIVALENCE").none())
-            val error = PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java).single()
+            val error = findChildrenOfType<PsiErrorElement>(file).single()
             assertEquals(badToken, error.text, tail)
             assertEquals("Invalid MARS macro parameter", error.errorDescription, tail)
             assertEquals(
@@ -1071,7 +1071,7 @@ class MipsParserPlatformTest {
                 PsiFileFactory.getInstance(project.get())
                     .createFileFromText("nested.asm", MipsFileType, updated)
             val errors =
-                PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java).map {
+                findChildrenOfType<PsiErrorElement>(file).map {
                   it.errorDescription
                 }
             assertEquals(
@@ -1114,7 +1114,7 @@ class MipsParserPlatformTest {
         val macro = descendants(file.node, "MACRO_DEFINITION").single()
         assertEquals(listOf("body:"), descendants(macro, "LABEL").map { it.text }.toList(), suffix)
         assertEquals(broken.lastIndexOf(".end_macro"), macro.lastChildNode.startOffset, suffix)
-        val errors = PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java)
+        val errors = findChildrenOfType<PsiErrorElement>(file)
         assertTrue(errors.isNotEmpty(), suffix)
         val malformedLine = broken.indexOf(".end_macro") until broken.indexOf("body:")
         assertTrue(
@@ -2193,7 +2193,7 @@ class MipsParserPlatformTest {
               PsiFileFactory.getInstance(project.get())
                   .createFileFromText("editing.mars", MipsFileType, source)
           assertEquals(source, file.text)
-          val errors = PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java)
+          val errors = findChildrenOfType<PsiErrorElement>(file)
           assertEquals(listOf("0x", "@bad", "1e", "0x"), errors.map { it.text })
           assertTrue(errors.all { it.errorDescription == "Invalid MARS operand token" })
           assertEquals(
@@ -2238,7 +2238,7 @@ class MipsParserPlatformTest {
       assertEquals(listOf("-0xG", "+0x", "-0xG", "-1e", "0xG", "0xG"), badSpellings)
       assertEquals(
           badSpellings,
-          PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java).map { it.text },
+          findChildrenOfType<PsiErrorElement>(file).map { it.text },
       )
       assertEquals(listOf("-0xG", "7"), descendants(file.node, "OPERAND").map { it.text }.toList())
       assertEquals(
@@ -2293,7 +2293,7 @@ class MipsParserPlatformTest {
       assertEquals(listOf("+", "7", "3", "-", "8", $$"$t0", $$"$zero", "+", "9"), operands)
       assertEquals(
           listOf("+", "-", "+"),
-          PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java).map { it.text },
+          findChildrenOfType<PsiErrorElement>(file).map { it.text },
       )
       assertEquals("next:", descendants(file.node, "LABEL").single().text)
 
@@ -2310,7 +2310,7 @@ class MipsParserPlatformTest {
       )
       assertEquals(
           "-",
-          PsiTreeUtil.findChildrenOfType(withLabel, PsiErrorElement::class.java).single().text,
+          findChildrenOfType<PsiErrorElement>(withLabel).single().text,
       )
     }
   }
@@ -2333,7 +2333,7 @@ class MipsParserPlatformTest {
       )
       assertEquals(
           listOf("-0x", "0x"),
-          PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java).map { it.text },
+          findChildrenOfType<PsiErrorElement>(file).map { it.text },
       )
       assertEquals("next:", descendants(file.node, "LABEL").single().text)
     }
@@ -2367,7 +2367,7 @@ class MipsParserPlatformTest {
               listOf($$"$t0", $$"4($fp", "8"),
               descendants(instructions[1], "OPERAND").map { it.text }.toList(),
           )
-          assertTrue(PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java).isNotEmpty())
+          assertTrue(findChildrenOfType<PsiErrorElement>(file).isNotEmpty())
           assertEquals("next:", descendants(file.node, "LABEL").single().text)
           assertEquals("nop", instructions.last().text)
         }
@@ -2403,7 +2403,7 @@ class MipsParserPlatformTest {
           listOf("inside:", "outside:"),
           descendants(file.node, "LABEL").map { it.text }.toList(),
       )
-      val allErrors = PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java)
+      val allErrors = findChildrenOfType<PsiErrorElement>(file)
       val errors = allErrors.filter { it.errorDescription == "Expected a MIPS statement" }
       assertEquals(
           listOf(": 9 (", "! 6 (", ":"),
@@ -2591,7 +2591,7 @@ class MipsParserPlatformTest {
               PsiFileFactory.getInstance(project.get())
                   .createFileFromText("broken.asm", MipsFileType, source)
           assertEquals(source, file.text)
-          val errors = PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java)
+          val errors = findChildrenOfType<PsiErrorElement>(file)
           assertEquals(listOf("'A", "'C", "'D"), errors.map { it.text })
           assertTrue(errors.all { it.errorDescription == "Unterminated character literal" })
           assertEquals(
@@ -2621,7 +2621,7 @@ class MipsParserPlatformTest {
               PsiFileFactory.getInstance(project.get())
                   .createFileFromText("invalid.asm", MipsFileType, source)
           assertEquals(source, file.text)
-          val errors = PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java)
+          val errors = findChildrenOfType<PsiErrorElement>(file)
           assertEquals(listOf("'ab'", "'\\q'", "'\\400'", "''", "'\\,'"), errors.map { it.text })
           assertTrue(errors.all { it.errorDescription == "Invalid MARS character literal" })
           assertEquals(
@@ -2924,7 +2924,7 @@ class MipsParserPlatformTest {
         readAction {
           val file = assertParses(source, entry.fileName.toString())
           val declarations =
-              PsiTreeUtil.findChildrenOfType(file, MipsDeclaration::class.java).filter {
+              findChildrenOfType<MipsDeclaration>(file).filter {
                 it.node.elementType == MipsTypes.psi("EXTERNAL_NAME")
               }
           assertEquals(names, declarations.map { it.name })
@@ -2976,7 +2976,7 @@ class MipsParserPlatformTest {
     readAction {
       val file = assertParses(source, entry.fileName.toString())
       val declarations =
-          PsiTreeUtil.findChildrenOfType(file, MipsDeclaration::class.java).filter {
+          findChildrenOfType<MipsDeclaration>(file).filter {
             it.node.elementType == MipsTypes.psi("EXTERNAL_NAME")
           }
       assertEquals(spellings, declarations.map { it.nameIdentifier?.text })
@@ -3140,7 +3140,7 @@ class MipsParserPlatformTest {
                 .createFileFromText("broken.asm", MipsFileType, text)
         assertEquals(text, file.text)
         assertTrue(
-            PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java).isNotEmpty(),
+            findChildrenOfType<PsiErrorElement>(file).isNotEmpty(),
             broken,
         )
         assertEquals("nop", descendants(file.node, "INSTRUCTION").last().text)
@@ -3366,7 +3366,7 @@ class MipsParserPlatformTest {
     val mips = assertInstanceOf<MipsFile>(file)
     assertSame(MipsFileType, file.fileType)
     assertEquals(source, file.text)
-    val errors = PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java)
+    val errors = findChildrenOfType<PsiErrorElement>(file)
     assertTrue(
         errors.isEmpty(),
         source + "\n" + errors.joinToString { it.errorDescription + " at " + it.textRange },

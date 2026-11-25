@@ -4,6 +4,7 @@ import edu.missouristate.mars.ProgramStatement
 import edu.missouristate.mars.core.SimulationSettings
 import edu.missouristate.mars.mips.instructions.InstructionSet
 import edu.missouristate.mars.simulator.Exceptions
+import edu.missouristate.mars.testing.assertThatExceptionOfType
 import org.assertj.core.api.Assertions
 import org.assertj.core.api.ThrowingConsumer
 import org.junit.jupiter.api.BeforeAll
@@ -167,20 +168,20 @@ internal class MemoryStateTest {
     val lastTextWord = (state.textLimitAddress - 1) and 3.inv()
     state.setStatement(lastTextWord, ProgramStatement(0, lastTextWord, instructions))
     Assertions.assertThat(state.getStatement(lastTextWord)).isNotNull()
-    Assertions.assertThatExceptionOfType(AddressErrorException::class.java).isThrownBy {
+    assertThatExceptionOfType<AddressErrorException>().isThrownBy {
       state.getStatement(state.textLimitAddress)
     }
-    Assertions.assertThatExceptionOfType(AddressErrorException::class.java).isThrownBy {
+    assertThatExceptionOfType<AddressErrorException>().isThrownBy {
       state.getStatement(state.textBaseAddress - 4)
     }
     state.setByte(state.dataSegmentLimitAddress - 1, 0xab)
     Assertions.assertThat(state.getByte(state.dataSegmentLimitAddress - 1)).isEqualTo(0xab)
-    Assertions.assertThatExceptionOfType(AddressErrorException::class.java).isThrownBy {
+    assertThatExceptionOfType<AddressErrorException>().isThrownBy {
       state.getByte(state.dataSegmentLimitAddress)
     }
     state.setByte(state.memoryMapLimitAddress - 1, 0xcd)
     Assertions.assertThat(state.getByte(state.memoryMapLimitAddress - 1)).isEqualTo(0xcd)
-    Assertions.assertThatExceptionOfType(AddressErrorException::class.java).isThrownBy {
+    assertThatExceptionOfType<AddressErrorException>().isThrownBy {
       state.getByte(state.memoryMapLimitAddress)
     }
   }
@@ -190,7 +191,7 @@ internal class MemoryStateTest {
   fun unalignedHalfwordAccessReportsTheCorrectAddressAndCause(offset: Int) {
     val state: MemoryState = memory("Default", SimulationSettings())
     val address = state.dataBaseAddress + offset
-    Assertions.assertThatExceptionOfType(AddressErrorException::class.java)
+    assertThatExceptionOfType<AddressErrorException>()
         .isThrownBy { state.setHalf(address, 0xabcd) }
         .satisfies(
             ThrowingConsumer { error: AddressErrorException ->
@@ -198,7 +199,7 @@ internal class MemoryStateTest {
               Assertions.assertThat(error.type).isEqualTo(Exceptions.ADDRESS_EXCEPTION_STORE)
             },
         )
-    Assertions.assertThatExceptionOfType(AddressErrorException::class.java)
+    assertThatExceptionOfType<AddressErrorException>()
         .isThrownBy { state.getHalf(address) }
         .satisfies(
             ThrowingConsumer { error: AddressErrorException ->
@@ -239,7 +240,7 @@ internal class MemoryStateTest {
     val first: MemoryState = memory("Default", settings)
     val second: MemoryState = memory("Default", SimulationSettings())
     val address = first.textBaseAddress
-    Assertions.assertThatExceptionOfType(AddressErrorException::class.java).isThrownBy {
+    assertThatExceptionOfType<AddressErrorException>().isThrownBy {
       first.setWord(address, 0x2408002a)
     }
     settings.setSelfModifyingCodeEnabled(true)
@@ -249,7 +250,7 @@ internal class MemoryStateTest {
     Assertions.assertThat(modified.operands).startsWith(8, 0, 42)
     Assertions.assertThat(first.getWord(address)).isEqualTo(0x2408002a)
     Assertions.assertThat(second.getStatement(address)).isNull()
-    Assertions.assertThatExceptionOfType(AddressErrorException::class.java).isThrownBy {
+    assertThatExceptionOfType<AddressErrorException>().isThrownBy {
       second.setWord(address, 0x2408002a)
     }
     first.setWord(first.dataBaseAddress, 0x24090063)

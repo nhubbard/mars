@@ -1,6 +1,5 @@
 package edu.missouristate.mars.plugin.language
 
-import com.intellij.DynamicBundle
 import com.intellij.lang.annotation.AnnotationHolder
 import com.intellij.lang.annotation.Annotator
 import com.intellij.lang.annotation.HighlightSeverity
@@ -28,6 +27,7 @@ import edu.missouristate.mars.plugin.analysis.mipsAssemblyRoots
 import edu.missouristate.mars.plugin.analysis.mipsSourceTimeline
 import edu.missouristate.mars.plugin.analysis.sourceLine
 import edu.missouristate.mars.plugin.analysis.sourceLineStart
+import edu.missouristate.mars.plugin.dynamicBundleOf
 import edu.missouristate.mars.plugin.run.MarsExecutionSources
 
 /** Reports macro expansion errors from the same timeline used for scope and navigation. */
@@ -253,4 +253,4 @@ private class CloseUnterminatedMacro(site: PsiElement) :
 private fun hasAssemblyEntry(file: MipsFile, analysis: MarsAnalysisService): Boolean =
     analysis.selectedAssembly(file) != null || mipsAssemblyRoots(file).size == 1
 
-private val bundle = DynamicBundle(MipsMacroDiagnosticAnnotator::class.java, "messages.MarsBundle")
+private val bundle = dynamicBundleOf<MipsMacroDiagnosticAnnotator>()

@@ -2,6 +2,7 @@
 
 package edu.missouristate.mars.plugin.learning
 
+import com.intellij.configurationStore.deserialize
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionPlaces
 import com.intellij.openapi.actionSystem.ActionUiKind
@@ -21,6 +22,7 @@ import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.ui.UiInterceptors
 import com.intellij.util.xmlb.XmlSerializer
+import edu.missouristate.mars.util.javaClassOf
 import java.awt.event.ActionEvent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -126,7 +128,7 @@ class MarsIndependentHintTest {
           assertTrue(checkpoint.revealNextHint())
           val xml = XmlSerializer.serialize(progress.getState())
           progress.loadState(
-              XmlSerializer.deserialize(xml, MarsLearningProgress.Progress::class.java),
+              deserialize<MarsLearningProgress.Progress>(xml),
           )
           assertEquals(MarsIndependentCheckpoint.hints.take(3), checkpoint.revealedHints())
           assertFalse(checkpoint.passed())
@@ -168,7 +170,7 @@ class MarsIndependentHintTest {
             UiInterceptors.register(
                 object :
                     UiInterceptors.UiInterceptor<MarsIndependentHintDialog>(
-                        MarsIndependentHintDialog::class.java,
+                        javaClassOf<MarsIndependentHintDialog>(),
                     ) {
                   override fun doIntercept(dialog: MarsIndependentHintDialog) {
                     try {

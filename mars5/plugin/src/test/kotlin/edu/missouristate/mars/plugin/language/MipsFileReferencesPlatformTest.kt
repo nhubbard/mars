@@ -27,7 +27,6 @@ import com.intellij.psi.PsiInvalidElementAccessException
 import com.intellij.psi.PsiManager
 import com.intellij.psi.impl.include.FileIncludeInfo
 import com.intellij.psi.impl.include.FileIncludeManager
-import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.util.childOfType
 import com.intellij.refactoring.move.moveFilesOrDirectories.MoveFilesOrDirectoriesProcessor
 import com.intellij.refactoring.rename.RenameProcessor
@@ -44,6 +43,7 @@ import edu.missouristate.mars.plugin.analysis.inferredMipsAssemblyEntry
 import edu.missouristate.mars.plugin.analysis.mipsSourceTimeline
 import edu.missouristate.mars.plugin.language.index.MipsIncludeProvider
 import edu.missouristate.mars.plugin.language.psi.MipsStringLiteral
+import edu.missouristate.mars.plugin.language.psi.findChildrenOfType
 import edu.missouristate.mars.plugin.language.references.MipsFileReferenceSet
 import edu.missouristate.mars.plugin.language.references.MipsIncludeNavigation
 import edu.missouristate.mars.plugin.language.references.mipsIncludeDirectoryPath
@@ -92,8 +92,7 @@ class MipsFileReferencesPlatformTest {
           assertEquals("target.asm", reference.rangeInElement.substring(reference.element.text))
         }
         readAction {
-          val strings =
-              PsiTreeUtil.findChildrenOfType(files.second, MipsStringLiteral::class.java).toList()
+          val strings = findChildrenOfType<MipsStringLiteral>(files.second).toList()
           assertEquals(3, strings.size)
           assertEquals(files.first.containingDirectory, strings[0].reference!!.resolve())
           assertEquals(2, strings[0].references.size)
@@ -325,8 +324,7 @@ class MipsFileReferencesPlatformTest {
             }
         IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
         readAction {
-          val strings =
-              PsiTreeUtil.findChildrenOfType(files.third, MipsStringLiteral::class.java).toList()
+          val strings = findChildrenOfType<MipsStringLiteral>(files.third).toList()
           assertEquals(files.first, strings[0].references.last().resolve())
           assertEquals(files.second, strings[1].references.last().resolve())
           assertEquals(files.second, strings[2].references.last().resolve()) {
@@ -378,8 +376,7 @@ class MipsFileReferencesPlatformTest {
             }
         IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
         readAction {
-          val literals =
-              PsiTreeUtil.findChildrenOfType(source, MipsStringLiteral::class.java).toList()
+          val literals = findChildrenOfType<MipsStringLiteral>(source).toList()
           assertEquals(includes.size, literals.size)
           val sets =
               includes.zip(literals) { include, literal ->
@@ -410,7 +407,7 @@ class MipsFileReferencesPlatformTest {
                   MipsFileType,
                   paths.joinToString("\n") { ".include \"$it\"" },
               )
-      val literals = PsiTreeUtil.findChildrenOfType(file, MipsStringLiteral::class.java).toList()
+      val literals = findChildrenOfType<MipsStringLiteral>(file).toList()
       assertEquals(paths, literals.map { it.text.substring(1, it.textLength - 1) })
       val relative = MipsFileReferenceSet(paths[0], literals[0], windowsPaths = false)
       assertFalse(relative.isAbsolutePathReference)
@@ -751,8 +748,7 @@ class MipsFileReferencesPlatformTest {
           assertEquals(3, Regex("parts/renamed.asm").findAll(files.second.text).count())
           assertTrue(files.second.text.contains(".asciiz \"parts/target.asm\""))
           assertTrue(files.second.text.contains("# .include \"parts/target.asm\""))
-          for (literal in
-              PsiTreeUtil.findChildrenOfType(files.second, MipsStringLiteral::class.java)) {
+          for (literal in findChildrenOfType<MipsStringLiteral>(files.second)) {
             for (reference in literal.references) assertNotNull(reference.resolve())
           }
         }
@@ -801,8 +797,7 @@ class MipsFileReferencesPlatformTest {
               ".include \"../destination/target.asm\"\n.include \"${files.first.virtualFile.path}\"\n",
               files.second.text,
           )
-          for (literal in
-              PsiTreeUtil.findChildrenOfType(files.second, MipsStringLiteral::class.java)) {
+          for (literal in findChildrenOfType<MipsStringLiteral>(files.second)) {
             assertEquals(files.first, literal.references.last().resolve())
           }
         }

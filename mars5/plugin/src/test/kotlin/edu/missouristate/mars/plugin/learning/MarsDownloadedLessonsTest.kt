@@ -7,6 +7,7 @@
 
 package edu.missouristate.mars.plugin.learning
 
+import com.intellij.configurationStore.deserialize
 import com.intellij.execution.ExecutionListener
 import com.intellij.execution.ExecutionManager
 import com.intellij.execution.configurations.runConfigurationType
@@ -62,12 +63,13 @@ import com.intellij.util.xmlb.XmlSerializer
 import com.intellij.xdebugger.XDebugSession
 import com.intellij.xdebugger.XDebugSessionListener
 import com.intellij.xdebugger.XDebuggerManager
-import com.intellij.xdebugger.XDebuggerUtil
 import edu.missouristate.mars.cli.grading.ConsoleCheckCase
 import edu.missouristate.mars.plugin.debug.MarsDebugRunner
 import edu.missouristate.mars.plugin.debug.MarsLineBreakpointType
+import edu.missouristate.mars.plugin.debug.findBreakpointType
 import edu.missouristate.mars.plugin.run.MarsRunService
 import edu.missouristate.mars.plugin.run.MarsRunType
+import edu.missouristate.mars.util.javaClassOf
 import java.awt.Rectangle
 import java.nio.file.Files
 import java.nio.file.Path
@@ -369,7 +371,7 @@ class MarsDownloadedLessonsTest {
     val saved = XmlSerializer.serialize(selection.getState())
     val reopened = MarsDownloadedLessonSelection(project)
     reopened.loadState(
-        XmlSerializer.deserialize(saved, MarsDownloadedLessonSelection.Selection::class.java),
+        deserialize<MarsDownloadedLessonSelection.Selection>(saved),
     )
     val loaded = reopened.load()
     assertEquals(content.identity, loaded.identity)
@@ -518,7 +520,7 @@ class MarsDownloadedLessonsTest {
       lesson.prepare(project)
       // The native registrar is internal. Reflection is confined to tests;
       // the packaged implementation only calls the public task DSL.
-      val loader = LessonContext::class.java.classLoader
+      val loader = javaClassOf<LessonContext>().classLoader
       val executorClass = Class.forName("training.dsl.impl.LessonExecutor", true, loader)
       val executor =
           executorClass.constructors
@@ -657,8 +659,7 @@ class MarsDownloadedLessonsTest {
           val stopped = CompletableDeferred<Unit>()
           val paused = Channel<Unit>(Channel.UNLIMITED)
           try {
-            val type =
-                XDebuggerUtil.getInstance().findBreakpointType(MarsLineBreakpointType::class.java)
+            val type = findBreakpointType<MarsLineBreakpointType>()
             WriteCommandAction.runWriteCommandAction(project) {
               XDebuggerManager.getInstance(project)
                   .breakpointManager
@@ -958,7 +959,7 @@ class MarsDownloadedLessonsTest {
           UiInterceptors.register(
               object :
                   UiInterceptors.UiInterceptor<MarsLessonPackageFileDialog>(
-                      MarsLessonPackageFileDialog::class.java,
+                      javaClassOf<MarsLessonPackageFileDialog>(),
                   ) {
                 override fun doIntercept(dialog: MarsLessonPackageFileDialog) {
                   dialog.archiveField.text = archive.toString()
@@ -969,7 +970,7 @@ class MarsDownloadedLessonsTest {
           UiInterceptors.register(
               object :
                   UiInterceptors.UiInterceptor<MarsLessonPackagePreviewDialog>(
-                      MarsLessonPackagePreviewDialog::class.java,
+                      javaClassOf<MarsLessonPackagePreviewDialog>(),
                   ) {
                 override fun doIntercept(dialog: MarsLessonPackagePreviewDialog) {
                   assertTrue(dialog.report.contains("1 guided activities"))
@@ -1067,7 +1068,7 @@ class MarsDownloadedLessonsTest {
           val queued = mutableListOf<Runnable>()
           try {
             project.replaceService(
-                ToolWindowManager::class.java,
+                javaClassOf<ToolWindowManager>(),
                 object : ToolWindowHeadlessManagerImpl(project) {
                   override fun invokeLater(runnable: Runnable) {
                     queued += runnable

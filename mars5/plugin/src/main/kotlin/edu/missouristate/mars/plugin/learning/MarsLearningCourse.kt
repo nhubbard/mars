@@ -5,6 +5,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.projectRoots.Sdk
 import com.intellij.openapi.wm.ToolWindowAnchor
 import edu.missouristate.mars.plugin.dynamicBundleOf
+import edu.missouristate.mars.util.javaClassOf
 import java.security.MessageDigest
 import training.dsl.LessonContext
 import training.lang.AbstractLangSupport
@@ -145,7 +146,7 @@ internal object MarsPredictions {
                     )) {
                   update(0.toByte())
                   update(
-                      MarsPredictions::class.java.getResourceAsStream(path)!!.use {
+                      javaClassOf<MarsPredictions>().getResourceAsStream(path)!!.use {
                         it.readBytes()
                       },
                   )

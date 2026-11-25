@@ -28,6 +28,7 @@ import com.intellij.util.ui.withShowingChanged
 import edu.missouristate.mars.plugin.run.MarsRunService
 import edu.missouristate.mars.plugin.tools.KeyboardDisplayDevice.Delay
 import edu.missouristate.mars.plugin.tools.KeyboardDisplayDevice.Options
+import edu.missouristate.mars.plugin.ui.findComponentsOfType
 import java.awt.Dimension
 import java.awt.event.FocusEvent
 import java.awt.event.KeyEvent
@@ -149,11 +150,10 @@ class KeyboardDisplayPlatformTest {
               Triple(view, process, content)
             }
         fun button(label: String) =
-            UIUtil.findComponentsOfType(view.component, JButton::class.java).single {
+            findComponentsOfType<JButton>(view.component).single {
               it.text == label
             }
-        fun labels() =
-            UIUtil.findComponentsOfType(view.component, JBLabel::class.java).map { it.text }
+        fun labels() = findComponentsOfType<JBLabel>(view.component).map { it.text }
         val editor =
             withContext(Dispatchers.EDT) {
               EditorFactory.getInstance().allEditors.single {
@@ -170,7 +170,7 @@ class KeyboardDisplayPlatformTest {
           withContext(Dispatchers.EDT) {
             val keyboard = view.inputComponent
             val settings =
-                UIUtil.findComponentsOfType(view.component, JLabel::class.java)
+                findComponentsOfType<JLabel>(view.component)
                     .single { it.text == "Terminal Settings" }
                     .accessibleContext
             assertTrue(settings.accessibleStateSet.contains(AccessibleState.COLLAPSED))
@@ -180,7 +180,7 @@ class KeyboardDisplayPlatformTest {
             assertTrue(settings.accessibleAction.doAccessibleAction(0))
             assertTrue(button("Resize and Reset").isVisible)
             val fields =
-                UIUtil.findComponentsOfType(view.component, JBTextField::class.java).filter {
+                findComponentsOfType<JBTextField>(view.component).filter {
                   it !== keyboard
                 }
             val (columns, rows) = fields
@@ -220,13 +220,12 @@ class KeyboardDisplayPlatformTest {
             assertTrue(body.width <= viewport.width) {
               "Terminal content width ${body.width} exceeds viewport width ${viewport.width}"
             }
-            val fieldLabels = UIUtil.findComponentsOfType(view.component, JLabel::class.java)
+            val fieldLabels = findComponentsOfType<JLabel>(view.component)
             val delay =
-                UIUtil.findComponentsOfType(view.component, JComboBox::class.java).single {
+                findComponentsOfType<JComboBox<*>>(view.component).single {
                   it.itemCount == 3
                 }
-            val instructions =
-                UIUtil.findComponentsOfType(view.component, JSpinner::class.java).single()
+            val instructions = findComponentsOfType<JSpinner>(view.component).single()
             for (field in fields + listOf(delay, instructions)) {
               val label = fieldLabels.single { it.labelFor === field }
               assertTrue(label.y + label.height <= field.y)
@@ -261,7 +260,7 @@ class KeyboardDisplayPlatformTest {
             assertEquals(Delay.UNIFORM, process.keyboardDisplay.snapshot().options.delay)
             delay.selectedItem = Delay.FIXED
             instructions.value = 2
-            UIUtil.findComponentsOfType(view.component, JBCheckBox::class.java).single().doClick()
+            findComponentsOfType<JBCheckBox>(view.component).single().doClick()
             assertEquals(Options(Delay.FIXED, 2, false), process.keyboardDisplay.snapshot().options)
           }
           process.processInput.write("x\n".toByteArray())

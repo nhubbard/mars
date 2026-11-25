@@ -12,6 +12,7 @@ import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.InstructionLoader
 import edu.missouristate.mars.simulator.Exceptions.BREAKPOINT_EXCEPTION
 import edu.missouristate.mars.simulator.Exceptions.TRAP_EXCEPTION
+import edu.missouristate.mars.testing.isInstanceOf
 import kotlin.math.sqrt
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
@@ -623,7 +624,7 @@ internal class BasicInstructionSemanticsTest {
         context.execute(statement)
       } else {
         val failure = Assertions.catchThrowable { context.execute(statement) }
-        Assertions.assertThat<Throwable?>(failure).isInstanceOf(ProcessingException::class.java)
+        Assertions.assertThat<Throwable?>(failure).isInstanceOf<ProcessingException>()
         if (exception == -1) {
           Assertions.assertThat((failure as ProcessingException).errors()).isNull()
         } else {

@@ -1,10 +1,10 @@
 package edu.missouristate.mars.plugin.language
 
-import com.intellij.DynamicBundle
 import com.intellij.openapi.options.colors.AttributesDescriptor
 import com.intellij.openapi.options.colors.ColorDescriptor
 import com.intellij.openapi.options.colors.ColorSettingsPage
 import edu.missouristate.mars.plugin.debug.MarsMachineHighlight
+import edu.missouristate.mars.plugin.dynamicBundleOf
 
 internal class MipsColorSettingsPage : ColorSettingsPage {
   override fun getDisplayName() = bundle.getMessage("colors.name")
@@ -50,7 +50,7 @@ internal class MipsColorSettingsPage : ColorSettingsPage {
           .trimIndent()
 }
 
-private val bundle = DynamicBundle(MipsColorSettingsPage::class.java, "messages.MarsBundle")
+private val bundle = dynamicBundleOf<MipsColorSettingsPage>()
 private val semanticColors =
     mapOf(
         "instruction" to instructionMnemonicColor,

@@ -1,6 +1,5 @@
 package edu.missouristate.mars.plugin.language
 
-import com.intellij.DynamicBundle
 import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.Document
 import com.intellij.openapi.fileEditor.FileDocumentManager
@@ -8,7 +7,6 @@ import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.util.Key
 import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.vfs.VirtualFileManager
-import com.intellij.patterns.PlatformPatterns
 import com.intellij.patterns.PsiElementPattern
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
@@ -50,9 +48,11 @@ import edu.missouristate.mars.plugin.analysis.collectBackgroundAssemblySources
 import edu.missouristate.mars.plugin.analysis.collectEditorAssembly
 import edu.missouristate.mars.plugin.analysis.mipsAssemblyRoots
 import edu.missouristate.mars.plugin.build.MarsSourceSet
+import edu.missouristate.mars.plugin.dynamicBundleOf
 import edu.missouristate.mars.plugin.language.index.EXPANSION_SEED
 import edu.missouristate.mars.plugin.language.index.declarationIndexId
 import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
+import edu.missouristate.mars.plugin.language.psi.psiElement
 import edu.missouristate.mars.plugin.language.syntax.MipsScanner
 import java.nio.file.Path
 
@@ -166,7 +166,7 @@ internal class MipsSymbolRenameProcessor : RenamePsiElementProcessor() {
 
 internal class MipsSymbolRenameInputValidator : RenameInputValidator {
   override fun getPattern(): PsiElementPattern.Capture<MipsDeclaration?> =
-      PlatformPatterns.psiElement(MipsDeclaration::class.java)
+      psiElement<MipsDeclaration>()
 
   override fun isInputValid(newName: String, element: PsiElement, context: ProcessingContext) =
       validSymbolName(newName, (element as MipsDeclaration).kind)
@@ -201,7 +201,7 @@ private data class RenameSubject(val kind: SymbolKind, val site: SourceToken, va
 private val addressKinds = setOf(SymbolKind.LABEL, SymbolKind.EXTERNAL)
 private val renameVerification =
     Key.create<Result<SymbolRenamePlan>>("mars.symbol.rename.verification")
-private val bundle = DynamicBundle(MipsSymbolRenameProcessor::class.java, "messages.MarsBundle")
+private val bundle = dynamicBundleOf<MipsSymbolRenameProcessor>()
 
 private fun symbolRenameError(key: String) = IncorrectOperationException(bundle.getMessage(key))
 

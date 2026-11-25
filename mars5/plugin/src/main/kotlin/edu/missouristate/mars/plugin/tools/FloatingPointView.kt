@@ -23,6 +23,7 @@ import edu.missouristate.mars.plugin.debug.MarsDebugProcess
 import edu.missouristate.mars.plugin.debug.MarsSuspendContext
 import edu.missouristate.mars.plugin.debug.RegisterBank
 import edu.missouristate.mars.plugin.debug.RegisterEditRequest
+import edu.missouristate.mars.plugin.debug.getDebugProcesses
 import edu.missouristate.mars.plugin.debug.submitEdit
 import edu.missouristate.mars.plugin.run.MarsProcessHandler
 import edu.missouristate.mars.plugin.tools.FloatingPointRepresentation.Format
@@ -193,9 +194,9 @@ internal class FloatingPointView(private val project: Project) : Disposable {
 
   private fun stoppedContext(process: MarsProcessHandler): MarsSuspendContext? {
     val debugger =
-        XDebuggerManager.getInstance(project)
-            .getDebugProcesses(MarsDebugProcess::class.java)
-            .firstOrNull { it.processHandler === process } ?: return null
+        XDebuggerManager.getInstance(project).getDebugProcesses<MarsDebugProcess>().firstOrNull {
+          it.processHandler === process
+        } ?: return null
     return debugger.session.suspendContext as? MarsSuspendContext
   }
 

@@ -9,6 +9,7 @@ import com.intellij.psi.codeStyle.CodeStyleManager
 import com.intellij.psi.codeStyle.CodeStyleSettingsManager
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
+import edu.missouristate.mars.util.javaClassOf
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.editorconfig.Utils
@@ -30,7 +31,7 @@ class MipsEditorConfigPlatformTest {
           val temporary = CodeStyleSettingsManager.getInstance(current).temporarySettings
           CodeStyle.dropTemporarySettings(current)
           val editorConfig =
-              CodeStyle.getSettings(current).getCustomSettings(EditorConfigSettings::class.java)
+              CodeStyle.getSettings(current).getCustomSettings(javaClassOf<EditorConfigSettings>())
           val wasEnabled = editorConfig.ENABLED
           val wasEnabledInTests = Utils.isEnabledInTests
           editorConfig.ENABLED = true

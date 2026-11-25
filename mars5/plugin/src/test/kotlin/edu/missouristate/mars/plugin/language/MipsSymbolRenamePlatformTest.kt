@@ -25,7 +25,6 @@ import com.intellij.psi.PsiPlainTextFile
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.LocalSearchScope
 import com.intellij.psi.search.searches.ReferencesSearch
-import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.refactoring.rename.RenameProcessor
 import com.intellij.refactoring.rename.RenamePsiElementProcessor
 import com.intellij.testFramework.IndexingTestUtil
@@ -49,6 +48,7 @@ import edu.missouristate.mars.plugin.build.MarsAssemblySettings
 import edu.missouristate.mars.plugin.build.MarsSourceSet
 import edu.missouristate.mars.plugin.classicMipsProjectFixture
 import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
+import edu.missouristate.mars.plugin.language.psi.findChildrenOfType
 import java.nio.file.Files
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -637,7 +637,7 @@ class MipsSymbolRenamePlatformTest {
           assertEquals(renamed, file.text)
 
           val other =
-              PsiTreeUtil.findChildrenOfType(file, MipsDeclaration::class.java).single {
+              findChildrenOfType<MipsDeclaration>(file).single {
                 it.name == "other"
               }
           assertEquals(renamed.lastIndexOf("other"), usages(other).single().segment!!.startOffset)
@@ -1055,7 +1055,7 @@ class MipsSymbolRenamePlatformTest {
               PsiFileFactory.getInstance(project)
                   .createFileFromText("scratch.asm", MipsFileType, "target: nop\n.eqv LIMIT 1")
           val target = label(scratch)
-          val constant = PsiTreeUtil.findChildrenOfType(scratch, MipsDeclaration::class.java).last()
+          val constant = findChildrenOfType<MipsDeclaration>(scratch).last()
           val validator = MipsSymbolRenameInputValidator()
           assertTrue(validator.pattern.accepts(target))
           assertFalse(processor.canProcessElement(scratch))
@@ -1411,22 +1411,22 @@ class MipsSymbolRenamePlatformTest {
       }
 
   private fun label(file: PsiFile) =
-      PsiTreeUtil.findChildrenOfType(file, MipsDeclaration::class.java).first {
+      findChildrenOfType<MipsDeclaration>(file).first {
         it.kind == SymbolKind.LABEL
       }
 
   private fun macros(file: PsiFile) =
-      PsiTreeUtil.findChildrenOfType(file, MipsDeclaration::class.java).filter {
+      findChildrenOfType<MipsDeclaration>(file).filter {
         it.kind == SymbolKind.MACRO
       }
 
   private fun externals(file: PsiFile) =
-      PsiTreeUtil.findChildrenOfType(file, MipsDeclaration::class.java).filter {
+      findChildrenOfType<MipsDeclaration>(file).filter {
         it.kind == SymbolKind.EXTERNAL
       }
 
   private fun constants(file: PsiFile) =
-      PsiTreeUtil.findChildrenOfType(file, MipsDeclaration::class.java).filter {
+      findChildrenOfType<MipsDeclaration>(file).filter {
         it.kind == SymbolKind.CONSTANT
       }
 

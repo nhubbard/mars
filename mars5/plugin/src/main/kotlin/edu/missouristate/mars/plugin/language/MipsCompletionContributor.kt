@@ -1,6 +1,5 @@
 package edu.missouristate.mars.plugin.language
 
-import com.intellij.DynamicBundle
 import com.intellij.codeInsight.completion.CompletionContributor
 import com.intellij.codeInsight.completion.CompletionInitializationContext
 import com.intellij.codeInsight.completion.CompletionInitializationContext.DUMMY_IDENTIFIER_TRIMMED
@@ -22,6 +21,7 @@ import edu.missouristate.mars.mips.instructions.Instruction
 import edu.missouristate.mars.plugin.analysis.LabelCompletionContext
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.build.MarsAssemblySettings
+import edu.missouristate.mars.plugin.dynamicBundleOf
 import edu.missouristate.mars.plugin.language.psi.DataLabelOperand
 import edu.missouristate.mars.plugin.language.psi.macroParameterUseContexts
 
@@ -220,7 +220,7 @@ class MipsCompletionContributor : CompletionContributor(), DumbAware {
   }
 }
 
-private val messages = DynamicBundle(MipsCompletionContributor::class.java, "messages.MarsBundle")
+private val messages = dynamicBundleOf<MipsCompletionContributor>()
 private val statementHead =
     psiElement()
         .withElementType(

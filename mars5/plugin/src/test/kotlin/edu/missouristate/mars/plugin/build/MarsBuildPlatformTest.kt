@@ -16,6 +16,7 @@ import com.intellij.build.events.StartBuildEvent
 import com.intellij.build.events.SuccessResult
 import com.intellij.codeInsight.lookup.Lookup
 import com.intellij.codeInsight.navigation.actions.GotoDeclarationAction
+import com.intellij.configurationStore.deserialize
 import com.intellij.ide.trustedProjects.TrustedProjects
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.ActionManager
@@ -56,7 +57,6 @@ import com.intellij.psi.PsiErrorElement
 import com.intellij.psi.PsiFileFactory
 import com.intellij.psi.PsiManager
 import com.intellij.psi.impl.include.FileIncludeManager
-import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.util.childOfType
 import com.intellij.task.ProjectTask
 import com.intellij.task.ProjectTaskContext
@@ -73,7 +73,6 @@ import com.intellij.testFramework.fixtures.impl.CodeInsightTestFixtureImpl
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.testFramework.replaceService
 import com.intellij.ui.ToolbarDecorator
-import com.intellij.util.ui.UIUtil
 import com.intellij.util.xmlb.XmlSerializer
 import edu.missouristate.mars.ApplicationInfo
 import edu.missouristate.mars.ProcessingException
@@ -99,6 +98,10 @@ import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.MipsFileType
 import edu.missouristate.mars.plugin.language.mipsAssemblySourceEntries
 import edu.missouristate.mars.plugin.language.mipsAssemblySourceOrigin
+import edu.missouristate.mars.plugin.language.psi.findChildrenOfType
+import edu.missouristate.mars.plugin.ui.findComponentOfType
+import edu.missouristate.mars.plugin.ui.findComponentsOfType
+import edu.missouristate.mars.util.javaClassOf
 import java.awt.Component
 import java.nio.charset.Charset
 import java.nio.file.Files
@@ -157,7 +160,7 @@ class MarsBuildPlatformTest {
           val context = ProjectTaskContext()
           val unrelated = ProjectTask { "Unrelated build task" }
           val runner =
-              ProjectTaskRunner.EP_NAME.findExtensionOrFail(MarsProjectTaskRunner::class.java)
+              ProjectTaskRunner.EP_NAME.findExtensionOrFail(javaClassOf<MarsProjectTaskRunner>())
           assertTrue(runner.canRun(project, first, context))
           assertFalse(runner.canRun(project, unrelated, null))
           assertEquals("Assemble first.asm", first.presentableName)
@@ -214,7 +217,7 @@ class MarsBuildPlatformTest {
                 val form = page.createComponent()
                 page.reset()
                 val option =
-                    UIUtil.findComponentsOfType(form, JCheckBox::class.java).single {
+                    findComponentsOfType<JCheckBox>(form).single {
                       it.text == "Assemble MIPS sources when opened"
                     }
                 assertFalse(option.isSelected)
@@ -222,7 +225,7 @@ class MarsBuildPlatformTest {
                 page.apply()
                 val persisted = XmlSerializer.serialize(settings.getState())
                 settings.loadState(
-                    XmlSerializer.deserialize(persisted, MarsAssemblySettings.Settings::class.java),
+                    deserialize<MarsAssemblySettings.Settings>(persisted),
                 )
                 assertTrue(settings.assembleOnOpen)
               } finally {
@@ -572,7 +575,7 @@ class MarsBuildPlatformTest {
                 val binary = fixture.addFileToProject("image.png", "").virtualFile
                 ApplicationManager.getApplication()
                     .replaceService(
-                        FileChooserFactory::class.java,
+                        javaClassOf<FileChooserFactory>(),
                         object : FileChooserFactoryImpl() {
                           override fun createPathChooser(
                               descriptor: FileChooserDescriptor,
@@ -598,7 +601,7 @@ class MarsBuildPlatformTest {
                 val page = MarsAssemblyConfigurable(project)
                 try {
                   val form = page.createComponent()
-                  val list = requireNotNull(UIUtil.findComponentOfType(form, JList::class.java))
+                  val list = requireNotNull(findComponentOfType<JList<*>>(form))
                   val add = requireNotNull(ToolbarDecorator.findAddButton(form))
                   val up = requireNotNull(ToolbarDecorator.findUpButton(form))
                   page.reset()
@@ -612,10 +615,7 @@ class MarsBuildPlatformTest {
                   settings.changeSources(paths.map { it.toString() })
                   val persisted = XmlSerializer.serialize(settings.getState())
                   settings.loadState(
-                      XmlSerializer.deserialize(
-                          persisted,
-                          MarsAssemblySettings.Settings::class.java,
-                      ),
+                      deserialize<MarsAssemblySettings.Settings>(persisted),
                   )
                   assertEquals(paths, settings.projectSources)
                   page.reset()
@@ -780,7 +780,7 @@ class MarsBuildPlatformTest {
           try {
             val panel = page.createComponent()
             page.reset()
-            val layout = UIUtil.findComponentsOfType(panel, JComboBox::class.java).single()
+            val layout = findComponentsOfType<JComboBox<*>>(panel).single()
             assertEquals(MarsMemoryLayout.DEFAULT, layout.selectedItem)
             layout.selectedItem = MarsMemoryLayout.DATA_AT_ZERO
             page.apply()
@@ -788,7 +788,7 @@ class MarsBuildPlatformTest {
             settings.changeMemoryLayout(MarsMemoryLayout.DATA_AT_ZERO)
             val persisted = XmlSerializer.serialize(settings.getState())
             settings.loadState(
-                XmlSerializer.deserialize(persisted, MarsAssemblySettings.Settings::class.java),
+                deserialize<MarsAssemblySettings.Settings>(persisted),
             )
             assertEquals("CompactDataAtZero", settings.getState().memoryLayout)
           } finally {
@@ -892,8 +892,7 @@ class MarsBuildPlatformTest {
             try {
               val panel = configurable.createComponent()
               configurable.reset()
-              val choices =
-                  UIUtil.findComponentsOfType(panel, JCheckBox::class.java).associateBy { it.text }
+              val choices = findComponentsOfType<JCheckBox>(panel).associateBy { it.text }
               val pseudo = choices.getValue("Allow pseudo-instructions")
               val warnings = choices.getValue("Treat assembler warnings as errors")
               val utf8 =
@@ -916,7 +915,7 @@ class MarsBuildPlatformTest {
               configurable.apply()
               val persisted = XmlSerializer.serialize(settings.getState())
               settings.loadState(
-                  XmlSerializer.deserialize(persisted, MarsAssemblySettings.Settings::class.java),
+                  deserialize<MarsAssemblySettings.Settings>(persisted),
               )
               assertEquals(
                   MarsExecutionOptions(
@@ -994,7 +993,7 @@ class MarsBuildPlatformTest {
         val panel = configurable.createComponent()
         configurable.reset()
         val label =
-            UIUtil.findComponentsOfType(panel, JLabel::class.java).single {
+            findComponentsOfType<JLabel>(panel).single {
               it.text?.startsWith("Backstep history limit") == true
             }
         val field = label.labelFor as JTextField
@@ -1009,7 +1008,7 @@ class MarsBuildPlatformTest {
         assertEquals(stamp, settings.sourceChanges.modificationCount)
         val persisted = XmlSerializer.serialize(settings.getState())
         settings.loadState(
-            XmlSerializer.deserialize(persisted, MarsAssemblySettings.Settings::class.java),
+            deserialize<MarsAssemblySettings.Settings>(persisted),
         )
         assertEquals(2, settings.backstepLimit)
         for (invalid in listOf(0, 100_001)) {
@@ -1059,7 +1058,7 @@ class MarsBuildPlatformTest {
               val panel = configurable.createComponent()
               configurable.reset()
               val label =
-                  UIUtil.findComponentsOfType(panel, JLabel::class.java).single {
+                  findComponentsOfType<JLabel>(panel).single {
                     it.text?.startsWith("Assembler error limit") == true
                   }
               val field = label.labelFor as JTextField
@@ -1076,7 +1075,7 @@ class MarsBuildPlatformTest {
               assertEquals(stamp, settings.sourceChanges.modificationCount)
               val persisted = XmlSerializer.serialize(settings.getState())
               settings.loadState(
-                  XmlSerializer.deserialize(persisted, MarsAssemblySettings.Settings::class.java),
+                  deserialize<MarsAssemblySettings.Settings>(persisted),
               )
               assertEquals(2, settings.executionOptions.assemblerErrorLimit)
             } finally {
@@ -1100,10 +1099,7 @@ class MarsBuildPlatformTest {
                 settings.executionOptions.assemblerErrorLimit,
             )
             settings.loadState(
-                XmlSerializer.deserialize(
-                    Element("state"),
-                    MarsAssemblySettings.Settings::class.java,
-                ),
+                deserialize<MarsAssemblySettings.Settings>(Element("state")),
             )
             assertEquals(ApplicationInfo.maximumErrorMessages, settings.assemblerErrorLimit)
           }
@@ -1135,8 +1131,7 @@ class MarsBuildPlatformTest {
           try {
             val panel = page.createComponent()
             page.reset()
-            val choices =
-                UIUtil.findComponentsOfType(panel, JCheckBox::class.java).associateBy { it.text }
+            val choices = findComponentsOfType<JCheckBox>(panel).associateBy { it.text }
             val delayed = choices.getValue("Enable delayed branching")
             val modify = choices.getValue("Allow self-modifying code")
             val bare = choices.getValue("Require numeric integer register operands (bare machine)")
@@ -1146,7 +1141,7 @@ class MarsBuildPlatformTest {
             page.apply()
             val saved = XmlSerializer.serialize(settings.getState())
             settings.loadState(
-                XmlSerializer.deserialize(saved, MarsAssemblySettings.Settings::class.java),
+                deserialize<MarsAssemblySettings.Settings>(saved),
             )
             page.reset()
             assertTrue(listOf(delayed, modify, bare).all { it.isSelected })
@@ -1212,10 +1207,7 @@ class MarsBuildPlatformTest {
             try {
               val path =
                   requireNotNull(
-                      UIUtil.findComponentOfType(
-                          page.createComponent(),
-                          TextFieldWithBrowseButton::class.java,
-                      ),
+                      findComponentOfType<TextFieldWithBrowseButton>(page.createComponent()),
                   )
               page.reset()
               assertEquals("", path.text)
@@ -1228,7 +1220,7 @@ class MarsBuildPlatformTest {
               settings.changeExceptionHandler(kernel.toString())
               val persisted = XmlSerializer.serialize(settings.getState())
               settings.loadState(
-                  XmlSerializer.deserialize(persisted, MarsAssemblySettings.Settings::class.java),
+                  deserialize<MarsAssemblySettings.Settings>(persisted),
               )
               assertEquals(kernel, settings.exceptionHandler)
               page.reset()
@@ -1322,10 +1314,7 @@ class MarsBuildPlatformTest {
             try {
               val path =
                   requireNotNull(
-                      UIUtil.findComponentOfType(
-                          page.createComponent(),
-                          TextFieldWithBrowseButton::class.java,
-                      ),
+                      findComponentOfType<TextFieldWithBrowseButton>(page.createComponent()),
                   )
               page.reset()
               path.text = " "
@@ -2328,7 +2317,7 @@ class MarsBuildPlatformTest {
     readAction {
       val file = PsiManager.getInstance(project).findFile(entryFile) as MipsFile
       assertEquals(normalizedEntry, file.text)
-      assertTrue(PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java).isEmpty())
+      assertTrue(findChildrenOfType<PsiErrorElement>(file).isEmpty())
       val includedFile =
           file.findReferenceAt(file.text.indexOf(includeName))?.resolve()?.containingFile
       assertEquals(include, includedFile?.virtualFile?.toNioPath())
@@ -2338,7 +2327,7 @@ class MarsBuildPlatformTest {
       val includedSyntax = checkNotNull(assemblySourceSyntax(includedFile))
       assertEquals(normalizedInclude, includedSyntax.text)
       assertTrue(
-          PsiTreeUtil.findChildrenOfType(includedSyntax, PsiErrorElement::class.java).isEmpty(),
+          findChildrenOfType<PsiErrorElement>(includedSyntax).isEmpty(),
       )
     }
     withContext(Dispatchers.IO) {
@@ -2391,7 +2380,7 @@ class MarsBuildPlatformTest {
     }
     readAction {
       val file = PsiManager.getInstance(project).findFile(entryFile) as MipsFile
-      val error = PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java).single()
+      val error = findChildrenOfType<PsiErrorElement>(file).single()
       assertEquals("0xG", error.text)
       assertEquals(malformed.indexOf("0xG"), error.textOffset)
       assertEquals("Invalid MARS token on include line", error.errorDescription)
@@ -3127,7 +3116,7 @@ class MarsBuildPlatformTest {
   ): Channel<BuildEvent> {
     val events = Channel<BuildEvent>(Channel.UNLIMITED)
     project.replaceService(
-        BuildViewManager::class.java,
+        javaClassOf<BuildViewManager>(),
         object : BuildViewManager(project) {
           override fun onEvent(buildId: Any, event: BuildEvent) {
             onEvent(event)

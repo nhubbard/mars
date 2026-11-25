@@ -1,6 +1,5 @@
 package edu.missouristate.mars.plugin.language
 
-import com.intellij.DynamicBundle
 import com.intellij.lang.cacheBuilder.DefaultWordsScanner
 import com.intellij.lang.findUsages.FindUsagesProvider
 import com.intellij.lexer.DelegateLexer
@@ -11,6 +10,7 @@ import com.intellij.psi.PsiNamedElement
 import com.intellij.psi.tree.IElementType
 import com.intellij.psi.tree.TokenSet
 import edu.missouristate.mars.plugin.analysis.SymbolKind
+import edu.missouristate.mars.plugin.dynamicBundleOf
 import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
 import edu.missouristate.mars.plugin.language.psi.MipsMacroFormal
 
@@ -77,7 +77,7 @@ internal class MipsFindUsagesProvider : FindUsagesProvider {
 
 private object PunctuationIdentifier : IElementType("MIPS_PUNCTUATION_IDENTIFIER", MipsLanguage)
 
-private val bundle = DynamicBundle(MipsFindUsagesProvider::class.java, "messages.MarsBundle")
+private val bundle = dynamicBundleOf<MipsFindUsagesProvider>()
 private val word = MipsTypes.psi("WORD")
 private val parameter = MipsTypes.psi("PARAMETER")
 private val identifiers =

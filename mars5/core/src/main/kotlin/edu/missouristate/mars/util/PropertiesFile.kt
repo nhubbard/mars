@@ -38,7 +38,9 @@ open class PropertiesFile {
     fun loadPropertiesFromFile(file: String?): Properties {
       val properties = Properties()
       try {
-        PropertiesFile::class.java.getResourceAsStream("/$file.properties")?.use(properties::load)
+        javaClassOf<PropertiesFile>()
+            .getResourceAsStream("/$file.properties")
+            ?.use(properties::load)
       } catch (_: IOException) {
         // Retain properties read before the stream failed.
       }

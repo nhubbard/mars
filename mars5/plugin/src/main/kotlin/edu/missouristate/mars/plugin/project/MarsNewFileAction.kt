@@ -1,19 +1,19 @@
 package edu.missouristate.mars.plugin.project
 
-import com.intellij.DynamicBundle
 import com.intellij.ide.actions.CreateFileFromTemplateAction
 import com.intellij.ide.actions.CreateFileFromTemplateDialog
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiDirectory
 import com.intellij.psi.PsiFile
+import edu.missouristate.mars.plugin.dynamicBundleOf
 import edu.missouristate.mars.plugin.language.MipsFileType
 
 private const val ASSEMBLY_TEMPLATE = "MIPS Assembly"
 private const val SOURCE_TEMPLATE = "MIPS Source"
 private const val MARS_TEMPLATE = "MARS Assembly"
 private const val INCLUDE_TEMPLATE = "MIPS Include"
-private val messages = DynamicBundle(MarsNewFileAction::class.java, "messages.MarsBundle")
+private val messages = dynamicBundleOf<MarsNewFileAction>()
 
 internal class MarsNewFileAction : CreateFileFromTemplateAction(), DumbAware {
   // FileTemplateUtil owns the write command. Let the platform open the editor after that write.

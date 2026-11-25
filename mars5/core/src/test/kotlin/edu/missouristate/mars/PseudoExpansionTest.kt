@@ -1,5 +1,6 @@
 package edu.missouristate.mars
 
+import edu.missouristate.mars.util.javaClassOf
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
@@ -44,7 +45,8 @@ internal class PseudoExpansionTest {
     fun configurations(): List<Arguments> {
       val groups = linkedMapOf<String, MutableList<Vector>>()
       checkNotNull(
-              PseudoExpansionTest::class.java.getResourceAsStream("/pseudo-expansion-vectors.tsv"),
+              javaClassOf<PseudoExpansionTest>()
+                  .getResourceAsStream("/pseudo-expansion-vectors.tsv"),
           ) {
             "pseudo-expansion-vectors.tsv"
           }

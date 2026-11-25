@@ -4,7 +4,6 @@ import com.intellij.application.options.CodeStyle
 import com.intellij.execution.PsiLocation
 import com.intellij.execution.RunManager
 import com.intellij.execution.actions.ConfigurationContext
-import com.intellij.execution.actions.RunConfigurationProducer
 import com.intellij.execution.configurations.runConfigurationType
 import com.intellij.ide.util.PropertiesComponent
 import com.intellij.openapi.actionSystem.ActionManager
@@ -38,6 +37,7 @@ import edu.missouristate.mars.plugin.run.MarsInputMode
 import edu.missouristate.mars.plugin.run.MarsRunConfiguration
 import edu.missouristate.mars.plugin.run.MarsRunConfigurationProducer
 import edu.missouristate.mars.plugin.run.MarsRunType
+import edu.missouristate.mars.plugin.run.runConfigurationProducer
 import java.util.prefs.AbstractPreferences
 import java.util.prefs.BackingStoreException
 import kotlin.io.path.invariantSeparatorsPathString
@@ -270,8 +270,7 @@ class MarsImportVenusPreferencesPlatformTest {
           assertEquals(tabSize, projectTabSize)
           assertFalse(event(action).also(action::update).presentation.isEnabledAndVisible)
 
-          val producer =
-              RunConfigurationProducer.getInstance(MarsRunConfigurationProducer::class.java)
+          val producer = runConfigurationProducer<MarsRunConfigurationProducer>()
           val context =
               ConfigurationContext.createEmptyContextForLocation(PsiLocation.fromPsiElement(source))
           val created =

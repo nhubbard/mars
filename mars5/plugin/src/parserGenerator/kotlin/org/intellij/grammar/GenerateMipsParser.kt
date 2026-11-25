@@ -29,6 +29,7 @@ fun main(arguments: Array<String>) {
   )
   val source = File(arguments[1])
   val grammar = LightPsi.parseFile(source, BnfParserDefinition()) as BnfFile
+  // The standalone grammar generator has no dependency on the MARS runtime or its interop helpers.
   val errors = PsiTreeUtil.findChildrenOfType(grammar, PsiErrorElement::class.java)
   check(errors.isEmpty()) { errors.joinToString { it.errorDescription + " at " + it.textOffset } }
   KotlinParserGenerator(grammar, source.parent, arguments[0], "", "", OutputOpener.DEFAULT)

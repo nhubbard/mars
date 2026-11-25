@@ -6,6 +6,7 @@ import edu.missouristate.mars.mips.hardware.AddressErrorException
 import edu.missouristate.mars.mips.hardware.MemoryAccessNotice
 import edu.missouristate.mars.mips.hardware.MemoryState
 import edu.missouristate.mars.mips.hardware.RegisterAccessNotice
+import edu.missouristate.mars.testing.isInstanceOf
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.FutureTask
@@ -142,7 +143,7 @@ internal class AccessOriginTest {
             throw IllegalArgumentException("failed invocation")
           }
         }
-        .isInstanceOf(IllegalArgumentException::class.java)
+        .isInstanceOf<IllegalArgumentException>()
     Assertions.assertThat<AccessOrigin?>(AccessOrigin.current()).isEqualTo(AccessOrigin.APPLICATION)
   }
 }

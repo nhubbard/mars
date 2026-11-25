@@ -16,6 +16,8 @@ import edu.missouristate.mars.mips.instructions.basic.InstrLwc1
 import edu.missouristate.mars.mips.instructions.basic.InstrSdc1
 import edu.missouristate.mars.mips.instructions.basic.InstrSwc1
 import edu.missouristate.mars.mips.instructions.basic.InstrSyscall
+import edu.missouristate.mars.testing.assertThatExceptionOfType
+import edu.missouristate.mars.testing.isInstanceOf
 import org.assertj.core.api.Assertions
 import org.assertj.core.api.ThrowingConsumer
 import org.junit.jupiter.api.Test
@@ -182,14 +184,12 @@ internal class SessionMemoryTest {
       Assertions.assertThat(api.getWord(address)).isEqualTo(0x1234abcd)
       Assertions.assertThat(api.getHalfWord(address)).isEqualTo(0xabcd)
       Assertions.assertThat(api.getByte(address)).isEqualTo(0xcd)
-      Assertions.assertThatExceptionOfType(
-              MemoryAccessException::class.java,
-          )
+      assertThatExceptionOfType<MemoryAccessException>()
           .isThrownBy { api.getWord(address + 1) }
           .satisfies(
               ThrowingConsumer { error: MemoryAccessException ->
                 Assertions.assertThat(error.address).isEqualTo(address + 1)
-                Assertions.assertThat(error.cause).isInstanceOf(AddressErrorException::class.java)
+                Assertions.assertThat(error.cause).isInstanceOf<AddressErrorException>()
               },
           )
       api.clear()

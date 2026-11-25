@@ -12,7 +12,6 @@ import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsigh
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.search.GlobalSearchScope
-import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
@@ -23,6 +22,7 @@ import com.intellij.util.indexing.IdFilter
 import edu.missouristate.mars.plugin.analysis.SymbolKind
 import edu.missouristate.mars.plugin.build.MarsAssemblySettings
 import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
+import edu.missouristate.mars.plugin.language.psi.findChildrenOfType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -94,7 +94,7 @@ class MipsGoToSymbolPlatformTest {
             )
           }
 
-          val incomplete = PsiTreeUtil.findChildrenOfType(first, MipsDeclaration::class.java).last()
+          val incomplete = findChildrenOfType<MipsDeclaration>(first).last()
           assertNull(incomplete.name)
           assertNull(incomplete.nameIdentifier)
           assertEquals(source.indexOf(".eqv 7 8"), incomplete.textOffset)

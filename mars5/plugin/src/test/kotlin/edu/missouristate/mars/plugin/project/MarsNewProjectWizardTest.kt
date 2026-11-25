@@ -36,17 +36,18 @@ import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.testFramework.junit5.fixture.projectFixture
 import com.intellij.testFramework.pollAssertionsAsync
-import com.intellij.util.ui.UIUtil
 import com.intellij.xdebugger.XDebugSessionListener
 import com.intellij.xdebugger.XDebuggerManager
-import com.intellij.xdebugger.XDebuggerUtil
 import com.intellij.xdebugger.XSourcePosition
 import edu.missouristate.mars.plugin.build.MarsAssemblySettings
 import edu.missouristate.mars.plugin.build.MarsBuildTask
 import edu.missouristate.mars.plugin.debug.MarsLineBreakpointType
+import edu.missouristate.mars.plugin.debug.findBreakpointType
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.MipsFileType
 import edu.missouristate.mars.plugin.run.MarsRunConfiguration
+import edu.missouristate.mars.plugin.ui.findComponentsOfType
+import edu.missouristate.mars.util.javaClassOf
 import java.nio.file.FileAlreadyExistsException
 import java.nio.file.Files
 import java.nio.file.Path
@@ -85,7 +86,7 @@ class MarsNewProjectWizardTest {
           @Suppress("JetBrainsInternalApiUsage")
           val generator =
               GeneratorNewProjectWizard.EP_NAME.findExtensionOrFail(
-                  MarsNewProjectWizard::class.java,
+                  javaClassOf<MarsNewProjectWizard>(),
               )
           assertEquals("MarsMips", generator.id)
           assertEquals("MARS MIPS", generator.name)
@@ -98,7 +99,7 @@ class MarsNewProjectWizardTest {
             base.name = root.fileName.toString()
             val panel = NewProjectWizardStepPanel(step)
             val option =
-                UIUtil.findComponentsOfType(panel.component, JCheckBox::class.java).single {
+                findComponentsOfType<JCheckBox>(panel.component).single {
                   it.text == "Add a separate console library"
                 }
             assertFalse(option.isSelected)
@@ -159,8 +160,7 @@ class MarsNewProjectWizardTest {
                 if (separateLibrary) DefaultDebugExecutor.getDebugExecutorInstance()
                 else DefaultRunExecutor.getRunExecutorInstance()
             if (separateLibrary) {
-              val breakpointType =
-                  XDebuggerUtil.getInstance().findBreakpointType(MarsLineBreakpointType::class.java)
+              val breakpointType = findBreakpointType<MarsLineBreakpointType>()
               runWriteAction {
                 debugger.breakpointManager.addLineBreakpoint(
                     breakpointType,

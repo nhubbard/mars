@@ -17,6 +17,7 @@ import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsigh
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
+import edu.missouristate.mars.util.javaClassOf
 import java.awt.Rectangle
 import java.nio.file.Path
 import java.util.concurrent.CompletableFuture
@@ -265,7 +266,7 @@ class MarsInlinePredictionTest {
           )
           projectFixture.get().service<MarsLearningProgress>().reset(MarsPredictions.identity)
           val lesson = MarsLearningCourse().modules().single().lessons.first()
-          val loader = LessonContext::class.java.classLoader
+          val loader = javaClassOf<LessonContext>().classLoader
           val executorClass = Class.forName("training.dsl.impl.LessonExecutor", true, loader)
           val executor =
               executorClass.constructors

@@ -1,6 +1,5 @@
 package edu.missouristate.mars.plugin.language.psi
 
-import com.intellij.DynamicBundle
 import com.intellij.extapi.psi.ASTWrapperPsiElement
 import com.intellij.icons.AllIcons
 import com.intellij.ide.projectView.PresentationData
@@ -13,6 +12,7 @@ import com.intellij.psi.util.elementType
 import com.intellij.util.IncorrectOperationException
 import edu.missouristate.mars.assembler.Tokenizer
 import edu.missouristate.mars.plugin.analysis.SymbolKind
+import edu.missouristate.mars.plugin.dynamicBundleOf
 import edu.missouristate.mars.plugin.language.MipsTypes
 
 internal class MipsDeclaration(node: ASTNode, val kind: SymbolKind) :
@@ -48,7 +48,7 @@ internal class MipsDeclaration(node: ASTNode, val kind: SymbolKind) :
       throw IncorrectOperationException(bundle.getMessage("symbol.rename.unavailable"))
 
   companion object {
-    private val bundle = DynamicBundle(MipsDeclaration::class.java, "messages.MarsBundle")
+    private val bundle = dynamicBundleOf<MipsDeclaration>()
     private val PARAMETER = MipsTypes.psi("PARAMETER")
     private val CHARACTER = MipsTypes.psi("CHARACTER")
     private val EXTERNAL_SIGNED_NAME = MipsTypes.psi("EXTERNAL_SIGNED_NAME")

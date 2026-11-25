@@ -20,6 +20,8 @@ import com.intellij.testFramework.junit5.fixture.projectFixture
 import com.intellij.ui.UiInterceptors
 import com.intellij.util.ui.UIUtil
 import edu.missouristate.mars.plugin.MarsExecutionOptions
+import edu.missouristate.mars.plugin.ui.findComponentsOfType
+import edu.missouristate.mars.util.javaClassOf
 import java.awt.event.ActionEvent
 import java.nio.file.Files
 import java.nio.file.Path
@@ -114,7 +116,7 @@ class MarsSyscallDialogsPlatformTest {
                 try {
                   editor.resetFrom(consoleConfig)
                   val mode =
-                      UIUtil.findComponentsOfType(editor.component, JComboBox::class.java).single {
+                      findComponentsOfType<JComboBox<*>>(editor.component).single {
                         it.selectedItem is MarsInputMode
                       }
                   assertEquals(MarsInputMode.CONSOLE, mode.selectedItem)
@@ -132,9 +134,7 @@ class MarsSyscallDialogsPlatformTest {
                 for (response in listOf(" 7 ", "1.25", "2.5", "abcdef", "Zebra")) {
                   interceptSyscallDialog { dialog ->
                     prompts += dialog.messageText()
-                    UIUtil.findComponentsOfType(dialog.fields, JTextField::class.java)
-                        .single()
-                        .text = response
+                    findComponentsOfType<JTextField>(dialog.fields).single().text = response
                     dialog.clickButton("OK")
                   }
                 }
@@ -232,8 +232,7 @@ class MarsSyscallDialogsPlatformTest {
                   "Enter text for a UTF-8 buffer with up to 5 payload bytes (syscall 8).",
                   dialog.messageText(),
               )
-              UIUtil.findComponentsOfType(dialog.fields, JTextField::class.java).single().text =
-                  "🐟é"
+              findComponentsOfType<JTextField>(dialog.fields).single().text = "🐟é"
               dialog.clickButton("OK")
             }
           }
@@ -324,8 +323,7 @@ class MarsSyscallDialogsPlatformTest {
               interceptSyscallDialog { dialog ->
                 assertTrue(dialog.title.startsWith("MARS Input"))
                 assertEquals("Enter a value", dialog.messageText())
-                val field =
-                    UIUtil.findComponentsOfType(dialog.fields, JTextField::class.java).single()
+                val field = findComponentsOfType<JTextField>(dialog.fields).single()
                 assertSame(field, dialog.preferredFocusedComponent)
                 if (answer == null) {
                   dialog.doCancelAction()
@@ -425,7 +423,7 @@ class MarsSyscallDialogsPlatformTest {
             repeat(messages.size) {
               interceptSyscallDialog { dialog ->
                 val icons: List<Icon> =
-                    UIUtil.findComponentsOfType(dialog.fields, JLabel::class.java).mapNotNull {
+                    findComponentsOfType<JLabel>(dialog.fields).mapNotNull {
                       it.icon
                     }
                 observed.add(dialog.messageText() to icons)
@@ -538,13 +536,14 @@ class MarsSyscallDialogsPlatformTest {
 
   private fun interceptSyscallDialog(onShow: (MarsSyscallDialog) -> Unit) =
       UiInterceptors.register(
-          object : UiInterceptors.UiInterceptor<MarsSyscallDialog>(MarsSyscallDialog::class.java) {
+          object :
+              UiInterceptors.UiInterceptor<MarsSyscallDialog>(javaClassOf<MarsSyscallDialog>()) {
             override fun doIntercept(component: MarsSyscallDialog) = onShow(component)
           },
       )
 
   private fun MarsSyscallDialog.messageText() =
-      UIUtil.findComponentsOfType(fields, JTextArea::class.java).single().text
+      findComponentsOfType<JTextArea>(fields).single().text
 
   private fun MarsSyscallDialog.clickButton(text: String) {
     val action =

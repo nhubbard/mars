@@ -23,6 +23,7 @@ import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsigh
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.ui.UiInterceptors
+import edu.missouristate.mars.util.javaClassOf
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
@@ -71,7 +72,7 @@ class MarsLessonPackageImportActionTest {
   private fun fileDialog(path: String, accept: Boolean = true) =
       object :
           UiInterceptors.UiInterceptor<MarsLessonPackageFileDialog>(
-              MarsLessonPackageFileDialog::class.java,
+              javaClassOf<MarsLessonPackageFileDialog>(),
           ) {
         override fun doIntercept(dialog: MarsLessonPackageFileDialog) {
           dialog.archiveField.text = path
@@ -136,7 +137,7 @@ class MarsLessonPackageImportActionTest {
             UiInterceptors.register(
                 object :
                     UiInterceptors.UiInterceptor<MarsLessonPackagePreviewDialog>(
-                        MarsLessonPackagePreviewDialog::class.java,
+                        javaClassOf<MarsLessonPackagePreviewDialog>(),
                     ) {
                   override fun doIntercept(dialog: MarsLessonPackagePreviewDialog) {
                     assertTrue(dialog.report.contains("Example <plain> & text"))

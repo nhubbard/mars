@@ -2,6 +2,7 @@ package edu.missouristate.mars
 
 import edu.missouristate.mars.api.EventEmitter
 import edu.missouristate.mars.core.SimulationSettings
+import edu.missouristate.mars.util.javaClassOf
 import java.util.prefs.BackingStoreException
 import java.util.prefs.Preferences
 
@@ -35,7 +36,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /** Stores user preferences and provides a live view of the current session settings. */
 open class Settings internal constructor(private val preferences: Preferences) {
-  constructor() : this(Preferences.userNodeForPackage(Settings::class.java))
+  constructor() : this(Preferences.userNodeForPackage(javaClassOf<Settings>()))
 
   private val settingsEvents = EventEmitter<Settings>()
   private val defaultBooleans =

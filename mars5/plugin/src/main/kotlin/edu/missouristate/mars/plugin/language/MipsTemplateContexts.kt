@@ -1,6 +1,5 @@
 package edu.missouristate.mars.plugin.language
 
-import com.intellij.DynamicBundle
 import com.intellij.codeInsight.template.TemplateActionContext
 import com.intellij.codeInsight.template.TemplateContextType
 import com.intellij.psi.util.PsiTreeUtil
@@ -8,6 +7,7 @@ import com.intellij.psi.util.elementType
 import com.intellij.util.text.CharArrayUtil
 import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.plugin.analysis.sourceLineStart
+import edu.missouristate.mars.plugin.dynamicBundleOf
 
 internal class MipsStatementTemplateContext :
     TemplateContextType(bundle.getMessage("template.context.statement")) {
@@ -25,7 +25,7 @@ internal class MipsTopLevelTemplateContext :
   }
 }
 
-private val bundle = DynamicBundle(MipsStatementTemplateContext::class.java, "messages.MarsBundle")
+private val bundle = dynamicBundleOf<MipsStatementTemplateContext>()
 private val macroDefinition = MipsTypes.psi("MACRO_DEFINITION")
 
 private fun TemplateActionContext.isMipsStatement(): Boolean {

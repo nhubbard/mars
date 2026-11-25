@@ -35,9 +35,11 @@ import edu.missouristate.mars.plugin.debug.MarsDebugEditors
 import edu.missouristate.mars.plugin.debug.MarsDebugRunner
 import edu.missouristate.mars.plugin.debug.MarsLineBreakpointType
 import edu.missouristate.mars.plugin.debug.MarsSuspendContext
+import edu.missouristate.mars.plugin.debug.findBreakpointType
 import edu.missouristate.mars.plugin.run.MarsRunService
 import edu.missouristate.mars.plugin.run.MarsRunType
 import edu.missouristate.mars.plugin.run.runMessages
+import edu.missouristate.mars.util.javaClassOf
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
@@ -288,7 +290,7 @@ class MarsConsoleDebugCheckpointTest {
                 fixture.configureFromExistingVirtualFile(file)
                 val type =
                     XDebuggerUtil.getInstance()
-                        .findBreakpointType(MarsLineBreakpointType::class.java)
+                        .findBreakpointType(javaClassOf<MarsLineBreakpointType>())
                 WriteCommandAction.runWriteCommandAction(project) {
                   XDebuggerManager.getInstance(project)
                       .breakpointManager
@@ -425,8 +427,7 @@ class MarsConsoleDebugCheckpointTest {
                       execution.observeDebug(lifetime, file.toNioPath(), fixture.editor.document)
                 }
             assertEquals(0, checkpoint.phase)
-            val type =
-                XDebuggerUtil.getInstance().findBreakpointType(MarsLineBreakpointType::class.java)
+            val type = findBreakpointType<MarsLineBreakpointType>()
             WriteCommandAction.runWriteCommandAction(project) {
               XDebuggerManager.getInstance(project)
                   .breakpointManager

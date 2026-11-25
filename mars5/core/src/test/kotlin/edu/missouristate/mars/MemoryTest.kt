@@ -4,6 +4,7 @@ import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.mips.hardware.AddressErrorException
 import edu.missouristate.mars.mips.hardware.MemoryConfigurations
 import edu.missouristate.mars.mips.hardware.MemoryState
+import edu.missouristate.mars.testing.isInstanceOf
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -116,14 +117,14 @@ internal class MemoryTest {
   fun unalignedWordAccess_throwsAddressErrorException() {
     val misaligned = (MemoryConfigurations.getDefaultConfiguration().dataBaseAddress + 1)
     Assertions.assertThatThrownBy { memory!!.setWord(misaligned, 0) }
-        .isInstanceOf(AddressErrorException::class.java)
+        .isInstanceOf<AddressErrorException>()
   }
 
   @Test
   fun unalignedHalfWordAccess_throwsAddressErrorException() {
     val misaligned = (MemoryConfigurations.getDefaultConfiguration().dataBaseAddress + 1)
     Assertions.assertThatThrownBy { memory!!.setHalf(misaligned, 0) }
-        .isInstanceOf(AddressErrorException::class.java)
+        .isInstanceOf<AddressErrorException>()
   }
 
   // -------------------------------------------------------------------------

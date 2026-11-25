@@ -1,6 +1,5 @@
 package edu.missouristate.mars.plugin.language
 
-import com.intellij.DynamicBundle
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerInfo
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerProvider
 import com.intellij.codeInsight.navigation.NavigationGutterIconBuilder
@@ -21,6 +20,7 @@ import edu.missouristate.mars.mips.instructions.InstructionDefaults
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.analysis.discardTrailingComment
 import edu.missouristate.mars.plugin.analysis.sourceLine
+import edu.missouristate.mars.plugin.dynamicBundleOf
 import edu.missouristate.mars.plugin.language.psi.MipsSymbolToken
 
 internal class MipsTransferLineMarkerProvider : RelatedItemLineMarkerProvider() {
@@ -67,8 +67,7 @@ internal class MipsTransferLineMarkerProvider : RelatedItemLineMarkerProvider() 
   private data class Transfer(val label: String, val targets: List<PsiElement>)
 }
 
-private val bundle =
-    DynamicBundle(MipsTransferLineMarkerProvider::class.java, "messages.MarsBundle")
+private val bundle = dynamicBundleOf<MipsTransferLineMarkerProvider>()
 private val transferForms by lazy {
   val forms = InstructionDefaults.editorCatalog().instructionList
   val basic =

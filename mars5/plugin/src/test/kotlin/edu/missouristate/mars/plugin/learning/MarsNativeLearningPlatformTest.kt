@@ -19,10 +19,11 @@ import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.ui.UiInterceptors
 import com.intellij.ui.components.JBRadioButton
-import com.intellij.util.ui.UIUtil
 import edu.missouristate.mars.api.SessionSyscallEnvironment
 import edu.missouristate.mars.api.StopEvent
 import edu.missouristate.mars.plugin.MarsSessionService
+import edu.missouristate.mars.plugin.ui.findComponentsOfType
+import edu.missouristate.mars.util.javaClassOf
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.PrintStream
@@ -162,7 +163,7 @@ class MarsNativeLearningPlatformTest {
             progress.reset(MarsPredictions.identity)
             assertFalse(MarsPredictions.hasCorrectAnswer(projectFixture.get(), prediction))
             inspectPrediction(id) { dialog ->
-              val buttons = UIUtil.findComponentsOfType(dialog.panel, JBRadioButton::class.java)
+              val buttons = findComponentsOfType<JBRadioButton>(dialog.panel)
               assertEquals(3, buttons.size)
               dialog.doOKAction()
               assertTrue(progress.snapshot(MarsPredictions.identity)!!.quizAttempts.isEmpty())
@@ -236,7 +237,7 @@ class MarsNativeLearningPlatformTest {
             }
             // The host's DSL construction types are internal. Test-only reflection exercises its
             // actual registrar; packaged MARS code uses only public course/task APIs.
-            val loader = LessonContext::class.java.classLoader
+            val loader = javaClassOf<LessonContext>().classLoader
             val executorClass = Class.forName("training.dsl.impl.LessonExecutor", true, loader)
             val executor =
                 executorClass.constructors
@@ -610,7 +611,9 @@ class MarsNativeLearningPlatformTest {
     var inspected = false
     UiInterceptors.register(
         object :
-            UiInterceptors.UiInterceptor<MarsPredictionDialog>(MarsPredictionDialog::class.java) {
+            UiInterceptors.UiInterceptor<MarsPredictionDialog>(
+                javaClassOf<MarsPredictionDialog>(),
+            ) {
           override fun doIntercept(dialog: MarsPredictionDialog) {
             try {
               inspect(dialog)

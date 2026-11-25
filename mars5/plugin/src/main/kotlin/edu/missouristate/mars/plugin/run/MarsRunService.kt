@@ -17,7 +17,6 @@ import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.vfs.encoding.EncodingManager
 import com.intellij.platform.ide.progress.withBackgroundProgress
-import com.intellij.util.EventDispatcher
 import com.intellij.util.io.IOUtil
 import edu.missouristate.mars.ProcessingException
 import edu.missouristate.mars.api.ErrorEvent
@@ -40,6 +39,7 @@ import edu.missouristate.mars.plugin.build.MarsMemoryExportService
 import edu.missouristate.mars.plugin.build.MarsSourceSet
 import edu.missouristate.mars.plugin.build.MemoryExportSelection
 import edu.missouristate.mars.plugin.build.memoryExportMessages
+import edu.missouristate.mars.plugin.platform.eventDispatcherOf
 import edu.missouristate.mars.plugin.tools.BranchHistoryTable
 import edu.missouristate.mars.plugin.tools.DigitalLabDevice
 import edu.missouristate.mars.plugin.tools.ExecutedInstructionCache
@@ -192,7 +192,7 @@ internal class MarsProcessHandler(
   val executionOptions
     get() = launch.options
 
-  private val toolInstructions = EventDispatcher.create(MarsToolInstructionListener::class.java)
+  private val toolInstructions = eventDispatcherOf<MarsToolInstructionListener>()
   @Volatile var runSpeed = initialRunSpeed
   @Volatile private var console: ConsoleView? = null
   @Volatile

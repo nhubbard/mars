@@ -1,6 +1,5 @@
 package edu.missouristate.mars.plugin.project
 
-import com.intellij.DynamicBundle
 import com.intellij.application.options.CodeStyle
 import com.intellij.execution.RunManager
 import com.intellij.execution.configurations.runConfigurationType
@@ -20,6 +19,7 @@ import com.intellij.platform.ide.progress.runWithModalProgressBlocking
 import com.intellij.psi.codeStyle.CodeStyleSettingsManager
 import edu.missouristate.mars.plugin.MarsMemoryLayout
 import edu.missouristate.mars.plugin.build.MarsAssemblySettings
+import edu.missouristate.mars.plugin.dynamicBundleOf
 import edu.missouristate.mars.plugin.language.MipsFileType
 import edu.missouristate.mars.plugin.run.MarsInputMode
 import edu.missouristate.mars.plugin.run.MarsRunConfiguration
@@ -34,8 +34,7 @@ import kotlin.io.path.invariantSeparatorsPathString
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-internal val venusImportMessages =
-    DynamicBundle(MarsImportVenusPreferencesAction::class.java, "messages.MarsBundle")
+internal val venusImportMessages = dynamicBundleOf<MarsImportVenusPreferencesAction>()
 private val messages
   get() = venusImportMessages
 private const val importedKey = "mars.venus.project.preferences.imported"

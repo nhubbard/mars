@@ -24,6 +24,7 @@ import com.intellij.util.net.ssl.CertificateManager
 import com.intellij.util.net.ssl.ConfirmingTrustManager
 import com.sun.net.httpserver.HttpsConfigurator
 import com.sun.net.httpserver.HttpsServer
+import edu.missouristate.mars.util.javaClassOf
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.net.InetSocketAddress
@@ -335,7 +336,7 @@ class MarsLessonPackageSourceTest {
             UiInterceptors.register(
                 object :
                     UiInterceptors.UiInterceptor<MarsLessonPackageFileDialog>(
-                        MarsLessonPackageFileDialog::class.java,
+                        javaClassOf<MarsLessonPackageFileDialog>(),
                     ) {
                   override fun doIntercept(dialog: MarsLessonPackageFileDialog) {
                     dialog.archiveField.text = url
@@ -346,7 +347,7 @@ class MarsLessonPackageSourceTest {
             UiInterceptors.register(
                 object :
                     UiInterceptors.UiInterceptor<MarsLessonPackagePreviewDialog>(
-                        MarsLessonPackagePreviewDialog::class.java,
+                        javaClassOf<MarsLessonPackagePreviewDialog>(),
                     ) {
                   override fun doIntercept(dialog: MarsLessonPackagePreviewDialog) {
                     assertTrue(dialog.report.contains("Course lab"))
@@ -383,7 +384,7 @@ class MarsLessonPackageSourceTest {
           UiInterceptors.register(
               object :
                   UiInterceptors.UiInterceptor<MarsLessonPackageFileDialog>(
-                      MarsLessonPackageFileDialog::class.java,
+                      javaClassOf<MarsLessonPackageFileDialog>(),
                   ) {
                 override fun doIntercept(dialog: MarsLessonPackageFileDialog) {
                   dialog.archiveField.text = url.replace("package.zip", "missing")

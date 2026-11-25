@@ -1,6 +1,5 @@
 package edu.missouristate.mars.plugin.language
 
-import com.intellij.DynamicBundle
 import com.intellij.codeInsight.daemon.quickFix.CreateFilePathFix
 import com.intellij.codeInsight.daemon.quickFix.NewFileLocation
 import com.intellij.codeInsight.daemon.quickFix.TargetDirectory
@@ -15,11 +14,13 @@ import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.util.elementType
 import com.intellij.util.IncorrectOperationException
+import edu.missouristate.mars.plugin.dynamicBundleOf
 import edu.missouristate.mars.plugin.language.psi.MipsStringLiteral
 import edu.missouristate.mars.plugin.language.psi.mipsIncludeSites
 import edu.missouristate.mars.plugin.language.references.dotSegments
 import edu.missouristate.mars.plugin.language.references.findMipsIncludeFile
 import edu.missouristate.mars.plugin.language.references.mipsIncludeRequest
+import edu.missouristate.mars.util.javaClassOf
 import java.nio.file.Path
 
 /**
@@ -94,7 +95,7 @@ internal class MipsIncludePathAnnotator : Annotator, DumbAware {
 }
 
 private object CloseIncludeQuote :
-    PsiUpdateModCommandAction<PsiElement>(PsiElement::class.java), DumbAware {
+    PsiUpdateModCommandAction<PsiElement>(javaClassOf<PsiElement>()), DumbAware {
   override fun getFamilyName(): String = bundle.getMessage("syntax.include.closeQuote")
 
   override fun isElementApplicable(element: PsiElement, context: ActionContext): Boolean =
@@ -106,7 +107,7 @@ private object CloseIncludeQuote :
 }
 
 private val unclosedString = MipsTypes.psi("UNCLOSED_STRING")
-private val bundle = DynamicBundle(MipsIncludePathAnnotator::class.java, "messages.MarsBundle")
+private val bundle = dynamicBundleOf<MipsIncludePathAnnotator>()
 
 internal fun PsiElement.isUnterminatedInclude(): Boolean =
     elementType == unclosedString && textOffset in mipsIncludeSites(containingFile).unterminated

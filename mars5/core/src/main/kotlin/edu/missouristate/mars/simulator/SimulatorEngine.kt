@@ -10,6 +10,7 @@ import edu.missouristate.mars.api.StepEvent
 import edu.missouristate.mars.api.StopEvent
 import edu.missouristate.mars.api.StopEvent.Reason
 import edu.missouristate.mars.core.MarsContext
+import edu.missouristate.mars.util.javaClassOf
 import java.lang.Integer.compareUnsigned
 import java.lang.System.Logger.Level.WARNING
 import java.util.concurrent.CompletableFuture
@@ -364,6 +365,6 @@ class SimulatorEngine(private val session: MarsContext) : MarsSimulator, AutoClo
   }
 
   private companion object {
-    val logger: System.Logger = System.getLogger(SimulatorEngine::class.java.name)
+    val logger: System.Logger = System.getLogger(javaClassOf<SimulatorEngine>().name)
   }
 }
