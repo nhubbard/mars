@@ -5,6 +5,7 @@ import edu.missouristate.mars.ProcessingException
 import edu.missouristate.mars.api.SessionSyscallEnvironment
 import edu.missouristate.mars.cli.grading.GradeCommand
 import edu.missouristate.mars.core.MarsContext.AssemblyPhase
+import edu.missouristate.mars.core.configureSimulation
 import edu.missouristate.mars.di.MarsComponent
 import edu.missouristate.mars.mips.dump.DumpFormatLoader
 import edu.missouristate.mars.mips.hardware.MemoryAddressRange
@@ -44,13 +45,14 @@ object MarsCli {
           .context()
           .use { session ->
             val settings = session.settings
-            settings
-                .setDelayedBranchingEnabled(false)
-                .setSelfModifyingCodeEnabled(false)
-                .setStartAtMainEnabled(false)
-                .setExtendedAssemblerEnabled(true)
-                .setWarningsAreErrors(false)
-                .setBareMachineEnabled(false)
+            settings.configureSimulation {
+              isDelayedBranchingEnabled = false
+              isSelfModifyingCodeEnabled = false
+              isStartAtMainEnabled = false
+              isExtendedAssemblerEnabled = true
+              isWarningsAreErrors = false
+              isBareMachineEnabled = false
+            }
             val files = ArrayList<Path>()
             val programArguments = ArrayList<String>()
             val dumps = ArrayList<CliMemoryDump>()
@@ -93,15 +95,15 @@ object MarsCli {
                 "--project",
                 "p" -> project = true
                 "--self-modifying-code",
-                "smc" -> settings.setSelfModifyingCodeEnabled(true)
+                "smc" -> settings.isSelfModifyingCodeEnabled = true
                 "--start-at-main",
-                "sm" -> settings.setStartAtMainEnabled(true)
+                "sm" -> settings.isStartAtMainEnabled = true
                 "--no-pseudo",
                 "np",
-                "ne" -> settings.setExtendedAssemblerEnabled(false)
+                "ne" -> settings.isExtendedAssemblerEnabled = false
                 "--utf8-text" -> settings.isUtf8TextEnabled = true
                 "--warnings-as-errors",
-                "we" -> settings.setWarningsAreErrors(true)
+                "we" -> settings.isWarningsAreErrors = true
                 "--messages-to-stderr",
                 "me" -> reportOutput = error
                 "--brief",

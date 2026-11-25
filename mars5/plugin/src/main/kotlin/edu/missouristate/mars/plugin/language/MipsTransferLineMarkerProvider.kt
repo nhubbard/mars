@@ -60,7 +60,7 @@ internal class MipsTransferLineMarkerProvider : RelatedItemLineMarkerProvider() 
     val tokens = analysis.editorInstructionTokens(file, head, sourceLine(head)) ?: return null
     tokens.discardTrailingComment()
     if (candidates.none { OperandFormat.matches(tokens, it) }) return null
-    val label = tokens[tokens.size() - 1].value
+    val label = tokens[tokens.size - 1].value
     return Transfer(label, analysis.labelTargets(file, head, allowExternal = false, name = label))
   }
 

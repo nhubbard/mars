@@ -48,14 +48,14 @@ internal fun parseAddressRelocations(
     errors: ErrorList,
 ): Boolean {
   var index = 1
-  while (index < tokens.size()) {
+  while (index < tokens.size) {
     val head = tokens[index]
     val part = if (head.value.startsWith('%')) AddressPart.parse(head.value) else null
     if (part == null) {
       index++
       continue
     }
-    fun tokenAt(position: Int) = if (position < tokens.size()) tokens[position] else null
+    fun tokenAt(position: Int) = if (position < tokens.size) tokens[position] else null
     val open = tokenAt(index + 1)
     val symbol = tokenAt(index + 2)?.let { labels.reference(it) ?: it }
     if (

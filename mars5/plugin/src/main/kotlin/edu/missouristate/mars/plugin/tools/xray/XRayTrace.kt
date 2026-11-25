@@ -134,7 +134,7 @@ internal class XRayInstruction(
       instruction
           ?.tokenList
           ?.let { tokens ->
-            (1 until tokens.size())
+            (1 until tokens.size)
                 .mapNotNull { index ->
                   when (tokens[index].type) {
                     REGISTER_NAME,

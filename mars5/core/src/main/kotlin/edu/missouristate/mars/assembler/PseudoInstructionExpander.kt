@@ -35,7 +35,7 @@ internal class PseudoInstructionExpander(private val context: AssemblyContext) {
       if (expanded.isEmpty()) continue
       val tokens = tokenizer.tokenizeLine(line, expanded, errors, false)
       if (localLabel != null && template.trimEnd().endsWith(" LAB"))
-          tokens[tokens.size() - 1] = localLabel
+          tokens[tokens.size - 1] = localLabel
       val matches = context.instructions().matchOperator(tokens[0].value)
       val basic = OperandFormat.bestOperandMatch(tokens, matches, context.bareMachineEnabled())
       val generated =

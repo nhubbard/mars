@@ -4,6 +4,7 @@ import edu.missouristate.mars.api.MarsGuiProxy
 import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.core.InstructionContext
 import edu.missouristate.mars.core.MarsContext
+import edu.missouristate.mars.core.configureSimulation
 import edu.missouristate.mars.di.CoreModule
 import edu.missouristate.mars.di.MarsComponent
 import edu.missouristate.mars.mips.hardware.MemoryConfiguration
@@ -14,13 +15,14 @@ internal object TestSessions {
   @JvmStatic
   fun create(): MarsContext {
     val settings = Settings(MemoryPreferences())
-    settings.simulationSettings
-        .setMemoryConfiguration("Default")
-        .setDelayedBranchingEnabled(false)
-        .setBareMachineEnabled(false)
-        .setStartAtMainEnabled(false)
-        .setExtendedAssemblerEnabled(true)
-        .setWarningsAreErrors(false)
+    settings.simulationSettings.configureSimulation {
+      memoryConfiguration = "Default"
+      isDelayedBranchingEnabled = false
+      isBareMachineEnabled = false
+      isStartAtMainEnabled = false
+      isExtendedAssemblerEnabled = true
+      isWarningsAreErrors = false
+    }
     return MarsComponent.build {
           coreModule(CoreModule(settings, target = MarsTarget.MARS32))
           guiProxy(NO_GUI)

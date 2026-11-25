@@ -89,7 +89,7 @@ internal fun MipsMacroFormal.checkedRenameSites(newName: String): Set<PsiElement
             )
         if (errors.errorsOccurred()) throw formalRenameError("macro.rename.incomplete.scope")
         val tokens = expanded.tokens()
-        val lineTokens = (0 until tokens.size()).map(tokens::get)
+        val lineTokens = (tokens.indices).map(tokens::get)
         if (newName != oldName && lineTokens.any { it.value == newName })
             throw formalRenameError("macro.rename.conflict")
         val references = lineTokens.filter { it.value == oldName }

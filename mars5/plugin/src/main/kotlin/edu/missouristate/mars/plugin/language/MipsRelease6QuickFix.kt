@@ -62,7 +62,7 @@ internal class MipsRelease6QuickFix(
     val tokens = analysis.expandedInstruction(file, site) ?: return false
     if (tokens.isEmpty || !tokens[0].value.equals(mnemonic, ignoreCase = true)) return false
     if (mnemonic == "daddi") {
-      if (tokens.size() != 4 || !TokenTypes.isIntegerTokenType(tokens[3].type)) return false
+      if (tokens.size != 4 || !TokenTypes.isIntegerTokenType(tokens[3].type)) return false
       val immediate = Binary.stringToInt(tokens[3].value)
       return immediate in Short.MIN_VALUE..Short.MAX_VALUE &&
           (immediate == 0 || RegisterNames.integer(tokens[2].value)?.number == 0)

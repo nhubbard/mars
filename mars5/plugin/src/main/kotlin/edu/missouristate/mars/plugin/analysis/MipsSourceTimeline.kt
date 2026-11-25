@@ -431,7 +431,7 @@ internal class MipsSourceTimeline(
     val tokens = expansion.tokens()
     tokens.discardTrailingComment()
     val operationIndex = if (tokens.beginsWithLabel()) 2 else 0
-    val operation = if (operationIndex < tokens.size()) tokens[operationIndex] else null
+    val operation = if (operationIndex < tokens.size) tokens[operationIndex] else null
     val operationOffset =
         if (operation != null && prefix.operationType(tokens, operationIndex) != null) {
           expansion.originalOffset(operation.startPos - 1)
@@ -439,7 +439,7 @@ internal class MipsSourceTimeline(
     val tokensByOffset =
         if (errors.errorsOccurred()) emptyMap()
         else
-            (0 until tokens.size()).map(tokens::get).groupBy {
+            (tokens.indices).map(tokens::get).groupBy {
               expansion.originalOffset(it.startPos - 1)
             }
     val types =

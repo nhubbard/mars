@@ -286,7 +286,7 @@ private constructor(
 
     appendText("${tokens[0].value} ")
     numOperands = 0
-    for (index in 1 until tokens.size()) {
+    for (index in 1 until tokens.size) {
       val token = tokens[index]
       val value = token.value
       when (token.type) {
@@ -404,7 +404,7 @@ private constructor(
         else -> appendText(value)
       }
       if (
-          index < tokens.size() - 1 &&
+          index < tokens.size - 1 &&
               !token.type.isParenthesis() &&
               token.type != TokenTypes.LEFT_BRACKET &&
               !tokens[index + 1].type.isParenthesis() &&
@@ -520,13 +520,13 @@ private constructor(
     for (index in 0 until numOperands) {
       if (
           cursor > 1 &&
-              cursor < tokens.size() &&
+              cursor < tokens.size &&
               !tokens[cursor].type.isParenthesis() &&
               tokens[cursor].type != TokenTypes.LEFT_BRACKET
       ) {
         display.add(DisplayElement.Text(","))
       }
-      while (cursor < tokens.size()) {
+      while (cursor < tokens.size) {
         val token = tokens[cursor++]
         if (token.type.isParenthesis() || token.type == TokenTypes.LEFT_BRACKET) {
           display.add(DisplayElement.Text(token.value))
@@ -544,13 +544,13 @@ private constructor(
                   } else DisplayElement.Value(values[index])
             },
         )
-        if (cursor < tokens.size() && tokens[cursor].type == TokenTypes.RIGHT_BRACKET) {
+        if (cursor < tokens.size && tokens[cursor].type == TokenTypes.RIGHT_BRACKET) {
           display.add(DisplayElement.Text(tokens[cursor++].value))
         }
         break
       }
     }
-    while (cursor < tokens.size()) {
+    while (cursor < tokens.size) {
       val token = tokens[cursor++]
       if (token.type.isParenthesis()) display.add(DisplayElement.Text(token.value))
     }

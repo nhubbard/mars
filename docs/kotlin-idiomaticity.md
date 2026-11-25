@@ -44,6 +44,8 @@ counts include the existing helper's implementation.
    and table callback adapters. All 134 selected debugger, learning-anchor,
    memory-display, and new callback-contract tests pass; affected modules compile.
 7. Core collection and simulation configuration APIs, preserving compatibility.
+   All 2,461 core, 317 CLI, and 8 datapath tests pass; benchmark sources compile.
+   All 186 selected plugin token/settings, completion, parser, and Run tests pass.
 8. Nullable state and lifecycle invariants, followed by complete validation.
 
 Every phase is reviewed, compiled, tested, and committed before the next begins.
@@ -123,3 +125,17 @@ Every phase is reviewed, compiled, tested, and committed before the next begins.
   debugger layouts/presentations, refactoring and undo actions, persistent UI
   subclasses, test doubles, and the small implementations inside these factories.
   Their state, inheritance, or multi-method contracts remain explicit.
+
+- `SimulationSettings` now exposes mutable Kotlin properties without changing
+  `MarsSettings`' read-only interface or removing fluent setters. Explicit setter
+  JVM names avoid colliding with fluent methods returning `SimulationSettings`.
+  The properties delegate to those original setters, including preference-owner
+  routing. `configureSimulation` applies immediately in source order, returns the
+  same settings object, and does not batch notifications or roll back exceptions.
+  Boolean names retain the existing `is...` API rather than creating aliases.
+- `TokenList.size` delegates to the original virtual `size()` for subclass and
+  JVM compatibility. `indices` and `Iterable<Token>` support native Kotlin loops;
+  the iterator comes from a truly unmodifiable Java view, so a Java/MutableIterator
+  cast cannot bypass freeze guards. Token values retain their own freezing, and
+  cloning frozen lists continues to produce independent mutable example tokens.
+  No mutable collection interface or backing-list accessor has been exposed.

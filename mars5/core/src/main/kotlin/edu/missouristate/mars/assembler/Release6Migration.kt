@@ -123,7 +123,7 @@ fun release6DivOperandMigration(tokens: TokenList): String? {
   val mnemonic = tokens[0].value.lowercase()
   if (
       mnemonic !in removedTwoOperandDivides ||
-          tokens.size() != 3 ||
+          tokens.size != 3 ||
           RegisterNames.integer(tokens[1].value) == null ||
           RegisterNames.integer(tokens[2].value) == null
   )

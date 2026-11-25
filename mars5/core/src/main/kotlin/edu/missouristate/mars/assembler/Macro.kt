@@ -91,7 +91,7 @@ open class Macro {
 
     // Replace right to left. Origins use distances from the end, which stay valid across later
     // replacements.
-    for (index in tokens.size() - 1 downTo 0) {
+    for (index in tokens.size - 1 downTo 0) {
       val token = tokens[index]
       val start = token.startPos - 1
       var origin = token
@@ -107,7 +107,7 @@ open class Macro {
         } else if (
             owner.assemblyContext().session.target == MarsTarget.MARS64 &&
                 AddressPart.parse(token.value) != null &&
-                index + 1 < tokens.size() &&
+                index + 1 < tokens.size &&
                 tokens[index + 1].type == TokenTypes.LEFT_PAREN
         ) {
           origins[source.length - start] = TokenOrigin(token, origin)
@@ -159,8 +159,8 @@ open class Macro {
     @JvmStatic
     @JvmOverloads
     fun hasCallParentheses(tokens: TokenList, operationIndex: Int = 0): Boolean =
-        tokens.size() - operationIndex > 2 &&
+        tokens.size - operationIndex > 2 &&
             tokens[operationIndex + 1].type == TokenTypes.LEFT_PAREN &&
-            tokens[tokens.size() - 1].type == TokenTypes.RIGHT_PAREN
+            tokens[tokens.size - 1].type == TokenTypes.RIGHT_PAREN
   }
 }

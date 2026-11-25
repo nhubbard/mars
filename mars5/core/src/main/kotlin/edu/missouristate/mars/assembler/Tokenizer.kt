@@ -237,8 +237,7 @@ constructor(
   ): TokenList {
     val tokens =
         tokenizeLine(lineNum, expansion.text, callerErrors, true, checkCancellation, expansion)
-    for (index in 0 until tokens.size()) {
-      val token = tokens[index]
+    for (token in tokens) {
       val origin = expansion.tokenOriginAt(token.originalStartPos) ?: continue
       token.setDiagnosticOrigin(origin.diagnostic)
       token.setExpansionSource(origin.written)
@@ -418,7 +417,7 @@ constructor(
             emit(position)
             val unary =
                 followedByDigit &&
-                    (tokens.isEmpty || tokens[tokens.size() - 1].type != TokenTypes.IDENTIFIER)
+                    (tokens.isEmpty || tokens[tokens.size - 1].type != TokenTypes.IDENTIFIER)
             if (!unary) emit(position + 1)
           }
         }
@@ -546,9 +545,8 @@ constructor(
           nextEquivalenceUse(program, lineNum, line, tokens, replacements, edits, expansion)
               ?: break
     }
-    for (index in 0 until tokens.size()) {
+    for (token in tokens) {
       checkCancellation()
-      val token = tokens[index]
       token.setOriginalStartPos(originalColumn(token, edits))
       token.setEquivalenceSource(
           spellingSource(edits, token.startPos - 1, token.endPos - 1, null, null),
@@ -573,8 +571,7 @@ constructor(
   ): EquivalenceUse? {
     tokens.processedLine = line
     if (recordEquivalence(program, lineNum, line, tokens, edits, expansion)) return null
-    for (index in 0 until tokens.size()) {
-      val token = tokens[index]
+    for (token in tokens) {
       if (token.type == TokenTypes.IDENTIFIER) {
         val replacement = replacements(token.value) ?: continue
         return EquivalenceUse(token, replacement)
@@ -591,7 +588,7 @@ constructor(
       edits: List<SourceEdit>,
       expansion: Macro.ExpandedLine?,
   ): Boolean {
-    if (tokens.size() < 3) return false
+    if (tokens.size < 3) return false
     val directive = equivalenceDirectiveIndex(tokens)
     val directiveToken = tokens[directive]
     if (
@@ -600,7 +597,7 @@ constructor(
     ) {
       return false
     }
-    val last = tokens.size() - if (tokens[tokens.size() - 1].type == TokenTypes.COMMENT) 2 else 1
+    val last = tokens.size - if (tokens[tokens.size - 1].type == TokenTypes.COMMENT) 2 else 1
     if (last < directive + 2) {
       addLineError(
           program,
@@ -689,18 +686,17 @@ constructor(
       expansion: Macro.ExpandedLine? = null,
   ) {
     var originalIndex = 0
-    for (index in 0 until tokens.size()) {
-      val token = tokens[index]
+    for (token in tokens) {
       if (token.type != TokenTypes.ERROR) continue
       val column = token.originalStartPos
       if (originalTokens != null) {
         // Mapped offsets stay in source order. Skip errors already reported on the written line.
         while (
-            originalIndex < originalTokens.size() && originalTokens[originalIndex].startPos < column
+            originalIndex < originalTokens.size && originalTokens[originalIndex].startPos < column
         ) {
           originalIndex++
         }
-        if (originalIndex < originalTokens.size()) {
+        if (originalIndex < originalTokens.size) {
           val original = originalTokens[originalIndex]
           if (
               original.startPos == column &&
@@ -750,7 +746,7 @@ constructor(
 
     private fun firstIncludePathIndex(tokens: TokenList?): Int {
       if (tokens == null) return -1
-      for (index in 1 until tokens.size()) {
+      for (index in 1 until tokens.size) {
         if (
             tokens[index - 1].value.equals(Directives.INCLUDE.name, ignoreCase = true) &&
                 tokens[index].type == TokenTypes.QUOTED_STRING

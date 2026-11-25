@@ -166,7 +166,7 @@ private fun projectedRegisters(
       } ?: return emptyList()
   val operation = mapped.originalOffset(tokens[0].startPos - 1)
   val byOffset = LinkedHashMap<Int, MutableSet<RegisterId>>()
-  for (index in 1 until tokens.size()) {
+  for (index in 1 until tokens.size) {
     ProgressManager.checkCanceled()
     val token = tokens[index]
     if (token.type !in registerTokens) continue

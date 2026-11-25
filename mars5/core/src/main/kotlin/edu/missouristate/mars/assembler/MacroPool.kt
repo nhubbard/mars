@@ -65,7 +65,7 @@ open class MacroPool(private val program: MIPSprogram) {
     for (macro in macros) {
       if (
           macro.name == name &&
-              macro.args.size + 1 == tokens.size() &&
+              macro.args.size + 1 == tokens.size &&
               (result == null || result.fromLine < macro.fromLine)
       )
           result = macro
