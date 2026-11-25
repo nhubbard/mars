@@ -11,6 +11,7 @@ import edu.missouristate.mars.api.StepEvent.ExceptionReturn
 import edu.missouristate.mars.api.StepEvent.Jump
 import edu.missouristate.mars.api.StepEvent.Transfer
 import edu.missouristate.mars.api.StopEvent
+import edu.missouristate.mars.api.simulatorListener
 import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.core.SessionAssembler
 import edu.missouristate.mars.mips.hardware.AddressErrorException
@@ -637,23 +638,18 @@ internal class SimulatorEngineTest {
       val engine: SimulatorEngine = session.simulator()
       val entered = CountDownLatch(1)
       val release = CountDownLatch(1)
-      val blocker: SimulatorListener =
-          object : SimulatorListener {
-            override fun onStep(event: StepEvent) {
-              entered.countDown()
-              try {
-                if (!release.await(5, TimeUnit.SECONDS)) {
-                  throw AssertionError("release timeout")
-                }
-              } catch (e: InterruptedException) {
-                throw AssertionError(e)
-              }
+      val blocker: SimulatorListener = simulatorListener {
+        onStep { _ ->
+          entered.countDown()
+          try {
+            if (!release.await(5, TimeUnit.SECONDS)) {
+              throw AssertionError("release timeout")
             }
-
-            override fun onStop(event: StopEvent) {}
-
-            override fun onError(event: ErrorEvent) {}
+          } catch (e: InterruptedException) {
+            throw AssertionError(e)
           }
+        }
+      }
       engine.addListener(blocker)
       val run: CompletableFuture<StopEvent> = engine.runAsync(0, null)
       Assertions.assertThat(entered.await(5, TimeUnit.SECONDS)).isTrue()
@@ -793,8 +789,8 @@ internal class SimulatorEngineTest {
       val release = CountDownLatch(1)
       val rejected = AtomicBoolean()
       engine.addListener(
-          object : SimulatorListener {
-            override fun onStep(event: StepEvent) {
+          simulatorListener {
+            onStep { _ ->
               try {
                 session.setMemoryConfiguration("Default")
               } catch (expected: IllegalStateException) {
@@ -807,10 +803,6 @@ internal class SimulatorEngineTest {
                 Thread.currentThread().interrupt()
               }
             }
-
-            override fun onStop(event: StopEvent) {}
-
-            override fun onError(event: ErrorEvent) {}
           },
       )
       val run: CompletableFuture<StopEvent> = engine.runAsync(0, null)
@@ -842,20 +834,17 @@ internal class SimulatorEngineTest {
 
   companion object {
     private fun listener(events: MutableList<Any?>): SimulatorListener {
-      return object : SimulatorListener {
-        override fun onStep(event: StepEvent) {
+      return simulatorListener {
+        onStep { event ->
           events.add(event)
         }
-
-        override fun onBackstep(stepCount: Long) {
+        onBackstep { stepCount ->
           events.add(stepCount)
         }
-
-        override fun onStop(event: StopEvent) {
+        onStop { event ->
           events.add(event)
         }
-
-        override fun onError(event: ErrorEvent) {
+        onError { event ->
           events.add(event)
         }
       }

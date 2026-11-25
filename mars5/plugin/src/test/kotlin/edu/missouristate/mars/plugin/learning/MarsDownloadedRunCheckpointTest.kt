@@ -6,8 +6,6 @@ import com.intellij.execution.ExecutionManager
 import com.intellij.execution.configurations.runConfigurationType
 import com.intellij.execution.executors.DefaultRunExecutor
 import com.intellij.execution.process.NopProcessHandler
-import com.intellij.execution.process.ProcessEvent
-import com.intellij.execution.process.ProcessListener
 import com.intellij.execution.process.ProcessOutputType
 import com.intellij.execution.runners.ExecutionEnvironmentBuilder
 import com.intellij.openapi.Disposable
@@ -27,6 +25,7 @@ import edu.missouristate.mars.plugin.run.MarsProcessHandler
 import edu.missouristate.mars.plugin.run.MarsRunConfiguration
 import edu.missouristate.mars.plugin.run.MarsRunService
 import edu.missouristate.mars.plugin.run.MarsRunType
+import edu.missouristate.mars.plugin.run.processListener
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
@@ -384,8 +383,8 @@ class MarsDownloadedRunCheckpointTest {
   private suspend fun run(handler: MarsProcessHandler, input: String, expectedExit: Int = 0) {
     val done = CompletableDeferred<Int>()
     handler.addProcessListener(
-        object : ProcessListener {
-          override fun processTerminated(event: ProcessEvent) {
+        processListener {
+          processTerminated { event ->
             done.complete(event.exitCode)
           }
         },

@@ -1,9 +1,6 @@
 package edu.missouristate.mars.plugin.tools
 
-import edu.missouristate.mars.api.ErrorEvent
-import edu.missouristate.mars.api.SimulatorListener
-import edu.missouristate.mars.api.StepEvent
-import edu.missouristate.mars.api.StopEvent
+import edu.missouristate.mars.api.simulatorListener
 import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.mips.hardware.AccessNotice.Companion.WRITE
 import edu.missouristate.mars.mips.hardware.AccessOrigin.EXECUTION
@@ -53,14 +50,14 @@ internal class ScavengerHuntDevice(session: MarsContext, connectAtLaunch: Boolea
   private val memory = session.memory
   private val simulator = session.simulator()
   private val observer = ::record
-  private val listener =
-      object : SimulatorListener {
-        override fun onStep(event: StepEvent) = completeInstruction(event.stepCount)
-
-        override fun onStop(event: StopEvent) = Unit
-
-        override fun onError(event: ErrorEvent) = discardInstruction()
-      }
+  private val listener = simulatorListener {
+    onStep { event ->
+      completeInstruction(event.stepCount)
+    }
+    onError { _ ->
+      discardInstruction()
+    }
+  }
   private val backStepper = session.backStepper
   private val history: AutoCloseable
   private val stores = mutableListOf<Store>()

@@ -5,13 +5,11 @@ package edu.missouristate.mars.cli.grading
 import edu.missouristate.mars.ProcessingException
 import edu.missouristate.mars.api.AssemblySourceSnapshot
 import edu.missouristate.mars.api.AssemblySymbolMap
-import edu.missouristate.mars.api.ErrorEvent
 import edu.missouristate.mars.api.SessionSyscallEnvironment
-import edu.missouristate.mars.api.SimulatorListener
-import edu.missouristate.mars.api.StepEvent
 import edu.missouristate.mars.api.StopEvent
 import edu.missouristate.mars.api.StopEvent.Reason
 import edu.missouristate.mars.api.SyscallEnvironment
+import edu.missouristate.mars.api.simulatorListener
 import edu.missouristate.mars.assembler.RegisterNames
 import edu.missouristate.mars.cli.HeadlessGuiProxy
 import edu.missouristate.mars.core.MarsContext
@@ -119,14 +117,10 @@ internal constructor(
 
   init {
     simulator.addListener(
-        object : SimulatorListener {
-          override fun onError(event: ErrorEvent) {
+        simulatorListener {
+          onError { event ->
             error = event.message
           }
-
-          override fun onStep(event: StepEvent) = Unit
-
-          override fun onStop(event: StopEvent) = Unit
         },
     )
   }

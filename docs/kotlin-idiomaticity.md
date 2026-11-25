@@ -33,6 +33,9 @@ counts include the existing helper's implementation.
    sources compile. New tests cover default modules, missing bindings, configuration
    exceptions, exact binding identity, and independent execution state.
 4. Native listener implementations with explicit lifetimes and callback DSLs.
+   Complete: migrated 66 anonymous listener objects. All 2,457 core, 317 CLI,
+   8 datapath, and 1,373 plugin tests pass, including the four new platform
+   contract tests. Strict plugin and generated-parser coverage gates pass.
 5. Completion providers and table column builders.
 6. Remaining callback adapters, retaining explicit objects where clearer.
 7. Core collection and simulation configuration APIs, preserving compatibility.
@@ -64,3 +67,27 @@ Every phase is reviewed, compiled, tested, and committed before the next begins.
   dependency solely to remove that literal would weaken the build boundary.
 - Test-only XML deserialization uses the existing platform Kotlin function.
   AssertJ extensions remain test-only and return the original assertion objects.
+
+- Listener configuration snapshots callbacks when construction finishes. Callback
+  receivers are the actual native listener, including for self-unregistration.
+  Factories add no scheduling, exception handling, event buffering, or lifetime
+  registry. Existing registration/disposal stays with the simulator or platform.
+- `ExecutionListener.processNotStarted` with a cause retains native forwarding
+  to its two-argument overload when no cause callback is supplied. Unconfigured
+  terminating/terminated callbacks also retain their native default forwarding.
+- Debug-session boolean frame notifications retain the native forwarding to the
+  no-argument callback. Internal frontend callbacks are neither overridden nor
+  explicitly invoked by the factories.
+- Document callbacks remain plain per-change listeners, including during bulk
+  updates. Converting them to bulk-coalesced listeners would change timing. The
+  trailing-lambda registration helper requires the original parent disposable
+  and returns the exact instance registered with the platform.
+- Stateful named listeners, including debugger call-stack state and process
+  recording fixtures, remain explicit classes. Their state and lifecycle are not
+  hoisted into configuration blocks.
+
+- The retained-debug-callback fixture snapshots native registrations before and
+  after the checkpoint subscribes, filters the MARS namespace, and keeps actual
+  listener identities. SDK modules may add listeners concurrently and can share
+  the fixture's classloader. No generated class-name assumption or production
+  capture hook is needed; the original stale/disposed-callback checks remain.

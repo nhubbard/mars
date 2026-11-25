@@ -6,8 +6,6 @@ import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.EditorFactory
-import com.intellij.openapi.editor.event.DocumentEvent
-import com.intellij.openapi.editor.event.DocumentListener
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.observable.util.whenTextChanged
 import com.intellij.openapi.project.Project
@@ -23,10 +21,10 @@ import com.intellij.util.ui.ColumnInfo
 import com.intellij.util.ui.ListTableModel
 import com.intellij.util.ui.UIUtil
 import com.intellij.xdebugger.XDebugSession
-import com.intellij.xdebugger.XDebugSessionListener
 import edu.missouristate.mars.api.AssemblySymbolMap
 import edu.missouristate.mars.api.AssemblySymbolMap.Definition
 import edu.missouristate.mars.api.AssemblySymbolMap.SourceToken
+import edu.missouristate.mars.plugin.editor.onDocumentChanged
 import edu.missouristate.mars.plugin.run.MarsExecutionSources
 import edu.missouristate.mars.plugin.run.runMessages
 import edu.missouristate.mars.plugin.topicOf
@@ -213,12 +211,16 @@ internal class MarsSymbolsView(
     table.selectionModel.addListSelectionListener { update() }
     inspectAddress.addActionListener { inspect(table.selectedObject!!.definition) }
     session.addSessionListener(
-        object : XDebugSessionListener {
-          override fun sessionPaused() = UIUtil.invokeLaterIfNeeded { update() }
-
-          override fun sessionResumed() = UIUtil.invokeLaterIfNeeded { update() }
-
-          override fun sessionStopped() = UIUtil.invokeLaterIfNeeded { update() }
+        debugSessionListener {
+          sessionPaused {
+            UIUtil.invokeLaterIfNeeded { update() }
+          }
+          sessionResumed {
+            UIUtil.invokeLaterIfNeeded { update() }
+          }
+          sessionStopped {
+            UIUtil.invokeLaterIfNeeded { update() }
+          }
         },
         this,
     )
@@ -269,18 +271,12 @@ internal class MarsSymbolsView(
           .navigate(project)
     }
 
-    EditorFactory.getInstance()
-        .eventMulticaster
-        .addDocumentListener(
-            object : DocumentListener {
-              override fun documentChanged(event: DocumentEvent) {
-                val loaded = image.value ?: return
-                val file = FileDocumentManager.getInstance().getFile(event.document) ?: return
-                if (loaded.sources.contains(file)) changes.tryEmit(Unit)
-              }
-            },
-            this,
-        )
+    EditorFactory.getInstance().eventMulticaster.onDocumentChanged(this) { event ->
+      val loaded = image.value ?: return@onDocumentChanged
+      val file =
+          FileDocumentManager.getInstance().getFile(event.document) ?: return@onDocumentChanged
+      if (loaded.sources.contains(file)) changes.tryEmit(Unit)
+    }
     VirtualFileManager.getInstance()
         .addAsyncFileListenerBackgroundable(
             {

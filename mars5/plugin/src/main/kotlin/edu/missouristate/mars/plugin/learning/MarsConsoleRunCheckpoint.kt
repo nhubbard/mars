@@ -2,14 +2,10 @@
 
 package edu.missouristate.mars.plugin.learning
 
-import com.intellij.execution.ExecutionListener
 import com.intellij.execution.ExecutionManager
 import com.intellij.execution.executors.DefaultRunExecutor
-import com.intellij.execution.process.ProcessEvent
 import com.intellij.execution.process.ProcessHandler
-import com.intellij.execution.process.ProcessListener
 import com.intellij.execution.process.ProcessOutputTypes
-import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.readAction
@@ -25,6 +21,8 @@ import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.platform.ide.progress.withBackgroundProgress
 import edu.missouristate.mars.plugin.run.MarsProcessHandler
+import edu.missouristate.mars.plugin.run.executionListener
+import edu.missouristate.mars.plugin.run.processListener
 import java.nio.file.Path
 import java.util.concurrent.CompletableFuture
 import kotlinx.coroutines.CoroutineScope
@@ -198,12 +196,8 @@ internal class MarsConsoleRunCheckpoint(
         .connect(lifetime)
         .subscribe(
             ExecutionManager.EXECUTION_TOPIC,
-            object : ExecutionListener {
-              override fun processStarting(
-                  executorId: String,
-                  env: ExecutionEnvironment,
-                  handler: ProcessHandler,
-              ) {
+            executionListener {
+              processStarting { executorId, _, handler ->
                 starting(executorId, handler)
               }
             },
@@ -222,27 +216,26 @@ internal class MarsConsoleRunCheckpoint(
     val observation = Disposer.newDisposable("MARS learning Run observation")
     Disposer.register(lifetime, observation)
     val output = Transcript()
-    val listener =
-        object : ProcessListener {
-          override fun onTextAvailable(event: ProcessEvent, outputType: Key<*>) =
-              output.append(event.text, outputType)
-
-          override fun processTerminated(event: ProcessEvent) {
-            handler.removeProcessListener(this)
-            scope.launch {
-              try {
-                readAction {
-                  source.finish(
-                      attempt,
-                      event.exitCode == 0 && output.matches() && source.matches(attempt, handler),
-                  )
-                }
-              } finally {
-                Disposer.dispose(observation)
-              }
+    val listener = processListener {
+      onTextAvailable { event, outputType ->
+        output.append(event.text, outputType)
+      }
+      processTerminated { event ->
+        handler.removeProcessListener(this)
+        scope.launch {
+          try {
+            readAction {
+              source.finish(
+                  attempt,
+                  event.exitCode == 0 && output.matches() && source.matches(attempt, handler),
+              )
             }
+          } finally {
+            Disposer.dispose(observation)
           }
         }
+      }
+    }
     handler.addProcessListener(listener)
     Disposer.register(observation) {
       handler.removeProcessListener(listener)

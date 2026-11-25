@@ -4,8 +4,6 @@ import com.intellij.codeInsight.folding.CodeFoldingManager
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.editor.EditorFactory
-import com.intellij.openapi.editor.event.DocumentEvent
-import com.intellij.openapi.editor.event.DocumentListener
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.TextEditor
@@ -15,6 +13,7 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.util.asDisposable
 import com.intellij.util.ui.update.DebouncedUpdates
 import edu.missouristate.mars.plugin.analysis.MipsAssemblyContextListener
+import edu.missouristate.mars.plugin.editor.onDocumentChanged
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.CoroutineScope
@@ -42,17 +41,10 @@ internal class MipsFoldingRefresh(project: Project, scope: CoroutineScope) {
           }
 
   init {
-    EditorFactory.getInstance()
-        .eventMulticaster
-        .addDocumentListener(
-            object : DocumentListener {
-              override fun documentChanged(event: DocumentEvent) {
-                val file = FileDocumentManager.getInstance().getFile(event.document)
-                if (file?.fileType == MipsFileType) refresh.queue(file)
-              }
-            },
-            scope.asDisposable(),
-        )
+    EditorFactory.getInstance().eventMulticaster.onDocumentChanged(scope.asDisposable()) { event ->
+      val file = FileDocumentManager.getInstance().getFile(event.document)
+      if (file?.fileType == MipsFileType) refresh.queue(file)
+    }
     val connection = project.messageBus.connect(scope)
     connection.subscribe(
         DumbService.DUMB_MODE,

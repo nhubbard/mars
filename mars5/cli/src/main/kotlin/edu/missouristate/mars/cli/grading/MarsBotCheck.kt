@@ -1,9 +1,6 @@
 package edu.missouristate.mars.cli.grading
 
-import edu.missouristate.mars.api.ErrorEvent
-import edu.missouristate.mars.api.SimulatorListener
-import edu.missouristate.mars.api.StepEvent
-import edu.missouristate.mars.api.StopEvent
+import edu.missouristate.mars.api.simulatorListener
 import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.devices.MarsBotDevice
 import edu.missouristate.mars.devices.MarsBotWorld.Point
@@ -16,14 +13,11 @@ class MarsBotCheck internal constructor(machine: MarsContext, instructionsPerTic
   private val simulator = machine.simulator()
   private val observation = bot.observe(machine)
   private var closed = false
-  private val clock =
-      object : SimulatorListener {
-        override fun onStep(event: StepEvent) = bot.instructionCompleted()
-
-        override fun onError(event: ErrorEvent) = Unit
-
-        override fun onStop(event: StopEvent) = Unit
-      }
+  private val clock = simulatorListener {
+    onStep { _ ->
+      bot.instructionCompleted()
+    }
+  }
 
   init {
     simulator.addListener(clock)

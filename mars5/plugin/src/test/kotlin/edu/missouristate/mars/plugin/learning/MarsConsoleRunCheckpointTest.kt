@@ -4,8 +4,6 @@ import com.intellij.execution.ExecutionManager
 import com.intellij.execution.configurations.runConfigurationType
 import com.intellij.execution.executors.DefaultRunExecutor
 import com.intellij.execution.process.NopProcessHandler
-import com.intellij.execution.process.ProcessEvent
-import com.intellij.execution.process.ProcessListener
 import com.intellij.execution.process.ProcessOutputTypes
 import com.intellij.execution.runners.ExecutionEnvironmentBuilder
 import com.intellij.openapi.application.EDT
@@ -25,6 +23,7 @@ import edu.missouristate.mars.plugin.run.MarsProcessHandler
 import edu.missouristate.mars.plugin.run.MarsRunConfiguration
 import edu.missouristate.mars.plugin.run.MarsRunService
 import edu.missouristate.mars.plugin.run.MarsRunType
+import edu.missouristate.mars.plugin.run.processListener
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -344,8 +343,8 @@ class MarsConsoleRunCheckpointTest {
   private suspend fun run(handler: MarsProcessHandler, input: String, expectedExit: Int = 0) {
     val exit = CompletableDeferred<Int>()
     handler.addProcessListener(
-        object : ProcessListener {
-          override fun processTerminated(event: ProcessEvent) {
+        processListener {
+          processTerminated { event ->
             exit.complete(event.exitCode)
           }
         },

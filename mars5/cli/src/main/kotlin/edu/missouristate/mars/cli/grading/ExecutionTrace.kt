@@ -1,11 +1,8 @@
 package edu.missouristate.mars.cli.grading
 
-import edu.missouristate.mars.api.ErrorEvent
 import edu.missouristate.mars.api.MarsSimulator
-import edu.missouristate.mars.api.SimulatorListener
-import edu.missouristate.mars.api.StepEvent
 import edu.missouristate.mars.api.StepEvent.BranchOutcome
-import edu.missouristate.mars.api.StopEvent
+import edu.missouristate.mars.api.simulatorListener
 
 /**
  * Completed forward events; branch decisions come from the core, without opcode reclassification.
@@ -30,22 +27,17 @@ internal constructor(
   private var instructions = 0L
   private var taken = 0L
   private var notTaken = 0L
-  private val listener =
-      object : SimulatorListener {
-        override fun onStep(event: StepEvent) {
-          if (from != null && (event.pcBits < from || event.pcBits >= until!!)) return
-          instructions++
-          when (event.branchOutcome) {
-            BranchOutcome.TAKEN -> taken++
-            BranchOutcome.NOT_TAKEN -> notTaken++
-            null -> Unit
-          }
-        }
-
-        override fun onError(event: ErrorEvent) = Unit
-
-        override fun onStop(event: StopEvent) = Unit
+  private val listener = simulatorListener {
+    onStep { event ->
+      if (from != null && (event.pcBits < from || event.pcBits >= until!!)) return@onStep
+      instructions++
+      when (event.branchOutcome) {
+        BranchOutcome.TAKEN -> taken++
+        BranchOutcome.NOT_TAKEN -> notTaken++
+        null -> Unit
       }
+    }
+  }
 
   init {
     require((from == null && until == null) || (from != null && until != null && from < until)) {

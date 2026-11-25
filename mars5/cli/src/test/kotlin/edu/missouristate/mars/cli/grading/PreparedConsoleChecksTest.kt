@@ -1,11 +1,9 @@
 package edu.missouristate.mars.cli.grading
 
 import edu.missouristate.mars.api.AssemblySourceSnapshot
-import edu.missouristate.mars.api.ErrorEvent
 import edu.missouristate.mars.api.MarsTarget
-import edu.missouristate.mars.api.SimulatorListener
-import edu.missouristate.mars.api.StepEvent
 import edu.missouristate.mars.api.StopEvent
+import edu.missouristate.mars.api.simulatorListener
 import edu.missouristate.mars.cli.HeadlessGuiProxy
 import edu.missouristate.mars.core.AssemblyImage
 import edu.missouristate.mars.core.MarsContext
@@ -242,12 +240,8 @@ class PreparedConsoleChecksTest {
               machine = it
               it.simulator()
                   .addListener(
-                      object : SimulatorListener {
-                        override fun onStep(event: StepEvent) = Unit
-
-                        override fun onError(event: ErrorEvent) = Unit
-
-                        override fun onStop(event: StopEvent) {
+                      simulatorListener {
+                        onStop { event ->
                           if (event.reason == StopEvent.Reason.NORMAL_EXIT) exited = true
                         }
                       },

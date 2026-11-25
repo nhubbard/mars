@@ -2,12 +2,9 @@
 
 package edu.missouristate.mars.plugin.debug
 
-import com.intellij.execution.ExecutionListener
 import com.intellij.execution.ExecutionManager
 import com.intellij.execution.configurations.runConfigurationType
 import com.intellij.execution.executors.DefaultDebugExecutor
-import com.intellij.execution.process.ProcessHandler
-import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.execution.runners.ExecutionEnvironmentBuilder
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.DefaultActionGroup
@@ -21,11 +18,11 @@ import com.intellij.testFramework.TestActionEvent
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.xdebugger.XDebugSession
-import com.intellij.xdebugger.XDebugSessionListener
 import com.intellij.xdebugger.XDebuggerManager
 import com.intellij.xdebugger.frame.XValueModifier.XModificationCallback
 import edu.missouristate.mars.api.InstructionSourceMap.Location
 import edu.missouristate.mars.plugin.run.MarsRunType
+import edu.missouristate.mars.plugin.run.executionListener
 import edu.missouristate.mars.plugin.run.runMessages
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -221,24 +218,19 @@ class MarsDebugObservationPlatformTest {
           .connect(lifetime)
           .subscribe(
               ExecutionManager.EXECUTION_TOPIC,
-              object : ExecutionListener {
-                override fun processStarting(
-                    executorId: String,
-                    environment: ExecutionEnvironment,
-                    handler: ProcessHandler,
-                ) {
-                  if (environment !== env) return
+              executionListener {
+                processStarting { _, environment, handler ->
+                  if (environment !== env) return@processStarting
                   val session =
                       XDebuggerManager.getInstance(project).debugSessions.single {
                         it.debugProcess.processHandler === handler
                       }
                   session.addSessionListener(
-                      object : XDebugSessionListener {
-                        override fun sessionStopped() {
+                      debugSessionListener {
+                        sessionStopped {
                           stopped.complete(Unit)
                         }
-
-                        override fun sessionPaused() {
+                        sessionPaused {
                           pauses.trySend(
                               assertInstanceOf<MarsSuspendContext>(
                                   session.suspendContext,

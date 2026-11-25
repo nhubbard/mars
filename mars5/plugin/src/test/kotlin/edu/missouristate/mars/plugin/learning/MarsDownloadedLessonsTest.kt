@@ -8,15 +8,10 @@
 package edu.missouristate.mars.plugin.learning
 
 import com.intellij.configurationStore.deserialize
-import com.intellij.execution.ExecutionListener
 import com.intellij.execution.ExecutionManager
 import com.intellij.execution.configurations.runConfigurationType
 import com.intellij.execution.executors.DefaultDebugExecutor
 import com.intellij.execution.executors.DefaultRunExecutor
-import com.intellij.execution.process.ProcessEvent
-import com.intellij.execution.process.ProcessHandler
-import com.intellij.execution.process.ProcessListener
-import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.execution.runners.ExecutionEnvironmentBuilder
 import com.intellij.ide.impl.OpenProjectTask
 import com.intellij.mock.MockProject
@@ -61,14 +56,16 @@ import com.intellij.ui.UiInterceptors
 import com.intellij.util.ui.UIUtil
 import com.intellij.util.xmlb.XmlSerializer
 import com.intellij.xdebugger.XDebugSession
-import com.intellij.xdebugger.XDebugSessionListener
 import com.intellij.xdebugger.XDebuggerManager
 import edu.missouristate.mars.cli.grading.ConsoleCheckCase
 import edu.missouristate.mars.plugin.debug.MarsDebugRunner
 import edu.missouristate.mars.plugin.debug.MarsLineBreakpointType
+import edu.missouristate.mars.plugin.debug.debugSessionListener
 import edu.missouristate.mars.plugin.debug.findBreakpointType
 import edu.missouristate.mars.plugin.run.MarsRunService
 import edu.missouristate.mars.plugin.run.MarsRunType
+import edu.missouristate.mars.plugin.run.executionListener
+import edu.missouristate.mars.plugin.run.processListener
 import edu.missouristate.mars.util.javaClassOf
 import java.awt.Rectangle
 import java.nio.file.Files
@@ -677,24 +674,19 @@ class MarsDownloadedLessonsTest {
                 .connect(debugLife)
                 .subscribe(
                     ExecutionManager.EXECUTION_TOPIC,
-                    object : ExecutionListener {
-                      override fun processStarting(
-                          executorId: String,
-                          environment: ExecutionEnvironment,
-                          handler: ProcessHandler,
-                      ) {
-                        if (environment !== env) return
+                    executionListener {
+                      processStarting { _, environment, handler ->
+                        if (environment !== env) return@processStarting
                         val current =
                             XDebuggerManager.getInstance(project).debugSessions.single {
                               it.debugProcess.processHandler === handler
                             }
                         current.addSessionListener(
-                            object : XDebugSessionListener {
-                              override fun sessionPaused() {
+                            debugSessionListener {
+                              sessionPaused {
                                 paused.trySend(Unit)
                               }
-
-                              override fun sessionStopped() {
+                              sessionStopped {
                                 stopped.complete(Unit)
                               }
                             },
@@ -768,8 +760,8 @@ class MarsDownloadedLessonsTest {
                 project.service<MarsRunService>().createProcess(path, memoryDumps = emptyList())
             val stopped = CompletableDeferred<Unit>()
             process.addProcessListener(
-                object : ProcessListener {
-                  override fun processTerminated(event: ProcessEvent) {
+                processListener {
+                  processTerminated { _ ->
                     stopped.complete(Unit)
                   }
                 },

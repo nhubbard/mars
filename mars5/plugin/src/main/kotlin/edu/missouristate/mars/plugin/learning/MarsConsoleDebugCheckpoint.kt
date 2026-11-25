@@ -1,20 +1,19 @@
 package edu.missouristate.mars.plugin.learning
 
-import com.intellij.execution.ExecutionListener
 import com.intellij.execution.ExecutionManager
 import com.intellij.execution.executors.DefaultDebugExecutor
 import com.intellij.execution.process.ProcessHandler
-import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.runReadActionBlocking
 import com.intellij.openapi.editor.Document
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
-import com.intellij.xdebugger.XDebugSessionListener
 import com.intellij.xdebugger.XDebuggerManager
 import edu.missouristate.mars.plugin.debug.MarsDebugProcess
 import edu.missouristate.mars.plugin.debug.MarsSuspendContext
+import edu.missouristate.mars.plugin.debug.debugSessionListener
 import edu.missouristate.mars.plugin.run.MarsProcessHandler
+import edu.missouristate.mars.plugin.run.executionListener
 import java.nio.file.Path
 
 /** Observes stopped debugger snapshots; it never adds breakpoints, steps or edits a machine. */
@@ -38,12 +37,8 @@ internal class MarsConsoleDebugCheckpoint(
         .connect(lifetime)
         .subscribe(
             ExecutionManager.EXECUTION_TOPIC,
-            object : ExecutionListener {
-              override fun processStarting(
-                  executorId: String,
-                  env: ExecutionEnvironment,
-                  handler: ProcessHandler,
-              ) {
+            executionListener {
+              processStarting { executorId, _, handler ->
                 starting(executorId, handler)
               }
             },
@@ -69,29 +64,31 @@ internal class MarsConsoleDebugCheckpoint(
       if (active === state) active = null
     }
     session.addSessionListener(
-        object : XDebugSessionListener {
-          override fun sessionPaused() = runReadActionBlocking {
-            if (active !== state || !source.current(attempt) || !source.matches(attempt, process))
-                return@runReadActionBlocking
-            // The native pause notification follows suspend-context installation. This
-            // session is bound to MarsDebugProcess, which always installs MarsSuspendContext.
-            val context = session.suspendContext as MarsSuspendContext
-            if (!source.matchesPosition(context.frame.sourcePosition)) return@runReadActionBlocking
-            val evaluator = context.frame.evaluator
-            trace.observe(
-                Pause(
-                    context.number,
-                    evaluator.integerRegisterBits("pc"),
-                    evaluator.instructionWord,
-                    evaluator.integerRegisterBits($$"$v0"),
-                    evaluator.integerRegisterBits($$"$t0"),
-                    evaluator.integerRegisterBits($$"$a0"),
-                ),
-            )
-            if (trace.phase == 3) source.finish(attempt, true)
+        debugSessionListener {
+          sessionPaused {
+            runReadActionBlocking {
+              if (active !== state || !source.current(attempt) || !source.matches(attempt, process))
+                  return@runReadActionBlocking
+              // The native pause notification follows suspend-context installation. This
+              // session is bound to MarsDebugProcess, which always installs MarsSuspendContext.
+              val context = session.suspendContext as MarsSuspendContext
+              if (!source.matchesPosition(context.frame.sourcePosition))
+                  return@runReadActionBlocking
+              val evaluator = context.frame.evaluator
+              trace.observe(
+                  Pause(
+                      context.number,
+                      evaluator.integerRegisterBits("pc"),
+                      evaluator.instructionWord,
+                      evaluator.integerRegisterBits($$"$v0"),
+                      evaluator.integerRegisterBits($$"$t0"),
+                      evaluator.integerRegisterBits($$"$a0"),
+                  ),
+              )
+              if (trace.phase == 3) source.finish(attempt, true)
+            }
           }
-
-          override fun sessionStopped() {
+          sessionStopped {
             Disposer.dispose(observation)
           }
         },

@@ -1,10 +1,8 @@
 package edu.missouristate.mars.plugin.run
 
-import com.intellij.execution.ExecutionListener
 import com.intellij.execution.ExecutionManager
 import com.intellij.execution.process.ProcessHandler
 import com.intellij.execution.process.ProcessOutputTypes
-import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.execution.ui.ConsoleView
 import com.intellij.execution.ui.ConsoleViewContentType
 import com.intellij.openapi.Disposable
@@ -24,9 +22,8 @@ import edu.missouristate.mars.api.InstructionSourceMap.Origin
 import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.api.SessionSyscallEnvironment
 import edu.missouristate.mars.api.SessionSyscallEnvironment.TextInput
-import edu.missouristate.mars.api.SimulatorListener
-import edu.missouristate.mars.api.StepEvent
 import edu.missouristate.mars.api.StopEvent
+import edu.missouristate.mars.api.simulatorListener
 import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.devices.DataCacheSimulator
 import edu.missouristate.mars.devices.MarsBotDevice
@@ -89,8 +86,8 @@ internal class MarsRunService(private val project: Project, private val scope: C
         .connect(this)
         .subscribe(
             ExecutionManager.EXECUTION_TOPIC,
-            object : ExecutionListener {
-              override fun processNotStarted(executorId: String, env: ExecutionEnvironment) {
+            executionListener {
+              processNotStarted { _, env ->
                 env.getUserData(launchAssemblyKey)?.let(Disposer::dispose)
               }
             },
@@ -408,8 +405,8 @@ internal class MarsProcessHandler(
                   simulator.setRunSpeedSource { runSpeed.toDouble() }
                   val decodedInstructions = ExecutedInstructionCache(session.instructionSet)
                   simulator.addListener(
-                      object : SimulatorListener {
-                        override fun onStep(event: StepEvent) {
+                      simulatorListener {
+                        onStep { event ->
                           val word = event.instruction
                           val decoded = decodedInstructions.decode(word)
                           instructionCounter.record(decoded.instruction)
@@ -422,12 +419,10 @@ internal class MarsProcessHandler(
                           if (toolInstructions.hasListeners())
                               toolInstructions.multicaster.instructionCompleted(event)
                         }
-
-                        override fun onBackstep(stepCount: Long) = xray.rewind(stepCount)
-
-                        override fun onStop(event: StopEvent) = Unit
-
-                        override fun onError(event: ErrorEvent) {
+                        onBackstep { stepCount ->
+                          xray.rewind(stepCount)
+                        }
+                        onError { event ->
                           if (execution.isActive) {
                             reportRuntimeError(event, sources)
                           }
