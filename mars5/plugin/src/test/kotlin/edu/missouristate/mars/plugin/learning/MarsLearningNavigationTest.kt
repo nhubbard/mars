@@ -1,3 +1,5 @@
+@file:Suppress("JetBrainsInternalApiUsage", "OverrideOnly")
+
 package edu.missouristate.mars.plugin.learning
 
 import com.intellij.mock.MockProject
@@ -23,6 +25,7 @@ import com.intellij.util.ui.UIUtil
 import com.intellij.util.xmlb.XmlSerializer
 import java.nio.file.Files
 import java.nio.file.Path
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -96,12 +99,7 @@ class MarsLearningNavigationTest {
           assertFalse(missing.presentation.isEnabled)
           action.actionPerformed(missing)
           val data = SimpleDataContext.builder().add(CommonDataKeys.PROJECT, fixture.get()).build()
-          for (mode in
-              listOf<MarsLearningMode?>(
-                  null,
-                  MarsLearningMode.GUIDED,
-                  MarsLearningMode.FREE_WRITING,
-              )) {
+          for (mode in listOf(null, MarsLearningMode.GUIDED, MarsLearningMode.FREE_WRITING)) {
             var observed = false
             UiInterceptors.register(
                 object :
@@ -210,9 +208,9 @@ class MarsLearningNavigationTest {
         val project = fixture.get()
         val navigation = project.service<MarsLearningNavigation>()
         withContext(Dispatchers.EDT) { navigation.openNow(MarsLearningMode.GUIDED) }
-        withTimeout(10_000) {
+        withTimeout(10_000.milliseconds) {
           val path = Path.of(project.basePath!!).resolve("mars-labs/console/first-program.asm")
-          while (!Files.isRegularFile(path)) delay(50)
+          while (!Files.isRegularFile(path)) delay(50.milliseconds)
         }
         assertEquals(MarsLearningMode.GUIDED, navigation.mode)
         withContext(Dispatchers.EDT) {

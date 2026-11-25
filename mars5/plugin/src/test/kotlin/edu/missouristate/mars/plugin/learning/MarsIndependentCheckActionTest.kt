@@ -1,3 +1,5 @@
+@file:Suppress("OverrideOnly", "UnstableApiUsage")
+
 package edu.missouristate.mars.plugin.learning
 
 import com.intellij.openapi.actionSystem.ActionManager
@@ -52,7 +54,7 @@ class MarsIndependentCheckActionTest {
           )!!
           .use { it.readBytes().toString(Charsets.UTF_8) }
           .replace("Twice your number", "Three times your number")
-          .replace("    addiu \$t0, \$t0, 1", "    addu \$t0, \$t0, \$v0\n    addiu \$t0, \$t0, 1")
+          .replace($$"    addiu $t0, $t0, 1", $$"    addu $t0, $t0, $v0\n    addiu $t0, $t0, 1")
 
   @Test
   fun `the check action requires the active local file and matching editor`() = timeoutRunBlocking {

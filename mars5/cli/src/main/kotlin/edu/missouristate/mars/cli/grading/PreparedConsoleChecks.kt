@@ -70,7 +70,7 @@ data class ConsoleCheckResult(val name: String, val failure: String?) {
 
 /**
  * Reuses an assembled image and the assignment DSL's execution, output and memory checks.
- * [createSession] must return a fresh caller-configured session for every case; this checker owns
+ * `createSession` must return a fresh caller-configured session for every case; this checker owns
  * and closes it. It never uses a student's active Run/Debug machine. The existing grader bounds
  * output and disables host files, clocks and GUI syscalls. Cancellation is checked while loading
  * and between bounded executions. The case's instruction limit bounds the execution before the next

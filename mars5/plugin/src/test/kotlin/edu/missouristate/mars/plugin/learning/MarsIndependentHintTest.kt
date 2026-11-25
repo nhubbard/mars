@@ -1,3 +1,5 @@
+@file:Suppress("OverrideOnly")
+
 package edu.missouristate.mars.plugin.learning
 
 import com.intellij.openapi.actionSystem.ActionManager
@@ -37,7 +39,7 @@ class MarsIndependentHintTest {
         val project = projectFixture.get()
         val lifetime = Disposer.newDisposable()
         val file =
-            fixture.addFileToProject("independent.asm", ".text\nli \$v0,10\nsyscall\n").virtualFile
+            fixture.addFileToProject("independent.asm", $$".text\nli $v0,10\nsyscall\n").virtualFile
         fixture.configureFromExistingVirtualFile(file)
         val checkpoint =
             project
@@ -230,7 +232,6 @@ class MarsIndependentHintTest {
             dialog.close(DialogWrapper.OK_EXIT_CODE)
           }
         }
-        Unit
       }
 
   @Test

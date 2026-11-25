@@ -22,7 +22,7 @@ class MarsLearningPresentationTest {
         val (window, stretches) = window(width, anchor)
         MarsLearningPresentation.fit(window)
         assertEquals(
-            if (width in 1 until target) listOf(target - width) else emptyList<Int>(),
+            if (width in 1 until target) listOf(target - width) else emptyList(),
             stretches,
         )
       }

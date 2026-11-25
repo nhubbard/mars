@@ -24,6 +24,7 @@ class MarsLearningSourceTest {
   private val projectFixture = codeInsightProjectFixture()
   private val fixture by codeInsightFixture(projectFixture)
 
+  @Suppress("UsePropertyAccessSyntax")
   @Test
   fun `source evidence requires a loaded image current capability and correct local source position`() =
       timeoutRunBlocking {

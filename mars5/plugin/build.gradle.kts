@@ -364,7 +364,7 @@ tasks.named<RunIdeTask>("runIde") {
                     .readText()
                     .replace(
                         "%storeHighlightingResults packaged-smoke-complete",
-                        profiling + "%storeHighlightingResults packaged-smoke-complete",
+                        "$profiling%storeHighlightingResults packaged-smoke-complete",
                     ),
             )
       }
@@ -452,6 +452,9 @@ val generateMipsParser =
       // The released CLI hard-codes JavaParserGenerator; this entry point calls
       // KotlinParserGenerator.
       mainClass.set("org.intellij.grammar.GenerateMipsParserKt")
+      // The headless PSI bootstrap reads these before the IDE registry is initialized.
+      systemProperty("psi.sleep.in.validity.check", false)
+      systemProperty("psi.incremental.reparse.depth.limit", 1000)
       classpath = parserGenerator.runtimeClasspath
       dependsOn(tasks.named(parserGenerator.classesTaskName))
       javaLauncher.set(

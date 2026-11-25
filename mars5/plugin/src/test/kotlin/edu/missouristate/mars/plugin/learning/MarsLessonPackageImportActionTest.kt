@@ -1,3 +1,5 @@
+@file:Suppress("JetBrainsInternalApiUsage", "OverrideOnly")
+
 package edu.missouristate.mars.plugin.learning
 
 import com.intellij.mock.MockProject
@@ -15,7 +17,6 @@ import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.openapi.ui.Messages
-import com.intellij.openapi.ui.TestDialog
 import com.intellij.openapi.ui.TestDialogManager
 import com.intellij.openapi.util.Disposer
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
@@ -121,6 +122,7 @@ class MarsLessonPackageImportActionTest {
         }
       }
 
+  @Suppress("UsePropertyAccessSyntax")
   @Test
   fun `native preview cancellation and acceptance preserve work and select the imported starter`() =
       timeoutRunBlocking {
@@ -186,14 +188,11 @@ class MarsLessonPackageImportActionTest {
           withContext(Dispatchers.EDT) {
             val project = fixture.get()
             var shown = false
-            val previous =
-                TestDialogManager.setTestDialog(
-                    TestDialog { text ->
-                      assertFalse(text.isBlank())
-                      shown = true
-                      Messages.OK
-                    },
-                )
+            val previous = TestDialogManager.setTestDialog { text ->
+              assertFalse(text.isBlank())
+              shown = true
+              Messages.OK
+            }
             UiInterceptors.register(fileDialog(path.toString()))
             try {
               AutoCloseable { UiInterceptors.clear() }

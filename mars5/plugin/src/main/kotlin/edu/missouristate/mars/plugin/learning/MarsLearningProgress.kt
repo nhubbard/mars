@@ -61,7 +61,7 @@ internal class MarsLearningProgress :
   internal constructor(
       val identity: MarsLessonIdentity,
       val step: String,
-      val sourceRevision: String,
+      @Suppress("UNUSED_PARAMETER") val sourceRevision: String,
   )
 
   private val pendingChecks = mutableMapOf<Pair<String, String>, CheckTicket>()

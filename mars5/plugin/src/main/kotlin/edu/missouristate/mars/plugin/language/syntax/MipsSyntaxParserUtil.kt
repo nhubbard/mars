@@ -14,6 +14,7 @@ import edu.missouristate.mars.ErrorList
 import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.assembler.Tokenizer
 import edu.missouristate.mars.mips.instructions.InstructionDefaults
+import edu.missouristate.mars.plugin.language.parser.MipsParser
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.BAD_CHARACTER
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.CHARACTER
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.COLON
@@ -34,6 +35,10 @@ import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.STRING
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.UNCLOSED_CHARACTER
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.WORD
 import java.util.TreeSet
+
+/** Grammar-Kit otherwise counts nested operands as operands of the surrounding operator. */
+internal fun parseNestedExpression(runtime: SyntaxGeneratedParserRuntime, level: Int): Boolean =
+    MipsParser.expr(runtime, level, -1)
 
 internal object DebuggerExpressionParsing : ParserUserState
 

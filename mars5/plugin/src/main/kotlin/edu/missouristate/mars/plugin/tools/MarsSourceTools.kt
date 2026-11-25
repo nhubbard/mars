@@ -70,6 +70,7 @@ internal fun configureSourceTools(
       }
     }
 
+@Suppress("UsePropertyAccessSyntax")
 internal fun revealSourceTools(
     project: Project,
     process: MarsProcessHandler,

@@ -20,7 +20,7 @@ import java.io.DataInput
 import java.io.DataOutput
 
 /** A possible reference target kind at a physical token offset before source expansion. */
-data class MipsReferenceSite(val kind: SymbolKind, val offset: Int, val macroOffset: Int)
+data class MipsReferenceSite(val kind: SymbolKind, val offset: Int, val macroOffset: Int) : Site
 
 class MipsReferenceIndex : FileBasedIndexExtension<String, List<MipsReferenceSite>>() {
   override fun getName() = referenceIndexId

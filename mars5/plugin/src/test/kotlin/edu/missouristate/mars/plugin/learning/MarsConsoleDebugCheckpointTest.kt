@@ -1,3 +1,5 @@
+@file:Suppress("OverrideOnly")
+
 package edu.missouristate.mars.plugin.learning
 
 import com.intellij.execution.ExecutionListener
@@ -65,21 +67,23 @@ class MarsConsoleDebugCheckpointTest {
               MarsConsoleDebugCheckpoint.ADDU_T0_V0_V0,
               before.frame.evaluator.instructionWord,
           )
-          assertEquals(20L, before.frame.evaluator.integerRegisterBits("\$v0"))
-          assertEquals(0L, before.frame.evaluator.integerRegisterBits("\$zero"))
-          assertThrows<IllegalStateException> { before.frame.evaluator.integerRegisterBits("\$f0") }
+          assertEquals(20L, before.frame.evaluator.integerRegisterBits($$"$v0"))
+          assertEquals(0L, before.frame.evaluator.integerRegisterBits($$"$zero"))
+          assertThrows<IllegalStateException> {
+            before.frame.evaluator.integerRegisterBits($$"$f0")
+          }
           assertThrows<NoSuchElementException> {
             before.frame.evaluator.integerRegisterBits("unknown")
           }
           withContext(Dispatchers.EDT) { session.stepOver(false) }
           val doubled = pauses.receive()
           assertEquals(2, checkpoint.phase)
-          assertEquals(40L, doubled.frame.evaluator.integerRegisterBits("\$t0"))
+          assertEquals(40L, doubled.frame.evaluator.integerRegisterBits($$"$t0"))
           withContext(Dispatchers.EDT) { session.stepOver(false) }
           val incremented = pauses.receive()
           assertEquals(3, checkpoint.phase)
-          assertEquals(41L, incremented.frame.evaluator.integerRegisterBits("\$t0"))
-          assertEquals(0L, before.frame.evaluator.integerRegisterBits("\$t0"))
+          assertEquals(41L, incremented.frame.evaluator.integerRegisterBits($$"$t0"))
+          assertEquals(0L, before.frame.evaluator.integerRegisterBits($$"$t0"))
           withContext(Dispatchers.EDT) { session.resume() }
         }
       }
@@ -96,10 +100,12 @@ class MarsConsoleDebugCheckpointTest {
           assertEquals(
               1,
               checkpoint.phase,
-              "v0=${before.frame.evaluator.integerRegisterBits("\$v0")} t0=${before.frame.evaluator.integerRegisterBits("\$t0")}",
+              "v0=${before.frame.evaluator.integerRegisterBits($$"$v0")} t0=${before.frame.evaluator.integerRegisterBits(
+              $$"$t0",
+            )}",
           )
-          assertEquals(4L, before.frame.evaluator.integerRegisterBits("\$v0"))
-          assertEquals(41L, before.frame.evaluator.integerRegisterBits("\$t0"))
+          assertEquals(4L, before.frame.evaluator.integerRegisterBits($$"$v0"))
+          assertEquals(41L, before.frame.evaluator.integerRegisterBits($$"$t0"))
           withContext(Dispatchers.EDT) { session.stepOver(false) }
           val argument = pauses.receive()
           assertEquals(
@@ -107,42 +113,43 @@ class MarsConsoleDebugCheckpointTest {
               argument.frame.evaluator.instructionWord,
           )
           assertEquals(2, checkpoint.phase)
-          assertEquals(41L, argument.frame.evaluator.integerRegisterBits("\$a0"))
-          assertEquals(4L, argument.frame.evaluator.integerRegisterBits("\$v0"))
+          assertEquals(41L, argument.frame.evaluator.integerRegisterBits($$"$a0"))
+          assertEquals(4L, argument.frame.evaluator.integerRegisterBits($$"$v0"))
           withContext(Dispatchers.EDT) { session.stepOver(false) }
           val selector = pauses.receive()
           assertEquals(3, checkpoint.phase)
-          assertEquals(1L, selector.frame.evaluator.integerRegisterBits("\$v0"))
-          assertEquals(41L, selector.frame.evaluator.integerRegisterBits("\$a0"))
-          assertEquals(41L, selector.frame.evaluator.integerRegisterBits("\$t0"))
-          assertEquals(4L, before.frame.evaluator.integerRegisterBits("\$v0"))
+          assertEquals(1L, selector.frame.evaluator.integerRegisterBits($$"$v0"))
+          assertEquals(41L, selector.frame.evaluator.integerRegisterBits($$"$a0"))
+          assertEquals(41L, selector.frame.evaluator.integerRegisterBits($$"$t0"))
+          assertEquals(4L, before.frame.evaluator.integerRegisterBits($$"$v0"))
         }
       }
 
   @Test
   fun `faulty copy changes the argument while the arithmetic and selector remain correct`() =
       timeoutRunBlocking {
-        val faulty = example.replace("move \$a0, \$t0", "move \$a0, \$v0")
+        val faulty = example.replace($$"move $a0, $t0", $$"move $a0, $v0")
         debug(source = faulty, segment = MarsConsoleDebugCheckpoint.Segment.DIAGNOSIS) {
             checkpoint,
             session,
             pauses ->
           val before = pauses.receive()
           assertEquals(1, checkpoint.phase)
-          assertEquals(41L, before.frame.evaluator.integerRegisterBits("\$t0"))
+          assertEquals(41L, before.frame.evaluator.integerRegisterBits($$"$t0"))
           withContext(Dispatchers.EDT) { session.stepOver(false) }
           val copied = pauses.receive()
           assertEquals(2, checkpoint.phase)
-          assertEquals(4L, copied.frame.evaluator.integerRegisterBits("\$a0"))
+          assertEquals(4L, copied.frame.evaluator.integerRegisterBits($$"$a0"))
           withContext(Dispatchers.EDT) { session.stepOver(false) }
           val selected = pauses.receive()
           assertEquals(3, checkpoint.phase)
-          assertEquals(1L, selected.frame.evaluator.integerRegisterBits("\$v0"))
-          assertEquals(4L, selected.frame.evaluator.integerRegisterBits("\$a0"))
-          assertEquals(41L, selected.frame.evaluator.integerRegisterBits("\$t0"))
+          assertEquals(1L, selected.frame.evaluator.integerRegisterBits($$"$v0"))
+          assertEquals(4L, selected.frame.evaluator.integerRegisterBits($$"$a0"))
+          assertEquals(41L, selected.frame.evaluator.integerRegisterBits($$"$t0"))
         }
       }
 
+  @Suppress("UsePropertyAccessSyntax")
   @Test
   fun `edited source invalidates partial observations even after text is restored`() =
       timeoutRunBlocking {
@@ -152,7 +159,7 @@ class MarsConsoleDebugCheckpointTest {
           withContext(Dispatchers.EDT) {
             val document = fixture.editor.document
             WriteCommandAction.runWriteCommandAction(projectFixture.get()) {
-              document.setText(example + "\n# edited\n")
+              document.setText("$example\n# edited\n")
             }
             assertEquals(0, checkpoint.phase)
             WriteCommandAction.runWriteCommandAction(projectFixture.get()) {
@@ -232,7 +239,7 @@ class MarsConsoleDebugCheckpointTest {
     withContext(Dispatchers.EDT) {
       fixture.addFileToProject("mars-labs/console/extra.inc", "# extra source\n")
     }
-    debug(source = example + ".include \"extra.inc\"\n") { checkpoint, _, pauses ->
+    debug(source = "$example.include \"extra.inc\"\n") { checkpoint, _, pauses ->
       pauses.receive()
       assertEquals(0, checkpoint.phase)
     }

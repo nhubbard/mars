@@ -70,6 +70,6 @@ abstract class Instruction(
     const val INSTRUCTION_LENGTH_BITS = 32
 
     /** Operand markers in order in an operation mask. */
-    const val operandMask = "fstu"
+    const val OPERAND_MASK = "fstu"
   }
 }

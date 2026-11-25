@@ -37,8 +37,8 @@ class PreparedConsoleChecksTest {
         machine.assembleSnapshot(
             AssemblySourceSnapshot(listOf(path), mapOf(path to source)),
             null,
-            true,
-            false,
+            extended = true,
+            warnings = false,
         )
         machine.captureAssemblyImage {}
       }
@@ -47,11 +47,11 @@ class PreparedConsoleChecksTest {
   fun `prepared checks run independent machines and accept different arithmetic implementations`() {
     for (arithmetic in
         listOf(
-            "addu \$t0, \$v0, \$v0\naddu \$t0, \$t0, \$v0\naddiu \$a0, \$t0, 1",
-            "sll \$s1, \$v0, 1\naddu \$s1, \$v0, \$s1\naddiu \$a0, \$s1, 1",
+            $$"addu $t0, $v0, $v0\naddu $t0, $t0, $v0\naddiu $a0, $t0, 1",
+            $$"sll $s1, $v0, 1\naddu $s1, $v0, $s1\naddiu $a0, $s1, 1",
         )) {
       val program =
-          image(".text\nli \$v0,5\nsyscall\n$arithmetic\nli \$v0,1\nsyscall\nli \$v0,10\nsyscall\n")
+          image($$".text\nli $v0,5\nsyscall\n$$arithmetic\nli $v0,1\nsyscall\nli $v0,10\nsyscall\n")
       val machines = mutableListOf<MarsContext>()
       val cases =
           listOf(20, 0, -3, -1000, 1000).map {
@@ -101,7 +101,7 @@ class PreparedConsoleChecksTest {
   @Test
   fun `prepared images restore their byte order on fresh default sessions`() {
     val source =
-        ".data\nword: .word 0x01020304\n.text\nlbu \$a0,word\nli \$v0,1\nsyscall\nli \$v0,10\nsyscall\n"
+        $$".data\nword: .word 0x01020304\n.text\nlbu $a0,word\nli $v0,1\nsyscall\nli $v0,10\nsyscall\n"
     for (target in MarsTarget.entries) for (littleEndian in listOf(false, true)) {
       val expected = if (littleEndian) "4" else "1"
       val results =
@@ -116,7 +116,7 @@ class PreparedConsoleChecksTest {
 
   @Test
   fun `failures retain names and explain mismatched output and execution limits`() {
-    val constant = image(".text\nli \$a0,41\nli \$v0,1\nsyscall\nli \$v0,10\nsyscall\n")
+    val constant = image($$".text\nli $a0,41\nli $v0,1\nsyscall\nli $v0,10\nsyscall\n")
     val results =
         PreparedConsoleChecks.evaluate(
             constant,
@@ -143,7 +143,7 @@ class PreparedConsoleChecksTest {
   fun `console checking keeps host files disabled and bounds output`() {
     val file =
         image(
-            ".data\nname: .asciiz \"must-not-open-host-file\"\n.text\nla \$a0,name\nli \$a1,1\nli \$v0,13\nsyscall\nli \$v0,10\nsyscall\n",
+            $$".data\nname: .asciiz \"must-not-open-host-file\"\n.text\nla $a0,name\nli $a1,1\nli $v0,13\nsyscall\nli $v0,10\nsyscall\n",
         )
     val denied =
         PreparedConsoleChecks.evaluate(
@@ -152,7 +152,7 @@ class PreparedConsoleChecksTest {
             ::session,
         )
     assertFalse(denied.single().passed)
-    val output = image(".text\nli \$a0,2147483647\nli \$v0,1\nagain: syscall\nb again\nnop\n")
+    val output = image($$".text\nli $a0,2147483647\nli $v0,1\nagain: syscall\nb again\nnop\n")
     val bounded =
         PreparedConsoleChecks.evaluate(
             output,
@@ -164,7 +164,7 @@ class PreparedConsoleChecksTest {
 
   @Test
   fun `case contracts and returned results are detached from caller collections`() {
-    val program = image(".text\nli \$v0,10\nsyscall\n")
+    val program = image($$".text\nli $v0,10\nsyscall\n")
     val cases = mutableListOf(ConsoleCheckCase("first", "", ""), ConsoleCheckCase("second", "", ""))
     val results =
         PreparedConsoleChecks.evaluate(
@@ -190,7 +190,7 @@ class PreparedConsoleChecksTest {
             { ConsoleCheckCase("input", "x".repeat(65_537), "") },
             { ConsoleCheckCase("output", "", "é".repeat(32_769)) },
         )) assertThrows<IllegalArgumentException> { case() }
-    val program = image(".text\nli \$v0,10\nsyscall\n")
+    val program = image($$".text\nli $v0,10\nsyscall\n")
     assertThrows<IllegalArgumentException> {
       PreparedConsoleChecks.evaluate(program, emptyList(), { error("must not create") })
     }
@@ -202,7 +202,7 @@ class PreparedConsoleChecksTest {
 
   @Test
   fun `cancellation propagates before a case and closes a session during image load`() {
-    val program = image(".text\nli \$v0,10\nsyscall\n")
+    val program = image($$".text\nli $v0,10\nsyscall\n")
     val machines = mutableListOf<MarsContext>()
     var checks = 0
     assertThrows<CancellationException> {
@@ -227,7 +227,7 @@ class PreparedConsoleChecksTest {
 
   @Test
   fun `cancellation after bounded execution propagates after closing the machine`() {
-    val program = image(".text\nli \$v0,10\nsyscall\n")
+    val program = image($$".text\nli $v0,10\nsyscall\n")
     var exited = false
     lateinit var machine: MarsContext
     assertThrows<CancellationException> {

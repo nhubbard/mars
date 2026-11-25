@@ -1,3 +1,5 @@
+@file:Suppress("JetBrainsInternalApiUsage")
+
 package edu.missouristate.mars.plugin.learning
 
 import com.intellij.mock.MockProject
@@ -64,22 +66,22 @@ class MarsGuidedRequirementTest {
           progress.open(check.identity, MarsLearningSource.revision(document.text))
           assertFalse(check.passed(project))
           withContext(Dispatchers.EDT) { pass(check, document) }
-          for (prediction in check.predictions) {
+          for ((id, _, _, correct) in check.predictions) {
             assertFalse(check.passed(project))
             progress.open(MarsPredictions.identity, MarsPredictions.identity.contentSha256)
-            progress.recordChoice(MarsPredictions.identity, prediction.id, prediction.correct)
+            progress.recordChoice(MarsPredictions.identity, id, correct)
           }
           assertTrue(check.passed(project))
           assertTrue(policy.canStartIndependent())
           assertTrue(policy.verifyIndependentPrerequisites())
-          for (prediction in check.predictions) {
+          for ((id, _, choices, correct) in check.predictions) {
             progress.recordChoice(
                 MarsPredictions.identity,
-                prediction.id,
-                prediction.choices.first { it.id != prediction.correct }.id,
+                id,
+                choices.first { it.id != correct }.id,
             )
             assertFalse(policy.canStartIndependent())
-            progress.recordChoice(MarsPredictions.identity, prediction.id, prediction.correct)
+            progress.recordChoice(MarsPredictions.identity, id, correct)
             assertTrue(policy.canStartIndependent())
           }
         }
@@ -101,6 +103,7 @@ class MarsGuidedRequirementTest {
         assertFalse(policy.canStartIndependent())
       }
 
+  @Suppress("UsePropertyAccessSyntax")
   @Test
   fun `source edits after leaving a lesson cannot resurrect evidence by editing back`() =
       timeoutRunBlocking {
@@ -115,7 +118,7 @@ class MarsGuidedRequirementTest {
         assertTrue(policy.canStartIndependent())
         withContext(Dispatchers.EDT) {
           WriteCommandAction.runWriteCommandAction(project) {
-            document.setText(original + "\n# changed after leaving the lesson\n")
+            document.setText("$original\n# changed after leaving the lesson\n")
           }
           WriteCommandAction.runWriteCommandAction(project) { document.setText(original) }
         }
@@ -126,7 +129,7 @@ class MarsGuidedRequirementTest {
         progress.reset(check.identity)
         withContext(Dispatchers.EDT) {
           WriteCommandAction.runWriteCommandAction(project) {
-            document.setText(original + "\n# reset work stays uncredited\n")
+            document.setText("$original\n# reset work stays uncredited\n")
           }
           val unbound = EditorFactory.getInstance().createDocument("unbound")
           WriteCommandAction.runWriteCommandAction(project) { unbound.setText("changed") }

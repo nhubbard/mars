@@ -1,7 +1,7 @@
 plugins {
   id("java")
   id("com.diffplug.spotless") version "8.11.0"
-  id("org.jetbrains.intellij.platform") version "2.20.0" apply false
+  id("org.jetbrains.intellij.platform") version "2.20.1" apply false
   kotlin("jvm") version "2.4.21" apply false
   kotlin("kapt") version "2.4.21" apply false
   kotlin("plugin.compose") version "2.4.21" apply false

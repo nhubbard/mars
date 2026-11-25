@@ -53,13 +53,13 @@ class AddressMemorySnapshotTest {
           val instructions = execution.snapshot().instructions
           val undo = machine.backStepper.canBackstep()
           val expected =
-              if (order == LITTLE_ENDIAN) {
+              if (order) {
                 intArrayOf(1, 127, 255, 128, 120, 86, 52, 18)
               } else intArrayOf(128, 255, 127, 1, 18, 52, 86, 120)
           assertArrayEquals(expected.copyOfRange(1, 7), case.readBytes(0x100000001L, 6))
           assertArrayEquals(case.readBytes("values", 8), case.readBytes(0x100000000L, 8))
           val pointer =
-              if (order == LITTLE_ENDIAN) {
+              if (order) {
                 intArrayOf(0, 0, 0, 0, 1, 0, 0, 0)
               } else intArrayOf(0, 0, 0, 1, 0, 0, 0, 0)
           assertArrayEquals(pointer, case.readBytes(0x7ffefff8L, 8))

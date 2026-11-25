@@ -189,6 +189,7 @@ class MarsIndependentCheckpointTest {
         }
       }
 
+  @Suppress("UsePropertyAccessSyntax")
   @Test
   fun `required source evidence permits checking but an inactive prerequisite edit during execution rejects the result`() =
       timeoutRunBlocking {
@@ -218,9 +219,7 @@ class MarsIndependentCheckpointTest {
                   changed = true
                   ApplicationManager.getApplication().invokeAndWait {
                     WriteCommandAction.runWriteCommandAction(project) {
-                      document.setText(
-                          original + "\n# Changed while another exercise was running\n",
-                      )
+                      document.setText("$original\n# Changed while another exercise was running\n")
                       document.setText(original)
                     }
                   }
@@ -268,7 +267,7 @@ class MarsIndependentCheckpointTest {
         withContext(Dispatchers.EDT) {
           fixture.addFileToProject("mars-labs/console/extra.inc", "# extra\n")
         }
-        exercise(correct + "\n.include \"extra.inc\"\n") { checkpoint, _ ->
+        exercise("$correct\n.include \"extra.inc\"\n") { checkpoint, _ ->
           assertEquals(MarsIndependentCheckpoint.Feedback.STALE, checkpoint.check())
           assertFalse(checkpoint.passed())
         }
@@ -390,6 +389,7 @@ class MarsIndependentCheckpointTest {
         }
       }
 
+  @Suppress("UsePropertyAccessSyntax")
   @Test
   fun `failed completed checks use attempts but assembly errors and edited results do not`() =
       timeoutRunBlocking {

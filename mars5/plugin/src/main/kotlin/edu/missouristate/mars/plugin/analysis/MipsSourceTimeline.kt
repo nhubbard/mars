@@ -698,6 +698,7 @@ private fun readOnlyAssemblySource(
 
 internal fun PsiFile.assemblySourceOriginalFile(): VirtualFile {
   val file = originalFile.viewProvider.virtualFile
+  @Suppress("UnstableApiUsage")
   return file.mipsAssemblySourceOrigin ?: BackedVirtualFile.getOriginFileIfBacked(file)
 }
 

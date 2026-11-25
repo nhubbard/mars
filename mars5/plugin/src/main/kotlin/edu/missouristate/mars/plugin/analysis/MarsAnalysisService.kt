@@ -26,6 +26,7 @@ import com.intellij.psi.search.SearchScope
 import com.intellij.psi.util.elementType
 import com.intellij.util.containers.SLRUMap
 import com.intellij.util.indexing.FileBasedIndex
+import com.intellij.util.indexing.ID
 import com.intellij.util.text.CharArrayUtil
 import edu.missouristate.mars.ErrorList
 import edu.missouristate.mars.api.AssemblySymbolMap
@@ -51,6 +52,8 @@ import edu.missouristate.mars.plugin.language.MipsFileType
 import edu.missouristate.mars.plugin.language.MipsTypes
 import edu.missouristate.mars.plugin.language.enabledInstructionFormats
 import edu.missouristate.mars.plugin.language.index.MipsDeclarationSite
+import edu.missouristate.mars.plugin.language.index.MipsReferenceSite
+import edu.missouristate.mars.plugin.language.index.Site
 import edu.missouristate.mars.plugin.language.index.declarationIndexId
 import edu.missouristate.mars.plugin.language.index.referenceIndexId
 import edu.missouristate.mars.plugin.language.mipsAssemblySourceOrigin
@@ -1551,6 +1554,27 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
       FileBasedIndex.getInstance()
           .getFileData(declarationIndexId, file.viewProvider.virtualFile, project)
 
+  internal inline fun <reified E : Site> FileBasedIndex.buildIndexList(
+      id: ID<String, List<E>>,
+      key: SymbolKey,
+      scope: GlobalSearchScope,
+  ): List<IndexedSymbolSite> = buildList {
+    processValues(
+        id,
+        key.name,
+        null,
+        { file, sites ->
+          val source = SourceId(file.url)
+          for ((kind, offset, macroOffset) in sites) {
+            ProgressManager.checkCanceled()
+            if (kind == key.kind) add(IndexedSymbolSite(source, offset, macroOffset))
+          }
+          true
+        },
+        scope,
+    )
+  }
+
   /** Waits for usable native indices and returns detached candidates for one scoped symbol key. */
   internal suspend fun lookupCandidates(
       key: SymbolKey,
@@ -1564,38 +1588,8 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         ReadConstraint.withDocumentsCommitted(project),
     ) {
       val index = FileBasedIndex.getInstance()
-      val declarations = buildList {
-        index.processValues(
-            declarationIndexId,
-            key.name,
-            null,
-            { file, sites ->
-              val source = SourceId(file.url)
-              for ((kind, offset, macroOffset) in sites) {
-                ProgressManager.checkCanceled()
-                if (kind == key.kind) add(IndexedSymbolSite(source, offset, macroOffset))
-              }
-              true
-            },
-            scope,
-        )
-      }
-      val references = buildList {
-        index.processValues(
-            referenceIndexId,
-            key.name,
-            null,
-            { file, sites ->
-              val source = SourceId(file.url)
-              for ((kind, offset, macroOffset) in sites) {
-                ProgressManager.checkCanceled()
-                if (kind == key.kind) add(IndexedSymbolSite(source, offset, macroOffset))
-              }
-              true
-            },
-            scope,
-        )
-      }
+      val declarations = index.buildIndexList<MipsDeclarationSite>(declarationIndexId, key, scope)
+      val references = index.buildIndexList<MipsReferenceSite>(referenceIndexId, key, scope)
       IndexedSymbolCandidates(declarations, references)
     }
   }
