@@ -5,7 +5,7 @@ import edu.missouristate.mars.mips.hardware.VectorRegister
 import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertThrows
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
@@ -72,11 +72,11 @@ class Mars64VectorMemoryTest {
 
       val width = 1 shl "bhwd".indexOf(suffix)
       Files.writeString(path, $$"ld.$$suffix $w31[$$width],$10")
-      assertThrows(ProcessingException::class.java) {
+      assertThrows<ProcessingException> {
         session.assemble(listOf(path), null, extended = false, warnings = false)
       }
       Files.writeString(path, $$"ld.$$suffix $w31,$${512 * width}($10)")
-      assertThrows(ProcessingException::class.java) {
+      assertThrows<ProcessingException> {
         session.assemble(listOf(path), null, extended = false, warnings = false)
       }
     }

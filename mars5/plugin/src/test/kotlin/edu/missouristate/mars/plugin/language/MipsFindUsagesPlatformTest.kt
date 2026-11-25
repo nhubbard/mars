@@ -32,9 +32,9 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 
 @TestApplication
 class MipsFindUsagesPlatformTest {
@@ -205,7 +205,7 @@ class MipsFindUsagesPlatformTest {
           assertFalse(LanguageFindUsages.canFindUsagesFor(orphan))
           assertEquals("macro parameter", LanguageFindUsages.getType(operation))
           assertEquals("%?", LanguageFindUsages.getDescriptiveName(operation))
-          assertThrows(IncorrectOperationException::class.java) { value.setName("%") }
+          assertThrows<IncorrectOperationException> { value.setName("%") }
           val flags =
               TargetElementUtil.REFERENCED_ELEMENT_ACCEPTED or
                   TargetElementUtil.ELEMENT_NAME_ACCEPTED

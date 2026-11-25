@@ -4,9 +4,9 @@ import edu.missouristate.mars.api.MarsTarget
 import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 
 class Mars64NumericLabelTest {
@@ -61,7 +61,7 @@ class Mars64NumericLabelTest {
       for ((text, reference) in listOf("b 11f" to "11f", "b 7b\n7: nop" to "7b")) {
         Files.writeString(source, text)
         val failure =
-            assertThrows(ProcessingException::class.java) {
+            assertThrows<ProcessingException> {
               machine.assemble(listOf(source, later))
             }
         val report = failure.errors()!!.generateErrorReport()

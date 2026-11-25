@@ -9,9 +9,9 @@ import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 
 class Mars64RegimmTest {
@@ -81,7 +81,7 @@ class Mars64RegimmTest {
           65535,
           ProgramStatement(binary, statement.address, session.instructionSet).operands[0],
       )
-      val failure = assertThrows(ProcessingException::class.java) { program.simulate(1) }
+      val failure = assertThrows<ProcessingException> { program.simulate(1) }
       assertTrue(failure.message!!.contains("sigrie code 65535"))
       assertEquals(
           RESERVED_INSTRUCTION_EXCEPTION,

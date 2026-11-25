@@ -4,7 +4,7 @@ import edu.missouristate.mars.api.MarsTarget
 import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertThrows
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
@@ -148,7 +148,7 @@ class Mars64FixedPointConversionTest {
       session.editIntegerRegister(8, 0x80)
       session.editCoprocessor1Pair(3, 3.5.toRawBits())
       program.simulate(1)
-      assertThrows(ProcessingException::class.java) { program.simulate(1) }
+      assertThrows<ProcessingException> { program.simulate(1) }
       assertEquals(0L, result())
       assertEquals(0x000c1080, fpu.floatingStatus)
     }

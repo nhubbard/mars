@@ -8,9 +8,9 @@ import edu.missouristate.mars.mips.hardware.Coprocessor0State.Companion.VADDR
 import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
@@ -113,13 +113,13 @@ class Mars64ExceptionReturnTest {
       val program = session.assemble(listOf(source), null, extended = false, warnings = false)
       session.editIntegerRegister(9, 1)
       val address = program.machineList!!.first().address
-      assertThrows(ProcessingException::class.java) { program.simulate(2) }
+      assertThrows<ProcessingException> { program.simulate(2) }
       assertEquals(address, session.coprocessor0.getValue(EPC))
       assertEquals(1, session.coprocessor0.getValue(CAUSE) ushr 31)
       session.backStepper.backStep()
       assertEquals(0, session.coprocessor0.getValue(EPC))
       assertEquals(0, session.coprocessor0.getValue(CAUSE) ushr 31)
-      assertThrows(ProcessingException::class.java) { program.simulate(1) }
+      assertThrows<ProcessingException> { program.simulate(1) }
       assertEquals(address, session.coprocessor0.getValue(EPC))
       assertEquals(1, session.coprocessor0.getValue(CAUSE) ushr 31)
     }
@@ -169,7 +169,7 @@ class Mars64ExceptionReturnTest {
       val address = 0x2_0000_0000L + session.memory.textBaseAddress
       session.editCoprocessor0Register(STATUS, 2)
       session.editIntegerRegister(9, address)
-      assertThrows(ProcessingException::class.java) { program.simulate(2) }
+      assertThrows<ProcessingException> { program.simulate(2) }
       assertEquals(address, session.coprocessor0.getRegister(EPC)!!.longValueNoNotify)
       assertEquals(address, session.coprocessor0.getRegister(VADDR)!!.longValueNoNotify)
     }

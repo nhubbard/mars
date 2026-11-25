@@ -1,6 +1,6 @@
 package edu.missouristate.mars.plugin.build
 
-import com.intellij.execution.configurations.ConfigurationTypeUtil
+import com.intellij.execution.configurations.runConfigurationType
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.compiler.CompileScope
@@ -99,8 +99,7 @@ class MarsCompilerPlatformTest {
         val mipsLaunch = context(library)
         mipsLaunch.compileScope.putUserData(
             CompilerManager.RUN_CONFIGURATION_KEY,
-            ConfigurationTypeUtil.findConfigurationType(MarsRunType::class.java)
-                .createTemplateConfiguration(project),
+            runConfigurationType<MarsRunType>().createTemplateConfiguration(project),
         )
         assertTrue(execute(mipsLaunch))
         assertTrue(mipsLaunch.messages.isEmpty())

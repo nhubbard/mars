@@ -42,6 +42,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertInstanceOf
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.params.ParameterizedTest
@@ -3032,7 +3033,7 @@ class MipsParserPlatformTest {
           assertEquals("asm", MipsFileType.defaultExtension)
           assertNotNull(MipsFileType.icon)
           val definition = LanguageParserDefinitions.INSTANCE.forLanguage(MipsLanguage)
-          assertInstanceOf(MipsParserDefinition::class.java, definition)
+          assertInstanceOf<MipsParserDefinition>(definition)
           assertSame(MipsTypes.file, definition.fileNodeType)
           assertTrue(definition.whitespaceTokens.contains(TokenType.WHITE_SPACE))
           assertTrue(definition.commentTokens.contains(MipsTypes.psi("COMMENT")))
@@ -3050,7 +3051,7 @@ class MipsParserPlatformTest {
           assertEquals(text.length, lexer.bufferEnd)
           assertEquals(0, lexer.state)
           val highlight = MipsSyntaxHighlighterFactory().getSyntaxHighlighter(null, null)
-          assertInstanceOf(MipsSyntaxHighlighter::class.java, highlight)
+          assertInstanceOf<MipsSyntaxHighlighter>(highlight)
           assertNotNull(highlight.highlightingLexer)
           for ((_, type) in MipsTypes.syntax) highlight.getTokenHighlights(
               MipsTypes.converter.convert(type)!!,
@@ -3362,7 +3363,7 @@ class MipsParserPlatformTest {
   private fun assertParses(source: String, name: String = "example.asm"): MipsFile {
     val fileType = FileTypeManager.getInstance().getFileTypeByFileName(name)
     val file = PsiFileFactory.getInstance(project.get()).createFileFromText(name, fileType, source)
-    val mips = assertInstanceOf(MipsFile::class.java, file)
+    val mips = assertInstanceOf<MipsFile>(file)
     assertSame(MipsFileType, file.fileType)
     assertEquals(source, file.text)
     val errors = PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java)

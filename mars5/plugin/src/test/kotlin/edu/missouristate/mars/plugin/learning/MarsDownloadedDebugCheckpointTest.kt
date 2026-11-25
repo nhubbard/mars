@@ -4,7 +4,7 @@ package edu.missouristate.mars.plugin.learning
 
 import com.intellij.execution.ExecutionListener
 import com.intellij.execution.ExecutionManager
-import com.intellij.execution.configurations.ConfigurationTypeUtil
+import com.intellij.execution.configurations.runConfigurationType
 import com.intellij.execution.executors.DefaultDebugExecutor
 import com.intellij.execution.executors.DefaultRunExecutor
 import com.intellij.execution.process.NopProcessHandler
@@ -52,10 +52,10 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertInstanceOf
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 
@@ -580,9 +580,7 @@ class MarsDownloadedDebugCheckpointTest {
       val pauses = Channel<MarsSuspendContext>(Channel.UNLIMITED)
       val stopped = CompletableDeferred<Unit>()
       withContext(Dispatchers.EDT) {
-        val config =
-            ConfigurationTypeUtil.findConfigurationType(MarsRunType::class.java)
-                .createTemplateConfiguration(project)
+        val config = runConfigurationType<MarsRunType>().createTemplateConfiguration(project)
         config.options.sourcePath = file.path
         val env =
             ExecutionEnvironmentBuilder.create(
@@ -613,8 +611,7 @@ class MarsDownloadedDebugCheckpointTest {
 
                           override fun sessionPaused() {
                             pauses.trySend(
-                                assertInstanceOf(
-                                    MarsSuspendContext::class.java,
+                                assertInstanceOf<MarsSuspendContext>(
                                     session.suspendContext,
                                 ),
                             )
@@ -626,7 +623,7 @@ class MarsDownloadedDebugCheckpointTest {
                   }
                 },
             )
-        assertInstanceOf(MarsDebugRunner::class.java, env.runner).execute(env)
+        assertInstanceOf<MarsDebugRunner>(env.runner).execute(env)
       }
       val session = started.await()
       val launch = Launch(session, pauses, stopped)

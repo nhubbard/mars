@@ -6,9 +6,9 @@ import edu.missouristate.mars.simulator.ProgramArgumentList
 import java.util.concurrent.CancellationException
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 
 class SimulatorLaunchStateTest {
   @Test
@@ -36,7 +36,7 @@ class SimulatorLaunchStateTest {
     assertEquals(cleared, branch.snapshot())
     branch.restore(triggered)
     assertEquals(triggered, branch.snapshot())
-    assertThrows(IllegalArgumentException::class.java) {
+    assertThrows<IllegalArgumentException> {
       branch.restore(DelayedBranchState.Snapshot(-1, 0, false))
     }
     assertEquals(triggered, branch.snapshot())
@@ -87,7 +87,7 @@ class SimulatorLaunchStateTest {
       ProgramArgumentList(arrayListOf("ignored"), 2).storeProgramArguments(session) {
         error("Empty arguments must return before checking cancellation")
       }
-      assertThrows(CancellationException::class.java) {
+      assertThrows<CancellationException> {
         ProgramArgumentList(arrayOf("argument")).storeProgramArguments(session) {
           throw CancellationException()
         }

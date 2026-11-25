@@ -8,7 +8,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.math.sqrt
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertThrows
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
@@ -111,7 +111,7 @@ class Mars64ScalarArithmeticTest {
       machine.editIntegerRegister(8, INVALID_OPERATION shl 7)
       program.simulate(1)
       inputs(bits(2.0), signaling)
-      assertThrows(ProcessingException::class.java) { program.simulate(1) }
+      assertThrows<ProcessingException> { program.simulate(1) }
       assertEquals(bits(-0.0), fpu.getDoublewordNoNotify(3))
     }
   }
@@ -240,7 +240,7 @@ class Mars64ScalarArithmeticTest {
       machine.editIntegerRegister(8, INVALID_OPERATION shl 7)
       machine.editCoprocessor1Pair(3, 99)
       program.simulate(1)
-      assertThrows(ProcessingException::class.java) { program.simulate(1) }
+      assertThrows<ProcessingException> { program.simulate(1) }
       assertEquals(99L, machine.coprocessor1.getDoublewordNoNotify(3))
       assertEquals(INVALID_OPERATION, (machine.coprocessor1.floatingStatus ushr 12) and 31)
       assertEquals(0, (machine.coprocessor1.floatingStatus ushr 2) and 31)

@@ -5,9 +5,9 @@ import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 
 class BitFieldInstructionTest {
@@ -42,8 +42,7 @@ class BitFieldInstructionTest {
               $$"ins $t1,$t2,2,0",
           )) {
         Files.writeString(source, ".text\n$assembly\n")
-        val problem =
-            assertThrows(ProcessingException::class.java) { machine.assemble(listOf(source)) }
+        val problem = assertThrows<ProcessingException> { machine.assemble(listOf(source)) }
         assertTrue(problem.errors()!!.generateErrorReport().contains("must be from"), assembly)
       }
     }

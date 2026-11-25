@@ -5,9 +5,9 @@ import edu.missouristate.mars.mips.hardware.MemoryState
 import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 
 class Mars64SectionAlignmentTest {
@@ -66,7 +66,7 @@ class Mars64SectionAlignmentTest {
     TestSessions.create().use { machine ->
       Files.writeString(file, ".p2align 3\nnop\n")
       fun errors() =
-          assertThrows(ProcessingException::class.java) { machine.assemble(listOf(file)) }
+          assertThrows<ProcessingException> { machine.assemble(listOf(file)) }
               .errors()!!
               .generateErrorReport()
       assertTrue(errors().contains(".p2align requires the MARS64 target"))

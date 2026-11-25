@@ -40,9 +40,9 @@ import kotlin.io.path.writeText
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 
 class ScavengerHuntDeviceTest {
@@ -329,7 +329,7 @@ class ScavengerHuntDeviceTest {
       assertFalse(ScavengerHuntDevice.supports(session.memory))
       session.setMemoryConfiguration("CompactTextAtZero")
       assertFalse(ScavengerHuntDevice.supports(session.memory))
-      assertThrows(IllegalArgumentException::class.java) { ScavengerHuntDevice(session) }
+      assertThrows<IllegalArgumentException> { ScavengerHuntDevice(session) }
       assertEquals(0, session.memory.countObservers())
     }
   }

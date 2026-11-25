@@ -1,7 +1,7 @@
 package edu.missouristate.mars.plugin.build
 
 import com.intellij.execution.RunManager
-import com.intellij.execution.configurations.ConfigurationTypeUtil
+import com.intellij.execution.configurations.runConfigurationType
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.command.undo.UndoManager
@@ -186,7 +186,7 @@ class MarsSourceRefactoringPlatformTest {
       directory: String? = null,
   ): MarsRunConfiguration {
     val manager = RunManager.getInstanceAsync(project)
-    val type = ConfigurationTypeUtil.findConfigurationType(MarsRunType::class.java)
+    val type = runConfigurationType<MarsRunType>()
     val registered = manager.createConfiguration(name, type)
     val run = registered.configuration as MarsRunConfiguration
     run.options.sourcePath = source

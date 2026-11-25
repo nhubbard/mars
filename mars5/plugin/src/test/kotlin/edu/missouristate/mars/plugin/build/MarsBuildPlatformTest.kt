@@ -30,8 +30,8 @@ import com.intellij.openapi.actionSystem.ex.ActionUtil
 import com.intellij.openapi.actionSystem.impl.SimpleDataContext
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.EDT
-import com.intellij.openapi.application.WriteAction
 import com.intellij.openapi.application.readAction
+import com.intellij.openapi.application.runWriteAction
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.components.service
 import com.intellij.openapi.fileChooser.FileChooserDescriptor
@@ -57,6 +57,7 @@ import com.intellij.psi.PsiFileFactory
 import com.intellij.psi.PsiManager
 import com.intellij.psi.impl.include.FileIncludeManager
 import com.intellij.psi.util.PsiTreeUtil
+import com.intellij.psi.util.childOfType
 import com.intellij.task.ProjectTask
 import com.intellij.task.ProjectTaskContext
 import com.intellij.task.ProjectTaskManager
@@ -117,13 +118,13 @@ import org.jetbrains.concurrency.await
 import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertNotSame
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertSame
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertInstanceOf
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
 import org.junit.jupiter.params.provider.ValueSource
@@ -178,9 +179,9 @@ class MarsBuildPlatformTest {
               starts.map { it.message },
           )
           assertEquals(starts.map { it.id }, finishes.map { it.id })
-          assertInstanceOf(SuccessResult::class.java, finishes[0].result)
-          assertInstanceOf(FailureResult::class.java, finishes[1].result)
-          assertInstanceOf(SuccessResult::class.java, finishes[2].result)
+          assertInstanceOf<SuccessResult>(finishes[0].result)
+          assertInstanceOf<FailureResult>(finishes[1].result)
+          assertInstanceOf<SuccessResult>(finishes[2].result)
           assertEquals(1, received.filterIsInstance<FileMessageEvent>().size)
           val success = manager.run(last).await()
           assertFalse(success.isAborted)
@@ -241,16 +242,13 @@ class MarsBuildPlatformTest {
             editors.openFile(library, request)
           }
           opened.awaitPending()
-          val start =
-              assertInstanceOf(StartBuildEvent::class.java, events.tryReceive().getOrThrow())
+          val start = assertInstanceOf<StartBuildEvent>(events.tryReceive().getOrThrow())
           assertEquals("Assemble main.asm", start.message)
-          val descriptor =
-              assertInstanceOf(DefaultBuildDescriptor::class.java, start.buildDescriptor)
+          val descriptor = assertInstanceOf<DefaultBuildDescriptor>(start.buildDescriptor)
           assertFalse(descriptor.isActivateToolWindowWhenAdded)
           assertFalse(descriptor.isActivateToolWindowWhenFailed)
-          val finish =
-              assertInstanceOf(FinishBuildEvent::class.java, events.tryReceive().getOrThrow())
-          assertFalse(assertInstanceOf(SuccessResult::class.java, finish.result).isUpToDate)
+          val finish = assertInstanceOf<FinishBuildEvent>(events.tryReceive().getOrThrow())
+          assertFalse(assertInstanceOf<SuccessResult>(finish.result).isUpToDate)
           assertTrue(events.tryReceive().isFailure)
 
           val build = project.service<MarsBuildService>()
@@ -266,9 +264,9 @@ class MarsBuildPlatformTest {
               setOf(entry.toNioPath(), include.toNioPath(), library.toNioPath()),
               prepared.sources.snapshot.texts().keys,
           )
-          assertInstanceOf(StartBuildEvent::class.java, events.receive())
-          val launch = assertInstanceOf(FinishBuildEvent::class.java, events.receive())
-          assertTrue(assertInstanceOf(SuccessResult::class.java, launch.result).isUpToDate)
+          assertInstanceOf<StartBuildEvent>(events.receive())
+          val launch = assertInstanceOf<FinishBuildEvent>(events.receive())
+          assertTrue(assertInstanceOf<SuccessResult>(launch.result).isUpToDate)
         } finally {
           withContext(Dispatchers.EDT) { Disposer.dispose(lifetime) }
         }
@@ -307,7 +305,7 @@ class MarsBuildPlatformTest {
             editors.closeFile(closed)
             val retagged = fixture.addFileToProject("retagged.asm", "nop\n").virtualFile
             editors.openFile(retagged, request)
-            WriteAction.run<RuntimeException> { retagged.rename(this, "retagged.txt") }
+            runWriteAction { retagged.rename(this, "retagged.txt") }
             editors.openFile(retagged, request)
             assertTrue(editors.isFileOpen(retagged))
           }
@@ -349,18 +347,14 @@ class MarsBuildPlatformTest {
 
           withContext(Dispatchers.EDT) { editors.openFile(broken, request) }
           opened.awaitPending()
-          val start =
-              assertInstanceOf(StartBuildEvent::class.java, events.tryReceive().getOrThrow())
-          val descriptor =
-              assertInstanceOf(DefaultBuildDescriptor::class.java, start.buildDescriptor)
+          val start = assertInstanceOf<StartBuildEvent>(events.tryReceive().getOrThrow())
+          val descriptor = assertInstanceOf<DefaultBuildDescriptor>(start.buildDescriptor)
           assertFalse(descriptor.isActivateToolWindowWhenFailed)
-          val diagnostic =
-              assertInstanceOf(FileMessageEvent::class.java, events.tryReceive().getOrThrow())
+          val diagnostic = assertInstanceOf<FileMessageEvent>(events.tryReceive().getOrThrow())
           assertEquals(broken.toNioPath(), diagnostic.filePosition.path)
           assertTrue(diagnostic.message.contains("missing"))
-          val finish =
-              assertInstanceOf(FinishBuildEvent::class.java, events.tryReceive().getOrThrow())
-          assertInstanceOf(FailureResult::class.java, finish.result)
+          val finish = assertInstanceOf<FinishBuildEvent>(events.tryReceive().getOrThrow())
+          assertInstanceOf<FailureResult>(finish.result)
           assertTrue(events.tryReceive().isFailure)
         } finally {
           withContext(Dispatchers.EDT) {
@@ -391,8 +385,7 @@ class MarsBuildPlatformTest {
         fun warning(upToDate: Boolean): FileMessageEvent {
           val received = buildList { while (true) add(events.tryReceive().getOrNull() ?: break) }
           val result =
-              assertInstanceOf(
-                  SuccessResult::class.java,
+              assertInstanceOf<SuccessResult>(
                   received.filterIsInstance<FinishBuildEvent>().single().result,
               )
           assertEquals(upToDate, result.isUpToDate)
@@ -479,7 +472,7 @@ class MarsBuildPlatformTest {
 
         val oldPath = include.toNioPath()
         withContext(Dispatchers.EDT) {
-          WriteAction.run<RuntimeException> { include.rename(this, "moved.inc") }
+          runWriteAction { include.rename(this, "moved.inc") }
           edit(entry, ".include \"moved.inc\"\nnop\n")
         }
         val moved = prepare()
@@ -509,10 +502,10 @@ class MarsBuildPlatformTest {
           ProjectTaskManager.getInstance(project).run(ProjectTaskList.asList(first, last)).await()
       assertTrue(result.isAborted)
       assertFalse(result.hasErrors())
-      val start = assertInstanceOf(StartBuildEvent::class.java, events.receive())
-      val finish = assertInstanceOf(FinishBuildEvent::class.java, events.receive())
+      val start = assertInstanceOf<StartBuildEvent>(events.receive())
+      val finish = assertInstanceOf<FinishBuildEvent>(events.receive())
       assertEquals(start.id, finish.id)
-      assertInstanceOf(SkippedResult::class.java, finish.result)
+      assertInstanceOf<SkippedResult>(finish.result)
       assertTrue(events.tryReceive().isFailure)
     } finally {
       withContext(Dispatchers.EDT) { Disposer.dispose(disposable) }
@@ -667,7 +660,7 @@ class MarsBuildPlatformTest {
           }
           var buildEvent = events.receive()
           while (buildEvent !is FinishBuildEvent) buildEvent = events.receive()
-          assertInstanceOf(SuccessResult::class.java, buildEvent.result)
+          assertInstanceOf<SuccessResult>(buildEvent.result)
           readAction {
             val shared =
                 requireNotNull(
@@ -994,7 +987,7 @@ class MarsBuildPlatformTest {
     withContext(Dispatchers.EDT) {
       val settings = project.service<MarsAssemblySettings>()
       for (invalid in listOf(0, 100_001)) {
-        assertThrows(IllegalArgumentException::class.java) { settings.changeBackstepLimit(invalid) }
+        assertThrows<IllegalArgumentException> { settings.changeBackstepLimit(invalid) }
       }
       val configurable = MarsAssemblyConfigurable(project)
       try {
@@ -1008,7 +1001,7 @@ class MarsBuildPlatformTest {
         assertEquals(ApplicationInfo.maximumBacksteps.toString(), field.text)
         for (invalid in listOf("0", "100001", "word")) {
           field.text = invalid
-          assertThrows(ConfigurationException::class.java) { configurable.apply() }
+          assertThrows<ConfigurationException> { configurable.apply() }
         }
         field.text = "2"
         val stamp = settings.sourceChanges.modificationCount
@@ -1058,7 +1051,7 @@ class MarsBuildPlatformTest {
           val before = analyze()
           assertEquals(8, before.diagnostics.size)
           withContext(Dispatchers.EDT) {
-            assertThrows(IllegalArgumentException::class.java) {
+            assertThrows<IllegalArgumentException> {
               settings.changeAssemblerErrorLimit(0)
             }
             val configurable = MarsAssemblyConfigurable(project)
@@ -1073,7 +1066,7 @@ class MarsBuildPlatformTest {
               assertEquals(ApplicationInfo.maximumErrorMessages.toString(), field.text)
               for (invalid in listOf("0", "-1", "word", "2147483648")) {
                 field.text = invalid
-                assertThrows(ConfigurationException::class.java) { configurable.apply() }
+                assertThrows<ConfigurationException> { configurable.apply() }
               }
               field.text = "2"
               configurable.apply()
@@ -1227,7 +1220,7 @@ class MarsBuildPlatformTest {
               page.reset()
               assertEquals("", path.text)
               path.text = "relative/handler.asm"
-              assertThrows(ConfigurationException::class.java) { page.apply() }
+              assertThrows<ConfigurationException> { page.apply() }
               assertNull(settings.exceptionHandler)
               path.text = kernel.toString()
               page.apply()
@@ -1261,7 +1254,7 @@ class MarsBuildPlatformTest {
           }
           val service = project.service<MarsBuildService>()
           service.assemble(MarsSourceSet(entry, MarsAssemblyMode.DIRECTORY))
-          assertInstanceOf(SuccessResult::class.java, finish().result)
+          assertInstanceOf<SuccessResult>(finish().result)
           val current = readAction {
             assertFalse(before.validate(main) { _, _, _ -> true })
             val reference = requireNotNull(main.findElementAt(main.text.indexOf("trapEntry")))
@@ -1318,12 +1311,12 @@ class MarsBuildPlatformTest {
               },
           )
           service.assemble(entry)
-          assertInstanceOf(FailureResult::class.java, finish().result)
+          assertInstanceOf<FailureResult>(finish().result)
 
           withContext(Dispatchers.EDT) { settings.changeExceptionHandler(kernel.toString()) }
           readAction { assertEquals(entry, analysis.selectedAssembly(handler)?.entry) }
           service.assemble(kernel)
-          assertInstanceOf(SuccessResult::class.java, finish().result)
+          assertInstanceOf<SuccessResult>(finish().result)
           withContext(Dispatchers.EDT) {
             val page = MarsAssemblyConfigurable(project)
             try {
@@ -1421,7 +1414,7 @@ class MarsBuildPlatformTest {
                     .add(CommonDataKeys.VIRTUAL_FILE, main.virtualFile)
                     .build()
             val action = ActionManager.getInstance().getAction("Mars.AssembleDirectory")
-            assertInstanceOf(MarsAssembleDirectoryAction::class.java, action)
+            assertInstanceOf<MarsAssembleDirectoryAction>(action)
             val event =
                 AnActionEvent.createEvent(
                     action,
@@ -1437,7 +1430,7 @@ class MarsBuildPlatformTest {
           }
           var event = events.receive()
           while (event !is FinishBuildEvent) event = events.receive()
-          assertInstanceOf(SuccessResult::class.java, event.result)
+          assertInstanceOf<SuccessResult>(event.result)
           val analysis = project.service<MarsAnalysisService>()
           IndexingTestUtil.suspendUntilIndexesAreReady(project)
           val (fromMain, fromHelper, single) =
@@ -1807,11 +1800,10 @@ class MarsBuildPlatformTest {
             withContext(Dispatchers.EDT) {
               ActionUtil.performAction(action, event(action, project, shared))
             }
-            val start = assertInstanceOf(StartBuildEvent::class.java, events.receive())
+            val start = assertInstanceOf<StartBuildEvent>(events.receive())
             assertEquals("Assemble ${entry.name}", start.buildDescriptor.title)
-            assertInstanceOf(
-                SuccessResult::class.java,
-                assertInstanceOf(FinishBuildEvent::class.java, events.receive()).result,
+            assertInstanceOf<SuccessResult>(
+                assertInstanceOf<FinishBuildEvent>(events.receive()).result,
             )
           }
           fun assertNames(vararg names: String) {
@@ -1933,8 +1925,7 @@ class MarsBuildPlatformTest {
       }
 
   private fun containingEntriesGroup() =
-      assertInstanceOf(
-          MarsContainingEntriesGroup::class.java,
+      assertInstanceOf<MarsContainingEntriesGroup>(
           ActionManager.getInstance().getAction("Mars.AssembleContainingEntry"),
       )
 
@@ -2047,10 +2038,9 @@ class MarsBuildPlatformTest {
           IndexingTestUtil.suspendUntilIndexesAreReady(project)
           suspend fun assemble() {
             invokeAction(main)
-            assertInstanceOf(StartBuildEvent::class.java, events.receive())
-            assertInstanceOf(
-                SuccessResult::class.java,
-                assertInstanceOf(FinishBuildEvent::class.java, events.receive()).result,
+            assertInstanceOf<StartBuildEvent>(events.receive())
+            assertInstanceOf<SuccessResult>(
+                assertInstanceOf<FinishBuildEvent>(events.receive()).result,
             )
           }
           fun target(at: Int = offset): PsiElement? = fixture.file.findReferenceAt(at)?.resolve()
@@ -2441,8 +2431,7 @@ class MarsBuildPlatformTest {
           Files.write(entry.resolveSibling("malformed.mars"), malformedBytes)
         }
     MarsSessionService.createMarsComponent().context().use { disk ->
-      val failure =
-          assertThrows(ProcessingException::class.java) { disk.assemble(listOf(malformedOnDisk)) }
+      val failure = assertThrows<ProcessingException> { disk.assemble(listOf(malformedOnDisk)) }
       val diskDiagnostic = failure.errors()!!.errorMessages.single()
       assertEquals(diagnostic.line, diskDiagnostic.line)
       assertEquals(diagnostic.column, diskDiagnostic.position)
@@ -2563,16 +2552,15 @@ class MarsBuildPlatformTest {
               }
           val capture = captureAssemblySources(listOf(entry.toNioPath()), null)
           invokeAction(entry)
-          val start = assertInstanceOf(StartBuildEvent::class.java, events.receive())
-          val error = assertInstanceOf(FileMessageEvent::class.java, events.receive())
+          val start = assertInstanceOf<StartBuildEvent>(events.receive())
+          val error = assertInstanceOf<FileMessageEvent>(events.receive())
           assertEquals(start.id, error.parentId)
           assertTrue(error.message.contains("MISSING"))
           assertEquals(include.toNioPath(), error.filePosition.path)
           assertEquals(1, error.filePosition.startLine)
           assertEquals(3, error.filePosition.startColumn)
           withContext(Dispatchers.EDT) {
-            val link =
-                assertInstanceOf(OpenFileDescriptor::class.java, error.getNavigatable(project))
+            val link = assertInstanceOf<OpenFileDescriptor>(error.getNavigatable(project))
             assertEquals(include, link.file.mipsAssemblySourceOrigin)
             assertEquals(setOf(entry), link.file.mipsAssemblySourceEntries)
             assertEquals(source.indexOf("MISSING"), link.offset)
@@ -2593,9 +2581,8 @@ class MarsBuildPlatformTest {
             assertFalse(stale is FileMessageEvent)
             assertNull(stale.getNavigatable(project))
           }
-          assertInstanceOf(
-              FailureResult::class.java,
-              assertInstanceOf(FinishBuildEvent::class.java, events.receive()).result,
+          assertInstanceOf<FailureResult>(
+              assertInstanceOf<FinishBuildEvent>(events.receive()).result,
           )
         } finally {
           Disposer.dispose(owner)
@@ -2622,29 +2609,26 @@ class MarsBuildPlatformTest {
               }
 
           invokeAction(entry)
-          val start = assertInstanceOf(StartBuildEvent::class.java, events.receive())
-          val error = assertInstanceOf(FileMessageEvent::class.java, events.receive())
+          val start = assertInstanceOf<StartBuildEvent>(events.receive())
+          val error = assertInstanceOf<FileMessageEvent>(events.receive())
           assertEquals(start.id, error.parentId)
           assertTrue(error.message.contains("Recursive include of file"))
           assertEquals(include.toNioPath(), error.filePosition.path)
           assertEquals(1, error.filePosition.startLine)
           readAction {
-            val link =
-                assertInstanceOf(OpenFileDescriptor::class.java, error.getNavigatable(project))
+            val link = assertInstanceOf<OpenFileDescriptor>(error.getNavigatable(project))
             assertEquals(include, link.file)
             assertEquals(child.indexOf(path), link.offset)
           }
-          assertInstanceOf(
-              FailureResult::class.java,
-              assertInstanceOf(FinishBuildEvent::class.java, events.receive()).result,
+          assertInstanceOf<FailureResult>(
+              assertInstanceOf<FinishBuildEvent>(events.receive()).result,
           )
 
           withContext(Dispatchers.EDT) { edit(include, "nop\n") }
           invokeAction(entry)
-          assertInstanceOf(StartBuildEvent::class.java, events.receive())
-          assertInstanceOf(
-              SuccessResult::class.java,
-              assertInstanceOf(FinishBuildEvent::class.java, events.receive()).result,
+          assertInstanceOf<StartBuildEvent>(events.receive())
+          assertInstanceOf<SuccessResult>(
+              assertInstanceOf<FinishBuildEvent>(events.receive()).result,
           )
         } finally {
           Disposer.dispose(disposable)
@@ -2667,13 +2651,13 @@ class MarsBuildPlatformTest {
                 main to child
               }
           invokeAction(main)
-          val start = assertInstanceOf(StartBuildEvent::class.java, events.receive())
+          val start = assertInstanceOf<StartBuildEvent>(events.receive())
           for ((file, source, token) in
               listOf(
                   Triple(child, childSource, "bad%name"),
                   Triple(main, mainSource, "fake/.include"),
               )) {
-            val error = assertInstanceOf(FileMessageEvent::class.java, events.receive())
+            val error = assertInstanceOf<FileMessageEvent>(events.receive())
             assertEquals(start.id, error.parentId)
             assertTrue(error.message.endsWith("Invalid language element: $token"), error.message)
             assertEquals(file.toNioPath(), error.filePosition.path)
@@ -2681,15 +2665,14 @@ class MarsBuildPlatformTest {
             assertEquals(source.take(offset).count { it == '\n' }, error.filePosition.startLine)
             assertEquals(1, error.filePosition.startColumn)
             readAction {
-              val link =
-                  assertInstanceOf(OpenFileDescriptor::class.java, error.getNavigatable(project))
+              val link = assertInstanceOf<OpenFileDescriptor>(error.getNavigatable(project))
               assertEquals(file, link.file)
               assertEquals(offset, link.offset)
             }
           }
-          val finish = assertInstanceOf(FinishBuildEvent::class.java, events.receive())
+          val finish = assertInstanceOf<FinishBuildEvent>(events.receive())
           assertEquals(start.id, finish.id)
-          assertInstanceOf(FailureResult::class.java, finish.result)
+          assertInstanceOf<FailureResult>(finish.result)
         } finally {
           Disposer.dispose(disposable)
         }
@@ -2715,22 +2698,20 @@ class MarsBuildPlatformTest {
                 entry to part
               }
           invokeAction(main)
-          val start = assertInstanceOf(StartBuildEvent::class.java, events.receive())
-          val error = assertInstanceOf(FileMessageEvent::class.java, events.receive())
+          val start = assertInstanceOf<StartBuildEvent>(events.receive())
+          val error = assertInstanceOf<FileMessageEvent>(events.receive())
           assertEquals(start.id, error.parentId)
           assertEquals("Unterminated string literal", error.message)
           assertEquals(include.toNioPath(), error.filePosition.path)
           assertEquals(2, error.filePosition.startLine)
           assertEquals(2, error.filePosition.startColumn)
           readAction {
-            val link =
-                assertInstanceOf(OpenFileDescriptor::class.java, error.getNavigatable(project))
+            val link = assertInstanceOf<OpenFileDescriptor>(error.getNavigatable(project))
             assertEquals(include, link.file)
             assertEquals(source.indexOf(line) + 2, link.offset)
           }
-          assertInstanceOf(
-              FailureResult::class.java,
-              assertInstanceOf(FinishBuildEvent::class.java, events.receive()).result,
+          assertInstanceOf<FailureResult>(
+              assertInstanceOf<FinishBuildEvent>(events.receive()).result,
           )
           withContext(Dispatchers.IO) {
             assertEquals(".data\n.asciiz \"saved\"\n", Files.readString(include.toNioPath()))
@@ -2738,10 +2719,9 @@ class MarsBuildPlatformTest {
 
           withContext(Dispatchers.EDT) { edit(include, source.replace(line, "$line\"")) }
           invokeAction(main)
-          assertInstanceOf(StartBuildEvent::class.java, events.receive())
-          assertInstanceOf(
-              SuccessResult::class.java,
-              assertInstanceOf(FinishBuildEvent::class.java, events.receive()).result,
+          assertInstanceOf<StartBuildEvent>(events.receive())
+          assertInstanceOf<SuccessResult>(
+              assertInstanceOf<FinishBuildEvent>(events.receive()).result,
           )
         } finally {
           Disposer.dispose(disposable)
@@ -2763,27 +2743,26 @@ class MarsBuildPlatformTest {
                 edit(child, source)
                 main to child
               }
-          val session = project.getService(MarsSessionService::class.java).context
+          val session = project.service<MarsSessionService>().context
           val existingProgram = session.assemble(listOf(include.toNioPath()))
 
           invokeAction(main)
-          val start = assertInstanceOf(StartBuildEvent::class.java, events.receive())
+          val start = assertInstanceOf<StartBuildEvent>(events.receive())
           assertEquals("Assemble main.asm", start.buildDescriptor.title)
-          val error = assertInstanceOf(FileMessageEvent::class.java, events.receive())
+          val error = assertInstanceOf<FileMessageEvent>(events.receive())
           assertEquals(start.id, error.parentId)
           assertEquals(include.toNioPath(), error.filePosition.path)
           assertEquals(0, error.filePosition.startLine)
           assertEquals(source.indexOf("missing"), error.filePosition.startColumn)
           assertTrue(error.message.contains("missing"))
           readAction {
-            val link =
-                assertInstanceOf(OpenFileDescriptor::class.java, error.getNavigatable(project))
+            val link = assertInstanceOf<OpenFileDescriptor>(error.getNavigatable(project))
             assertEquals(include, link.file)
             assertEquals(source.indexOf("missing"), link.offset)
           }
-          val finish = assertInstanceOf(FinishBuildEvent::class.java, events.receive())
+          val finish = assertInstanceOf<FinishBuildEvent>(events.receive())
           assertEquals(start.id, finish.id)
-          assertInstanceOf(FailureResult::class.java, finish.result)
+          assertInstanceOf<FailureResult>(finish.result)
           assertSame(existingProgram, session.program)
           withContext(Dispatchers.IO) {
             assertEquals("nop\n", Files.readString(include.toNioPath()))
@@ -2791,10 +2770,10 @@ class MarsBuildPlatformTest {
 
           withContext(Dispatchers.EDT) { edit(include, "nop\n") }
           invokeAction(main)
-          val next = assertInstanceOf(StartBuildEvent::class.java, events.receive())
-          val done = assertInstanceOf(FinishBuildEvent::class.java, events.receive())
+          val next = assertInstanceOf<StartBuildEvent>(events.receive())
+          val done = assertInstanceOf<FinishBuildEvent>(events.receive())
           assertEquals(next.id, done.id)
-          assertInstanceOf(SuccessResult::class.java, done.result)
+          assertInstanceOf<SuccessResult>(done.result)
           assertSame(existingProgram, session.program)
         } finally {
           Disposer.dispose(disposable)
@@ -2820,22 +2799,21 @@ class MarsBuildPlatformTest {
                 main to child
               }
           invokeAction(main)
-          val start = assertInstanceOf(StartBuildEvent::class.java, events.receive())
-          val error = assertInstanceOf(FileMessageEvent::class.java, events.receive())
+          val start = assertInstanceOf<StartBuildEvent>(events.receive())
+          val error = assertInstanceOf<FileMessageEvent>(events.receive())
           assertEquals(start.id, error.parentId)
           assertTrue(error.message.endsWith("Invalid language element: 'ab'"), error.message)
           assertEquals(child.toNioPath(), error.filePosition.path)
           assertEquals(3, error.filePosition.startLine)
           assertEquals(use.indexOf("'ab'"), error.filePosition.startColumn)
           readAction {
-            val link =
-                assertInstanceOf(OpenFileDescriptor::class.java, error.getNavigatable(project))
+            val link = assertInstanceOf<OpenFileDescriptor>(error.getNavigatable(project))
             assertEquals(child, link.file)
             assertEquals(source.indexOf("'ab'"), link.offset)
           }
-          val finish = assertInstanceOf(FinishBuildEvent::class.java, events.receive())
+          val finish = assertInstanceOf<FinishBuildEvent>(events.receive())
           assertEquals(start.id, finish.id)
-          assertInstanceOf(FailureResult::class.java, finish.result)
+          assertInstanceOf<FailureResult>(finish.result)
         } finally {
           Disposer.dispose(disposable)
         }
@@ -2858,22 +2836,21 @@ class MarsBuildPlatformTest {
                 main to child
               }
           invokeAction(main)
-          val start = assertInstanceOf(StartBuildEvent::class.java, events.receive())
-          val error = assertInstanceOf(FileMessageEvent::class.java, events.receive())
+          val start = assertInstanceOf<StartBuildEvent>(events.receive())
+          val error = assertInstanceOf<FileMessageEvent>(events.receive())
           assertEquals(start.id, error.parentId)
           assertTrue(error.message.contains("operand is of incorrect type"), error.message)
           assertEquals(child.toNioPath(), error.filePosition.path)
           assertEquals(3, error.filePosition.startLine)
           assertEquals(use.indexOf($$"$s29"), error.filePosition.startColumn)
           readAction {
-            val link =
-                assertInstanceOf(OpenFileDescriptor::class.java, error.getNavigatable(project))
+            val link = assertInstanceOf<OpenFileDescriptor>(error.getNavigatable(project))
             assertEquals(child, link.file)
             assertEquals(source.indexOf($$"$s29"), link.offset)
           }
-          val finish = assertInstanceOf(FinishBuildEvent::class.java, events.receive())
+          val finish = assertInstanceOf<FinishBuildEvent>(events.receive())
           assertEquals(start.id, finish.id)
-          assertInstanceOf(FailureResult::class.java, finish.result)
+          assertInstanceOf<FailureResult>(finish.result)
         } finally {
           Disposer.dispose(disposable)
         }
@@ -2906,22 +2883,21 @@ class MarsBuildPlatformTest {
                 main
               }
           invokeAction(main)
-          val start = assertInstanceOf(StartBuildEvent::class.java, events.receive())
-          val error = assertInstanceOf(FileMessageEvent::class.java, events.receive())
+          val start = assertInstanceOf<StartBuildEvent>(events.receive())
+          val error = assertInstanceOf<FileMessageEvent>(events.receive())
           assertEquals(start.id, error.parentId)
           assertTrue(error.message.contains("operand is of incorrect type"), error.message)
           assertEquals(main.toNioPath(), error.filePosition.path)
           assertEquals(2, error.filePosition.startLine)
           assertEquals(call.indexOf("BAD"), error.filePosition.startColumn)
           readAction {
-            val link =
-                assertInstanceOf(OpenFileDescriptor::class.java, error.getNavigatable(project))
+            val link = assertInstanceOf<OpenFileDescriptor>(error.getNavigatable(project))
             assertEquals(main, link.file)
             assertEquals(mainText.lastIndexOf("BAD"), link.offset)
           }
-          val finish = assertInstanceOf(FinishBuildEvent::class.java, events.receive())
+          val finish = assertInstanceOf<FinishBuildEvent>(events.receive())
           assertEquals(start.id, finish.id)
-          assertInstanceOf(FailureResult::class.java, finish.result)
+          assertInstanceOf<FailureResult>(finish.result)
         } finally {
           Disposer.dispose(disposable)
         }
@@ -2946,27 +2922,26 @@ class MarsBuildPlatformTest {
               }
           readAction {
             val psi = PsiManager.getInstance(project).findFile(include)!!
-            assertNull(PsiTreeUtil.findChildOfType(psi, PsiErrorElement::class.java))
+            assertNull(psi.childOfType<PsiErrorElement>())
             assertEquals(source, psi.text)
           }
 
           invokeAction(main)
-          val start = assertInstanceOf(StartBuildEvent::class.java, events.receive())
-          val diagnostic = assertInstanceOf(FileMessageEvent::class.java, events.receive())
+          val start = assertInstanceOf<StartBuildEvent>(events.receive())
+          val diagnostic = assertInstanceOf<FileMessageEvent>(events.receive())
           assertEquals(start.id, diagnostic.parentId)
           assertEquals(include.toNioPath(), diagnostic.filePosition.path)
           assertEquals(3, diagnostic.filePosition.startLine)
           assertEquals(use.indexOf("FIRST"), diagnostic.filePosition.startColumn)
           assertTrue(diagnostic.message.contains("FIRST -> SECOND -> FIRST"))
           readAction {
-            val link =
-                assertInstanceOf(OpenFileDescriptor::class.java, diagnostic.getNavigatable(project))
+            val link = assertInstanceOf<OpenFileDescriptor>(diagnostic.getNavigatable(project))
             assertEquals(include, link.file)
             assertEquals(source.lastIndexOf("FIRST"), link.offset)
           }
-          val finish = assertInstanceOf(FinishBuildEvent::class.java, events.receive())
+          val finish = assertInstanceOf<FinishBuildEvent>(events.receive())
           assertEquals(start.id, finish.id)
-          assertInstanceOf(FailureResult::class.java, finish.result)
+          assertInstanceOf<FailureResult>(finish.result)
         } finally {
           Disposer.dispose(disposable)
         }
@@ -2982,8 +2957,7 @@ class MarsBuildPlatformTest {
           text to removed
         }
     val action =
-        assertInstanceOf(
-            MarsAssembleAction::class.java,
+        assertInstanceOf<MarsAssembleAction>(
             ActionManager.getInstance().getAction("Mars.AssembleCurrentFile"),
         )
     readAction {
@@ -3034,16 +3008,16 @@ class MarsBuildPlatformTest {
           }
       val job =
           async(start = CoroutineStart.LAZY) {
-            project.getService(MarsBuildService::class.java).assemble(entry)
+            project.service<MarsBuildService>().assemble(entry)
           }
       val events = recordBuildEvents(disposable) { if (it is StartBuildEvent) job.cancel() }
       job.start()
       job.join()
       assertTrue(job.isCancelled)
-      val start = assertInstanceOf(StartBuildEvent::class.java, events.receive())
-      val finish = assertInstanceOf(FinishBuildEvent::class.java, events.receive())
+      val start = assertInstanceOf<StartBuildEvent>(events.receive())
+      val finish = assertInstanceOf<FinishBuildEvent>(events.receive())
       assertEquals(start.id, finish.id)
-      assertInstanceOf(SkippedResult::class.java, finish.result)
+      assertInstanceOf<SkippedResult>(finish.result)
       assertTrue(events.tryReceive().isFailure)
     } finally {
       Disposer.dispose(disposable)
@@ -3090,7 +3064,7 @@ class MarsBuildPlatformTest {
           val id = Any()
           val warning = AssemblyError(path, 1, 1, "Warning", true)
           val fresh = diagnosticEvent(project, id, warning, capture)
-          assertInstanceOf(FileMessageEvent::class.java, fresh)
+          assertInstanceOf<FileMessageEvent>(fresh)
           assertEquals("WARNING", fresh.kind.name)
           for ((diagnostic, revisions) in
               listOf(
@@ -3113,8 +3087,7 @@ class MarsBuildPlatformTest {
 
   private suspend fun invokeAction(file: VirtualFile) {
     val action =
-        assertInstanceOf(
-            MarsAssembleAction::class.java,
+        assertInstanceOf<MarsAssembleAction>(
             ActionManager.getInstance().getAction("Mars.AssembleCurrentFile"),
         )
     val invocation = event(action, project, file)

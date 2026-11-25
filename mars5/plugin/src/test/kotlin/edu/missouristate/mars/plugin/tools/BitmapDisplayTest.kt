@@ -9,8 +9,8 @@ import edu.missouristate.mars.plugin.tools.MemoryGridDisplay.Options
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertSame
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 
 class BitmapDisplayTest {
   @Test
@@ -105,10 +105,10 @@ class BitmapDisplayTest {
 
   @Test
   fun `reconfiguration drops queued old writes and clamps the memory map range`() {
-    assertThrows(IllegalArgumentException::class.java) { Options(width = 63) }
-    assertThrows(IllegalArgumentException::class.java) { Options(height = 63) }
-    assertThrows(IllegalArgumentException::class.java) { Options(unitWidth = 3) }
-    assertThrows(IllegalArgumentException::class.java) { Options(unitHeight = 3) }
+    assertThrows<IllegalArgumentException> { Options(width = 63) }
+    assertThrows<IllegalArgumentException> { Options(height = 63) }
+    assertThrows<IllegalArgumentException> { Options(unitWidth = 3) }
+    assertThrows<IllegalArgumentException> { Options(unitHeight = 3) }
     MarsSessionService.createMarsComponent().context().use { session ->
       val memory = session.memory
       val display = MemoryGridDisplay(captureAtLaunch = true)

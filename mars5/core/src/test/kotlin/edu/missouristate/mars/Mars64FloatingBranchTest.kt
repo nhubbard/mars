@@ -7,8 +7,8 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
@@ -92,7 +92,7 @@ class Mars64FloatingBranchTest {
       val program = session.assemble(listOf(source), null, extended = false, warnings = false)
       session.editCoprocessor1Pair(31, lowBit)
       program.simulate(1)
-      val failure = assertThrows(ProcessingException::class.java) { program.simulate(1) }
+      val failure = assertThrows<ProcessingException> { program.simulate(1) }
       assertTrue(failure.message!!.contains("control transfer in a delay slot"))
     }
   }

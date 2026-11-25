@@ -7,9 +7,9 @@ import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 
 class Release6HardwareDiagnosticTest {
@@ -41,7 +41,7 @@ class Release6HardwareDiagnosticTest {
       for (register in 9..11) machine.editIntegerRegister(register, -1)
       program.simulate(4)
       for (register in 9..11) assertEquals(0L, machine.registerFile.getLongValueNoNotify(register))
-      val failure = assertThrows(ProcessingException::class.java) { program.simulate(1) }
+      val failure = assertThrows<ProcessingException> { program.simulate(1) }
       assertTrue(failure.message!!.contains("hardware register 4, selector 3"))
       assertEquals(
           RESERVED_INSTRUCTION_EXCEPTION,
@@ -49,8 +49,7 @@ class Release6HardwareDiagnosticTest {
       )
 
       Files.writeString(source, $$"rdhwr $9,$4,8")
-      val invalid =
-          assertThrows(ProcessingException::class.java) { machine.assemble(listOf(source)) }
+      val invalid = assertThrows<ProcessingException> { machine.assemble(listOf(source)) }
       assertTrue(
           invalid
               .errors()!!
@@ -81,7 +80,7 @@ class Release6HardwareDiagnosticTest {
         )
     TestSessions.create().use { machine ->
       fun report() =
-          assertThrows(ProcessingException::class.java) { machine.assemble(listOf(source)) }
+          assertThrows<ProcessingException> { machine.assemble(listOf(source)) }
               .errors()!!
               .generateErrorReport()
 

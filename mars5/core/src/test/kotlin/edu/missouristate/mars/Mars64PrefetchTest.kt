@@ -6,9 +6,9 @@ import edu.missouristate.mars.simulator.Exceptions.RESERVED_INSTRUCTION_EXCEPTIO
 import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 
 class Mars64PrefetchTest {
@@ -43,14 +43,14 @@ class Mars64PrefetchTest {
       program.simulate(2)
       assertEquals(Long.MAX_VALUE, machine.registerFile.getLongValueNoNotify(8))
       assertEquals(Long.MIN_VALUE, machine.registerFile.getLongValueNoNotify(9))
-      assertThrows(ProcessingException::class.java) { program.simulate(1) }
+      assertThrows<ProcessingException> { program.simulate(1) }
       assertEquals(
           RESERVED_INSTRUCTION_EXCEPTION,
           (machine.coprocessor0.getValue(CAUSE) ushr 2) and 31,
       )
 
       Files.writeString(source, $$"pref 0,256($8)")
-      val error = assertThrows(ProcessingException::class.java) { machine.assemble(listOf(source)) }
+      val error = assertThrows<ProcessingException> { machine.assemble(listOf(source)) }
       assertTrue(error.errors()!!.generateErrorReport().contains("range -256 through 255"))
     }
   }

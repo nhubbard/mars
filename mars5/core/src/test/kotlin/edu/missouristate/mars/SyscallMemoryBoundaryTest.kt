@@ -2,8 +2,8 @@ package edu.missouristate.mars
 
 import edu.missouristate.mars.core.InstructionContext
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 
 class SyscallMemoryBoundaryTest {
   @Test
@@ -22,11 +22,11 @@ class SyscallMemoryBoundaryTest {
       session.registerFile.updateRegister(4, address)
       val statement = ProgramStatement(0, session.memory.textBaseAddress)
 
-      assertThrows(ProcessingException::class.java) {
+      assertThrows<ProcessingException> {
         session.syscalls.findByNumber(4)!!.simulate(statement, context)
       }
       assertEquals("é", output.toString())
-      assertThrows(ProcessingException::class.java) {
+      assertThrows<ProcessingException> {
         session.syscalls.findByNumber(13)!!.simulate(statement, context)
       }
     }
@@ -43,7 +43,7 @@ class SyscallMemoryBoundaryTest {
       session.registerFile.updateRegister(6, 1)
       val statement = ProgramStatement(0, session.memory.textBaseAddress)
 
-      assertThrows(ProcessingException::class.java) {
+      assertThrows<ProcessingException> {
         session.syscalls.findByNumber(15)!!.simulate(statement, context)
       }
     }

@@ -46,9 +46,9 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertInstanceOf
 
 @TestApplication
 class KeyboardDisplayPlatformTest {
@@ -210,7 +210,7 @@ class KeyboardDisplayPlatformTest {
             }
             assertFalse(type('X'))
             button("Connect").doClick()
-            val scroll = assertInstanceOf(JScrollPane::class.java, view.component)
+            val scroll = assertInstanceOf<JScrollPane>(view.component)
             scroll.setSize(JBUI.scale(295), JBUI.scale(175))
             scroll.doLayout()
             val viewport = scroll.viewport

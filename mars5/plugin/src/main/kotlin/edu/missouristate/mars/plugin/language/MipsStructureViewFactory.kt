@@ -18,7 +18,7 @@ import com.intellij.psi.PsiFile
 import com.intellij.psi.SmartPointerManager
 import com.intellij.psi.impl.source.tree.LeafPsiElement
 import com.intellij.psi.tree.TokenSet
-import com.intellij.psi.util.PsiTreeUtil
+import com.intellij.psi.util.childrenOfType
 import com.intellij.psi.util.elementType
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.analysis.MipsAssemblyContextListener
@@ -222,7 +222,7 @@ private class MipsStructureNode(
               when {
                 part is MipsDeclaration -> part
                 part.elementType in declarationContainers ->
-                    PsiTreeUtil.getChildOfType(part, MipsDeclaration::class.java)
+                    part.childrenOfType<MipsDeclaration>().firstOrNull()
                 else -> null
               }
           if (declaration?.name != null) add(declaration)

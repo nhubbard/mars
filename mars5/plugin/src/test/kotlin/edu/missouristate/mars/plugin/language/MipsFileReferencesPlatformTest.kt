@@ -28,6 +28,7 @@ import com.intellij.psi.PsiManager
 import com.intellij.psi.impl.include.FileIncludeInfo
 import com.intellij.psi.impl.include.FileIncludeManager
 import com.intellij.psi.util.PsiTreeUtil
+import com.intellij.psi.util.childOfType
 import com.intellij.refactoring.move.moveFilesOrDirectories.MoveFilesOrDirectoriesProcessor
 import com.intellij.refactoring.rename.RenameProcessor
 import com.intellij.testFramework.IndexingTestUtil
@@ -53,12 +54,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertInstanceOf
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 
@@ -87,7 +88,7 @@ class MipsFileReferencesPlatformTest {
           val reference = fixture.getReferenceAtCaretPosition()
           assertNotNull(reference)
           assertEquals(files.first, reference!!.resolve())
-          assertInstanceOf(MipsStringLiteral::class.java, reference.element)
+          assertInstanceOf<MipsStringLiteral>(reference.element)
           assertEquals("target.asm", reference.rangeInElement.substring(reference.element.text))
         }
         readAction {
@@ -152,7 +153,7 @@ class MipsFileReferencesPlatformTest {
               fun includeAt(offset: Int) = fixture.file.findElementAt(offset) as MipsStringLiteral
               val offset = source.indexOf("bridge.inc~") + 1
               val literal = includeAt(offset)
-              val backup = assertInstanceOf(MipsFile::class.java, target(offset))
+              val backup = assertInstanceOf<MipsFile>(target(offset))
               assertSame(backup, target(offset))
               assertSame(backup, target(source.lastIndexOf("VALUE") + 1)?.containingFile)
               assertEquals(original, backup.text)
@@ -164,9 +165,9 @@ class MipsFileReferencesPlatformTest {
               assertEquals(ignored, backup.virtualFile.mipsAssemblySourceOrigin)
               assertNull(PsiManager.getInstance(ide).findFile(ignored))
               assertNull(fixture.file.findReferenceAt(offset)?.resolve())
-              assertInstanceOf(PsiDirectory::class.java, target(source.indexOf("parts/") + 1))
+              assertInstanceOf<PsiDirectory>(target(source.indexOf("parts/") + 1))
               val normalTarget =
-                  assertInstanceOf(MipsFile::class.java, target(source.indexOf("normal.inc") + 1))
+                  assertInstanceOf<MipsFile>(target(source.indexOf("normal.inc") + 1))
               assertEquals(normal, normalTarget.virtualFile)
 
               assertNull(handler.getGotoDeclarationTargets(null, 0, fixture.editor))
@@ -200,8 +201,7 @@ class MipsFileReferencesPlatformTest {
 
               fixture.openFileInEditor(backup.virtualFile)
               val next =
-                  assertInstanceOf(
-                      MipsFile::class.java,
+                  assertInstanceOf<MipsFile>(
                       target(original.indexOf("nested.inc~") + 1),
                   )
               assertEquals(nested, next.virtualFile.mipsAssemblySourceOrigin)
@@ -210,7 +210,7 @@ class MipsFileReferencesPlatformTest {
               val revised = original.replace("VALUE 4", "VALUE 9")
               Files.writeString(ignored.toNioPath(), revised)
               ignored.refresh(false, false)
-              val updated = assertInstanceOf(MipsFile::class.java, target(offset))
+              val updated = assertInstanceOf<MipsFile>(target(offset))
               assertEquals(revised, updated.text)
               updated to normalTarget
             }
@@ -246,7 +246,7 @@ class MipsFileReferencesPlatformTest {
           val physical = PsiManager.getInstance(ide).findFile(binary)
           assertNotNull(physical)
           assertSame(physical, fixture.file.findReferenceAt(offset)?.resolve())
-          val generated = assertInstanceOf(MipsFile::class.java, target(offset))
+          val generated = assertInstanceOf<MipsFile>(target(offset))
           assertSame(binary, generated.virtualFile.mipsAssemblySourceOrigin)
           assertEquals(definitions, generated.text)
           assertFalse(generated.virtualFile.isWritable)
@@ -444,11 +444,11 @@ class MipsFileReferencesPlatformTest {
           fixture.file to checkNotNull(manager.refreshAndFindFileByNioPath(included))
         }
     readAction {
-      val literal = PsiTreeUtil.findChildOfType(psi, MipsStringLiteral::class.java)!!
+      val literal = psi.childOfType<MipsStringLiteral>()!!
       val references = literal.references
       assertNotNull(references.first().resolve())
       for (index in 1..2) {
-        val parent = assertInstanceOf(PsiDirectory::class.java, references[index].resolve())
+        val parent = assertInstanceOf<PsiDirectory>(references[index].resolve())
         assertEquals(outsideProject.root, parent.virtualFile.toNioPath())
       }
       assertEquals(target, references.last().resolve()?.containingFile?.virtualFile)
@@ -595,7 +595,7 @@ class MipsFileReferencesPlatformTest {
             fixture.addFileToProject("bad-$index.asm", ".include \"$request\"\n")
           }
       readAction {
-        val literal = PsiTreeUtil.findChildOfType(file, MipsStringLiteral::class.java)!!
+        val literal = file.childOfType<MipsStringLiteral>()!!
         assertNull(literal.references.last().resolve(), request)
       }
       val entry = file.virtualFile.toNioPath()
@@ -658,7 +658,7 @@ class MipsFileReferencesPlatformTest {
             }
         IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
         val reference = readAction {
-          val literal = PsiTreeUtil.findChildOfType(source, MipsStringLiteral::class.java)!!
+          val literal = source.childOfType<MipsStringLiteral>()!!
           literal.references.single().also { assertNull(it.resolve()) }
         }
         val target =
@@ -814,7 +814,7 @@ class MipsFileReferencesPlatformTest {
         withContext(Dispatchers.EDT) {
           for (bad in listOf("early\"quote.asm", "line\nbreak.asm")) {
             val file = fixture.configureByText(MipsFileType, ".include \"old.asm\"\n")
-            val literal = PsiTreeUtil.findChildOfType(file, MipsStringLiteral::class.java)!!
+            val literal = file.childOfType<MipsStringLiteral>()!!
             val manipulator = ElementManipulators.getManipulator(literal)!!
             assertEquals(
                 TextRange(1, literal.textLength - 1),
@@ -833,10 +833,10 @@ class MipsFileReferencesPlatformTest {
             assertEquals(".include \"old.asm\"\n", file.text)
           }
           val file = fixture.configureByText(MipsFileType, ".include \"old.asm\"\n")
-          val literal = PsiTreeUtil.findChildOfType(file, MipsStringLiteral::class.java)!!
+          val literal = file.childOfType<MipsStringLiteral>()!!
           WriteCommandAction.runWriteCommandAction(project.get()) {
             val updated = ElementManipulators.handleContentChange(literal, " raw?name.asm ")
-            assertInstanceOf(MipsStringLiteral::class.java, updated)
+            assertInstanceOf<MipsStringLiteral>(updated)
           }
           assertEquals(".include \" raw?name.asm \"\n", file.text)
         }
@@ -850,7 +850,7 @@ class MipsFileReferencesPlatformTest {
         val file =
             PsiFileFactory.getInstance(project.get())
                 .createFileFromText("root.asm", MipsFileType, ".include \"$path\"\n")
-        val literal = PsiTreeUtil.findChildOfType(file, MipsStringLiteral::class.java)!!
+        val literal = file.childOfType<MipsStringLiteral>()!!
         val references = MipsFileReferenceSet(path, literal)
         assertEquals(path, references.pathString)
         assertEquals(if (path.isEmpty()) 0 else 1, references.allReferences.size)

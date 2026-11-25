@@ -1,6 +1,6 @@
 package edu.missouristate.mars.plugin.run
 
-import com.intellij.execution.configurations.ConfigurationTypeUtil
+import com.intellij.execution.configurations.runConfigurationType
 import com.intellij.execution.executors.DefaultRunExecutor
 import com.intellij.execution.process.ProcessEvent
 import com.intellij.execution.process.ProcessListener
@@ -37,6 +37,7 @@ import kotlinx.coroutines.withContext
 import org.jdom.Element
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertInstanceOf
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 
@@ -101,7 +102,7 @@ class MarsSyscallDialogsPlatformTest {
               )
           val (console, dialogs) =
               withContext(Dispatchers.EDT) {
-                val type = ConfigurationTypeUtil.findConfigurationType(MarsRunType::class.java)
+                val type = runConfigurationType<MarsRunType>()
                 val consoleConfig =
                     type.createTemplateConfiguration(project).also {
                       it.readExternal(Element("configuration"))
@@ -143,7 +144,7 @@ class MarsSyscallDialogsPlatformTest {
                   val result = config.getState(executor, env).execute(executor, env.runner)!!
                   Disposer.register(lifetime, result.executionConsole!!)
                   val handler =
-                      assertInstanceOf(MarsProcessHandler::class.java, result.processHandler)
+                      assertInstanceOf<MarsProcessHandler>(result.processHandler)
                           .also(handlers::add)
                   val recording = Recording()
                   handler.addProcessListener(recording)

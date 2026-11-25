@@ -9,8 +9,8 @@ import edu.missouristate.mars.plugin.tools.BranchHistoryTable.Observation
 import edu.missouristate.mars.plugin.tools.BranchHistoryTable.Options
 import edu.missouristate.mars.plugin.tools.BranchHistoryTable.Row
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 
 class BranchHistoryTableTest {
   private val decoders =
@@ -97,8 +97,8 @@ class BranchHistoryTableTest {
 
   @Test
   fun `configuration resets history and the execution log stays bounded`() {
-    assertThrows(IllegalArgumentException::class.java) { Options(size = 7) }
-    assertThrows(IllegalArgumentException::class.java) { Options(historyBits = 3) }
+    assertThrows<IllegalArgumentException> { Options(size = 7) }
+    assertThrows<IllegalArgumentException> { Options(historyBits = 3) }
     val table = BranchHistoryTable()
     val untouched = BranchHistoryTable()
     val initial = table.snapshot()

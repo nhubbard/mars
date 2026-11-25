@@ -4,7 +4,7 @@ import edu.missouristate.mars.api.MarsTarget
 import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertThrows
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
@@ -130,8 +130,7 @@ class Mars64FloatingConversionTest {
       session.editIntegerRegister(8, control.toInt(16))
       session.editCoprocessor1Pair(3, input.toLong(16))
       program.simulate(1)
-      if (trap) assertThrows(ProcessingException::class.java) { program.simulate(1) }
-      else program.simulate(1)
+      if (trap) assertThrows<ProcessingException> { program.simulate(1) } else program.simulate(1)
       assertEquals(result.toInt(16), session.coprocessor1.getValue(31))
       assertEquals(status.toInt(16), session.coprocessor1.floatingStatus)
     }

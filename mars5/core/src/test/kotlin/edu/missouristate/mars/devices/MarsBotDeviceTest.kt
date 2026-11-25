@@ -13,9 +13,9 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertSame
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.EnumSource
@@ -130,8 +130,8 @@ class MarsBotDeviceTest {
       assertFalse(bot.snapshot().available)
     }
     val bot = MarsBotDevice()
-    assertThrows(IllegalArgumentException::class.java) { bot.setInstructionsPerTick(0) }
-    assertThrows(IllegalArgumentException::class.java) { bot.setInstructionsPerTick(1_000_001) }
+    assertThrows<IllegalArgumentException> { bot.setInstructionsPerTick(0) }
+    assertThrows<IllegalArgumentException> { bot.setInstructionsPerTick(1_000_001) }
   }
 
   @Test

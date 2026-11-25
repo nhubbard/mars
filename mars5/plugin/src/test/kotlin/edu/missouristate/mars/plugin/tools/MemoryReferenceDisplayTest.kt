@@ -8,13 +8,13 @@ import edu.missouristate.mars.plugin.tools.MemoryGridDisplay.Options
 import edu.missouristate.mars.plugin.tools.MemoryGridDisplay.ReferenceCell
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 
 class MemoryReferenceDisplayTest {
   @Test
   fun `counts execution accesses by word group and recolors existing cells`() {
-    assertThrows(IllegalArgumentException::class.java) { Options(wordsPerCell = 3) }
+    assertThrows<IllegalArgumentException> { Options(wordsPerCell = 3) }
     MarsSessionService.createMarsComponent().context().use { session ->
       val memory = session.memory
       val display = MemoryGridDisplay(captureAtLaunch = true, mode = Mode.REFERENCES)

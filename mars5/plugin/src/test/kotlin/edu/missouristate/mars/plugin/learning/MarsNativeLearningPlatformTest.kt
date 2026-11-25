@@ -36,6 +36,7 @@ import kotlinx.coroutines.future.await
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertInstanceOf
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 import training.dsl.*
@@ -53,7 +54,7 @@ class MarsNativeLearningPlatformTest {
   fun `native course and language extensions resolve to the packaged MARS learning module`() =
       timeoutRunBlocking {
         val support = LangManager.getInstance().getLangSupportById(MARS_LEARNING_LANGUAGE)!!
-        assertInstanceOf(MarsLearningLanguageSupport::class.java, support)
+        assertInstanceOf<MarsLearningLanguageSupport>(support)
         assertEquals(MARS_LEARNING_LANGUAGE, support.primaryLanguage)
         assertEquals("MARSLearningProject", support.contentRootDirectoryName)
         assertEquals("mars-labs/console/first-program.asm", support.sampleFilePath)

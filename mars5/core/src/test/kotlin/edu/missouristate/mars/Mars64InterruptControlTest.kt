@@ -7,9 +7,9 @@ import edu.missouristate.mars.simulator.Exceptions.EXTERNAL_INTERRUPT_KEYBOARD
 import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 
 class Mars64InterruptControlTest {
@@ -44,7 +44,7 @@ class Mars64InterruptControlTest {
       program.simulate(6)
       assertEquals(42, session.registerFile.getValueNoNotify(9))
       assertEquals(43, session.registerFile.getValueNoNotify(10))
-      val fault = assertThrows(ProcessingException::class.java) { program.simulate(1) }
+      val fault = assertThrows<ProcessingException> { program.simulate(1) }
       assertTrue(fault.message!!.contains("forbidden slot"))
     }
   }

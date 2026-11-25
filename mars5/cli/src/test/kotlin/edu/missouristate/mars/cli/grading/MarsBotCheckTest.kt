@@ -7,8 +7,8 @@ import java.io.ByteArrayOutputStream
 import java.nio.file.Path
 import kotlin.io.path.writeText
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 
 class MarsBotCheckTest {
@@ -19,13 +19,13 @@ class MarsBotCheckTest {
     val entry = directory.resolve("case.asm").also { it.writeText("nop\nnop\n") }
     DaggerMarsComponent.builder().guiProxy(HeadlessGuiProxy()).build().context().use { session ->
       val program = session.assemble(listOf(entry))
-      assertThrows(CaseFailure::class.java) {
+      assertThrows<CaseFailure> {
         AssemblyCase(session, program.symbolMap(), ByteArrayOutputStream()).use { case ->
-          assertThrows(IllegalArgumentException::class.java) { case.connectMarsBot(0) }
+          assertThrows<IllegalArgumentException> { case.connectMarsBot(0) }
           case.connectMarsBot()
-          assertThrows(CaseFailure::class.java) { case.connectMarsBot() }
+          assertThrows<CaseFailure> { case.connectMarsBot() }
           case.step()
-          assertThrows(CaseFailure::class.java) { case.connectMarsBot() }
+          assertThrows<CaseFailure> { case.connectMarsBot() }
           throw CaseFailure("exercise cleanup")
         }
       }
@@ -52,30 +52,30 @@ class MarsBotCheckTest {
       bot.expectState(2.0, 0.0, 90, moving = true, penDown = true)
       bot.expectTrail(0.0 to 0.0, 2.0 to 0.0)
       bot.expectState(2.01, 0.0, 90, moving = true, penDown = true, tolerance = 0.02)
-      assertThrows(CaseFailure::class.java) {
+      assertThrows<CaseFailure> {
         bot.expectState(2.0, 0.0, 90, moving = false, penDown = true)
       }
-      assertThrows(CaseFailure::class.java) {
+      assertThrows<CaseFailure> {
         bot.expectState(2.0, 0.0, 0, moving = true, penDown = true)
       }
-      assertThrows(CaseFailure::class.java) {
+      assertThrows<CaseFailure> {
         bot.expectState(2.0, 0.0, 90, moving = true, penDown = false)
       }
-      assertThrows(CaseFailure::class.java) {
+      assertThrows<CaseFailure> {
         bot.expectState(1.0, 0.0, 90, moving = true, penDown = true)
       }
-      assertThrows(CaseFailure::class.java) { bot.expectTrail() }
-      assertThrows(CaseFailure::class.java) { bot.expectTrail(0.0 to 0.0, 1.0 to 0.0) }
-      assertThrows(CaseFailure::class.java) { bot.expectTrail(0.0 to 1.0, 2.0 to 0.0) }
-      assertThrows(IllegalArgumentException::class.java) { bot.expectTrail(0.0 to 0.0) }
-      assertThrows(IllegalArgumentException::class.java) {
+      assertThrows<CaseFailure> { bot.expectTrail() }
+      assertThrows<CaseFailure> { bot.expectTrail(0.0 to 0.0, 1.0 to 0.0) }
+      assertThrows<CaseFailure> { bot.expectTrail(0.0 to 1.0, 2.0 to 0.0) }
+      assertThrows<IllegalArgumentException> { bot.expectTrail(0.0 to 0.0) }
+      assertThrows<IllegalArgumentException> {
         bot.expectTrail(Double.NaN to 0.0, 2.0 to 0.0)
       }
-      assertThrows(IllegalArgumentException::class.java) { bot.expectTrail(tolerance = -1.0) }
-      assertThrows(IllegalArgumentException::class.java) {
+      assertThrows<IllegalArgumentException> { bot.expectTrail(tolerance = -1.0) }
+      assertThrows<IllegalArgumentException> {
         bot.expectTrail(tolerance = Double.POSITIVE_INFINITY)
       }
-      assertThrows(IllegalArgumentException::class.java) {
+      assertThrows<IllegalArgumentException> {
         bot.expectState(
             Double.NaN,
             0.0,

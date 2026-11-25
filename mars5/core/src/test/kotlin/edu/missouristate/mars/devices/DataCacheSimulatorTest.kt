@@ -11,9 +11,9 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertSame
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 
 class DataCacheSimulatorTest {
   @Test
@@ -103,9 +103,9 @@ class DataCacheSimulatorTest {
 
   @Test
   fun `cache geometry must use supported sizes and a placement-compatible set width`() {
-    assertThrows(IllegalArgumentException::class.java) { Options(blocks = 3) }
-    assertThrows(IllegalArgumentException::class.java) { Options(wordsPerBlock = 0) }
-    assertThrows(IllegalArgumentException::class.java) { Options(ways = 2) }
+    assertThrows<IllegalArgumentException> { Options(blocks = 3) }
+    assertThrows<IllegalArgumentException> { Options(wordsPerBlock = 0) }
+    assertThrows<IllegalArgumentException> { Options(ways = 2) }
     assertEquals(listOf(1, 2, 4), Placement.SET_ASSOCIATIVE.wayChoices(4))
   }
 
@@ -118,13 +118,13 @@ class DataCacheSimulatorTest {
     cache.access(4)
     cache.access(0)
     val prefix = cache.snapshot()
-    assertThrows(UnsupportedOperationException::class.java) {
+    assertThrows<UnsupportedOperationException> {
       (prefix.blocks as MutableList).clear()
     }
-    assertThrows(UnsupportedOperationException::class.java) {
+    assertThrows<UnsupportedOperationException> {
       (prefix.recent as MutableList).clear()
     }
-    assertThrows(UnsupportedOperationException::class.java) {
+    assertThrows<UnsupportedOperationException> {
       (DataCacheSimulator.sizes as MutableList).clear()
     }
     cache.setReplacement(Replacement.LRU)
@@ -141,7 +141,7 @@ class DataCacheSimulatorTest {
 
   @Test
   fun `logging retains native widths and bounded history without splitting crossing notices`() {
-    assertThrows(IllegalArgumentException::class.java) { DataCacheSimulator(0) }
+    assertThrows<IllegalArgumentException> { DataCacheSimulator(0) }
     val cache = DataCacheSimulator(logLimit = 2)
     cache.configure(Options(1, 4))
     cache.setLogging(true)

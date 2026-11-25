@@ -7,9 +7,9 @@ import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
@@ -56,7 +56,7 @@ class MarsTargetTest {
             0x0085b0df,
         )
     TestSessions.create().use { machine ->
-      assertThrows(ProcessingException::class.java) { machine.assemble(listOf(source)) }
+      assertThrows<ProcessingException> { machine.assemble(listOf(source)) }
       words.forEach { assertNull(machine.instructionSet.findByBinaryCode(it)) }
       machine.selectTarget(MarsTarget.MARS64)
       val program = machine.assemble(listOf(source))
@@ -107,7 +107,7 @@ class MarsTargetTest {
       machine.selectTarget(MarsTarget.MARS64)
       val program = machine.assemble(listOf(source))
       machine.editIntegerRegister(8, Long.MIN_VALUE)
-      val failure = assertThrows(ProcessingException::class.java) { program.simulate(1) }
+      val failure = assertThrows<ProcessingException> { program.simulate(1) }
       assertTrue(failure.message!!.contains("division by zero"))
       assertEquals(Long.MIN_VALUE, machine.registerFile.getLongValueNoNotify(8))
     }
@@ -156,7 +156,7 @@ class MarsTargetTest {
       machine.editIntegerRegister(4, Long.MAX_VALUE)
       machine.editIntegerRegister(5, 1)
       machine.editIntegerRegister(8, 42)
-      val failure = assertThrows(ProcessingException::class.java) { program.simulate(1) }
+      val failure = assertThrows<ProcessingException> { program.simulate(1) }
       assertTrue(failure.message!!.contains("arithmetic overflow"))
       assertEquals(42L, machine.registerFile.getLongValueNoNotify(8))
     }
@@ -189,8 +189,7 @@ class MarsTargetTest {
         )
     TestSessions.create().use { machine ->
       val narrow = Files.writeString(directory.resolve("narrow.s"), ".data\n.dword 1\n")
-      val failure =
-          assertThrows(ProcessingException::class.java) { machine.assemble(listOf(narrow)) }
+      val failure = assertThrows<ProcessingException> { machine.assemble(listOf(narrow)) }
       assertTrue(
           failure.errors()!!.generateErrorReport().contains(".dword requires the MARS64 target"),
       )
@@ -235,7 +234,7 @@ class MarsTargetTest {
     TestSessions.create().use { assembler ->
       assertEquals(MarsTarget.MARS32, assembler.target)
       assertNull(assembler.instructionSet.findByBinaryCode(0x64080001))
-      assertThrows(ProcessingException::class.java) { assembler.assemble(listOf(source)) }
+      assertThrows<ProcessingException> { assembler.assemble(listOf(source)) }
       assembler.selectTarget(MarsTarget.MARS64)
       assembler.memory.byteOrder = littleEndian
       val assembled = assembler.assemble(listOf(source))

@@ -32,6 +32,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 
@@ -180,7 +181,7 @@ class MarsSyscallEnvironmentCustomizerPlatformTest {
     extensions(listOf(first, second)) {
       withIo { io, _ ->
         val failure =
-            assertThrows(IllegalStateException::class.java) {
+            assertThrows<IllegalStateException> {
               withCustomizedSyscallEnvironment(project, entry, io) {
                 fail("Guest must not execute")
               }
@@ -201,7 +202,7 @@ class MarsSyscallEnvironmentCustomizerPlatformTest {
     }
     extensions(listOf(customizer)) {
       withIo { io, _ ->
-        assertThrows(IllegalArgumentException::class.java) {
+        assertThrows<IllegalArgumentException> {
           withCustomizedSyscallEnvironment(project, entry, io) {
             throw IllegalArgumentException("guest failed")
           }

@@ -24,9 +24,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 
 @TestApplication
 class MipsMacroFormalRenamePlatformTest {
@@ -74,7 +74,7 @@ class MipsMacroFormalRenamePlatformTest {
           assertFalse(processor.canProcessElement(root))
           target.checkSetName(target.name)
           val incomplete =
-              assertThrows(IncorrectOperationException::class.java) {
+              assertThrows<IncorrectOperationException> {
                 processor.renameElement(target, newName, emptyArray(), null)
               }
           assertTrue(incomplete.message!!.contains("every reference"))
@@ -168,7 +168,7 @@ class MipsMacroFormalRenamePlatformTest {
           readAction {
             for (formal in formals(file).filter { it.name != name }) {
               val conflict =
-                  assertThrows(IncorrectOperationException::class.java) {
+                  assertThrows<IncorrectOperationException> {
                     formal.checkSetName(name)
                   }
               assertTrue(conflict.message!!.contains(message), "$source\n${conflict.message}")
@@ -186,7 +186,7 @@ class MipsMacroFormalRenamePlatformTest {
         IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
         readAction {
           val problem =
-              assertThrows(IncorrectOperationException::class.java) {
+              assertThrows<IncorrectOperationException> {
                 formals(nested).first().checkSetName("%next")
               }
           assertTrue(problem.message!!.contains("cannot be rewritten"))
@@ -212,7 +212,7 @@ class MipsMacroFormalRenamePlatformTest {
         readAction {
           for (file in listOf(first, header)) {
             val problem =
-                assertThrows(IncorrectOperationException::class.java) {
+                assertThrows<IncorrectOperationException> {
                   formals(file).single().checkSetName("%next")
                 }
             assertTrue(
@@ -221,7 +221,7 @@ class MipsMacroFormalRenamePlatformTest {
             )
           }
           val constant = first.findReferenceAt(first.text.lastIndexOf("LIMIT"))!!
-          assertThrows(IncorrectOperationException::class.java) {
+          assertThrows<IncorrectOperationException> {
             constant.handleElementRename("OTHER")
           }
         }

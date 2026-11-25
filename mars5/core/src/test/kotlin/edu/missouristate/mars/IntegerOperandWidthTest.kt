@@ -5,8 +5,8 @@ import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
@@ -167,8 +167,7 @@ class IntegerOperandWidthTest {
         assertTrue(machine.instructionSet.findByBinaryCode(oldWord)?.name != mnemonic)
       }
       if (traps) {
-        val failure =
-            assertThrows(ProcessingException::class.java) { program.simulate(operations.size) }
+        val failure = assertThrows<ProcessingException> { program.simulate(operations.size) }
         assertTrue(failure.message!!.contains("trap"))
       } else {
         assertFalse(program.simulate(operations.size))
@@ -185,7 +184,7 @@ class IntegerOperandWidthTest {
     val file = Files.writeString(directory.resolve("trap.s"), "teqi $register,0\n")
     TestSessions.create().use { machine ->
       machine.selectTarget(MarsTarget.MARS64)
-      val failure = assertThrows(ProcessingException::class.java) { machine.assemble(listOf(file)) }
+      val failure = assertThrows<ProcessingException> { machine.assemble(listOf(file)) }
       assertTrue(
           failure
               .errors()!!

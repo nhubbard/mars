@@ -5,9 +5,9 @@ import edu.missouristate.mars.mips.hardware.MemoryState
 import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
@@ -71,7 +71,7 @@ class PcRelativeInstructionTest {
                 .trimIndent(),
         )
     TestSessions.create().use { machine ->
-      assertThrows(ProcessingException::class.java) {
+      assertThrows<ProcessingException> {
         machine.assemble(listOf(source), null, extended = false, warnings = false)
       }
       machine.selectTarget(MarsTarget.MARS64)
@@ -128,8 +128,7 @@ class PcRelativeInstructionTest {
       assertEquals(0, machine.registerFile.getValue(11))
 
       Files.writeString(source, $$"addiupc $t0, 5")
-      val problem =
-          assertThrows(ProcessingException::class.java) { machine.assemble(listOf(source)) }
+      val problem = assertThrows<ProcessingException> { machine.assemble(listOf(source)) }
       assertTrue(problem.errors()!!.generateErrorReport().contains("multiple of four"))
     }
   }

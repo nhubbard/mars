@@ -41,9 +41,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertInstanceOf
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.params.ParameterizedTest
@@ -571,7 +571,7 @@ class MarsDownloadedRequirementsTest {
       assertEquals(0, progress.snapshot(content.assessmentIdentity(second))!!.completedAssessments)
       assertEquals(Feedback.POLICY, checkpoint.check())
       if (changePolicy) answer(content, "again") else grant(content, "run-one")
-      assertInstanceOf(Feedback.Checked::class.java, checkpoint.check())
+      assertInstanceOf<Feedback.Checked>(checkpoint.check())
       assertTrue(checkpoint.passed())
       assertEquals(1, progress.snapshot(content.assessmentIdentity(second))!!.completedAssessments)
     } finally {

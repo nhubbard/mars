@@ -40,10 +40,10 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertInstanceOf
 
 @TestApplication
 class ScavengerHuntPlatformTest {
@@ -59,7 +59,7 @@ class ScavengerHuntPlatformTest {
           val hunt = ScavengerHuntView(project)
           try {
             fun reveal(panel: JComponent, control: JComponent, target: JComponent = control) {
-              val scroll = assertInstanceOf(JScrollPane::class.java, panel)
+              val scroll = assertInstanceOf<JScrollPane>(panel)
               scroll.setSize(JBUI.scale(295), JBUI.scale(128))
               scroll.doLayout()
               val viewport = scroll.viewport
@@ -123,7 +123,7 @@ class ScavengerHuntPlatformTest {
             UIUtil.findComponentsOfType(hunt.component, ScavengerHuntBoard::class.java).single()
         fun table() = UIUtil.findComponentsOfType(hunt.component, JBTable::class.java).single()
         fun layoutScoreboard(): JScrollPane {
-          val outer = assertInstanceOf(JScrollPane::class.java, hunt.component)
+          val outer = assertInstanceOf<JScrollPane>(hunt.component)
           outer.setSize(JBUI.scale(295), JBUI.scale(350))
           outer.doLayout()
           outer.viewport.doLayout()

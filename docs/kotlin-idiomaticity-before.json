@@ -1,0 +1,10 @@
+{
+  "kotlin_files": 970,
+  "test_class_tokens": 943,
+  "other_class_tokens": 51,
+  "test_anonymous_objects": 139,
+  "other_anonymous_objects": 103,
+  "dagger_builders": 77,
+  "raw_dynamic_bundles": 24,
+  "production_non_null_assertions": 263
+}

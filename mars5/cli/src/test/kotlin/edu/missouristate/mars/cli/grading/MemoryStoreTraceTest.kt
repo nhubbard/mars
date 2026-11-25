@@ -3,9 +3,9 @@ package edu.missouristate.mars.cli.grading
 import edu.missouristate.mars.cli.HeadlessGuiProxy
 import edu.missouristate.mars.di.DaggerMarsComponent
 import edu.missouristate.mars.mips.hardware.AccessOrigin.Companion.duringExecution
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 
@@ -33,8 +33,8 @@ class MemoryStoreTraceTest {
           memory.setByte(port, 6)
         }
         trace.expectByteStores(address, 255, 255, 6)
-        assertThrows(CaseFailure::class.java) { trace.expectByteStores(address, 255, 6) }
-        assertThrows(CaseFailure::class.java) { trace.expectByteStores(address, 255, 255, 7) }
+        assertThrows<CaseFailure> { trace.expectByteStores(address, 255, 6) }
+        assertThrows<CaseFailure> { trace.expectByteStores(address, 255, 255, 7) }
       }
     }
   }
@@ -48,10 +48,9 @@ class MemoryStoreTraceTest {
       for (start in listOf(port, port + 2)) {
         MemoryStoreTrace(memory, address + 1, 2).use { trace ->
           duringExecution<Unit, Exception> { memory.set(start, 0x12345678, 4) }
-          val error =
-              assertThrows(CaseFailure::class.java) { trace.expectByteStores(address + 1, 0) }
+          val error = assertThrows<CaseFailure> { trace.expectByteStores(address + 1, 0) }
           assertTrue(error.message!!.contains("4-byte store"))
-          assertThrows(CaseFailure::class.java) { trace.expectNone() }
+          assertThrows<CaseFailure> { trace.expectNone() }
         }
       }
     }
@@ -70,8 +69,7 @@ class MemoryStoreTraceTest {
           prefix.close()
           duringExecution<Unit, Exception> { memory.setByte(port + 1, 6) }
           prefix.expectByteStores(address, 63)
-          val error =
-              assertThrows(CaseFailure::class.java) { complete.expectByteStores(address, 63, 6) }
+          val error = assertThrows<CaseFailure> { complete.expectByteStores(address, 63, 6) }
           assertTrue(error.message!!.contains("Expected byte store 2"))
         }
       }
@@ -84,22 +82,21 @@ class MemoryStoreTraceTest {
       val memory = machine.memory
       val port = memory.memoryMapBaseAddress + 0x10
       val address = port.toUInt().toLong()
-      assertThrows(IllegalArgumentException::class.java) { MemoryStoreTrace(memory, -1, 1) }
-      assertThrows(IllegalArgumentException::class.java) { MemoryStoreTrace(memory, address, 0) }
-      assertThrows(IllegalArgumentException::class.java) {
+      assertThrows<IllegalArgumentException> { MemoryStoreTrace(memory, -1, 1) }
+      assertThrows<IllegalArgumentException> { MemoryStoreTrace(memory, address, 0) }
+      assertThrows<IllegalArgumentException> {
         MemoryStoreTrace(memory, Long.MAX_VALUE, 2)
       }
       MemoryStoreTrace(memory, address, 1).use { trace ->
-        assertThrows(IllegalArgumentException::class.java) { trace.expectByteStores(address + 1) }
-        assertThrows(IllegalArgumentException::class.java) { trace.expectByteStores(address, 256) }
+        assertThrows<IllegalArgumentException> { trace.expectByteStores(address + 1) }
+        assertThrows<IllegalArgumentException> { trace.expectByteStores(address, 256) }
         val values = IntArray(65_536) { it and 255 }
         duringExecution<Unit, Exception> {
           values.forEach { memory.setByte(port, it) }
         }
         trace.expectByteStores(address, *values)
         duringExecution<Unit, Exception> { memory.setByte(port, 0) }
-        val error =
-            assertThrows(CaseFailure::class.java) { trace.expectByteStores(address, *values) }
+        val error = assertThrows<CaseFailure> { trace.expectByteStores(address, *values) }
         assertTrue(error.message!!.contains("exceeds 65536 writes"))
       }
     }
