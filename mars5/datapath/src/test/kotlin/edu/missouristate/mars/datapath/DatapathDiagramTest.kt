@@ -11,14 +11,16 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
+import org.junit.jupiter.params.provider.EnumSource
 
 class DatapathDiagramTest {
-  // The fingerprints cover every wire, target, color, and effective lookup from the old diagrams.
+  // Fingerprints retain every wire, target and color from the original diagrams.
+  // Register diagrams also include the explicit correction for the omitted $s6 lookup.
   @ParameterizedTest
   @CsvSource(
-      "MAIN, 102, 6, 27d30f44ed520e8c6bdfbcaef3b077e191281ef971d57b35f7e827c429aaa596",
-      "REGISTERS, 62, 6, bdacd05663ecc53b7ab53c4dc0c180e19445ef7d53055a01df017e74a5c576c7",
-      "CONTROL, 81, 6, 3a8998d2f07c2810de16630e0444a098d36da07e9af15caf0d3eb88188121041",
+      "MAIN, 102, 6, f613178d57fc9d2003357fa35c6066abe040929b3c3f05256e30e7bc5c62020e",
+      "REGISTERS, 62, 6, 3842e4c4b416b609d2a8972c99e280c8d01ed05190267295b398bcd3a437816a",
+      "CONTROL, 81, 6, f1d92c817007a3b8328aca53ef2cae103b4f937017349cc26f14c93a830bc8c6",
       "ALU_CONTROL, 24, 11, 76e867b411b45e5525a4e684dc192d0c8620c2529734613178b87d8e573a3ef8",
   )
   fun retainsEveryDiagramValue(kind: Kind, wireCount: Int, paletteCount: Int, expected: String) {
@@ -53,6 +55,15 @@ class DatapathDiagramTest {
     val digest = MessageDigest.getInstance("SHA-256")
     val canonical = lines.joinToString("\n").toByteArray()
     assertEquals(expected, HexFormat.of().formatHex(digest.digest(canonical)))
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = Kind::class, names = ["MAIN", "REGISTERS", "CONTROL"])
+  fun labelsEveryClassicGeneralPurposeRegister(kind: Kind) {
+    val registers = DatapathDiagram.forKind(kind).registers
+    val encodings = (0 until 32).map { it.toString(2).padStart(5, '0') }.toSet()
+    assertEquals(encodings, registers.keys)
+    assertEquals($$"$s6", registers["10110"])
   }
 
   @Test
