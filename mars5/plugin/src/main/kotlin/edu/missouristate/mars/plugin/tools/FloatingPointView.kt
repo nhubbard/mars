@@ -16,7 +16,6 @@ import com.intellij.ui.dsl.listCellRenderer.textListCellRenderer
 import com.intellij.util.ui.UIUtil
 import com.intellij.util.ui.launchOnShow
 import com.intellij.xdebugger.XDebuggerManager
-import com.intellij.xdebugger.frame.XValueModifier.XModificationCallback
 import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.assembler.RegisterNames
 import edu.missouristate.mars.plugin.debug.MarsDebugProcess
@@ -24,6 +23,7 @@ import edu.missouristate.mars.plugin.debug.MarsSuspendContext
 import edu.missouristate.mars.plugin.debug.RegisterBank
 import edu.missouristate.mars.plugin.debug.RegisterEditRequest
 import edu.missouristate.mars.plugin.debug.getDebugProcesses
+import edu.missouristate.mars.plugin.debug.modificationCallback
 import edu.missouristate.mars.plugin.debug.submitEdit
 import edu.missouristate.mars.plugin.run.MarsProcessHandler
 import edu.missouristate.mars.plugin.tools.FloatingPointRepresentation.Format
@@ -224,18 +224,17 @@ internal class FloatingPointView(private val project: Project) : Disposable {
             bank,
             number,
             value.hex,
-            object : XModificationCallback {
-              override fun valueModified() {
-                if (revision == editRevision) display(value)
-              }
-
-              override fun errorOccurred(errorMessage: String) {
-                UIUtil.invokeLaterIfNeeded {
-                  if (revision == editRevision)
-                      feedback.text = StringUtil.escapeXmlEntities(errorMessage)
-                }
-              }
-            },
+            modificationCallback(
+                valueModified = {
+                  if (revision == editRevision) display(value)
+                },
+                errorOccurred = { errorMessage ->
+                  UIUtil.invokeLaterIfNeeded {
+                    if (revision == editRevision)
+                        feedback.text = StringUtil.escapeXmlEntities(errorMessage)
+                  }
+                },
+            ),
         )
     stopped.machineEdits.submitEdit(edit)
   }

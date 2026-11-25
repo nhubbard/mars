@@ -7,7 +7,6 @@ import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.runWriteAction
 import com.intellij.openapi.components.service
-import com.intellij.ui.ColoredTableCellRenderer
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.dsl.builder.Align
 import com.intellij.ui.dsl.builder.panel
@@ -27,6 +26,7 @@ import edu.missouristate.mars.mips.hardware.MemoryState
 import edu.missouristate.mars.plugin.run.runMessages
 import edu.missouristate.mars.plugin.topicOf
 import edu.missouristate.mars.plugin.ui.buildColumnInfo
+import edu.missouristate.mars.plugin.ui.coloredTableCellRenderer
 import edu.missouristate.mars.plugin.ui.columnInfo
 import edu.missouristate.mars.simulator.BackStepper.ExecutedInstruction
 import edu.missouristate.mars.util.Binary
@@ -367,30 +367,20 @@ internal class MarsDisassemblyView(
     }
   }
 
-  private fun executionRenderer() =
-      object : ColoredTableCellRenderer() {
-        override fun customizeCellRenderer(
-            table: JTable,
-            value: Any?,
-            selected: Boolean,
-            hasFocus: Boolean,
-            row: Int,
-            column: Int,
-        ) {
-          val text = value as String
-          val instruction = model.getItem(table.convertRowIndexToModel(row))
-          if (!instruction.current) {
-            append(text)
-            return
-          }
-          val highlight =
-              if (instruction.nextIsDelaySlot) MarsMachineHighlight.DELAY
-              else MarsMachineHighlight.CURRENT
-          val style = highlight.tableStyle()
-          if (!selected) style.bgColor?.let { background = it }
-          append(text, style)
-        }
-      }
+  private fun executionRenderer() = coloredTableCellRenderer { table, value, selected, _, row, _ ->
+    val text = value as String
+    val instruction = model.getItem(table.convertRowIndexToModel(row))
+    if (!instruction.current) {
+      append(text)
+      return@coloredTableCellRenderer
+    }
+    val highlight =
+        if (instruction.nextIsDelaySlot) MarsMachineHighlight.DELAY
+        else MarsMachineHighlight.CURRENT
+    val style = highlight.tableStyle()
+    if (!selected) style.bgColor?.let { background = it }
+    append(text, style)
+  }
 
   fun showAddress(address: Long) {
     val context = session.suspendContext as? MarsSuspendContext ?: return

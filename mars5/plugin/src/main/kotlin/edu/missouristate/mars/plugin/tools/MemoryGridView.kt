@@ -35,8 +35,6 @@ import java.awt.Graphics2D
 import java.awt.Point
 import java.awt.Rectangle
 import java.awt.RenderingHints
-import java.awt.event.FocusAdapter
-import java.awt.event.FocusEvent
 import java.awt.event.KeyEvent
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
@@ -374,13 +372,7 @@ internal class MemoryGridCanvas(
     isFocusable = true
     setToolTipText(HtmlChunk.empty())
     getAccessibleContext().accessibleDescription = inspectionHint
-    addFocusListener(
-        object : FocusAdapter() {
-          override fun focusGained(event: FocusEvent) {
-            if (inspected == null) inspect(Point())
-          }
-        },
-    )
+    whenFocusGained { if (inspected == null) inspect(Point()) }
     addMouseListener(
         object : MouseAdapter() {
           override fun mouseClicked(event: MouseEvent) {

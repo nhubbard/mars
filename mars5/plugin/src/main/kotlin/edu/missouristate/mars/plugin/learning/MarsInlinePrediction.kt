@@ -9,8 +9,7 @@ import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.util.text.StringUtil.escapeXmlEntities
 import com.intellij.psi.PsiDocumentManager
-import com.intellij.psi.PsiElement
-import com.intellij.psi.PsiRecursiveElementWalkingVisitor
+import com.intellij.psi.util.descendants
 import edu.missouristate.mars.plugin.dynamicBundleOf
 import edu.missouristate.mars.plugin.language.MipsTypes
 import edu.missouristate.mars.plugin.language.operationHead
@@ -145,23 +144,13 @@ internal object MarsInlinePrediction {
               "negative" -> "addiu"
               else -> "move"
             }
-        var result: TextRange? = null
-        file.accept(
-            object : PsiRecursiveElementWalkingVisitor() {
-              override fun visitElement(element: PsiElement) {
-                if (result != null) return
-                if (
-                    element.node.elementType == MipsTypes.psi("INSTRUCTION") &&
-                        element.operationHead.text == mnemonic
-                ) {
-                  result = element.textRange
-                } else {
-                  super.visitElement(element)
-                }
-              }
-            },
-        )
-        result
+        file
+            .descendants()
+            .firstOrNull {
+              it.node.elementType == MipsTypes.psi("INSTRUCTION") &&
+                  it.operationHead.text == mnemonic
+            }
+            ?.textRange
       }
 
   /** Native highlighting queries this geometry again when the editor scrolls. */

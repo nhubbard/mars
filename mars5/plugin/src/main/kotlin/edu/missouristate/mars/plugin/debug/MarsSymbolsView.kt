@@ -28,6 +28,7 @@ import edu.missouristate.mars.plugin.run.MarsExecutionSources
 import edu.missouristate.mars.plugin.run.runMessages
 import edu.missouristate.mars.plugin.topicOf
 import edu.missouristate.mars.plugin.ui.buildColumnInfo
+import edu.missouristate.mars.plugin.ui.tableStringConverter
 import java.nio.file.Path
 import java.util.Locale
 import java.util.regex.Pattern
@@ -38,7 +39,6 @@ import javax.swing.RowSorter.SortKey
 import javax.swing.SortOrder
 import javax.swing.table.TableModel
 import javax.swing.table.TableRowSorter
-import javax.swing.table.TableStringConverter
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
@@ -240,11 +240,9 @@ internal class MarsSymbolsView(
         )
       }
     }
-    sorter.stringConverter =
-        object : TableStringConverter() {
-          override fun toString(model: TableModel, row: Int, column: Int) =
-              model.getValueAt(row, column).toString()
-        }
+    sorter.stringConverter = tableStringConverter { model, row, column ->
+      model.getValueAt(row, column).toString()
+    }
     project.messageBus
         .connect(this)
         .subscribe(

@@ -8,7 +8,6 @@ import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.openapi.ui.ValidationInfo
 import com.intellij.ui.CollectionComboBoxModel
-import com.intellij.ui.ColoredTableCellRenderer
 import com.intellij.ui.SimpleTextAttributes.REGULAR_ATTRIBUTES
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBTextField
@@ -20,13 +19,13 @@ import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.ListTableModel
 import com.intellij.util.ui.UIUtil
 import com.intellij.xdebugger.XDebugSession
-import com.intellij.xdebugger.frame.XValueModifier.XModificationCallback
 import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.mips.hardware.IntegerRegisterFile.Companion.STACK_POINTER_REGISTER
 import edu.missouristate.mars.mips.hardware.MemoryState
 import edu.missouristate.mars.plugin.build.MarsMemoryExportService
 import edu.missouristate.mars.plugin.build.chooseMemoryExport
 import edu.missouristate.mars.plugin.run.runMessages
+import edu.missouristate.mars.plugin.ui.coloredTableCellRenderer
 import edu.missouristate.mars.plugin.ui.columnInfo
 import edu.missouristate.mars.simulator.BackStepper.MemoryWrite
 import java.awt.Font
@@ -241,18 +240,17 @@ internal class MarsMemoryView(private val session: XDebugSession, private val en
         MemoryWordEditRequest(
             target,
             dialog.expression,
-            object : XModificationCallback {
-              override fun valueModified() {
-                session.rebuildViews()
-                jumpTo(target)
-              }
-
-              override fun errorOccurred(errorMessage: String) {
-                UIUtil.invokeLaterIfNeeded {
-                  status.text = errorMessage
-                }
-              }
-            },
+            modificationCallback(
+                valueModified = {
+                  session.rebuildViews()
+                  jumpTo(target)
+                },
+                errorOccurred = { errorMessage ->
+                  UIUtil.invokeLaterIfNeeded {
+                    status.text = errorMessage
+                  }
+                },
+            ),
         )
     suspension.machineEdits.submitEdit(request, session.suspendContext === suspension)
   }
@@ -354,31 +352,22 @@ internal class MarsMemoryView(private val session: XDebugSession, private val en
   }
 
   private fun writeRenderer(bytesPerValue: Int, separator: String) =
-      object : ColoredTableCellRenderer() {
-        override fun customizeCellRenderer(
-            table: JTable,
-            value: Any?,
-            selected: Boolean,
-            hasFocus: Boolean,
-            row: Int,
-            column: Int,
-        ) {
-          val text = value as String
-          val write = displayedWrite
-          if (write == null || !display.highlightMemoryWrites) {
-            append(text)
-            return
-          }
-          val start = model.getItem(table.convertRowIndexToModel(row)).address
-          val writeStart = write.addressBits
-          val writeEnd = writeStart + write.length
-          val highlight = MarsMachineHighlight.WRITE.tableStyle()
-          for ((index, token) in text.split(separator).withIndex()) {
-            if (index > 0) append(separator)
-            val address = start + index * bytesPerValue
-            val written = address < writeEnd && address + bytesPerValue > writeStart
-            append(token, if (written) highlight else REGULAR_ATTRIBUTES)
-          }
+      coloredTableCellRenderer { table, value, selected, _, row, _ ->
+        val text = value as String
+        val write = displayedWrite
+        if (write == null || !display.highlightMemoryWrites) {
+          append(text)
+          return@coloredTableCellRenderer
+        }
+        val start = model.getItem(table.convertRowIndexToModel(row)).address
+        val writeStart = write.addressBits
+        val writeEnd = writeStart + write.length
+        val highlight = MarsMachineHighlight.WRITE.tableStyle()
+        for ((index, token) in text.split(separator).withIndex()) {
+          if (index > 0) append(separator)
+          val address = start + index * bytesPerValue
+          val written = address < writeEnd && address + bytesPerValue > writeStart
+          append(token, if (written) highlight else REGULAR_ATTRIBUTES)
         }
       }
 

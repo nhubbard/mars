@@ -5,7 +5,7 @@ import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
-import com.intellij.psi.PsiRecursiveElementWalkingVisitor
+import com.intellij.psi.util.descendants
 import edu.missouristate.mars.plugin.analysis.SymbolKind
 import edu.missouristate.mars.plugin.language.MipsTypes
 import edu.missouristate.mars.plugin.language.operationHead
@@ -22,19 +22,14 @@ internal object MarsLessonAnchors {
     val file = manager.getPsiFile(editor.document) ?: return@runReadActionBlocking null
     val labels = mutableListOf<MipsDeclaration>()
     val instructions = mutableListOf<PsiElement>()
-    file.accept(
-        object : PsiRecursiveElementWalkingVisitor() {
-          override fun visitElement(element: PsiElement) {
-            if (element is MipsDeclaration && element.kind == SymbolKind.LABEL) labels += element
-            if (element.node.elementType == MipsTypes.psi("INSTRUCTION")) instructions += element
-            super.visitElement(element)
-          }
-        },
-    )
+    for (element in file.descendants()) {
+      if (element is MipsDeclaration && element.kind == SymbolKind.LABEL) labels += element
+      if (element.node.elementType == MipsTypes.psi("INSTRUCTION")) instructions += element
+    }
     val matches = labels.filter { it.name == anchor.label }
     if (matches.size != 1) return@runReadActionBlocking null
     val label = matches.single()
-    // The PSI visitor collects labels in source order.
+    // Native pre-order traversal collects labels in source order.
     val next =
         labels.firstOrNull { it.textOffset > label.textOffset }?.textOffset ?: file.textLength
     instructions

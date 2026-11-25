@@ -26,7 +26,6 @@ import com.intellij.xdebugger.XDebugProcessStarter
 import com.intellij.xdebugger.XDebugSession
 import com.intellij.xdebugger.XDebugSessionListener
 import com.intellij.xdebugger.XDebuggerManager
-import com.intellij.xdebugger.frame.XValueModifier.XModificationCallback
 import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.cli.grading.FunctionFileReadCheck
 import edu.missouristate.mars.mips.hardware.VectorRegister
@@ -40,6 +39,7 @@ import edu.missouristate.mars.plugin.debug.RegisterBank
 import edu.missouristate.mars.plugin.debug.RegisterEditRequest
 import edu.missouristate.mars.plugin.debug.debugSessionListener
 import edu.missouristate.mars.plugin.debug.findBreakpointType
+import edu.missouristate.mars.plugin.debug.modificationCallback
 import edu.missouristate.mars.plugin.debug.submitEdit
 import edu.missouristate.mars.plugin.learning.MarsDownloadedDebugCheckpoint.Outcome
 import edu.missouristate.mars.plugin.run.MarsRunService
@@ -255,15 +255,14 @@ class MarsDownloadedDebugCheckpointTest {
                 RegisterBank.CPU,
                 8,
                 "150",
-                object : XModificationCallback {
-                  override fun valueModified() {
-                    changed.complete(null)
-                  }
-
-                  override fun errorOccurred(errorMessage: String) {
-                    changed.complete(errorMessage)
-                  }
-                },
+                modificationCallback(
+                    valueModified = {
+                      changed.complete(null)
+                    },
+                    errorOccurred = { errorMessage ->
+                      changed.complete(errorMessage)
+                    },
+                ),
             ),
         )
         assertNull(changed.await())

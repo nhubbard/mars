@@ -19,7 +19,6 @@ import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.xdebugger.XDebugSession
 import com.intellij.xdebugger.XDebuggerManager
-import com.intellij.xdebugger.frame.XValueModifier.XModificationCallback
 import edu.missouristate.mars.api.InstructionSourceMap.Location
 import edu.missouristate.mars.plugin.run.MarsRunType
 import edu.missouristate.mars.plugin.run.executionListener
@@ -166,15 +165,14 @@ class MarsDebugObservationPlatformTest {
             RegisterBank.CPU,
             8,
             expression,
-            object : XModificationCallback {
-              override fun valueModified() {
-                result.complete(null)
-              }
-
-              override fun errorOccurred(errorMessage: String) {
-                result.complete(errorMessage)
-              }
-            },
+            modificationCallback(
+                valueModified = {
+                  result.complete(null)
+                },
+                errorOccurred = { errorMessage ->
+                  result.complete(errorMessage)
+                },
+            ),
         ),
     )
     return result.await()

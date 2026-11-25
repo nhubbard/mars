@@ -100,7 +100,6 @@ import com.intellij.xdebugger.frame.XExecutionStack.XStackFrameContainer
 import com.intellij.xdebugger.frame.XStackFrame
 import com.intellij.xdebugger.frame.XValue
 import com.intellij.xdebugger.frame.XValueModifier
-import com.intellij.xdebugger.frame.XValueModifier.XModificationCallback
 import com.intellij.xdebugger.impl.actions.XDebuggerActions
 import com.intellij.xdebugger.impl.breakpoints.XBreakpointManagerImpl
 import com.intellij.xdebugger.impl.ui.tree.XDebuggerTree
@@ -1003,15 +1002,14 @@ class MarsDebugPlatformTest {
           MemoryWordEditRequest(
               0x10010000,
               "42",
-              object : XModificationCallback {
-                override fun valueModified() {
-                  edited.complete(null)
-                }
-
-                override fun errorOccurred(errorMessage: String) {
-                  edited.complete(errorMessage)
-                }
-              },
+              modificationCallback(
+                  valueModified = {
+                    edited.complete(null)
+                  },
+                  errorOccurred = { errorMessage ->
+                    edited.complete(errorMessage)
+                  },
+              ),
           ),
       )
       assertNull(edited.await())
@@ -3589,15 +3587,14 @@ class MarsDebugPlatformTest {
           repeat(17) {
             modifier.setValue(
                 expression,
-                object : XModificationCallback {
-                  override fun valueModified() {
-                    fail<Unit>("An unprocessed edit was accepted")
-                  }
-
-                  override fun errorOccurred(errorMessage: String) {
-                    errors.add(errorMessage)
-                  }
-                },
+                modificationCallback(
+                    valueModified = {
+                      fail<Unit>("An unprocessed edit was accepted")
+                    },
+                    errorOccurred = { errorMessage ->
+                      errors.add(errorMessage)
+                    },
+                ),
             )
           }
           assertEquals(listOf("This debugger frame no longer accepts register edits."), errors)
@@ -3613,15 +3610,14 @@ class MarsDebugPlatformTest {
     val result = CompletableDeferred<String?>()
     modifier.setValue(
         input,
-        object : XModificationCallback {
-          override fun valueModified() {
-            result.complete(null)
-          }
-
-          override fun errorOccurred(errorMessage: String) {
-            result.complete(errorMessage)
-          }
-        },
+        modificationCallback(
+            valueModified = {
+              result.complete(null)
+            },
+            errorOccurred = { errorMessage ->
+              result.complete(errorMessage)
+            },
+        ),
     )
     return result.await()
   }
