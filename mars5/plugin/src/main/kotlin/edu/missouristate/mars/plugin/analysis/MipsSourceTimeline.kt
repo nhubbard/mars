@@ -5,6 +5,7 @@ import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.Document
 import com.intellij.openapi.fileEditor.FileDocumentManager
+import com.intellij.openapi.fileTypes.FileType
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectRootModificationTracker
@@ -673,7 +674,12 @@ private class AssemblySyntaxCache {
   val views = CollectionFactory.createConcurrentWeakValueMap<SourceViewKey, SourceView>()
 }
 
-private data class SourceViewKey(val origin: VirtualFile, val name: String, val text: String)
+private data class SourceViewKey(
+    val origin: VirtualFile,
+    val name: String,
+    val type: FileType,
+    val text: String,
+)
 
 private class SourceView(key: SourceViewKey) {
   val file by lazy { mipsAssemblySourceView(key.origin, key.text) }
@@ -700,7 +706,7 @@ private fun readOnlyAssemblySource(
   // Native CachedValues are soft and may recreate the result while its editor is still open.
   // Keep each equal text projection's VirtualFile identity while its PSI is live. Registering a
   // binary originalFile instead would make native refresh load binary contents as text.
-  val key = SourceViewKey(file, file.name, text)
+  val key = SourceViewKey(file, file.name, file.fileType, text)
   val view = project.service<AssemblySyntaxCache>().views.getOrPut(key) { SourceView(key) }
   val syntax = PsiManager.getInstance(project).findFile(view.file) as MipsFile
   syntax.putUserData(sourceViewLifetime, view)
