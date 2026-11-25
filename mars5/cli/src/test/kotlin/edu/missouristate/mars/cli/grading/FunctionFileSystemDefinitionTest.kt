@@ -1,3 +1,5 @@
+@file:Suppress("UnusedDataClassCopyResult")
+
 package edu.missouristate.mars.cli.grading
 
 import org.junit.jupiter.api.Assertions.assertEquals

@@ -31,7 +31,7 @@ class PreparedFunctionAccessPolicyTest {
             else "input: .word 123,456\n.space 8\noutput: .word 0,0\n"
         val source =
             ".data ${if (wide) "0x100000000" else "0x10010000"}\n.space $padding\nbegin: .word 0\n$objects" +
-                "end: .word 0\nprivate_data: .word 7\n.text\nmain: li \$v0,10\nsyscall\nreturned: bc main\nother_return: bc main\nfunction:\n$body\nli \$v0,0\njrc \$ra\n"
+                $$"end: .word 0\nprivate_data: .word 7\n.text\nmain: li $v0,10\nsyscall\nreturned: bc main\nother_return: bc main\nfunction:\n$$body\nli $v0,0\njrc $ra\n"
         machine.assembleSnapshot(
             AssemblySourceSnapshot(listOf(path), mapOf(path to source)),
             null,
@@ -69,7 +69,7 @@ class PreparedFunctionAccessPolicyTest {
           accessPolicies = listOf(policy()),
       )
 
-  private val copy = "lw \$t0,0(\$a0)\nsw \$t0,0(\$a1)\nlw \$t1,4(\$a0)\nsw \$t1,4(\$a1)"
+  private val copy = $$"lw $t0,0($a0)\nsw $t0,0($a1)\nlw $t1,4($a0)\nsw $t1,4($a1)"
 
   private fun evaluate(body: String, case: FunctionCheckCase = contract()) =
       PreparedFunctionChecks.evaluate(image(body), listOf(case), ::session).single()
@@ -77,7 +77,7 @@ class PreparedFunctionAccessPolicyTest {
   @Test
   fun `explicit history capacities preserve cumulative and invocation scopes without truncating evidence`() {
     val body =
-        "li \$t0,70000\nread_again: lw \$t1,0(\$a0)\ndaddiu \$t0,\$t0,-1\nbnezc \$t0,read_again\nnop"
+        $$"li $t0,70000\nread_again: lw $t1,0($a0)\ndaddiu $t0,$t0,-1\nbnezc $t0,read_again\nnop"
     val single = contract().copy(instructionLimit = 900_000)
     val legacy = evaluate(body, single)
     assertFalse(legacy.passed)
@@ -117,6 +117,7 @@ class PreparedFunctionAccessPolicyTest {
     assertTrue(tooSmall.failure!!.contains("60000 notices"), tooSmall.failure)
   }
 
+  @Suppress("UnusedDataClassCopyResult")
   @Test
   fun `history capacities are bounded independently and in aggregate before acquiring a session`() {
     for (capacity in listOf(0, -1, 1_000_001)) assertThrows<IllegalArgumentException> {
@@ -143,21 +144,22 @@ class PreparedFunctionAccessPolicyTest {
     }
   }
 
+  @Suppress("UnusedDataClassCopyResult")
   @Test
   fun `store-only global policy allows padding reads while named objects retain stricter read windows`() {
     val stores = policy().copy(readable = emptyList(), checkReads = false)
     val named =
         FunctionAccessPolicyCheck(FunctionDataAddress("input"), FunctionDataAddress("input", 8))
     val case = contract().copy(accessPolicies = listOf(stores, named))
-    val padding = evaluate("lw \$t0,8(\$a0)\nsw \$zero,0(\$a1)", case)
+    val padding = evaluate($$"lw $t0,8($a0)\nsw $zero,0($a1)", case)
     assertTrue(padding.passed, padding.failure)
-    assertFalse(evaluate("lw \$t0,0(\$a0)", case).passed)
-    assertFalse(evaluate("sw \$zero,8(\$a0)", case).passed)
+    assertFalse(evaluate($$"lw $t0,0($a0)", case).passed)
+    assertFalse(evaluate($$"sw $zero,8($a0)", case).passed)
     assertThrows<IllegalArgumentException> { policy().copy(checkReads = false) }
     val noisyReads = stores.copy(maxAccesses = 1)
     assertFalse(
         evaluate(
-                "lw \$t0,8(\$a0)\nlw \$t0,8(\$a0)",
+                $$"lw $t0,8($a0)\nlw $t0,8($a0)",
                 contract().copy(accessPolicies = listOf(noisyReads)),
             )
             .passed,
@@ -170,7 +172,7 @@ class PreparedFunctionAccessPolicyTest {
         listOf(false, true)) {
       val body =
           copy +
-              "\nlw \$t0,0(\$a1)\ndaddiu \$sp,\$sp,-16\nsd \$ra,0(\$sp)\nld \$ra,0(\$sp)\ndaddiu \$sp,\$sp,16"
+              $$"\nlw $t0,0($a1)\ndaddiu $sp,$sp,-16\nsd $ra,0($sp)\nld $ra,0($sp)\ndaddiu $sp,$sp,16"
       val case = contract().copy(calls = listOf(call(), call().copy(returnTo = "other_return")))
       val result =
           PreparedFunctionChecks.evaluate(
@@ -185,22 +187,21 @@ class PreparedFunctionAccessPolicyTest {
 
   @Test
   fun `unnamed padding reads and restored stores fail despite correct final output`() {
-    for (prefix in
-        listOf("lw \$t2,8(\$a0)", "lw \$t2,8(\$a0)\nsw \$zero,8(\$a0)\nsw \$t2,8(\$a0)")) {
+    for (prefix in listOf($$"lw $t2,8($a0)", $$"lw $t2,8($a0)\nsw $zero,8($a0)\nsw $t2,8($a0)")) {
       val result = evaluate(prefix + "\n" + copy)
       assertFalse(result.passed)
       assertTrue(result.failure!!.contains("outside its permitted caller windows"), result.failure)
     }
-    val restored = evaluate("sw \$zero,12(\$a0)\nsw \$zero,12(\$a0)\n" + copy)
+    val restored = evaluate($$"sw $zero,12($a0)\nsw $zero,12($a0)\n$$copy")
     assertTrue(restored.failure!!.contains("store"), restored.failure)
   }
 
   @Test
   fun `read and write policies are distinct and empty windows permit no accesses`() {
-    assertFalse(evaluate("sw \$zero,0(\$a0)").passed)
+    assertFalse(evaluate($$"sw $zero,0($a0)").passed)
     val writeOnly = contract().copy(accessPolicies = listOf(policy().copy(readable = emptyList())))
-    assertTrue(evaluate("sw \$zero,0(\$a1)", writeOnly).passed)
-    assertFalse(evaluate("lw \$t0,0(\$a1)", writeOnly).passed)
+    assertTrue(evaluate($$"sw $zero,0($a1)", writeOnly).passed)
+    assertFalse(evaluate($$"lw $t0,0($a1)", writeOnly).passed)
     val none =
         contract()
             .copy(
@@ -211,8 +212,8 @@ class PreparedFunctionAccessPolicyTest {
                     ),
             )
     assertTrue(evaluate("", none).passed)
-    assertFalse(evaluate("lw \$t0,0(\$a0)", none).passed)
-    assertFalse(evaluate("sw \$zero,0(\$a1)", none).passed)
+    assertFalse(evaluate($$"lw $t0,0($a0)", none).passed)
+    assertFalse(evaluate($$"sw $zero,0($a1)", none).passed)
   }
 
   @Test
@@ -225,10 +226,10 @@ class PreparedFunctionAccessPolicyTest {
                         policy().copy(readable = listOf(window("input", 2), window("input", 2, 2))),
                     ),
             )
-    assertFalse(evaluate("lw \$t0,0(\$a0)", case).passed)
+    assertFalse(evaluate($$"lw $t0,0($a0)", case).passed)
     assertFalse(
         evaluate(
-                "lw \$t0,4(\$a0)",
+                $$"lw $t0,4($a0)",
                 contract()
                     .copy(
                         accessPolicies =
@@ -237,7 +238,7 @@ class PreparedFunctionAccessPolicyTest {
             )
             .passed,
     )
-    assertFalse(evaluate("lw \$t0,-4(\$a0)").passed)
+    assertFalse(evaluate($$"lw $t0,-4($a0)").passed)
   }
 
   @Test
@@ -245,10 +246,10 @@ class PreparedFunctionAccessPolicyTest {
     val narrow =
         policy()
             .copy(from = FunctionDataAddress("input", 1), until = FunctionDataAddress("input", 3))
-    assertTrue(evaluate("lw \$t0,0(\$a0)", contract().copy(accessPolicies = listOf(narrow))).passed)
+    assertTrue(evaluate($$"lw $t0,0($a0)", contract().copy(accessPolicies = listOf(narrow))).passed)
     assertFalse(
         evaluate(
-                "lw \$t0,0(\$a0)",
+                $$"lw $t0,0($a0)",
                 contract()
                     .copy(
                         accessPolicies =
@@ -262,13 +263,13 @@ class PreparedFunctionAccessPolicyTest {
   @Test
   fun `traffic outside watched intervals is unaffected and setup does not count`() {
     val case = contract().copy(initialMemory = listOf(FunctionMemoryCheck("begin", "01020304")))
-    assertTrue(evaluate("lw \$t0,private_data\nsw \$t0,private_data\n" + copy, case).passed)
+    assertTrue(evaluate($$"lw $t0,private_data\nsw $t0,private_data\n$$copy", case).passed)
   }
 
   @Test
   fun `histories cover later calls and every declared watched interval`() {
     val body =
-        "lw \$t0,private_data\naddiu \$t0,\$t0,1\nsw \$t0,private_data\nli \$t1,9\nbnec \$t0,\$t1,skip\nnop\nlw \$t2,8(\$a0)\nskip:\n$copy"
+        $$"lw $t0,private_data\naddiu $t0,$t0,1\nsw $t0,private_data\nli $t1,9\nbnec $t0,$t1,skip\nnop\nlw $t2,8($a0)\nskip:\n$$copy"
     assertTrue(evaluate(body).passed)
     assertFalse(evaluate(body, contract().copy(calls = listOf(call(), call()))).passed)
     val extra =
@@ -277,7 +278,7 @@ class PreparedFunctionAccessPolicyTest {
             FunctionDataAddress("private_data", 4),
         )
     assertFalse(
-        evaluate("lw \$t0,private_data", contract().copy(accessPolicies = listOf(policy(), extra)))
+        evaluate($$"lw $t0,private_data", contract().copy(accessPolicies = listOf(policy(), extra)))
             .passed,
     )
   }
@@ -336,13 +337,14 @@ class PreparedFunctionAccessPolicyTest {
   fun `bounded traces fail explicitly on overflow instead of dropping forbidden accesses`() {
     val result =
         evaluate(
-            "li \$t0,66000\nloop: lw \$t1,0(\$a0)\naddiu \$t0,\$t0,-1\nbnezc \$t0,loop\nnop",
+            $$"li $t0,66000\nloop: lw $t1,0($a0)\naddiu $t0,$t0,-1\nbnezc $t0,loop\nnop",
             contract().copy(instructionLimit = 400000),
         )
     assertFalse(result.passed)
     assertTrue(result.failure!!.contains("trace exceeds 65536 notices"), result.failure)
   }
 
+  @Suppress("UnusedDataClassCopyResult")
   @Test
   fun `range count and combined sizes are bounded before execution`() {
     assertThrows<IllegalArgumentException> { window("input", -1) }

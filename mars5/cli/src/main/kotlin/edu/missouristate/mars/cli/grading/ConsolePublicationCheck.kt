@@ -59,15 +59,15 @@ data class ConsolePublicationCheck(
           *range.decoded(),
           offset = range.offset,
       )
-      for (range in addressMemory) {
-        val address = execution.readDataAddress(range.value.label, range.value.offset.toLong())
+      for ((at, value) in addressMemory) {
+        val address = execution.readDataAddress(value.label, value.offset.toLong())
         val bytes =
             IntArray(8) { index ->
               val shift =
                   8 * if (execution.byteOrder == ByteOrder.LITTLE_ENDIAN) index else 7 - index
               (address ushr shift and 255L).toInt()
             }
-        execution.expectBytes(range.at.label, *bytes, offset = range.at.offset)
+        execution.expectBytes(at.label, *bytes, offset = at.offset)
       }
     }
   }

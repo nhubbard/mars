@@ -20,13 +20,13 @@ class PreparedFunctionAddressSetupTest {
   private fun image(
       wide: Boolean = false,
       little: Boolean = false,
-      body: String = "ld \$v0,0(\$a0)",
+      body: String = $$"ld $v0,0($a0)",
   ) =
       session().use { machine ->
         machine.memory.byteOrder = little
         val source =
             ".data ${if (wide) "0x100010000" else "0x10010000"}\ncontext: .byte 165:24\ninput: .byte 19:16\n" +
-                ".text\nmain: li \$v0,10\nsyscall\nreturned: nop\nfunction:\n$body\njrc \$ra\n"
+                $$".text\nmain: li $v0,10\nsyscall\nreturned: nop\nfunction:\n$$body\njrc $ra\n"
         val path = directory.resolve("pointers.asm")
         machine.assembleSnapshot(
             AssemblySourceSnapshot(listOf(path), mapOf(path to source)),
@@ -90,8 +90,8 @@ class PreparedFunctionAddressSetupTest {
     // Reconstruct the unaligned field with byte loads, independently of target byte order.
     val body =
         (0..7).joinToString("\n") { index ->
-          "lbu \$t0,$index(\$a0)\n" +
-              (if (index == 0) "move \$v0,\$t0" else "dsll \$v0,\$v0,8\nor \$v0,\$v0,\$t0")
+          $$"lbu $t0,$$index($a0)\n" +
+              (if (index == 0) $$"move $v0,$t0" else $$"dsll $v0,$v0,8\nor $v0,$v0,$t0")
         }
     assertTrue(
         PreparedFunctionChecks.evaluate(
@@ -108,7 +108,7 @@ class PreparedFunctionAddressSetupTest {
   fun `pointer fixtures cannot excuse callee stores or refresh a protected caller stack`() {
     val store =
         PreparedFunctionChecks.evaluate(
-                image(body = "ld \$v0,0(\$a0)\nsd \$v0,0(\$a0)"),
+                image(body = $$"ld $v0,0($a0)\nsd $v0,0($a0)"),
                 listOf(contract(listOf(call()))),
                 ::session,
             )
@@ -151,6 +151,7 @@ class PreparedFunctionAddressSetupTest {
     }
   }
 
+  @Suppress("UnusedDataClassCopyResult")
   @Test
   fun `pointer fixtures share byte range and aggregate case budgets`() {
     assertThrows<IllegalArgumentException> {

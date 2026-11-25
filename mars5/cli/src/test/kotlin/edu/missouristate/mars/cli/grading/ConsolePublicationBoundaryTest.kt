@@ -70,8 +70,8 @@ class ConsolePublicationBoundaryTest {
         machine.assembleSnapshot(
             AssemblySourceSnapshot(listOf(path), mapOf(path to text)),
             null,
-            true,
-            false,
+            extended = true,
+            warnings = false,
         )
         PreparedConsoleChecks.evaluate(
                 machine.captureAssemblyImage {},
@@ -147,6 +147,7 @@ class ConsolePublicationBoundaryTest {
     )
   }
 
+  @Suppress("UnusedDataClassCopyResult")
   @Test
   fun `register maps detach before acquiring a session and constructors reject ambiguous results`() {
     val registers = mutableMapOf("s0" to 9L)
@@ -160,7 +161,7 @@ class ConsolePublicationBoundaryTest {
     for (map in
         listOf(
             mapOf("missing" to 0L),
-            mapOf("v0" to 1L, "\$v0" to 1L),
+            mapOf("v0" to 1L, $$"$v0" to 1L),
             (0..32).associate { it.toString() to 0L },
         )) {
       assertThrows<IllegalArgumentException> {

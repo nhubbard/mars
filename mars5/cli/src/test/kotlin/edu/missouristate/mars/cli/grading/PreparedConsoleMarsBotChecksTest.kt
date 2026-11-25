@@ -58,11 +58,19 @@ class PreparedConsoleMarsBotChecksTest {
       }
 
   private fun expectation(side: Int = 16, rate: Int = 64) =
-      ConsoleMarsBotCheck(rate, side, 0, 90, false, false, listOf(0 to 0, side to 0))
+      ConsoleMarsBotCheck(
+          rate,
+          side,
+          0,
+          90,
+          moving = false,
+          penDown = false,
+          trail = listOf(0 to 0, side to 0),
+      )
 
   @Test
   fun `fresh device cases run actual feedback loops with different implementations sides and rates`() {
-    for (source in listOf(east, east.replace("bnec \$t2,\$s1,wait", "bltuc \$t2,\$s1,wait"))) {
+    for (source in listOf(east, east.replace($$"bnec $t2,$s1,wait", $$"bltuc $t2,$s1,wait"))) {
       val cases =
           listOf(1, 16, 63).flatMap { side ->
             listOf(8, 64, 128).map { rate ->
@@ -100,8 +108,8 @@ class PreparedConsoleMarsBotChecksTest {
     val expected = ConsoleCheckCase("east", "", "", 100_000, marsBot = expectation())
     for (fault in
         listOf(
-            east.replace("sw \$t0,0x20(\$s0)", "nop"),
-            east.replace("sw \$zero,0x50(\$s0)", "nop"),
+            east.replace($$"sw $t0,0x20($s0)", "nop"),
+            east.replace($$"sw $zero,0x50($s0)", "nop"),
         )) {
       val result =
           PreparedConsoleChecks.evaluate(image(fault), listOf(expected), ::session).single()
@@ -126,7 +134,7 @@ class PreparedConsoleMarsBotChecksTest {
         )
     assertTrue(
         PreparedConsoleChecks.evaluate(
-                image(".text\nli \$v0,10\nsyscall\n"),
+                image($$".text\nli $v0,10\nsyscall\n"),
                 listOf(empty),
                 ::session,
             )
@@ -139,8 +147,8 @@ class PreparedConsoleMarsBotChecksTest {
   fun `coordinate and input writes restored to their original bytes are still rejected`() {
     for ((injection, region, size) in
         listOf(
-            Triple("sw \$zero,0x30(\$s0)", 0xffff8030L, 4),
-            Triple("li \$t1,16\nsw \$t1,side", 0x10010000L, 8),
+            Triple($$"sw $zero,0x30($s0)", 0xffff8030L, 4),
+            Triple($$"li $t1,16\nsw $t1,side", 0x10010000L, 8),
         )) {
       val program = image(east.replaceFirst("nop", injection))
       val untraced =
@@ -190,6 +198,7 @@ class PreparedConsoleMarsBotChecksTest {
     assertEquals(0, machine.memory.countObservers())
   }
 
+  @Suppress("UnusedDataClassCopyResult")
   @Test
   fun `device data rejects invalid domains before connecting or executing`() {
     val valid = expectation()

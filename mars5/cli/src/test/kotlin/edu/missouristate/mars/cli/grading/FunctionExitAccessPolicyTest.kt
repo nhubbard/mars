@@ -41,8 +41,8 @@ class FunctionExitAccessPolicyTest {
         machine.assembleSnapshot(
             AssemblySourceSnapshot(listOf(path), mapOf(path to source)),
             null,
-            true,
-            false,
+            extended = true,
+            warnings = false,
         )
         machine.captureAssemblyImage {}
       }

@@ -36,7 +36,7 @@ class PreparedFunctionAddressWindowTest {
                 (if (reordered) output else "")
         val source =
             ".data ${if (wide) "0x100000000" else "0x10010000"}\n.space $padding\n.align 3\n$data" +
-                ".text\nmain: li \$v0,10\nsyscall\nreturned: nop\nother_return: bc main\nfunction:\n$body\nli \$v0,0\njrc \$ra\n"
+                $$".text\nmain: li $v0,10\nsyscall\nreturned: nop\nother_return: bc main\nfunction:\n$$body\nli $v0,0\njrc $ra\n"
         machine.assembleSnapshot(
             AssemblySourceSnapshot(listOf(path), mapOf(path to source)),
             null,
@@ -78,7 +78,7 @@ class PreparedFunctionAddressWindowTest {
   private fun evaluate(body: String, case: FunctionCheckCase = contract()) =
       PreparedFunctionChecks.evaluate(image(body), listOf(case), ::session).single()
 
-  private val valid = "lbu \$t0,0(\$a0)\nsw \$t0,0(\$a2)\nsw \$zero,4(\$a2)\ndaddiu \$v1,\$a0,1"
+  private val valid = $$"lbu $t0,0($a0)\nsw $t0,0($a2)\nsw $zero,4($a2)\ndaddiu $v1,$a0,1"
 
   @Test
   fun `assembled pointer results and selected stores survive relocation wide addresses repeat calls and reordered records`() {
@@ -99,14 +99,14 @@ class PreparedFunctionAddressWindowTest {
   fun `wrong or truncated borrowed pointers fail including a pointer-only result contract`() {
     val onlyPointer = contract().copy(calls = listOf(call().copy(expectedRegisters = emptyMap())))
     assertTrue(evaluate(valid, onlyPointer).passed)
-    for (body in listOf("move \$v1,\$a0", "li \$v1,0")) {
+    for (body in listOf($$"move $v1,$a0", $$"li $v1,0")) {
       val result = evaluate(body, onlyPointer)
       assertFalse(result.passed)
       assertTrue(result.failure!!.contains("Expected v1"), result.failure)
     }
     val narrowed =
         PreparedFunctionChecks.evaluate(
-                image("addiu \$v1,\$a0,1", wide = true),
+                image($$"addiu $v1,$a0,1", wide = true),
                 listOf(onlyPointer),
                 ::session,
             )
@@ -116,12 +116,12 @@ class PreparedFunctionAddressWindowTest {
 
   @Test
   fun `store windows allow reads throughout the watched data while rejecting padding and restored stores`() {
-    assertTrue(evaluate("lw \$t0,padding\n$valid").passed)
+    assertTrue(evaluate($$"lw $t0,padding\n$$valid").passed)
     for (prefix in
         listOf(
-            "sw \$zero,padding",
-            "lw \$t0,padding\nli \$t1,99\nsw \$t1,padding\nsw \$t0,padding",
-            "sw \$zero,last",
+            $$"sw $zero,padding",
+            $$"lw $t0,padding\nli $t1,99\nsw $t1,padding\nsw $t0,padding",
+            $$"sw $zero,last",
         )) {
       val result = evaluate("$prefix\n$valid")
       assertFalse(result.passed)
@@ -132,10 +132,10 @@ class PreparedFunctionAddressWindowTest {
   @Test
   fun `zero permitted stores reject same value writes and crossing stores must fit wholly`() {
     val none = contract().copy(storeBounds = listOf(window(null, 0)))
-    assertTrue(evaluate("lbu \$t0,0(\$a0)\ndaddiu \$v1,\$a0,1", none).passed)
+    assertTrue(evaluate($$"lbu $t0,0($a0)\ndaddiu $v1,$a0,1", none).passed)
     assertFalse(evaluate(valid, none).passed)
-    for (body in listOf("sw \$zero,-4(\$a2)", "sd \$zero,4(\$a2)", "sw \$zero,8(\$a2)")) {
-      val result = evaluate("$body\ndaddiu \$v1,\$a0,1")
+    for (body in listOf($$"sw $zero,-4($a2)", $$"sd $zero,4($a2)", $$"sw $zero,8($a2)")) {
+      val result = evaluate($$"$$body\ndaddiu $v1,$a0,1")
       assertFalse(result.passed)
     }
     val emptyAtOutput =
@@ -152,7 +152,7 @@ class PreparedFunctionAddressWindowTest {
             .copy(calls = listOf(call().copy(expectedAddresses = expected)), storeBounds = bounds)
     val result =
         PreparedFunctionChecks.evaluate(
-                image("sw \$zero,padding\ndaddiu \$v1,\$a0,1"),
+                image($$"sw $zero,padding\ndaddiu $v1,$a0,1"),
                 listOf(case),
                 {
                   expected.clear()
@@ -167,7 +167,7 @@ class PreparedFunctionAddressWindowTest {
     val pointerCase = contract().copy(calls = listOf(call().copy(expectedAddresses = returned)))
     val pointerResult =
         PreparedFunctionChecks.evaluate(
-                image("move \$v1,\$a0"),
+                image($$"move $v1,$a0"),
                 listOf(pointerCase),
                 {
                   returned["v1"] = FunctionDataAddress("input", 4)
@@ -235,7 +235,7 @@ class PreparedFunctionAddressWindowTest {
             )
     for (wide in listOf(false, true)) for (endian in listOf(false, true)) for (padding in
         listOf(0, 264)) {
-      val body = "daddiu \$v1,\$a0,1\nsd \$v1,0(\$a2)"
+      val body = $$"daddiu $v1,$a0,1\nsd $v1,0($a2)"
       val result =
           PreparedFunctionChecks.evaluate(
                   image(body, wide, padding, littleEndian = endian),
@@ -246,7 +246,7 @@ class PreparedFunctionAddressWindowTest {
       assertTrue(result.passed, result.failure)
       val truncated =
           PreparedFunctionChecks.evaluate(
-                  image("daddiu \$v1,\$a0,1\nsw \$v1,0(\$a2)", wide = true, littleEndian = endian),
+                  image($$"daddiu $v1,$a0,1\nsw $v1,0($a2)", wide = true, littleEndian = endian),
                   listOf(case),
                   ::session,
               )
@@ -255,6 +255,7 @@ class PreparedFunctionAddressWindowTest {
     }
   }
 
+  @Suppress("UnusedDataClassCopyResult")
   @Test
   fun `stored pointer checks are captured reject missing labels and count toward memory result bounds`() {
     val checks =
@@ -267,7 +268,7 @@ class PreparedFunctionAddressWindowTest {
     val case = contract().copy(calls = listOf(call().copy(addressMemory = checks)))
     val failed =
         PreparedFunctionChecks.evaluate(
-                image("daddiu \$v1,\$a0,1\nsd \$zero,0(\$a2)"),
+                image($$"daddiu $v1,$a0,1\nsd $zero,0($a2)"),
                 listOf(case),
                 {
                   checks.clear()
@@ -299,9 +300,10 @@ class PreparedFunctionAddressWindowTest {
     }
   }
 
+  @Suppress("UnusedDataClassCopyResult")
   @Test
   fun `a hardcoded continuation cannot fall through a forbidden interval to the requested stop`() {
-    val body = "daddiu \$v1,\$a0,1\nla \$t0,returned\njrc \$t0"
+    val body = $$"daddiu $v1,$a0,1\nla $t0,returned\njrc $t0"
     val calls = listOf(call(), call().copy(returnTo = "other_return"))
     assertTrue(evaluate(body, contract().copy(calls = calls)).passed)
     val checked =
@@ -349,7 +351,7 @@ class PreparedFunctionAddressWindowTest {
       assertFalse(result.passed)
     }
     for (invalid in
-        listOf<() -> Any>(
+        listOf(
             { call().copy(expectedAddresses = mapOf("v0" to FunctionDataAddress("input"))) },
             { call().copy(expectedAddresses = mapOf("2" to FunctionDataAddress("input"))) },
             {

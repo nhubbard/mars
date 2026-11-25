@@ -69,7 +69,7 @@ class PreparedFunctionChecksTest {
           .trimIndent()
 
   private fun program(body: String) =
-      ".text\nmain: li \$v0,10\nsyscall\nafter_invert: bc main\nother_return: bc main\nreverse_and_invert:\n$body\n$helper\n"
+      $$".text\nmain: li $v0,10\nsyscall\nafter_invert: bc main\nother_return: bc main\nreverse_and_invert:\n$$body\n$$helper\n"
 
   private val saved =
       (0..7).associate { "s$it" to (0x1122334400000000L + it * 0x01010101L) } +
@@ -94,7 +94,7 @@ class PreparedFunctionChecksTest {
 
   @Test
   fun `all byte inputs accept a saved-link wrapper and an equivalent tail transfer`() {
-    for (body in listOf(wrapper, "xori \$a0,\$a0,255\nbc reverse_byte")) {
+    for (body in listOf(wrapper, $$"xori $a0,$a0,255\nbc reverse_byte")) {
       val machines = mutableListOf<MarsContext>()
       val result =
           PreparedFunctionChecks.evaluate(
@@ -119,27 +119,27 @@ class PreparedFunctionChecksTest {
   fun `correct low-byte arithmetic cannot hide a broken call contract`() {
     val faults =
         mapOf(
-            "wrong result" to wrapper.replace("xori \$v0,\$v0,255", "nop"),
+            "wrong result" to wrapper.replace($$"xori $v0,$v0,255", "nop"),
             "lost saved upper half" to
                 wrapper
-                    .replace("sd \$ra,8(\$sp)", "sd \$ra,8(\$sp)\nsw \$s0,0(\$sp)")
-                    .replace("ld \$ra,8(\$sp)", "lw \$s0,0(\$sp)\nld \$ra,8(\$sp)"),
+                    .replace($$"sd $ra,8($sp)", $$"sd $ra,8($sp)\nsw $s0,0($sp)")
+                    .replace($$"ld $ra,8($sp)", $$"lw $s0,0($sp)\nld $ra,8($sp)"),
             "wrong restored pointer" to
-                wrapper.replace("daddiu \$sp,\$sp,16", "daddiu \$sp,\$sp,32"),
+                wrapper.replace($$"daddiu $sp,$sp,16", $$"daddiu $sp,$sp,32"),
             "caller byte overwritten" to
                 wrapper.replace(
-                    "xori \$v0,\$v0,255",
-                    "xori \$v0,\$v0,255\nli \$t2,1\nsb \$t2,16(\$sp)",
+                    $$"xori $v0,$v0,255",
+                    $$"xori $v0,$v0,255\nli $t2,1\nsb $t2,16($sp)",
                 ),
             "noisy callee" to
                 wrapper.replace(
-                    "xori \$v0,\$v0,255",
-                    "xori \$v0,\$v0,255\nmove \$a0,\$v0\nli \$v0,1\nsyscall\nli \$v0,151",
+                    $$"xori $v0,$v0,255",
+                    $$"xori $v0,$v0,255\nmove $a0,$v0\nli $v0,1\nsyscall\nli $v0,151",
                 ),
-            "early exit" to "li \$v0,10\nsyscall",
+            "early exit" to $$"li $v0,10\nsyscall",
             "no return" to "loop: bc loop",
-            "wrong continuation" to wrapper.replace("jrc \$ra", "bc main"),
-            "host file service" to "li \$v0,13\nsyscall",
+            "wrong continuation" to wrapper.replace($$"jrc $ra", "bc main"),
+            "host file service" to $$"li $v0,13\nsyscall",
         )
     for ((name, body) in faults) {
       val machines = mutableListOf<MarsContext>()
@@ -164,14 +164,14 @@ class PreparedFunctionChecksTest {
     }
     val skipped =
         PreparedFunctionChecks.evaluate(
-            image(program("li \$v0,151\njrc \$ra")),
+            image(program($$"li $v0,151\njrc $ra")),
             listOf(case()),
             ::session,
         )
     assertTrue(skipped.single().failure!!.contains("helper interval"))
     val fixedReturn =
         PreparedFunctionChecks.evaluate(
-            image(program(wrapper.replace("jrc \$ra", "bc after_invert"))),
+            image(program(wrapper.replace($$"jrc $ra", "bc after_invert"))),
             listOf(
                 case(listOf(call(), call(0).copy(returnTo = "other_return")))
                     .copy(instructionLimit = 1000),
@@ -207,7 +207,7 @@ class PreparedFunctionChecksTest {
         )
     for (target in MarsTarget.entries) for (littleEndian in listOf(false, true)) {
       val assembly =
-          if (target == MarsTarget.MARS32) source.replace("jrc \$ra", "jr \$ra\nnop") else source
+          if (target == MarsTarget.MARS32) source.replace($$"jrc $ra", $$"jr $ra\nnop") else source
       val ordered =
           contract.copy(
               calls =
@@ -303,7 +303,7 @@ class PreparedFunctionChecksTest {
     assertTrue(result.single().passed, result.single().failure)
     val changed = mutableMapOf("a0" to 1L)
     val invalid = case(listOf(call().copy(arguments = changed)))
-    changed["\$4"] = 2L
+    changed[$$"$4"] = 2L
     assertThrows<IllegalArgumentException> {
       PreparedFunctionChecks.evaluate(
           image(program(wrapper)),
@@ -316,7 +316,7 @@ class PreparedFunctionChecksTest {
   @Test
   fun `invalid public contracts cannot acquire unsupported behavior or unbounded work`() {
     for (change in
-        listOf<() -> Any>(
+        listOf(
             { call().copy(entry = "../outside") },
             { call().copy(entry = "after_invert") },
             { call().copy(returnTo = " ") },
@@ -329,7 +329,7 @@ class PreparedFunctionChecksTest {
             { call().copy(expectedRegisters = mapOf("$" to 0)) },
             { case().copy(preservedRegisters = listOf("")) },
             { case().copy(preservedRegisters = listOf("$")) },
-            { call().copy(expectedRegisters = mapOf("v0" to 1, "\$2" to 1)) },
+            { call().copy(expectedRegisters = mapOf("v0" to 1, $$"$2" to 1)) },
             { FunctionHelperCheck("helper", "helper") },
             { case().copy(name = " ") },
             { case().copy(calls = emptyList()) },
@@ -338,7 +338,7 @@ class PreparedFunctionChecksTest {
             { case().copy(instructionLimit = 40_000_001) },
             { case().copy(stackAlignment = 3) },
             { case().copy(callerStackBytes = 65537) },
-            { case().copy(preservedRegisters = listOf("s0", "\$16")) },
+            { case().copy(preservedRegisters = listOf("s0", $$"$16")) },
             { case().copy(helpers = List(33) { FunctionHelperCheck("a$it", "b$it") }) },
         )) assertThrows<IllegalArgumentException> { change() }
     val image = image(program(wrapper))

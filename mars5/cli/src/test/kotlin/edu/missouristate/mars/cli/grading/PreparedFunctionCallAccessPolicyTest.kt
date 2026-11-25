@@ -24,8 +24,8 @@ class PreparedFunctionCallAccessPolicyTest {
         val path = directory.resolve("call-policy.asm")
         val source =
             ".data ${if (wide) "0x100010000" else "0x10010000"}\n.space $padding\nbegin: .word 0\n" +
-                "input: .word 11,22\n.space 4\noutput: .word 0,0\nend: .word 0\n.text\nmain: li \$v0,10\nsyscall\n" +
-                "returned: nop\nother_return: nop\nfunction:\n$body\nli \$v0,0\njrc \$ra\n"
+                $$"input: .word 11,22\n.space 4\noutput: .word 0,0\nend: .word 0\n.text\nmain: li $v0,10\nsyscall\n" +
+                $$"returned: nop\nother_return: nop\nfunction:\n$$body\nli $v0,0\njrc $ra\n"
         machine.assembleSnapshot(
             AssemblySourceSnapshot(listOf(path), mapOf(path to source)),
             null,
@@ -74,7 +74,7 @@ class PreparedFunctionCallAccessPolicyTest {
           accessPolicies = listOf(policy()),
       )
 
-  private val copy = "lw \$t0,0(\$a0)\nsw \$t0,0(\$a1)"
+  private val copy = $$"lw $t0,0($a0)\nsw $t0,0($a1)"
 
   private fun evaluate(body: String, case: FunctionCheckCase = contract()) =
       PreparedFunctionChecks.evaluate(image(body), listOf(case), ::session).single()
@@ -82,8 +82,7 @@ class PreparedFunctionCallAccessPolicyTest {
   @Test
   fun `each invocation owns its slice and prior histories do not observe a later call`() {
     for (wide in listOf(false, true)) for (padding in listOf(0, 260)) {
-      val body =
-          copy + "\ndaddiu \$sp,\$sp,-16\nsd \$ra,0(\$sp)\nld \$ra,0(\$sp)\ndaddiu \$sp,\$sp,16"
+      val body = $$"$$copy\ndaddiu $sp,$sp,-16\nsd $ra,0($sp)\nld $ra,0($sp)\ndaddiu $sp,$sp,16"
       val result =
           PreparedFunctionChecks.evaluate(image(body, wide, padding), listOf(contract()), ::session)
               .single()
@@ -93,7 +92,7 @@ class PreparedFunctionCallAccessPolicyTest {
 
   @Test
   fun `a later call cannot read the preceding slice even when the whole case permits it`() {
-    val body = "beqzc \$a3,skip\nnop\nlw \$t1,-4(\$a0)\nskip:\n$copy"
+    val body = $$"beqzc $a3,skip\nnop\nlw $t1,-4($a0)\nskip:\n$$copy"
     assertTrue(evaluate(body, contract(scoped = false)).passed)
     val result = evaluate(body)
     assertFalse(result.passed)
@@ -108,7 +107,7 @@ class PreparedFunctionCallAccessPolicyTest {
 
   @Test
   fun `same-value stores to the preceding output fail within the later call`() {
-    val body = "beqzc \$a3,skip\nnop\nli \$t1,11\nsw \$t1,-4(\$a1)\nskip:\n$copy"
+    val body = $$"beqzc $a3,skip\nnop\nli $t1,11\nsw $t1,-4($a1)\nskip:\n$$copy"
     assertTrue(evaluate(body, contract(scoped = false)).passed)
     val result = evaluate(body)
     assertFalse(result.passed)
@@ -118,9 +117,9 @@ class PreparedFunctionCallAccessPolicyTest {
 
   @Test
   fun `empty work after nonempty work permits no buffer reads or writes`() {
-    val correct = "beqzc \$a2,finish\nnop\n$copy\nfinish:"
+    val correct = $$"beqzc $a2,finish\nnop\n$$copy\nfinish:"
     assertTrue(evaluate(correct, contract(secondLength = 0)).passed)
-    val lateTest = "lw \$t0,0(\$a0)\nbeqzc \$a2,finish\nnop\nsw \$t0,0(\$a1)\nfinish:"
+    val lateTest = $$"lw $t0,0($a0)\nbeqzc $a2,finish\nnop\nsw $t0,0($a1)\nfinish:"
     assertTrue(evaluate(lateTest, contract(scoped = false, secondLength = 0)).passed)
     val result = evaluate(lateTest, contract(secondLength = 0))
     assertFalse(result.passed)
@@ -138,8 +137,8 @@ class PreparedFunctionCallAccessPolicyTest {
             )
     val case = contract().copy(calls = listOf(first), accessPolicies = emptyList())
     assertTrue(evaluate(copy, case).passed)
-    assertFalse(evaluate("sw \$zero,0(\$a0)\n$copy", case).passed)
-    assertFalse(evaluate("lw \$t1,0(\$a1)\n$copy", case).passed)
+    assertFalse(evaluate($$"sw $zero,0($a0)\n$$copy", case).passed)
+    assertFalse(evaluate($$"lw $t1,0($a1)\n$$copy", case).passed)
     val crossing =
         first.copy(
             accessPolicies =
@@ -152,7 +151,7 @@ class PreparedFunctionCallAccessPolicyTest {
     val broadCall = first.copy(accessPolicies = listOf(policy()))
     val narrowCase = case.copy(calls = listOf(broadCall), accessPolicies = listOf(policy(0, 4)))
     assertTrue(evaluate(copy, narrowCase).passed)
-    assertFalse(evaluate("lw \$t1,4(\$a0)\n$copy", narrowCase).passed)
+    assertFalse(evaluate($$"lw $t1,4($a0)\n$$copy", narrowCase).passed)
   }
 
   @Test
@@ -224,6 +223,7 @@ class PreparedFunctionCallAccessPolicyTest {
     assertThrows<IllegalStateException> { machines.single().claimStoppedSession() }
   }
 
+  @Suppress("UnusedDataClassCopyResult")
   @Test
   fun `call policy counts and combined permitted lengths are bounded before execution`() {
     assertThrows<IllegalArgumentException> { call(0).copy(accessPolicies = List(65) { policy() }) }

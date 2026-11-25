@@ -19,7 +19,7 @@ class PreparedFunctionCallSetupTest {
       DaggerMarsComponent.builder().guiProxy(HeadlessGuiProxy()).build().context()
 
   private fun image(
-      body: String = "lbu \$v0,0(\$a0)\nlbu \$t1,1(\$a0)\nsll \$t1,\$t1,8\nor \$v0,\$v0,\$t1",
+      body: String = $$"lbu $v0,0($a0)\nlbu $t1,1($a0)\nsll $t1,$t1,8\nor $v0,$v0,$t1",
       wide: Boolean = false,
       littleEndian: Boolean = true,
   ) =
@@ -28,7 +28,7 @@ class PreparedFunctionCallSetupTest {
         val path = directory.resolve("call-setup.asm")
         val source =
             ".data ${if (wide) "0x100010000" else "0x10010000"}\ninput: .byte 165:8\nhidden: .word 0\n" +
-                ".text\nmain: li \$v0,10\nsyscall\nreturned: nop\nfunction:\n$body\njrc \$ra\n"
+                $$".text\nmain: li $v0,10\nsyscall\nreturned: nop\nfunction:\n$$body\njrc $ra\n"
         machine.assembleSnapshot(
             AssemblySourceSnapshot(listOf(path), mapOf(path to source)),
             null,
@@ -90,7 +90,7 @@ class PreparedFunctionCallSetupTest {
   @Test
   fun `fixture changes do not reset hidden machine state or excuse simulated stores`() {
     val cache =
-        "dla \$t0,hidden\nlw \$v0,0(\$t0)\nbnezc \$v0,cached\nlbu \$v0,0(\$a0)\nsw \$v0,0(\$t0)\ncached: nop"
+        $$"dla $t0,hidden\nlw $v0,0($t0)\nbnezc $v0,cached\nlbu $v0,0($a0)\nsw $v0,0($t0)\ncached: nop"
     val singleByte =
         contract(
             listOf(
@@ -104,7 +104,7 @@ class PreparedFunctionCallSetupTest {
     assertTrue(stale.failure!!.contains("Call 2"), stale.failure)
     val store =
         PreparedFunctionChecks.evaluate(
-                image("sb \$zero,0(\$a0)\nli \$v0,0"),
+                image($$"sb $zero,0($a0)\nli $v0,0"),
                 listOf(
                     contract(
                         listOf(
@@ -175,6 +175,7 @@ class PreparedFunctionCallSetupTest {
     }
   }
 
+  @Suppress("UnusedDataClassCopyResult")
   @Test
   fun `setup memory contributes to aggregate case capacity and range limits`() {
     assertThrows<IllegalArgumentException> {
@@ -233,7 +234,7 @@ class PreparedFunctionCallSetupTest {
 
   @Test
   fun `instruction allowance remains cumulative across fixture changes`() {
-    val spin = "li \$t0,12\nagain: daddiu \$t0,\$t0,-1\nbnezc \$t0,again\nli \$v0,0"
+    val spin = $$"li $t0,12\nagain: daddiu $t0,$t0,-1\nbnezc $t0,again\nli $v0,0"
     val invocation = call().copy(expectedRegisters = mapOf("v0" to 0L), memory = emptyList())
     val once = contract(listOf(invocation)).copy(instructionLimit = 40)
     assertTrue(

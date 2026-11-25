@@ -43,7 +43,7 @@ class PreparedFunctionMemoryChecksTest {
         val path = directory.resolve("memory-functions.asm")
         val source =
             ".data\n.space $padding\nsource: .byte 1,2,3,4\ndestination: .byte 5,6,7,8\nguard: .byte 9\n" +
-                ".text\nmain: li \$v0,10\nsyscall\nfirst_return: bc main\nsecond_return: bc main\ncopy_two:\n$code\n"
+                $$".text\nmain: li $v0,10\nsyscall\nfirst_return: bc main\nsecond_return: bc main\ncopy_two:\n$$code\n"
         machine.assembleSnapshot(
             AssemblySourceSnapshot(listOf(path), mapOf(path to source)),
             null,
@@ -125,12 +125,12 @@ class PreparedFunctionMemoryChecksTest {
     val faults =
         listOf(
             body.replace(
-                "sb \$t1,0(\$a1)",
-                "beqzc \$t1,skip_store\nnop\nsb \$t1,0(\$a1)\nskip_store:",
+                $$"sb $t1,0($a1)",
+                $$"beqzc $t1,skip_store\nnop\nsb $t1,0($a1)\nskip_store:",
             ),
-            body.replace("daddiu \$a1,\$a1,1", "daddiu \$a1,\$a1,2"),
-            body.replace("sb \$t1,0(\$a1)", "sb \$t1,0(\$a1)\nsb \$zero,0(\$a0)"),
-            body.replace("jrc \$ra", "sb \$zero,guard\njrc \$ra"),
+            body.replace($$"daddiu $a1,$a1,1", $$"daddiu $a1,$a1,2"),
+            body.replace($$"sb $t1,0($a1)", $$"sb $t1,0($a1)\nsb $zero,0($a0)"),
+            body.replace($$"jrc $ra", $$"sb $zero,guard\njrc $ra"),
         )
     for (fault in faults) {
       val result = PreparedFunctionChecks.evaluate(image(fault), listOf(case()), ::session).single()
@@ -240,7 +240,7 @@ class PreparedFunctionMemoryChecksTest {
     assertTrue(result.passed, result.failure)
     val changed = mutableMapOf("a0" to FunctionDataAddress("source"))
     val invalid = case().copy(calls = listOf(call().copy(argumentAddresses = changed)))
-    changed["\$4"] = FunctionDataAddress("destination")
+    changed[$$"$4"] = FunctionDataAddress("destination")
     assertThrows<IllegalArgumentException> {
       PreparedFunctionChecks.evaluate(
           image(),
@@ -263,7 +263,7 @@ class PreparedFunctionMemoryChecksTest {
   @Test
   fun `address and memory contracts are bounded and cannot overwrite caller setup registers`() {
     for (change in
-        listOf<() -> Any>(
+        listOf(
             { FunctionDataAddress("../file") },
             { FunctionDataAddress("source", 1048577) },
             { FunctionDataAddress("source", -1048577) },
@@ -272,7 +272,7 @@ class PreparedFunctionMemoryChecksTest {
             { FunctionMemoryCheck("source", "gg") },
             { FunctionMemoryCheck("source", "00".repeat(1048577)) },
             { call().copy(arguments = mapOf("a0" to 1)) },
-            { call().copy(arguments = mapOf("\$4" to 1)) },
+            { call().copy(arguments = mapOf($$"$4" to 1)) },
             { call().copy(argumentAddresses = mapOf("sp" to FunctionDataAddress("source"))) },
             { call().copy(argumentAddresses = mapOf("ra" to FunctionDataAddress("source"))) },
             { call().copy(argumentAddresses = mapOf("zero" to FunctionDataAddress("source"))) },

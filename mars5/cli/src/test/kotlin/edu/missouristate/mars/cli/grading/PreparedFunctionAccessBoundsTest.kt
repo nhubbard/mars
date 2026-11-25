@@ -24,7 +24,7 @@ class PreparedFunctionAccessBoundsTest {
         val path = directory.resolve("bounded.asm")
         val source =
             ".data\n.space $padding\n.align 3\nbefore: .space 8\nrecord: .space 8\nguard: .space 8\ncounter: .byte 0\n" +
-                ".text\nmain: li \$v0,10\nsyscall\nreturned: bc main\nother_return: bc main\nfunction:\n$body\n"
+                $$".text\nmain: li $v0,10\nsyscall\nreturned: bc main\nother_return: bc main\nfunction:\n$$body\n"
         machine.assembleSnapshot(
             AssemblySourceSnapshot(listOf(path), mapOf(path to source)),
             null,
@@ -57,7 +57,7 @@ class PreparedFunctionAccessBoundsTest {
 
   @Test
   fun `permitted reads and stores work across byte orders relocation repeat calls and fresh machines`() {
-    val body = "lw \$t0,0(\$a0)\nlbu \$t1,1(\$a0)\nsb \$t1,1(\$a0)\njrc \$ra"
+    val body = $$"lw $t0,0($a0)\nlbu $t1,1($a0)\nsb $t1,1($a0)\njrc $ra"
     val case = contract().copy(calls = listOf(call(), call().copy(returnTo = "other_return")))
     for (padding in listOf(0, 264)) for (endian in listOf(false, true)) {
       val results =
@@ -70,7 +70,7 @@ class PreparedFunctionAccessBoundsTest {
     }
     assertTrue(
         evaluate(
-                "jrc \$ra",
+                $$"jrc $ra",
                 contract().copy(accessBounds = listOf(FunctionAccessCheck("record", 16, 4, 0, -4))),
             )
             .passed,
@@ -81,21 +81,21 @@ class PreparedFunctionAccessBoundsTest {
   fun `inactive and crossing accesses fail including reads and restored stores`() {
     val bodies =
         listOf(
-            "lw \$t0,-4(\$a0)",
-            "lw \$t0,4(\$a0)",
-            "ld \$t0,0(\$a0)",
-            "ld \$t0,-8(\$a0)",
-            "sb \$zero,4(\$a0)",
-            "lw \$t0,4(\$a0)\nsw \$zero,4(\$a0)\nsw \$t0,4(\$a0)",
+            $$"lw $t0,-4($a0)",
+            $$"lw $t0,4($a0)",
+            $$"ld $t0,0($a0)",
+            $$"ld $t0,-8($a0)",
+            $$"sb $zero,4($a0)",
+            $$"lw $t0,4($a0)\nsw $zero,4($a0)\nsw $t0,4($a0)",
         )
     for (body in bodies) {
-      val result = evaluate("$body\njrc \$ra")
+      val result = evaluate($$"$$body\njrc $ra")
       assertFalse(result.passed, body)
       assertTrue(result.failure!!.contains("Expected accesses within"), result.failure)
     }
     val empty =
         evaluate(
-            "lbu \$t0,0(\$a0)\njrc \$ra",
+            $$"lbu $t0,0($a0)\njrc $ra",
             contract().copy(accessBounds = listOf(FunctionAccessCheck("record", 16, 0, 0, -4))),
         )
     assertFalse(empty.passed)
@@ -104,9 +104,8 @@ class PreparedFunctionAccessBoundsTest {
 
   @Test
   fun `caller stack protection catches restored and same value stores while private frames remain allowed`() {
-    val saved =
-        "ld \$t0,0(\$sp)\ndli \$t1,0x1122334455667788\nsd \$t1,0(\$sp)\nsd \$t0,0(\$sp)\njrc \$ra"
-    val same = "ld \$t0,0(\$sp)\nsd \$t0,0(\$sp)\njrc \$ra"
+    val saved = $$"ld $t0,0($sp)\ndli $t1,0x1122334455667788\nsd $t1,0($sp)\nsd $t0,0($sp)\njrc $ra"
+    val same = $$"ld $t0,0($sp)\nsd $t0,0($sp)\njrc $ra"
     for (body in listOf(saved, same)) {
       assertTrue(evaluate(body, contract().copy(protectCallerStack = false)).passed)
       val result = evaluate(body)
@@ -114,7 +113,7 @@ class PreparedFunctionAccessBoundsTest {
       assertTrue(result.failure!!.contains("Expected no stores"), result.failure)
     }
     val privateFrame =
-        "daddiu \$sp,\$sp,-16\nsd \$ra,0(\$sp)\nld \$ra,0(\$sp)\ndaddiu \$sp,\$sp,16\njrc \$ra"
+        $$"daddiu $sp,$sp,-16\nsd $ra,0($sp)\nld $ra,0($sp)\ndaddiu $sp,$sp,16\njrc $ra"
     assertTrue(evaluate(privateFrame).passed)
     assertTrue(evaluate(same, contract().copy(callerStackBytes = 0)).passed)
   }
@@ -125,7 +124,7 @@ class PreparedFunctionAccessBoundsTest {
     val case = contract().copy(accessBounds = bounds)
     val result =
         PreparedFunctionChecks.evaluate(
-                image("lw \$t0,4(\$a0)\njrc \$ra"),
+                image($$"lw $t0,4($a0)\njrc $ra"),
                 listOf(case),
                 {
                   bounds.clear()
@@ -139,7 +138,7 @@ class PreparedFunctionAccessBoundsTest {
     repeat(64) { changed += FunctionAccessCheck("record", 4, 0, 4) }
     assertThrows<IllegalArgumentException> {
       PreparedFunctionChecks.evaluate(
-          image("jrc \$ra"),
+          image($$"jrc $ra"),
           listOf(invalid),
           { error("Validate before opening") },
       )
@@ -148,7 +147,7 @@ class PreparedFunctionAccessBoundsTest {
       val machines = mutableListOf<MarsContext>()
       val failed =
           PreparedFunctionChecks.evaluate(
-                  image("jrc \$ra"),
+                  image($$"jrc $ra"),
                   listOf(
                       contract().copy(accessBounds = listOf(FunctionAccessCheck(label, 4, 0, 4))),
                   ),
@@ -169,7 +168,7 @@ class PreparedFunctionAccessBoundsTest {
   @Test
   fun `access ranges and permitted subwindows reject invalid or excessive definitions`() {
     for (invalid in
-        listOf<() -> Any>(
+        listOf(
             { FunctionAccessCheck("../file", 4, 0, 4) },
             { FunctionAccessCheck("record", 0, 0, 0) },
             { FunctionAccessCheck("record", -1, 0, 0) },
@@ -193,8 +192,8 @@ class PreparedFunctionAccessBoundsTest {
   @Test
   fun `a later call cannot evade the window while each case owns a fresh counter`() {
     val body =
-        "lbu \$t2,counter\naddiu \$t2,\$t2,1\nsb \$t2,counter\nli \$t3,2\n" +
-            "bnec \$t2,\$t3,read_only\nnop\nlw \$t0,4(\$a0)\nread_only:\njrc \$ra"
+        $$"lbu $t2,counter\naddiu $t2,$t2,1\nsb $t2,counter\nli $t3,2\n" +
+            $$"bnec $t2,$t3,read_only\nnop\nlw $t0,4($a0)\nread_only:\njrc $ra"
     val assembly = image(body)
     assertTrue(
         PreparedFunctionChecks.evaluate(
@@ -220,7 +219,7 @@ class PreparedFunctionAccessBoundsTest {
   @Test
   fun `overflowing access history fails rather than accepting a truncated trace`() {
     val body =
-        "li \$t2,65537\nrepeat_read:\nlbu \$t0,0(\$a0)\naddiu \$t2,\$t2,-1\nbnezc \$t2,repeat_read\nnop\njrc \$ra"
+        $$"li $t2,65537\nrepeat_read:\nlbu $t0,0($a0)\naddiu $t2,$t2,-1\nbnezc $t2,repeat_read\nnop\njrc $ra"
     val result = evaluate(body, contract().copy(instructionLimit = 400000))
     assertFalse(result.passed)
     assertTrue(result.failure!!.contains("Memory-access trace exceeds 65536"), result.failure)

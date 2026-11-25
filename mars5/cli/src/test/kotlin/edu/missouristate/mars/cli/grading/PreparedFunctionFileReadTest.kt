@@ -22,7 +22,7 @@ class PreparedFunctionFileReadTest {
   private fun session() =
       DaggerMarsComponent.builder().guiProxy(HeadlessGuiProxy()).build().context()
 
-  private val close = "move \$a0,\$t5\nli \$v0,16\nsyscall"
+  private val close = $$"move $a0,$t5\nli $v0,16\nsyscall"
   private val reader =
       $$"""
       move $t7,$a1
@@ -76,9 +76,9 @@ class PreparedFunctionFileReadTest {
         val source = directory.resolve("read.asm")
         val text =
             ".data\npath: .asciiz \"$path\"\nother: .asciiz \"other.bin\"\nbuffer: .space 32\n.text\n" +
-                "main: li \$v0,10\nsyscall\nreturned: bc main\nnop\nfunction:\n$body\n" +
-                "publish: move \$v0,\$zero\nmove \$v1,\$zero\njrc \$ra\nnop\n" +
-                "late_close:\n$close\nmove \$v0,\$zero\njrc \$ra\nnop\n"
+                $$"main: li $v0,10\nsyscall\nreturned: bc main\nnop\nfunction:\n$$body\n" +
+                $$"publish: move $v0,$zero\nmove $v1,$zero\njrc $ra\nnop\n" +
+                $$"late_close:\n$$close\nmove $v0,$zero\njrc $ra\nnop\n"
         machine.assembleSnapshot(
             AssemblySourceSnapshot(listOf(source), mapOf(source to text)),
             null,
@@ -146,11 +146,11 @@ class PreparedFunctionFileReadTest {
     assertTrue(missing.passed, missing.failure)
     val swallowed =
         evaluate(
-            reader.replace("li \$v1,2", "li \$v1,0"),
+            reader.replace($$"li $v1,2", $$"li $v1,0"),
             contract(fixture().copy(failAfterBytes = 1)),
         )
     assertFalse(swallowed.passed)
-    val wrongDescriptor = reader.replace("move \$a0,\$t5\nmove \$a1", "li \$a0,3\nmove \$a1")
+    val wrongDescriptor = reader.replace($$"move $a0,$t5\nmove $a1", $$"li $a0,3\nmove $a1")
     val coincidentError = evaluate(wrongDescriptor, contract(fixture().copy(failAfterBytes = 0)))
     assertFalse(coincidentError.passed)
     assertTrue(
@@ -165,19 +165,18 @@ class PreparedFunctionFileReadTest {
   fun `wrong paths descriptors lifecycle ordering and incomplete consumption are rejected`() {
     val faults =
         mapOf(
-            "no open" to reader.replace("li \$v0,13\nsyscall", "li \$v0,-1"),
-            "write open" to reader.replace("move \$a1,\$zero", "li \$a1,1"),
-            "double open" to
-                reader.replace("move \$t5,\$v0", "move \$t5,\$v0\nli \$v0,13\nsyscall"),
+            "no open" to reader.replace($$"li $v0,13\nsyscall", $$"li $v0,-1"),
+            "write open" to reader.replace($$"move $a1,$zero", $$"li $a1,1"),
+            "double open" to reader.replace($$"move $t5,$v0", $$"move $t5,$v0\nli $v0,13\nsyscall"),
             "leaked descriptor" to reader.replace(close, "nop"),
             "double close" to reader.replace(close, "$close\n$close"),
             "assumed descriptor three" to
-                reader.replace("move \$a0,\$t5\nmove \$a1", "li \$a0,3\nmove \$a1"),
-            "wrong close" to reader.replace(close, "li \$a0,3\nli \$v0,16\nsyscall"),
+                reader.replace($$"move $a0,$t5\nmove $a1", $$"li $a0,3\nmove $a1"),
+            "wrong close" to reader.replace(close, $$"li $a0,3\nli $v0,16\nsyscall"),
             "short read treated as EOF" to reader.replace("bc next_read", "bc done"),
-            "extra read after EOF" to reader.replace("done:\n", "done:\nli \$v0,14\nsyscall\n"),
-            "read after close" to reader.replace(close, "$close\nli \$v0,14\nsyscall"),
-            "read before open" to "li \$a0,19\nli \$v0,14\nsyscall\ndla \$a0,path\n$reader",
+            "extra read after EOF" to reader.replace("done:\n", $$"done:\nli $v0,14\nsyscall\n"),
+            "read after close" to reader.replace(close, $$"$$close\nli $v0,14\nsyscall"),
+            "read before open" to $$"li $a0,19\nli $v0,14\nsyscall\ndla $a0,path\n$$reader",
         )
     for ((name, body) in faults) assertFalse(evaluate(body).passed, name)
     assertFalse(
@@ -204,7 +203,7 @@ class PreparedFunctionFileReadTest {
     assertFalse(evaluate(case = contract(request = 8)).passed)
     val missing = fixture().copy(bytes = "", missing = true)
     val extraClose =
-        reader.replace("open_failed:\n", "open_failed:\nli \$a0,19\nli \$v0,16\nsyscall\n")
+        reader.replace("open_failed:\n", $$"open_failed:\nli $a0,19\nli $v0,16\nsyscall\n")
     assertFalse(evaluate(extraClose, contract(missing)).passed)
   }
 
@@ -264,10 +263,11 @@ class PreparedFunctionFileReadTest {
     }
   }
 
+  @Suppress("UnusedDataClassCopyResult")
   @Test
   fun `invalid fixture declarations and mutated calls fail before a session is created`() {
     val changes =
-        listOf<() -> Any>(
+        listOf(
             { fixture().copy(path = "") },
             { fixture().copy(path = " ") },
             { fixture().copy(path = "a\u0000b") },
@@ -337,7 +337,7 @@ class PreparedFunctionFileReadTest {
 
   @Test
   fun `different files missing paths and changed request bounds share one execution session`() {
-    for (failure in listOf<Int?>(null, 3)) {
+    for (failure in listOf(null, 3)) {
       val definition =
           fixture()
               .copy(
@@ -393,7 +393,7 @@ class PreparedFunctionFileReadTest {
   @Test
   fun `additional file data is bounded validated and copied before session creation`() {
     val invalid =
-        listOf<() -> Any>(
+        listOf(
             { fixture().copy(additionalFiles = mapOf("file.bin" to "00")) },
             { fixture().copy(additionalFiles = mapOf("" to "00")) },
             { fixture().copy(additionalFiles = mapOf("other.bin" to "0")) },
