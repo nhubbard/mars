@@ -17,7 +17,7 @@ import edu.missouristate.mars.cli.HeadlessGuiProxy
 import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.devices.DataCacheSimulator.Options as CacheOptions
 import edu.missouristate.mars.devices.MarsBotDevice
-import edu.missouristate.mars.di.DaggerMarsComponent
+import edu.missouristate.mars.di.MarsComponent
 import edu.missouristate.mars.mips.hardware.AddressErrorException
 import edu.missouristate.mars.mips.hardware.VectorRegister
 import java.io.ByteArrayInputStream
@@ -51,35 +51,39 @@ internal constructor(
     }
     require(instructionLimit > 0) { "Instruction limit must be positive" }
     try {
-      DaggerMarsComponent.builder().guiProxy(HeadlessGuiProxy()).build().context().use { machine ->
-        machine.settings.isUtf8TextEnabled = utf8Text
-        // Select before assembly so data directives and later execution agree.
-        machine.memory.byteOrder = byteOrder == ByteOrder.LITTLE_ENDIAN
-        var assemblyChecks = 0
-        val program =
-            machine.assembleSnapshot(submission, null, extended = true, warnings = false) {
-              if (++assemblyChecks > 1_000_000) throw AssemblyLimitReached()
-            }
-        val captured = ByteArrayOutputStream()
-        PrintStream(BoundedOutput(captured), true, Charsets.UTF_8).use { output ->
-          SessionSyscallEnvironment(
-                  machine.memory,
-                  ByteArrayInputStream(input.encodeToByteArray()),
-                  output,
-                  output,
-                  inputCharset = Charsets.UTF_8,
-              )
-              .use { console ->
-                val files = GradingFiles()
-                val timing = GradingTiming()
-                program.setSyscallEnvironment(GradingEnvironment(console, files, timing))
-                machine.simulator().setInstructionLimit(instructionLimit)
-                AssemblyCase(machine, program.symbolMap(), captured, files, timing).use {
-                  it.verify()
+      MarsComponent.build {
+            guiProxy(HeadlessGuiProxy())
+          }
+          .context()
+          .use { machine ->
+            machine.settings.isUtf8TextEnabled = utf8Text
+            // Select before assembly so data directives and later execution agree.
+            machine.memory.byteOrder = byteOrder == ByteOrder.LITTLE_ENDIAN
+            var assemblyChecks = 0
+            val program =
+                machine.assembleSnapshot(submission, null, extended = true, warnings = false) {
+                  if (++assemblyChecks > 1_000_000) throw AssemblyLimitReached()
                 }
-              }
-        }
-      }
+            val captured = ByteArrayOutputStream()
+            PrintStream(BoundedOutput(captured), true, Charsets.UTF_8).use { output ->
+              SessionSyscallEnvironment(
+                      machine.memory,
+                      ByteArrayInputStream(input.encodeToByteArray()),
+                      output,
+                      output,
+                      inputCharset = Charsets.UTF_8,
+                  )
+                  .use { console ->
+                    val files = GradingFiles()
+                    val timing = GradingTiming()
+                    program.setSyscallEnvironment(GradingEnvironment(console, files, timing))
+                    machine.simulator().setInstructionLimit(instructionLimit)
+                    AssemblyCase(machine, program.symbolMap(), captured, files, timing).use {
+                      it.verify()
+                    }
+                  }
+            }
+          }
       results += CaseResult(name, null)
     } catch (failure: CaseFailure) {
       results += CaseResult(name, failure.message)

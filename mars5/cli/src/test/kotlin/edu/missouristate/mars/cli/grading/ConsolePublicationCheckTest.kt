@@ -2,7 +2,7 @@ package edu.missouristate.mars.cli.grading
 
 import edu.missouristate.mars.api.AssemblySourceSnapshot
 import edu.missouristate.mars.cli.HeadlessGuiProxy
-import edu.missouristate.mars.di.DaggerMarsComponent
+import edu.missouristate.mars.di.MarsComponent
 import java.io.ByteArrayOutputStream
 import java.nio.file.Path
 import java.util.concurrent.CancellationException
@@ -52,7 +52,10 @@ class ConsolePublicationCheckTest {
           .trimIndent()
 
   private fun session() =
-      DaggerMarsComponent.builder().guiProxy(HeadlessGuiProxy()).build().context()
+      MarsComponent.build {
+            guiProxy(HeadlessGuiProxy())
+          }
+          .context()
 
   private fun image(text: String = source, little: Boolean = true) =
       session().use { machine ->

@@ -2,7 +2,7 @@ package edu.missouristate.mars.benchmark
 
 import edu.missouristate.mars.api.MarsGuiProxy
 import edu.missouristate.mars.core.MarsContext
-import edu.missouristate.mars.di.DaggerMarsComponent
+import edu.missouristate.mars.di.MarsComponent
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.TimeUnit
@@ -26,7 +26,11 @@ open class AssemblerBenchmark {
 
   @Setup(Level.Trial)
   fun prepare() {
-    session = DaggerMarsComponent.builder().guiProxy(QuietConsole).build().context()
+    session =
+        MarsComponent.build {
+              guiProxy(QuietConsole)
+            }
+            .context()
     session.settings
         .setWarningsAreErrors(false)
         .setBareMachineEnabled(false)

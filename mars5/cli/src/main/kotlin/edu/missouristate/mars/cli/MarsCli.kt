@@ -5,7 +5,7 @@ import edu.missouristate.mars.ProcessingException
 import edu.missouristate.mars.api.SessionSyscallEnvironment
 import edu.missouristate.mars.cli.grading.GradeCommand
 import edu.missouristate.mars.core.MarsContext.AssemblyPhase
-import edu.missouristate.mars.di.DaggerMarsComponent
+import edu.missouristate.mars.di.MarsComponent
 import edu.missouristate.mars.mips.dump.DumpFormatLoader
 import edu.missouristate.mars.mips.hardware.MemoryAddressRange
 import edu.missouristate.mars.simulator.ProgramArgumentList
@@ -38,169 +38,174 @@ object MarsCli {
     var simulationErrorExitCode = 1
     var simulating = false
     try {
-      DaggerMarsComponent.builder().guiProxy(HeadlessGuiProxy()).build().context().use { session ->
-        val settings = session.settings
-        settings
-            .setDelayedBranchingEnabled(false)
-            .setSelfModifyingCodeEnabled(false)
-            .setStartAtMainEnabled(false)
-            .setExtendedAssemblerEnabled(true)
-            .setWarningsAreErrors(false)
-            .setBareMachineEnabled(false)
-        val files = ArrayList<Path>()
-        val programArguments = ArrayList<String>()
-        val dumps = ArrayList<CliMemoryDump>()
-        val report = CliMachineReport()
-        var reportOutput = output
-        var layout = "Default"
-        var maximumSteps = 0
-        var assembleOnly = false
-        var project = false
-        var tracePhases = false
-        var index = 0
-        fun nextValue(description: String): String {
-          index++
-          return arguments.getOrNull(index)
-              ?: throw IllegalArgumentException("Missing $description")
-        }
-        while (index < arguments.size) {
-          val arg = arguments[index]
-          when (arg.lowercase()) {
-            "--help",
-            "-h",
-            "h" -> {
-              output.print(usage())
-              return 0
+      MarsComponent.build {
+            guiProxy(HeadlessGuiProxy())
+          }
+          .context()
+          .use { session ->
+            val settings = session.settings
+            settings
+                .setDelayedBranchingEnabled(false)
+                .setSelfModifyingCodeEnabled(false)
+                .setStartAtMainEnabled(false)
+                .setExtendedAssemblerEnabled(true)
+                .setWarningsAreErrors(false)
+                .setBareMachineEnabled(false)
+            val files = ArrayList<Path>()
+            val programArguments = ArrayList<String>()
+            val dumps = ArrayList<CliMemoryDump>()
+            val report = CliMachineReport()
+            var reportOutput = output
+            var layout = "Default"
+            var maximumSteps = 0
+            var assembleOnly = false
+            var project = false
+            var tracePhases = false
+            var index = 0
+            fun nextValue(description: String): String {
+              index++
+              return arguments.getOrNull(index)
+                  ?: throw IllegalArgumentException("Missing $description")
             }
-            "--",
-            "pa" -> {
-              programArguments.addAll(arguments.asList().subList(index + 1, arguments.size))
-              break
-            }
-            "--assemble-only",
-            "a" -> assembleOnly = true
-            "--trace-phases",
-            "d" -> tracePhases = true
-            "ad",
-            "da" -> {
-              assembleOnly = true
-              tracePhases = true
-            }
-            "--project",
-            "p" -> project = true
-            "--self-modifying-code",
-            "smc" -> settings.setSelfModifyingCodeEnabled(true)
-            "--start-at-main",
-            "sm" -> settings.setStartAtMainEnabled(true)
-            "--no-pseudo",
-            "np",
-            "ne" -> settings.setExtendedAssemblerEnabled(false)
-            "--utf8-text" -> settings.isUtf8TextEnabled = true
-            "--warnings-as-errors",
-            "we" -> settings.setWarningsAreErrors(true)
-            "--messages-to-stderr",
-            "me" -> reportOutput = error
-            "--brief",
-            "b" -> report.brief = true
-            "--instruction-count",
-            "ic" -> report.countInstructions = true
-            "hex" -> report.format = CliMachineReport.Format.HEX
-            "dec" -> report.format = CliMachineReport.Format.DECIMAL
-            "ascii" -> report.format = CliMachineReport.Format.ASCII
-            "--register" -> report.requireRegister(nextValue("register name"), session)
-            "--memory-range" -> report.addRange(nextValue("memory range"))
-            "nc" -> Unit
-            "--dump",
-            "dump" ->
-                dumps.add(
-                    CliMemoryDump.parse(
-                        nextValue("dump segment or address range"),
-                        nextValue("dump format"),
-                        nextValue("dump filename"),
-                    ),
-                )
-            "--memory",
-            "mc" -> layout = nextValue("memory layout")
-            "--assembly-error-exit-code" ->
-                assemblyErrorExitCode = Integer.decode(nextValue("assembly error exit code"))
-            "--simulation-error-exit-code" ->
-                simulationErrorExitCode = Integer.decode(nextValue("simulation error exit code"))
-            "--max-steps" -> {
-              maximumSteps = Integer.parseInt(nextValue("step limit"))
-              require(maximumSteps >= 1) { "Step limit must be positive" }
-            }
-            else -> {
-              val number = decode(arg)
-              val assemblyStatus = decodeSuffix(arg, "ae")
-              val simulationStatus = decodeSuffix(arg, "se")
-              when {
-                assemblyStatus != null -> assemblyErrorExitCode = assemblyStatus
-                simulationStatus != null -> simulationErrorExitCode = simulationStatus
-                arg.startsWith('$') -> report.requireRegister(arg, session)
+            while (index < arguments.size) {
+              val arg = arguments[index]
+              when (arg.lowercase()) {
+                "--help",
+                "-h",
+                "h" -> {
+                  output.print(usage())
+                  return 0
+                }
+                "--",
+                "pa" -> {
+                  programArguments.addAll(arguments.asList().subList(index + 1, arguments.size))
+                  break
+                }
+                "--assemble-only",
+                "a" -> assembleOnly = true
+                "--trace-phases",
+                "d" -> tracePhases = true
+                "ad",
+                "da" -> {
+                  assembleOnly = true
+                  tracePhases = true
+                }
+                "--project",
+                "p" -> project = true
+                "--self-modifying-code",
+                "smc" -> settings.setSelfModifyingCodeEnabled(true)
+                "--start-at-main",
+                "sm" -> settings.setStartAtMainEnabled(true)
+                "--no-pseudo",
+                "np",
+                "ne" -> settings.setExtendedAssemblerEnabled(false)
+                "--utf8-text" -> settings.isUtf8TextEnabled = true
+                "--warnings-as-errors",
+                "we" -> settings.setWarningsAreErrors(true)
+                "--messages-to-stderr",
+                "me" -> reportOutput = error
+                "--brief",
+                "b" -> report.brief = true
+                "--instruction-count",
+                "ic" -> report.countInstructions = true
+                "hex" -> report.format = CliMachineReport.Format.HEX
+                "dec" -> report.format = CliMachineReport.Format.DECIMAL
+                "ascii" -> report.format = CliMachineReport.Format.ASCII
+                "--register" -> report.requireRegister(nextValue("register name"), session)
+                "--memory-range" -> report.addRange(nextValue("memory range"))
+                "nc" -> Unit
+                "--dump",
+                "dump" ->
+                    dumps.add(
+                        CliMemoryDump.parse(
+                            nextValue("dump segment or address range"),
+                            nextValue("dump format"),
+                            nextValue("dump filename"),
+                        ),
+                    )
+                "--memory",
+                "mc" -> layout = nextValue("memory layout")
+                "--assembly-error-exit-code" ->
+                    assemblyErrorExitCode = Integer.decode(nextValue("assembly error exit code"))
+                "--simulation-error-exit-code" ->
+                    simulationErrorExitCode =
+                        Integer.decode(nextValue("simulation error exit code"))
+                "--max-steps" -> {
+                  maximumSteps = Integer.parseInt(nextValue("step limit"))
+                  require(maximumSteps >= 1) { "Step limit must be positive" }
+                }
                 else -> {
-                  val path = if (arg.startsWith('-')) null else Path.of(arg)
+                  val number = decode(arg)
+                  val assemblyStatus = decodeSuffix(arg, "ae")
+                  val simulationStatus = decodeSuffix(arg, "se")
                   when {
-                    path != null && Files.isRegularFile(path) -> files.add(path)
-                    number != null -> maximumSteps = number
-                    MemoryAddressRange.hasAddressPrefix(arg) -> report.addRange(arg)
-                    path == null -> throw IllegalArgumentException("Unknown option: $arg")
-                    !report.tryAddRegister(arg, session) -> files.add(path)
+                    assemblyStatus != null -> assemblyErrorExitCode = assemblyStatus
+                    simulationStatus != null -> simulationErrorExitCode = simulationStatus
+                    arg.startsWith('$') -> report.requireRegister(arg, session)
+                    else -> {
+                      val path = if (arg.startsWith('-')) null else Path.of(arg)
+                      when {
+                        path != null && Files.isRegularFile(path) -> files.add(path)
+                        number != null -> maximumSteps = number
+                        MemoryAddressRange.hasAddressPrefix(arg) -> report.addRange(arg)
+                        path == null -> throw IllegalArgumentException("Unknown option: $arg")
+                        !report.tryAddRegister(arg, session) -> files.add(path)
+                      }
+                    }
                   }
                 }
               }
+              index++
             }
-          }
-          index++
-        }
-        if (files.isEmpty()) {
-          error.print(usage())
-          return 2
-        }
-        session.setMemoryConfiguration(layout)
-        report.validateRanges(session.memory)
-        val sources = if (project) projectSources(files) else files
-        val trace = if (tracePhases) reportOutput else null
-        val program =
-            if (trace == null) session.assemble(sources)
-            else
-                session.assemble(sources) { phase ->
-                  trace.println(
-                      when (phase) {
-                        AssemblyPhase.TOKENIZING -> "--------  TOKENIZING BEGINS  -----------"
-                        AssemblyPhase.ASSEMBLING -> "--------  ASSEMBLY BEGINS  -----------"
-                      },
-                  )
+            if (files.isEmpty()) {
+              error.print(usage())
+              return 2
+            }
+            session.setMemoryConfiguration(layout)
+            report.validateRanges(session.memory)
+            val sources = if (project) projectSources(files) else files
+            val trace = if (tracePhases) reportOutput else null
+            val program =
+                if (trace == null) session.assemble(sources)
+                else
+                    session.assemble(sources) { phase ->
+                      trace.println(
+                          when (phase) {
+                            AssemblyPhase.TOKENIZING -> "--------  TOKENIZING BEGINS  -----------"
+                            AssemblyPhase.ASSEMBLING -> "--------  ASSEMBLY BEGINS  -----------"
+                          },
+                      )
+                    }
+            program.assemblyDiagnostics?.let { error.print(it.generateWarningReport()) }
+            try {
+              var status = 0
+              if (!assembleOnly) {
+                ProgramArgumentList(programArguments).storeProgramArguments(session)
+                SessionSyscallEnvironment(session.memory, input, output, error).use { io ->
+                  program.setSyscallEnvironment(io)
+                  simulating = true
+                  trace?.println("--------  SIMULATION BEGINS  -----------")
+                  val finished =
+                      if (report.countInstructions)
+                          program.simulate(maximumSteps, report::recordInstructionCount)
+                      else program.simulate(maximumSteps)
+                  status = if (finished) program.exitCode else 3
+                  if (!finished) {
+                    if (Thread.currentThread().isInterrupted) {
+                      error.println("Execution cancelled.")
+                      return 130
+                    }
+                    error.println("Execution reached the step limit.")
+                  }
                 }
-        program.assemblyDiagnostics?.let { error.print(it.generateWarningReport()) }
-        try {
-          var status = 0
-          if (!assembleOnly) {
-            ProgramArgumentList(programArguments).storeProgramArguments(session)
-            SessionSyscallEnvironment(session.memory, input, output, error).use { io ->
-              program.setSyscallEnvironment(io)
-              simulating = true
-              trace?.println("--------  SIMULATION BEGINS  -----------")
-              val finished =
-                  if (report.countInstructions)
-                      program.simulate(maximumSteps, report::recordInstructionCount)
-                  else program.simulate(maximumSteps)
-              status = if (finished) program.exitCode else 3
-              if (!finished) {
-                if (Thread.currentThread().isInterrupted) {
-                  error.println("Execution cancelled.")
-                  return 130
-                }
-                error.println("Execution reached the step limit.")
               }
+              trace?.println("\n--------  ALL PROCESSING COMPLETE  -----------")
+              return status
+            } finally {
+              if (simulating) report.write(session, reportOutput)
+              for (dump in dumps) dump.write(session, error)
             }
           }
-          trace?.println("\n--------  ALL PROCESSING COMPLETE  -----------")
-          return status
-        } finally {
-          if (simulating) report.write(session, reportOutput)
-          for (dump in dumps) dump.write(session, error)
-        }
-      }
     } catch (failure: ProcessingException) {
       val diagnostics = failure.errors()
       if (diagnostics != null) error.print(diagnostics.generateErrorAndWarningReport())

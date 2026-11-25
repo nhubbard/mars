@@ -9,7 +9,6 @@ import edu.missouristate.mars.api.MarsGuiProxy
 import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.di.CoreModule
-import edu.missouristate.mars.di.DaggerMarsComponent
 import edu.missouristate.mars.di.MarsComponent
 
 /**
@@ -44,11 +43,10 @@ class MarsSessionService : Disposable {
     internal fun createMarsComponent(
         backstepLimit: Int = ApplicationInfo.maximumBacksteps,
         target: MarsTarget = MarsTarget.DEFAULT,
-    ): MarsComponent =
-        DaggerMarsComponent.builder()
-            .coreModule(CoreModule(Settings(), backstepLimit, target))
-            .guiProxy(ProjectFrontend())
-            .build()
+    ): MarsComponent = MarsComponent.build {
+      coreModule(CoreModule(Settings(), backstepLimit, target))
+      guiProxy(ProjectFrontend())
+    }
   }
 
   /** Routes core messages before a project console is attached. */

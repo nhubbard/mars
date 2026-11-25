@@ -5,7 +5,7 @@ import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.cli.HeadlessGuiProxy
 import edu.missouristate.mars.core.AssemblyImage
 import edu.missouristate.mars.core.MarsContext
-import edu.missouristate.mars.di.DaggerMarsComponent
+import edu.missouristate.mars.di.MarsComponent
 import java.io.ByteArrayOutputStream
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -21,7 +21,10 @@ class PreparedTraceChecksTest {
   private val port = 0xffff0010L
 
   private fun session() =
-      DaggerMarsComponent.builder().guiProxy(HeadlessGuiProxy()).build().context()
+      MarsComponent.build {
+            guiProxy(HeadlessGuiProxy())
+          }
+          .context()
 
   private fun image(
       source: String,

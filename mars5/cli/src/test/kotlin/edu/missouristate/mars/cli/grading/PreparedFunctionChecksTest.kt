@@ -5,7 +5,7 @@ import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.cli.HeadlessGuiProxy
 import edu.missouristate.mars.core.AssemblyImage
 import edu.missouristate.mars.core.MarsContext
-import edu.missouristate.mars.di.DaggerMarsComponent
+import edu.missouristate.mars.di.MarsComponent
 import java.nio.file.Path
 import java.util.concurrent.CancellationException
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -18,7 +18,10 @@ class PreparedFunctionChecksTest {
   @TempDir lateinit var directory: Path
 
   private fun session() =
-      DaggerMarsComponent.builder().guiProxy(HeadlessGuiProxy()).build().context()
+      MarsComponent.build {
+            guiProxy(HeadlessGuiProxy())
+          }
+          .context()
 
   private fun image(
       body: String,

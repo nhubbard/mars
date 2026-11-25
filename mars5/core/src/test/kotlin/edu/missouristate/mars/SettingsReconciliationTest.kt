@@ -6,7 +6,6 @@ import edu.missouristate.mars.api.MarsSettings
 import edu.missouristate.mars.api.MarsTarget
 import edu.missouristate.mars.core.SimulationSettings
 import edu.missouristate.mars.di.CoreModule
-import edu.missouristate.mars.di.DaggerMarsComponent
 import edu.missouristate.mars.di.MarsComponent
 import edu.missouristate.mars.mips.hardware.Coprocessor0State
 import edu.missouristate.mars.mips.hardware.Coprocessor1State
@@ -275,10 +274,10 @@ internal class SettingsReconciliationTest {
     }
 
     private fun component(settings: Settings): MarsComponent {
-      return DaggerMarsComponent.builder()
-          .coreModule(CoreModule(settings, target = MarsTarget.MARS32))
-          .guiProxy(NO_GUI)
-          .build()
+      return MarsComponent.build {
+        coreModule(CoreModule(settings, target = MarsTarget.MARS32))
+        guiProxy(NO_GUI)
+      }
     }
 
     private val NO_GUI: MarsGuiProxy =

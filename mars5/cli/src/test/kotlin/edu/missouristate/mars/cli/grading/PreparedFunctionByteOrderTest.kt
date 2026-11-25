@@ -2,7 +2,7 @@ package edu.missouristate.mars.cli.grading
 
 import edu.missouristate.mars.api.AssemblySourceSnapshot
 import edu.missouristate.mars.cli.HeadlessGuiProxy
-import edu.missouristate.mars.di.DaggerMarsComponent
+import edu.missouristate.mars.di.MarsComponent
 import java.nio.ByteOrder
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -16,7 +16,10 @@ class PreparedFunctionByteOrderTest {
   @TempDir lateinit var directory: Path
 
   private fun machine() =
-      DaggerMarsComponent.builder().guiProxy(HeadlessGuiProxy()).build().context()
+      MarsComponent.build {
+            guiProxy(HeadlessGuiProxy())
+          }
+          .context()
 
   private val source =
       $$"""

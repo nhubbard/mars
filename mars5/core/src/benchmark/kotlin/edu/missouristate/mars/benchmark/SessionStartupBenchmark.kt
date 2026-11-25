@@ -10,7 +10,7 @@ import edu.missouristate.mars.api.StopEvent
 import edu.missouristate.mars.core.AssemblyImage
 import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.di.CoreModule
-import edu.missouristate.mars.di.DaggerMarsComponent
+import edu.missouristate.mars.di.MarsComponent
 import java.nio.file.Path
 import java.util.Locale
 import java.util.concurrent.TimeUnit
@@ -47,10 +47,10 @@ object SessionStartupBenchmark {
   }
 
   private fun createSession(): MarsContext =
-      DaggerMarsComponent.builder()
-          .coreModule(CoreModule(Settings()))
-          .guiProxy(QuietConsole)
-          .build()
+      MarsComponent.build {
+            coreModule(CoreModule(Settings()))
+            guiProxy(QuietConsole)
+          }
           .context()
 
   private fun launch(image: AssemblyImage): Timings {

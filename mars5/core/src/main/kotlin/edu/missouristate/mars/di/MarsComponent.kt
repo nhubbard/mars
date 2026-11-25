@@ -16,6 +16,12 @@ import javax.inject.Singleton
 @Singleton
 @Component(modules = [CoreModule::class])
 interface MarsComponent {
+  companion object {
+    /** Configure a fresh native Dagger builder, retaining its defaults and binding validation. */
+    inline fun build(configure: Builder.() -> Unit): MarsComponent =
+        DaggerMarsComponent.builder().apply(configure).build()
+  }
+
   fun context(): MarsContext
 
   fun assembler(): MarsAssembler

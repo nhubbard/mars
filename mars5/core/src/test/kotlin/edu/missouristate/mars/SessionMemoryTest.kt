@@ -6,7 +6,6 @@ import edu.missouristate.mars.api.MemoryAccessException
 import edu.missouristate.mars.core.InstructionContext
 import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.di.CoreModule
-import edu.missouristate.mars.di.DaggerMarsComponent
 import edu.missouristate.mars.di.MarsComponent
 import edu.missouristate.mars.mips.hardware.AddressErrorException
 import edu.missouristate.mars.mips.hardware.MemoryState
@@ -218,10 +217,10 @@ internal class SessionMemoryTest {
     private fun component(): MarsComponent {
       val settings = Settings()
       settings.simulationSettings.setMemoryConfiguration("Default")
-      return DaggerMarsComponent.builder()
-          .coreModule(CoreModule(settings, target = MarsTarget.MARS32))
-          .guiProxy(NO_GUI)
-          .build()
+      return MarsComponent.build {
+        coreModule(CoreModule(settings, target = MarsTarget.MARS32))
+        guiProxy(NO_GUI)
+      }
     }
 
     private fun installProgram(session: MarsContext, value: Int) {

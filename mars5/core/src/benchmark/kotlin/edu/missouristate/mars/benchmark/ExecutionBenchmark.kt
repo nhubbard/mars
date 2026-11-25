@@ -10,7 +10,7 @@ import edu.missouristate.mars.api.StopEvent
 import edu.missouristate.mars.core.AssemblyImage
 import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.di.CoreModule
-import edu.missouristate.mars.di.DaggerMarsComponent
+import edu.missouristate.mars.di.MarsComponent
 import edu.missouristate.mars.simulator.ProgramArgumentList
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
@@ -162,10 +162,10 @@ object ExecutionBenchmark {
       }
 
   private fun newSession(): MarsContext =
-      DaggerMarsComponent.builder()
-          .coreModule(CoreModule(Settings()))
-          .guiProxy(QuietConsole)
-          .build()
+      MarsComponent.build {
+            coreModule(CoreModule(Settings()))
+            guiProxy(QuietConsole)
+          }
           .context()
           .also {
             it.settings.setMemoryConfiguration("Default").setSelfModifyingCodeEnabled(false)

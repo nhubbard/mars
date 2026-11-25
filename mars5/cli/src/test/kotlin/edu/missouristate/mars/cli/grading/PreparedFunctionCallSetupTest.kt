@@ -3,7 +3,7 @@ package edu.missouristate.mars.cli.grading
 import edu.missouristate.mars.api.AssemblySourceSnapshot
 import edu.missouristate.mars.cli.HeadlessGuiProxy
 import edu.missouristate.mars.core.MarsContext
-import edu.missouristate.mars.di.DaggerMarsComponent
+import edu.missouristate.mars.di.MarsComponent
 import java.io.ByteArrayOutputStream
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -16,7 +16,10 @@ class PreparedFunctionCallSetupTest {
   @TempDir lateinit var directory: Path
 
   private fun session() =
-      DaggerMarsComponent.builder().guiProxy(HeadlessGuiProxy()).build().context()
+      MarsComponent.build {
+            guiProxy(HeadlessGuiProxy())
+          }
+          .context()
 
   private fun image(
       body: String = $$"lbu $v0,0($a0)\nlbu $t1,1($a0)\nsll $t1,$t1,8\nor $v0,$v0,$t1",

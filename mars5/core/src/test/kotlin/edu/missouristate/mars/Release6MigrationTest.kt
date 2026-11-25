@@ -1,7 +1,7 @@
 package edu.missouristate.mars
 
 import edu.missouristate.mars.api.MarsTarget
-import edu.missouristate.mars.di.DaggerMarsComponent
+import edu.missouristate.mars.di.MarsComponent
 import edu.missouristate.mars.mips.instructions.InstructionDefaults
 import java.nio.file.Files
 import java.nio.file.Path
@@ -36,15 +36,19 @@ class Release6MigrationTest {
             """
                 .trimIndent(),
         )
-    DaggerMarsComponent.builder().guiProxy(TestSessions.NO_GUI).build().context().use { machine ->
-      assertEquals(MarsTarget.MARS64, machine.target)
-      assertEquals("beqc", InstructionDefaults.get().findByBinaryCode(0x212a0001)?.name)
-      val program = machine.assemble(listOf(source))
-      assertTrue(program.simulate(100))
-      assertEquals(0x0123456789abcdefL, machine.registerFile.getLongValueNoNotify(10))
-      assertEquals(-100L, machine.registerFile.getLongValueNoNotify(11))
-      assertEquals(Int.MIN_VALUE.toLong(), machine.registerFile.getLongValueNoNotify(12))
-    }
+    MarsComponent.build {
+          guiProxy(TestSessions.NO_GUI)
+        }
+        .context()
+        .use { machine ->
+          assertEquals(MarsTarget.MARS64, machine.target)
+          assertEquals("beqc", InstructionDefaults.get().findByBinaryCode(0x212a0001)?.name)
+          val program = machine.assemble(listOf(source))
+          assertTrue(program.simulate(100))
+          assertEquals(0x0123456789abcdefL, machine.registerFile.getLongValueNoNotify(10))
+          assertEquals(-100L, machine.registerFile.getLongValueNoNotify(11))
+          assertEquals(Int.MIN_VALUE.toLong(), machine.registerFile.getLongValueNoNotify(12))
+        }
   }
 
   @Test
