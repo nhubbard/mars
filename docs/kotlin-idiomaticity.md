@@ -151,8 +151,8 @@ Every phase is reviewed, compiled, tested, and committed before the next begins.
 | Metric | Before | After |
 | --- | ---: | ---: |
 | Kotlin / Gradle Kotlin files | 970 | 1,002 |
-| Class literals in tests | 943 | 0 |
-| Class literals outside tests | 51 | 4 |
+| Java class literals in tests | 943 | 0 |
+| Java class literals outside tests | 51 | 4 |
 | Anonymous objects in tests | 139 | 92 |
 | Anonymous objects outside tests | 103 | 76 |
 | Raw Dagger builder calls | 77 | 1 |
@@ -163,7 +163,8 @@ The after snapshot is `kotlin-idiomaticity-after.json`. Both snapshots use the
 same tracked/unignored source inventory and textual counting rules. Remaining
 raw Dagger and bundle calls are their factories' implementations. The four class
 literals are centralized interop implementations and the isolated grammar
-generator; no test class literals remain. Anonymous objects remain where they
+generator; no Java class literals remain in tests. Required Kotlin class literals
+in annotation metadata are unchanged. Anonymous objects remain where they
 implement a native factory, express stateful behavior, or preserve a clearer
 inheritance/extension contract. New regression doubles also contribute to that
 count.
@@ -183,3 +184,13 @@ loaded binding that must retain its original program across reassembly. All 36
 focused binding and macro-inspection tests pass, with 100% line and branch coverage
 in both corrected source files. The packaged verifier reports compatibility with
 IntelliJ IU-263.7307.200, with 97 experimental API usages.
+
+A subsequent full run exposed a read-only binary-include navigation lifetime
+issue. Binary syntax copies now retain their physical PSI owner through the
+platform's `originalFile` relationship, matching the existing text-copy path.
+The platform setter also registers the native view-provider copy relationship;
+no additional cache framework or lifecycle registry is introduced. A regression
+that failed before the fix now verifies original-file identity and native cached
+syntax reuse, plus the missing-file read fallback. All 51 selected expansion,
+macro inspection, and macro-reference tests pass, and both new owner-path
+branches are covered.
