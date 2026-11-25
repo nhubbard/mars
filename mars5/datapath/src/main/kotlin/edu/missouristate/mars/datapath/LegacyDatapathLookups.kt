@@ -71,6 +71,7 @@ internal object LegacyDatapathLookups {
               "10011" to $$"$s3",
               "10100" to $$"$s4",
               "10101" to $$"$s5",
+              "10110" to $$"$s6",
               "11000" to $$"$t8",
               "10111" to $$"$s7",
               "11001" to $$"$t9",
