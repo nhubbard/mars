@@ -1,6 +1,7 @@
 package edu.missouristate.mars.cli.grading
 
 import edu.missouristate.mars.api.AssemblySourceSnapshot
+import edu.missouristate.mars.cli.assemblyStringLiteral
 import edu.missouristate.mars.cli.grading.FileAccess.Operation
 import java.nio.file.Path
 import kotlin.io.path.readText
@@ -149,7 +150,7 @@ class FileAccessCheckTest {
     val text =
         $$"""
             .data 0x100000000
-        path: .asciiz "$$hostFile"
+        path: .asciiz $${assemblyStringLiteral(hostFile.toString())}
         buffer: .byte 42:8
             .text
         main:
