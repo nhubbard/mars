@@ -18,7 +18,6 @@ import com.intellij.util.ui.ColumnInfo
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.ListTableModel
 import com.intellij.xdebugger.XDebugSession
-import com.intellij.xdebugger.XDebugSessionListener
 import com.intellij.xdebugger.XDebuggerManager
 import com.intellij.xdebugger.XSourcePosition
 import com.intellij.xdebugger.breakpoints.SuspendPolicy
@@ -275,16 +274,22 @@ internal class MarsDisassemblyView(
         this,
     )
     session.addSessionListener(
-        object : XDebugSessionListener {
-          override fun sessionPaused() = scheduleRefresh()
-
-          override fun settingsChanged() = scheduleRefresh()
-
-          override fun sessionResumed() = scheduleRefresh()
-
-          override fun sessionStopped() = scheduleRefresh()
-
-          override fun breakpointsMuted(muted: Boolean) = onEdt(table::repaint)
+        debugSessionListener {
+          sessionPaused {
+            scheduleRefresh()
+          }
+          settingsChanged {
+            scheduleRefresh()
+          }
+          sessionResumed {
+            scheduleRefresh()
+          }
+          sessionStopped {
+            scheduleRefresh()
+          }
+          breakpointsMuted { muted ->
+            onEdt(table::repaint)
+          }
         },
         this,
     )

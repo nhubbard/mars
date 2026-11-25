@@ -2,14 +2,12 @@
 
 package edu.missouristate.mars.plugin.learning
 
-import com.intellij.execution.ExecutionListener
 import com.intellij.execution.ExecutionManager
 import com.intellij.execution.configurations.runConfigurationType
 import com.intellij.execution.executors.DefaultDebugExecutor
 import com.intellij.execution.executors.DefaultRunExecutor
 import com.intellij.execution.process.NopProcessHandler
 import com.intellij.execution.process.ProcessHandler
-import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.execution.runners.ExecutionEnvironmentBuilder
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.DefaultActionGroup
@@ -40,13 +38,16 @@ import edu.missouristate.mars.plugin.debug.MarsLineBreakpointType
 import edu.missouristate.mars.plugin.debug.MarsSuspendContext
 import edu.missouristate.mars.plugin.debug.RegisterBank
 import edu.missouristate.mars.plugin.debug.RegisterEditRequest
+import edu.missouristate.mars.plugin.debug.debugSessionListener
 import edu.missouristate.mars.plugin.debug.findBreakpointType
 import edu.missouristate.mars.plugin.debug.submitEdit
 import edu.missouristate.mars.plugin.learning.MarsDownloadedDebugCheckpoint.Outcome
 import edu.missouristate.mars.plugin.run.MarsRunService
 import edu.missouristate.mars.plugin.run.MarsRunType
+import edu.missouristate.mars.plugin.run.executionListener
 import edu.missouristate.mars.plugin.run.runMessages
 import edu.missouristate.mars.util.javaClassOf
+import java.util.IdentityHashMap
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
@@ -174,14 +175,14 @@ class MarsDownloadedDebugCheckpointTest {
         withDebug { f ->
           val first = f.start()
           first.pauses.receive()
-          val retained = learningListener(first.session)
+          val retained = first.learningCallbacks.single()
           withContext(Dispatchers.EDT) { retained.sessionPaused() }
           assertEquals(1, f.checkpoint.phase)
           val second = f.start()
           second.pauses.receive()
           withContext(Dispatchers.EDT) { retained.sessionPaused() }
           assertEquals(1, f.checkpoint.phase)
-          val current = learningListener(second.session)
+          val current = second.learningCallbacks.single()
           withContext(Dispatchers.EDT) {
             Disposer.dispose(f.observationLifetime)
             current.sessionPaused()
@@ -371,7 +372,7 @@ class MarsDownloadedDebugCheckpointTest {
     }
   }
 
-  private fun learningListener(session: XDebugSession): XDebugSessionListener {
+  private fun registeredSessionListeners(session: XDebugSession): List<XDebugSessionListener> {
     // Retain the actual registered callback to model delivery that was already
     // in flight when its parent was disposed. Reflection remains in tests.
     val dispatcher =
@@ -380,9 +381,7 @@ class MarsDownloadedDebugCheckpointTest {
             .apply { isAccessible = true }
             .get(session)
     val listeners = dispatcher.javaClass.getMethod("getListeners").invoke(dispatcher) as List<*>
-    return listeners.filterIsInstance<XDebugSessionListener>().single {
-      it.javaClass.name.startsWith(javaClassOf<MarsDownloadedDebugCheckpoint>().name + "$")
-    }
+    return listeners.filterIsInstance<XDebugSessionListener>()
   }
 
   @Test
@@ -563,6 +562,7 @@ class MarsDownloadedDebugCheckpointTest {
       val session: XDebugSession,
       val pauses: Channel<MarsSuspendContext>,
       val stopped: CompletableDeferred<Unit>,
+      val learningCallbacks: List<XDebugSessionListener>,
   )
 
   private inner class Fixture(
@@ -571,6 +571,7 @@ class MarsDownloadedDebugCheckpointTest {
       val file: VirtualFile,
       val checkpoint: MarsDownloadedDebugCheckpoint,
       val feedback: MutableList<Outcome>,
+      val beforeListeners: IdentityHashMap<ProcessHandler, List<XDebugSessionListener>>,
   ) {
     val launches = mutableListOf<Launch>()
 
@@ -579,6 +580,7 @@ class MarsDownloadedDebugCheckpointTest {
       val started = CompletableDeferred<XDebugSession>()
       val pauses = Channel<MarsSuspendContext>(Channel.UNLIMITED)
       val stopped = CompletableDeferred<Unit>()
+      var learningCallbacks = emptyList<XDebugSessionListener>()
       withContext(Dispatchers.EDT) {
         val config = runConfigurationType<MarsRunType>().createTemplateConfiguration(project)
         config.options.sourcePath = file.path
@@ -592,24 +594,29 @@ class MarsDownloadedDebugCheckpointTest {
             .connect(lifetime)
             .subscribe(
                 ExecutionManager.EXECUTION_TOPIC,
-                object : ExecutionListener {
-                  override fun processStarting(
-                      executorId: String,
-                      environment: ExecutionEnvironment,
-                      handler: ProcessHandler,
-                  ) {
-                    if (environment !== env) return
+                executionListener {
+                  processStarting { _, environment, handler ->
+                    if (environment !== env) return@processStarting
                     val session =
                         XDebuggerManager.getInstance(project).debugSessions.single {
                           it.debugProcess.processHandler === handler
                         }
+                    val before = beforeListeners.remove(handler).orEmpty()
+                    learningCallbacks =
+                        registeredSessionListeners(session).filter { candidate ->
+                          // The headless fixture can share its classloader with SDK modules.
+                          candidate.javaClass.packageName.startsWith(
+                              javaClassOf<MarsDownloadedDebugCheckpoint>()
+                                  .packageName
+                                  .substringBeforeLast('.') + ".",
+                          ) && before.none { it === candidate }
+                        }
                     session.addSessionListener(
-                        object : XDebugSessionListener {
-                          override fun sessionStopped() {
+                        debugSessionListener {
+                          sessionStopped {
                             stopped.complete(Unit)
                           }
-
-                          override fun sessionPaused() {
+                          sessionPaused {
                             pauses.trySend(
                                 assertInstanceOf<MarsSuspendContext>(
                                     session.suspendContext,
@@ -626,7 +633,7 @@ class MarsDownloadedDebugCheckpointTest {
         assertInstanceOf<MarsDebugRunner>(env.runner).execute(env)
       }
       val session = started.await()
-      val launch = Launch(session, pauses, stopped)
+      val launch = Launch(session, pauses, stopped, learningCallbacks)
       launches += launch
       withContext(Dispatchers.IO) {
         session.debugProcess.processHandler.processInput!!.apply {
@@ -654,6 +661,22 @@ class MarsDownloadedDebugCheckpointTest {
             fixture.configureFromExistingVirtualFile(file)
             val feedback = mutableListOf<Outcome>()
             val observationLifetime = Disposer.newDisposable(lifetime)
+            val beforeListeners = IdentityHashMap<ProcessHandler, List<XDebugSessionListener>>()
+            // Observe the native registration boundary before the checkpoint subscribes.
+            project.messageBus
+                .connect(lifetime)
+                .subscribe(
+                    ExecutionManager.EXECUTION_TOPIC,
+                    executionListener {
+                      processStarting { _, _, handler ->
+                        val session =
+                            XDebuggerManager.getInstance(project).debugSessions.singleOrNull {
+                              it.debugProcess.processHandler === handler
+                            } ?: return@processStarting
+                        beforeListeners[handler] = registeredSessionListeners(session)
+                      }
+                    },
+                )
             val checkpoint =
                 project
                     .service<MarsLearningExecution>()
@@ -676,7 +699,7 @@ class MarsDownloadedDebugCheckpointTest {
                       null,
                   )
             }
-            Fixture(lifetime, observationLifetime, file, checkpoint, feedback)
+            Fixture(lifetime, observationLifetime, file, checkpoint, feedback, beforeListeners)
           }
       state = current
       body(current)

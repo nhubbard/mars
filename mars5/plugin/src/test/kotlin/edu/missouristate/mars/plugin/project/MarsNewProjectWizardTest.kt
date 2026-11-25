@@ -1,15 +1,10 @@
 package edu.missouristate.mars.plugin.project
 
-import com.intellij.execution.ExecutionListener
 import com.intellij.execution.ExecutionManager
 import com.intellij.execution.RunManager
 import com.intellij.execution.executors.DefaultDebugExecutor
 import com.intellij.execution.executors.DefaultRunExecutor
-import com.intellij.execution.process.ProcessEvent
-import com.intellij.execution.process.ProcessHandler
-import com.intellij.execution.process.ProcessListener
 import com.intellij.execution.process.ProcessOutputTypes
-import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.execution.runners.ExecutionEnvironmentBuilder
 import com.intellij.ide.util.projectWizard.WizardContext
 import com.intellij.ide.wizard.GeneratorNewProjectWizard
@@ -25,7 +20,6 @@ import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.module.ModuleType
 import com.intellij.openapi.roots.ModuleRootManager
 import com.intellij.openapi.util.Disposer
-import com.intellij.openapi.util.Key
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.psi.PsiErrorElement
 import com.intellij.psi.PsiManager
@@ -36,16 +30,18 @@ import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.testFramework.junit5.fixture.projectFixture
 import com.intellij.testFramework.pollAssertionsAsync
-import com.intellij.xdebugger.XDebugSessionListener
 import com.intellij.xdebugger.XDebuggerManager
 import com.intellij.xdebugger.XSourcePosition
 import edu.missouristate.mars.plugin.build.MarsAssemblySettings
 import edu.missouristate.mars.plugin.build.MarsBuildTask
 import edu.missouristate.mars.plugin.debug.MarsLineBreakpointType
+import edu.missouristate.mars.plugin.debug.debugSessionListener
 import edu.missouristate.mars.plugin.debug.findBreakpointType
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.MipsFileType
 import edu.missouristate.mars.plugin.run.MarsRunConfiguration
+import edu.missouristate.mars.plugin.run.executionListener
+import edu.missouristate.mars.plugin.run.processListener
 import edu.missouristate.mars.plugin.ui.findComponentsOfType
 import edu.missouristate.mars.util.javaClassOf
 import java.nio.file.FileAlreadyExistsException
@@ -175,24 +171,16 @@ class MarsNewProjectWizardTest {
                 .connect(lifetime)
                 .subscribe(
                     ExecutionManager.EXECUTION_TOPIC,
-                    object : ExecutionListener {
-                      override fun processStarting(
-                          executorId: String,
-                          env: ExecutionEnvironment,
-                          handler: ProcessHandler,
-                      ) {
-                        if (env !== environment) return
+                    executionListener {
+                      processStarting { _, env, handler ->
+                        if (env !== environment) return@processStarting
                         handler.addProcessListener(
-                            object : ProcessListener {
-                              override fun onTextAvailable(
-                                  event: ProcessEvent,
-                                  outputType: Key<*>,
-                              ) {
+                            processListener {
+                              onTextAvailable { event, outputType ->
                                 if (outputType === ProcessOutputTypes.STDOUT)
                                     console.append(event.text)
                               }
-
-                              override fun processTerminated(event: ProcessEvent) {
+                              processTerminated { event ->
                                 exit.complete(event.exitCode)
                               }
                             },
@@ -200,8 +188,8 @@ class MarsNewProjectWizardTest {
                         if (separateLibrary) {
                           val session = debugger.debugSessions.single()
                           session.addSessionListener(
-                              object : XDebugSessionListener {
-                                override fun sessionPaused() {
+                              debugSessionListener {
+                                sessionPaused {
                                   paused.complete(requireNotNull(session.topFramePosition))
                                 }
                               },

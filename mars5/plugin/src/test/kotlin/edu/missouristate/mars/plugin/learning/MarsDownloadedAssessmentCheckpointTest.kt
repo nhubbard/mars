@@ -2,8 +2,6 @@
 
 package edu.missouristate.mars.plugin.learning
 
-import com.intellij.execution.process.ProcessEvent
-import com.intellij.execution.process.ProcessListener
 import com.intellij.execution.process.ProcessOutputType
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
@@ -14,7 +12,6 @@ import com.intellij.openapi.editor.Document
 import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.util.Disposer
-import com.intellij.openapi.util.Key
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
 import com.intellij.testFramework.common.timeoutRunBlocking
@@ -27,6 +24,7 @@ import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.learning.MarsDownloadedAssessmentCheckpoint.Feedback
 import edu.missouristate.mars.plugin.run.MarsRunService
+import edu.missouristate.mars.plugin.run.processListener
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
@@ -650,15 +648,14 @@ class MarsDownloadedAssessmentCheckpointTest {
                   .createProcess(file.toNioPath(), memoryDumps = emptyList())
             }
         live.addProcessListener(
-            object : ProcessListener {
-              override fun onTextAvailable(event: ProcessEvent, outputType: Key<*>) {
+            processListener {
+              onTextAvailable { event, outputType ->
                 if (ProcessOutputType.isStdout(outputType)) {
                   stdout.append(event.text)
                   if (stdout.toString().contains("Waiting: ")) waiting.complete(Unit)
                 }
               }
-
-              override fun processTerminated(event: ProcessEvent) {
+              processTerminated { event ->
                 finished.complete(event.exitCode)
               }
             },

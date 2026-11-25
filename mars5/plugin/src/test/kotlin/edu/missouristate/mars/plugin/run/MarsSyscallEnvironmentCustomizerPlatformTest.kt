@@ -1,13 +1,10 @@
 package edu.missouristate.mars.plugin.run
 
-import com.intellij.execution.process.ProcessEvent
-import com.intellij.execution.process.ProcessListener
 import com.intellij.execution.process.ProcessOutputTypes
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.components.service
 import com.intellij.openapi.util.Disposer
-import com.intellij.openapi.util.Key
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.testFramework.ExtensionTestUtil
 import com.intellij.testFramework.common.timeoutRunBlocking
@@ -273,12 +270,11 @@ class MarsSyscallEnvironmentCustomizerPlatformTest {
           val handler =
               project.service<MarsRunService>().createProcess(entry, memoryDumps = emptyList())
           handler.addProcessListener(
-              object : ProcessListener {
-                override fun onTextAvailable(event: ProcessEvent, outputType: Key<*>) {
+              processListener {
+                onTextAvailable { event, outputType ->
                   if (outputType == ProcessOutputTypes.STDOUT) output.append(event.text)
                 }
-
-                override fun processTerminated(event: ProcessEvent) {
+                processTerminated { event ->
                   exit.complete(event.exitCode)
                 }
               },

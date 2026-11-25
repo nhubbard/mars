@@ -1,10 +1,9 @@
 package edu.missouristate.mars
 
-import edu.missouristate.mars.api.ErrorEvent
 import edu.missouristate.mars.api.MarsTarget
-import edu.missouristate.mars.api.SimulatorListener
 import edu.missouristate.mars.api.StepEvent
 import edu.missouristate.mars.api.StopEvent
+import edu.missouristate.mars.api.simulatorListener
 import edu.missouristate.mars.assembler.TokenList
 import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.core.MarsContext
@@ -174,14 +173,10 @@ internal class WarmSessionTest {
       simulator().also { simulator ->
         registerFile.updateRegister(8, register)
         simulator.addListener(
-            object : SimulatorListener {
-              override fun onStep(event: StepEvent) {
+            simulatorListener {
+              onStep { event ->
                 steps.add(event)
               }
-
-              override fun onStop(event: StopEvent) = Unit
-
-              override fun onError(event: ErrorEvent) = Unit
             },
         )
       }

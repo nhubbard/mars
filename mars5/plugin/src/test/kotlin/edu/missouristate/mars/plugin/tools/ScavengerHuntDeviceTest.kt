@@ -1,13 +1,10 @@
 package edu.missouristate.mars.plugin.tools
 
-import edu.missouristate.mars.api.ErrorEvent
 import edu.missouristate.mars.api.MarsTarget
-import edu.missouristate.mars.api.SimulatorListener
-import edu.missouristate.mars.api.StepEvent
-import edu.missouristate.mars.api.StopEvent
 import edu.missouristate.mars.api.StopEvent.Reason.BREAKPOINT
 import edu.missouristate.mars.api.StopEvent.Reason.EXCEPTION
 import edu.missouristate.mars.api.StopEvent.Reason.STEP_LIMIT
+import edu.missouristate.mars.api.simulatorListener
 import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.mips.hardware.AccessNotice.Companion.WRITE
 import edu.missouristate.mars.mips.hardware.AccessOrigin.Companion.duringExecution
@@ -388,18 +385,13 @@ class ScavengerHuntDeviceTest {
       session.assemble(listOf(file))
       lateinit var device: ScavengerHuntDevice
       val simulator = session.simulator()
-      val connect =
-          object : SimulatorListener {
-            override fun onStep(event: StepEvent) {
-              device.setConnected(true)
-              device.requestReset()
-              simulator.removeListener(this)
-            }
-
-            override fun onStop(event: StopEvent) = Unit
-
-            override fun onError(event: ErrorEvent) = Unit
-          }
+      val connect = simulatorListener {
+        onStep { _ ->
+          device.setConnected(true)
+          device.requestReset()
+          simulator.removeListener(this)
+        }
+      }
       simulator.addListener(connect)
       device = ScavengerHuntDevice(session, connectAtLaunch = false)
       device.use {

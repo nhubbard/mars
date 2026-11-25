@@ -1,12 +1,10 @@
 package edu.missouristate.mars.benchmark
 
 import edu.missouristate.mars.Settings
-import edu.missouristate.mars.api.ErrorEvent
 import edu.missouristate.mars.api.MarsGuiProxy
 import edu.missouristate.mars.api.SessionSyscallEnvironment
-import edu.missouristate.mars.api.SimulatorListener
-import edu.missouristate.mars.api.StepEvent
 import edu.missouristate.mars.api.StopEvent
+import edu.missouristate.mars.api.simulatorListener
 import edu.missouristate.mars.core.AssemblyImage
 import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.di.CoreModule
@@ -120,14 +118,10 @@ object ExecutionBenchmark {
                     if (asynchronous) {
                       val simulator = session.simulator()
                       simulator.addListener(
-                          object : SimulatorListener {
-                            override fun onStep(event: StepEvent) {
+                          simulatorListener {
+                            onStep { event ->
                               steps = event.stepCount
                             }
-
-                            override fun onStop(event: StopEvent) = Unit
-
-                            override fun onError(event: ErrorEvent) = Unit
                           },
                       )
                       val start = System.nanoTime()

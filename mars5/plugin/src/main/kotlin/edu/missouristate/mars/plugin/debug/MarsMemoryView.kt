@@ -21,7 +21,6 @@ import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.ListTableModel
 import com.intellij.util.ui.UIUtil
 import com.intellij.xdebugger.XDebugSession
-import com.intellij.xdebugger.XDebugSessionListener
 import com.intellij.xdebugger.frame.XValueModifier.XModificationCallback
 import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.mips.hardware.IntegerRegisterFile.Companion.STACK_POINTER_REGISTER
@@ -195,16 +194,21 @@ internal class MarsMemoryView(private val session: XDebugSession, private val en
       }
     }
     session.addSessionListener(
-        object : XDebugSessionListener {
-          override fun sessionPaused() = refreshOnEdt()
-
-          override fun sessionResumed() = refreshOnEdt()
-
-          override fun sessionStopped() = refreshOnEdt()
-
-          override fun settingsChanged() = UIUtil.invokeLaterIfNeeded {
-            val context = session.suspendContext as? MarsSuspendContext
-            if (context != null && context.lastMemoryWrite != displayedWrite) refresh()
+        debugSessionListener {
+          sessionPaused {
+            refreshOnEdt()
+          }
+          sessionResumed {
+            refreshOnEdt()
+          }
+          sessionStopped {
+            refreshOnEdt()
+          }
+          settingsChanged {
+            UIUtil.invokeLaterIfNeeded {
+              val context = session.suspendContext as? MarsSuspendContext
+              if (context != null && context.lastMemoryWrite != displayedWrite) refresh()
+            }
           }
         },
         this,

@@ -6,7 +6,6 @@ package edu.missouristate.mars.plugin.debug
 
 import com.intellij.codeInsight.navigation.actions.GotoDeclarationAction
 import com.intellij.configurationStore.deserialize
-import com.intellij.execution.ExecutionListener
 import com.intellij.execution.ExecutionManager
 import com.intellij.execution.Executor
 import com.intellij.execution.configurations.RunProfile
@@ -16,7 +15,6 @@ import com.intellij.execution.executors.DefaultRunExecutor
 import com.intellij.execution.impl.ConsoleViewImpl
 import com.intellij.execution.impl.ExecutionManagerImpl
 import com.intellij.execution.process.ProcessEvent
-import com.intellij.execution.process.ProcessHandler
 import com.intellij.execution.process.ProcessListener
 import com.intellij.execution.process.ProcessOutputTypes
 import com.intellij.execution.runners.ExecutionEnvironment
@@ -152,6 +150,7 @@ import edu.missouristate.mars.plugin.run.MarsRunSpeedAction
 import edu.missouristate.mars.plugin.run.MarsRunType
 import edu.missouristate.mars.plugin.run.ProjectOptionOverride
 import edu.missouristate.mars.plugin.run.RunMemoryDumpState
+import edu.missouristate.mars.plugin.run.executionListener
 import edu.missouristate.mars.plugin.run.runMessages
 import edu.missouristate.mars.plugin.tools.FloatingPointRepresentation.Format
 import edu.missouristate.mars.plugin.tools.FloatingPointView
@@ -3818,8 +3817,8 @@ class MarsDebugPlatformTest {
                       }
                   val edits = Channel<Unit>(Channel.UNLIMITED)
                   debug.session.addSessionListener(
-                      object : XDebugSessionListener {
-                        override fun settingsChanged() {
+                      debugSessionListener {
+                        settingsChanged {
                           check(edits.trySend(Unit).isSuccess)
                         }
                       },
@@ -7537,13 +7536,9 @@ class MarsDebugPlatformTest {
             .connect(disposable)
             .subscribe(
                 ExecutionManager.EXECUTION_TOPIC,
-                object : ExecutionListener {
-                  override fun processStarting(
-                      executorId: String,
-                      env: ExecutionEnvironment,
-                      handler: ProcessHandler,
-                  ) {
-                    if (env !== environment) return
+                executionListener {
+                  processStarting { _, env, handler ->
+                    if (env !== environment) return@processStarting
                     val session =
                         debugger.debugSessions.single { it.debugProcess.processHandler === handler }
                     session.debugProcess.startPausing()

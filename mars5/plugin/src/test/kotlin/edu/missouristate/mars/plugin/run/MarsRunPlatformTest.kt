@@ -14,7 +14,6 @@ import com.intellij.configurationStore.deserialize
 import com.intellij.execution.BeforeRunTask
 import com.intellij.execution.BeforeRunTaskProvider
 import com.intellij.execution.ExecutionException
-import com.intellij.execution.ExecutionListener
 import com.intellij.execution.ExecutionManager
 import com.intellij.execution.Executor
 import com.intellij.execution.PsiLocation
@@ -184,13 +183,9 @@ class MarsRunPlatformTest {
                 .connect(lifetime)
                 .subscribe(
                     ExecutionManager.EXECUTION_TOPIC,
-                    object : ExecutionListener {
-                      override fun processStarting(
-                          executorId: String,
-                          env: ExecutionEnvironment,
-                          handler: ProcessHandler,
-                      ) {
-                        if (env !== environment) return
+                    executionListener {
+                      processStarting { _, env, handler ->
+                        if (env !== environment) return@processStarting
                         val console =
                             assertInstanceOf<ConsoleViewImpl>(
                                 env.contentToReuse?.executionConsole,
@@ -377,13 +372,9 @@ class MarsRunPlatformTest {
                 .connect(lifetime)
                 .subscribe(
                     ExecutionManager.EXECUTION_TOPIC,
-                    object : ExecutionListener {
-                      override fun processStarting(
-                          executorId: String,
-                          env: ExecutionEnvironment,
-                          handler: ProcessHandler,
-                      ) {
-                        if (env.runProfile !== config) return
+                    executionListener {
+                      processStarting { _, env, handler ->
+                        if (env.runProfile !== config) return@processStarting
                         val action = resetAction(env)
                         val event = TestActionEvent.createTestEvent(action)
                         ActionUtil.updateAction(action, event)
@@ -555,30 +546,21 @@ class MarsRunPlatformTest {
                 .connect(disposable)
                 .subscribe(
                     ExecutionManager.EXECUTION_TOPIC,
-                    object : ExecutionListener {
-                      // Kotlin exposes the reported Java setters as read-only properties.
-                      @Suppress("UsePropertyAccessSyntax")
-                      override fun processStarting(executorId: String, env: ExecutionEnvironment) {
-                        if (env !== environment) return
+                    executionListener {
+                      processStarting { _, env ->
+                        if (env !== environment) return@processStarting
                         val document =
                             requireNotNull(FileDocumentManager.getInstance().getDocument(file))
                         WriteCommandAction.runWriteCommandAction(project) {
+                          // Kotlin exposes this Java setter as a read-only property.
+                          @Suppress("UsePropertyAccessSyntax")
                           document.setText(text.replace("42", "99"))
                         }
                       }
-
-                      override fun processStarting(
-                          executorId: String,
-                          env: ExecutionEnvironment,
-                          handler: ProcessHandler,
-                      ) {
+                      processStarting { _, env, handler ->
                         if (env === environment) handler.addProcessListener(recording)
                       }
-
-                      override fun processNotStarted(
-                          executorId: String,
-                          env: ExecutionEnvironment,
-                      ) {
+                      processNotStarted { _, env ->
                         if (env === environment) aborted.complete(Unit)
                       }
                     },
@@ -692,12 +674,8 @@ class MarsRunPlatformTest {
                 .connect(disposable)
                 .subscribe(
                     ExecutionManager.EXECUTION_TOPIC,
-                    object : ExecutionListener {
-                      override fun processStarting(
-                          executorId: String,
-                          env: ExecutionEnvironment,
-                          handler: ProcessHandler,
-                      ) {
+                    executionListener {
+                      processStarting { _, env, handler ->
                         if (env === environment) handler.addProcessListener(recording)
                       }
                     },
@@ -769,12 +747,8 @@ class MarsRunPlatformTest {
                   .connect(lifetime)
                   .subscribe(
                       ExecutionManager.EXECUTION_TOPIC,
-                      object : ExecutionListener {
-                        override fun processStarting(
-                            executorId: String,
-                            env: ExecutionEnvironment,
-                            handler: ProcessHandler,
-                        ) {
+                      executionListener {
+                        processStarting { _, env, handler ->
                           if (env === environment) handler.addProcessListener(recording)
                         }
                       },
@@ -910,12 +884,8 @@ class MarsRunPlatformTest {
                 .connect(lifetime)
                 .subscribe(
                     ExecutionManager.EXECUTION_TOPIC,
-                    object : ExecutionListener {
-                      override fun processStarting(
-                          executorId: String,
-                          env: ExecutionEnvironment,
-                          handler: ProcessHandler,
-                      ) {
+                    executionListener {
+                      processStarting { _, env, handler ->
                         recordings[env]?.let(handler::addProcessListener)
                       }
                     },
@@ -980,13 +950,9 @@ class MarsRunPlatformTest {
                 .connect(lifetime)
                 .subscribe(
                     ExecutionManager.EXECUTION_TOPIC,
-                    object : ExecutionListener {
-                      override fun processStarting(
-                          executorId: String,
-                          env: ExecutionEnvironment,
-                          handler: ProcessHandler,
-                      ) {
-                        if (env !== environment) return
+                    executionListener {
+                      processStarting { _, env, handler ->
+                        if (env !== environment) return@processStarting
                         handler.addProcessListener(recording)
                         started.complete(assertInstanceOf<MarsProcessHandler>(handler))
                       }
@@ -1095,8 +1061,8 @@ class MarsRunPlatformTest {
             assertEquals("Speed: Unlimited", event.presentation.text)
             val stopping = CompletableDeferred<Boolean>()
             second.first.addProcessListener(
-                object : ProcessListener {
-                  override fun processWillTerminate(event: ProcessEvent, willBeDestroyed: Boolean) {
+                processListener {
+                  processWillTerminate { event, willBeDestroyed ->
                     val update = TestActionEvent.createTestEvent(second.second)
                     second.second.update(update)
                     stopping.complete(update.presentation.isEnabled)
@@ -1189,12 +1155,8 @@ class MarsRunPlatformTest {
             .connect(lifetime)
             .subscribe(
                 ExecutionManager.EXECUTION_TOPIC,
-                object : ExecutionListener {
-                  override fun processStarting(
-                      executorId: String,
-                      env: ExecutionEnvironment,
-                      handler: ProcessHandler,
-                  ) {
+                executionListener {
+                  processStarting { _, env, handler ->
                     executions[env]?.let(handler::addProcessListener)
                   }
                 },
@@ -1318,12 +1280,8 @@ class MarsRunPlatformTest {
                   .connect(lifetime)
                   .subscribe(
                       ExecutionManager.EXECUTION_TOPIC,
-                      object : ExecutionListener {
-                        override fun processStarting(
-                            executorId: String,
-                            env: ExecutionEnvironment,
-                            handler: ProcessHandler,
-                        ) {
+                      executionListener {
+                        processStarting { _, env, handler ->
                           if (env === environment) handler.addProcessListener(recording)
                         }
                       },
@@ -1439,12 +1397,8 @@ class MarsRunPlatformTest {
                     .connect(disposable)
                     .subscribe(
                         ExecutionManager.EXECUTION_TOPIC,
-                        object : ExecutionListener {
-                          override fun processStarting(
-                              executorId: String,
-                              env: ExecutionEnvironment,
-                              handler: ProcessHandler,
-                          ) {
+                        executionListener {
+                          processStarting { _, env, handler ->
                             if (env === environment) handler.addProcessListener(recording)
                           }
                         },
@@ -1511,12 +1465,8 @@ class MarsRunPlatformTest {
                 .connect(disposable)
                 .subscribe(
                     ExecutionManager.EXECUTION_TOPIC,
-                    object : ExecutionListener {
-                      override fun processStarting(
-                          executorId: String,
-                          env: ExecutionEnvironment,
-                          handler: ProcessHandler,
-                      ) {
+                    executionListener {
+                      processStarting { _, env, handler ->
                         if (env === environment) handler.addProcessListener(recording)
                       }
                     },
@@ -1576,12 +1526,8 @@ class MarsRunPlatformTest {
                   .connect(disposable)
                   .subscribe(
                       ExecutionManager.EXECUTION_TOPIC,
-                      object : ExecutionListener {
-                        override fun processStarting(
-                            executorId: String,
-                            env: ExecutionEnvironment,
-                            handler: ProcessHandler,
-                        ) {
+                      executionListener {
+                        processStarting { _, env, handler ->
                           if (env === environment) {
                             handler.addProcessListener(recording)
                             process.complete(handler as MarsProcessHandler)
@@ -1686,12 +1632,8 @@ class MarsRunPlatformTest {
                 .connect(disposable)
                 .subscribe(
                     ExecutionManager.EXECUTION_TOPIC,
-                    object : ExecutionListener {
-                      override fun processStarting(
-                          executorId: String,
-                          env: ExecutionEnvironment,
-                          handler: ProcessHandler,
-                      ) {
+                    executionListener {
+                      processStarting { _, env, handler ->
                         if (env === environment) {
                           handler.addProcessListener(recording)
                           process.complete(handler as MarsProcessHandler)
@@ -1756,13 +1698,9 @@ class MarsRunPlatformTest {
                 .connect(lifetime)
                 .subscribe(
                     ExecutionManager.EXECUTION_TOPIC,
-                    object : ExecutionListener {
-                      override fun processStarting(
-                          executorId: String,
-                          env: ExecutionEnvironment,
-                          handler: ProcessHandler,
-                      ) {
-                        if (env !== environment) return
+                    executionListener {
+                      processStarting { _, env, handler ->
+                        if (env !== environment) return@processStarting
                         handler.addProcessListener(recording)
                         started.complete(handler as MarsProcessHandler)
                       }
@@ -1821,12 +1759,8 @@ class MarsRunPlatformTest {
             .connect(disposable)
             .subscribe(
                 ExecutionManager.EXECUTION_TOPIC,
-                object : ExecutionListener {
-                  override fun processStarting(
-                      executorId: String,
-                      env: ExecutionEnvironment,
-                      handler: ProcessHandler,
-                  ) {
+                executionListener {
+                  processStarting { _, env, handler ->
                     if (env === environment) {
                       handler.addProcessListener(recording)
                       process.complete(handler as MarsProcessHandler)
@@ -1875,12 +1809,8 @@ class MarsRunPlatformTest {
             .connect(disposable)
             .subscribe(
                 ExecutionManager.EXECUTION_TOPIC,
-                object : ExecutionListener {
-                  override fun processStarting(
-                      executorId: String,
-                      env: ExecutionEnvironment,
-                      handler: ProcessHandler,
-                  ) {
+                executionListener {
+                  processStarting { _, env, handler ->
                     if (env === environment) {
                       handler.addProcessListener(recording)
                       process.complete(handler as MarsProcessHandler)
@@ -2432,12 +2362,8 @@ class MarsRunPlatformTest {
             .connect(disposable)
             .subscribe(
                 ExecutionManager.EXECUTION_TOPIC,
-                object : ExecutionListener {
-                  override fun processStarting(
-                      executorId: String,
-                      env: ExecutionEnvironment,
-                      handler: ProcessHandler,
-                  ) {
+                executionListener {
+                  processStarting { _, env, handler ->
                     if (env === environment) handler.addProcessListener(recording)
                   }
                 },

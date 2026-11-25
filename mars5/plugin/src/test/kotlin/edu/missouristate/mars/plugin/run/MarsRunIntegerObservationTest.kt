@@ -1,7 +1,5 @@
 package edu.missouristate.mars.plugin.run
 
-import com.intellij.execution.process.ProcessEvent
-import com.intellij.execution.process.ProcessListener
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.components.service
 import com.intellij.openapi.util.Disposer
@@ -65,8 +63,8 @@ class MarsRunIntegerObservationTest {
         )
         val stopped = CompletableDeferred<Int>()
         handler.addProcessListener(
-            object : ProcessListener {
-              override fun processTerminated(event: ProcessEvent) {
+            processListener {
+              processTerminated { event ->
                 stopped.complete(event.exitCode)
               }
             },
@@ -111,8 +109,8 @@ class MarsRunIntegerObservationTest {
         lifetime,
     )
     handler.addProcessListener(
-        object : ProcessListener {
-          override fun processTerminated(event: ProcessEvent) {
+        processListener {
+          processTerminated { _ ->
             stopped.complete(Unit)
           }
         },

@@ -1,23 +1,22 @@
 package edu.missouristate.mars.plugin.learning
 
-import com.intellij.execution.ExecutionListener
 import com.intellij.execution.ExecutionManager
 import com.intellij.execution.executors.DefaultDebugExecutor
 import com.intellij.execution.process.ProcessHandler
-import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.runReadActionBlocking
 import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
-import com.intellij.xdebugger.XDebugSessionListener
 import com.intellij.xdebugger.XDebuggerManager
 import edu.missouristate.mars.api.InstructionSourceMap.Location
 import edu.missouristate.mars.mips.hardware.VectorRegister
 import edu.missouristate.mars.plugin.debug.MarsDebugProcess
 import edu.missouristate.mars.plugin.debug.MarsSuspendContext
+import edu.missouristate.mars.plugin.debug.debugSessionListener
 import edu.missouristate.mars.plugin.run.MarsProcessHandler
+import edu.missouristate.mars.plugin.run.executionListener
 import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicReference
 
@@ -52,12 +51,8 @@ internal class MarsDownloadedDebugCheckpoint(
         .connect(lifetime)
         .subscribe(
             ExecutionManager.EXECUTION_TOPIC,
-            object : ExecutionListener {
-              override fun processStarting(
-                  executorId: String,
-                  env: ExecutionEnvironment,
-                  handler: ProcessHandler,
-              ) {
+            executionListener {
+              processStarting { executorId, _, handler ->
                 starting(executorId, handler)
               }
             },
@@ -102,59 +97,60 @@ internal class MarsDownloadedDebugCheckpoint(
         owned,
     )
     session.addSessionListener(
-        object : XDebugSessionListener {
-          override fun sessionPaused() = runReadActionBlocking {
-            if (closed || observation.get() !== state) return@runReadActionBlocking
-            if (!source.current(state.attempt) || !source.matches(state.attempt, handler)) {
-              report(state, Outcome.SOURCE_CHANGED)
-              Disposer.dispose(owned)
-              return@runReadActionBlocking
-            }
-            // The native callback follows installation of this MARS session's context.
-            val context = session.suspendContext as MarsSuspendContext
-            val stop = step.stops[state.trace.phase]
-            val evaluator = context.frame.evaluator
-            val range = MarsLessonAnchors.range(editor, stop.anchor)
-            val address = range?.let {
-              val line = editor.document.getLineNumber(it.startOffset) + 1
-              evaluator.instructionSources.breakpointsByAddress[Location(entry, line)]
-                  ?.singleOrNull()
-            }
-            val values =
-                stop.registers.mapValues { (name, _) -> evaluator.integerRegisterBits(name) }
-            val vectors =
-                stop.vectorRegisters.mapValues { (name, _) -> evaluator.vectorRegisterBits(name) }
-            val outcome =
-                state.trace.observe(
-                    Pause(
-                        context.number,
-                        context.executionRevision,
-                        state.input.instructions,
-                        evaluator.integerRegisterBits("pc"),
-                        address,
-                        values,
-                        state.input.matches(),
-                        vectors,
-                    ),
-                ) ?: return@runReadActionBlocking
-            when (outcome) {
-              Outcome.PASSED -> {
-                // The ticket decides acceptance atomically. The native task reads
-                // passed()/phase; a reset racing this commit cannot advance it.
-                source.finish(state.attempt, true)
+        debugSessionListener {
+          sessionPaused {
+            runReadActionBlocking {
+              if (closed || observation.get() !== state) return@runReadActionBlocking
+              if (!source.current(state.attempt) || !source.matches(state.attempt, handler)) {
+                report(state, Outcome.SOURCE_CHANGED)
                 Disposer.dispose(owned)
+                return@runReadActionBlocking
               }
-              Outcome.ADVANCED -> Unit
-              Outcome.HISTORY,
-              Outcome.INPUT -> {
-                report(state, outcome)
-                Disposer.dispose(owned)
+              // The native callback follows installation of this MARS session's context.
+              val context = session.suspendContext as MarsSuspendContext
+              val stop = step.stops[state.trace.phase]
+              val evaluator = context.frame.evaluator
+              val range = MarsLessonAnchors.range(editor, stop.anchor)
+              val address = range?.let {
+                val line = editor.document.getLineNumber(it.startOffset) + 1
+                evaluator.instructionSources.breakpointsByAddress[Location(entry, line)]
+                    ?.singleOrNull()
               }
-              else -> report(state, outcome)
+              val values =
+                  stop.registers.mapValues { (name, _) -> evaluator.integerRegisterBits(name) }
+              val vectors =
+                  stop.vectorRegisters.mapValues { (name, _) -> evaluator.vectorRegisterBits(name) }
+              val outcome =
+                  state.trace.observe(
+                      Pause(
+                          context.number,
+                          context.executionRevision,
+                          state.input.instructions,
+                          evaluator.integerRegisterBits("pc"),
+                          address,
+                          values,
+                          state.input.matches(),
+                          vectors,
+                      ),
+                  ) ?: return@runReadActionBlocking
+              when (outcome) {
+                Outcome.PASSED -> {
+                  // The ticket decides acceptance atomically. The native task reads
+                  // passed()/phase; a reset racing this commit cannot advance it.
+                  source.finish(state.attempt, true)
+                  Disposer.dispose(owned)
+                }
+                Outcome.ADVANCED -> Unit
+                Outcome.HISTORY,
+                Outcome.INPUT -> {
+                  report(state, outcome)
+                  Disposer.dispose(owned)
+                }
+                else -> report(state, outcome)
+              }
             }
           }
-
-          override fun sessionStopped() {
+          sessionStopped {
             Disposer.dispose(owned)
           }
         },

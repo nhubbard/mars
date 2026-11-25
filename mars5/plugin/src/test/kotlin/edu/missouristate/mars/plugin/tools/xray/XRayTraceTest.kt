@@ -1,12 +1,11 @@
 package edu.missouristate.mars.plugin.tools.xray
 
-import edu.missouristate.mars.api.ErrorEvent
 import edu.missouristate.mars.api.MarsTarget
-import edu.missouristate.mars.api.SimulatorListener
 import edu.missouristate.mars.api.StepEvent
 import edu.missouristate.mars.api.StepEvent.BranchOutcome.NOT_TAKEN
 import edu.missouristate.mars.api.StepEvent.BranchOutcome.TAKEN
 import edu.missouristate.mars.api.StopEvent
+import edu.missouristate.mars.api.simulatorListener
 import edu.missouristate.mars.mips.hardware.AccessOrigin
 import edu.missouristate.mars.mips.instructions.InstructionDefaults
 import edu.missouristate.mars.plugin.MarsSessionService
@@ -60,12 +59,10 @@ class XRayTraceTest {
       machine.assemble(listOf(source))
       val simulator = machine.simulator()
       simulator.addListener(
-          object : SimulatorListener {
-            override fun onStep(event: StepEvent) = trace.record(event)
-
-            override fun onStop(event: StopEvent) = Unit
-
-            override fun onError(event: ErrorEvent) = Unit
+          simulatorListener {
+            onStep { event ->
+              trace.record(event)
+            }
           },
       )
       trace.observeMemory(machine.memory).use {
