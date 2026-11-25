@@ -17,6 +17,7 @@ import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.ui.popup.ListPopup
 import com.intellij.openapi.ui.popup.ListPopupStep
 import com.intellij.openapi.util.Disposer
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.openapi.vfs.limits.FileSizeLimit
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
@@ -28,6 +29,7 @@ import com.intellij.testFramework.TestActionEvent
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.ui.UiInterceptors
+import com.intellij.util.ref.GCWatcher
 import edu.missouristate.mars.api.AssembledInstruction
 import edu.missouristate.mars.api.InstructionSourceMap.Location
 import edu.missouristate.mars.api.InstructionSourceMap.Origin
@@ -174,21 +176,31 @@ class MarsExpansionPlatformTest {
       }
 
   @Test
-  fun `binary include syntax retains its native physical PSI owner`() = timeoutRunBlocking {
-    withContext(Dispatchers.EDT) {
-      val current = project.get()
-      val file = fixture.tempDirFixture.createFile("owner.png", "nop\n")
-      val manager = PsiManager.getInstance(current)
-      val physical = checkNotNull(manager.findFile(file))
-      assertTrue(physical.fileType.isBinary)
-      val syntax = checkNotNull(assemblySourceSyntax(physical))
-      assertSame(physical, syntax.originalFile)
-      assertSame(syntax, assemblySourceSyntax(manager.findFile(file)))
-      val missing = fixture.tempDirFixture.createFile("missing.png", "nop\n")
-      val physicalMissing = checkNotNull(manager.findFile(missing))
-      Files.delete(missing.toNioPath())
-      assertNull(assemblySourceSyntax(physicalMissing))
-    }
+  fun `binary include views survive native cache collection and missing files`() =
+      timeoutRunBlocking {
+        withContext(Dispatchers.EDT) {
+          val current = project.get()
+          val file = fixture.tempDirFixture.createFile("owner.png", "nop\n")
+          val manager = PsiManager.getInstance(current)
+          val syntax = binarySyntax(manager, file)
+          assertSame(syntax, syntax.originalFile)
+          assertSame(syntax, assemblySourceSyntax(manager.findFile(file)))
+          GCWatcher.tracking(Any()).ensureCollectedWithinTimeout(5000)
+          assertSame(syntax, assemblySourceSyntax(manager.findFile(file)))
+          val missing = fixture.tempDirFixture.createFile("missing.png", "nop\n")
+          val physicalMissing = checkNotNull(manager.findFile(missing))
+          Files.delete(missing.toNioPath())
+          assertNull(assemblySourceSyntax(physicalMissing))
+        }
+      }
+
+  private fun binarySyntax(
+      manager: PsiManager,
+      file: VirtualFile,
+  ): MipsFile {
+    val physical = checkNotNull(manager.findFile(file))
+    assertTrue(physical.fileType.isBinary)
+    return checkNotNull(assemblySourceSyntax(physical))
   }
 
   @ParameterizedTest

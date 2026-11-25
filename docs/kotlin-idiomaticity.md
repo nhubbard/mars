@@ -185,12 +185,21 @@ focused binding and macro-inspection tests pass, with 100% line and branch cover
 in both corrected source files. The packaged verifier reports compatibility with
 IntelliJ IU-263.7307.200, with 97 experimental API usages.
 
-A subsequent full run exposed a read-only binary-include navigation lifetime
-issue. Binary syntax copies now retain their physical PSI owner through the
-platform's `originalFile` relationship, matching the existing text-copy path.
-The platform setter also registers the native view-provider copy relationship;
-no additional cache framework or lifecycle registry is introduced. A regression
-that failed before the fix now verifies original-file identity and native cached
-syntax reuse, plus the missing-file read fallback. All 51 selected expansion,
-macro inspection, and macro-reference tests pass, and both new owner-path
-branches are covered.
+A full run also exposed a read-only include identity issue. Native PSI CachedValues
+use soft references and can recreate a source projection while an editor retains
+its previous PSI. That breaks include membership keyed by the projection's
+VirtualFile. A binary physical file also cannot be registered as a text copy via
+`originalFile`: native VFS refresh would attempt to load binary contents as text.
+
+The existing project service now weakly indexes read-only projections by physical
+file, display name, and decoded text. The live PSI retains its projection entry;
+closed projections can be collected. Only the published entry creates a VirtualFile,
+using lazy initialization to retain native concurrent-provider semantics. Parsing,
+dependency invalidation, text decoding, and refresh remain with the existing native
+PSI/CachedValue and disk-capture paths. No alternate PSI or event framework is added.
+
+The regression forces native cache collection while retaining the visible syntax,
+verifies projection identity and the missing-file fallback, and keeps binary copies
+independent from unsupported text-copy registration. All 61 selected capture,
+expansion, macro-inspection, and macro-reference tests pass. New projection paths
+have complete line and branch coverage in the focused report.

@@ -613,10 +613,7 @@ internal fun assemblySourceSyntax(source: PsiFile?): MipsFile? {
         // CachedValue can evaluate competing providers. Create PSI only for the published value.
         val syntax = lazy {
           if (source.fileType.isBinary) {
-            readOnlyAssemblySource(source.project, file)?.apply {
-              // Retain the physical PSI owner of its cached syntax, as text copies do below.
-              originalFile = source
-            }
+            readOnlyAssemblySource(source.project, file)
           } else {
             val copy =
                 PsiFileFactory.getInstance(source.project)
@@ -644,8 +641,7 @@ internal fun unresolvedAssemblySourceSyntax(
   onDependency(file)
   if (FileSizeLimit.isTooLargeForContentLoading(file.length, file.extension)) return null
   // An ignored file has no physical PSI to retain its weakly cached view provider.
-  val holder =
-      project.service<UnresolvedAssemblySyntaxCache>().holders.getOrPut(file, ::UserDataHolderBase)
+  val holder = project.service<AssemblySyntaxCache>().holders.getOrPut(file, ::UserDataHolderBase)
   val source =
       CachedValuesManager.getManager(project).getCachedValue(holder) {
         val name = file.name
@@ -672,9 +668,18 @@ internal fun unresolvedAssemblySourceSyntax(
 }
 
 @Service(Service.Level.PROJECT)
-private class UnresolvedAssemblySyntaxCache {
+private class AssemblySyntaxCache {
   val holders = CollectionFactory.createConcurrentWeakValueMap<VirtualFile, UserDataHolderBase>()
+  val views = CollectionFactory.createConcurrentWeakValueMap<SourceViewKey, SourceView>()
 }
+
+private data class SourceViewKey(val origin: VirtualFile, val name: String, val text: String)
+
+private class SourceView(key: SourceViewKey) {
+  val file by lazy { mipsAssemblySourceView(key.origin, key.text) }
+}
+
+private val sourceViewLifetime = Key.create<SourceView>("mars.assembly.source.view.lifetime")
 
 private val unresolvedSyntaxHolder =
     Key.create<UserDataHolderBase>("mars.assembly.unresolved.source")
@@ -692,8 +697,13 @@ private fun readOnlyAssemblySource(
     holder: UserDataHolderBase? = null,
 ): MipsFile? {
   val text = documentText ?: readDiskAssemblyText(file) ?: return null
-  val syntax =
-      PsiManager.getInstance(project).findFile(mipsAssemblySourceView(file, text)) as MipsFile
+  // Native CachedValues are soft and may recreate the result while its editor is still open.
+  // Keep each equal text projection's VirtualFile identity while its PSI is live. Registering a
+  // binary originalFile instead would make native refresh load binary contents as text.
+  val key = SourceViewKey(file, file.name, text)
+  val view = project.service<AssemblySyntaxCache>().views.getOrPut(key) { SourceView(key) }
+  val syntax = PsiManager.getInstance(project).findFile(view.file) as MipsFile
+  syntax.putUserData(sourceViewLifetime, view)
   // Keep the cached value alive while an editor or timeline retains this PSI.
   syntax.putUserData(unresolvedSyntaxHolder, holder)
   return syntax
