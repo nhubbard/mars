@@ -2,3 +2,10 @@
 *.iml
 *.ipr
 *.iws
+
+# Share the Gradle project's spelling dictionary without tracking personal IDE settings.
+!/mars5/.idea/
+/mars5/.idea/*
+!/mars5/.idea/dictionaries/
+/mars5/.idea/dictionaries/*
+!/mars5/.idea/dictionaries/mars.xml
