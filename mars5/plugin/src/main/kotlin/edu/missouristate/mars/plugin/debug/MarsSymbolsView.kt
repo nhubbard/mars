@@ -17,7 +17,6 @@ import com.intellij.ui.dsl.builder.Align
 import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.table.TableView
 import com.intellij.util.messages.Topic
-import com.intellij.util.ui.ColumnInfo
 import com.intellij.util.ui.ListTableModel
 import com.intellij.util.ui.UIUtil
 import com.intellij.xdebugger.XDebugSession
@@ -28,6 +27,7 @@ import edu.missouristate.mars.plugin.editor.onDocumentChanged
 import edu.missouristate.mars.plugin.run.MarsExecutionSources
 import edu.missouristate.mars.plugin.run.runMessages
 import edu.missouristate.mars.plugin.topicOf
+import edu.missouristate.mars.plugin.ui.buildColumnInfo
 import java.nio.file.Path
 import java.util.Locale
 import java.util.regex.Pattern
@@ -313,12 +313,7 @@ internal class MarsSymbolsView(
       column: MarsSymbolColumn,
       value: (AssembledSymbol) -> String,
       order: Comparator<AssembledSymbol>,
-  ) =
-      object : ColumnInfo<AssembledSymbol, String>(column.title) {
-        override fun valueOf(item: AssembledSymbol) = value(item)
-
-        override fun getComparator() = order
-      }
+  ) = buildColumnInfo(column.title, value) { comparator(order) }
 
   private fun column(column: MarsSymbolColumn, value: (AssembledSymbol) -> String) =
       column(column, value, compareBy(value))

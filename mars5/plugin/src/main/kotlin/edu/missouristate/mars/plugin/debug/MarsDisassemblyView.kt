@@ -14,7 +14,6 @@ import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.table.BaseTableView
 import com.intellij.ui.table.TableView
 import com.intellij.util.messages.Topic
-import com.intellij.util.ui.ColumnInfo
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.ListTableModel
 import com.intellij.xdebugger.XDebugSession
@@ -27,9 +26,10 @@ import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.mips.hardware.MemoryState
 import edu.missouristate.mars.plugin.run.runMessages
 import edu.missouristate.mars.plugin.topicOf
+import edu.missouristate.mars.plugin.ui.buildColumnInfo
+import edu.missouristate.mars.plugin.ui.columnInfo
 import edu.missouristate.mars.simulator.BackStepper.ExecutedInstruction
 import edu.missouristate.mars.util.Binary
-import edu.missouristate.mars.util.javaClassOf
 import java.awt.Font
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
@@ -179,10 +179,11 @@ internal class MarsDisassemblyView(
           sortableColumn(MarsDisassemblyColumn.WORD, DisassemblyRow::word),
           sortableColumn(MarsDisassemblyColumn.INSTRUCTION, DisassemblyRow::instruction),
           sortableColumn(MarsDisassemblyColumn.SOURCE, ::sourceLabel),
-          object : ColumnInfo<DisassemblyRow, Icon>(MarsDisassemblyColumn.BREAKPOINT.title) {
-            override fun getColumnClass() = javaClassOf<Icon>()
-
-            override fun valueOf(item: DisassemblyRow): Icon? = breakpointIcon(item.address)
+          buildColumnInfo<DisassemblyRow, Icon>(
+              MarsDisassemblyColumn.BREAKPOINT.title,
+              value = { breakpointIcon(it.address) },
+          ) {
+            columnClass<Icon>()
           },
           column(MarsDisassemblyColumn.EXECUTION) { row ->
             buildList {
@@ -287,7 +288,7 @@ internal class MarsDisassemblyView(
           sessionStopped {
             scheduleRefresh()
           }
-          breakpointsMuted { muted ->
+          breakpointsMuted { _ ->
             onEdt(table::repaint)
           }
         },
@@ -521,20 +522,13 @@ internal class MarsDisassemblyView(
   }
 
   private fun column(column: MarsDisassemblyColumn, value: (DisassemblyRow) -> String) =
-      object : ColumnInfo<DisassemblyRow, String>(column.title) {
-        override fun valueOf(item: DisassemblyRow) = value(item)
-      }
+      columnInfo(column.title, value)
 
   private fun sortableColumn(
       column: MarsDisassemblyColumn,
       value: (DisassemblyRow) -> String,
       order: Comparator<DisassemblyRow> = compareBy(value),
-  ) =
-      object : ColumnInfo<DisassemblyRow, String>(column.title) {
-        override fun valueOf(item: DisassemblyRow) = value(item)
-
-        override fun getComparator() = order
-      }
+  ) = buildColumnInfo(column.title, value) { comparator(order) }
 
   private fun sourceLabel(row: DisassemblyRow) =
       row.location?.let { "${it.file().fileName}:${it.line()}" }.orEmpty()
