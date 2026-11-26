@@ -164,6 +164,15 @@ class MarsLessonPackageSourceTest {
   }
 
   @Test
+  fun `remote sources require HTTPS even when constructed without parsing user input`() {
+    for (value in listOf("http://example.com/lab.zip", "file:///tmp/lab.zip", "relative.zip")) {
+      assertThrows<IllegalArgumentException>(value) {
+        MarsLessonPackageSource.Remote(URI.create(value))
+      }
+    }
+  }
+
+  @Test
   fun `chunked download produces an immutable preview and removes the temporary transfer`() {
     val before = downloads()
     val source = MarsLessonPackageSource.parse(url)

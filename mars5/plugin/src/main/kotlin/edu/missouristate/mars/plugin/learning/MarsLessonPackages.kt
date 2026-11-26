@@ -7,13 +7,16 @@ import com.google.gson.stream.JsonReader
 import com.google.gson.stream.JsonToken
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.util.io.FileUtil
+import com.intellij.openapi.util.io.FileUtilRt
 import com.intellij.util.io.Decompressor
 import java.io.ByteArrayOutputStream
+import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
 import java.io.StringReader
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets.UTF_8
+import java.nio.file.AccessDeniedException
 import java.nio.file.FileAlreadyExistsException
 import java.nio.file.Files
 import java.nio.file.LinkOption.NOFOLLOW_LINKS
@@ -112,7 +115,7 @@ internal object MarsLessonPackages {
         Files.writeString(content.resolve(RECEIPT), sha256 + "\n", CREATE_NEW)
         Files.copy(snapshot, content.resolve(ARCHIVE))
         ProgressManager.checkCanceled()
-        Files.move(content, destination)
+        publishDirectory(content, destination)
         return Installed(metadata, sha256, destination, false)
       } finally {
         FileUtil.delete(staging.toFile())
@@ -352,6 +355,25 @@ internal object MarsLessonPackages {
       output?.write(buffer, 0, read)
     }
     count to digest.digest().joinToString("") { byte -> "%02x".format(byte) }
+  }
+
+  internal fun publishDirectory(
+      source: Path,
+      destination: Path,
+      move: (Path, Path) -> Path = { from, to -> Files.move(from, to) },
+  ) {
+    FileUtilRt.doIOOperation<Boolean, IOException> { lastAttempt ->
+      ProgressManager.checkCanceled()
+      try {
+        move(source, destination)
+        true
+      } catch (failure: AccessDeniedException) {
+        // Windows scanners can briefly lock a completed staging directory. NIO has no retry
+        // facility; the platform helper supplies bounded backoff without replacing existing files.
+        if (lastAttempt) throw failure
+        null
+      }
+    }
   }
 
   private const val RECEIPT = ".mars-package.sha256"
