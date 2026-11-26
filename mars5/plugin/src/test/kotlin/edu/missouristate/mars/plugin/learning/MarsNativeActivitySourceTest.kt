@@ -134,9 +134,13 @@ class MarsNativeActivitySourceTest {
       assertEquals(4, plan.steps.filterIsInstance<MarsNativeLessonStep>().size)
       val debugging = plan.steps.filterIsInstance<MarsNativeDebugStep>()
       assertEquals(
-          listOf("range-counter.asm", "ranges/empty.asm", "ranges/tail.asm"),
+          listOf(
+              Path.of("range-counter.asm"),
+              Path.of("ranges/empty.asm"),
+              Path.of("ranges/tail.asm"),
+          ),
           debugging.map {
-            content.installed.directory.relativize(content.source(it)).toString()
+            content.installed.directory.relativize(content.source(it))
           },
       )
       assertEquals(10, debugging.sumOf { it.stops.size })

@@ -35,6 +35,8 @@ internal object MarsLearningWorkspace {
       }
     }
     val file = folder.resolve(exercise.fileName)
+    // CREATE_NEW may report AccessDeniedException for an existing directory on Windows.
+    if (Files.exists(file, NOFOLLOW_LINKS)) requireRegularSource(file)
     try {
       val bytes =
           MarsLearningWorkspace::class
@@ -45,11 +47,15 @@ internal object MarsLearningWorkspace {
               .use { it.readBytes() }
       Files.write(file, bytes, CREATE_NEW, WRITE)
     } catch (_: FileAlreadyExistsException) {
-      require(Files.isRegularFile(file, NOFOLLOW_LINKS)) {
-        "Lesson source is not a regular file: $file"
-      }
+      requireRegularSource(file)
     }
     return file
+  }
+
+  private fun requireRegularSource(file: Path) {
+    require(Files.isRegularFile(file, NOFOLLOW_LINKS)) {
+      "Lesson source is not a regular file: $file"
+    }
   }
 
   fun openExample(

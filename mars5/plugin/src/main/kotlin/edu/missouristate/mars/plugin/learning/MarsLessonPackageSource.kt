@@ -64,9 +64,11 @@ internal sealed interface MarsLessonPackageSource {
   companion object {
     fun parse(value: String): MarsLessonPackageSource {
       val text = value.trim()
+      // Windows paths reject the colon in HTTPS links before URI validation can run.
+      if (text.startsWith("https:", ignoreCase = true)) return Remote(URI.create(text))
       val path = Path.of(expandUserHome(text))
-      if (path.isAbsolute) return Local(path)
-      return Remote(URI.create(text))
+      require(path.isAbsolute) { "Enter an absolute package path or an HTTPS lab link" }
+      return Local(path)
     }
 
     private fun requireHttps(uri: URI) {

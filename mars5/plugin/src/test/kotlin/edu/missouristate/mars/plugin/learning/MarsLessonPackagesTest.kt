@@ -1,11 +1,17 @@
 package edu.missouristate.mars.plugin.learning
 
 import com.google.gson.JsonParser
+import com.intellij.openapi.progress.ProcessCanceledException
+import com.intellij.openapi.progress.ProgressManager
+import com.intellij.openapi.progress.util.ProgressIndicatorBase
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.testFramework.junit5.TestApplication
 import java.nio.ByteBuffer
 import java.nio.ByteOrder.LITTLE_ENDIAN
+import java.nio.file.AccessDeniedException
+import java.nio.file.FileAlreadyExistsException
 import java.nio.file.Files
+import java.nio.file.NoSuchFileException
 import java.nio.file.Path
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
@@ -15,6 +21,7 @@ import org.apache.commons.compress.archivers.zip.ZipArchiveOutputStream
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotEquals
+import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -63,6 +70,88 @@ class MarsLessonPackagesTest {
           .toString()
 
   private fun project() = Files.createTempDirectory(temporary, "project-")
+
+  @Test
+  fun `publishing retries a transient directory lock without changing package contents`() {
+    val source = Files.createDirectory(temporary.resolve("staging"))
+    Files.writeString(source.resolve("main.asm"), "# prepared content\n")
+    val destination = temporary.resolve("installed")
+    var attempts = 0
+    MarsLessonPackages.publishDirectory(source, destination) { from, to ->
+      attempts++
+      if (attempts == 1) throw AccessDeniedException(from.toString())
+      Files.move(from, to)
+    }
+    assertEquals(2, attempts)
+    assertFalse(Files.exists(source))
+    assertEquals("# prepared content\n", Files.readString(destination.resolve("main.asm")))
+  }
+
+  @Test
+  fun `publishing bounds persistent access failures and propagates unrelated failures immediately`() {
+    val source = temporary.resolve("staging")
+    val destination = temporary.resolve("installed")
+    var attempts = 0
+    val denied = AccessDeniedException(source.toString())
+    assertSame(
+        denied,
+        assertThrows<AccessDeniedException> {
+          MarsLessonPackages.publishDirectory(source, destination) { _, _ ->
+            attempts++
+            throw denied
+          }
+        },
+    )
+    assertTrue(attempts > 1)
+    attempts = 0
+    val missing = NoSuchFileException(source.toString())
+    assertSame(
+        missing,
+        assertThrows<NoSuchFileException> {
+          MarsLessonPackages.publishDirectory(source, destination) { _, _ ->
+            attempts++
+            throw missing
+          }
+        },
+    )
+    assertEquals(1, attempts)
+  }
+
+  @Test
+  fun `publishing never replaces an occupied destination`() {
+    val source = Files.createDirectory(temporary.resolve("staging"))
+    val destination = Files.createDirectory(temporary.resolve("installed"))
+    Files.writeString(source.resolve("main.asm"), "# incoming\n")
+    Files.writeString(destination.resolve("main.asm"), "# learner work\n")
+    assertThrows<FileAlreadyExistsException> {
+      MarsLessonPackages.publishDirectory(source, destination)
+    }
+    assertEquals("# learner work\n", Files.readString(destination.resolve("main.asm")))
+    assertEquals("# incoming\n", Files.readString(source.resolve("main.asm")))
+  }
+
+  @Test
+  fun `canceling between publication attempts stops before another move`() {
+    val indicator = ProgressIndicatorBase()
+    var attempts = 0
+    assertThrows<ProcessCanceledException> {
+      ProgressManager.getInstance()
+          .runProcess(
+              {
+                MarsLessonPackages.publishDirectory(
+                    temporary.resolve("staging"),
+                    temporary.resolve("installed"),
+                ) { from, _ ->
+                  attempts++
+                  indicator.cancel()
+                  throw AccessDeniedException(from.toString())
+                }
+              },
+              indicator,
+          )
+    }
+    assertEquals(1, attempts)
+  }
 
   @Test
   fun `a private preview installs files and an identical import preserves student edits`() {
